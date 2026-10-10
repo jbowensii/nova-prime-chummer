@@ -59,7 +59,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target*, op*, value*, switch, confidence `low`, when: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
 | armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -171,19 +171,22 @@ A value outside its field's SR6 vocabulary (`importer/sr6/vocab.py`: a critter p
 adept powers, ware, gear, weapons, armor, ammunition, accessories, vehicle mods, spells, critter powers, metamagics,
 echoes, programs, foci, mentor spirits, data structures and the rest (not rules, stat blocks, vocabularies or life
 modules, whose points are their own attributes and choices). General rules over the sentences, the game's vocabulary
-only, never an item's name. Each effect is `<effect target op value [switch] [confidence] [when]>`:
+only, never an item's name. Each effect is `<effect target op value [switch] [confidence] [when] [spec] [affects]>`:
 
 - **Targets**: `attr:<abbr>` (bod … cha, edg, mag, res, ess); `attr-max:<abbr>` an attribute's maximum
   (`attr-max:choice`: the one the player picks); `skill:<id>` a skill's pool (a specialization it is limited to in
-  `when`; `skill:choice` a chosen skill); `test:<type>` a test type, shown on every pool it covers: `social` (Con,
+  `spec`; `skill:choice` a chosen skill); `test:<type>` a test type, shown on every pool it covers: `social` (Con,
   Influence: the tests that influence or con someone, CRB p. 97), `matrix` (Cracking, Electronics), `magic`,
   `resonance`, `combat`, `vehicle`, `physical` and `mental` (the skills linked to those attributes), `attr-<abbr>` (the
   tests using that attribute), `damage-resistance`, `drain-resistance`, `toxin-resistance`, `magic-resistance`,
-  `defense`, `surprise`, `crash`, `addiction`, `spell-<category>`, `all`, and `other` (tests the book names by
-  activity: its words in `when`, shown only); `derived:<name>` Defense Rating (`defense`, `defense-astral`, `social`),
+  `defense`, `surprise`, `crash`, `addiction`, `spell-<category>`, `all`, and `other` (tests whose words name no
+  skill, test type or activity: its words in `when`). A test the book names by activity (`tests involving grappling,
+  escaping bonds`) is that activity's skill (owner decision 2026-10-10; `effects.ACTIVITIES`, from the core rulebook's
+  skill descriptions: grappling Close Combat, escaping Athletics, haggling Influence …), its specialization in `spec`
+  when the activity is one, else the activity's words in `when`; `derived:<name>` Defense Rating (`defense`, `defense-astral`, `social`),
   initiative (`initiative`, `initiative-dice`, `matrix-initiative`, `matrix-initiative-dice`), condition monitor boxes
   (`physical-monitor`, `stun-monitor`, `matrix-monitor`, `overflow`), `composure`, `judge-intentions`, `memory`, `lift`, `movement`,
-  `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`; `matrix:<name>` a Matrix attribute
+  `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`, `power-points`; `matrix:<name>` a Matrix attribute
   (`attack`, `sleaze`, `data-processing`, `firewall`, `choice`) or `matrix:overwatch`; `item:<field>` the item's own
   stat, or on an add-on (accessory, ammunition, vehicle mod) the stat of the item it fits (`ar`, a value a range band
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
@@ -192,13 +195,24 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
 - **Operations** (the rule-changing effects are kinds of their own): `add`, `set` (an infected type's attribute
   maximum), `edge` (N bonus Edge on those tests), `edge-cost` (Edge boosts and actions cost N more, -N less),
   `edge-cost-set` (an Edge action's new cost), `no-edge` (no Edge may be spent), `no-edge-gain` (none gained),
-  `wild-die`, `hits` (N extra hits). An extra Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets.
-- **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`); or a formula
-  over attributes (`edg/2`), shown only.
-- **How it is turned on** (`switch`): none (always on), `wireless`, `activated` (at will, an action, overdrive, a drug
-  while it acts, a spell while it is cast), `sustained`, `conditional` (some tests or situations: `when` holds the
-  words, a mentor spirit's role `magician`/`adept`, a specialization). An effect read from a sentence that sets a
-  condition is `confidence="low"`: shown, never applied (owner decision D3).
+  `wild-die`, `hits` (N extra hits), `threshold` (the tests' threshold moves by N: a toxin extractor's `-R`). An extra
+  Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
+  (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
+- **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`); `hits` (a
+  spell's, per net hit); or a formula over attributes (`edg/2`). `hits` and formulas are shown, never applied.
+- **How it is turned on** (`switch`): none (always on: in the total shown first), `wireless`, `activated` (at will,
+  an action, overdrive, a drug while it acts), `sustained` (a spell, ritual or complex form while it lasts),
+  `conditional` (some tests or situations: `when` holds the condition's words, `while in the Matrix`, or a mentor
+  spirit's role `magician`/`adept`). A switchable or conditional effect counts in the bracketed total, `Con 6 (9)`, as
+  a book's stat block prints it (owner decision 2026-10-10). `confidence="low"` (a condition the importer found no
+  words for, a formula per point of something) is shown, never applied.
+- **Specialization** (`spec`): a skill effect limited to a specialization (`+2 dice on climbing tests`: `Climbing`;
+  `Influence (Etiquette or Negotiation)`: either). It is added to that specialization's pool when the runner has it,
+  else to the skill's bracketed total (owner decision 2026-10-10).
+- **Whom it affects** (`affects`, spells, rituals and complex forms): `target` when its sentence names the target,
+  subject, device, ally …, or names no one (a spell acts on its target); `caster` when it names only the caster (`you
+  gain`). A caster's effect counts on the caster while sustained (in brackets); a target's is stored on the spell and
+  never counted on the caster (owner decision 2026-10-10).
 
 What the rules read: lists (`+1 to your Agility, Body, Reaction, and Strength`), `increase X by N` / `X +N` / `+N
 to X` / `+N X` / `a +N bonus on X` / `X is increased by N` / `adds its rating to X` / `the X's rating is added to Y`
@@ -212,6 +226,11 @@ Actions, Hardened Armor, Overwatch, incoming damage, lifestyle points. A labelle
 reads as one. Not the entry's: what others suffer (`Those looking for you …`, `tests made against you`), what using
 it costs (`3 additional Major Actions required to reload`), a test's threshold.
 
+**Section-wide statements** (owner decision 2026-10-10): a sentence of a section's intro opening `Each`, `Every`,
+`All` or `Any` (`Each cyberlimb adds one box to the character's Physical Condition Monitor`) is an effect of every
+item printed in that section (`effects.section_effects`), unless the item's own text excepts it (a sentence of its
+own saying it doesn't). Partial limbs, printed with the accessories, don't get it.
+
 Tables: a row naming the entry (or its parenthesised variant: `Cyberjack (Rating 1)` the row `Rating 1`) whose
 header has a target column: an infected type's attribute maxima (six attribute columns or more: `set`, its base
 metatype in `when`), a signed modifier (`AR +2`, `DV –1`: an ammo type's), a bonus column (`MATRIX INIT BONUS`). An
@@ -220,14 +239,20 @@ armor's Defense Rating column is its defense field, not an effect.
 **Links** (`<link rel="grants"|"as" name kind ref level when>`): an entry that grants another (`gain the Built Tough
 quality`, `1 free level of Rapid Healing`) or works as another (`the same result as a Personalized Grip`) names it;
 `ref` its id when the book tells (its own entry, or the book a citation names: `p. 70, SR6` -> `crb.`). The app uses
-the linked entry's effects (`effects.ts linkedEntries`, by id, else by name), so a correction there follows.
+the linked entry's effects (`effects.ts linkedEntries`, by id, else by name), so a correction there follows. A
+variant priced from its base item (`essence="fifty percent more Essence than the base item"`: `Transgenic gills`)
+works as that item (the same kind's entry named as the rest of its name, the bioware one when two share it; owner
+decision 2026-10-10).
 
-**What the app does with them** (`src/sr6/engine/effects.ts`): an always-on `add` on an attribute, Defense Rating,
+**What the app does with them** (`src/sr6/engine/effects.ts`): an `add` on an attribute, Defense Rating,
 initiative dice, Physical, Stun or Overflow boxes, a skill's pool, or a test type's pools is a bonus (lineBonuses: a
-player's own bonuses still override, D3); `attr-max` effects of a quality set or raise the attribute's maximum
-(attrMax); one limited to some tests is shown with the pool; the rest (Edge rules, extra actions, Matrix and item
+player's own bonuses still override, D3). The total shown first holds the always-on ones; the bracketed total
+(`derive.ts` on) adds the switchable and conditional ones, shown `6 (9)` on every sheet, Review and the Skills tab
+(shared rule: `src/engine/effects.ts` counts, both games). `attr-max` effects of a quality set or raise the
+attribute's maximum (attrMax); the rest (Edge rules, extra actions, Matrix and item
 stats, links) are shown on the hover card and listed on the printed sheet's Effects (runnerView.effectNotes). The
-Foundry export carries every effect and link (`effects`, `links`); the module applies the ones Eden has a field for.
+Foundry export carries every effect and link (`effects`, `links`) and both totals (`derived`, `derivedOn`, an
+attribute's `switched`); the module applies the ones Eden has a field for.
 The quality the creation settings name (`builtToughQuality`, `dermalDepositsQuality`) counts once when its own
 effects add the same.
 

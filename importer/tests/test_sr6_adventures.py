@@ -68,7 +68,7 @@ class GrantedListsTest(unittest.TestCase):
         f = self.by["Iron Hide"]
         self.assertEqual((f.kind, f.attrs), ("qualities", {"kind": "positive", "karma": "0", "granted": "true",
                                                            "category": "Wandering Folk power"}))
-        self.assertIn(("effect", {"target": "derived:defense", "op": "add", "value": "2", "confidence": "low", "switch": "activated"}, None),
+        self.assertIn(("effect", {"target": "derived:defense", "op": "add", "value": "2", "switch": "activated"}, None),
                       f.children)
         self.assertIn(("test", {"skill": "skill:perception", "attr": "attr:int", "threshold": "2"}, None),
                       self.by["Sharp Eyes"].children)
@@ -105,9 +105,9 @@ class EffectsTest(unittest.TestCase):
                          [("effect", {"target": "skill:stealth", "op": "edge-cost", "value": "-1"}, None)])
         self.assertEqual(effects.read("Their Glow is boosted by 2."), [])  # no vocabulary target: no effect
         # a bonus Edge point on some tests is not the Edge attribute; raising the attribute is
-        # (tests the vocabulary doesn't know: a test type of their own words, shown, never applied)
+        # (tests the vocabulary doesn't know: a test type of their own words, in the bracketed total)
         self.assertEqual(effects.read("You gain a +1 Edge bonus on all Quux tests."),
-                         [("effect", {"target": "test:other", "op": "edge", "value": "1", "confidence": "low",
+                         [("effect", {"target": "test:other", "op": "edge", "value": "1",
                                       "switch": "conditional", "when": "quux"}, None)])
         self.assertEqual(effects.read("Increase your Edge by 1."), [("effect", {"target": "attr:edg", "op": "add", "value": "1"}, None)])
         # how a conditional one is turned on: wireless, sustained, activated, else conditional; none on an always-on one

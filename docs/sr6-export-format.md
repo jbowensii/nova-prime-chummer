@@ -54,7 +54,7 @@ is closed (no other keys).
 | `metatype` | `{ id, name }`; an NPC may have none (`""`) |
 | `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
 | `portrait`, `token` | a data URL (`data:image/png` or `data:image/jpeg`, base64), or `null`; no token: use the portrait |
-| `attributes` | `{ bod … cha, edg, mag, res }`, each `{ natural, augmented }`: natural is the rating (Magic or Resonance less the Essence loss), augmented adds the entered bonuses |
+| `attributes` | `{ bod … cha, edg, mag, res }`, each `{ natural, augmented }`: natural is the rating (Magic or Resonance less the Essence loss), augmented adds the always-on bonuses (entered, else the catalog entry's effects); `switched`: with the switchable and conditional effects on (the bracket, `5 (7)`), only when it differs from `augmented` |
 | `essence`, `edge` | Essence left and the augmented Edge |
 | `skills` | `[{ id, name, attr, rank, spec?, expertise? }]`: `id` the catalog's (it carries the source, e.g. `crb.firearms`), so a reader matches by `name` |
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
@@ -67,6 +67,7 @@ is closed (no other keys).
 | `sins` | `[{ uid, name, kind, rating?, gender?, placeholder?, licences: [{ name, rating }], lifestyles: [{ uid, id, name, months, cost? }] }]`; `kind` `real` or `fake`; `gender`: that identity's own; `placeholder: true` (left out otherwise): an unnamed stand-in (`name` empty, `kind` real, free) holding an older file's lifestyle when the runner had no SIN, shown as Unnamed SIN; `lifestyles`: the ones paid under this SIN (a lifestyle always belongs to a SIN, a SIN may have none); `cost` is the lifestyle's price per month. For Eden: a `sin` item per SIN and a `lifestyle` item per lifestyle with `system.sin` naming its SIN |
 | `karma`, `nuyen` | a finalized runner's balances (the ledger); a draft's: what the build budgets leave |
 | `derived` | a runner only (an NPC has none): `{ initiative, astralInit?, monitors, monitorBonus, defenseRating, socialRating (Charisma plus the worn armor's Social), composure, judgeIntentions, memory, liftCarry, drain?, fading?, pools }`. For reading, except `monitorBonus` `{ physical, stun }`: the boxes the monitors have beyond base + attribute / divisor (Built Tough's), which the importer writes as the system's monitor modifiers; the system derives the rest itself |
+| `derivedOn` | a runner only: the same values with the switchable and conditional effects on (wireless, activated, sustained, some tests only): the bracketed totals a book's stat block prints, `Con 6 (9)` (owner decision 2026-10-10). `derived` holds the always-on ones |
 | `background`, `notes` | free text |
 | `ledger` | `[{ at, type, summary, karma, nuyen }]`: the live entries with the Ledger tab's label (`Creation finished`, `Earned: <run> (<date>)`, the spend's label, the note); a voided entry and its void are left out |
 | `npc` | an NPC only: the NPC block (below) |
@@ -90,7 +91,7 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 | `parts` | `[{ tag, text }]`: the entry's child lines (a being's skills, powers, …) |
 | `values` | Chummer's numbers (below) |
 | `description` | the entry's text (see Descriptions), absent when empty |
-| `effects` | what the entry's printed text and tables say it does (the catalog's `<effect>`, `docs/sr6-data-format.md` Effects): `[{ target, op, value, low?, switch?, when? }]`; `target` `attr:<abbr>`, `attr-max:<abbr>`, `skill:<id>`, `test:<type>`, `derived:<name>`, `matrix:<name>`, `item:<field>` (on an add-on: the item it fits; `item:ar` five comma-separated bands), `action:<name>`, `lifestyle:<name>` or `resource:<name>`; `op` `add`, `set`, `edge`, `edge-cost`, `edge-cost-set`, `no-edge`, `no-edge-gain`, `wild-die` or `hits`; `value` a number, `R`/`R*N` per rating or level, or a formula; `low` true when read from a sentence that sets a condition (shown, never applied); `switch` how it is turned on; `when` the condition's words. A reader applies the `add`s it has a field for and shows the rest. Absent when none |
+| `effects` | what the entry's printed text and tables say it does (the catalog's `<effect>`, `docs/sr6-data-format.md` Effects): `[{ target, op, value, low?, switch?, when?, spec?, affects? }]`; `target` `attr:<abbr>`, `attr-max:<abbr>`, `skill:<id>`, `test:<type>`, `derived:<name>`, `matrix:<name>`, `item:<field>` (on an add-on: the item it fits; `item:ar` five comma-separated bands), `action:<name>`, `lifestyle:<name>` or `resource:<name>`; `op` `add`, `set`, `edge`, `edge-cost`, `edge-cost-set`, `no-edge`, `no-edge-gain`, `wild-die`, `hits` or `threshold`; `value` a number, `R`/`R*N` per rating or level, `hits` (per net hit) or a formula; `low` true when read with low confidence (shown, never applied); `switch` how it is turned on (a switchable one counts in `derivedOn`, not `derived`); `when` the condition's words; `spec` the specialization a skill effect is limited to; `affects` a spell's or complex form's, `caster` or `target` (never counted on the caster). A reader applies the always-on `add`s it has a field for, offers the switchable ones as effects the player turns on, and shows the rest. Absent when none |
 | `links` | another entry this one grants (`rel` `grants`) or works as (`as`): `[{ rel, name, kind?, id?, level?, when? }]`; a reader uses that entry's effects. Absent when none |
 | `tests` | a test the entry's text calls for: `[{ skill, attr, threshold? }]` (`skill:<id>`, `attr:<abbr>`). Absent when none |
 | `aliases` | the ids the entry had in earlier imports (the catalog's `<alias id kind>`, `docs/sr6-data-format.md`): `[{ id, kind? }]`, `kind` only when it was another kind. A reader that keyed something by an old id finds it again. Absent when none |
@@ -98,10 +99,10 @@ An item is a catalog entry as printed plus Chummer's values. Closed: no other ke
 A purchase adds `{ uid, qty, grade?, worn, note?, bonuses, accessories }`. Its `values` are at its rating, and `cost`,
 `avail` and `essence` are one unit's, priced with its grade (`priced` on the line with quantity 1 and no accessories).
 `bonuses` are the line's bonuses as the engine counts them (the player's entered ones, else its catalog entry's `add`
-effects, with the effects of the entries it links to) `[{ target, value }]` (`target` an attribute, `initDice`,
+effects, with the effects of the entries it links to) `[{ target, value, when?, switch?, spec?, affects? }]` (`target` an attribute, `initDice`,
 `defense`, the Defense Rating, `physical` or `stun`, condition monitor boxes, or `overflow`, Damage Overflow boxes), or
 `{ target: "skill", id, name, value }` for a skill's dice pool (`id` the catalog skill's id, `name` its name, which a reader
-keying its skills by name, as Eden does, finds it by; `derived.pools` counts it), evaluated: × the
+keying its skills by name, as Eden does, finds it by; `derived.pools` counts it, or `derivedOn.pools` when it is switchable, conditional or limited to a specialization the runner hasn't), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
 them out.

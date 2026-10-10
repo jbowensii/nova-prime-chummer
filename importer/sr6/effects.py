@@ -68,11 +68,35 @@ SPECS = {"climbing": "athletics", "gymnastics": "athletics", "running": "athleti
          "aural": "perception", "tactile": "perception", "scent": "perception", "taste": "perception",
          "astral combat": "astral", "assensing": "astral", "repair": "engineering", "jump": "athletics",
          "climb": "athletics", "swim": "athletics", "lock picking": "engineering", "sleight-of-hand": "stealth",
-         "sleight of hand": "stealth", "hearing": "perception", "sight": "perception", "smell": "perception", "impersonate": "con", "impersonating": "con", "disguising": "con", "pickpocket": "stealth", "picking pockets": "stealth", "falling": "athletics"}
+         "sleight of hand": "stealth", "cybercombat": "cracking", "hearing": "perception", "sight": "perception", "smell": "perception", "impersonate": "con", "impersonating": "con", "disguising": "con", "pickpocket": "stealth", "picking pockets": "stealth", "falling": "athletics"}
+# what each skill is used for, as the core rulebook's skill descriptions list it (CRB pp. 94-98): an activity a test is
+# named by -> the skill it is a test of (owner decision 2026-10-10: tests named by activity are stored as that skill)
+ACTIVITIES = [
+    (r"grappl\w*|grapple|punch\w*|stab\w*|clubbing|melee|brawl\w*|unarmed (?:combat|attacks?)|parry\w*|block\w*", "close-combat"),
+    (r"escap\w*(?: bonds| restraints)?|flexibility|fitting into tight spaces|contortion\w*|sprint\w*|running|run|dodg\w*|diving|"
+     r"free-?falling|falling|climb\w*|swim\w*|jump\w*|leap\w*|gymnastics|tumbl\w*|acrobatics|balance|lifting|throw\w*|"
+     r"physical exertion|endurance", "athletics"),
+    (r"first aid|heal\w*|medic\w*|treat\w*|surgery|installing cyberware|diagnos\w*", "biotech"),
+    (r"acting|disguis\w*|imperson\w*|performance|lying|lie|bluff\w*|deceiv\w*|decept\w*|fast-talk\w*|seduc\w*", "con"),
+    (r"summon\w*|bind\w*|banish\w*", "conjuring"),
+    (r"hacking|cybercombat|electronic warfare|jamming|brute force|backdoor", "cracking"),
+    (r"computers?|hardware|software|kludg\w*|matrix search\w*", "electronics"),
+    (r"alchemy|artificing|disenchant\w*|crafting foci", "enchanting"),
+    (r"repair\w*|build\w*|juryrig\w*|jury-rig\w*|lockpick\w*|picking locks|maglocks?|demolitions?|gunnery|armorer|mechanic\w*", "engineering"),
+    (r"shooting|firing", "firearms"),
+    (r"etiquette|instruct\w*|teach\w*|intimidat\w*|leadership|lead\w*|negotiat\w*|haggl\w*|bargain\w*|persua\w*|inspir\w*", "influence"),
+    (r"navigat\w*|survival|tracking|track\w*|forag\w*|hunting", "outdoors"),
+    (r"notic\w*|spot\w*|search\w*|observ\w*|perceiv\w*|hearing|listen\w*|sight|smell\w*", "perception"),
+    (r"driv\w*|pilot\w*|chases?|races?|racing|maneuver\w*", "piloting"),
+    (r"spellcasting|casting spells|counterspell\w*|ritual spellcasting", "sorcery"),
+    (r"sneak\w*|hid(?:e|ing)|palming|pickpocket\w*|picking pockets|sleight of hand|camouflag\w*|shadowing", "stealth"),
+    (r"compil\w*|decompil\w*|register\w*", "tasking"),
+    (r"assens\w*|astral combat", "astral"),
+]
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
 DERIVED = {"defense rating": "defense", "astral defense rating": "defense-astral", "social defense rating": "social",
            "social rating": "social", "composure": "composure", "judge intentions": "judge-intentions",
-           "memory": "memory", "lift": "lift", "lift/carry": "lift"}
+           "memory": "memory", "lift": "lift", "lift/carry": "lift", "power point": "power-points", "power points": "power-points"}
 MATRIX = {"data processing": "data-processing", "firewall": "firewall", "sleaze": "sleaze", "attack attribute": "attack",
           "matrix attack": "attack"}
 ITEM = {"attack ratings": "ar", "attack rating": "ar", "ar": "ar", "damage value": "dv", "dv": "dv",
@@ -121,7 +145,7 @@ _TEST_WORDS = [  # (pattern, target): the test types a phrase names, longest fir
     (r"(?:toxin|poison|drug|pathogen|disease)s?(?: resistance)?|resist(?:ing)? (?:toxins?|poisons?|drugs?|pathogens?|diseases?)",
      "test:toxin-resistance"),
     (r"fatigue", "test:fatigue-resistance"),
-    (r"defen[cs]e tests?|defensive tests?|defending|defense pools?", "test:defense"),
+    (r"defen[cs]e tests?|defensive tests?|defending|defense pools?|(?:spell |boosted )*defense dic?e", "test:defense"),
     (r"social (?:tests?|interactions?|situations?|skill tests?|encounters?|actions?|checks?)|social\b", "test:social"),
     (r"addiction tests?", "test:addiction"),
     (r"magic(?:al)? resistance tests?|spell resistance|resist(?:ing|s)? (?:all |any )?(?:spells?|magic)\b", "test:magic-resistance"),
@@ -194,12 +218,16 @@ def targets(phrase, kind=None):
             add(f"skill:{SPECS[m.group(1)]}", m.start(), m.end(), m.group(1))
     for m in re.finditer(r"\b(" + "|".join(sorted(MATRIX, key=len, reverse=True)) + r")\b", p):
         add(f"matrix:{MATRIX[m.group(1)]}", m.start(), m.end())
-    for m in re.finditer(r"\b(?:the |that |this )?(?:chosen|selected|that|same) attribute\b", p):
+    for m in re.finditer(r"\b(?:the |that |this )?(?:chosen|selected|that|same) attribute\b|\bone (?:of )?(?:the |your |their |its |[a-z]+'s )?"
+                         r"(?:[a-z]+'s )?(?:basic |physical |mental |special )?attributes\b|\ban attribute of (?:your|their|the player's) choice\b", p):
         add("attr:choice", m.start(), m.end())
     for m in re.finditer(r"\b(?:the |that |the chosen |the selected |a )?(?:chosen|selected) skill\b|\bthat skill\b", p):
         add("skill:choice", m.start(), m.end())
     for m in re.finditer(r"\b(knowledge|language) (?:skill )?(?:tests?|checks?)\b", p):
         add(f"skill:{m.group(1)}", m.start(), m.end())
+    for m in re.finditer(r"\b(?:doing|performing|using|taking|making) (?:an? |the )?([a-z][a-z'-]{2,20}(?: [a-z][a-z'-]{2,20}){0,2}?) (?:matrix |minor |major )?actions?\b", p):
+        if m.group(1) not in ("a", "an", "one", "additional", "extra", "bonus", "free", "the", "minor", "major", "matrix", "this", "that"):
+            add(f"action:{_slug(m.group(1))}", m.start(), m.end())
     for m in re.finditer(r"\bthe ([a-z][a-z'-]{2,20}(?: [a-z][a-z'-]{2,20}){0,2}?) (?:minor|major|edge) action\b", p):
         if m.group(1) not in ("a", "an", "one", "additional", "extra", "bonus", "free", "the"):
             add(f"action:{_slug(m.group(1))}", m.start(), m.end())
@@ -270,17 +298,31 @@ def _sw(s, label=""):
     for k, rx in _SWITCH:
         if rx.search(s):
             return k, None
-    if _CONDITION.search(low):
-        return "conditional", None
+    if m := _CONDITION.search(low):
+        return "conditional", _cond_words(s, m.start())
     return None, None
 
 
-def _fx(target, op, value, switch=None, when=None):
+def _cond_words(s, at):
+    """The condition's words: its clause from the condition word (`when you can be smelled`), up to eight words."""
+    clause = re.split(r"[,;:.]", s[at:], maxsplit=1)[0]
+    words = clause.split()
+    return " ".join(words[:8]).strip().lower() or None
+
+
+def _fx(target, op, value, switch=None, when=None, spec=None, low=False):
+    """One effect. A switch (wireless, activated, sustained, conditional) is how it is turned on: it counts in the
+    bracketed total (owner decision 2026-10-10); `low` (a conditional one whose condition has no words, a formula per
+    point of something) is shown, never applied."""
     a = {"target": target, "op": op, "value": value}
+    if low or (switch == "conditional" and not when and not spec):
+        a["confidence"] = "low"
     if switch:
-        a.update(confidence="low", switch=switch)
+        a["switch"] = switch
     if when:
         a["when"] = when
+    if spec:
+        a["spec"] = spec
     return ("effect", a, None)
 
 
@@ -301,18 +343,28 @@ def read(text, kind=None, name=None):
         role = ROLES.get(label.casefold())
         sw, when = _sw(s, label)
         when = when or role
+        low_formula = False
         if role and not sw:
             sw = "conditional"
         if (per := re.search(r"\b(?:each|every|per) (?:whole )?point of (?:your |their |the )?(?:own )?(?!rating|force|level)([a-z][a-z ]{2,25}?)\b(?=\s|,|$)", s, re.I)):
             sw, when = "conditional", f"per point of {per.group(1).lower()}"  # (`each point of your Essence loss`: a formula)
-        if kind in ("spells", "rituals", "complexforms") and not sw:
-            sw = "activated"  # (a spell's, ritual's or complex form's: while it is cast and lasts)
+            low_formula = True
+        if kind in ("spells", "rituals", "complexforms") and sw in (None, "activated"):
+            sw = "sustained"  # (a spell's, ritual's or complex form's: while it is cast and lasts)
         if label.casefold() in ("effect", "effects") and kind == "gear" and not sw:
             sw = "activated"  # (a drug's or toxin's `Effect:` line: while it acts)
         others = _OTHERS.search(s) and not (kind in ("spells", "rituals", "complexforms") and re.match(r"\W*(?:the )?(?:targets?|subjects?)", s, re.I))
         if others or re.search(r"\b(?:it|this|the \w+) has an? (?:initiative|body|armor|pilot|sensor|device rating)\b", s, re.I) or re.search(r"\b(?:required|needed) to (?:reload|ready|fire|operate|set up)\b", s, re.I):
             continue  # (what others suffer against the entry, or what it costs to use: not the entry's effect)
+        who = _affects(s) if kind in ("spells", "rituals", "complexforms") else None
         for x in _rules(s, kind, sw, when, edge_actions, label):
+            if x[0] == "effect":
+                if who:
+                    x[1]["affects"] = who
+                if low_formula:
+                    x[1]["confidence"] = "low"
+                if re.search(r"\bnet hits?\b", s, re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
+                    x[1]["value"] = ("-" if x[1]["value"].startswith("-") else "") + "hits"  # (`1 per net hit`: shown, never applied)
             out.append(x)
         for m in _TEST.finditer(s):
             out.append(("test", {"skill": f"skill:{m.group(1).casefold().replace(' ', '-')}",
@@ -330,15 +382,41 @@ def read(text, kind=None, name=None):
     return uniq
 
 
+_TARGET_WORDS = re.compile(r"\b(?:the |a |each |any |one )?(?:voluntary )?(?:targets?|subjects?|recipients?|affected|device|object|vehicle|drone|"
+                           r"ally|allies|individual|person|creature|item)\b|\b(?:them|they)\b", re.I)
+_CASTER_WORDS = re.compile(r"\b(?:the (?:caster|spellcaster|magician|technomancer|shaman)|you|your)\b", re.I)
+
+
+def _affects(s):
+    """Whom a spell's or complex form's sentence says it affects (owner decision 2026-10-10): `target` when it names the
+    target, subject, device …; `caster` when it names only the caster (`you gain`); target when it names neither (a
+    spell acts on its target)."""
+    if _TARGET_WORDS.search(s):
+        return "target"
+    return "caster" if _CASTER_WORDS.search(s) else "target"
+
+
 def _activity(phrase):
     """[(test:other, the words)] for tests a phrase names by activity (`tests involving grappling, escaping bonds`),
     else []."""
     m = re.search(r"\b(?:tests?|checks?|rolls?)\b(?: (?:involving|related to|for|to|made (?:to|for)) (?P<a>[^.;]{3,80}))?", phrase)
+    if not m and len(phrase.split()) <= 6 and any(re.search(rf"\b(?:{rx})\b", phrase) for rx, _ in ACTIVITIES):
+        m = re.match(r"(?P<a>.+)", phrase.strip())  # (a short phrase naming the activity alone)
     if not m:
         return []
     words = (m.group("a") or phrase[:m.start()]).strip(" ,")
     words = re.sub(r"^(?:all|any|your|their|the)\s+", "", words)[:70].strip()
-    return [("test:other", words)] if words else []
+    if not words:
+        return []
+    out = {}
+    for rx, skill in ACTIVITIES:  # (the skill each activity is a test of, from the book's skill descriptions)
+        for mm in re.finditer(rf"\b(?:{rx})\b", words):
+            spec = mm.group(0) if SPECS.get(mm.group(0)) == skill else None
+            got = out.setdefault((f"skill:{skill}", spec), [])
+            phrase = re.sub(r"\s+(?:or|and)$", "", re.match(r"[^,;]*?(?=\s+(?:or|and)\s|[,;]|$)", words[mm.start():]).group(0).strip())  # (`escaping bonds`)
+            if phrase not in got:
+                got.append(phrase)
+    return [(t, spec, ", ".join(w)) for (t, spec), w in out.items()] or [("test:other", None, words)]
 
 
 _OTHERS = re.compile(r"^\W*(?:(?:additionally|also|however|furthermore|in addition|but|and)\W+)?"
@@ -347,6 +425,7 @@ _OTHERS = re.compile(r"^\W*(?:(?:additionally|also|however|furthermore|in additi
                      r"other (?:individuals|characters|people|runners|players)|(?:npcs|pcs)\b|"
                      r"(?:characters|people|individuals|anyone) (?:trying|attempting|looking|who|that))\b|"
                      r"\b(?:tests?|attacks?|spells?) (?:made |cast )?against (?:you|them|the character|the user)\b|"
+                     r"\btests? to (?:[a-z]+ ){1,3}(?:for )?(?:your|you)\b|"
                      r"\bfor (?:anyone|others|those)\b|\byour (?:targets?|opponents?|enemies|attackers?)\b", re.I)
 _TEST = re.compile(rf"\b({'|'.join(s.title() for s in SKILLS)})\s*\+\s*({'|'.join(a.title() for a in ATTRIBUTES)})"
                    rf"\s*\((\d+)\)\s+test\b")
@@ -369,14 +448,12 @@ def _rules(s, kind, sw, when, edge_actions, label):
     def emit(ts, op, value, w=None, phrase=""):
         if not ts and phrase:  # (tests the book names by activity, `tests involving grappling`: shown with its words)
             ts = _activity(phrase)
-        for t, spec in ts:
+        for t, spec, *words in ts:  # (an activity's: the words it is named by, `escaping bonds, flexibility`)
             if t.startswith("attr:") and op in ("edge", "no-edge", "no-edge-gain", "edge-cost", "wild-die"):
                 t = "test:attr-" + t[5:]  # (Edge on Logic tests: tests using the attribute)
             if op in ("edge", "no-edge", "no-edge-gain", "edge-cost", "wild-die") and t.startswith(("item:", "matrix:")):
                 continue
-            ww = ", ".join(x for x in (w or when, spec) if x) or None
-            s2 = sw or ("conditional" if spec else None)
-            out.append(_fx(t, op, value, s2, ww))
+            out.append(_fx(t, op, value, sw or ("conditional" if words else None), (words[0] if words else None) or w or when, _spec(t, spec)))
 
     # an attribute's maximum (`maximum (but not current) rank increases by 1`, `maximum Body and Strength by one point`)
     for m in re.finditer(r"\b(?:maxim(?:um|ums|a)|racial limits?)\b(?:\s*\(but not current\))?(?P<t>[^.]{0,40}?)(?:rank\s+)?(?P<dir>increas\w*|decreas\w*|rais\w*|lower\w*)"
@@ -410,10 +487,14 @@ def _rules(s, kind, sw, when, edge_actions, label):
             emit(ts, "no-edge-gain", "1")
         if re.search(r"\b(?:spend|use)\b", what):
             emit(ts, "no-edge", "1")
+    for m in re.finditer(r"\bthe cost of (?:any |all )?edge (?:actions?|boosts?)(?: (?:or|and) (?:actions?|boosts?))?(?P<t>[^.;]*?) (?:are|is) "
+                         r"(?P<dir>increased|raised|reduced|lowered|decreased) by (?P<v>\w+)", low):
+        sign = "-" if m.group("dir") in ("reduced", "lowered", "decreased") else ""
+        emit(targets(m.group("t"), kind), "edge-cost", sign + _val(m.group("v"), low).lstrip("-"))
     for m in re.finditer(r"\bedge (?:boosts?|actions?)(?: (?:and|or) (?:boosts?|actions?))? cost (?P<v>\w+) (?P<dir>less|more)"
-                         r"(?: (?:for|on|when making|when|to)\s+(?P<t>[^.;]*))?", low):
+                         r"(?: (?:for|on|when making|when|to|in|during|with)\s+(?P<t>[^.;]*))?", low):
         v = _val(m.group("v"), low)
-        emit(targets(m.group("t") or "", kind), "edge-cost", ("-" if m.group("dir") == "less" else "") + v.lstrip("-"))
+        emit(targets(m.group("t") or "", kind), "edge-cost", ("-" if m.group("dir") == "less" else "") + v.lstrip("-"), phrase=m.group("t") or "")
     for m in re.finditer(r"\b(?P<dir>reduc\w*|lower\w*|increas\w*|rais\w*) the (?:edge )?cost of (?:any |all |the )?edge "
                          r"(?:boosts?|actions?)(?: (?:and|or) (?:boosts?|actions?))?(?: by (?P<v>\w+))?"
                          r"(?P<t>[^.;]*)", low):
@@ -423,7 +504,10 @@ def _rules(s, kind, sw, when, edge_actions, label):
     for m in re.finditer(r"\bedge (?:actions?|boosts?)(?: and (?:actions?|boosts?))? cost (?P<v>\w+) (?:points? )?(?P<dir>higher|lower)", low):
         ts = [x for x in targets(low[:m.start()], kind) if x[0] != "attr:edg"]  # (`… Athletics tests …; Edge Actions and Boosts cost 1 point higher`)
         emit(ts, "edge-cost", ("-" if m.group("dir") == "lower" else "") + _val(m.group("v"), low).lstrip("-"))
-    for m in re.finditer(r"\b(?:reduc|lower)\w* the (?:edge )?cost of (?:any |all |the )?edge (?:boosts?|actions?)(?P<t>[^.;]*?)\bby (?P<v>one|two|\d+)\b", low):
+    for m in re.finditer(r"\b(?:reduc|lower)\w* the (?:edge )?cost of (?:any |all |the )?edge (?:boosts?|actions?)(?P<t>[^.;]*?)\bby (?P<v>one|two|\d+)\b(?P<after>[^.;]*)", low):
+        if not targets(m.group("t"), kind) and targets(m.group("after"), kind):  # (`… by one on tests like Stealth (Palming)`)
+            emit(targets(m.group("after"), kind), "edge-cost", "-" + _val(m.group("v"), low).lstrip("-"))
+            continue
         if re.match(r"\s*(?:and (?:boosts?|actions?))?\s*$", m.group("t")):
             continue  # (read above)
         emit(targets(m.group("t"), kind), "edge-cost", "-" + _val(m.group("v"), low).lstrip("-"))
@@ -435,10 +519,10 @@ def _rules(s, kind, sw, when, edge_actions, label):
         out.append(_fx(f"action:{_slug(m.group('n'))}", "edge-cost", "-" + _val(m.group("v") or "1", low).lstrip("-"), sw, when))
     if edge_actions and (m := re.fullmatch(r"[•\s]*([A-Z][\w’' !-]+?) \((\d+)(?:,\s*\d+)*(?:,? or \d+)? Edge\).*", s)):
         out.append(_fx(f"action:{_slug(m.group(1))}", "edge-cost-set", m.group(2), sw, when))
-    edge_rx = (r"(?:\b(?:bonus of|gain(?:s|ing)?|receiv(?:es?|ing)|gets?|getting|grant(?:s|ing)?|gives?|giving|provid(?:es?|ing)|confers?|has|have|earns?|with|and)|\+)\s*(?:the (?:character|user|adept|individual) )?"
+    edge_rx = (r"(?:\b(?:bonus of|gain(?:s|ing)?|receiv(?:es?|ing)|gets?|getting|grant(?:s|ing)?|gives?|giving|provid(?:es?|ing)|confers?|has|have|earns?|with|and|add(?:s|ing)?)|\+)\s*(?:the (?:character|user|adept|individual) )?"
                r"(?:an? (?=\+))?(?P<v>an?|one|two|three|\d+|\+\d+)?\s*(?:additional |extra |bonus |free |situational )*(?:points? of )?"
                r"(?:situational |bonus )?edge(?: points?| bonus)?(?: (?:that|which) (?:must|can|may) be [^.,;]*?(?= on| for| when|$))?"
-               r"(?: (?:on|for|to use on|when (?:making|attempting|performing|using|rolling)|when|in|during|before making|to)\s+(?P<t>[^.;]*))?")
+               r"(?: (?:to (?:your|their|the) dice pool )?(?:on|for|to use on|when (?:making|attempting|performing|using|rolling)|when|in|during|before making|to)\s+(?P<t>[^.;]*))?")
     for m in re.finditer(r"\b(?:gains?|receives?|gets?|adds?|grants?) edge (?:and [^.;]*? )?(?:on|for|to|when making|when) (?P<t>[^.;]*)", low):
         if not re.search(r"(?:\bcannot|\bnot|n't|\bnever)\s*$", low[:m.start()]):
             emit(targets(m.group("t"), kind), "edge", "1")
@@ -479,7 +563,7 @@ def _rules(s, kind, sw, when, edge_actions, label):
                        "add", v, sw, when))
 
     # condition monitor boxes, Minor and Major Actions, Hardened Armor, Overwatch, movement
-    for m in re.finditer(r"(?P<v>\d+|an?|one|two|three|an additional|one additional|\+\d+)\s+(?:additional |extra |bonus )?boxe?s?\b(?! (?:farther|further) down)"
+    for m in re.finditer(r"(?P<v>\d+|an?|one|two|three|an additional|one additional|\+\d+)\s+(?:additional |extra |bonus )?boxe?s?\b(?! (?:farther|further) down| of damage)"
                          r"(?P<t>[^.;]{0,60}?)(?P<which>physical|stun|condition)? ?(?:condition )?monitor", low):
         which = "stun" if "stun" in m.group(0) else "matrix" if "matrix" in m.group(0) else "physical"
         v = _val(m.group("v").replace("additional", "").strip(), low)
@@ -537,6 +621,8 @@ def _rules(s, kind, sw, when, edge_actions, label):
             bonus(ts[:1], _val(m.group("v"), low))
     for m in re.finditer(r"(?<![a-z])(?P<t>(?:[a-z]+ ){0,2}[a-z]+)\s(?P<v>[+-]\s?\d+)\b(?!\s?(?:d6|/|%|\s?percent))", low):
         ts = targets(m.group("t"), kind)  # (`Agility +1`, `Defense Rating +2`: the target right before the number)
+        if low[max(0, m.start() - 1):m.start()] == "(":
+            continue  # (`Near (Magic + 2)`: a formula, not a bonus)
         if ts and not re.search(r"\b(?:tests?|rolls?|pools?|and|or|but|a|an|the|by|of|with)$", m.group("t")):
             bonus(ts[-1:], _val(m.group("v"), low))
     for m in re.finditer(r"(?<!edge )\b(?:increas|rais|boost|improv|add|enhanc)\w*\s+(?:both |all |each of )?(?:your |their |the (?:user|character|individual|wearer)'s |its |the |his |her )?"
@@ -576,6 +662,8 @@ def _rules(s, kind, sw, when, edge_actions, label):
     for m in re.finditer(r"\b(?:gain|receive|get|add|grant)s?\s+(?:a |an |one |(?P<v>\d+|two|three|four) )?(?:additional |extra |bonus )+"
                          r"(?:dice|die)\s+(?:to|on|for|when)\s+(?:all |any |your |their |the |its )*(?P<t>[^.;]*)", low):
         bonus(targets(m.group("t"), kind), _val(m.group("v") or "1", low))
+    for m in re.finditer(r"\b(?:grants?|gives?|provides?) (?P<v>one|two|three|an?|\d+) (?P<t>(?:[a-z-]+ ){1,3})(?:dice|die)\b", low):
+        bonus([x for x in targets(m.group("t") + "dice", kind) if x[0].startswith("test:")], _val(m.group("v"), low))
     for m in re.finditer(r"\badds? (?P<v>one|two|three|an?|\d+) (?:die|dice) (?:to|on|for) (?:all |any |your |their |the )*(?P<t>[^.;]*)", low):
         bonus(targets(m.group("t"), kind), _val(m.group("v"), low))
     for m in re.finditer(r"\b(?:gain|add)s?\s+(?P<v>two|three|\d+) dice(?:, one of which must be a wild die)?(?:,)?\s+(?:to|on|for|when)\s+"
@@ -601,6 +689,8 @@ def _rules(s, kind, sw, when, edge_actions, label):
     for m in re.finditer(r"\ba number of (?:additional |extra )?boxes on your (?P<w>physical|stun) condition monitor equal to the (?:rank|level|rating)", low):
         bonus([(f"derived:{m.group('w')}-monitor", None)], "R")
     for m in re.finditer(r"(?P<t>[a-z][a-z' ]{2,40}?) (?:is|are) (?:increased|raised|boosted|improved) by (?:the |its |their )?(?P<v>rating|level|force|[+-]?\d+|one|two)", low):
+        if re.search(r"\bcosts?\b", low[max(0, m.start() - 60):m.end()]):
+            continue  # (`the cost of Edge actions … are increased by one`: an Edge cost, read above)
         if maxed and re.search(r"\b(?:maxim|limit)", low):
             continue  # (`Your racial limit for Charisma and Willpower are increased by 1`: the maxima, read above)
         v = "R" if m.group("v") in ("rating", "level", "force") else _val(m.group("v"), low)
@@ -635,6 +725,29 @@ def _rules(s, kind, sw, when, edge_actions, label):
         for t, spec in ts:
             if t.startswith(("item:", "derived:", "attr:", "matrix:")):
                 found.append((t, "-" + _val(m.group("v"), low).lstrip("-"), spec, None))
+    for m in re.finditer(r"\b(?:subtracts?|reduces?|lowers?|decreases?) (?:its rating|(?P<v>\d+|one|two|three)) from the thresholds? of (?:all |any )?(?P<t>[^.;]*)|"
+                         r"\b(?:reduces?|lowers?|decreases?) the thresholds? (?:of|for) (?:all |any )?(?P<t2>[^.;]*?) by (?:its rating|(?P<v2>\d+|one|two|three))", low):
+        v = _val(m.group("v") or m.group("v2"), low) if (m.group("v") or m.group("v2")) else "R"
+        for t, _ in targets(m.group("t") or m.group("t2") or "", kind):
+            out.append(_fx(t, "threshold", "-" + v.lstrip("-"), sw, when))
+    for m in re.finditer(r"\b(?:decrease|reduce|lower)s?\s+(?:the |its |your )?(?P<t>[a-z ]{2,40}?)(?: of the (?:vehicle|drone|weapon|item))?\s+by\s+(?:the |its )?(?:[a-z-]+'s )?(?:rating|level)\b", low):
+        for t, spec in targets(m.group("t"), kind):
+            if t.startswith(("item:", "derived:", "attr:", "matrix:")):
+                found.append((t, "-R", spec, None))
+    for m in re.finditer(r"\b(?:gains?|receives?|gets?) (?P<v>an?|one|two|three|\d+) (?:additional |extra |bonus )?power points?\b", low):
+        found.append(("derived:power-points", _val(m.group("v"), low), None, None))
+    for m in re.finditer(r"\b(?:the )?(?P<t>[a-z]+(?: [a-z]+)?) (?P<k>attribute|skill) at (?:rating )?(?P<v>\d+)\b", low):
+        for t, _ in targets(m.group("t") + (" attribute" if m.group("k") == "attribute" else ""), kind)[-1:]:
+            if t.startswith(("attr:", "skill:")):
+                out.append(_fx(t, "set", m.group("v"), sw, when))
+    for m in re.finditer(r"\bthe rating of the (?:artificial |chosen |selected )?skill (?:equals|is equal to|is) (?:the|its) [a-z ]{0,30}?rating\b", low):
+        out.append(_fx("skill:choice", "set", "R", sw, when))
+    for m in re.finditer(r"\b(?P<t>(?:" + _ATTR_RX + r")(?:,? (?:and|or) (?:" + _ATTR_RX + r"))+) (?:are|is) (?:increased|raised|boosted|improved) by (?P<v>[+-]?\d+|one|two|three)", low):
+        for t, _ in targets(m.group("t"), kind):
+            found.append((t, _val(m.group("v"), low), None, None))
+    for m in re.finditer(r"\b(?:gain|receive|get|add)s?\s+a number of (?:bonus |additional |extra )?dice equal to (?:the|its|their) (?:level|rating|force)(?: of (?:this|the) [a-z]+)?"
+                         r"(?:\s+(?:to|on|for)\s+(?:all |any |your |their |the |its )*(?P<t>[^.;]*))?", low):
+        bonus(targets(m.group("t") or "", kind) or targets(low[:m.start()], kind), "R")
     for t, v, spec, w in found:
         if v is None:
             continue
@@ -642,10 +755,16 @@ def _rules(s, kind, sw, when, edge_actions, label):
         tt = t
         if t.startswith("test:attr-") and False:
             pass
-        ww = ", ".join(x for x in (w or when, spec) if x) or None
-        s2 = sw or ("conditional" if spec else None)
-        out.append(_fx(tt, op, v, s2, ww))
+        out.append(_fx(tt, op, v, sw, w or when, _spec(tt, spec)))
     return out
+
+
+def _spec(target, words):
+    """A specialization's name (`Climbing`) when the words name one of the target skill's (SPECS), else the words as a
+    specialization-like limit (`Etiquette or Negotiation`) on a skill, else None."""
+    if not words or not target.startswith("skill:"):
+        return None
+    return " ".join(w.capitalize() if w not in ("or", "and", "of") else w for w in words.split())
 
 
 _LINK_RX = [
@@ -806,6 +925,26 @@ def _own_part(text, name, siblings):
     return " ".join(out)
 
 
+def _variant_part(text, name, siblings):
+    """A variant's part of a description its siblings share, the book printing each under a bold run-in label
+    (`Endosymbionts (Halcyon)`: `… **Halcyon:** …`): the lines before the first sibling's label, then its own from its
+    label to the next sibling's (its own sub-labels, `**Overdrive:**`, stay); the whole text when it has no label of
+    its own."""
+    pm = re.match(r"(.+?) \(([^()]+)\)", name)
+    if not pm:
+        return text
+    base, me = pm.group(1), _key(pm.group(2))
+    sib = {_key(m.group(2)) for n in siblings if (m := re.match(r"(.+?) \(([^()]+)\)", n)) and m.group(1) == base} - {me}
+    labels = [(m.start(), _key(m.group(1))) for m in re.finditer(r"(?m)^\W*\*\*([^*\n]{2,40}?):\*\*", text)]
+    mine = [i for i, (_, k) in enumerate(labels) if k == me]
+    if not mine or not sib or not any(k in sib for _, k in labels):
+        return text
+    first = next(at for at, k in labels if k in sib or k == me)
+    start = labels[mine[0]][0]
+    end = next((at for at, k in labels[mine[0] + 1:] if k in sib), len(text))
+    return (text[:first] + text[start:end]).strip()
+
+
 def _runins(regrouped):
     """{label key: [(block name key, paragraph)]}: every bold run-in paragraph of the book (`**NeoElastian:** A metahuman
     body …`), with the block it is printed in."""
@@ -826,6 +965,54 @@ def _runins(regrouped):
     return {k: [(b, re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(p))) for b, p in v] for k, v in out.items()}
 
 
+def _sections(regrouped):
+    """({item name key: section name}, {section name: its intro text}): which section each item is printed in, and the
+    text a section prints above its first item."""
+    of, intro, cur = {}, {}, None
+    for ln in (regrouped or "").splitlines():
+        if ln.startswith("<!-- section") or ln.startswith("<!-- item"):
+            mm = re.search(r'"name": "([^"]*)".*?"section": "([^"]*)"', ln)
+            if ln.startswith("<!-- section") and mm:
+                cur = mm.group(1)
+                intro.setdefault(cur, [])
+            else:
+                cur = None
+                if mm:
+                    of.setdefault(_key(mm.group(1)), mm.group(2))
+            continue
+        if ln.startswith("<!-- end"):
+            cur = None
+        elif cur is not None and not ln.startswith(("|", "#")):
+            intro[cur].append(ln.strip())
+    return of, {k: re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(v)).strip() for k, v in intro.items()}
+
+
+_EACH = re.compile(r"^\W*(?:each|every|all|any)\b", re.I)
+_NOT = re.compile(r"\b(?:not|nor|no|never|n't)\b", re.I)
+
+
+def section_effects(intro, text, name, kind, section=""):
+    """The effects a section's intro states of every item in it (owner decision 2026-10-10: `Each cyberlimb adds one
+    box to the character's Physical Condition Monitor`), a sentence opening `Each`, `Every`, `All` or `Any`; less the
+    ones the item's own text excepts (a sentence of its own, about it, saying it doesn't)."""
+    out = []
+    base = _key(re.sub(r"\s*\(.*$", "", name))
+    own = [x.casefold() for x in sentences(text) if _NOT.search(x)]
+    kinds = {w.rstrip("s") for w in re.findall(r"[a-z]+", section.casefold())}
+    for s in sentences(intro):
+        m = re.match(r"^\W*(?:each|every|all|any)\s+(?:[a-z-]+\s+)?([a-z-]+)", s.casefold())
+        if not m or m.group(1).rstrip("s") not in kinds:
+            continue  # (about the section's items, `Each cyberlimb` under Cyberlimbs; not `Each point of nanite volume`)
+        for t, a, _ in read(s, kind):
+            if t != "effect":
+                continue
+            words = re.split(r"[:]", a["target"])[-1].replace("-monitor", "").replace("-", " ")
+            if any(words in x and (base and base in _key(x[:x.find(words)]) or re.match(r"\W*(?:this|it)\b", x)) for x in own):
+                continue  # (`This arm does not add a box`: excepted)
+            out.append((t, a, None))
+    return out
+
+
 def apply(files, texts_xml, regrouped=""):
     """(files, texts): the catalog files (`{name: xml}`, crb._Catalog.xml's one entry a line) with each entry's effects,
     tests and links as its text and the book's tables state them (read(), table(), links()), in place of the ones read
@@ -842,6 +1029,15 @@ def apply(files, texts_xml, regrouped=""):
         if row and row[0]:
             by_name.setdefault(_key(re.sub(r"[*†‡]+$", "", row[0])), []).append((header, row))
     ids = {f[:-4]: set(re.findall(r'^\s*<\w+ id="([^"]+)"', x or "", re.M)) for f, x in files.items()}
+    section_of, intros = _sections(regrouped)
+    # (an entry's name -> its id and type, per kind: the base item a variant is priced from)
+    by_kind = {}
+    for f, x in files.items():
+        got = by_kind.setdefault(f[:-4], {})
+        for m in re.finditer(r'<\w+ id="([^"]+)"([^>]*)><name>(.*?)</name>', x or ""):
+            k, typ = _key(_unesc(m.group(3))), (re.search(r' type="([^"]*)"', m.group(2)) or [None, ""])[1]
+            if k not in got or typ == "bioware":  # (the bioware one when a name is ware of two types: `Fangs`)
+                got[k] = (m.group(1), typ)
     runins, added = _runins(regrouped), {}
     names = {f[:-4]: [_unesc(n) for n in re.findall(r"<name>(.*?)</name>", x or "")] for f, x in files.items()}
     out = {}
@@ -867,8 +1063,18 @@ def apply(files, texts_xml, regrouped=""):
                 if got and got[0] not in text:
                     text = (text + "\n" + got[0]).strip()
                     added[(kind, eid)] = text
+            text = _variant_part(text, nm, names.get(kind, ()))
             text = _own_part(text, nm, names.get(kind, ()))
             found = read(text, kind, nm) + links(text, kind)
+            sec = section_of.get(_key(nm)) or section_of.get(_key(re.sub(r"\s*\(.*$", "", nm)))
+            if sec and intros.get(sec):
+                found += [x for x in section_effects(intros[sec], text, nm, kind, sec) if x not in found]
+            if re.search(r"\bthan the base item\b", _unesc(attrs)) and len(nm.split()) > 1:
+                # (`Transgenic gills`: priced from the base item, the bioware it is the equivalent of: its effects)
+                base = _key(nm.split(None, 1)[1])
+                hit = by_kind.get(kind, {}).get(base)
+                if hit:
+                    found.append(("link", {"rel": "as", "kind": kind, "name": nm.split(None, 1)[1], "ref": hit[0]}, None))
             for t, a, _ in found:  # a link's entry: this book's, or the book its citation names (`p. 70, SR6`)
                 if t == "link":
                     sl = _slug(a["name"])

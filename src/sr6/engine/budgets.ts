@@ -55,7 +55,8 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string, on = false, spec?: string) =>
   (bonuses ?? []).filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
     .reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
-const sameSpec = (a?: string, b?: string) => !!a && !!b && normName(a) === normName(b)
+// (`Etiquette or Negotiation`: either)
+const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
 function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
   for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)

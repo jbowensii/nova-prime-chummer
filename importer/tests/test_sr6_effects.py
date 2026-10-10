@@ -37,8 +37,8 @@ class ReadTest(unittest.TestCase):
     def test_test_types_and_specializations(self):
         self.assertEqual(fx("You gain a point of Edge on all Social tests."), [("test:social", "edge", "1", None, None)])
         self.assertEqual(fx("You cannot spend Edge on any test using Charisma."), [("test:attr-cha", "no-edge", "1", None, None)])
-        self.assertEqual(fx("The user gains a +2 dice pool bonus to all climbing tests."),
-                         [("skill:athletics", "add", "2", "conditional", "climbing")])
+        self.assertEqual(fx("The user gains a +2 dice pool bonus to all climbing tests."), [("skill:athletics", "add", "2", None, None)])
+        self.assertEqual(effects.read("The user gains a +2 dice pool bonus to all climbing tests.")[0][1]["spec"], "Climbing")
         self.assertEqual(fx("You gain a bonus Edge on all tests involving juggling.")[0][:3], ("test:other", "edge", "1"))
         self.assertEqual(fx("Gain +1 Edge on Toxin Resistance tests."), [("test:toxin-resistance", "edge", "1", None, None)])
 
