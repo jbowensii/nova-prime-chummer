@@ -808,6 +808,33 @@ class CrbRecipeTest(unittest.TestCase):
         host = next(x for x in ET.fromstring(xml).iter("purchase") if x.get("id") == "nb.zing-ears")
         self.assertEqual([(a.get("id"), a.get("rating")) for a in host.findall("purchase")], [("nb.hum-filter", "2")])
 
+    def test_the_fit_prices_the_metatype_size_as_the_app(self):
+        """metatypeSizePricing on (budgets.ts nuyenBudget): a troll-sized runner's gear costs 10% more, a dwarf-sized
+        one's armor only; off, the printed prices (made-up catalog)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "rt", "name": "Rock Troll", "attrs": {}, "children": []},
+                                 {"id": "hd", "name": "Hill Dwarf", "attrs": {}, "children": []}],
+                   "armor": [{"id": "coat", "name": "Thick Coat", "attrs": {"defense": "+4", "cost": "1000"}}],
+                   "gear": [{"id": "lamp", "name": "Glow Lamp", "attrs": {"cost": "205"}}],
+                   "priorities": [{"id": "a", "name": "A", "attrs": {"letter": "A"}, "children": [("resources", {"nuyen": "5000"}, None)]}]}
+        seen = []
+        orig = archetypes.fit.fit
+        archetypes.fit.fit = lambda need, rows, cs: seen.append(need["nuyen"])
+        try:
+            for meta, on in (("Rock Troll", "true"), ("Hill Dwarf", "true"), ("Rock Troll", "false")):
+                b = SimpleNamespace(label=f"metatype: {meta}", stats=[], labels={"Gear": "Thick Coat, Glow Lamp"})
+                archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={"metatypeSizePricing": on})
+        finally:
+            archetypes.fit.fit = orig
+        self.assertEqual(seen, [1205 + 121, 1205 + 100, 1205])  # (120.5 rounded half up)
+
+    def test_the_metatype_size_words_are_the_apps(self):
+        """fit.py's troll- and dwarf-sized words are budgets.ts metatypeSize's."""
+        ts = (Path(__file__).parents[2] / "src" / "sr6" / "engine" / "budgets.ts").read_text(encoding="utf8")
+        body = ts.split("export function metatypeSize", 1)[1].split("\n}", 1)[0]
+        lists = [tuple(re.findall(r"'([^']+)'", x)) for x in re.findall(r"\[([^\]]*)\]\.includes", body)]
+        self.assertEqual(lists, [archetypes.fit.TROLL_SIZED, archetypes.fit.DWARF_SIZED])
+
     def test_the_armor_worn_is_the_highest_defense_rating(self):
         """Two armors printed: the higher Defense Rating is worn, the other carried (made-up catalog)."""
         from types import SimpleNamespace
