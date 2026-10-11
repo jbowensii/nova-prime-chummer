@@ -353,7 +353,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(eyes).toContainText('0.14')
   // an augmentation the runner has isn't offered again (owner, 2026-10-11)
   await work.getByRole('button', { name: 'Add an augmentation…' }).click()
-  await expect(dlg.getByText('Spring Tendons')).toBeVisible()
+  await expect(dlg.getByText('Spring Tendons 1', { exact: true })).toBeVisible()
   await expect(dlg.getByText('Glow Eyes 2', { exact: true })).toHaveCount(0)
   await expect(dlg.getByText('Glow Eyes 3', { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
