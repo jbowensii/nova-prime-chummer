@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
-import { applyDeps, blockedBy, CREATION_GROUPS, CREATION_KEYS, expandKeys, levelRules, mergeRules, nested, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
+import { aboutOf, applyDeps, blockedBy, CREATION_GROUPS, CREATION_KEYS, expandKeys, levelRules, mergeRules, nested, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
 import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
@@ -101,7 +101,7 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
               const shown = (x: string) => k.type === 'bool' ? x === 'true' ? 'Yes' : 'No' : k.type === 'quality' ? c.entries.qualities.get(x)?.name ?? x : x
               const off = !!blockedBy(eff, k.key)
               return <tr key={k.key} className={[depth ? 'nested' : '', off ? 'blocked' : ''].join(' ').trim() || undefined}>
-                <td>{k.label}<RuleWhy k={k.key} eff={eff} label={label} /></td>
+                <td title={aboutOf(k.key) || undefined}>{k.label}<RuleWhy k={k.key} eff={eff} label={label} /></td>
                 <td>{k.type === 'number'
                   ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} disabled={off} onChange={e => v(e.target.value)} />
                   : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6} disabled={off}
@@ -205,7 +205,7 @@ export function CampaignLocks({ camp, manages, onSaved }: { camp: Campaign; mana
   return <div className="stack">
     <h3>Locked for this campaign’s runners</h3>
     <p className="muted">A runner may choose these optional rules for itself on its Creation method tab, unless the campaign locks them.</p>
-    <div className="runner-locks">{RUNNER_RULE_KEYS.map(({ key }) => <div key={key} className="row">
+    <div className="runner-locks">{RUNNER_RULE_KEYS.map(({ key, about }) => <div key={key} className="row" title={about}>
       {manages ? <label className="check"><input type="checkbox" checked={draft.has(key)} aria-label={`Lock ${label.get(key) ?? key}`}
         onChange={e => { setMsg(''); setDraft(d => { const n = new Set(d); if (e.target.checked) n.add(key); else n.delete(key); return n }) }} />{label.get(key) ?? key}</label>
         : <span>{label.get(key) ?? key}{by.has(key) ? '' : ': the runner’s choice'}</span>}

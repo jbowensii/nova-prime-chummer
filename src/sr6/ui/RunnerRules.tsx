@@ -1,5 +1,5 @@
 // The runner's own creation rules (Creation method tab): the optional rules a runner may choose for itself, over the
-// table's (the server's, or its campaign's own), as Commlink6 lets a character pick its options. Each row shows the value
+// table's (the server's, or its campaign's own). Each row shows the value
 // the runner is built with and where it comes from (server, campaign, the runner, or locked by the campaign's GM); a
 // locked one can't be changed here. Stored on the runner (Sr6Character.rules, creation.ts runnerRules); none: the table's.
 import { blockedBy, CREATION_KEYS, keyType, nested, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../engine/creation'
@@ -39,7 +39,7 @@ export function RunnerRules() {
           const from = lock ? `Locked by ${lock}` : mine ? mine.assumed ? 'This runner (assumed from the book’s numbers; the book doesn’t say)' : 'This runner'
             : eff ? FROM[eff.from === 'campaign' ? 'campaign' : 'server'] : table.has(key) ? FROM.server : 'Not set'
           return <tr key={key} className={[depth ? 'nested' : '', off ? 'blocked' : ''].join(' ').trim() || undefined}>
-            <td>{label}<div className="muted small">{about}</div><RuleWhy k={key} eff={cr} label={labelOf} /></td>
+            <td title={about}>{label}<div className="muted small">{about}</div><RuleWhy k={key} eff={cr} label={labelOf} /></td>
             <td>{fixed || lock ? <span>{shown(eff)}</span> : <Control k={key} label={label} eff={eff} table={table} mine={mine?.value} off={off} set={v => set(key, v)} />}</td>
             <td>{from}</td>
             <td>{!fixed && !lock && mine && <button type="button" className="btn small" aria-label={`Use the table’s ${label}`} onClick={() => set(key, undefined)}>Use the table’s</button>}</td>

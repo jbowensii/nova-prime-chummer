@@ -34,7 +34,12 @@ const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 
   'swcElite.sumToTen', 'swcElite.pointBuy', 'swcElite.modules', 'swcElite.letters',
   'incompetentQuality', 'sensitiveSystemQuality', 'sensitiveSystemEssence', 'attributeMaxFloor', 'improvedAbilityPower', 'improvedAbilityFactor', 'suprathyroidStacks',
   'expandedSpecializations', 'unrestrictedSkillRanks', 'languageMax', 'fociForcePerMagic', 'fociBondKarma',
-  'alternateMysticAdept', 'twentyQuestions', 'twentyQuestionsKarma', 'workingForThePeople']
+  'alternateMysticAdept', 'twentyQuestions', 'twentyQuestionsKarma', 'workingForThePeople',
+  // the owner's house rules and options (2026-10-11), and the values a GM sets under them
+  'mentorSpiritQuality', 'ownCarryOver', 'carryOver.karma', 'carryOver.nuyen', 'dataStructureNuyen', 'exoticFirstSpecFree', 'mentorBothAdvantages',
+  'dataStructureCaps', 'dataStructure.maxCount', 'dataStructure.maxRating', 'noUsedCulturedBioware', 'gradeCapAtCreation', 'gradeCap.initiation',
+  'gradeCap.submersion', 'adjustOnLoweredMax', 'pointBuyErrataNuyen', 'knowledgeLogicIntuition', 'magicAboveSixByGrade', 'eliteSumToThirteen',
+  'availabilitySeven', 'cargoWithoutSeats']
 test('the fixture sets every key (grades: standard and alpha only; no initiative dice cap), typed, with its source and page', async () => {
   const { rules, errors } = parseCreation(XML)
   expect(errors).toEqual([])
@@ -98,7 +103,7 @@ test('every key has a label of its own (Game data’s input names), a known type
 
 test('the Advancement group (career prices and caps) follows Karma prices; every key is optional', async () => {
   const adv = CREATION_KEYS.filter(k => k.group === 'Advancement')
-  expect(adv.map(k => k.key)).toEqual(['advance.expertise', 'advance.expertiseRank', 'advance.qualityFactor', 'advance.buyOffFactor', 'advance.skillMax',
+  expect(adv.map(k => k.key)).toEqual(['buyPowerPoints', 'advance.expertise', 'advance.expertiseRank', 'advance.qualityFactor', 'advance.buyOffFactor', 'advance.skillMax',
     'advance.powerPoint', 'advance.karmaToNuyenRate', 'advance.nuyenToKarmaRate'])
   expect(CREATION_GROUPS.indexOf('Advancement')).toBe(CREATION_GROUPS.indexOf('Karma prices') + 1)
   for (const k of adv) expect(k.methods, k.key).toEqual([])
@@ -149,10 +154,10 @@ test('the shipped standard settings are valid against creation.xsd, parse cleanl
   const cat: CreationCatalog = { priorities: { A: {}, B: {}, C: {}, D: {}, E: {} },
     metatypes: Object.fromEntries(ids.map(id => [id, { id, name: id }])), lifemodules: { 'x.start': { stage: 'opening' } } }
   for (const m of ['priority', 'sumtoten', 'pointbuy', 'lifepath'] as const) expect(missingFor(m, rules, cat), m).toEqual([])
-  // no SR6 book describes a karma build: only its own keys are left for the table to set
+  // no SR6 book describes a karma build: an option, off, whose own keys are left for the table to set
   const karma = missingFor('karma', rules, cat)
-  expect(karma.length).toBeGreaterThan(0)
-  expect(karma.filter(k => !/^(karmaBuild\.|magicKarma:)/.test(k))).toEqual([])
+  expect(karma[0]).toBe('karmaBuildMethod')
+  expect(karma.filter(k => !/^(karmaBuild\.|magicKarma:|karmaBuildMethod$)/.test(k))).toEqual([])
 })
 
 test('the server’s settings: the standard ones overlaid by the admin’s changes, key by key; none saved: the standard', async () => {
