@@ -36,6 +36,10 @@ export interface TemplateItem { kind: 'gear' | 'weapon' | 'armor'; specialist?: 
 /** mod: an add-on applied to an existing amp of `type` (ammo, accessories, vehicle mods, grades) */
 export interface AmpTemplate extends Ref { name: string; type: string; item?: TemplateItem; mod?: boolean;
   effects: EffectPick[]; narrative: string; printedRating?: number; vehicle?: string; edited?: boolean
+  /** one level of an entry the book prints with several (owner, 2026-10-11: one entry per level, engine/levels.ts):
+   *  family = the id the entry had before it was split (old runners carry it), level = its level (an add-on: how many
+   *  times it is taken; may be negative) */
+  family?: string; level?: number
   /** <formula> and <issue> children (src/engine/formula.ts): how a field is worked out, what the book left out */
   formulas?: Formula[]; issues?: Issue[] }
 export interface VehicleBase extends Ref { name: string; pilot: number; body: number;

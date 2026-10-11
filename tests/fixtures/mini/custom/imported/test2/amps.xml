@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Made-up test catalog: non-canon TEST2 also has "Keen Eye" (same canon status as TEST's), and a made-up "SINner"
-     quality the Concept tab's "Has a real SIN" finds by name. -->
+     quality the Concept tab's "Has a real SIN" finds by name. A made-up adept power printed with levels 1-3 ("Glide Step",
+     one entry per level, family test2.glide-step) and a made-up cyberdeck add-on +1 to +2 ("Overclock"). -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">
   <amp id="test2.keen-eye" type="quality" printedRating="4" source="TEST2" page="1"><name>Keen eye</name><effect ref="rr-spec" param="perception.social"/><narrative></narrative></amp>
   <amp id="test2.sinner" type="quality" printedRating="1" source="TEST2" page="2"><name>SINner</name><narrative></narrative></amp>
+  <amp id="test2.glide-step-level-1" type="adept" printedRating="2" family="test2.glide-step" level="1" source="TEST2" page="3"><name>Glide Step 1</name><narrative></narrative></amp>
+  <amp id="test2.glide-step-level-2" type="adept" printedRating="4" family="test2.glide-step" level="2" source="TEST2" page="3"><name>Glide Step 2</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
+  <amp id="test2.glide-step-level-3" type="adept" printedRating="6" family="test2.glide-step" level="3" source="TEST2" page="3"><name>Glide Step 3</name><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
+  <amp id="test2.mod-overclock-level-1" type="cyberdeck" printedRating="2" mod="true" family="test2.mod-overclock" level="1" source="TEST2" page="4"><name>Overclock +1</name><effect ref="attack-plus"/><narrative></narrative></amp>
+  <amp id="test2.mod-overclock-level-2" type="cyberdeck" printedRating="4" mod="true" family="test2.mod-overclock" level="2" source="TEST2" page="4"><name>Overclock +2</name><effect ref="attack-plus"/><effect ref="attack-plus"/><narrative></narrative></amp>
 </ca2:data>

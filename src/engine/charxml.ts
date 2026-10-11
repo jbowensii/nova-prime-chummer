@@ -29,7 +29,8 @@ export const text = (name: string, s: string | undefined) => (s ? `<${name}>${es
 
 // ---- catalog snapshots, written in the data files' own format ----
 export const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note, unpriced: e.unpriced, ...effectStateAttrs(e) })
-const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined, source: t.source, page: t.page },
+const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined,
+  family: t.family, level: t.level, source: t.source, page: t.page },
   text('name', t.name) + (t.item ? el('item', { kind: t.item.kind, specialist: t.item.specialist || undefined, armor: t.item.armor, dv: t.item.dv, ranges: t.item.ranges }) : '')
   + t.effects.map(effectXml).join('') + `<narrative>${esc(t.narrative)}</narrative>`)
 const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, source: i.source, page: i.page },

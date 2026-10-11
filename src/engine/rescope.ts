@@ -1,10 +1,12 @@
-// Old runners store unscoped catalogIds (spec §4 last bullet). rescope maps an entry whose
+// Old runners store unscoped catalogIds (spec §4 last bullet), and ids of entries since split into levels (a family's
+// id, engine/levels.ts levelFor: the level its effects rate as). rescope maps an entry whose
 // catalogId isn't in the catalog to `<source>.<id>` using its snapshot's source, falling back
 // to any scoped entry with the same normalized name and type/kind. When several books match by
 // name, the canon one wins; among ties (or several non-canon), the lowest source id wins, so the
 // pick never depends on Map iteration order.
 import { isCanon } from './canon'
 import { normalizeName } from './dupes'
+import { levelFor } from './levels'
 import type { AmpEntry, Catalog, Character, ItemEntry } from '../model/types'
 
 function pickBest<T extends { source: string }>(c: Catalog, matches: T[]): T | undefined {
@@ -18,10 +20,15 @@ function pickBest<T extends { source: string }>(c: Catalog, matches: T[]): T | u
 
 function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
   if (!e.catalogId || c.amps.has(e.catalogId)) return e
+  // an entry the book prints with levels, split since into one entry per level (engine/levels.ts): its level
+  const level = levelFor(c, e)
+  if (level) return { ...e, catalogId: level.id }
   const source = e.snapshot?.source?.toLowerCase()
   if (source && e.catalogId.startsWith(`${source}.`)) return e // already scoped: an entry that is gone (a compendium's), kept as it is
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.amps.has(scoped)) return { ...e, catalogId: scoped }
+  const scopedLevel = scoped ? levelFor(c, { ...e, catalogId: scoped }) : undefined
+  if (scopedLevel) return { ...e, catalogId: scopedLevel.id }
   const name = normalizeName(e.snapshot?.name ?? e.name)
   const match = pickBest(c, [...c.amps.values()].filter(a => a.type === e.type && normalizeName(a.name) === name))
   return match ? { ...e, catalogId: match.id } : e

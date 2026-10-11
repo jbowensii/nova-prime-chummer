@@ -24,7 +24,7 @@ export function entryXml(kind: EntryKind, e: AmpTemplate | Item | Rule, withText
   const ref = { source: e.source, page: e.page }
   if (kind === 'amps') {
     const a = e as AmpTemplate
-    return `<amp${attrs({ id: a.id, type: a.type, printedRating: a.printedRating, vehicle: a.vehicle, mod: a.mod, ...ref })}><name>${esc(a.name)}</name>` +
+    return `<amp${attrs({ id: a.id, type: a.type, printedRating: a.printedRating, vehicle: a.vehicle, mod: a.mod, family: a.family, level: a.level, ...ref })}><name>${esc(a.name)}</name>` +
       (a.item ? `<item${attrs({ ...a.item })}/>` : '') + a.effects.map(effectEl).join('') +
       `<narrative>${withText ? esc(a.narrative) : ''}</narrative></amp>`
   }

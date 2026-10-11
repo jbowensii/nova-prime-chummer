@@ -2,7 +2,7 @@
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 // A string catalog is the save button's label (a compendium's).
 import { useState } from 'react'
-import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, levelsOf, ruleHelp, vehicleStats } from '../../engine'
 import { EffectHow, TestSelect } from '../EffectHow'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
@@ -27,6 +27,14 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
   const change = before ? (rating - ampRating(c, before, ctx)) * c.pricing.ampPoint : 0
   const mods = [...c.amps.values()].filter(t => t.mod && t.type === amp.type)
   const vs = amp.type === 'vehicle' ? vehicleStats(c, amp) : undefined
+  // a book entry printed with levels (engine/levels.ts): step to another level of it, its effects and rating
+  const tpl = amp.catalogId ? c.amps.get(amp.catalogId) : undefined
+  const levels = levelsOf(c, tpl?.family)
+  const toLevel = (id: string) => {
+    const t = c.amps.get(id)
+    if (t && tpl) setAmp(a => ({ ...a, catalogId: t.id, snapshot: t, effects: t.effects.map(e => ({ ...e })),
+      name: a.name === tpl.name ? t.name : a.name, narrative: a.narrative === tpl.narrative ? t.narrative : a.narrative }))
+  }
 
   const paramInput = (e: EffectPick, i: number) => {
     const def = c.ampEffects.get(e.ref)
@@ -66,6 +74,13 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
       <div className="grid2">
         <label>Name<input autoFocus value={amp.name} onChange={e => set({ name: e.target.value })} /></label>
         <label>Type<input value={type?.name ?? amp.type} disabled /></label>
+        {levels.length > 1 && !catalog && (
+          <label>Level
+            <select value={amp.catalogId} onChange={e => toLevel(e.target.value)}>
+              {levels.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+        )}
         {amp.type === 'vehicle' && (
           <label>Chassis
             <select value={amp.vehicle ?? ''} onChange={e => set({ vehicle: e.target.value })}>
