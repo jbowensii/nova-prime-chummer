@@ -85,6 +85,9 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // an amp named as one of the books' own catalog amps of its type (a sample runner's Jazz is the core rulebook's drug,
     // p.150): what that entry prints is the book's too
     const named = !a.catalogId ? [...c.amps.values()].find(t => !t.mod && t.type === a.type && plain(t.name) === plain(a.name)) : undefined
+    // the books' add-ons for this amp type (DHSA's cyberdeck "Response increase" mods print Initiative in VR, p.19): an
+    // effect one of them prints is one the books give the type
+    const typeMods = [...c.amps.values()].filter(t => t.mod && t.type === a.type)
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
@@ -93,7 +96,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
       const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && t.name === e.note && t.effects.some(x => x.ref === e.ref)) : undefined
       const fromBook = (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) || !!fromMod
-        || !!named?.effects.some(t => t.ref === e.ref)
+        || !!named?.effects.some(t => t.ref === e.ref) || typeMods.some(t => t.effects.some(x => x.ref === e.ref))
       if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
@@ -107,6 +110,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
         // a catalog amp's own drawback, as its book prints it (a player's pick); on a runner's own amp, sample or not, the GM approves
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
+          || named?.effects.some(t => t.ref === 'negative' && t.value === e.value)
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })

@@ -122,6 +122,29 @@ test('effects a catalog amp carries are sanctioned even when the effect table fo
   expect(codes(ch)).toContain('amp.typeIllegal')
 })
 
+test('a sample’s amp named as the book’s catalog amp may carry that entry’s drawback; another value needs the GM', () => {
+  const ch = base()
+  ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
+  // the sample reader notes the printed line that limits it; the book's entry prints the same -2
+  ch.build.amps = [amp('d', 'equipment', [{ ref: 'init-1' }, { ref: 'init-2' }, { ref: 'negative', value: 2, note: 'Crash after.' }],
+    { name: 'Rush', linkedItem: 'i' })]
+  expect(codes(ch)).not.toContain('amp.negative')
+  ch.build.amps[0].effects[2].value = 1
+  expect(codes(ch)).toContain('amp.negative')
+})
+
+test('an effect the books’ add-ons for a type print is one that type may carry (a deck’s Initiative in VR)', () => {
+  const ch = base()
+  ch.build.amps = [amp('k', 'cyberdeck', [{ ref: 'init-1' }, { ref: 'init-realm', param: 'vr' }])]
+  expect(count(ch, 'amp.typeIllegal')).toBe(2) // the made-up effect table gives Initiative to no deck
+  const boost = { ...cat.amps.get('test.static-shroud')!, id: 'test.deck-boost', type: 'cyberdeck', name: 'Deck Boost',
+    effects: [{ ref: 'init-1' }, { ref: 'init-realm', param: 'vr' }] }
+  const withMod = { ...cat, amps: new Map([...cat.amps, [boost.id, boost]]) }
+  expect(validate(withMod, ch).map(v => v.code)).not.toContain('amp.typeIllegal')
+  ch.build.amps[0].type = 'contact' // a mod for decks gives a contact nothing
+  expect(validate(withMod, ch).map(v => v.code)).toContain('amp.typeIllegal')
+})
+
 test('an armor add-on stacked on other armor is noted (CRB p.148); a shield is not', () => {
   const ch = base()
   ch.build.items = [{ uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 }, { uid: 'm', kind: 'armor', name: 'Made-up mask', armor: 1, over: 'v' }]
