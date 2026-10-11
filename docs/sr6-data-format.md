@@ -742,8 +742,12 @@ metavariants and metasapients its import writes (`swc.<id>`); a metatype from an
 
 `custom/sr6/creation.xml` holds only what the admin changed (`PUT /api/sr6/creation`, on the Table setup page, `#/sr6/table`):
 the server's settings are the standard ones with those keys replaced (`loadCreation` in `src/sr6/engine/creation.ts`).
-The Table setup page's Standard column shows each standard value and its page, marks the ones changed, and has **Reset** per
-value and **Reset all to standard**; saving sends only the values that differ from the standard. An empty field means
+The Table setup page (and a campaign's own settings, a runner's Creation rules panel) lays the settings out in nine foldable
+sections (Budgets & priorities; Attributes & skills; Qualities; Magic & Resonance; Gear & augmentations; Contacts & lifestyle;
+Levels of play; Optional rules (book); House rules; `src/sr6/ui/creationLayout.ts`), a closed section drawing no rows, with a
+search box by name. Every on/off rule is a switch; a number that needs one sits indented under it, greyed with "needs …"
+while it is off. A value at the standard is grey; a changed one stands out and shows the standard and its page beside it, with
+**Reset** per value, **Reset section** and **Reset all to standard**; saving sends only the values that differ from the standard. An empty field means
 the standard value. An older full `creation.xml` works the same (rows equal to the standard simply match it). **Load
 settings file** fills the form from a creation rules file, the standard values filling the rest. A GM may give a
 campaign they run its own copy on its page; it is kept in `custom/sr6/campaigns.xml` as the campaign's `<creation>` with the

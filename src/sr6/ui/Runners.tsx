@@ -201,10 +201,12 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         </div>
         {own ? <div className="row">
           <button className="btn small" onClick={async () => { await store(exportSr6(c, ch), rev); void refresh() }}>Export</button>
+          <button className="btn small quiet" aria-label={`Export ${shownName(ch)} for Foundry`} onClick={() => downloadSr6Runners(c, data, rulesOf, [ch])}>Export for Foundry</button>
           {campaignOf(ch) ? <button className="btn small quiet" onClick={() => void assign(ch, null)}>Remove from campaign</button>
             : open.length > 0 && <button className="btn small quiet" onClick={() => { setTarget(open[0].id); setJoining(ch) }}>Add to campaign…</button>}
           <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>
-        </div> : <div className="row"><button className="btn small" onClick={() => exportSr6(c, ch)}>Export</button></div>}
+        </div> : <div className="row"><button className="btn small" onClick={() => exportSr6(c, ch)}>Export</button>
+          <button className="btn small quiet" aria-label={`Export ${shownName(ch)} for Foundry`} onClick={() => downloadSr6Runners(c, data, rulesOf, [ch])}>Export for Foundry</button></div>}
       </div>
     )
   }

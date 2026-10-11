@@ -710,9 +710,6 @@ details.desc .prose { margin-top: 0.35rem; font-family: var(--serif); font-size:
 .sr6-rules .rule-toc .lvl2 { padding-left: 1rem; }
 .sr6-rules .rule-toc .lvl3 { padding-left: 2rem; }
 .sr6-rules .rule-toc .lvl4 { padding-left: 3rem; }
-.sr6-creation td:first-child { width: 45%; min-width: 12rem; }
-.sr6-creation input[type=number] { width: 7rem; }
-.sr6-creation input.src-id { width: 5rem; }
 .sr6-parts { margin: 0.2rem 0 0; padding-left: 1.2rem; font-size: 0.93rem; color: var(--text-2); }
 a.noncanon { text-decoration: none; }
 
