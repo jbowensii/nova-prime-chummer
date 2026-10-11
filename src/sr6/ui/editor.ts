@@ -115,6 +115,13 @@ export const REASONS: Record<string, string> = {
   'not-voidable': 'That entry can’t be voided.',
   'already-voided': 'That entry is already voided.',
   'not-signature': 'Only the style’s signature technique comes with it: learn the others one by one.',
+  // the owner's decisions (2026-10-11)
+  'not-for-adept': 'A pure adept takes no Sorcery, Conjuring or Enchanting.',
+  'aptitude-incompetent': 'Aptitude and Incompetent can’t be on the same skill.',
+  'not-for-metatype': 'That quality isn’t for this runner’s metatype.',
+  'one-native': 'One native language a runner: clear the other one first.',
+  'once-per-runner': 'The runner already has that augmentation (a limb: one a side).',
+  'not-mystic-adept': 'Only a mystic adept picks its mentor spirit’s advantages.',
 }
 const LABELS = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
 /** A refusal code as a sentence; `unset:<key>` names the setting and where it's set. */

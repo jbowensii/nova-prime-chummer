@@ -228,6 +228,12 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await page.getByLabel('Cityspeak is native').check()
   await page.getByRole('button', { name: 'Raise Arcade Lore points' }).click()
   await expect(page.getByText('Knowledge points:')).toContainText('0 left of 2')
+  // one native language a runner (owner, 2026-10-11): another language's Native box waits
+  await page.getByLabel('New knowledge skill or language').fill('Gutterspeak')
+  await page.getByLabel('New one is a').selectOption('language')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByLabel('Gutterspeak is native')).toBeDisabled()
+  await page.locator('tr').filter({ has: page.getByLabel('Gutterspeak is native') }).getByRole('button', { name: 'Remove' }).click()
   await shoot(page, 'editor-skills')
 
   // the budgets panel: karma's breakdown, each line a link to its tab
@@ -271,6 +277,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByText('Quiet Loop').click()
   await work.getByRole('button', { name: 'Raise Submersion grade' }).click()
   await expect(work.locator('tr', { hasText: 'Quiet Loop' })).toBeVisible()
+  // a data structure (Hack & Slash): by level; it goes when the runner stops being a technomancer
+  await work.getByRole('button', { name: 'Add a data structure…' }).click()
+  await dlg.getByText('Zap Shell').click()
+  await expect(work.locator('tr', { hasText: 'Zap Shell' })).toBeVisible()
   await shoot(page, 'editor-resonance')
 
   // an adept (the fixture's made-up adept at magic A): a leveled power against the power points
@@ -318,6 +328,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByText('Soft Echo').click()
   await expect(work.locator('tr', { hasText: 'Soft Echo' })).toBeVisible()
   await expect(work.getByLabel('Drain attribute')).toHaveValue('log')
+  // a mentor spirit (owner, 2026-10-11: it brings its quality), then none again
+  await work.getByLabel('Mentor spirit', { exact: true }).selectOption('crb.glow-moth')
+  await expect(work.getByLabel('Mentor spirit', { exact: true })).toHaveValue('crb.glow-moth')
+  await work.getByLabel('Mentor spirit', { exact: true }).selectOption('')
   await shoot(page, 'editor-magic')
 
   // Augmentations: rating and grade in the picker, then a bonus
@@ -333,6 +347,12 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   const eyes = work.locator('tr', { hasText: 'Glow Eyes' })
   await expect(eyes.getByLabel('Glow Eyes grade')).toHaveValue('alpha')
   await expect(eyes).toContainText('0.14')
+  // an augmentation the runner has isn't offered again (owner, 2026-10-11)
+  await work.getByRole('button', { name: 'Add an augmentation…' }).click()
+  await expect(dlg.getByText('Spring Tendons')).toBeVisible()
+  await expect(dlg.getByText('Glow Eyes', { exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(dlg).toHaveCount(0)
   // rating and grade change in place
   await eyes.getByLabel('Glow Eyes rating').selectOption('3')
   await eyes.getByLabel('Glow Eyes grade').selectOption('standard')
@@ -449,12 +469,14 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   const work = page.locator('main.work'), dlg = page.getByRole('dialog')
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.getByRole('heading', { name: 'Review' })).toBeVisible()
-  // two problems, each message a link to its tab: nuyen overspent (Gear) and alpha Glow Eyes above the Availability cap
-  // (Augmentations); the contact above Charisma is bought with karma (the Sixth World Companion's expanded contacts)
-  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' })
+  // three problems, each message a link to its tab: nuyen overspent (Gear: only fixing clears it), alpha Glow Eyes above
+  // the Availability cap (Augmentations) and more Karma left than carries over; the contact above Charisma is bought with
+  // karma (the Sixth World Companion's expanded contacts)
+  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' }), left = work.locator('.viol', { hasText: 'karma left' })
   await expect(eyes).toContainText('Problem')
   await expect(eyes).toContainText('CRB p.63')
-  await expect(work.locator('.viol .sev.err')).toHaveCount(2)
+  await expect(work.locator('.viol .sev.err')).toHaveCount(3)
+  await expect(work.locator('.viol', { hasText: 'Nuyen overspent' })).toContainText('Fix before finalizing: no GM approval')
   await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeDisabled()
   await work.getByRole('link', { name: /^Nuyen overspent by 3,437¥/ }).click()
   await expect(page).toHaveURL(/\/gear$/)
@@ -469,7 +491,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await work.getByRole('button', { name: '1 Karma → 1,500¥' }).click()
   await work.getByRole('button', { name: 'Lower Contact 1 connection' }).click()
   await tabs.filter({ hasText: 'Review' }).click()
-  await expect(work.locator('.viol .sev.err')).toHaveCount(1)
+  await expect(work.locator('.viol .sev.err')).toHaveCount(2)
 
   // only a GM approves: Pat, a player, has no button; Gil, the GM of a campaign the runner is in, approves it with a note
   // on his read-only view, revokes, approves again
@@ -490,10 +512,16 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend')
   await gdlg.getByRole('button', { name: 'Approve' }).click()
   await expect(geyes).toContainText('Approved')
+  // the Karma left past the limit too (owner's decision L2: a problem a GM can approve)
+  await gil.locator('main.work .viol', { hasText: 'karma left' }).getByRole('button', { name: 'GM approve' }).click()
+  await gdlg.getByLabel('Why the GM allows it').fill('Saving up')
+  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(gil.locator('main.work .viol', { hasText: 'karma left' })).toContainText('Approved')
   await expect(gil.getByRole('button', { name: 'Finalize runner' })).toHaveCount(0) // still Pat's to finalize
   await gil.close()
   await page.reload()
   await expect(eyes).toContainText('GM: Street doc friend')
+  await expect(left).toContainText('GM: Saving up')
   await expect(tabs.filter({ hasText: 'Review' })).toHaveText('Review')
   // the derived values
   await expect(work.locator('.sr6-derived div', { hasText: 'Defense Rating' })).toContainText('5')

@@ -6,7 +6,7 @@
 // whether its threshold counts Essence. Every pick can carry the player's bonuses.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { num } from '../../engine/creation'
+import { flag, num, str } from '../../engine/creation'
 import { noteAttr, noteSkill, powerCost, qualityChoice } from '../../engine/budgets'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../engine/data'
 import type { Sr6Entry } from '../../model/types'
@@ -19,7 +19,8 @@ import { Suggest } from './Skills'
 
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
 const PICKS: [PickKind, string, string][] = [['spells', 'Spells', 'a spell'], ['rituals', 'Rituals', 'a ritual'], ['adeptpowers', 'Adept powers', 'an adept power'],
-  ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo']]
+  ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo'],
+  ['datastructures', 'Data structures', 'a data structure']]
 
 export function MagicTab() {
   const { ch, c, data, cr, budgets, act, edit } = useSr6Editor()
@@ -82,9 +83,22 @@ export function MagicTab() {
       {k.paysPowers && b.method !== 'pointbuy' && <p className="row">Power points bought
         <Stepper label="Power points bought" value={b.powerPointsBought} min={0} max={pp.cap} onChange={to => act({ op: 'powerPoints', delta: to - b.powerPointsBought })} />
         <span className="muted">at most {pp.cap}; each one lowers the free spells</span></p>}
+      {/* owner's decisions 5 and 12: the mentor spirit comes with its quality; a mystic adept picks one advantage */}
+      {(k.spells || k.powers) && <div className="row">
+        <label className="inline">Mentor spirit <select aria-label="Mentor spirit" value={b.mentorSpirit ?? ''} onChange={e => act({ op: 'mentor', id: e.target.value || null })}>
+          <option value="">None</option>
+          {[...c.entries.mentorspirits.values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
+        {b.mentorSpirit && b.magic === 'mystic-adept' && (flag(cr, 'mentorBothAdvantages')
+          ? <span className="muted">Both its magician’s and adept’s advantages (house rule)</span>
+          : <label className="inline">Advantages <select aria-label="Mentor spirit advantages" value={b.mentorAdvantage ?? ''}
+            onChange={e => act({ op: 'mentor', advantage: (e.target.value || null) as 'magician' | 'adept' | null })}>
+            <option value="">Pick one</option><option value="magician">The magician’s</option><option value="adept">The adept’s</option></select></label>)}
+        {b.mentorSpirit && str(cr, 'mentorSpiritQuality') && <span className="muted">with the {data.qualities[str(cr, 'mentorSpiritQuality')!]?.name ?? 'Mentor Spirit'} quality (Qualities tab)</span>}
+      </div>}
       {(k.spells || k.powers) && grade('initiation', 'Initiation grade')}
       {k.resonance && grade('submersion', 'Submersion grade')}
-      {PICKS.map(section)}
+      {/* (data structures, Hack & Slash pp. 70–72: only for a technomancer, or one a runner holds) */}
+      {PICKS.filter(([kind]) => kind !== 'datastructures' || allowed.datastructures || b.picks.some(x => x.kind === kind)).map(section)}
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>
         {adding && <Picker placeholder="Search" onPick={pick}
           groups={[...new Set([...c.entries[adding].values()].map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}

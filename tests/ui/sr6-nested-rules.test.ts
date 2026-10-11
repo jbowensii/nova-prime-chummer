@@ -48,3 +48,23 @@ test('of two rules that can’t be on together, the second is disabled and says 
   expect(row(/^Street-level \(Sixth World Companion\)/).textContent).toMatch(/can’t be on with Prime runner: twice the customization karma, which is on/)
   expect(control(/^Prime runner/).disabled).toBe(false)
 })
+
+test('every row has hover text: what it does, and its book and page, house rule or option (owner, 2026-10-11)', () => {
+  const { el, row } = mount()
+  const rows = [...el.querySelectorAll('tbody tr')]
+  expect(rows.length).toBeGreaterThan(100)
+  expect(rows.filter(r => !/\((.*p\.|house rule|option).*\)\.$/.test(r.querySelector('td')?.getAttribute('title') ?? '')).map(r => r.textContent)).toEqual([])
+  expect(row(/^Exotic Weapons: the first specialization/).querySelector('td')!.title).toBe('On: the first Exotic Weapons specialization costs no skill points or Karma (house rule).')
+  expect(row(/^Highest Magic or Resonance$/).querySelector('td')!.title).toMatch(/\(CRB Hong Kong p\. 65\)\.$/)
+})
+
+test('a toggle with the GM’s values nested under it: the values wait for it (data structure caps, carry-over, Karma build)', () => {
+  const { control, pick } = mount()
+  for (const [parent, child] of [[/^Caps on a technomancer’s data structures/, /^Data structure caps: most/], [/^Own carry-over limits: the Karma/, /^Own carry-over limits: most Karma/],
+    [/^Karma build: a creation method/, /^Starting karma \(karma build\)/]] as const) {
+    pick(parent, 'false')
+    expect(control(child).disabled).toBe(true)
+    pick(parent, 'true')
+    expect(control(child).disabled).toBe(false)
+  }
+})
