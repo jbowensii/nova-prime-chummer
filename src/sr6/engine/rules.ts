@@ -154,7 +154,7 @@ const RULES: Rule[] = [
     const langs = c.b.knowledge.filter(k => k.kind === 'language'), most = num(c.cr, 'languageMax'), hits: Hit[] = []
     if (langs.filter(k => k.native).length > 1) hits.push({ message: `${langs.filter(k => k.native).length} native languages: only one.`, ...CRB(67) })
     if (most !== undefined) for (const k of langs) if (!k.native && k.points + k.karma > most)
-      hits.push({ path: `skills.${k.uid}`, message: `${k.name} at level ${k.points + k.karma}: a language goes to Expert (${most}) at most; Native comes only free at creation.`, ...cite(c.cr, 'languageMax') })
+      hits.push({ path: `skills.${k.uid}`, message: `${k.name} at level ${k.points + k.karma}: a language goes to ${most} at most (the Native one counts as ${most}).`, ...cite(c.cr, 'languageMax') })
     return hits
   } },
   // CRB Hong Kong pp. 76–77: no ranks in the skill an Incompetent quality names; not for a Magic skill without Magic,

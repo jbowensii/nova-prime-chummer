@@ -45,7 +45,7 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'incompetentQuality', label: 'Incompetent (Skill) quality: no ranks in the skill its note names (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'sensitiveSystemQuality', label: 'Sensitive System quality: no Magic or Resonance; ware Essence times the factor below (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'improvedAbilityPower', label: 'Improved Ability adept power: its skill boosted at most to the factor below (unset: none)', type: 'quality', group: 'General', methods: [] },
-  ...n('General', [], [['languageMax', 'Highest language level but Native (unset: no cap)'], ['fociForcePerMagic', 'Foci: their Force together at most Magic times']]),
+  ...n('General', [], [['languageMax', 'Highest language level; Native counts as it (unset: no cap)'], ['fociForcePerMagic', 'Foci: their Force together at most Magic times']]),
   { key: 'mentorSpiritQuality', label: 'Mentor Spirit quality: choosing a mentor spirit adds it, removing it removes the mentor spirit (unset: none)', type: 'quality', group: 'General', methods: [] },
   { key: 'fociBondKarma', label: 'Foci cost their bonding karma at creation', type: 'bool', group: 'General', methods: [] },
   ...n('General', [], [['improvedAbilityFactor', 'Improved Ability: the boosted skill at most its rank times (rounded up)']]),
@@ -180,7 +180,8 @@ export const CREATION_KEYS: CreationKey[] = [
     ['magicAboveSixByGrade', 'Magic or Resonance at creation up to the highest plus the initiation or submersion grade (option)'],
     ['eliteSumToThirteen', 'Elite: sum-to-thirteen instead of sum-to-twelve (house rule)'],
     ['availabilitySeven', 'Gear of Availability 7 at creation (house rule)'],
-    ['cargoWithoutSeats', 'Vehicles: seats removed add cargo space (option)']] as [string, string][])
+    ['cargoWithoutSeats', 'Vehicles: seats removed add cargo space (option)'],
+    ['metatypeSizePricing', 'Metatype size pricing: trolls pay 10% more for everything bought, dwarfs 10% more for armor (house rule)']] as [string, string][])
     .map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
   { key: 'dermalDepositsQuality', label: 'Dermal Deposits quality: +1 Defense Rating (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
@@ -435,7 +436,7 @@ const ABOUT: Record<string, [string, string]> = {
   sensitiveSystemQuality: ['The catalog’s Sensitive System quality: no Magic or Resonance, and ware Essence times the factor', HK(78)],
   improvedAbilityPower: ['The catalog’s Improved Ability adept power: the skill its note names, boosted at most to the factor', HK(157)],
   mentorSpiritQuality: ['The catalog’s Mentor Spirit quality: choosing a mentor spirit on the Magic tab adds it with its Karma, and removing it removes the mentor spirit', HK(73)],
-  languageMax: ['The highest level a language other than the Native one reaches (Expert); one Native language only', HK('67, 99')],
+  languageMax: ['The highest level any language reaches; the Native language counts as this level and no other goes above it; one Native language only', HOUSE],
   fociForcePerMagic: ['The foci’s Force added together is at most Magic times this; no more foci than Magic, none of Force above it', HK(154)],
   fociBondKarma: ['A focus costs its bonding Karma out of the customization Karma', HK('154, 168')],
   improvedAbilityFactor: ['Improved Ability raises its skill to at most its rank times this, rounded up', HK(157)],
@@ -578,6 +579,7 @@ const ABOUT: Record<string, [string, string]> = {
   adjustOnLoweredMax: ['On: adjustment points may also go on an attribute whose metatype maximum is lowered; off: only on raised maxima, Edge, Magic and Resonance (CRB Hong Kong p. 63)', HOUSE],
   pointBuyErrataNuyen: ['On: point buy’s nuyen bought with character points goes up to 450,000, the errata version; off: up to 440,000 as printed (Sixth World Companion p. 29)', HOUSE],
   knowledgeLogicIntuition: ['On: free knowledge points from Logic + Intuition; off: from Logic only (CRB Hong Kong p. 67)', HOUSE],
+  metatypeSizePricing: ['On: a troll-sized runner (troll, cyclops, fomori, giant, minotaur) pays 10% more for everything bought and a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor and clothing, added as one line of the nuyen budget; the books price a few metahuman-sized items on their own but print no general rule', HOUSE],
   magicAboveSixByGrade: ['On: Magic or Resonance at creation up to the highest plus the initiation or submersion grade; off: the highest alone (CRB Hong Kong p. 65)', `${OPTION}, ${HK(167)}`],
   availabilitySeven: ['On: gear of Availability 7 may be bought at creation; off: 6 at most (CRB Hong Kong p. 66)', HOUSE],
   cargoWithoutSeats: ['On: a vehicle’s seats removed add cargo space by the Cargo Factor formula (1.5 CF a seat, 1.25 on a bike)', `${OPTION}, Double Clutch p. 126`],
@@ -617,7 +619,7 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'capacityAccessoryEssence', 'positiveQualityMultiplier', 'positiveQualityFactor', 'karmaToNuyenCap', 'karmaToNuyenMax', 'exoticFirstSpecFree',
   'mentorBothAdvantages', 'dataStructureCaps', 'dataStructure.maxCount', 'dataStructure.maxRating', 'noUsedCulturedBioware', 'gradeCapAtCreation',
   'gradeCap.initiation', 'gradeCap.submersion', 'adjustOnLoweredMax', 'pointBuyErrataNuyen', 'knowledgeLogicIntuition', 'magicAboveSixByGrade',
-  'availabilitySeven', 'cargoWithoutSeats',
+  'availabilitySeven', 'cargoWithoutSeats', 'metatypeSizePricing',
 ].map(key => ({ key, about: aboutOf(key) }))
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with

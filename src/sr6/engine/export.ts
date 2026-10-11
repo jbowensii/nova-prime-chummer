@@ -8,7 +8,7 @@ import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './bud
 import { bonusValue } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
-import type { CreationRules } from './creation'
+import { num as ruleNum, type CreationRules } from './creation'
 import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
 import { withSampleFixes } from './samplefix'
@@ -263,7 +263,8 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
       : { ...v, switched: d.on.attrs[k as Sr6Attr].augmented }])) as Sr6ExportRunner['attributes'], essence: d.essence, edge: d.edge,
     skills: b.skills.map(s => defined({ id: s.id, name: data.skills[s.id]?.name ?? s.id, attr: data.skills[s.id]?.attr ?? '', rank: skillRank(s),
       spec: s.spec, expertise: s.expertise, specs: s.specs })),
-    knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.points + k.karma })),
+    // (a Native language counts as the highest language level, owner 2026-10-11)
+    knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.native ? ruleNum(cr, 'languageMax') ?? 4 : k.points + k.karma })),
     qualities: b.qualities.map(q => {
       const e = leveled(data, data.entry('qualities', q.id), q.level)
       return defined({ ...(e ? item(c, e, true) : bare('qualities', q.name ?? q.id, q.id)), uid: q.uid, positive: e?.attrs.kind !== 'negative',

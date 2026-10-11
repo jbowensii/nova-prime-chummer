@@ -3,7 +3,8 @@
 // options (each off by default) that change a number.
 import { expect, test } from 'vitest'
 import { apply, type Op } from '../../src/sr6/engine/actions'
-import { allBudgets, augmentationRoom, cargoFactor, magicCap } from '../../src/sr6/engine/budgets'
+import { allBudgets, augmentationRoom, cargoFactor, magicCap, metatypeSize } from '../../src/sr6/engine/budgets'
+import { exportSr6Runner } from '../../src/sr6/engine/export'
 import { aboutOf, runnerRules, type CreationRules, type CreationValue } from '../../src/sr6/engine/creation'
 import { qualityFitsMetatype, qualityMetatypes, sr6Data, type Sr6Data } from '../../src/sr6/engine/data'
 import { gradesFor } from '../../src/sr6/engine/grades'
@@ -16,7 +17,7 @@ import { buildOf, fixtureCatalog, fixtureCreation, STONE } from './fixture'
 const doc = (kind: string, rows: string) => `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="${kind}" version="1">${rows}</sr6:data>`
 // invented entries: two metatypes the posers' words name, two posers with invented descriptions, an exotic skill, ware
 const EXTRA = [
-  { file: 'custom/sr6/imported/x/metatypes.xml', xml: doc('metatypes', ['human', 'ork'].map(m =>
+  { file: 'custom/sr6/imported/x/metatypes.xml', xml: doc('metatypes', ['human', 'ork', 'troll', 'gnome'].map(m =>
     `<metatype id="x.${m}" source="CRB" page="1"><name>${m[0].toUpperCase()}${m.slice(1)}</name></metatype>`).join('')) },
   { file: 'custom/sr6/imported/x/qualities.xml', xml: doc('qualities',
     '<quality id="x.elf-poser" source="CRB" page="1" kind="negative" karma="2"><name>Elf Poser</name></quality>'
@@ -43,7 +44,7 @@ function setup(rules: Record<string, CreationValue> = {}, o: { metatype?: string
   const act = (op: Op) => apply(ch.build, op, data, cr)
   const v = () => validateSr6(data, cr, ch), codes = () => v().map(x => x.code)
   const budgets = () => allBudgets(ch.build, data, cr, makeProvider('priority', data, cr))
-  return { data, cr, ch, b: ch.build, act, v, codes, budgets }
+  return { cat, data, cr, ch, b: ch.build, act, v, codes, budgets }
 }
 const ok = { ok: true }, no = (reason: string) => ({ ok: false, reason })
 
@@ -129,6 +130,35 @@ test('6: one native language a runner', () => {
   expect(act({ op: 'knowledge', uid: b.knowledge[1].uid, native: true })).toEqual(no('one-native'))
   expect(act({ op: 'knowledge', uid: b.knowledge[0].uid, native: false })).toEqual(ok)
   expect(act({ op: 'knowledge', uid: b.knowledge[1].uid, native: true })).toEqual(ok)
+})
+
+test('6 (continued), effects 12: no language above languageMax; the Native one counts as that level, shown native', () => {
+  const { cat, data, cr, ch, b, act } = setup({ languageMax: 4 })
+  expect(act({ op: 'knowledge', name: 'Sperethiel', kind: 'language', native: true })).toEqual(ok)
+  expect(act({ op: 'knowledge', name: 'Or’zet', kind: 'language' })).toEqual(ok)
+  expect(act({ op: 'knowledge', name: 'Made-up lore', kind: 'knowledge' })).toEqual(ok)
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 3 })).toEqual(ok)  // 4
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'karma', delta: 1 })).toEqual(no('language-max'))
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[2].uid, pool: 'points', delta: 5 })).toEqual(ok)  // a knowledge skill: no cap here
+  const out = exportSr6Runner(cat, data, cr, ch, { descriptions: false, now: '2026-10-11T00:00:00.000Z', appVersion: 'test' })
+  expect(out.knowledge.map(k => [k.name, k.native, k.rank])).toEqual([['Sperethiel', true, 4], ['Or’zet', false, 4], ['Made-up lore', false, 6]])
+})
+
+test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
+  const bought = (metatype: string, on = true) => {
+    const s = setup({ metatypeSizePricing: on }, { metatype })
+    s.b.purchases.push({ uid: 'v', kind: 'armor', id: 'crb.padded-vest', qty: 1, accessories: [] }, { uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 2, accessories: [] })
+    const line = s.budgets().nuyen.breakdown.find(l => l.key === 'sizePricing')
+    return [s.budgets().nuyen.spent, line?.label]
+  }
+  expect(metatypeSize(setup().data, 'x.troll')).toBe('troll')
+  expect(metatypeSize(setup().data, 'x.gnome')).toBe('dwarf')
+  expect(metatypeSize(setup().data, 'x.ork')).toBeUndefined()
+  expect(bought('x.ork')).toEqual([1100, undefined])
+  expect(bought('x.troll')).toEqual([1210, 'Troll-sized: 10% more on everything bought'])
+  expect(bought('x.gnome')).toEqual([1140, 'Dwarf-sized: 10% more on armor'])
+  expect(bought('x.troll', false)).toEqual([1100, undefined])
+  expect(aboutOf('metatypeSizePricing')).toMatch(/\(house rule\)\.$/)
 })
 
 test('9: each augmentation once (its ratings one), a cyberlimb once a body part and side, a choice-naming one per choice', () => {

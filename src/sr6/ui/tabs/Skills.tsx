@@ -74,7 +74,7 @@ export function SkillsTab() {
 
       <hr className="sep" />
       <h2>Knowledge &amp; languages</h2>
-      <p className="muted">Knowledge points: <b className={budgets.knowledgePoints.left < 0 ? 'err' : ''}>{n(budgets.knowledgePoints.left)} left</b> of {n(budgets.knowledgePoints.max)}. One native language is free: tick Native on its line.</p>
+      <p className="muted">Knowledge points: <b className={budgets.knowledgePoints.left < 0 ? 'err' : ''}>{n(budgets.knowledgePoints.left)} left</b> of {n(budgets.knowledgePoints.max)}. One native language is free: tick Native on its line; it counts as level {num(cr, 'languageMax') ?? 4}, the highest a language goes.</p>
       {b.knowledge.length > 0 && <div className="scroll-x"><table className="data">
         <thead><tr><th>Name</th><th>Kind</th><th>Native</th><th>Points</th><th>Karma</th><th /></tr></thead>
         <tbody>{b.knowledge.map(k => <tr key={k.uid}>
@@ -85,7 +85,7 @@ export function SkillsTab() {
           <td>{k.kind === 'language' && <input type="checkbox" aria-label={`${k.name} is native`} checked={!!k.native}
             disabled={!!native && native !== k} title={native && native !== k ? `${native.name} is the native language` : undefined}
             onChange={e => act({ op: 'knowledge', uid: k.uid, native: e.target.checked })} />}</td>
-          {(['points', 'karma'] as const).map(p => <td key={p}>{!k.native && <Stepper label={`${k.name} ${p}`} value={k[p]} min={0} max={99}
+          {(['points', 'karma'] as const).map(p => <td key={p}>{k.native ? (p === 'points' ? <span className="muted">native</span> : null) : <Stepper label={`${k.name} ${p}`} value={k[p]} min={0} max={99}
             onChange={to => act({ op: 'knowledgeRank', uid: k.uid, pool: p, delta: to - k[p] })} />}</td>)}
           <td><button className="btn small quiet" onClick={() => act({ op: 'knowledge', remove: k.uid })}>Remove</button></td>
         </tr>)}</tbody>

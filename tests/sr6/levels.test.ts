@@ -4,7 +4,7 @@
 // level's entry, and the career spends move between levels. Invented numbers throughout.
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
-import { priced } from '../../src/sr6/engine/budgets'
+import { augmentBonus, priced } from '../../src/sr6/engine/budgets'
 import { currentBuild, preview, record } from '../../src/sr6/engine/career'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { effectBonuses } from '../../src/sr6/engine/effects'
@@ -53,6 +53,19 @@ test('a leveled quality or power is one entry per level with its Karma or power 
   expect(c.entries.adeptpowers.get('crb.quick-step.4')!.attrs).toMatchObject({ cost: '1', level: '4' })
   expect(data.qualities['crb.lucky-streak.2']).toMatchObject({ karma: 8, perLevel: false, maxLevel: 1 })
   expect(data.qualities['crb.lucky-streak']).toMatchObject({ karma: 4, perLevel: true, maxLevel: 3, parent: true })
+})
+
+test('a rated bioware with +R on a test (Awareness: Tactical, rating 1–3) is Tactical 1, 2 and 3 with +1, +2 and +3', () => {
+  const c = fixtureCatalog((f, x) => (f.endsWith('crb/augmentations.xml')
+    ? x.replace('</sr6:data>', '<augmentation id="crb.zap-sense-tactical" source="CRB" page="1" type="bioware" category="made-up bioware" rating="1–3" essence="Rating × 0.2" avail="2" cost="Rating × 15000">'
+      + '<name>Zap Sense: Tactical</name><effect target="derived:defense" op="add" value="R"/><effect target="test:surprise" op="add" value="R"/><text/></augmentation></sr6:data>') : x))
+  const levels = [1, 2, 3].map(n => c.entries.augmentations.get(`crb.zap-sense-tactical.${n}`)!)
+  expect(levels.map(e => e.name)).toEqual(['Zap Sense: Tactical 1', 'Zap Sense: Tactical 2', 'Zap Sense: Tactical 3'])
+  expect(c.entries.augmentations.has('crb.zap-sense-tactical')).toBe(false)
+  const data = sr6Data(c)
+  // each level's +R counts at its rating: Tactical 1, 2, 3 give +1, +2, +3 (a line holding the level has no rating of its own)
+  expect(levels.map(e => augmentBonus({ ...blankBuild('priority'), purchases: [{ uid: 'x', kind: 'augmentations', id: e.id, qty: 1, accessories: [] }] }, data, 'defense'))).toEqual([1, 2, 3])
+  expect(levels.map(e => priced({ uid: 'x', kind: 'augmentations', id: e.id, qty: 1, accessories: [] }, data, fixtureCreation()).cost)).toEqual([15000, 30000, 45000])
 })
 
 test('a leveled entry whose name prints its range has that many levels; one with no printed maximum stays as it is', () => {

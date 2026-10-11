@@ -243,5 +243,8 @@ test('removing an amp effect after Finalize is replacing it with nothing (p.84):
   const armor = cat.ampEffects.get('armor-plus')!.rating * P.ampPoint
   expect(changes(next).at(-1)!.cost).toBe(-armor)
   expect(balance(cat, next)).toBe(balance(cat, ch) + armor)
+  // at creation alike (owner decision 7, 2026-10-10): the build's price drops by the effect's rating × an amp point
+  const both = { ...runner(), build: { ...runner().build, amps: [amp] } }, one = { ...runner(), build: { ...runner().build, amps: [{ ...amp, effects: amp.effects.slice(0, 1) }] } }
+  expect(price(cat, one).remaining - price(cat, both).remaining).toBe(armor)
 })
 
