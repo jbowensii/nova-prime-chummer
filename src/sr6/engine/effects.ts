@@ -80,7 +80,7 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0)
   const skillId = (name: string) => Object.values(data.skills).find(v => normName(v.name) === name.replace(/-/g, ' '))?.id
   for (const x of e?.parts ?? []) {
     const t = x.attrs.target ?? '', v = effectValue(x.attrs.value), a = x.attrs
-    if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v) continue
+    if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v || a.affects === 'others') continue  // (others': never the runner's, owner decision 16)
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? a.switch as Bonus['switch'] : undefined
     const state = { ...v.perRating ? { perRating: true as const } : {}, ...v.minus ? { minus: v.minus } : {}, ...v.byRating ? { byRating: v.byRating } : {},
       ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
@@ -183,8 +183,8 @@ export function effectText(p: Sr6Part): string {
   const skill = (a.target ?? '').startsWith('skill:') && a.target !== 'skill:choice'
   const t = a.target === 'test:other' && a.when ? `tests for ${a.when}` : `${targetText(a.target ?? '')}${a.spec ? ` (${a.spec})` : ''}${skill ? (a.op === 'add' || a.op === 'set' ? ' dice' : ' tests') : ''}`
   const v = a.value ?? ''
-  const when = [a.when && a.target !== 'test:other' ? a.when : '', a.affects === 'caster' ? 'affects the caster' : ''].filter(Boolean).join(', ')
-  const how = `${a.affects === 'target' ? 'on the target: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
+  const when = [a.when && a.target !== 'test:other' ? a.when : '', a.affects === 'caster' ? 'affects the caster' : a.affects === 'others' ? 'affects others' : ''].filter(Boolean).join(', ')
+  const how = `${a.affects === 'target' ? 'on the target: ' : a.affects === 'others' ? 'others get: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text = a.op === 'set' ? `${t} ${valueText(v)}`
     : a.target?.startsWith('pricemod:') ? `${t} ${signed(v)}`
     : a.target?.startsWith('sense:') ? t
@@ -204,6 +204,6 @@ export function effectText(p: Sr6Part): string {
 export function effectState(p: Sr6Part): 'applied' | 'conditional' | 'target' | 'low' {
   if (p.tag === 'link') return p.attrs.when ? 'conditional' : 'applied'
   if (p.attrs.confidence === 'low') return 'low'
-  if (p.attrs.affects === 'target') return 'target'
+  if (p.attrs.affects === 'target' || p.attrs.affects === 'others') return 'target'  // (never counted on the runner)
   return p.attrs.switch || p.attrs.when || p.attrs.spec ? 'conditional' : 'applied'
 }

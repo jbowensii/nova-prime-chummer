@@ -231,6 +231,10 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
 - **Specialization** (`spec`): a skill effect limited to a specialization (`+2 dice on climbing tests`: `Climbing`;
   `Influence (Etiquette or Negotiation)`: either). It is added to that specialization's pool when the runner has it,
   else to the skill's bracketed total (owner decision 2026-10-10).
+- **What others get** (`affects="others"`, owner decision 16, 2026-10-11): a sentence about what others gain against
+  the entry (`Users of the drug grant 2 Edge when resisting a Con test`, `+1 Edge for Perception tests to see them`,
+  `tests made against you gain a bonus Edge`) is read and kept, never counted on the runner, worded "others get: …";
+  the Foundry export lists it in the description, no Active Effect.
 - **Whom it affects** (`affects`, spells, rituals and complex forms): `target` when its sentence names the target,
   subject, device, ally … before the caster; else `caster` (it names the caster, `you gain`, or no one); a sentence
   opening with a pronoun is about whom the one before was. A caster's effect counts on the caster while sustained (in

@@ -38,7 +38,9 @@ the new effect kinds (install it with this).
   Firewall 2, cumulative), Edge on a condition with no test named (Flare compensation: `test:other` with the book's
   words), a section intro's own-noun rule for the items it names (a missile's sensor rating on the attack), a
   formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
-  formula (`nanite-volume/2 RU`), all shown, never applied.
+  formula (`nanite-volume/2 RU`), all shown, never applied; what others get against the entry kept as
+  `affects="others"` (worded "others get: …", never counted); an "after …" clause as a condition. The printed sheet
+  prefixes a tick box (☐) to every conditional effect note, a reminder to count it when it holds.
 - Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
   1,206 → 1,364 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.

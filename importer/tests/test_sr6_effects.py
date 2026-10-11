@@ -65,8 +65,8 @@ class ReadTest(unittest.TestCase):
                          [(f"attr-max:{a}", "add", "-1", None, None) for a in ("bod", "agi", "rea", "str")])
 
     def test_what_is_no_effect_of_the_entry(self):
-        self.assertEqual(fx("Those looking for you have -2 dice on their Perception tests."), [])  # others'
-        self.assertEqual(fx("Additionally, other individuals get a +2 dice pool bonus on Memory tests."), [])
+        self.assertEqual([a.get("affects") for t, a, _ in effects.read("Those looking for you have -2 dice on their Perception tests.") if t == "effect"], ["others"])  # others' (owner decision 16)
+        self.assertEqual([a.get("affects") for t, a, _ in effects.read("Additionally, other individuals get a +2 dice pool bonus on Memory tests.") if t == "effect"], ["others"])
         self.assertEqual(fx("For every hit, increase the noise around your physical body by one."), [])  # no attribute
         self.assertEqual(fx("Their Glow is boosted by 2."), [])  # no vocabulary target
 
@@ -152,7 +152,7 @@ class DecisionsTest(unittest.TestCase):
         self.assertEqual(fx("Its claw gains +1 to its Damage Value and +2 to its Attack Rating.", "weapons"),
                          [("item:dv", "add", "1", None, None), ("item:ar", "add", "2", None, None)])
         self.assertEqual(fx("Reduce the Handling of the vehicle by the system's rating.", "gear"), [("item:handling", "add", "-R", None, None)])
-        self.assertEqual(fx("Hearing tests to listen for your passage cannot gain or spend Edge."), [])  # (others' tests)
+        self.assertEqual({a.get("affects") for t, a, _ in effects.read("Hearing tests to listen for your passage cannot gain or spend Edge.") if t == "effect"}, {"others"})  # (others' tests: kept as theirs)
         self.assertEqual(fx("Edge Boosts cost 1 less in cybercombat.")[0][:3], ("skill:cracking", "edge-cost", "-1"))
 
     def test_section_statements_base_items_and_variant_paragraphs(self):
@@ -300,6 +300,14 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.section_effects(intro, "", "Missile Variant", "weapons", "Rockets and Missiles")],
                          [("test:combat", "R"), ("item:ar", "1")])
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.section_effects(intro, "", "Gas Rocket", "weapons", "Rockets and Missiles")], [("item:ar", "1")])
+
+    def test_owner_decisions_16_and_17(self):
+        # what others get against the entry: kept, affects="others"; an `after …` clause: a condition
+        got = [(a["target"], a["op"], a["value"], a.get("affects")) for t, a, _ in effects.read("Users of the drug grant 2 Edge when resisting a Con (Seduction) test.", "gear") if t == "effect"]
+        self.assertEqual(got, [("skill:con", "edge", "2", "others")])
+        got = [(a["target"], a.get("affects")) for t, a, _ in effects.read("Those looking for you gain a bonus Edge on Perception tests. You gain +1 Stealth.", "qualities") if t == "effect"]
+        self.assertEqual(got, [("skill:perception", "others"), ("skill:stealth", None)])
+        self.assertEqual(fx("You cannot spend or earn Edge for twenty-four hours after you break a tenet of your code.")[0][3:], ("conditional", "after you break a tenet of your code"))
 
     def test_rows_under_a_group_header_read_their_own_paragraph_and_a_transgenic_links_to_each(self):
         files = {"augmentations.xml": '<sr6:data kind="augmentations">\n'

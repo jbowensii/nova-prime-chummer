@@ -35,6 +35,12 @@ test('a value: a number, so much per rating, or a formula shown only', () => {
   expect(bonusValue({ value: 2 }, 3)).toBe(2)
 })
 
+test('what others get against the entry is never the runner’s: shown, not counted (owner decision 16, 2026-10-11)', () => {
+  const { data } = made({ data: d => give(d, 'crb.knack', fx('skill:perception', 'edge', '1', { affects: 'others' }), fx('attr:agi', 'add', '1', { affects: 'others' })) })
+  expect(effectBonuses(data, data.entry('qualities', 'crb.knack'))).toEqual([])
+  expect(effectText(fx('skill:perception', 'edge', '1', { affects: 'others' }))).toBe('others get: +1 Edge on Perception tests (affects others)')
+})
+
 test('the words for a level after the first, a value per rating and a removed band', () => {
   expect(effectText(fx('skill:stealth', 'add', 'R-1'))).toBe('+(rating − 1) Stealth dice')
   expect(effectText(fx('item:dv', 'add', 'R[1,1,2,2]'))).toBe('1/1/2/2 by rating Damage Value')
@@ -153,5 +159,5 @@ test('each bracketed bonus is named: its switch or condition, and a spell’s ca
   b.picks.push({ uid: 'p', kind: 'spells', id: 'crb.glow-ward' })
   expect(notesText(bracketNotes(b, data, 'agi')).split('\n').sort()).toEqual(['+1 Glow Ward (sustained, affects the caster)', '+1 Knack (in darkness)', '+2 Knack (wireless)'])
   expect(effectText(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))).toBe('sustained: +1 Agility (affects the caster)')
-  expect(effectNotes(b, data).map(x => x.text)).toContain('+1 Agility (in darkness)')
+  expect(effectNotes(b, data).map(x => x.text)).toContain('☐ +1 Agility (in darkness)')  // (a tick box on the sheet, owner 2026-10-11)
 })
