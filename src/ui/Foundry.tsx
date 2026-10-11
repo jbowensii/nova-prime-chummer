@@ -10,7 +10,13 @@ import { bookNpcs, bookSamples, readSample } from './samples'
 
 export const exportOpts = (descriptions: boolean): ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
 export const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
-export const runnersFileName = (now: Date) => `runners-${fileDate(now)}.ca2foundry.json`
+/** A file name's lead: one runner or NPC's street name (else name) as a slug, so several downloads tell apart; several
+ *  together are "runners-N". */
+export const runnersStem = (chs: { identity: { name: string; streetName: string } }[]) => {
+  const slug = chs.length === 1 ? (chs[0].identity.streetName || chs[0].identity.name).normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) : ''
+  return slug || (chs.length === 1 ? 'runner' : `runners-${chs.length}`)
+}
+export const runnersFileName = (now: Date, stem = 'runners') => `${stem}-${fileDate(now)}.ca2foundry.json`
 export const booksFileName = (now: Date) => `books-${fileDate(now)}.ca2foundry.json`
 
 /** Saves data as a .json download. */
@@ -21,7 +27,7 @@ export function downloadJson(name: string, data: unknown) {
 }
 /** One or more runners as a runners file. Runner descriptions are the amps' own text, always included. */
 export const downloadRunners = (c: Catalog, chs: Character[]) =>
-  downloadJson(runnersFileName(new Date()), exportRunners(c, chs, exportOpts(true)))
+  downloadJson(runnersFileName(new Date(), runnersStem(chs)), exportRunners(c, chs, exportOpts(true)))
 
 /** A GM's compendium as a books file of one book (marked compendium): its own text always, its NPCs, no table rules. */
 export const downloadCompendium = (c: Catalog, comp: Compendium) =>

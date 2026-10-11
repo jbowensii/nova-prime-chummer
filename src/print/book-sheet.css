@@ -18,7 +18,7 @@
 }
 .book-sheet .sheet-art { z-index: -1; }
 /* the art's veil in the paper's own colour, not white, so the book paper doesn't wash out to a flat white */
-.book-sheet .sheet-art::after { background: radial-gradient(ellipse at 50% 50%, rgb(245 243 238 / calc(0.93 - 0.58 * var(--art))) 40%, rgb(245 243 238 / calc(0.82 - 0.57 * var(--art))) 100%); }
+.book-sheet .sheet-art::after { background: radial-gradient(ellipse at 50% 50%, rgb(245 243 238 / calc((0.93 - 0.58 * var(--art)) * 0.5)) 40%, rgb(245 243 238 / calc((0.82 - 0.57 * var(--art)) * 0.5)) 100%); }
 /* and the same wash behind the text blocks (sheet.css) */
 .b-head, .b-attrs, .b-essence, .b-paper > section, .b-foot > section {
   --wash: rgb(245 243 238 / calc(0.6 * var(--art)));

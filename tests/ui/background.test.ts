@@ -49,7 +49,7 @@ test('the strength slider only fades the art: 100% is the clamped strength above
 test('the sheet’s own background art keeps the sheet’s ink readable at every strength, and is off in print unless asked', () => {
   // 0.8.1: the art fades in with the strength under a veil that thins as it rises, and the text blocks keep a wash of paper
   const sheet = readFileSync('src/print/sheet.css', 'utf8'), sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
-  const veils = [...sa.matchAll(/rgb\(255 255 255 \/ calc\(([\d.]+) - ([\d.]+) \* var\(--art\)\)\)/g)].map(m => [Number(m[1]), Number(m[2])])
+  const veils = [...sa.matchAll(/rgb\(255 255 255 \/ calc\(\(([\d.]+) - ([\d.]+) \* var\(--art\)\) \* ([\d.]+)\)\)/g)].map(m => [Number(m[1]) * Number(m[3]), Number(m[2]) * Number(m[3])])
   const wash = Number(sa.match(/--wash: rgb\(255 255 255 \/ calc\(([\d.]+) \* var\(--art\)\)\)/)![1])
   const k = Number(sa.match(/filter: contrast\(([\d.]+)\)/)![1])
   expect(veils).toHaveLength(2)
@@ -58,7 +58,7 @@ test('the sheet’s own background art keeps the sheet’s ink readable at every
   for (let i = 0; i <= 20; i++) {
     const t = i / 20
     const art = Math.max(...veils.map(([a, b]) => t * (1 - (a - b * t)))) * (1 - wash * t) // how much of the image shows behind text
-    expect(art).toBeLessThanOrEqual(0.31)
+    expect(art).toBeLessThanOrEqual(0.36) // 0.13.1: the veil halved so the art shows; the ink checks below are the real floor
     const bg = [255, 255, 255].map(v => v * (1 - art) + 0.5 * (1 - k) * 255 * art) // a black image, flattened
     for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
       expect(ratio(s(name), bg), `--s-${name} at ${t * 100}%`).toBeGreaterThanOrEqual(min)
