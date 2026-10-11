@@ -259,3 +259,18 @@ test('U24, U31: an expertise with skill points is cited as the book’s discrepa
   expect(codes()).toContain('rules.assumed')
   expect(v().find(x => x.code === 'rules.assumed')?.message).toMatch(/assumed: 2019 printing/)
 })
+
+test('23, L1, 0 (verified): metatype traits never count toward the six in any method; one level of play; Karma to nuyen and back', () => {
+  for (const method of ['priority', 'pointbuy', 'lifepath'] as const) {
+    const { ch, data, cr } = setup({ qualityMaxCount: 1 })
+    ch.build = buildOf(method, { letters: method === 'priority' ? 'ACDBE' : undefined, metatype: STONE })
+    ch.build.qualities = [{ uid: 't1', id: 'crb.stoneskin', level: 1, free: true }, { uid: 't2', id: 'crb.lucky-streak', level: 1, free: true },
+      { uid: 'q', id: 'crb.knack', level: 1 }]
+    expect(validateSr6(data, cr, ch).map(x => x.code), method).not.toContain('quality.maxCount')
+  }
+  const levels = setup({ levelStreet: true, levelSwcElite: true, levelPrime: true }).cr
+  expect(['levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite'].filter(k => levels.get(k)?.value === true)).toHaveLength(1)
+  const { b, act } = setup()
+  expect([act({ op: 'karmaToNuyen', delta: 2 }), act({ op: 'karmaToNuyen', delta: -2 }), act({ op: 'karmaToNuyen', delta: -1 })]).toEqual([ok, ok, no('below-zero')])
+  expect(b.karmaToNuyen).toBe(0)
+})
