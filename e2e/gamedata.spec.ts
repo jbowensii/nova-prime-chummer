@@ -135,12 +135,27 @@ for (const [game, path, kind, category, book, main, other, otherMain] of [
     await page.reload()
     await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toBeVisible()
 
+    // the link is in the header of every page (here the runner list), and Game data has its own button at the top
+    await page.goto(game === 'Anarchy' ? '/#/' : '/#/sr6')
+    await expect(page.getByRole('heading', { name: 'Your runners', level: 1 })).toBeVisible()
+    await foundryLink(page).click()
+    await expect(page).toHaveURL(/\/data\/foundry$/)
+    await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toBeVisible()
+    await page.goto(path)
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toBeHidden()
+    await page.getByRole('link', { name: 'Export to Foundry VTT' }).click()
+    await expect(page.getByRole('region', { name: 'Export book data for Foundry' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Export book data for Foundry' })).toBeInViewport()
+    await page.screenshot({ path: `${SHOTS}/${slug}-foundry-button.png` })
+
     const ctx = await browser.newContext({ baseURL: base, storageState: anarchyState(base), viewport: DESK })
     const player = await ctx.newPage()
     await signIn(player, path, 'pat')
     await expect(player.getByRole('heading', { name: 'Game data', level: 1 })).toBeVisible()
     await expect(foundryLink(player)).toHaveCount(0)
     await expect(player.locator('#foundry-export')).toHaveCount(0)
+    await expect(player.getByRole('link', { name: 'Export to Foundry VTT' })).toHaveCount(0)
     await ctx.close()
   })
 }

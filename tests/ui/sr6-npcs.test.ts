@@ -6,7 +6,7 @@ import { bookNpc, bookNpcVersions, byPublication } from '../../src/sr6/engine/np
 import type { Sr6Catalog } from '../../src/sr6/model/types'
 import { SR6_NPC_KINDS } from '../../src/sr6/model/character'
 import { npcSection, sr6NpcsHref } from '../../src/sr6/ui/editor'
-import { bookNpcsToLoad, byRating, npcChip, npcGroups, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
+import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcChip, npcGroups, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()
@@ -124,4 +124,17 @@ test('the list groups grunts by Professional Rating, spirits by Force and sprite
     ['Grunts, Professional Rating 2', ['Goon', 'Goon B']], ['Grunts, Professional Rating 4', ['Boss']],
     ['Grunts, no Professional Rating', ['Odd']], ['Contacts', ['Fred']], ['Critters', ['Fuzz']],
     ['Spirits, Force 2', ['Puddle']], ['Spirits, Force 4', ['Wisp']], ['Sprites, Level 3', ['Glitch']]])
+})
+
+test('the Professional Rating picker: the ratings grunts have, lowest first; a rating leaves out contacts and critters; grunts stay on top', () => {
+  const named = (ch: ReturnType<typeof blankSr6Npc>, name: string) => { ch.identity.streetName = name; return { ch } }
+  const rows = [named(blankSr6Npc('contact'), 'Fred'), named(npcFromEntry(c.entries.npcs.get('crb.lot-boss')!), 'Boss'), named(blankSr6Npc('critter'), 'Fuzz'),
+    named(npcFromEntry(c.entries.npcs.get('crb.corner-goon')!), 'Goon'), named(blankSr6Npc('grunt'), 'Odd'), named(blankSr6Npc('spirit', 2), 'Puddle')]
+  expect(gruntRatings(rows)).toEqual([2, 4])
+  expect(atRating(rows, '').length).toBe(rows.length)
+  expect(atRating(rows, '2').map(r => r.ch.identity.streetName)).toEqual(['Goon'])
+  expect(atRating(rows, '4').map(r => r.ch.identity.streetName)).toEqual(['Boss'])
+  expect(atRating(rows, '5')).toEqual([])
+  // the Contacts group is listed before the Critters; Grunts first of all, however the rows came
+  expect(npcGroups([...rows].reverse()).map(([label]) => label)[0]).toMatch(/^Grunts/)
 })
