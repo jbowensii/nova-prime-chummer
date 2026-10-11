@@ -170,6 +170,71 @@ the new effect kinds (install it with this).
   module needs no change (it keys documents by the entry id and reads the rating from `values.rating`). A re-imported
   book adds the per-level items beside any older rated ones (the module never deletes).
 
+## Unreleased: Anarchy sample runners from a fresh import, owner rulings on the unreferenced rules, one entry per level
+
+**Re-import the Anarchy books** (Books → **Re-import all**) to get them: the sample runners, the core effect table and
+the per-level entries are written at import.
+
+**Shadowrun Anarchy**
+- Sample runners read the same in any import order: a book that adds skills, amp types or effects (or the core) has the
+  other books' sample runners read again (the pregens booklet read before the Conversion Guide lost its technomancers'
+  Tasking).
+- A sample's Equipment amp printed without a gear line brings its own item, as the book's Equipment Amps cost the item
+  and the upgrades (CRB p.144) and a catalog amp does in the app. A "(Quality)" with a deck's Firewall – Attack is a
+  Cyberdeck (p.62); a "(Quality)" its equipment list also prints is an Equipment amp on that item (p.60). An amp named as
+  the books' catalog amp of its type may carry the effects that entry prints (a sample's Jazz, p.150).
+- Sample runners, the readings 0.5.6 dropped where the books support them (no approval written in the file): a printed
+  limitation ("only", "first interaction", a drug's comedown) where the rules price the amp 1–5 above its printed rating
+  is that Negative effect (p.61): the book's own, so Review needs no GM approval for it while the amp rates as printed
+  (owner, 2026-10-11; a player's own negative effect, or one on a sample amp changed since, still does); a drone's or vehicle's own front-facing mount takes its first weapon (p.60,
+  p.241); a shamanic mask is the Awakened amp's −1 (p.169, a new core effect); "+1 Edge per hacking scene in VR" is
+  Initiative limited to VR; an armor row "(+1)" / "(2+1)" is an add-on over the armor above, bought for its own points
+  (DHSA p.14); a branded commlink where the list has no plain one is the free commlink (p.85); gear an implant prints as
+  "Integrated …" is part of it.
+- Review: an effect one of the books' add-ons for a type prints is one that type may carry (DHSA's cyberdeck
+  "Response increase" mods, Initiative in VR, p.19).
+- On a fresh import of the eight books, in either order, the 28 sample runners show 3 Review errors (27 at 0.12.0),
+  each the booklet's own: Keran's Cracking without a deck, Noonchi and Ty over budget.
+- One entry per level (owner, 2026-10-11): an entry Daegann's list prints with several levels is one catalog entry per
+  level, each with its own rating and effects. Freefall 1–3, Secret Room 1–5 (the player notes which upgrade each point
+  went to), Secure safe 1–2 (the gear stays; its levels are Equipment amps), and the add-ons Attack +1…+5 and Firewall
+  +1…+4 (cyberdecks), Additional Autosofts +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical
+  additional drone +1…+2 (vehicles), and Improved home-automation host +1…+3 (DHSA p.16: a lifestyle add-on, Firewall
+  up to 5 from Low's 2; it wasn't imported before): 10 families, 36 entries. A level's rating is what the book prints
+  for it ("up to level 3 for 15,000¥"); an add-on's level is the add-on taken that many times.
+  - The lowest level keeps the entry's id, so runners, GM edits and Foundry entries made on it stay on it; the other
+    levels are new entries after it.
+  - The amp picker lists a family's levels together ("Level 2 (1–3)"), as does Game data; the Amp Builder has a
+    **Level** select for a book amp printed with levels, so a runner steps to the next level (after Finalize the
+    change is priced and logged like any edit). An add-on applied before is still the book's on Review.
+  - Two ranges have no top and stay one entry; the player sets the level: Enhanced Perception "3+" (one more
+    Additional narrative effect, a sense, per extra rating: 15,000¥ at 3, +5,000¥ each) and Additional plates
+    "max +Body" (applied once per point). The Amp Builder no longer offers an add-on or effect that would take a
+    vehicle's Armor above its Body, an effect past its max or a deck's Firewall past 5.
+  - Psyché's "Rating 10 for characters unable to cast spells" (CRB p.150, DHSA p.26) is its own entry, "Psyché
+    (non-caster)", at 10 without the sustained spell.
+  - Vehicle add-ons that only say what they improve in their text are read as that effect: Additional Autosofts adds
+    Pilot, Engine Customization Speed, Smart Suspension Handling (they were narrative effects at the same rating).
+  - The Foundry export gives each level `family` and `level`.
+  - The Amp Builder's Negative effect is picked like the positive ones: five picks, "Negative effect (−1)" … "(−5)",
+    each its own row with its value (no number box); the menu says a player's needs GM approval (p.61). A book's own
+    drawback (a catalog amp's, a book sample's as printed) still needs none.
+- Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
+  Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
+  or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer
+  in Foundry VTT).
+- Owner rulings (2026-10-10) on the rules no book states:
+  - an amp may rate below 0 and gives nuyen back, with no GM approval; a book add-on rates as its effects alone
+    (DHSA's Removed Manual Controls −1, was 0);
+  - a custom specialization needs no GM approval (CRB p.52);
+  - weapon focus has no max; mental armor is no general effect, only adept powers (Astral Armor) and a cyberdeck's
+    Biofeedback filter carry it, as printed;
+  - removing an amp effect is priced as replacing it with nothing (p.84): its cost comes back;
+  - the SINner rule (free, never the first Quality) is a Table setup switch, on by default, labelled House rule; a runner
+    may set its own on Review unless the GM locks it;
+  - one free native language stays, labelled a house rule; a skill at 4+'s free knowledge entry starts as
+    "Knowledge of <Skill>".
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers

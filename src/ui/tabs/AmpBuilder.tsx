@@ -2,7 +2,7 @@
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 // A string catalog is the save button's label (a compendium's).
 import { useState } from 'react'
-import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, ruleHelp, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, levelsOf, overCap, ruleHelp, vehicleStats } from '../../engine'
 import { EffectHow, TestSelect } from '../EffectHow'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
@@ -22,11 +22,24 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
   const legal = legalEffects(c, amp)
   const set = (patch: Partial<AmpEntry>) => setAmp(a => ({ ...a, ...patch }))
   const setFx = (i: number, patch: Partial<EffectPick>) => set({ effects: amp.effects.map((e, j) => (j === i ? { ...e, ...patch } : e)) })
-  const addFx = (ref: string) => { if (ref) set({ effects: [...amp.effects, { ref }] }); setPickFx('') }
+  // the Negative effect is picked at its value, five picks like the positive effects (owner, 2026-10-11): "negative:2"
+  const addFx = (pick: string) => {
+    const [ref, value] = pick.split(':')
+    if (ref) set({ effects: [...amp.effects, value ? { ref, value: Number(value) } : { ref }] })
+    setPickFx('')
+  }
   // since Finalize the build's price is what counts: a lower rating gives its nuyen back
   const change = before ? (rating - ampRating(c, before, ctx)) * c.pricing.ampPoint : 0
   const mods = [...c.amps.values()].filter(t => t.mod && t.type === amp.type)
   const vs = amp.type === 'vehicle' ? vehicleStats(c, amp) : undefined
+  // a book entry printed with levels (engine/levels.ts): step to another level of it, its effects and rating
+  const tpl = amp.catalogId ? c.amps.get(amp.catalogId) : undefined
+  const levels = levelsOf(c, tpl?.family)
+  const toLevel = (id: string) => {
+    const t = c.amps.get(id)
+    if (t && tpl) setAmp(a => ({ ...a, catalogId: t.id, snapshot: t, effects: t.effects.map(e => ({ ...e })),
+      name: a.name === tpl.name ? t.name : a.name, narrative: a.narrative === tpl.narrative ? t.narrative : a.narrative }))
+  }
 
   const paramInput = (e: EffectPick, i: number) => {
     const def = c.ampEffects.get(e.ref)
@@ -52,7 +65,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
         <select value={e.param ?? ''} onChange={x => setFx(i, { param: x.target.value })} aria-label="Realm">
           <option value="">Choose…</option><option value="physical">Physical</option><option value="astral">Astral</option><option value="vr">Virtual reality</option>
         </select>)
-      case 'value': return <input type="number" min={1} max={5} value={e.value ?? 1} onChange={x => setFx(i, { value: Math.max(1, Math.min(5, Number(x.target.value))) })} aria-label="Points" style={{ width: '4rem' }} />
+      case 'value': return e.ref === 'negative' ? null : <input type="number" min={1} max={5} value={e.value ?? 1} onChange={x => setFx(i, { value: Math.max(1, Math.min(5, Number(x.target.value))) })} aria-label="Points" style={{ width: '4rem' }} />
       case 'text': return <input value={e.param ?? ''} onChange={x => setFx(i, { param: x.target.value })} placeholder="Describe it" aria-label="Description" />
       case 'test': return <TestSelect c={c} build={build} value={e.param} onChange={param => setFx(i, { param })} />
       default: return e.note ? <span className="muted">{e.note}</span> : null
@@ -66,6 +79,13 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
       <div className="grid2">
         <label>Name<input autoFocus value={amp.name} onChange={e => set({ name: e.target.value })} /></label>
         <label>Type<input value={type?.name ?? amp.type} disabled /></label>
+        {levels.length > 1 && !catalog && (
+          <label>Level
+            <select value={amp.catalogId} onChange={e => toLevel(e.target.value)}>
+              {levels.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+        )}
         {amp.type === 'vehicle' && (
           <label>Chassis
             <select value={amp.vehicle ?? ''} onChange={e => set({ vehicle: e.target.value })}>
@@ -92,7 +112,7 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
           const def = c.ampEffects.get(e.ref)
           return (
             <div className="fx" key={i}>
-              <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}{e.unpriced && <span className="muted">(unpriced by the rating)</span>}</span>
+              <span title={ruleHelp(c, e.ref)} className={ruleHelp(c, e.ref) ? 'has-help' : undefined}>{def?.name ?? e.ref}{e.ref === 'negative' && ` (−${e.value ?? 1})`} {e.note === 'book drawback' && <span className="muted">(book drawback)</span>}{e.unpriced && <span className="muted">(unpriced by the rating)</span>}</span>
               <span className="row">{paramInput(e, i)}{rccValue(e, i)}<EffectHow e={e} onChange={patch => setFx(i, patch)} /><button className="btn small quiet" onClick={() => set({ effects: amp.effects.filter((_, j) => j !== i) })} aria-label={`Remove ${def?.name}`}>Remove</button></span>
               <span className={`r${applies(e) ? '' : ' muted'}`}>{signed(effectRating(c, e)).replace('¥', '')}</span>
             </div>
@@ -103,11 +123,15 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
         <option value="">+ Add an effect…</option>
         {[...new Set(legal.map(l => l.effect.category))].map(cat => (
           <optgroup key={cat} label={cat[0].toUpperCase() + cat.slice(1)}>
-            {legal.filter(l => l.effect.category === cat).map(l => (
-              <option key={l.effect.id} value={l.effect.id} disabled={!l.allowed}>
-                {l.effect.name} ({l.effect.id === 'negative' ? '−1 to −5, GM approval' : signed(l.effect.rating).replace('¥', '')}){l.reason ? `: ${l.reason}` : ''}
-              </option>
-            ))}
+            {legal.filter(l => l.effect.category === cat).flatMap(l => l.effect.id === 'negative'
+              // a drawback the player adds needs the GM's approval (CRB p.61); a book's own (a sample's, a catalog amp's) doesn't
+              ? [1, 2, 3, 4, 5].map(n => (
+                <option key={`negative:${n}`} value={`negative:${n}`} disabled={!l.allowed}>
+                  {l.effect.name} (−{n}): needs GM approval (p.61){l.reason ? `: ${l.reason}` : ''}
+                </option>))
+              : [<option key={l.effect.id} value={l.effect.id} disabled={!l.allowed}>
+                {l.effect.name} ({signed(l.effect.rating).replace('¥', '')}){l.reason ? `: ${l.reason}` : ''}
+              </option>])}
           </optgroup>
         ))}
       </select>
@@ -115,7 +139,11 @@ export function AmpBuilder({ initial, before, build, onSave, onCancel, catalog, 
       {mods.length > 0 && (
         <select value="" onChange={e => { const m = c.amps.get(e.target.value); if (m) setAmp(a => applyMod(a, m)) }} aria-label="Apply a book add-on">
           <option value="">+ Apply a book add-on ({mods.length})…</option>
-          {mods.map(m => <option key={m.id} value={m.id}>{m.name} ({m.printedRating != null && m.printedRating >= 0 ? '+' : ''}{m.printedRating}){m.narrative ? `: ${m.narrative.slice(0, 70)}` : ''}</option>)}
+          {mods.map(m => {
+            // an add-on that would take the amp past a cap (Attack 5, Armor up to the vehicle's Body) isn't offered
+            const over = overCap(c, applyMod(amp, m)), was = overCap(c, amp)
+            return <option key={m.id} value={m.id} disabled={!!over && !was}>{m.name} ({m.printedRating != null && m.printedRating >= 0 ? '+' : ''}{m.printedRating}){over && !was ? `: ${over}` : m.narrative ? `: ${m.narrative.slice(0, 70)}` : ''}</option>
+          })}
         </select>
       )}
       {vs && <p style={{ margin: 0 }}>{vs.count > 1 ? `${vs.count}× ` : ''}{vs.chassis}: Pilot {vs.pilot}, Body {vs.body}, Handling {vs.handling}, Speed {vs.speed}{vs.flying ? ' (flying)' : ''}, Armor {vs.armor}. Weapon mount: {vs.mount}.</p>}

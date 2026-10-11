@@ -5,15 +5,16 @@
 import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
 import type { Catalog, Rule } from '../model/types'
-import type { TableFlags } from '../engine'
+import { FREE_SINNER, type TableFlags } from '../engine'
 import { newId } from '../model/types'
 import { canEdit, send, useMe } from './auth'
 import { Modal } from './bits'
 import { useRepo } from './repo'
 import { SourceLabel } from './SourceLabel'
 
-/** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. */
-export interface TableRule { id: string; on: boolean; name?: string; text?: string }
+/** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. locked: the
+ *  GM's switch binds every runner (no switch of its own on the Review tab). */
+export interface TableRule { id: string; on: boolean; locked?: boolean; name?: string; text?: string }
 
 /** The table rules as saved; [] when none are saved yet (or there is no server). */
 export async function loadTableRules({ strict = false } = {}): Promise<TableRule[]> {
@@ -32,24 +33,38 @@ export async function loadTableRules({ strict = false } = {}): Promise<TableRule
   }
   return [...doc.documentElement.children].filter(e => e.localName === 'rule').map(e => {
     const name = e.getElementsByTagName('name')[0]?.textContent ?? undefined
-    return { id: e.getAttribute('id') ?? '', on: e.getAttribute('on') === 'true', ...name ? { name, text: e.getElementsByTagName('text')[0]?.textContent ?? '' } : {} }
+    return { id: e.getAttribute('id') ?? '', on: e.getAttribute('on') === 'true', ...e.getAttribute('locked') === 'true' ? { locked: true } : {}, ...name ? { name, text: e.getElementsByTagName('text')[0]?.textContent ?? '' } : {} }
   })
 }
 
 /** The app's own switches, kept with the table rules by id (no name): on until the GM switches them off. */
-const APP_RULES = [
+export const APP_RULES = [
   { id: 'ca2.non-canon', flag: 'nonCanon', name: 'Non-canon content allowed',
     text: 'Published material that isn’t the official rules, marked Non-canon in the pickers. When off, a runner’s Review tab flags any it uses.' },
   { id: 'ca2.real-sin', flag: 'realSin', name: 'Real SINs allowed',
-    text: 'Not a core rule: every runner already has a fake SIN. A player gives their runner a real SIN by adding the SINner quality on the Shadow Amps tab; a free Real SIN entry comes with it on the Gear tab. House rule: a SINner is always free and never counts as the first Quality. When off, a runner’s Review tab flags a real SIN.' },
+    text: 'Not a core rule: every runner already has a fake SIN. A player gives their runner a real SIN by adding the SINner quality on the Shadow Amps tab; a free Real SIN entry comes with it on the Gear tab. When off, a runner’s Review tab flags a real SIN.' },
 ] as const
 
-/** The switches as the rule checks read them. */
-export const tableFlags = (saved: TableRule[]) =>
-  Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])) as unknown as TableFlags
+/** The app's house rules: on until the GM switches them off; like a book's optional rule, a runner may set its own
+ *  (Review tab) unless the GM locks it. */
+export const HOUSE_RULES = [
+  { id: FREE_SINNER, name: 'SINner free, never the first Quality',
+    text: 'House rule (not in the books): the SINner quality costs nothing and never counts as the first Quality, so the next Quality is still the free first one. When off, a SINner is priced like any Quality.' },
+] as const
 
-/** The rules switched on, as the export writes them (the app's own switches aren't rules). */
-export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.filter(r => r.on && !APP_RULES.some(a => a.id === r.id))
+/** The switches as the rule checks read them: the app's own, and the books' optional rules switched on (and the ones locked). */
+export const tableFlags = (saved: TableRule[]) => {
+  const books = saved.filter(r => r.name === undefined && !APP_RULES.some(a => a.id === r.id) && !HOUSE_RULES.some(h => h.id === r.id))
+  const sinner = saved.find(r => r.id === FREE_SINNER)
+  return {
+    ...Object.fromEntries(APP_RULES.map(a => [a.flag, saved.find(r => r.id === a.id)?.on ?? true])),
+    optional: books.filter(r => r.on).map(r => r.id), locked: [...books, ...sinner ? [sinner] : []].filter(r => r.locked).map(r => r.id),
+    freeSinner: sinner?.on ?? true,
+  } as unknown as TableFlags
+}
+
+/** The rules switched on, as the export writes them (the app's own switches and house rules aren't rules). */
+export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.filter(r => r.on && !APP_RULES.some(a => a.id === r.id) && !HOUSE_RULES.some(h => h.id === r.id))
   .flatMap(r => r.name !== undefined ? [{ name: r.name, text: r.text ?? '' }]
     : c.rules.has(r.id) ? [{ name: c.rules.get(r.id)!.title, text: c.rules.get(r.id)!.text }] : [])
 
@@ -57,16 +72,29 @@ export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.fil
 export const seeds = (c: Catalog) => [...c.rules.values()].filter(r => r.sheet === 'optional')
 
 /** One row as shown: a seed (its catalog entry) or a house rule. */
-type Row = { id: string; on: boolean; name: string; text: string; rule?: Rule; app?: true }
+type Row = { id: string; on: boolean; locked?: boolean; name: string; text: string; rule?: Rule; app?: true; house?: true }
 function rows(c: Catalog, saved: TableRule[]): Row[] {
   const on = new Map(saved.map(r => [r.id, r]))
   return [...APP_RULES.map(a => ({ id: a.id, on: on.get(a.id)?.on ?? true, name: a.name, text: a.text, app: true as const })),
-    ...seeds(c).map(rule => ({ id: rule.id, on: !!on.get(rule.id)?.on, name: rule.title, text: rule.text, rule })),
+    ...HOUSE_RULES.map(h => ({ id: h.id, on: on.get(h.id)?.on ?? true, locked: !!on.get(h.id)?.locked, name: h.name, text: h.text, app: true as const, house: true as const })),
+    ...seeds(c).map(rule => ({ id: rule.id, on: !!on.get(rule.id)?.on, locked: !!on.get(rule.id)?.locked, name: rule.title, text: rule.text, rule })),
     ...saved.filter(r => r.name !== undefined).map(r => ({ id: r.id, on: r.on, name: r.name!, text: r.text ?? '' }))]
 }
 
+/** The hover text of a rule's switch, in plain English: what it does, then where it comes from (the book and page, or "house
+ *  rule"). A real import leaves a book rule's text empty (it is private), so the hover says where to read it. */
+export const ruleHelp = (c: Catalog, r: { name: string; text: string; rule?: Rule }) => {
+  const from = r.rule ? `${c.sources.get(r.rule.source)?.name ?? r.rule.source} p.${r.rule.page}` : 'house rule'
+  const what = r.text.trim() || (r.rule ? `An optional rule from the books (${r.name}). Switching it on plays it as the book describes it.` : `A house rule of this table (${r.name}).`)
+  return `${what} Source: ${from}.`
+}
+/** The Lock box beside a rule on Table setup. */
+export const LOCK_HELP = 'Locks this rule at the setting above for every runner at the table: the runner’s Review tab no longer lets them set their own. Unlocked, a runner may choose On or Off for themselves. Source: house rule.'
+/** The Native box beside a language on the Skills tab. */
+export const NATIVE_HELP = 'Marks the language this runner grew up with as their native language: it costs nothing, one per runner. The books price every language as a knowledge skill. Source: house rule.'
+
 const Cite = ({ c, row }: { c: Catalog; row: Row }) =>
-  <span className="muted">{row.rule ? <SourceLabel c={c} source={row.rule.source} page={row.rule.page} id={row.rule.id} /> : row.app ? 'App setting' : 'House rule'}</span>
+  <span className="muted">{row.rule ? <SourceLabel c={c} source={row.rule.source} page={row.rule.page} id={row.rule.id} /> : row.app && !row.house ? 'App setting' : 'House rule'}</span>
 const Text = ({ row }: { row: Row }) =>
   row.text ? <p>{row.text}</p> : row.rule ? <p className="muted">The description is in the book ({row.rule.source} p.{row.rule.page}).</p> : null
 
@@ -120,7 +148,7 @@ export function TableRulesManager({ c }: { c: Catalog }) {
     const now = rows(c, latest.current), next = change(now)
     // a book's rule whose book is gone keeps its switch, for when the book comes back
     const orphans = latest.current.filter(s => s.name === undefined && !now.some(r => r.id === s.id))
-    const rules = [...next.map(r => r.rule || r.app ? { id: r.id, on: r.on } : { id: r.id, on: r.on, name: r.name, text: r.text }), ...orphans]
+    const rules = [...next.map(r => r.rule ? { id: r.id, on: r.on, ...r.locked ? { locked: true } : {} } : r.app ? { id: r.id, on: r.on, ...r.locked ? { locked: true } : {} } : { id: r.id, on: r.on, name: r.name, text: r.text }), ...orphans]
     try {
       await send('table-rules', { rules }, 'PUT')
       latest.current = rules
@@ -134,6 +162,9 @@ export function TableRulesManager({ c }: { c: Catalog }) {
   })
   const toggle = (row: Row) => save(rs => rs.map(r => r.id === row.id ? { ...r, on: !r.on } : r),
     rs => `${row.name} is ${rs.find(r => r.id === row.id)?.on ? 'on' : 'off'}.`)
+  // a book's rule the GM locks binds every runner (Review tab: no switch of its own)
+  const lock = (row: Row) => save(rs => rs.map(r => r.id === row.id ? { ...r, locked: !r.locked } : r),
+    rs => `${row.name} is ${rs.find(r => r.id === row.id)?.locked ? 'locked: every runner plays it as set here' : 'unlocked: a runner may set its own'}.`)
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const t = editing!, name = t.name!.trim()
@@ -152,8 +183,9 @@ export function TableRulesManager({ c }: { c: Catalog }) {
       {all.length === 0 && <p className="muted">No optional rules yet: they come with the core rulebook’s import. Add a house rule of your own.</p>}
       <ul className="table-rules">
         {all.map(r => <li key={r.id}><div className="head">
-          <label className="switch"><input type="checkbox" role="switch" checked={r.on} onChange={() => void toggle(r)} /> <b>{r.name}</b></label>
+          <label className="switch" title={ruleHelp(c, r)}><input type="checkbox" role="switch" checked={r.on} onChange={() => void toggle(r)} /> <b>{r.name}</b></label>
           <Cite c={c} row={r} />
+          {(r.rule || r.house) && <label className="muted small" title={LOCK_HELP}><input type="checkbox" checked={!!r.locked} onChange={() => void lock(r)} aria-label={`Lock ${r.name}`} /> Lock (runners can’t set their own)</label>}
           {!r.rule && !r.app && <span className="row">
             <button className="btn small quiet" onClick={() => setEditing({ id: r.id, on: r.on, name: r.name, text: r.text })} aria-label={`Edit ${r.name}`}>Edit</button>
             <button className="btn small quiet" onClick={() => setRemoving(r)} aria-label={`Remove ${r.name}`}>Remove</button></span>}

@@ -46,6 +46,13 @@
             <xs:attribute name="path" type="xs:string" use="required"/>
           </xs:extension></xs:simpleContent></xs:complexType>
         </xs:element>
+        <!-- the runner's own switch for a book's optional rule (its rules id); it wins over the table's -->
+        <xs:element name="optionalRule" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:attribute name="id" type="xs:string" use="required"/>
+            <xs:attribute name="on" type="xs:boolean" use="required"/>
+          </xs:complexType>
+        </xs:element>
       </xs:sequence>
       <xs:attribute name="formatVersion" type="xs:positiveInteger" use="required"/>
       <xs:attribute name="id" type="xs:string" use="required"/>

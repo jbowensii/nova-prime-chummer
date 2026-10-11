@@ -29,7 +29,8 @@ export const text = (name: string, s: string | undefined) => (s ? `<${name}>${es
 
 // ---- catalog snapshots, written in the data files' own format ----
 export const effectXml = (e: EffectPick) => el('effect', { ref: e.ref, param: e.param, value: e.value, note: e.note, unpriced: e.unpriced, ...effectStateAttrs(e) })
-const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined, source: t.source, page: t.page },
+const templateXml = (t: AmpTemplate) => el('amp', { id: t.id, type: t.type, printedRating: t.printedRating, vehicle: t.vehicle, mod: t.mod || undefined,
+  family: t.family, level: t.level, source: t.source, page: t.page },
   text('name', t.name) + (t.item ? el('item', { kind: t.item.kind, specialist: t.item.specialist || undefined, armor: t.item.armor, dv: t.item.dv, ranges: t.item.ranges }) : '')
   + t.effects.map(effectXml).join('') + `<narrative>${esc(t.narrative)}</narrative>`)
 const catalogItemXml = (i: Item) => el('item', { id: i.id, kind: i.kind, specialist: i.specialist || undefined, armor: i.armor, dv: i.dv, ranges: i.ranges, category: i.category, source: i.source, page: i.page },
@@ -82,6 +83,7 @@ export function characterToXml(ch: Character, rev?: number): string {
       + (b.knowledgeHidden ?? []).map(key => el('knowledgeHidden', { key })).join('')),
     ch.career.length ? `<career>${ch.career.map(eventXml).join('')}</career>` : '',
     ...ch.overrides.map(o => el('override', { code: o.code, path: o.path }, esc(o.note))),
+    ...Object.entries(ch.optionalRules ?? {}).map(([id, on]) => el('optionalRule', { id, on: String(on) })),
   ].join('\n  ')
   const root = attrs({ formatVersion: FORMAT_VERSION, id: ch.id, rev, streetName: ch.identity.streetName, name: ch.identity.name, gender: ch.identity.gender,
     metatype: ch.identity.metatype, level: ch.level, package: ch.package, lifestyle: ch.identity.lifestyle, backdrop: ch.identity.backdrop,
@@ -247,6 +249,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
       },
       career: kid(r, 'career') ? each(kids(kid(r, 'career'), 'event'), readEvent, (e, i) => `career event ${i + 1} (${e.getAttribute('type') ?? 'no type'})`, fix) : [],
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: t(o) })),
+      ...kids(r, 'optionalRule').length ? { optionalRules: Object.fromEntries(kids(r, 'optionalRule').map(o => [o.getAttribute('id') ?? '', o.getAttribute('on') === 'true'])) } : {},
       updatedAt: s(r, 'updatedAt') ?? new Date().toISOString(),
     }
     if (s(b, 'mainArmor') !== undefined) ch.build.mainArmor = s(b, 'mainArmor')

@@ -3,7 +3,7 @@
 import type { Catalog, Item, ItemKind, Ref } from '../../model/types'
 import { canEdit, useMe } from '../auth'
 import { fmt, NonCanon } from '../bits'
-import { formulaText, itemPrice, type Formula } from '../../engine'
+import { formulaText, itemPrice, levelLabel, type Formula } from '../../engine'
 import type { BrowseKind, BrowseRow } from '../CatalogBrowser'
 import { GameDataPage } from '../GameData'
 import { EditButton, EditedMark, editState, useOpenEdit, type EditKind } from '../EditEntry'
@@ -41,7 +41,7 @@ export function browseKinds(c: Catalog): BrowseKind[] {
   return [
     { id: 'amps', label: 'Amps', rows: [...c.amps.values()].map(a => row(a, { group: c.ampTypes.get(a.type)?.name ?? a.type, text: a.narrative,
       marks: edited(a), action: <EditButton kind="amps" id={a.id} name={a.name} />, issues: a.issues,
-      details: [vals([['rating', a.printedRating], ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')]]), formulas(a)].filter(Boolean).join(' · ') })) },
+      details: [levelLabel(c, a), vals([['rating', a.printedRating], ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')]]), formulas(a)].filter(Boolean).join(' · ') })) },
     { id: 'ampeffects', label: 'Amp effects', rows: [...c.ampEffects.values()].map(e => row(e, { group: e.category,
       details: vals([['rating', e.rating], ['for', e.types.join(', ')], ['max', e.max]]) })) },
     ...ITEM_KINDS.map(([k, label]) => ({ id: k, label, rows: items.filter(i => i.kind === k).map(item) })),

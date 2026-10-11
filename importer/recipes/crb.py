@@ -41,7 +41,7 @@ from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     SKILLS, ATTRS, Mapper, attr, core, dv_num, fx_xml, item_effects, load_skills, parts as _parts, read_amp, reconcile, slug,
-    specialist, stated, unpriced_rows, weapon_base)
+    non_caster, specialist, stated, unpriced_rows, weapon_base)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
 SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
@@ -338,6 +338,11 @@ def amps_and_gear(md, mapper):
                     name = f"{name} Mentor Spirit {nxt[1].replace(',', '')}"
             amps.append(build_amp(mapper, name, atype, int(a.group("rating")), (a.group("wtype") or "").strip(),
                                   _cost(paren), rest, page))
+            nc = non_caster(rest, amps[-1]["fx"])
+            if nc:  # Psyche's "Rating 10 for characters unable to cast spells": its own entry (owner, 2026-10-11)
+                b, vfx = amps[-1], list(nc[1])
+                amps.append({**b, "id": b["id"] + "-non-caster", "name": f"{b['name']} (non-caster)", "rating": nc[0], "fx": vfx,
+                             "computed": reconcile(vfx, [], core()["base"][atype], nc[0])})
         # prose that rules named substances plain equipment ("**A** and **B** are always equipment")
         for m in re.finditer(r"\*\*([^*]+)\*\*(?: and \*\*([^*]+)\*\*)? (?:is|are) always equipment", text):
             gear += [{"name": n[:1].upper() + n[1:], "page": page, "category": title.capitalize(), "text": ""}
@@ -511,13 +516,17 @@ def sheet_amps(sheets, rows, rules):
 
 
 # The book's optional rules, the seeds of the app's Table rules (a GM switches them on): id, name, page. Names and pages
-# are facts; each description goes to the private texts. `where` finds it: ("box", title, first line) for a box, or
-# ("prose", pattern) for a paragraph of body text.
+# are facts; each description goes to the private texts. `where` finds it: ("box", title, first line) for a box,
+# ("title", title) for a box by its title alone, or ("prose", pattern) for a paragraph of body text.
 OPTIONAL = (
     ("optional-extended-social-tests", "Extended social tests", 139, ("box", "OPTIONAL RULES:", "EXTENDED SOCIAL TESTS")),
     ("optional-vehicle-damage-for-all", "Vehicle and drone damage for characters, critters and devices", 68,
      ("prose", re.compile(r"\boptionally\b.*\brules for vehi"))),
     ("optional-planning-pool", "Planning pool or personal Edge", 80, ("box", "PLANNING POOL", "OR PERSONAL EDGE?")),
+    # the box's two variations, which a table plays together or not at all here
+    ("optional-darker-and-more-lethal", "Darker and more lethal (worsening wound effects, longer natural healing)", 69,
+     ("title", "DARKER AND MORE LETHAL")),
+    ("optional-alternative-risk", "Alternative risk rules", 72, ("title", "ALTERNATIVE RISK RULES")),
 )
 
 
@@ -546,9 +555,10 @@ def optional_rules(md):
     """[(id, name, page, text)]: the optional rules; the page the book prints when it's found (else the known page) and
     its description ("" when not found)."""
     found = {(t, b[0].strip()): (p, _join(b[1:])) for p, t, b in boxes(md) if b}
+    titled = {t: (p, _join(b)) for p, t, b in boxes(md) if b}
     out = []
     for oid, name, page, where in OPTIONAL:
-        hit = found.get(where[1:]) if where[0] == "box" else _paragraph(md, where[1])
+        hit = found.get(where[1:]) if where[0] == "box" else titled.get(where[1]) if where[0] == "title" else _paragraph(md, where[1])
         out.append((oid, name, *(hit or (page, ""))))
     return out
 

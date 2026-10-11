@@ -1,6 +1,6 @@
 // 0.5.5 rules fixes and owner decisions (.extract/report/rules-validation.md): made-up catalog and runners only.
 import { test, expect } from 'vitest'
-import { ampRating, effectBlocked, isSinner } from '../../src/engine/amps'
+import { ampRating, effectBlocked, FREE_SINNER, isSinner, sinnerFree } from '../../src/engine/amps'
 import { derive, vehicleStats } from '../../src/engine/derive'
 import { blankCharacter } from '../../src/engine/file'
 import { price } from '../../src/engine/price'
@@ -34,16 +34,13 @@ test('"one realm" reductions: one per initiative level held (p.61)', () => {
   expect(codes(runner(one))).not.toContain('amp.initRealm')
 })
 
-test('an amp never rates below 0 without the GM: no creation credit (p.61)', () => {
+test('an amp may rate below 0 and gives nuyen back, with no GM approval (owner, 2026-10-10; p.61)', () => {
   const low = amp('q', 'quality', [])
   low.effects = [{ ref: 'negative', value: 4 }]
   const ch = runner(low)
-  expect(ampRating(cat, low, { isFirstQuality: true })).toBe(0) // made-up quality base 1, drawback -4
-  expect(price(cat, ch).amps).toBe(0)
-  expect(codes(ch)).toContain('amp.negativeRating')
-  ch.overrides = [{ code: 'amp.negativeRating', path: 'amps.q', note: 'GM: fine' }]
+  expect(ampRating(cat, low, { isFirstQuality: true })).toBe(-3) // made-up quality base 1, drawback -4
   expect(price(cat, ch).amps).toBe(-3 * cat.pricing.ampPoint)
-  expect(validate(cat, ch).find(v => v.code === 'amp.negativeRating')?.approved).toBe(true)
+  expect(codes(ch)).not.toContain('amp.negativeRating')
 })
 
 test('a cyberdeck’s Firewall is 5 at most (p.210-211)', () => {
@@ -119,3 +116,21 @@ test('a SINner given any effect, a narrative one too, is priced like any Quality
   // the catalog entry with exactly its own effects stays free
   expect(isSinner({ ...amp('s2', 'quality', []), catalogId: 'test2.sinner', name: 'Paper citizen' }, cat)).toBe(true)
 })
+
+test('the SINner house rule is a Table setup switch, on by default; a runner may set its own unless the GM locks it', () => {
+  const sin = { ...amp('sin', 'quality', []), name: 'SINner' }, lucky = amp('lucky', 'quality', [])
+  const ch = runner(sin, lucky), plain = runner(lucky)
+  const flags = (freeSinner?: boolean, locked = false) => ({ nonCanon: true, realSin: true, freeSinner, locked: locked ? [FREE_SINNER] : [] })
+  expect(sinnerFree(ch)).toBe(true)
+  expect(price(cat, ch, flags(true)).amps).toBe(price(cat, plain).amps)
+  // off at the table: the SINner is priced like any Quality and takes the first-Quality slot, so Lucky isn't free any more
+  const off = price(cat, ch, flags(false)).amps
+  expect(off).toBeGreaterThan(price(cat, plain).amps)
+  expect(off).toBe((ampRating(cat, sin, { isFirstQuality: true, freeSinner: false }) + ampRating(cat, lucky, { isFirstQuality: false })) * cat.pricing.ampPoint)
+  // the runner's own switch wins, unless the GM locked the rule
+  ch.optionalRules = { [FREE_SINNER]: true }
+  expect(sinnerFree(ch, flags(false))).toBe(true)
+  expect(sinnerFree(ch, flags(false, true))).toBe(false)
+  expect(price(cat, ch, flags(false, true)).amps).toBe(off)
+})
+

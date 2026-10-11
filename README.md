@@ -36,14 +36,16 @@ own API key), and you review its entries before they’re added.
 - **Lifestyles** (CRB p.166) adjust what each run pays.
 - **Knowledge & languages** in two lists on the Skills tab, A–Z unless you
   drag rows (or use their arrows) into your own order. Each keyword and each
-  skill at 4+ is a free entry (a skill’s can be renamed to anything related to
-  it); one language marked **Native** is free too; any other costs the knowledge
+  skill at 4+ is a free entry (a skill’s starts as “Knowledge of <Skill>” and can
+  be renamed to anything related to it); one language marked **Native** is free
+  too (a house rule); any other costs the knowledge
   price. **Hide** leaves an entry off the printed sheet.
 - **Starting gear.** Every runner carries a free commlink (with trodes) and a
   fake SIN (CRB p.85): rename and describe them, but they can’t be removed.
   A real SIN is the SINner quality (Shadow Amps tab): adding it brings a free
-  Real SIN entry on the Gear tab, removing it takes the entry away. House rule:
-  a SINner is always free and never counts as the first Quality. The GM allows
+  Real SIN entry on the Gear tab, removing it takes the entry away. House rule
+  (a Table setup switch, on by default; a runner may set its own on Review unless
+  the GM locks it): a SINner is free and never counts as the first Quality. The GM allows
   or refuses real SINs, and non-canon content, for the whole table on the
   Table setup page; Review flags a runner that uses what the table doesn’t allow.
 - **Saving.** Every change saves on its own; the bar says when (“All changes

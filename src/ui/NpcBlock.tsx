@@ -20,6 +20,8 @@ export function NpcBlock({ c, ch, d, className }: { c: Catalog; ch: Character; d
     <section className={`npc-block ${className ?? ''}`} aria-label="NPC">
       <h2>NPC</h2>
       <p><b>{KIND[n.kind]}</b>, {n.tier} NPC{regular ? '. No Edge.' : <>. Edge <b>{d.edge}</b>.</>}</p>
+      {regular && (d.initiative ?? d.switched?.initiative) && <p>Without Edge (CRB p.81): its initiative enhancement’s Edge is one more
+        action per combat instead; an amp’s special effect for Edge works once per combat, free.</p>}
       {n.fightingSpirit && <p>Fighting spirit: <b>{n.fightingSpirit[0].toUpperCase() + n.fightingSpirit.slice(1)}</b>. {SPIRIT[n.fightingSpirit]}.</p>}
       {regular ? <>
         <p>Average hits (pool in dice, skill rating + attribute, Risk Reduction):</p>

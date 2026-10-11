@@ -20,8 +20,13 @@ test('the importer’s sample XML reads as a character', () => {
   expect([ch.id, ch.origin, ch.identity.streetName, ch.identity.metatype]).toEqual(['pregens.test-face', 'PREGENS', 'Test Face', 'elf'])
   expect(ch.build.attributes).toEqual({ str: 2, agi: 3, wil: 3, log: 3, cha: 4 })
   expect(ch.build.skills.find(s => s.id === 'electronics')?.specs).toEqual(['custom:Mystery trick'])
-  // as printed: no drawback made up, no override, the free starting gear is the app's (it takes the printed Fake SIN and Commlink)
-  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' }])
+  // its printed limitation is the Negative effect the printed rating took off (CRB p.61): the book's own, as printed, so no
+  // GM approval (owner, 2026-10-11); no override;
+  // the free starting gear is the app's (it takes the printed Fake SIN and Commlink)
+  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' },
+    { ref: 'negative', value: 1, note: 'RR 1 on Influence tests (first meeting only).' }])
+  expect(validate(cat, ch).filter(v => v.code === 'amp.negative')).toEqual([])
+  expect(ch.build.items.find(i => i.name === 'Padded coat and hat')).toMatchObject({ armor: 1, over: 'it-1' })
   expect(ch.overrides).toEqual([])
   expect(ch.build.amps.map(a => a.snapshot?.printedRating)).toEqual([4, 9, 4, 6, 0])
   expect(ch.narrative.dispositions).toEqual(['Smiles a lot, and then some more.', 'Never early.'])

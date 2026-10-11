@@ -125,7 +125,7 @@ One `<pricing>` element. All values are in nuyen.
 | spec, knowledge | per specialization and per knowledge skill |
 | ampPoint | cost per Shadow Amp rating point |
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
-| refundEffectRemoval | only for ledgers from before 0.5.5 (`amp-modify` events): `true` refunded rating lost when an amp effect was removed. Since 0.5.5 anything removed after Finalize gives its book price back |
+| refundEffectRemoval | only for ledgers from before 0.5.5 (`amp-modify` events): `true` refunded rating lost when an amp effect was removed. Since 0.5.5 removing an effect is priced as replacing it with nothing (CRB p.84: a replacement costs the difference): its cost comes back, at creation and after Finalize alike |
 
 A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
 holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The
@@ -242,7 +242,7 @@ These are the base chassis for vehicle amps.
 
 ### amps
 
-`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>*<formula/>*<issue/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod? family? level?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>*<formula/>*<issue/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -265,6 +265,44 @@ These are the base chassis for vehicle amps.
 - `mod="true"` marks an add-on (ammo, accessory, vehicle or deck mod,
   implant grade). It has no base rating: the Amp Builder appends its
   effects to an existing amp of the same `type`.
+- `family` and `level` (both or neither) mark one level of an entry the book prints with several (Levels, below).
+
+#### Levels
+
+Owner's rule (2026-10-11): an entry the book prints with several levels is one entry per level, otherwise duplicates of
+one another, each with its own rating and effects (positive or negative levels alike). The importer writes them
+(`importer/recipes/dhsa.py` `level_range`), reading the four ways Daegann's list prints a range:
+
+| the book prints | levels | each level |
+|---|---|---|
+| an add-on "Amp +1 … max +N" ("Max improvement +6"; "Max 3 identical drones": the core table's max for its one effect) | +1 … +N | the add-on taken that many times: its effects ×N, rating ×N; named "Attack +3" |
+| "can be taken up to level N" (Freefall) | printed rating … N | that rating; what it adds over the printed one is "Additional narrative effect"s; named "Freefall 2" |
+| a rating that "can be increased by 1 (max +N) for an additional Amp point" (Secret Room's threshold and maglock: they add up) | printed … printed + ΣN | as above; gear printed so (Secure safe) keeps its item and gets Equipment amps for levels 1 … ΣN |
+| an add-on "+1 (max rating N)" whose table prints where each entry starts ("Firewall rating is 2"): Improved home-automation host | +1 … N − the lowest start | as the add-on above (an add-on for the lifestyle Amps) |
+
+- The lowest level keeps the id the entry had (owner, 2026-10-11: edits, runners and links made on it stay on it);
+  the others get `<family>-level-<n>` (`-level-minus-<n>` below 0). `family` is that id (scoped like one,
+  `dhsa.freefall`), `level` the level (an add-on's: how many times it is taken, negative for a drawback add-on). The
+  levels follow each other in the file, lowest first, each with the description.
+- A range with no top level stays one entry, as printed, and the import report lists it (`kind="levels-open"`); the
+  player sets its level (owner, 2026-10-11). Enhanced Perception "3+" (CRB p.191, DHSA p.46): each extra rating is one
+  more "Additional narrative effect" (a sense) added in the Amp Builder, priced by the rating like any amp (15,000¥ at
+  3, +5,000¥ each). Additional plates "max +Body" (DHSA p.50): the add-on is applied once per point, and the Amp
+  Builder offers no add-on or effect that would take a vehicle's Armor above its Body (nor any past an effect's max or
+  a deck's Firewall 5: `overCap`, `effectBlocked` in `src/engine/amps.ts`).
+- A version the book prints for some characters is its own entry: "Note: Rating 10 (52,500¥) for characters unable to
+  cast spells" (Psyché, CRB p.150, DHSA p.26) is `<id>-non-caster`, "Psyché (non-caster)", at that rating without the
+  effects only a caster uses (the sustained spell).
+- The app: pickers list a family's levels together, each with "Level 2 (1–3)"; the Amp Builder has a Level select for a
+  book amp printed with levels (after Finalize the change is priced and logged as any edit). A runner saved before
+  holds the old id, now the lowest level, with its own effects. The Foundry export carries `family` and `level`.
+- `npm run validate:data` checks that `family` and `level` come together, that no two entries are the same level of a
+  family, and that an amp with a family's id is one of its levels.
+- The Amp Builder's own effect table is not split into entries: its "levels" (Firewall +1 up to 5, an RCC's drones)
+  are how a player builds their own amp, one amp with its rating computed. The Negative effect is picked at its value
+  like the positive effects (owner, 2026-10-11): five picks, "Negative effect (−1)" … "(−5)", each a row with its value
+  (the stored effect is `negative` with `value`); the menu says a player's needs GM approval (CRB p.61), and Review
+  asks for it, while a book's own (a catalog amp's, a book sample's as printed) needs none.
 
 ### lifestyles
 
@@ -310,11 +348,13 @@ critters and devices p.68, planning pool or personal Edge p.80: names and pages 
 The optional rules a GM (admin or editor) plays with, switched on and off on the Table setup page (`#/table`), plus house rules the GM
 writes. Written by the server (`PUT /api/table-rules`, admin and editors; atomic), schema `tablerules.xsd`, namespace
 `urn:chummer-anarchy2:config:1`; every signed-in user reads it at `/custom/table-rules.xml`, and players see the rules
-switched on there, read only. It lives in `custom/`, so backups carry it.
+switched on there, read only. It lives in `custom/`, so backups carry it. A book's rule may carry `locked="true"`: the
+GM's switch then binds every runner (the Review tab's own switch for it is disabled); otherwise a runner may set its own
+(`<optionalRule>` in the character file).
 
 ```xml
 <ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">
-  <rule id="crb.optional-extended-social-tests" on="true"/>          <!-- a book's optional rule, by its id -->
+  <rule id="crb.optional-extended-social-tests" on="true" locked="true"/>   <!-- a book's optional rule, by its id; locked: the GM's choice binds every runner -->
   <rule id="house-3f2a9c01b2d4" on="true"><name>…</name><text>…</text></rule>   <!-- a house rule -->
 </ca2:tablerules>
 ```
@@ -381,14 +421,28 @@ The numbers the book prints for each runner are report rows in
 `status`).
 
 How a stat page becomes a runner (0.5.6): as printed (the owner's rule). Each amp keeps its printed type, the effects
-its lines read (an effect its type can't take too: Review flags it; a line no effect reads stays the amp's text) and
-its printed rating on its snapshot; nothing is added, dropped or retyped to meet that rating. Every printed item is
-bought as printed (a branded commlink too; the app makes a plain "Commlink" and "Fake SIN" its free starting gear
-when it loads the runner); an armor row "(2+1)" or "(+1)" is an armor of that total. An Equipment amp is linked to the
-printed item of its name (or the one with most words in common); with none printed, none is made up. A spec rolled
+its lines read (an effect its type can't take too: Review flags it, unless the books' catalog amp of that name and type
+prints it, like a sample's Jazz; a line no effect reads stays the amp's text) and its printed rating on its snapshot;
+nothing is added, dropped or retyped to meet that rating. Two printed types are read by the book's rules instead: a
+"(Quality)" with a deck's Firewall – Attack is a Cyberdeck (CRB p.62), and a "(Quality)" the equipment list also prints
+is an Equipment amp on that item (CRB p.60). What the page prints is read by the book's rules too: a printed
+limitation ("only", "first interaction", a drug's comedown) where the rules price the amp 1 to 5 above its printed
+rating is that Negative effect (CRB p.61), noted with the printed line. Review accepts it with no GM approval while the
+amp rates as its book prints it (owner, 2026-10-11), or when the books' catalog amp of that name prints the same
+drawback; a player's own negative effect, or one on a sample amp changed since, still needs the GM (p.61); a vehicle's or drone's own
+front-facing mount takes its first weapon (CRB p.60, p.241; a storage rail is an Enhanced weapon mount); a shamanic
+mask is the Awakened amp's -1 (CRB p.169, the core's `awk-shamanic-mask`). Every printed item is bought as printed
+(the app makes a plain "Commlink" and "Fake SIN" its free starting gear when it loads the runner), except: a branded
+commlink where the list prints no plain one is the runner's free commlink (`starting="commlink"`, CRB p.85), gear an
+implant prints as "Integrated …" is part of that implant, and an armor row "(+1)" or "(2+1)" after the armor of 2 is
+an add-on worn over it, bought for its own points (`over`; DHSA p.14 prices a ballistic mask +1). An Equipment amp is linked to the
+printed item of its name (or the one with most words in common); with none printed, the amp brings its own, a gear
+item of its name, as the book's Equipment Amps cost the item and the upgrades (CRB p.144) and a catalog amp brings its
+item in the app. A book that adds a skill, an amp type or effect (or the core) has the other books' runners read again,
+so they don't depend on the import order. A spec rolled
 with two attributes is bought once; a weapon's astral row isn't a second weapon. With the book's PDF, the core
 rulebook's dispositions and cues are read from the page layout (an item that wraps stays one). The file holds no
-override and no note: what the book prints against the rules shows on Review.
+override and nothing that approves: what the book prints against the rules shows on Review.
 
 ## Example sets (`custom/samples/<set>/`)
 

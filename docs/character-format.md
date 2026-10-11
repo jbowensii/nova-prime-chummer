@@ -61,7 +61,12 @@ is built from this data; the format itself is ours and stays stable.
   format (`amps.xsd` / `items.xsd`). That way a runner still loads and
   prints if the entry is later removed from the data. On a book sample's own amp (no `catalogId`, 0.5.6) it is the
   amp as printed: its type, name, `printedRating`, `source` and `page`. Where the rules rate the amp otherwise, Review
-  notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number.
+  notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number. A snapshot of one level of
+  an entry the book prints with several carries its `family` and `level` (data-format.md, Levels).
+- **An entry since split into levels** (DHSA's Freefall, Secret Room, a cyberdeck's Attack add-on…, data-format.md
+  Levels): its lowest level keeps the entry's id, so a runner saved before holds that level, with its own effects (a
+  player who added an effect to reach the next level keeps it, priced the same). Add-ons applied before note their
+  name without a level on their effects (`note="Attack"`): Review still reads them as the book's.
 - **`<effect>`** on an amp is a pick (an Amp effect, or a narrative effect kind at rating 0: data-format.md); on an item,
   the player's or GM's own effects, which replace the catalog item's. Either may say how it is turned on and whether it
   counts: `switch` and `when` (counted in the bracketed total), `confidence="low"` (shown, not counted), `from` and
@@ -72,14 +77,14 @@ is built from this data; the format itself is ours and stays stable.
   available; the runner keeps its own copy".
 - **`<knowledge>`** is a knowledge skill or language (`kind="knowledge"` or `kind="language"`). Each keyword and each
   skill at rating 4+ is a free entry and needs no element; one is written only when the player renames it or changes
-  its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<the keyword>` (the
+  its kind, with `from` naming the slot: `skill:<id>` (unrenamed it reads "Knowledge of <Skill>"; any name related to the skill) or `keyword:<the keyword>` (the
   entry keeps the keyword's name). Every other entry costs the pricing file's `knowledge` price, and so does a
   `from="skill:…"` entry while that skill is below 4, or a `from="keyword:…"` entry once that keyword is gone
   (Review flags both). Before 0.5.2 an entry was plain text and a
   language was written `Language: X`: such a file loads with those as paid knowledge, and `Language: X` as the
   language X.
 - **`native="true"`** marks the runner's native language: the first language entry with it is free (one per runner;
-  the app's reading of the rules, as knowledge skills cover foreign languages). A second one costs the knowledge price
+  a house rule, no book text: the CRB prices every language as a knowledge skill). A second one costs the knowledge price
   and Review notes it. Files before 0.5.3 have none.
 - **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
   the entry's `id` (paid entries get one when added; older ones on load). The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off
@@ -98,7 +103,8 @@ is built from this data; the format itself is ours and stays stable.
   had them): only a catalog amp's own printed drawback, unchanged, needs no GM.
 - **`realSin="true"`** on an amp: added by the "Has a real SIN" box (before 0.5.7; since then a player adds the SINner
   quality by hand and the free Real SIN entry follows it) with the catalog's SINner quality (named exactly
-  "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
+  "SINner", any case). House rule (0.5.5; a Table setup switch since 0.12, `ca2.free-sinner`, on by default, the runner's
+  own in `optionalRules` unless the GM locks it): every SINner quality, from the box or added by hand, is free and never
   takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
   catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with no effects at all:
   another amp renamed SINner, or a SINner given any other effect (a narrative one too), is priced like any amp and counts for the first-Quality rule. The box works before and after
@@ -131,6 +137,12 @@ is built from this data; the format itself is ours and stays stable.
   Rules page decides since 0.5.7) marked a runner as canon only: the
   Review tab flags each non-canon amp, item or specialization. Missing means
   non-canon content is allowed.
+- **`<optionalRule id="…" on="true|false"/>`** (after the `<override>`s, any number): the runner's own switch for a
+  book's optional rule, by its rules id (the core rulebook's import seeds them into Table rules: `optional-vehicle-damage-for-all`,
+  CRB p.68; `optional-extended-social-tests`, p.139; DHSA's `optional-lifestyle-amps`, p.16; …; scoped by the book's
+  source id as imported, `crb.optional-…`). It wins over the GM's Table setup unless the GM locked the rule
+  there (`locked="true"` in `custom/table-rules.xml`); with none, or locked, the table's switch holds, off unless the GM
+  switched it on. Set on the Review tab.
 - **`origin`** on a sample runner names the source it was built from
   (`CRB`, `PREGENS`), so the library can badge non-canon samples.
 - **`sampleKey`** on a runner loaded with "Load example characters" names the example character it copies: its name

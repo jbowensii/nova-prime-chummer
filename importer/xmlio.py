@@ -19,6 +19,9 @@ SCOPED = {("*", "id"), ("*", "linkedItem"), ("*", "configOf"), ("*", "accessoryO
 # a book's <skill> names the base skill its specs are added to (the loader appends them), and the amp types and
 # effects a book adds (the CG's Emerged, DHSA's grades) are named by amps and the engine as they are: never scoped
 UNSCOPED_TAGS = {"skill", "amptype", "effect"}
+# an Anarchy amp's family names the id the book's entry had before it was split into levels (no entry has it any more):
+# scoped like one
+FAMILY = ("amp", "family")
 TAG = re.compile(r"<([A-Za-z][\w:.-]*)([^>]*)>")
 ATTR = re.compile(r'(?<=\s)([\w:.-]+)="([^"]*)"')
 
@@ -65,6 +68,8 @@ def scope(xml, source, ids):
             return t.group(0)
 
         def attr(m):
+            if unscoped and (name, m.group(1)) == FAMILY and m.group(2) and not m.group(2).startswith(pre):
+                return f'{m.group(1)}="{pre}{m.group(2)}"'
             if ("*", m.group(1)) not in SCOPED and (name, m.group(1)) not in SCOPED:
                 return m.group(0)
             return f'{m.group(1)}="{" ".join(pre + v if v in ids else v for v in m.group(2).split(" "))}"'

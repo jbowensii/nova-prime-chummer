@@ -101,7 +101,7 @@ export function Sheet() {
             <p className="s-small">Remaining 1s: 0 = no effect; 1 = minor glitch; 2 = critical glitch; 3+ = disaster.</p>
 
             <h2>Essence {d.essence}</h2>
-            <p className="s-small">Cancelled hits on magic Tests: {d.essenceEffects.magicHitsCancelled}. On healing: {d.essenceEffects.healingHitsCancelled}.
+            <p className="s-small">Cancelled hits on magic{d.emerged ? ' and Tasking' : ''} Tests: {d.essenceEffects.magicHitsCancelled}. On healing: {d.essenceEffects.healingHitsCancelled}.
               {d.essenceEffects.socialDisadvantage && ' Disadvantage on most social Tests.'}</p>
             {(d.initiative ?? d.switched?.initiative) && (i => <p className="s-small">Initiative enhancement {bracketed(d.initiative?.level ?? '–', d.switched?.initiative?.level)}{i.realm ? ` (${i.realm} only)` : ''}: {i.source}.</p>)((d.initiative ?? d.switched?.initiative)!)}
             {effectLines(d).map((x, i) => <p key={i} className="s-small s-effect">{x}.</p>)}

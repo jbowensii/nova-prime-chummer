@@ -160,7 +160,7 @@ test('native language: one is free; a second native one is paid and noted', () =
   const cost = () => priceBuild(cat, ch.build, 'human', ch.narrative.keywords).skills
   expect(cost()).toBe(K)
   expect(derive(cat, ch).knowledge.map(r => [r.name, r.paid, r.source])).toEqual([
-    ['Made-up tongue', false, 'Free: native language'], ['Other tongue', true, 'Paid']])
+    ['Made-up tongue', false, 'Free: native language (house rule)'], ['Other tongue', true, 'Paid']])
   ch.build.knowledge[1].native = true
   expect(cost()).toBe(K)
   expect(derive(cat, ch).knowledge[1].source).toBe('Paid (a second native language)')
@@ -186,13 +186,13 @@ test('two lists, A–Z by default; the player’s order and hidden rows persist 
   ch.build.skills = [{ id: 'electronics', rating: 4, specs: [] }]
   ch.build.knowledge = [{ id: 't', name: 'Toy trains', kind: 'knowledge' }, { id: 'b', name: 'B tongue', kind: 'language' }, { id: 'a', name: 'a tongue', kind: 'language' }]
   const names = (c: Character, kind: 'knowledge' | 'language') => knowledgeList(derive(cat, c).knowledge, kind, c.build.knowledgeOrder).map(r => r.name)
-  expect(names(ch, 'knowledge')).toEqual(['Electronics', 'Toy trains', 'Zebra lore'])
+  expect(names(ch, 'knowledge')).toEqual(['Knowledge of Electronics', 'Toy trains', 'Zebra lore'])
   expect(names(ch, 'language')).toEqual(['a tongue', 'B tongue'])
   const cost = price(cat, ch).total
   ch.build.knowledgeOrder = ['keyword:Zebra lore', 't']
   ch.build.knowledgeHidden = ['skill:electronics']
-  expect(names(ch, 'knowledge')).toEqual(['Zebra lore', 'Toy trains', 'Electronics']) // unordered rows follow
-  expect(derive(cat, ch).knowledge.filter(r => r.hidden).map(r => r.name)).toEqual(['Electronics'])
+  expect(names(ch, 'knowledge')).toEqual(['Zebra lore', 'Toy trains', 'Knowledge of Electronics']) // unordered rows follow
+  expect(derive(cat, ch).knowledge.filter(r => r.hidden).map(r => r.name)).toEqual(['Knowledge of Electronics'])
   expect(price(cat, ch).total).toBe(cost)
   const back = xmlToCharacter(characterToXml(ch))
   if (!back.ok) throw new Error(back.reason)

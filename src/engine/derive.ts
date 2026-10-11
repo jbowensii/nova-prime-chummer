@@ -5,6 +5,26 @@ import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText, testName } from './am
 import { applies, counts, effectHow, inBracket, own } from './effects'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
+import type { TableFlags } from './validate'
+
+/** The books' optional rules the engine applies, by the unscoped id their import seeds them into Table rules with (the
+ *  imported entry's id is scoped by its source: "crb.optional-…"; optionOn matches either). */
+export const OPTIONAL_RULES = {
+  /** CRB p.68: wound thresholds as vehicles have them (Body, 2×Body, 3×Body + Armor) for characters and Matrix devices */
+  vehicleDamage: 'optional-vehicle-damage-for-all',
+  /** CRB p.139: every character has a social condition monitor, thresholds from Willpower plus social armor */
+  socialTests: 'optional-extended-social-tests',
+  /** DHSA p.16: a lifestyle is an Amp with a fixed cost; no per-run nuyen adjustment for it (Ledger tab) */
+  lifestyleAmps: 'optional-lifestyle-amps',
+} as const
+/** Whether a Table rules id names the rule `key`: the same id, or `key` scoped by a source ("crb." + key). */
+const isRule = (id: string, key: string) => id === key || id.endsWith(`.${key}`)
+/** Whether an optional rule is in play for this runner: its own switch unless the GM locked the rule, else the table's; off
+ *  unless switched on. */
+export const optionOn = (key: string, ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'optional' | 'locked'>) => {
+  const own = table?.locked?.some(id => isRule(id, key)) ? undefined : Object.entries(ch.optionalRules ?? {}).find(([id]) => isRule(id, key))?.[1]
+  return own ?? table?.optional?.some(id => isRule(id, key)) ?? false
+}
 
 export type Thresholds = [number, number, number]
 /** ammo: alternative DVs by ammunition, as the item's text or its amp's narrative lists them ("5 (gel)") */
@@ -58,7 +78,7 @@ export function effectLines(d: Derived): string[] {
   if (d.extraSpirits) out.push(`${d.extraSpirits} more summoned spirit${d.extraSpirits > 1 ? 's' : ''}`)
   if (d.ignoreWounds) out.push(d.ignoreWounds === 'all' ? 'Ignores wound modifiers' : `Ignores ${d.ignoreWounds} wound modifiers`)
   if (d.forcedRisk) out.push('Must take a High or Extreme Risk')
-  if (d.vr) out.push(`${d.vr === 'hot' ? 'Hot' : 'Cold'}-sim VR`)
+  if (d.vr) out.push(`${d.vr === 'hot' ? 'Hot' : 'Cold'}-sim VR`, 'A free cybercombat action per turn in VR (CRB p.212)')
   if (d.rcc) out.push(`Rigger command console: ${d.rcc} drone${d.rcc > 1 ? 's' : ''}`)
   if (d.vcr) out.push('Vehicle control rig')
   for (const e of d.effects) if (e.type === 'item' || e.type === 'metatype') out.push(`${e.text} (${e.from}${e.how ? `, ${e.how}` : ''})`)
@@ -74,7 +94,7 @@ export interface Derived {
   monitor: { light: number; serious: number; incap: 1 }
   armor: { none: number; main: number; alt: number }
   thresholds: { physicalNone: Thresholds; physicalMain: Thresholds; physicalAlt: Thresholds; mental: Thresholds; matrix?: Thresholds
-    /** against social damage (CRB p.139): Willpower plus social armor; only with social armor */
+    /** against social damage (CRB p.139, optional): Willpower plus social armor; only with the optional rule in play */
     social?: Thresholds }
   /** armor against mental damage (spells, astral, biofeedback) */
   mentalProtection: number
@@ -118,7 +138,7 @@ export interface Derived {
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
  *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid", or "Paid (<Skill> below 4)" / "Paid (keyword “X”
- *  removed)" for an entry whose free slot is gone, "Free: native language". key: knowledgeKey; hidden: left off the
+ *  removed)" for an entry whose free slot is gone, "Free: native language (house rule)". key: knowledgeKey; hidden: left off the
  *  printed sheet. */
 export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number; key: string; hidden: boolean }
 
@@ -136,7 +156,8 @@ export function knowledgeList(rows: KnowledgeRow[], kind: KnowledgeEntry['kind']
 }
 
 /** Every keyword and every skill at 4+ is a free entry (a stored entry with that `from` renames it or marks it a
- *  language; a keyword entry, keyed by the keyword's text, keeps its name); the other stored entries are paid. */
+ *  language; a keyword entry, keyed by the keyword's text, keeps its name; a skill's starts as "Knowledge of <Skill>",
+ *  owner 2026-10-10); the other stored entries are paid. One native language is free too: a house rule (no book text). */
 export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): KnowledgeRow[] {
   const used = new Set<number>()
   const slot = (from: string) => { const at = b.knowledge.findIndex(k => k.from === from); if (at >= 0) used.add(at); return at }
@@ -149,13 +170,13 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
   }
   for (const s of b.skills.filter(s => s.rating >= 4)) {
     const from = `skill:${s.id}`, at = slot(from)
-    rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false,
+    rows.push({ name: b.knowledge[at]?.name || `Knowledge of ${skillName(s.id)}`, kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false,
       source: `Free: ${skillName(s.id)} 4+`, at })
   }
   const first = nativeLanguage(b)
   b.knowledge.forEach((k, at) => {
     if (used.has(at)) return
-    if (k === first) return rows.push({ ...k, paid: false, source: 'Free: native language', at })
+    if (k === first) return rows.push({ ...k, paid: false, source: 'Free: native language (house rule)', at })
     const lapse = slotLapse(b, keywords, k, skillName)
     rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : k.native && k.kind === 'language' ? 'Paid (a second native language)' : 'Paid', at })
   })
@@ -240,15 +261,16 @@ export const attrRRSources = (b: Build, a: AttrId, on = false): string[] =>
 export const attrRRBracket = (b: Build, a: AttrId): { name: string; how: string }[] =>
   b.amps.flatMap(amp => amp.effects.filter(e => e.ref === 'rr-attr' && e.param === a && counts(e, true) && !counts(e)).map(e => ({ name: amp.name, how: effectHow(e) })))
 
-/** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. */
-export function derive(c: Catalog, ch: Character): Derived {
-  const d = deriveAt(c, ch, false)
+/** The runner's derived values without its switchable and conditional effects, and (`switched`) with them on. `table`:
+ *  the table's switches, for the optional rules in play (optionOn). */
+export function derive(c: Catalog, ch: Character, table?: Pick<TableFlags, 'optional' | 'locked'>): Derived {
+  const d = deriveAt(c, ch, false, table)
   // (and a specialization's Risk Reduction the runner lacks the specialization for: in the skill's bracket)
   return effectSources(c, d.build, ch.identity.metatype).some(p => counts(p.e, true) && inBracket(p.e)) || d.pools.some(p => p.notes?.some(n => n.ref === 'rr-spec'))
-    ? { ...d, switched: deriveAt(c, ch, true) } : d
+    ? { ...d, switched: deriveAt(c, ch, true, table) } : d
 }
 
-function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
+function deriveAt(c: Catalog, ch: Character, on: boolean, table?: Pick<TableFlags, 'optional' | 'locked'>): Derived {
   const b = ch.finalizedAt ? currentBuild(ch) : ch.build
   const meta = c.metatypes.get(ch.identity.metatype)
   const attr = (a: AttrId) => b.attributes[a] ?? 0
@@ -285,6 +307,13 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
   // none (every Test)
   // (one on every Test that holds only sometimes is listed with the effects, not on each pool)
   const testFx = sources.filter(p => (p.e.ref === 'advantage' || p.e.ref === 'edge-advantage' || p.e.ref === 'disadvantage') && (p.e.param || !p.e.when))
+  // the Emerged connect in hot-sim as if they had a DNI (CG p.8); hot-sim VR with a DNI gives an Advantage on Cracking
+  // (cybercombat) Tests (CRB p.212), while in hot-sim
+  const emerged = b.amps.some(a => a.type === 'emerged')
+  const vr = emerged || has('vr-hot') ? 'hot' as const : has('vr-cold') ? 'cold' as const : undefined
+  if (vr === 'hot' && c.skills.get('cracking')?.specs.some(x => x.id === 'cracking.cybercombat')
+    && !testFx.some(p => p.e.ref === 'advantage' && p.e.param === 'cracking.cybercombat'))
+    testFx.push({ e: { ref: 'advantage', param: 'cracking.cybercombat', when: 'in hot-sim VR' }, type: 'rule', name: 'Hot-sim VR (CRB p.212)' })
   // a bonus limited to a specialization the runner doesn't have: in the skill's bracketed total, noted (owner, 2026-10-10)
   const mySpecs = new Set(b.skills.flatMap(s => s.specs))
   const lacking = (param?: string) => !!param && param.includes('.') && !mySpecs.has(param) && c.skills.has(param.split('.')[0])
@@ -338,7 +367,6 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
       initiative = { level, realm: fx.find(e => e.ref === 'init-realm')?.param, source: a.name }
   }
 
-  const emerged = b.amps.some(a => a.type === 'emerged')
   const deck = b.amps.find(a => a.type === 'cyberdeck')
   const deckFx = deck ? onFx(deck, on) : []
   const firewall = emerged ? attr('wil') : deck ? Math.min(FIREWALL_MAX, 1 + deckFx.filter(e => e.ref === 'firewall-plus').length) : undefined
@@ -362,13 +390,21 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
     const ammo = ammoDVs([cat?.text, amp?.narrative, it.note].filter(Boolean).join('\n'))
     if (ammo.length) weapons[weapons.length - 1].ammo = ammo
   }
+  // an astral form fights with Close Combat (astral combat) + Willpower; its unarmed damage is Charisma, mental (CRB p.173)
+  // ponytail: a weapon focus's astral DV (also from Charisma) isn't worked out; add it when a sample needs it
+  if (has('awk-astral-projection'))
+    weapons.splice(1, 0, { uid: 'unarmed-astral', name: 'Unarmed (astral form)', dv: String(attr('cha')), ranges: 'OK/–/–/–',
+      note: 'mental damage; Close Combat (astral combat) + Willpower (CRB p.173)' })
   const vehicles = b.amps.filter(a => a.type === 'vehicle').map(a => vehicleStats(c, a, on)).filter((x): x is VehicleStats => !!x)
 
   const knowledge = knowledgeRows(c, b, ch.narrative.keywords)
   // sustained spells (CRB p.178): 1 without a Disadvantage, 2 at most, each extra one adding to both; complex forms alike
   const spells = count('sustain-spell'), forms = count('sustain-form')
   const ignore = picks.filter(p => p.e.ref === 'ignore-wounds').map(p => p.e.param || 'all')
-  const vr = has('vr-hot') ? 'hot' as const : has('vr-cold') ? 'cold' as const : undefined
+  // optional rules in play: vehicle-style wound thresholds (Strength and Firewall for Body, CRB p.68); a social monitor
+  const vehicleStyle = optionOn(OPTIONAL_RULES.vehicleDamage, ch, table)
+  const tp = (x: number, armor: number): Thresholds => vehicleStyle ? [x + armor, 2 * x + armor, 3 * x + armor] : t3(x + armor)
+  const social = optionOn(OPTIONAL_RULES.socialTests, ch, table)
 
   return {
     build: b,
@@ -384,10 +420,10 @@ function deriveAt(c: Catalog, ch: Character, on: boolean): Derived {
     deckMonitor: deck && boxes(deckFx),
     armor,
     thresholds: {
-      physicalNone: t3(attr('str') + armor.none), physicalMain: t3(attr('str') + armor.main),
-      physicalAlt: t3(attr('str') + armor.alt), mental: t3(attr('wil') + mentalProtection),
-      matrix: firewall != null ? t3(firewall + matrixArmor) : undefined,
-      ...socialArmor ? { social: t3(attr('wil') + socialArmor) } : {},
+      physicalNone: tp(attr('str'), armor.none), physicalMain: tp(attr('str'), armor.main),
+      physicalAlt: tp(attr('str'), armor.alt), mental: t3(attr('wil') + mentalProtection),
+      matrix: firewall != null ? tp(firewall, matrixArmor) : undefined,
+      ...social ? { social: t3(attr('wil') + socialArmor) } : {},
     },
     pools,
     rrAttr,

@@ -104,3 +104,39 @@ test('a weapon lists its ammunition DVs', () => {
   ch.build.items.push({ uid: 'w1', kind: 'weapon', name: 'Invented pistol', dv: '4', ranges: 'OK/OK/–/–', note: 'DV 4 (regular) / 6 (explosive)' })
   expect(derive(cat, ch).weapons.find(w => w.uid === 'w1')?.ammo).toEqual(['4 (regular)', '6 (explosive)'])
 })
+
+test('a DNI and a deck: Cracking (cybercombat) gets an Advantage in hot-sim only (CRB p.212); cold-sim gets none', () => {
+  // the made-up catalog's Cracking with the book's cybercombat specialization
+  const sk = cat.skills.get('cracking')!
+  const c = { ...cat, skills: new Map(cat.skills).set('cracking', { ...sk, specs: [...sk.specs, { id: 'cracking.cybercombat', name: 'Cybercombat', attr: sk.attr }] }) }
+  const ch = face()
+  ch.build.skills.push({ id: 'cracking', rating: 2, specs: ['cracking.cybercombat'] })
+  ch.build.amps.push(amp('deck', 'cyberdeck', []), amp('jack', 'cyberware', ['vr-cold']))
+  expect(derive(c, ch).pools.filter(p => p.skill === 'cracking').flatMap(p => p.notes ?? [])).toEqual([])
+  ch.build.amps[2].effects.push({ ref: 'vr-hot' })
+  const spec = derive(c, ch).pools.find(p => p.spec === 'cracking.cybercombat')!
+  expect(spec.notes).toEqual([expect.objectContaining({ ref: 'advantage', from: 'Hot-sim VR (CRB p.212)', how: 'in hot-sim VR' })])
+})
+
+test('an astral form’s unarmed damage is its Charisma (CRB p.173)', () => {
+  const ch = face()
+  expect(derive(cat, ch).weapons.map(w => w.uid)).not.toContain('unarmed-astral')
+  ch.build.amps.push(amp('aw', 'awakened', ['awk-astral-projection']))
+  expect(derive(cat, ch).weapons.find(w => w.uid === 'unarmed-astral')).toMatchObject({ dv: '4' }) // CHA 4
+})
+
+test('optional rule (CRB p.68): vehicle-style thresholds for characters, from the table or the runner’s own switch', () => {
+  const ch = face() // STR 2, main armor 3
+  const id = 'optional-vehicle-damage-for-all'
+  expect(derive(cat, ch).thresholds.physicalMain).toEqual([5, 8, 11])
+  expect(derive(cat, ch, { optional: [id] }).thresholds.physicalMain).toEqual([5, 7, 9]) // 2+3, 4+3, 6+3
+  expect(derive(cat, ch, { optional: [id] }).thresholds.mental).toEqual([2, 5, 8]) // Willpower isn't the book's Body
+  expect(derive(cat, { ...ch, optionalRules: { [id]: false } }, { optional: [id] }).thresholds.physicalMain).toEqual([5, 8, 11])
+  expect(derive(cat, { ...ch, optionalRules: { [id]: true } }).thresholds.physicalMain).toEqual([5, 7, 9])
+  // an imported book's rule carries the id scoped by its source; the engine's key matches it
+  expect(derive(cat, ch, { optional: [`crb.${id}`] }).thresholds.physicalMain).toEqual([5, 7, 9])
+  expect(derive(cat, { ...ch, optionalRules: { [`crb.${id}`]: true } }).thresholds.physicalMain).toEqual([5, 7, 9])
+  // the GM locked the rule: the table's switch binds, the runner's own is ignored either way
+  expect(derive(cat, { ...ch, optionalRules: { [id]: false } }, { optional: [id], locked: [id] }).thresholds.physicalMain).toEqual([5, 7, 9])
+  expect(derive(cat, { ...ch, optionalRules: { [id]: true } }, { optional: [], locked: [id] }).thresholds.physicalMain).toEqual([5, 8, 11])
+})

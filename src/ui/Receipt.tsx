@@ -76,7 +76,7 @@ export function Receipt() {
           <Line label="Edge" amount={d.edge} />
           <Line label="Essence" amount={d.essence} />
           {d.essenceEffects.magicHitsCancelled > 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>
-            Cancels {d.essenceEffects.magicHitsCancelled} hit on magic Tests{d.essenceEffects.healingHitsCancelled ? `, ${d.essenceEffects.healingHitsCancelled} on healing` : ''}
+            Cancels {d.essenceEffects.magicHitsCancelled} hit on magic{d.emerged ? ' and Tasking' : ''} Tests{d.essenceEffects.healingHitsCancelled ? `, ${d.essenceEffects.healingHitsCancelled} on healing` : ''}
           </div>}
           {(d.initiative ?? d.switched?.initiative) && <Line label="Initiative" amount={`${bracketed(d.initiative?.level ?? '–', d.switched?.initiative?.level)}${(d.initiative ?? d.switched?.initiative)!.realm ? ` (${(d.initiative ?? d.switched?.initiative)!.realm})` : ''}`} />}
           {d.firewall != null && <Line label={d.emerged ? 'Living persona FW / Att' : 'Firewall / Attack'} amount={`${d.firewall} / ${d.attack}`} />}
