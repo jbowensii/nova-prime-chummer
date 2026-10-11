@@ -166,7 +166,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(cap).toHaveValue('5')
   // the Standard column: a changed value shows the standard and resets to it in the form (saved only on Save)
   const capRow = page.locator('.sr6-creation tr', { has: cap })
-  await expect(capRow.locator('td').last()).toContainText('6 (CRB p. 65)')
+  await expect(capRow.locator('td').last()).toContainText('6 (CRB-HK p. 65)')
   await capRow.getByRole('button', { name: 'Reset Highest skill rank to standard' }).click()
   await expect(cap).toHaveValue('6')
   await expect(capRow.locator('td').last()).toHaveText('Standard')

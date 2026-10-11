@@ -79,7 +79,9 @@ copy". Book entries are never copied here.
 ## Build
 
 - `method`: `priority`, `sumtoten`, `pointbuy`, `karma` or `lifepath`. `magic`: `full`, `aspected`, `mystic-adept`,
-  `adept`, `technomancer` or `mundane`; an aspected magician names its one Magic skill in `aspectedSkill`. `tradition` is
+  `adept`, `technomancer` or `mundane`; an aspected magician names its one Magic skill in `aspectedSkill`. `mentorSpirit`:
+  the mentor spirit followed (a catalog `mentorspirits` id; the Mentor Spirit quality comes and goes with it), and a
+  mystic adept's `mentorAdvantage`, `magician` or `adept` (CRB Hong Kong pp. 162–163). `tradition` is
   free text; `drainAttr` is `log`, `int` or `cha`.
 - Spends are counts: attribute `points` (from the attribute pool), `adjust` (adjustment points) and `karma` (ranks bought
   with karma); a skill's `points` and `karma` likewise. A missing number reads as 0.
@@ -92,8 +94,14 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
-- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
-  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic).
+- `<skill specs>`: the specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; any skill with
+  the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
+- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics`, `echoes` or `datastructures` (a
+  technomancer's data structures, by `level`: Hack & Slash pp. 70–72); `level` for leveled powers
+  and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic);
+  `note`: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: `Firearms`), which its
+  `skill:choice` or `attr:choice` effects and its price take (CRB Hong Kong p. 157). A `<quality note>` likewise names an
+  `(Attribute)` or `(Skill)` quality's choice.
 - `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
   `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
   free with the style). `name` on either: the catalog name when added. A file without any reads as none. Edited on the
@@ -102,14 +110,15 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
   data; a line with none counts its catalog entry's `add` effects instead, the low-confidence ones never). `target` is an
   attribute abbreviation, `initDice`, `defense` (Defense Rating), `physical` (Physical condition monitor boxes: a full
-  cyberlimb's, CRB p. 288) or `skill` (that skill's dice pool:
+  cyberlimb's, CRB p. 288), `stun`, `overflow`, `unarmedAR`, `unarmedDV` (the unarmed Attack Rating and Damage Value),
+  `movement` (metres), `matrixInitDice` (VR initiative dice) or `skill` (that skill's dice pool:
   `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
   line's rating.
 - `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid

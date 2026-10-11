@@ -89,3 +89,27 @@ class FitTest(unittest.TestCase):
         rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CABDE")}
         self.assertEqual(fit.spend(n, rows, CS)[1]["extraMagic"], 1)
         self.assertEqual(fit.spend({**n, "spells": 2}, rows, CS)[1]["extraMagic"], 0)
+
+    def test_karma_into_nuyen_past_what_the_gear_needs(self):
+        """Karma left over turns into nuyen when that clears the Karma carry-over limit with the nuyen within its own;
+        otherwise the count that leaves the printed nuyen; never nuyen below 0 by choice."""
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "BACDE")}  # resources E: 100
+        n = need(nuyen=250, left=50)  # 2 karma cover it; 28 left
+        cs = {**CS, "maxKarmaLeft": 5.0, "maxNuyenLeft": 3000.0}
+        self.assertEqual(fit.spend(n, rows, CS)[1]["karmaToNuyen"], 2)  # no limits: the printed 50 left
+        score, got = fit.spend(n, rows, cs)
+        self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"], got["karmaLeft"]), (25, 2350, 5))  # both within
+        self.assertEqual(score[2:], (0, 2300, 0))
+        score, got = fit.spend(n, rows, {**cs, "maxNuyenLeft": 500.0})  # 25 would leave 2,350: can't clear the Karma's
+        self.assertEqual((got["karmaToNuyen"], score[2], score[4]), (2, 1, 23))  # so the printed 50; 23 past 5
+        broke = need(nuyen=100 + 40 * 100)  # needs 40 karma, has 30: all of it short, never nuyen below 0 by choice
+        self.assertEqual(fit.spend(broke, rows, cs)[1]["karmaToNuyen"], 40)
+
+    def test_an_expertise_takes_a_skill_point_left_else_karma(self):
+        """An expertise takes skillPointsExpertise points still left (budgets.ts skillSpend), else its advancement Karma."""
+        cs = {**CS, "skillPointsExpertise": 1.0, "advance.expertise": 5.0}
+        rows = {c: {"metas": {"pixie": 1}, "attributes": 0, "skills": 5, "letter": "Z"} for c in fit.COLUMNS}
+        n = need(skills=[(3, 1, 1)])
+        self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 30)  # 3 ranks + spec + expertise: 5 points
+        rows["skills"] = {**rows["skills"], "skills": 4}
+        self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 25)  # no point left for it: 5 Karma

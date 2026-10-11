@@ -33,7 +33,7 @@ export interface Sr6Values {
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
  *  runner's */
-export type Sr6ExportBonus = ({ target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow'; value: number } | { target: 'skill'; id: string; name: string; value: number })
+export type Sr6ExportBonus = ({ target: Exclude<Bonus['target'], 'skill'>; value: number } | { target: 'skill'; id: string; name: string; value: number })
   & { when?: string; switch?: Bonus['switch']; spec?: string; affects?: Bonus['affects'] }
 /** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
  *  operations and values docs/sr6-data-format.md "Effects" lists): low: read with low confidence (shown, never applied);
@@ -68,7 +68,7 @@ export interface Sr6ExportRunner {
   /** augmented: with the always-on effects; switched: with the switchable and conditional ones on too (the bracket, `5 (7)`),
    *  only when it differs */
   attributes: Record<Sr6Attr, { natural: number; augmented: number; switched?: number }>; essence: number; edge: number
-  skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string }[]
+  skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
   qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
@@ -94,7 +94,8 @@ export interface Sr6ExportRunner {
    *  for one it turned off; assumed: a book sample's, from its numbers; lockedBy: a campaign GM's lock) */
   rules?: Sr6ExportRule[]
 }
-export type Sr6ExportDerived = Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'>
+export type Sr6ExportDerived = Pick<Sr6Derived, 'initiative' | 'astralInit' | 'monitors' | 'monitorBonus' | 'defenseRating' | 'socialRating' | 'composure' | 'judgeIntentions' | 'memory' | 'liftCarry' | 'drain' | 'fading' | 'pools'
+  | 'unarmedDamage' | 'spellAttackRating' | 'matrixInit' | 'movement'>
 export interface Sr6ExportRule { key: string; value: string; from: 'campaign' | 'runner'; assumed?: true; lockedBy?: string }
 /** The rules a runner's export lists (Sr6ExportRunner.rules): every setting not the server's, and the runner's own offs. */
 export function exportRules(cr: CreationRules, ch: Pick<Sr6Character, 'rules'>): Sr6ExportRule[] {
@@ -193,7 +194,8 @@ function aliasesOf(c: Sr6Catalog, e: Sr6Entry): Pick<Sr6ExportItem, 'aliases'> {
 
 const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived => defined({ initiative: d.initiative, astralInit: d.astralInit, monitors: d.monitors,
   monitorBonus: d.monitorBonus, defenseRating: d.defenseRating, socialRating: d.socialRating, composure: d.composure, judgeIntentions: d.judgeIntentions,
-  memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools })
+  memory: d.memory, liftCarry: d.liftCarry, drain: d.drain, fading: d.fading, pools: d.pools, unarmedDamage: d.unarmedDamage,
+  spellAttackRating: d.spellAttackRating, matrixInit: d.matrixInit, movement: d.movement })
 
 /** The entry as printed plus its values; its text when `text` and there is some. */
 function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
@@ -255,7 +257,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     attributes: Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, d.on.attrs[k as Sr6Attr].augmented === v.augmented ? v
       : { ...v, switched: d.on.attrs[k as Sr6Attr].augmented }])) as Sr6ExportRunner['attributes'], essence: d.essence, edge: d.edge,
     skills: b.skills.map(s => defined({ id: s.id, name: data.skills[s.id]?.name ?? s.id, attr: data.skills[s.id]?.attr ?? '', rank: skillRank(s),
-      spec: s.spec, expertise: s.expertise })),
+      spec: s.spec, expertise: s.expertise, specs: s.specs })),
     knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.points + k.karma })),
     qualities: b.qualities.map(q => {
       const e = data.entry('qualities', q.id)

@@ -12,7 +12,7 @@ import { entryLabel } from '../engine/categories'
 import { effectState, effectText } from '../engine/effects'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
-  ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
+  ['complexforms', 'Complex forms'], ['echoes', 'Echoes'], ['datastructures', 'Data structures']]
 /** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
 export function pickFlags(e: Sr6Entry): string[] {
   const a = e.attrs

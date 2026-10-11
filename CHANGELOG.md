@@ -1,5 +1,105 @@
 # Release notes
 
+## Unreleased: the core rulebook's rules as Hong Kong prints them, the books' optional rules as switches
+
+**Shadowrun 6**
+- Derived values the core rulebook prints, each from a creation setting shipped at the Hong Kong City Edition's number
+  (Table setup → Creation rules, and a runner's Creation rules): Damage Overflow is Body × 2 (p. 121, `overflowPerBody`);
+  no more than 5 initiative dice (p. 39, `initiativeDiceMax` 5, shipped); an augmented attribute at most its natural
+  rating + 4 and a skill's bonus dice at most +4 (pp. 37, 39: what is left out is named on the attribute's card and in
+  Review); Glass Jaw leaves at least 2 Stun boxes (p. 76); Matrix initiative AR, VR cold sim (+1D6) and hot sim (+2D6)
+  from the best commlink's Data Processing or a technomancer's Logic (pp. 179, 189); movement 10 m, Sprint 15 m + 1 m a
+  hit (pp. 42, 44); unarmed damage 2S, Physical with Dermal Deposits or bone lacing and density (pp. 71, 94, 286, 291);
+  a spellcaster's Attack Rating, Magic + the tradition's attribute (p. 132); a melee weapon's Attack Rating with
+  Strength (p. 39; a whip's with Reaction, p. 250); each weapon's skill and dice pool on the Gear tab and the sheet.
+- Levels of play, off by default (Table setup → Creation rules → Levels of play, or a runner's own): the core rulebook's
+  street level (each priority gives the row below's values) and prime runner (twice the customization Karma), CRB Hong
+  Kong p. 63; the Sixth World Companion's street-level (B C C D E, sum-to-eight, 80 points, 6 life modules, no illegal
+  gear but cyberdecks) and elite (A B B C D, sum-to-twelve, 120 points, 10 modules, no Availability cap), pp. 14–15,
+  each with its numbers as settings. Only one level is on at a time (see nested optional rules below).
+- Karma to nuyen both ways on Contacts & lifestyle: "1 Karma → 2,000¥" and "2,000¥ → 1 Karma" (with In Debt, 5,000¥),
+  so one missed click is undone with one more. Turning nuyen back only undoes an earlier conversion at the same rate
+  (never below none), so the rule is the book's (CRB Hong Kong p. 66); nuyen already spent shows as overspent on the
+  budget and in Review, as any overspend does.
+- Nested optional rules: a rule that builds on another sits under it on Table setup and on a runner's Creation rules,
+  greyed and disabled with "needs …" while its parent is off, and it doesn't apply then (its stored value kept): the
+  expanded contacts' numbers under Expanded contacts (SWC p. 161), each Alternate Power Level's numbers under its level
+  (SWC pp. 14–15), Twenty Questions' karma, High Strength's steps, Working for the Man/People's rates (SWC pp. 25, 150,
+  153), Stacking Advantage under the core Attack Rating against Defense Rating lead (SWC p. 144, CRB Hong Kong p. 45).
+  The four levels of play can't be on together: the second says why; the runner's rules keep one (a campaign's lock,
+  else the runner's own, else the first), so the engine never applies both, and Review notes a runner's choice set
+  aside. The settings table in the data format document gains needs / not with / in place of columns. All still off.
+- Qualities naming their choice (`Exceptional (Attribute)`, `Aptitude (Skill)`, `Impaired (Attribute)`, `Incompetent
+  (Skill)`) take the attribute or skill from their note, which the Qualities tab now edits; one naming nothing is a
+  Review problem, and one may be taken again for another choice. Exceptional raises that maximum, once per attribute
+  (CRB Hong Kong p. 71); Impaired lowers it a level at a time, never below 2 (p. 76); Aptitude raises the selected
+  skill's caps only, 7 at creation and 10 in career (p. 70); Incompetent forbids ranks in its skill, and isn't for a
+  Magic or Resonance skill the runner can't use (pp. 76–77); Sensitive System doubles cyberware, bioware and nanoware
+  Essence and can't be had with Magic or Resonance (p. 78). The importer no longer reads Exceptional's maximum as a
+  raise of the attribute too.
+- Improved Ability (CRB Hong Kong p. 157): the skill it is for is its note (the Magic tab edits it), it may be bought
+  again for another skill, it costs 1.0 power points a level for a combat skill and 0.5 for any other, its levels add to
+  that skill's pool, and Review asks for a rank in the skill and a boosted skill at most 1.5 times the rank (rounded up)
+  or +4. The importer reads the two prices (`cost`, `costCombat`). A pick now keeps a note (the runner file's `<pick
+  note>`), and a power's or quality's `skill:choice` and `attr:choice` effects go on what its note names.
+- Ware that can't be combined (CRB Hong Kong pp. 157, 286–293): the importer reads each augmentation's, adept power's and
+  quality's "incompatible with", "cannot be combined with" and "only one installed at a time" into its entry, and Review
+  flags each pair the runner has (bone lacing with bone density or a second lacing; muscle replacement with muscle
+  augmentation or toner; reaction enhancers, wired reflexes, synaptic booster and Improved Reflexes with what raises
+  Reaction or Initiative; dermal plating with orthoskin; a supplement's quality pairs). Reaction enhancers with wired
+  reflexes is a note: the wireless bonus allows it. The Sixth World Companion's Suprathyroid Bonuses Stack (p. 149) is
+  a switch, off.
+- More of the core rulebook's checks (Commlink6 makes them too): one specialization a skill but Exotic Weapons, which
+  takes several (the Skills tab's further specializations), needs one to be used and takes no expertise (CRB Hong Kong
+  pp. 65, 95); Astral only for magicians and for adepts with Astral Perception (p. 93); one Native language, the others
+  to Expert at most (pp. 67, 99); the initiate and submersion grades never above Magic and Resonance (pp. 167, 195);
+  foci only for the Awakened, no more than Magic, none of Force above it, their Force together at most Magic × 5, and
+  each bonded for its Karma out of the customization Karma (pp. 154, 168).
+- The Sixth World Companion's Expanded Specializations and Unrestricted Skill Ranks (p. 153), switches, off.
+- A quality whose price line lists its prices (Bilko Contacts' and Import/Export's `7 or 12`, `10 or 14 Karma`, Seattle
+  pp. 327–328; `3, 6 or 9 Karma`) is bought at one of them, chosen from a list, never a value between; a range (`2 to
+  20 Karma`) keeps its stepper. The importer writes the listed prices as `karmaSteps`.
+- More of the Sixth World Companion's optional rules, switches, off: Alternate Mystic Adept (p. 148), Twenty Questions'
+  3 Karma at creation (p. 25), and Working for the Man and for the People (p. 153: 2,000¥ a Karma each way after
+  creation, now each with its switch and its rate shipped).
+- The shipped creation settings cite the core rulebook's latest printing, the Hong Kong City Edition (`CRB-HK`), every
+  value checked against it (the one-attribute-at-maximum and adjustment rules p. 63, the initiative's 1D6 p. 67); the
+  first printing's two readings ship off with Hong Kong's pages (`availabilityCapIllegalOnly`, `karmaSpellsAtCreation`:
+  p. 68's footnote), and each optional rule on a runner's Creation rules names its book and page.
+- **The Sixth World Companion's expanded contacts (p. 161) now ship off**, behind their own switch (`expandedContacts`):
+  off, contacts take Charisma × 6 points, each rating up to Charisma (CRB Hong Kong p. 67). A book sample whose printed
+  contacts need them gets the switch as an assumed rule when imported again.
+- The Gear tab takes a target's Defense Rating and shows who gains Edge at each range band (p. 45).
+- The importer reads a table of unarmed values (the bone lacing table: Body when resisting damage, Defense Rating,
+  unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.
+- Optional rules, off unless the table turns them on: the Sixth World Companion's Stacking Advantage (p. 144), Rolling
+  Strength instead of Agility in Close Combat and High Strength Adds to Damage (p. 150).
+- **Hover text on every creation setting**: on Table setup and on a runner's Creation rules, each row says in plain words
+  what the setting does, then the book and page that prints it, or "house rule" or "option".
+- The owner's decisions on the rules no book settles (2026-10-11):
+  - Review **notes** (never blocks): attribute, adjustment, skill or knowledge points left (they're lost at Finalize), no
+    lifestyle, no name or alias, a gun with no ammunition bought for its kind.
+  - Review **errors a GM can approve**: Karma or nuyen left past what carries over (5 Karma, CRB Hong Kong p. 66; 5,000¥,
+    p. 68; these were notes); a mystic adept's mentor spirit with no advantages picked (pp. 162–163: one, for good).
+  - **Negative Karma or nuyen blocks Finalize** and no GM can approve it; building with it is fine.
+  - **Not offered, refused**: Aptitude and Incompetent on the same skill; Sorcery, Conjuring or Enchanting for a pure
+    adept; Elf Poser, Ork Poser and Human-Looking for a metatype their description doesn't name; an augmentation the
+    runner already has (a limb or other paired part once a side). Review flags a file that holds one.
+  - A mentor spirit on the Magic tab (with a mystic adept's advantages) brings the Mentor Spirit quality and its Karma;
+    removing the quality removes the mentor spirit. One Native language a runner (the Native box on each language line).
+  - A technomancer holds data structures by level: Karma equal to the level, level × 5,000¥ (Hack & Slash pp. 71–72).
+  - New switches, off: Exotic Weapons' first specialization free, a mystic adept's mentor giving both advantages, data
+    structure caps and initiation/submersion grade caps at creation (the GM's numbers under each), no used grade on
+    cultured bioware, adjustment points on a lowered maximum, point buy's 450,000¥ errata version, knowledge points from
+    Logic + Intuition, Elite sum-to-thirteen, Availability 7 at creation, the GM's own carry-over limits (house rules);
+    Magic or Resonance 6 + grade at creation (CRB Hong Kong p. 167) and seats removed adding cargo by Double Clutch
+    p. 126's Cargo Factor (options).
+  - The Karma build, the positive-quality multiplier, a limit on Karma turned into nuyen and Karma for a mystic adept's
+    power points are each behind a toggle of their own, off, with their numbers under it. An expertise with skill points
+    now ships on (1); its hover text names the book's two pages that disagree (pp. 65, 68).
+  - A sample runner whose numbers need the first printing's illegal-only Availability cap says "assumed: 2019 printing".
+  - Sample runners: the only Review errors added are the Karma and nuyen left past the limits, which were notes before.
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers

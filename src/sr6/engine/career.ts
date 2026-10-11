@@ -7,8 +7,8 @@
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { attrMax, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
-import { num, str, type CreationRules } from './creation'
+import { aptitudeSkills, attrMax, manySpecs, powerCost, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
@@ -44,7 +44,8 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     }
     case 'spec': case 'expertise': {
       const s = b.skills.find(x => x.id === a.target)
-      if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
+      if (s && a.op === 'spec' && s.spec && s.spec !== a.name) s.specs = [...s.specs ?? [], a.name]
+      else if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
       return
     }
     case 'knowledge': b.knowledge.push(structuredClone(a.line)); return
@@ -135,9 +136,11 @@ export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
 export function careerPowerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): { max: number; spent: number; left: number } {
   const k = MAGIC_KINDS[b.magic]
   // (Magic as Essence leaves it, as at creation: budgets.ts powerPoints)
-  const max = !k.powers ? 0 : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
-  const spent = b.picks.filter(x => x.kind === 'adeptpowers')
-    .reduce((t, x) => { const v = data.powers[x.id]; return t + (v?.cost ?? 0) * (v?.perLevel ? x.level ?? 1 : 1) }, 0)
+  // (the Sixth World Companion's Alternate Mystic Adept, p. 148: half a point for each point of Magic raised)
+  const alt = k.paysPowers && !!flag(cr, 'alternateMysticAdept')
+  const max = !k.powers ? 0 : alt ? (b.powerPointsBought + Math.max(0, attrRating(b, 'mag', p) - p.magicRating(b))) / 2
+    : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
+  const spent = b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => t + powerCost(data, x), 0)
   return { max, spent, left: Math.round((max - spent) * 100) / 100 }
 }
 
@@ -180,11 +183,13 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'skill': {
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
-      const cur = s ? skillRank(s) : 0, cap = num(cr, 'advance.skillMax')
-      // CRB p. 65: the aptitude quality lets one skill go as far above the cap as it does at creation
-      const apt = str(cr, 'aptitudeQuality'), up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0)
-      const aptitude = !!apt && up > 0 && b.qualities.some(q => q.id === apt)
-        && !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!)
+      // (the Sixth World Companion's Unrestricted Skill Ranks, p. 153: no cap after creation)
+      const cur = s ? skillRank(s) : 0, cap = flag(cr, 'unrestrictedSkillRanks') ? undefined : num(cr, 'advance.skillMax')
+      // CRB Hong Kong p. 70: the aptitude quality lets the selected skill go as far above the cap as it does at creation
+      // (10 instead of 9); one whose note names no skill, any one skill
+      const up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0), named = aptitudeSkills(data, cr, b)
+      const aptitude = !!named && up > 0 && (named.length ? named.includes(a.target)
+        : !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!))
       if (cap !== undefined && cur >= cap + (aptitude ? up : 0)) no('at-maximum')
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }
@@ -193,7 +198,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // skill.specUntrained, skill.expertiseSpec, skill.expertiseRank)
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
-      if (s?.[a.op]) no('already-known')
+      // (a further specialization: Exotic Weapons', CRB Hong Kong p. 95, or any with Expanded Specializations, SWC p. 153)
+      if (s?.[a.op] && !(a.op === 'spec' && manySpecs(data, cr, a.target))) no('already-known')
       if (!a.name.trim()) no('needs-name')
       return a.op === 'spec' ? { label: `${skillName(a.target)}: ${a.name}`, karma: need('karmaSpec') }
         : { label: `${skillName(a.target)} expertise: ${a.name}`, karma: need('advance.expertise') }
@@ -324,7 +330,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'convert': {
       if (!Number.isInteger(a.karma) || a.karma === 0) no('below-one')
-      if (a.karma > 0) { const n = a.karma * need('advance.karmaToNuyenRate'); return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n } }
+      // the Sixth World Companion's Working for the Man and for the People (p. 153): optional, each its own switch
+      if (a.karma > 0) {
+        if (!flag(cr, 'workingForTheMan')) no('optional-rule-off')
+        const n = a.karma * need('advance.karmaToNuyenRate'); return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n }
+      }
+      if (!flag(cr, 'workingForThePeople')) no('optional-rule-off')
       const rate = num(cr, 'advance.nuyenToKarmaRate') ?? no('optional-rule-off'), n = -a.karma * rate
       return { label: `${fmt(n)}¥ to ${-a.karma} karma`, karma: a.karma, nuyen: n }
     }

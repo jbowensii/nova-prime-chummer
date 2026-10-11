@@ -4,7 +4,7 @@
 // (Alphaware: alpha). A grade is offered once its Essence factor is set (a catalog grade also needs its cost: gammaware
 // prints none, it isn't bought). Grades are for cyberware and bioware; a catalog grade may name fewer types (exoware).
 import { GRADED_TYPES, type Sr6Entry } from '../model/types'
-import { num, type CreationRules } from './creation'
+import { flag, num, type CreationRules } from './creation'
 import { normName, type Sr6Data } from './data'
 
 export const STANDARD_GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
@@ -25,12 +25,15 @@ export function gradeKnown(cr: CreationRules, data: Sr6Data, g: string): boolean
 }
 
 /** The grades a catalog entry (none: a custom line) can take, the standard five first, then the catalog's; a grade a later
- *  book redefines (the core rulebook's used, Body Shop's omega) gives way to the new one. */
+ *  book redefines (the core rulebook's used, Body Shop's omega) gives way to the new one. With the house rule
+ *  noUsedCulturedBioware (owner, 2026-10-11) cultured bioware takes no used grade (nor the omega grade that replaces it). */
 export function gradesFor(cr: CreationRules, data: Sr6Data, e?: Sr6Entry): string[] {
   const known = [...new Set([...STANDARD_GRADES, ...Object.keys(data.grades)])].filter(g => gradeKnown(cr, data, g))
   const gone = new Set(known.map(g => data.grades[g]?.replaces).filter((g): g is string => !!g))
   const all = known.filter(g => !gone.has(g))
-  return e ? all.filter(g => (data.grades[g]?.types ?? GRADED_TYPES).includes(e.attrs.type ?? '')) : all
+  const used = (g: string) => g === 'used' || data.grades[g]?.replaces === 'used'
+  const cultured = !!e && !!flag(cr, 'noUsedCulturedBioware') && /cultured/i.test(e.attrs.category ?? '')
+  return e ? all.filter(g => (data.grades[g]?.types ?? GRADED_TYPES).includes(e.attrs.type ?? '') && !(cultured && used(g))) : all
 }
 
 /** Whether entry `e` comes in grade `g`: one offered, or one a later book redefined as an offered one (a used line once

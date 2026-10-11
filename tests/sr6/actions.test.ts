@@ -268,13 +268,14 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
 test('only cyberware and bioware come in grades: one on geneware is taken, an error a GM may approve; gear is refused one', () => {
   const genes = { id: 'crb.glow-genes', kind: 'augmentations' as const, name: 'Glow Genes', source: 'CRB', page: 1,
     attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' }, parts: [], text: '' }
-  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : old(k, id)) } } })
+  const dark = { ...genes, id: 'crb.dark-genes', name: 'Dark Genes' }
+  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : id === dark.id ? dark : old(k, id)) } } })
   expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(ok)
-  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id })).toEqual(ok)
+  expect(act({ op: 'purchase', kind: 'augmentations', id: dark.id })).toEqual(ok)
   expect(act({ op: 'rate', uid: b.purchases[1].uid, grade: 'alpha' })).toEqual(ok)
   const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
   expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([0, 1].map(i =>
-    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, 'Glow Genes (geneware) doesn’t come in Alpha.']))
+    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, `${['Glow', 'Dark'][i]} Genes (geneware) doesn’t come in Alpha.`]))
   ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
   expect(validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade').map(x => !!x.approved)).toEqual([true, false])
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, grade: 'alpha' })).toEqual(no('no-grade'))

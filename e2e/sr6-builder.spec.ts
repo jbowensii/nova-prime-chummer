@@ -228,6 +228,12 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await page.getByLabel('Cityspeak is native').check()
   await page.getByRole('button', { name: 'Raise Arcade Lore points' }).click()
   await expect(page.getByText('Knowledge points:')).toContainText('0 left of 2')
+  // one native language a runner (owner, 2026-10-11): another language's Native box waits
+  await page.getByLabel('New knowledge skill or language').fill('Gutterspeak')
+  await page.getByLabel('New one is a').selectOption('language')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByLabel('Gutterspeak is native')).toBeDisabled()
+  await page.locator('tr').filter({ has: page.getByLabel('Gutterspeak is native') }).getByRole('button', { name: 'Remove' }).click()
   await shoot(page, 'editor-skills')
 
   // the budgets panel: karma's breakdown, each line a link to its tab
@@ -271,6 +277,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByText('Quiet Loop').click()
   await work.getByRole('button', { name: 'Raise Submersion grade' }).click()
   await expect(work.locator('tr', { hasText: 'Quiet Loop' })).toBeVisible()
+  // a data structure (Hack & Slash): by level; it goes when the runner stops being a technomancer
+  await work.getByRole('button', { name: 'Add a data structure…' }).click()
+  await dlg.getByText('Zap Shell').click()
+  await expect(work.locator('tr', { hasText: 'Zap Shell' })).toBeVisible()
   await shoot(page, 'editor-resonance')
 
   // an adept (the fixture's made-up adept at magic A): a leveled power against the power points
@@ -318,6 +328,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await dlg.getByText('Soft Echo').click()
   await expect(work.locator('tr', { hasText: 'Soft Echo' })).toBeVisible()
   await expect(work.getByLabel('Drain attribute')).toHaveValue('log')
+  // a mentor spirit (owner, 2026-10-11: it brings its quality), then none again
+  await work.getByLabel('Mentor spirit', { exact: true }).selectOption('crb.glow-moth')
+  await expect(work.getByLabel('Mentor spirit', { exact: true })).toHaveValue('crb.glow-moth')
+  await work.getByLabel('Mentor spirit', { exact: true }).selectOption('')
   await shoot(page, 'editor-magic')
 
   // Augmentations: rating and grade in the picker, then a bonus
@@ -333,6 +347,12 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   const eyes = work.locator('tr', { hasText: 'Glow Eyes' })
   await expect(eyes.getByLabel('Glow Eyes grade')).toHaveValue('alpha')
   await expect(eyes).toContainText('0.14')
+  // an augmentation the runner has isn't offered again (owner, 2026-10-11)
+  await work.getByRole('button', { name: 'Add an augmentation…' }).click()
+  await expect(dlg.getByText('Spring Tendons')).toBeVisible()
+  await expect(dlg.getByText('Glow Eyes', { exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(dlg).toHaveCount(0)
   // rating and grade change in place
   await eyes.getByLabel('Glow Eyes rating').selectOption('3')
   await eyes.getByLabel('Glow Eyes grade').selectOption('standard')
@@ -422,7 +442,14 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await work.getByLabel('SIN 1 licence rating').fill('2')
   await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
   await expect(work.getByText('Zap Gun licence (2)')).toBeVisible()
-  await work.getByRole('button', { name: 'Raise Karma turned into nuyen' }).click()
+  // karma to nuyen both ways (one missed click undone with one more): back is refused at none, then 2 there, 1 back
+  const toNuyen = work.getByRole('button', { name: '1 Karma → 1,500¥' }), toKarma = work.getByRole('button', { name: '1,500¥ → 1 Karma' })
+  await expect(toKarma).toBeDisabled()
+  await toNuyen.click()
+  await toNuyen.click()
+  await expect(work.getByText('2 karma turned into nuyen (3,000¥)')).toBeVisible()
+  await toKarma.click()
+  await expect(work.getByText('1 karma turned into nuyen (1,500¥)')).toBeVisible()
   const nuyen = budgets.locator('details:has(summary[aria-label^="Nuyen"])')
   await nuyen.locator('summary').click()
   await expect(nuyen).toContainText('Cozy lifestyle × 2 months')
@@ -442,12 +469,14 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   const work = page.locator('main.work'), dlg = page.getByRole('dialog')
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.getByRole('heading', { name: 'Review' })).toBeVisible()
-  // two problems, each message a link to its tab: nuyen overspent (Gear) and alpha Glow Eyes above the Availability cap
-  // (Augmentations); the contact above Charisma is bought with karma (the Sixth World Companion's expanded contacts)
-  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' })
+  // three problems, each message a link to its tab: nuyen overspent (Gear: only fixing clears it), alpha Glow Eyes above
+  // the Availability cap (Augmentations) and more Karma left than carries over; the contact above Charisma is bought with
+  // karma (the Sixth World Companion's expanded contacts)
+  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' }), left = work.locator('.viol', { hasText: 'karma left' })
   await expect(eyes).toContainText('Problem')
   await expect(eyes).toContainText('CRB p.63')
-  await expect(work.locator('.viol .sev.err')).toHaveCount(2)
+  await expect(work.locator('.viol .sev.err')).toHaveCount(3)
+  await expect(work.locator('.viol', { hasText: 'Nuyen overspent' })).toContainText('Fix before finalizing: no GM approval')
   await expect(page.getByRole('button', { name: 'Finalize runner' })).toBeDisabled()
   await work.getByRole('link', { name: /^Nuyen overspent by 3,437¥/ }).click()
   await expect(page).toHaveURL(/\/gear$/)
@@ -459,10 +488,10 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await tabs.filter({ hasText: 'Contacts' }).click()
   await expect(page).toHaveURL(/\/contacts$/)
   await work.getByRole('button', { name: 'Lower SIN 1 lifestyle 1 months' }).click()
-  await work.getByRole('button', { name: 'Raise Karma turned into nuyen' }).click()
+  await work.getByRole('button', { name: '1 Karma → 1,500¥' }).click()
   await work.getByRole('button', { name: 'Lower Contact 1 connection' }).click()
   await tabs.filter({ hasText: 'Review' }).click()
-  await expect(work.locator('.viol .sev.err')).toHaveCount(1)
+  await expect(work.locator('.viol .sev.err')).toHaveCount(2)
 
   // only a GM approves: Pat, a player, has no button; Gil, the GM of a campaign the runner is in, approves it with a note
   // on his read-only view, revokes, approves again
@@ -483,10 +512,16 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend')
   await gdlg.getByRole('button', { name: 'Approve' }).click()
   await expect(geyes).toContainText('Approved')
+  // the Karma left past the limit too (owner's decision L2: a problem a GM can approve)
+  await gil.locator('main.work .viol', { hasText: 'karma left' }).getByRole('button', { name: 'GM approve' }).click()
+  await gdlg.getByLabel('Why the GM allows it').fill('Saving up')
+  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  await expect(gil.locator('main.work .viol', { hasText: 'karma left' })).toContainText('Approved')
   await expect(gil.getByRole('button', { name: 'Finalize runner' })).toHaveCount(0) // still Pat's to finalize
   await gil.close()
   await page.reload()
   await expect(eyes).toContainText('GM: Street doc friend')
+  await expect(left).toContainText('GM: Saving up')
   await expect(tabs.filter({ hasText: 'Review' })).toHaveText('Review')
   // the derived values
   await expect(work.locator('.sr6-derived div', { hasText: 'Defense Rating' })).toContainText('5')
@@ -763,6 +798,32 @@ test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the
   // a player can't lock
   expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { locks: [] }, headers: { Origin: origin } })).status()).toBe(403)
   expect((await pat.request.delete(`/api/sr6/campaigns/${camp.id}/runners/${kidId}`, { headers: { Origin: origin } })).ok()).toBe(true)
+
+  // nested optional rules: a rule that needs another sits under it, greyed and disabled until the parent is on; of two
+  // that can't be on together, the second says why (the server's rules again, out of the campaign)
+  await pat.goto(kid.replace(/concept$/, 'method'))
+  await pat.reload()
+  const child = rules.locator('tr', { hasText: 'Expanded contacts: karma per contact point' })
+  await expect(child).toHaveClass('nested')
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeEnabled()
+  await rules.getByLabel(/^Expanded contacts: karma buys/).selectOption('false')  // (the test table has them on)
+  await expect(child).toHaveClass('nested blocked')
+  await expect(child).toContainText('needs Expanded contacts: karma buys')
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeDisabled()
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toContainText('The table’s: 1')  // its value kept
+  await rules.getByLabel(/^Expanded contacts: karma buys/).selectOption('')
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeEnabled()
+  await expect(child).not.toContainText('needs')
+  const swc = rules.locator('tr', { hasText: 'Street-level (Sixth World Companion)' }).first()
+  await rules.getByLabel(/^Prime runner/).selectOption('true')
+  await expect(swc.getByLabel(/^Street-level \(Sixth World Companion\)/)).toBeDisabled()
+  await expect(swc).toContainText('can’t be on with Prime runner: twice the customization karma, which is on')
+  await shoot(pat, 'runner-rules-nested')
+  // Table setup shows the same nesting (read only for Gil)
+  await page.goto('/#/sr6/table')
+  const tq = page.locator('.sr6-creation tr', { hasText: 'Twenty Questions: the karma' })
+  await expect(tq).toHaveClass(/nested blocked/)
+  await expect(tq).toContainText('needs Twenty Questions: karma at creation')
   await pat.close()
 })
 

@@ -16,7 +16,7 @@ const ITEM = ['avail', 'cost']
  *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
-  qualities: { fields: ['kind', 'karma', 'karmaMax', 'perLevel', 'maxLevel', 'category', 'granted', 'uncounted', 'group'] },
+  qualities: { fields: ['kind', 'karma', 'karmaMax', 'karmaSteps', 'perLevel', 'maxLevel', 'category', 'granted', 'uncounted', 'group'] },
   weapons: { fields: ['category', 'rating', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM, 'skill', 'spec'] },
   armor: { fields: ['category', 'rating', 'defense', 'social', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
@@ -26,7 +26,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage', 'opposed', 'essence'] },
   rituals: { fields: ['keywords', 'threshold'] },
-  adeptpowers: { fields: ['cost', 'perLevel', 'maxLevel', 'activation'] },
+  adeptpowers: { fields: ['cost', 'costCombat', 'perLevel', 'maxLevel', 'activation'] },
   complexforms: { fields: ['duration', 'fade'] },
   metamagics: { fields: ['user', 'perLevel', 'maxLevel'] },
   echoes: { fields: [] },

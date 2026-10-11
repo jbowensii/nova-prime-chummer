@@ -22,14 +22,14 @@ const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, v
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
-    qty: p.qty, grade: p.grade, worn: p.worn, note: p.note },
+    qty: p.qty, grade: p.grade, worn: p.worn, note: p.note, seatsRemoved: p.seatsRemoved },
   bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''))
 }
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) => `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
-const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name }, bonusesXml(p.bonuses))
+const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note }, bonusesXml(p.bonuses))
 const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
 const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) => el('contact', { uid: c.uid, name: c.name, archetype: c.archetype, connection: c.connection, loyalty: c.loyalty,
@@ -43,12 +43,13 @@ function buildXml(b: Sr6Build): string {
     ...CP_POOLS.map(pool => el('cp', { pool, points: b.cp[pool] })),
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
-    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise })),
+    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise, specs: s.specs?.length ? s.specs.join('; ') : undefined })),
     ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
     ...b.sins.map(sinXml),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
+    mentorSpirit: b.mentorSpirit, mentorAdvantage: b.mentorAdvantage,
     powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
     bestAttr: b.bestAttr, bestExtra: b.bestExtra },
   `\n    ${rows.join('\n    ')}\n  `)
@@ -153,7 +154,7 @@ function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
   const snap = kid(e, 'snapshot')?.firstElementChild
   return def({ uid: e.getAttribute('uid') ?? '', kind, id: str(e, 'id'), name: str(e, 'name'), cost: num(e, 'cost'), avail: num(e, 'avail'),
     essence: num(e, 'essence'), rating: num(e, 'rating'), qty: num(e, 'qty', 1), grade: str(e, 'grade'), worn: yes(e, 'worn'),
-    bonuses: readBonuses(e), note: str(e, 'note'), accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
+    bonuses: readBonuses(e), note: str(e, 'note'), seatsRemoved: num(e, 'seatsRemoved'), accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined })
 }
 
@@ -163,7 +164,7 @@ const readKnowledge = (e: Element): Sr6Knowledge => def({ uid: e.getAttribute('u
 const readQuality = (e: Element): Sr6Quality => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1),
   karma: num(e, 'karma'), free: yes(e, 'free'), note: str(e, 'note'), name: str(e, 'name') })
 const readPick = (e: Element): Sr6Pick => def({ uid: e.getAttribute('uid') ?? '', kind: oneOf(e.getAttribute('kind'), PICK_KINDS, 'pick kind')!,
-  id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name') })
+  id: e.getAttribute('id') ?? '', level: num(e, 'level'), bonuses: readBonuses(e), name: str(e, 'name'), note: str(e, 'note') })
 const readTechnique = (e: Element) => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', name: str(e, 'name') })
 const readMartial = (e: Element, fix?: string[]): Sr6MartialArt => def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '',
   name: str(e, 'name'), techniques: each(kids(e, 'technique'), readTechnique, label, fix) })
@@ -177,7 +178,9 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
   const drain = b.getAttribute('drainAttr')
-  Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'),
+  const adv = b.getAttribute('mentorAdvantage')
+  Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'), mentorSpirit: str(b, 'mentorSpirit'),
+    mentorAdvantage: adv == null ? undefined : oneOf(adv, ['magician', 'adept'] as const, 'mentor advantage', undefined, fix),
     drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),
     ...Object.fromEntries((['bestAttr', 'bestExtra'] as const).map(k => [k, b.getAttribute(k) == null ? undefined
       : oneOf(b.getAttribute(k), CORE_ATTRS, 'best attribute', undefined, fix)])) }))
@@ -193,7 +196,8 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
     out.attributes[oneOf(e.getAttribute('id'), SR6_ATTRS, 'attribute')!] = { points: num(e, 'points', 0), adjust: num(e, 'adjust', 0), karma: num(e, 'karma', 0) }
   }, label, fix)
   out.skills = each(kids(b, 'skill'), e => def({ id: e.getAttribute('id') ?? '', points: num(e, 'points', 0), karma: num(e, 'karma', 0),
-    spec: str(e, 'spec'), expertise: str(e, 'expertise') }), label, fix)
+    spec: str(e, 'spec'), expertise: str(e, 'expertise'),
+    specs: str(e, 'specs')?.split(/;\s*/).map(x => x.trim()).filter(Boolean) }), label, fix)
   out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)

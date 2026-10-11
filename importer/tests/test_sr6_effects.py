@@ -23,6 +23,36 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(fx("Effect: -1 Reaction, +2 Logic", "gear"),  # a drug's effect line: while it acts
                          [("attr:rea", "add", "-1", "activated", None), ("attr:log", "add", "2", "activated", None)])
 
+    def test_what_an_entry_cant_be_combined_with(self):
+        inc = lambda text, name="Zap Lacing (Tin)": [(t, a) for t, a, _ in effects.incompatibilities(text, name)]
+        self.assertEqual(inc("Zap lacing comes in two types—you can only have one installed at a time. Zap lacing is incompatible "
+                             "with other augmentations that alter your bones (such as glow density augmentation)."),
+                         [("incompatible", {"family": "Zap Lacing"}), ("incompatible", {"names": "glow density augmentation"})])
+        self.assertEqual(inc("Zip enhancers are incompatible with all other enhancements to Reaction, including zap reflexes."),
+                         [("incompatible", {"targets": "attr:rea", "names": "zap reflexes"})])
+        self.assertEqual(inc("Zap reflexes are incompatible with augmentations that affect Reaction or Initiative."),
+                         [("incompatible", {"targets": "attr:rea derived:initiative-dice"})])
+        self.assertEqual(inc("It cannot be combined with other augmentations to the muscles, including glow augmentation or glow toner bioware."),
+                         [("incompatible", {"names": "glow augmentation; glow toner"})])
+        self.assertEqual(inc("This bioware is incompatible with augmentations that increase Strength, including the zap replacement cyberware."),
+                         [("incompatible", {"targets": "attr:str", "names": "zap replacement"})])
+        self.assertEqual(inc("Wireless bonus: Zip enhancers are compatible with a wireless zap reflexes system."),
+                         [("compatible", {"name": "zap reflexes", "switch": "wireless"})])
+        self.assertEqual(inc("Incompatible with Glow Eye."), [("incompatible", {"names": "Glow Eye"})])
+        self.assertEqual(inc("It is incompatible with anything else that provides an edge to the Athletics skill."), [])
+        self.assertEqual(inc("It is compatible with other zappers."), [])  # (only a wireless exception)
+
+    def test_a_powers_two_prices(self):
+        self.assertEqual(effects.split_cost("Combat skill: 0.75 PP per level; other skills 0.25 PP per level"),
+                         {"cost": "0.25", "costCombat": "0.75"})
+        self.assertEqual(effects.split_cost("0.5 PP per level"), {})
+
+    def test_unarmed_damage_made_physical(self):
+        for text in ("It changes your unarmed combat damage to Physical.", "Your unarmed combat damage becomes Physical.",
+                     "Your Unarmed Melee attacks inflict Physical damage."):
+            self.assertIn(("derived:unarmed-damage", "set", "P", None, None), fx(text), text)
+        self.assertEqual(fx("Your unarmed attacks do not inflict Physical damage."), [])
+
     def test_defense_monitors_actions(self):
         self.assertEqual(fx("It grants +3 Defense Rating."), [("derived:defense", "add", "3", None, None)])
         self.assertEqual(fx("You gain 1 level of natural Armor."), [("derived:defense", "add", "1", None, None)])
@@ -62,6 +92,9 @@ class ReadTest(unittest.TestCase):
 
     def test_maxima(self):
         self.assertEqual(fx("That attribute's maximum (but not current) rank increases by 1."), [("attr-max:choice", "add", "1", None, None)])
+        # (the maximum, never the attribute too)
+        self.assertEqual(fx("The zapper's attribute maximum (but not current rank) for the chosen attribute increases by 1."),
+                         [("attr-max:choice", "add", "1", None, None)])
         self.assertEqual(fx("Their physical attribute maximums are reduced by 1."),
                          [(f"attr-max:{a}", "add", "-1", None, None) for a in ("bod", "agi", "rea", "str")])
 
@@ -94,6 +127,15 @@ class TableTest(unittest.TestCase):
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.table(["JACK", "VR MATRIX INIT DICE BONUS"], ["Rating 1", "+1"], "augmentations")],
                          [("derived:matrix-initiative-dice", "1")])
         self.assertEqual(effects.table(["JACK", "INIT NOTES"], ["Rating 1", "+1"], "augmentations"), [])
+
+        # a table of unarmed values (a made-up lacing): its BODY is Body when resisting physical damage, its DV set or added
+        lacing = ["LACING", "BODY", "DEFENSE RATING", "UNARMED DV", "UNARMED AR"]
+        self.assertEqual([(a["target"], a["op"], a["value"], a.get("when")) for _, a, _ in effects.table(lacing, ["Tin", "+2", "+1", "5P", "+3"], "augmentations")],
+                         [("test:damage-resistance", "add", "2", "when resisting physical damage"), ("derived:defense", "add", "1", None),
+                          ("derived:unarmed-dv", "set", "5", None), ("derived:unarmed-ar", "add", "3", None)])
+        self.assertEqual([(a["target"], a["op"], a["value"]) for _, a, _ in effects.table(lacing, ["Tin", "+2", "+1", "+1", "+3"], "augmentations")][2],
+                         ("derived:unarmed-dv", "add", "1"))
+        self.assertEqual(effects.table(["DRONE", "BODY", "ARMOR"], ["Buzzer", "+2", "3"], "vehicles"), [])  # a vehicle's Body
 
 
 class ApplyTest(unittest.TestCase):
@@ -152,6 +194,13 @@ class ApplyTest(unittest.TestCase):
         self.assertIn('<effect target="attr:str" op="add" value="R"/>', out["strength"])
         self.assertNotIn("<effect", out["plain-armor"])  # (not rated)
         self.assertNotIn("<effect", out["gear-armor"])  # (not an add-on)
+    def test_a_variants_row_in_its_familys_table(self):
+        # `Glitter Lacing (Tin)`: its own row prices it; its effects are the row `Tin` of the family's table (invented)
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n  <augmentation id="gl-tin" source="X" page="3"><name>Glitter Lacing (Tin)</name></augmentation>\n</sr6:data>\n'}
+        regrouped = ('| BODYWARE | ESSENCE | COST |\n|---|---|---|\n| Glitter Lacing (Tin) | 0.5 | 100 |\n\n'
+                     '| LACING | BODY | DEFENSE RATING | UNARMED DV | UNARMED AR |\n|---|---|---|---|---|\n| Tin | +1 | +1 | 3P | +1 |\n')
+        out, _ = effects.apply(files, "", regrouped)
+        self.assertIn('<effect target="derived:defense" op="add" value="1"/><effect target="derived:unarmed-dv" op="set" value="3"/>', out["augmentations.xml"])
 
     def test_a_shared_description_is_split_by_name(self):
         t = ("Turbo engines go fast. Increase Acceleration by 3. Economy engines save money. Decrease Acceleration by 2.")

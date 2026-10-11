@@ -6,7 +6,8 @@
 // whether its threshold counts Essence. Every pick can carry the player's bonuses.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { num } from '../../engine/creation'
+import { flag, num, str } from '../../engine/creation'
+import { noteAttr, noteSkill, powerCost, qualityChoice } from '../../engine/budgets'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../engine/data'
 import type { Sr6Entry } from '../../model/types'
 import { pickFlags } from '../../print/view'
@@ -18,7 +19,8 @@ import { Suggest } from './Skills'
 
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'An' : 'A')
 const PICKS: [PickKind, string, string][] = [['spells', 'Spells', 'a spell'], ['rituals', 'Rituals', 'a ritual'], ['adeptpowers', 'Adept powers', 'an adept power'],
-  ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo']]
+  ['metamagics', 'Metamagics', 'a metamagic'], ['complexforms', 'Complex forms', 'a complex form'], ['echoes', 'Echoes', 'an echo'],
+  ['datastructures', 'Data structures', 'a data structure']]
 
 export function MagicTab() {
   const { ch, c, data, cr, budgets, act, edit } = useSr6Editor()
@@ -40,21 +42,25 @@ export function MagicTab() {
       {rows.length === 0 ? <p className="muted">None yet.</p> : <div className="scroll-x"><table className="data">
         <tbody>{rows.map(x => {
           const e = data.entry(kind, x.id), power = kind === 'adeptpowers' ? data.powers[x.id] : undefined, name = e?.name ?? x.name ?? x.id
-          const max = pickMaxLevel(data, kind, x.id)
+          const max = pickMaxLevel(data, kind, x.id), want = qualityChoice(e?.name)
+          const chosen = want === 'attribute' ? noteAttr(x.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, x.note) ?? '']?.name : undefined
           return <tr key={x.uid}>
             <td><Sr6Ref kind={kind} id={e?.id}><b>{name}</b></Sr6Ref>{!e && <span className="err"> (no longer in the catalog)</span>}
               {e && <span className="muted"> {[e.attrs.category, ...pickFlags(e), e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
+              {want && <div className="row"><input key={`${x.uid}:${x.note ?? ''}`} defaultValue={x.note ?? ''} maxLength={200} placeholder={`the ${want} it is for`}
+                aria-label={`${name} note`} onBlur={ev => { if (ev.target.value.trim() !== (x.note ?? '')) act({ op: 'pickNote', uid: x.uid, note: ev.target.value }) }} />
+                <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span></div>}
               <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} /></div></td>
             <td>{max !== null && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
               onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
-            <td className="num">{power && (power.cost == null ? '? PP' : `${n(power.cost * (power.perLevel ? x.level ?? 1 : 1))} PP`)}</td>
+            <td className="num">{power && (power.cost == null ? '? PP' : `${n(powerCost(data, x))} PP`)}</td>
             <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
           </tr>
         })}</tbody>
       </table></div>}
     </section>
   }
-  const taken = (kind: PickKind, id: string) => pickMaxLevel(data, kind, id) === null && b.picks.some(x => x.kind === kind && x.id === id)
+  const taken = (kind: PickKind, id: string) => pickMaxLevel(data, kind, id) === null && !qualityChoice(data.entry(kind, id)?.name) && b.picks.some(x => x.kind === kind && x.id === id)
   // a metamagic for adepts only (or magicians only) is marked for a runner who may not take it
   const unfit = (e: Sr6Entry) => e.kind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user)
   const pick = (id: string) => { if (adding && !act({ op: 'pick', kind: adding, id })) setAdding(null) }
@@ -77,16 +83,29 @@ export function MagicTab() {
       {k.paysPowers && b.method !== 'pointbuy' && <p className="row">Power points bought
         <Stepper label="Power points bought" value={b.powerPointsBought} min={0} max={pp.cap} onChange={to => act({ op: 'powerPoints', delta: to - b.powerPointsBought })} />
         <span className="muted">at most {pp.cap}; each one lowers the free spells</span></p>}
+      {/* owner's decisions 5 and 12: the mentor spirit comes with its quality; a mystic adept picks one advantage */}
+      {(k.spells || k.powers) && <div className="row">
+        <label className="inline">Mentor spirit <select aria-label="Mentor spirit" value={b.mentorSpirit ?? ''} onChange={e => act({ op: 'mentor', id: e.target.value || null })}>
+          <option value="">None</option>
+          {[...c.entries.mentorspirits.values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
+        {b.mentorSpirit && b.magic === 'mystic-adept' && (flag(cr, 'mentorBothAdvantages')
+          ? <span className="muted">Both its magician’s and adept’s advantages (house rule)</span>
+          : <label className="inline">Advantages <select aria-label="Mentor spirit advantages" value={b.mentorAdvantage ?? ''}
+            onChange={e => act({ op: 'mentor', advantage: (e.target.value || null) as 'magician' | 'adept' | null })}>
+            <option value="">Pick one</option><option value="magician">The magician’s</option><option value="adept">The adept’s</option></select></label>)}
+        {b.mentorSpirit && str(cr, 'mentorSpiritQuality') && <span className="muted">with the {data.qualities[str(cr, 'mentorSpiritQuality')!]?.name ?? 'Mentor Spirit'} quality (Qualities tab)</span>}
+      </div>}
       {(k.spells || k.powers) && grade('initiation', 'Initiation grade')}
       {k.resonance && grade('submersion', 'Submersion grade')}
-      {PICKS.map(section)}
+      {/* (data structures, Hack & Slash pp. 70–72: only for a technomancer, or one a runner holds) */}
+      {PICKS.filter(([kind]) => kind !== 'datastructures' || allowed.datastructures || b.picks.some(x => x.kind === kind)).map(section)}
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>
         {adding && <Picker placeholder="Search" onPick={pick}
           groups={[...new Set([...c.entries[adding].values()].map(e => e.attrs.category ?? ''))].filter(Boolean).sort()}
           items={[...c.entries[adding].values()].sort((a, z) => a.name.localeCompare(z.name)).map(e => {
             const power = adding === 'adeptpowers' ? data.powers[e.id] : undefined
             return { id: e.id, name: e.name, group: e.attrs.category, disabled: taken(adding, e.id), ...cardOf(c, adding, e.id),
-              meta: [e.attrs.category, power && `${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e),
+              meta: [e.attrs.category, power && `${power.costCombat != null ? `${power.costCombat} PP (combat skill), ` : ''}${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`, ...pickFlags(e),
                 unfit(e) && `not for ${article(MAGIC_KIND_LABELS[b.magic]).toLowerCase()} ${MAGIC_KIND_LABELS[b.magic].toLowerCase()}`].filter(Boolean).join(', '),
               price: `${e.source} p.${e.page}`, search: `${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`, label: <House c={c} source={e.source} /> }
           })} />}

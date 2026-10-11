@@ -56,7 +56,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
         <div className="x-attrs">{attrs.map(([l, x]) => <div key={l}><span>{l}</span>
           <Hex v={x?.natural} sub={x && x.augmented !== x.natural ? `(${x.augmented})` : undefined} /></div>)}</div>
         <div className="x-three">
-          <div><F l="Initiative" v={init(d.initiative, d.on.initiative)} /><F l="Matrix Initiative" /><F l="Astral Initiative" v={init(d.astralInit, d.on.astralInit)} /></div>
+          <div><F l="Initiative" v={init(d.initiative, d.on.initiative)} /><F l="Matrix Initiative" v={d.matrixInit && `${init(d.matrixInit.ar)} · VR ${init(d.matrixInit.cold)}/${init(d.matrixInit.hot)}`} /><F l="Astral Initiative" v={init(d.astralInit, d.on.astralInit)} /></div>
           <div><F l="Composure" v={br(d.composure, d.on.composure)} /><F l="Judge Intentions" v={br(d.judgeIntentions, d.on.judgeIntentions)} /><F l="Memory" v={br(d.memory, d.on.memory)} /></div>
           <div><F l="Lift/Carry" v={br(d.liftCarry, d.on.liftCarry)} /><F l="Movement" /><F l="Defense Rating" v={br(d.defenseRating, d.on.defenseRating)} /></div>
         </div>

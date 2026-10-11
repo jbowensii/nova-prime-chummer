@@ -343,6 +343,14 @@ _TGT_END = r"(?=[.;:]|\s(?:but|and (?:gain|receive|add|increase|the|you|it|a|an)
 _PHRASE = r"((?:[^.;:](?!\s(?:but|which|until|unless)\b))+?)" + _TGT_END
 
 
+def split_cost(cost):
+    """An adept power's two prices (`Combat skill: 1.0 PP per level; other skills 0.5 PP per level`, Improved Ability, CRB
+    Hong Kong p. 157): {"cost": the other skills', "costCombat": the combat skill's}; {} for one price."""
+    c = re.search(r"\bcombat skills?\s*:?\s*([\d.]+)\s*(?:PP|power\s+points?)", cost or "", re.I)
+    o = re.search(r"\bother skills?\s*:?\s*([\d.]+)\s*(?:PP|power\s+points?)", cost or "", re.I)
+    return {"cost": o.group(1), "costCombat": c.group(1)} if c and o else {}
+
+
 def read(text, kind=None, name=None):
     """[(tag, attrs, None)]: the effects, tests and links the text states, in the order printed, each once."""
     out = []
@@ -375,7 +383,12 @@ def read(text, kind=None, name=None):
             last_who = who
         else:
             who = None
-        for x in _rules(s, kind, sw, when, edge_actions, label):
+        got = _rules(s, kind, sw, when, edge_actions, label)
+        # (`That attribute's maximum (but not current) rank increases by 1`: the maximum, not the attribute; Exceptional
+        # (Attribute), CRB Hong Kong p. 71)
+        maxed = {x[1]["target"][9:] for x in got if x[0] == "effect" and x[1]["target"].startswith("attr-max:")}
+        got = [x for x in got if not (x[0] == "effect" and x[1]["target"].startswith("attr:") and x[1]["target"][5:] in maxed)]
+        for x in got:
             if x[0] == "effect":
                 if who:
                     x[1]["affects"] = who
@@ -616,6 +629,10 @@ def _rules(s, kind, sw, when, edge_actions, label):
 
     for m in re.finditer(r"(?P<v>\d+|an?|one|two|three)\s+(?:additional |extra |bonus )?(?:damage )?overflow box", low):
         out.append(_fx("derived:overflow", "add", _val(m.group("v"), low), sw, when))
+    # unarmed damage made Physical (Dermal Deposits, bone lacing and bone density: CRB Hong Kong pp. 71, 286, 291)
+    if (m := re.search(r"\bunarmed (?:combat |melee )?(?:damage|attacks?)\b[^.;]{0,40}?\bphysical\b", low)) and not _negated(low, m.start()) \
+            and not re.search(r"\b(?:not|never|n't)\b", m.group(0)):
+        out.append(_fx("derived:unarmed-damage", "set", "P"))  # (always: the sentence's condition is another clause's)
     for m in re.finditer(r"(?:(?:ar|attack ratings?)[^.;]{0,40}?|^|: ?)(?P<l>(?:[+-]?\d+|-)(?:/(?:[+-]?\d+|-)){4})(?!\d)", low):
         vals = m.group("l").split("/")
         if any(v.startswith(("+", "-")) and v != "-" for v in vals):  # (a modifier per range band: `+2/–/–1/–2/–3`)
@@ -820,6 +837,80 @@ _LINK_KIND = {"quality": "qualities", "power": "adeptpowers", "adept power": "ad
 _NOT_NAMES = {"Edge", "The", "This", "Each", "A", "An", "Magic", "Resonance"}
 
 
+# ---------- incompatibilities: what the entry can't be combined with (CRB Hong Kong pp. 157, 286-293) ----------
+_INC = re.compile(r"\b(?:(?:is|are) incompatible with|incompatible with|cannot be combined with|can't be combined with|"
+                  r"can not be combined with|may not be combined with|(?:may|can) not take both)\b(?P<rest>[^.;]*)", re.I)
+_ONE_AT_A_TIME = re.compile(r"\byou can only have one installed at a time\b|\bonly one (?:type |kind )?(?:of (?:these|them) )?"
+                            r"(?:can|may) be (?:installed|taken|implanted)(?: at a time)?\b", re.I)
+_COMPAT = re.compile(r"\b(?:is|are) compatible with (?:an? |the )?(?P<w>wireless )?(?P<n>[a-z][\w’' -]*?)(?: systems?)?(?=,|;| and\b|$)", re.I)
+_INC_TARGETS = (("reaction", "attr:rea"), ("strength", "attr:str"), ("agility", "attr:agi"), ("body", "attr:bod"),
+                ("initiative", "derived:initiative-dice"))
+_KIND_WORDS = re.compile(r"\s+(?:cyberware|bioware|geneware|nanoware|bodyware|quality|power|system)s?$", re.I)
+
+
+def _inc_names(rest):
+    """The entries a clause names (`including muscle augmentation or muscle toner bioware`, `(such as bone density
+    augmentation)`, `Cyclopean Eye`): each name, its kind word left off."""
+    m = re.search(r"\b(?:including|such as|like)\s+(?:the\s+)?(.+)$", rest, re.I)
+    if m:
+        body = m.group(1)
+    elif not re.search(r"\b(?:augmentations?|enhancements?|boosts?|other|any|all)\b", rest, re.I):
+        body = rest  # (`Incompatible with Cyclopean Eye`: the clause is the name)
+    else:
+        return []
+    out = []
+    body = re.sub(r"\s*\(see [^)]*\)?", "", body, flags=re.I)
+    for n in re.split(r",\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+(?:the\s+)?", body.strip(" ()")):
+        n = _KIND_WORDS.sub("", re.sub(r"^(?:the|a|an)\s+", "", n.strip(" ().,"), flags=re.I)).strip()
+        # (a name, not a description: `anything else that provides …`, `skin modifications`, `qualities`)
+        if 2 < len(n) < 60 and len(n.split()) <= 4 and not re.match(r"(?:any|all|other|every|anything|something|except|qualit|augment|"
+                                                                     r"modification|cyberware|bioware|ware\b)", n, re.I) \
+                and not re.search(r"\b(?:that|which|who|modifications?)\b", n, re.I):
+            out.append(n)
+    return out
+
+
+def incompatibilities(text, name=""):
+    """[(tag, attrs, None)]: <incompatible> parts for what the text says the entry can't be combined with: `targets` the
+    attributes and initiative an augmentation that raises them can't be combined with (`incompatible with augmentations
+    that affect Reaction or Initiative`), `names` the entries named (`including wired reflexes`, `; `-separated),
+    `family` the name its kind shares when only one may be installed at a time (`Bone Lacing (Plastic)`: `Bone Lacing`);
+    and <compatible name switch> for an exception (`Wireless bonus: compatible with a wireless wired reflexes system`)."""
+    out = []
+    for s in sentences(text):
+        label = ""
+        if m := re.match(r"^[•*\s]*([A-Z][\w ]{1,30}):\s+(.*)$", s):
+            label, s = m.group(1), m.group(2)
+        if _ONE_AT_A_TIME.search(s):
+            fam = re.sub(r"\s*\(.*$", "", name or "").strip()
+            if fam:
+                out.append(("incompatible", {"family": fam}, None))
+        for m in _INC.finditer(s):
+            rest = m.group("rest")
+            if _negated(s.lower(), m.start()):
+                continue
+            ts = [t for w, t in _INC_TARGETS if re.search(rf"\b(?:increase|affect|add to|raise|enhance|boost)\w*\s+(?:your\s+)?[\w\s]*\b{w}\b|"
+                                                         rf"\benhancements? to {w}\b|\b{w}(?: or \w+)? (?:boosts?|enhancements?)\b|"
+                                                         rf"\bform of [\w\s]*\b{w}\b", rest, re.I)]
+            names = _inc_names(rest)
+            if ts or names:
+                a = {}
+                if ts:
+                    a["targets"] = " ".join(dict.fromkeys(ts))
+                if names:
+                    a["names"] = "; ".join(names)
+                out.append(("incompatible", a, None))
+        # (only a wireless exception: `Wireless bonus: … compatible with a wireless wired reflexes system`)
+        if (m := _COMPAT.search(s.rstrip(". "))) and not re.search(r"\bnot\b", s[:m.start()], re.I) \
+                and (m.group("w") or label.casefold().startswith("wireless")):
+            out.append(("compatible", {"name": _KIND_WORDS.sub("", m.group("n").strip()), "switch": "wireless"}, None))
+    uniq = []
+    for x in out:
+        if x not in uniq:
+            uniq.append(x)
+    return uniq
+
+
 def links(text, kind=None):
     """<link rel kind name [level]> for each entry the text grants or says this one works as."""
     out = []
@@ -859,7 +950,7 @@ def links(text, kind=None):
 COLUMNS = {"bod": "bod", "agi": "agi", "rea": "rea", "str": "str", "wil": "wil", "log": "log", "int": "int", "cha": "cha",
            "edg": "edg", "mag": "mag", "res": "res"}
 STAT_COLUMNS = {"ar": "item:ar", "attack rating": "item:ar", "attack ratings": "item:ar", "dv": "item:dv",
-                "defense rating": "derived:defense", "defense": "derived:defense", "unarmed dv": "item:dv", "unarmed ar": "item:ar",
+                "defense rating": "derived:defense", "defense": "derived:defense", "unarmed dv": "derived:unarmed-dv", "unarmed ar": "derived:unarmed-ar",
                 "matrix init bonus": "derived:matrix-initiative", "init bonus": "derived:initiative",
                 "initiative bonus": "derived:initiative", "dr": "derived:defense", "defense rating bonus": "derived:defense"}
 
@@ -889,6 +980,14 @@ def table(header, row, kind):
     for c, v in cells.items():
         t = STAT_COLUMNS.get(c) or _init_column(c)
         v = _norm(v or "")
+        if c == "body" and "unarmed dv" in h and re.fullmatch(r"\+\d+", v):
+            # (a table of unarmed values, the bone lacing table, CRB Hong Kong p. 286: its BODY is extra Body when resisting
+            # physical damage, as its text says)
+            out.append(_fx("test:damage-resistance", "add", v.lstrip("+"), "conditional", "when resisting physical damage"))
+            continue
+        if t == "derived:unarmed-dv" and (dm := re.fullmatch(r"(\d+)\s*[PS]", v)):
+            out.append(_fx(t, "set", dm.group(1)))  # (`3P`: the unarmed Damage Value it gives, HK p. 286; `+1`: added)
+            continue
         if not t or not v or v in ("-", "—") or (kind == "armor" and t == "derived:defense"):
             continue  # (an armor's own Defense Rating is its defense field, not an effect)
         if t == "item:ar" and "/" in v and re.fullmatch(r"(?:[+-]\d+|0|-)(?:/(?:[+-]\d+|0|-)){4}", v):
@@ -930,7 +1029,7 @@ SKIP_KINDS = {"rules", "actions", "npcs", "contacts", "critters", "spirits", "sp
               "licencetypes", "magictypes", "senses", "trueelements", "ruleoptions", "spellfeatures", "qualitysets"}
 _ENTRY = re.compile(r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>\s*$')
 _KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: crb.add_ons)
-_DROP = re.compile(r'<(?:effect|test|link) [^>]*/>')
+_DROP = re.compile(r'<(?:effect|test|link|incompatible|compatible) [^>]*/>')
 
 
 def _unesc(s):
@@ -1175,6 +1274,8 @@ def apply(files, texts_xml, regrouped=""):
             text = _variant_part(text, nm, names.get(kind, ()))
             text = _own_part(text, nm, names.get(kind, ()))
             found = read(text, kind, nm) + links(text, kind)
+            if kind in ("augmentations", "adeptpowers", "qualities"):
+                found += incompatibilities(text, nm)
             sec = section_of.get(_key(nm)) or section_of.get(_key(re.sub(r"\s*\(.*$", "", nm)))
             if sec and intros.get(sec):
                 found += [x for x in section_effects(intros[sec], text, nm, kind, sec) if x not in found]
@@ -1205,8 +1306,10 @@ def apply(files, texts_xml, regrouped=""):
                 if std:
                     found.append(("link", {"rel": "as", "kind": "weapons", "name": std.capitalize()}, None))
             tab = by_name.get(_key(nm), [])
-            if not tab and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
-                tab = [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]  # (`Cyberjack (Rating 1)`: the row `Rating 1`)
+            # (`Cyberjack (Rating 1)`: the row `Rating 1`; `Bone Lacing (Plastic)`, whose own row is its price's: the row
+            # `Plastic` of the Bone Lacing table)
+            if not any(table(h, r, kind) for h, r in tab) and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
+                tab = tab + [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]
             if kind == "ammotypes":  # (an ammo type's AR and DV: modifiers of the weapon it is loaded in)
                 at = dict(re.findall(r'(\w+)="([^"]*)"', attrs))
                 tab = tab or [(["AR", "DV"], [_unesc(at.get("ar", "")), _unesc(at.get("dv", ""))])]

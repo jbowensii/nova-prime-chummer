@@ -42,7 +42,8 @@ export function effectValue(v: string | undefined): { value: number; perRating?:
 
 const DERIVED_BONUS: Record<string, Bonus['target']> = {
   'derived:defense': 'defense', 'derived:initiative-dice': 'initDice', 'derived:physical-monitor': 'physical',
-  'derived:stun-monitor': 'stun', 'derived:overflow': 'overflow',
+  'derived:stun-monitor': 'stun', 'derived:overflow': 'overflow', 'derived:unarmed-ar': 'unarmedAR', 'derived:unarmed-dv': 'unarmedDV',
+  'derived:movement': 'movement', 'derived:matrix-initiative-dice': 'matrixInitDice',
 }
 
 /** The entries an entry grants or works as (its <link> parts): by id, else by the printed name in the kind it names
@@ -63,11 +64,15 @@ export function linkedEntries(data: Sr6Data, e: Sr6Entry | undefined): { part: S
  *  entries it grants or works as. Each keeps how it is turned on, its condition, its specialization and whom it affects:
  *  the always-on ones count in the total shown first, the switchable and conditional ones in the bracketed total (owner
  *  decision 2026-10-10). A low-confidence one is shown, never applied (owner decision D3). */
-export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0): Bonus[] {
+export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0, choice: { skill?: string; attr?: Sr6Attr } = {}): Bonus[] {
   const out: Bonus[] = []
   const skillId = (name: string) => Object.values(data.skills).find(v => normName(v.name) === name.replace(/-/g, ' '))?.id
+  // (a power's or quality's chosen skill or attribute, its note's: `skill:choice` on Improved Ability's skill; never an
+  // `attr:choice` read beside an `attr-max:choice`, the maximum's)
+  const maxed = (e?.parts ?? []).some(x => x.tag === 'effect' && x.attrs.target === 'attr-max:choice')
   for (const x of e?.parts ?? []) {
-    const t = x.attrs.target ?? '', v = effectValue(x.attrs.value), a = x.attrs
+    const a = x.attrs, t = a.target === 'skill:choice' && choice.skill ? `skill:${choice.skill}`
+      : a.target === 'attr:choice' && choice.attr && !maxed ? `attr:${choice.attr}` : a.target ?? '', v = effectValue(a.value)
     if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v) continue
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? a.switch as Bonus['switch'] : undefined
     const state = { ...v.perRating ? { perRating: true as const } : {}, ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
@@ -76,7 +81,7 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0)
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))  // (armor: its defense field, derive.ts)
       out.push({ target: DERIVED_BONUS[t], value: v.value, ...state })
     else if (t.startsWith('skill:')) {
-      const sk = skillId(t.slice(6))
+      const sk = choice.skill && t === `skill:${choice.skill}` ? choice.skill : skillId(t.slice(6))
       if (sk) out.push({ target: 'skill', skill: sk, value: v.value, ...state, ...a.spec ? { spec: a.spec } : {} })
     } else if (t.startsWith('test:'))
       for (const sk of testSkills(data, t.slice(5))) out.push({ target: 'skill', skill: sk, value: v.value, ...state })
@@ -87,14 +92,15 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0)
 }
 
 /** The attribute maxima an entry's effects set or raise (an infected type's table, `maximum Body and Strength by one
- *  point`): attribute -> { set?, add }; a chosen attribute's (`attr-max:choice`) is the player's to apply. */
-export function maxEffects(e: Sr6Entry | undefined): Partial<Record<Sr6Attr, { set?: number; add: number; perRating?: true }>> {
-  const out: Partial<Record<Sr6Attr, { set?: number; add: number; perRating?: true }>> = {}
+ *  point`): attribute -> { set?, add }; `choice`: a chosen attribute's (`attr-max:choice`: Exceptional, Impaired), which
+ *  the attribute the quality's note names takes (budgets.ts attrMax). */
+export function maxEffects(e: Sr6Entry | undefined): Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> {
+  const out: Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> = {}
   for (const x of e?.parts ?? []) {
     const t = x.attrs.target ?? '', v = effectValue(x.attrs.value)
     if (x.tag !== 'effect' || !t.startsWith('attr-max:') || x.attrs.confidence === 'low' || !v || x.attrs.when) continue
-    const k = t.slice(9) as Sr6Attr
-    if (!(SR6_ATTRS as string[]).includes(k)) continue
+    const k = t.slice(9) as Sr6Attr | 'choice'
+    if (!(SR6_ATTRS as string[]).includes(k) && k !== 'choice') continue
     const cur = out[k] ?? { add: 0 }
     if (x.attrs.op === 'set') cur.set = v.value
     else if (x.attrs.op === 'add') { cur.add += v.value; if (v.perRating) cur.perRating = true }
@@ -109,7 +115,8 @@ const DERIVED_WORDS: Record<string, string> = { defense: 'Defense Rating', 'defe
   initiative: 'Initiative', 'initiative-dice': 'Initiative Dice', 'matrix-initiative': 'Matrix Initiative', 'matrix-initiative-dice': 'Matrix Initiative Dice',
   'physical-monitor': 'Physical boxes', 'stun-monitor': 'Stun boxes', 'matrix-monitor': 'Matrix boxes', overflow: 'Damage Overflow boxes', composure: 'Composure',
   'judge-intentions': 'Judge Intentions', memory: 'Memory', lift: 'Lift/Carry', movement: 'movement', 'minor-actions': 'Minor Actions',
-  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction' }
+  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction',
+  'unarmed-ar': 'unarmed Attack Rating', 'unarmed-dv': 'unarmed Damage Value', 'unarmed-damage': 'unarmed damage' }
 const ITEM_WORDS: Record<string, string> = { ar: 'Attack Rating', dv: 'Damage Value', 'speed-interval': 'Speed Interval', 'top-speed': 'Top Speed' }
 const words = (s: string) => s.replace(/-/g, ' ')
 const title = (s: string) => words(s).replace(/(^| )\w/g, m => m.toUpperCase())

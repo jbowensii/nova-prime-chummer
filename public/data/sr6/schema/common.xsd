@@ -109,6 +109,13 @@
         <!-- a prerequisite the entry's text prints (a martial arts technique's, importer/sr6/flags.py requires): the
              name as printed, its kind adeptpower, technique, quality, augmentation or other -->
         <xs:element name="requires" type="sr6:Requires"/>
+        <!-- what the entry can't be combined with (importer/sr6/effects.py incompatibilities; CRB Hong Kong pp. 157,
+             286-293): targets, the attributes and initiative an augmentation that raises them can't go with
+             (`attr:rea derived:initiative-dice`); names, the entries named (`; `-separated, `wired reflexes`); family, a
+             name only one entry starting with may be installed (`Bone Lacing`). And a wireless exception: <compatible
+             name switch="wireless"/> -->
+        <xs:element name="incompatible" type="sr6:Incompatible"/>
+        <xs:element name="compatible" type="sr6:Compatible"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -147,6 +154,16 @@
       <xs:attribute name="fits" type="xs:string"/>
       <xs:attribute name="accessories" type="xs:string"/>
     </xs:extension></xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Incompatible">
+    <xs:attribute name="targets" type="xs:string"/>
+    <xs:attribute name="names" type="xs:string"/>
+    <xs:attribute name="family" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Compatible">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="wireless"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <xs:complexType name="Requires">
     <xs:simpleContent><xs:extension base="xs:string">
@@ -413,6 +430,8 @@
       <!-- karma: the lowest price printed, karmaMax: the highest when it prints a range or several (Phobia: by rarity) -->
       <xs:attribute name="karma" type="xs:integer"/>
       <xs:attribute name="karmaMax" type="xs:integer"/>
+      <!-- the prices it is bought at when its price line lists them (`7 or 12 Karma`: "7 12"), never a value between -->
+      <xs:attribute name="karmaSteps" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <!-- the list it is printed in (`Returned Soldier power`); granted: never bought on its own, only granted (by a
@@ -591,6 +610,9 @@
   <xs:complexType name="AdeptPower">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- the cost when the skill it is for is a combat skill (Improved Ability: `Combat skill: 1.0 PP per level; other
+           skills 0.5 PP per level`, CRB Hong Kong p. 157); cost is the other skills' -->
+      <xs:attribute name="costCombat" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <xs:attribute name="activation" type="xs:string"/>

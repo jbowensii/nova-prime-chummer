@@ -4,7 +4,7 @@
 // own creation rules (RunnerRules).
 import { CORE_ATTRS, CP_POOLS, LETTERS, MAGIC_KIND_LABELS, PRIORITY_COLUMNS, SR6_METHOD_LABELS, SR6_METHODS, type CpPool, type Letter, type MagicKind, type PriorityColumn, type Sr6Method } from '../../model/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
-import { num } from '../../engine/creation'
+import { flag, num, str } from '../../engine/creation'
 import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data'
 import { Stepper } from '../../../ui/bits'
 import { missingLabels, MissingList } from '../Runners'
@@ -77,7 +77,9 @@ export function MethodTab() {
 
 function Letters() {
   const { ch, data, cr, update } = useSr6Editor()
-  const b = ch.build, target = num(cr, 'sumToTenTarget')
+  const b = ch.build, target = num(cr, 'sumToTenTarget'), want = str(cr, 'priorityLetters')
+  // (street level, CRB Hong Kong p. 63: a letter gives the row below's values)
+  const rowOf = (l: Letter) => data.priorities[flag(cr, 'levelStreet') ? LETTERS[Math.min(LETTERS.indexOf(l) + 1, LETTERS.length - 1)] : l]
   const total = PRIORITY_COLUMNS.reduce((s, k) => s + (b.priorities[k] ? num(cr, `letterValue:${b.priorities[k]}`) ?? 0 : 0), 0)
   const gives = (col: PriorityColumn, row?: Sr6PriorityRow) => !row ? '' : col === 'attributes' ? `${row.attributes} points`
     : col === 'skills' ? `${row.skills} points` : col === 'resources' ? `${n(row.nuyen)}¥`
@@ -85,7 +87,7 @@ function Letters() {
     : Object.entries(row.magic).map(([k, r]) => `${MAGIC_KIND_LABELS[k as MagicKind]}${r ? ` ${r}` : ''}`).join(', ')
   return <section className="stack">
     <h3>Priorities</h3>
-    <p className="muted">{b.method === 'priority' ? 'Give each column a different letter, A to E.'
+    <p className="muted">{b.method === 'priority' ? want ? `Give the columns the letters ${want.split('').join(', ')}, one each.` : 'Give each column a different letter, A to E.'
       : <>The letters’ values add up to <b className={target !== undefined && total > target ? 'err' : ''}>{total}</b> of {target ?? '?'}.</>}</p>
     <div className="scroll-x"><table className="data">
       <thead><tr><th>Column</th><th>Letter</th><th>Gives</th></tr></thead>
@@ -96,7 +98,7 @@ function Letters() {
           <option value="">—</option>
           {LETTERS.map(l => <option key={l} value={l}>{l}</option>)}
         </select></td>
-        <td className="muted">{gives(col, b.priorities[col] ? data.priorities[b.priorities[col]!] : undefined)}</td>
+        <td className="muted">{gives(col, b.priorities[col] ? rowOf(b.priorities[col]!) : undefined)}</td>
       </tr>)}</tbody>
     </table></div>
   </section>

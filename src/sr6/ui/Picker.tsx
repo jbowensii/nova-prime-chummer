@@ -71,7 +71,7 @@ const MAX_CHOSEN = 99
 
 /** A grade as a select shows it: one the entry's type doesn't take marked (Review's gear.grade). */
 const gradeLabel = (data: Sr6Data, cr: CreationRules, g: string, e: Sr6Entry) =>
-  `${gradeName(data, g)}${gradesFor(cr, data, e).includes(g) ? '' : ` (not for ${e.attrs.type || 'this item'})`}`
+  `${gradeName(data, g)}${gradesFor(cr, data, e).includes(g) ? '' : ` (not for ${/cultured/i.test(e.attrs.category ?? '') && gradesFor(cr, data).includes(g) ? 'cultured bioware' : e.attrs.type || 'this item'})`}`
 
 /** The catalog picker in a dialog. onAdd answers null when added (the dialog closes) or the refusal. `note` marks an
  *  entry the runner lacks a prerequisite for (it may still be picked: Review flags it). */
@@ -131,7 +131,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   )
 }
 
-const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'stun' ? 'Stun monitor boxes' : t === 'overflow' ? 'Damage Overflow boxes' : t === 'skill' ? 'Skill dice pool' : ATTR_NAMES[t])
+const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'stun' ? 'Stun monitor boxes' : t === 'overflow' ? 'Damage Overflow boxes' : t === 'skill' ? 'Skill dice pool'
+  : t === 'unarmedAR' ? 'Unarmed Attack Rating' : t === 'unarmedDV' ? 'Unarmed DV' : t === 'movement' ? 'Movement (metres)' : t === 'matrixInitDice' ? 'Matrix initiative dice' : ATTR_NAMES[t])
 /** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
 export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
   x.target === 'skill' ? `${data.skills[x.skill ?? '']?.name ?? x.skill ?? 'skill'} dice` : targetName(x.target)}${x.perRating ? ' × rating' : ''}`
@@ -235,8 +236,10 @@ const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear'])
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
-export function PurchaseSection({ kind, title, one, grades, detail, accessories, bonuses, hint }: {
+export function PurchaseSection({ kind, title, one, grades, detail, accessories, bonuses, hint, offer }: {
   kind: PurchaseKind; title: string; one: string; grades?: boolean; detail?: (x: Sr6Purchase) => ReactNode
+  /** which catalog entries the picker offers (none: all) */
+  offer?: (e: Sr6Entry) => boolean
   accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }; bonuses?: boolean; hint?: ReactNode
 }) {
   const { ch, data, cr, act, d } = useSr6Editor()
@@ -272,7 +275,7 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
         </tr>
       })}</tbody>
     </table></div>}
-    <CatalogPicker title={`Add ${one}`} open={adding} onClose={() => setAdding(false)} kinds={[kind]} grades={grades}
+    <CatalogPicker title={`Add ${one}`} open={adding} onClose={() => setAdding(false)} kinds={[kind]} grades={grades} filter={offer}
       onAdd={p => act({ op: 'purchase', kind, id: p.e.id, rating: p.rating, grade: p.grade })} />
   </section>
 }

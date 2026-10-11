@@ -174,6 +174,9 @@
           <xs:attribute name="karma" type="c:Count" use="required"/>
           <xs:attribute name="spec" type="xs:string"/>
           <xs:attribute name="expertise" type="xs:string"/>
+          <!-- specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; Expanded Specializations,
+               Sixth World Companion p. 153) -->
+          <xs:attribute name="specs" type="xs:string"/>
         </xs:complexType>
       </xs:element>
       <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
@@ -204,6 +207,12 @@
     <xs:attribute name="drainAttr">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="mentorSpirit" type="xs:string"/>
+    <xs:attribute name="mentorAdvantage">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="magician"/><xs:enumeration value="adept"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="powerPointsBought" type="c:Count"/>
@@ -246,12 +255,14 @@
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
-        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/>
+        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="datastructures"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="level" type="xs:positiveInteger"/>
     <xs:attribute name="name" type="xs:string"/>
+    <!-- the skill or attribute a power naming its choice is for (Improved Ability (Skill): Firearms) -->
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <!-- a martial arts style and the techniques learned under it (Firing Squad p. 97); name: the catalog name when added -->
@@ -417,6 +428,7 @@
     <xs:attribute name="target" use="required">
       <xs:simpleType><xs:union memberTypes="c:Attr"><xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="initDice"/><xs:enumeration value="defense"/><xs:enumeration value="physical"/><xs:enumeration value="stun"/><xs:enumeration value="overflow"/><xs:enumeration value="skill"/>
+        <xs:enumeration value="unarmedAR"/><xs:enumeration value="unarmedDV"/><xs:enumeration value="movement"/><xs:enumeration value="matrixInitDice"/>
       </xs:restriction></xs:simpleType></xs:union></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="skill" type="xs:string"/>
@@ -469,5 +481,6 @@
     <xs:attribute name="grade" type="xs:string"/>
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="seatsRemoved" type="c:Count"/>
   </xs:complexType>
 </xs:schema>

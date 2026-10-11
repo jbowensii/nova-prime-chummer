@@ -12,6 +12,12 @@ import { sr6Tabs } from '../EditorView'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
 import { attrShown, br, effectNotes } from '../../print/view'
+import type { Sr6Derived } from '../../engine/derive'
+
+/** What the +4 caps left out of the attributes and skill pools, each in words (`AGI: 2 bonus not counted`). */
+export const capNotes = (d: Sr6Derived) => [
+  ...Object.entries(d.on.capped).map(([a, v]) => `${ATTR_NAMES[a as keyof typeof ATTR_NAMES]}: ${v} bonus not counted`),
+  ...d.on.pools.filter(p => p.capped).map(p => `${p.label}: ${p.capped} bonus ${p.capped === 1 ? 'die' : 'dice'} not counted`)]
 
 export function ReviewTab() {
   const { ch, c, v, d, data, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
@@ -41,11 +47,14 @@ export function ReviewTab() {
     {rows.filter(([, x]) => x !== undefined).map(([k, x]) => <div key={k}><dt>{k}</dt><dd>{x === null ? '—' : typeof x === 'number' ? n(x) : x}</dd></div>)}</dl>
   const init1 = (i?: { base: number; dice: number | null }) => i && `${i.base} + ${i.dice ?? '?'}D6`
   const init = (i?: { base: number; dice: number | null }, o?: { base: number; dice: number | null }) => br(init1(i), init1(o))
+  const unarmed1 = (u: Sr6Derived['unarmedDamage']) => (u ? `${u.dv}${u.physical ? 'P' : 'S'}` : null)
+  const unarmed = (u: Sr6Derived['unarmedDamage'], o: Sr6Derived['unarmedDamage']) => br(unarmed1(u), unarmed1(o))
+  const move = (m: Sr6Derived['movement']) => m && `${m.walk} m; Sprint ${m.sprint} m + ${m.perHit} m a hit`
 
   return (
     <div className="stack">
       <h2>Review</h2>
-      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.</p>
+      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them; negative Karma or nuyen only fixing clears. Notes never block.</p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>{sorted.map((x, i) => {
         const tab = tabOf(x.path), o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
@@ -56,7 +65,8 @@ export function ReviewTab() {
           <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}
             {e && <> <Sr6Ref kind={at!.kind} id={e.id}><span className="muted small">{e.name}</span></Sr6Ref></>}</span>
           {!career && <span className="row">
-            {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {gm && x.severity === 'error' && !x.approved && !x.hard && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {x.hard && <span className="muted small">Fix before finalizing: no GM approval</span>}
             {gm && x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
           </span>}
           {o && <span className="note">GM: {o.note || 'approved'}</span>}
@@ -72,10 +82,16 @@ export function ReviewTab() {
         ['Physical monitor', br(d.monitors.physical, d.on.monitors.physical)], ['Stun monitor', br(d.monitors.stun, d.on.monitors.stun)], ['Overflow', br(d.monitors.overflow, d.on.monitors.overflow)],
         ['Defense Rating', br(d.defenseRating, d.on.defenseRating)], ['Social Rating', br(d.socialRating, d.on.socialRating)], ['Unarmed Attack Rating', br(d.attackRatings.unarmed, d.on.attackRatings.unarmed)], ['Composure', br(d.composure, d.on.composure)],
         ['Judge Intentions', d.judgeIntentions], ['Memory', d.memory], ['Lift/Carry', d.liftCarry], ['Drain', d.drain], ['Fading', d.fading],
+        ['Unarmed damage', unarmed(d.unarmedDamage, d.on.unarmedDamage)], ['Spell Attack Rating', br(d.spellAttackRating, d.on.spellAttackRating)],
+        ['Matrix initiative (AR)', d.matrixInit && init(d.matrixInit.ar, d.on.matrixInit?.ar)],
+        ['Matrix initiative (VR cold sim)', d.matrixInit && init(d.matrixInit.cold, d.on.matrixInit?.cold)],
+        ['Matrix initiative (VR hot sim)', d.matrixInit && init(d.matrixInit.hot, d.on.matrixInit?.hot)],
+        ['Movement', move(d.movement)],
         ['Karma left', career ? bal.karma : d.karmaLeft], ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`],
         // an item's own values from its accessories (a cyberlimb's Strength): the item's, not the runner's
         ...d.hosts.map(h => [h.name, h.text] as [string, string])])}
       {d.unset.length > 0 && <p className="muted">A dash: a setting it needs isn’t set (Table setup → Creation rules).</p>}
+      {capNotes(d).length > 0 && <p className="muted">Capped (CRB Hong Kong pp. 37, 39: an augmented increase is at most +4): {capNotes(d).join('; ')}.</p>}
       {/* (owner decision 2026-10-10: every switchable, conditional and caster or target effect named, as Anarchy's Review does) */}
       {(fx => fx.length > 0 && <>
         <h3 id="review-effects">What its effects do</h3>

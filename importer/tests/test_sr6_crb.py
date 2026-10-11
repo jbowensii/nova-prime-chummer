@@ -584,18 +584,20 @@ class CrbRecipeTest(unittest.TestCase):
         # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and E;
         # B to D print nothing, so no priority assignment holds it within the karma; Sum-to-Ten's letters (which may
         # repeat) do better, attributes at A as well as magic, and still overspend, so the prime runner's doubled Karma
-        # (CRB p.64) is assumed: the skill and the nuyen with karma (D's rows print nothing)
+        # (CRB Hong Kong p.63, levelPrime) is assumed: the skill and the nuyen with karma (D's rows print nothing); its
+        # contacts take more points than Charisma x 6, so the Sixth World Companion's expanded contacts (p.161) too
         self.assertEqual((g.get("method"), b.get("method")), ("sumtoten", "sumtoten"))
         self.assertEqual([(x.get("column"), x.get("letter")) for x in b.iter("priority")],
                          [("metatype", "E"), ("attributes", "A"), ("magic", "A"), ("skills", "D"), ("resources", "D")])
-        self.assertEqual([(x.get("key"), x.get("value"), x.get("assumed"), x.get("page")) for x in g.find("rules")], [("startingKarma", "100", "true", "64")])
+        self.assertEqual([(x.get("key"), x.get("value"), x.get("assumed"), x.get("page")) for x in g.find("rules")],
+                         [("levelPrime", "true", "true", "63"), ("expandedContacts", "true", "true", "161")])
         self.assertEqual({a.get("id"): (a.get("points"), a.get("adjust"), a.get("karma")) for a in b.iter("attribute")}, {
             "bod": ("2", "0", "0"), "agi": ("4", "0", "0"), "rea": ("3", "0", "0"), "str": ("1", "0", "0"), "wil": ("2", "0", "0"),
             "log": ("1", "0", "0"), "int": ("3", "0", "0"), "cha": ("2", "0", "0"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),
             "res": ("0", "0", "0")})  # Magic 5: the priority's; Edge's 3 ranks past 1: the 1 adjustment point, then karma
         self.assertEqual([(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
                          [("crb.tinkering", "0", "3", "Gizmos")])
-        self.assertEqual(b.get("karmaToNuyen"), "19")
+        self.assertEqual(b.get("karmaToNuyen"), "19")  # (the prime Karma left can't come within 5 by more: as printed)
         self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
         self.assertIn("built with Sum-to-Ten", g.findtext("notes"))
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],
@@ -658,7 +660,93 @@ class CrbRecipeTest(unittest.TestCase):
                          '<bonus target="skill" skill="x.lurking" value="1"/>')
         self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower())), "")  # none named
 
-    def test_a_quality_outside_the_six(self):
+    def test_what_a_sample_line_is_printed_with(self):
+        """A weapon's `w/` list: accessories fitted to it (a count its quantity; one its text names left out), ammunition
+        as the row of its kind (per 10 rounds) and grenades as lines of their own, each per weapon on the line; a
+        gadget's enhancements found among the line's kinds (Smooth Operations drops the `w/`), an unrated one at the
+        rating its Capacity needs; a commlink's accessories (made-up catalog)."""
+        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": a.pop("text", "")}  # noqa: E731
+        idx = archetypes._Index({
+            "weapons": [e("zapper", "Zapper", category="Heavy pistol", cost="300", text="Comes with a glow sight."),
+                        e("glow-sight", "Glow sight", category="Weapon accessory", cost="200"),
+                        e("spare-clip", "Spare clip", category="Weapon accessory", cost="5"),
+                        e("fizz", "Fizz", category="Grenade", cost="40")],
+            "gear": [e("hp-ammo", "Heavy Pistol/SMG", category="Ammo by weapon type", per="10 rounds", cost="10"),
+                     e("zoom", "Zoom", category="Visual enhancement", capacity="[1]", cost="+50"),
+                     e("tingle", "Tingle", category="Visual enhancement", capacity="[2]", cost="+80"),
+                     e("hum-mic", "Hum mic", category="Accessory", cost="30")],
+            "electronics": [e("specs", "Specs", capacity="1–3", rating="1–3", cost="Capacity x 100"),
+                            e("talker", "Talker", rating="2", cost="500")]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["weapons"], "2 x Zapper", 7, [], {},
+                                             note="2 x Zapper [Heavy Pistol, SA, w/ glow sight, 3 spare clips, 30 rounds fizzy ammo, 2 fizz grenades]")
+        self.assertIn('<purchase uid="g7a4" kind="weapons" id="nb.spare-clip" name="Spare clip" qty="6"/>', line)
+        self.assertNotIn("nb.glow-sight", line)  # (the Zapper's text names it: built in)
+        self.assertIn('<purchase uid="g7x5" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="6" note="30 rounds fizzy ammo"/>', line)
+        self.assertIn('<purchase uid="g7x6" kind="weapons" id="nb.fizz" name="Fizz" qty="4" note="2 fizz grenades"/>', line)
+        self.assertEqual(cost, 2 * 300 + 6 * 5 + 6 * 10 + 4 * 40)
+        kinds = ["electronics", "gear"]
+        line, _, cost = archetypes._purchase(idx, kinds, "specs (zoom, tingle)", 8, [], {})
+        self.assertIn('id="nb.specs" name="Specs" rating="3"', line)  # [1] + [2]: rating 3 holds them
+        self.assertEqual(cost, 300 + 50 + 80)
+        line, _, cost = archetypes._purchase(idx, kinds, "Talker commlink (Device Rating 2, w/ hum mic, zoom)", 9, [], {})
+        self.assertIn('id="nb.hum-mic"', line)
+        self.assertNotIn("nb.zoom", line)  # (no Capacity: an accessory table's only)
+        self.assertEqual(cost, 530)
+        limbs = archetypes._Index({"augmentations": [e("arm-synthetic", "Arm (synthetic)", capacity="8", cost="20000"),
+                                                     e("arm-obvious", "Arm (obvious)", capacity="15", cost="15000")]}, "NB")
+        line, _, cost = archetypes._purchase(limbs, ["augmentations"], "cyberarm (Agility 5; gizmo)", 10, [], {})
+        self.assertIn('id="nb.arm-obvious"', line)  # its kind not printed: the obvious one
+        self.assertIn('id="nb.arm-synthetic"', archetypes._purchase(limbs, ["augmentations"], "cyberarm (synthetic left)", 11, [], {})[0])
+
+    def test_ammunition_types_limb_parts_and_increases(self):
+        """An ammunition type the line names is fitted to its row at the row's price times the type's; a limb's
+        accessory printed with other words (`arm slide`, `small smugglers compartment`) is the one whose every word it
+        prints; a limb's Agility or Strength above the user's natural (base 2) is that many Attribute increases
+        (made-up catalog)."""
+        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": ""}  # noqa: E731
+        idx = archetypes._Index({
+            "weapons": [e("zapper", "Zapper", category="Heavy pistol", cost="300")],
+            "gear": [e("hp-ammo", "Heavy Pistol/SMG", category="Ammo by weapon type", per="10 rounds", cost="10")],
+            "ammotypes": [e("fizzy", "Fizzy", cost="x1.5")],
+            "augmentations": [e("leg-obvious", "Leg (obvious)", category="Cyberlimb", capacity="20", cost="15000"),
+                              e("glide", "Glide", category="Cyberlimb accessory", capacity="[3]", cost="3000"),
+                              e("hidey-hole", "Hiding compartment", category="Cyberlimb accessory", capacity="[5]", cost="6000"),
+                              e("attribute-increase", "Attribute increase", category="Cyberlimb accessory", capacity="[Rating]",
+                                cost="Rating x 5000")]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["weapons"], "Zapper", 1, [], {}, note="Zapper [Heavy Pistol, w/ 20 rounds fizzy ammo]")
+        self.assertIn('<purchase uid="g1x2" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="2" note="20 rounds fizzy ammo">'
+                      '<purchase uid="g1x2t1" kind="ammotypes" id="nb.fizzy" name="Fizzy" qty="1"/></purchase>', line)
+        self.assertEqual(cost, 300 + 20 * 1.5)
+        line, _, cost = archetypes._purchase(idx, ["augmentations"], "cyberleg (Agility 5, Strength 2; leg glide, small hiding compartments)",
+                                             2, [], {}, nat={"agi": 3, "str": 1})
+        self.assertIn('id="nb.glide"', line)
+        self.assertIn('id="nb.hidey-hole"', line)
+        self.assertIn('id="nb.attribute-increase" name="Attribute increase" rating="2" qty="1" note="Agility 5"', line)
+        self.assertNotIn('note="Strength 2"', line)  # (2 is the limb's base)
+        self.assertEqual(cost, 15000 + 3000 + 6000 + 2 * 5000)
+
+    def test_sample_karma_the_fit_counts(self):
+        """`fake SIN 3` is rating 3; In Debt's printed debt is the Karma turned into nuyen (5,000¥ each); contacts past
+        Charisma x 6 cost Karma when the expanded contacts are on or assumed (made-up catalog and settings)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "qualities": [{"id": "deep-debt", "name": "Deep Debt", "attrs": {"kind": "negative", "karma": "0"}}],
+                   "priorities": [{"id": "a", "name": "A", "attrs": {"letter": "A"}, "children": [("metatype", {"name": "Glim", "points": "1"}, None)]}]}
+        seen = {}
+        orig = archetypes.fit.fit
+        archetypes.fit.fit = lambda need, rows, cs: seen.update(need) or None
+        try:
+            b = SimpleNamespace(label="metatype: Glim", stats=[{"C": "2"}], labels={
+                "Gear": "fake SIN 3", "Qualities": "Deep Debt (Sharks, 15,000¥, 1,500¥/month interest)",
+                "Contacts": "Fixer (C4/L4), Fence (C2/L3)"})
+            cs = {"fakeSinPerRating": 2500.0, "licencePerRating": 200.0, "inDebtQuality": "nb.deep-debt",
+                  "karmaToNuyenRateInDebt": 5000.0, "contactPointsPerCha": 6.0, "contactKarma": 1.0}
+            _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs=cs)
+        finally:
+            archetypes.fit.fit = orig
+        self.assertEqual([s.get("rating") for s in ET.fromstring(xml).iter("sin")], ["3"])
+        self.assertEqual((seen["nuyen"], seen["toNuyen"], seen["karma"]), (7500, 3, 1))  # 13 contact points of 12
+
         """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""
         from importer.sr6 import flags
         self.assertEqual(flags.uncounted("Note: This quality does not count to- ward the six total qualities limitation."), {"uncounted": "true"})
@@ -769,6 +857,19 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIn('id="crb.glow-eyes-basic-system-rating-3"', line)
         line = archetypes._purchase(idx, ["augmentations"], "Glow eyes (rating 6)", 1, False, {})[0]
         self.assertIn('id="nb.glow-eyes-rating-6"', line)
+
+    def test_sample_item_priced_as_the_app_prices_it(self):
+        """An item printed at a rating with a word the catalog's name lacks takes the row of that rating (not rating
+        1's), and is priced by the entry's formula as the app prices it, not its printed first-row value (made-up)."""
+        tier = ("formula", {"field": "cost"}, "tier(R; 1: 100; 2: 300; 3: 900)")
+        row = lambda r: {"id": f"zap-jack-rating-{r}", "name": f"Zap jack (Rating {r})", "attrs": {"cost": "100"}, "children": [tier]}
+        idx = archetypes._Index({"augmentations": [row(1), row(3)]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["augmentations"], "zap jack MPI (rating 3)", 1, [], {})
+        self.assertIn('id="nb.zap-jack-rating-3"', line)
+        self.assertEqual(cost, 900)
+        per = {"id": "glow", "name": "Glow", "attrs": {"cost": "5"}, "children": [("formula", {"field": "cost"}, "Q*2")]}
+        self.assertEqual(archetypes._value(per, "cost", 1, 10), 20)  # (a formula counting Q is the whole line's)
+        self.assertEqual(archetypes._value({"attrs": {"cost": "Rating x 50"}}, "cost", 4, 2), 400)
 
     def test_nothing_unmapped(self):
         self.assertEqual(self.rep("unmapped"), [])

@@ -29,6 +29,8 @@ export const metamagicFits = (kind: MagicKind, user?: string) =>
 /** The most levels a pick taken by level may have (a leveled adept power's maxLevel, a metamagic taken again: its
  *  maxLevel, Infinity when none is printed); null: it is taken once. */
 export function pickMaxLevel(data: Pick<Sr6Data, 'powers' | 'metamagics'>, kind: PickKind, id: string): number | null {
+  // (a data structure comes in levels, none printed as its highest: Hack & Slash p. 70)
+  if (kind === 'datastructures') return Infinity
   const v = kind === 'adeptpowers' ? data.powers[id] : kind === 'metamagics' ? data.metamagics[id] : undefined
   return v?.perLevel ? v.maxLevel ?? Infinity : null
 }
@@ -36,7 +38,8 @@ export function pickMaxLevel(data: Pick<Sr6Data, 'powers' | 'metamagics'>, kind:
 /** Which picks a magic kind can have. */
 export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
   const k = MAGIC_KINDS[kind]
-  return { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance, metamagics: k.spells || k.powers, adeptpowers: k.powers }
+  return { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance, metamagics: k.spells || k.powers, adeptpowers: k.powers,
+    datastructures: k.resonance }
 }
 
 export type RangeAttr = Exclude<Sr6Attr, 'mag' | 'res'>
@@ -60,11 +63,15 @@ export interface Sr6MetatypeView {
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 /** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
 export interface Sr6QualityChoice { category: string; count: number; max: number | null }
-export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
+/** karmaSteps: the prices it is bought at when its price line lists them (`7 or 12 Karma`), never one between */
+export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; karmaSteps?: number[]; perLevel: boolean; maxLevel: number; page: number
   category?: string; granted?: boolean; choices?: Sr6QualityChoice[]
   /** not one of the six qualities a runner may take at creation (its text says so) */
-  uncounted?: boolean }
-export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
+  uncounted?: boolean
+  /** the metatypes it is for (qualityMetatypes): offered only to them */
+  metatypes?: string[] }
+/** costCombat: its cost when the skill it is for is a combat skill (Improved Ability, CRB Hong Kong p. 157) */
+export interface Sr6PowerView { id: string; name: string; cost: number | null; costCombat?: number | null; perLevel: boolean; maxLevel: number; page: number }
 /** user: who may take it (absent: any initiate); perLevel: taken again, each time one more initiation's metamagic, up to
  *  maxLevel times (none printed: no limit) */
 export interface Sr6MetamagicView { id: string; name: string; user?: 'adept' | 'magician'; perLevel: boolean; maxLevel: number | null; page: number }
@@ -106,6 +113,25 @@ export function normName(name: string): string {
   const s = name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/&/g, ' and ').replace(/['‘’"“”]/g, '')
   const out = s.replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean).join(' ')
   return out.startsWith('the ') ? out.slice(4) : out
+}
+
+const METATYPE_WORDS: Record<string, string> = { human: 'human', humans: 'human', elf: 'elf', elves: 'elf', elven: 'elf', dwarf: 'dwarf',
+  dwarfs: 'dwarf', dwarves: 'dwarf', ork: 'ork', orks: 'ork', troll: 'troll', trolls: 'troll' }
+/** The metatypes a poser or human-looking quality is for, read from its description (owner's decision 4, 2026-10-11):
+ *  its first sentence names them (`Your blood may be human or ork`, `Small orks, tall dwarfs, and ugly elves`), less the
+ *  one it imitates (Elf Poser: elf; Human-Looking: human). Any other quality, or one without its text: undefined (every
+ *  metatype). ponytail: the core five by name; a metavariant isn't offered one (add a base metatype to the catalog's
+ *  metavariants if a table wants it). */
+export function qualityMetatypes(name: string, text: string): string[] | undefined {
+  const n = normName(name), like = /^(\w+) poser$/.exec(n)?.[1] ?? (n === 'human looking' ? 'human' : undefined)
+  if (!like || !text) return undefined
+  const words = normName(text.split(/(?<=[.!?])\s/)[0]).split(' ').map(w => METATYPE_WORDS[w]).filter((w): w is string => !!w && w !== like)
+  return words.length ? [...new Set(words)] : undefined
+}
+/** Whether the runner's metatype may take quality `id` (qualityMetatypes; none picked: no metatype-bound quality). */
+export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes'>, metatype: string, id: string) => {
+  const m = data.qualities[id]?.metatypes
+  return !m || m.includes(normName(data.metatypes[metatype]?.name ?? ''))
 }
 
 export function sr6Data(c: Sr6Catalog): Sr6Data {
@@ -172,12 +198,14 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   // (a quality path's bare step shows with its path: `Gestalt: Step 2`)
   const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative',
     karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
+    ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
     ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
     ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
+    ...(qualityMetatypes(e.name, e.text) ? { metatypes: qualityMetatypes(e.name, e.text) } : {}),
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',
       count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
   const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
-    ...levels(e), page: e.page }]))
+    ...(e.attrs.costCombat ? { costCombat: bookNum(e, e.attrs.costCombat, 'costCombat') } : {}), ...levels(e), page: e.page }]))
   const metamagics = Object.fromEntries(all('metamagics').map(e => [e.id, { id: e.id, name: e.name, perLevel: e.attrs.perLevel === 'true',
     maxLevel: e.attrs.maxLevel ? count(e, e.attrs.maxLevel, 'highest level', 1) : null, page: e.page,
     ...(e.attrs.user === 'adept' || e.attrs.user === 'magician' ? { user: e.attrs.user as 'adept' | 'magician' } : {}) }]))
