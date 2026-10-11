@@ -190,18 +190,31 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   (`attack`, `sleaze`, `data-processing`, `firewall`, `choice`) or `matrix:overwatch`; `item:<field>` the item's own
   stat, or on an add-on (accessory, ammunition, vehicle mod) the stat of the item it fits (`ar`, a value a range band
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
-  `pilot`, `sensor`, `seats`, `size`); `action:<name>` an Edge action; `lifestyle:<name>` lifestyle points;
-  `resource:<name>` a creation resource.
+  `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity); `action:<name>` an Edge or
+  Matrix action (`the Snoop action`, `Called Shot—Disarm`, a list after `action:`); `complex-form:<name>` a complex
+  form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource;
+  `skill-max:<id>` a skill's maximum (`skill-max:choice`: Aptitude's 10, Genetic Optimization's +1); `sense:<name>`
+  a sense the entry is named for or grants (`low-light-vision`, `thermographic-vision`, `ultrasound`, `wide-band-hearing`
+  …: `effects.SENSES`, a rule of its own, shown); `pool:chase` the chase pool's Edge (Double Clutch p. 175);
+  `pricemod:<what>` a price in percent (`armor` for armor and clothing, `lifestyle`, `gear`, `everything`: `0.1` is
+  +10%); `derived:monthly-cost` nuyen a month (`R*500`). A Matrix attribute, attribute or skill the entry leaves to the
+  player (`this attribute`, `the chosen Matrix attribute`) is `<family>:choice`; a variant row's words resolve it
+  (`Cyberjack Boosters (Firewall)`: `matrix:firewall`; `(Agility)`: `attr:agi`), and a variant named for a family
+  (`(attribute)`, `(skill)`) keeps that family's effects only.
 - **Operations** (the rule-changing effects are kinds of their own): `add`, `set` (an infected type's attribute
   maximum), `edge` (N bonus Edge on those tests), `edge-cost` (Edge boosts and actions cost N more, -N less),
   `edge-cost-set` (an Edge action's new cost), `no-edge` (no Edge may be spent), `no-edge-gain` (none gained),
   `wild-die`, `hits` (N extra hits), `threshold` (the tests' threshold moves by N: a toxin extractor's `-R`). An extra
   Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
   (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
-- **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`); `hits` (a
-  spell's, per net hit); or a formula over attributes (`edg/2`). `hits` and formulas are shown, never applied.
+- **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`, `each point
+  of this mod`, `each point of X rating`); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
+  subject's Defense Rating`, `each hit increases the target's Overwatch Score by 1`); `N` a native language; `20%` a
+  percent of the base value; `R/-R` a vehicle's on-road and off-road Handling; or a formula over attributes (`edg`,
+  `edg/2`: a drake's Armor by its Edge). `hits`, percents and formulas are shown, never applied.
 - **How it is turned on** (`switch`): none (always on: in the total shown first), `wireless`, `activated` (at will,
-  an action, overdrive, a drug while it acts), `sustained` (a spell, ritual or complex form while it lasts),
+  an action, overdrive, a drug while it acts, a data structure for the action after its Minor Action), `sustained`
+  (a spell, ritual or complex form while it lasts),
   `conditional` (some tests or situations: `when` holds the condition's words, `while in the Matrix`, or a mentor
   spirit's role `magician`/`adept`). A switchable or conditional effect counts in the bracketed total, `Con 6 (9)`, as
   a book's stat block prints it (owner decision 2026-10-10). `confidence="low"` (a condition the importer found no
@@ -223,9 +236,28 @@ a list of Edge actions), initiative dice (`+1D6 Initiative`, `an additional Init
 condition monitor boxes (`adds one box to the Physical Condition Monitor`, `two extra boxes of Overflow`, `1 less Stun
 Box`), maxima (`maximum (but not current) rank increases by 1`, `physical attribute maximums are reduced by 1`,
 `racial limit`), Attack Rating bands (`+2/–/–1/–2/–3`), movement (`10/40/+3`), wild dice, extra hits, Minor
-Actions, Hardened Armor, Overwatch, incoming damage, lifestyle points. A labelled line naming a target (`**AR:** +2`)
-reads as one. Not the entry's: what others suffer (`Those looking for you …`, `tests made against you`), what using
-it costs (`3 additional Major Actions required to reload`), a test's threshold.
+Actions (`an additional two Minor Actions`, `use the Move and Avoid Incoming Minor Actions an additional time`),
+Hardened Armor, Overwatch, incoming damage, lifestyle points, an Attack Rating modifier limited to fire modes
+(`decreases the Semi-Auto and Burst Fire Attack Rating modifiers by 1`: `item:ar` +1 with the modes in `when`), a
+stat moved between on- and off-road, a rating subtracted from a stat, a cost in percent or nuyen a month, a
+knowledge or language skill granted (`gain the knowledge skill Dragon Lore`: `skill:knowledge` +1, the name in
+`spec`; `Sorbian (N)`: `skill:language` set `N`), Edge cost on a named action (`When using Called Shot—Disarm, reduce
+the Edge cost by 1`). A labelled line naming a target (`**AR:** +2`) reads as one, and a label's switch (`**Wireless
+bonus:**`) holds for the sentences after it in its paragraph. Not the entry's: what others suffer (`Those looking for
+you …`, `tests made against you`), what using it costs (`3 additional Major Actions required to reload`), a test's
+threshold, a cap (`up to a maximum of five initiative dice`). Not a condition: use-it-or-lose-it clauses (`that must
+be spent on that test, or it goes away`), the test an Edge is given on (`When performing a Juryrigging test`, `when
+targeted by spells`), `can only be spent`, `each time it is used`.
+
+**Entries named for what they give**: a program or gear named for a skillsoft kind (`Activesofts`, `Knowsofts`,
+`Linguasofts`, and an autosoft named for a skill) gives that skill (or a chosen one) at its rating (`set R`, CRB
+p. 272); an entry named for a sense (`Low-Light Vision`, `Enhanced Senses (Thermographic)`) has it (`sense:`).
+
+**A variant or rating row with no text of its own** (`Cyberjack Boosters (Firewall) (Rating 1)`, `Move-by-wire
+system (Rating 2)`) reads its parent's description (the entry named without the parentheses, or the book's block of
+that name when it is no entry), keeping the sentences about its own variant words or about no variant (`A Data
+Processing or Firewall cyberjack booster improves that Matrix attribute …`, not `A Matrix Initiative booster …`). A
+text that is only label lines (`**Treatment time:** 2 months`) takes the rule the book describes the item under.
 
 **Section-wide statements** (owner decision 2026-10-10): a sentence of a section's intro opening `Each`, `Every`,
 `All` or `Any` (`Each cyberlimb adds one box to the character's Physical Condition Monitor`) is an effect of every

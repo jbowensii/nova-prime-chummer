@@ -123,7 +123,7 @@ SENSES = {"low-light vision": "low-light-vision", "low light vision": "low-light
           "enhanced smell": "enhanced-smell", "echolocation": "echolocation", "astral perception": "astral-perception"}
 # fire modes (CRB p. 109): a modifier limited to some of a weapon's modes keeps them as its condition
 FIRE_MODES = r"semi-auto(?:matic)?|burst fire|full auto(?:matic)?|single shot|\bsa\b|\bbf\b|\bfa\b|\bss\b"
-_CONDITION = re.compile(r"\b(?:when|whenever|while|if|unless|until (?=(?:you|they|the|it|he|she|its)\b)|at will|only|as long as|in (?:any )?(?:form of )?(?:close combat|melee|combat)|(?:with|as|spend(?:ing)?|takes?|using) an? (?:minor|major) action|involving|"
+_CONDITION = re.compile(r"\b(?:when|whenever|while|if|unless|until (?=(?:you|they|the|it|he|she|its)\b)|after (?=(?:you|they) (?!spend|use)\w)|at will|only|as long as|in (?:any )?(?:form of )?(?:close combat|melee|combat)|(?:with|as|spend(?:ing)?|takes?|using) an? (?:minor|major) action|involving|"
                         r"related to|against|during|in (?:vr|the presence)|that use|used)\b", re.I)
 _SWITCH = (("wireless", re.compile(r"\bwireless\b", re.I)), ("sustained", re.compile(r"\bsustain(?:s|ed|ing)?\b", re.I)),
            ("activated", re.compile(r"\b(?:at will|activat\w*|(?:minor|major) action to|with an? (?:minor|major) action|turn(?:s|ed)? (?:on|off)|"
@@ -493,7 +493,9 @@ _OTHERS = re.compile(r"^\W*(?:(?:additionally|also|however|furthermore|in additi
                      r"(?:characters|people|individuals|anyone) (?:trying|attempting|looking|who|that))\b|"
                      r"\b(?:tests?|attacks?|spells?) (?:made |cast )?against (?:you|them|the character|the user)\b|"
                      r"\btests? to (?:[a-z]+ ){1,3}(?:for )?(?:your|you)\b|"
-                     r"\bfor (?:anyone|others|those)\b|\byour (?:targets?|opponents?|enemies|attackers?)\b", re.I)
+                     r"\bfor (?:anyone|others|those)\b|\byour (?:targets?|opponents?|enemies|attackers?)\b|"
+                     r"\b(?:perception )?tests? to (?:see|spot|notice|find|hear|track|detect) (?:them|you|the (?:character|user|individual))\b|"
+                     r"^\W*users? of (?:the|this) \w+ grants?\b", re.I)
 _TEST = re.compile(rf"\b({'|'.join(s.title() for s in SKILLS)})\s*\+\s*({'|'.join(a.title() for a in ATTRIBUTES)})"
                    rf"\s*\((\d+)\)\s+test\b")
 _VAL = r"(?P<v>[+-]?\s?\d+(?:\.\d+)?|one|two|three|four|five|six|an?|single)"
@@ -735,6 +737,8 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False):
 
     def bonus(ts, v, w=None):
         for t, spec in ts:
+            if t in ("item:dv", "item:ar") and re.search(r"\bresist\w* [^.;]*?\bdamage\b", low) and not re.search(r"\b(?:weapon|attack)s?\b", low):
+                continue  # (`roll Body to resist 7P damage, with +1 DV per level`: damage suffered, no item's)
             if t == "item:dv" and re.search(r"\bincoming\b", low):  # (`-1 to DV on every incoming attack`: damage reduction)
                 t, v = "derived:damage-reduction", (v[1:] if v.startswith("-") else "-" + v)
             if t in ("attr:edg",) and re.search(r"\bedge (?:bonus|point)|(?:bonus|situational) edge|point of edge", low):
@@ -746,7 +750,7 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False):
                          r"(?:all |any |your |their |the |its |his |her |a |each )*(?P<t>(?:(?![+-]\s?\d)[^.;])*)", low):
         if re.match(r"\s?\d+\s?d6", low[m.start("v"):]):
             continue
-        t = re.split(r"\b(?:up to|allowed|provided|as long as)\b|\s(?:and\s+)?[+-]\s?\d+\s+(?:to|on)\b", m.group("t"))[0]  # (`+1 to DV and +2 to AR`: each its own)
+        t = re.split(r"\b(?:up to|allowed|provided|as long as|for (?:every|each)|per)\b|\s(?:and\s+)?[+-]\s?\d+\s+(?:to|on)\b", m.group("t"))[0]  # (`+1 to DV and +2 to AR`: each its own; `for every initiative die`: a rate)
         # (`+2 to dice pools and +1 Edge when making Influence tests`: the tests named after the next bonus)
         bonus(targets(" ".join(t.split()[:10]), kind)[:6] or targets(low[m.end():], kind)[:6], _val(m.group("v"), low))
     for m in re.finditer(r"(?<![\w/])(?P<v>[+-]\s?\d+)\s+(?:points? of |to the |to your |to )?(?P<t>(?:[a-z]+ ){0,3}[a-z]+)", low):

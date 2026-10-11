@@ -1,5 +1,33 @@
 # Release notes
 
+## Unreleased: Shadowrun 6 effects, third round
+
+**Re-import the Shadowrun 6 books** (Books → **Re-import all**) to get them. The Foundry importer module 0.5.1 maps
+the new effect kinds (install it with this).
+
+**Shadowrun 6**
+- The effects reader (importer/sr6/effects.py) reads the phrasings Commlink6 had and we missed, by general rules:
+  a chosen attribute or Matrix attribute (`this attribute`, `the chosen Matrix attribute`), resolved by a variant row's
+  words (`Cyberjack Boosters (Firewall)`), named actions and complex forms (`bonus dice on a Snoop action or Static
+  Veil complex form`, a list after `action:`), a data structure's level in bonus dice (activated for one action, Hack
+  & Slash p. 70), an Attack Rating modifier limited to fire modes (shock pads), an ammunition belt, a sense an entry is
+  named for or grants (low-light and thermographic vision), a skill's maximum (Aptitude, Genetic Optimization), a
+  knowledge or language skill granted, Edge cost on a named action (Called Shot—Disarm), a chase pool's Edge, costs in
+  percent (armor +10%) and nuyen a month, a drake's Armor by its Edge, Handling moved between on- and off-road, a
+  rating subtracted from a stat, an AI's Matrix initiative, a spell's or complex form's per-hit modifiers (`net hits
+  are added to the subject's Defense Rating`), the Overwatch Score, `an additional two Minor Actions`, `use the Move
+  Minor Action an additional time`. A use-it-or-lose-it clause, the test an Edge is given on, `can only be spent` and
+  `each time it is used` are no longer conditions; `each point of this mod` and `each point of X rating` are per
+  rating; a `**Wireless bonus:**` label holds for the sentences after it in its paragraph; a cap (`up to a maximum of
+  five initiative dice`) is not a bonus.
+- A variant or rating row with no text of its own reads its parent's sentences about it (or the book's block when the
+  parent is no entry); a text that is only label lines takes the rule the book describes the item under; an ammo
+  table's `–1S(e)` and `–2 to all` are modifiers; a skillsoft kind named in a program or gear row gives its skill at
+  its rating.
+- Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 840 of 1,107 effects agree (66.6% → 75.9%);
+  1,206 → 1,327 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
+  copied rules) and values the book doesn't print beside the target.
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers
