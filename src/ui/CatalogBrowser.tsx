@@ -2,10 +2,12 @@
 // then the kinds with their counts (a list beside the entries; tabs across the top on a phone), the chosen kind's
 // sub-categories when it has more than one, and that kind's entries. It opens on the kind last looked at in this browser,
 // else the game's main kind (startKind). A search box looks across every kind; its results
-// are grouped by kind. Needs attention shows only the entries with an issue (a value the book leaves out or the importer
+// are grouped by kind; above it, on Game data, the game’s AI search (AskSearch: a find searches the browser for it). Needs
+// attention shows only the entries with an issue (a value the book leaves out or the importer
 // couldn't read, src/engine/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useState, type ReactNode } from 'react'
+import { AskSearch, type AskGame } from './AskRules'
 import type { Issue } from '../engine/formula'
 import type { CardEffect } from './EntryHover'
 import { IssueBadges } from './Issues'
@@ -81,8 +83,10 @@ export function startKind(kinds: BrowseKind[], main?: string, remember?: string)
   return [last, main].find(id => id && kinds.some(k => k.id === id)) ?? kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id
 }
 
-export function CatalogBrowser({ kinds, books, tableClass, main, remember }: {
+export function CatalogBrowser({ kinds, books, tableClass, main, remember, ai }: {
   kinds: BrowseKind[]; books: Book[]; tableClass?: string
+  /** the game whose AI search goes above it (Game data): each find a button that searches the browser for it */
+  ai?: AskGame
   /** the kind it opens on when none is remembered (Game data: Amps, Qualities) */
   main?: string
   /** the browser storage key that remembers the last kind looked at (per game) */
@@ -110,6 +114,9 @@ export function CatalogBrowser({ kinds, books, tableClass, main, remember }: {
 
   return (
     <section className="browser" aria-label="Catalog">
+      {ai && <AskSearch game={ai} label="Ask AI to find entries"
+        placeholder={`Find entries in plain words, e.g. ${ai === 'sr6' ? 'cyberware that helps a decker' : 'a quiet pistol'}`}
+        link={s => s.title ? <button type="button" className="btn small quiet" onClick={() => { setBook(''); setAttention(false); setQ(s.title) }}>{s.title}</button> : null} />}
       <div className="row browse-top">
         <BookSelect books={books} value={book} onChange={b => { setBook(b); setGroup('') }} />
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search everything" aria-label="Search the catalog" />

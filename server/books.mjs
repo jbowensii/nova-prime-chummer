@@ -25,6 +25,10 @@
 //   GET    /api/review/:id            -> review.xml
 //   PUT    /api/review/:id            body: review.xml with decisions; ?apply=1&source=&name=&canon= writes the overlay
 //                                     (a review of core tables, core="true": ?apply=1 writes custom/imported/core/)
+//   Each game has its own AI (the AI routes and Ask the rules, also under /api/sr6/): Anarchy's settings and keys in
+//                                     library/.config/, SR6's in library/sr6/.config/ (its own provider, key, AnythingLLM
+//                                     workspace); each game's Ask reads only its own data (importer/ask.py). The daily count is
+//                                     the account's, both games together
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
@@ -38,7 +42,7 @@
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
 //   /api/sr6/books, /api/sr6/books/:id[/report|/reimport], /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS and samplefixes, existing entries only);
-//                                     no AI, review, data pack or house sources there (404). One job queue for both games
+//                                     no AI book import, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
 //   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
 //                                     custom/sr6/creation.xml (creation.xsd: what the admin changed from the shipped standard,
@@ -52,8 +56,8 @@
 //                                     anyone signed in reads the file at /custom/table-rules.xml
 //   GET    /api/ask                   anyone signed in: -> { available, limit, used } (available: an AI provider is chosen, enabled
 //                                     and has its key; limit: the account's dailyQuestions, null for none; used: answered today, UTC)
-//   POST   /api/ask                   anyone signed in: { question } (500 characters at most) -> { answer, sources: [{ source, page,
-//                                     title }], covered, used, limit } through `importer ask` (60 s); one at a time per account and
+//   POST   /api/ask                   anyone signed in: { question, scope? } (500 characters at most; scope "rules": the rules only,
+//                                     the Rules page's search) -> { answer, sources: [{ source, page, title, kind, id }], covered, used, limit } through `importer ask` (60 s); one at a time per account and
 //                                     ASK_AT_ONCE on the server (429); every question that reached the provider counts against the day's
 //                                     limit, whatever came back (429 + Retry-After until UTC midnight); one the books don't cover without
 //                                     asking it is free. Only the username and the time are logged; counts in library/.config/ask-counts.xml
@@ -204,9 +208,12 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
   const busy = (id, game = 'ca2') => (running?.game === game && running.id === id) || queue.some(j => j.game === game && j.id === id)
 
-  /** Keys, bearer tokens and key-looking strings out of worker output before it reaches status.xml. */
+  /** A game's AI settings and keys: Anarchy's in library/.config, SR6's in library/sr6/.config (backup.py ALL_KEYS). */
+  const aiConfig = game => join(AREAS[game].library, '.config')
+  /** Keys (both games'), bearer tokens and key-looking strings out of worker output before it reaches status.xml. */
   async function redact(text) {
-    const keys = [...(await readOr(join(config, 'ai-keys.xml'), '')).matchAll(/<key\b[^>]*>([^<]+)<\/key>/g)].map(m => unesc(m[1]).trim())
+    const keys = (await Promise.all(Object.keys(AREAS).map(g => readOr(join(aiConfig(g), 'ai-keys.xml'), ''))))
+      .flatMap(x => [...x.matchAll(/<key\b[^>]*>([^<]+)<\/key>/g)]).map(m => unesc(m[1]).trim())
     for (const k of keys.filter(k => k.length >= 4)) text = text.split(k).join('[key]')
     return text.replace(/\b(sk-|AIza|xai-|gsk_)[\w-]{6,}/g, '[key]').replace(/(Bearer|x-api-key:?|api[_-]?key[=:])\s*\S+/gi, '$1 [key]')
   }
@@ -395,10 +402,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 202, { id: same?.id ?? id })
   }
 
-  async function aiSettings() {
-    const xml = (await readOr(join(config, 'ai-providers.xml'), `<ca2:aiproviders xmlns:ca2="${CONFIG_NS}" version="1"/>`))
+  async function aiSettings(game = 'ca2') {
+    const xml = (await readOr(join(aiConfig(game), 'ai-providers.xml'), `<ca2:aiproviders xmlns:ca2="${CONFIG_NS}" version="1"/>`))
       .replace(/^\s*<\?xml[^>]*\?>\s*/, '').trim()
-    const keys = await readOr(join(config, 'ai-keys.xml'), '')
+    const keys = await readOr(join(aiConfig(game), 'ai-keys.xml'), '')
     const set = p => new RegExp(`<key\\s+provider="${p}"\\s*>\\s*[^<\\s]`).test(keys)
     const summary = PROVIDERS.map(p => `  <key provider="${p}" set="${set(p)}"/>\n`).join('')
     const out = /\/>$/.test(xml) && !/<\/ca2:aiproviders>$/.test(xml)
@@ -408,12 +415,12 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   // never log or echo this route's body: it holds API keys
-  async function putKeys(req) {
+  async function putKeys(req, game = 'ca2') {
     const text = await body(req, 64 * 1024)
     if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw fail(400, 'bad keys document')
     const keys = [...text.matchAll(/<key\s+provider="([a-z]+)"\s*(?:\/>|>([^<]*)<\/key>)/g)].filter(m => PROVIDERS.includes(m[1]))
     if (!keys.length) throw fail(400, 'no <key provider="…"> for a known provider')
-    for (const [, provider, value = ''] of keys) await setKey(provider, unesc(value).trim())
+    for (const [, provider, value = ''] of keys) await setKey(provider, unesc(value).trim(), game)
   }
 
   /** `fn` after the chain's previous call (the request is counted by track()). */
@@ -423,9 +430,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return run
   }
 
-  function setKey(provider, value) {
+  function setKey(provider, value, game) {
     return serial('key', async () => {
-      const r = await importer(['set-key', libraryDir, provider], { input: value, timeout: 30000 })
+      await mkdir(AREAS[game].library, { recursive: true })
+      const r = await importer(['set-key', AREAS[game].library, provider], { input: value, timeout: 30000 })
       if (r.code !== 0) throw fail(500, 'couldn’t store the key: ' + (await redact(r.err)).trim().split('\n').pop())
     })
   }
@@ -433,9 +441,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   /** Save ai-providers.xml through the importer: the parser that later reads the file for a call is the one that
    *  checks it and compares base URLs (a provider whose address changed has its key cleared first; a key is only
    *  sent to the address it was entered for). Queued with the key writes, which it may make. */
-  function putSettings(xml) {
+  function putSettings(xml, game = 'ca2') {
     return serial('key', async () => {
-      const r = await importer(['set-settings', '--library', libraryDir], { input: xml, timeout: 30000 })
+      await mkdir(AREAS[game].library, { recursive: true })
+      const r = await importer(['set-settings', '--library', AREAS[game].library], { input: xml, timeout: 30000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'these aren’t provider settings')
       const out = rootTag(r.out, 'result')
@@ -446,9 +455,9 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
 
   /** The provider's model ids. Read-only, so outside the job queue and the key chain but one at a time; the importer
    *  reads the saved address before the key, and only the provider id comes from the request. */
-  async function listModels(provider) {
+  async function listModels(provider, game = 'ca2') {
     if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
-    const run = listChain.then(() => importer(['list-models', provider, '--library', libraryDir], { timeout: 60000 }))
+    const run = listChain.then(() => importer(['list-models', provider, '--library', AREAS[game].library], { timeout: 60000 }))
     listChain = run
     const r = await run
     if (r.code === 0) return r.out.split('\n').map(s => s.trim()).filter(Boolean)
@@ -457,14 +466,14 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
   }
 
   /** Is the provider connected? `importer test-ai`: the saved address, model and key, a tiny fixed prompt. */
-  async function testProvider(provider) {
+  async function testProvider(provider, game = 'ca2') {
     if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
     if (testing) throw Object.assign(fail(429, 'a connection test is already running; wait for it'), { retryAfter: 5 })
     const now = Date.now()
     while (tests.length && tests[0] < now - 60000) tests.shift()
     if (tests.length >= 10) throw Object.assign(fail(429, 'that’s 10 tests in a minute; wait a moment'), { retryAfter: Math.ceil((tests[0] + 60000 - now) / 1000) })
     tests.push(now)
-    testing = importer(['test-ai', provider, '--library', libraryDir], { timeout: 30000 })
+    testing = importer(['test-ai', provider, '--library', AREAS[game].library], { timeout: 30000 })
     const r = await testing.finally(() => { testing = null })
     if (r.signal) throw fail(502, 'no answer within 30 seconds')
     const why = (await redact(r.err)).trim().split('\n').pop()
@@ -494,22 +503,22 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     asked.day}">\n${[...asked.n].map(([u, n]) => `  <count user="${u}" n="${n}"/>\n`).join('')}</ca2:askcounts>\n`)).catch(e => console.error(`couldn’t save ask-counts.xml: ${e.message}`))
 
   /** Is an AI provider chosen, enabled and given its key (an OpenAI-compatible server may need none, but an address)? */
-  async function askAvailable() {
-    const xml = await readOr(join(config, 'ai-providers.xml'), '')
+  async function askAvailable(game = 'ca2') {
+    const xml = await readOr(join(aiConfig(game), 'ai-providers.xml'), '')
     const use = attr(rootTag(xml, 'ca2:aiproviders'), 'use')
     const p = use && [...xml.matchAll(/<provider\b[^>]*>/g)].map(m => m[0]).find(t => attr(t, 'id') === use)
     if (!p || attr(p, 'enabled') !== 'true') return false
-    const key = new RegExp(`<key\\s+provider="${use}"\\s*>\\s*[^<\\s]`).test(await readOr(join(config, 'ai-keys.xml'), ''))
+    const key = new RegExp(`<key\\s+provider="${use}"\\s*>\\s*[^<\\s]`).test(await readOr(join(aiConfig(game), 'ai-keys.xml'), ''))
     return key || (use === 'openai' && !!attr(p, 'baseUrl'))
   }
 
-  async function ask(req, who) {
+  async function ask(req, who, game = 'ca2') {
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) throw fail(415, 'send { question } as application/json')
-    let question
-    try { question = JSON.parse(await body(req, 8192)).question } catch (e) { throw e.code === 413 ? e : fail(400, 'send { question } as JSON') }
+    let question, scope
+    try { ({ question, scope } = JSON.parse(await body(req, 8192)) ?? {}) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { question } as JSON') }
     question = typeof question === 'string' ? clean(question).replace(/\s+/g, ' ').trim() : ''
     if (!question || question.length > MAX_QUESTION) throw fail(400, `a question is 1–${MAX_QUESTION} characters`)
-    if (!await askAvailable()) throw fail(409, 'Ask the rules isn’t set up: the admin chooses an AI provider and its key in AI settings')
+    if (!await askAvailable(game)) throw fail(409, `Ask the rules isn’t set up${game === 'sr6' ? ' for Shadowrun 6' : ''}: the admin chooses an AI provider and its key in AI settings`)
     if (asking.has(who.id)) throw Object.assign(fail(429, 'your last question is still being answered; wait for it'), { retryAfter: 5 })
     if (asking.size >= ASK_AT_ONCE) throw Object.assign(fail(429, 'Ask the rules is busy; try again in a moment'), { retryAfter: 5 })
     const limit = who.dailyQuestions ?? null
@@ -519,9 +528,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     asking.add(who.id)
     let r
     try {
-      r = await importer(['ask', '--custom', customDir, '--library', libraryDir], { input: question, timeout: askTimeout })
+      const area = AREAS[game]
+      r = await importer([...area.pre, 'ask', '--custom', area.custom, '--library', area.library, ...(scope === 'rules' ? ['--scope', 'rules'] : [])],
+        { input: question, timeout: askTimeout })
     } finally { asking.delete(who.id) }
-    console.log(`ask: ${who.username} at ${new Date().toISOString()}`) // never the question or the answer
+    console.log(`ask${game === 'sr6' ? ' (sr6)' : ''}: ${who.username} at ${new Date().toISOString()}`) // never the question or the answer
     let out = null
     try { out = JSON.parse(r.out.trim().split('\n').pop()) } catch { /* killed or crashed: no JSON */ }
     // counted unless the importer says it never asked the provider (a timeout or a crash counts: it may have)
@@ -535,7 +546,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t answer' + (why ? `: ${why}` : ''))
     if (!out) throw fail(502, 'the importer’s answer couldn’t be read')
     const text = s => String(s ?? '').slice(0, 200)
-    const sources = (Array.isArray(out.sources) ? out.sources : []).slice(0, 8).map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title) }))
+    const sources = (Array.isArray(out.sources) ? out.sources : []).slice(0, 8).map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title), kind: text(s?.kind), id: text(s?.id) }))
     return { answer: (await redact(String(out.answer ?? ''))).slice(0, 6000), sources, covered: out.covered === true, used: usedToday(who.id), limit }
   }
 
@@ -1044,32 +1055,39 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (pt && method === 'GET' && pt[1] !== 'import') return sendZip('datapack', pt[1], res, who)
     if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/books' && (method === 'POST' || method === 'GET')) return books(req, res, send)
-    if (p === '/api/ai-settings' && method === 'GET') return send(res, 200, await aiSettings(), 'application/xml; charset=utf-8')
-    if (p === '/api/ai-settings' && method === 'PUT') {
-      const cleared = await putSettings(await body(req))
-      return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
-    }
-    if (p === '/api/ai-test' && method === 'POST') return send(res, 200, await testProvider(url.searchParams.get('provider') ?? ''))
-    if (p === '/api/ai-models' && method === 'GET') {
-      const provider = url.searchParams.get('provider') ?? '', ids = await listModels(provider)
-      return send(res, 200, provider === 'anythingllm' // the importer prints slug<TAB>name
-        ? { workspaces: ids.map(l => ({ slug: l.split('\t')[0], name: l.slice(l.indexOf('\t') + 1) })) } : { models: ids })
-    }
-    if (p === '/api/ask' && method === 'GET')
-      return send(res, 200, { available: await askAvailable(), limit: who.dailyQuestions ?? null, used: usedToday(who.id) })
-    if (p === '/api/ask' && method === 'POST') return send(res, 200, await ask(req, who))
-    if (p === '/api/ask') return send(res, 405, { error: 'method not allowed' })
+    if (await ai(req, res, url, send, who) !== false) return
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
     if (p === '/api/samples') return sampleSets(req, res, send)
-    if (p === '/api/ai-keys' && method === 'PUT') {
-      await putKeys(req)
-      return send(res, 204, '', 'text/plain')
-    }
 
     if (p === '/api/books/reimport-all') return reimportAll(req, res, send)
     const m = p.match(/^\/api\/(books|review)\/([^/]+)(?:\/(report|reimport|ai))?$/)
     return m ? bookRoute(req, res, url, send, m) : false
+  }
+
+  /** The game's AI: its settings, keys, model list and test, and Ask the rules (the same routes for both games); false: not one. */
+  async function ai(req, res, url, send, who, game = 'ca2') {
+    const p = url.pathname, method = req.method
+    if (p === '/api/ai-settings' && method === 'GET') return send(res, 200, await aiSettings(game), 'application/xml; charset=utf-8')
+    if (p === '/api/ai-settings' && method === 'PUT') {
+      const cleared = await putSettings(await body(req), game)
+      return send(res, 200, cleared.length ? { cleared, message: 'Key cleared because the address changed — enter it again' } : { cleared })
+    }
+    if (p === '/api/ai-test' && method === 'POST') return send(res, 200, await testProvider(url.searchParams.get('provider') ?? '', game))
+    if (p === '/api/ai-models' && method === 'GET') {
+      const provider = url.searchParams.get('provider') ?? '', ids = await listModels(provider, game)
+      return send(res, 200, provider === 'anythingllm' // the importer prints slug<TAB>name
+        ? { workspaces: ids.map(l => ({ slug: l.split('\t')[0], name: l.slice(l.indexOf('\t') + 1) })) } : { models: ids })
+    }
+    if (p === '/api/ask' && method === 'GET')
+      return send(res, 200, { available: await askAvailable(game), limit: who.dailyQuestions ?? null, used: usedToday(who.id) })
+    if (p === '/api/ask' && method === 'POST') return send(res, 200, await ask(req, who, game))
+    if (p === '/api/ask') return send(res, 405, { error: 'method not allowed' })
+    if (p === '/api/ai-keys' && method === 'PUT') {
+      await putKeys(req, game)
+      return send(res, 204, '', 'text/plain')
+    }
+    return false
   }
 
   /** GET /api/books (the list) and POST (an upload) in the game's area. */
@@ -1081,10 +1099,11 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     return send(res, 200, await Promise.all(ids.map(id => book(id, game))))
   }
 
-  /** The SR6 area: the books routes without AI, review or data pack, the edits without house sources (S1), and the
-   *  creation rules (S2). Any other path: false (server.mjs answers 404). */
+  /** The SR6 area: the books routes without AI book import, review or data pack, the edits without house sources (S1), the
+   *  creation rules (S2) and its own AI (settings, keys, Ask the rules). Any other path: false (server.mjs answers 404). */
   async function sr6(req, res, url, send, who) {
     const p = url.pathname
+    if (await ai(req, res, url, send, who, 'sr6') !== false) return
     if (p === '/api/books' && (req.method === 'POST' || req.method === 'GET')) return books(req, res, send, 'sr6')
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
     if (p === '/api/creation') return creation(req, res, send)

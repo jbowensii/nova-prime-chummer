@@ -3,6 +3,8 @@
   python -m importer sr6 remove <library/sr6/book-id> --custom <custom/sr6> [--files]
   python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3: refused)
   python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6>
+  python -m importer sr6 ask --custom <custom/sr6> --library <library/sr6> [--scope rules]  (as `importer ask`, from SR6's
+      data only, with SR6's AI settings in <library/sr6>/.config)
   python -m importer sr6 regroup <book.md> <regrouped.md>        (with the CRB recipe's aliases and name headers)
   python -m importer sr6 summary <library/sr6/book-id>           (counts per file, report rows by kind with names)
   python -m importer sr6 check <pdf> --out <scratch dir>         (the owner's local real-book check: a fresh
@@ -158,10 +160,15 @@ def _cmd_check(argv):
     return 1 if bad else 0
 
 
+def _cmd_ask(argv):
+    from importer.__main__ import _cmd_ask as ask
+    return ask(argv, game="sr6")
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     cmds = {"run": _cmd_run, "remove": _cmd_remove, "regroup": _cmd_regroup, "summary": _cmd_summary, "check": _cmd_check,
-            "edit": _cmd_edit}
+            "edit": _cmd_edit, "ask": _cmd_ask}
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2

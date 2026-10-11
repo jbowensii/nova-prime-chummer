@@ -22,6 +22,22 @@
   Shadowrun 6), not only on Game data, and Game data has an **Export to Foundry VTT** button at the top. Both open the
   export, unfolded: `#/data/foundry`, `#/sr6/data/foundry`.
 
+**Admins: Shadowrun 6 now has its own AI.** Anarchy's AI settings and keys stay as they were and keep working. To give
+Shadowrun 6 an AI, open SR6 Books → **AI settings** and choose its provider and key there (for AnythingLLM, a workspace
+holding only the Shadowrun 6 books). Nothing is copied over from Anarchy's: the two games never share books.
+
+**Both games**
+- **Each game has its own AI**: its own AI settings page (provider, model, key, AnythingLLM workspace), its own data to
+  answer from and its own prompt. Anarchy's AI never sees the Shadowrun 6 books, and SR6's never sees Anarchy's. Who may
+  set it up (the admin) and who may ask (anyone signed in) are the same as before; the daily question limit counts both
+  games together. Backups treat SR6's key as they do Anarchy's (only with "Include my API keys").
+- **AI search on Rules and Game data**: once a game's AI is set up, a plain-words search box on its Rules page (the rules
+  only; each find links to its rule) and on Game data (each find looks the entry up in the catalog).
+
+**Shadowrun 6**
+- **Ask the rules**: the **?** button in the header and the bar on a campaign's page, answering from the Shadowrun 6
+  books only and citing book and page, in SR6's look and words.
+
 ## 0.13.0 — 2026-10-11: the books' rules as switches, effects round three, one catalog item per level in both games
 
 **Re-import the books of both games** (Books → **Re-import all**): the Shadowrun 6 books for the printing fixes, the

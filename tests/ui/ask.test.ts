@@ -1,7 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
-import { askRules, AskRules, sourceLine } from '../../src/ui/AskRules'
+import { askRules, AskRules, AskSearch, sourceLine } from '../../src/ui/AskRules'
 import { joined, type Campaign } from '../../src/ui/Campaigns'
 import { Me, type User } from '../../src/ui/auth'
 
@@ -52,4 +52,38 @@ test('a campaign a runner can join: one you run or play in; the admin sees them 
   const c = (you: Campaign['you'], people: string[] = []) => ({ you, gms: people.map(username => ({ username, name: username })), members: [] }) as unknown as Campaign
   const me = { username: 'ada' } as User
   expect([joined(c('gm'), me), joined(c('member'), me), joined(c('admin'), me), joined(c('admin', ['ada']), me)]).toEqual([true, true, false, true])
+})
+
+test('each game asks its own AI; a page’s search sends its scope and links its finds', async () => {
+  const calls: [string, string | undefined][] = []
+  vi.spyOn(window, 'fetch').mockImplementation(async (url, init) => {
+    calls.push([String(url), init?.body as string | undefined])
+    return init?.method === 'POST'
+      ? json(200, { answer: 'Invented [QQ p.44].', sources: [{ source: 'QQ', page: '44', title: 'Puddle vaulting', kind: 'rule', id: 'qq.vault' },
+        { source: 'House rule', page: '', title: 'Biscuits', kind: '', id: '' }], covered: true, used: 1, limit: null })
+      : json(200, { available: true, limit: null, used: 0 })
+  })
+  const el = document.body.appendChild(document.createElement('div'))
+  const root = createRoot(el)
+  const link = (s: { kind?: string; id?: string; title: string }) => s.kind === 'rule' ? createElement('a', { href: `#/sr6/rules/${s.id}` }, s.title) : null
+  await act(async () => root.render(createElement(Me.Provider, { value: { id: 'u1', username: 'pia', role: 'player' } as User },
+    createElement(AskSearch, { game: 'sr6', scope: 'rules', label: 'Ask AI about the rules', placeholder: 'Search the rules', link }))))
+  const input = el.querySelector('input')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'vault a puddle?')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await act(async () => el.querySelector('form')!.requestSubmit())
+  expect(calls.map(c => c[0])).toEqual(['./api/sr6/ask', './api/sr6/ask'])
+  expect(JSON.parse(calls[1][1]!)).toEqual({ question: 'vault a puddle?', scope: 'rules' })
+  expect(el.querySelector('form')!.getAttribute('aria-label')).toBe('Ask AI about the rules')
+  expect(el.querySelector('a')!.getAttribute('href')).toBe('#/sr6/rules/qq.vault')
+  expect(el.querySelector('.ask-hits')!.textContent).toBe('Puddle vaulting QQ p.44Biscuits House rule') // no link: its title as text
+  root.unmount()
+  // Anarchy's bar asks Anarchy's
+  calls.length = 0
+  const root2 = createRoot(el)
+  await act(async () => root2.render(createElement(Me.Provider, { value: { id: 'u1', username: 'pia', role: 'player' } as User }, createElement(AskRules))))
+  expect(calls.map(c => c[0])).toEqual(['./api/ask'])
+  root2.unmount()
 })

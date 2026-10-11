@@ -41,7 +41,7 @@ export function GameDataPage({ game, kinds, books, banner, sourcesIntro, sources
       <PageHeader title="Game data" />
       {foundry && <p><a className="btn" href={href} onClick={showFoundry}>Export to Foundry VTT</a></p>}
       {banner}
-      <CatalogBrowser kinds={kinds} books={books} tableClass={sr6 ? 'sr6-browse' : undefined} main={sr6 ? 'qualities' : 'amps'} remember={`${KIND_KEY}.${game}`} />
+      <CatalogBrowser kinds={kinds} books={books} tableClass={sr6 ? 'sr6-browse' : undefined} main={sr6 ? 'qualities' : 'amps'} remember={`${KIND_KEY}.${game}`} ai={game} />
 
       <details className="fold">
         <summary><h2>Sources</h2> <span className="muted">{sources.length} {sources.length === 1 ? 'book' : 'books'}</span></summary>

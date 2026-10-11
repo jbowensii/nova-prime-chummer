@@ -1,5 +1,7 @@
 // AI settings: one block per provider. The choices go to library/.config/ai-providers.xml ("Save settings");
 // each key goes alone to ai-keys.xml ("Save key") and never comes back: the page only learns whether it is set.
+// Each game has its own (game="sr6", #/sr6/books/ai: /api/sr6/ai-*, library/sr6/.config): its own provider, key and
+// AnythingLLM workspace, for its own Ask the rules and AI search; Anarchy's also reads books no recipe knows.
 import { useEffect, useState } from 'react'
 import { api, BooksHeader, PROVIDER_NAMES } from './Books'
 import { because } from './auth'
@@ -58,8 +60,9 @@ export function toXml(use: string, providers: Record<string, Provider>) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aiproviders xmlns:ca2="${NS}" version="1"${use ? ` use="${use}"` : ''}>\n${rows}</ca2:aiproviders>\n`
 }
 
-export function AiSettings() {
+export function AiSettings({ game = 'ca2' }: { game?: 'ca2' | 'sr6' }) {
   const repo = useRepo()
+  const sr6 = game === 'sr6', pre = sr6 ? 'sr6/' : '' // the game's own /api/sr6/ai-* routes
   const [state, setState] = useState<ReturnType<typeof parse> | null>(null)
   const [keyInput, setKeyInput] = useState<Record<string, string>>({})
   const [msg, setMsg] = useState<string | null>(null)
@@ -68,7 +71,7 @@ export function AiSettings() {
   const [savedUrl, setSavedUrl] = useState<Record<string, string>>({}) // the list is asked at the saved address only
   const [saved, setSaved] = useState<Record<string, Provider>>({}) // a connection test uses the saved settings only
   const [tests, setTests] = useState<Record<string, 'running' | Tested | { error: string } | undefined>>({})
-  const load = () => api<string>('ai-settings').then(x => {
+  const load = () => api<string>(`${pre}ai-settings`).then(x => {
     const s = parse(x)
     setState(s)
     setSavedUrl(Object.fromEntries(IDS.map(id => [id, s.providers[id].baseUrl.trim()])))
@@ -85,14 +88,14 @@ export function AiSettings() {
   const saveSettings = async () => {
     const use = state.providers[state.use]?.enabled ? state.use : ''
     try {
-      const r = await api<{ cleared: string[]; message?: string }>('ai-settings', { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: toXml(use, state.providers) })
+      const r = await api<{ cleared: string[]; message?: string }>(`${pre}ai-settings`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' }, body: toXml(use, state.providers) })
       setMsg(r.message ? `Settings saved. ${r.cleared.map(p => PROVIDER_NAMES[p]).join(', ')}: ${r.message}.` : 'Settings saved.')
       await load()
     } catch (e) { setMsg(because('Couldn’t save the settings', (e as Error).message)) }
   }
   const saveKey = async (id: string, value: string) => {
     try {
-      await api('ai-keys', { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
+      await api(`${pre}ai-keys`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
         body: `<keys><key provider="${id}">${esc(value.trim())}</key></keys>` })
       setKeyInput({ ...keyInput, [id]: '' })
       setMsg(value.trim() ? `${PROVIDER_NAMES[id]} key saved.` : `${PROVIDER_NAMES[id]} key removed.`)
@@ -105,14 +108,14 @@ export function AiSettings() {
   const loadModels = async (id: string) => {
     setLists(l => ({ ...l, [id]: 'loading' }))
     try {
-      const r = await api<{ models?: string[]; workspaces?: { slug: string; name: string }[] }>(`ai-models?provider=${id}`)
+      const r = await api<{ models?: string[]; workspaces?: { slug: string; name: string }[] }>(`${pre}ai-models?provider=${id}`)
       const opts = r.workspaces ? r.workspaces.map(w => ({ value: w.slug, label: w.name })) : (r.models ?? []).map(m => ({ value: m, label: m }))
       setLists(l => ({ ...l, [id]: opts.sort((a, b) => a.label < b.label ? -1 : a.label > b.label ? 1 : 0) }))
     } catch (e) { setLists(l => ({ ...l, [id]: { error: (e as Error).message } })) }
   }
   const runTest = async (id: string) => {
     setTests(t => ({ ...t, [id]: 'running' }))
-    try { const r = await api<Tested>(`ai-test?provider=${id}`, { method: 'POST' }); setTests(t => ({ ...t, [id]: r })) }
+    try { const r = await api<Tested>(`${pre}ai-test?provider=${id}`, { method: 'POST' }); setTests(t => ({ ...t, [id]: r })) }
     catch (e) { setTests(t => ({ ...t, [id]: { error: (e as Error).message } })) }
   }
   const TYPE = ' type' // the "type a name instead" option: model ids and workspace slugs have no spaces
@@ -144,8 +147,13 @@ export function AiSettings() {
   return (
     <main className="lib ai">
       <BooksHeader title="AI settings" />
-      <p>An AI reads books the app has no recipe for and proposes their entries; you review them before anything is added.
-        You pay the provider for what it reads. Keys are stored on this server in a file of their own and are never shown again.</p>
+      {sr6 ? <p>Shadowrun 6’s own AI answers Ask the rules and the AI search on Rules and Game data, from the Shadowrun 6 books on
+        this server only. For AnythingLLM, choose a workspace that holds the Shadowrun 6 books and nothing else. Anarchy’s AI
+        has <a href="#/books/ai">its own settings</a>. You pay the provider for what it reads. Keys are stored on this server in a
+        file of their own and are never shown again.</p>
+        : <p>An AI reads books the app has no recipe for and proposes their entries; you review them before anything is added.
+        You pay the provider for what it reads. Keys are stored on this server in a file of their own and are never shown again.
+        These settings are Shadowrun Anarchy’s; Shadowrun 6 has <a href="#/sr6/books/ai">its own</a>.</p>}
       <div role="status" aria-live="polite">{msg && <p className="banner">{msg}</p>}</div>
 
       <label className="use">Provider to use
@@ -163,7 +171,7 @@ export function AiSettings() {
             <p className="muted">{f.hint}</p>
             <label className="check"><input type="checkbox" checked={p.enabled} onChange={e => setP(id, { enabled: e.target.checked })} />Turn on</label>
             <div className="grid2">
-              {f.fields.map(([k, label, ph]) => k === 'model' || (k === 'workspace' && id === 'anythingllm') ? pickField(id, k, label, ph)
+              {f.fields.map(([k, label, ph]) => k === 'model' || (k === 'workspace' && id === 'anythingllm') ? pickField(id, k, label, sr6 && k === 'workspace' ? 'shadowrun-6' : ph)
                 : <label key={k}>{label}<input value={p[k]} placeholder={ph} autoComplete="off" onChange={e => setP(id, { [k]: e.target.value })} /></label>)}
             </div>
             <div className="row keyrow">
