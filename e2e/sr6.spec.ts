@@ -77,7 +77,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await expect(page.getByRole('link', { name: 'Books', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByText('Upload the Shadowrun 6 core rulebook PDF you own')).toBeVisible()
   await expect(page.locator('.supported')).toContainText('Shadowrun, Sixth World Core Rulebook')
-  await expect(page.getByRole('link', { name: 'AI settings' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'AI settings' })).toHaveAttribute('href', '#/sr6/books/ai') // SR6's own (e2e/sr6-ai.spec.ts)
   await expect(page.getByRole('heading', { name: 'Core data' })).toHaveCount(0) // no data pack for SR6
   await page.getByLabel('Choose PDF files').setInputFiles(pdf('made-up-sr6.pdf'))
   const row = page.locator('.book', { hasText: 'made-up-sr6.pdf' })

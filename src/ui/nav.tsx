@@ -1,8 +1,8 @@
 // Every page's header (0.9.1): the brand and title, then two rows of icons with tooltips. Row 1 is the same on every page
 // of a game: the main menu in a fixed order (the current page underlined), then the game switch, Ask, Settings and the
 // account (and a page's own tools there: Game data's Foundry export link). Row 2, only on a page that has any, holds that page's own actions. Pages a role can't use aren't listed
-// (App.tsx sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask is hidden (it answers from the
-// Anarchy books).
+// (App.tsx sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask asks SR6's own AI
+// (its books, its settings; shown once the admin sets it up).
 import { Children, type ReactNode } from 'react'
 import { AskButton } from './AskRules'
 import { AccountMenu, canEdit, isAdmin, useMe } from './auth'
@@ -53,7 +53,7 @@ function Bar({ items, section, sr6, tools }: { items: [string, IconName, string,
       <div className="iconbar tools">
         {tools}
         <IconLink href={homeOf(other)} icon="switch" label={sr6 ? 'Switch to Shadowrun Anarchy' : 'Switch to Shadowrun 6'} onClick={() => storeGame(other)} />
-        {!sr6 && <AskButton />}<SettingsButton /><AccountMenu />
+        <AskButton game={sr6 ? 'sr6' : 'ca2'} /><SettingsButton /><AccountMenu />
       </div>
     </div>
   )

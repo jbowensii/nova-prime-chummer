@@ -316,7 +316,7 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
 
   return (
     <main className="lib books">
-      <BooksHeader title="Books">{!sr6 && <IconLink icon="ai" label="AI settings" href="#/books/ai" />}</BooksHeader>
+      <BooksHeader title="Books"><IconLink icon="ai" label="AI settings" href={sr6 ? '#/sr6/books/ai' : '#/books/ai'} /></BooksHeader>
       {sr6 ? <p>Upload the Shadowrun 6 core rulebook PDF you own. It’s imported at once into the SR6 catalog and rules. The PDF stays
         on this server and is never served to anyone.</p>
         : <p>Upload the PDFs you own. Books the app knows are imported at once; any other book can be read by an AI you set up, and you

@@ -553,6 +553,10 @@ table.campaigns tr.off td { color: var(--text-3); }
 .ask-answer { margin-top: 0.6rem; }
 .ask-answer p:first-child { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--serif); font-size: 1.05rem; margin-bottom: 0.3rem; }
 .ask-answer .src { display: block; white-space: normal; overflow-wrap: anywhere; margin-bottom: 0.2rem; }
+/* a page's AI search (Rules, Game data): its finds, each a link (or a button that searches the catalog) and its page */
+.ask-hits { margin: 0.2rem 0 0.4rem; padding-left: 1.2rem; }
+.ask-hits li { margin: 0.15rem 0; overflow-wrap: anywhere; }
+.ask-hits .src { display: inline; margin: 0; }
 dialog.drawer { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(30rem, 100vw); max-width: 100vw; border-top: 0; border-left: 4px solid var(--yellow); overflow-y: auto; }
 dialog.drawer h2 { margin-top: 0; }
 

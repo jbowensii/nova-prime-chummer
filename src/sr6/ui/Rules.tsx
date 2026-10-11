@@ -1,8 +1,10 @@
 // SR6 Rules (everyone): the core rulebook's rule sections (the rules kind), by chapter in book order, each section under
 // its parent, with its text from the private texts file. Searchable by title and text. The page is a table of contents; a
 // title opens the rule in a drawer at its own address (#/sr6/rules/<id>). The creation rules are on Table setup (Creation.tsx).
+// Above the contents, SR6’s AI search (AskSearch, the rules only): its finds link to their rules.
 import { useMemo, useState } from 'react'
 import { isAdmin, useMe } from '../../ui/auth'
+import { AskSearch } from '../../ui/AskRules'
 import { Modal } from '../../ui/bits'
 import { BookSelect } from '../../ui/CatalogBrowser'
 import { PageHeader } from '../../ui/nav'
@@ -40,6 +42,8 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
         ? <>Upload the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'The admin hasn’t imported the core rulebook yet.'}</p> : <>
         {!rules.some(r => r.text) && <p className="banner" role="status">Only titles are shown: the rules text isn’t installed. {admin
           ? <>Re-import the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'Ask the admin to import the core rulebook again.'}</p>}
+        <AskSearch game="sr6" scope="rules" label="Search the rules with AI" placeholder="Search the rules in plain words, e.g. what does cover give me?"
+          link={s => s.kind === 'rule' && s.id && c.entries.rules.has(s.id) ? link(c.entries.rules.get(s.id)!) : null} />
         <div className="row browse-top">
           <BookSelect books={books} value={book} onChange={b => { setBook(b); setChapter('') }} />
           <select value={chapter} onChange={e => setChapter(e.target.value)} aria-label="Chapter">
