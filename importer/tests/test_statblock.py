@@ -153,7 +153,7 @@ class CharacterTest(unittest.TestCase):
         self.assertNotIn("Natural Low-Light Vision", amps)  # a metatype trait, not an amp
         fx = lambda n: [(e["ref"], e.get("param"), e.get("value")) for e in amps[n]["effects"]]
         # the rules price it 5, the book 4, and the line limits it ("first meeting only"): that limitation is the Negative
-        # effect of the difference (CRB p.61), its note the printed line; Review asks the GM to approve it
+        # effect of the difference (CRB p.61), its note the printed line; as printed, Review needs no GM for it
         self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None), ("negative", None, 1)])
         self.assertEqual(amps["Big Grin"]["effects"][1]["note"], "RR 1 on Influence tests (first meeting only).")
         # a line no effect reads stays the amp's text, it isn't priced as a narrative effect to meet the printed rating
@@ -239,8 +239,7 @@ class CharacterTest(unittest.TestCase):
         rules = statblock.load_rules()
         mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
         grin = {"name": "Grin", "type": "Quality", "rating": 1, "count": 1, "lines": ["RR 1 on Influence tests (first meeting only)."]}
-        # the limitation is the Negative effect on both; a catalog amp's is the book's own drawback, a runner's the GM approves
-        # (its note is the printed line)
+        # the limitation is the Negative effect on both; a catalog amp's notes "book drawback", a runner's the printed line
         self.assertEqual([f[3] for f in statblock.map_amp(grin, rules, mapper, False)[1] if f[0] == "negative"],
                          ["RR 1 on Influence tests (first meeting only)."])
         self.assertEqual([f[3] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1] if f[0] == "negative"],

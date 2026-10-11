@@ -18,8 +18,8 @@ character XML) and the report rows. Rules, applied the same way to every block:
     is added, dropped or retyped to meet the printed rating: the printed rating is kept on the amp's snapshot
     (printedRating), and where the rules give another, Review says so (and the report row has status "mismatch").
     Readings of what the page prints: a printed limitation ("only", "first interaction", a drug's comedown) where the
-    rules price the amp up to 5 above the printed rating is that Negative effect (CRB p.61; the GM approves it on
-    Review); a vehicle's or drone's own front-facing mount takes its first weapon (p.60, p.241); a shamanic mask is the
+    rules price the amp up to 5 above the printed rating is that Negative effect (CRB p.61; as the book prints it, it
+    needs no GM approval: owner, 2026-10-11); a vehicle's or drone's own front-facing mount takes its first weapon (p.60, p.241); a shamanic mask is the
     Awakened amp's -1 (p.169).
   - Items as printed: every printed armor, weapon and gear entry (the free starting gear is the app's own, added when
     the runner loads), read as the page means them: an armor row "(+1)" / "(2+1)" is an add-on over the row above
@@ -541,8 +541,8 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
     gap = amp_rating(rules, atype, fx, first_quality) - amp["rating"] if amp["rating"] is not None else 0
     if not catalog and limit and 0 < gap <= 5:
         # the rules price a runner's amp above its printed rating and a printed line limits it: that limitation is a
-        # Negative effect of the difference (CRB p.61, -1 to -5), as printed; Review asks the GM to approve it (p.61,
-        # owner's sample rule 0.5.6) unless the books' catalog amp of that name prints the same drawback (Jazz, p.150)
+        # Negative effect of the difference (CRB p.61, -1 to -5), as printed. Review accepts it while the amp rates as the
+        # book prints it (owner, 2026-10-11); changed since, or a player's own, the GM approves it (p.61)
         fx = fx + _fx("negative", value=gap, note=limit.strip())
     return atype, fx, loose, vehicle, amp_rating(rules, atype, fx, first_quality)
 

@@ -280,7 +280,7 @@ class PregensTest(unittest.TestCase):
             "Rusty Sedan": (["vehicle-armor"], "sedan"),
             "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
             "Old Pal, fixer": (["rr-spec:network.street"], None),
-            # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61): the GM approves
+            # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61)
             "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage", "negative"], None),
         })
         # the printed ratings, on the snapshots

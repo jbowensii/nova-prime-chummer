@@ -15,17 +15,16 @@ written at import.
   the books' catalog amp of its type may carry the effects that entry prints (a sample's Jazz, p.150).
 - Sample runners, the readings 0.5.6 dropped where the books support them (no approval written in the file): a printed
   limitation ("only", "first interaction", a drug's comedown) where the rules price the amp 1–5 above its printed rating
-  is that Negative effect (p.61), for the GM to approve on Review unless the books' catalog amp of that name prints the
-  same drawback (Jazz's comedown, p.150); a drone's or vehicle's own front-facing mount takes its first weapon (p.60,
+  is that Negative effect (p.61): the book's own, so Review needs no GM approval for it while the amp rates as printed
+  (owner, 2026-10-11; a player's own negative effect, or one on a sample amp changed since, still does); a drone's or vehicle's own front-facing mount takes its first weapon (p.60,
   p.241); a shamanic mask is the Awakened amp's −1 (p.169, a new core effect); "+1 Edge per hacking scene in VR" is
   Initiative limited to VR; an armor row "(+1)" / "(2+1)" is an add-on over the armor above, bought for its own points
   (DHSA p.14); a branded commlink where the list has no plain one is the free commlink (p.85); gear an implant prints as
   "Integrated …" is part of it.
 - Review: an effect one of the books' add-ons for a type prints is one that type may carry (DHSA's cyberdeck
   "Response increase" mods, Initiative in VR, p.19).
-- On a fresh import of the eight books, in either order, the 28 sample runners show 5 Review errors (27 at 0.12.0):
-  Keran's Cracking without a deck, Noonchi and Ty over budget (the booklet's own), and two printed limitations (Ty's
-  First impression, Neon Ivy's Puppeteer) for the GM to approve.
+- On a fresh import of the eight books, in either order, the 28 sample runners show 3 Review errors (27 at 0.12.0),
+  each the booklet's own: Keran's Cracking without a deck, Noonchi and Ty over budget.
 - Owner rulings (2026-10-10) on the rules no book states:
   - an amp may rate below 0 and gives nuyen back, with no GM approval; a book add-on rates as its effects alone
     (DHSA's Removed Manual Controls −1, was 0);

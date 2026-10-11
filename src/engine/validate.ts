@@ -88,6 +88,9 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // the books' add-ons for this amp type (DHSA's cyberdeck "Response increase" mods print Initiative in VR, p.19): an
     // effect one of them prints is one the books give the type
     const typeMods = [...c.amps.values()].filter(t => t.mod && t.type === a.type)
+    // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry)
+    const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
+    const rules = ampRating(c, a, ampCtx(b, a, c, sinnerFree(ch, table)))
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
@@ -107,10 +110,13 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       if (e.param && eff.param === 'skill' && !c.skills.has(e.param)) add('ref.unknown', 'warning', ep, `${a.name}: unknown skill "${e.param}".`)
       if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
-        // a catalog amp's own drawback, as its book prints it (a player's pick); on a runner's own amp, sample or not, the GM approves
+        // a catalog amp's own drawback, as its book prints it (a player's pick); a book sample's amp that rates exactly as
+        // its book prints it: the limitation is the book's own (owner, 2026-10-11). Any other negative effect, a player's
+        // or one on a sample amp changed since, the GM approves (p.61)
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
           || named?.effects.some(t => t.ref === 'negative' && t.value === e.value)
+          || (printed != null && rules === printed)
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })
@@ -136,10 +142,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       add('amp.initRealm', 'error', path, `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`, 61)
     const fw = 1 + a.effects.filter(e => e.ref === 'firewall-plus').length
     if (a.type === 'cyberdeck' && fw > FIREWALL_MAX) add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
-    // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry): where the rules give
-    // another, say so. The book's number is never corrected in the file.
-    const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
-    const rules = ampRating(c, a, ampCtx(b, a, c, sinnerFree(ch, table)))
+    // where the rules give a book sample's amp another rating than its book prints, say so. The book's number is never
+    // corrected in the file.
     if (printed != null && printed !== rules)
       add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page,
         a.snapshot?.source)

@@ -389,8 +389,9 @@ nothing is added, dropped or retyped to meet that rating. Two printed types are 
 "(Quality)" with a deck's Firewall – Attack is a Cyberdeck (CRB p.62), and a "(Quality)" the equipment list also prints
 is an Equipment amp on that item (CRB p.60). What the page prints is read by the book's rules too: a printed
 limitation ("only", "first interaction", a drug's comedown) where the rules price the amp 1 to 5 above its printed
-rating is that Negative effect (CRB p.61), noted with the printed line, for the GM to approve on Review (the owner's
-sample rule, 0.5.6) unless the books' catalog amp of that name prints the same drawback; a vehicle's or drone's own
+rating is that Negative effect (CRB p.61), noted with the printed line. Review accepts it with no GM approval while the
+amp rates as its book prints it (owner, 2026-10-11), or when the books' catalog amp of that name prints the same
+drawback; a player's own negative effect, or one on a sample amp changed since, still needs the GM (p.61); a vehicle's or drone's own
 front-facing mount takes its first weapon (CRB p.60, p.241; a storage rail is an Enhanced weapon mount); a shamanic
 mask is the Awakened amp's -1 (CRB p.169, the core's `awk-shamanic-mask`). Every printed item is bought as printed
 (the app makes a plain "Commlink" and "Fake SIN" its free starting gear when it loads the runner), except: a branded

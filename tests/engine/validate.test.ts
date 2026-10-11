@@ -69,11 +69,20 @@ test('catalog-sanctioned negative effects need no approval', () => {
   expect(codes(ch)).not.toContain('amp.negative')
 })
 
-test('a negative effect on a runner’s own amp needs the GM, on a book sample too, whatever its note says', () => {
+test('a negative effect on a runner’s own amp needs the GM, whatever its note says; a book sample’s, as printed, does not', () => {
   const ch = base()
   ch.build.amps = [amp('q', 'quality', [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'negative', value: 1, note: 'book drawback' }])]
   expect(codes(ch)).toContain('amp.negative')
   ch.origin = 'TEST'
+  expect(codes(ch)).toContain('amp.negative')
+  // a book sample's amp (its snapshot holds the printed rating) that rates exactly as printed: the book's own limitation
+  const rating = ampRating(cat, ch.build.amps[0], ampCtx(ch.build, ch.build.amps[0]))
+  ch.build.amps[0].snapshot = { id: 'test.x.q', type: 'quality', name: 'Q', effects: [], narrative: '', printedRating: rating, source: 'TEST', page: 7 }
+  expect(codes(ch)).not.toContain('amp.negative')
+  ch.build.amps[0].effects.push({ ref: 'negative', value: 1 }) // a player's further reduction: below the printed rating
+  expect(count(ch, 'amp.negative')).toBe(2)
+  ch.build.amps[0].effects.pop()
+  ch.build.amps[0].catalogId = 'test.keen-eye' // a catalog amp's snapshot is the catalog entry, not a sample's printed amp
   expect(codes(ch)).toContain('amp.negative')
 })
 
