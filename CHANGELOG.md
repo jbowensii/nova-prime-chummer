@@ -1,8 +1,35 @@
 # Release notes
 
-## Unreleased: the core rulebook's rules as Hong Kong prints them, the books' optional rules as switches
+## 0.13.0 — 2026-10-11: the books' rules as switches, effects round three, one catalog item per level in both games
+
+**Re-import the books of both games** (Books → **Re-import all**): the Shadowrun 6 books for the printing fixes, the
+effects reader's third round and the Awareness rows; the Anarchy books for the sample runners, the core effect table and
+the per-level entries. **The server's game settings were reset to their shipped defaults** with this release (Table
+setup → Creation rules and the switches, both games): set a table's own changes again. Foundry: the Shadowrun 6 importer
+module 0.6.0 and the Anarchy module 0.10.1 go with this release.
+
+**Both games**
+- **One catalog item per level** (owner decision 2026-10-11): an entry the books print with several levels or a rating
+  range is one entry per level in Game data, the pickers, the sheets and the Foundry export, each with its own numbers
+  and effects worked out; the details for each game are below.
+- **Every switch and setting has hover text** in plain English saying what it does, then the book and page that prints
+  it, or "house rule" or "option"; no label or hover text names another app (a test per game keeps it so).
+- **Conditional and switchable effects get a tick box** (☐) as a reminder to count them when they hold: on the runner
+  editor's cards (an entry's effects, an attribute's bracketed bonuses), on the printed sheets and in Foundry, where such
+  an effect arrives switched off for the player to tick on.
 
 **Shadowrun 6**
+- **Rated ware and the printings** (fix/sr6-rated-ware-printings): a row the book prints per rating with its rating in
+  its name (`Wired Reflexes 3`, `Cyberjack (Rating 2)`, `Cybereyes (Rating 5)`) carries that rating, so its per-rating
+  effects count at it (Wired Reflexes 1–4 now give Reaction +1…+4 and the matching initiative dice; they all read as
+  rating 1); an entry priced per rating or Force with no range printed (a focus's `Force × 4,000¥`, a cyberlimb add-on's
+  `[Rating]`) is bought at a Force or rating the player sets; cyberlimb add-ons read their effects (Attribute increase
+  to the attribute picked, Armor to the Defense Rating, Hydraulic jacks' jumping threshold); a rating-band price table is
+  read by its columns (the explosive packages are back in every City Edition, with their Availability); a later printing's
+  renamed column is read by its words (Hong Kong's `VR MATRIX INIT DICE BONUS`); the printings rank by publication month
+  (Berlin 2023 above Seattle 2021), a known printing is dated by it (no old errata applied over Hong Kong), and a field
+  the newest printing leaves open takes the newest older printing's value, noted `<found how="printing">`, the same in
+  any import order; the Face's and Street Samurai's attribute split no longer depends on the process (Body first on a tie).
 - Derived values the core rulebook prints, each from a creation setting shipped at the Hong Kong City Edition's number
   (Table setup → Creation rules, and a runner's Creation rules): Damage Overflow is Body × 2 (p. 121, `overflowPerBody`);
   no more than 5 initiative dice (p. 39, `initiativeDiceMax` 5, shipped); an augmented attribute at most its natural
@@ -99,81 +126,77 @@
     now ships on (1); its hover text names the book's two pages that disagree (pp. 65, 68).
   - A sample runner whose numbers need the first printing's illegal-only Availability cap says "assumed: 2019 printing".
   - Sample runners: the only Review errors added are the Karma and nuyen left past the limits, which were notes before.
-
-## Unreleased: Shadowrun 6 effects, third round
-
-**Re-import the Shadowrun 6 books** (Books → **Re-import all**) to get them. The Foundry importer module 0.5.1 maps
-the new effect kinds (install it with this).
-
-**Shadowrun 6**
-- The effects reader (importer/sr6/effects.py) reads the phrasings Commlink6 had and we missed, by general rules:
-  a chosen attribute or Matrix attribute (`this attribute`, `the chosen Matrix attribute`), resolved by a variant row's
-  words (`Cyberjack Boosters (Firewall)`), named actions and complex forms (`bonus dice on a Snoop action or Static
-  Veil complex form`, a list after `action:`), a data structure's level in bonus dice (activated for one action, Hack
-  & Slash p. 70), an Attack Rating modifier limited to fire modes (shock pads), an ammunition belt, a sense an entry is
-  named for or grants (low-light and thermographic vision), a skill's maximum (Aptitude, Genetic Optimization), a
-  knowledge or language skill granted, Edge cost on a named action (Called Shot—Disarm), a chase pool's Edge, costs in
-  percent (armor +10%) and nuyen a month, a drake's Armor by its Edge, Handling moved between on- and off-road, a
-  rating subtracted from a stat, an AI's Matrix initiative, a spell's or complex form's per-hit modifiers (`net hits
-  are added to the subject's Defense Rating`), the Overwatch Score, `an additional two Minor Actions`, `use the Move
-  Minor Action an additional time`. A use-it-or-lose-it clause, the test an Edge is given on, `can only be spent` and
-  `each time it is used` are no longer conditions; `each point of this mod` and `each point of X rating` are per
-  rating; a `**Wireless bonus:**` label holds for the sentences after it in its paragraph; a cap (`up to a maximum of
-  five initiative dice`) is not a bonus.
-- A variant or rating row with no text of its own reads its parent's sentences about it (or the book's block when the
-  parent is no entry); a text that is only label lines takes the rule the book describes the item under; an ammo
-  table's `–1S(e)` and `–2 to all` are modifiers; a skillsoft kind named in a program or gear row gives its skill at
-  its rating.
-- A table row whose value cells hold no value (Body Shop p. 67, `Awareness | Extreme | —`) over rows indented under it
-  is a group header, not an item: the indented rows are the items, shown with their group (`Awareness: Basic`,
-  `Awareness: Tactical` at rating 1–3), each with its own paragraph of the heading's text (Basic: Edge on Surprise
-  tests; Tactical: +rating dice on defense and surprise tests), ids carrying the group (`bs.awareness-basic`), the old
-  `bs.awareness` kept as an alias; a transgenic of such a base links to each of its rows. Grouped rows everywhere
-  (`DocWagon contract: Basic`) get ids with their group, the old ids as aliases.
-- Owner decisions of 2026-10-11, modelled as written: a bonus per level after the first (`R-1`, Nimble Fingers:
-  counted and shown as rating − 1), the book's own value per rating (`R[1,1,2,2]`, for table-driven items), a raised
-  maximum (`action-max:take-aim +rating`, Tremor reducer), `tests to resist X` as a condition in the bracket (Tough
-  Gut: ingested poisons), a removed range band (`x`, shown `—`, Short Barrel), Attribute Overclocking's +1 per hit
-  activated and shown; a stat's number carried into the next sentence that refers back to it (Weapon Commlink's
-  Firewall 2, cumulative), Edge on a condition with no test named (Flare compensation: `test:other` with the book's
-  words), a section intro's own-noun rule for the items it names (a missile's sensor rating on the attack), a
-  formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
-  formula (`nanite-volume/2 RU`), all shown, never applied; what others get against the entry kept as
-  `affects="others"` (worded "others get: …", never counted); an "after …" clause as a condition. The printed sheet
-  prefixes a tick box (☐) to every conditional effect note, a reminder to count it when it holds.
-- Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
-  1,206 → 1,446 effects of ours it lacks (82 of them what others get, decision 16). The remaining gap is mostly Commlink6's own encodings (variants, choices,
-  copied rules) and values the book doesn't print beside the target.
-
-## Unreleased
-
-**Shadowrun 6**
-- **One catalog item per level** (owner decision 2026-10-11; docs/sr6-data-format.md "Levels"). An item the book
-  prints with a rating range (Wired Reflexes, Cybereyes, a Fake SIN, a focus with a range) or taken by level up to a
-  printed maximum (Built Tough, Combat Sense, a metamagic taken again) is now one entry per level in Game data, the
-  pickers and the Foundry export: `Glow Eyes 1`, `Glow Eyes 2`, `Glow Eyes 3`, each with its own cost, Availability,
-  Essence, Karma, power points and effects worked out. Rows the book already prints per level (`Cyberjack (Rating 2)`,
-  `Wired Reflexes 3`) are grouped the same way. Nothing to re-import: the catalog expands as it loads, and an edit on
-  the printed entry reaches every level (an edit on one level is that level). An item priced by a rating or Force
-  with no printed range or maximum (a focus's `Force × 4,000¥`, an autosoft, a cyberlimb add-on `[Rating]`, an adept
-  power whose level the book doesn't cap) stays one entry with a stepper, until an edit gives it a range or
-  `maxLevel`.
-- A runner's lines hold the level's entry: the rating select on a line and the level stepper on a quality or adept
-  power move it to the sibling level. A saved runner naming the rated entry with its rating or level is moved to the
-  level's entry once when opened (recorded in `<migrated>`), and until then still reads at its rating. In career play,
-  buying a higher level of a quality or adept power the runner has replaces the lower one for the Karma difference (×
-  `advance.qualityFactor`), and the new **Upgrade gear** spend replaces a bought item with a higher level of its family
-  at the new level's price (the core rulebook prints no trade-in rule; the accessories and grade stay).
-- A creation setting naming a quality (`builtToughQuality`, `aptitudeQuality`, `inDebtQuality`…) matches any level of
-  it, so the standard settings keep working.
-- The Foundry export writes each level as its own entry (`attrs.family`, `attrs.level`); the Shadowrun 6 importer
-  module needs no change (it keys documents by the entry id and reads the rating from `values.rating`). A re-imported
-  book adds the per-level items beside any older rated ones (the module never deletes).
-
-## Unreleased: Anarchy sample runners from a fresh import, owner rulings on the unreferenced rules, one entry per level
-
-**Re-import the Anarchy books** (Books → **Re-import all**) to get them: the sample runners, the core effect table and
-the per-level entries are written at import.
+- **Effects, third round** (feat/sr6-effects-2; the Foundry importer module maps the new effect kinds):
+  - The effects reader (importer/sr6/effects.py) reads the phrasings Commlink6 had and we missed, by general rules:
+    a chosen attribute or Matrix attribute (`this attribute`, `the chosen Matrix attribute`), resolved by a variant row's
+    words (`Cyberjack Boosters (Firewall)`), named actions and complex forms (`bonus dice on a Snoop action or Static
+    Veil complex form`, a list after `action:`), a data structure's level in bonus dice (activated for one action, Hack
+    & Slash p. 70), an Attack Rating modifier limited to fire modes (shock pads), an ammunition belt, a sense an entry is
+    named for or grants (low-light and thermographic vision), a skill's maximum (Aptitude, Genetic Optimization), a
+    knowledge or language skill granted, Edge cost on a named action (Called Shot—Disarm), a chase pool's Edge, costs in
+    percent (armor +10%) and nuyen a month, a drake's Armor by its Edge, Handling moved between on- and off-road, a
+    rating subtracted from a stat, an AI's Matrix initiative, a spell's or complex form's per-hit modifiers (`net hits
+    are added to the subject's Defense Rating`), the Overwatch Score, `an additional two Minor Actions`, `use the Move
+    Minor Action an additional time`. A use-it-or-lose-it clause, the test an Edge is given on, `can only be spent` and
+    `each time it is used` are no longer conditions; `each point of this mod` and `each point of X rating` are per
+    rating; a `**Wireless bonus:**` label holds for the sentences after it in its paragraph; a cap (`up to a maximum of
+    five initiative dice`) is not a bonus.
+  - A variant or rating row with no text of its own reads its parent's sentences about it (or the book's block when the
+    parent is no entry); a text that is only label lines takes the rule the book describes the item under; an ammo
+    table's `–1S(e)` and `–2 to all` are modifiers; a skillsoft kind named in a program or gear row gives its skill at
+    its rating.
+  - A table row whose value cells hold no value (Body Shop p. 67, `Awareness | Extreme | —`) over rows indented under it
+    is a group header, not an item: the indented rows are the items, shown with their group (`Awareness: Basic`,
+    `Awareness: Tactical` at rating 1–3), each with its own paragraph of the heading's text (Basic: Edge on Surprise
+    tests; Tactical: +rating dice on defense and surprise tests), ids carrying the group (`bs.awareness-basic`), the old
+    `bs.awareness` kept as an alias; a transgenic of such a base links to each of its rows. Grouped rows everywhere
+    (`DocWagon contract: Basic`) get ids with their group, the old ids as aliases.
+  - Owner decisions of 2026-10-11, modelled as written: a bonus per level after the first (`R-1`, Nimble Fingers:
+    counted and shown as rating − 1), the book's own value per rating (`R[1,1,2,2]`, for table-driven items), a raised
+    maximum (`action-max:take-aim +rating`, Tremor reducer), `tests to resist X` as a condition in the bracket (Tough
+    Gut: ingested poisons), a removed range band (`x`, shown `—`, Short Barrel), Attribute Overclocking's +1 per hit
+    activated and shown; a stat's number carried into the next sentence that refers back to it (Weapon Commlink's
+    Firewall 2, cumulative), Edge on a condition with no test named (Flare compensation: `test:other` with the book's
+    words), a section intro's own-noun rule for the items it names (a missile's sensor rating on the attack), a
+    formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
+    formula (`nanite-volume/2 RU`), all shown, never applied; what others get against the entry kept as
+    `affects="others"` (worded "others get: …", never counted); an "after …" clause as a condition. The printed sheet
+    prefixes a tick box (☐) to every conditional effect note, a reminder to count it when it holds.
+  - Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
+    1,206 → 1,446 effects of ours it lacks (82 of them what others get, decision 16). The remaining gap is mostly Commlink6's own encodings (variants, choices,
+    copied rules) and values the book doesn't print beside the target.
+- **One item per level** (feat/sr6-per-level; docs/sr6-data-format.md "Levels"):
+  - **One catalog item per level** (owner decision 2026-10-11; docs/sr6-data-format.md "Levels"). An item the book
+    prints with a rating range (Wired Reflexes, Cybereyes, a Fake SIN, a focus with a range) or taken by level up to a
+    printed maximum (Built Tough, Combat Sense, a metamagic taken again) is now one entry per level in Game data, the
+    pickers and the Foundry export: `Glow Eyes 1`, `Glow Eyes 2`, `Glow Eyes 3`, each with its own cost, Availability,
+    Essence, Karma, power points and effects worked out. Rows the book already prints per level (`Cyberjack (Rating 2)`,
+    `Wired Reflexes 3`) are grouped the same way. Nothing to re-import: the catalog expands as it loads, and an edit on
+    the printed entry reaches every level (an edit on one level is that level). An item priced by a rating or Force
+    with no printed range or maximum (a focus's `Force × 4,000¥`, an autosoft, a cyberlimb add-on `[Rating]`, an adept
+    power whose level the book doesn't cap) stays one entry with a stepper, until an edit gives it a range or
+    `maxLevel`.
+  - A runner's lines hold the level's entry: the rating select on a line and the level stepper on a quality or adept
+    power move it to the sibling level. A saved runner naming the rated entry with its rating or level is moved to the
+    level's entry once when opened (recorded in `<migrated>`), and until then still reads at its rating. In career play,
+    buying a higher level of a quality or adept power the runner has replaces the lower one for the Karma difference (×
+    `advance.qualityFactor`), and the new **Upgrade gear** spend replaces a bought item with a higher level of its family
+    at the new level's price (the core rulebook prints no trade-in rule; the accessories and grade stay).
+  - A creation setting naming a quality (`builtToughQuality`, `aptitudeQuality`, `inDebtQuality`…) matches any level of
+    it, so the standard settings keep working.
+  - The Foundry export writes each level as its own entry (`attrs.family`, `attrs.level`); the Shadowrun 6 importer
+    module needs no change (it keys documents by the entry id and reads the rating from `values.rating`). A re-imported
+    book adds the per-level items beside any older rated ones (the module never deletes).
+- Awareness (Body Shop p. 67) is therefore `Awareness: Basic` and `Awareness: Tactical 1`, `2` and `3`, each with its
+  own price, Essence and +1, +2 or +3 dice.
+- **Metatype size pricing** (`metatypeSizePricing`, on, house rule): a troll-sized runner (troll, cyclops, fomori,
+  giant, minotaur) pays 10% more for everything bought, a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune)
+  10% more for armor and clothing, as one line of the nuyen budget so every item still shows its printed price. No
+  Shadowrun 6 book prints such a rule (the books price a few metahuman-sized items on their own: Double Clutch's
+  Metahuman Adjustments p. 129, Body Shop's troll-sized shells p. 179), so the switch says house rule.
+- **Languages** (owner, 2026-10-11): the Native language shows "native" on the Skills tab, the sheets and the Foundry
+  export, where it counts as level 4; no language goes above 4 (`languageMax`, now 4: the stepper stops there and Review
+  flags a file past it).
 
 **Shadowrun Anarchy**
 - Sample runners read the same in any import order: a book that adds skills, amp types or effects (or the core) has the
@@ -219,10 +242,6 @@ the per-level entries are written at import.
   - The Amp Builder's Negative effect is picked like the positive ones: five picks, "Negative effect (−1)" … "(−5)",
     each its own row with its value (no number box); the menu says a player's needs GM approval (p.61). A book's own
     drawback (a catalog amp's, a book sample's as printed) still needs none.
-- Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
-  Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
-  or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer
-  in Foundry VTT).
 - Owner rulings (2026-10-10) on the rules no book states:
   - an amp may rate below 0 and gives nuyen back, with no GM approval; a book add-on rates as its effects alone
     (DHSA's Removed Manual Controls −1, was 0);
@@ -234,6 +253,12 @@ the per-level entries are written at import.
     may set its own on Review unless the GM locks it;
   - one free native language stays, labelled a house rule; a skill at 4+'s free knowledge entry starts as
     "Knowledge of <Skill>".
+- Removing an effect from an amp is priced as replacing it with nothing (CRB p. 84): its cost comes back, at creation
+  and after Finalize alike (verified, with a test).
+- Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
+  Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
+  or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer
+  in Foundry VTT).
 
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
