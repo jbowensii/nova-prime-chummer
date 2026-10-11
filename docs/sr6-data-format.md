@@ -734,9 +734,11 @@ The core rulebook's rules ship as the latest printing (the Hong Kong City Editio
 books' optional rules ship off (`false`, with their book and page), for a table to turn on. The owner's house rules and
 options (2026-10-11) ship off too, each a true/false toggle with the values a GM sets nested under it: no book prints
 `karmaToNuyenMax` (under `karmaToNuyenCap`), `advance.powerPoint` (under `buyPowerPoints`), `positiveQualityFactor`
-(under `positiveQualityMultiplier`), the carry-over, data structure and grade caps, or the karma build (`karmaBuild.*`,
-`magicKarma:*` under `karmaBuildMethod`: no SR6 book describes one, so Karma build can't be picked until the table turns
-it on and enters its own). `skillPointsExpertise` ships on (1: as a specialization's one rank; CRB Hong Kong p. 65 says
+(under `positiveQualityMultiplier`) or the carry-over, data structure and grade caps. The **Karma build** is an option
+that ships off too (`karmaBuildMethod`): no SR6 book prints one, so its numbers (`karmaBuild.*`, `magicKarma:*`,
+`swcStreet.karmaBuild`, `swcElite.karmaBuild`) ship set to Commlink6's defaults (owner's one-off exception to "Commlink6
+is never a data source", 2026-10-11), with no book and page and `option (Commlink6 defaults)` as the source in their hover
+text; the Karma build's other prices are the `Karma prices` and nuyen rates (same numbers). `skillPointsExpertise` ships on (1: as a specialization's one rank; CRB Hong Kong p. 65 says
 no expertise with skill points at creation while p. 68 prices one, so its hover text names both). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
 metavariants and metasapients its import writes (`swc.<id>`); a metatype from another book needs its own.
 
@@ -760,7 +762,8 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 
 **Hover text.** Every setting's row on Table setup, and on a runner's Creation rules, has hover text (`aboutOf` in
 `creation.ts`): what it does in plain words, then where a book prints it (book and page), else `house rule` or
-`option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`).
+`option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`), except the Karma build option's
+numbers, whose source reads `option (Commlink6 defaults)`.
 
 Every key, in the order Table setup shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
@@ -825,6 +828,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Levels of play | `levelSwcStreet` | true/false | optional |  | `levelStreet`, `levelPrime`, `levelSwcElite` | `sumToTenTarget`, `pointBuy.total`, `lifepath.moduleCount`, `priorityLetters` | The Sixth World Companion's street-level (SWC pp. 14–15, off): while on, `swcStreet.letters` (B C C D E), `.sumToTen` (8), `.pointBuy` (80) and `.modules` (6) replace `priorityLetters`, `sumToTenTarget`, `pointBuy.total` and `lifepath.moduleCount` (`levelRules`, through `runnerRules`), and an illegal item but a cyberdeck is an error (`gear.illegal`) |
 | Levels of play | `levelSwcElite` | true/false | optional |  | `levelStreet`, `levelPrime`, `levelSwcStreet` | `sumToTenTarget`, `pointBuy.total`, `lifepath.moduleCount`, `priorityLetters`, `maxAvailability` | The Sixth World Companion's elite (SWC p. 15, off): `swcElite.letters` (A B B C D), `.sumToTen` (12), `.pointBuy` (120), `.modules` (10) likewise, and no Availability cap. The book's letters add up to 13 while it says sum-to-twelve: both ship as printed |
 | Levels of play | `swcStreet.*`, `swcElite.*` | number, letters | optional | `levelSwcStreet`, `levelSwcElite` |  |  | The two levels' own values (above) |
+| Levels of play | `swcStreet.karmaBuild`, `swcElite.karmaBuild` | number | optional | `levelSwcStreet`, `levelSwcElite`, `karmaBuildMethod` |  | `karmaBuild.start` | The Karma build's starting karma at the level (800 and 1200; option, Commlink6 defaults); the standard level's is `karmaBuild.start` |
 | Karma prices | `karmaAttrPerRank` | number | all |  |  |  | Attribute: karma per rank, times the new rating |
 | Karma prices | `karmaSkillPerRank` | number | all |  |  |  | Skill: karma per rank, times the new rank |
 | Karma prices | `karmaSpec` | number | all |  |  |  | Specialization |
@@ -879,9 +883,11 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Point buy | `pointBuy.cost.complexForm` | number | point buy |  |  |  | Character points per complex form |
 | Point buy | `pointBuy.nuyenPerCp` | number | point buy |  |  |  | Nuyen per character point |
 | Point buy | `pointBuy.oneSpecialization` | true/false | point buy |  |  |  | Only one specialization |
-| Karma build | `karmaBuildMethod` | true/false | optional |  |  |  | Option, off: the Karma build can be picked (no SR6 book describes one) |
-| Karma build | `karmaBuild.start` | number | karma | `karmaBuildMethod` |  |  | Starting karma (karma build) |
-| Karma build | `karmaBuild.startRating` | number | karma | `karmaBuildMethod` |  |  | Starting Magic or Resonance (karma build) |
+| Karma build | `karmaBuildMethod` | true/false | optional |  |  |  | Option, off: the Karma build can be picked (no SR6 book prints one); its numbers ship as Commlink6's defaults |
+| Karma build | `karmaBuild.start` | number | karma | `karmaBuildMethod` |  |  | Starting karma (karma build): 1000 |
+| Karma build | `karmaBuild.startRating` | number | karma | `karmaBuildMethod` |  |  | Starting Magic or Resonance (karma build): 1 |
+| Karma build | `karmaBuild.freeSpellsPerMagic` | number | karma | `karmaBuildMethod` |  |  | Free spells and rituals per Magic (karma build): 0, every one costs `karmaSpell`. The other methods use `freeSpellsPerMagic` |
+| Karma build | `karmaBuild.freeFormsPerResonance` | number | karma | `karmaBuildMethod` |  |  | Free complex forms per Resonance (karma build): 0, every one costs `karmaForm`. The other methods use `freeFormsPerResonance` |
 | Lifepath | `lifepath.moduleCount` | number | lifepath |  |  |  | Adult life modules to take |
 | Lifepath | `lifepath.contactRatingCap` | number | lifepath |  |  |  | Highest contact rating |
 | Lifepath | `lifepath.bestAttributeBonus` | number | optional |  |  |  | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
@@ -949,7 +955,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Derived values | `charismaticDefenseQuality` | quality id | optional |  |  |  | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath |  |  |  | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy |  |  |  | starting Magic or Resonance per awakened or emerged kind |
-| Karma build | `magicKarma:<kind>` | number | karma |  |  |  | karma to be that kind |
+| Karma build | `magicKarma:<kind>` | number | karma | `karmaBuildMethod` |  |  | karma to be that kind (full magician 60, aspected 45, mystic adept 75, adept 45, technomancer 45) |
 | Lifepath | `lifepath.startRating:<kind>` | number | lifepath |  |  |  | starting Magic or Resonance per kind |
 
 The kinds are `full`, `aspected`, `mystic-adept`, `adept` and `technomancer`. An unknown key, or a value that isn't of

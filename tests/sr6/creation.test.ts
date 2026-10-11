@@ -31,7 +31,7 @@ const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 
   'attributeAugmentMax', 'skillAugmentMax', 'monitorMinimum', 'matrixColdDice', 'matrixHotDice', 'moveWalk', 'moveSprint', 'moveSprintPerHit',
   'unarmedDV', 'arDrEdgeGap', 'meleeArStrength', 'stackingAdvantage', 'strengthInCloseCombat', 'highStrengthDamage', 'strengthDamageStep1', 'strengthDamageStep2',
   'levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite', 'priorityLetters', 'swcStreet.sumToTen', 'swcStreet.pointBuy', 'swcStreet.modules', 'swcStreet.letters',
-  'swcElite.sumToTen', 'swcElite.pointBuy', 'swcElite.modules', 'swcElite.letters',
+  'swcElite.sumToTen', 'swcElite.pointBuy', 'swcElite.modules', 'swcElite.letters', 'swcStreet.karmaBuild', 'swcElite.karmaBuild',
   'incompetentQuality', 'sensitiveSystemQuality', 'sensitiveSystemEssence', 'attributeMaxFloor', 'improvedAbilityPower', 'improvedAbilityFactor', 'suprathyroidStacks',
   'expandedSpecializations', 'unrestrictedSkillRanks', 'languageMax', 'fociForcePerMagic', 'fociBondKarma',
   'alternateMysticAdept', 'twentyQuestions', 'twentyQuestionsKarma', 'workingForThePeople',
@@ -154,10 +154,9 @@ test('the shipped standard settings are valid against creation.xsd, parse cleanl
   const cat: CreationCatalog = { priorities: { A: {}, B: {}, C: {}, D: {}, E: {} },
     metatypes: Object.fromEntries(ids.map(id => [id, { id, name: id }])), lifemodules: { 'x.start': { stage: 'opening' } } }
   for (const m of ['priority', 'sumtoten', 'pointbuy', 'lifepath'] as const) expect(missingFor(m, rules, cat), m).toEqual([])
-  // no SR6 book describes a karma build: an option, off, whose own keys are left for the table to set
-  const karma = missingFor('karma', rules, cat)
-  expect(karma[0]).toBe('karmaBuildMethod')
-  expect(karma.filter(k => !/^(karmaBuild\.|magicKarma:|karmaBuildMethod$)/.test(k))).toEqual([])
+  // no SR6 book describes a karma build: an option, off, whose numbers ship set (Commlink6's defaults)
+  expect(missingFor('karma', rules, cat)).toEqual(['karmaBuildMethod'])
+  expect(flag(rules, 'karmaBuildMethod')).toBe(false)
 })
 
 test('the server’s settings: the standard ones overlaid by the admin’s changes, key by key; none saved: the standard', async () => {

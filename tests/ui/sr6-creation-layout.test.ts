@@ -16,14 +16,16 @@ test('every setting is in one of the nine sections, and every section has some',
 })
 
 test('a number that needs a switch is in its switch’s section', () => {
-  for (const k of keys) for (const p of RULE_DEPS[k.key]?.requires ?? []) {
-    const parent = keys.find(x => x.key === p)
-    if (parent?.type === 'bool') expect([k.key, at(k.key)]).toEqual([k.key, at(p)])
+  // (one that needs two switches, swcStreet.karmaBuild: the level and the Karma build option, sits under its first)
+  for (const k of keys) {
+    const p = RULE_DEPS[k.key]?.requires?.find(r => keys.find(x => x.key === r)?.type === 'bool')
+    if (p) expect([k.key, at(k.key)]).toEqual([k.key, at(p)])
   }
   expect(at('contactKarma')).toBe('Optional rules (book)')
   expect(at('carryOver.karma')).toBe('House rules')
   expect(at('karmaBuild.start')).toBe('House rules')
   expect(at('swcStreet.letters')).toBe('Levels of play')
+  expect(at('swcStreet.karmaBuild')).toBe('Levels of play')
 })
 
 test('house rules and options are apart from the books’ optional rules', () => {

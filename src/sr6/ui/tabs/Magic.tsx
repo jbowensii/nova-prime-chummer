@@ -71,7 +71,7 @@ export function MagicTab() {
     <div className="stack">
       <h2>{k.resonance ? 'Resonance' : 'Magic'}</h2>
       {(k.spells || k.resonance) && <p className="muted">
-        Free {word}: <b className={slots.left < 0 ? 'err' : ''}>{n(slots.left)} left</b> of {n(slots.max)}.
+        Free {word}: <b className={slots.left < 0 && b.method !== 'karma' ? 'err' : ''}>{n(slots.left)} left</b> of {n(slots.max)}.
         {karma !== undefined && ` Past the free ones, each costs ${karma} karma.`}</p>}
       {k.spells && <div className="row">
         <label className="inline">Tradition <Suggest label="Tradition" value={b.tradition ?? ''} options={[]}

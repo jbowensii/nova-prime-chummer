@@ -40,9 +40,10 @@ const PUT: [Section, string[]][] = [
 const FIXED = new Map(PUT.flatMap(([s, keys]) => keys.map(k => [k, s] as const)))
 const KEY = new Map(CREATION_KEYS.map(k => [k.key, k]))
 
-/** What the hover text calls a setting: a house rule, a table option (no book), or neither. */
+/** What the hover text calls a setting: a house rule, a table option (no book; the Karma build's "option (Commlink6
+ *  defaults)" too), or neither. */
 export const ruleKind = (key: string): 'house' | 'option' | undefined => {
-  const m = /\((house rule|option)\)\.$/.exec(aboutOf(key))
+  const m = /\((house rule|option)(?: \([^()]*\))?\)\.$/.exec(aboutOf(key))
   return m ? (m[1] === 'option' ? 'option' : 'house') : undefined
 }
 
