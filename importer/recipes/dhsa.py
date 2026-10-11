@@ -59,6 +59,9 @@ MOD_TARGET = {"ARMORY – AMMUNITIONS": "equipment", "ARMORY – ACCESSORIES": "
 VEHICLE_MOD_NAMES = [("safety", "safety-override"), ("fixed", "fixed"), ("flying", "flying"), ("mount", "weapon-mount"),
                      ("identical additional drone", "extra-drone"), ("medkit", "auto-medkit"), ("pilot", "pilot-plus"),
                      ("speed", "speed-plus"), ("handling", "handling-plus"), ("armor", "vehicle-armor")]
+# a vehicle mod whose name doesn't say what it improves, by its first line ("Improves speed, max +3.")
+VEHICLE_MOD_TEXT = [(r"improves?\s+(?:the\s+)?pilot\b", "pilot-plus"), (r"improves?\s+speed\b", "speed-plus"),
+                    (r"improves?\s+handling\b", "handling-plus"), (r"improves?\s+(?:vehicle\s+)?armor\b", "vehicle-armor")]
 GRADE_NAMES = {"delta grade": "grade-delta", "omega grade": "grade-omega", "cultivated bioware": "grade-cultivated"}
 CONTACT_NAMES = ["Contact: part of your network", "Contact: reliable in one domain", "Contact: several domains",
                  "Contact: influential and reliable", "Contact: extremely influential", "Contact: knows everyone",
@@ -93,13 +96,14 @@ def _core(where):
     """Amp effect ratings, amp type base ratings, vehicle chassis (body, handling, speed) and weapon types (dv, ranges)
     from the core files (and what imported books add to effects and types): the rules the recipes price amps with."""
     ratings = {e.get("id"): int(float(e.get("rating"))) for r in mechanics_roots("ampeffects.xml") for e in r if e.tag == "effect"}
+    maxes = {e.get("id"): int(e.get("max")) for r in mechanics_roots("ampeffects.xml") for e in r if e.tag == "effect" and e.get("max")}
     base = {t.get("id"): int(t.get("base")) for r in mechanics_roots("amptypes.xml") for t in r if t.tag == "amptype"}
     root = lambda n: ET.parse(core_file(n)).getroot()  # noqa: E731
     chassis = {v.get("id"): (int(v.get("body")), int(v.get("handling")), int(v.get("speed"))) for v in root("vehicles.xml") if v.tag == "vehicle"}
     pilot = {v.get("id"): int(v.get("pilot")) for v in root("vehicles.xml") if v.tag == "vehicle"}
     weapons = {w.get("id"): (w.get("dv", "").replace("STR+", "S+"), w.get("ranges")) for w in root("weapons.xml") if w.tag == "item"}
     price = next(p for p in root("pricing.xml") if p.tag == "pricing")
-    return {"ratings": ratings, "base": base, "chassis": chassis, "pilot": pilot, "weapons": weapons,
+    return {"ratings": ratings, "maxes": maxes, "base": base, "chassis": chassis, "pilot": pilot, "weapons": weapons,
             "ampPoint": int(price.get("ampPoint")), "specialist": int(price.get("weaponSpecialist"))}
 
 
@@ -676,6 +680,43 @@ def printed(rtype):
     return int(m.group(1)) if m else None
 
 
+# Levels (owner, 2026-10-11: an entry the book prints with several levels is one catalog entry per level, otherwise
+# duplicates of one another). The book prints a level range three ways: an add-on "+1 ... max +N" (or, with no number,
+# the core effect table's max for its one effect), "can be taken up to level N", and a rating that "can be increased by
+# 1 (max +N) for an additional Amp point" (once per such sentence: a threshold and a maglock rating add up).
+_MAX_PLUS = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(\d+)", re.I)
+_MAX_OPEN = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(?!\d)\w+", re.I)
+_UP_TO_LEVEL = re.compile(r"\bup to level (\d+)", re.I)
+_PER_POINT = re.compile(r"increased by 1 \(max \+(\d+)\) for an? (?:additional|extra) Amp point", re.I)
+
+
+def level_range(text, rating, mod, refs=(), open_top=False):
+    """(low, high): the levels the book prints for an entry, as its rating (an add-on: how many times it is taken), or
+    None when it prints one. A range with no top level (a rating "3+" with "each additional rating", an add-on's "max
+    +Body") is a str saying so: not split, for the import report."""
+    text = re.sub(r"\s+", " ", text)
+    if mod:
+        m = _MAX_PLUS.search(text)
+        # "Max 3 identical drones": the core table's max for its one effect (2 more drones)
+        bare = not m and len(set(refs)) == 1 and re.search(r"\bmax\b", text, re.I)
+        top = int(m.group(1)) if m else core()["maxes"].get(refs[0], 1) if bare else 1
+        if top > 1:
+            return (1, top)
+        return "a maximum that depends on the vehicle" if _MAX_OPEN.search(text) else None
+    m = _UP_TO_LEVEL.search(text)
+    if m and int(m.group(1)) > rating:
+        return (rating, int(m.group(1)))
+    extra = sum(int(n) for n in _PER_POINT.findall(text))
+    if extra:
+        return (rating, rating + extra)
+    return "a rating with no top level" if open_top and re.search(r"each additional rating", text, re.I) else None
+
+
+def level_id(family, level):
+    """A level's id: its family's (the id the entry had before it was split, which old runners carry) and the level."""
+    return f"{family}-level-{'minus-' if level < 0 else ''}{abs(level)}"
+
+
 def cost_value(cost):
     m = re.match(r"[+-]?([\d ]+)\s*¥", cost or "")
     return int(m.group(1).replace(" ", "")) if m else None
@@ -752,9 +793,29 @@ def extract(md, ctx=None):
         report.append({"kind": "rating-mismatch", "id": aid, "page": page, "type": atype, "printed": rating,
                        "computed": computed, "effects": " // ".join(r["effects"])[:160]})
 
-    def amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle=None, mod=False):
-        amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""} source="{ID}" page="{page}">'
+    def amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle=None, mod=False, family=None, level=None):
+        amps.append(f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""}'
+                    f'{attr("family", family)}{attr("level", level)} source="{ID}" page="{page}">'
                     f'<name>{escape(name)}</name>{item}{fx_xml(fx)}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>')
+
+    def emit(aid, atype, rating, page, name, item, fx, narrative, rng, vehicle=None, mod=False):
+        """The amp, or one amp per level when the book prints a range (level_range): `<family>-level-<n>`, family = aid,
+        named "<Name> <n>" ("<Name> +<n>" for an add-on). A level above the printed rating adds that many "Additional
+        narrative effect"s (the book's price for it); an add-on's level is the add-on taken that many times."""
+        if isinstance(rng, str):
+            report.append({"kind": "levels-open", "id": aid, "page": page, "problem": f"{rng}: kept as printed, one entry"})
+        if not isinstance(rng, tuple):
+            amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle, mod)
+            return
+        sign = -1 if rating < 0 else 1
+        for n in range(rng[0], rng[1] + 1):
+            if mod:
+                level, fx_n, rating_n, name_n = sign * n, fx * n, rating * n, f"{name} {sign * n:+d}"
+            else:
+                more = [("narrative", "", None, "balances printed rating")] * ((n - rating) // max(1, effect_rating("narrative")))
+                level, fx_n, rating_n, name_n = n, fx + more, n, f"{name} {n}"
+            amp_xml(uid(level_id(aid, level)), atype, rating_n, page, name_n, item, fx_n, narrative, vehicle, mod, family=aid, level=level)
+        report.append({"kind": "levels", "id": aid, "page": page, "levels": f"{rng[0]}-{rng[1]}"})
 
     def map_lines(lines):
         """(effects, narrative lines): a line's rated effects (with how it turns them on), else the line stays narrative and
@@ -843,7 +904,8 @@ def extract(md, ctx=None):
                                    "name": f"{name} (Essence {ess[1]} → {ess[2]}{note})"})
 
             def read_mod():
-                ref = next((v for k, v in VEHICLE_MOD_NAMES if k in low), None) if sec == "RIGGERS – VEHICLE MODS" else None
+                ref = (next((v for k, v in VEHICLE_MOD_NAMES if k in low), None)
+                       or next((v for k, v in VEHICLE_MOD_TEXT if effects_lines and re.match(k, effects_lines[0], re.I)), None)) if sec == "RIGGERS – VEHICLE MODS" else None
                 if grade:
                     fx, narrative = [(grade, None, None, None)], effects_lines
                 elif ref:
@@ -856,7 +918,7 @@ def extract(md, ctx=None):
             aid = uid("mod-" + slug(name))
             if computed != rating:
                 mismatch(aid, page, f"mod ({target})", rating, computed, r)
-            amp_xml(aid, target, rating, page, name, "", fx, narrative, mod=True)
+            emit(aid, target, rating, page, name, "", fx, narrative, level_range(" ".join(r["effects"]), rating, True, [f[0] for f in fx]), mod=True)
             report.extend(unpriced_rows(aid, page, fx))
             continue
 
@@ -868,6 +930,10 @@ def extract(md, ctx=None):
                 gid = uid("gear-" + slug(name))
                 gear.append(f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{ID}" page="{page}">'
                             f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(effects_lines)))}<text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>')
+                # gear whose rating "can be increased by 1 (max +N) for an additional Amp point": its levels are Equipment amps
+                rng = level_range(" ".join(effects_lines), 0, False)
+                if isinstance(rng, tuple):
+                    emit(uid(slug(name)), "equipment", 0, page, name, '<item kind="gear"/>', [], effects_lines, (1, rng[1]))
             continue
 
         atype = SECTION_TYPE.get(sec, "equipment")
@@ -931,7 +997,8 @@ def extract(md, ctx=None):
         aid = uid(slug(name))
         if computed != rating:
             mismatch(aid, page, atype, rating, computed, r)
-        amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle)
+        emit(aid, atype, rating, page, name, item, fx, narrative,
+             level_range(" ".join(r["effects"]), rating, False, open_top=r["type"].strip().endswith("+")), vehicle)
         report.extend(unpriced_rows(aid, page, fx))
 
     text_of = {m.group(1): unescape(m.group(2)) for t in texts for m in [re.search(r'id="([^"]+)">(.*)</text>', t)] if m}

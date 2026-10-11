@@ -49,6 +49,16 @@ class XmlioTest(unittest.TestCase):
         self.assertIn('<amp id="dhsa.small-drone" type="vehicle" vehicle="small-drone"', out)
         self.assertIn('source="DHSA"', out)
 
+    def test_a_level_family_is_scoped_like_the_id_it_was(self):
+        d = os.path.join(tempfile.mkdtemp(), "DHSA")
+        xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
+               '<amp id="hop-level-1" type="adept" family="hop" level="1" source="DHSA" page="1"/>'
+               '<amp id="hop-level-2" type="adept" family="dhsa.hop" level="2" source="DHSA" page="1"/></ca2:data>')
+        xmlio.write_overlay(d, "amps.xml", xml)
+        out = Path(os.path.join(d, "amps.xml")).read_text(encoding="utf8")
+        self.assertIn('<amp id="dhsa.hop-level-1" type="adept" family="dhsa.hop" level="1"', out)
+        self.assertIn('<amp id="dhsa.hop-level-2" type="adept" family="dhsa.hop" level="2"', out)  # already scoped: once
+
     def test_skill_additions_keep_the_base_skill_id(self):
         d = os.path.join(tempfile.mkdtemp(), "DHSA")
         xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">'

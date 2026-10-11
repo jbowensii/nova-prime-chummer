@@ -153,6 +153,22 @@ for (const { file, kind: fileKind, doc } of docs) {
   }
 }
 
+// levels (docs/data-format.md "Levels"): family and level together, one entry per level of a family, and a family id
+// that no amp has (it is the id old runners carry)
+const levelSeen = new Map();
+for (const { file, kind, doc } of docs) {
+  if (kind !== 'amps') continue;
+  for (const el of doc.documentElement.children) {
+    const fam = el.getAttribute('family'), lvl = el.getAttribute('level'), id = el.getAttribute('id');
+    if (!fam && !lvl) continue;
+    if (!fam || !lvl) { errors.push(`${file}: ${id} has ${fam ? 'family without level' : 'level without family'}`); continue; }
+    if (has('amps', fam)) errors.push(`${file}: family="${fam}" on ${id} is also an amp's id`);
+    const key = `${fam}|${lvl}`;
+    if (levelSeen.has(key) && levelSeen.get(key) !== id) errors.push(`${file}: ${id} and ${levelSeen.get(key)} are both level ${lvl} of ${fam}`);
+    levelSeen.set(key, id);
+  }
+}
+
 if (errors.length) {
   console.error(errors.join('\n'));
   console.error(`\nFAILED: ${errors.length} error(s)`);
