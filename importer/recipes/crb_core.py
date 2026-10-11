@@ -58,7 +58,7 @@ EFFECTS = [
     ("wound-serious", "physical", r"^Additional serious wound box", {}),
     ("sustain-spell", "magical", r"^Additional sustained spell", {}),
     ("summon-spirit", "magical", r"^Additional summoned spirit", {}),
-    ("weapon-focus", "magical", r"^Weapon focus", {"once": True}),
+    ("weapon-focus", "magical", r"^Weapon focus", {}),  # no max printed, none set (owner, 2026-10-10)
     ("vr-cold", "vr", r"^Cold-sim virtual reality", {"once": True}),
     ("vr-hot", "vr", r"^Hot-sim virtual reality", {"once": True}),
     ("firewall-plus", "matrix", r"^Firewall \+1", {}),
@@ -77,11 +77,11 @@ EFFECTS = [
     ("auto-medkit", "vehicle", r"^Autonomous medkit", {"once": True, "label": "Autonomous medkit"}),
     ("narrative", "misc", r"^Additional narrative effect", {"param": "text"}),
     ("negative", "misc", r"^Negative effect", {"param": "value", "gmApproval": "true"}),  # "at the game master's discretion" (p.61)
-    # armor against spells, astral and biofeedback damage (not a table row): priced as the Astral Armor adept power prints
-    # it (p.190: its rating less the adept base), with Armor +1's max and types; named exception: cyberdecks may take it
-    # too (biofeedback, p.211)
-    ("mental-armor", "physical", None, {"derive": "mental", "extra_types": "cyberdeck",
-                                        "label": "Armor +1 against mental damage (spells, astral, biofeedback)"}),
+    # armor against spells, astral and biofeedback damage: not a table row, so not a general effect (owner, 2026-10-10).
+    # Only what the book prints carries it: the Astral Armor adept power (p.190, priced as it prints it: its rating less
+    # the adept base, Armor +1's max) and a cyberdeck's Biofeedback filter (p.211)
+    ("mental-armor", "physical", None, {"derive": "mental", "types": "adept cyberdeck",
+                                        "label": "Mental armor +1: Astral Armor (adept power) or Biofeedback filter (cyberdeck)"}),
     # the Awakened amp's options (p.58)
     ("awk-astral-perception", "awakened", r"^Astral perception$", {"once": True, "excludes": "awk-astral-projection"}),
     ("awk-astral-projection", "awakened", r"^Astral perception and projection$", {"once": True, "excludes": "awk-astral-perception"}),
@@ -328,7 +328,7 @@ def ampeffects(pages, types):
             if not astral or not armor or not adept:
                 raise Unreadable(f"no Astral Armor power for the effect {eid}")
             out.append({"id": eid, "category": cat, "name": a["label"], "rating": str(int(astral[1][1]) - int(adept["base"])),
-                        "types": f'{armor["types"]} {a["extra_types"]}', "max": armor["max"], "page": str(astral[0])})
+                        "types": a["types"], "max": armor["max"], "page": str(astral[0])})
             continue
         row = next(((p, n, r, t) for p, n, r, t in (awk if cat == "awakened" else rows) if re.search(pattern, n)), None)
         if row is None:

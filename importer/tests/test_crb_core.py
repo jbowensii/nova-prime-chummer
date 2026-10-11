@@ -149,6 +149,13 @@ class CoreTablesTest(unittest.TestCase):
         self.assertNotIn("ampeffects.xml", self.files)
         self.assertEqual([(r["kind"], r["file"]) for r in self.report], [("core-unread", "ampeffects.xml")])
 
+    def test_owner_decisions_on_two_effects(self):
+        # owner, 2026-10-10: weapon focus has no max (the table prints none); mental armor isn't a general effect, only the
+        # Astral Armor adept power and a cyberdeck's Biofeedback filter carry it
+        fx = {e[0]: e[3] for e in crb_core.EFFECTS}
+        self.assertNotIn("once", fx["weapon-focus"])
+        self.assertEqual(fx["mental-armor"]["types"], "adept cyberdeck")
+
     def test_attributes_and_metatypes(self):
         a = by_id(self.files["attributes.xml"])
         self.assertEqual([(i, e.get("abbr"), e.findtext("name"), e.get("page")) for i, e in a.items()],
@@ -568,6 +575,12 @@ KNOWN = {
     # the owner's copy shortens the row's wording; the recipe keeps the row as printed (compared by length, so no book
     # wording is committed here)
     ("ampeffects.xml", "init-1", "name"): "row as printed",
+    # owner decisions (2026-10-10) the local copies predate: no max on weapon focus (none printed); mental armor only on what
+    # the book prints with it, the Astral Armor power and a deck's Biofeedback filter
+    ("ampeffects.xml", "weapon-focus", "max"): ("1", None),
+    ("ampeffects.xml", "mental-armor", "types"): ("quality cyberware bioware adept equipment cyberdeck", "adept cyberdeck"),
+    ("ampeffects.xml", "mental-armor", "name"): ("Armor +1 against mental damage (spells, astral, biofeedback)",
+                                                 "Mental armor +1: Astral Armor (adept power) or Biofeedback filter (cyberdeck)"),
 }
 
 
