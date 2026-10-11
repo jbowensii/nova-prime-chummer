@@ -1,5 +1,6 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
-import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, EffectParam, EffectPick, ItemEntry } from '../model/types'
+import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectParam, EffectPick, ItemEntry } from '../model/types'
+import type { TableFlags } from './validate'
 // the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
 import RULES from './rule-effects.json'
 
@@ -38,7 +39,14 @@ export function ruleText(c: Catalog, e: EffectPick): string | undefined {
   return t.replace('{p}', p).replace('{v}', String(e.value ?? 1)).replace(/\s+:|:\s*$/g, '').replace(/\s+/g, ' ').trim()
 }
 
-export interface AmpCtx { isFirstQuality: boolean }
+/** freeSinner: the SINner house rule in play for this runner (sinnerFree); undefined: in play */
+export interface AmpCtx { isFirstQuality: boolean; freeSinner?: boolean }
+
+/** The house rule (owner, 0.5.5) that a SINner is always free and never the first Quality, a Table setup switch since
+ *  0.12, on by default: the runner's own switch unless the GM locked it, else the table's, else on. */
+export const FREE_SINNER = 'ca2.free-sinner'
+export const sinnerFree = (ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'freeSinner' | 'locked'>) =>
+  (table?.locked?.includes(FREE_SINNER) ? undefined : ch.optionalRules?.[FREE_SINNER]) ?? table?.freeSinner ?? true
 
 /** case and spacing aside */
 export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
@@ -74,7 +82,7 @@ export function effectRating(c: Catalog, pick: EffectPick): number {
  *  negative rating gives nuyen back (owner, 2026-10-10: the book only leaves reductions to the GM, p.61); a SINner is
  *  free (house rule) */
 export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
-  return isSinner(amp, c) ? 0 : rawAmpRating(c, amp, ctx)
+  return ctx.freeSinner !== false && isSinner(amp, c) ? 0 : rawAmpRating(c, amp, ctx)
 }
 /** The rating as its effects add up. */
 export function rawAmpRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
@@ -99,9 +107,11 @@ export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   }
 }
 
-export const firstQualityUid = (b: Build, c?: Catalog) => b.amps.find(a => a.type === 'quality' && !isSinner(a, c))?.uid
+export const firstQualityUid = (b: Build, c?: Catalog, freeSinner = true) =>
+  b.amps.find(a => a.type === 'quality' && !(freeSinner && isSinner(a, c)))?.uid
 
-export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog): AmpCtx => ({ isFirstQuality: firstQualityUid(b, c) === amp.uid })
+export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog, freeSinner = true): AmpCtx =>
+  ({ isFirstQuality: firstQualityUid(b, c, freeSinner) === amp.uid, freeSinner })
 
 /** Initiative levels an amp holds (init-1..3): the most "limited to one realm" reductions it may take (CRB p.61). */
 export const initLevels = (amp: AmpEntry) => new Set(amp.effects.map(e => e.ref).filter(r => /^init-[123]$/.test(r))).size

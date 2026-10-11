@@ -52,7 +52,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
 
   const [table, setTable] = useState<TableFlags>()
   useEffect(() => { void loadTableRules().then(r => setTable(tableFlags(r))) }, [])
-  const calc = useMemo(() => ch && ({ d: derive(c, ch, table), v: validate(c, ch, table), p: price(c, ch), bal: ch.finalizedAt ? balance(c, ch) : price(c, ch).remaining }), [c, ch, table])
+  const calc = useMemo(() => ch && ({ d: derive(c, ch, table), v: validate(c, ch, table), p: price(c, ch, table), bal: ch.finalizedAt ? balance(c, ch, table) : price(c, ch, table).remaining }), [c, ch, table])
 
   const back = npcRoute ? <a href={ch?.npc ? homeHref(ch) : '#/npcs'}>Back to NPCs &amp; Critters</a> : <a href="#/">Back to your runners</a>
   if (!loaded) return <main className="lib"><p className="muted">Loading {noun}…</p></main>
@@ -64,7 +64,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
   // a finalized runner's build changes go in the ledger by themselves (engine/career.ts logChange); undo takes them back
   // out, except past recorded earnings (not undoable: history before them is dropped)
   // a compendium entry it uses is copied onto it (engine/file.ts keepHouse): it keeps it if the compendium goes
-  const commit = (next: Character, undoable: boolean) => save.commit(keepHouse(c, logChange(c, ch, next)), undoable)
+  const commit = (next: Character, undoable: boolean) => save.commit(keepHouse(c, logChange(c, ch, next, table)), undoable)
   const mutate = (fn: (d: Character) => void) => { const d = structuredClone(ch); fn(d); syncRealSin(c, d.build); return d }
 
   const ro = owner !== null

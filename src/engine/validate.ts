@@ -3,7 +3,7 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
-import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain } from './amps'
+import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, sinnerFree } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { catalogItem, itemPrice, price, slotLapse } from './price'
@@ -13,7 +13,8 @@ import { hasNoMetatype } from './npc'
 /** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
  *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
  *  every runner. */
-export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[]; locked?: string[] }
+/** freeSinner: the table's SINner house rule switch (amps.ts sinnerFree); undefined: on */
+export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[]; locked?: string[]; freeSinner?: boolean }
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
@@ -37,7 +38,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   // budget
   if (npc) { /* no budget */ } else if (creation) {
-    const p = price(c, ch)
+    const p = price(c, ch, table)
     if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 85)
   } else {
     const bal = balance(c, ch)
@@ -134,7 +135,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry): where the rules give
     // another, say so. The book's number is never corrected in the file.
     const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
-    const rules = ampRating(c, a, ampCtx(b, a, c))
+    const rules = ampRating(c, a, ampCtx(b, a, c, sinnerFree(ch, table)))
     if (printed != null && printed !== rules)
       add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page,
         a.snapshot?.source)

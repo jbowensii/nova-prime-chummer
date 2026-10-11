@@ -98,7 +98,8 @@ is built from this data; the format itself is ours and stays stable.
   had them): only a catalog amp's own printed drawback, unchanged, needs no GM.
 - **`realSin="true"`** on an amp: added by the "Has a real SIN" box (before 0.5.7; since then a player adds the SINner
   quality by hand and the free Real SIN entry follows it) with the catalog's SINner quality (named exactly
-  "SINner", any case). House rule (0.5.5): every SINner quality, from the box or added by hand, is free and never
+  "SINner", any case). House rule (0.5.5; a Table setup switch since 0.12, `ca2.free-sinner`, on by default, the runner's
+  own in `optionalRules` unless the GM locks it): every SINner quality, from the box or added by hand, is free and never
   takes the first-Quality slot; files from before simply price that way when read. A SINner is a Quality that is the
   catalog's SINner entry with that entry's effects, or a hand-built Quality named SINner with no effects at all:
   another amp renamed SINner, or a SINner given any other effect (a narrative one too), is priced like any amp and counts for the first-Quality rule. The box works before and after

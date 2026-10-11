@@ -91,7 +91,8 @@ test('an editor switches table rules on and writes house rules on Table setup', 
   await page.getByRole('dialog').getByRole('button', { name: 'Remove house rule' }).click()
   await expect(gm.getByRole('status')).toHaveText('Removed Made-up house rule.')
   await page.reload() // saved on the server
-  await expect(gm.getByRole('switch')).toHaveCount(4) // with the app's two: non-canon content and real SINs, both on
+  await expect(gm.getByRole('switch')).toHaveCount(5) // with the app's two (non-canon content, real SINs) and its house rule (SINner free), all on
+  await expect(gm.getByRole('switch', { name: 'SINner free, never the first Quality' })).toBeChecked()
   await expect(gm.getByRole('switch', { name: 'Real SINs allowed' })).toBeChecked()
   await expect(gm.getByRole('switch', { name: 'Long haggles' })).toBeChecked()
   expect(readFileSync(join(dir, 'custom', 'table-rules.xml'), 'utf8')).toContain('<name>Quieter streets</name>')
@@ -109,7 +110,8 @@ test('a player sees the rules switched on, read only; the Rules page isn’t the
   await page.getByRole('link', { name: 'Table setup' }).click()
   await expect(page.getByRole('heading', { name: 'Table setup', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Table rules' })).toBeVisible()
-  await expect(page.getByRole('listitem')).toHaveCount(4)
+  await expect(page.getByRole('listitem')).toHaveCount(5)
+  await expect(page.getByRole('listitem').filter({ hasText: 'SINner free' })).toContainText('House rule')
   await expect(page.getByRole('listitem').filter({ hasText: 'Long haggles' })).toContainText('TEST p.42')
   await expect(page.getByRole('listitem').filter({ hasText: 'Real SINs allowed' })).toContainText('App setting')
   await expect(page.getByText('Made up: no drive-bys in the first scene.')).toBeVisible()
@@ -204,7 +206,7 @@ test('a runner plays the table’s optional rules unless it sets its own (Review
   const pick = own.getByLabel('Long haggles for this runner')
   await expect(pick).toHaveValue('')
   await expect(pick.locator('option').first()).toHaveText('As the table: on')
-  const state = own.getByText(/^(not )?in play$/)
+  const state = own.getByRole('listitem').filter({ hasText: 'Long haggles' }).getByText(/^(not )?in play$/)
   await expect(state).toHaveText('in play')
   await pick.selectOption('off')
   await expect(state).toHaveText('not in play')
@@ -229,3 +231,18 @@ test('a locked rule plays as the table has it: the runner’s own switch is disa
   await expect(own.getByLabel('Long haggles for this runner')).toHaveValue('')
   await expect(own.getByText(/^in play \(locked by the GM\)$/)).toBeVisible()
 })
+
+test('the SINner house rule: on by default, a runner may switch it off on the Review tab, the GM may lock it', async ({ page }) => {
+  await signIn(page, 'pat')
+  await page.getByRole('button', { name: 'New runner' }).click()
+  await page.getByRole('button', { name: 'Create runner' }).click()
+  await page.getByRole('link', { name: 'Review' }).click()
+  const row = page.getByRole('region', { name: 'Optional rules' }).getByRole('listitem').filter({ hasText: 'SINner free' })
+  await expect(row).toContainText('House rule')
+  const pick = row.getByLabel('SINner free, never the first Quality for this runner')
+  await expect(pick.locator('option').first()).toHaveText('As the table: on')
+  await expect(row.getByText(/^(not )?in play$/)).toHaveText('in play')
+  await pick.selectOption('off')
+  await expect(row.getByText(/^(not )?in play$/)).toHaveText('not in play')
+})
+

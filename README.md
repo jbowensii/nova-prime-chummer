@@ -42,8 +42,9 @@ own API key), and you review its entries before they’re added.
 - **Starting gear.** Every runner carries a free commlink (with trodes) and a
   fake SIN (CRB p.85): rename and describe them, but they can’t be removed.
   A real SIN is the SINner quality (Shadow Amps tab): adding it brings a free
-  Real SIN entry on the Gear tab, removing it takes the entry away. House rule:
-  a SINner is always free and never counts as the first Quality. The GM allows
+  Real SIN entry on the Gear tab, removing it takes the entry away. House rule
+  (a Table setup switch, on by default; a runner may set its own on Review unless
+  the GM locks it): a SINner is free and never counts as the first Quality. The GM allows
   or refuses real SINs, and non-canon content, for the whole table on the
   Table setup page; Review flags a runner that uses what the table doesn’t allow.
 - **Saving.** Every change saves on its own; the bar says when (“All changes
