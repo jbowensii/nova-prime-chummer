@@ -763,6 +763,28 @@ test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the
   // a player can't lock
   expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { locks: [] }, headers: { Origin: origin } })).status()).toBe(403)
   expect((await pat.request.delete(`/api/sr6/campaigns/${camp.id}/runners/${kidId}`, { headers: { Origin: origin } })).ok()).toBe(true)
+
+  // nested optional rules: a rule that needs another sits under it, greyed and disabled until the parent is on; of two
+  // that can't be on together, the second says why (the server's rules again, out of the campaign)
+  await pat.goto(kid.replace(/concept$/, 'method'))
+  await pat.reload()
+  const child = rules.locator('tr', { hasText: 'Expanded contacts: karma per contact point' })
+  await expect(child).toHaveClass(/nested/)
+  await expect(child).toContainText('needs Expanded contacts: karma buys')
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeDisabled()
+  await rules.getByLabel(/^Expanded contacts: karma buys/).selectOption('true')
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeEnabled()
+  await expect(child).not.toContainText('needs')
+  const swc = rules.locator('tr', { hasText: 'Street-level (Sixth World Companion)' }).first()
+  await rules.getByLabel(/^Prime runner/).selectOption('true')
+  await expect(swc.getByLabel(/^Street-level \(Sixth World Companion\)/)).toBeDisabled()
+  await expect(swc).toContainText('can’t be on with Prime runner: twice the customization karma, which is on')
+  await shoot(pat, 'runner-rules-nested')
+  // Table setup shows the same nesting (read only for Gil)
+  await page.goto('/#/sr6/table')
+  const tq = page.locator('.sr6-creation tr', { hasText: 'Twenty Questions: the karma' })
+  await expect(tq).toHaveClass(/nested blocked/)
+  await expect(tq).toContainText('needs Twenty Questions: karma at creation')
   await pat.close()
 })
 

@@ -25,7 +25,7 @@ import { MAGIC_KINDS } from '../engine/data'
 import type { MagicKind, Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
-import { rulesForRunner, useRunnerCampaign } from './Creation'
+import { rulesForRunner, tableRulesFor, useRunnerCampaign } from './Creation'
 import { withSampleFixes } from '../engine/samplefix'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
@@ -69,8 +69,8 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
   const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   // the runner's rules: the server's or its campaign's, with its own choices over them where the campaign doesn't lock them
   const camp = useRunnerCampaign(npc ? undefined : ch?.campaign)
-  const cr = useMemo(() => (ch && camp !== undefined ? rulesForRunner(serverRules, camp, ch) : serverRules), [serverRules, camp, ch?.rules]) // eslint-disable-line react-hooks/exhaustive-deps
-  const table = useMemo(() => rulesForRunner(serverRules, camp, {}), [serverRules, camp])
+  const cr = useMemo(() => (ch && camp !== undefined ? rulesForRunner(serverRules, camp, ch) : rulesForRunner(serverRules, null, {})), [serverRules, camp, ch?.rules]) // eslint-disable-line react-hooks/exhaustive-deps
+  const table = useMemo(() => tableRulesFor(serverRules, camp), [serverRules, camp])
   const locks = useMemo(() => (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })), [camp])
   const me = useMe()
   // a player's catalog holds the compendiums shared with every SR6 campaign they play in: this runner sees its own

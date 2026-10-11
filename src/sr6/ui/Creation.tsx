@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
-import { CREATION_GROUPS, CREATION_KEYS, expandKeys, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
+import { applyDeps, blockedBy, CREATION_GROUPS, CREATION_KEYS, expandKeys, levelRules, mergeRules, nested, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
 import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
@@ -35,6 +35,17 @@ export const campaignRules = (c: Campaign | null | undefined) => c?.creation ? r
  *  campaign's own, with the runner's own choices over them except where its campaign locked them (runnerRules). */
 export const rulesForRunner = (server: CreationRules, camp: Campaign | null | undefined, ch: Pick<Sr6Character, 'rules'>): CreationRules =>
   runnerRules(campaignRules(camp) ?? server, ch.rules, (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })), camp?.creation ? 'campaign' : 'server')
+/** The table's rules for a runner's Creation rules panel: the server's or its campaign's, with its locks and a level of
+ *  play's numbers, every stored value kept (a nested rule whose parent is off too: mergeRules). */
+export const tableRulesFor = (server: CreationRules, camp: Campaign | null | undefined): CreationRules =>
+  levelRules(mergeRules(campaignRules(camp) ?? server, [], (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })), camp?.creation ? 'campaign' : 'server'))
+
+/** Why a rule doesn't apply (blockedBy) in words, under its label on Table setup and a runner's Creation rules. (What a
+ *  rule replaces, RULE_DEPS, its label already says.) */
+export function RuleWhy({ k, eff, label }: { k: string; eff: CreationRules; label: (key: string) => string }) {
+  const b = blockedBy(eff, k)
+  return b ? <div className="muted small rule-why">{'needs' in b ? `needs ${label(b.needs)}` : `can’t be on with ${label(b.conflicts)}, which is on`}</div> : null
+}
 
 /** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
  *  values in the form for review (readSettingsFile); only Save sends them. */
@@ -44,7 +55,10 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
   useEffect(() => setDraft(rowsOf(cr.rules)), [cr])
   const [msg, setMsg] = useState(''), [err, setErr] = useState(''), [saving, setSaving] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
-  const keys = expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) })
+  const keys = expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) }), ordered = nested(keys)
+  const labelOf = new Map(keys.map(k => [k.key, k.label])), label = (k: string) => labelOf.get(k) ?? k
+  // the draft as the engine would apply it: a nested rule whose parent is off, or one that can't be on with another, is greyed
+  const eff = useMemo(() => applyDeps(rulesFrom(Object.entries(draft).filter(([, r]) => r.value.trim()).map(([key, r]) => ({ key, value: r.value }))).rules), [draft])
   const qualities = [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
   const set = (key: string, f: Partial<Row>) => { setMsg(''); setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } })) }
   async function load(f: File) {
@@ -77,21 +91,22 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
     {skipped.length > 0 && <div className="warn"><p>Left out of the file:</p><ul>{skipped.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
     <fieldset className="bare" disabled={!onSave || saving}>
       {CREATION_GROUPS.map(g => {
-        const rows = keys.filter(k => k.group === g)
+        const rows = ordered.filter(o => o.root.group === g)
         return rows.length > 0 && <div key={g}>
           <h3>{g}</h3>
           {g === 'Karma prices' && <p>Also the career prices.</p>}
           <div className="scroll-x"><table className="data"><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Page</th>{std && <th>Standard</th>}</tr></thead>
-            <tbody>{rows.map(k => {
+            <tbody>{rows.map(({ item: k, depth }) => {
               const r = draft[k.key] ?? NO_ROW, v = (value: string) => set(k.key, { value }), d = stdRows[k.key]
               const shown = (x: string) => k.type === 'bool' ? x === 'true' ? 'Yes' : 'No' : k.type === 'quality' ? c.entries.qualities.get(x)?.name ?? x : x
-              return <tr key={k.key}>
-                <td>{k.label}</td>
+              const off = !!blockedBy(eff, k.key)
+              return <tr key={k.key} className={[depth ? 'nested' : '', off ? 'blocked' : ''].join(' ').trim() || undefined}>
+                <td>{k.label}<RuleWhy k={k.key} eff={eff} label={label} /></td>
                 <td>{k.type === 'number'
-                  ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} onChange={e => v(e.target.value)} />
-                  : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6}
+                  ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} disabled={off} onChange={e => v(e.target.value)} />
+                  : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6} disabled={off}
                     onChange={e => v(e.target.value.toUpperCase())} />
-                  : <select aria-label={k.label} value={r.value} onChange={e => v(e.target.value)}>
+                  : <select aria-label={k.label} value={r.value} disabled={off} onChange={e => v(e.target.value)}>
                     <option value="">Not set</option>
                     {k.type === 'bool' ? <><option value="true">Yes</option><option value="false">No</option></>
                       : <>{r.value && !c.entries.qualities.has(r.value) && <option value={r.value}>{r.value} (not in the catalog)</option>}

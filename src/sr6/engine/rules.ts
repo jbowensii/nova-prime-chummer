@@ -8,7 +8,7 @@ import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, isFocus, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
-import { cite, expandKeys, flag, num, str, type CreationRules } from './creation'
+import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, normName, picksFor, type Sr6Data } from './data'
 import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
@@ -726,12 +726,14 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
  *  (assumed: the book doesn't say), and one its campaign locked, so the runner's choice is set aside. Never errors. */
 function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string, string>): Violation[] {
   const name = (k: string) => labels.get(k) ?? k, out: Violation[] = []
-  // (two levels of play at once: each replaces the other's numbers)
-  const levels = ['levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite'].filter(k => flag(cr, k))
-  if (levels.length > 1) out.push({ code: 'rules.levels', severity: 'warning', path: 'method', message: `${levels.map(name).join('; ')}: more than one level of play is on.` })
+  // (rules that can't be on together, all on: rules that didn't go through runnerRules, which keeps one)
+  const clash = [...cr.keys()].filter(k => isOn(cr.get(k)) && conflictsOf(k).some(c => isOn(cr.get(c))))
+  if (clash.length) out.push({ code: 'rules.conflict', severity: 'warning', path: 'method', message: `${clash.map(name).join('; ')}: these can’t be on together.` })
   for (const r of ch.rules ?? []) {
-    const s = cr.get(r.key)
+    const s = cr.get(r.key), b = !s && r.value.trim() && r.value !== 'false' ? blockedBy(cr, r.key) : undefined
     if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
+    else if (b) out.push({ code: 'rules.setAside', severity: 'warning', path: 'method',
+      message: `${name(r.key)}: your choice is set aside; ${'needs' in b ? `it needs ${name(b.needs)}, which is off` : `it can’t be on with ${name(b.conflicts)}`}.` })
     else if (r.assumed) out.push({ code: 'rules.assumed', severity: 'warning', path: 'method', ...(r.source ? { source: r.source } : {}), ...(r.page ? { page: r.page } : {}),
       message: `${name(r.key)}: ${r.value.trim() === '' || r.value === 'false' ? 'off' : r.value === 'true' ? 'on' : r.value}; assumed from the book’s numbers (the book doesn’t say).` })
   }

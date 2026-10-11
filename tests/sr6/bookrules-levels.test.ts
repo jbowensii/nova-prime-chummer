@@ -70,5 +70,5 @@ test('street-level: an illegal item is an error, a cyberdeck not; elite: no Avai
   cr.set('levelSwcElite', { key: 'levelSwcElite', value: true })
   expect(codes(cr).some(c => c.startsWith('gear.availCap'))).toBe(false)
   cr.set('levelPrime', { key: 'levelPrime', value: true })
-  expect(codes(cr)).toContain('rules.levels|method')
+  expect(codes(cr)).toContain('rules.conflict|method')
 })

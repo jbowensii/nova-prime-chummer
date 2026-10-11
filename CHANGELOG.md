@@ -16,7 +16,15 @@
   street level (each priority gives the row below's values) and prime runner (twice the customization Karma), CRB Hong
   Kong p. 63; the Sixth World Companion's street-level (B C C D E, sum-to-eight, 80 points, 6 life modules, no illegal
   gear but cyberdecks) and elite (A B B C D, sum-to-twelve, 120 points, 10 modules, no Availability cap), pp. 14–15,
-  each with its numbers as settings. More than one on at once is noted in Review.
+  each with its numbers as settings. Only one level is on at a time (see nested optional rules below).
+- Nested optional rules: a rule that builds on another sits under it on Table setup and on a runner's Creation rules,
+  greyed and disabled with "needs …" while its parent is off, and it doesn't apply then (its stored value kept): the
+  expanded contacts' numbers under Expanded contacts (SWC p. 161), each Alternate Power Level's numbers under its level
+  (SWC pp. 14–15), Twenty Questions' karma, High Strength's steps, Working for the Man/People's rates (SWC pp. 25, 150,
+  153), Stacking Advantage under the core Attack Rating against Defense Rating lead (SWC p. 144, CRB Hong Kong p. 45).
+  The four levels of play can't be on together: the second says why; the runner's rules keep one (a campaign's lock,
+  else the runner's own, else the first), so the engine never applies both, and Review notes a runner's choice set
+  aside. The settings table in the data format document gains needs / not with / in place of columns. All still off.
 - Qualities naming their choice (`Exceptional (Attribute)`, `Aptitude (Skill)`, `Impaired (Attribute)`, `Incompetent
   (Skill)`) take the attribute or skill from their note, which the Qualities tab now edits; one naming nothing is a
   Review problem, and one may be taken again for another choice. Exceptional raises that maximum, once per attribute

@@ -648,156 +648,165 @@ chosen while its Essence factor is unset). `karmaToNuyenMax` isn't printed in th
 City Editions on: 5, Hong Kong p. 66, shipped):
 unset, there is no limit (a table that uses one enters it from the book or house rule that gives it). A number may be a decimal; `true/false` is the word; a quality id names a catalog quality (`crb.<slug>`).
 
-| group | key | type | needed by | what it is |
-|---|---|---|---|---|
-| General | `startingKarma` | number | all | Starting karma |
-| General | `qualityNetBonusCap` | number | all | Most net karma from qualities |
-| General | `qualityMaxCount` | number | all | Most paid qualities |
-| General | `oneAttributeAtMax` | true/false | all | Only one attribute at its maximum |
-| General | `attributeBaseMax` | number | optional | Adjustment points go on attributes whose metatype maximum is above |
-| General | `skillCap` | number | all | Highest skill rank |
-| General | `skillCapAptitude` | number | all | Highest skill rank with the aptitude quality |
-| General | `aptitudeQuality` | quality id | all | Aptitude quality: `skillCapAptitude` (and, in career, `advance.skillMax` + the same step) for the skill its note names only (CRB Hong Kong p. 70: "for the selected skill"); one naming no skill lets any one skill go higher, and Review's `quality.choice` asks for the skill |
-| General | `skillPointsSpec` | number | all | Skill points for a specialization |
-| General | `skillPointsExpertise` | number | optional | Skill points for an expertise (unset: bought with karma at `advance.expertise`) |
-| General | `magicMax` | number | all | Highest Magic or Resonance |
-| General | `essence` | number | all | Starting Essence |
-| General | `contactPointsPerCha` | number | all | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills the augmented Logic: owner, 2026-10-09) |
-| General | `knowledgePerLog` | number | all | Free knowledge skills per Logic |
-| General | `maxAvailability` | number | all | Highest Availability |
-| General | `maxNuyenLeft` | number | all | Most nuyen kept after creation |
-| General | `freeSpellsPerMagic` | number | all | Free spells per Magic |
-| General | `freeFormsPerResonance` | number | all | Free complex forms per Resonance |
-| General | `maxKarmaLeft` | number | optional | Most karma kept after creation (CRB Hong Kong p. 66: 5; unset: no limit, and Review gives no warning) |
-| General | `expandedContacts` | true/false | optional | The Sixth World Companion's Expanded Rules for Contacts at Character Creation (SWC p. 161), optional: off (each rating up to Charisma, no karma). The importer assumes it for a book sample whose printed contacts need it |
-| General | `contactKarma` | number | optional | With `expandedContacts`: karma per contact point past the points or past a contact's pair cap (SWC p. 161: 1) |
-| General | `contactPairPerCha` | number | optional | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
-| General | `contactRatingMax` | number | optional | Highest contact rating (with `contactKarma`; unset: Charisma) |
-| General | `manyTalentsQuality` | quality id | optional | Many Talents: two attributes at their maximum (SWC p. 134) |
-| General | `manySkillsQuality` | quality id | optional | Many Skills: two skills at the highest rank (SWC p. 134) |
-| General | `availabilityCapIllegalOnly` | bool | optional | The Availability cap holds only illegal gear (the 2019 printing's p. 66; the later printings cap every item, so it ships `false`, CRB Hong Kong p. 66) |
-| General | `exceptionalQuality` | quality id | optional | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB Hong Kong p. 71), once per attribute (Review's `quality.choiceTwice`). When the quality carries its own `attr-max:choice` effect, that effect is what counts (never twice) |
-| General | `incompetentQuality` | quality id | optional | Incompetent (Skill) (CRB Hong Kong pp. 76–77): no ranks in the skill its note names, not a Magic skill without Magic nor Tasking without Resonance (`skill.incompetent`), that skill once (`quality.choiceTwice`) |
-| General | `sensitiveSystemQuality` | quality id | optional | Sensitive System (CRB Hong Kong p. 78): an error with a Magic or Resonance rating (`quality.sensitiveSystem`); cyberware, bioware and nanoware Essence times `sensitiveSystemEssence` (2) |
-| General | `sensitiveSystemEssence` | number | optional | Sensitive System's Essence factor (CRB Hong Kong p. 78: doubled) |
-| General | `languageMax` | number | optional | Highest level of a language but the Native one (CRB Hong Kong p. 99: advancement goes to Expert, 3); one Native language only (p. 67): Review's `knowledge.languages` (unset: no cap) |
-| General | `fociForcePerMagic` | number | optional | The foci's Force together at most Magic times this (CRB Hong Kong p. 154: 5); with no more foci than Magic and none of Force above it, and none for a runner neither awakened (`magic.foci`) |
-| General | `fociBondKarma` | true/false | optional | A focus costs its bonding Karma (its catalog `karma`, `Force x 3`, at the line's rating) out of the customization Karma (CRB Hong Kong pp. 154, 168: a focus is used only once bonded; true) |
-| General | `improvedAbilityPower` | quality id | optional | The Improved Ability adept power (an adept power's id; CRB Hong Kong p. 157): it needs a rank in the skill its note names, and the boosted skill is at most `improvedAbilityFactor` times the rank, rounded up, or the rank + `skillAugmentMax`, whichever is lower (`adept.improvedAbility`) |
-| General | `improvedAbilityFactor` | number | optional | Improved Ability's most: 1.5 times the original rank (CRB Hong Kong p. 157) |
-| General | `attributeMaxFloor` | number | optional | The lowest a quality's effect lowers an attribute's maximum to (Impaired: "to a minimum of 2", CRB Hong Kong p. 76; unset: no floor) |
-| Levels of play | `priorityLetters` | letters | optional | The five priority letters the columns take, one each (CRB Hong Kong p. 63: `ABCDE`); sum to ten takes only letters among them. A level of play sets its own |
-| Levels of play | `levelStreet` | true/false | optional | Street level (CRB Hong Kong p. 63, off): each priority gives the values of the row below (E stays E): points, nuyen, metatypes and magic kinds |
-| Levels of play | `levelPrime` | true/false | optional | Prime runner (CRB Hong Kong p. 63, off): twice `startingKarma` |
-| Levels of play | `levelSwcStreet` | true/false | optional | The Sixth World Companion's street-level (SWC pp. 14–15, off): while on, `swcStreet.letters` (B C C D E), `.sumToTen` (8), `.pointBuy` (80) and `.modules` (6) replace `priorityLetters`, `sumToTenTarget`, `pointBuy.total` and `lifepath.moduleCount` (`levelRules`, through `runnerRules`), and an illegal item but a cyberdeck is an error (`gear.illegal`) |
-| Levels of play | `levelSwcElite` | true/false | optional | The Sixth World Companion's elite (SWC p. 15, off): `swcElite.letters` (A B B C D), `.sumToTen` (12), `.pointBuy` (120), `.modules` (10) likewise, and no Availability cap. The book's letters add up to 13 while it says sum-to-twelve: both ship as printed |
-| Levels of play | `swcStreet.*`, `swcElite.*` | number, letters | optional | The two levels' own values (above) |
-| Karma prices | `karmaAttrPerRank` | number | all | Attribute: karma per rank, times the new rating |
-| Karma prices | `karmaSkillPerRank` | number | all | Skill: karma per rank, times the new rank |
-| Karma prices | `karmaSpec` | number | all | Specialization |
-| Karma prices | `karmaKnowledge` | number | all | Knowledge or language rank |
-| Karma prices | `karmaSpell` | number | all | Extra spell or ritual |
-| Karma prices | `karmaForm` | number | all | Extra complex form |
-| Karma prices | `karmaInitiationBase` | number | all | Initiation or submersion: base |
-| Karma prices | `karmaInitiationPerGrade` | number | all | Initiation or submersion: per grade |
-| Karma prices | `positiveQualityFactor` | number | optional | Positive qualities cost their karma times (unset: 1) |
-| Karma prices | `karmaMartialArt` | number | optional | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
-| Karma prices | `karmaTechnique` | number | optional | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
-| Advancement | `advance.expertise` | number | optional | Expertise after creation |
-| Advancement | `advance.expertiseRank` | number | optional | Lowest skill rank for an expertise (unset: none; Review's `skill.expertiseRank`) |
-| Advancement | `advance.qualityFactor` | number | optional | A positive quality after creation costs its karma times |
-| Advancement | `advance.buyOffFactor` | number | optional | Buying off a negative quality costs its karma times |
-| Advancement | `advance.skillMax` | number | optional | Highest skill rank after creation (unset: no cap) |
-| Advancement | `advance.powerPoint` | number | optional | Karma per power point (mystic adepts) |
-| Advancement | `advance.karmaToNuyenRate` | number | optional | Nuyen per karma after creation, with `workingForTheMan` on (the Sixth World Companion's Working for the Man, p. 153: 2,000) |
-| Advancement | `advance.nuyenToKarmaRate` | number | optional | Nuyen per karma, nuyen to karma, with `workingForThePeople` on (Working for the People, SWC p. 153: 2,000) |
-| Nuyen | `karmaToNuyenRate` | number | all | Nuyen per karma |
-| Nuyen | `karmaToNuyenRateInDebt` | number | all | Nuyen per karma with the in-debt quality |
-| Nuyen | `inDebtQuality` | quality id | all | In-debt quality |
-| Nuyen | `karmaToNuyenMax` | number | optional | Most karma turned into nuyen (unset: no limit) |
-| Nuyen | `fakeSinPerRating` | number | all | Fake SIN: nuyen per rating |
-| Nuyen | `licencePerRating` | number | all | Fake licence: nuyen per rating |
-| Sum to ten | `sumToTenTarget` | number | sum to ten | The letters’ values add up to at most |
-| Sum to ten | `letterValue:A` | number | sum to ten | Value of priority A |
-| Sum to ten | `letterValue:B` | number | sum to ten | Value of priority B |
-| Sum to ten | `letterValue:C` | number | sum to ten | Value of priority C |
-| Sum to ten | `letterValue:D` | number | sum to ten | Value of priority D |
-| Sum to ten | `letterValue:E` | number | sum to ten | Value of priority E |
-| Point buy | `pointBuy.total` | number | point buy | Character points |
-| Point buy | `pointBuy.awakened` | number | point buy | Character points to be awakened or emerged |
-| Point buy | `pointBuy.free.attribute` | number | point buy | Free attribute points |
-| Point buy | `pointBuy.max.attribute` | number | point buy | Most attribute points |
-| Point buy | `pointBuy.free.skill` | number | point buy | Free skill points |
-| Point buy | `pointBuy.max.skill` | number | point buy | Most skill points |
-| Point buy | `pointBuy.free.adjustment` | number | point buy | Free adjustment points |
-| Point buy | `pointBuy.max.adjustment` | number | point buy | Most adjustment points |
-| Point buy | `pointBuy.free.nuyen` | number | point buy | Free nuyen |
-| Point buy | `pointBuy.max.nuyen` | number | point buy | Most nuyen |
-| Point buy | `pointBuy.cost.attribute` | number | point buy | Character points per attribute point |
-| Point buy | `pointBuy.cost.skill` | number | point buy | Character points per skill point |
-| Point buy | `pointBuy.cost.adjustment` | number | point buy | Character points per adjustment point |
-| Point buy | `pointBuy.cost.powerPoint` | number | point buy | Character points per power point |
-| Point buy | `pointBuy.cost.mysticPowerPoint` | number | point buy | Character points per power point (mystic adept) |
-| Point buy | `pointBuy.cost.spell` | number | point buy | Character points per spell |
-| Point buy | `pointBuy.cost.complexForm` | number | point buy | Character points per complex form |
-| Point buy | `pointBuy.nuyenPerCp` | number | point buy | Nuyen per character point |
-| Point buy | `pointBuy.oneSpecialization` | true/false | point buy | Only one specialization |
-| Karma build | `karmaBuild.start` | number | karma | Starting karma (karma build) |
-| Karma build | `karmaBuild.startRating` | number | karma | Starting Magic or Resonance (karma build) |
-| Lifepath | `lifepath.moduleCount` | number | lifepath | Adult life modules to take |
-| Lifepath | `lifepath.contactRatingCap` | number | lifepath | Highest contact rating |
-| Lifepath | `lifepath.bestAttributeBonus` | number | optional | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
-| Lifepath | `lifepath.repeatModules` | number | optional | Adult modules that may be taken twice (unset: none) |
-| Lifepath | `lifepath.contactKarma` | number | optional | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
-| Lifepath | `lifepath.raisedAttributeStart` | number | optional | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
-| Lifepath | `lifepath.mundaneEdge` | number | optional | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
-| Augmentation grades | `grade:standard:essence` | number | optional | Standard: Essence times |
-| Augmentation grades | `grade:standard:cost` | number | optional | Standard: cost times |
-| Augmentation grades | `grade:standard:avail` | number | optional | Standard: Availability plus |
-| Augmentation grades | `grade:alpha:essence` | number | optional | Alpha: Essence times |
-| Augmentation grades | `grade:alpha:cost` | number | optional | Alpha: cost times |
-| Augmentation grades | `grade:alpha:avail` | number | optional | Alpha: Availability plus |
-| Augmentation grades | `grade:beta:essence` | number | optional | Beta: Essence times |
-| Augmentation grades | `grade:beta:cost` | number | optional | Beta: cost times |
-| Augmentation grades | `grade:beta:avail` | number | optional | Beta: Availability plus |
-| Augmentation grades | `grade:delta:essence` | number | optional | Delta: Essence times |
-| Augmentation grades | `grade:delta:cost` | number | optional | Delta: cost times |
-| Augmentation grades | `grade:delta:avail` | number | optional | Delta: Availability plus |
-| Augmentation grades | `grade:used:essence` | number | optional | Used: Essence times |
-| Augmentation grades | `grade:used:cost` | number | optional | Used: cost times |
-| Augmentation grades | `grade:used:avail` | number | optional | Used: Availability plus |
-| Derived values | `monitorBase` | number | optional | Condition monitor: boxes before the attribute |
-| Derived values | `monitorDivisor` | number | optional | Condition monitor: the attribute divided by (rounded up) |
-| Derived values | `initiativeDice` | number | optional | Initiative dice |
-| Derived values | `initiativeDiceMax` | number | optional | Most initiative dice, after bonuses, astral and Matrix too (CRB Hong Kong p. 39: 5; unset: no cap) |
-| Derived values | `astralInitiativeDice` | number | optional | Astral initiative dice |
-| Derived values | `specDice` | number | optional | Dice for a specialization |
-| Derived values | `expertiseDice` | number | optional | Dice for an expertise |
-| Derived values | `untrainedPenalty` | number | optional | Dice off the attribute for an untrained skill |
-| Derived values | `overflowPerBody` | number | optional | Damage Overflow boxes per point of Body (CRB Hong Kong p. 121: dead at Body × 2; 2), plus what adds to them (Will to Live); unset: Body counts none |
-| Derived values | `attributeAugmentMax` | number | optional | Most an attribute's augmented value is above its natural one (CRB Hong Kong p. 37: 4); the always-on and the bracketed totals alike, a penalty never; the attribute card and Review say what was left out (unset: no cap) |
-| Derived values | `skillAugmentMax` | number | optional | Most a skill's dice pool is raised by bonuses, a specialization's bonus within it (CRB Hong Kong p. 39: 4; unset: no cap) |
-| Derived values | `monitorMinimum` | number | optional | Fewest boxes a condition monitor is lowered to (Glass Jaw, CRB Hong Kong p. 76: 2; unset: no floor) |
-| Derived values | `matrixColdDice`, `matrixHotDice` | number | optional | VR initiative dice on top of the usual `initiativeDice` (CRB Hong Kong p. 179: 1 cold sim, 2 hot sim, within the 5D6); with what adds Matrix initiative dice. Matrix initiative is shown when the runner has a commlink (its D/F array's Data Processing) or is a technomancer (Logic, p. 189); AR initiative is the physical one |
-| Derived values | `moveWalk`, `moveSprint`, `moveSprintPerHit` | number | optional | Metres for a Move (CRB Hong Kong p. 42: 10), a Sprint (p. 44: 15) and a Sprint's metres more a hit (1), plus what adds to movement |
-| Derived values | `unarmedDV` | number | optional | Unarmed Damage Value (CRB Hong Kong p. 94: 2S). Physical with the `dermalDepositsQuality` (p. 71) or an effect `derived:unarmed-damage` (bone lacing, bone density: pp. 286, 291); an effect `derived:unarmed-dv` `set` (the bone lacing table's `3P`) raises it to that value, `add` adds (unset: none shown) |
-| Derived values | `arDrEdgeGap` | number | optional | The lead of an Attack Rating over a Defense Rating, or the other way, that gains a point of Edge (CRB Hong Kong p. 45: 4): the Gear tab's target Defense Rating shows it at each range band |
-| Derived values | `meleeArStrength` | true/false | optional | Strength adds to a melee weapon's Attack Rating (CRB Hong Kong p. 39: true; a whip, whose AR note says so, Reaction: p. 250). A melee weapon: an Attack Rating at Close only, no modes or ammo |
-| Optional rules | `stackingAdvantage` | true/false | optional | The Sixth World Companion's Stacking Advantage (SWC p. 144, off): a lead of twice `arDrEdgeGap` gains 2 Edge, never more |
-| Optional rules | `strengthInCloseCombat` | true/false | optional | Rolling Strength instead of Agility in Close Combat (SWC p. 150, off): Close Combat's pool uses Strength, and Agility goes into the melee and unarmed Attack Ratings in Strength's place |
-| Optional rules | `highStrengthDamage` | true/false | optional | High Strength Adds to Damage (SWC p. 150, off): +1 to the unarmed and melee Damage Values from Strength `strengthDamageStep1` (7), +2 from `strengthDamageStep2` (10) |
-| Optional rules | `alternateMysticAdept` | true/false | optional | Alternate Mystic Adept (SWC p. 148, off): half a power point for each point of Magic given to powers and for each point of Magic raised past the priority's, at creation and after; Conjuring and Enchanting are errors |
-| Optional rules | `twentyQuestions`, `twentyQuestionsKarma` | true/false, number | optional | Twenty Questions (SWC p. 25, off): the karma (3) added to the starting karma |
-| Optional rules | `workingForTheMan`, `workingForThePeople` | true/false | optional | Working for the Man / for the People (SWC p. 153, off): karma to nuyen, nuyen to karma after creation, at the Advancement rates |
-| Optional rules | `expandedSpecializations` | true/false | optional | Expanded Specializations (SWC p. 153, off): any number of specializations a skill (`<skill specs>`), still one expertise; off, only Exotic Weapons takes several (CRB Hong Kong p. 95), and Review's `skill.oneSpec` flags the others |
-| Optional rules | `unrestrictedSkillRanks` | true/false | optional | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
-| Optional rules | `suprathyroidStacks` | true/false | optional | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
-| Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
-| Derived values | `charismaticDefenseQuality` | quality id | optional | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
-| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath | the metatype's karma (one per catalog metatype) |
-| Point buy | `pointBuy.startRating:<kind>` | number | point buy | starting Magic or Resonance per awakened or emerged kind |
-| Karma build | `magicKarma:<kind>` | number | karma | karma to be that kind |
-| Lifepath | `lifepath.startRating:<kind>` | number | lifepath | starting Magic or Resonance per kind |
+*Needs*, *not with* and *in place of* are the nested optional rules (`RULE_DEPS` in `creation.ts`; the books' pages in
+the owner's notes): a setting that needs another applies only while that one is on (a true/false one `true`, any other
+set); while it is off the setting keeps its stored value but is left out (`applyDeps`, inside `runnerRules`, so the
+engine never sees it), and Table setup and a runner's Creation rules show it under its parent, greyed and disabled with
+"needs …". Two settings *not with* each other can't both be on: the second is disabled there and says why; rules that
+come on together anyway (a hand-edited file, the table's and a runner's own) keep one, the campaign-locked one, else the
+runner's own, else the one listed first, and Review notes a runner's choice set aside (`rules.setAside`). *In place of*:
+the settings a rule stands in for while on (its own code does it). Every rule stays off by default.
+
+| group | key | type | needed by | needs | not with | in place of | what it is |
+|---|---|---|---|---|---|---|---|
+| General | `startingKarma` | number | all |  |  |  | Starting karma |
+| General | `qualityNetBonusCap` | number | all |  |  |  | Most net karma from qualities |
+| General | `qualityMaxCount` | number | all |  |  |  | Most paid qualities |
+| General | `oneAttributeAtMax` | true/false | all |  |  |  | Only one attribute at its maximum |
+| General | `attributeBaseMax` | number | optional |  |  |  | Adjustment points go on attributes whose metatype maximum is above |
+| General | `skillCap` | number | all |  |  |  | Highest skill rank |
+| General | `skillCapAptitude` | number | all |  |  |  | Highest skill rank with the aptitude quality |
+| General | `aptitudeQuality` | quality id | all |  |  |  | Aptitude quality: `skillCapAptitude` (and, in career, `advance.skillMax` + the same step) for the skill its note names only (CRB Hong Kong p. 70: "for the selected skill"); one naming no skill lets any one skill go higher, and Review's `quality.choice` asks for the skill |
+| General | `skillPointsSpec` | number | all |  |  |  | Skill points for a specialization |
+| General | `skillPointsExpertise` | number | optional |  |  |  | Skill points for an expertise (unset: bought with karma at `advance.expertise`) |
+| General | `magicMax` | number | all |  |  |  | Highest Magic or Resonance |
+| General | `essence` | number | all |  |  |  | Starting Essence |
+| General | `contactPointsPerCha` | number | all |  |  |  | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills the augmented Logic: owner, 2026-10-09) |
+| General | `knowledgePerLog` | number | all |  |  |  | Free knowledge skills per Logic |
+| General | `maxAvailability` | number | all |  |  |  | Highest Availability |
+| General | `maxNuyenLeft` | number | all |  |  |  | Most nuyen kept after creation |
+| General | `freeSpellsPerMagic` | number | all |  |  |  | Free spells per Magic |
+| General | `freeFormsPerResonance` | number | all |  |  |  | Free complex forms per Resonance |
+| General | `maxKarmaLeft` | number | optional |  |  |  | Most karma kept after creation (CRB Hong Kong p. 66: 5; unset: no limit, and Review gives no warning) |
+| General | `expandedContacts` | true/false | optional |  |  |  | The Sixth World Companion's Expanded Rules for Contacts at Character Creation (SWC p. 161), optional: off (each rating up to Charisma, no karma). The importer assumes it for a book sample whose printed contacts need it |
+| General | `contactKarma` | number | optional | `expandedContacts` |  |  | With `expandedContacts`: karma per contact point past the points or past a contact's pair cap (SWC p. 161: 1) |
+| General | `contactPairPerCha` | number | optional | `expandedContacts` |  |  | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
+| General | `contactRatingMax` | number | optional | `expandedContacts` |  |  | Highest contact rating (with `contactKarma`; unset: Charisma) |
+| General | `manyTalentsQuality` | quality id | optional |  |  |  | Many Talents: two attributes at their maximum (SWC p. 134) |
+| General | `manySkillsQuality` | quality id | optional |  |  |  | Many Skills: two skills at the highest rank (SWC p. 134) |
+| General | `availabilityCapIllegalOnly` | bool | optional |  |  |  | The Availability cap holds only illegal gear (the 2019 printing's p. 66; the later printings cap every item, so it ships `false`, CRB Hong Kong p. 66) |
+| General | `exceptionalQuality` | quality id | optional |  |  |  | Exceptional (Attribute): +1 to the maximum of the attribute its note names (CRB Hong Kong p. 71), once per attribute (Review's `quality.choiceTwice`). When the quality carries its own `attr-max:choice` effect, that effect is what counts (never twice) |
+| General | `incompetentQuality` | quality id | optional |  |  |  | Incompetent (Skill) (CRB Hong Kong pp. 76–77): no ranks in the skill its note names, not a Magic skill without Magic nor Tasking without Resonance (`skill.incompetent`), that skill once (`quality.choiceTwice`) |
+| General | `sensitiveSystemQuality` | quality id | optional |  |  |  | Sensitive System (CRB Hong Kong p. 78): an error with a Magic or Resonance rating (`quality.sensitiveSystem`); cyberware, bioware and nanoware Essence times `sensitiveSystemEssence` (2) |
+| General | `sensitiveSystemEssence` | number | optional |  |  |  | Sensitive System's Essence factor (CRB Hong Kong p. 78: doubled) |
+| General | `languageMax` | number | optional |  |  |  | Highest level of a language but the Native one (CRB Hong Kong p. 99: advancement goes to Expert, 3); one Native language only (p. 67): Review's `knowledge.languages` (unset: no cap) |
+| General | `fociForcePerMagic` | number | optional |  |  |  | The foci's Force together at most Magic times this (CRB Hong Kong p. 154: 5); with no more foci than Magic and none of Force above it, and none for a runner neither awakened (`magic.foci`) |
+| General | `fociBondKarma` | true/false | optional |  |  |  | A focus costs its bonding Karma (its catalog `karma`, `Force x 3`, at the line's rating) out of the customization Karma (CRB Hong Kong pp. 154, 168: a focus is used only once bonded; true) |
+| General | `improvedAbilityPower` | quality id | optional |  |  |  | The Improved Ability adept power (an adept power's id; CRB Hong Kong p. 157): it needs a rank in the skill its note names, and the boosted skill is at most `improvedAbilityFactor` times the rank, rounded up, or the rank + `skillAugmentMax`, whichever is lower (`adept.improvedAbility`) |
+| General | `improvedAbilityFactor` | number | optional |  |  |  | Improved Ability's most: 1.5 times the original rank (CRB Hong Kong p. 157) |
+| General | `attributeMaxFloor` | number | optional |  |  |  | The lowest a quality's effect lowers an attribute's maximum to (Impaired: "to a minimum of 2", CRB Hong Kong p. 76; unset: no floor) |
+| Levels of play | `priorityLetters` | letters | optional |  |  |  | The five priority letters the columns take, one each (CRB Hong Kong p. 63: `ABCDE`); sum to ten takes only letters among them. A level of play sets its own |
+| Levels of play | `levelStreet` | true/false | optional |  | `levelPrime`, `levelSwcStreet`, `levelSwcElite` |  | Street level (CRB Hong Kong p. 63, off): each priority gives the values of the row below (E stays E): points, nuyen, metatypes and magic kinds |
+| Levels of play | `levelPrime` | true/false | optional |  | `levelStreet`, `levelSwcStreet`, `levelSwcElite` |  | Prime runner (CRB Hong Kong p. 63, off): twice `startingKarma` |
+| Levels of play | `levelSwcStreet` | true/false | optional |  | `levelStreet`, `levelPrime`, `levelSwcElite` | `sumToTenTarget`, `pointBuy.total`, `lifepath.moduleCount`, `priorityLetters` | The Sixth World Companion's street-level (SWC pp. 14–15, off): while on, `swcStreet.letters` (B C C D E), `.sumToTen` (8), `.pointBuy` (80) and `.modules` (6) replace `priorityLetters`, `sumToTenTarget`, `pointBuy.total` and `lifepath.moduleCount` (`levelRules`, through `runnerRules`), and an illegal item but a cyberdeck is an error (`gear.illegal`) |
+| Levels of play | `levelSwcElite` | true/false | optional |  | `levelStreet`, `levelPrime`, `levelSwcStreet` | `sumToTenTarget`, `pointBuy.total`, `lifepath.moduleCount`, `priorityLetters`, `maxAvailability` | The Sixth World Companion's elite (SWC p. 15, off): `swcElite.letters` (A B B C D), `.sumToTen` (12), `.pointBuy` (120), `.modules` (10) likewise, and no Availability cap. The book's letters add up to 13 while it says sum-to-twelve: both ship as printed |
+| Levels of play | `swcStreet.*`, `swcElite.*` | number, letters | optional | `levelSwcStreet`, `levelSwcElite` |  |  | The two levels' own values (above) |
+| Karma prices | `karmaAttrPerRank` | number | all |  |  |  | Attribute: karma per rank, times the new rating |
+| Karma prices | `karmaSkillPerRank` | number | all |  |  |  | Skill: karma per rank, times the new rank |
+| Karma prices | `karmaSpec` | number | all |  |  |  | Specialization |
+| Karma prices | `karmaKnowledge` | number | all |  |  |  | Knowledge or language rank |
+| Karma prices | `karmaSpell` | number | all |  |  |  | Extra spell or ritual |
+| Karma prices | `karmaForm` | number | all |  |  |  | Extra complex form |
+| Karma prices | `karmaInitiationBase` | number | all |  |  |  | Initiation or submersion: base |
+| Karma prices | `karmaInitiationPerGrade` | number | all |  |  |  | Initiation or submersion: per grade |
+| Karma prices | `positiveQualityFactor` | number | optional |  |  |  | Positive qualities cost their karma times (unset: 1) |
+| Karma prices | `karmaMartialArt` | number | optional |  |  |  | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
+| Karma prices | `karmaTechnique` | number | optional |  |  |  | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
+| Advancement | `advance.expertise` | number | optional |  |  |  | Expertise after creation |
+| Advancement | `advance.expertiseRank` | number | optional |  |  |  | Lowest skill rank for an expertise (unset: none; Review's `skill.expertiseRank`) |
+| Advancement | `advance.qualityFactor` | number | optional |  |  |  | A positive quality after creation costs its karma times |
+| Advancement | `advance.buyOffFactor` | number | optional |  |  |  | Buying off a negative quality costs its karma times |
+| Advancement | `advance.skillMax` | number | optional |  |  |  | Highest skill rank after creation (unset: no cap) |
+| Advancement | `advance.powerPoint` | number | optional |  |  |  | Karma per power point (mystic adepts) |
+| Advancement | `advance.karmaToNuyenRate` | number | optional | `workingForTheMan` |  |  | Nuyen per karma after creation, with `workingForTheMan` on (the Sixth World Companion's Working for the Man, p. 153: 2,000) |
+| Advancement | `advance.nuyenToKarmaRate` | number | optional | `workingForThePeople` |  |  | Nuyen per karma, nuyen to karma, with `workingForThePeople` on (Working for the People, SWC p. 153: 2,000) |
+| Nuyen | `karmaToNuyenRate` | number | all |  |  |  | Nuyen per karma |
+| Nuyen | `karmaToNuyenRateInDebt` | number | all |  |  |  | Nuyen per karma with the in-debt quality |
+| Nuyen | `inDebtQuality` | quality id | all |  |  |  | In-debt quality |
+| Nuyen | `karmaToNuyenMax` | number | optional |  |  |  | Most karma turned into nuyen (unset: no limit) |
+| Nuyen | `fakeSinPerRating` | number | all |  |  |  | Fake SIN: nuyen per rating |
+| Nuyen | `licencePerRating` | number | all |  |  |  | Fake licence: nuyen per rating |
+| Sum to ten | `sumToTenTarget` | number | sum to ten |  |  |  | The letters’ values add up to at most |
+| Sum to ten | `letterValue:A` | number | sum to ten |  |  |  | Value of priority A |
+| Sum to ten | `letterValue:B` | number | sum to ten |  |  |  | Value of priority B |
+| Sum to ten | `letterValue:C` | number | sum to ten |  |  |  | Value of priority C |
+| Sum to ten | `letterValue:D` | number | sum to ten |  |  |  | Value of priority D |
+| Sum to ten | `letterValue:E` | number | sum to ten |  |  |  | Value of priority E |
+| Point buy | `pointBuy.total` | number | point buy |  |  |  | Character points |
+| Point buy | `pointBuy.awakened` | number | point buy |  |  |  | Character points to be awakened or emerged |
+| Point buy | `pointBuy.free.attribute` | number | point buy |  |  |  | Free attribute points |
+| Point buy | `pointBuy.max.attribute` | number | point buy |  |  |  | Most attribute points |
+| Point buy | `pointBuy.free.skill` | number | point buy |  |  |  | Free skill points |
+| Point buy | `pointBuy.max.skill` | number | point buy |  |  |  | Most skill points |
+| Point buy | `pointBuy.free.adjustment` | number | point buy |  |  |  | Free adjustment points |
+| Point buy | `pointBuy.max.adjustment` | number | point buy |  |  |  | Most adjustment points |
+| Point buy | `pointBuy.free.nuyen` | number | point buy |  |  |  | Free nuyen |
+| Point buy | `pointBuy.max.nuyen` | number | point buy |  |  |  | Most nuyen |
+| Point buy | `pointBuy.cost.attribute` | number | point buy |  |  |  | Character points per attribute point |
+| Point buy | `pointBuy.cost.skill` | number | point buy |  |  |  | Character points per skill point |
+| Point buy | `pointBuy.cost.adjustment` | number | point buy |  |  |  | Character points per adjustment point |
+| Point buy | `pointBuy.cost.powerPoint` | number | point buy |  |  |  | Character points per power point |
+| Point buy | `pointBuy.cost.mysticPowerPoint` | number | point buy |  |  |  | Character points per power point (mystic adept) |
+| Point buy | `pointBuy.cost.spell` | number | point buy |  |  |  | Character points per spell |
+| Point buy | `pointBuy.cost.complexForm` | number | point buy |  |  |  | Character points per complex form |
+| Point buy | `pointBuy.nuyenPerCp` | number | point buy |  |  |  | Nuyen per character point |
+| Point buy | `pointBuy.oneSpecialization` | true/false | point buy |  |  |  | Only one specialization |
+| Karma build | `karmaBuild.start` | number | karma |  |  |  | Starting karma (karma build) |
+| Karma build | `karmaBuild.startRating` | number | karma |  |  |  | Starting Magic or Resonance (karma build) |
+| Lifepath | `lifepath.moduleCount` | number | lifepath |  |  |  | Adult life modules to take |
+| Lifepath | `lifepath.contactRatingCap` | number | lifepath |  |  |  | Highest contact rating |
+| Lifepath | `lifepath.bestAttributeBonus` | number | optional |  |  |  | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
+| Lifepath | `lifepath.repeatModules` | number | optional |  |  |  | Adult modules that may be taken twice (unset: none) |
+| Lifepath | `lifepath.contactKarma` | number | optional |  |  |  | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
+| Lifepath | `lifepath.raisedAttributeStart` | number | optional |  |  |  | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
+| Lifepath | `lifepath.mundaneEdge` | number | optional |  |  |  | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
+| Augmentation grades | `grade:standard:essence` | number | optional |  |  |  | Standard: Essence times |
+| Augmentation grades | `grade:standard:cost` | number | optional |  |  |  | Standard: cost times |
+| Augmentation grades | `grade:standard:avail` | number | optional |  |  |  | Standard: Availability plus |
+| Augmentation grades | `grade:alpha:essence` | number | optional |  |  |  | Alpha: Essence times |
+| Augmentation grades | `grade:alpha:cost` | number | optional |  |  |  | Alpha: cost times |
+| Augmentation grades | `grade:alpha:avail` | number | optional |  |  |  | Alpha: Availability plus |
+| Augmentation grades | `grade:beta:essence` | number | optional |  |  |  | Beta: Essence times |
+| Augmentation grades | `grade:beta:cost` | number | optional |  |  |  | Beta: cost times |
+| Augmentation grades | `grade:beta:avail` | number | optional |  |  |  | Beta: Availability plus |
+| Augmentation grades | `grade:delta:essence` | number | optional |  |  |  | Delta: Essence times |
+| Augmentation grades | `grade:delta:cost` | number | optional |  |  |  | Delta: cost times |
+| Augmentation grades | `grade:delta:avail` | number | optional |  |  |  | Delta: Availability plus |
+| Augmentation grades | `grade:used:essence` | number | optional |  |  |  | Used: Essence times |
+| Augmentation grades | `grade:used:cost` | number | optional |  |  |  | Used: cost times |
+| Augmentation grades | `grade:used:avail` | number | optional |  |  |  | Used: Availability plus |
+| Derived values | `monitorBase` | number | optional |  |  |  | Condition monitor: boxes before the attribute |
+| Derived values | `monitorDivisor` | number | optional |  |  |  | Condition monitor: the attribute divided by (rounded up) |
+| Derived values | `initiativeDice` | number | optional |  |  |  | Initiative dice |
+| Derived values | `initiativeDiceMax` | number | optional |  |  |  | Most initiative dice, after bonuses, astral and Matrix too (CRB Hong Kong p. 39: 5; unset: no cap) |
+| Derived values | `astralInitiativeDice` | number | optional |  |  |  | Astral initiative dice |
+| Derived values | `specDice` | number | optional |  |  |  | Dice for a specialization |
+| Derived values | `expertiseDice` | number | optional |  |  |  | Dice for an expertise |
+| Derived values | `untrainedPenalty` | number | optional |  |  |  | Dice off the attribute for an untrained skill |
+| Derived values | `overflowPerBody` | number | optional |  |  |  | Damage Overflow boxes per point of Body (CRB Hong Kong p. 121: dead at Body × 2; 2), plus what adds to them (Will to Live); unset: Body counts none |
+| Derived values | `attributeAugmentMax` | number | optional |  |  |  | Most an attribute's augmented value is above its natural one (CRB Hong Kong p. 37: 4); the always-on and the bracketed totals alike, a penalty never; the attribute card and Review say what was left out (unset: no cap) |
+| Derived values | `skillAugmentMax` | number | optional |  |  |  | Most a skill's dice pool is raised by bonuses, a specialization's bonus within it (CRB Hong Kong p. 39: 4; unset: no cap) |
+| Derived values | `monitorMinimum` | number | optional |  |  |  | Fewest boxes a condition monitor is lowered to (Glass Jaw, CRB Hong Kong p. 76: 2; unset: no floor) |
+| Derived values | `matrixColdDice`, `matrixHotDice` | number | optional |  |  |  | VR initiative dice on top of the usual `initiativeDice` (CRB Hong Kong p. 179: 1 cold sim, 2 hot sim, within the 5D6); with what adds Matrix initiative dice. Matrix initiative is shown when the runner has a commlink (its D/F array's Data Processing) or is a technomancer (Logic, p. 189); AR initiative is the physical one |
+| Derived values | `moveWalk`, `moveSprint`, `moveSprintPerHit` | number | optional |  |  |  | Metres for a Move (CRB Hong Kong p. 42: 10), a Sprint (p. 44: 15) and a Sprint's metres more a hit (1), plus what adds to movement |
+| Derived values | `unarmedDV` | number | optional |  |  |  | Unarmed Damage Value (CRB Hong Kong p. 94: 2S). Physical with the `dermalDepositsQuality` (p. 71) or an effect `derived:unarmed-damage` (bone lacing, bone density: pp. 286, 291); an effect `derived:unarmed-dv` `set` (the bone lacing table's `3P`) raises it to that value, `add` adds (unset: none shown) |
+| Derived values | `arDrEdgeGap` | number | optional |  |  |  | The lead of an Attack Rating over a Defense Rating, or the other way, that gains a point of Edge (CRB Hong Kong p. 45: 4): the Gear tab's target Defense Rating shows it at each range band |
+| Derived values | `meleeArStrength` | true/false | optional |  |  |  | Strength adds to a melee weapon's Attack Rating (CRB Hong Kong p. 39: true; a whip, whose AR note says so, Reaction: p. 250). A melee weapon: an Attack Rating at Close only, no modes or ammo |
+| Optional rules | `stackingAdvantage` | true/false | optional | `arDrEdgeGap` |  |  | The Sixth World Companion's Stacking Advantage (SWC p. 144, off): a lead of twice `arDrEdgeGap` gains 2 Edge, never more |
+| Optional rules | `strengthInCloseCombat` | true/false | optional |  |  | `meleeArStrength` | Rolling Strength instead of Agility in Close Combat (SWC p. 150, off): Close Combat's pool uses Strength, and Agility goes into the melee and unarmed Attack Ratings in Strength's place |
+| Optional rules | `highStrengthDamage` | true/false | optional |  |  |  | High Strength Adds to Damage (SWC p. 150, off): +1 to the unarmed and melee Damage Values from Strength `strengthDamageStep1` (7), +2 from `strengthDamageStep2` (10) |
+| Optional rules | `alternateMysticAdept` | true/false | optional |  |  |  | Alternate Mystic Adept (SWC p. 148, off): half a power point for each point of Magic given to powers and for each point of Magic raised past the priority's, at creation and after; Conjuring and Enchanting are errors |
+| Optional rules | `twentyQuestions`, `twentyQuestionsKarma` | true/false, number | optional |  |  |  | Twenty Questions (SWC p. 25, off): the karma (3) added to the starting karma |
+| Optional rules | `workingForTheMan`, `workingForThePeople` | true/false | optional |  |  |  | Working for the Man / for the People (SWC p. 153, off): karma to nuyen, nuyen to karma after creation, at the Advancement rates |
+| Optional rules | `expandedSpecializations` | true/false | optional |  |  |  | Expanded Specializations (SWC p. 153, off): any number of specializations a skill (`<skill specs>`), still one expertise; off, only Exotic Weapons takes several (CRB Hong Kong p. 95), and Review's `skill.oneSpec` flags the others |
+| Optional rules | `unrestrictedSkillRanks` | true/false | optional |  |  | `advance.skillMax` | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
+| Optional rules | `suprathyroidStacks` | true/false | optional |  |  |  | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
+| Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | `highStrengthDamage` |  |  | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
+| Derived values | `charismaticDefenseQuality` | quality id | optional |  |  |  | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
+| Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath |  |  |  | the metatype's karma (one per catalog metatype) |
+| Point buy | `pointBuy.startRating:<kind>` | number | point buy |  |  |  | starting Magic or Resonance per awakened or emerged kind |
+| Karma build | `magicKarma:<kind>` | number | karma |  |  |  | karma to be that kind |
+| Lifepath | `lifepath.startRating:<kind>` | number | lifepath |  |  |  | starting Magic or Resonance per kind |
 
 The kinds are `full`, `aspected`, `mystic-adept`, `adept` and `technomancer`. An unknown key, or a value that isn't of
 its key's type, is listed as an error on Game data and skipped.

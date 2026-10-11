@@ -242,6 +242,73 @@ export function levelRules(cr: CreationRules): CreationRules {
   }
   return out
 }
+/** Nested optional rules (the books' pages: book-rules-implemented.md, "Nested optional rules"): requires, the settings
+ *  that must be on (a true/false one true, any other set) for this one to apply; conflicts, the ones that can't be on with
+ *  it (each pair once: conflictsOf reads both ways); replaces, the settings it stands in for while on (shown; the rule's
+ *  own code does it). A rule whose parent is off keeps its stored value but doesn't apply (applyDeps). */
+export interface RuleDeps { requires?: string[]; conflicts?: string[]; replaces?: string[] }
+const LEVEL_KEYS = ['levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite']
+export const RULE_DEPS: Record<string, RuleDeps> = {
+  // one level of play at a time (CRB Hong Kong p. 63: street level and, "on the other end", prime runner; SWC p. 14:
+  // street-level or elite)
+  ...Object.fromEntries(LEVEL_KEYS.map((k, i) => [k, { conflicts: LEVEL_KEYS.slice(i + 1) }])),
+  levelSwcElite: { replaces: ['maxAvailability'] },
+  ...Object.fromEntries(['sumToTen', 'pointBuy', 'modules', 'letters'].flatMap(s => [[`swcStreet.${s}`, { requires: ['levelSwcStreet'] }], [`swcElite.${s}`, { requires: ['levelSwcElite'] }]])),
+  // SWC p. 161: "Instead of a flat limit of Charisma ... use the following rules"
+  ...Object.fromEntries(['contactKarma', 'contactPairPerCha', 'contactRatingMax'].map(k => [k, { requires: ['expandedContacts'] }])),
+  twentyQuestionsKarma: { requires: ['twentyQuestions'] },  // SWC p. 25
+  // SWC p. 144: 2 Edge for twice the core rulebook's lead (HK p. 45)
+  stackingAdvantage: { requires: ['arDrEdgeGap'] },
+  // SWC p. 150: "add Agility to Attack Rating in place of Strength"
+  strengthInCloseCombat: { replaces: ['meleeArStrength'] },
+  strengthDamageStep1: { requires: ['highStrengthDamage'] }, strengthDamageStep2: { requires: ['highStrengthDamage'] },
+  // SWC p. 153
+  'advance.karmaToNuyenRate': { requires: ['workingForTheMan'] }, 'advance.nuyenToKarmaRate': { requires: ['workingForThePeople'] },
+  unrestrictedSkillRanks: { replaces: ['advance.skillMax'] },
+}
+for (const [l, pairs] of LEVELS) RULE_DEPS[l] = { ...RULE_DEPS[l], replaces: [...pairs.map(([k]) => k), ...RULE_DEPS[l]?.replaces ?? []] }
+
+/** The settings that can't be on with `key`, both ways. */
+export const conflictsOf = (key: string) =>
+  [...RULE_DEPS[key]?.conflicts ?? [], ...Object.keys(RULE_DEPS).filter(k => RULE_DEPS[k].conflicts?.includes(key))]
+/** A setting that is on: set, and not false. */
+export const isOn = (s?: CreationSetting) => s !== undefined && s.value !== false
+/** Why `key` doesn't apply with these rules: a parent it needs is off, or a rule it can't be on with is on. */
+export function blockedBy(cr: CreationRules, key: string): { needs: string } | { conflicts: string } | undefined {
+  const needs = RULE_DEPS[key]?.requires?.find(p => !isOn(cr.get(p)))
+  if (needs) return { needs }
+  const other = conflictsOf(key).find(k => isOn(cr.get(k)))
+  return other ? { conflicts: other } : undefined
+}
+const ORDER = new Map(CREATION_KEYS.map((k, i) => [k.key, i]))
+/** The rules with every nested rule whose parent is off left out, and of two conflicting rules on only one: the locked
+ *  one, else the runner's own, else the one Table setup lists first. */
+export function applyDeps(cr: CreationRules): CreationRules {
+  const out: CreationRules = new Map(cr), rank = (s: CreationSetting) => (s.lockedBy ? 2 : s.from === 'runner' ? 1 : 0)
+  for (const k of [...out.keys()].sort((a, b) => (ORDER.get(a) ?? 1e9) - (ORDER.get(b) ?? 1e9))) {
+    const s = out.get(k)
+    if (!isOn(s)) continue
+    for (const c of conflictsOf(k)) { const o = out.get(c); if (isOn(o)) out.delete(rank(o!) > rank(s!) ? k : c) }
+  }
+  for (let changed = true; changed;) {
+    changed = false
+    for (const k of [...out.keys()]) if (RULE_DEPS[k]?.requires?.some(p => !isOn(out.get(p)))) { out.delete(k); changed = true }
+  }
+  return out
+}
+/** Items (keys) with each nested one right after its parent (its first `requires` among them): depth 1, 2…; root: the
+ *  top-level item it sits under. */
+export function nested<T extends { key: string }>(items: T[]): { item: T; depth: number; root: T }[] {
+  const keys = new Set(items.map(i => i.key)), parentOf = (k: string) => RULE_DEPS[k]?.requires?.find(p => keys.has(p))
+  const out: { item: T; depth: number; root: T }[] = []
+  const walk = (i: T, depth: number, root: T) => {
+    out.push({ item: i, depth, root })
+    for (const c of items) if (parentOf(c.key) === i.key) walk(c, depth + 1, root)
+  }
+  for (const i of items) if (!parentOf(i.key)) walk(i, 0, i)
+  return out
+}
+
 export const cite = (cr: CreationRules, key: string): { source?: string; page?: number } => {
   const s = cr.get(key)
   return { ...(s?.source ? { source: s.source } : {}), ...(s?.page ? { page: s.page } : {}) }
@@ -377,8 +444,13 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with
  *  the runner's own choices over them, except where its campaign locked the setting. Each setting says where it comes from
  *  (and who locked it). The one function every place reads a runner's rules through: editor, budgets, Review, sheets,
- *  career, export. */
+ *  career, export. A nested rule whose parent is off, and the losing one of two conflicting rules, are left out (applyDeps). */
 export function runnerRules(base: CreationRules, own: RunnerRule[] = [], locks: RuleLock[] = [], layer: RuleLayer = 'server'): CreationRules {
+  return levelRules(applyDeps(mergeRules(base, own, locks, layer)))
+}
+/** runnerRules before the nested rules and the levels are applied: every stored value (the runner's Creation rules panel
+ *  shows a rule set aside with its own). */
+export function mergeRules(base: CreationRules, own: RunnerRule[] = [], locks: RuleLock[] = [], layer: RuleLayer = 'server'): CreationRules {
   const lockedBy = new Map(locks.map(l => [l.key, l.by]))
   const out: CreationRules = new Map([...base].map(([k, s]) => [k, { ...s, from: s.from ?? layer, ...(lockedBy.has(k) ? { lockedBy: lockedBy.get(k) } : {}) }]))
   for (const r of own) {
@@ -387,5 +459,5 @@ export function runnerRules(base: CreationRules, own: RunnerRule[] = [], locks: 
     const got = rulesFrom([r]).rules.get(r.key)
     if (got) out.set(r.key, { ...got, from: 'runner', ...(r.assumed ? { assumed: true as const } : {}) })
   }
-  return levelRules(out)
+  return out
 }

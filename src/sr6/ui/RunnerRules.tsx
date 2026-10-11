@@ -2,11 +2,14 @@
 // table's (the server's, or its campaign's own), as Commlink6 lets a character pick its options. Each row shows the value
 // the runner is built with and where it comes from (server, campaign, the runner, or locked by the campaign's GM); a
 // locked one can't be changed here. Stored on the runner (Sr6Character.rules, creation.ts runnerRules); none: the table's.
-import { CREATION_KEYS, keyType, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../engine/creation'
+import { blockedBy, CREATION_KEYS, keyType, nested, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../engine/creation'
+import { RuleWhy } from './Creation'
 import type { Sr6Character } from '../model/character'
 import { useSr6Editor } from './editor'
 
-const LABEL = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
+const LABEL = new Map(CREATION_KEYS.map(k => [k.key, k.label])), labelOf = (k: string) => LABEL.get(k) ?? k
+// a nested rule under its parent (creation.ts RULE_DEPS)
+const ROWS = nested(RUNNER_RULE_KEYS.filter(k => keyType(k.key)))
 const shown = (s: CreationSetting | undefined) => (s === undefined ? 'Off' : s.value === true ? 'Yes' : s.value === false ? 'No' : String(s.value))
 const FROM = { server: 'Server (Table setup)', campaign: 'Campaign' }
 
@@ -31,13 +34,13 @@ export function RunnerRules() {
         campaign, or this runner’s own choice; a campaign’s GM can lock one for its runners.{fixed && ' Read only here.'}</p>
       <div className="scroll-x"><table className="data runner-rules">
         <thead><tr><th>Rule</th><th>Value</th><th>From</th><th /></tr></thead>
-        <tbody>{RUNNER_RULE_KEYS.filter(k => keyType(k.key)).map(({ key, about }) => {
-          const label = LABEL.get(key) ?? key, eff = cr.get(key), mine = own.get(key), lock = locked.get(key)
+        <tbody>{ROWS.map(({ item: { key, about }, depth }) => {
+          const label = LABEL.get(key) ?? key, eff = cr.get(key), mine = own.get(key), lock = locked.get(key), off = !!blockedBy(cr, key)
           const from = lock ? `Locked by ${lock}` : mine ? mine.assumed ? 'This runner (assumed from the book’s numbers; the book doesn’t say)' : 'This runner'
             : eff ? FROM[eff.from === 'campaign' ? 'campaign' : 'server'] : table.has(key) ? FROM.server : 'Not set'
-          return <tr key={key}>
-            <td>{label}<div className="muted small">{about}</div></td>
-            <td>{fixed || lock ? <span>{shown(eff)}</span> : <Control k={key} label={label} eff={eff} table={table} mine={mine?.value} set={v => set(key, v)} />}</td>
+          return <tr key={key} className={[depth ? 'nested' : '', off ? 'blocked' : ''].join(' ').trim() || undefined}>
+            <td>{label}<div className="muted small">{about}</div><RuleWhy k={key} eff={cr} label={labelOf} /></td>
+            <td>{fixed || lock ? <span>{shown(eff)}</span> : <Control k={key} label={label} eff={eff} table={table} mine={mine?.value} off={off} set={v => set(key, v)} />}</td>
             <td>{from}</td>
             <td>{!fixed && !lock && mine && <button type="button" className="btn small" aria-label={`Use the table’s ${label}`} onClick={() => set(key, undefined)}>Use the table’s</button>}</td>
           </tr>
@@ -47,18 +50,18 @@ export function RunnerRules() {
 }
 
 /** A rule's control: the table's value, off, or the runner's own (a number, or yes/no). */
-function Control({ k, label, eff, table, mine, set }: { k: string; label: string; eff?: CreationSetting; table: CreationRules; mine?: string; set: (v: string | undefined) => void }) {
+function Control({ k, label, eff, table, mine, off, set }: { k: string; label: string; eff?: CreationSetting; table: CreationRules; mine?: string; off: boolean; set: (v: string | undefined) => void }) {
   const type = keyType(k), base = table.get(k)
   const mode = mine === undefined ? 'table' : mine.trim() === '' ? 'off' : 'own'
-  if (type === 'bool') return <select aria-label={label} value={mine === undefined ? '' : mine.trim() === '' ? 'off' : mine} onChange={e => set(e.target.value === '' ? undefined : e.target.value === 'off' ? '' : e.target.value)}>
+  if (type === 'bool') return <select aria-label={label} disabled={off} value={mine === undefined ? '' : mine.trim() === '' ? 'off' : mine} onChange={e => set(e.target.value === '' ? undefined : e.target.value === 'off' ? '' : e.target.value)}>
     <option value="">The table’s: {shown(base)}</option><option value="true">Yes</option><option value="false">No</option><option value="off">Off</option>
   </select>
   return <span className="row">
-    <select aria-label={`${label}: choice`} value={mode} onChange={e => set(e.target.value === 'table' ? undefined : e.target.value === 'off' ? '' : String(eff?.value ?? base?.value ?? 0))}>
+    <select aria-label={`${label}: choice`} disabled={off} value={mode} onChange={e => set(e.target.value === 'table' ? undefined : e.target.value === 'off' ? '' : String(eff?.value ?? base?.value ?? 0))}>
       <option value="table">The table’s: {shown(base)}</option><option value="own">This runner’s</option><option value="off">Off</option>
     </select>
-    {mode === 'own' && (type === 'letters' ? <input aria-label={label} value={mine} maxLength={5} size={6} onChange={e => set(e.target.value.toUpperCase())} />
-      : type === 'quality' ? <input aria-label={label} value={mine} maxLength={80} placeholder="a catalog id" onChange={e => set(e.target.value.trim())} />
-      : <input type="number" step="any" aria-label={label} value={mine} onChange={e => set(e.target.value)} />)}
+    {mode === 'own' && (type === 'letters' ? <input aria-label={label} disabled={off} value={mine} maxLength={5} size={6} onChange={e => set(e.target.value.toUpperCase())} />
+      : type === 'quality' ? <input aria-label={label} disabled={off} value={mine} maxLength={80} placeholder="a catalog id" onChange={e => set(e.target.value.trim())} />
+      : <input type="number" step="any" aria-label={label} disabled={off} value={mine} onChange={e => set(e.target.value)} />)}
   </span>
 }
