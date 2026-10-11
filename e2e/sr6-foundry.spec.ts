@@ -177,7 +177,7 @@ test('isolation: the Anarchy runner list still writes Chummer Anarchy export fil
   await page.goto('/')
   await page.getByRole('button', { name: 'Export for Foundry…' }).click()
   const dlg = page.getByRole('dialog', { name: 'Export runners for Foundry' })
-  await expect(dlg).toContainText('For the Chummer Anarchy 2.0 importer in Foundry VTT (sra2)')
+  await expect(dlg).toContainText('For the Chummer Anarchy 2.0 importer in Foundry VTT: upload the file there')
   await dlg.getByRole('button', { name: 'All' }).click()
   const dl = page.waitForEvent('download')
   await dlg.getByRole('button', { name: 'Download 1 runner' }).click()

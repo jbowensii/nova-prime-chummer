@@ -246,3 +246,16 @@ test('the SINner house rule: on by default, a runner may switch it off on the Re
   await expect(row.getByText(/^(not )?in play$/)).toHaveText('not in play')
 })
 
+
+test('hovering a Table setup switch shows what it does and where it comes from', async ({ page }) => {
+  await signIn(page, 'eve')
+  await page.getByRole('link', { name: 'Table setup' }).click()
+  const gm = page.getByRole('region', { name: 'Table rules' })
+  for (const [name, text] of [['Long haggles', 'Source: Test Book One p.42.'], ['SINner free, never the first Quality', 'Source: house rule.'], ['Real SINs allowed', 'Source: house rule.']]) {
+    const sw = gm.locator('label.switch').filter({ has: page.getByRole('switch', { name }) })
+    await sw.hover()
+    const tip = await sw.getAttribute('title') // (the browser draws the title as its tooltip)
+    expect(tip, name).toContain(text)
+    expect(tip, name).not.toMatch(/commlink|sra2/i)
+  }
+})

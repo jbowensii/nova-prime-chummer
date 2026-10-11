@@ -25,6 +25,10 @@ written at import.
   "Response increase" mods, Initiative in VR, p.19).
 - On a fresh import of the eight books, in either order, the 28 sample runners show 3 Review errors (27 at 0.12.0),
   each the booklet's own: Keran's Cracking without a deck, Noonchi and Ty over budget.
+- Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
+  Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
+  or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer
+  in Foundry VTT).
 - Owner rulings (2026-10-10) on the rules no book states:
   - an amp may rate below 0 and gives nuyen back, with no GM approval; a book add-on rates as its effects alone
     (DHSA's Removed Manual Controls −1, was 0);

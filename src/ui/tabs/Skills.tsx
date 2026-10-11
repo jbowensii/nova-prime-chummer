@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NATIVE_HELP } from '../TableRules'
 import { bracketed, knowledgeList, poolMarks, rrNotes, skillCost, type KnowledgeRow } from '../../engine'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
@@ -216,7 +217,7 @@ function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
                 <td><select value={r.kind} aria-label={`Type of ${r.name}`} onChange={e => change(r, { kind: e.target.value as KnowledgeEntry['kind'] })}>
                       <option value="knowledge">Knowledge</option><option value="language">Language</option>
                     </select></td>
-                {lang && <td><label className="check tight">
+                {lang && <td><label className="check tight" title={NATIVE_HELP}>
                   <input type="checkbox" checked={!!r.native} aria-label={`${r.name} is the native language`} onChange={e => setNative(r, e.target.checked)} /> <span>Native</span></label></td>}
                 <td className={lapsed ? 'warn' : r.paid ? '' : 'muted'}>{r.source}{r.paid && ` · ${fmt(c.pricing.knowledge)}`}</td>
                 <td className="actions">

@@ -38,7 +38,7 @@ export async function loadTableRules({ strict = false } = {}): Promise<TableRule
 }
 
 /** The app's own switches, kept with the table rules by id (no name): on until the GM switches them off. */
-const APP_RULES = [
+export const APP_RULES = [
   { id: 'ca2.non-canon', flag: 'nonCanon', name: 'Non-canon content allowed',
     text: 'Published material that isn’t the official rules, marked Non-canon in the pickers. When off, a runner’s Review tab flags any it uses.' },
   { id: 'ca2.real-sin', flag: 'realSin', name: 'Real SINs allowed',
@@ -80,6 +80,18 @@ function rows(c: Catalog, saved: TableRule[]): Row[] {
     ...seeds(c).map(rule => ({ id: rule.id, on: !!on.get(rule.id)?.on, locked: !!on.get(rule.id)?.locked, name: rule.title, text: rule.text, rule })),
     ...saved.filter(r => r.name !== undefined).map(r => ({ id: r.id, on: r.on, name: r.name!, text: r.text ?? '' }))]
 }
+
+/** The hover text of a rule's switch, in plain English: what it does, then where it comes from (the book and page, or "house
+ *  rule"). A real import leaves a book rule's text empty (it is private), so the hover says where to read it. */
+export const ruleHelp = (c: Catalog, r: { name: string; text: string; rule?: Rule }) => {
+  const from = r.rule ? `${c.sources.get(r.rule.source)?.name ?? r.rule.source} p.${r.rule.page}` : 'house rule'
+  const what = r.text.trim() || (r.rule ? `An optional rule from the books (${r.name}). Switching it on plays it as the book describes it.` : `A house rule of this table (${r.name}).`)
+  return `${what} Source: ${from}.`
+}
+/** The Lock box beside a rule on Table setup. */
+export const LOCK_HELP = 'Locks this rule at the setting above for every runner at the table: the runner’s Review tab no longer lets them set their own. Unlocked, a runner may choose On or Off for themselves. Source: house rule.'
+/** The Native box beside a language on the Skills tab. */
+export const NATIVE_HELP = 'Marks the language this runner grew up with as their native language: it costs nothing, one per runner. The books price every language as a knowledge skill. Source: house rule.'
 
 const Cite = ({ c, row }: { c: Catalog; row: Row }) =>
   <span className="muted">{row.rule ? <SourceLabel c={c} source={row.rule.source} page={row.rule.page} id={row.rule.id} /> : row.app && !row.house ? 'App setting' : 'House rule'}</span>
@@ -171,9 +183,9 @@ export function TableRulesManager({ c }: { c: Catalog }) {
       {all.length === 0 && <p className="muted">No optional rules yet: they come with the core rulebook’s import. Add a house rule of your own.</p>}
       <ul className="table-rules">
         {all.map(r => <li key={r.id}><div className="head">
-          <label className="switch"><input type="checkbox" role="switch" checked={r.on} onChange={() => void toggle(r)} /> <b>{r.name}</b></label>
+          <label className="switch" title={ruleHelp(c, r)}><input type="checkbox" role="switch" checked={r.on} onChange={() => void toggle(r)} /> <b>{r.name}</b></label>
           <Cite c={c} row={r} />
-          {(r.rule || r.house) && <label className="muted small"><input type="checkbox" checked={!!r.locked} onChange={() => void lock(r)} aria-label={`Lock ${r.name}`} /> Lock (runners can’t set their own)</label>}
+          {(r.rule || r.house) && <label className="muted small" title={LOCK_HELP}><input type="checkbox" checked={!!r.locked} onChange={() => void lock(r)} aria-label={`Lock ${r.name}`} /> Lock (runners can’t set their own)</label>}
           {!r.rule && !r.app && <span className="row">
             <button className="btn small quiet" onClick={() => setEditing({ id: r.id, on: r.on, name: r.name, text: r.text })} aria-label={`Edit ${r.name}`}>Edit</button>
             <button className="btn small quiet" onClick={() => setRemoving(r)} aria-label={`Remove ${r.name}`}>Remove</button></span>}
