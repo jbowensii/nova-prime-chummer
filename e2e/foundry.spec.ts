@@ -15,7 +15,7 @@ test('a runner downloads for Foundry from its editor', async ({ page }) => {
   await newRunner(page, 'Export Me')
   const dl = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export for Foundry' }).click()
-  expect((await dl).suggestedFilename()).toMatch(/^runners-\d{4}-\d{2}-\d{2}\.ca2foundry\.json$/)
+  expect((await dl).suggestedFilename()).toMatch(/^Export-Me-\d{4}-\d{2}-\d{2}\.ca2foundry\.json$/)
   const f = await json(dl)
   expect(f).toMatchObject({ format: 'chummer-anarchy2-export', version: 1, kind: 'runners' })
   expect(f.runners.map((r: { streetName: string }) => r.streetName)).toEqual(['Export Me'])
