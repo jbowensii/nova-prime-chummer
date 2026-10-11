@@ -54,7 +54,7 @@ export function ReviewTab() {
   return (
     <div className="stack">
       <h2>Review</h2>
-      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them. Notes never block.</p>
+      <p className="muted">Rule problems block finalizing until they’re fixed or a GM approves them; negative Karma or nuyen only fixing clears. Notes never block.</p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>{sorted.map((x, i) => {
         const tab = tabOf(x.path), o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
@@ -65,7 +65,8 @@ export function ReviewTab() {
           <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}
             {e && <> <Sr6Ref kind={at!.kind} id={e.id}><span className="muted small">{e.name}</span></Sr6Ref></>}</span>
           {!career && <span className="row">
-            {gm && x.severity === 'error' && !x.approved && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {gm && x.severity === 'error' && !x.approved && !x.hard && <button className="btn small" onClick={() => setApproving(x)}>GM approve</button>}
+            {x.hard && <span className="muted small">Fix before finalizing: no GM approval</span>}
             {gm && x.approved && <button className="btn small quiet" onClick={() => revoke(x)}>Revoke</button>}
           </span>}
           {o && <span className="note">GM: {o.note || 'approved'}</span>}

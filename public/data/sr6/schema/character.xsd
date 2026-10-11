@@ -209,6 +209,12 @@
         <xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
+    <xs:attribute name="mentorSpirit" type="xs:string"/>
+    <xs:attribute name="mentorAdvantage">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="magician"/><xs:enumeration value="adept"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
     <xs:attribute name="powerPointsBought" type="c:Count"/>
     <xs:attribute name="initiation" type="c:Count"/>
     <xs:attribute name="submersion" type="c:Count"/>
@@ -249,7 +255,7 @@
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
-        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/>
+        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="datastructures"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string" use="required"/>
@@ -475,5 +481,6 @@
     <xs:attribute name="grade" type="xs:string"/>
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="seatsRemoved" type="c:Count"/>
   </xs:complexType>
 </xs:schema>

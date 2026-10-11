@@ -3,7 +3,7 @@
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
 import { SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../model/character'
-import { allBudgets, attrRating, augmentBonus, conditionalBonuses, entryBonuses, entryOf, hostBonus, ratingOf, skillRank, specBonus } from './budgets'
+import { allBudgets, attrRating, augmentBonus, magicCap, conditionalBonuses, entryBonuses, entryOf, hostBonus, ratingOf, skillRank, specBonus } from './budgets'
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, normName, type Sr6Data } from './data'
 import { linkedEntries } from './effects'
@@ -96,7 +96,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
 
   // CRB p. 38: each whole point of Essence spent costs a point of Magic (or Resonance); R: the highest Magic too
   const loss = budgets.essence.magicLoss, special: Sr6Attr = kind.resonance ? 'res' : 'mag'
-  const capSetting = need('magicMax'), magicMax = capSetting === undefined ? null : Math.max(0, capSetting - loss)
+  // (with the option magicAboveSixByGrade, plus the grade: budgets.ts magicCap)
+  const capSetting = need('magicMax') === undefined ? undefined : magicCap(b, cr, special), magicMax = capSetting === undefined ? null : Math.max(0, capSetting - loss)
   // CRB Hong Kong p. 37: an adjusted attribute is never above its rank + 4; p. 39: a skill's augmented increase is never
   // above +4 (attributeAugmentMax, skillAugmentMax; unset: no cap). Only an increase is capped.
   const capA = num(cr, 'attributeAugmentMax'), capS = num(cr, 'skillAugmentMax'), capped: Sr6Derived['capped'] = {}

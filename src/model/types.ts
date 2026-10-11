@@ -171,8 +171,9 @@ export interface Compendium { id: string; name: string; source: string; sharing:
   rev?: number; updatedAt: string; owner?: string; ownerName?: string
   amps: AmpTemplate[]; items: Item[]; vehicles: VehicleBase[]; npcs: Character[] }
 export type Severity = 'error' | 'warning';
+/** hard: an error no GM can approve (SR6's negative Karma or nuyen: Finalize waits until it's fixed) */
 export interface Violation { code: string; severity: Severity; path: string;
-  message: string; source?: string; page?: number; approved?: boolean }
+  message: string; source?: string; page?: number; approved?: boolean; hard?: true }
 
 /** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
 export const newId = (): string =>

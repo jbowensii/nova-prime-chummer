@@ -7,13 +7,13 @@
 import { newId } from '../../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
-import { num, type CreationRules } from './creation'
-import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
+import { num, str, type CreationRules } from './creation'
+import { MAGIC_KINDS, normName, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { ratingRange } from './values'
 import { learned } from './martial'
-import { qualityChoice } from './budgets'
+import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -67,6 +67,11 @@ export type Op =
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
   | { op: 'submersion'; delta: number }
+  /** follow a mentor spirit (a mentorspirits id; null: none): its Mentor Spirit quality comes and goes with it (owner's
+   *  decision 5, 2026-10-11); advantage: a mystic adept's pick of its magician or adept advantages (null: none yet) */
+  | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
+  /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
+  | { op: 'seats'; uid: string; removed: number }
 export type Result = { ok: true } | { ok: false; reason: string }
 
 /** R: weapons, armor, augmentations and vehicles always get their own line (each can carry its own accessories). */
@@ -112,6 +117,7 @@ export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr:
   if (!k.resonance) b.submersion = 0
   if (!k.spells && !k.powers) b.attributes.mag = { points: 0, adjust: 0, karma: 0 }
   if (!k.resonance) b.attributes.res = { points: 0, adjust: 0, karma: 0 }
+  if (kind !== 'mystic-adept') delete b.mentorAdvantage
 }
 
 /** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). */
@@ -149,6 +155,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const v = s[op.pool] + op.delta
       if (v < 0) return no('below-zero')
+      // owner's decision 3 (2026-10-11): a pure adept takes no Sorcery, Conjuring or Enchanting (Astral is p. 93's)
+      if (op.delta > 0 && adeptBars(b, data, op.target)) return no('not-for-adept')
       s[op.pool] = v
       if (!b.skills.includes(s)) b.skills.push(s)
       // no rank left: the skill goes, its spec and expertise with it
@@ -187,12 +195,19 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!q) return no('not-taken')
         if (q.free) return no('free-trait')
         b.qualities = b.qualities.filter(x => x !== q)
+        // (owner's decision 5: the mentor spirit goes with its quality)
+        const mentor = str(cr, 'mentorSpiritQuality')
+        if (q.id === mentor && !b.qualities.some(x => x.id === mentor)) { delete b.mentorSpirit; delete b.mentorAdvantage }
         return OK
       }
       const v = data.qualities[op.id]
       if (!v) return no('unknown-entry')
       const taken = op.uid ? b.qualities.find(x => x.uid === op.uid && x.id === op.id) : b.qualities.find(x => x.id === op.id && !x.free)
       if (op.uid && !taken) return no('not-taken')
+      // owner's decision 4: a poser quality only for the metatypes its description names
+      if (!taken && !qualityFitsMetatype(data, b.metatype, op.id)) return no('not-for-metatype')
+      // owner's decision 2: Aptitude and Incompetent never on the same skill (exact opposites)
+      if (op.note !== undefined && opposite(b, data, cr, op.id, op.note, taken?.uid)) return no('aptitude-incompetent')
       if (op.note !== undefined && taken) { const t = op.note.trim().slice(0, 200); if (t) taken.note = t; else delete taken.note }
       // (a quality naming its choice is taken again for another: CRB Hong Kong p. 71, "once per attribute")
       const again = !op.uid && !!qualityChoice(v.name) && op.level === undefined && op.karma === undefined && op.note === undefined
@@ -275,6 +290,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const line = newLine(op, data, cr)
       if ('reason' in line) return line
+      // owner's decision 9: each augmentation once a runner, a paired body part once a side
+      if (op.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
       const same = !OWN_LINE.has(op.kind) && !line.grade && b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind
         && x.rating === line.rating && !x.grade && !x.accessories.length)
       if (same) same.qty += line.qty
@@ -354,6 +371,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'knowledge': {
       if ('remove' in op) return removeBy(b.knowledge, op.remove, l => { b.knowledge = l })
       if (!op.uid) {
+        if (op.native && b.knowledge.some(x => x.native)) return no('one-native')
         // a native language is free; anything else starts with one point
         b.knowledge.push({ uid: newId(), name: op.name ?? '', kind: op.kind ?? 'knowledge', ...(op.native ? { native: true as const, points: 0 } : { points: 1 }), karma: 0 })
         return OK
@@ -362,6 +380,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!k) return no('unknown-line')
       if (op.name !== undefined) k.name = op.name
       if (op.kind) k.kind = op.kind
+      // owner's decision 6: one native language a runner
+      if (op.native && b.knowledge.some(x => x !== k && x.native)) return no('one-native')
       if (op.native) { k.native = true; k.points = 0 } else if (op.native === false) delete k.native
       return OK
     }
@@ -469,6 +489,33 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       b.karmaToNuyen = v
       return OK
     }
+    case 'mentor': {
+      const mentor = str(cr, 'mentorSpiritQuality')
+      if (op.id !== undefined) {
+        if (op.id && !data.entry('mentorspirits', op.id)) return no('unknown-entry')
+        const had = mentor ? b.qualities.filter(q => q.id === mentor) : []
+        if (op.id) {
+          b.mentorSpirit = op.id
+          if (mentor && !had.length && data.qualities[mentor]) b.qualities.push({ uid: newId(), id: mentor, level: 1, name: data.qualities[mentor].name })
+        } else {
+          delete b.mentorSpirit; delete b.mentorAdvantage
+          b.qualities = b.qualities.filter(q => q.id !== mentor || q.free)
+        }
+      }
+      if (op.advantage !== undefined) {
+        if (op.advantage && b.magic !== 'mystic-adept') return no('not-mystic-adept')
+        if (op.advantage) b.mentorAdvantage = op.advantage; else delete b.mentorAdvantage
+      }
+      return OK
+    }
+    case 'seats': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if (op.removed < 0) return no('below-zero')
+      if (op.removed > seatsOf(entryOf(x, data))) return no('at-maximum')
+      if (op.removed) x.seatsRemoved = op.removed; else delete x.seatsRemoved
+      return OK
+    }
     case 'initiation': case 'submersion': {
       const k = MAGIC_KINDS[b.magic], v = b[op.op] + op.delta
       if (v < 0) return no('below-zero')
@@ -477,6 +524,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
   }
+}
+
+/** Whether a pure adept may not take skill `id`: a Magic skill but Astral (owner's decision 3, 2026-10-11). */
+export const adeptBars = (b: Sr6Build, data: Sr6Data, id: string) =>
+  b.magic === 'adept' && data.skills[id]?.attr === 'mag' && normName(data.skills[id].name) !== 'astral'
+
+/** Whether quality `id` with note `note` would name the skill an opposite quality names (Aptitude against Incompetent,
+ *  aptitudeQuality and incompetentQuality; owner's decision 2, 2026-10-11). self: the line being changed. */
+export function opposite(b: Sr6Build, data: Sr6Data, cr: CreationRules, id: string, note: string, self?: string): boolean {
+  const apt = str(cr, 'aptitudeQuality'), inc = str(cr, 'incompetentQuality'), skill = noteSkill(data, note)
+  const other = id === apt ? inc : id === inc ? apt : undefined
+  return !!skill && !!other && b.qualities.some(q => q.uid !== self && q.id === other && noteSkill(data, q.note) === skill)
 }
 
 function removeBy<T extends { uid: string }>(list: T[], uid: string, set: (l: T[]) => void): Result {

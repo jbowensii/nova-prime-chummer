@@ -50,8 +50,9 @@ export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
 export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill', 'unarmedAR', 'unarmedDV', 'movement', 'matrixInitDice']
 
-export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
-export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']
+/** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
+export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
+export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
 export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes'
 export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes']
 
@@ -60,6 +61,8 @@ export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentation
 export interface Sr6Purchase {
   uid: string; kind: PurchaseKind; id?: string; name?: string; cost?: number; avail?: number; essence?: number; rating?: number
   qty: number; grade?: string; worn?: true; bonuses?: Bonus[]; note?: string; accessories: Sr6Purchase[]; snapshot?: Sr6Entry
+  /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
+  seatsRemoved?: number
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -102,6 +105,9 @@ export interface Sr6Build {
   metatype: string
   magic: MagicKind
   aspectedSkill?: string; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'
+  /** the mentor spirit followed (a catalog mentorspirits id; it comes with the Mentor Spirit quality, mentorSpiritQuality), and
+   *  a mystic adept's pick of its advantages (CRB Hong Kong pp. 162–163: one, for good) */
+  mentorSpirit?: string; mentorAdvantage?: 'magician' | 'adept'
   /** lifepath: the best attribute (raised by lifepath.bestAttributeBonus up to its metatype maximum) and the one that
    *  takes what the maximum leaves over */
   bestAttr?: Sr6Attr; bestExtra?: Sr6Attr

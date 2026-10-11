@@ -22,7 +22,7 @@ const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, v
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
-    qty: p.qty, grade: p.grade, worn: p.worn, note: p.note },
+    qty: p.qty, grade: p.grade, worn: p.worn, note: p.note, seatsRemoved: p.seatsRemoved },
   bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''))
 }
 
@@ -49,6 +49,7 @@ function buildXml(b: Sr6Build): string {
     ...b.sins.map(sinXml),
   ]
   return el('build', { method: b.method, magic: b.magic, aspectedSkill: b.aspectedSkill, tradition: b.tradition, drainAttr: b.drainAttr,
+    mentorSpirit: b.mentorSpirit, mentorAdvantage: b.mentorAdvantage,
     powerPointsBought: b.powerPointsBought, initiation: b.initiation, submersion: b.submersion, karmaToNuyen: b.karmaToNuyen,
     bestAttr: b.bestAttr, bestExtra: b.bestExtra },
   `\n    ${rows.join('\n    ')}\n  `)
@@ -153,7 +154,7 @@ function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
   const snap = kid(e, 'snapshot')?.firstElementChild
   return def({ uid: e.getAttribute('uid') ?? '', kind, id: str(e, 'id'), name: str(e, 'name'), cost: num(e, 'cost'), avail: num(e, 'avail'),
     essence: num(e, 'essence'), rating: num(e, 'rating'), qty: num(e, 'qty', 1), grade: str(e, 'grade'), worn: yes(e, 'worn'),
-    bonuses: readBonuses(e), note: str(e, 'note'), accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
+    bonuses: readBonuses(e), note: str(e, 'note'), seatsRemoved: num(e, 'seatsRemoved'), accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined })
 }
 
@@ -177,7 +178,9 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
   const drain = b.getAttribute('drainAttr')
-  Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'),
+  const adv = b.getAttribute('mentorAdvantage')
+  Object.assign(out, def({ aspectedSkill: str(b, 'aspectedSkill'), tradition: str(b, 'tradition'), mentorSpirit: str(b, 'mentorSpirit'),
+    mentorAdvantage: adv == null ? undefined : oneOf(adv, ['magician', 'adept'] as const, 'mentor advantage', undefined, fix),
     drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),
     ...Object.fromEntries((['bestAttr', 'bestExtra'] as const).map(k => [k, b.getAttribute(k) == null ? undefined
       : oneOf(b.getAttribute(k), CORE_ATTRS, 'best attribute', undefined, fix)])) }))

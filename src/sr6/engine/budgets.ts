@@ -309,7 +309,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     for (let i = 0; i < ranks; i++) cost += (to - i) * perRank
     add(`attr:${k}`, `${k.toUpperCase()} ${to - ranks} → ${to} (${s(ranks, 'rank')} by karma)`, cost, 'attributes')
   }
-  const spend = skillSpend(b, cr, p.skillPoints(b))
+  const spend = skillSpend(b, cr, p.skillPoints(b), data)
   let skills = spend.karma * n0(cr, 'karmaSpec')
   for (const sk of b.skills) {
     const top = skillRank(sk)
@@ -332,6 +332,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   const grades = (g: number) => { let t = 0; for (let i = 1; i <= g; i++) t += n0(cr, 'karmaInitiationBase') + i * n0(cr, 'karmaInitiationPerGrade'); return t }
   add('initiation', `Initiation grade ${b.initiation}`, grades(b.initiation), 'magic')
   add('submersion', `Submersion grade ${b.submersion}`, grades(b.submersion), 'magic')
+  // Hack & Slash p. 71: a data structure is integrated for Karma equal to its level
+  add('dataStructures', 'Data structures integrated', dataStructureLevels(b), 'magic')
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
   add('magic', MAGIC_KIND_LABELS[b.magic], p.magicKarma?.(b) ?? 0, 'method')
   add('toNuyen', 'Turned into nuyen', toNuyen(b, cr), 'contacts')
@@ -364,6 +366,8 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
     add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
   }
+  // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
+  add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
   const karma = toNuyen(b, cr), converted = karma * (nuyenPerKarma(b, cr) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
@@ -420,8 +424,21 @@ export function contactPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: 
   return { ...pool(max, spend - past), ratingCap: num(cr, 'contactRatingMax') ?? cha, karma: (past + pairs) * price }
 }
 
+/** Free knowledge points: Logic times knowledgePerLog (CRB Hong Kong p. 67); Logic + Intuition with the house rule
+ *  knowledgeLogicIntuition (owner, 2026-10-11). */
 export function knowledgePoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
-  return p.knowledgePoints?.(b) ?? pool(augmentedRating(b, data, 'log', p) * n0(cr, 'knowledgePerLog'), knowledgeSpend(b))
+  const from = augmentedRating(b, data, 'log', p) + (flag(cr, 'knowledgeLogicIntuition') ? augmentedRating(b, data, 'int', p) : 0)
+  return p.knowledgePoints?.(b) ?? pool(from * n0(cr, 'knowledgePerLog'), knowledgeSpend(b))
+}
+
+/** The levels of the runner's data structures added up (their Karma and, times dataStructureNuyen, their nuyen). */
+export const dataStructureLevels = (b: Sr6Build) => b.picks.filter(x => x.kind === 'datastructures').reduce((t, x) => t + (x.level ?? 1), 0)
+
+/** The highest Magic or Resonance at creation: magicMax (CRB Hong Kong p. 65), plus the initiation or submersion grade
+ *  with the option magicAboveSixByGrade (p. 167). undefined: magicMax unset. */
+export function magicCap(b: Sr6Build, cr: CreationRules, attr: 'mag' | 'res'): number | undefined {
+  const max = num(cr, 'magicMax')
+  return max === undefined ? undefined : max + (flag(cr, 'magicAboveSixByGrade') ? (attr === 'mag' ? b.initiation : b.submersion) : 0)
 }
 
 /** Skill points spent, and how many specializations (karma) and expertises (expertise) karma buys: the ranks take their
@@ -430,15 +447,17 @@ export function knowledgePoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p
  *  ranks. An expertise is bought with the customization karma at its advancement price (owner, 2026-10-09: CRB p. 65's
  *  "you cannot acquire an expertise" is the priority skill points'; step four, p. 66, buys advancement at p. 68's
  *  prices), unless the table gives it skill points (skillPointsExpertise), which it then takes as a specialization does. */
-export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { points: number; karma: number; expertise: number } {
+export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number, data?: Sr6Data): { points: number; karma: number; expertise: number } {
   let points = b.skills.reduce((t, sk) => t + sk.points, 0), karma = 0, expertise = 0
   const take = (on: boolean, cost: number) => {
     if (on && (cost === 0 || points + cost <= pool)) { points += cost; return true }
     return false
   }
   const expPoints = num(cr, 'skillPointsExpertise')
+  // (the house rule exoticFirstSpecFree, owner 2026-10-11: Exotic Weapons' first specialization costs nothing)
+  const free = (id: string) => !!data && !!flag(cr, 'exoticFirstSpecFree') && normName(data.skills[id]?.name ?? '') === 'exotic weapons'
   for (const sk of b.skills) {
-    if (sk.spec && !take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
+    if (sk.spec && !free(sk.id) && !take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
     // (a further specialization, Exotic Weapons' or with Expanded Specializations: priced as the first)
     for (const _ of sk.specs ?? []) if (!take(sk.points > 0, n0(cr, 'skillPointsSpec'))) karma++
     if (sk.expertise && (expPoints === undefined || !take(sk.points > 0, expPoints))) expertise++
@@ -451,6 +470,36 @@ export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number): { poin
 export const manySpecs = (data: Sr6Data, cr: CreationRules, skill: string) =>
   !!flag(cr, 'expandedSpecializations') || normName(data.skills[skill]?.name ?? '') === 'exotic weapons'
 
+/** An augmentation's family and how many a runner may have (owner's decision 9, 2026-10-11: implied by biology): each
+ *  augmentation once, its ratings one family (`Wired Reflexes 2` is Wired Reflexes); a cyberlimb once per body part, any
+ *  variant, a paired part (arm, forearm, hand, leg, lower leg, foot) once per side, so twice. null: no limit (not an
+ *  augmentation, or one naming its choice, `Reflex recorder (Skill)`, once per choice). */
+export function augmentationSlot(e?: Sr6Entry): { family: string; most: number } | null {
+  if (!e || e.kind !== 'augmentations' || qualityChoice(e.name)) return null
+  if (/^cyberlimbs?$/i.test(e.attrs.category ?? '')) {
+    const part = normName(e.name.split('(')[0])
+    return { family: `limb:${part}`, most: ['arm', 'forearm', 'hand', 'leg', 'lower leg', 'foot'].includes(part) ? 2 : 1 }
+  }
+  return { family: normName(e.name).replace(/ (rating )?\d+$/, ''), most: 1 }
+}
+/** How many more of `e`'s family the runner may install (augmentationSlot; Infinity: no limit). */
+export function augmentationRoom(b: Sr6Build, data: Sr6Data, e?: Sr6Entry): number {
+  const slot = augmentationSlot(e)
+  if (!slot) return Infinity
+  return slot.most - b.purchases.filter(x => x.kind === 'augmentations' && augmentationSlot(entryOf(x, data))?.family === slot.family).length
+}
+
+/** A vehicle's Seating (two printed, `1/4`: the higher, Double Clutch p. 126). */
+export const seatsOf = (e?: Sr6Entry) => Math.max(0, ...(e?.attrs.seats ?? '').split(/[^\d]+/).filter(Boolean).map(Number))
+/** A vehicle's Cargo Factor (Double Clutch p. 126): 150 percent of its Seating (125 on a motorcycle), 4 more on a truck;
+ *  each seat removed adds its share (the option cargoWithoutSeats). null: no seats printed. */
+export function cargoFactor(x: Sr6Purchase, e?: Sr6Entry): { seats: number; cargo: number } | null {
+  const seats = seatsOf(e)
+  if (!seats) return null
+  const cat = e?.attrs.category ?? '', per = /bike|motorcycle/i.test(cat) ? 1.25 : 1.5, removed = Math.min(seats, x.seatsRemoved ?? 0)
+  return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed) + (/truck/i.test(cat) ? 4 : 0) }
+}
+
 /** A focus (CRB Hong Kong pp. 154–155, 294: the catalog's Foci category). */
 export const isFocus = (e?: Sr6Entry) => !!e && /\bfoci\b/i.test(e.attrs.category ?? '')
 
@@ -462,7 +511,7 @@ export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
   return {
     attributePoints: pool(p.attributePoints(b), spend('points')),
     adjustmentPoints: pool(p.adjustmentPoints(b), spend('adjust')),
-    skillPoints: pool(p.skillPoints(b), skillSpend(b, cr, p.skillPoints(b)).points),
+    skillPoints: pool(p.skillPoints(b), skillSpend(b, cr, p.skillPoints(b), data).points),
     karma: karmaBudget(b, data, cr, p),
     nuyen: nuyenBudget(b, data, cr, p),
     essence: essenceBudget(b, data, cr),

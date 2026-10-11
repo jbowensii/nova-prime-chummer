@@ -7,9 +7,10 @@
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
-import { allBudgets, aptitudeSkills, isFocus, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
+import { allBudgets, aptitudeSkills, augmentationSlot, dataStructureLevels, isFocus, magicCap, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, metamagicFits, normName, picksFor, type Sr6Data } from './data'
+import { MAGIC_KINDS, metamagicFits, normName, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
+import { adeptBars, opposite } from './actions'
 import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
@@ -22,7 +23,8 @@ interface Ctx { data: Sr6Data; cr: CreationRules; ch: Sr6Character; b: Sr6Build;
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */
 interface Hit { path?: string; message: string; source?: string; page?: number }
 interface Rule {
-  code: string; severity: Severity; tab: string
+  /** hard: no GM approval (owner's decision 19, 2026-10-11: negative Karma or nuyen blocks Finalize) */
+  code: string; severity: Severity; tab: string; hard?: true
   /** the settings the rule needs; with one unset it's skipped. The first one's cite goes on the violation. */
   setting?: string[] | ((c: Ctx) => string[])
   check(c: Ctx): Hit | Hit[] | null
@@ -87,10 +89,12 @@ const RULES: Rule[] = [
       return r > max ? [{ path: `attributes.${k}`, message: `${A(k)} ${r} is above ${m.name}’s maximum of ${max}.`, source: c.data.entry('metatypes', m.id)?.source, page: m.page }] : []
     })
   } },
+  // CRB Hong Kong p. 65: 6 at creation; with the option magicAboveSixByGrade, plus the grade (p. 167)
   { code: 'attr.specialMax', severity: 'error', tab: 'attributes', setting: ['magicMax'], check: c =>
     (['mag', 'res'] as const).flatMap(k => {
-      const r = attrRating(c.b, k, c.p), max = n0(c.cr, 'magicMax')
-      return r > max ? [{ path: `attributes.${k}`, message: `${A(k)} ${r} is above the highest Magic or Resonance, ${max}.` }] : []
+      const r = attrRating(c.b, k, c.p), max = magicCap(c.b, c.cr, k) ?? 0
+      return r > max ? [{ path: `attributes.${k}`, message: `${A(k)} ${r} is above the highest Magic or Resonance, ${max}.`,
+        ...(max > n0(c.cr, 'magicMax') ? cite(c.cr, 'magicAboveSixByGrade') : {}) }] : []
     }) },
   { code: 'attr.oneAtMax', severity: 'error', tab: 'attributes', setting: ['oneAttributeAtMax'], check: c => {
     const m = c.data.metatypes[c.b.metatype]
@@ -101,10 +105,12 @@ const RULES: Rule[] = [
   } },
   { code: 'attr.adjustTargets', severity: 'error', tab: 'attributes', setting: ['attributeBaseMax'], check: c => {
     // Edge, Magic and Resonance always take adjustment points; a core attribute only when the metatype raises its maximum
-    const m = c.data.metatypes[c.b.metatype], base = n0(c.cr, 'attributeBaseMax')
+    // (the house rule adjustOnLoweredMax, owner's decision 16: on a lowered maximum too)
+    const m = c.data.metatypes[c.b.metatype], base = n0(c.cr, 'attributeBaseMax'), lowered = !!flag(c.cr, 'adjustOnLoweredMax')
     if (!m) return null
-    return CORE_ATTRS.filter(k => c.b.attributes[k].adjust > 0 && m.ranges[k as keyof typeof m.ranges][1] <= base)
-      .map(k => ({ path: `attributes.${k}`, message: `Adjustment points can’t go on ${A(k)}: ${m.name}’s ${A(k)} maximum isn’t raised.` }))
+    const max = (k: Sr6Attr) => m.ranges[k as keyof typeof m.ranges][1]
+    return CORE_ATTRS.filter(k => c.b.attributes[k].adjust > 0 && max(k) <= base && !(lowered && max(k) < base))
+      .map(k => ({ path: `attributes.${k}`, message: `Adjustment points can’t go on ${A(k)}: ${m.name}’s ${A(k)} maximum isn’t ${lowered ? 'raised or lowered' : 'raised'}.` }))
   } },
 
   { code: 'skill.overspent', severity: 'error', tab: 'skills', check: c => over(c.budgets.skillPoints, 'Skill points') },
@@ -191,7 +197,8 @@ const RULES: Rule[] = [
     return c.b.skills.filter(s => skillRank(s) > 0).flatMap(s => {
       const v = c.data.skills[s.id]
       if (!v) return []
-      const bad = v.attr === 'mag' ? !(k.spells || k.powers) || (c.b.magic === 'aspected' && s.id !== c.b.aspectedSkill)
+      // (owner's decision 3: a pure adept takes no Sorcery, Conjuring or Enchanting)
+      const bad = v.attr === 'mag' ? !(k.spells || k.powers) || (c.b.magic === 'aspected' && s.id !== c.b.aspectedSkill) || adeptBars(c.b, c.data, s.id)
         : v.attr === 'res' ? !k.resonance : false
       return bad ? [{ path: `skills.${s.id}`, message: c.b.magic === 'aspected' && v.attr === 'mag'
         ? `An aspected magician uses one Magic skill; ${v.name} isn’t the one picked.`
@@ -231,6 +238,16 @@ const RULES: Rule[] = [
     const id = str(c.cr, 'sensitiveSystemQuality'), q = c.b.qualities.find(x => x.id === id)
     return q && c.b.magic !== 'mundane' ? { path: `qualities.${q.uid}`, message: `${c.data.qualities[id!]?.name ?? 'Sensitive System'}: not with a ${MAGIC_KINDS[c.b.magic].resonance ? 'Resonance' : 'Magic'} rating.`, ...cite(c.cr, 'sensitiveSystemQuality') } : null
   } },
+  // owner's decision 2 (2026-10-11): Aptitude and Incompetent never on the same skill; the editor refuses it, a file
+  // may still hold it
+  { code: 'quality.aptitudeIncompetent', severity: 'error', tab: 'qualities', check: c => c.b.qualities
+    .filter(q => q.id === str(c.cr, 'incompetentQuality') && opposite(c.b, c.data, c.cr, q.id, q.note ?? '', q.uid))
+    .map(q => ({ path: `qualities.${q.uid}`, message: `${c.data.skills[noteSkill(c.data, q.note)!]?.name}: Aptitude and Incompetent on the same skill.` })) },
+  // owner's decision 4: a poser quality only for the metatypes its description names (the editor offers no other)
+  { code: 'quality.metatype', severity: 'error', tab: 'qualities', check: c => c.b.qualities
+    .filter(q => !q.free && c.b.metatype && !qualityFitsMetatype(c.data, c.b.metatype, q.id))
+    .map(q => ({ path: `qualities.${q.uid}`, message: `${c.data.qualities[q.id]!.name} is for ${c.data.qualities[q.id]!.metatypes!.join(' or ')} runners, not ${metaName(c).toLowerCase()}.`,
+      ...entryCite(c.data.entry('qualities', q.id)) })) },
   { code: 'quality.level', severity: 'error', tab: 'qualities', check: c => c.b.qualities.flatMap(q => {
     const v = c.data.qualities[q.id], max = v?.perLevel ? v.maxLevel : 1
     return v && q.level > max ? [{ path: `qualities.${q.uid}`, message: `${v.name} level ${q.level} is above its highest level, ${max}.`,
@@ -276,8 +293,9 @@ const RULES: Rule[] = [
     prerequisites(c.data, c.b, c.data.entry('martialtechniques', t.id)).filter(p => p.met === false && p.kind === 'augmentation').map(p => ({ path: `martial.${m.uid}.${t.uid}`, ...MARTIAL_CITE,
       message: `${techniqueName(c.data, t)} requires ${prerequisiteText(p)}, which the runner’s augmentations don’t include.` })))) },
 
-  { code: 'karma.overspent', severity: 'error', tab: 'review', check: c => over(c.budgets.karma, 'Karma') },
-  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
+  // owner's decision 19 (2026-10-11): negative Karma or nuyen is fine while building; Finalize waits until neither is
+  { code: 'karma.overspent', severity: 'error', tab: 'review', hard: true, check: c => over(c.budgets.karma, 'Karma') },
+  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', hard: true, check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
     // the Sixth World Companion's elite level (p. 15, levelSwcElite): no availability restrictions
     if (flag(c.cr, 'levelSwcElite')) return null
@@ -338,6 +356,34 @@ const RULES: Rule[] = [
   // says can't be combined; a wireless exception (wired reflexes and reaction enhancers) is a note
   { code: 'gear.incompatible', severity: 'error', tab: 'augmentations', check: c => incompatible(c).filter(h => !h.wireless) },
   { code: 'gear.incompatibleWireless', severity: 'warning', tab: 'augmentations', check: c => incompatible(c).filter(h => h.wireless) },
+  // owner's decision 9 (2026-10-11): each augmentation once, a paired body part once a side (the editor offers no more)
+  { code: 'gear.augmentationTwice', severity: 'error', tab: 'augmentations', check: c => {
+    const seen = new Map<string, number>(), hits: Hit[] = []
+    for (const x of c.b.purchases.filter(p => p.kind === 'augmentations')) {
+      const slot = augmentationSlot(entryOf(x, c.data))
+      if (!slot) continue
+      const n = (seen.get(slot.family) ?? 0) + 1
+      seen.set(slot.family, n)
+      if (n > slot.most) hits.push({ path: `augmentations.${x.uid}`, message: slot.most === 2 ? `${nameOf(c, x)}: a third one; a body part has a left and a right only.`
+        : `${nameOf(c, x)} is installed twice: each augmentation once.` })
+    }
+    return hits
+  } },
+  // owner's decision 11: a gun with no ammunition bought for it (a reminder): an ammunition line naming its kind of
+  // weapon (`Heavy Pistol/SMG`), or an ammunition type
+  { code: 'gear.ammo', severity: 'warning', tab: 'gear', check: c => {
+    const ammo = new Set(c.b.purchases.flatMap(x => {
+      const e = entryOf(x, c.data)
+      return x.kind === 'ammotypes' ? ['*'] : /ammo|ammunition/i.test(e?.attrs.category ?? '') ? ammoKinds(e!.name) : []
+    }))
+    return c.b.purchases.filter(x => x.kind === 'weapons' && entryOf(x, c.data)?.attrs.ammo).flatMap(x => {
+      const want = ammoKinds(entryOf(x, c.data)!.attrs.category ?? '')[0]
+      // (a weapon whose kind no ammunition line names, a bow, takes any)
+      const named = !!want && AMMO_KINDS.has(want)
+      return ammo.has('*') || (named ? ammo.has(want) : ammo.size > 0) ? []
+        : [{ path: `gear.${x.uid}`, message: `${nameOf(c, x)} has no ammunition bought for it.` }]
+    })
+  } },
   { code: 'essence.positive', severity: 'error', tab: 'augmentations', setting: ['essence'], check: c =>
     (c.budgets.essence.left > 0 ? null : { message: `Essence must stay above 0 (it is ${c.budgets.essence.left}).` }) },
 
@@ -402,6 +448,28 @@ const RULES: Rule[] = [
     if (c.b.submersion > res) hits.push({ message: `Submersion grade ${c.b.submersion} is above Resonance ${res}.`, ...CRB_HK(195) })
     return hits
   } },
+  // the house rule gradeCapAtCreation (owner's decision 15, 2026-10-11): the GM's caps on the grades at creation
+  { code: 'magic.gradeCapCreation', severity: 'error', tab: 'magic', setting: c => (flag(c.cr, 'gradeCapAtCreation') ? ['gradeCap.initiation', 'gradeCap.submersion'] : []), check: c => {
+    if (!flag(c.cr, 'gradeCapAtCreation')) return null
+    const hits: Hit[] = [], i = n0(c.cr, 'gradeCap.initiation'), s = n0(c.cr, 'gradeCap.submersion')
+    if (c.b.initiation > i) hits.push({ message: `Initiate grade ${c.b.initiation} at creation: the table’s cap is ${i}.` })
+    if (c.b.submersion > s) hits.push({ message: `Submersion grade ${c.b.submersion} at creation: the table’s cap is ${s}.` })
+    return hits
+  } },
+  // the house rule dataStructureCaps (owner's decision 13): the GM's caps on a technomancer's data structures
+  { code: 'magic.dataStructureCaps', severity: 'error', tab: 'magic', setting: c => (flag(c.cr, 'dataStructureCaps') ? ['dataStructure.maxCount', 'dataStructure.maxRating'] : []), check: c => {
+    if (!flag(c.cr, 'dataStructureCaps')) return null
+    const ds = c.b.picks.filter(x => x.kind === 'datastructures'), most = n0(c.cr, 'dataStructure.maxCount'), top = n0(c.cr, 'dataStructure.maxRating')
+    const hits: Hit[] = ds.filter(x => (x.level ?? 1) > top).map(x => ({ path: `magic.${x.uid}`, message: `${pickName(c, x)} level ${x.level ?? 1}: the table’s cap is ${top}.` }))
+    if (ds.length > most) hits.push({ message: `${ds.length} data structures: the table’s cap is ${most}.` })
+    return hits
+  } },
+  // Hack & Slash p. 72: a data structure's price (its Karma, the level, is p. 71's): set when the runner has one
+  { code: 'magic.dataStructurePrice', severity: 'warning', tab: 'magic', setting: c => (dataStructureLevels(c.b) ? ['dataStructureNuyen'] : []), check: () => null },
+  // CRB Hong Kong pp. 162–163: a mystic adept picks its mentor spirit's magician's or adept's advantages, for good
+  // (both with the house rule mentorBothAdvantages)
+  { code: 'magic.mentorAdvantage', severity: 'error', tab: 'magic', check: c => (c.b.magic === 'mystic-adept' && c.b.mentorSpirit && !c.b.mentorAdvantage && !flag(c.cr, 'mentorBothAdvantages')
+    ? { message: `${c.data.entry('mentorspirits', c.b.mentorSpirit)?.name ?? 'The mentor spirit'}: pick its magician’s or its adept’s advantages.`, ...CRB_HK(162) } : null) },
   // CRB Hong Kong p. 154: foci only for the Awakened; no more bonded than Magic, none of Force above Magic, their Force
   // together at most Magic × fociForcePerMagic
   { code: 'magic.foci', severity: 'error', tab: 'gear', check: c => {
@@ -504,16 +572,29 @@ const RULES: Rule[] = [
     path: `method.${m.id}`, message: `${m.name} is for ${article(m.requires!).toLowerCase()} ${m.requires} runner, not ${article(kindLabel(c.b)).toLowerCase()} ${kindLabel(c.b)}.`,
     ...entryCite(c.data.entry('lifemodules', m.id)) })) },
 
-  // optional: unset, no limit (and no unset warning)
-  { code: 'leftover.karma', severity: 'warning', tab: 'review', check: c => {
+  // owner's decision L2 (2026-10-11): more left than carries over (CRB Hong Kong pp. 66, 68, or the GM's own with
+  // ownCarryOver) is a problem a GM can approve. maxKarmaLeft optional: unset, no limit (and no unset warning)
+  { code: 'leftover.karma', severity: 'error', tab: 'review', check: c => {
     const most = num(c.cr, 'maxKarmaLeft')
     return most === undefined || c.budgets.karma.left <= most ? null
       : { message: `${c.budgets.karma.left} karma left; at most ${most} carries over.`, ...cite(c.cr, 'maxKarmaLeft') }
   } },
-  { code: 'leftover.nuyen', severity: 'warning', tab: 'review', setting: ['maxNuyenLeft'], check: c =>
+  { code: 'leftover.nuyen', severity: 'error', tab: 'review', setting: ['maxNuyenLeft'], check: c =>
     (c.budgets.nuyen.left <= n0(c.cr, 'maxNuyenLeft') ? null
       : { message: `${fmt(c.budgets.nuyen.left)}¥ left; at most ${fmt(n0(c.cr, 'maxNuyenLeft'))}¥ carries over.` }) },
 
+  // owner's decision 1 (2026-10-11): points left at finish are lost: a note, never a block
+  { code: 'points.unspent', severity: 'warning', tab: 'review', check: c => ([
+    [c.budgets.attributePoints, 'attribute points', 'attributes'], [c.budgets.adjustmentPoints, 'adjustment points', 'attributes'],
+    [c.budgets.skillPoints, 'skill points', 'skills'], [c.budgets.knowledgePoints, 'knowledge points', 'skills']] as const)
+    .filter(([b]) => b.left > 0).map(([b, what, path]) => ({ path, message: `${fmt(b.left)} ${what} left: they’re lost when the runner is finalized.` })) },
+  // owner's decisions 7 and 8: no lifestyle, no name or alias: notes
+  { code: 'lifestyle.none', severity: 'warning', tab: 'contacts', check: c => (c.b.sins.some(s => s.lifestyles?.length) ? null
+    : { message: 'No lifestyle bought: the runner lives somewhere (a lifestyle goes on a SIN).' }) },
+  { code: 'identity.name', severity: 'warning', tab: 'concept', check: c => {
+    const gone = [!c.ch.identity.name.trim() && 'name', !c.ch.identity.streetName.trim() && 'alias'].filter(Boolean)
+    return gone.length ? { message: `The runner has no ${gone.join(' and no ')}.` } : null
+  } },
   // an older file's lifestyle on a runner with no SIN went on an unnamed placeholder (charxml.ts): a note, not a block
   { code: 'sin.placeholder', severity: 'warning', tab: 'contacts', check: c => c.b.sins.filter(s => s.placeholder).map(s => ({
     path: `contacts.sin.${s.uid}`, message: 'An unnamed SIN holds the lifestyle from an older file: give it a name, kind and rating '
@@ -705,7 +786,7 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
     const hits = r.check(c)
     for (const h of hits === null ? [] : Array.isArray(hits) ? hits : [hits]) {
       const at = h.page ? { source: h.source, page: h.page } : keys[0] ? cite(cr, keys[0]) : {}
-      out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at })
+      out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at, ...(r.hard ? { hard: true as const } : {}) })
     }
   }
   out.push(...runnerRuleNotes(cr, ch, labels))
@@ -719,8 +800,21 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
   const used = JSON.stringify(ch.build)
   out.push(...data.problems.filter(v => v.path.startsWith('priorities.') || used.includes(`"${v.path.slice(v.path.indexOf('.') + 1)}"`)))
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
-  return out.map(v => (approved.has(`${v.code}|${v.path}`) ? { ...v, approved: true } : v))
+  return out.map(v => (approved.has(`${v.code}|${v.path}`) && !v.hard ? { ...v, approved: true } : v))
 }
+
+/** An assumption a sample runner's numbers need that a known printing explains (owner's decision U31, 2026-10-11). */
+const ASSUMED: Record<string, string> = { availabilityCapIllegalOnly: 'assumed: 2019 printing (its numbers need the first printing’s reading)' }
+
+/** The kinds of weapon an ammunition line is for, from its name (`Heavy Pistol/SMG`: heavy pistol and submachine gun), or a
+ *  weapon category's own (`Submachine gun`): singular, hold-outs and SMGs spelled one way. */
+export function ammoKinds(name: string): string[] {
+  return name.split('/').map(p => normName(p).replace(/^hold ?out$/, 'holdout').replace(/^smgs?$/, 'submachine gun').replace(/s$/, '')).filter(Boolean)
+}
+
+/** The kinds of weapon the core rulebook's ammunition table names (CRB Hong Kong p. 262). ponytail: a fixed list; read
+ *  it from the catalog's ammunition lines if a book adds a kind. */
+const AMMO_KINDS = new Set(['holdout', 'light pistol', 'machine pistol', 'heavy pistol', 'submachine gun', 'rifle', 'machine gun', 'assault cannon', 'taser'])
 
 /** Notes on the runner's own rules (creation.ts runnerRules): one a book sample was given because its numbers need it
  *  (assumed: the book doesn't say), and one its campaign locked, so the runner's choice is set aside. Never errors. */
@@ -735,7 +829,8 @@ function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string
     else if (b) out.push({ code: 'rules.setAside', severity: 'warning', path: 'method',
       message: `${name(r.key)}: your choice is set aside; ${'needs' in b ? `it needs ${name(b.needs)}, which is off` : `it can’t be on with ${name(b.conflicts)}`}.` })
     else if (r.assumed) out.push({ code: 'rules.assumed', severity: 'warning', path: 'method', ...(r.source ? { source: r.source } : {}), ...(r.page ? { page: r.page } : {}),
-      message: `${name(r.key)}: ${r.value.trim() === '' || r.value === 'false' ? 'off' : r.value === 'true' ? 'on' : r.value}; assumed from the book’s numbers (the book doesn’t say).` })
+      message: `${name(r.key)}: ${r.value.trim() === '' || r.value === 'false' ? 'off' : r.value === 'true' ? 'on' : r.value}; ${ASSUMED[r.key]
+        ?? 'assumed from the book’s numbers (the book doesn’t say)'}.` })
   }
   return out
 }
