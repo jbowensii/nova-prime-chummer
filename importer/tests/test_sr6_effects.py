@@ -274,6 +274,32 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("Each net hit increases (attribute) by 1 up to twice the target's normal rating.", "complexforms"), [("matrix:choice", "add", "hits", "sustained", None)])
         self.assertEqual(fx("Gain a point of Edge when targeted by spells.", "adeptpowers"), [("test:magic-resistance", "edge", "1", None, None)])
 
+    def test_owner_decisions_of_2026_10_11(self):
+        # a level after the first: R-1 on the tests the sentence before named
+        self.assertEqual(fx("The first level lowers the cost of Edge Boosts by one on Stealth (Palming) tests. Each level after the first one grants a +1 dice pool modifier for such tests.", "adeptpowers"),
+                         [("skill:stealth", "edge-cost", "-1", None, None), ("skill:stealth", "add", "R-1", None, None)])
+        self.assertEqual(fx("The zap reducer increases the maximum dice pool bonus for Take Aim (p. 42, SR6) by its rating.", "augmentations"),
+                         [("action-max:take-aim", "add", "R", None, None)])
+        self.assertEqual(fx("They are more resistant to ingested poisons and toxins, gaining +1 Edge on tests to resist."),
+                         [("test:toxin-resistance", "edge", "1", "conditional", "ingested poisons and toxins")])
+        self.assertEqual(fx("Note: The short mod removes the longest-range Attack Rating available for the weapon, and alters the AR as follows: +2/+1/–2/–/–.", "weapons"),
+                         [("item:ar", "add", "2,1,-2,0,x", None, None)])
+        self.assertEqual(fx("Once activated, roll dice. Each hit temporarily boosts the rating of the designated attribute by 1.", "gear"),
+                         [("attr:choice", "add", "hits", "activated", None)])
+
+    def test_rows_under_a_group_header_read_their_own_paragraph_and_a_transgenic_links_to_each(self):
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n'
+                 '  <augmentation id="zz-basic" source="X" page="1" type="bioware" group="Zapsense"><name>Basic</name></augmentation>\n'
+                 '  <augmentation id="zz-tactical" source="X" page="1" type="bioware" group="Zapsense" rating="1–3"><name>Tactical</name></augmentation>\n'
+                 '  <augmentation id="tg" source="X" page="2" type="bioware" essence="fifty percent more Essence than the base item"><name>Transgenic zapsense</name></augmentation>\n</sr6:data>\n'}
+        shared = ('Two versions exist. **Basic:** Gain an Edge before making Surprise tests. **Tactical:** Gain a +1 dice pool bonus per rating on any defensive tests.')
+        texts = (f'<sr6:data kind="texts">\n  <text of="augmentations" id="zz-basic">{shared}</text>\n  <text of="augmentations" id="zz-tactical">{shared}</text>\n</sr6:data>\n')
+        out, _ = effects.apply(files, texts, "")
+        x = out["augmentations.xml"]
+        self.assertIn('<name>Basic</name><effect target="test:surprise" op="edge" value="1"/></augmentation>', x)
+        self.assertIn('<name>Tactical</name><effect target="test:defense" op="add" value="R"/></augmentation>', x)
+        self.assertIn('<name>Transgenic zapsense</name><link rel="as" kind="augmentations" name="Zapsense: Basic" ref="zz-basic"/><link rel="as" kind="augmentations" name="Zapsense: Tactical" ref="zz-tactical"/>', x)
+
     def test_variant_rows_take_their_parents_sentences_and_resolve_its_choice(self):
         files = {"gear.xml": '<sr6:data kind="gear">\n  <gear id="zb" source="X" page="1"><name>Zapjack Boosters</name></gear>\n'
                              '  <gear id="zb-f1" source="X" page="2" rating="1"><name>Zapjack Boosters (Firewall) (Rating 1)</name></gear>\n'

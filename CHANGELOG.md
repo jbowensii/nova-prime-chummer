@@ -24,6 +24,17 @@ the new effect kinds (install it with this).
   parent is no entry); a text that is only label lines takes the rule the book describes the item under; an ammo
   table's `–1S(e)` and `–2 to all` are modifiers; a skillsoft kind named in a program or gear row gives its skill at
   its rating.
+- A table row whose value cells hold no value (Body Shop p. 67, `Awareness | Extreme | —`) over rows indented under it
+  is a group header, not an item: the indented rows are the items, shown with their group (`Awareness: Basic`,
+  `Awareness: Tactical` at rating 1–3), each with its own paragraph of the heading's text (Basic: Edge on Surprise
+  tests; Tactical: +rating dice on defense and surprise tests), ids carrying the group (`bs.awareness-basic`), the old
+  `bs.awareness` kept as an alias; a transgenic of such a base links to each of its rows. Grouped rows everywhere
+  (`DocWagon contract: Basic`) get ids with their group, the old ids as aliases.
+- Owner decisions of 2026-10-11, modelled as written: a bonus per level after the first (`R-1`, Nimble Fingers:
+  counted and shown as rating − 1), the book's own value per rating (`R[1,1,2,2]`, for table-driven items), a raised
+  maximum (`action-max:take-aim +rating`, Tremor reducer), `tests to resist X` as a condition in the bracket (Tough
+  Gut: ingested poisons), a removed range band (`x`, shown `—`, Short Barrel), Attribute Overclocking's +1 per hit
+  activated and shown.
 - Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 840 of 1,107 effects agree (66.6% → 75.9%);
   1,206 → 1,327 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.

@@ -195,7 +195,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource;
   `skill-max:<id>` a skill's maximum (`skill-max:choice`: Aptitude's 10, Genetic Optimization's +1); `sense:<name>`
   a sense the entry is named for or grants (`low-light-vision`, `thermographic-vision`, `ultrasound`, `wide-band-hearing`
-  …: `effects.SENSES`, a rule of its own, shown); `pool:chase` the chase pool's Edge (Double Clutch p. 175);
+  …: `effects.SENSES`, a rule of its own, shown); `action-max:<name>` the cap on an action's bonus (`increases the
+  maximum dice pool bonus for Take Aim by its rating`, a raised maximum, shown; owner decision 2026-10-11);
+  `pool:chase` the chase pool's Edge (Double Clutch p. 175);
   `pricemod:<what>` a price in percent (`armor` for armor and clothing, `lifestyle`, `gear`, `everything`: `0.1` is
   +10%); `derived:monthly-cost` nuyen a month (`R*500`). A Matrix attribute, attribute or skill the entry leaves to the
   player (`this attribute`, `the chosen Matrix attribute`) is `<family>:choice`; a variant row's words resolve it
@@ -208,7 +210,12 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
   (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
 - **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`, `each point
-  of this mod`, `each point of X rating`); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
+  of this mod`, `each point of X rating`); `R-1`, `R*N-N` (so much per level after the first: `each level after the
+  first grants a +1 dice pool modifier for such tests`, Nimble Fingers; counted as rating − 1, never below 0; owner
+  decision 2026-10-11); `R[1,1,2,2]` (the book's own value per rating, a per-rating table: rating 3 gives the third,
+  beyond the table the last; owner decision 2026-10-11, for the owner's overrides of table-driven items); a range
+  band `x` in an `item:ar` list (`2,1,-2,0,x`: the band removed, `removes the longest-range Attack Rating`, shown `—`;
+  owner decision 2026-10-11); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
   subject's Defense Rating`, `each hit increases the target's Overwatch Score by 1`); `N` a native language; `20%` a
   percent of the base value; `R/-R` a vehicle's on-road and off-road Handling; or a formula over attributes (`edg`,
   `edg/2`: a drake's Armor by its Edge). `hits`, percents and formulas are shown, never applied.
@@ -248,6 +255,17 @@ you …`, `tests made against you`), what using it costs (`3 additional Major Ac
 threshold, a cap (`up to a maximum of five initiative dice`). Not a condition: use-it-or-lose-it clauses (`that must
 be spent on that test, or it goes away`), the test an Edge is given on (`When performing a Juryrigging test`, `when
 targeted by spells`), `can only be spent`, `each time it is used`.
+
+**A condition from what a test resists** (owner decision 2026-10-11): `more resistant to ingested poisons and toxins,
+gaining +1 Edge on tests to resist` is Edge on Toxin Resistance tests with `when="ingested poisons and toxins"`
+(the bracket, with its note), not on every toxin test.
+
+**Rows printed under a group header** (owner decision 2026-10-11; `regroup._valueless`): a table row whose value
+cells hold no value (`Awareness | Extreme | —`) over rows indented under it is a group header, no item; the indented
+rows are the items (`Basic`, `Tactical (rating 1–3)`), each with `group="Awareness"` (shown `Awareness: Basic`), an id
+carrying the group (`bs.awareness-basic`), search names `Awareness Basic` and `Basic Awareness`, the heading's text
+shared and read by its own run-in (`**Basic:** …`), and the old header id (`bs.awareness`) kept as an alias on the
+first of them (moved.py). A transgenic "of the base item" whose base is such a group links to each of its rows.
 
 **Entries named for what they give**: a program or gear named for a skillsoft kind (`Activesofts`, `Knowsofts`,
 `Linguasofts`, and an autosoft named for a skill) gives that skill (or a chosen one) at its rating (`set R`, CRB

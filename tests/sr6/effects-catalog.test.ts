@@ -8,7 +8,7 @@ import type { Sr6Data } from '../../src/sr6/engine/data'
 import type { Sr6Part } from '../../src/sr6/model/types'
 import { attrMax, augmentBonus, bracketNotes, conditionalBonuses, notesText } from '../../src/sr6/engine/budgets'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
-import { effectBonuses, effectText, effectValue, testSkills } from '../../src/sr6/engine/effects'
+import { bonusValue, effectBonuses, effectText, effectValue, testSkills } from '../../src/sr6/engine/effects'
 import { effectNotes } from '../../src/sr6/print/view'
 import { buildOf, GLIM, made } from './fixture'
 
@@ -25,6 +25,21 @@ test('a value: a number, so much per rating, or a formula shown only', () => {
   expect(effectValue('2*R')).toEqual({ value: 2, perRating: true })
   expect(effectValue('edg/2')).toBeUndefined()
   expect(effectValue('0,1,1,0,0')).toBeUndefined()
+  // owner decisions 2026-10-11: a level after the first, the book's own value per rating
+  expect(effectValue('R-1')).toEqual({ value: 1, perRating: true, minus: 1 })
+  expect(effectValue('R*2-2')).toEqual({ value: 2, perRating: true, minus: 2 })
+  expect(effectValue('R[1,1,2,2]')).toEqual({ value: 1, byRating: [1, 1, 2, 2] })
+  expect([1, 2, 3].map(r => bonusValue({ value: 1, perRating: true, minus: 1 }, r))).toEqual([0, 1, 2])
+  expect([1, 3, 9].map(r => bonusValue({ value: 1, byRating: [1, 1, 2, 2] }, r))).toEqual([1, 2, 2])
+  expect(bonusValue({ value: 2, perRating: true }, 3)).toBe(6)
+  expect(bonusValue({ value: 2 }, 3)).toBe(2)
+})
+
+test('the words for a level after the first, a value per rating and a removed band', () => {
+  expect(effectText(fx('skill:stealth', 'add', 'R-1'))).toBe('+(rating − 1) Stealth dice')
+  expect(effectText(fx('item:dv', 'add', 'R[1,1,2,2]'))).toBe('1/1/2/2 by rating Damage Value')
+  expect(effectText(fx('item:ar', 'add', '2,1,-2,0,x'))).toBe('+2/+1/-2/–/— (removed) Attack Rating')
+  expect(effectText(fx('action-max:take-aim', 'add', 'R'))).toBe('+rating the Take Aim action’s maximum bonus')
 })
 
 test('a test type covers the skills the book lists, or the skills linked to an attribute', () => {

@@ -5,6 +5,7 @@
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, fitted, lineBonuses, priced, skillRank } from './budgets'
+import { bonusValue } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
@@ -208,7 +209,7 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
-    const value = b.value * (b.perRating ? rating : 1) * times
+    const value = bonusValue(b, rating) * times
     // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
     const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}), ...(b.spec ? { spec: b.spec } : {}), ...(b.affects ? { affects: b.affects } : {}) }
     return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }

@@ -31,13 +31,25 @@ export function testSkills(data: Sr6Data, type: string): string[] {
   return skills.filter(s => names.includes(normName(s.name))).map(s => s.id)
 }
 
-/** A printed effect value as a bonus's: a number, or so much per rating or level (`R`, `-R`, `R*2`, `2*R`). undefined: a
- *  formula over attributes (`edg/2`) or a list (`0,1,1,0,0`), shown only. */
-export function effectValue(v: string | undefined): { value: number; perRating?: true } | undefined {
+/** A printed effect value as a bonus's: a number; so much per rating or level (`R`, `-R`, `R*2`, `2*R`); so much per
+ *  level after the first (`R-1`, `R*2-2`: minus); or the book's own value per rating (`R[1,1,2,2]`: byRating; owner
+ *  decisions 2026-10-11). undefined: a formula over attributes (`edg/2`), a percent or a band list (`0,1,1,0,0`), shown only. */
+export function effectValue(v: string | undefined): { value: number; perRating?: true; minus?: number; byRating?: number[] } | undefined {
   const s = (v ?? '').replace(/\s+/g, '')
   if (/^[+-]?\d+(\.\d+)?$/.test(s)) return { value: Number(s) }
-  const m = /^(-?)R(?:\*(-?\d+(?:\.\d+)?))?$/.exec(s) ?? /^(-?)(?:(\d+(?:\.\d+)?)\*)R$/.exec(s)
-  return m ? { value: (m[1] ? -1 : 1) * Number(m[2] ?? 1), perRating: true } : undefined
+  const list = /^R\[((?:-?\d+(?:\.\d+)?)(?:,-?\d+(?:\.\d+)?)*)\]$/.exec(s)
+  if (list) { const by = list[1].split(',').map(Number); return { value: by[0], byRating: by } }
+  const m = /^(-?)R(?:\*(-?\d+(?:\.\d+)?))?(?:-(\d+(?:\.\d+)?))?$/.exec(s) ?? /^(-?)(?:(\d+(?:\.\d+)?)\*)R(?:-(\d+(?:\.\d+)?))?$/.exec(s)
+  return m ? { value: (m[1] ? -1 : 1) * Number(m[2] ?? 1), perRating: true, ...(m[3] ? { minus: Number(m[3]) } : {}) } : undefined
+}
+
+/** What a bonus gives at a rating or level (the one place it is counted: budgets, the export): its value times the
+ *  rating when per rating, less its `minus` (`R-1`: nothing at rating 1), or its table's value for that rating
+ *  (`byRating`: the last one beyond the table). */
+export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating'>, rating: number): number {
+  if (b.byRating?.length) return b.byRating[Math.min(Math.max(1, Math.round(rating)), b.byRating.length) - 1]
+  if (!b.perRating) return b.value
+  return b.minus ? Math.max(0, rating * b.value - b.minus) : rating * b.value  // (`R*2-2`: twice the rating, less 2: none at rating 1)
 }
 
 const DERIVED_BONUS: Record<string, Bonus['target']> = {
@@ -70,7 +82,8 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0)
     const t = x.attrs.target ?? '', v = effectValue(x.attrs.value), a = x.attrs
     if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v) continue
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? a.switch as Bonus['switch'] : undefined
-    const state = { ...v.perRating ? { perRating: true as const } : {}, ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
+    const state = { ...v.perRating ? { perRating: true as const } : {}, ...v.minus ? { minus: v.minus } : {}, ...v.byRating ? { byRating: v.byRating } : {},
+      ...a.when ? { when: a.when } : {}, ...sw ? { switch: sw } : {},
       ...a.affects === 'caster' || a.affects === 'target' ? { affects: a.affects as Bonus['affects'] } : {} }
     if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...state })
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))  // (armor: its defense field, derive.ts)
@@ -124,6 +137,7 @@ export function targetText(t: string): string {
   if (k === 'attr-max') return `maximum ${ATTR_WORDS[v] ?? v}`
   if (k === 'skill') return v === 'choice' ? 'a chosen skill' : title(v)
   if (k === 'skill-max') return v === 'choice' ? 'a chosen skill’s maximum' : `maximum ${title(v)}`
+  if (k === 'action-max') return `the ${title(v)} action’s maximum bonus`
   if (k === 'sense') return title(v)
   if (k === 'pool') return v === 'chase' ? 'the chase pool’s Edge' : `the ${title(v)} pool`
   if (k === 'pricemod') return PRICE_WORDS[v] ?? `${title(v)} prices`
@@ -144,12 +158,16 @@ export function targetText(t: string): string {
 
 const valueText = (v: string) => {
   if (/^-?R$/.test(v)) return v.startsWith('-') ? '−rating' : 'rating'
+  const after = /^R(?:\*(\d+))?-(\d+)$/.exec(v)
+  if (after) return `${after[1] ? `${after[1]} × ` : ''}(rating − ${after[2]})`
+  const by = /^R\[(.*)\]$/.exec(v)
+  if (by) return `${by[1].split(',').join('/')} by rating`
+  if (v.includes(',')) return v.split(',').map(x => (x === 'x' ? '— (removed)' : Number(x) > 0 ? `+${x}` : x === '0' ? '–' : x)).join('/')
   if (v === 'N') return 'native'
   if (v === 'R/-R') return '+rating on-road, −rating off-road'
   if (/^0\.\d+$/.test(v)) return `${Math.round(Number(v) * 100)}%`
   const r = /^R\*(-?[\d.]+)$/.exec(v) ?? /^(-?[\d.]+)\*R$/.exec(v)
   if (r) return `${r[1]} × rating`
-  if (v.includes(',')) return v.split(',').map(x => (Number(x) > 0 ? `+${x}` : x === '0' ? '–' : x)).join('/')
   return v
 }
 const signed = (v: string) => (/^[-–−]/.test(v) || /^R\*-/.test(v) || v.includes(',') ? valueText(v) : `+${valueText(v)}`)

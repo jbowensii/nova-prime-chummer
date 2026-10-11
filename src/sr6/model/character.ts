@@ -33,6 +33,10 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
  *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes or a skill's dice pool (skill: its catalog id). perRating: × the
  *  line's rating. */
 export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill'; skill?: string; value: number; perRating?: true
+  /** less so much after the rating is counted (`R-1`: a level after the first, owner 2026-10-11); with perRating */
+  minus?: number
+  /** a value per rating, the book's own table (`1,1,2,2`: rating 1 gives 1, rating 3 gives 2; owner 2026-10-11) */
+  byRating?: number[]
   /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
   /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else

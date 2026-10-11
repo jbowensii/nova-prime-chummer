@@ -388,9 +388,16 @@ _PER_RATED = re.compile(r"\b(?:per|each|every|for each|for every)\s+(?:rating )?
                         r"\b(?:per|each|every) (?:point of )?(?:[a-z-]+ ){0,3}?rating\b", re.I)
 
 
+_RESIST_OF = re.compile(r"\bresistan(?:t|ce) to (?P<obj>(?:ingested|inhaled|injected|contact|airborne|dermal|certain|specific|natural|magical|[a-z]+-based) [^,;.]+?)(?=,|;|\.|\s+(?:gaining|giving|granting|and gain)\b|$)", re.I)
+_LEVELS_AFTER_FIRST = re.compile(r"\beach level\b(?: of [\w' -]+?)? after the first(?: one)? (?:grants?|gives?|adds?) (?:an? )?\+?(?P<v>\d+) (?:dice pool )?(?:modifier|bonus|dice|die) (?:for|on|to) (?:such|those|these) tests", re.I)
+_REMOVED_BAND = re.compile(r"\bremoves? the longest[- ]range attack rating\b", re.I)
+
+
 def read(text, kind=None, name=None):
     """[(tag, attrs, None)]: the effects, tests and links the text states, in the order printed, each once."""
     out = []
+    prev_tests = []  # (the last sentence's skill and test targets: `… for such tests` in the next one)
+    carried = None  # (`Once activated, roll …`: the sentences after it are the activated thing's, owner 2026-10-11)
     edge_actions = bool(re.search(r"\bedge cost\b", text or "", re.I))
     ai = bool(re.search(r"\bAIs?\b|\bAI's\b", text or ""))  # (an AI's initiative is its Matrix initiative)
     last_who = "caster"
@@ -402,6 +409,9 @@ def read(text, kind=None, name=None):
         role = ROLES.get(label.casefold())
         s = _USE_OR_LOSE.sub("", s)  # (`a point of Edge that must be spent on that test, or it goes away`: use it or lose it, no condition)
         sw, when = _sw(s, label)
+        if sw is None and carried and not _CONDITION.search(s.casefold()):
+            sw = carried
+        carried = "activated" if re.match(r"\W*(?:once|when|while) (?:activated|active)\b", s, re.I) else carried if sw == carried else None
         when = when or role
         low_formula = False
         if role and not sw:
@@ -424,15 +434,28 @@ def read(text, kind=None, name=None):
             last_who = who
         else:
             who = None
+        if (lm := _LEVELS_AFTER_FIRST.search(s)) and prev_tests:  # (owner 2026-10-11: `R-1`, a value per level after the first)
+            n = lm.group("v")
+            for t, spec in prev_tests:
+                out.append(_fx(t, "add", "R-1" if n == "1" else f"R*{n}-{n}", sw, when, spec))
+        here = []
+        resist = _RESIST_OF.search(s)
         for x in _rules(s, kind, sw, when, edge_actions, label, ai):
             if x[0] == "effect":
                 if who:
                     x[1]["affects"] = who
                 if low_formula:
                     x[1]["confidence"] = "low"
+                if resist and x[1]["target"].endswith("-resistance") and not x[1].get("switch"):
+                    # (owner 2026-10-11: `resistant to ingested poisons … Edge on tests to resist`: a condition, noted)
+                    x[1]["switch"], x[1]["when"] = "conditional", resist.group("obj").strip().lower()
+                if x[1]["target"].startswith(("skill:", "test:")) and (x[1]["target"], x[1].get("spec")) not in here:
+                    here.append((x[1]["target"], x[1].get("spec")))
                 if re.search(r"\bnet hits?\b|\b(?:each|every|per) hit\b", s, re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
                     x[1]["value"] = ("-" if x[1]["value"].startswith("-") else "") + "hits"  # (`1 per net hit`: shown, never applied)
             out.append(x)
+        if here:
+            prev_tests = here
         for m in _TEST.finditer(s):
             out.append(("test", {"skill": f"skill:{m.group(1).casefold().replace(' ', '-')}",
                                  "attr": f"attr:{ATTRIBUTES[m.group(2).casefold()]}", "threshold": m.group(3)}, None))
@@ -447,6 +470,12 @@ def read(text, kind=None, name=None):
             continue
         at[k] = len(uniq)
         uniq.append((x[0], dict(x[1]), x[2]))
+    if _REMOVED_BAND.search(text or ""):  # (owner 2026-10-11: the longest range band removed, shown `—`)
+        ar = next((x for x in uniq if x[0] == "effect" and x[1]["target"] == "item:ar" and x[1]["op"] == "add" and x[1]["value"].count(",") == 4), None)
+        if ar:
+            ar[1]["value"] = ",".join(ar[1]["value"].split(",")[:4] + ["x"])
+        else:
+            uniq.append(_fx("item:ar", "add", "0,0,0,0,x"))
     return uniq
 
 
@@ -905,6 +934,9 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False):
             names = (m.group("t") or m.group("t2")).split(" or ")
             for n in names:
                 found.append(("derived:defense-astral" if "mystic" in n else "derived:defense", "edg/2" if m.group("t2") else "edg", None, None))
+    for m in re.finditer(r"\b(?:increas|rais)\w* the maximum (?:dice pool )?(?:bonus|modifier)(?: available)? (?:for|of|on|from) (?:the |a )?(?P<n>[a-z][a-z' -]{2,30}?)(?: action)?(?: \((?:see )?p\.[^)]*\))? by (?P<v>its rating|its level|the rating|\d+|one|two)\b", low):
+        v = "R" if "rating" in m.group("v") or "level" in m.group("v") else _val(m.group("v"), low)
+        out.append(_fx(f"action-max:{_slug(m.group('n'))}", "add", v, sw, when))
     for m in re.finditer(r"\b(?:gains?|receives?|gets?) (?P<v>an?|one|two|three|\d+) (?:additional |extra |bonus )?power points?\b", low):
         found.append(("derived:power-points", _val(m.group("v"), low), None, None))
     for m in re.finditer(r"\b(?:the )?(?P<t>[a-z]+(?: [a-z]+)?) (?P<k>attribute|skill) at (?:rating )?(?P<v>\d+)\b", low):
@@ -1289,6 +1321,12 @@ def apply(files, texts_xml, regrouped=""):
                   re.findall(r'<rule id="([^"]+)"[^>]*><name>(.*?)</name>', files.get("rules.xml") or "")]
     rule_texts = [(k, t) for k, t in rule_texts if t]
     names = {f[:-4]: [_unesc(n) for n in re.findall(r"<name>(.*?)</name>", x or "")] for f, x in files.items()}
+    # (the rows printed under a group header, `Awareness` over `Basic` and `Tactical`: by kind, group key -> names)
+    grouped = {}
+    for f, x in files.items():
+        for m in re.finditer(r'<\w+ id="[^"]+"([^>]*)><name>(.*?)</name>', x or ""):
+            if gm := re.search(r' group="([^"]*)"', m.group(1)):
+                grouped.setdefault(f[:-4], {}).setdefault(_key(_unesc(gm.group(1))), []).append(_unesc(m.group(2)))
     out = {}
     for fname, xml in files.items():
         kind = fname[:-4]
@@ -1337,6 +1375,9 @@ def apply(files, texts_xml, regrouped=""):
                     text = (text + "\n" + got[0][1]).strip()
                     if not variant_words:
                         variant_words = [w for w in re.findall(r"\(([^()]+)\)", nm) if not re.match(r"(?i)(?:rating|level|force) \d", w)]
+            grp = (gm := re.search(r' group="([^"]*)"', attrs)) and _unesc(gm.group(1))
+            if grp and "(" not in nm:  # (a row under a group header: its own run-in of the group's text, `**Basic:**`)
+                text = _variant_part(text, f"{grp} ({nm})", [f"{grp} ({n})" for n in grouped.get(kind, {}).get(_key(grp), ())])
             text = _variant_part(text, nm, names.get(kind, ()))
             text = _own_part(text, nm, names.get(kind, ()))
             found = read(text, kind, nm) + links(text, kind)
@@ -1361,6 +1402,12 @@ def apply(files, texts_xml, regrouped=""):
                     next((v for k, v in sorted(got.items()) if k.startswith(base + " ") and v[1] == "bioware"), None)  # (`tails`: `Tail`; `chameleon skin`: its first variant)
                 if hit:
                     found.append(("link", {"rel": "as", "kind": kind, "name": nm.split(None, 1)[1], "ref": hit[0]}, None))
+                else:  # (a base printed as a group header over its versions: the version its name picks, else each)
+                    gbase = _key(re.sub(r"\s*\([^()]*\)\s*$", "", nm.split(None, 1)[1]))
+                    pick = _key(vm.group(1)) if (vm := re.search(r"\(([^()]+)\)\s*$", nm)) else None
+                    for gn in grouped.get(kind, {}).get(gbase, ()) or grouped.get(kind, {}).get(gbase.rstrip("s"), ()):
+                        if (gid := got.get(_key(gn))) and (pick is None or _key(gn) == pick):
+                            found.append(("link", {"rel": "as", "kind": kind, "name": f"{gbase.title()}: {gn}", "ref": gid[0]}, None))
             for t, a, _ in found:  # a link's entry: this book's, or the book its citation names (`p. 70, SR6`)
                 if t == "link":
                     sl = _slug(a["name"])

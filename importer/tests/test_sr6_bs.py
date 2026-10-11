@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from lxml import etree
 
 from importer import sr6
-from importer.sr6 import regroup
+from importer.sr6 import effects, regroup
 from importer.sr6.recipes import bs, crb, identify
 
 BOOK_MD = """<!-- page 1 -->
@@ -55,6 +55,20 @@ Made-up genes that glow.
 | GENEWARE Made-Up Applications | TREATMENT TIME | ESS | AVAIL | COST |
 |---|---|---|---|---|
 | Glow Genes | 2 weeks | 0.1 | 4 | 9,000¥ |
+## Made-Up Biosenses
+#### Zapsense
+There are two versions of this modification. They both can be taken by one person.
+**Basic:** You have a sixth sense of danger. Gain an Edge before making Surprise tests.
+**Tactical:** This bioware gives you the ability to predict harm. Gain a +1 dice pool bonus per rating on any defensive tests.
+#### Zap shield
+A shield that zaps.
+#### biosenses table
+| BIOWARE | ESSENCE | AVAIL | COST |
+|---|---|---|---|
+| Zapsense | Extreme | — |  |
+|   Basic | 0.1 | 4 | 12,000¥ |
+|   Tactical (rating 1–3) | Rating x0.2 | 6 | Rating x 15,000¥ |
+| Zap shield (rating 1–3) | Rating x 0.15 | 6 | Rating x 25,000¥ |
 ## Made-Up Symbionts
 #### Purr Leech
 A made-up leech that purrs.
@@ -145,6 +159,22 @@ class BsRecipeTest(unittest.TestCase):
         self.assertNotIn("Zap tail", a)  # the group row itself is no entry
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("tail that zaps", texts[("augmentations", "zap-tail-long")])
+
+    def test_a_group_header_row_with_placeholder_values_heads_its_indented_rows(self):
+        # (owner 2026-10-11) `Zapsense | Extreme | —` is no item: the rows indented under it are, grouped and shown
+        # `Zapsense: Basic`, each with its own run-in of the heading's text and an id carrying the group
+        a = entries(self.res, "augmentations")
+        self.assertNotIn("Zapsense", a)
+        self.assertEqual({k: v for k, v in a["Basic"].items() if k != "page"}, {"id": "zapsense-basic", "source": "BS", "type": "bioware", "category": "Biosenses",
+                                                                                "group": "Zapsense", "essence": "0.1", "avail": "4", "cost": "12000"})
+        self.assertEqual((a["Tactical"]["id"], a["Tactical"]["rating"], a["Tactical"]["essence"], a["Tactical"]["cost"]),
+                         ("zapsense-tactical", "1–3", "Rating x0.2", "Rating x 15000"))
+        self.assertEqual((a["Zap shield"]["essence"], a["Zap shield"]["cost"]), ("Rating x 0.15", "Rating x 25000"))
+        x = self.res.files["augmentations.xml"]
+        self.assertIn('<name>Basic</name><alias>Zapsense Basic</alias>', x)
+        x = effects.apply(self.res.files, self.res.texts, "")[0]["augmentations.xml"]  # (the effects pass, as run.py runs it)
+        self.assertIn('<effect target="test:surprise" op="edge" value="1"/>', x.split('<name>Basic</name>')[1].split("</augmentation>")[0])
+        self.assertIn('<effect target="test:defense" op="add" value="R"/>', x.split('<name>Tactical</name>')[1].split("</augmentation>")[0])
 
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")
