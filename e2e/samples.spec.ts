@@ -63,7 +63,9 @@ test('a book sample as printed: Review shows where the bookâ€™s amp rating isnâ€
   await signIn(page, 'ada')
   const id = own('ada').find(x => x.includes('origin="PREGENS"'))!.match(/ id="([^"]+)"/)![1]
   await page.goto(`/#/c/${id}/review`)
-  await expect(page.getByText(/Big Grin: the book prints rating 4; the rules give \d+\./)).toBeVisible()
+  await expect(page.getByText(/Toy Eyes: the book prints rating 9; the rules give \d+\./)).toBeVisible()
+  // its printed limitation is the Negative effect the book took off: the GM's to approve (CRB p.61)
+  await expect(page.getByText('Big Grin: negative effect -1 needs GM approval.')).toBeVisible()
   await expect(page.getByText('PREGENS p.5').first()).toBeVisible()
   await expect(page.locator('.viol.approved')).toHaveCount(0)
 })
