@@ -221,9 +221,9 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("When using Called Shot—Disarm, reduce either the Edge cost (if spending Edge) or the dice pool penalty by 1."),
                          [("action:called-shot-disarm", "edge-cost", "-1", None, None)])
         self.assertEqual(fx("Gain bonus dice on a hacking action: Brute Force, Probe, or Backdoor Entry.", "datastructures"),
-                         [("action:brute-force", "add", "R", None, None), ("action:probe", "add", "R", None, None), ("action:backdoor-entry", "add", "R", None, None)])
-        self.assertEqual(fx("Gain bonus dice on a Snoop action or Static Veil complex form.", "datastructures"),
-                         [("action:snoop", "add", "R", None, None), ("complex-form:static-veil", "add", "R", None, None)])
+                         [("action:brute-force", "add", "R", "activated", None), ("action:probe", "add", "R", "activated", None), ("action:backdoor-entry", "add", "R", "activated", None)])
+        self.assertEqual(fx("Gain bonus dice on a Snoop action or Static Veil complex form.", "datastructures"),  # (activated with a Minor Action)
+                         [("action:snoop", "add", "R", "activated", None), ("complex-form:static-veil", "add", "R", "activated", None)])
 
     def test_items_modes_costs_and_formulas(self):
         self.assertEqual(fx("It decreases the Semi-Auto and Burst Fire Attack Rating modifiers by 1.", "weapons"), [("item:ar", "add", "1", None, "semi-auto, burst fire")])
