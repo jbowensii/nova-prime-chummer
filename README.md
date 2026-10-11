@@ -349,6 +349,22 @@ limit per person per day on the Users page (the day is UTC). Nothing is
 saved: no questions or answers on the server or in the browser, and the log
 has only who asked and when.
 
+**Each game has its own AI.** Shadowrun 6 has its own **AI settings** (SR6 Books →
+the AI settings icon, `#/sr6/books/ai`): its own provider, model, key and, for
+AnythingLLM, its own workspace (make one that holds only the Shadowrun 6 books).
+On the Shadowrun 6 pages the **?** button and a campaign's bar ask SR6's AI, which
+answers from the Shadowrun 6 data only, citing book and page; the Anarchy pages
+ask Anarchy's, from the Anarchy data only. Neither ever sees the other game's
+books. Until the admin sets SR6's up, the SR6 pages show no Ask. Each account's
+daily limit counts both games' questions together.
+
+**AI search on Rules and Game data.** Once a game's AI is set up, its Rules and
+Game data pages have a search box that takes a plain question ("what stops a
+bullet?", "cyberware that helps a decker"). The answer comes with what it found:
+on Rules each find links to its rule; on Game data each is a button that looks
+it up in the catalog below. Rules searches the rules only; each game searches
+only its own data. A search counts as a question against the daily limit.
+
 **Background art.** The admin uploads their own images in **Settings →
 Background art** (PNG, JPEG or WebP, 10 MB each, up to 50) and switches each
 one on or off, or deletes it. The ones that are on show behind every page for

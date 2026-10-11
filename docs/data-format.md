@@ -71,7 +71,9 @@ Every file has the same root:
 
 The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `library/.config/ai-providers.xml`, `ai-keys.xml`) have schemas too:
-`import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`.
+`import.xsd`, `review.xsd`, `aiproviders.xsd`, `aikeys.xsd`. Shadowrun 6 has its own pair in
+`library/sr6/.config/` (`ai-providers.xml`, `ai-keys.xml`, the same schemas): its AI's provider, key and
+AnythingLLM workspace, apart from Anarchy's.
 The server's account files in `library/.config/` use `users.xsd` (`users.xml`, `sessions.xml`, `device-key.xml`,
 `reset.xml`, `ask-counts.xml`: each account's answered Ask the rules questions today, UTC; a `<user>`'s optional
 `dailyQuestions` is its limit) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
@@ -770,7 +772,7 @@ library/…
   names mount to in Docker (each account's trash, `characters/<username>/.trash/`,
   comes along); `library/.backups/` (the safety backups below)
   is skipped so a backup never nests old backups.
-- `library/.config/ai-keys.xml` is included only when the download was made
+- `library/.config/ai-keys.xml` (and Shadowrun 6's, `library/sr6/.config/ai-keys.xml`) is included only when the download was made
   with "Include my API keys" ticked (`?keys=1`); otherwise it's left out and
   a restore keeps the target server's own keys, except that a provider whose
   base URL the restored `ai-providers.xml` changes loses its key (a key only
