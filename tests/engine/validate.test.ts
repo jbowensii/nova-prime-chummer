@@ -113,6 +113,13 @@ test('effects a catalog amp carries are sanctioned even when the effect table fo
   expect(codes(ch)).not.toContain('amp.typeIllegal')
   ch.build.amps[0].catalogId = undefined // the same effects on a home-made amp are not
   expect(codes(ch)).toContain('amp.typeIllegal')
+  // named as the book's drug, of its type (a sample runner prints the book's Rush): what the book prints for it is sanctioned
+  ch.build.amps[0].name = ' RUSH '
+  expect(codes(ch)).not.toContain('amp.typeIllegal')
+  ch.build.amps[0].effects = [...rush.effects, { ref: 'vcr' }] // an effect the book's entry doesn't print still isn't
+  expect(count(ch, 'amp.typeIllegal')).toBe(1)
+  ch.build.amps[0] = { ...ch.build.amps[0], type: 'contact', effects: rush.effects } // nor the name on another type
+  expect(codes(ch)).toContain('amp.typeIllegal')
 })
 
 test('an armor add-on stacked on other armor is noted (CRB p.148); a shield is not', () => {

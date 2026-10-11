@@ -3,7 +3,7 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
-import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } from './amps'
+import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, rawAmpRating } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { catalogItem, itemPrice, price, slotLapse } from './price'
@@ -81,6 +81,9 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     if (a.catalogId && !c.amps.has(a.catalogId)) gone(path, a.name, a.snapshot) ?? add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
     if (a.vehicle && !c.vehicles.has(a.vehicle)) gone(path, a.name, a.chassis)
     const template = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
+    // an amp named as one of the books' own catalog amps of its type (a sample runner's Jazz is the core rulebook's drug,
+    // p.150): what that entry prints is the book's too
+    const named = !a.catalogId ? [...c.amps.values()].find(t => !t.mod && t.type === a.type && plain(t.name) === plain(a.name)) : undefined
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
@@ -89,6 +92,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
       const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && t.name === e.note && t.effects.some(x => x.ref === e.ref)) : undefined
       const fromBook = (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) || !!fromMod
+        || !!named?.effects.some(t => t.ref === e.ref)
       if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
