@@ -28,8 +28,8 @@ the per-level entries are written at import.
 - One entry per level (owner, 2026-10-11): an entry Daegann's list prints with several levels is one catalog entry per
   level, each with its own rating and effects. Freefall 1–3, Secret Room 1–5, Secure safe 1–2 (the gear stays; its
   levels are Equipment amps), and the add-ons Attack +1…+5 and Firewall +1…+4 (cyberdecks), Additional Autosofts
-  +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical additional drone +1…+2 (vehicles): 8 entries
-  became 33. A level's rating is what the book prints for it ("up to level 3 for 15,000¥"); an add-on's level is the
+  +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical additional drone +1…+2 (vehicles): 9 families,
+  33 entries in place of 8 (Secure safe had only its gear). A level's rating is what the book prints for it ("up to level 3 for 15,000¥"); an add-on's level is the
   add-on taken that many times. Two ranges have no top and stay one entry, listed in the import report: Enhanced
   Perception "3+" and Additional plates "max +Body".
   - The amp picker lists a family's levels together ("Level 2 (1–3)"), as does Game data; the Amp Builder has a

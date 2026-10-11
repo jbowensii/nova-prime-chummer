@@ -231,7 +231,7 @@ class ParityTest(unittest.TestCase):
         amps = ET.fromstring(self.res.files["amps.xml"])
         got = (len(amps), sum(a.get("mod") == "true" for a in amps),
                *(len(ET.fromstring(self.res.files[f])) for f in ("spells.xml", "complexforms.xml", "gear.xml")))
-        self.assertEqual(got, (579, 101, 77, 31, 41))  # 554 and 84 before levels: 8 families became 33 levels
+        self.assertEqual(got, (579, 101, 77, 31, 41))  # 554 and 84 before levels: 8 entries became 9 families of 33 levels (Secure safe's gear stays)
         kinds = Counter(r["kind"] for r in self.res.report)
         self.assertEqual((kinds["rating-mismatch"], kinds["unresolved-spec"]), (21, 12))
 
