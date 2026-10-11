@@ -79,7 +79,9 @@ copy". Book entries are never copied here.
 ## Build
 
 - `method`: `priority`, `sumtoten`, `pointbuy`, `karma` or `lifepath`. `magic`: `full`, `aspected`, `mystic-adept`,
-  `adept`, `technomancer` or `mundane`; an aspected magician names its one Magic skill in `aspectedSkill`. `tradition` is
+  `adept`, `technomancer` or `mundane`; an aspected magician names its one Magic skill in `aspectedSkill`. `mentorSpirit`:
+  the mentor spirit followed (a catalog `mentorspirits` id; the Mentor Spirit quality comes and goes with it), and a
+  mystic adept's `mentorAdvantage`, `magician` or `adept` (CRB Hong Kong pp. 162–163). `tradition` is
   free text; `drainAttr` is `log`, `int` or `cha`.
 - Spends are counts: attribute `points` (from the attribute pool), `adjust` (adjustment points) and `karma` (ranks bought
   with karma); a skill's `points` and `karma` likewise. A missing number reads as 0.
@@ -94,7 +96,8 @@ copy". Book entries are never copied here.
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
 - `<skill specs>`: the specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; any skill with
   the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
-- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics` or `echoes`; `level` for leveled powers
+- `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics`, `echoes` or `datastructures` (a
+  technomancer's data structures, by `level`: Hack & Slash pp. 70–72); `level` for leveled powers
   and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic);
   `note`: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: `Firearms`), which its
   `skill:choice` or `attr:choice` effects and its price take (CRB Hong Kong p. 157). A `<quality note>` likewise names an
@@ -107,7 +110,7 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.

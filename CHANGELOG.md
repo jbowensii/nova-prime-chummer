@@ -74,6 +74,31 @@
   unarmed DV and AR) for each variant's row, and `unarmed damage becomes Physical` as an effect.
 - Optional rules, off unless the table turns them on: the Sixth World Companion's Stacking Advantage (p. 144), Rolling
   Strength instead of Agility in Close Combat and High Strength Adds to Damage (p. 150).
+- **Hover text on every creation setting**: on Table setup and on a runner's Creation rules, each row says in plain words
+  what the setting does, then the book and page that prints it, or "house rule" or "option".
+- The owner's decisions on the rules no book settles (2026-10-11):
+  - Review **notes** (never blocks): attribute, adjustment, skill or knowledge points left (they're lost at Finalize), no
+    lifestyle, no name or alias, a gun with no ammunition bought for its kind.
+  - Review **errors a GM can approve**: Karma or nuyen left past what carries over (5 Karma, CRB Hong Kong p. 66; 5,000¥,
+    p. 68; these were notes); a mystic adept's mentor spirit with no advantages picked (pp. 162–163: one, for good).
+  - **Negative Karma or nuyen blocks Finalize** and no GM can approve it; building with it is fine.
+  - **Not offered, refused**: Aptitude and Incompetent on the same skill; Sorcery, Conjuring or Enchanting for a pure
+    adept; Elf Poser, Ork Poser and Human-Looking for a metatype their description doesn't name; an augmentation the
+    runner already has (a limb or other paired part once a side). Review flags a file that holds one.
+  - A mentor spirit on the Magic tab (with a mystic adept's advantages) brings the Mentor Spirit quality and its Karma;
+    removing the quality removes the mentor spirit. One Native language a runner (the Native box on each language line).
+  - A technomancer holds data structures by level: Karma equal to the level, level × 5,000¥ (Hack & Slash pp. 71–72).
+  - New switches, off: Exotic Weapons' first specialization free, a mystic adept's mentor giving both advantages, data
+    structure caps and initiation/submersion grade caps at creation (the GM's numbers under each), no used grade on
+    cultured bioware, adjustment points on a lowered maximum, point buy's 450,000¥ errata version, knowledge points from
+    Logic + Intuition, Elite sum-to-thirteen, Availability 7 at creation, the GM's own carry-over limits (house rules);
+    Magic or Resonance 6 + grade at creation (CRB Hong Kong p. 167) and seats removed adding cargo by Double Clutch
+    p. 126's Cargo Factor (options).
+  - The Karma build, the positive-quality multiplier, a limit on Karma turned into nuyen and Karma for a mystic adept's
+    power points are each behind a toggle of their own, off, with their numbers under it. An expertise with skill points
+    now ships on (1); its hover text names the book's two pages that disagree (pp. 65, 68).
+  - A sample runner whose numbers need the first printing's illegal-only Availability cap says "assumed: 2019 printing".
+  - Sample runners: the only Review errors added are the Karma and nuyen left past the limits, which were notes before.
 
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 

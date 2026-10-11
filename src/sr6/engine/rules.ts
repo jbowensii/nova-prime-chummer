@@ -587,7 +587,7 @@ const RULES: Rule[] = [
   { code: 'points.unspent', severity: 'warning', tab: 'review', check: c => ([
     [c.budgets.attributePoints, 'attribute points', 'attributes'], [c.budgets.adjustmentPoints, 'adjustment points', 'attributes'],
     [c.budgets.skillPoints, 'skill points', 'skills'], [c.budgets.knowledgePoints, 'knowledge points', 'skills']] as const)
-    .filter(([b]) => b.left > 0).map(([b, what, path]) => ({ path, message: `${fmt(b.left)} ${what} left: they’re lost when the runner is finalized.` })) },
+    .filter(([b]) => b.left > 0).map(([b, what, path]) => ({ path, message: `${fmt(b.left)} ${b.left === 1 ? what.replace(/s$/, '') : what} left: ${b.left === 1 ? 'it’s' : 'they’re'} lost when the runner is finalized.` })) },
   // owner's decisions 7 and 8: no lifestyle, no name or alias: notes
   { code: 'lifestyle.none', severity: 'warning', tab: 'contacts', check: c => (c.b.sins.some(s => s.lifestyles?.length) ? null
     : { message: 'No lifestyle bought: the runner lives somewhere (a lifestyle goes on a SIN).' }) },

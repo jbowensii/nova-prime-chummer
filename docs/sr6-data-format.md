@@ -621,10 +621,13 @@ as its latest printing prints them (source `CRB-HK`, the Hong Kong City Edition'
 it) and the Sixth World Companion's for sum-to-ten, point buy and lifepath (source `SWC`), each with its
 printed page; numbers only, no book text. A new server can build runners with every method a book prints right away.
 The core rulebook's rules ship as the latest printing (the Hong Kong City Edition, source `CRB-HK`) prints them; the
-books' optional rules ship off (`false`, with their book and page), for a table to turn on. Left unset, because no book
-prints them: `karmaToNuyenMax`, `skillPointsExpertise`, `advance.powerPoint`, `advance.karmaToNuyenRate`, `advance.nuyenToKarmaRate`, and the karma build
-(`karmaBuild.*`, `magicKarma:*`: no SR6 book describes one, so Karma build can't be picked until the table enters its
-own). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
+books' optional rules ship off (`false`, with their book and page), for a table to turn on. The owner's house rules and
+options (2026-10-11) ship off too, each a true/false toggle with the values a GM sets nested under it: no book prints
+`karmaToNuyenMax` (under `karmaToNuyenCap`), `advance.powerPoint` (under `buyPowerPoints`), `positiveQualityFactor`
+(under `positiveQualityMultiplier`), the carry-over, data structure and grade caps, or the karma build (`karmaBuild.*`,
+`magicKarma:*` under `karmaBuildMethod`: no SR6 book describes one, so Karma build can't be picked until the table turns
+it on and enters its own). `skillPointsExpertise` ships on (1: as a specialization's one rank; CRB Hong Kong p. 65 says
+no expertise with skill points at creation while p. 68 prices one, so its hover text names both). `metatypeKarma:` is set to 0 for the core rulebook's five metatypes and to the Companion's karma for the 25
 metavariants and metasapients its import writes (`swc.<id>`); a metatype from another book needs its own.
 
 `custom/sr6/creation.xml` holds only what the admin changed (`PUT /api/sr6/creation`, on the Table setup page, `#/sr6/table`):
@@ -640,6 +643,10 @@ started from the server's settings. Keys, types and
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
+
+**Hover text.** Every setting's row on Table setup, and on a runner's Creation rules, has hover text (`aboutOf` in
+`creation.ts`): what it does in plain words, then where a book prints it (book and page), else `house rule` or
+`option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`).
 
 Every key, in the order Table setup shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
@@ -668,16 +675,19 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | General | `skillCapAptitude` | number | all |  |  |  | Highest skill rank with the aptitude quality |
 | General | `aptitudeQuality` | quality id | all |  |  |  | Aptitude quality: `skillCapAptitude` (and, in career, `advance.skillMax` + the same step) for the skill its note names only (CRB Hong Kong p. 70: "for the selected skill"); one naming no skill lets any one skill go higher, and Review's `quality.choice` asks for the skill |
 | General | `skillPointsSpec` | number | all |  |  |  | Skill points for a specialization |
-| General | `skillPointsExpertise` | number | optional |  |  |  | Skill points for an expertise (unset: bought with karma at `advance.expertise`) |
+| General | `skillPointsExpertise` | number | optional |  |  |  | Skill points for an expertise (shipped 1; unset: bought with karma at `advance.expertise`). A book discrepancy: CRB Hong Kong p. 65 (none with skill points at creation) against p. 68 (its price) |
 | General | `magicMax` | number | all |  |  |  | Highest Magic or Resonance |
 | General | `essence` | number | all |  |  |  | Starting Essence |
 | General | `contactPointsPerCha` | number | all |  |  |  | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills the augmented Logic: owner, 2026-10-09) |
 | General | `knowledgePerLog` | number | all |  |  |  | Free knowledge skills per Logic |
 | General | `maxAvailability` | number | all |  |  |  | Highest Availability |
-| General | `maxNuyenLeft` | number | all |  |  |  | Most nuyen kept after creation |
+| General | `maxNuyenLeft` | number | all |  |  |  | Most nuyen kept after creation (CRB Hong Kong p. 68: 5,000); more is Review's `leftover.nuyen`, an error a GM can approve |
 | General | `freeSpellsPerMagic` | number | all |  |  |  | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all |  |  |  | Free complex forms per Resonance |
-| General | `maxKarmaLeft` | number | optional |  |  |  | Most karma kept after creation (CRB Hong Kong p. 66: 5; unset: no limit, and Review gives no warning) |
+| General | `maxKarmaLeft` | number | optional |  |  |  | Most karma kept after creation (CRB Hong Kong p. 66: 5; more is `leftover.karma`, an error a GM can approve; unset: no limit) |
+| General | `ownCarryOver` | true/false | optional |  |  | `maxKarmaLeft`, `maxNuyenLeft` | House rule, off: the GM's own carry-over limits `carryOver.karma` and `carryOver.nuyen` (nested, unset) replace the book's while on |
+| General | `carryOver.karma`, `carryOver.nuyen` | number | optional | `ownCarryOver` |  |  | The GM's own most Karma and nuyen kept after creation |
+| General | `mentorSpiritQuality` | quality id | optional |  |  |  | The Mentor Spirit quality (CRB Hong Kong p. 73): choosing a mentor spirit on the Magic tab adds it with its Karma; removing it removes the mentor spirit |
 | General | `expandedContacts` | true/false | optional |  |  |  | The Sixth World Companion's Expanded Rules for Contacts at Character Creation (SWC p. 161), optional: off (each rating up to Charisma, no karma). The importer assumes it for a book sample whose printed contacts need it |
 | General | `contactKarma` | number | optional | `expandedContacts` |  |  | With `expandedContacts`: karma per contact point past the points or past a contact's pair cap (SWC p. 161: 1) |
 | General | `contactPairPerCha` | number | optional | `expandedContacts` |  |  | A contact's connection + loyalty up to Charisma times (with `contactKarma`) |
@@ -709,7 +719,8 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Karma prices | `karmaForm` | number | all |  |  |  | Extra complex form |
 | Karma prices | `karmaInitiationBase` | number | all |  |  |  | Initiation or submersion: base |
 | Karma prices | `karmaInitiationPerGrade` | number | all |  |  |  | Initiation or submersion: per grade |
-| Karma prices | `positiveQualityFactor` | number | optional |  |  |  | Positive qualities cost their karma times (unset: 1) |
+| Karma prices | `positiveQualityMultiplier` | true/false | optional |  |  |  | Option, off: positive qualities cost their karma times `positiveQualityFactor` |
+| Karma prices | `positiveQualityFactor` | number | optional | `positiveQualityMultiplier` |  |  | Positive qualities cost their karma times (shipped 1; unset or the option off: 1) |
 | Karma prices | `karmaMartialArt` | number | optional |  |  |  | Martial arts style (it comes with its signature technique; unset: counts 0, Review warns, not bought after creation) |
 | Karma prices | `karmaTechnique` | number | optional |  |  |  | Martial arts technique (a style’s signature one is free; unset: as `karmaMartialArt`) |
 | Advancement | `advance.expertise` | number | optional |  |  |  | Expertise after creation |
@@ -717,13 +728,16 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Advancement | `advance.qualityFactor` | number | optional |  |  |  | A positive quality after creation costs its karma times |
 | Advancement | `advance.buyOffFactor` | number | optional |  |  |  | Buying off a negative quality costs its karma times |
 | Advancement | `advance.skillMax` | number | optional |  |  |  | Highest skill rank after creation (unset: no cap) |
-| Advancement | `advance.powerPoint` | number | optional |  |  |  | Karma per power point (mystic adepts) |
+| Advancement | `buyPowerPoints` | true/false | optional |  |  |  | House rule, off: a mystic adept buys power points after creation for `advance.powerPoint` (the book: a power point in place of a metamagic at initiation, CRB Hong Kong p. 168) |
+| Advancement | `advance.powerPoint` | number | optional | `buyPowerPoints` |  |  | Karma per power point (mystic adepts; unset) |
 | Advancement | `advance.karmaToNuyenRate` | number | optional | `workingForTheMan` |  |  | Nuyen per karma after creation, with `workingForTheMan` on (the Sixth World Companion's Working for the Man, p. 153: 2,000) |
 | Advancement | `advance.nuyenToKarmaRate` | number | optional | `workingForThePeople` |  |  | Nuyen per karma, nuyen to karma, with `workingForThePeople` on (Working for the People, SWC p. 153: 2,000) |
 | Nuyen | `karmaToNuyenRate` | number | all |  |  |  | Nuyen per karma |
 | Nuyen | `karmaToNuyenRateInDebt` | number | all |  |  |  | Nuyen per karma with the in-debt quality |
 | Nuyen | `inDebtQuality` | quality id | all |  |  |  | In-debt quality |
-| Nuyen | `karmaToNuyenMax` | number | optional |  |  |  | Most karma turned into nuyen (unset: no limit) |
+| Nuyen | `karmaToNuyenCap` | true/false | optional |  |  |  | House rule, off (no limit: CRB Hong Kong p. 66 prints none): the Karma turned into nuyen at creation up to `karmaToNuyenMax` |
+| Nuyen | `karmaToNuyenMax` | number | optional | `karmaToNuyenCap` |  |  | Most karma turned into nuyen (unset: no limit) |
+| Nuyen | `dataStructureNuyen` | number | optional |  |  |  | Nuyen per level of a data structure bought (Hack & Slash p. 72: 5,000); its Karma, the level, is paid to integrate it (p. 71) |
 | Nuyen | `fakeSinPerRating` | number | all |  |  |  | Fake SIN: nuyen per rating |
 | Nuyen | `licencePerRating` | number | all |  |  |  | Fake licence: nuyen per rating |
 | Sum to ten | `sumToTenTarget` | number | sum to ten |  |  |  | The letters’ values add up to at most |
@@ -751,8 +765,9 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Point buy | `pointBuy.cost.complexForm` | number | point buy |  |  |  | Character points per complex form |
 | Point buy | `pointBuy.nuyenPerCp` | number | point buy |  |  |  | Nuyen per character point |
 | Point buy | `pointBuy.oneSpecialization` | true/false | point buy |  |  |  | Only one specialization |
-| Karma build | `karmaBuild.start` | number | karma |  |  |  | Starting karma (karma build) |
-| Karma build | `karmaBuild.startRating` | number | karma |  |  |  | Starting Magic or Resonance (karma build) |
+| Karma build | `karmaBuildMethod` | true/false | optional |  |  |  | Option, off: the Karma build can be picked (no SR6 book describes one) |
+| Karma build | `karmaBuild.start` | number | karma | `karmaBuildMethod` |  |  | Starting karma (karma build) |
+| Karma build | `karmaBuild.startRating` | number | karma | `karmaBuildMethod` |  |  | Starting Magic or Resonance (karma build) |
 | Lifepath | `lifepath.moduleCount` | number | lifepath |  |  |  | Adult life modules to take |
 | Lifepath | `lifepath.contactRatingCap` | number | lifepath |  |  |  | Highest contact rating |
 | Lifepath | `lifepath.bestAttributeBonus` | number | optional |  |  |  | The best attribute rises by this, up to its metatype maximum; the rest goes on a second attribute (unset: no raise) |
@@ -802,6 +817,20 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `unrestrictedSkillRanks` | true/false | optional |  |  | `advance.skillMax` | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
 | Optional rules | `suprathyroidStacks` | true/false | optional |  |  |  | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
 | Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | `highStrengthDamage` |  |  | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
+| Optional rules | `exoticFirstSpecFree` | true/false | optional |  |  |  | House rule, off: the first Exotic Weapons specialization costs no skill points or Karma |
+| Optional rules | `mentorBothAdvantages` | true/false | optional |  |  |  | House rule, off: a mystic adept gets both its mentor spirit's magician and adept advantages; off, it picks one for good (CRB Hong Kong pp. 162–163; Review's `magic.mentorAdvantage` until picked) |
+| Optional rules | `dataStructureCaps` | true/false | optional |  |  |  | House rule, off: a technomancer's data structures past `dataStructure.maxCount` or above `dataStructure.maxRating` are Review's `magic.dataStructureCaps`, errors a GM can approve |
+| Optional rules | `dataStructure.maxCount`, `dataStructure.maxRating` | number | optional | `dataStructureCaps` |  |  | The GM's caps (unset) |
+| Optional rules | `noUsedCulturedBioware` | true/false | optional |  |  |  | House rule, off: cultured bioware takes no used grade (nor Body Shop's omega, which replaces it); the books print no exclusion (CRB Hong Kong p. 282) |
+| Optional rules | `gradeCapAtCreation` | true/false | optional |  |  |  | House rule, off: an initiation or submersion grade at creation above `gradeCap.initiation` or `gradeCap.submersion` is Review's `magic.gradeCapCreation`, an error a GM can approve (a grade above Magic or Resonance stays `magic.gradeCap`) |
+| Optional rules | `gradeCap.initiation`, `gradeCap.submersion` | number | optional | `gradeCapAtCreation` |  |  | The GM's caps (unset) |
+| Optional rules | `adjustOnLoweredMax` | true/false | optional |  |  |  | House rule, off: adjustment points also on an attribute whose metatype maximum is below `attributeBaseMax` |
+| Optional rules | `pointBuyErrataNuyen` | true/false | optional |  |  | `pointBuy.max.nuyen` | House rule, off: point buy's most nuyen is 450,000, the errata version (as printed: 440,000, SWC p. 29) |
+| Optional rules | `knowledgeLogicIntuition` | true/false | optional |  |  |  | House rule, off: free knowledge points from Logic + Intuition (as printed: Logic, CRB Hong Kong p. 67) |
+| Optional rules | `magicAboveSixByGrade` | true/false | optional |  |  |  | Option, off (CRB Hong Kong p. 167): Magic or Resonance at creation up to `magicMax` plus the initiation or submersion grade (as printed: `magicMax`, p. 65) |
+| Optional rules | `eliteSumToThirteen` | true/false | optional | `levelSwcElite` |  | `sumToTenTarget` | House rule, off: with Elite, sum-to-thirteen (the book prints sum-to-twelve) |
+| Optional rules | `availabilitySeven` | true/false | optional |  |  | `maxAvailability` | House rule, off: gear of Availability 7 at creation (as printed: 6, CRB Hong Kong p. 66) |
+| Optional rules | `cargoWithoutSeats` | true/false | optional |  |  |  | Option, off (Double Clutch p. 126): a vehicle line's seats removed (`<purchase seatsRemoved>`) add cargo; its Cargo Factor 150 percent of Seating (125 on a bike), 4 more on a truck, shown on the Vehicles tab |
 | Derived values | `charismaticDefenseQuality` | quality id | optional |  |  |  | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath |  |  |  | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy |  |  |  | starting Magic or Resonance per awakened or emerged kind |
