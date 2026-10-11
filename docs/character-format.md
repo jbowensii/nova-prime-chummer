@@ -63,12 +63,10 @@ is built from this data; the format itself is ours and stays stable.
   amp as printed: its type, name, `printedRating`, `source` and `page`. Where the rules rate the amp otherwise, Review
   notes it ("the book prints rating 9; the rules give 11"); the file keeps the book's number. A snapshot of one level of
   an entry the book prints with several carries its `family` and `level` (data-format.md, Levels).
-- **A `catalogId` that names a family** (a runner saved before the book's entry was split into levels: DHSA's
-  Freefall, Secret Room, a cyberdeck's Attack add-on…): when the runner is opened (and in its ledger's `amp-add` and
-  `amp-modify` events) it becomes the level whose effects rate as the amp's own, else the lowest (what the book's single
-  entry was). The amp's name, effects and snapshot are kept; the next save writes the level's id. An unscoped one is
-  scoped by its snapshot's book first. Add-ons applied earlier note their name without a level on their effects (`note="Attack"`):
-  Review still reads them as the book's.
+- **An entry since split into levels** (DHSA's Freefall, Secret Room, a cyberdeck's Attack add-on…, data-format.md
+  Levels): its lowest level keeps the entry's id, so a runner saved before holds that level, with its own effects (a
+  player who added an effect to reach the next level keeps it, priced the same). Add-ons applied before note their
+  name without a level on their effects (`note="Attack"`): Review still reads them as the book's.
 - **`<effect>`** on an amp is a pick (an Amp effect, or a narrative effect kind at rating 0: data-format.md); on an item,
   the player's or GM's own effects, which replace the catalog item's. Either may say how it is turned on and whether it
   counts: `switch` and `when` (counted in the bracketed total), `confidence="low"` (shown, not counted), `from` and

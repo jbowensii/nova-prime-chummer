@@ -133,7 +133,25 @@ export function effectBlocked(c: Catalog, amp: AmpEntry, eff: AmpEffect): string
   if (eff.max != null && count >= eff.max) return `max ${eff.max} per amp`
   if (eff.id === 'init-realm' && count >= initLevels(amp)) return 'one per initiative level held'
   if (eff.id === 'firewall-plus' && amp.type === 'cyberdeck' && 1 + count >= FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
+  const body = vehicleBody(c, amp)
+  if (eff.id === 'vehicle-armor' && body != null && count >= body) return `Armor at most the vehicle's Body (${body})`
   if (eff.excludes && amp.effects.some(e => e.ref === eff.excludes)) return `not with ${c.ampEffects.get(eff.excludes)?.name ?? eff.excludes}`
+  return undefined
+}
+
+const vehicleBody = (c: Catalog, amp: AmpEntry) => (amp.type === 'vehicle' ? (c.vehicles.get(amp.vehicle ?? '') ?? amp.chassis)?.body : undefined)
+
+/** Why an amp's effects go past a cap (an effect's max, a cyberdeck's Firewall 5, a vehicle's Armor above its Body, CRB
+ *  p.61-62), else undefined: an add-on that would do so isn't offered (DHSA's Additional plates: up to the Body). */
+export function overCap(c: Catalog, amp: AmpEntry): string | undefined {
+  const n = (ref: string) => amp.effects.filter(e => e.ref === ref).length
+  for (const ref of new Set(amp.effects.map(e => e.ref))) {
+    const d = c.ampEffects.get(ref)
+    if (d?.max != null && n(ref) > d.max) return `${d.name}: max ${d.max} per amp`
+  }
+  if (amp.type === 'cyberdeck' && 1 + n('firewall-plus') > FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
+  const body = vehicleBody(c, amp)
+  if (body != null && n('vehicle-armor') > body) return `Armor at most the vehicle's Body (${body})`
   return undefined
 }
 

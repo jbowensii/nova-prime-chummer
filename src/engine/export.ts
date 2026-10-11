@@ -4,7 +4,6 @@
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
 import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, Npc } from '../model/types'
 import { ampCtx, ampEssence, ampFromTemplate, ampRating, effectRating } from './amps'
-import { levelsOf } from './levels'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
 import { armorShares, DEVICE_TYPES, derive, type Derived, type DerivedEffect, type PoolNote } from './derive'
@@ -83,9 +82,8 @@ export interface ExportBook {
   source: { id: string; name: string; publisher: string; canon: boolean; compendium?: true }
   amps: { id: string; source: string; page: number; canon: boolean; type: string; typeName: string; name: string; rating: number;
     essence: number; printedRating?: number; mod: boolean; effects: ExportEffect[]; rr: ExportRR[]; bonuses: ExportBonuses
-    /** one level of an entry the book prints with several (engine/levels.ts); aliases: the lowest level carries its
-     *  family's id, the entry an earlier export had */
-    family?: string; level?: number; aliases?: { id: string }[]
+    /** one level of an entry the book prints with several (engine/levels.ts); the lowest level has the family's id */
+    family?: string; level?: number
     item?: { kind: string; specialist: boolean; armor?: number; dv?: string; ranges?: Record<'melee' | 'short' | 'medium' | 'long', Range> }
     vehicle?: string; description?: string; switch?: EffectSwitch }[]
   items: { id: string; source: string; page: number; canon: boolean; kind: string; name: string; category?: string; specialist: boolean
@@ -289,7 +287,7 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
           name: t.name, rating: t.mod ? amp.effects.reduce((s, e) => s + effectRating(c, e), 0) : ampRating(c, amp, { isFirstQuality: false }),
           essence: ampEssence(c, amp),
           ...t.printedRating != null ? { printedRating: t.printedRating } : {}, mod: !!t.mod, ...ampParts(c, t.type, t.effects),
-          ...t.family ? { family: t.family, level: t.level, ...levelsOf(c, t.family)[0] === t ? { aliases: [{ id: t.family }] } : {} } : {},
+          ...t.family ? { family: t.family, level: t.level } : {},
           ...t.item ? { item: { kind: t.item.kind, specialist: !!t.item.specialist, ...t.item.armor != null ? { armor: t.item.armor } : {},
             ...t.item.dv ? { dv: t.item.dv } : {}, ...t.item.ranges ? { ranges: parseRanges(t.item.ranges) } : {} } } : {},
           ...t.vehicle ? { vehicle: t.vehicle } : {}, ...o.descriptions && t.narrative ? { description: t.narrative } : {} }

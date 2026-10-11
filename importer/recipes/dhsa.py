@@ -53,7 +53,7 @@ EQUIPMENT_SECTIONS = {"ARMORY – WEAPONS", "ARMORY – ARMORS", "VARIOUS EQUIPM
                       "MATRIX – DECKS, MODS & PROGRAMS", "MEDTECH – DRUGS", "MEDTECH – EQUIPMENT & SERVICES",
                       "MAGIC – MAGICAL EQUIPMENT", "RIGGERS – RCC", "RESONANCE – DATA STRUCTURES"}
 # "Amp +N" rows: add-ons applied to an existing amp of this type
-MOD_TARGET = {"ARMORY – AMMUNITIONS": "equipment", "ARMORY – ACCESSORIES": "equipment",
+MOD_TARGET = {"ARMORY – AMMUNITIONS": "equipment", "ARMORY – ACCESSORIES": "equipment", "EVERYDAY LIFE": "equipment",
               "RIGGERS – VEHICLE MODS": "vehicle", "MATRIX – DECKS, MODS & PROGRAMS": "cyberdeck",
               "AUGMENTATIONS – CYBERWARE": "cyberware", "AUGMENTATIONS – BIOWARE": "bioware"}
 VEHICLE_MOD_NAMES = [("safety", "safety-override"), ("fixed", "fixed"), ("flying", "flying"), ("mount", "weapon-mount"),
@@ -688,14 +688,21 @@ _MAX_PLUS = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(\d+)", re.I)
 _MAX_OPEN = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(?!\d)\w+", re.I)
 _UP_TO_LEVEL = re.compile(r"\bup to level (\d+)", re.I)
 _PER_POINT = re.compile(r"increased by 1 \(max \+(\d+)\) for an? (?:additional|extra) Amp point", re.I)
+# "Improves home-automation host's Firewall by +1 (max rating 5)", its table printing each lifestyle's "Firewall rating is 2"
+_MAX_RATING = re.compile(r"\b(\w+) by \+1 \(max rating (\d+)\)", re.I)
 
 
-def level_range(text, rating, mod, refs=(), open_top=False):
+def level_range(text, rating, mod, refs=(), open_top=False, table=""):
     """(low, high): the levels the book prints for an entry, as its rating (an add-on: how many times it is taken), or
     None when it prints one. A range with no top level (a rating "3+" with "each additional rating", an add-on's "max
-    +Body") is a str saying so: not split, for the import report."""
+    +Body") is a str saying so: not split, for the import report. `table`: the text of the entry's table, where an
+    add-on raising a rating "(max rating N)" finds the lowest rating it starts from (it goes up to N from there)."""
     text = re.sub(r"\s+", " ", text)
     if mod:
+        r = _MAX_RATING.search(text)
+        starts = [int(n) for n in re.findall(rf"\b{re.escape(r.group(1))} rating is (\d+)", re.sub(r"\s+", " ", table), re.I)] if r else []
+        if starts and int(r.group(2)) - min(starts) > 1:
+            return (1, int(r.group(2)) - min(starts))
         m = _MAX_PLUS.search(text)
         # "Max 3 identical drones": the core table's max for its one effect (2 more drones)
         bare = not m and len(set(refs)) == 1 and re.search(r"\bmax\b", text, re.I)
@@ -713,8 +720,21 @@ def level_range(text, rating, mod, refs=(), open_top=False):
 
 
 def level_id(family, level):
-    """A level's id: its family's (the id the entry had before it was split, which old runners carry) and the level."""
+    """A new level's id: its family's (the id the entry had before it was split) and the level. The lowest level keeps
+    the family id itself (owner, 2026-10-11: edits, runners and links made on the old entry stay on it)."""
     return f"{family}-level-{'minus-' if level < 0 else ''}{abs(level)}"
+
+
+# "Note: Rating 10 (52,500¥) for characters unable to cast spells" (Psyché, CRB p.150, DHSA p.26): the same entry for
+# them, a separate one at that rating, without what only a caster uses (owner, 2026-10-11: "Psyché (non-caster)")
+_NON_CASTER = re.compile(r"(?<![A-Za-z])Note:\s*Rating (\d+)\b[^.]*?\bfor characters unable to cast spells", re.I)
+CASTER_ONLY = {"sustain-spell"}
+
+
+def non_caster(text, fx):
+    """(rating, effects) of the entry's non-caster version, or None when it prints none."""
+    m = _NON_CASTER.search(re.sub(r"\s+", " ", text))
+    return (int(m.group(1)), [f for f in fx if f[0] not in CASTER_ONLY]) if m else None
 
 
 def cost_value(cost):
@@ -803,7 +823,7 @@ def extract(md, ctx=None):
         named "<Name> <n>" ("<Name> +<n>" for an add-on). A level above the printed rating adds that many "Additional
         narrative effect"s (the book's price for it); an add-on's level is the add-on taken that many times."""
         if isinstance(rng, str):
-            report.append({"kind": "levels-open", "id": aid, "page": page, "problem": f"{rng}: kept as printed, one entry"})
+            report.append({"kind": "levels-open", "id": aid, "page": page, "problem": f"{rng}: one entry, the player sets its level"})
         if not isinstance(rng, tuple):
             amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle, mod)
             return
@@ -814,7 +834,9 @@ def extract(md, ctx=None):
             else:
                 more = [("narrative", "", None, "balances printed rating")] * ((n - rating) // max(1, effect_rating("narrative")))
                 level, fx_n, rating_n, name_n = n, fx + more, n, f"{name} {n}"
-            amp_xml(uid(level_id(aid, level)), atype, rating_n, page, name_n, item, fx_n, narrative, vehicle, mod, family=aid, level=level)
+            # the lowest level keeps the entry's id (its edits and the runners holding it stay on it), the others are new
+            lid = aid if n == rng[0] else uid(level_id(aid, level))
+            amp_xml(lid, atype, rating_n, page, name_n, item, fx_n, narrative, vehicle, mod, family=aid, level=level)
         report.append({"kind": "levels", "id": aid, "page": page, "levels": f"{rng[0]}-{rng[1]}"})
 
     def map_lines(lines):
@@ -918,7 +940,9 @@ def extract(md, ctx=None):
             aid = uid("mod-" + slug(name))
             if computed != rating:
                 mismatch(aid, page, f"mod ({target})", rating, computed, r)
-            emit(aid, target, rating, page, name, "", fx, narrative, level_range(" ".join(r["effects"]), rating, True, [f[0] for f in fx]), mod=True)
+            table = " ".join(e for x in rs if x["section"] == sec for e in x["effects"])
+            emit(aid, target, rating, page, name, "", fx, narrative,
+                 level_range(" ".join(r["effects"]), rating, True, [f[0] for f in fx], table=table), mod=True)
             report.extend(unpriced_rows(aid, page, fx))
             continue
 
@@ -1000,6 +1024,13 @@ def extract(md, ctx=None):
         emit(aid, atype, rating, page, name, item, fx, narrative,
              level_range(" ".join(r["effects"]), rating, False, open_top=r["type"].strip().endswith("+")), vehicle)
         report.extend(unpriced_rows(aid, page, fx))
+        nc = non_caster(" ".join(r["effects"]), fx)
+        if nc:
+            vfx, vid = list(nc[1]), uid(slug(name) + "-non-caster")
+            computed = reconcile(vfx, [], core()["base"][atype], nc[0])
+            if computed != nc[0]:
+                mismatch(vid, page, atype, nc[0], computed, r)
+            amp_xml(vid, atype, nc[0], page, f"{name} (non-caster)", item, vfx, narrative, vehicle)
 
     text_of = {m.group(1): unescape(m.group(2)) for t in texts for m in [re.search(r'id="([^"]+)">(.*)</text>', t)] if m}
     entries = amps + spells + forms + gear

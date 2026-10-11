@@ -572,7 +572,8 @@ AMP_ITEMS = {
 # v1.8 prints Amps DHSA doesn't reprint in black (contacts, vehicle control rigs, eyes and ears, bone lacing,
 # base vehicles, more weapons, drugs and drones): counted by type, no names. Of these, 22 are printed only on the
 # pregen sheets (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5).
-EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 9, "quality": 5,
+# equipment: 10 since Psyche (non-caster), its own entry (owner, 2026-10-11)
+EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 10, "quality": 5,
                  "vehicle": 15}
 
 

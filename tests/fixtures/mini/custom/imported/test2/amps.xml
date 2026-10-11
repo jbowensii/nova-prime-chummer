@@ -5,9 +5,9 @@
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">
   <amp id="test2.keen-eye" type="quality" printedRating="4" source="TEST2" page="1"><name>Keen eye</name><effect ref="rr-spec" param="perception.social"/><narrative></narrative></amp>
   <amp id="test2.sinner" type="quality" printedRating="1" source="TEST2" page="2"><name>SINner</name><narrative></narrative></amp>
-  <amp id="test2.glide-step-level-1" type="adept" printedRating="2" family="test2.glide-step" level="1" source="TEST2" page="3"><name>Glide Step 1</name><narrative></narrative></amp>
+  <amp id="test2.glide-step" type="adept" printedRating="2" family="test2.glide-step" level="1" source="TEST2" page="3"><name>Glide Step 1</name><narrative></narrative></amp>
   <amp id="test2.glide-step-level-2" type="adept" printedRating="4" family="test2.glide-step" level="2" source="TEST2" page="3"><name>Glide Step 2</name><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
   <amp id="test2.glide-step-level-3" type="adept" printedRating="6" family="test2.glide-step" level="3" source="TEST2" page="3"><name>Glide Step 3</name><effect ref="narrative" note="balances printed rating"/><effect ref="narrative" note="balances printed rating"/><narrative></narrative></amp>
-  <amp id="test2.mod-overclock-level-1" type="cyberdeck" printedRating="2" mod="true" family="test2.mod-overclock" level="1" source="TEST2" page="4"><name>Overclock +1</name><effect ref="attack-plus"/><narrative></narrative></amp>
+  <amp id="test2.mod-overclock" type="cyberdeck" printedRating="2" mod="true" family="test2.mod-overclock" level="1" source="TEST2" page="4"><name>Overclock +1</name><effect ref="attack-plus"/><narrative></narrative></amp>
   <amp id="test2.mod-overclock-level-2" type="cyberdeck" printedRating="4" mod="true" family="test2.mod-overclock" level="2" source="TEST2" page="4"><name>Overclock +2</name><effect ref="attack-plus"/><effect ref="attack-plus"/><narrative></narrative></amp>
 </ca2:data>

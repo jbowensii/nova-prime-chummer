@@ -41,7 +41,7 @@ from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     SKILLS, ATTRS, Mapper, attr, core, dv_num, fx_xml, item_effects, load_skills, parts as _parts, read_amp, reconcile, slug,
-    specialist, stated, unpriced_rows, weapon_base)
+    non_caster, specialist, stated, unpriced_rows, weapon_base)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun Anarchy 2.0 Alternative Core Rulebook v1.8", "Catalyst Game Labs", True
 SHA256 = ("4ae357ad00d8c9ad660a5595e9c100f1c9e7a105875f92bffc33111efc707a95",)  # the owner's v1.8 PDF
@@ -338,6 +338,11 @@ def amps_and_gear(md, mapper):
                     name = f"{name} Mentor Spirit {nxt[1].replace(',', '')}"
             amps.append(build_amp(mapper, name, atype, int(a.group("rating")), (a.group("wtype") or "").strip(),
                                   _cost(paren), rest, page))
+            nc = non_caster(rest, amps[-1]["fx"])
+            if nc:  # Psyche's "Rating 10 for characters unable to cast spells": its own entry (owner, 2026-10-11)
+                b, vfx = amps[-1], list(nc[1])
+                amps.append({**b, "id": b["id"] + "-non-caster", "name": f"{b['name']} (non-caster)", "rating": nc[0], "fx": vfx,
+                             "computed": reconcile(vfx, [], core()["base"][atype], nc[0])})
         # prose that rules named substances plain equipment ("**A** and **B** are always equipment")
         for m in re.finditer(r"\*\*([^*]+)\*\*(?: and \*\*([^*]+)\*\*)? (?:is|are) always equipment", text):
             gear += [{"name": n[:1].upper() + n[1:], "page": page, "category": title.capitalize(), "text": ""}

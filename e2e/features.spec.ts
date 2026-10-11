@@ -199,3 +199,19 @@ test('a book amp printed with levels: one entry per level in the picker, the Amp
   await expect(page.getByRole('cell', { name: /Glide Step 3/ })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Rating 6' })).toBeVisible()
 })
+
+test('Amp Builder: the Negative effect is five picks, each a row with its value, needing the GM (p.61)', async ({ page }) => {
+  await newRunner(page, 'Drawback')
+  await page.getByRole('link', { name: 'Shadow Amps' }).click()
+  await page.getByRole('button', { name: 'Add an amp' }).click()
+  await page.getByRole('button', { name: 'Gear', exact: true }).click()
+  await page.getByLabel('Name').fill('Rusty kit')
+  const add = page.getByLabel('Add an effect')
+  for (const n of [1, 2, 3, 4, 5]) await expect(add.locator(`option[value="negative:${n}"]`)).toHaveText(`Drawback (−${n}): needs GM approval (p.61)`) // the made-up core names it "Drawback"
+  await expect(add.locator('option[value="negative"]')).toHaveCount(0)
+  const before = Number(await page.locator('.ampfoot b').first().textContent())
+  await add.selectOption('negative:3')
+  await expect(page.locator('.fx').filter({ hasText: 'Drawback (−3)' })).toContainText('−3')
+  await expect(page.getByLabel('Points')).toHaveCount(0) // no number box
+  await expect(page.locator('.ampfoot b').first()).toHaveText(String(before - 3))
+})

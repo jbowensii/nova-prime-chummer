@@ -68,12 +68,22 @@ LEVELS_MD = """<!-- page 8 -->
 |---|---|---|---|
 | **Hop** | Amp 2 | 10 000¥ | Jump a little higher (can be taken up to level 6 for 30,000¥). |
 | **Keen Nose** | Amp 3+ | 15 000¥ | Smell things.<br>Each additional rating (+5,000¥) adds a sense. |
+<!-- page 11 -->
+# MEDTECH – DRUGS
+| D RUGS | T YPE | C OST | E FFECTS |
+|---|---|---|---|
+| **Calm Down** | Amp 12 | 62 500¥ | RR 1 Willpower<br>Allows the user to sustain an additional spell.<br>_Note: Rating 10 (52,500¥) for characters unable to cast spells._ |
 <!-- page 9 -->
 # EVERYDAY LIFE
 | H IDEOUT | T YPE | C OST | E FFECTS |
 |---|---|---|---|
 | **Hidey Hole** | Amp 2 | 10 000¥ | A hole. Its threshold can be increased by 1 (max +2) for an additional Amp point.<br>Its lock can be<br>increased by 1 (max +1) for an extra Amp point (¥5,000). |
 | **Strongbox** | Equipment | 2 500¥ | A box. Its lock can be increased by 1 (max<br>+2) for an additional Amp point (¥5,000). |
+| L IFESTYLES | T YPE | C OST | E FFECTS |
+|---|---|---|---|
+| **Cozy** | Amp 0 | 0¥ | A flat. Its door host's<br>Firewall rating is 2. |
+| **Posh** | Amp 2 | 10 000¥ | A loft. Its door host's Firewall rating is 4. |
+| **Better door host** | Amp +1 | +5 000¥ | Improves the door host's Firewall by +1 (max rating 5) |
 <!-- page 10 -->
 # RIGGERS – VEHICLE MODS
 | M ODS | T YPE | C OST | E FFECTS |
@@ -110,9 +120,9 @@ class LevelsTest(unittest.TestCase):
         # a level is a rating, printed (2) to the top (6); what a level adds over the printed rating is "Additional
         # narrative effect"s at the core's price (+2 in the made-up core: Hop 6 has two)
         self.assertEqual([(i, n, l, r) for i, n, l, r, _ in self.got("hop")],
-                         [(f"hop-level-{n}", f"Hop {n}", str(n), str(n)) for n in range(2, 7)])
+                         [("hop", "Hop 2", "2", "2")] + [(f"hop-level-{n}", f"Hop {n}", str(n), str(n)) for n in range(3, 7)])
         self.assertEqual(self.got("hop")[-1][4], ["narrative", "narrative"])
-        self.assertNotIn("hop", self.amps)  # the family id is no entry: old runners carry it (rescope maps it)
+        # the lowest level keeps the entry's id (owner, 2026-10-11: edits, runners and links on it stay), the others are new
 
     def test_per_amp_point_sentences_add_up(self):
         self.assertEqual([(n, r) for _, n, _, r, _ in self.got("hidey-hole")], [(f"Hidey Hole {n}", str(n)) for n in range(2, 6)])
@@ -124,7 +134,7 @@ class LevelsTest(unittest.TestCase):
 
     def test_add_on_levels_are_it_taken_that_many_times(self):
         self.assertEqual(self.got("mod-turbo-kit"), [
-            ("mod-turbo-kit-level-1", "Turbo Kit +1", "1", "1", ["speed-plus"]),  # "Improves speed": the rated effect
+            ("mod-turbo-kit", "Turbo Kit +1", "1", "1", ["speed-plus"]),  # "Improves speed": the rated effect
             ("mod-turbo-kit-level-2", "Turbo Kit +2", "2", "2", ["speed-plus", "speed-plus"])])
         # "Max 4 identical drones" has no "+N": the core table's max for its one effect
         self.assertEqual([(n, r) for _, n, _, r, _ in self.got("mod-identical-additional-drone")],
@@ -135,11 +145,26 @@ class LevelsTest(unittest.TestCase):
         self.assertIn("mod-bolt-on-plates", self.amps)
         rows = {(r["id"], r["kind"]) for r in self.res.report if r["kind"].startswith("levels")}
         self.assertEqual(rows, {("hop", "levels"), ("keen-nose", "levels-open"), ("hidey-hole", "levels"), ("strongbox", "levels"),
+                                ("mod-better-door-host", "levels"),
                                 ("mod-turbo-kit", "levels"), ("mod-identical-additional-drone", "levels"), ("mod-bolt-on-plates", "levels-open")})
 
     def test_each_level_has_the_description(self):
         texts = {t.get("id") for t in ET.fromstring(self.res.texts)}
-        self.assertTrue({f"hop-level-{n}" for n in range(2, 7)} <= texts)
+        self.assertTrue({"hop"} | {f"hop-level-{n}" for n in range(3, 7)} <= texts)
+
+    def test_an_add_on_up_to_a_rating_starts_from_the_lowest_its_table_prints(self):
+        # "+1 (max rating 5)" over lifestyles printing Firewall 2 and 4: +1 ... +3, an add-on for the lifestyle (Equipment) amps
+        self.assertEqual([(i, n, a.get("type"), a.get("mod")) for i, n, _, _, _ in self.got("mod-better-door-host") for a in [self.amps[i]]],
+                         [("mod-better-door-host", "Better door host +1", "equipment", "true"),
+                          ("mod-better-door-host-level-2", "Better door host +2", "equipment", "true"),
+                          ("mod-better-door-host-level-3", "Better door host +3", "equipment", "true")])
+
+    def test_a_non_caster_version_is_its_own_entry(self):
+        # "Rating 10 for characters unable to cast spells": the same entry at 10, without the sustained spell
+        caster, nc = self.amps["calm-down"], self.amps["calm-down-non-caster"]
+        self.assertEqual((nc.find("name").text, nc.get("printedRating"), nc.get("type")), ("Calm Down (non-caster)", "10", "equipment"))
+        rated = lambda a: [e.get("ref") for e in a.iter("effect") if e.get("ref") != "narrative"]  # noqa: E731 (balancing aside)
+        self.assertEqual((rated(caster), rated(nc)), (["rr-attr", "sustain-spell"], ["rr-attr"]))
 
 
 class ExtractTest(unittest.TestCase):
@@ -193,7 +218,9 @@ ORACLE = ROOT / ".extract/private/oracle"
 KNOWN_MISSING_PREFIX = ("gear.xml", "gear", "Mage License ")
 KNOWN_EXTRA = {("gear.xml", "gear", "Mage License"),
                # gear whose rating "can be increased by 1 (max +2) for an additional Amp point": its levels are amps (2026-10-11)
-               ("amps.xml", "equipment", "Secure safe")}
+               ("amps.xml", "equipment", "Secure safe"),
+               # owner, 2026-10-11: the lifestyle add-on the reader skipped, and Psyché's version for non-casters
+               ("amps.xml", "equipment", "Improved home-automation host"), ("amps.xml", "equipment", "Psyché (non-caster)")}
 
 
 # entries the old tool didn't split by level: one per family, by its name without the level ("Freefall 2" → "Freefall")
@@ -231,7 +258,9 @@ class ParityTest(unittest.TestCase):
         amps = ET.fromstring(self.res.files["amps.xml"])
         got = (len(amps), sum(a.get("mod") == "true" for a in amps),
                *(len(ET.fromstring(self.res.files[f])) for f in ("spells.xml", "complexforms.xml", "gear.xml")))
-        self.assertEqual(got, (579, 101, 77, 31, 41))  # 554 and 84 before levels: 8 entries became 9 families of 33 levels (Secure safe's gear stays)
+        # 554 and 84 before levels: 8 entries became 9 families of 33 levels (Secure safe's gear stays), plus the
+        # home-automation host's 3 and Psyché (non-caster)
+        self.assertEqual(got, (583, 104, 77, 31, 41))
         kinds = Counter(r["kind"] for r in self.res.report)
         self.assertEqual((kinds["rating-mismatch"], kinds["unresolved-spec"]), (21, 12))
 

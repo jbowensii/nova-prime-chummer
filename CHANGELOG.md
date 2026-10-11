@@ -26,23 +26,29 @@ the per-level entries are written at import.
 - On a fresh import of the eight books, in either order, the 28 sample runners show 3 Review errors (27 at 0.12.0),
   each the booklet's own: Keran's Cracking without a deck, Noonchi and Ty over budget.
 - One entry per level (owner, 2026-10-11): an entry Daegann's list prints with several levels is one catalog entry per
-  level, each with its own rating and effects. Freefall 1–3, Secret Room 1–5, Secure safe 1–2 (the gear stays; its
-  levels are Equipment amps), and the add-ons Attack +1…+5 and Firewall +1…+4 (cyberdecks), Additional Autosofts
-  +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical additional drone +1…+2 (vehicles): 9 families,
-  33 entries in place of 8 (Secure safe had only its gear). A level's rating is what the book prints for it ("up to level 3 for 15,000¥"); an add-on's level is the
-  add-on taken that many times. Two ranges have no top and stay one entry, listed in the import report: Enhanced
-  Perception "3+" and Additional plates "max +Body".
+  level, each with its own rating and effects. Freefall 1–3, Secret Room 1–5 (the player notes which upgrade each point
+  went to), Secure safe 1–2 (the gear stays; its levels are Equipment amps), and the add-ons Attack +1…+5 and Firewall
+  +1…+4 (cyberdecks), Additional Autosofts +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical
+  additional drone +1…+2 (vehicles), and Improved home-automation host +1…+3 (DHSA p.16: a lifestyle add-on, Firewall
+  up to 5 from Low's 2; it wasn't imported before): 10 families, 36 entries. A level's rating is what the book prints
+  for it ("up to level 3 for 15,000¥"); an add-on's level is the add-on taken that many times.
+  - The lowest level keeps the entry's id, so runners, GM edits and Foundry entries made on it stay on it; the other
+    levels are new entries after it.
   - The amp picker lists a family's levels together ("Level 2 (1–3)"), as does Game data; the Amp Builder has a
     **Level** select for a book amp printed with levels, so a runner steps to the next level (after Finalize the
-    change is priced and logged like any edit).
-  - Runners saved before keep loading: an amp with the old id becomes the level its effects rate as (else the lowest),
-    its name and effects kept; an add-on applied before is still the book's on Review.
+    change is priced and logged like any edit). An add-on applied before is still the book's on Review.
+  - Two ranges have no top and stay one entry; the player sets the level: Enhanced Perception "3+" (one more
+    Additional narrative effect, a sense, per extra rating: 15,000¥ at 3, +5,000¥ each) and Additional plates
+    "max +Body" (applied once per point). The Amp Builder no longer offers an add-on or effect that would take a
+    vehicle's Armor above its Body, an effect past its max or a deck's Firewall past 5.
+  - Psyché's "Rating 10 for characters unable to cast spells" (CRB p.150, DHSA p.26) is its own entry, "Psyché
+    (non-caster)", at 10 without the sustained spell.
   - Vehicle add-ons that only say what they improve in their text are read as that effect: Additional Autosofts adds
     Pilot, Engine Customization Speed, Smart Suspension Handling (they were narrative effects at the same rating).
-  - The Foundry export gives each level `family` and `level`, the lowest one the old id as an alias, so re-importing a
-    book into Foundry updates the entry it made before and adds the other levels.
-  - The Amp Builder's own effect table is unchanged: Firewall +1 up to 5, the Negative effect −1 to −5 or an RCC's
-    drones build the player's own amp, one amp with its rating computed.
+  - The Foundry export gives each level `family` and `level`.
+  - The Amp Builder's Negative effect is picked like the positive ones: five picks, "Negative effect (−1)" … "(−5)",
+    each its own row with its value (no number box); the menu says a player's needs GM approval (p.61). A book's own
+    drawback (a catalog amp's, a book sample's as printed) still needs none.
 - Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
   Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
   or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer

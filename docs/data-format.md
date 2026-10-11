@@ -271,28 +271,38 @@ These are the base chassis for vehicle amps.
 
 Owner's rule (2026-10-11): an entry the book prints with several levels is one entry per level, otherwise duplicates of
 one another, each with its own rating and effects (positive or negative levels alike). The importer writes them
-(`importer/recipes/dhsa.py` `level_range`), reading the three ways Daegann's list prints a range:
+(`importer/recipes/dhsa.py` `level_range`), reading the four ways Daegann's list prints a range:
 
 | the book prints | levels | each level |
 |---|---|---|
 | an add-on "Amp +1 … max +N" ("Max improvement +6"; "Max 3 identical drones": the core table's max for its one effect) | +1 … +N | the add-on taken that many times: its effects ×N, rating ×N; named "Attack +3" |
 | "can be taken up to level N" (Freefall) | printed rating … N | that rating; what it adds over the printed one is "Additional narrative effect"s; named "Freefall 2" |
 | a rating that "can be increased by 1 (max +N) for an additional Amp point" (Secret Room's threshold and maglock: they add up) | printed … printed + ΣN | as above; gear printed so (Secure safe) keeps its item and gets Equipment amps for levels 1 … ΣN |
+| an add-on "+1 (max rating N)" whose table prints where each entry starts ("Firewall rating is 2"): Improved home-automation host | +1 … N − the lowest start | as the add-on above (an add-on for the lifestyle Amps) |
 
-- `id` is `<family>-level-<n>` (`-level-minus-<n>` below 0); `family` is the id the entry had before it was split
-  (scoped like one, `dhsa.freefall`); no entry has it any more. `level` is the level (an add-on's: how many times it is
-  taken, negative for a drawback add-on). The levels follow each other in the file, lowest first, each with the
-  description.
-- A range with no top level stays one entry, as printed, and the import report lists it (`kind="levels-open"`): a rating
-  "3+" with "each additional rating" (Enhanced Perception), an add-on's "max +Body" (Additional plates).
+- The lowest level keeps the id the entry had (owner, 2026-10-11: edits, runners and links made on it stay on it);
+  the others get `<family>-level-<n>` (`-level-minus-<n>` below 0). `family` is that id (scoped like one,
+  `dhsa.freefall`), `level` the level (an add-on's: how many times it is taken, negative for a drawback add-on). The
+  levels follow each other in the file, lowest first, each with the description.
+- A range with no top level stays one entry, as printed, and the import report lists it (`kind="levels-open"`); the
+  player sets its level (owner, 2026-10-11). Enhanced Perception "3+" (CRB p.191, DHSA p.46): each extra rating is one
+  more "Additional narrative effect" (a sense) added in the Amp Builder, priced by the rating like any amp (15,000¥ at
+  3, +5,000¥ each). Additional plates "max +Body" (DHSA p.50): the add-on is applied once per point, and the Amp
+  Builder offers no add-on or effect that would take a vehicle's Armor above its Body (nor any past an effect's max or
+  a deck's Firewall 5: `overCap`, `effectBlocked` in `src/engine/amps.ts`).
+- A version the book prints for some characters is its own entry: "Note: Rating 10 (52,500¥) for characters unable to
+  cast spells" (Psyché, CRB p.150, DHSA p.26) is `<id>-non-caster`, "Psyché (non-caster)", at that rating without the
+  effects only a caster uses (the sustained spell).
 - The app: pickers list a family's levels together, each with "Level 2 (1–3)"; the Amp Builder has a Level select for a
-  book amp printed with levels (after Finalize the change is priced and logged as any edit); a runner whose `catalogId`
-  is a family gets the level its effects rate as, else the lowest (`src/engine/levels.ts`, `rescope.ts`); the Foundry
-  export carries `family`, `level` and, on the lowest level, the family id as an alias.
+  book amp printed with levels (after Finalize the change is priced and logged as any edit). A runner saved before
+  holds the old id, now the lowest level, with its own effects. The Foundry export carries `family` and `level`.
 - `npm run validate:data` checks that `family` and `level` come together, that no two entries are the same level of a
-  family, and that no amp has a family's id.
-- The Amp Builder's own effect table is not split: its "levels" (Firewall +1 up to 5, the Negative effect −1 to −5, an
-  RCC's drones) are how a player builds their own amp, one amp with its rating computed, not book entries to pick.
+  family, and that an amp with a family's id is one of its levels.
+- The Amp Builder's own effect table is not split into entries: its "levels" (Firewall +1 up to 5, an RCC's drones)
+  are how a player builds their own amp, one amp with its rating computed. The Negative effect is picked at its value
+  like the positive effects (owner, 2026-10-11): five picks, "Negative effect (−1)" … "(−5)", each a row with its value
+  (the stored effect is `negative` with `value`); the menu says a player's needs GM approval (CRB p.61), and Review
+  asks for it, while a book's own (a catalog amp's, a book sample's as printed) needs none.
 
 ### lifestyles
 
