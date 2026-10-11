@@ -590,7 +590,7 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([(x.get("column"), x.get("letter")) for x in b.iter("priority")],
                          [("metatype", "E"), ("attributes", "A"), ("magic", "A"), ("skills", "D"), ("resources", "D")])
         self.assertEqual([(x.get("key"), x.get("value"), x.get("assumed"), x.get("page")) for x in g.find("rules")],
-                         [("startingKarma", "100", "true", "64"), ("expandedContacts", "true", "true", "161")])
+                         [("levelPrime", "true", "true", "63"), ("expandedContacts", "true", "true", "161")])
         self.assertEqual({a.get("id"): (a.get("points"), a.get("adjust"), a.get("karma")) for a in b.iter("attribute")}, {
             "bod": ("2", "0", "0"), "agi": ("4", "0", "0"), "rea": ("3", "0", "0"), "str": ("1", "0", "0"), "wil": ("2", "0", "0"),
             "log": ("1", "0", "0"), "int": ("3", "0", "0"), "cha": ("2", "0", "0"), "edg": ("0", "1", "2"), "mag": ("0", "0", "0"),

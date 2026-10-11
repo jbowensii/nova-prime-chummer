@@ -406,7 +406,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         better = fit.fit(need, rows, prime)
         if better and better["over"] < got["over"]:
             got = better
-            assumed.append(("startingKarma", f"{prime['startingKarma']:g}", "CRB", 64))
+            assumed.append(("levelPrime", "true", "CRB-HK", 63))
     if legal_over:
         assumed.append(("availabilityCapIllegalOnly", "true", "CRB", 66))
     cha, per = attrs.get("cha", 0), setting("contactPointsPerCha")
