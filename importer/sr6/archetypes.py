@@ -19,7 +19,7 @@ import re
 from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes.dhsa import slug
-from importer.sr6 import fit
+from importer.sr6 import fit, formula
 from importer.sr6.regroup import keys, norm
 from importer.xmlio import HEAD, ILLEGAL
 
@@ -153,6 +153,22 @@ def _rated(rating):
         m = re.search(r"\(\s*rating\s*(\d+)\s*\)\s*$", e["name"], re.I)
         return not (rating and m and int(m.group(1)) != rating)
     return ok
+
+
+def _value(e, field, rating, qty=1):
+    """An entry's `field` for `qty` bought at `rating`, as the app prices it (budgets.ts priced, values.ts bookValue): its
+    <formula> when it has one (B the printed value; a formula counting Q is the whole line's), else the printed value,
+    times qty; 0 when neither reads (the Cyberjack (Rating 1) row's tier formula prices rating 6 at 210,000¥, not its
+    printed 45,000¥)."""
+    raw = e.get("attrs", {}).get(field)
+    f = next((t for tag, ca, t in e.get("children", []) if tag == "formula" and ca.get("field") == field and t), None)
+    try:
+        n = f and formula.evaluate(f, R=rating, Q=qty, B=fit.value(raw, rating))
+    except (formula.FormulaError, ValueError, KeyError, TypeError):
+        n = None
+    if n is not None:
+        return n if "Q" in formula.variables(f) else n * qty
+    return (fit.value(raw, rating) or 0) * qty
 
 
 def _slashed(name):
@@ -510,7 +526,11 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         if hit:
             break
     if not hit and len(base.split()) > 1:  # `Sony Emperor commlink`, `Honda Spirit car`; no prefix match (`Combat` axe)
-        r, hit = printed, idx.find(kinds, base.rsplit(None, 1)[0])
+        # but a rated row of the name when a rating is printed (`cyberjack MPI (rating 6)`: `Cyberjack (Rating 6)`)
+        r, short = printed, base.rsplit(None, 1)[0]
+        hit = idx.find(kinds, short, accept=_rated(r))
+        if not hit and r and (p := idx.prefix(kinds, short, r)) and norm(p[2]).endswith(f"rating {r}"):
+            hit = p
     if not hit:  # a maker before the name, a garment word swapped, a variant in its parentheses (_Index.near)
         parts = re.split(r"\s*,\s*", m2.group(1)) if (m2 := re.search(r"\(([^()]*)\)", rest)) else []
         r, hit = printed, idx.near(kinds, base, parts)
@@ -522,9 +542,9 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     note = note or (rest if norm(rest) != norm(hit[2]) else None)
     ha = hit[3].get("attrs", {})
     low = re.match(r"\s*(\d*)", ha.get("rating") or "").group(1)  # unrated: the lowest it comes in (budgets.ts ratingOf)
-    cost = (fit.value(ha.get("cost"), r or int(low or 1)) or 0) * qty * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
+    cost = _value(hit[3], "cost", r or int(low or 1), qty) * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
     if legal_over is not None:  # a legal item above the Availability cap (the core rulebook's first printing caps only illegal gear)
-        avail = (fit.value(ha.get("avail"), r or int(low or 1)) or 0) + (cs.get(f"grade:{grade.group(1).lower()}:avail", 0) if grade else 0)
+        avail = _value(hit[3], "avail", r or int(low or 1)) + (cs.get(f"grade:{grade.group(1).lower()}:avail", 0) if grade else 0)
         top = cs.get("maxAvailability")
         if isinstance(top, float) and avail > top and not re.search(r"I\)?\s*$", ha.get("avail") or ""):
             legal_over.append(hit[2])
@@ -540,10 +560,9 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
             got = idx.find([hit[0]], an, accept=_rated(ar))
             if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
                 continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
-            ga = got[3].get("attrs", {})
             # (an implant's add-on has its grade, CRB p. 282: its cost at the implant's grade factor, budgets.ts fitted)
-            cost += (fit.value(ga.get("cost"), ar or 1) or 0) * qty * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
-            fitted.append(f'<purchase uid="g{n}a{i + 1}" kind="{got[0]}" id={quoteattr(got[1])} name={quoteattr(got[2])}{_a("rating", ar)} qty="1"/>')
+            cost += _value(got[3], "cost", ar or 1, qty) * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
+            fitted.append(f'<purchase uid="g{n}a{i + 1}" kind="{got[0]}" id={quoteattr(got[1])} name={quoteattr(got[2])}{_a("rating", ar)} qty="{qty}"/>')
     return _closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
                    f'qty="{qty}"{_a("grade", grade and grade.group(1).lower())}{_a("note", note)}',
                    _bonuses(hit[2], r, skill_of, chosen=_chosen(rest), seen=seen) + "".join(fitted), "purchase"), worn, cost

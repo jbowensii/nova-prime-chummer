@@ -772,6 +772,19 @@ class CrbRecipeTest(unittest.TestCase):
         line = archetypes._purchase(idx, ["augmentations"], "Glow eyes (rating 6)", 1, False, {})[0]
         self.assertIn('id="nb.glow-eyes-rating-6"', line)
 
+    def test_sample_item_priced_as_the_app_prices_it(self):
+        """An item printed at a rating with a word the catalog's name lacks takes the row of that rating (not rating
+        1's), and is priced by the entry's formula as the app prices it, not its printed first-row value (made-up)."""
+        tier = ("formula", {"field": "cost"}, "tier(R; 1: 100; 2: 300; 3: 900)")
+        row = lambda r: {"id": f"zap-jack-rating-{r}", "name": f"Zap jack (Rating {r})", "attrs": {"cost": "100"}, "children": [tier]}
+        idx = archetypes._Index({"augmentations": [row(1), row(3)]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["augmentations"], "zap jack MPI (rating 3)", 1, [], {})
+        self.assertIn('id="nb.zap-jack-rating-3"', line)
+        self.assertEqual(cost, 900)
+        per = {"id": "glow", "name": "Glow", "attrs": {"cost": "5"}, "children": [("formula", {"field": "cost"}, "Q*2")]}
+        self.assertEqual(archetypes._value(per, "cost", 1, 10), 20)  # (a formula counting Q is the whole line's)
+        self.assertEqual(archetypes._value({"attrs": {"cost": "Rating x 50"}}, "cost", 4, 2), 400)
+
     def test_nothing_unmapped(self):
         self.assertEqual(self.rep("unmapped"), [])
         self.assertEqual(self.rep("missing-value"), [])
