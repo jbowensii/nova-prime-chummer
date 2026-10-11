@@ -64,12 +64,12 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>Add a negative quality…</button>
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         {/* (owner's decision 4: a poser quality is offered only to the metatypes its description names) */}
-        <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive') && qualityFitsMetatype(data, b.metatype, q.id)).map(q => ({
+        {picking && <Picker placeholder="Search qualities" onPick={pick} items={all.filter(q => q.positive === (picking === 'positive') && qualityFitsMetatype(data, b.metatype, q.id)).map(q => ({
           id: q.id, name: q.name, disabled: !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id), ...cardOf(c, 'qualities', q.id),
           text: data.levelOf(data.entry('qualities', q.id)) !== undefined ? `level ${data.levelOf(data.entry('qualities', q.id))} of ${data.siblings('qualities', q.id).length}` : undefined,
           meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
           price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(), label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
-        }))} />
+        }))} />}
       </Modal>
     </div>
   )

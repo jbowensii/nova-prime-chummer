@@ -84,7 +84,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   // grades for cyberware and bioware; geneware, nanoware, symbionts and transgenics are bought as printed (a grade on
   // one is offered marked, Review's gear.grade); the picker's grade step opens for an entry whose type takes one
   const offered = (e: Sr6Entry) => (grades ? gradesFor(cr, data, e) : [])
-  const entries = kinds.flatMap(k => [...c.entries[k].values()]).filter(e => !filter || filter(e)).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+  // (only while open: a tab draws a closed picker per list and per line taking accessories, each over thousands of entries)
+  const entries = !open ? [] : kinds.flatMap(k => [...c.entries[k].values()]).filter(e => !filter || filter(e)).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
   const close = () => { setChosen(null); onClose() }
   const add = (p: PickedItem) => { if (!onAdd(p)) close() }
   const pick = (key: string) => {

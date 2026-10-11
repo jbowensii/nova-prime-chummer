@@ -31,7 +31,11 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
   const t = q.trim().toLowerCase()
   const rule = open ? c.entries.rules.get(open) : undefined
   const link = (r: Sr6Entry) => <a href={`#/sr6/rules/${encodeURIComponent(r.id)}`}>{r.name}</a>
-  const shown = inBook.filter(r => (!chapter || r.attrs.chapter === chapter) && (!t || `${r.name} ${r.text}`.toLowerCase().includes(t)))
+  // (each rule's search text lower-cased once, not on every keystroke: the texts are megabytes)
+  const hay = useMemo(() => t ? new Map(rules.map(r => [r, `${r.name} ${r.text}`.toLowerCase()])) : null, [rules, !t]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = inBook.filter(r => (!chapter || r.attrs.chapter === chapter) && (!hay || hay.get(r)!.includes(t)))
+  const byChapter = new Map<string | undefined, Sr6Entry[]>()
+  for (const r of shown) { const l = byChapter.get(r.attrs.chapter); if (l) l.push(r); else byChapter.set(r.attrs.chapter, [r]) }
 
   return (
     <main className="lib rules sr6-rules">
@@ -48,11 +52,11 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
           <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search the rules" aria-label="Search the rules" />
         </div>
         {shown.length === 0 && <p className="muted">{q ? `Nothing matches “${q}”.` : 'No rules in that chapter.'}</p>}
-        {chapters.filter(ch => shown.some(r => r.attrs.chapter === ch)).map(ch => (
+        {chapters.filter(ch => byChapter.has(ch)).map(ch => (
           <section key={ch}>
             <h2>{ch}</h2>
             <ul className="rule-toc">
-              {shown.filter(r => r.attrs.chapter === ch).map(r => (
+              {byChapter.get(ch)!.map(r => (
                 <li key={r.id} className={`lvl${r.attrs.level ?? 1}`}>{link(r)} <span className="muted">{r.source} p.{r.page}</span></li>
               ))}
             </ul>

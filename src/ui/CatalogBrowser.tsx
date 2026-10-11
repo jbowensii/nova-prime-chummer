@@ -36,6 +36,13 @@ export interface Book { id: string; name: string }
 const LIMIT = 200 // rows a table shows before "Show all" (a real book's gear or rules run to hundreds)
 const OTHER = 'Other'
 const cap = (s: string) => s ? s[0].toUpperCase() + s.slice(1) : s
+// each row's search text lower-cased once (descriptions run to megabytes: not again on every keystroke)
+const hays = new WeakMap<BrowseRow, string>()
+const hay = (r: BrowseRow) => {
+  let h = hays.get(r)
+  if (h === undefined) hays.set(r, h = `${r.name} ${r.search ?? ''} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase())
+  return h
+}
 
 /** "Book": All books, then each source that has entries. */
 export function BookSelect({ books, value, onChange }: { books: Book[]; value: string; onChange: (id: string) => void }) {
@@ -97,7 +104,7 @@ export function CatalogBrowser({ kinds, books, tableClass, main, remember }: {
   const kind = inBook.find(k => k.id === kindId) ?? inBook[0]
   const groups = kind ? [...new Set(kind.rows.map(r => r.group || OTHER))].sort((a, b) => a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b)) : []
   const rows = kind?.rows.filter(r => !group || (r.group || OTHER) === group) ?? []
-  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => `${r.name} ${r.search ?? ''} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase().includes(t)) }))
+  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => hay(r).includes(t)) }))
     .filter(k => k.rows.length) : []
   const pick = (id: string) => { setKind(id); setGroup('') }
 
