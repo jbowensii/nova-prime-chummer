@@ -229,10 +229,49 @@
 :root[data-game='sr6'] .viol .msg a { color: var(--text); text-decoration: none; }
 :root[data-game='sr6'] .viol .msg a:hover, :root[data-game='sr6'] .viol .msg a:focus-visible { color: var(--rust); text-decoration: underline; }
 
-/* Table setup → Creation rules: a long quality name in a value's dropdown widened the table past its panel and cut off the
-   right-hand columns; the dropdown wraps to the column instead */
-.sr6-creation table.data :is(select, input:not([type=checkbox])) { max-width: 16rem; width: 100%; }
-
-/* nested optional rules (creation.ts RULE_DEPS): a rule under its parent, greyed while it doesn't apply */
-:is(.sr6-creation, .runner-rules) tr.nested > td:first-child { padding-left: 1.75rem; border-left: 2px solid var(--rule); }
-:is(.sr6-creation, .runner-rules) tr.blocked > td:first-child { opacity: 0.65; }
+/* Creation rules (Table setup, a campaign's page, a runner's Creation rules panel; Creation.tsx, RunnerRules.tsx): foldable
+   sections of rows; a standard value is grey, a changed one stands out with the standard beside it; a switch for every
+   on/off rule; a nested rule (creation.ts RULE_DEPS) indented under its parent and greyed while it doesn't apply */
+.cr-search input { max-width: 26rem; }
+.cr-sections > details.fold.sub { margin-bottom: 0.6rem; }
+details.fold.sub > summary h3 { margin: 0; }
+details.fold.sub > summary h3::after { content: ' ▸'; color: var(--yellow); }
+details.fold.sub[open] > summary h3::after { content: ' ▾'; }
+.cr-changed { font-size: 0.85rem; font-weight: 700; color: var(--rust); }
+.cr-list { display: flex; flex-direction: column; }
+.cr-head, .cr-row { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(7rem, 11rem) minmax(8rem, 12rem); gap: 0.25rem 1rem; align-items: center; }
+.cr-head { padding: 0.2rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); border-bottom: 2px solid var(--yellow); }
+.cr-row { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--rule); border-left: 3px solid transparent; }
+.cr-row.changed { border-left-color: var(--rust); background: var(--zebra); }
+.cr-row.changed .cr-name b { color: var(--text); }
+.cr-row.at-std .cr-val :is(input:not([type=checkbox]), select) { color: var(--text-3); }
+.cr-row.nested { margin-left: 1.5rem; border-left: 2px solid var(--rule); }
+.cr-row.nested.changed { border-left-color: var(--rust); }
+.cr-row.blocked .cr-name, .cr-row.blocked .cr-val { opacity: 0.6; }
+.cr-name { min-width: 0; overflow-wrap: anywhere; }
+.cr-name label { display: block; cursor: pointer; font-size: inherit; color: inherit; font-weight: inherit; }
+.cr-name .hint { color: var(--text-3); }
+.cr-name .tag { margin-left: 0.5rem; padding: 0 0.4rem; font-size: 0.75rem; border: 1px solid var(--rule); border-radius: var(--r-sm); color: var(--text-3); white-space: nowrap; }
+.cr-val :is(input:not([type=checkbox]), select) { width: 100%; max-width: 16rem; }
+.cr-book { display: flex; gap: 0.4rem; }
+.cr-book input.src-id { width: 5.5rem; }
+.cr-book input[type=number] { width: 5rem; }
+.cr-std { grid-column: 1 / -1; font-size: 0.9rem; color: var(--text-3); }
+h4.cr-sub { margin: 1rem 0 0.2rem; font-family: var(--display); color: var(--heading); border-bottom: 1px solid var(--yellow); }
+/* the on/off switch: a checkbox over its track, so it stays a real, labelled control */
+.tgl { position: relative; display: inline-block; width: 2.6rem; height: 1.45rem; vertical-align: middle; }
+.tgl input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.tgl .track { position: absolute; inset: 0; border-radius: 1rem; background: var(--rule); transition: background 0.15s; }
+.tgl .track::after { content: ''; position: absolute; top: 0.2rem; left: 0.2rem; width: 1.05rem; height: 1.05rem; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px var(--text-3); transition: transform 0.15s; }
+.tgl input:checked + .track { background: var(--rust); }
+.tgl input:checked + .track::after { transform: translateX(1.15rem); }
+.tgl input:focus-visible + .track { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.tgl input:disabled { cursor: not-allowed; }
+@media (max-width: 40rem) {
+  .cr-head { display: none; }
+  .cr-row { grid-template-columns: minmax(0, 1fr); }
+  .cr-row.bool { grid-template-columns: minmax(0, 1fr) auto; }
+  .cr-row.bool .cr-book { grid-column: 1 / -1; }
+  .cr-val :is(input:not([type=checkbox]), select) { max-width: none; }
+  .cr-row.nested { margin-left: 0.8rem; }
+}

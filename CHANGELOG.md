@@ -1,5 +1,27 @@
 # Release notes
 
+## Unreleased
+
+**Shadowrun 6**
+- **Creation rules, tidied** (Table setup, a campaign's own settings, a runner's Creation rules panel): the one long table
+  is nine foldable sections: Budgets & priorities; Attributes & skills; Qualities; Magic & Resonance; Gear & augmentations;
+  Contacts & lifestyle; Levels of play; Optional rules (book); House rules. A closed section draws nothing, so the page opens
+  fast; **Open all sections** and **Close all sections**, and a search box that finds a setting by name and opens its
+  section. Every on/off rule is a real switch with its label (no more Not set / Yes / No); a number that needs a switch sits
+  indented under it, greyed with "needs …" while the switch is off, and keeps its stored value. A value at the standard is
+  grey; a changed one stands out with the standard (and its page) beside it; **Reset** per value, **Reset section** and
+  **Reset all to standard**. Each row has a short name, the plain-English hover text, and its book and page. Every setting,
+  its stored key and what it does are as before; a switch stores `true`, or `false` where the standard has the setting.
+  A runner's panel groups the same way; its switch follows the table's value until the runner chooses its own.
+- **Your runners**: each row has its own **Export for Foundry** button, as the NPC rows do.
+- **NPCs & Critters**: a **Professional Rating** picker beside the search (All, then the ratings the grunts have) and
+  grunts always listed first, in other accounts' lists too.
+
+**Both games**
+- **Export book data for Foundry** is in the header of every page for those who may export (admin and editors, GMs in
+  Shadowrun 6), not only on Game data, and Game data has an **Export to Foundry VTT** button at the top. Both open the
+  export, unfolded: `#/data/foundry`, `#/sr6/data/foundry`.
+
 ## 0.13.0 — 2026-10-11: the books' rules as switches, effects round three, one catalog item per level in both games
 
 **Re-import the books of both games** (Books → **Re-import all**): the Shadowrun 6 books for the printing fixes, the
