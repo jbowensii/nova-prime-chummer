@@ -36,7 +36,7 @@ export function GearTab() {
         <button className="btn small quiet" onClick={() => setCustom(true)}>Custom item…</button></div>
       <PurchaseSection kind="weapons" title="Weapons" one="a weapon" detail={x => ar(x.uid)} accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`} />
-      <label className="inline">Target’s Defense Rating <input type="number" min={0} value={dr} aria-label="Target’s Defense Rating"
+      <label className="inline">Target’s DR <input type="number" min={0} value={dr} aria-label="Target’s DR"
         onChange={e => setDr(e.target.value)} /> <span className="muted">shows who gains Edge at each range band: + you, − the target (CRB p. 45{cr.get('stackingAdvantage')?.value === true ? '; Stacking Advantage, SWC p. 144' : ''})</span></label>
       <PurchaseSection kind="armor" title="Armor" one="armor" bonuses detail={x => social(entryOf(x, data)?.attrs.social)}
         hint={`Defense Rating ${d.defenseRating} and Social Rating ${d.socialRating} with the armor worn.`} />
