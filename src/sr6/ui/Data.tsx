@@ -2,7 +2,7 @@
 // a filter (CatalogBrowser), the sources, the Foundry export, the catalog edits (editors:
 // each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { NonCanon } from '../../ui/bits'
 import { GameDataPage } from '../../ui/GameData'
@@ -38,7 +38,8 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
   const all = KINDS.flatMap(k => [...c.entries[k].values()])
   const [editing, setEditing] = useState<{ kind: Sr6Kind; id: string } | null>(null)
   const [msg, setMsg] = useState('')
-  const perSource = (id: string) => all.filter(e => e.source === id).length
+  const counts = useMemo(() => { const n = new Map<string, number>(); for (const e of all) n.set(e.source, (n.get(e.source) ?? 0) + 1); return n }, [c]) // eslint-disable-line react-hooks/exhaustive-deps
+  const perSource = (id: string) => counts.get(id) ?? 0
   const edits = all.filter(e => e.edited)
   const compOf = (e: Sr6Entry) => c.sources.get(e.source)?.compendium
   // a compendium's entry is edited in its compendium (the edits layer loads before it, so an edit would never show)
@@ -46,9 +47,9 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
     && <a className="btn small quiet" aria-label={`Edit ${entryLabel(e)}`} href={`#/sr6/compendiums/${compOf(e)!.id}/${encodeURIComponent(e.id)}`}>Edit</a>
     : <button type="button" className="btn small quiet" aria-label={`Edit ${entryLabel(e)}`} onClick={() => { setMsg(''); setEditing({ kind: e.kind, id: e.id }) }}>Edit</button>)
 
-  const find = catalogFind(c)
-  const kinds = KINDS.map(k => ({ id: k, label: SR6_KINDS[k].label, rows: [...c.entries[k].values()].map(e => ({
-    ...sr6Row(c, e, find), group: groupOf(e), action: editButton(e) })) }))
+  // (thousands of rows: worked out once per catalog, not on every message or edit drawer)
+  const kinds = useMemo(() => { const find = catalogFind(c); return KINDS.map(k => ({ id: k, label: SR6_KINDS[k].label, rows: [...c.entries[k].values()].map(e => ({
+    ...sr6Row(c, e, find), group: groupOf(e), action: editButton(e) })) })) }, [c, editor, me?.username]) // eslint-disable-line react-hooks/exhaustive-deps
   const books = [...c.sources.values()].filter(s => perSource(s.id)).map(s => ({ id: s.id, name: s.compendium ? `${s.name} (House)` : s.name }))
 
   return (

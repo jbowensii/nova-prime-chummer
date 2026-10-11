@@ -2,7 +2,7 @@
 // default on Table setup (#/sr6/table; the admin edits it, editors and players read it) and a campaign's own on its page (its GMs and the admin choose the server's or their own copy; its players read
 // it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
 // other runner with the server's.
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
 import { aboutOf, applyDeps, blockedBy, CREATION_GROUPS, CREATION_KEYS, expandKeys, levelRules, mergeRules, nested, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
@@ -59,7 +59,11 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
   const labelOf = new Map(keys.map(k => [k.key, k.label])), label = (k: string) => labelOf.get(k) ?? k
   // the draft as the engine would apply it: a nested rule whose parent is off, or one that can't be on with another, is greyed
   const eff = useMemo(() => applyDeps(rulesFrom(Object.entries(draft).filter(([, r]) => r.value.trim()).map(([key, r]) => ({ key, value: r.value }))).rules), [draft])
-  const qualities = [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
+  // a quality setting's select lists every quality (thousands of options over the form): the list once per catalog, and
+  // only the chosen one until the form has painted (the rest follow in the background)
+  const full = useDeferredValue(true, false)
+  const qualityOptions = useMemo(() => [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
+    .map(q => <option key={q.id} value={q.id}>{q.name}</option>), [c])
   const set = (key: string, f: Partial<Row>) => { setMsg(''); setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } })) }
   async function load(f: File) {
     setMsg(''); setErr(''); setSkipped([])
@@ -110,7 +114,7 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
                     <option value="">Not set</option>
                     {k.type === 'bool' ? <><option value="true">Yes</option><option value="false">No</option></>
                       : <>{r.value && !c.entries.qualities.has(r.value) && <option value={r.value}>{r.value} (not in the catalog)</option>}
-                        {qualities.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}</>}
+                        {full ? qualityOptions : qualityOptions.filter(o => o.key === r.value)}</>}
                   </select>}</td>
                 <td><input className="src-id" aria-label={`${k.label}: source`} value={r.source} onChange={e => set(k.key, { source: e.target.value.toUpperCase() })} /></td>
                 <td><input type="number" min={1} step={1} aria-label={`${k.label}: page`} value={r.page} onChange={e => set(k.key, { page: e.target.value })} /></td>
