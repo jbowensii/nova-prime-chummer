@@ -4,9 +4,11 @@
      Rulebook, City Edition Hong Kong (CAT28000H, 2025), the latest printing, whose rule wins; its pages. SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
      FS: Firing Squad (CAT28002): martial arts.
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
-     as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, advance.powerPoint, the
-     carry-over, data structure and grade caps, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book
-     describes: each under a toggle that ships off (owner, 2026-10-11). -->
+     as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, advance.powerPoint, and the
+     carry-over, data structure and grade caps: each under a toggle that ships off (owner, 2026-10-11). The Karma build
+     (karmaBuild.*, magicKarma:*, swcStreet.karmaBuild, swcElite.karmaBuild) is an option that ships off too; no SR6
+     book prints one, so its numbers are Commlink6's defaults (owner's one-off exception, 2026-10-11), with no book and
+     page: "option (Commlink6 defaults)" in their hover text. -->
 <sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
   <setting key="startingKarma" value="50" source="CRB-HK" page="66"/>
   <setting key="qualityNetBonusCap" value="20" source="CRB-HK" page="66"/>
@@ -135,11 +137,14 @@
   <setting key="swcStreet.sumToTen" value="8" source="SWC" page="15"/>
   <setting key="swcStreet.pointBuy" value="80" source="SWC" page="15"/>
   <setting key="swcStreet.modules" value="6" source="SWC" page="15"/>
+  <!-- (the Karma build's starting karma at a level of play: Commlink6's defaults, under the Karma build option) -->
+  <setting key="swcStreet.karmaBuild" value="800"/>
   <setting key="levelSwcElite" value="false" source="SWC" page="15"/>
   <setting key="swcElite.letters" value="ABBCD" source="SWC" page="15"/>
   <setting key="swcElite.sumToTen" value="12" source="SWC" page="15"/>
   <setting key="swcElite.pointBuy" value="120" source="SWC" page="15"/>
   <setting key="swcElite.modules" value="10" source="SWC" page="15"/>
+  <setting key="swcElite.karmaBuild" value="1200"/>
   <!-- optional rules (off: a table turns them on): the Sixth World Companion's Ways to Play -->
   <setting key="stackingAdvantage" value="false" source="SWC" page="144"/>
   <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
@@ -171,6 +176,19 @@
   <setting key="cargoWithoutSeats" value="false" source="DC" page="126"/>
   <setting key="metatypeSizePricing" value="true"/>
   <setting key="karmaBuildMethod" value="false"/>
+  <!-- the Karma build option's numbers (Commlink6's defaults; no SR6 book prints a Karma build): 1000 karma to start, Magic
+       or Resonance starting at 1, no free spells or complex forms; the Karma prices above are its prices too (Commlink6's
+       are the same: 5 times the new rating for an attribute or skill rank, 5 a specialization, 3 a knowledge or language
+       rank, 5 a spell or complex form) -->
+  <setting key="karmaBuild.start" value="1000"/>
+  <setting key="karmaBuild.startRating" value="1"/>
+  <setting key="karmaBuild.freeSpellsPerMagic" value="0"/>
+  <setting key="karmaBuild.freeFormsPerResonance" value="0"/>
+  <setting key="magicKarma:full" value="60"/>
+  <setting key="magicKarma:aspected" value="45"/>
+  <setting key="magicKarma:mystic-adept" value="75"/>
+  <setting key="magicKarma:adept" value="45"/>
+  <setting key="magicKarma:technomancer" value="45"/>
   <!-- Sum to ten (SWC) -->
   <setting key="sumToTenTarget" value="10" source="SWC" page="27"/>
   <setting key="letterValue:A" value="4" source="SWC" page="27"/>

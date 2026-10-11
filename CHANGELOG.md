@@ -1,5 +1,17 @@
 # Release notes
 
+## Unreleased
+
+**Shadowrun 6**
+- **The Karma build option ships with Commlink6's default numbers** (owner's one-off exception, 2026-10-11). No SR6 book prints a Karma build, so it stays an option, off (Table setup → Karma build); turned on, it
+  starts from 1000 Karma (800 with the Companion's street level, 1200 with its elite level), Magic or Resonance at 1, and
+  Karma to be a full magician 60, an aspected magician 45, a mystic adept 75, an adept 45 or a technomancer 45. Its prices
+  are the Karma prices already there (5 times the new rating for an attribute or skill rank, 5 a specialization, 3 a
+  knowledge or language rank, 5 a spell or complex form; 2,000 nuyen a Karma). New: `karmaBuild.freeSpellsPerMagic` and
+  `karmaBuild.freeFormsPerResonance` (0: every spell and complex form costs its Karma, and the Magic tab no longer shows a
+  Karma-build runner's spells in red), and the two levels' starting Karma. Each number's hover text says no SR6 book
+  prints a Karma build and gives its source as "option (Commlink6 defaults)".
+
 ## 0.13.0 — 2026-10-11: the books' rules as switches, effects round three, one catalog item per level in both games
 
 **Re-import the books of both games** (Books → **Re-import all**): the Shadowrun 6 books for the printing fixes, the
