@@ -1,5 +1,31 @@
 # Release notes
 
+## Unreleased: Anarchy sample runners from a fresh import, owner rulings on the unreferenced rules
+
+**Re-import the Anarchy books** (Books → **Re-import all**) to get them: the sample runners and the core effect table are
+written at import.
+
+**Shadowrun Anarchy**
+- Sample runners read the same in any import order: a book that adds skills, amp types or effects (or the core) has the
+  other books' sample runners read again (the pregens booklet read before the Conversion Guide lost its technomancers'
+  Tasking).
+- A sample's Equipment amp printed without a gear line brings its own item, as the book's Equipment Amps cost the item
+  and the upgrades (CRB p.144) and a catalog amp does in the app. A "(Quality)" with a deck's Firewall – Attack is a
+  Cyberdeck (p.62); a "(Quality)" its equipment list also prints is an Equipment amp on that item (p.60). An amp named as
+  the books' catalog amp of its type may carry the effects that entry prints (a sample's Jazz, p.150). On a fresh
+  import of the eight books the 28 sample runners show 11 Review errors, down from 27, every one the book's own.
+- Owner rulings (2026-10-10) on the rules no book states:
+  - an amp may rate below 0 and gives nuyen back, with no GM approval; a book add-on rates as its effects alone
+    (DHSA's Removed Manual Controls −1, was 0);
+  - a custom specialization needs no GM approval (CRB p.52);
+  - weapon focus has no max; mental armor is no general effect, only adept powers (Astral Armor) and a cyberdeck's
+    Biofeedback filter carry it, as printed;
+  - removing an amp effect is priced as replacing it with nothing (p.84): its cost comes back;
+  - the SINner rule (free, never the first Quality) is a Table setup switch, on by default, labelled House rule; a runner
+    may set its own on Review unless the GM locks it;
+  - one free native language stays, labelled a house rule; a skill at 4+'s free knowledge entry starts as
+    "Knowledge of <Skill>".
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers
