@@ -20,8 +20,9 @@ def sr6_root():
     return xmlio.root("sr6", NS)
 
 
-def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
-    """Returns the recipe's Result, or None when no SR6 recipe matched (status failed)."""
+def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
+    """Returns the recipe's Result, or None when no SR6 recipe matched (status failed). refresh: the books whose sample
+    runners name something this import brings are read again (_cited)."""
     pdf, md_path = os.path.join(book_dir, "original.pdf"), os.path.join(book_dir, "book.md")
     old = xmlio.read_import(book_dir)
     file_name = file_name or (old.get("file") if old is not None else None) or "original.pdf"
@@ -125,6 +126,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
             run(newer[1], custom_dir, convert_pdf=False)
             return res
         _corpus(book_dir, custom_dir)
+        for d in _cited(book_dir, custom_dir, res) if refresh and not newer else ():
+            run(d, custom_dir, convert_pdf=False, refresh=False)  # (once: no book read again reads others again)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
@@ -225,6 +228,32 @@ def _pdf_title(pdf):
             return (d.metadata or {}).get("Title", "") or ""
     except Exception:  # noqa: BLE001 (an unreadable PDF has no title)
         return ""
+
+
+def _cited(book_dir, custom_dir, res):
+    """The library's other imported books whose sample runners name something not in the catalog that this import now
+    has (a Smooth Operations face's Sixth World Companion quality, that book imported after it): their dirs, read again
+    so a sample is fitted against every book in the library whatever the import order. A name matches as whole words
+    of the printed one, less its quantity and what follows a bracket or `w/` (`AV Rapid Transit (…)`: Rapid Transit)."""
+    names = set()
+    for x in [res, *res.extra]:
+        for xml in x.files.values():
+            names |= {regroup.norm(re.split(r"\s*\(", n)[0]) for n in re.findall(r"<name>([^<]*)</name>", xml)}
+    names.discard("")
+    library, me, out = os.path.dirname(os.path.normpath(book_dir)), os.path.normpath(book_dir), []
+    for b in sorted(os.listdir(library)):
+        d = os.path.join(library, b)
+        imp = xmlio.read_import(d) if os.path.normpath(d) != me and os.path.isdir(d) else None
+        src = imp is not None and xmlio.read_state(d) == "done" and (imp.get("source") or "").lower()
+        sd = os.path.join(custom_dir, "imported", src, "samples") if src else ""
+        if not sd or not os.path.isdir(sd):
+            continue
+        missing = [regroup.norm(re.split(r"\s*[(\[]|\s+w/", re.sub(r"^\d+\s*x\s+", "", item.strip()))[0])
+                   for f in os.listdir(sd) for m in re.findall(r"not in the catalog: (.*?)\.(?=\s|<|$)", Path(sd, f).read_text(encoding="utf8"))
+                   for item in m.split("; ")]
+        if any(n == m or f" {n} " in f" {m} " for m in missing if m for n in names):
+            out.append(d)
+    return out
 
 
 def _same_source(book_dir, src):

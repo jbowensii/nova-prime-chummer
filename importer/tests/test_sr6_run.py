@@ -144,5 +144,24 @@ class Sr6RunTest(unittest.TestCase):
         self.assertTrue(_read(out_md).startswith("<!-- regrouped v1 -->"))
 
 
+    def test_a_book_whose_samples_cite_this_import_is_read_again(self):
+        """A done book whose sample runner notes `Glim Charm` and `2 x Zap Lamp (w/ hum)` not in the catalog: an import
+        bringing either reads it again; one bringing neither, or the book itself, doesn't (made-up names)."""
+        from types import SimpleNamespace
+        from importer.sr6.run import _cited
+        xmlio.write_import(self.book, source="NB")
+        xmlio.write_status(self.book, "done")
+        Path(self.custom, "imported", "nb", "samples").mkdir(parents=True)
+        Path(self.custom, "imported", "nb", "samples", "nb.tester.xml").write_text(
+            "<c><notes>Qualities not in the catalog: Glim Charm; Hum Ward. Gear not in the catalog: 2 x Zap Lamp (w/ hum).</notes></c>",
+            encoding="utf8")
+        other = self.new_book("book2")
+        has = lambda *names: SimpleNamespace(extra=[], files={"x.xml": "".join(f"<e><name>{n}</name></e>" for n in names)})
+        self.assertEqual(_cited(other, self.custom, has("Glim Charm")), [self.book])
+        self.assertEqual(_cited(other, self.custom, has("Zap Lamp (Deluxe)")), [self.book])
+        self.assertEqual(_cited(other, self.custom, has("Charming", "Lamp Post")), [])
+        self.assertEqual(_cited(self.book, self.custom, has("Glim Charm")), [])
+
+
 if __name__ == "__main__":
     unittest.main()
