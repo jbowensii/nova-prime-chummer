@@ -196,7 +196,7 @@ function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
       <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="spacer" />
         {custom && <button className="btn small quiet" onClick={() => setOrder(reorderKeys(b.knowledgeOrder, keys))}>Sort A–Z</button>}
       </div>
-      {lang && <p className="muted" style={{ margin: 0 }}>Mark one language <b>Native</b>: it’s free (one per runner), and the first language you add is marked for you. This is the app’s reading of the rules: the book’s knowledge skills cover foreign languages, so the one you grew up with isn’t bought.</p>}
+      {lang && <p className="muted" style={{ margin: 0 }}>Mark one language <b>Native</b>: it’s free (one per runner), and the first language you add is marked for you. House rule (not in the books, which price every language as a knowledge skill): the one you grew up with isn’t bought.</p>}
       <div className="scroll-x"><table className="data knowledge" aria-label={title}>
         <thead><tr><th aria-label="Drag to reorder" /><th>Name</th><th>Type</th>{lang && <th>Native</th>}<th>Where it comes from</th><th aria-label="Actions" /></tr></thead>
         <tbody>

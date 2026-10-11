@@ -168,7 +168,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'error', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
-  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
+  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free (house rule); ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
   if (!npc) b.knowledge.forEach((k, i) => { // knowledge slots are a player rule
     if (k === natives[0]) return // free whatever its slot does
     const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)

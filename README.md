@@ -36,8 +36,9 @@ own API key), and you review its entries before they’re added.
 - **Lifestyles** (CRB p.166) adjust what each run pays.
 - **Knowledge & languages** in two lists on the Skills tab, A–Z unless you
   drag rows (or use their arrows) into your own order. Each keyword and each
-  skill at 4+ is a free entry (a skill’s can be renamed to anything related to
-  it); one language marked **Native** is free too; any other costs the knowledge
+  skill at 4+ is a free entry (a skill’s starts as “Knowledge of <Skill>” and can
+  be renamed to anything related to it); one language marked **Native** is free
+  too (a house rule); any other costs the knowledge
   price. **Hide** leaves an entry off the printed sheet.
 - **Starting gear.** Every runner carries a free commlink (with trodes) and a
   fake SIN (CRB p.85): rename and describe them, but they can’t be removed.

@@ -39,7 +39,7 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
 
   // rename the skill's free slot: still free
   const left = await page.locator('.receipt .peek').textContent()
-  const slot = list.getByLabel('Name of Electronics')
+  const slot = list.getByLabel('Name of Knowledge of Electronics') // a skill's free entry starts as "Knowledge of <Skill>"
   await slot.fill('Gadget blogs')
   await slot.press('Enter')
   await expect(list.getByLabel('Name of Gadget blogs')).toBeVisible()

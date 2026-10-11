@@ -72,14 +72,14 @@ is built from this data; the format itself is ours and stays stable.
   available; the runner keeps its own copy".
 - **`<knowledge>`** is a knowledge skill or language (`kind="knowledge"` or `kind="language"`). Each keyword and each
   skill at rating 4+ is a free entry and needs no element; one is written only when the player renames it or changes
-  its kind, with `from` naming the slot: `skill:<id>` (any name related to the skill) or `keyword:<the keyword>` (the
+  its kind, with `from` naming the slot: `skill:<id>` (unrenamed it reads "Knowledge of <Skill>"; any name related to the skill) or `keyword:<the keyword>` (the
   entry keeps the keyword's name). Every other entry costs the pricing file's `knowledge` price, and so does a
   `from="skill:…"` entry while that skill is below 4, or a `from="keyword:…"` entry once that keyword is gone
   (Review flags both). Before 0.5.2 an entry was plain text and a
   language was written `Language: X`: such a file loads with those as paid knowledge, and `Language: X` as the
   language X.
 - **`native="true"`** marks the runner's native language: the first language entry with it is free (one per runner;
-  the app's reading of the rules, as knowledge skills cover foreign languages). A second one costs the knowledge price
+  a house rule, no book text: the CRB prices every language as a knowledge skill). A second one costs the knowledge price
   and Review notes it. Files before 0.5.3 have none.
 - **`<knowledgeOrder>`** and **`<knowledgeHidden>`** hold row keys: a free entry's slot (`from`), else
   the entry's `id` (paid entries get one when added; older ones on load). The order lists rows top to bottom (either list; rows not in it follow A–Z); a hidden row is left off

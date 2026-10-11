@@ -7,7 +7,7 @@ describeBooks('derive (book samples)', () => {
   test('Lightning: Edge 3 (elf), knowledge includes keywords and 4+ skills', () => {
     const d = derive(books!, sample('lightning'))
     expect(d.edge).toBe(3)
-    expect(d.knowledge.map(k => k.name)).toEqual(expect.arrayContaining(['Cat shaman', 'Sorcery', 'Stealth', 'Perception']))
+    expect(d.knowledge.map(k => k.name)).toEqual(expect.arrayContaining(['Cat shaman', 'Knowledge of Sorcery', 'Knowledge of Stealth', 'Knowledge of Perception']))
     expect(d.awakened).toMatchObject({ projection: true, sorcery: true, conjuring: true, adept: false })
   })
 })

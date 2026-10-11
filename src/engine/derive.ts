@@ -138,7 +138,7 @@ export interface Derived {
 
 /** A line of the Knowledge & languages list. at: its index in build.knowledge (-1: an automatic free slot not
  *  stored yet); source: "Free: keyword", "Free: <Skill> 4+", "Paid", or "Paid (<Skill> below 4)" / "Paid (keyword “X”
- *  removed)" for an entry whose free slot is gone, "Free: native language". key: knowledgeKey; hidden: left off the
+ *  removed)" for an entry whose free slot is gone, "Free: native language (house rule)". key: knowledgeKey; hidden: left off the
  *  printed sheet. */
 export interface KnowledgeRow extends KnowledgeEntry { paid: boolean; source: string; at: number; key: string; hidden: boolean }
 
@@ -156,7 +156,8 @@ export function knowledgeList(rows: KnowledgeRow[], kind: KnowledgeEntry['kind']
 }
 
 /** Every keyword and every skill at 4+ is a free entry (a stored entry with that `from` renames it or marks it a
- *  language; a keyword entry, keyed by the keyword's text, keeps its name); the other stored entries are paid. */
+ *  language; a keyword entry, keyed by the keyword's text, keeps its name; a skill's starts as "Knowledge of <Skill>",
+ *  owner 2026-10-10); the other stored entries are paid. One native language is free too: a house rule (no book text). */
 export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): KnowledgeRow[] {
   const used = new Set<number>()
   const slot = (from: string) => { const at = b.knowledge.findIndex(k => k.from === from); if (at >= 0) used.add(at); return at }
@@ -169,13 +170,13 @@ export function knowledgeRows(c: Catalog, b: Build, keywords: string[]): Knowled
   }
   for (const s of b.skills.filter(s => s.rating >= 4)) {
     const from = `skill:${s.id}`, at = slot(from)
-    rows.push({ name: b.knowledge[at]?.name || skillName(s.id), kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false,
+    rows.push({ name: b.knowledge[at]?.name || `Knowledge of ${skillName(s.id)}`, kind: b.knowledge[at]?.kind ?? 'knowledge', from, ...native(at), paid: false,
       source: `Free: ${skillName(s.id)} 4+`, at })
   }
   const first = nativeLanguage(b)
   b.knowledge.forEach((k, at) => {
     if (used.has(at)) return
-    if (k === first) return rows.push({ ...k, paid: false, source: 'Free: native language', at })
+    if (k === first) return rows.push({ ...k, paid: false, source: 'Free: native language (house rule)', at })
     const lapse = slotLapse(b, keywords, k, skillName)
     rows.push({ ...k, paid: true, source: lapse ? `Paid (${lapse})` : k.native && k.kind === 'language' ? 'Paid (a second native language)' : 'Paid', at })
   })
