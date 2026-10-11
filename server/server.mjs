@@ -51,6 +51,8 @@ import { randomUUID } from 'node:crypto'
 import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
+import { gzip } from 'node:zlib'
 import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi, rootTag, unesc, writeAtomic } from './books.mjs'
@@ -62,6 +64,7 @@ import { oidcApi } from './oidc.mjs'
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.xsd': 'application/xml' }
 const MAX_BODY = 5 * 1024 * 1024
+const gzipAsync = promisify(gzip)
 const ID = /^[A-Za-z0-9._-]{1,80}$/
 const TRASH_FILE = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,150}\.xml$/ // a file in .trash/: no separators, no leading dot
 const CA2 = GAMES.ca2.tag
@@ -206,13 +209,20 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
     const npcRoot = join(home, '.npcs'), npcFolder = username => join(npcRoot, username)
 
+    // each file as index() read it, kept while its size, time and inode stay: every list and every save read all of an
+    // account's files again (a GM with the books' thousand NPCs: half a second a request)
+    // ponytail: a deleted file's entry stays until restart (a few KB each); evict on delete if that ever matters
+    const indexed = new Map()
     async function index(dir) {
-      const out = []
-      for (const file of (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))) {
-        const xml = await readFile(join(dir, file), 'utf8')
-        out.push({ file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml })
-      }
-      return out
+      const files = (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))
+      return Promise.all(files.map(async file => {
+        const path = join(dir, file), s = await stat(path), key = `${s.size}/${s.mtimeMs}/${s.ino}`
+        if (indexed.get(path)?.key === key) return indexed.get(path).entry
+        const xml = await readFile(path, 'utf8')
+        const entry = { file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml }
+        indexed.set(path, { key, entry })
+        return entry
+      }))
     }
 
     const campaigns = campaignsApi({ customDir: g.sub ? join(customDir, g.sub) : customDir, tag, lock, auth, runnersOf: u => index(folder(u)),
@@ -407,17 +417,30 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     return Buffer.concat(chunks).toString('utf8')
   }
 
-  async function serveFile(res, base, rel) {
+  // a served file's gzip, kept while the file is unchanged (the SR6 books' texts are tens of megabytes of XML)
+  const zipped = new Map()
+  /** A file under `base`: a validator (ETag), so the browser's copy is reused while the file is unchanged (304), and
+   *  gzip for text the browser takes it for. */
+  async function serveFile(res, base, rel, req) {
     const path = resolve(base, '.' + rel)
     if (!inside(path, base)) return send(res, 403, { error: 'forbidden' })
     if (inside(path, libraryDir)) return null // even when the Library is mounted inside a served folder
     try {
       const s = await stat(path)
-      if (s.isDirectory()) return serveFile(res, base, rel.replace(/\/?$/, '/index.html'))
-      const ext = extname(path)
-      res.writeHead(200, { 'Content-Type': TYPES[ext] ?? 'application/octet-stream',
-        'Cache-Control': rel.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache' })
-      res.end(await readFile(path))
+      if (s.isDirectory()) return serveFile(res, base, rel.replace(/\/?$/, '/index.html'), req)
+      const type = TYPES[extname(path)] ?? 'application/octet-stream', text = /^text\/|xml|json|svg/.test(type)
+      const etag = `W/"${s.size.toString(36)}-${Math.floor(s.mtimeMs).toString(36)}"`
+      const head = { 'Content-Type': type, 'Cache-Control': rel.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        ETag: etag, ...text ? { Vary: 'Accept-Encoding' } : {} }
+      if (req?.headers['if-none-match'] === etag) { res.writeHead(304, head).end(); return true }
+      let body = await readFile(path)
+      if (text && body.length > 1024 && /\bgzip\b/.test(req?.headers['accept-encoding'] ?? '')) {
+        let z = zipped.get(path)
+        if (z?.etag !== etag) zipped.set(path, z = { etag, body: await gzipAsync(body) })
+        body = z.body
+        head['Content-Encoding'] = 'gzip'
+      }
+      res.writeHead(200, head).end(body)
     } catch {
       return null
     }
@@ -479,11 +502,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         // Anarchy's /custom/: custom/sr6/ never, in any case or spelling (SR6's is the branch above)
         const top = relative(customDir, asked).split(sep)[0].replace(/[. ]+$/, '').toLowerCase()
         if ((!sr6 && top === 'sr6') || await customGuard(dir, asked, url.pathname)) return send(res, 404, 'not found', 'text/plain')
-        if (await serveFile(res, dir, rel)) return
+        if (await serveFile(res, dir, rel, req)) return
         return send(res, 404, 'not found', 'text/plain')
       }
-      if (await serveFile(res, staticDir, url.pathname)) return
-      if (!extname(url.pathname) && await serveFile(res, staticDir, '/index.html')) return // SPA
+      if (await serveFile(res, staticDir, url.pathname, req)) return
+      if (!extname(url.pathname) && await serveFile(res, staticDir, '/index.html', req)) return // SPA
       send(res, 404, 'not found', 'text/plain')
     } catch (e) {
       if (res.headersSent) return res.destroy()
