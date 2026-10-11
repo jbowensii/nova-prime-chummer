@@ -698,6 +698,33 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIn('id="nb.arm-obvious"', line)  # its kind not printed: the obvious one
         self.assertIn('id="nb.arm-synthetic"', archetypes._purchase(limbs, ["augmentations"], "cyberarm (synthetic left)", 11, [], {})[0])
 
+    def test_ammunition_types_limb_parts_and_increases(self):
+        """An ammunition type the line names is fitted to its row at the row's price times the type's; a limb's
+        accessory printed with other words (`arm slide`, `small smugglers compartment`) is the one whose every word it
+        prints; a limb's Agility or Strength above the user's natural (base 2) is that many Attribute increases
+        (made-up catalog)."""
+        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": ""}  # noqa: E731
+        idx = archetypes._Index({
+            "weapons": [e("zapper", "Zapper", category="Heavy pistol", cost="300")],
+            "gear": [e("hp-ammo", "Heavy Pistol/SMG", category="Ammo by weapon type", per="10 rounds", cost="10")],
+            "ammotypes": [e("fizzy", "Fizzy", cost="x1.5")],
+            "augmentations": [e("leg-obvious", "Leg (obvious)", category="Cyberlimb", capacity="20", cost="15000"),
+                              e("glide", "Glide", category="Cyberlimb accessory", capacity="[3]", cost="3000"),
+                              e("hidey-hole", "Hiding compartment", category="Cyberlimb accessory", capacity="[5]", cost="6000"),
+                              e("attribute-increase", "Attribute increase", category="Cyberlimb accessory", capacity="[Rating]",
+                                cost="Rating x 5000")]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["weapons"], "Zapper", 1, [], {}, note="Zapper [Heavy Pistol, w/ 20 rounds fizzy ammo]")
+        self.assertIn('<purchase uid="g1x2" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="2" note="20 rounds fizzy ammo">'
+                      '<purchase uid="g1x2t1" kind="ammotypes" id="nb.fizzy" name="Fizzy" qty="1"/></purchase>', line)
+        self.assertEqual(cost, 300 + 20 * 1.5)
+        line, _, cost = archetypes._purchase(idx, ["augmentations"], "cyberleg (Agility 5, Strength 2; leg glide, small hiding compartments)",
+                                             2, [], {}, nat={"agi": 3, "str": 1})
+        self.assertIn('id="nb.glide"', line)
+        self.assertIn('id="nb.hidey-hole"', line)
+        self.assertIn('id="nb.attribute-increase" name="Attribute increase" rating="2" qty="1" note="Agility 5"', line)
+        self.assertNotIn('note="Strength 2"', line)  # (2 is the limb's base)
+        self.assertEqual(cost, 15000 + 3000 + 6000 + 2 * 5000)
+
     def test_sample_karma_the_fit_counts(self):
         """`fake SIN 3` is rating 3; In Debt's printed debt is the Karma turned into nuyen (5,000¥ each); contacts past
         Charisma x 6 cost Karma when the expanded contacts are on or assumed (made-up catalog and settings)."""

@@ -198,6 +198,9 @@ export function fitted(host: Sr6Purchase, a: Sr6Purchase): Sr6Purchase {
   return host.grade ? { ...rest, grade: host.grade } : rest
 }
 
+/** `x1.5`, `×2`: an add-on's price as a multiple of its host's (an ammunition type, CRB p. 261), else null. */
+export const hostTimes = (v?: string): number | null => { const m = /^\s*[x×]\s*(\d+(?:\.\d+)?)\s*$/.exec(v ?? ''); return m ? Number(m[1]) : null }
+
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
  *  Essence (× qty, accessories added but those taking the host's Capacity), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
@@ -217,7 +220,11 @@ export function priced(x: Sr6Purchase, data: Sr6Data, cr: CreationRules, host?: 
       notes.push(...v.notes.map(n => `${fieldName(attr)}: ${n}`))
       return v.n ?? 0
     }
-    cost = read('cost'); avail = read('avail'); essence = read('essence')
+    // an add-on priced as a multiple of what it's fitted to (an ammunition type's `x2`, CRB p. 261: the ammunition's
+    // price times it) adds host × (N − 1) to its host's line
+    const times = host && !e?.formulas?.some(f => f.field === 'cost') ? hostTimes(e?.attrs.cost) : null
+    if (times !== null) { cost = host!.cost * (times - 1); perLine.add('cost') } else cost = read('cost')
+    avail = read('avail'); essence = read('essence')
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)

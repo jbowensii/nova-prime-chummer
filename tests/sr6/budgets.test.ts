@@ -5,7 +5,8 @@ import type { MagicKind, PurchaseKind, Sr6Build, Sr6Purchase } from '../../src/s
 import { allBudgets, attrRating, augmentBonus, augmentedRating, nuyenPerKarma, priced, skillRank } from '../../src/sr6/engine/budgets'
 import { apply } from '../../src/sr6/engine/actions'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { buildOf, GLIM, made, STONE } from './fixture'
+import { buildOf, fixtureCatalog, GLIM, made, STONE } from './fixture'
+import { sr6Data } from '../../src/sr6/engine/data'
 
 type Over = Parameters<typeof made>[0]
 /** A priority runner: Glimmerkin at C, attributes A (22), magic B, skills D (11), resources A (420,000¥). */
@@ -254,6 +255,16 @@ test('an accessory adds its cost; a grade multiplies Essence and cost and raises
   expect(r.cost).toBe(1500)
   expect(r.essence).toBeCloseTo(0.14)
   expect(r.avail).toBe(6)
+})
+
+test('an add-on priced as a multiple of its host (an ammunition type, `x1.5`) adds host × (N − 1); alone it has no price', () => {
+  const fizzy = { file: 'custom/sr6/imported/zz/ammotypes.xml', xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="ammotypes" version="1">'
+    + '<ammotype id="zz.fizzy" source="ZZ" page="1" cost="x1.5"><name>Fizzy</name></ammotype></sr6:data>' }
+  const data = sr6Data(fixtureCatalog(undefined, [fizzy])), { cr } = made()
+  const type: Sr6Purchase = { uid: 't', kind: 'ammotypes', id: 'zz.fizzy', qty: 1, accessories: [] }
+  const ammo: Sr6Purchase = { uid: 'a', kind: 'gear', id: 'crb.tangle-rope', rating: 2, qty: 10, accessories: [type] }
+  expect(priced(ammo, data, cr)).toMatchObject({ cost: 10 * 100 * 1.5, ok: true })
+  expect(priced(type, data, cr).ok).toBe(false) // (no host: nothing to multiply, as before)
 })
 
 test('a custom item costs what the player says; a stacked line costs per unit', () => {
