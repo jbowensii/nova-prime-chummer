@@ -204,6 +204,88 @@ class DecisionsTest(unittest.TestCase):
         alpha = max((p for _, p in effects._runins(regrouped)["alpha zap"]), key=len)
         self.assertIn("The rest of alpha: +1 Logic. Overdrive: +1 more.", alpha)
 
+class RoundThreeTest(unittest.TestCase):
+    """The reader's third round (feat/sr6-effects-2): the phrasings Commlink6 had and we missed, read by general rules."""
+
+    def test_chosen_targets_maxima_and_actions(self):
+        self.assertEqual(fx("Specify a physical attribute when you select this power. You gain a +1 bonus to this attribute for each level of this power while in animal form."),
+                         [("attr:choice", "add", "R", "conditional", "while in animal form")])
+        self.assertEqual(fx("The chosen Matrix attribute is increased by the quality's level."), [("matrix:choice", "add", "R", None, None)])
+        self.assertEqual(fx("Your skill maximum for the selected skill is 10, instead of 9."), [("skill-max:choice", "set", "10", None, None)])
+        self.assertEqual(fx("Either the metatype maximum of one chosen Physical or Mental attribute is raised by one point or the maximum rating that can be obtained in a skill is increased by one point."),
+                         [("attr-max:choice", "add", "1", None, None), ("skill-max:choice", "add", "1", None, None)])
+        self.assertEqual(fx("It allows the user to use the Move and Avoid Incoming Minor Actions an additional time per combat round per rating point."),
+                         [("derived:minor-actions", "add", "R", None, "move and avoid incoming")])
+        self.assertEqual(fx("Each point of zap rating grants +2 Reaction and an additional two Minor Actions per round that can only be spent on moving."),
+                         [("derived:minor-actions", "add", "R*2", None, None), ("attr:rea", "add", "R*2", None, None)])
+        self.assertEqual(fx("When using Called Shot—Disarm, reduce either the Edge cost (if spending Edge) or the dice pool penalty by 1."),
+                         [("action:called-shot-disarm", "edge-cost", "-1", None, None)])
+        self.assertEqual(fx("Gain bonus dice on a hacking action: Brute Force, Probe, or Backdoor Entry.", "datastructures"),
+                         [("action:brute-force", "add", "R", None, None), ("action:probe", "add", "R", None, None), ("action:backdoor-entry", "add", "R", None, None)])
+        self.assertEqual(fx("Gain bonus dice on a Snoop action or Static Veil complex form.", "datastructures"),
+                         [("action:snoop", "add", "R", None, None), ("complex-form:static-veil", "add", "R", None, None)])
+
+    def test_items_modes_costs_and_formulas(self):
+        self.assertEqual(fx("It decreases the Semi-Auto and Burst Fire Attack Rating modifiers by 1.", "weapons"), [("item:ar", "add", "1", None, "semi-auto, burst fire")])
+        self.assertEqual(fx("Improved zapping subtracts its rating directly from the base Handling stat of the vehicle.", "gear"), [("item:handling", "add", "-R", None, None)])
+        self.assertEqual(fx("Each rating point permanently moves one point of the off-road Handling to the on-road Handling number.", "gear"), [("item:handling", "add", "R/-R", None, None)])
+        self.assertEqual(fx("Each rating point adds 20 percent to the base Top Speed number.", "gear"), [("item:top-speed", "add", "20%", None, None)])
+        self.assertEqual(fx("The pack holds a 1,000-round belt for the gun it feeds.", "weapons"), [("item:ammo", "set", "1000", None, None)])
+        self.assertEqual(fx("Characters with this quality pay quality level x 500 nuyen per month in medication."), [("derived:monthly-cost", "add", "R*500", None, None)])
+        self.assertEqual(fx("Your lifestyle cost increases by 1,000 nuyen per month."), [("derived:monthly-cost", "add", "1000", None, None)])
+        self.assertEqual(fx("It increases the cost of all armor and clothing by ten percent."), [("pricemod:armor", "add", "0.1", None, None)])
+        self.assertEqual(fx("You get a 25 percent boost in Lifestyle costs."), [("pricemod:lifestyle", "add", "0.25", None, None)])
+        self.assertEqual(fx("Gain Mystic Armor equal to your Edge rating.", "critterpowers"), [("derived:defense-astral", "add", "edg", None, None)])
+        self.assertEqual(fx("Increase your dracoform Armor or Mystic Armor by half your Edge score (rounded down).", "critterpowers"),
+                         [("derived:defense", "add", "edg/2", None, None), ("derived:defense-astral", "add", "edg/2", None, None)])
+        self.assertEqual(fx("With each point of this mod taken, the passenger capacity of the vehicle is increased by one seat.", "gear"), [("item:seats", "add", "R", None, None)])
+        self.assertEqual(fx("This codemod increases the reaction speed of the AI. Add +1 initiative and 1 additional initiative dice per point of rating, up to the normal maximum of 5 dice.", "gear"),
+                         [("derived:matrix-initiative-dice", "add", "R", None, None), ("derived:matrix-initiative", "add", "R", None, None)])
+
+    def test_edge_wild_dice_skills_and_senses(self):
+        self.assertEqual(fx("When performing a Juryrigging test (see p. 95), you gain a point of Edge that must be spent on that test, or it goes away."),
+                         [("skill:engineering", "edge", "1", "conditional", "juryrigging")])
+        self.assertEqual(fx("You gain a bonus Edge for use on any Magic Resistance test; if you do not use it on that test, that point goes away."),
+                         [("test:magic-resistance", "edge", "1", None, None)])
+        self.assertEqual(fx("You gain one bonus point of Edge when making Perception tests to recognize people.")[0][3], "conditional")  # (a limit stays)
+        self.assertEqual(fx("Users gain Edge when searching for items that glow in black light (body fluids, many kinds of critters).", "augmentations"),
+                         [("skill:perception", "edge", "1", "conditional", "searching for items that glow in black light")])
+        self.assertEqual(fx("All zapears provide a bonus Edge vs. a target who has something interfering with their hearing.", "augmentations")[0][:2], ("skill:perception", "edge"))
+        self.assertEqual(fx("You gain the Kiezspeak (N) language skill at no cost plus a bonus point of Edge on any social test with activists."),
+                         [("test:social", "edge", "1", None, None), ("skill:language", "set", "N", None, None)])
+        self.assertEqual(fx("You gain the knowledge skill Dragon Lore, which is not normally otherwise available."), [("skill:knowledge", "add", "1", None, None)])
+        self.assertEqual(effects.read("You gain the knowledge skill Dragon Lore.")[0][1]["spec"], "Dragon Lore")
+        self.assertEqual(fx("You may add your ranks in Con to your dice pool on a Judge Intentions test—if you do, you must replace one of the dice with a Wild Die.")[0][:3],
+                         ("derived:judge-intentions", "wild-die", "1"))
+        self.assertEqual(fx("Whenever you are affected by noise, reduce the cost of any Edge boosts or actions by 1 (to a minimum of 1)."),
+                         [("test:all", "edge-cost", "-1", "conditional", "whenever you are affected by noise")])
+        self.assertEqual(effects.read("You may not spend Edge on any Influence (Etiquette or Negotiation) test.")[0][1]["spec"], "Etiquette, Negotiation")
+        self.assertEqual(fx("Failure means you cannot earn or spend Edge until you succeed."), [("test:all", "no-edge-gain", "1", "conditional", "until you succeed"), ("test:all", "no-edge", "1", "conditional", "until you succeed")])
+        self.assertEqual(fx("It tracks how long until my wife gets home from work. It lowers the cost of Edge boosts by 1 for Cracking tests."), [("skill:cracking", "edge-cost", "-1", None, None)])
+        self.assertEqual(fx("When your chase pool (see p. 175) becomes available, it begins with 1 Edge in it."), [("pool:chase", "add", "1", None, None)])
+        self.assertEqual(fx("Dwarfs have thermographic vision (p. 73)."), [("sense:thermographic-vision", "add", "1", None, None)])
+        self.assertEqual(fx("The light allows persons with low-light vision to see for twenty meters in total darkness."), [])
+
+    def test_variant_rows_take_their_parents_sentences_and_resolve_its_choice(self):
+        files = {"gear.xml": '<sr6:data kind="gear">\n  <gear id="zb" source="X" page="1"><name>Zapjack Boosters</name></gear>\n'
+                             '  <gear id="zb-f1" source="X" page="2" rating="1"><name>Zapjack Boosters (Firewall) (Rating 1)</name></gear>\n'
+                             '  <gear id="zb-i1" source="X" page="2" rating="1"><name>Zapjack Boosters (Matrix Initiative) (Rating 1)</name></gear>\n'
+                             '  <gear id="ks" source="X" page="3" rating="1–6"><name>Knowsofts</name></gear>\n</sr6:data>\n',
+                 "qualities.xml": '<sr6:data kind="qualities">\n  <quality id="llv" source="X" page="4"><name>Low-Light Vision</name></quality>\n'
+                                  '  <quality id="es" source="X" page="4"><name>Enhanced Senses (Thermographic)</name></quality>\n</sr6:data>\n',
+                 "ammotypes.xml": '<sr6:data kind="ammotypes">\n  <ammotype id="zap" source="X" page="5" ar="+1" dv="–1S(e)"><name>Zap-n-Shock</name></ammotype>\n</sr6:data>\n'}
+        texts = ('<sr6:data kind="texts">\n  <text of="gear" id="zb">A Data Processing or Firewall zapjack booster improves that Matrix attribute by its rating. '
+                 'A Matrix Initiative booster adds its rating in additional initiative dice when in VR, up to a maximum of five initiative dice.</text>\n</sr6:data>\n')
+        out, _ = effects.apply(files, texts, "")
+        g = out["gear.xml"]
+        self.assertIn('<name>Zapjack Boosters (Firewall) (Rating 1)</name><effect target="matrix:firewall" op="add" value="R"/></gear>', g)
+        self.assertIn('<name>Zapjack Boosters (Matrix Initiative) (Rating 1)</name><effect target="derived:matrix-initiative-dice" op="add" value="R" switch="conditional" when="when in vr"/></gear>', g)
+        self.assertIn('<name>Knowsofts</name><effect target="skill:knowledge" op="set" value="R"/>', g)
+        self.assertIn('<name>Low-Light Vision</name><effect target="sense:low-light-vision" op="add" value="1"/>', out["qualities.xml"])
+        self.assertIn('<name>Enhanced Senses (Thermographic)</name><effect target="sense:thermographic-vision" op="add" value="1"/>', out["qualities.xml"])
+        self.assertIn('<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>', out["ammotypes.xml"])
+
+
 class RegroupTest(unittest.TestCase):
     def test_part_headings_and_page_break_continuations(self):
         md = """<!-- page 10 -->
