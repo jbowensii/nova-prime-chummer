@@ -123,15 +123,16 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
   // (the quality the settings name counts here unless its own effects add the box: never twice)
   const own = (id: string | undefined, t: Bonus['target']) => !!id && entryBonuses(data, data.entry('qualities', id)).some(x => x.target === t)
   const toughId = str(cr, 'builtToughQuality'), depositsId = str(cr, 'dermalDepositsQuality')
-  const tough = (own(toughId, 'physical') ? 0 : b.qualities.filter(q => q.id === toughId).reduce((t, q) => t + q.level, 0)) + augmentBonus(b, data, 'physical', undefined, on)
+  const tough = (own(toughId, 'physical') ? 0 : b.qualities.filter(q => data.sameFamily('qualities', q.id, toughId))
+    .reduce((t, q) => t + (data.levelOf(data.entry('qualities', q.id)) ?? q.level), 0)) + augmentBonus(b, data, 'physical', undefined, on)
   const physical = monitor(A('bod'))
   const stunBase = monitor(A('wil')), stunPlus = augmentBonus(b, data, 'stun', undefined, on)
 
   // CRB p. 67: Defense Rating = BOD + the defense of worn armor, and what a ware adds (dermal plating, CRB p. 286);
   // Dermal Deposits' level of natural armor (CRB p. 71)
-  const deposits = !own(depositsId, 'defense') && b.qualities.some(q => q.id === depositsId) ? 1 : 0
+  const deposits = !own(depositsId, 'defense') && b.qualities.some(q => data.sameFamily('qualities', q.id, depositsId)) ? 1 : 0
   // Power Plays p. 85: Charismatic Defense bases it on Charisma instead of Body
-  const dr = b.qualities.some(q => q.id === str(cr, 'charismaticDefenseQuality')) ? 'cha' : 'bod'
+  const dr = b.qualities.some(q => data.sameFamily('qualities', q.id, str(cr, 'charismaticDefenseQuality'))) ? 'cha' : 'bod'
   let defense = A(dr) + augmentBonus(b, data, 'defense', undefined, on) + deposits
   for (const x of b.purchases) if (x.kind === 'armor' && x.worn) { const e = entryOf(x, data); defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0 }
 

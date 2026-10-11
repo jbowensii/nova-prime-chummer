@@ -367,7 +367,7 @@
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
         <xs:enumeration value="expertise"/><xs:enumeration value="knowledge"/><xs:enumeration value="quality"/>
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
-        <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/>
+        <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/>

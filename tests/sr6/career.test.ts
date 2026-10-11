@@ -310,8 +310,9 @@ test('an adept power costs no karma while power points are left; a mystic adept 
   const power: Sr6Advance = { op: 'pick', line: { uid: '', kind: 'adeptpowers', id: 'crb.quick-step' } }
   expect(preview(adept, power, data, cr)).toEqual({ ok: true, label: 'Adept power: Quick Step 1', karma: 0, nuyen: 0 })
   const twice = ok(record(ok(record(adept, power, data, cr)), power, data, cr))
-  expect(currentBuild(twice).picks).toMatchObject([{ id: 'crb.quick-step', level: 2 }])
-  const dear = made({ data: d => { d.powers['crb.quick-step'].cost = 2 } })
+  expect(currentBuild(twice).picks).toMatchObject([{ id: 'crb.quick-step.2', name: 'Quick Step 2' }])  // (one entry per level, levels.ts)
+  expect(twice.ledger.at(-1)).toMatchObject({ label: 'Adept power: Quick Step 2', karma: 0 })
+  const dear = made({ data: d => { d.powers['crb.quick-step.1'].cost = 2 } })
   expect(preview(adept, power, dear.data, dear.cr)).toEqual({ ok: false, reason: 'no-power-points' })
   const mystic = runner({ magic: 'mystic-adept' })
   expect(preview(mystic, power, data, cr)).toEqual({ ok: false, reason: 'no-power-points' })

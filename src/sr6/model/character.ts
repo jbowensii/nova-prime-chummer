@@ -138,16 +138,21 @@ export type Sr6Advance =
   | { op: 'spec'; target: string; name: string }
   | { op: 'expertise'; target: string; name: string }
   | { op: 'knowledge'; line: Sr6Knowledge }
-  | { op: 'quality'; line: Sr6Quality }
+  /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference */
+  | { op: 'quality'; line: Sr6Quality; target?: string }
   | { op: 'buyoff'; target: string; line?: Sr6Quality }
-  | { op: 'pick'; line: Sr6Pick }
+  /** target: as a quality's, the lower level replaced */
+  | { op: 'pick'; line: Sr6Pick; target?: string }
   /** a style (with its signature technique), or a technique learned under the style whose uid is target */
   | { op: 'martialart'; line: Sr6MartialArt }
   | { op: 'technique'; target: string; line: Sr6Technique }
   | { op: 'powerpoint' }
-  | { op: 'initiate'; line?: Sr6Pick }
+  | { op: 'initiate'; line?: Sr6Pick; target?: string }
   | { op: 'purchase'; line: Sr6Purchase }
   | { op: 'drop'; target: string; line?: Sr6Purchase }
+  /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
+   *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
+  | { op: 'upgrade'; target: string; line: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -159,7 +164,7 @@ export type Sr6Advance =
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
-  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'sin', 'lifestyle', 'convert', 'other']
+  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'upgrade', 'contact', 'sin', 'lifestyle', 'convert', 'other']
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
 export type Sr6LedgerEntry = { id: string; at: string } & (
   | { type: 'finalize'; karma: number; nuyen: number }

@@ -394,6 +394,47 @@ name), and used by the builder, the sheets and the Foundry export:
 - **armor `social`**: its SOCIAL column (Firing Squad and later), as printed. The worn armor's add up with Charisma into
   the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number.
 
+### Levels: one item per level
+
+Owner decision 2026-10-11: every item with levels is one catalog item per level, otherwise duplicates, positive and
+negative levels alike. The files stay as printed (one rated or leveled entry); the app expands them when the catalog
+loads (`src/sr6/engine/levels.ts`, the last step of `buildSr6Catalog`, after the edits layer), so nothing is
+re-imported and an edit on the printed entry reaches every level:
+
+- an entry with a printed rating range (`rating="1–4"`) is one entry per rating, `rating="N"`: its printed `Rating ×
+  500` and formulas price at that rating, its `R` effects count it;
+- an entry taken by level up to a printed maximum (`perLevel="true" maxLevel="3"`, or the range in its name, `Will to
+  Live (1-3)`: qualities, adept powers, metamagics) is one entry per level with `perLevel` and `maxLevel` dropped, its
+  Karma (a range's both ends) or power-point cost × the level, and its per-level effects worked out (`R` → `2`,
+  `R*2` → `4`), so a level is a plain entry; one with no printed maximum stays as it is, its level on the runner's line
+  (an edit that sets `maxLevel` turns it into levels);
+- rows the book prints one per level (`Cyberjack (Rating 2)`, `Wired Reflexes 3` with siblings 1..n) are grouped as a
+  family without duplication; the bare-number form counts only when the numbers run 1..n and the rows' effects or
+  formulas use the rating (so `Ares Predator VI` is a model, not a level), and such a row with no rating of its own
+  reads its `R` at its level.
+
+A level is `<Name> N` (a trailing `(1-3)` or `(rating 1–6)` in the printed name dropped), id `<parent id>.<N>`, with
+`family="<parent id>"` and `level="N"` (a printed row's family is `<source>.<base name slug>`), the parent's other
+attributes, parts, formulas and issues, and the parent's name as a search alias. The parent leaves `Sr6Catalog.entries`
+(pickers and Game data list the levels) and stays in `Sr6Catalog.levels` by `entryKey(kind, id)`: `resolveEntry` and a
+formula's `ref()` still read it, `data.named()` answers its lowest level by its printed name (a `<link level>` picks
+that level), the typed views keep it marked `parent`, and its own issues are the family's (Review names them for a
+runner holding any level). An edit keyed by a level's id (`crb.wired-reflexes.2`) is that level, its text the
+parent's when it has none. `Sr6Data` offers `family`, `atLevel`, `siblings`, `levelOf` and `sameFamily` (a creation
+setting naming a quality, `builtToughQuality`, matches any level of it).
+
+**Runners hold the level's id.** A new line, pick or quality is the level's entry (the editor's `purchase`, `accessory`,
+`quality` and `pick` ops take the parent id with a rating or level too and store the level's); the line's rating select
+and a quality's or power's level stepper move it to the sibling level (`rate`, `quality`, `powerLevel`). A saved runner
+naming the parent (with `rating`, or a quality's or pick's `level`) is turned into the level's entry once on load
+(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level it lacks: the lowest) and until then still reads at
+its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
+replaced, the Karma the difference × `advance.qualityFactor`; the advance's `target` names the line replaced) and the
+`upgrade` spend replaces a bought item with a higher level of its family at the new level's full price (the core
+rulebook prints no trade-in rule). The export writes the level's entry (`attrs.family`, `attrs.level`; a line still
+naming the parent goes out as the level it is at). cl6check is unchanged: it measures the printed files, whose values
+it already compares at every rating.
+
 ## Formulas and issues
 
 Book values are canon: the printed attribute is never rewritten from anything but print. Where the importer can say

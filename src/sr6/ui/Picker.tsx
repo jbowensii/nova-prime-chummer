@@ -183,11 +183,11 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
     {host.accessories.map(a => {
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
       // on an implant an add-on has its grade (CRB p. 282): shown, never chosen
-      const range = ratingRange(e?.attrs.rating), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
+      const range = levelsOf(data, a), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
       const free = chosenRating(e)
-      // its rating and grade change in place, as a line's do
+      // its rating and grade change in place, as a line's do (a level of a family: to that level's entry)
       return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 || free ? own : label}</Sr6Ref>
-        {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
+        {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? data.levelOf(e) ?? range[0]}
           onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
         {free && <Stepper label={`${own} on ${name}: ${free.toLowerCase()}`} value={a.rating ?? 1} min={1} max={MAX_CHOSEN}
           onChange={v => act({ op: 'rate', uid: a.uid, rating: v })} />}
@@ -211,15 +211,22 @@ export const isAccessory = (e: Sr6Entry) => /accessor|modification|\bmods?\b|enh
  *  weapons): the picker keeps those that fit the line. */
 export const ACCESSORY_KINDS: PurchaseKind[] = ['gear', 'weapons', 'augmentations', 'electronics', 'armor']
 
+/** The ratings a line can be set to: its family's levels (levels.ts: the select moves the line to that level's entry),
+ *  else the entry's printed range. */
+const levelsOf = (data: Sr6Data, x: Sr6Purchase): number[] => {
+  const sibs = x.id ? data.siblings(x.kind, x.id) : []
+  return sibs.length > 1 ? sibs.map(s => data.levelOf(s)!) : ratingRange(entryOf(x, data)?.attrs.rating)
+}
+
 /** A line's rating and grade, changed in place where the entry comes in ratings or grades are offered. */
 function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
   const { data, cr, act } = useSr6Editor()
-  const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades && e ? gradeOptions(cr, data, e) : []
+  const e = entryOf(x, data), range = levelsOf(data, x), offered = grades && e ? gradeOptions(cr, data, e) : []
   const free = chosenRating(e)
   if (range.length < 2 && !free && !offered.length) return (x.rating || x.grade)
     ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && gradeName(data, x.grade)].filter(Boolean).join(' · ')}</div> : null
   return <div className="row muted">
-    {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? range[0]}
+    {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? data.levelOf(e) ?? range[0]}
       onChange={ev => act({ op: 'rate', uid: x.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>
       : free ? <label className="inline">{free} <Stepper label={`${name} ${free.toLowerCase()}`} value={x.rating ?? 1} min={1} max={MAX_CHOSEN}
         onChange={v => act({ op: 'rate', uid: x.uid, rating: v })} /></label>

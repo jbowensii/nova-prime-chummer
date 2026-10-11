@@ -145,6 +145,31 @@ the new effect kinds (install it with this).
   1,206 → 1,446 effects of ours it lacks (82 of them what others get, decision 16). The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.
 
+## Unreleased
+
+**Shadowrun 6**
+- **One catalog item per level** (owner decision 2026-10-11; docs/sr6-data-format.md "Levels"). An item the book
+  prints with a rating range (Wired Reflexes, Cybereyes, a Fake SIN, a focus with a range) or taken by level up to a
+  printed maximum (Built Tough, Combat Sense, a metamagic taken again) is now one entry per level in Game data, the
+  pickers and the Foundry export: `Glow Eyes 1`, `Glow Eyes 2`, `Glow Eyes 3`, each with its own cost, Availability,
+  Essence, Karma, power points and effects worked out. Rows the book already prints per level (`Cyberjack (Rating 2)`,
+  `Wired Reflexes 3`) are grouped the same way. Nothing to re-import: the catalog expands as it loads, and an edit on
+  the printed entry reaches every level (an edit on one level is that level). An item priced by a rating or Force
+  with no printed range or maximum (a focus's `Force × 4,000¥`, an autosoft, a cyberlimb add-on `[Rating]`, an adept
+  power whose level the book doesn't cap) stays one entry with a stepper, until an edit gives it a range or
+  `maxLevel`.
+- A runner's lines hold the level's entry: the rating select on a line and the level stepper on a quality or adept
+  power move it to the sibling level. A saved runner naming the rated entry with its rating or level is moved to the
+  level's entry once when opened (recorded in `<migrated>`), and until then still reads at its rating. In career play,
+  buying a higher level of a quality or adept power the runner has replaces the lower one for the Karma difference (×
+  `advance.qualityFactor`), and the new **Upgrade gear** spend replaces a bought item with a higher level of its family
+  at the new level's price (the core rulebook prints no trade-in rule; the accessories and grade stay).
+- A creation setting naming a quality (`builtToughQuality`, `aptitudeQuality`, `inDebtQuality`…) matches any level of
+  it, so the standard settings keep working.
+- The Foundry export writes each level as its own entry (`attrs.family`, `attrs.level`); the Shadowrun 6 importer
+  module needs no change (it keys documents by the entry id and reads the rating from `values.rating`). A re-imported
+  book adds the per-level items beside any older rated ones (the module never deletes).
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers

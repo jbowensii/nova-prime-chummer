@@ -6,7 +6,7 @@
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
 import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
-import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
+import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, PICK_KINDS, PURCHASE_KINDS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, augmentationSlot, dataStructureLevels, isFocus, magicCap, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
 import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, normName, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
@@ -53,7 +53,7 @@ function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: S
   }
 }
 /** 1 when the runner has the quality a setting names (Many Talents, Many Skills: Sixth World Companion p. 134), else 0. */
-const has = (c: Ctx, key: string) => { const id = str(c.cr, key); return id && c.b.qualities.some(q => q.id === id) ? 1 : 0 }
+const has = (c: Ctx, key: string) => { const id = str(c.cr, key); return id && c.b.qualities.some(q => c.data.sameFamily('qualities', q.id, id)) ? 1 : 0 }
 const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => { const e = c.data.entry(x.kind, x.id); return e ? entryLabel(e) : x.name ?? x.id }
 
 const RULES: Rule[] = [
@@ -411,7 +411,8 @@ const RULES: Rule[] = [
       ...entryCite(c.data.entry('metamagics', x.id)) })) },
   // CRB p. 167: each initiation grade brings one metamagic (one taken again, a level each)
   { code: 'magic.metamagicCount', severity: 'error', tab: 'magic', check: c => {
-    const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? 1), 0)
+    // (one taken again is a level each time: the pick's level, or the level of the entry it holds, levels.ts)
+    const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
     return n > c.b.initiation ? { message: `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.` } : null
   } },
   { code: 'adept.ppBudget', severity: 'error', tab: 'magic', check: c => {
@@ -797,7 +798,11 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
       message: `${e ? entryLabel(e) : k.item}: the book prints ${k.field} ${k.from}; corrected to ${k.to} by an override${k.note ? ` (${k.note})` : ''}.` })
   }
   // the catalog's own problems (data.ts), only for entries this runner uses (and the priority table): not every book's
-  const used = JSON.stringify(ch.build)
+  // (a level's entry, levels.ts, carries its family's parent's problems: the parent is the id the catalog warns under)
+  const families = [...JSON.stringify(ch.build).matchAll(/"id":"([^"]+)"/g)].flatMap(m => {
+    const e = ([...PURCHASE_KINDS, ...PICK_KINDS, 'qualities' as const].map(k => data.entry(k, m[1])).find(Boolean))
+    return e?.attrs.family ? [e.attrs.family] : [] })
+  const used = JSON.stringify(ch.build) + JSON.stringify(families)
   out.push(...data.problems.filter(v => v.path.startsWith('priorities.') || used.includes(`"${v.path.slice(v.path.indexOf('.') + 1)}"`)))
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
   return out.map(v => (approved.has(`${v.code}|${v.path}`) && !v.hard ? { ...v, approved: true } : v))

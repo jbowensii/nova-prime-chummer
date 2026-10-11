@@ -49,7 +49,7 @@ test('a runner saved with old ids loads them under the new ones, saved once with
   const file = join(dir, 'characters', 'sr6', 'pat', 'old-ids-1.xml')
   await expect.poll(() => readFileSync(file, 'utf8')).toContain('kind="ammotypes" id="crb.fizz-rounds"')
   const xml = readFileSync(file, 'utf8')
-  expect(xml).toContain('kind="augmentations" id="crb.spring-tendons"')
+  expect(xml).toContain('kind="augmentations" id="crb.spring-tendons.2"')  // (the level's entry, levels.ts: its rating is the level)
   expect(xml).toMatch(/<migrated from="gear\/crb\.fizz-rounds" to="ammotypes\/crb\.fizz-rounds" at="[^"]+"\/>/)
   expect(xml.match(/<migrated /g)).toHaveLength(2)
 })

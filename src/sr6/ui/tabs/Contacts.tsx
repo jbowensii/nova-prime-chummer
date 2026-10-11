@@ -21,7 +21,7 @@ export function ContactsTab() {
     const v = bookValue(l, 'cost', undefined, dataFind(data)).n
     return <option key={l.id} value={l.id}>{l.name} ({v === null ? '?' : `${n(v)}¥`} a month)</option>
   })
-  const rate = nuyenPerKarma(b, cr), most = num(cr, 'karmaToNuyenMax')
+  const rate = nuyenPerKarma(b, cr, data), most = num(cr, 'karmaToNuyenMax')
   // lifepath's contact points go by contact type (the Sixth World Companion)
   const typed = b.method === 'lifepath'
   const setType = (uid: string, types: (ContactType | '')[], i: number, v: string) => {

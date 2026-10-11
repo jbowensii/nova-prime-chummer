@@ -10,6 +10,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source
 import { formulaXml, openIssues, readFormulasAndIssues } from '../../engine/formula'
 import { readSr6Compendium, sr6CompendiumSource } from './compendium'
 import { bookValue, ratingRange, type Find } from './values'
+import { expandLevels } from './levels'
 
 export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
@@ -148,6 +149,7 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
     c.files.push({ file: f.file, kind, entries: els.filter(el => el.localName !== 'remove').length })
   }
   formulaIssues(c)
+  expandLevels(c)  // (one entry per level, after the edits so an edit on the rated entry reaches every level)
   return c
 }
 
@@ -161,17 +163,18 @@ function formulaIssues(c: Sr6Catalog) {
   }
 }
 
-/** The entry of (kind, id), or the one an old id (an earlier import's, see Sr6Catalog.moved) now names: it may be of
- *  another kind. */
-export function resolveEntry(c: Pick<Sr6Catalog, 'entries' | 'moved'>, kind: Sr6Kind, id: string): Sr6Entry | undefined {
-  const e = c.entries[kind]?.get(id)
+/** The entry of (kind, id), the rated parent of a family of levels (out of the lists, still read by id: levels.ts), or
+ *  the one an old id (an earlier import's, see Sr6Catalog.moved) now names: it may be of another kind. */
+export function resolveEntry(c: Pick<Sr6Catalog, 'entries' | 'moved' | 'levels'>, kind: Sr6Kind, id: string): Sr6Entry | undefined {
+  const e = c.entries[kind]?.get(id) ?? c.levels?.get(entryKey(kind, id))?.parent
   if (e) return e
   const m = c.moved?.get(entryKey(kind, id))
-  return m && c.entries[m.kind].get(m.id)
+  return m && (c.entries[m.kind].get(m.id) ?? c.levels?.get(entryKey(m.kind, m.id))?.parent)
 }
 
-/** The catalog's entries by kind and id, for a formula's ref(). */
-export const catalogFind = (c: Sr6Catalog): Find => (kind, id) => (KINDS.has(kind) ? c.entries[kind as Sr6Kind].get(id) : undefined)
+/** The catalog's entries by kind and id (a family's parent too), for a formula's ref(). */
+export const catalogFind = (c: Sr6Catalog): Find => (kind, id) =>
+  (KINDS.has(kind) ? c.entries[kind as Sr6Kind].get(id) ?? c.levels?.get(entryKey(kind as Sr6Kind, id))?.parent : undefined)
 
 const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
 

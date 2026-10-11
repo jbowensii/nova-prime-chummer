@@ -42,7 +42,7 @@ export function MagicTab() {
       {rows.length === 0 ? <p className="muted">None yet.</p> : <div className="scroll-x"><table className="data">
         <tbody>{rows.map(x => {
           const e = data.entry(kind, x.id), power = kind === 'adeptpowers' ? data.powers[x.id] : undefined, name = e?.name ?? x.name ?? x.id
-          const max = pickMaxLevel(data, kind, x.id), want = qualityChoice(e?.name)
+          const max = pickMaxLevel(data, kind, x.id), want = qualityChoice(e?.name), levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
           const chosen = want === 'attribute' ? noteAttr(x.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, x.note) ?? '']?.name : undefined
           return <tr key={x.uid}>
             <td><Sr6Ref kind={kind} id={e?.id}><b>{name}</b></Sr6Ref>{!e && <span className="err"> (no longer in the catalog)</span>}
@@ -51,8 +51,10 @@ export function MagicTab() {
                 aria-label={`${name} note`} onBlur={ev => { if (ev.target.value.trim() !== (x.note ?? '')) act({ op: 'pickNote', uid: x.uid, note: ev.target.value }) }} />
                 <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span></div>}
               <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} /></div></td>
-            <td>{max !== null && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
-              onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
+            <td>{max !== null ? <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
+              onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />
+              : levels.length > 1 && <Stepper label={`${name} level`} value={data.levelOf(e) ?? 1} min={levels[0]} max={levels.at(-1)!}
+                onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
             <td className="num">{power && (power.cost == null ? '? PP' : `${n(powerCost(data, x))} PP`)}</td>
             <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
           </tr>

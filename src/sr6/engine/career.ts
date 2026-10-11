@@ -50,15 +50,18 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     }
     case 'knowledge': b.knowledge.push(structuredClone(a.line)); return
     case 'quality': {
-      const had = b.qualities.find(q => q.id === a.line.id && !q.free)
-      if (had) had.level += a.line.level; else b.qualities.push(structuredClone(a.line))
+      // (target: the lower level of its family it replaces, levels.ts)
+      const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id) && !q.free)
+      if (had && a.target) Object.assign(had, { id: a.line.id, level: a.line.level, ...(a.line.name ? { name: a.line.name } : {}) })
+      else if (had) had.level += a.line.level; else b.qualities.push(structuredClone(a.line))
       return
     }
     case 'buyoff': b.qualities = b.qualities.filter(q => q.uid !== a.target); return
     case 'pick': {
-      // a leveled power taken again goes up a level
-      const had = b.picks.find(x => x.kind === a.line.kind && x.id === a.line.id)
-      if (had?.level !== undefined) had.level += 1; else if (!had) b.picks.push(structuredClone(a.line))
+      // a leveled power taken again goes up a level (a family of levels: the lower level, target, moves to the new one)
+      const had = b.picks.find(x => x.kind === a.line.kind && (a.target ? x.uid === a.target : x.id === a.line.id))
+      if (had && a.target) Object.assign(had, { id: a.line.id, ...(a.line.name ? { name: a.line.name } : {}) })
+      else if (had?.level !== undefined) had.level += 1; else if (!had) b.picks.push(structuredClone(a.line))
       return
     }
     case 'martialart': b.martialArts.push(structuredClone(a.line)); return
@@ -66,13 +69,19 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'powerpoint': b.powerPointsBought += 1; return
     case 'initiate': {
       if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1; else b.initiation += 1
-      // a metamagic taken again goes up a level
-      const had = a.line && b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id)
-      if (had) had.level = (had.level ?? 1) + 1; else if (a.line) b.picks.push(structuredClone(a.line))
+      // a metamagic taken again goes up a level (a family of levels: the lower level, target, moves to the new one)
+      const had = a.line && b.picks.find(x => x.kind === a.line!.kind && (a.target ? x.uid === a.target : x.id === a.line!.id))
+      if (had && a.target) Object.assign(had, { id: a.line!.id, ...(a.line!.name ? { name: a.line!.name } : {}) })
+      else if (had) had.level = (had.level ?? 1) + 1; else if (a.line) b.picks.push(structuredClone(a.line))
       return
     }
     case 'purchase': b.purchases.push(structuredClone(a.line)); return
     case 'drop': b.purchases = b.purchases.filter(x => x.uid !== a.target); return
+    case 'upgrade': {
+      const i = b.purchases.findIndex(x => x.uid === a.target)
+      if (i >= 0) b.purchases[i] = { ...structuredClone(a.line), uid: a.target, accessories: b.purchases[i].accessories }
+      return
+    }
     case 'contact': {
       const i = b.contacts.findIndex(x => x.uid === a.line.uid)
       if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
@@ -208,6 +217,20 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!a.line.name.trim()) no('needs-name')
       return { label: `${a.line.kind === 'language' ? 'Language' : 'Knowledge'}: ${a.line.name}`, karma: need('karmaKnowledge') }
     case 'quality': {
+      // a family of levels (levels.ts): the level named (or the lower one the runner has plus the levels asked), replacing
+      // the lower level, at the difference in Karma
+      const fam = data.family('qualities', a.line.id)
+      if (fam) {
+        const cur = b.qualities.find(q => !q.free && data.family('qualities', q.id) === fam)
+        const curLevel = cur ? data.levelOf(data.entry('qualities', cur.id)) ?? 1 : 0
+        const e = data.atLevel('qualities', a.line.id, data.levelOf(data.entry('qualities', a.line.id)) ?? curLevel + (a.line.level || 1)) ?? no('at-maximum')
+        const v = data.qualities[e.id], was = cur && data.qualities[cur.id]
+        if (!v.positive) no('not-positive')
+        if (v.karma === null || (was && was.karma === null)) no('book-value')
+        if (cur && (data.levelOf(e) ?? 1) <= curLevel) no('already-known')
+        const karma = qualityCost({ ...a.line, level: 1 }, v) - (cur && was ? qualityCost(cur, was) : 0)
+        return { label: `Quality: ${v.name}`, karma: karma * need('advance.qualityFactor') }
+      }
       const v = data.qualities[a.line.id] ?? no('unknown-entry')
       if (!v.positive) no('not-positive')
       if (v.karma === null) no('book-value')
@@ -235,6 +258,18 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (kind !== 'adeptpowers') {
         if (had) no('already-known')
         return { label: `${PICK_LABEL[kind]}: ${e.name}`, karma: need(kind === 'complexforms' ? 'karmaForm' : 'karmaSpell') }
+      }
+      // a family of levels (levels.ts): the next level (or the one named) replaces the lower one, for the difference
+      const fam = data.family(kind, id)
+      if (fam) {
+        const cur = b.picks.find(x => x.kind === kind && data.family(kind, x.id) === fam)
+        const curLevel = cur ? data.levelOf(data.entry(kind, cur.id)) ?? 1 : 0
+        const lv = data.atLevel(kind, id, data.levelOf(e) ?? curLevel + 1) ?? no('at-maximum')
+        const v = data.powers[lv.id], was = cur && data.powers[cur.id]
+        if (cur && (data.levelOf(lv) ?? 1) <= curLevel) no('already-known')
+        if (v?.cost == null || (was && was.cost == null)) no('book-value')
+        if (careerPowerPoints(b, data, cr, p).left < v.cost! - (was?.cost ?? 0)) no('no-power-points')
+        return { label: `Adept power: ${lv.name}`, karma: 0 }
       }
       const v = data.powers[id]
       if (had && !v?.perLevel) no('already-known')
@@ -274,11 +309,21 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         if (a.line.kind !== (k.resonance ? 'echoes' : 'metamagics')) no('cannot-learn')
         const e = data.entry(a.line.kind, a.line.id) ?? no('unknown-entry')
         // (an adept's metamagic on a magician, or a magician's on an adept, is recorded: Review's magic.metamagicUser)
-        // one taken again (its text says it can be) is one more level, each with its own initiation
-        const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
-        if (had && max === null) no('already-known')
-        if (had && (had.level ?? 1) >= max!) no('at-maximum')
-        what = ` (${e.name}${had ? ` ${(had.level ?? 1) + 1}` : ''})`
+        // one taken again (its text says it can be) is one more level, each with its own initiation (a family of
+        // levels, levels.ts: the next level's entry)
+        const fam = data.family(a.line.kind, a.line.id)
+        if (fam) {
+          const cur = b.picks.find(x => x.kind === a.line!.kind && data.family(a.line!.kind, x.id) === fam)
+          const curLevel = cur ? data.levelOf(data.entry(a.line.kind, cur.id)) ?? 1 : 0
+          const lv = data.atLevel(a.line.kind, a.line.id, data.levelOf(e) ?? curLevel + 1) ?? no('at-maximum')
+          if (cur && (data.levelOf(lv) ?? 1) <= curLevel) no('already-known')
+          what = ` (${lv.name})`
+        } else {
+          const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
+          if (had && max === null) no('already-known')
+          if (had && (had.level ?? 1) >= max!) no('at-maximum')
+          what = ` (${e.name}${had ? ` ${(had.level ?? 1) + 1}` : ''})`
+        }
       }
       const next = b[field] + 1
       // CRB pp. 167, 195: the grade never exceeds Magic (Resonance)
@@ -304,6 +349,20 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // R: no refund; an earning records a sale
       const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
       return { label: `Dropped: ${(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}` }
+    }
+    case 'upgrade': {
+      // a higher level of the item's family replaces it (levels.ts), at the new level's full price: the core rulebook
+      // prints no trade-in rule, so none is applied (an earning records a sale)
+      const old = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
+      const fam = old.id && data.family(old.kind, old.id)
+      const x = a.line, e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : no('unknown-entry')
+      if (!fam || data.family(x.kind, x.id) !== fam) no('not-a-level')
+      if ((data.levelOf(e) ?? 0) <= (data.levelOf(data.entry(old.kind, old.id!)) ?? 0)) no('already-known')
+      const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
+      if (gp) no(gp)
+      const pr = priced({ ...x, accessories: [] }, data, cr)
+      if (!pr.ok) no('book-value')
+      return { label: `Upgrade: ${entryLabel(data.entry(old.kind, old.id!)!)} → ${entryLabel(e)}`, nuyen: pr.cost }
     }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
@@ -351,17 +410,39 @@ export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Creat
   if (!pv.ok) return pv
   const b = currentBuild(ch), adv = structuredClone(a)
   const named = <T extends { uid: string; name?: string }>(line: T, name?: string): T => ({ ...line, uid: line.uid || newId(), ...(name && !line.name ? { name } : {}) })
+  /** a family of levels (levels.ts): the level the spend lands on, and the runner's lower level it replaces */
+  const level = <K extends 'qualities' | PickKind>(kind: K, id: string, asked?: number) => {
+    const fam = data.family(kind, id)
+    if (!fam) return undefined
+    const lines: { uid: string; id: string }[] = kind === 'qualities' ? b.qualities.filter(q => !q.free) : b.picks.filter(x => x.kind === kind)
+    const cur = lines.find(x => data.family(kind, x.id) === fam), curLevel = cur ? data.levelOf(data.entry(kind, cur.id)) ?? 1 : 0
+    const e = data.atLevel(kind, id, data.levelOf(data.entry(kind, id)) ?? curLevel + (asked || 1))
+    return e ? { e, target: cur?.uid } : undefined
+  }
   switch (adv.op) {
     case 'knowledge': adv.line = { ...named(adv.line), points: 0, karma: 1 }; break
-    case 'quality': adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
-    case 'pick': adv.line = named({ ...adv.line, ...(data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
-      data.entry(adv.line.kind, adv.line.id)?.name); break
+    case 'quality': {
+      const lv = level('qualities', adv.line.id, adv.line.level)
+      if (lv) { adv.line = { ...adv.line, id: lv.e.id, level: 1 }; if (lv.target) adv.target = lv.target }
+      adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
+    }
+    case 'pick': {
+      const lv = level(adv.line.kind, adv.line.id)
+      if (lv) { const { level: _, ...rest } = adv.line; adv.line = { ...rest, id: lv.e.id }; if (lv.target) adv.target = lv.target }
+      adv.line = named({ ...adv.line, ...(!lv && data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
+        data.entry(adv.line.kind, adv.line.id)?.name); break
+    }
     case 'martialart': adv.line = { ...named(adv.line, data.entry('martialarts', adv.line.id)?.name),
       techniques: adv.line.techniques.map(t => named(t, data.entry('martialtechniques', t.id)?.name)) }; break
     case 'technique': adv.line = named(adv.line, data.entry('martialtechniques', adv.line.id)?.name); break
-    case 'initiate': if (adv.line) adv.line = named({ ...adv.line, ...(pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
-      data.entry(adv.line.kind, adv.line.id)?.name); break
+    case 'initiate': {
+      const lv = adv.line && level(adv.line.kind, adv.line.id)
+      if (adv.line && lv) { adv.line = { ...adv.line, id: lv.e.id }; delete adv.line.level; if (lv.target) adv.target = lv.target }
+      if (adv.line) adv.line = named({ ...adv.line, ...(!lv && pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
+        data.entry(adv.line.kind, adv.line.id)?.name); break
+    }
     case 'purchase': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
+    case 'upgrade': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
     case 'contact': adv.line = named(adv.line); break
     case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break
     case 'drop': adv.line = b.purchases.find(x => x.uid === adv.target); break

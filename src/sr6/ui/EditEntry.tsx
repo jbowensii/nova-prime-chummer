@@ -9,7 +9,7 @@ import { Modal } from '../../ui/bits'
 import { api } from '../../ui/Books'
 import { esc, STATE_TEXT } from '../../ui/EditEntry'
 import { FieldNotes } from '../../ui/Issues'
-import { entryKey, sr6EntryXml } from '../engine/load'
+import { entryKey, resolveEntry, sr6EntryXml } from '../engine/load'
 import { fieldRule } from '../engine/compendium'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 
@@ -17,7 +17,7 @@ type Props = { c: Sr6Catalog; onClose: () => void; onSaved: (msg: string) => Pro
 
 /** The dialog stays mounted (closing it puts focus back on the Edit button); `target` opens it on that entry. */
 export function Sr6EditEntry({ target, ...p }: Props & { target: { kind: Sr6Kind; id: string } | null }) {
-  const e = target && p.c.entries[target.kind].get(target.id)
+  const e = target && resolveEntry(p.c, target.kind, target.id)
   return (
     <Modal open={!!e} onClose={p.onClose} title={e ? `Edit ${e.name}` : ''} actions={<></>}>
       {e && target && <Form key={`${target.kind} ${target.id}`} {...p} kind={target.kind} id={target.id} />}
@@ -26,7 +26,7 @@ export function Sr6EditEntry({ target, ...p }: Props & { target: { kind: Sr6Kind
 }
 
 function Form({ c, kind, id, onClose, onSaved }: Props & { kind: Sr6Kind; id: string }) {
-  const e = c.entries[kind].get(id)!
+  const e = resolveEntry(c, kind, id)!  // (a family's rated parent too, levels.ts: an edit on it reaches every level)
   const original = c.original.get(entryKey(kind, id))
   const state = !e.edited ? 'book' : original ? 'changed' : 'orphan'
   const bookText = original?.text ?? e.text

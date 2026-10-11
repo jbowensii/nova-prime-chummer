@@ -24,7 +24,8 @@ export type Op =
   | { op: 'specs'; target: string; specs: string[] }
   /** add a quality, or set the level, karma or note (the attribute or skill it is for) of one taken (`uid`: that line;
    *  else the quality's line). A quality that names its choice (`Exceptional (Attribute)`) may be taken again, for
-   *  another one. */
+   *  another one. One of a family of levels (levels.ts): the level's own entry takes the line, `id` naming any
+   *  level or the rated parent. */
   | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string } | { op: 'quality'; remove: string }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
@@ -42,7 +43,8 @@ export type Op =
   | { op: 'quantity'; uid: string; qty: number }
   | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number } | { op: 'accessory'; host: string; remove: string }
   | { op: 'wear'; uid: string; worn: boolean }
-  /** a line's (or accessory's) rating or grade changed in place; grade null: none */
+  /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
+   *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
@@ -200,6 +202,22 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (q.id === mentor && !b.qualities.some(x => x.id === mentor)) { delete b.mentorSpirit; delete b.mentorAdvantage }
         return OK
       }
+      // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
+      const fam = data.family('qualities', op.id)
+      if (fam) {
+        const cur = b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        if (op.level !== undefined && op.level < 1) return no('below-one')
+        const e = data.atLevel('qualities', op.id, op.level ?? data.levelOf(data.entry('qualities', op.id)) ?? Math.min(...fam.levels.keys()))
+        if (!e) return no('max-level')
+        // (its note, the attribute or skill it is for, as on any quality)
+        if (op.note !== undefined && cur) { const t = op.note.trim().slice(0, 200); if (t) cur.note = t; else delete cur.note; if (op.level === undefined && op.karma === undefined) return OK }
+        if (cur && cur.id === e.id && op.karma === undefined) return no('already-taken')
+        const v = data.qualities[e.id]
+        if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
+        if (cur) { cur.id = e.id; cur.level = 1; cur.name = v.name; if (op.karma !== undefined) cur.karma = op.karma }
+        else b.qualities.push({ uid: newId(), id: e.id, level: 1, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
+        return OK
+      }
       const v = data.qualities[op.id]
       if (!v) return no('unknown-entry')
       const taken = op.uid ? b.qualities.find(x => x.uid === op.uid && x.id === op.id) : b.qualities.find(x => x.id === op.id && !x.free)
@@ -230,6 +248,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const e = data.entry(op.kind, op.id)
       if (!e) return no('unknown-entry')
+      // a family of levels (levels.ts): taken again, the line moves to the next level's entry
+      const fam = data.family(op.kind, op.id)
+      if (fam) {
+        const cur = b.picks.find(x => x.kind === op.kind && data.family(op.kind, x.id) === fam), curLevel = cur ? data.levelOf(data.entry(op.kind, cur.id)) ?? 1 : 0
+        const asked = data.levelOf(e)
+        if (cur && asked !== undefined && asked <= curLevel) return no('duplicate')
+        const next = data.atLevel(op.kind, op.id, asked ?? (cur ? curLevel + 1 : Math.min(...fam.levels.keys())))
+        if (!next) return no('max-level')
+        if (cur) { cur.id = next.id; cur.name = next.name } else b.picks.push({ uid: newId(), kind: op.kind, id: next.id, name: next.name })
+        return OK
+      }
       const max = pickMaxLevel(data, op.kind, op.id)
       // (a power naming its choice is bought again for another: Improved Ability "can be purchased for multiple skills",
       // CRB Hong Kong p. 157)
@@ -254,6 +283,13 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'powerLevel': {
       const x = b.picks.find(p => p.uid === op.uid)
       if (!x) return no('not-taken')
+      if (data.family(x.kind, x.id)) {  // (a family of levels: that level's entry)
+        if (op.level < 1) return no('below-one')
+        const e = data.atLevel(x.kind, x.id, op.level)
+        if (!e) return no('max-level')
+        x.id = e.id; x.name = e.name; delete x.level
+        return OK
+      }
       const max = pickMaxLevel(data, x.kind, x.id)
       if (max === null) return no('no-levels')
       if (op.level < 1) return no('below-one')
@@ -329,7 +365,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'rate': {
       const x = allLines(b).find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
-      if (op.rating !== undefined) {
+      const level = op.rating !== undefined && x.id && data.family(x.kind, x.id) ? data.atLevel(x.kind, x.id, op.rating) : undefined
+      if (op.rating !== undefined && !level) {
         const e = x.id ? data.entry(x.kind, x.id) : undefined
         if (!e || !(chosenRating(e) ? Number.isInteger(op.rating) && op.rating >= 1 : ratingRange(e.attrs.rating).includes(op.rating))) return no('rating-range')
       }
@@ -338,7 +375,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // an implant's add-on has its grade (CRB p. 282): never one of its own
       const host = b.purchases.find(h => h.kind === 'augmentations' && h.accessories.includes(x))
       if (host && op.grade !== undefined) return no('grade-follows-host')
-      if (op.rating !== undefined) x.rating = op.rating
+      // (a level of a family: the level's own entry takes the line, which then needs no rating of its own)
+      if (level) { x.id = level.id; x.name = level.name; delete x.rating } else if (op.rating !== undefined) x.rating = op.rating
       if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
       // its add-ons follow it (a grade a file gave one is dropped: they have the implant's)
       if (op.grade !== undefined && x.kind === 'augmentations') for (const a of x.accessories) delete a.grade
@@ -559,10 +597,15 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   }
   const e = data.entry(op.kind, op.id)
   if (!e) return { ok: false, reason: 'unknown-entry' }
+  // a family of levels (levels.ts): the level asked for (the line then carries no rating of its own)
+  const fam = data.family(op.kind, op.id)
+  const level = fam ? data.atLevel(op.kind, op.id, op.rating ?? data.levelOf(e) ?? Math.min(...fam.levels.keys())) : undefined
+  if (fam && !level) return { ok: false, reason: 'rating-range' }
   const range = ratingRange(e.attrs.rating)
-  if (op.rating !== undefined && (range.length ? !range.includes(op.rating) : chosenRating(e) && !(Number.isInteger(op.rating) && op.rating >= 1)))
+  if (!fam && op.rating !== undefined && (range.length ? !range.includes(op.rating) : chosenRating(e) && !(Number.isInteger(op.rating) && op.rating >= 1)))
     return { ok: false, reason: 'rating-range' }
-  const gp = op.grade && gradeProblem(cr, data, op.grade, e)
+  const gp = op.grade && gradeProblem(cr, data, op.grade, level ?? e)
   if (gp) return { ok: false, reason: gp }
+  if (level) return { ...base, id: level.id, name: level.name }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
 }

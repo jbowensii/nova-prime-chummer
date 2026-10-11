@@ -173,14 +173,14 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
     for (const y of [x, c]) if (y?.add) { max += y.add * (y.perRating ? q.level : 1); lowered ||= y.add < 0 }
   }
   const own = (q: Sr6Quality) => maxEffects(data.entry('qualities', q.id)).choice !== undefined
-  max += id ? b.qualities.filter(q => q.id === id && !own(q) && noteAttr(q.note) === k).length : 0
+  max += id ? b.qualities.filter(q => data.sameFamily('qualities', q.id, id) && !own(q) && noteAttr(q.note) === k).length : 0
   const floor = num(cr, 'attributeMaxFloor')
   return lowered && floor !== undefined ? Math.max(floor, max) : max
 }
 /** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
  *  whose note names no skill adds none (Review's quality.choice asks for it). */
 export function aptitudeSkills(data: Sr6Data, cr: CreationRules, b: Sr6Build): string[] | null {
-  const id = str(cr, 'aptitudeQuality'), qs = b.qualities.filter(q => q.id === id)
+  const id = str(cr, 'aptitudeQuality'), qs = b.qualities.filter(q => data.sameFamily('qualities', q.id, id))
   return id && qs.length ? qs.map(q => noteSkill(data, q.note)).filter((x): x is string => !!x) : null
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
@@ -188,7 +188,7 @@ export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s
 /** The catalog entry a purchase is priced from: the live one, else the snapshot it was exported with. */
 export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => (x.id ? data.entry(x.kind, x.id) ?? x.snapshot : undefined)
 /** The rating a purchase is priced at and its per-rating effects count at: its own, else the lowest its entry comes in
- *  (one row of a book's per-rating split, `Wired Reflexes 3`, comes in that rating only), else 1. */
+ *  (one row of a book's per-rating split, `Wired Reflexes 3`, or a level's entry, levels.ts, comes in that rating only), else 1. */
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
 /** An accessory as its host carries it: on an augmentation it has the host's grade, whatever the file says ("All
@@ -293,8 +293,8 @@ export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p:
 
 /** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality), both ways: turning
  *  nuyen back into karma only undoes a conversion, at the same rate. Unset: undefined. */
-export function nuyenPerKarma(b: Sr6Build, cr: CreationRules): number | undefined {
-  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
+export function nuyenPerKarma(b: Sr6Build, cr: CreationRules, data?: Sr6Data): number | undefined {
+  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => (data ? data.sameFamily('qualities', q.id, debt) : q.id === debt))
   return num(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
 }
 /** Karma turned into nuyen, up to karmaToNuyenMax when it's set. */
@@ -376,7 +376,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   }
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
   add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
-  const karma = toNuyen(b, cr), converted = karma * (nuyenPerKarma(b, cr) ?? 0)
+  const karma = toNuyen(b, cr), converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.nuyen(b) + converted, spent), breakdown }

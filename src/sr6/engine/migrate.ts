@@ -2,27 +2,53 @@
 // re-kinds an entry, its new entry carries <alias id kind> with the old id (importer/sr6/moved.py; the loader's
 // Sr6Catalog.moved). On load (the editor's prepare) every line naming an id the catalog no longer has, and an alias
 // moves, is pointed at the new entry, when its kind still fits the line (a purchase stays a purchase kind, a pick a pick
-// kind); each change is recorded in `migrated`, once: the saved runner then holds the new ids.
+// kind); each change is recorded in `migrated`, once: the saved runner then holds the new ids. A line naming a rated or
+// leveled entry the catalog now holds as one entry per level (levels.ts) becomes that level's entry: a purchase at its
+// rating, a quality or pick at its level (the line's own rating or level then goes: the entry carries it).
 import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6Lifestyle, type Sr6MartialArt, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
 import type { Sr6Catalog, Sr6Kind } from '../model/types'
 import { entryKey } from './load'
+import { atLevel, familyOf } from './levels'
 
-export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 'moved'>, at = new Date().toISOString()): Sr6Character {
+export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 'moved' | 'levels'>, at = new Date().toISOString()): Sr6Character {
   const done: NonNullable<Sr6Character['migrated']> = []
   /** where (kind, id) is now, when it's gone and an alias names it in one of `fits` */
+  const isParent = (kind: Sr6Kind, id: string) => !!c.levels?.get(entryKey(kind, id))?.parent
+  /** where (kind, id) is now, when it's gone and an alias names it in one of `fits` (an entry, or a family's parent) */
   const to = <K extends Sr6Kind>(kind: K, id: string | undefined, fits: readonly K[]) => {
     if (!id || c.entries[kind]?.has(id)) return undefined
     const m = c.moved.get(entryKey(kind, id))
-    if (!m || !(fits as readonly Sr6Kind[]).includes(m.kind) || !c.entries[m.kind].has(m.id)) return undefined
-    done.push({ from: entryKey(kind, id), to: entryKey(m.kind, m.id), at })
+    if (!m || !(fits as readonly Sr6Kind[]).includes(m.kind) || !(c.entries[m.kind].has(m.id) || isParent(m.kind, m.id))) return undefined
+    if (!isParent(m.kind, m.id)) done.push({ from: entryKey(kind, id), to: entryKey(m.kind, m.id), at })
     return m as { kind: K; id: string }
+  }
+  /** the level's entry of a family's parent (an id now expanded into levels; `from`: the id the line names), at
+   *  `level` or else its lowest */
+  const level = (kind: Sr6Kind, id: string | undefined, lv: number | undefined, from = id) => {
+    const f = id && !c.entries[kind]?.has(id) ? familyOf(c, kind, id) : undefined
+    if (!f?.parent) return undefined
+    const e = atLevel(c, kind, id, lv ?? Math.min(...f.levels.keys())) ?? atLevel(c, kind, id, Math.min(...f.levels.keys()))
+    if (e) done.push({ from: entryKey(kind, from!), to: entryKey(kind, e.id), at })
+    return e
   }
   const purchase = (p: Sr6Purchase): Sr6Purchase => {
     const m = to<PurchaseKind>(p.kind, p.id, PURCHASE_KINDS), acc = p.accessories.map(purchase)
+    const l = level(m?.kind ?? p.kind, m?.id ?? p.id, p.rating, p.id)
+    if (l) { const { rating: _, ...rest } = p; return { ...rest, kind: m?.kind ?? p.kind, id: l.id, accessories: acc } }
     return m || acc.some((a, i) => a !== p.accessories[i]) ? { ...p, ...m, accessories: acc } : p
   }
-  const pick = <T extends Sr6Pick | undefined>(p: T): T => { const m = p && to<PickKind>(p.kind, p.id, PICK_KINDS); return m ? { ...p, ...m } : p }
-  const quality = <T extends Sr6Quality | undefined>(q: T): T => { const m = q && to('qualities', q.id, ['qualities']); return m ? { ...q, id: m.id } : q }
+  const pick = <T extends Sr6Pick | undefined>(p: T): T => {
+    const m = p && to<PickKind>(p.kind, p.id, PICK_KINDS)
+    const l = p && level(m?.kind ?? p.kind, m?.id ?? p.id, p.level, p.id)
+    if (!l) return m ? { ...p, ...m } : p
+    const { level: _, ...rest } = p!
+    return { ...rest, kind: m?.kind ?? p!.kind, id: l.id } as T
+  }
+  const quality = <T extends Sr6Quality | undefined>(q: T): T => {
+    const m = q && to('qualities', q.id, ['qualities'])
+    const l = q && level('qualities', m?.id ?? q.id, q.level, q.id)
+    return l ? { ...q, id: l.id, level: 1 } : m ? { ...q, id: m.id } : q
+  }
   const technique = <T extends { id: string }>(t: T): T => { const m = to('martialtechniques', t.id, ['martialtechniques']); return m ? { ...t, id: m.id } : t }
   const martial = (x: Sr6MartialArt): Sr6MartialArt => { const m = to('martialarts', x.id, ['martialarts']); return { ...x, ...m ? { id: m.id } : {}, techniques: x.techniques.map(technique) } }
   const b = ch.build
