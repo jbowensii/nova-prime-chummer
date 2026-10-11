@@ -34,7 +34,7 @@ HEADING_KINDS = [
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     # a kind a Game Information chapter lists under a heading of its own (`ADEPT POWERS`): each heading under it that
     # prints the kind's own labels (FIELDED) is one, its fields read from them as the recipe reads them
-    ("adeptpowers", re.compile(r"^(?:new\s+)?adept\s+powers$", re.I)),
+    ("adeptpowers", re.compile(r"^(?:new\s+)?adept\s+powers?$", re.I)),  # (`New Adept Power`: one, Collapsing Now p. 62)
     ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
                            r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),

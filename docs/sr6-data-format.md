@@ -199,7 +199,8 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   a sense the entry is named for or grants (`low-light-vision`, `thermographic-vision`, `ultrasound`, `wide-band-hearing`
   …: `effects.SENSES`, a rule of its own, shown); `action-max:<name>` the cap on an action's bonus (`increases the
   maximum dice pool bonus for Take Aim by its rating`, a raised maximum, shown; owner decision 2026-10-11);
-  `pool:chase` the chase pool's Edge (Double Clutch p. 175);
+  `pool:chase` the chase pool's Edge (Double Clutch p. 175); `derived:essence-hole` an Essence hole (`0.25 Essence
+  per level`, Bestial Nature p. 21; `free up 0.1 Essence`, Companion p. 132: `R*0.25`, `R*0.1`, shown);
   `pricemod:<what>` a price in percent (`armor` for armor and clothing, `lifestyle`, `gear`, `everything`: `0.1` is
   +10%); `derived:monthly-cost` nuyen a month (`R*500`). A Matrix attribute, attribute or skill the entry leaves to the
   player (`this attribute`, `the chosen Matrix attribute`) is `<family>:choice`; a variant row's words resolve it
@@ -220,7 +221,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
   (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
 - **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`, `each point
-  of this mod`, `each point of X rating`); `R-1`, `R*N-N` (so much per level after the first: `each level after the
+  of this mod`, `each point of X rating`; a value's own clause decides: `+1 to AR per level, and +1 to DV for every
+  two levels (round up)` is `R` and `R/2 RU`, a formula, shown); a formula over a value of the character's (`dice
+  equal to your Initiate Grade`: `initiate-grade`; `increased by their Magic`: `mag`), shown; `R-1`, `R*N-N` (so much per level after the first: `each level after the
   first grants a +1 dice pool modifier for such tests`, Nimble Fingers; counted as rating − 1, never below 0; owner
   decision 2026-10-11); `R[1,1,2,2]` (the book's own value per rating, a per-rating table: rating 3 gives the third,
   beyond the table the last; owner decision 2026-10-11, for the owner's overrides of table-driven items); a range
@@ -938,7 +941,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `eliteSumToThirteen` | true/false | optional | `levelSwcElite` |  | `sumToTenTarget` | House rule, off: with Elite, sum-to-thirteen (the book prints sum-to-twelve) |
 | Optional rules | `availabilitySeven` | true/false | optional |  |  | `maxAvailability` | House rule, off: gear of Availability 7 at creation (as printed: 6, CRB Hong Kong p. 66) |
 | Optional rules | `cargoWithoutSeats` | true/false | optional |  |  |  | Option, off (Double Clutch p. 126): a vehicle line's seats removed (`<purchase seatsRemoved>`) add cargo; its Cargo Factor 150 percent of Seating (125 on a bike), 4 more on a truck, shown on the Vehicles tab |
-| Optional rules | `metatypeSizePricing` | true/false | optional |  |  |  | House rule, on: a troll-sized runner (troll, cyclops, fomori, giant, minotaur: budgets.ts `metatypeSize`, by the metatype's name) pays 10% more for everything bought, a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor, as one `sizePricing` line of the nuyen budget (no SR6 book prints a general rule) |
+| Optional rules | `metatypeSizePricing` | true/false | optional |  |  |  | House rule, on: a troll-sized runner (troll, cyclops, fomori, giant, minotaur: budgets.ts `metatypeSize`, by the metatype's name) pays 10% more for everything bought, a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor, as one `sizePricing` line of the nuyen budget (no SR6 book prints a general rule). The importer fits a book sample's priorities with it as shipped (fit.py `metatype_size`, the same words) |
 | Derived values | `charismaticDefenseQuality` | quality id | optional |  |  |  | Charismatic Defense: the Defense Rating from Charisma, not Body (Power Plays p. 85) |
 | Metatypes | `metatypeKarma:<metatype id>` | number | point buy, karma, lifepath |  |  |  | the metatype's karma (one per catalog metatype) |
 | Point buy | `pointBuy.startRating:<kind>` | number | point buy |  |  |  | starting Magic or Resonance per awakened or emerged kind |

@@ -432,6 +432,59 @@ class RoundThreeTest(unittest.TestCase):
         self.assertIn('<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>', out["ammotypes.xml"])
 
 
+class GapsRoundTest(unittest.TestCase):
+    """The round closing the Commlink6 gaps: a per-rating table, a clause's own per-level phrase, a semicolon's clause,
+    formulas over the character's values, a row named by a run-in label, a sibling named `the same … as`."""
+
+    def test_phrasings(self):
+        self.assertEqual(fx("Add +1 to your zap weapon's Attack Rating per level of this power, and +1 to its damage value for every two levels (round up).", "metamagics"),
+                         [("item:ar", "add", "R", None, None), ("item:dv", "add", "R/2 RU", None, None)])
+        self.assertEqual(fx("The user gains a +2 dice pool bonus to all climbing tests; if both hands and feet have zapae, they gain a +4 dice pool bonus."),
+                         [("skill:athletics", "add", "2", None, None), ("skill:athletics", "add", "4", "conditional", "if both hands and feet have zapae")])
+        self.assertEqual(fx("Individuals with this quality are hindered in Athletics tests relating to climbing; Edge Actions and Boosts cost 1 point higher than normal.", "qualities"),
+                         [("skill:athletics", "edge-cost", "1", None, None)])
+        self.assertEqual(fx("The character gets +1 Edge for all Social tests, and their Social Rating is increased by their Magic."),
+                         [("test:social", "edge", "1", None, None), ("derived:social", "add", "mag", None, None)])
+        self.assertEqual(fx("You add a number of dice equal to your Initiate Grade to all your Drain Resistance tests."),
+                         [("test:drain-resistance", "add", "initiate-grade", None, None)])
+        self.assertEqual(fx("You gain an Essence hole of 0.25 Essence per level of this power.", "metamagics"), [("derived:essence-hole", "add", "R*0.25", None, None)])
+        self.assertEqual(fx("They grant an additional +1/+2/+1 per meter to the movement rate of the character.", "qualities"), [("derived:movement", "add", "1/2/1", None, None)])
+        self.assertEqual(fx("Each level adds 2 CF.", "vehicledesign"), [("item:cargo", "add", "R*2", None, None)])
+        self.assertEqual(fx("You must donate at least 1,000 nuyen per level of this quality every month.", "qualities"), [("derived:monthly-cost", "add", "R*1000", None, None)])
+        self.assertEqual(fx("Attack Ratings for Medium, Far, and Extreme ranges are increased by 2.", "gear"), [("item:ar", "add", "0,0,2,2,2", None, None)])
+        self.assertEqual(fx("You cannot spend Edge on any test using Agility that directly involves your hands (that is, a Stealth test would, but running would not).", "qualities"),
+                         [("test:attr-agi", "no-edge", "1", "conditional", "that directly involves your hands")])
+        self.assertEqual(fx("You gain one extra die per level on Composure tests.", "qualities"), [("derived:composure", "add", "R", None, None)])
+
+    def test_tables_rows_and_siblings(self):
+        self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.rating_table(["RATING", "DV", "AR"], [["1", "+1", "+1"], ["2", "+1", "+2"], ["3", "+2", "+2"]], "augmentations")],
+                         [("derived:unarmed-dv", "R[1,1,2]"), ("derived:unarmed-ar", "R[1,2,2]")])
+        self.assertEqual(effects.rating_table(["TYPE", "DV"], [["Plastic", "+1"]], "augmentations"), [])
+        files = {"augmentations.xml": '<sr6:data kind="augmentations">\n'
+                 '  <augmentation id="zd" source="X" page="1" rating="1–3"><name>Zap density</name></augmentation>\n'
+                 '  <augmentation id="zt" source="X" page="2" cost="2000"><name>Zaptail</name></augmentation>\n'
+                 '  <augmentation id="zb" source="X" page="2" cost="2500"><name>Balance</name></augmentation>\n'
+                 '  <augmentation id="zp" source="X" page="2" cost="5000"><name>Prehensile</name></augmentation>\n'
+                 '  <augmentation id="zs-b" source="X" page="3"><name>Zapskin (Basic)</name></augmentation>\n'
+                 '  <augmentation id="zs-d" source="X" page="3"><name>Zapskin (Dynamic)</name></augmentation>\n</sr6:data>\n',
+                 "gear.xml": '<sr6:data kind="gear">\n  <gear id="zs" source="X" page="4" category="Electronics mod" rating="1–9"><name>Enhanced Sensors</name></gear>\n</sr6:data>\n'}
+        texts = ('<sr6:data kind="texts">\n  <text of="augmentations" id="zd">Your Damage Value and Attack Rating increase per the table below.</text>\n'
+                 '  <text of="augmentations" id="zt">Tails come in two forms.</text>\n'
+                 '  <text of="augmentations" id="zs-b">Two kinds. **Basic:** Basic zapskin gives a +1 dice pool bonus for all Stealth tests. **Dynamic:** Dynamic zapskin receives the same Stealth bonuses as basic zapskin.</text>\n'
+                 '  <text of="augmentations" id="zs-d">Two kinds. **Basic:** Basic zapskin gives a +1 dice pool bonus for all Stealth tests. **Dynamic:** Dynamic zapskin receives the same Stealth bonuses as basic zapskin.</text>\n</sr6:data>\n')
+        regrouped = ('<!-- item {"name": "Zap density", "section": "Bioware"} -->\n| RATING | DV | AR |\n|---|---|---|\n| 1 | +1 | +1 |\n| 2 | +1 | +2 |\n| 3 | +2 | +2 |\n<!-- end -->\n'
+                     '<!-- item {"name": "Zaptail", "section": "Bioware"} -->\n**Balance:** A balance tail gives +1 Edge for all Athletics tests related to balance.\n'
+                     '**Prehensile:** This functions like the balance tail, except you control it.\n<!-- end -->\n')
+        out, txt = effects.apply(files, texts, regrouped)
+        a = out["augmentations.xml"]
+        self.assertIn('<name>Zap density</name><effect target="derived:unarmed-dv" op="add" value="R[1,1,2]"/><effect target="derived:unarmed-ar" op="add" value="R[1,2,2]"/>', a)
+        self.assertIn('<name>Balance</name><effect target="skill:athletics" op="edge" value="1" spec="Balance"/>', a)  # (its run-in paragraph, kept as its text)
+        self.assertIn('<text of="augmentations" id="zb">A balance tail gives +1 Edge', txt)
+        self.assertIn('<name>Prehensile</name><link rel="as" kind="augmentations" name="Balance" ref="zb"/>', a)
+        self.assertIn('<name>Zapskin (Dynamic)</name><link rel="as" kind="augmentations" name="Zapskin (Basic)" ref="zs-b"/>', a)
+        self.assertIn('<name>Enhanced Sensors</name><effect target="item:sensor" op="set" value="R"/>', out["gear.xml"])
+
+
 class RegroupTest(unittest.TestCase):
     def test_part_headings_and_page_break_continuations(self):
         md = """<!-- page 10 -->
