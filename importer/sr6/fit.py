@@ -102,9 +102,11 @@ def spend(need, rows, cs):
     """One letter assignment (`rows`: column -> its priority row) -> (score, build) or None when it can't hold
     the runner (its metatype or magic kind not in that row, a priority Magic above the printed one). need: meta (the
     metatype's name), raised (core attributes whose metatype maximum is above the base), magic (kind), attrs (natural
-    values; Magic or Resonance as printed, `loss` the points Essence spent took off it), skills ([rank, specializations]), karma (karma the printed things cost: positive qualities, knowledge past
+    values; Magic or Resonance as printed, `loss` the points Essence spent took off it), skills ([rank, specializations,
+    expertises (optional)]), karma (karma the printed things cost: positive qualities, knowledge past
     Logic), neg (karma negative qualities give), spells, forms, pp (power points), nuyen (what the things cost), debt (In
-    Debt: the higher rate), left (the printed starting nuyen, or None)."""
+    Debt: the higher rate), left (the printed starting nuyen, or None), toNuyen (the karma turned into nuyen when the
+    block prints it: In Debt's debt; optional)."""
     n = lambda k: cs.get(k) if isinstance(cs.get(k), float) else 0
     meta, att, mag, skl, res = (rows[c] for c in COLUMNS)
     adj = meta.get("metas", {}).get(need["meta"].lower())
@@ -136,17 +138,25 @@ def spend(need, rows, cs):
         karma += _karma(a.get(k, 1), t, n("karmaAttrPerRank"))
     # the ranks take the skill points (the cheapest past them bought with karma); a specialization on a skill with points
     # takes a point still left, else karma, never dearer than a karma rank (budgets.ts skillSpend)
-    ranks, specs, pool = [r for r, _ in need["skills"]], [s for _, s in need["skills"]], skl.get("skills", 0)
+    ranks, specs, pool = [x[0] for x in need["skills"]], [x[1] for x in need["skills"]], skl.get("skills", 0)
     took = _cheapest(ranks, [0] * len(ranks), max(0, sum(ranks) - pool))
     skills = [(r - t, t) for r, t in zip(ranks, took)]
     karma += sum(_karma(r, t, n("karmaSkillPerRank")) for r, t in zip(ranks, took))
     left, cost = pool - sum(p for p, _ in skills), n("skillPointsSpec")
-    for (p, _), s in zip(skills, specs):
+    # an expertise (the specialization made one, CRB p.92) likewise takes skillPointsExpertise points when they're
+    # left, else the customization karma at its advancement price (owner, 2026-10-09: CRB p.68)
+    ex_cost = cs.get("skillPointsExpertise") if isinstance(cs.get("skillPointsExpertise"), float) else None
+    for (p, _), s, ex in zip(skills, specs, [x[2] if len(x) > 2 else 0 for x in need["skills"]]):
         for _ in range(s):
             if p and cost <= left:
                 left -= cost
             else:
                 karma += n("karmaSpec")
+        for _ in range(ex):
+            if p and ex_cost is not None and ex_cost <= left:
+                left -= ex_cost
+            else:
+                karma += n("advance.expertise")
     free = rating * n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic") if special else 0
     # past the free ones: bought with the customization Karma (an optional rule at creation: karmaSpellsAtCreation)
     extra = max(0, need["forms"] - free) + need["spells"] if special == "res" else max(0, need["spells"] - free) + need["forms"]
@@ -155,9 +165,9 @@ def spend(need, rows, cs):
     else:
         karma += max(0, need["spells"] - free) * n("karmaSpell") + need["forms"] * n("karmaForm")
     # karma into nuyen: at least what the gear needs past the resources (never nuyen left below 0 while karma could
-    # cover it), more while karma is left: the count that leaves least past the carry-over limits (maxKarmaLeft,
-    # maxNuyenLeft, CRB Hong Kong pp. 66, 68; nuyen counted in the karma it was, rounded up, so turning karma into nuyen
-    # already past its limit gains nothing), then the nuyen left nearest the printed starting nuyen, then the fewest
+    # cover it), more while karma is left and the nuyen stays within its carry-over limit: the count that leaves least
+    # past the carry-over limits (maxKarmaLeft, maxNuyenLeft, CRB Hong Kong pp. 66, 68; nuyen counted in the karma it
+    # was, rounded up), then the nuyen left nearest the printed starting nuyen, then the fewest
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
     low = math.ceil(short / rate) if short > 0 and rate else 0
@@ -169,14 +179,19 @@ def spend(need, rows, cs):
         over_n = nuyen - top("maxNuyenLeft")
         carry = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 else 0)
         return carry, abs(nuyen - need["left"]) if need["left"] is not None else 0, k
-    to_nuyen = min(range(low, max(low, math.floor(room)) + 1), key=leftover) if rate else 0
+    # (more than the gear needs only while the nuyen stays within its limit)
+    ks = [k for k in range(low, max(low, math.floor(room)) + 1)
+          if k == low or res.get("nuyen", 0) + k * rate - need["nuyen"] <= top("maxNuyenLeft")]
+    to_nuyen = min(ks, key=leftover) if rate else 0
+    if need.get("toNuyen") is not None:  # printed (In Debt's debt): that many, or what the gear needs when more
+        to_nuyen = max(low, need["toNuyen"])
     carry, gap, _ = leftover(to_nuyen)
     karma += to_nuyen
     over = max(0.0, karma - n("startingKarma") - need["neg"])
     pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
     return (pp_over, over, carry, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
-                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "extraMagic": extra}
+                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "karmaLeft": room - to_nuyen, "extraMagic": extra}
 
 
 def fit(need, priorities, cs):

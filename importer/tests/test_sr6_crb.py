@@ -661,7 +661,61 @@ class CrbRecipeTest(unittest.TestCase):
                          '<bonus target="skill" skill="x.lurking" value="1"/>')
         self.assertEqual(archetypes._bonuses("Reflex recorder (Skill)", None, lambda n: skill_of(n.lower())), "")  # none named
 
-    def test_a_quality_outside_the_six(self):
+    def test_what_a_sample_line_is_printed_with(self):
+        """A weapon's `w/` list: accessories fitted to it (a count its quantity; one its text names left out), ammunition
+        as the row of its kind (per 10 rounds) and grenades as lines of their own, each per weapon on the line; a
+        gadget's enhancements found among the line's kinds (Smooth Operations drops the `w/`), an unrated one at the
+        rating its Capacity needs; a commlink's accessories (made-up catalog)."""
+        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": a.pop("text", "")}  # noqa: E731
+        idx = archetypes._Index({
+            "weapons": [e("zapper", "Zapper", category="Heavy pistol", cost="300", text="Comes with a glow sight."),
+                        e("glow-sight", "Glow sight", category="Weapon accessory", cost="200"),
+                        e("spare-clip", "Spare clip", category="Weapon accessory", cost="5"),
+                        e("fizz", "Fizz", category="Grenade", cost="40")],
+            "gear": [e("hp-ammo", "Heavy Pistol/SMG", category="Ammo by weapon type", per="10 rounds", cost="10"),
+                     e("zoom", "Zoom", category="Visual enhancement", capacity="[1]", cost="+50"),
+                     e("tingle", "Tingle", category="Visual enhancement", capacity="[2]", cost="+80"),
+                     e("hum-mic", "Hum mic", category="Accessory", cost="30")],
+            "electronics": [e("specs", "Specs", capacity="1–3", rating="1–3", cost="Capacity x 100"),
+                            e("talker", "Talker", rating="2", cost="500")]}, "NB")
+        line, _, cost = archetypes._purchase(idx, ["weapons"], "2 x Zapper", 7, [], {},
+                                             note="2 x Zapper [Heavy Pistol, SA, w/ glow sight, 3 spare clips, 30 rounds fizzy ammo, 2 fizz grenades]")
+        self.assertIn('<purchase uid="g7a4" kind="weapons" id="nb.spare-clip" name="Spare clip" qty="6"/>', line)
+        self.assertNotIn("nb.glow-sight", line)  # (the Zapper's text names it: built in)
+        self.assertIn('<purchase uid="g7x5" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="6" note="30 rounds fizzy ammo"/>', line)
+        self.assertIn('<purchase uid="g7x6" kind="weapons" id="nb.fizz" name="Fizz" qty="4" note="2 fizz grenades"/>', line)
+        self.assertEqual(cost, 2 * 300 + 6 * 5 + 6 * 10 + 4 * 40)
+        kinds = ["electronics", "gear"]
+        line, _, cost = archetypes._purchase(idx, kinds, "specs (zoom, tingle)", 8, [], {})
+        self.assertIn('id="nb.specs" name="Specs" rating="3"', line)  # [1] + [2]: rating 3 holds them
+        self.assertEqual(cost, 300 + 50 + 80)
+        line, _, cost = archetypes._purchase(idx, kinds, "Talker commlink (Device Rating 2, w/ hum mic, zoom)", 9, [], {})
+        self.assertIn('id="nb.hum-mic"', line)
+        self.assertNotIn("nb.zoom", line)  # (no Capacity: an accessory table's only)
+        self.assertEqual(cost, 530)
+
+    def test_sample_karma_the_fit_counts(self):
+        """`fake SIN 3` is rating 3; In Debt's printed debt is the Karma turned into nuyen (5,000¥ each); contacts past
+        Charisma x 6 cost Karma when the expanded contacts are on or assumed (made-up catalog and settings)."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "qualities": [{"id": "deep-debt", "name": "Deep Debt", "attrs": {"kind": "negative", "karma": "0"}}],
+                   "priorities": [{"id": "a", "name": "A", "attrs": {"letter": "A"}, "children": [("metatype", {"name": "Glim", "points": "1"}, None)]}]}
+        seen = {}
+        orig = archetypes.fit.fit
+        archetypes.fit.fit = lambda need, rows, cs: seen.update(need) or None
+        try:
+            b = SimpleNamespace(label="metatype: Glim", stats=[{"C": "2"}], labels={
+                "Gear": "fake SIN 3", "Qualities": "Deep Debt (Sharks, 15,000¥, 1,500¥/month interest)",
+                "Contacts": "Fixer (C4/L4), Fence (C2/L3)"})
+            cs = {"fakeSinPerRating": 2500.0, "licencePerRating": 200.0, "inDebtQuality": "nb.deep-debt",
+                  "karmaToNuyenRateInDebt": 5000.0, "contactPointsPerCha": 6.0, "contactKarma": 1.0}
+            _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs=cs)
+        finally:
+            archetypes.fit.fit = orig
+        self.assertEqual([s.get("rating") for s in ET.fromstring(xml).iter("sin")], ["3"])
+        self.assertEqual((seen["nuyen"], seen["toNuyen"], seen["karma"]), (7500, 3, 1))  # 13 contact points of 12
+
         """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""
         from importer.sr6 import flags
         self.assertEqual(flags.uncounted("Note: This quality does not count to- ward the six total qualities limitation."), {"uncounted": "true"})

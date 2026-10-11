@@ -86,6 +86,10 @@ class _Index:
                             return kind, e["id"], e["name"], e
         return None
 
+    def entries(self, kind):
+        """Every entry of `kind`, once each."""
+        return list({e["id"]: e for (k, _), es in self.exact.items() if k == kind for e in es}.values())
+
     def prefix(self, kinds, name, rating):
         """The first entry whose name starts with `name` (`Cybereyes basic system (Rating 4)` for `cybereyes`), one
         naming `rating` first."""
@@ -260,9 +264,6 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         skills.append((hit[1], int(m.group(3)), spec, expertise))
         if m.group(4):
             bracket[f"skill:{hit[1]}"] = int(m.group(4))
-    # an expertise is bought with the customization karma at its advancement price (owner, 2026-10-09: CRB p.66's
-    # step four buys advancement at p.68's prices; budgets.ts skillSpend)
-    need["karma"] += setting("advance.expertise") * sum(1 for *_, ex in skills if ex)
     free = attrs.get("log", 1)  # Logic's knowledge points (CRB p.67) go first; a skill or language past them is karma's
     for k in split(labels.get("knowledge skills", "")):
         lines.append(f'<knowledge uid="k{next(uid)}" kind="knowledge" {_rank(free)}>{_x(k)}</knowledge>')
@@ -297,6 +298,10 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         else:
             need["karma"] += cost * (setting("positiveQualityFactor") or 1)
         need["debt"] |= hit[1] == cs.get("inDebtQuality")
+        # In Debt printed with its debt (`Mafia, 25,000¥, 2,500¥/month interest`): each Karma turned into nuyen puts
+        # that much into debt (CRB Hong Kong p.77: 5,000¥, the In Debt rate), so the debt says how many were turned
+        if hit[1] == cs.get("inDebtQuality") and (owed := re.search(r"([\d,]+)\s*¥(?!\s*/)", note or "")) and setting("karmaToNuyenRateInDebt"):
+            need["toNuyen"] = round(int(owed.group(1).replace(",", "")) / setting("karmaToNuyenRateInDebt"))
         lines.append(f'<quality uid="q{next(uid)}" id={quoteattr(hit[1])} level="{level or 1}"{_a("karma", took)}{_a("free", free and "true")}'
                      f'{_a("note", None if free else note)} name={quoteattr(hit[2])}/>')
     boosts = []  # what a line's bonuses add: (attribute or skill:<id>, total, switch, name) (_bonuses)
@@ -316,11 +321,12 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     sins, worn, legal_over = [], [], []  # worn: (Defense Rating, uid) of each armor line
     for label, kinds in PURCHASES.items():
         for item in _per_skill(split(labels.get(label, "")), skill_of):
-            if m := re.match(r"(?:(\d+)\s*x\s+)?fake\s+sin\b\s*(?:\((.*)\))?", item, re.I):
-                r = re.search(r"rating\s*(\d+)", m.group(2) or "", re.I)
-                lic = re.search(r"w/\s*(.*)", m.group(2) or "")
+            # (`fake SIN 3`: rating 3, as a trailing number is any item's rating)
+            if m := re.match(r"(?:(\d+)\s*x\s+)?fake\s+sin\b\s*(\d+)?\s*(?:\((.*)\))?", item, re.I):
+                r = re.search(r"rating\s*(\d+)", m.group(3) or "", re.I)
+                lic = re.search(r"w/\s*(.*)", m.group(3) or "")
                 for _ in range(int(m.group(1) or 1)):
-                    sins.append((int(r.group(1)) if r else None, split(lic.group(1)) if lic else []))
+                    sins.append((int(r.group(1)) if r else int(m.group(2)) if m.group(2) else None, split(lic.group(1)) if lic else []))
                 continue
             line, worn, cost = _purchase(idx, kinds, item, next(uid), worn, cs, legal_over=legal_over, skill_of=skill_of, seen=boosts)
             need["nuyen"] += cost
@@ -397,7 +403,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     need.update(meta=meta[2] if meta else "", magic=magic, left=int(left) if left else None,
                 loss=math.ceil(setting("essence") - ess - 1e-9) if ess is not None and setting("essence") > ess else 0,
                 attrs={a: attrs.get(a, 0 if a in ("mag", "res") else 1) for a in ATTRS},
-                skills=[(r, 1 if sp else 0) for _, r, sp, _ in skills])
+                skills=[(r, 1 if sp else 0, 1 if ex else 0) for _, r, sp, ex in skills])  # (an expertise: fit.spend)
     rows = {}
     for e in entries.get("priorities") or (core or {}).get("priorities") or []:
         r = rows.setdefault(e.get("attrs", {}).get("letter"), {"metas": {}, "magic": {}})
@@ -410,6 +416,15 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 r[tag] = int(num(ca["points"]))
             elif tag == "resources":
                 r["nuyen"] = num(ca["nuyen"])
+    # contacts past Charisma's points (or a pair past its cap) under the Sixth World Companion's expanded contacts (SWC
+    # p.161; on, or assumed below when the contacts need it): their karma (budgets.ts contactPoints)
+    cha, per = attrs.get("cha", 0), setting("contactPointsPerCha")
+    expanded = cs.get("expandedContacts") == "true"
+    wants = pairs and not expanded and (sum(c + l for c, l in pairs) > cha * per or any(max(c, l) > cha for c, l in pairs))
+    if pairs and (expanded or wants):
+        soft = cha * setting("contactPairPerCha") if isinstance(cs.get("contactPairPerCha"), float) else math.inf
+        past = max(0, sum(c + l for c, l in pairs) - cha * per) + sum(max(0, c + l - soft) for c, l in pairs)
+        need["karma"] += past * setting("contactKarma")
     got = fit.fit(need, rows, cs) if meta and rows and cs else None
     # the options a book rule gives that the printed numbers need (owner, 2026-10-09), written as the runner's own rules,
     # marked assumed (the book doesn't say): the prime runner's doubled customization Karma (CRB Hong Kong p.63) when no
@@ -425,8 +440,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
             assumed.append(("levelPrime", "true", "CRB-HK", 63))
     if legal_over:
         assumed.append(("availabilityCapIllegalOnly", "true", "CRB", 66))
-    cha, per = attrs.get("cha", 0), setting("contactPointsPerCha")
-    if pairs and cs.get("expandedContacts") != "true" and (sum(c + l for c, l in pairs) > cha * per or any(max(c, l) > cha for c, l in pairs)):
+    if wants:
         assumed.append(("expandedContacts", "true", "SWC", 161))
     # spells, rituals or complex forms past the free ones: bought with the customization Karma, which CRB p.66's list
     # doesn't name (an optional rule, off; Commlink6 has it as an option, off)
@@ -542,30 +556,114 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     note = note or (rest if norm(rest) != norm(hit[2]) else None)
     ha = hit[3].get("attrs", {})
     low = re.match(r"\s*(\d*)", ha.get("rating") or "").group(1)  # unrated: the lowest it comes in (budgets.ts ratingOf)
-    cost = _value(hit[3], "cost", r or int(low or 1), qty) * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
+    gf = cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1  # (an add-on has its implant's grade, CRB p. 282)
+    cost = _value(hit[3], "cost", r or int(low or 1), qty) * gf
     if legal_over is not None:  # a legal item above the Availability cap (the core rulebook's first printing caps only illegal gear)
         avail = _value(hit[3], "avail", r or int(low or 1)) + (cs.get(f"grade:{grade.group(1).lower()}:avail", 0) if grade else 0)
         top = cs.get("maxAvailability")
         if isinstance(top, float) and avail > top and not re.search(r"I\)?\s*$", ha.get("avail") or ""):
             legal_over.append(hit[2])
     # a host with Capacity (`8`, not an accessory's `[2]`) printed with what is fitted to it (`Cyberears (rating 3; w/
-    # audio enhancement, select sound filter 3, soundlink)`): each one found of the host's kind is its accessory, at its
-    # rating (the engine checks the capacity they take); one the host's text says it has (a sound link) takes none
-    fitted = []
-    if (hc := ha.get("capacity") or "") and not hc.lstrip().startswith("[") and re.search(r"\d|rating", hc, re.I) \
-            and (w := re.search(r"\bw/\s*([^()]*)", rest)):
-        for i, a in enumerate(x.strip() for x in w.group(1).split(",") if x.strip()):
-            t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
-            an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
-            got = idx.find([hit[0]], an, accept=_rated(ar))
-            if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
-                continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
-            # (an implant's add-on has its grade, CRB p. 282: its cost at the implant's grade factor, budgets.ts fitted)
-            cost += _value(got[3], "cost", ar or 1, qty) * (cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1)
-            fitted.append(f'<purchase uid="g{n}a{i + 1}" kind="{got[0]}" id={quoteattr(got[1])} name={quoteattr(got[2])}{_a("rating", ar)} qty="{qty}"/>')
-    return _closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
+    # audio enhancement, select sound filter 3, soundlink)`; Smooth Operations drops the `w/`: `earbuds (rating 3, audio
+    # enhancement)`): each one found among the line's kinds is its accessory, at its rating (the engine checks the
+    # capacity they take); one the host's text says it has (a sound link) takes none. A host without Capacity takes
+    # what is printed after its `w/` from an accessory table (a commlink's subvocal microphone, CRB p.268). An unrated
+    # host whose rating is its Capacity (contacts, glasses) comes at the lowest rating that holds what is fitted.
+    fitted, room = [], 0
+    holds = (hc := ha.get("capacity") or "") and not hc.lstrip().startswith("[") and re.search(r"\d|rating", hc, re.I)
+    w = re.search(r"\bw/\s*([^()]*)", rest)
+    listed = w.group(1).split(",") if w else [x for x in re.split(r"[,;]", m2.group(1)) if not re.search(r"\brating\b|\d\s*$", x, re.I)] \
+        if holds and hit[0] != "weapons" and (m2 := re.search(r"\(([^()]*)\)", rest)) else []
+    for i, a in enumerate(x.strip() for x in listed if x.strip()):
+        if hit[0] == "weapons":
+            break  # (_carried reads a weapon's)
+        t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
+        an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
+        ok = lambda e: _rated(ar)(e) and (holds or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I)))  # noqa: E731
+        got = idx.find([hit[0]] + [k for k in kinds if k != hit[0]], an, accept=ok)
+        if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
+            continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
+        took = re.fullmatch(r"\s*\[\s*(\d+|rating)\s*\]\s*", got[3].get("attrs", {}).get("capacity") or "", re.I)
+        room += (ar or 1 if took.group(1).lower() == "rating" else int(took.group(1))) if took else 0
+        cost += _value(got[3], "cost", ar or 1, qty) * gf  # (budgets.ts fitted)
+        fitted.append(f'<purchase uid="g{n}a{i + 1}" kind="{got[0]}" id={quoteattr(got[1])} name={quoteattr(got[2])}{_a("rating", ar)} qty="{qty}"/>')
+    if r is None and holds and re.fullmatch(r"\s*(?:\d+\s*[–-]\s*(\d+)|rating)\s*", hc, re.I) and room > int(low or 1):
+        top = re.search(r"[–-]\s*(\d+)", ha.get("rating") or "")
+        r = min(room, int(top.group(1))) if top else room
+        cost += (_value(hit[3], "cost", r, qty) - _value(hit[3], "cost", int(low or 1), qty)) * gf
+    own = []
+    if hit[0] == "weapons":  # its accessories, ammunition and grenades as printed
+        kids, own, more = _carried(idx, hit, rest, (b := re.search(r"\[(.*)", note or "")) and b.group(1), qty, n)
+        fitted.append(kids)
+        cost += more
+    return "\n    ".join([_closed(f'<purchase uid="g{n}" kind="{hit[0]}" id={quoteattr(hit[1])} name={quoteattr(hit[2])}{_a("rating", r)} '
                    f'qty="{qty}"{_a("grade", grade and grade.group(1).lower())}{_a("note", note)}',
-                   _bonuses(hit[2], r, skill_of, chosen=_chosen(rest), seen=seen) + "".join(fitted), "purchase"), worn, cost
+                   _bonuses(hit[2], r, skill_of, chosen=_chosen(rest), seen=seen) + "".join(fitted), "purchase")] + own), worn, cost
+
+
+def _kinds(name):
+    """The kinds of weapon a name says (rules.ts ammoKinds): `Holdout/Light Pistol` -> holdout, light pistol; `SMG` ->
+    submachine gun; a plural s cut."""
+    out = []
+    for part in name.split("/"):
+        k = re.sub(r"^hold ?out$", "holdout", norm(part))
+        out.append(re.sub(r"s$", "", "submachine gun" if re.fullmatch(r"smgs?", k) else k))
+    return [k for k in out if k]
+
+
+def _carried(idx, host, rest, bracket, qty, n):
+    """What a weapon line is printed with: `w/ silencer, smartgun system, 5 spare clips` after the stats in its brackets
+    (or in its name's parentheses, `Bow (Rating 5; w/ 20 arrows)`), each found among the weapon accessories and
+    projectiles (a count before it is its quantity) and fitted to the weapon; `100 rounds gel ammo` anywhere in the
+    brackets, the ammunition row of the weapon's kind (its last word too: an assault rifle takes rifle ammunition), per
+    its unit of rounds; `6 stun grenades`, the grenade of that name. Each comes once per weapon on the line (`2 x …`).
+    One the weapon's text names (a built-in smartgun) or the catalog lacks stays in the note only. The ammunition type
+    (gel, APDS) isn't priced: the row is. -> (fitted XML, lines of their own, their cost)"""
+    # ponytail: ammunition types (x1.5 to x3 the row) are left out; price them once an ammotype can be fitted to a line
+    fitted, own, cost, i = [], [], 0, 0
+    text = norm(host[3].get("text") or "").replace(" ", "")
+    pieces = [(p, True) for p in split(m.group(1))] if (m := re.search(r"\bw/\s*([^()]*)", rest)) else []
+    stats = split(bracket or "")
+    at = next((j for j, p in enumerate(stats) if p.lstrip().lower().startswith("w/")), len(stats))
+    pieces += [(re.sub(r"^\s*w/\s*", "", p), j >= at) for j, p in enumerate(stats)]
+    for piece, listed in pieces:
+        piece = piece.strip(" )]")
+        for part in re.split(r"(?<=[a-z])\s+(?=\d+\s+rounds?\b)", piece):  # (`personalized grip 70 rounds …`: no comma)
+            i += 1
+            if rd := re.fullmatch(r"(\d+)\s+rounds?\b.*", part, re.I):
+                want = _kinds(host[3].get("attrs", {}).get("category") or "")
+                want = want and [want[0], want[0].split()[-1]]
+                row = next((e for k in want or [] for e in idx.entries("gear") if re.search(r"round", e["attrs"].get("per") or "")
+                            and k in _kinds(e["name"])), None)
+                if row:
+                    per = int(re.match(r"\s*(\d*)", row["attrs"]["per"]).group(1) or 1)
+                    q = math.ceil(int(rd.group(1)) / per) * qty
+                    cost += _value(row, "cost", 1, q)
+                    own.append(f'<purchase uid="g{n}x{i}" kind="gear" id={quoteattr(row["id"])} name={quoteattr(row["name"])} qty="{q}"{_a("note", part)}/>')
+                continue
+            if gr := re.fullmatch(r"(\d+)\s+(.+?)\s+grenades?", part, re.I):
+                e = next((e for e in idx.entries("weapons") if re.search(r"grenade", e["attrs"].get("category") or "", re.I)
+                          and norm(e["name"]).startswith(norm(gr.group(2)))), None)
+                if e:
+                    q = int(gr.group(1)) * qty
+                    cost += _value(e, "cost", 1, q)
+                    own.append(f'<purchase uid="g{n}x{i}" kind="weapons" id={quoteattr(e["id"])} name={quoteattr(e["name"])} qty="{q}"{_a("note", part)}/>')
+                continue
+            if not listed or not part:
+                continue
+            c = re.fullmatch(r"(\d+)\s+(.*)", part)
+            count, name = (int(c.group(1)), c.group(2)) if c else (1, part)
+            ok = lambda e: bool(re.search(r"accessor|projectile", e.get("attrs", {}).get("category") or "", re.I))  # noqa: E731
+            got = idx.find(["weapons"], name, accept=ok) or idx.find(["weapons"], _one(norm(name)), accept=ok)
+            if not got and (p := idx.prefix(["weapons"], name, None)) and ok(p[3]):  # `smartgun system`: its first row
+                got = p
+            if not got or norm(name).replace(" ", "") in text:
+                continue
+            low = re.match(r"\s*(\d*)", got[3].get("attrs", {}).get("rating") or "").group(1)
+            q = count * qty
+            cost += _value(got[3], "cost", int(low or 1), q)
+            fitted.append(f'<purchase uid="g{n}a{i}" kind="weapons" id={quoteattr(got[1])} name={quoteattr(got[2])} qty="{q}"/>')
+    return "".join(fitted), own, cost
 
 
 # what a standard boost adds per rating or level (the engine counts only the bonuses a line carries, the catalog has none):

@@ -95,3 +95,12 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(rich, rows, {**cs, "maxNuyenLeft": 50.0})[1]["karmaToNuyen"], 0)
         broke = need(nuyen=100 + 40 * 100)  # needs 40 karma, has 30: all of it short, never nuyen below 0 by choice
         self.assertEqual(fit.spend(broke, rows, cs)[1]["karmaToNuyen"], 40)
+
+    def test_an_expertise_takes_a_skill_point_left_else_karma(self):
+        """An expertise takes skillPointsExpertise points still left (budgets.ts skillSpend), else its advancement Karma."""
+        cs = {**CS, "skillPointsExpertise": 1.0, "advance.expertise": 5.0}
+        rows = {c: {"metas": {"pixie": 1}, "attributes": 0, "skills": 5, "letter": "Z"} for c in fit.COLUMNS}
+        n = need(skills=[(3, 1, 1)])
+        self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 30)  # 3 ranks + spec + expertise: 5 points
+        rows["skills"] = {**rows["skills"], "skills": 4}
+        self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 25)  # no point left for it: 5 Karma
