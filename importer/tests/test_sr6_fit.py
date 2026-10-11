@@ -82,17 +82,17 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend({**n, "spells": 2}, rows, CS)[1]["extraMagic"], 0)
 
     def test_karma_into_nuyen_past_what_the_gear_needs(self):
-        """Karma left over turns into nuyen when that keeps less past the carry-over limits: toward the printed nuyen,
-        never nuyen already past its limit (that loses as much as it saves); without limits, the printed nuyen left."""
+        """Karma left over turns into nuyen when that clears the Karma carry-over limit with the nuyen within its own;
+        otherwise the count that leaves the printed nuyen; never nuyen below 0 by choice."""
         rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "BACDE")}  # resources E: 100
         n = need(nuyen=250, left=50)  # 2 karma cover it; 28 left
-        cs = {**CS, "maxKarmaLeft": 5.0, "maxNuyenLeft": 500.0}
+        cs = {**CS, "maxKarmaLeft": 5.0, "maxNuyenLeft": 3000.0}
         self.assertEqual(fit.spend(n, rows, CS)[1]["karmaToNuyen"], 2)  # no limits: the printed 50 left
         score, got = fit.spend(n, rows, cs)
-        self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"]), (6, 450))  # 500 at most: 24 karma left, 19 past 5
-        self.assertEqual(score[2], 19)
-        rich = need(nuyen=0, left=50)  # 100 left already: 30 karma, 25 past 5, can't go anywhere better
-        self.assertEqual(fit.spend(rich, rows, {**cs, "maxNuyenLeft": 50.0})[1]["karmaToNuyen"], 0)
+        self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"], got["karmaLeft"]), (25, 2350, 5))  # both within
+        self.assertEqual(score[2:], (0, 2300, 0))
+        score, got = fit.spend(n, rows, {**cs, "maxNuyenLeft": 500.0})  # 25 would leave 2,350: can't clear the Karma's
+        self.assertEqual((got["karmaToNuyen"], score[2], score[4]), (2, 1, 23))  # so the printed 50; 23 past 5
         broke = need(nuyen=100 + 40 * 100)  # needs 40 karma, has 30: all of it short, never nuyen below 0 by choice
         self.assertEqual(fit.spend(broke, rows, cs)[1]["karmaToNuyen"], 40)
 

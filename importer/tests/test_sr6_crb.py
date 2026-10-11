@@ -597,8 +597,7 @@ class CrbRecipeTest(unittest.TestCase):
             "res": ("0", "0", "0")})  # Magic 5: the priority's; Edge's 3 ranks past 1: the 1 adjustment point, then karma
         self.assertEqual([(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
                          [("crb.tinkering", "0", "3", "Gizmos")])
-        # 19 for the nuyen, one more: the prime Karma left past 5 carries over less while the nuyen stays within 5,000¥
-        self.assertEqual(b.get("karmaToNuyen"), "20")
+        self.assertEqual(b.get("karmaToNuyen"), "19")  # (the prime Karma left can't come within 5 by more: as printed)
         self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
         self.assertIn("built with Sum-to-Ten", g.findtext("notes"))
         self.assertEqual([(x.text, x.get("kind"), x.get("native")) for x in b.iter("knowledge")],

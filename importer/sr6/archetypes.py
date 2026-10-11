@@ -531,7 +531,10 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     if limb := _LIMB.match(rest):
         whole = f"{limb.group(1)} ({limb.group(2)})"
     hit = r = None
-    if found := idx.find(kinds, whole, loose=False):
+    # `Hand razors (retractable, alpha)`: the catalog's `Retractable hand razors`, the variant word before the name
+    paren = re.search(r"\(([^()]*)\)", rest)
+    lead = [f"{p.strip()} {base}" for p in (paren.group(1).split(",") if paren else []) if re.fullmatch(r"\s*[A-Za-z-]+\s*", p)]
+    if found := idx.find(kinds, whole, loose=False) or next((f for x in lead if (f := idx.find(kinds, x, loose=False))), None):
         hit, names, r = found, [], printed
     for name, rating in names:
         r = printed or rating
@@ -567,20 +570,21 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     # audio enhancement, select sound filter 3, soundlink)`; Smooth Operations drops the `w/`: `earbuds (rating 3, audio
     # enhancement)`): each one found among the line's kinds is its accessory, at its rating (the engine checks the
     # capacity they take); one the host's text says it has (a sound link) takes none. A host without Capacity takes
-    # what is printed after its `w/` from an accessory table (a commlink's subvocal microphone, CRB p.268). An unrated
+    # what is printed with it from an accessory table (a commlink's subvocal microphone, CRB p.268; a car's spoof kit,
+    # Double Clutch p.122). An unrated
     # host whose rating is its Capacity (contacts, glasses) comes at the lowest rating that holds what is fitted.
     fitted, room = [], 0
     holds = (hc := ha.get("capacity") or "") and not hc.lstrip().startswith("[") and re.search(r"\d|rating", hc, re.I)
     w = re.search(r"\bw/\s*([^()]*)", rest)
     listed = w.group(1).split(",") if w else [x for x in re.split(r"[,;]", m2.group(1)) if not re.search(r"\brating\b|\d\s*$", x, re.I)] \
-        if holds and hit[0] != "weapons" and (m2 := re.search(r"\(([^()]*)\)", rest)) else []
+        if hit[0] != "weapons" and (m2 := re.search(r"\(([^()]*)\)", rest)) else []
     for i, a in enumerate(x.strip() for x in listed if x.strip()):
         if hit[0] == "weapons":
             break  # (_carried reads a weapon's)
         t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
         an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
         ok = lambda e: _rated(ar)(e) and (holds or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I)))  # noqa: E731
-        got = idx.find([hit[0]] + [k for k in kinds if k != hit[0]], an, accept=ok)
+        got = idx.find(list(dict.fromkeys([hit[0], *kinds, "gear"])), an, accept=ok)  # (a vehicle's spoof kit is gear)
         if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
             continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
         took = re.fullmatch(r"\s*\[\s*(\d+|rating)\s*\]\s*", got[3].get("attrs", {}).get("capacity") or "", re.I)
@@ -631,7 +635,8 @@ def _carried(idx, host, rest, bracket, qty, n):
         for part in re.split(r"(?<=[a-z])\s+(?=\d+\s+rounds?\b)", piece):  # (`personalized grip 70 rounds …`: no comma)
             i += 1
             if rd := re.fullmatch(r"(\d+)\s+rounds?\b.*", part, re.I):
-                want = _kinds(host[3].get("attrs", {}).get("category") or "")
+                ha = host[3].get("attrs", {})  # (Firing Squad's `Revolution arm` table: its type, `Assault Rifle`)
+                want = _kinds(ha.get("type") or ha.get("category") or "")
                 want = want and [want[0], want[0].split()[-1]]
                 row = next((e for k in want or [] for e in idx.entries("gear") if re.search(r"round", e["attrs"].get("per") or "")
                             and k in _kinds(e["name"])), None)

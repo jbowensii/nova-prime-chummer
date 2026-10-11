@@ -10,7 +10,7 @@ Weapons not in the catalog: Odd Sword [Blade, DV 3P, 9/—/—/—/—].
 Priorities fitted to the printed stat block: the letters that overspend least; what the attribute, adjustment and skill points can’t hold is bought with karma, and nuyen past the resources with karma. No priority assignment holds it within the karma, so it’s built with Sum-to-Ten (Sixth World Companion), whose letters may repeat.</notes>
   <printed source="CRB" page="81"><value key="bod" value="3"/><value key="agi" value="5(6)"/><value key="rea" value="4"/><value key="str" value="2"/><value key="wil" value="3"/><value key="log" value="2"/><value key="int" value="4"/><value key="cha" value="3"/><value key="edg" value="4"/><value key="mag" value="5"/><value key="ess" value="6"/><value key="init" value="8 + 2D6"/><value key="dr" value="5"/></printed>
   <rules><setting key="levelPrime" value="true" assumed="true" source="CRB-HK" page="63"/><setting key="expandedContacts" value="true" assumed="true" source="SWC" page="161"/></rules>
-  <build method="sumtoten" magic="adept" karmaToNuyen="20">
+  <build method="sumtoten" magic="adept" karmaToNuyen="19">
     <priority column="metatype" letter="E"/>
     <priority column="attributes" letter="A"/>
     <priority column="magic" letter="A"/>
