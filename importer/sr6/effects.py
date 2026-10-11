@@ -1695,11 +1695,13 @@ def apply(files, texts_xml, regrouped=""):
                 got = by_kind.get(kind, {})
                 hit = got.get(base) or got.get(base.rstrip("s")) or \
                     next((v for k, v in sorted(got.items()) if k.startswith(base + " ") and v[1] == "bioware"), None)  # (`tails`: `Tail`; `chameleon skin`: its first variant)
+                if not hit and (fm := re.search(r"ref\(\w+:(?:[a-z0-9]+\.)?([a-z0-9.-]+?)\s*[,)]", kids)):
+                    hit = next((v for v in got.values() if v[0] == fm.group(1)), None)  # (the base its price formula cites: `webbed hands and feet` from `Hand and foot webbing`)
                 if hit:
                     found.append(("link", {"rel": "as", "kind": kind, "name": nm.split(None, 1)[1], "ref": hit[0]}, None))
                     # (the version named for its base, `Transgenic hand and foot webbing` for `Transgenic webbed hands
                     # and feet`: a name the book's own words give it, as a search alias)
-                    base_name = next((n for n in names.get(kind, ()) if _key(n) == _key(nm.split(None, 1)[1])), None)
+                    base_name = next((x for x in names.get(kind, ()) if got.get(_key(x), (None,))[0] == hit[0]), None)
                     if base_name and _key(f"{nm.split(None, 1)[0]} {base_name}") != _key(nm) and f"<alias>{base_name}" not in kids:
                         from xml.sax.saxutils import escape
                         kids = f"<alias>{escape(nm.split(None, 1)[0] + ' ' + base_name[:1].lower() + base_name[1:])}</alias>" + kids

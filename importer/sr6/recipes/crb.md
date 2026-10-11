@@ -58,6 +58,17 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
 - Priority table (first header PRIORITY: five letter rows) and metatype attribute table (first header METATYPE, a
   "Racial Qualities:" sub-row per metatype): rule tables, kept in their section's text and read from there.
 - Contents (pp 3-6), index (305-310) and the character sheet (320-321) read across columns; nothing maps them.
+- A heading whose text holds its own stat line (every book, `crb.stat_lines`): one priced table with no name column
+  (`TYPE | DV | … | AVAIL | COST`, the type its first cell; a vehicle's `HAND | ACCEL | … | COST` under a title line)
+  is that item's row (the acid thrower, Collapsing Now p. 38; the Lamplighter, Deadly Arts p. 136; Krime Gloves p. 30:
+  the first of its mode tables). Several rows of a TYPE column with an availability and a cost, each type a word or
+  two (`Wooden`, `Silver` under `Stakes`, New Orleans p. 27): one item a row, `Stakes (Wooden)`; never a rule table
+  (GRADE, RATING …) nor items the book names elsewhere (the foci table a layout quirk hands the Shielding metamagic).
+  A table of the block's own run-in labels (`SYSTEM | … | COST` under `Secondary Propulsion Systems`, Double Clutch
+  p. 136, whose rows the `**Hovercraft:**` … paragraphs describe): one entry a row, grouped under the item.
+- Spell features (`spell_features`): every tag the book's spells carry (`Direct Combat`, `Indirect Combat, Area`,
+  `Single Sense`, `Multi-Sense`, Street Wyrd's `Focus`, `Blood`, `Negative` …) is a spell feature, described by the
+  heading naming it (`Direct Combat Spells`, p. 132) where the book prints one; a spell's category is none.
 
 ## Checked against the PDF (Task 10)
 

@@ -18,6 +18,7 @@ def words(s):
     # (a rating's parenthetical, `(R 1-6)`, not one whose word starts with r: `(Razorwire)` names a variant)
     s = re.sub(r"\((?:rating|force|level|r\b)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
+    s = re.sub(r"\bammo\b", "ammunition", s)  # (Commlink6's `Ammo Shotgun Masterkey`: the book's `Masterkey Ammunition`)
     return [w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in s.split()]
 
 

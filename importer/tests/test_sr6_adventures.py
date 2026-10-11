@@ -6,7 +6,7 @@ import unittest
 
 from importer.convert import convert
 from importer.sr6 import effects, sections
-from importer.sr6.recipes import general
+from importer.sr6.recipes import crb, general
 from importer.sr6.regroup import Block
 from importer.tests.minipdf import sr6_magazine_pdf
 
@@ -130,15 +130,20 @@ class Cl6GermanNamesTest(unittest.TestCase):
 
 class GameInformationShapesTest(unittest.TestCase):
     def test_stat_line_table_makes_the_heading_an_item(self):
-        b = general._stat_line(_b("Zap Bangle", 3, "About it.\n| TYPE | MODE | DV | AVAIL | COST |\n|---|---|---|---|---|\n"
-                                                  "| Light Pistol | SS | 3P | 4L | 900¥ |\nMore."))
+        b = crb.stat_lines(_b("Zap Bangle", 3, "About it.\n| TYPE | MODE | DV | AVAIL | COST |\n|---|---|---|---|---|\n"
+                                               "| Light Pistol | SS | 3P | 4L | 900¥ |\nMore."))[0]
         self.assertEqual((b.type, b.row), ("item", {"ITEM": "Zap Bangle", "TYPE": "Light Pistol", "MODE": "SS", "DV": "3P",
                                                     "AVAIL": "4L", "COST": "900¥"}))
         self.assertNotIn("|", b.text)
 
     def test_a_named_table_stays_a_table(self):
         b = _b("Canes", 3, "| NAME | DV | AVAIL | COST |\n|---|---|---|---|\n| Sword Cane | 3P | 2 | 400¥ |")
-        self.assertEqual(general._stat_line(b).type, "section")
+        self.assertEqual(crb.stat_lines(b)[0].type, "section")
+        rows = crb.stat_lines(_b("Zap Stakes", 3, "Cheap.\n| TYPE | DV | AR | AVAIL | COST |\n|---|---|---|---|---|\n"
+                                                  "| Wooden | 2P | 5/—/—/—/— | 3 | 25¥ |\n| Silver | 3P | 5/—/—/—/— | 4 | 35¥ |"))
+        self.assertEqual([(x.type, x.name, x.row["DV"]) for x in rows], [("item", "Zap Stakes (Wooden)", "2P"), ("item", "Zap Stakes (Silver)", "3P")])
+        grades = _b("Grades", 3, "| GRADE | ESS COST | AVAIL | COST |\n|---|---|---|---|\n| Alpha | x0.8 | +1 | x1.2 |\n| Beta | x0.7 | +2 | x1.5 |")
+        self.assertEqual(crb.stat_lines(grades), [grades])  # (a rule table: no variants)
 
     def test_box_title_a_letter_off_its_heading_takes_the_heading_name(self):
         b = Block("item", "zap bangel", "Game Information", "Zap Bangle", "zap bangel", 10)

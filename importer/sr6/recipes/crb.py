@@ -300,6 +300,73 @@ def _cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
 
+_STAT_PRICE = {"AVAIL", "AVAILABILITY", "COST"}
+_STAT_NAME_COLUMNS = {"ITEM", "WEAPON", "NAME", "GEAR", "DEVICE", "VEHICLE", "AUGMENTATION", "ARMOR", "SYSTEM", "MOD", "MODIFICATION"}
+_STAT_RULE_COLUMNS = {"GRADE", "RATING", "LEVEL", "FORCE", "PRIORITY", "METATYPE", "CLASS", "SIZE", "SIZE CLASS", "LIFESTYLE"}
+
+
+def stat_lines(b, names=frozenset()):
+    """A heading whose text holds its own stat line(s): one priced table with no name column (`TYPE | DV | … | AVAIL |
+    COST`, the type its first cell; a vehicle's `HAND | ACCEL | … | COST` under a title line naming it): the block as
+    that item, its row the table's (the acid thrower, Collapsing Now p. 38; the Lamplighter, Deadly Arts p. 136;
+    Krime Gloves, p. 30: the first of its mode tables). Several rows of a TYPE column with an availability and a
+    cost, each type a word or two of its own (`Wooden`, `Silver` under `Stakes`, Shadows in Focus: New Orleans p. 27;
+    not a list of items the book names elsewhere, `names`): one item a row, named `<heading> (<first cell>)`. [b] when
+    the block is no such thing."""
+    if b.row is None and b.stats and b.type == "item" and not b.text.strip() and list(b.stats[0])[:1] == ["TYPE"] \
+            and _STAT_PRICE & {k.upper() for k in b.stats[0]}:
+        # (its priced TYPE box, regroup's stats of the item heading, Krime Gloves' `TYPE | DV | … | COST`: its row,
+        # the heading its name; a second box of the same type its mode, left)
+        return [replace(b, row={"ITEM": b.name, **b.stats[0]}, header=["ITEM", *b.stats[0]], stats=b.stats[1:])]
+    if b.row is not None or b.stats or (b.level or 0) < 3 or not b.name or not (b.text or "").strip():
+        return [b]
+    ts = _tables(b.text)
+    priced = [(h, rows) for h, rows in ts if _STAT_PRICE & {x.upper() for x in h}]
+    if len(ts) > 2 or not priced:
+        return [b]
+    h, rows = priced[0]
+    for h2, rows2 in priced[1:]:  # (one-row bands stacked under one heading, `Silver Arrows`, `Silver Bolts`: one table;
+        if [x.upper() for x in h2] == [x.upper() for x in h]:  # the same type twice, Krime Gloves' modes: the first)
+            rows = rows + [r for r in rows2 if r[0] not in {x[0] for x in rows}]
+    md_all = [t for t in (priced if len(priced) > 1 else []) if [x.upper() for x in t[0]] == [x.upper() for x in h]]
+    # (a table of the block's own run-in labels, `SYSTEM | … | COST` under `Secondary Propulsion Systems` whose rows
+    # `**Hovercraft:**`, `**Rotor:**` … the text describes, Double Clutch p. 136: the item's versions, one entry a row,
+    # grouped under it, each with its paragraph)
+    runins = {norm(m.group(1)): m.group(2).strip() for m in re.finditer(r"(?m)^\W*\*\*([^*\n]{2,40}?):\*\*\s*(.*(?:\n(?![\s•]*\*\*|\||<!--).*)*)", b.text)}
+    if len(rows) > 1 and all(r[0] and norm(r[0]) in runins for r in rows) and all(len(r) == len(h) for r in rows):
+        md = "\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h)] + ["| " + " | ".join(r) + " |" for r in rows])
+        out = []
+        for r in rows:
+            row = {"ITEM": r[0], **dict(zip(h[1:], r[1:]))}
+            out.append(replace(b, type="item", name=r[0], row=row, header=list(row), label=b.label or b.name, group=b.name,
+                               text=runins[norm(r[0])]))
+        return out + [replace(b, text=b.text.replace(md, "", 1).strip())]
+    # (one row: its stat line, whatever its first column; several: a TYPE column's variants only, never a rule
+    # table's grades, ratings or classes, nor items of their own)
+    hw = set(norm(b.name).split())
+    if not rows or h[0].upper() in _STAT_NAME_COLUMNS or not re.search(r"[A-Z]{2}", h[0]) or any(len(r) != len(h) for r in rows) \
+            or any(not r[0] or r[0].upper() == h[0].upper() for r in rows):
+        return [b]
+    if len(rows) > 1 and (h[0].upper() != "TYPE" or len({x.upper() for x in h} & _STAT_PRICE) < 2
+                          or any(not re.match(r"[^\W\d_]", r[0]) or len(r[0].split()) > 2 or "(" in r[0] or norm(r[0]) in names
+                                 or set(norm(r[0]).split()) & hw for r in rows)):
+        return [b]
+    text = b.text
+    for th, trows in md_all or [(h, rows)]:
+        md = "\n".join(["| " + " | ".join(th) + " |", "|" + "---|" * len(th)] + ["| " + " | ".join(r) + " |" for r in trows])
+        text = text.replace(md, "", 1)
+    text = re.sub(r"(?m)^[A-Za-z][\w –-]{2,40}\n(?=\| )", "", text).strip()  # (less the bands and a title line over them)
+    if len(rows) == 1:
+        row = {"ITEM": b.name, **dict(zip(h, rows[0]))}
+        return [replace(b, type="item", row=row, header=list(row), text=text)]
+    out = []
+    for r in rows:  # (a type that is a name of its own, `Silver Bolts`: the item's; a word, `Wooden`: the heading's variant)
+        name = r[0] if len(r[0].split()) > 1 and all(w[:1].isupper() for w in r[0].split()) else f"{b.name} ({r[0]})"
+        row = {"ITEM": name, **dict(zip(h, r))}
+        out.append(replace(b, type="item", name=name, row=row, header=list(row), text=text))
+    return out
+
+
 class _Catalog:
     def __init__(self, source=ID, recipe="crb", book=BOOK):
         self.source, self.note = source, f"recipe sr6 {recipe}) from {book}"
@@ -1782,6 +1849,27 @@ def _kind(chapter, ctx, section, book=None):
     return None, None
 
 
+def spell_features(bs, cat, offset):
+    """The features the book's spells are tagged with (`Direct Combat`, `Indirect Combat, Area`, `Single Sense`,
+    Street Wyrd's `Focus`): each a spell feature of the book (CRB pp. 132, 137), described by the heading naming it
+    (`Direct Combat Spells`, `Multi-Sense`) where the book prints one; left out where the recipe already read it."""
+    spells = [b for b in bs if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]} and b.tags]
+    if not spells:
+        return
+    have = {norm(e["name"]) for e in cat.entries["spellfeatures"]}
+    heads = {norm(re.sub(r"(?i)\s+spells?$", "", b.name)): b for b in bs if b.name and (b.text or "").strip() and not b.stats and b.row is None}
+    for b in spells:
+        for tag in re.split(r",\s*", b.tags):
+            tag = tag.strip()
+            if not tag or norm(tag) in have or not re.fullmatch(r"[A-Z][\w-]*(?: [A-Z][\w-]*){0,2}", tag) \
+                    or tag.lower() in SPELL_CATEGORIES or re.search(r"(?i)\bspells?$", tag):
+                continue  # (a spell's category is no feature)
+            have.add(norm(tag))
+            h = heads.get(norm(tag))
+            page = max(1, (h.page if h else b.page) - offset)
+            cat.add("spellfeatures", tag, page, {}, (), _text(h) if h else "")
+
+
 def extract(regrouped, ctx=None, book=None):
     """regrouped: regroup's text, or its blocks. book: the recipe module whose tables drive the reading (ID, NAME, PUBLISHER, CANON, BOOK, PAGE_OFFSET, SECTIONS,
     SECTION_KINDS, LABEL_SECTIONS, RULE_CHAPTERS, ATTRIBUTE_CHAPTERS, CATALOG_CHAPTERS; optional fix(block, parent2)
@@ -1793,6 +1881,8 @@ def extract(regrouped, ctx=None, book=None):
     cat.split = getattr(bk, "split_being", None)
     chapter, parent2, sub, stack, seen_attrs, samples = None, "", "", [], set(), []
     bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
+    known = {norm(b.name) for b in bs if b.name} | {norm(b.row.get(b.header[0], "")) for b in bs if b.row and b.header}
+    bs = [x for b in bs for x in stat_lines(b, known)]  # (a heading whose text holds its stat line: that item)
     cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
     sec, found = sections.Reader(), []
     for b in bs:
@@ -1876,6 +1966,7 @@ def extract(regrouped, ctx=None, book=None):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
             cat.add(kind, name, page, attrs, kids, text)
     run_in_items(bs, cat, bk.PAGE_OFFSET)
+    spell_features(bs, cat, bk.PAGE_OFFSET)
     dv_settings(bs, cat, bk.PAGE_OFFSET)
     add_ons(cat)
     stated_items(bs, cat, bk.PAGE_OFFSET, core=bk is sys.modules[__name__])

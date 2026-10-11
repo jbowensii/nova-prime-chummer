@@ -107,7 +107,11 @@ title first), the chapter giving the context. Read with the general reading, not
   Activation label), toxins (a heading over `Vector`, `Speed` and `Power` lines: gear, category the heading over it),
   spells (their box), gear, weapons and vehicles (their tables), life modules (the Companion's form).
 - **An item's one stat line** (Dealers of Death's bracelets): a heading whose text holds a one-row priced table with no
-  name column (`TYPE | MODE | DV | … | AVAIL | COST`, the type its first cell) is that item, named by the heading.
+  name column (`TYPE | MODE | DV | … | AVAIL | COST`, the type its first cell) is that item, named by the heading
+  (`crb.stat_lines`, now every book's: crb.md, Item shapes; a TYPE table of several rows gives `Stakes (Wooden)`,
+  `Stakes (Silver)`, New Orleans p. 27).
+- **A single new adept power** (`New Adept Power` over `Improved Mental Attribute`, Collapsing Now p. 62): the kind
+  heading's singular counts too.
 - **A box title a letter or a joining word off its heading** (`ceramic or plasteel knife` under `Ceramic/Plasteel
   Knife`, `tiffani elegence …` under `Tiffani Elegance …`: difflib ratio of the keys 0.88 or more): the heading's
   name, the printed one.

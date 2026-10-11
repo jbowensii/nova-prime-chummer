@@ -199,7 +199,8 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   a sense the entry is named for or grants (`low-light-vision`, `thermographic-vision`, `ultrasound`, `wide-band-hearing`
   …: `effects.SENSES`, a rule of its own, shown); `action-max:<name>` the cap on an action's bonus (`increases the
   maximum dice pool bonus for Take Aim by its rating`, a raised maximum, shown; owner decision 2026-10-11);
-  `pool:chase` the chase pool's Edge (Double Clutch p. 175);
+  `pool:chase` the chase pool's Edge (Double Clutch p. 175); `derived:essence-hole` an Essence hole (`0.25 Essence
+  per level`, Bestial Nature p. 21; `free up 0.1 Essence`, Companion p. 132: `R*0.25`, `R*0.1`, shown);
   `pricemod:<what>` a price in percent (`armor` for armor and clothing, `lifestyle`, `gear`, `everything`: `0.1` is
   +10%); `derived:monthly-cost` nuyen a month (`R*500`). A Matrix attribute, attribute or skill the entry leaves to the
   player (`this attribute`, `the chosen Matrix attribute`) is `<family>:choice`; a variant row's words resolve it
@@ -220,7 +221,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
   (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
 - **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`, `each point
-  of this mod`, `each point of X rating`); `R-1`, `R*N-N` (so much per level after the first: `each level after the
+  of this mod`, `each point of X rating`; a value's own clause decides: `+1 to AR per level, and +1 to DV for every
+  two levels (round up)` is `R` and `R/2 RU`, a formula, shown); a formula over a value of the character's (`dice
+  equal to your Initiate Grade`: `initiate-grade`; `increased by their Magic`: `mag`), shown; `R-1`, `R*N-N` (so much per level after the first: `each level after the
   first grants a +1 dice pool modifier for such tests`, Nimble Fingers; counted as rating − 1, never below 0; owner
   decision 2026-10-11); `R[1,1,2,2]` (the book's own value per rating, a per-rating table: rating 3 gives the third,
   beyond the table the last; owner decision 2026-10-11, for the owner's overrides of table-driven items); a range
