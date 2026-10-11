@@ -44,7 +44,7 @@ export function SkillsTab() {
   const addSpec = (id: string, spec: string) => {
     if (!spec) return
     if (spec === 'custom') {
-      const name = prompt('Name the specialization (the GM should approve it):')?.trim()
+      const name = prompt('Name the specialization:')?.trim()
       if (!name) return
       spec = `custom:${name}`
     }

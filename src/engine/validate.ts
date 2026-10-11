@@ -64,8 +64,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     if (!npc && s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
     if (s.specs.length && s.rating < 1) add('spec.noSkill', 'error', `skills.${s.id}`, `${sk.name} specializations need at least rating 1.`, 52)
     for (const sp of s.specs) {
-      if (sp.startsWith('custom:')) add('custom.content', 'warning', `skills.${s.id}`, `Custom specialization "${sp.slice(7)}" (GM should approve).`, 52)
-      else if (!sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
+      // a custom specialization is the runner's to learn (CRB p.52; owner, 2026-10-10): no warning
+      if (!sp.startsWith('custom:') && !sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
     }
   }
   if (limited) for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {

@@ -139,3 +139,9 @@ test('a spell without Sorcery and a complex form without the Emerged amp are pre
   ch.overrides = v.map(x => ({ code: x.code, path: x.path, note: 'GM ok' }))
   expect(canFinalize(validate(cat, ch).filter(x => x.code === 'spell.noSorcery' || x.code === 'complexForm.noEmerged'))).toBe(true)
 })
+
+test('a custom specialization is the runner’s to learn: no warning (CRB p.52)', () => {
+  const ch = base()
+  ch.build.skills = [{ id: 'stealth', rating: 2, specs: ['custom:Made-up trick'] }]
+  expect(validate(cat, ch).filter(v => v.path === 'skills.stealth')).toEqual([])
+})
