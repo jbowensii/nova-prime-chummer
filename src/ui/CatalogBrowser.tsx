@@ -107,7 +107,7 @@ export function CatalogBrowser({ kinds, books, tableClass, main, remember, ai }:
 
   return (
     <section className="browser" aria-label="Catalog">
-      {ai && <AskSearch game={ai} label="Search the game data with AI"
+      {ai && <AskSearch game={ai} label="Ask AI to find entries"
         placeholder={`Find entries in plain words, e.g. ${ai === 'sr6' ? 'cyberware that helps a decker' : 'a quiet pistol'}`}
         link={s => s.title ? <button type="button" className="btn small quiet" onClick={() => { setBook(''); setAttention(false); setQ(s.title) }}>{s.title}</button> : null} />}
       <div className="row browse-top">

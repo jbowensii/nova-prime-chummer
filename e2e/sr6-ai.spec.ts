@@ -62,7 +62,7 @@ test('SR6’s own AI: its settings, Ask the rules, and the AI search on Rules an
 
   // the Rules page's AI search asks the rules only
   await page.getByRole('link', { name: 'Rules', exact: true }).click()
-  const rules = page.getByRole('search', { name: 'Search the rules with AI' })
+  const rules = page.getByRole('search', { name: 'Ask AI about the rules' })
   await rules.getByRole('textbox').fill('How do I vault a puddle?')
   await rules.getByRole('button', { name: 'Search' }).click()
   await expect(page.getByText('Invented SR6 answer (rules only) [ZZ p.61].')).toBeVisible()
@@ -70,7 +70,7 @@ test('SR6’s own AI: its settings, Ask the rules, and the AI search on Rules an
 
   // Game data's: a find searches the catalog for it
   await page.getByRole('link', { name: 'Game data' }).click()
-  const data = page.getByRole('search', { name: 'Search the game data with AI' })
+  const data = page.getByRole('search', { name: 'Ask AI to find entries' })
   await data.getByRole('textbox').fill('boots for a puddle')
   await data.getByRole('button', { name: 'Search' }).click()
   await expect(page.getByText('Invented SR6 answer [ZZ p.61].')).toBeVisible()
@@ -81,7 +81,7 @@ test('SR6’s own AI: its settings, Ask the rules, and the AI search on Rules an
   await page.goto('/#/rules')
   await expect(page.getByRole('heading', { name: 'Rules', level: 1 })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ask the rules' })).toHaveCount(0)
-  await expect(page.getByRole('search', { name: 'Search the rules with AI' })).toHaveCount(0)
+  await expect(page.getByRole('search', { name: 'Ask AI about the rules' })).toHaveCount(0)
   await page.goto('/#/books/ai')
   await expect(page.locator('main')).toContainText('These settings are Shadowrun Anarchy’s')
   await expect(page.locator('fieldset', { hasText: 'Anthropic' })).toContainText('No key saved')

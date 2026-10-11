@@ -46,7 +46,7 @@ export function RulesScreen({ c, open }: { c: Catalog; open?: string }) {
       </p>
       {!hasText && rules.length > 0 && <p className="banner" role="status">
         Only titles are shown: the rules text isn’t installed. {admin ? <>Re-import the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'Ask the admin to import the quick-reference sheets again.'}</p>}
-      <AskSearch game="ca2" scope="rules" label="Search the rules with AI" placeholder="Search the rules in plain words, e.g. what stops a bullet?"
+      <AskSearch game="ca2" scope="rules" label="Ask AI about the rules" placeholder="Search the rules in plain words, e.g. what stops a bullet?"
         link={s => s.kind === 'rule' && s.id && c.rules.has(s.id) ? <a href={`#/rules/${encodeURIComponent(s.id)}`}>{s.title}</a> : null} />
       <div className="row browse-top">
         <BookSelect books={sources.map(s => ({ id: s!.id, name: s!.name }))} value={book} onChange={setBook} />

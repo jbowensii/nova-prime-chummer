@@ -42,7 +42,7 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
         ? <>Upload the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'The admin hasn’t imported the core rulebook yet.'}</p> : <>
         {!rules.some(r => r.text) && <p className="banner" role="status">Only titles are shown: the rules text isn’t installed. {admin
           ? <>Re-import the core rulebook on the <a href="#/sr6/books">Books page</a>.</> : 'Ask the admin to import the core rulebook again.'}</p>}
-        <AskSearch game="sr6" scope="rules" label="Search the rules with AI" placeholder="Search the rules in plain words, e.g. what does cover give me?"
+        <AskSearch game="sr6" scope="rules" label="Ask AI about the rules" placeholder="Search the rules in plain words, e.g. what does cover give me?"
           link={s => s.kind === 'rule' && s.id && c.entries.rules.has(s.id) ? link(c.entries.rules.get(s.id)!) : null} />
         <div className="row browse-top">
           <BookSelect books={books} value={book} onChange={b => { setBook(b); setChapter('') }} />

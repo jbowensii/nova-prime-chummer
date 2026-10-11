@@ -67,7 +67,7 @@ test('each game asks its own AI; a page’s search sends its scope and links its
   const root = createRoot(el)
   const link = (s: { kind?: string; id?: string; title: string }) => s.kind === 'rule' ? createElement('a', { href: `#/sr6/rules/${s.id}` }, s.title) : null
   await act(async () => root.render(createElement(Me.Provider, { value: { id: 'u1', username: 'pia', role: 'player' } as User },
-    createElement(AskSearch, { game: 'sr6', scope: 'rules', label: 'Search the rules with AI', placeholder: 'Search the rules', link }))))
+    createElement(AskSearch, { game: 'sr6', scope: 'rules', label: 'Ask AI about the rules', placeholder: 'Search the rules', link }))))
   const input = el.querySelector('input')!
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'vault a puddle?')
@@ -76,7 +76,7 @@ test('each game asks its own AI; a page’s search sends its scope and links its
   await act(async () => el.querySelector('form')!.requestSubmit())
   expect(calls.map(c => c[0])).toEqual(['./api/sr6/ask', './api/sr6/ask'])
   expect(JSON.parse(calls[1][1]!)).toEqual({ question: 'vault a puddle?', scope: 'rules' })
-  expect(el.querySelector('form')!.getAttribute('aria-label')).toBe('Search the rules with AI')
+  expect(el.querySelector('form')!.getAttribute('aria-label')).toBe('Ask AI about the rules')
   expect(el.querySelector('a')!.getAttribute('href')).toBe('#/sr6/rules/qq.vault')
   expect(el.querySelector('.ask-hits')!.textContent).toBe('Puddle vaulting QQ p.44Biscuits House rule') // no link: its title as text
   root.unmount()
