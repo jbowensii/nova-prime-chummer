@@ -3,6 +3,7 @@
 // (validateCareer, already in the context), the derived values of the runner as it stands, the ledger's balances, and Back
 // to draft only while the ledger holds nothing live to undo.
 import { useState } from 'react'
+import { resolveEntry } from '../../engine/load'
 import type { Violation } from '../../../model/types'
 import { Modal } from '../../../ui/bits'
 import { balances, canDraft } from '../../engine/career'
@@ -50,7 +51,7 @@ export function ReviewTab() {
       <div>{sorted.map((x, i) => {
         const tab = tabOf(x.path), o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
         // the entry the line names, with its card (to check the book's numbers against the problem)
-        const at = entryOfPath(ch, x.path), e = at && c.entries[at.kind]?.get(at.id)
+        const at = entryOfPath(ch, x.path), e = at && resolveEntry(c, at.kind, at.id)
         return <div key={i} className={`viol${x.approved ? ' approved' : ''}`}>
           <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>{x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}</span>
           <span className="msg">{tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message} {x.page && <span className="cite">{x.source} p.{x.page}</span>}

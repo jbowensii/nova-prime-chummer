@@ -4,7 +4,7 @@
 import { newId } from '../../model/types'
 import { serverRepo } from '../../ui/repo'
 import { keepSr6House } from '../engine/house'
-import { entryKey } from '../engine/load'
+import { entryKey, resolveEntry } from '../engine/load'
 import { sr6Codec, sr6ToXml, xmlToSr6 } from '../engine/charxml'
 import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
@@ -18,7 +18,7 @@ export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/n
 export function snapshotSr6(c: Sr6Catalog, runner: Sr6Character): Sr6Character {
   const ch = keepSr6House(c, runner)
   const snap = (x: Sr6Purchase): Sr6Purchase => {
-    const live = x.id ? c.entries[x.kind]?.get(x.id) ?? c.original.get(entryKey(x.kind, x.id)) : undefined
+    const live = x.id ? resolveEntry(c, x.kind, x.id) ?? c.original.get(entryKey(x.kind, x.id)) : undefined
     return { ...x, accessories: x.accessories.map(snap), ...(live ? { snapshot: live } : {}) }
   }
   const ledger = ch.ledger.map((e): Sr6LedgerEntry => {

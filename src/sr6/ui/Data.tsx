@@ -8,7 +8,7 @@ import { NonCanon } from '../../ui/bits'
 import { GameDataPage } from '../../ui/GameData'
 import { useRepo } from '../../ui/repo'
 import type { Sr6Data as Sr6DataView } from '../engine/data'
-import { catalogFind, entryKey, SR6_NS, sr6EntryXml } from '../engine/load'
+import { catalogFind, entryKey, resolveEntry, SR6_NS, sr6EntryXml } from '../engine/load'
 import { OverrideFiles } from '../../ui/OverrideFiles'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6SampleFix } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
@@ -73,7 +73,7 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
             books: books.filter(b => !c.sources.get(b.id)?.compendium), tags: TAGS, descTag: () => 'text', strip: ['issue'],
             current: (kind, id) => {
               if (kind === 'samplefixes') { const f = c.sampleFixes?.get(id); return f && { xml: fixXml(f), edited: true, text: f.text } }
-              const e = c.entries[kind as Sr6Kind]?.get(id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
+              const e = resolveEntry(c, kind as Sr6Kind, id); return e && { xml: sr6EntryXml(e), edited: !!e.edited, text: e.text } } }} />
         </> } : undefined}
       errors={c.errors}
       docs={<>The file format and schemas are documented in <code>docs/sr6-data-format.md</code> and <code>data/sr6/schema/</code>.</>}>
