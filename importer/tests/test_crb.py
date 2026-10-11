@@ -325,9 +325,10 @@ class PregensTest(unittest.TestCase):
             ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
             ("armor", "Armor jacket", "armored-clothes-coat"), ("weapon", "Traditional knife", "short-weapon"),
-            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None)])
-        # the focus amp's item isn't printed: none is made up (Review says it needs one)
-        self.assertIsNone(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"))
+            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None),
+            ("gear", "Sustaining focus", None)])
+        # the focus amp's item isn't printed: the amp brings its own (CRB p.144), as a catalog amp does
+        self.assertEqual(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"), "it-6")
 
     def test_every_printed_number_is_a_report_row(self):
         rows = [r for r in self.res.report if r.get("sample")]

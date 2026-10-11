@@ -477,8 +477,9 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
     lines = [re.sub(r"\bwepaons\b", "weapons", ln) for ln in amp["lines"]]  # a typo in the booklet
     lines = [re.sub(r"\bRanged weapon\b(?!s)", "Ranged Weapons", ln, flags=re.I) for ln in lines]
     atype = AMP_TYPES.get(printed) or ("vehicle" if VEHICLE.search(printed) else None)
-    # a deck's stats on an amp printed as another type (a "Quality"): a deck in the catalog; a runner's amp keeps its printed type
-    if (catalog or atype is None) and any(re.search(r"Firewall \d\s*[–-]\s*Attack \d", ln) for ln in lines):
+    # a deck's stats (Firewall – Attack) on an amp printed as a Quality or no type: a cyberdeck, the one amp type with them
+    # (CRB p.62); a Quality is a trait, never a device. A runner's other types keep their printed type.
+    if (catalog or atype in (None, "quality")) and any(re.search(r"Firewall \d\s*[–-]\s*Attack \d", ln) for ln in lines):
         atype = "cyberdeck"
     fx, loose = [], []
     if atype == "awakened":
@@ -582,7 +583,11 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     # ---- amps (first: the unarmed DV vote needs their DV bonuses)
     amps, report = [], []
     traits = [a for a in block["amps"] if a["type"].lower() in METATYPES]
+    gear = {_norm(n) for n in block["equipment"]}
     for a in (a for a in block["amps"] if a not in traits):
+        # a "(Quality)" the runner's equipment list also prints is bought gear made an Amp: Equipment (CRB p.60), on that item
+        if a["type"].lower() == "quality" and _norm(a["name"]) in gear:
+            a = {**a, "type": "Equipment"}
         first = not any(x["type"] == "quality" for x in amps)  # the rules price the first Quality from 0
         atype, fx, loose, vehicle, computed = map_amp(a, rules, mapper, first)
         if atype is None:
@@ -685,7 +690,9 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             item("gear", n)
 
     # An Equipment amp is on a printed item (CRB p.60): the item of its name (the same name, one name in the other, else
-    # the most shared words). None printed: no item is made up, and Review says the amp needs one.
+    # the most shared words). None printed: the amp brings its own, as the book's Equipment Amps do ("their cost includes
+    # the price of the weapon as well as Amp upgrades", CRB p.144; the gear, drug and focus Amps alike) and as a catalog amp
+    # does in the app (engine/amps.ts ampFromTemplate): a gear item of its name, bought with it.
     def words(s):
         return {w.rstrip("s") for w in _norm(s).replace("-", " ").split() if len(w) >= 4 and w not in LINK_STOP}
     for a in (a for a in amps if a["type"] == "equipment"):
@@ -696,8 +703,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         hit = next((i for i in free if _norm(i["name"]) == n), None) \
             or next((i for i in free if n in _norm(i["name"]) or _norm(i["name"]) in n), None) \
             or (shared if shared and words(shared["name"]) & words(a["name"]) else None)
-        if hit:
-            a["linkedItem"] = hit["uid"]
+        a["linkedItem"] = (hit or item("gear", a["name"]))["uid"]
 
     # ---- thresholds and Essence, as the rules give them
     fx_all = [f for a in amps for f in a["_fx"]]

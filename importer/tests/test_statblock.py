@@ -195,21 +195,35 @@ class CharacterTest(unittest.TestCase):
                                        origin="PREGENS", background="", updated="")
         items = {i["uid"]: i for i in ch["build"]["items"]}
         link = {a["name"]: items[a["linkedItem"]]["name"] if a.get("linkedItem") else None for a in ch["build"]["amps"] if a["type"] == "equipment"}
-        # the wardrobe's "Armor 1" isn't read as the clothes: no printed item has its name, Review says it needs one
-        self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": None,
+        # the wardrobe's "Armor 1" isn't read as the clothes: no printed item has its name, the amp brings its own
+        self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": "Tailored Wardrobe",
                                 "Hyper-phone": "Hyper-phone commlink"})
         # every printed entry as printed: the branded phone isn't the free commlink, the radio the eyes have is bought too
         self.assertEqual([i["name"] for i in items.values() if i["kind"] == "gear"],
-                         ["Fake SIN", "Hyper-phone commlink", "Integrated toy radio", "Satchel of tricks"])
+                         ["Fake SIN", "Hyper-phone commlink", "Integrated toy radio", "Satchel of tricks", "Tailored Wardrobe"])
         self.assertFalse([i for i in items.values() if "starting" in i])
 
-    def test_an_amp_without_a_printed_item_gets_none(self):
+    def test_an_amp_without_a_printed_item_brings_its_own(self):
+        # the book's Equipment Amps cost the item and the upgrades (CRB p.144): one printed with no gear line is bought with
+        # a gear item of its name, as a catalog amp is in the app; no price, note or marker on it
         stat = STAT.replace("**Old Friend** (Contact) **0**", "**Pep Pills** (Equipment) **1**\nWakes you up\n**Old Friend** (Contact) **0**")
         ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
                                        origin="PREGENS", background="", updated="")
         pills = next(a for a in ch["build"]["amps"] if a["name"] == "Pep Pills")
-        self.assertNotIn("linkedItem", pills)
-        self.assertEqual(len(ch["build"]["items"]), 5)
+        self.assertEqual(ch["build"]["items"][-1], {"uid": pills["linkedItem"], "kind": "gear", "name": "Pep Pills"})
+        self.assertEqual(len(ch["build"]["items"]), 6)
+
+    def test_a_quality_the_equipment_list_prints_is_an_equipment_amp(self):
+        # a focus printed "(Quality)" and on the equipment list too: bought gear made an Amp (CRB p.60), on that item
+        stat = STAT.replace("**Old Friend** (Contact) **0**", "**Made-up focus** (Quality) **2**\nRR 1 on Stealth tests\n**Old Friend** (Contact) **0**")
+        stat = stat.replace("Fake SIN, Commlink,", "Fake SIN, Commlink, Made-up focus,")
+        ch, _ = statblock.to_character(statblock.parse_statblock(stat), statblock.load_rules(), sid="x", name="X", role="",
+                                       origin="PREGENS", background="", updated="")
+        items = {i["uid"]: i["name"] for i in ch["build"]["items"]}
+        focus = next(a for a in ch["build"]["amps"] if a["name"] == "Made-up focus")
+        self.assertEqual((focus["type"], items[focus["linkedItem"]]), ("equipment", "Made-up focus"))
+        # a Quality the list doesn't print stays a Quality
+        self.assertEqual(next(a for a in ch["build"]["amps"] if a["name"] == "Big Grin")["type"], "quality")
 
     def test_weapons_without_a_type_and_repeated_rows(self):
         stat = STAT.replace("**Unarmed** 2 [OK/–/–/–]", "**Unarmed** 2 [OK/–/–/–]\n**Hidden knuckles** 4 [OK/–/–/–]\n"
@@ -225,10 +239,12 @@ class CharacterTest(unittest.TestCase):
         grin = {"name": "Grin", "type": "Quality", "rating": 1, "count": 1, "lines": ["RR 1 on Influence tests (first meeting only)."]}
         self.assertEqual([f[0] for f in statblock.map_amp(grin, rules, mapper, False)[1]], ["rr-skill"])
         self.assertIn("negative", [f[0] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1]])
-        # a deck printed as a Quality stays a Quality on the runner (Review flags its deck effects); the catalog's is a deck
+        # a deck printed as a Quality is a cyberdeck, on a runner as in the catalog: only a deck has Firewall – Attack (CRB p.62)
         deck = {"name": "Old deck", "type": "Quality", "rating": 3, "count": 1, "lines": ["Firewall 2 – Attack 1"]}
-        self.assertEqual(statblock.map_amp(deck, rules, mapper, False)[0], "quality")
+        self.assertEqual(statblock.map_amp(deck, rules, mapper, False)[0], "cyberdeck")
         self.assertEqual(statblock.map_amp(deck, rules, mapper, False, catalog=True)[0], "cyberdeck")
+        # a runner's other printed types stay: an Equipment amp with a deck's stats is gear made an Amp
+        self.assertEqual(statblock.map_amp({**deck, "type": "Equipment"}, rules, mapper, False)[0], "equipment")
         # a mounted weapon on a runner's drone is the effect the line reads, whatever the chassis mounts
         mounted = {"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": ["Pilot 5, Body 2, Handling 8, Speed 3, Armor 0", "Integrated zap SMG"]}
         self.assertIn("weapon-mount", [f[0] for f in statblock.map_amp(mounted, rules, mapper, True)[1]])
