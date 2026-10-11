@@ -198,7 +198,8 @@ export function logChange(c: Catalog, before: Character, after: Character): Char
   for (const k of new Set([...was.keys(), ...now.keys()])) {
     const w = was.get(k), n = now.get(k), r = paid.get(k) ?? w ?? 0
     if (w === n) continue
-    const next = n === undefined ? 0 : w === undefined ? n : n >= w ? r + n - w : Math.round(r * n / w)
+    // below 0 (an amp rated under 0 gives nuyen back): the paid share down to 0, then the credit
+    const next = n === undefined ? 0 : w === undefined ? n : n >= w || w <= 0 ? r + n - w : Math.round(r * Math.max(n, 0) / w) + Math.min(n, 0)
     cost += next - (w === undefined ? 0 : r)
     prices[k] = next
   }

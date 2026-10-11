@@ -3,7 +3,7 @@
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
 import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, Npc } from '../model/types'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating } from './amps'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, effectRating } from './amps'
 import { isCanonSource } from './canon'
 import { activeEvents, balance, changeText } from './career'
 import { armorShares, DEVICE_TYPES, derive, type Derived, type DerivedEffect, type PoolNote } from './derive'
@@ -281,7 +281,9 @@ export function exportBooks(c: Catalog, sources: string[], tableRules: { name: s
       amps: mine(c.amps).map(t => {
         const { amp } = ampFromTemplate(t, () => 'export')
         return { id: t.id, source: t.source, page: t.page, canon: s.canon, type: t.type, typeName: c.ampTypes.get(t.type)?.name ?? t.type,
-          name: t.name, rating: ampRating(c, amp, { isFirstQuality: false }), essence: ampEssence(c, amp),
+          // an add-on ("Amp +1", "Amp -1") is its effects alone, no type base: DHSA's Removed Manual Controls rates -1 as printed
+          name: t.name, rating: t.mod ? amp.effects.reduce((s, e) => s + effectRating(c, e), 0) : ampRating(c, amp, { isFirstQuality: false }),
+          essence: ampEssence(c, amp),
           ...t.printedRating != null ? { printedRating: t.printedRating } : {}, mod: !!t.mod, ...ampParts(c, t.type, t.effects),
           ...t.item ? { item: { kind: t.item.kind, specialist: !!t.item.specialist, ...t.item.armor != null ? { armor: t.item.armor } : {},
             ...t.item.dv ? { dv: t.item.dv } : {}, ...t.item.ranges ? { ranges: parseRanges(t.item.ranges) } : {} } } : {},

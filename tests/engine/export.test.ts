@@ -104,8 +104,16 @@ describe('export: books', () => {
     expect(test.source.canon).toBe(false)
     expect(testc.source.canon).toBe(true)
     expect(test.amps.some(a => a.id === 'test.rush')).toBe(true)
-    expect(test.amps.every(a => a.source === 'TEST' && typeof a.page === 'number' && a.rating >= 0)).toBe(true)
+    expect(test.amps.every(a => a.source === 'TEST' && typeof a.page === 'number')).toBe(true)
     expect(testc.amps.some(a => a.id === 'test.rush')).toBe(false)
+  })
+  test('an add-on rates as its effects, below 0 too: no type base, no clamp', () => {
+    const mod = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1"><amp id="test.no-wheel" type="vehicle" '
+      + 'printedRating="-1" mod="true" source="TEST" page="9"><name>No wheel</name><effect ref="negative" value="1"/><narrative></narrative></amp></ca2:data>'
+    const c = buildCatalog([...catFiles, { file: 'custom/imported/test/mods.xml', xml: mod, overlay: true }])
+    const amps = exportBooks(c, ['TEST'], [], OPTS).books![0].amps
+    expect(amps.find(a => a.id === 'test.no-wheel')?.rating).toBe(-1) // a vehicle's base 1 isn't the add-on's
+    expect(amps.find(a => a.id === 'test.static-shroud')?.rating).toBe(-1)
   })
   test('reference: the kinds with no Foundry document, by book, with their printed stats', () => {
     const all = Object.fromEntries([...cat.sources.keys()].map(id => [id, exportBooks(cat, [id], [], OPTS).books![0].reference ?? []]))

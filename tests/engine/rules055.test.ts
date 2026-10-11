@@ -34,16 +34,13 @@ test('"one realm" reductions: one per initiative level held (p.61)', () => {
   expect(codes(runner(one))).not.toContain('amp.initRealm')
 })
 
-test('an amp never rates below 0 without the GM: no creation credit (p.61)', () => {
+test('an amp may rate below 0 and gives nuyen back, with no GM approval (owner, 2026-10-10; p.61)', () => {
   const low = amp('q', 'quality', [])
   low.effects = [{ ref: 'negative', value: 4 }]
   const ch = runner(low)
-  expect(ampRating(cat, low, { isFirstQuality: true })).toBe(0) // made-up quality base 1, drawback -4
-  expect(price(cat, ch).amps).toBe(0)
-  expect(codes(ch)).toContain('amp.negativeRating')
-  ch.overrides = [{ code: 'amp.negativeRating', path: 'amps.q', note: 'GM: fine' }]
+  expect(ampRating(cat, low, { isFirstQuality: true })).toBe(-3) // made-up quality base 1, drawback -4
   expect(price(cat, ch).amps).toBe(-3 * cat.pricing.ampPoint)
-  expect(validate(cat, ch).find(v => v.code === 'amp.negativeRating')?.approved).toBe(true)
+  expect(codes(ch)).not.toContain('amp.negativeRating')
 })
 
 test('a cyberdeck’s Firewall is 5 at most (p.210-211)', () => {

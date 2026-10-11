@@ -3,7 +3,7 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
-import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, rawAmpRating } from './amps'
+import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { catalogItem, itemPrice, price, slotLapse } from './price'
@@ -131,9 +131,6 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       add('amp.initRealm', 'error', path, `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`, 61)
     const fw = 1 + a.effects.filter(e => e.ref === 'firewall-plus').length
     if (a.type === 'cyberdeck' && fw > FIREWALL_MAX) add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
-    const r = rawAmpRating(c, a, ampCtx(b, a, c))
-    if (r < 0 && !isSinner(a, c))
-      add('amp.negativeRating', 'error', path, `${a.name}: rating ${r}. An amp below 0 would give nuyen back, so it counts as 0 unless the GM approves.`, 61)
     // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry): where the rules give
     // another, say so. The book's number is never corrected in the file.
     const printed = !a.catalogId ? a.snapshot?.printedRating : undefined

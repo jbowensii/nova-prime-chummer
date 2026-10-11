@@ -38,8 +38,7 @@ export function ruleText(c: Catalog, e: EffectPick): string | undefined {
   return t.replace('{p}', p).replace('{v}', String(e.value ?? 1)).replace(/\s+:|:\s*$/g, '').replace(/\s+/g, ' ').trim()
 }
 
-/** negativeOk: the GM approved this amp's rating below 0 (validate.ts amp.negativeRating); otherwise it counts as 0 */
-export interface AmpCtx { isFirstQuality: boolean; negativeOk?: boolean }
+export interface AmpCtx { isFirstQuality: boolean }
 
 /** case and spacing aside */
 export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
@@ -71,14 +70,13 @@ export function effectRating(c: Catalog, pick: EffectPick): number {
   return eff.rating
 }
 
-/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects, never below 0 without
- *  the GM (no creation credit, CRB p.61); a SINner is free (house rule) */
+/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects; below 0 too, and a
+ *  negative rating gives nuyen back (owner, 2026-10-10: the book only leaves reductions to the GM, p.61); a SINner is
+ *  free (house rule) */
 export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
-  if (isSinner(amp, c)) return 0
-  const r = rawAmpRating(c, amp, ctx)
-  return ctx.negativeOk ? r : Math.max(0, r)
+  return isSinner(amp, c) ? 0 : rawAmpRating(c, amp, ctx)
 }
-/** The rating as its effects add up, below 0 included (validate.ts). */
+/** The rating as its effects add up. */
 export function rawAmpRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
   const t = c.ampTypes.get(amp.type)
   const base = !t ? 0 : amp.type === 'quality' && !ctx.isFirstQuality ? (t.baseAfterFirst ?? t.base) : t.base
