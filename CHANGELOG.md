@@ -17,6 +17,10 @@
   Kong p. 63; the Sixth World Companion's street-level (B C C D E, sum-to-eight, 80 points, 6 life modules, no illegal
   gear but cyberdecks) and elite (A B B C D, sum-to-twelve, 120 points, 10 modules, no Availability cap), pp. 14–15,
   each with its numbers as settings. Only one level is on at a time (see nested optional rules below).
+- Karma to nuyen both ways on Contacts & lifestyle: "1 Karma → 2,000¥" and "2,000¥ → 1 Karma" (with In Debt, 5,000¥),
+  so one missed click is undone with one more. Turning nuyen back only undoes an earlier conversion at the same rate
+  (never below none), so the rule is the book's (CRB Hong Kong p. 66); nuyen already spent shows as overspent on the
+  budget and in Review, as any overspend does.
 - Nested optional rules: a rule that builds on another sits under it on Table setup and on a runner's Creation rules,
   greyed and disabled with "needs …" while its parent is off, and it doesn't apply then (its stored value kept): the
   expanded contacts' numbers under Expanded contacts (SWC p. 161), each Alternate Power Level's numbers under its level

@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
 import { NameField } from '../../../ui/tabs/Skills'
 import { num } from '../../engine/creation'
+import { nuyenPerKarma } from '../../engine/budgets'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
@@ -20,7 +21,7 @@ export function ContactsTab() {
     const v = bookValue(l, 'cost', undefined, dataFind(data)).n
     return <option key={l.id} value={l.id}>{l.name} ({v === null ? '?' : `${n(v)}¥`} a month)</option>
   })
-  const rate = num(cr, 'karmaToNuyenRate'), most = num(cr, 'karmaToNuyenMax')
+  const rate = nuyenPerKarma(b, cr), most = num(cr, 'karmaToNuyenMax')
   // lifepath's contact points go by contact type (the Sixth World Companion)
   const typed = b.method === 'lifepath'
   const setType = (uid: string, types: (ContactType | '')[], i: number, v: string) => {
@@ -68,9 +69,15 @@ export function ContactsTab() {
 
       <hr className="sep" />
       <h2>Karma to nuyen</h2>
-      <p className="row">Karma turned into nuyen
-        <Stepper label="Karma turned into nuyen" value={b.karmaToNuyen} min={0} max={most ?? 999} onChange={to => act({ op: 'karmaToNuyen', delta: to - b.karmaToNuyen })} />
-        <span className="muted">{rate !== undefined ? `${n(rate)}¥ each` : 'The rate isn’t set: Table setup → Creation rules.'}{most !== undefined && `, at most ${most}`}</span></p>
+      {/* both ways, so one missed click is undone with one more: nuyen back into karma only undoes a conversion, at the same
+          rate (never below none); nuyen already spent shows as overspent on the budget, as any overspend does */}
+      <p className="row">
+        <button type="button" className="btn" disabled={most !== undefined && b.karmaToNuyen >= most}
+          onClick={() => act({ op: 'karmaToNuyen', delta: 1 })}>1 Karma → {rate === undefined ? '?' : n(rate)}¥</button>
+        <button type="button" className="btn" disabled={b.karmaToNuyen <= 0}
+          onClick={() => act({ op: 'karmaToNuyen', delta: -1 })}>{rate === undefined ? '?' : n(rate)}¥ → 1 Karma</button>
+        <span aria-live="polite">{b.karmaToNuyen} karma turned into nuyen{rate !== undefined && b.karmaToNuyen > 0 ? ` (${n(b.karmaToNuyen * rate)}¥)` : ''}</span>
+        <span className="muted">{rate !== undefined ? `${n(rate)}¥ a karma` : 'The rate isn’t set: Table setup → Creation rules.'}{most !== undefined && `, at most ${most}`}</span></p>
     </div>
   )
 }

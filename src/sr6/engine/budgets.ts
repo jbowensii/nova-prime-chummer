@@ -283,6 +283,12 @@ export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p:
   return Math.max(0, rating - (k.paysPowers ? b.powerPointsBought : 0)) * n0(cr, 'freeSpellsPerMagic')
 }
 
+/** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality), both ways: turning
+ *  nuyen back into karma only undoes a conversion, at the same rate. Unset: undefined. */
+export function nuyenPerKarma(b: Sr6Build, cr: CreationRules): number | undefined {
+  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
+  return num(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
+}
 /** Karma turned into nuyen, up to karmaToNuyenMax when it's set. */
 const toNuyen = (b: Sr6Build, cr: CreationRules) => Math.max(0, Math.min(b.karmaToNuyen, num(cr, 'karmaToNuyenMax') ?? Infinity))
 const count = (b: Sr6Build, ...kinds: Sr6Build['picks'][number]['kind'][]) => b.picks.filter(x => kinds.includes(x.kind)).length
@@ -358,8 +364,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
     add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
   }
-  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
-  const karma = toNuyen(b, cr), converted = karma * n0(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
+  const karma = toNuyen(b, cr), converted = karma * (nuyenPerKarma(b, cr) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.nuyen(b) + converted, spent), breakdown }

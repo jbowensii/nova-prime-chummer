@@ -2,7 +2,8 @@
 // Forge budget test's idea re-expressed with invented numbers (karma 40, 3 karma per attribute rank, 1,500¥ per karma…).
 import { expect, test } from 'vitest'
 import type { MagicKind, PurchaseKind, Sr6Build, Sr6Purchase } from '../../src/sr6/model/character'
-import { allBudgets, attrRating, augmentBonus, augmentedRating, priced, skillRank } from '../../src/sr6/engine/budgets'
+import { allBudgets, attrRating, augmentBonus, augmentedRating, nuyenPerKarma, priced, skillRank } from '../../src/sr6/engine/budgets'
+import { apply } from '../../src/sr6/engine/actions'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { buildOf, GLIM, made, STONE } from './fixture'
 
@@ -144,6 +145,26 @@ test('karma turns into nuyen at the rate, at the in-debt rate with the quality, 
   r = budgets(b)
   expect(r.karma.spent).toBe(7)
   expect(r.nuyen.max).toBe(420000 + 7 * 3500)
+})
+
+test('nuyen turns back into karma at the same rate (In Debt’s too), only undoing a conversion; nuyen spent shows overspent, not refused', () => {
+  const { data, cr } = made(), b = runner({ letters: 'CABDE' })  // resources E
+  const step = (delta: number) => apply(b, { op: 'karmaToNuyen', delta }, data, cr)
+  expect(step(-1)).toEqual({ ok: false, reason: 'below-zero' })  // nothing to undo
+  step(1); step(1)
+  quality(b, 'crb.deep-pockets-debt')
+  expect(nuyenPerKarma(b, cr)).toBe(3500)
+  const before = budgets(b).nuyen
+  expect(step(-1)).toEqual({ ok: true })
+  expect(b.karmaToNuyen).toBe(1)
+  const after = budgets(b)
+  expect(before.max - after.nuyen.max).toBe(3500)  // back at the rate it went
+  expect(after.karma.spent).toBe(budgets({ ...b, karmaToNuyen: 0 }).karma.spent + 1)
+  // spend the converted nuyen, then turn it back: the budget is overspent, as any overspend is
+  buy(b, 'gear', undefined, { name: 'Made-up thing', cost: after.nuyen.left - 100 })
+  expect(budgets(b).nuyen.left).toBe(100)
+  expect(step(-1)).toEqual({ ok: true })
+  expect(budgets(b).nuyen.left).toBe(100 - 3500)
 })
 
 // magic
