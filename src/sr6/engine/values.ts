@@ -98,6 +98,17 @@ export function ratingRange(s: string | undefined): number[] {
   return Array.from({ length: Math.max(0, hi - lo + 1) }, (_, k) => lo + k)
 }
 
+/** How an entry priced per rating with no rating range printed is bought (a focus's `Force × 4,000¥`, a cyberlimb
+ *  add-on's `[Rating]`): at a rating the player picks, 1 or more, named as the book names it ('Force' or 'Rating');
+ *  undefined for an entry that comes in a printed range or isn't rated. Its bounds are the book's rules elsewhere (a
+ *  focus's Force not above Magic, an add-on's capacity within its host's: Review's catalog.capacity). */
+export function chosenRating(e: Sr6Entry | undefined): 'Force' | 'Rating' | undefined {
+  if (!e || ratingRange(e.attrs.rating).length) return undefined
+  const printed = ['cost', 'avail', 'essence', 'capacity', 'karma'].map(k => e.attrs[k] ?? '').join(' ')
+  if (!/\b(?:rating|force)\b/i.test(printed) && !(e.formulas ?? []).some(f => /\bR\b/.test(f.expr))) return undefined
+  return /\bforce\b/i.test(printed) ? 'Force' : 'Rating'
+}
+
 /** A weapon's attack ratings, five range bands split on "/": a dash or a missing band is null; a band the app can't
  *  read is null and makes ok false. */
 export function attackRatings(s: string | undefined): { bands: (number | null)[]; ok: boolean } {

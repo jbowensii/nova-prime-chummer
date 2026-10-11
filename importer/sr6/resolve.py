@@ -466,6 +466,7 @@ FIXABLE = ("missing", "unreadable")  # (an ambiguous field is the book's own two
 class _Book:
     def __init__(self, book_dir, custom_dir, sources):
         from importer import xmlio
+        from importer.sr6.recipes import printing
         self.dir, self.custom = book_dir, custom_dir
         imp = xmlio.read_import(book_dir)
         st = os.path.join(book_dir, "status.xml")
@@ -475,7 +476,9 @@ class _Book:
         self.src, self.extra = get("source").lower(), get("extra").lower().split()
         self.name, self.file = get("name"), get("file")
         self._md, self._md_path = None, os.path.join(book_dir, "book.md")
-        self.date = pdf_date(os.path.join(book_dir, "original.pdf"), self.md[:20000]) or sources.get(self.src.upper(), "")
+        # (a known printing whose PDF has no date: the month that printing was published, not its source's first)
+        known = printing(get("sha256"))
+        self.date = pdf_date(os.path.join(book_dir, "original.pdf"), self.md[:20000]) or (known[0] if known else "")             or sources.get(self.src.upper(), "")
 
     @property
     def md(self):

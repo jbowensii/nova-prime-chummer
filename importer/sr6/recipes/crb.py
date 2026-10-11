@@ -26,14 +26,18 @@ from importer.xmlio import HEAD, ILLEGAL
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
 SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
-          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle, Berlin
+          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin (2023)
           "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
           "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
           "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f")
-# the printings, oldest first: of several imported, the newest is the one loaded (run.py); each City Edition's city
-# chapter is a source of its own and loads from its own printing regardless
-PRINTINGS = {SHA256[0]: "Current Printing (CAT28000, 2019)", SHA256[3]: "City Edition Berlin (CAT28000B)",
-             SHA256[2]: "City Edition Seattle (CAT28000S, 2021)", SHA256[1]: "City Edition Hong Kong (CAT28000H, 2025)"}
+# the printings, each with the month it was published (sources.xml's CRB, CRB-SEA, CRB-BER, CRB-HK): of several imported,
+# the one published last is loaded (run.py), and a printing whose PDF carries no date is dated by it (resolve.py: an
+# errata older than the printing never overrides it); each City Edition's city chapter is a source of its own and loads
+# from its own printing regardless
+PRINTINGS = {SHA256[0]: ("2019-08", "Current Printing (CAT28000, 2019)"),
+             SHA256[2]: ("2021-09", "City Edition Seattle (CAT28000S, 2021)"),
+             SHA256[3]: ("2023-06", "City Edition Berlin (CAT28000B, 2023)"),
+             SHA256[1]: ("2025-03", "City Edition Hong Kong (CAT28000H, 2025)")}
 # heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
 HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
@@ -1471,16 +1475,38 @@ def _skill_choices(defn):
     return kids
 
 
-def _band_tier(rows):
-    """`tier(R; 1-3: R*10; …)` from a RATING | COST band table's rows (`1–3`, `Rating x 10¥`), or None."""
-    parts = []
+# a rating-band price table's columns by what they print, under any of the book's headers (a later printing adds an
+# AVAILABILITY column to the core rulebook's Explosive Packages: `RATING | AVAILABILITY | COST`)
+_BAND_COLUMNS = {"RATING": "rating", "COST": "cost", "AVAILABILITY": "avail", "AVAIL": "avail", "AVAIL.": "avail"}
+
+
+def _band_tier(rows, header=("RATING", "COST")):
+    """A rating-band price table read by its columns (_BAND_COLUMNS; RATING and COST required, any other column not a
+    band table's): (`tier(R; 1-3: R*10; …)` of the cost, the availability's tier or None, lowest rating, highest rating,
+    the availability's legality letter when every band prints the same one); None when it isn't one. A row naming an
+    item instead of a band (`Detonator Cap`) is the item's, not a band."""
+    cols = {_BAND_COLUMNS.get(" ".join(h.split()).upper()): i for i, h in enumerate(header)}
+    if None in cols or not {"rating", "cost"} <= set(cols):
+        return None
+    cost, avail, legal = [], [], set()
     for r in rows:
-        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", r[0] or "")
-        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", r[1] or "", re.I) if len(r) > 1 else None
-        if not b or not c:
+        cell = lambda k: (r[cols[k]] or "") if k in cols and cols[k] < len(r) else ""  # noqa: E731
+        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", cell("rating"))
+        if not b:
+            continue
+        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", cell("cost"), re.I)
+        a = re.fullmatch(r"\s*(\d+)\s*(?:\(([LIF])\)|([LIF]))?\s*", cell("avail"))
+        if not c or "avail" in cols and not a:
             return None
-        parts.append((int(b.group(1)), int(b.group(2)), f"{b.group(1)}-{b.group(2)}: R*{c.group(1).replace(',', '')}"))
-    return (f"tier(R; {'; '.join(p for _, _, p in parts)})", parts[0][0], parts[-1][1]) if parts else None
+        band = f"{b.group(1)}-{b.group(2)}"
+        cost.append((int(b.group(1)), int(b.group(2)), f"{band}: R*{c.group(1).replace(',', '')}"))
+        if a:
+            avail.append(f"{band}: {a.group(1)}")
+            legal.add(a.group(2) or a.group(3) or "")
+    if not cost:
+        return None
+    return (f"tier(R; {'; '.join(p for _, _, p in cost)})", f"tier(R; {'; '.join(avail)})" if avail else None,
+            cost[0][0], cost[-1][1], legal.pop() if len(legal) == 1 else "")
 
 
 def stated_items(bs, cat, offset, core=False):
@@ -1558,9 +1584,9 @@ def stated_items(bs, cat, offset, core=False):
             band = next(((d, t) for d in sec
                          for h, rows in ([(list(d.stats[0]), [list(x.values()) for x in d.stats])] if d.stats else [])
                          + _tables(d.text)
-                         if [x.upper() for x in h] == ["RATING", "COST"] and (t := _band_tier(rows))), None)
+                         if (t := _band_tier(rows, h))), None)
             if band:
-                (tb, (tier, lo, hi)), noun = band, b.name.split()[-1]
+                (tb, (tier, avail, lo, hi, legal)), noun = band, b.name.split()[-1]
                 stem = noun.lower().rstrip("s")
                 for d in sec:
                     if d is tb or d.row is not None or d.stats or d.type != "item":
@@ -1571,10 +1597,12 @@ def stated_items(bs, cat, offset, core=False):
                         continue  # (a detonator cap is used with them, it is none of them)
                     name = d.name if stem in d.name.lower() else f"{d.name} {noun}"
                     dp = max(1, d.page - offset)
+                    priced = {"avail": f"By rating ({tb.name})" + (f"({legal})" if legal else "")} if avail else {}
                     add("weapons", name, dp, {"category": categories.singular(tb.name) or "Explosive", "rating": f"{lo}–{hi}",
-                                              "cost": f"By rating ({tb.name})"},
+                                              "cost": f"By rating ({tb.name})", **priced},
                         [("formula", {"field": "cost"}, tier),
-                         ("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")],
+                         *([("formula", {"field": "avail"}, avail)] if avail else
+                           [("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")])],
                         d.text, aliases=[d.name] if name != d.name else ())
         for m in _CHOOSE_SENSE.finditer(text):
             for s in _LIST_SPLIT.split(m.group(1)):

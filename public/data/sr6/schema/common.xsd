@@ -201,7 +201,7 @@
       <xs:attribute name="field" type="sr6:Field" use="required"/>
       <xs:attribute name="how" use="required"><xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="table"/><xs:enumeration value="text"/><xs:enumeration value="corpus"/>
-        <xs:enumeration value="errata"/></xs:restriction></xs:simpleType></xs:attribute>
+        <xs:enumeration value="errata"/><xs:enumeration value="printing"/></xs:restriction></xs:simpleType></xs:attribute>
       <xs:attribute name="source" type="sr6:SourceId"/>
       <xs:attribute name="page" type="xs:positiveInteger"/>
     </xs:extension></xs:simpleContent>

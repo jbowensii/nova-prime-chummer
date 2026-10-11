@@ -103,10 +103,10 @@ def _write(path, text):
         f.write(text)
 
 
-def _book(lib, name, state, why="", source="", bname="", file="", md="", entries=None, kind="gear", custom=None):
+def _book(lib, name, state, why="", source="", bname="", file="", md="", entries=None, kind="gear", custom=None, sha=""):
     d = os.path.join(lib, name)
     _write(os.path.join(d, "status.xml"), f'<?xml version="1.0" encoding="UTF-8"?>\n<status state="{state}">{why}</status>\n')
-    attrs = f' source="{source}" name="{bname}"' if source else ""
+    attrs = (f' source="{source}" name="{bname}"' if source else "") + (f' sha256="{sha}"' if sha else "")
     _write(os.path.join(d, "import.xml"), f'<?xml version="1.0" encoding="UTF-8"?>\n<import file="{file}"{attrs}><files/></import>\n')
     _write(os.path.join(d, "book.md"), md)
     if entries is not None:
@@ -163,6 +163,25 @@ class CorpusTest(unittest.TestCase):
             g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
             self.assertEqual(g["zza.wobble"].get("avail"), "2")
             self.assertEqual((g["zza.wobble"].find("found").get("how"), g["zza.wobble"].find("found").text), ("errata", "8"))
+
+    def test_an_errata_older_than_a_known_printing_with_no_pdf_date_is_not_applied(self):
+        # (a City Edition's PDF carries no date: the printing's own month dates it, not its source's first printing)
+        from unittest import mock
+
+        from importer.sr6.recipes import crb
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(crb.PRINTINGS, {"f" * 64: ("2025-03", "Made-Up Fifth Printing")}):
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, sha="f" * 64, entries=[
+                '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)",
+                  file="Zorp-Alpha-Errata.pdf", md="# Z ORP A LPHA E RRATA\nSpin Tops p. 20\n● Hardened: Availability 2\n")
+            with mock.patch.object(resolve, "pdf_date", lambda pdf, md="": "2020-02-22" if os.sep + "e" + os.sep in pdf else ""):
+                n = resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")], sources={"ZZA": "2019-08"})
+                self.assertEqual(n["errata"], 0)  # (dated 2019-08 by its source, the errata would apply)
+                with mock.patch.dict(crb.PRINTINGS, clear=True):
+                    self.assertEqual(resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")],
+                                                    sources={"ZZA": "2019-08"})["errata"], 1)
 
     def test_an_errata_renumbering_unrating_and_reprinting_life_modules(self):
         md = "\n".join([

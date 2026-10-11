@@ -124,7 +124,9 @@ def spend(need, rows, cs):
             build[k][2] = want - build[k][1]
             adj -= build[k][1]
             karma += _karma(a.get(k, base), build[k][2], n("karmaAttrPerRank"))
-    for k in sorted(need["raised"], key=lambda x: -a.get(x, 1)):  # adjustment points left: the raised maximums
+    # adjustment points left: the raised maximums, the highest first, a tie in the attributes' order (never the set's
+    # order, which changes from run to run)
+    for k in sorted(need["raised"], key=lambda x: (-a.get(x, 1), CORE.index(x))):
         build[k][1] = min(adj, a.get(k, 1) - 1)
         adj -= build[k][1]
     want = [a.get(k, 1) - 1 - build[k][1] for k in CORE]

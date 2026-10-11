@@ -16,6 +16,12 @@ def identify(meta, md_head):
     return (best, score) if score >= THRESHOLD else (None, score)
 
 
+def printing(sha):
+    """(published, label) of a known printing of a book (a recipe's PRINTINGS: published is YYYY-MM, so the later
+    printing compares greater), or None."""
+    return next((r.PRINTINGS[sha] for r in RECIPES if sha in getattr(r, "PRINTINGS", {})), None)
+
+
 # the SR6 PDFs with nothing to import: (why, their fingerprints, a pattern their PDF title or file name matches)
 SKIP = [
     ("a card deck (reprints of the books' entries)",

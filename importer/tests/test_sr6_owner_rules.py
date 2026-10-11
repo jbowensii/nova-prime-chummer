@@ -212,7 +212,13 @@ class FinalDecisionsTest(unittest.TestCase):
         self.assertEqual((a.get("category"), a.get("cost"), a.get("capacity")), ("Armor accessory", "100", "0"))
         self.assertEqual(sorted(es["magictypes"])[:2], ["Adept", "Aspected magician"])  # (the core vocabulary)
         self.assertEqual(_band_tier([["1–3", "Rating x 10¥"], ["4–6", "Rating x 1,000¥"]]),
-                         ("tier(R; 1-3: R*10; 4-6: R*1000)", 1, 6))
+                         ("tier(R; 1-3: R*10; 4-6: R*1000)", None, 1, 6, ""))
+        # (a later printing's added column, in any order; an item's row in the table is not a band; an unknown column is
+        # not a band table)
+        self.assertEqual(_band_tier([["1–3", "1(I)", "Rating x 10¥"], ["4–6", "2(I)", "Rating x 50¥"], ["Zap Cap", "4(I)", "75¥"]],
+                                    ["RATING", "AVAILABILITY", "COST"]),
+                         ("tier(R; 1-3: R*10; 4-6: R*50)", "tier(R; 1-3: 1; 4-6: 2)", 1, 6, "I"))
+        self.assertIsNone(_band_tier([["1–3", "x", "Rating x 10¥"]], ["RATING", "BLAST", "COST"]))
         self.assertEqual([c[1]["kind"] for c in _skill_choices(
             "choose one from Zorping, Blooping, or Piloting and a Specialization in the chosen skill as well as an "
             "appropriate Knowledge Skill")], ["skill", "specialization", "knowledgeskill"])

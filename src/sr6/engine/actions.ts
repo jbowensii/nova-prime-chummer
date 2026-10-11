@@ -11,7 +11,7 @@ import { num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
-import { ratingRange } from './values'
+import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
 
 export type Op =
@@ -281,7 +281,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!x) return no('unknown-line')
       if (op.rating !== undefined) {
         const e = x.id ? data.entry(x.kind, x.id) : undefined
-        if (!e || !ratingRange(e.attrs.rating).includes(op.rating)) return no('rating-range')
+        if (!e || !(chosenRating(e) ? Number.isInteger(op.rating) && op.rating >= 1 : ratingRange(e.attrs.rating).includes(op.rating))) return no('rating-range')
       }
       const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
       if (gp) return no(gp)
@@ -468,7 +468,8 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   const e = data.entry(op.kind, op.id)
   if (!e) return { ok: false, reason: 'unknown-entry' }
   const range = ratingRange(e.attrs.rating)
-  if (op.rating !== undefined && range.length && !range.includes(op.rating)) return { ok: false, reason: 'rating-range' }
+  if (op.rating !== undefined && (range.length ? !range.includes(op.rating) : chosenRating(e) && !(Number.isInteger(op.rating) && op.rating >= 1)))
+    return { ok: false, reason: 'rating-range' }
   const gp = op.grade && gradeProblem(cr, data, op.grade, e)
   if (gp) return { ok: false, reason: gp }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
