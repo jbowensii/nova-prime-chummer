@@ -39,7 +39,7 @@ const UNSET = ['advance.nuyenToKarmaRate', 'initiativeDiceMax', 'contactKarma', 
   'mentorSpiritQuality', 'ownCarryOver', 'carryOver.karma', 'carryOver.nuyen', 'dataStructureNuyen', 'exoticFirstSpecFree', 'mentorBothAdvantages',
   'dataStructureCaps', 'dataStructure.maxCount', 'dataStructure.maxRating', 'noUsedCulturedBioware', 'gradeCapAtCreation', 'gradeCap.initiation',
   'gradeCap.submersion', 'adjustOnLoweredMax', 'pointBuyErrataNuyen', 'knowledgeLogicIntuition', 'magicAboveSixByGrade', 'eliteSumToThirteen',
-  'availabilitySeven', 'cargoWithoutSeats']
+  'availabilitySeven', 'cargoWithoutSeats', 'metatypeSizePricing']
 test('the fixture sets every key (grades: standard and alpha only; no initiative dice cap), typed, with its source and page', async () => {
   const { rules, errors } = parseCreation(XML)
   expect(errors).toEqual([])

@@ -62,7 +62,7 @@ describe('SR6 export: runners', () => {
     expect(r.metatype).toEqual({ id: 'crb.glimmerkin', name: expect.any(String) })
     expect(r.lifestyle).toMatchObject({ id: 'crb.cozy', name: 'Cozy', months: 1, cost: 2500 })
     expect(r.contacts[0]).toEqual({ uid: 'c1', name: 'Fixer Fred', archetype: 'Fixer', connection: 3, loyalty: 2 })
-    expect(r.knowledge).toContainEqual({ name: 'Sperethiel', kind: 'language', native: true, rank: 0 })
+    expect(r.knowledge).toContainEqual({ name: 'Sperethiel', kind: 'language', native: true, rank: 4 })  // (a Native language counts as the highest level)
   })
   test('a graded ware: values at one unit, priced with its grade; a perRating bonus × the rating', () => {
     const { data, cr } = made(), ch = career()
