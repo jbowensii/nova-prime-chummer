@@ -7,7 +7,7 @@ import { compendiumXml, type SourceFile } from '../../src/engine'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { sr6Data } from '../../src/sr6/engine/data'
-import { buildSr6Catalog, collectSr6Files, entryKey, sr6EntryXml } from '../../src/sr6/engine/load'
+import { buildSr6Catalog, collectSr6Files, entryKey, plainTexts, sr6EntryXml } from '../../src/sr6/engine/load'
 import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
 
 const get = async (path: string) => {
@@ -171,3 +171,22 @@ test('an Anarchy compendium or an unreadable one as extra is an error; without e
   expect(c.sources.has('STREET')).toBe(false)
   expect(await withExtra([])).toEqual(await load())
 })
+
+test('a plain texts file is read without the DOM, exactly as the DOM reads it; anything else goes to the DOM', () => {
+  const file = (body: string, root = `<sr6:data ${NS} kind="texts" version="1">`) => `<?xml version="1.0" encoding="UTF-8"?>\n<!-- PRIVATE -->\n${root}\n${body}</sr6:data>\n`
+  const dom = (xml: string) => [...new DOMParser().parseFromString(xml, 'text/xml').documentElement.children]
+    .map(el => ({ of: el.getAttribute('of') ?? '', id: el.getAttribute('id') ?? '', text: el.textContent ?? '' }))
+  const plain = file(`  <text of="qualities" id="crb.a">One &amp; two &lt;b&gt; "q" 'a' &quot;&apos; > ok\n\nPara — ü</text>\n  <text id="x.b" of="gear"></text>\n`)
+  expect(plainTexts(plain)).toEqual(dom(plain))
+  expect(plainTexts(plain)).toHaveLength(2)
+  const odd = ['<text of="a" id="b"><![CDATA[x]]></text>', '<text of="a" id="b">&#65;</text>', '<text of="a" id="b">&nbsp;</text>',
+    '<text of="a" id="b">a & b</text>', '<text of="a" id="b">a\r\nb</text>', '<text of="a" id="b"/>', '<!-- c --><text of="a" id="b">x</text>',
+    '<text of="a" of="b">x</text>', '<sr6:text of="a" id="b">x</sr6:text>', '<text of="a" id="b">x]]>y</text>', `<text of='a' id="b">x</text>`].map(b => file(b))
+  odd.push(file('<text of="a" id="b">x</text>', '<sr6:data xmlns:sr6="urn:other" kind="texts">'), file('<text of="a" id="b">x</text>', `<sr6:data ${NS} kind="edits">`),
+    '<sr6:data kind="texts"><text>x</text>')
+  for (const xml of odd) expect(plainTexts(xml), xml).toBeNull()
+  // a broken one is still the DOM's parse error
+  const c = buildSr6Catalog([{ file: 'custom/sr6/bad.xml', xml: file('<text of="a" id="b">a & b</text>'), overlay: true }])
+  expect(c.errors[0].message).toMatch(/XML parse error/)
+})
+

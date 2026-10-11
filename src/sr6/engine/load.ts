@@ -61,10 +61,47 @@ function mergeSource(prev: Sr6Source | undefined, s: Sr6Source): Sr6Source {
   return { ...prev, ...Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined)) }
 }
 
+const MISC = String.raw`(?:\s|<!--(?:(?!--)[\s\S])*-->)*` // whitespace and comments
+const ATTRS = String.raw`((?:\s+[\w:.-]+="[^"<&\t\n\r]*")*)\s*`
+const PLAIN_ROOT = new RegExp(String.raw`^(?:<\?xml[^>]*\?>)?${MISC}<([A-Za-z_][\w.-]*):data${ATTRS}>([\s\S]*)</\1:data>${MISC}$`)
+const PLAIN_TEXT = new RegExp(String.raw`<text${ATTRS}>([^<]*)</text>`, 'g')
+const ENTITY: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+const attrMap = (s: string) => {
+  const a = new Map<string, string>()
+  for (const [, k, v] of s.matchAll(/([\w:.-]+)="([^"]*)"/g)) { if (a.has(k)) return null; a.set(k, v) }
+  return a
+}
+/** A texts file's <text of id> elements read without the DOM (the books' texts are tens of megabytes: parsing them was
+ *  most of the catalog's load), or null for anything but the plain shape the importer and the edits layer write: an SR6
+ *  texts root holding only <text> elements of text, the five named entities and no CR, control character or `]]>`. A
+ *  null file is read with the DOM, as before, which reports what's wrong with it. */
+export function plainTexts(xml: string): { of: string; id: string; text: string }[] | null {
+  if (!xml.includes('kind="texts"')) return null
+  const m = PLAIN_ROOT.exec(xml), root = m && attrMap(m[2])
+  if (!m || !root || root.get(`xmlns:${m[1]}`) !== SR6_NS || root.get('kind') !== 'texts') return null
+  const out: { of: string; id: string; text: string }[] = []
+  let ok = true
+  const rest = m[3].replace(PLAIN_TEXT, (_, attrs: string, raw: string) => {
+    const a = attrMap(attrs)
+    // eslint-disable-next-line no-control-regex
+    if (!a || /[\x00-\x08\x0b\x0c\x0e-\x1f\r]|]]>/.test(raw)) ok = false
+    const text = raw.replace(/&([a-z]*);?/g, (all, name: string) => { if (!all.endsWith(';') || !(name in ENTITY)) ok = false; return ENTITY[name] ?? '' })
+    out.push({ of: a?.get('of') ?? '', id: a?.get('id') ?? '', text })
+    return ''
+  })
+  return ok && !rest.trim() ? out : null
+}
+
 export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
   const c: Sr6Catalog = { entries: Object.fromEntries(Object.keys(SR6_KINDS).map(k => [k, new Map()])) as Sr6Catalog['entries'],
     sources: new Map(), original: new Map(), moved: new Map(), files: [], errors: [] }
   for (const f of files) {
+    const plain = plainTexts(f.xml)
+    if (plain) {
+      for (const t of plain) { const e = KINDS.has(t.of) ? c.entries[t.of as Sr6Kind].get(t.id) : undefined; if (e) e.text = t.text }
+      c.files.push({ file: f.file, kind: 'texts', entries: plain.length })
+      continue
+    }
     const doc = new DOMParser().parseFromString(f.xml, 'text/xml')
     const perr = doc.getElementsByTagName('parsererror')[0]
     if (perr) { c.errors.push({ file: f.file, message: `XML parse error: ${perr.textContent?.trim().split('\n')[0]}` }); continue }
