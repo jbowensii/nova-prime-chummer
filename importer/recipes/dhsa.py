@@ -453,7 +453,7 @@ class Mapper:
         if re.search(r"jump into (a vehicle|vehicles)", low):
             return [("vcr", None, None, None)]
         realm = [("init-realm", "astral" if "astral" in low else "vr", None, None)] if re.search(r"\bvr\b|astral|jump", low) else []
-        if re.search(r"^\+1 edge (point )?per (action |cracking )?scene", low) and "+2" not in low:
+        if re.search(r"^\+1 edge (point )?per (action |cracking |hacking )?scene", low) and "+2" not in low:  # hacking: cracking
             return [("init-1", None, None, None)] + realm
         if re.search(r"^\+1 action (in astral or vr |in astral |in vr )?per narration", low):
             return [("init-2", None, None, None)] + realm

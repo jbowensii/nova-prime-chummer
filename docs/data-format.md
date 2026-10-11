@@ -387,16 +387,23 @@ its lines read (an effect its type can't take too: Review flags it, unless the b
 prints it, like a sample's Jazz; a line no effect reads stays the amp's text) and its printed rating on its snapshot;
 nothing is added, dropped or retyped to meet that rating. Two printed types are read by the book's rules instead: a
 "(Quality)" with a deck's Firewall – Attack is a Cyberdeck (CRB p.62), and a "(Quality)" the equipment list also prints
-is an Equipment amp on that item (CRB p.60). Every printed item is
-bought as printed (a branded commlink too; the app makes a plain "Commlink" and "Fake SIN" its free starting gear
-when it loads the runner); an armor row "(2+1)" or "(+1)" is an armor of that total. An Equipment amp is linked to the
+is an Equipment amp on that item (CRB p.60). What the page prints is read by the book's rules too: a printed
+limitation ("only", "first interaction", a drug's comedown) where the rules price the amp 1 to 5 above its printed
+rating is that Negative effect (CRB p.61), noted with the printed line, for the GM to approve on Review (the owner's
+sample rule, 0.5.6) unless the books' catalog amp of that name prints the same drawback; a vehicle's or drone's own
+front-facing mount takes its first weapon (CRB p.60, p.241; a storage rail is an Enhanced weapon mount); a shamanic
+mask is the Awakened amp's -1 (CRB p.169, the core's `awk-shamanic-mask`). Every printed item is bought as printed
+(the app makes a plain "Commlink" and "Fake SIN" its free starting gear when it loads the runner), except: a branded
+commlink where the list prints no plain one is the runner's free commlink (`starting="commlink"`, CRB p.85), gear an
+implant prints as "Integrated …" is part of that implant, and an armor row "(+1)" or "(2+1)" after the armor of 2 is
+an add-on worn over it, bought for its own points (`over`; DHSA p.14 prices a ballistic mask +1). An Equipment amp is linked to the
 printed item of its name (or the one with most words in common); with none printed, the amp brings its own, a gear
 item of its name, as the book's Equipment Amps cost the item and the upgrades (CRB p.144) and a catalog amp brings its
 item in the app. A book that adds a skill, an amp type or effect (or the core) has the other books' runners read again,
 so they don't depend on the import order. A spec rolled
 with two attributes is bought once; a weapon's astral row isn't a second weapon. With the book's PDF, the core
 rulebook's dispositions and cues are read from the page layout (an item that wraps stays one). The file holds no
-override and no note: what the book prints against the rules shows on Review.
+override and nothing that approves: what the book prints against the rules shows on Review.
 
 ## Example sets (`custom/samples/<set>/`)
 

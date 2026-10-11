@@ -88,6 +88,9 @@ EFFECTS = [
     ("awk-sorcery", "awakened", r"^Sorcery$", {"once": True}),
     ("awk-conjuring", "awakened", r"^Conjuring$", {"once": True}),
     ("awk-adept", "awakened", r"^Adept$", {"once": True}),
+    # "A shamanic mask is considered a negative effect and reduces the rating of the Awakened Amp by 1" (p.169): a fixed
+    # option of the Awakened amp, not one the GM sets (DHSA p.3 lists it so, -5,000¥). Only where the book prints it.
+    ("awk-shamanic-mask", "awakened", None, {"derive": "mask", "once": True, "label": "Shamanic mask"}),
 ]
 # "Adept … powers": a wrapped Type cell can have the Reference column's text between its two words
 TYPE_WORDS = re.compile(r"All but Awakened|\bAll\b|Qualities|Cyber/Bioware|Cyberware|Adept\b[^,]*?\bpowers|Equipment|Cyberdecks|"
@@ -330,6 +333,12 @@ def ampeffects(pages, types):
             out.append({"id": eid, "category": cat, "name": a["label"], "rating": str(int(astral[1][1]) - int(adept["base"])),
                         "types": a["types"], "max": armor["max"], "page": str(astral[0])})
             continue
+        if a.get("derive") == "mask":
+            mask = shamanic_mask(pages)
+            if mask:
+                out.append({"id": eid, "category": cat, "name": a["label"], "rating": str(-mask[1]), "types": "awakened",
+                            "max": "1", "page": str(mask[0])})
+            continue
         row = next(((p, n, r, t) for p, n, r, t in (awk if cat == "awakened" else rows) if re.search(pattern, n)), None)
         if row is None:
             raise Unreadable(f"no row for the effect {eid}")
@@ -350,6 +359,18 @@ def ampeffects(pages, types):
         if not out[-1]["types"]:
             raise Unreadable(f"no amp types for the effect {eid}")
     return out
+
+
+def shamanic_mask(pages):
+    """(printed page, the rating it takes off) where the book says a shamanic mask is a negative effect on the Awakened
+    amp (p.169, in a box: its lines wrapped with <br>, words hyphenated across them), else None.
+    ponytail: "without reaching 0" isn't checked; add a Review error if a GM builds a mask onto a bare Awakened amp."""
+    for p, t in sorted(pages.items()):
+        m = re.search(r"shamanic mask is considered a negative effect and reduces the rating of the Awakened Amp by (\d+)",
+                      re.sub(r"\s+", " ", t.replace("-<br>", "").replace("<br>", " ")))
+        if m:
+            return p, int(m[1])
+    return None
 
 
 def pricing(pages):

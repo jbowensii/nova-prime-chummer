@@ -280,7 +280,8 @@ class PregensTest(unittest.TestCase):
             "Rusty Sedan": (["vehicle-armor"], "sedan"),
             "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
             "Old Pal, fixer": (["rr-spec:network.street"], None),
-            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage"], None),  # its printed limitation: a Disadvantage, not a Negative effect
+            # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61): the GM approves
+            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage", "negative"], None),
         })
         # the printed ratings, on the snapshots
         self.assertEqual([(a.get("printedRating"), a.get("source"), a.get("page")) for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
@@ -335,7 +336,7 @@ class PregensTest(unittest.TestCase):
         self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
         self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
         self.assertEqual([(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
-                         [("amp", "amp-2", 7), ("amp", "amp-6", 3),  # as printed, the rules rate them otherwise
+                         [("amp", "amp-2", 7),  # as printed, the rules rate it otherwise
                           ("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
                           ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)

@@ -152,8 +152,10 @@ class CharacterTest(unittest.TestCase):
         amps = {a["name"]: a for a in self.b["amps"]}
         self.assertNotIn("Natural Low-Light Vision", amps)  # a metatype trait, not an amp
         fx = lambda n: [(e["ref"], e.get("param"), e.get("value")) for e in amps[n]["effects"]]
-        # as printed: the limitation ("first meeting only") stays part of the line, no Negative effect is made up
-        self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None)])
+        # the rules price it 5, the book 4, and the line limits it ("first meeting only"): that limitation is the Negative
+        # effect of the difference (CRB p.61), its note the printed line; Review asks the GM to approve it
+        self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None), ("negative", None, 1)])
+        self.assertEqual(amps["Big Grin"]["effects"][1]["note"], "RR 1 on Influence tests (first meeting only).")
         # a line no effect reads stays the amp's text, it isn't priced as a narrative effect to meet the printed rating
         self.assertEqual(fx("Toy Eyes"), [("grade-delta", None, None), ("rr-spec", "ranged-weapons.pistols", None)])
         self.assertEqual(amps["Toy Eyes"]["narrative"], "Glows in the dark")
@@ -169,19 +171,18 @@ class CharacterTest(unittest.TestCase):
     def test_items(self):
         its = [(i["uid"], i["kind"], i["name"], i.get("armor"), i.get("catalogId")) for i in self.b["items"]]
         self.assertEqual(its, [("it-1", "armor", "Padded coat", 2, "armored-clothes"),  # the made-up armor with that rating
-                               ("it-2", "armor", "Padded coat and hat", 3, "armored-clothes-coat"),  # "(+1)": the row's armor as printed
+                               ("it-2", "armor", "Padded coat and hat", 1, None),  # "(+1)": an add-on worn over it, its own point
                                ("it-3", "weapon", "Zap Pistol", None, "heavy-pistol"),
                                ("it-4", "gear", "Fake SIN", None, None), ("it-5", "gear", "Commlink", None, None)])
-        self.assertEqual((self.b["mainArmor"], self.b["altArmor"]), ("it-1", "it-2"))
+        self.assertEqual((self.b["mainArmor"], self.b["altArmor"], self.b["items"][1]["over"]), ("it-1", "it-2", "it-1"))
 
     def test_nothing_is_written_to_explain_or_approve_the_book(self):
         # what the made-up page prints against the guidelines (Stealth unrated, its own spec, 3/2/2 narrative, amp ratings
-        # the rules price otherwise) is left for Review to show: no override, no drawback note, no starting or add-on marker
+        # the rules price otherwise) is left for Review to show: no override, no approving drawback note, no price
         self.assertEqual(self.ch["overrides"], [])
-        self.assertFalse([i for i in self.b["items"] if {"starting", "over", "note", "price"} & set(i)])
-        self.assertFalse([e for a in self.b["amps"] for e in a["effects"] if e["ref"] == "negative" or e.get("note")])
+        self.assertFalse([i for i in self.b["items"] if {"note", "price"} & set(i)])
         xml = statblock.character_xml(self.ch)
-        for marker in ("<override", "starting=", "over=", "book drawback", "As printed in"):
+        for marker in ("<override", "book drawback", "As printed in"):
             self.assertNotIn(marker, xml)
 
     def test_equipment_amps_get_their_items(self):
@@ -198,10 +199,11 @@ class CharacterTest(unittest.TestCase):
         # the wardrobe's "Armor 1" isn't read as the clothes: no printed item has its name, the amp brings its own
         self.assertEqual(link, {"Zap Pistol": "Zap Pistol", "Bag of Tricks": "Satchel of tricks", "Tailored Wardrobe": "Tailored Wardrobe",
                                 "Hyper-phone": "Hyper-phone commlink"})
-        # every printed entry as printed: the branded phone isn't the free commlink, the radio the eyes have is bought too
+        # the list prints no plain "Commlink": the branded phone is the runner's one commlink, the free one (CRB p.85), and
+        # the radio the eyes have built in ("Integrated …") is part of that implant, not bought again
         self.assertEqual([i["name"] for i in items.values() if i["kind"] == "gear"],
-                         ["Fake SIN", "Hyper-phone commlink", "Integrated toy radio", "Satchel of tricks", "Tailored Wardrobe"])
-        self.assertFalse([i for i in items.values() if "starting" in i])
+                         ["Fake SIN", "Hyper-phone commlink", "Satchel of tricks", "Tailored Wardrobe"])
+        self.assertEqual([i["name"] for i in items.values() if i.get("starting") == "commlink"], ["Hyper-phone commlink"])
 
     def test_an_amp_without_a_printed_item_brings_its_own(self):
         # the book's Equipment Amps cost the item and the upgrades (CRB p.144): one printed with no gear line is bought with
@@ -237,17 +239,52 @@ class CharacterTest(unittest.TestCase):
         rules = statblock.load_rules()
         mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
         grin = {"name": "Grin", "type": "Quality", "rating": 1, "count": 1, "lines": ["RR 1 on Influence tests (first meeting only)."]}
-        self.assertEqual([f[0] for f in statblock.map_amp(grin, rules, mapper, False)[1]], ["rr-skill"])
-        self.assertIn("negative", [f[0] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1]])
+        # the limitation is the Negative effect on both; a catalog amp's is the book's own drawback, a runner's the GM approves
+        # (its note is the printed line)
+        self.assertEqual([f[3] for f in statblock.map_amp(grin, rules, mapper, False)[1] if f[0] == "negative"],
+                         ["RR 1 on Influence tests (first meeting only)."])
+        self.assertEqual([f[3] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1] if f[0] == "negative"],
+                         ["book drawback"])
         # a deck printed as a Quality is a cyberdeck, on a runner as in the catalog: only a deck has Firewall – Attack (CRB p.62)
         deck = {"name": "Old deck", "type": "Quality", "rating": 3, "count": 1, "lines": ["Firewall 2 – Attack 1"]}
         self.assertEqual(statblock.map_amp(deck, rules, mapper, False)[0], "cyberdeck")
         self.assertEqual(statblock.map_amp(deck, rules, mapper, False, catalog=True)[0], "cyberdeck")
         # a runner's other printed types stay: an Equipment amp with a deck's stats is gear made an Amp
         self.assertEqual(statblock.map_amp({**deck, "type": "Equipment"}, rules, mapper, False)[0], "equipment")
-        # a mounted weapon on a runner's drone is the effect the line reads, whatever the chassis mounts
+        # a runner's drone, as a catalog one: the chassis' own front-facing mount takes the first weapon (CRB p.60, p.241)
         mounted = {"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": ["Pilot 5, Body 2, Handling 8, Speed 3, Armor 0", "Integrated zap SMG"]}
-        self.assertIn("weapon-mount", [f[0] for f in statblock.map_amp(mounted, rules, mapper, True)[1]])
+        self.assertNotIn("weapon-mount", [f[0] for f in statblock.map_amp(mounted, rules, mapper, True)[1]])
+        # a storage rail isn't that mount
+        rail = {**mounted, "lines": [mounted["lines"][0], "Storage rail holding a zap SMG"]}
+        self.assertIn("weapon-mount", [f[0] for f in statblock.map_amp(rail, rules, mapper, True)[1]])
+
+    def test_a_limitation_is_a_negative_effect_only_where_it_explains_the_printed_rating(self):
+        rules = statblock.load_rules()
+        mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
+        amp = lambda rating, *lines: {"name": "A", "type": "Quality", "rating": rating, "count": 1, "lines": list(lines)}  # noqa: E731
+        neg = lambda a: [f[2] for f in statblock.map_amp(a, rules, mapper, True)[1] if f[0] == "negative"]  # noqa: E731
+        self.assertEqual(neg(amp(3, "RR 1 on Influence tests (only at night)")), [2])  # the rules give 2 more
+        self.assertEqual(neg(amp(5, "RR 1 on Influence tests (only at night)")), [])  # the rules give the printed rating
+        self.assertEqual(neg(amp(3, "RR 1 on Influence tests")), [])  # nothing printed limits it: the book's rating stands
+        self.assertEqual(neg(amp(3, "RR 1 on Influence tests", "Imposes a Disadvantage on anyone reading her aura")), [])  # on others
+        self.assertEqual(neg(amp(None, "RR 1 on Influence tests (only at night)")), [])  # an NPC prints no rating
+
+    def test_a_hacking_scenes_edge_is_initiative_in_vr(self):
+        # "hacking scene" as "cracking scene": the first initiative level, limited to VR (CRB p.61)
+        mapper = statblock.Mapper({})
+        self.assertEqual([f[:2] for f in mapper.effects("+1 Edge point per hacking scene in VR")], [("init-1", None), ("init-realm", "vr")])
+
+    def test_a_shamanic_mask_is_the_awakened_amps_option_where_the_core_has_it(self):
+        rules = statblock.load_rules()
+        mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
+        awk = {"name": "Mage", "type": "Awakened", "rating": 4, "count": 1,
+               "lines": ["Sorcery, Conjuring, Astral perception & projection", "Shamanic mask"]}
+        with_mask = {**rules, "effects": {**rules["effects"], "awk-shamanic-mask": {"rating": -1, "types": ["awakened"], "essence": 0}}}
+        _, fx, loose, _, rating = statblock.map_amp(awk, with_mask, mapper, True)
+        self.assertEqual(([f[0] for f in fx][-1], loose), ("awk-shamanic-mask", []))
+        self.assertEqual(rating, statblock.map_amp({**awk, "lines": awk["lines"][:1]}, rules, mapper, True)[4] - 1)
+        # a core without it: the line stays text
+        self.assertEqual(statblock.map_amp(awk, rules, mapper, True)[2], ["Shamanic mask"])
 
     def test_a_weapon_the_chassis_mounts_needs_no_enhanced_mount_on_a_catalog_amp(self):
         rules = statblock.load_rules()

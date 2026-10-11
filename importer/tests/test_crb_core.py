@@ -156,6 +156,13 @@ class CoreTablesTest(unittest.TestCase):
         self.assertNotIn("once", fx["weapon-focus"])
         self.assertEqual(fx["mental-armor"]["types"], "adept cyberdeck")
 
+    def test_a_shamanic_mask_is_read_where_the_book_says_it(self):
+        # a made-up box page: the sentence wrapped and hyphenated across <br> lines
+        page = {170: "| Made-up text. A shamanic mask is con-<br>sidered a negative effect and reduces the rating of the<br>"
+                     "Awakened Amp by 2 (made up). |"}
+        self.assertEqual(crb_core.shamanic_mask(page), (170, 2))
+        self.assertIsNone(crb_core.shamanic_mask({170: "A shamanic mask glows."}))
+
     def test_attributes_and_metatypes(self):
         a = by_id(self.files["attributes.xml"])
         self.assertEqual([(i, e.get("abbr"), e.findtext("name"), e.get("page")) for i, e in a.items()],
@@ -581,6 +588,10 @@ KNOWN = {
     ("ampeffects.xml", "mental-armor", "types"): ("quality cyberware bioware adept equipment cyberdeck", "adept cyberdeck"),
     ("ampeffects.xml", "mental-armor", "name"): ("Armor +1 against mental damage (spells, astral, biofeedback)",
                                                  "Mental armor +1: Astral Armor (adept power) or Biofeedback filter (cyberdeck)"),
+    # the Awakened amp's shamanic mask (p.169), read since the local copies were made
+    **{("ampeffects.xml", "awk-shamanic-mask", k): (None, v) for k, v in {
+        "tag": "effect", "id": "awk-shamanic-mask", "category": "awakened", "rating": "-1", "types": "awakened", "max": "1",
+        "source": "CRB", "page": "169", "name": "Shamanic mask"}.items()},
 }
 
 
