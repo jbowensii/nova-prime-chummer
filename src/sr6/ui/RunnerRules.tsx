@@ -58,6 +58,7 @@ function Control({ k, label, eff, table, mine, set }: { k: string; label: string
       <option value="table">The table’s: {shown(base)}</option><option value="own">This runner’s</option><option value="off">Off</option>
     </select>
     {mode === 'own' && (type === 'letters' ? <input aria-label={label} value={mine} maxLength={5} size={6} onChange={e => set(e.target.value.toUpperCase())} />
+      : type === 'quality' ? <input aria-label={label} value={mine} maxLength={80} placeholder="a catalog id" onChange={e => set(e.target.value.trim())} />
       : <input type="number" step="any" aria-label={label} value={mine} onChange={e => set(e.target.value)} />)}
   </span>
 }
