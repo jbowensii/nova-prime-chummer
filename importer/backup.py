@@ -1,7 +1,8 @@
 """Backup and restore of the three data folders (characters, custom, library) as one zip.
 
   backup   characters/…, custom/…, library/… plus a backup.xml manifest (backup.xsd). library/.backups and
-           temp files are skipped; library/.config/ai-keys.xml and auth-secret.xml only with keys=True; sessions,
+           temp files are skipped; each game's ai-keys.xml (library/.config/, library/sr6/.config/) and auth-secret.xml
+           only with keys=True; sessions,
            a recovery code and the server's own cookie keys never (NEVER).
   check    refuses anything unsafe to extract (paths, links, bombs, a bad manifest); returns the manifest.
   apply    check, a safety backup of the current state to library/.backups (newest 3 kept), then each folder's
@@ -28,6 +29,8 @@ from importer import xmlio
 
 FOLDERS = ("characters", "custom", "library")
 KEYS = "library/.config/ai-keys.xml"
+SR6_KEYS = "library/sr6/.config/ai-keys.xml"  # SR6's own AI keys (its settings beside them, server/books.mjs)
+ALL_KEYS = (KEYS, SR6_KEYS)
 USERS = "library/.config/users.xml"  # the accounts (server/auth.mjs); counted in the manifest
 AUTH = "library/.config/auth.xml"  # the sign-in settings (server/oidc.mjs)
 CONFIG_NS = "urn:chummer-anarchy2:config:1"
@@ -75,7 +78,7 @@ def _files(folder, root, keys):
         dirs.sort()
         for f in sorted(files):
             path, name = os.path.join(dirpath, f), f"{folder}/{rel}{f}"
-            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name in (KEYS, AUTH_SECRET) and not keys) or name in NEVER:
+            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name in (*ALL_KEYS, AUTH_SECRET) and not keys) or name in NEVER:
                 continue  # links, FIFOs and devices are never backed up
             yield path, name
 
@@ -167,7 +170,7 @@ def check(path):
         if len(infos) > MAX_ENTRIES:
             raise RestoreError(f"the zip has more than {MAX_ENTRIES:,} files")
         counts = {f: [0, 0] for f in FOLDERS}
-        files, folders = set(), {KEYS.rsplit("/", 1)[0].casefold()}  # the keys' folder must stay a folder
+        files, folders = set(), {k.rsplit("/", 1)[0].casefold() for k in ALL_KEYS}  # the keys' folders must stay folders
         for info in infos:
             problem = _entry_problem(info)
             if problem:
@@ -187,8 +190,9 @@ def check(path):
         clash = files & folders
         if clash:
             raise RestoreError(f"the zip has a name that is both a file and a folder: {min(clash)}")
-        if KEYS.casefold() in folders:
-            raise RestoreError(f"the zip has a folder where {KEYS} should be a file")
+        for k in ALL_KEYS:
+            if k.casefold() in folders:
+                raise RestoreError(f"the zip has a folder where {k} should be a file")
         if total > MAX_TOTAL:
             raise RestoreError("the zip unpacks to more than 20 GB")
         if "backup.xml" not in names:
@@ -200,7 +204,7 @@ def check(path):
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
             raise RestoreError(f"backup.xml can’t be read ({e})")
-        _check_manifest(root, counts, KEYS.casefold() in files)
+        _check_manifest(root, counts, any(k.casefold() in files for k in ALL_KEYS))
         # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
         byname = {i.filename.casefold(): i for i in infos}
         users = _config(zf, byname.get(USERS.casefold()), "users", "accounts file")
@@ -317,8 +321,13 @@ def _extract(path, dirs, news):
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with zf.open(info) as src, open(dst, "wb") as out:
                     shutil.copyfileobj(src, out, 1024 * 1024)
-    new, old = os.path.join(news["library"], ".config"), os.path.join(dirs["library"], ".config")
+    for sub in ("", "sr6"):  # each game's .config: Anarchy's, then SR6's AI settings and keys (library/sr6/.config)
+        _keep_config(os.path.join(news["library"], sub, ".config"), os.path.join(dirs["library"], sub, ".config"), game=not sub)
 
+
+def _keep_config(new, old, game):
+    """The server's own .config files a zip without them keeps (game: Anarchy's, which also holds the cookie keys and
+    the Authelia secret; else only the AI keys)."""
     def keep(name):
         """This server's copy of a .config file the zip doesn't bring; True when there was one."""
         if not os.path.isfile(os.path.join(old, name)) or os.path.exists(os.path.join(new, name)):
@@ -326,13 +335,13 @@ def _extract(path, dirs, news):
         os.makedirs(new, exist_ok=True)
         shutil.copy2(os.path.join(old, name), os.path.join(new, name))
         return True
-    for name in NEVER_KEPT:  # the server's own cookie keys: never in a backup, so they stay (made anew only when missing)
+    for name in NEVER_KEPT if game else ():  # the server's own cookie keys: never in a backup, so they stay (made anew only when missing)
         keep(name)
     if keep("ai-keys.xml"):  # a backup without keys keeps the server's keys ...
         # ... except where the restored settings send a provider to another address (the rule saving settings keeps)
         from importer.ai import providers  # here: it needs the AI clients, which backup and check don't
         providers.clear_moved_keys(new, providers.saved_providers(old) or {}, providers.saved_providers(new))
-    if keep("auth-secret.xml"):  # likewise the Authelia client secret, only for the issuer it was given for (server/oidc.mjs)
+    if game and keep("auth-secret.xml"):  # likewise the Authelia client secret, only for the issuer it was given for (server/oidc.mjs)
         secret = _root(os.path.join(new, "auth-secret.xml"))
         if not _issuer(new) or secret is None or secret.get("issuer") != _issuer(new):
             os.remove(os.path.join(new, "auth-secret.xml"))

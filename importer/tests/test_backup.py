@@ -33,6 +33,8 @@ def state(root, extra=""):
         "library/.config/ai-providers.xml": "<aiproviders/>",
         "library/.config/ai-keys.xml": f"<aikeys>secret{extra}</aikeys>",
         "library/.config/auth-secret.xml": "<authsecret/>",
+        "library/sr6/.config/ai-providers.xml": "<aiproviders/>",  # SR6's own AI settings and keys
+        "library/sr6/.config/ai-keys.xml": f"<aikeys>sr6 secret{extra}</aikeys>",
         "library/.backups/19990101T000000_000000Z.zip": "not really",
         "custom/edits/edits.xml.tmp": "half written",
     }
@@ -112,6 +114,8 @@ class BackupTest(unittest.TestCase):
             self.assertIn("characters/.trash/old.xml", names)
             self.assertIn("library/.config/ai-providers.xml", names)
             self.assertNotIn(backup.KEYS, names)
+            self.assertNotIn(backup.SR6_KEYS, names)
+            self.assertIn("library/sr6/.config/ai-providers.xml", names)
             self.assertNotIn(backup.AUTH_SECRET, names)
             self.assertFalse(names & backup.NEVER)
             self.assertFalse([n for n in names if ".backups" in n or n.endswith(".tmp")])
@@ -125,6 +129,7 @@ class BackupTest(unittest.TestCase):
                                "--library", dirs["library"], "--out", out, "--keys"]), 0)
         with zipfile.ZipFile(out) as zf:
             self.assertEqual(zf.read(backup.KEYS), b"<aikeys>secret</aikeys>")
+            self.assertEqual(zf.read(backup.SR6_KEYS), b"<aikeys>sr6 secret</aikeys>")
             self.assertIn(backup.AUTH_SECRET, zf.namelist())
         self.assertEqual(backup.check(out).get("keys"), "yes")
         self.assertEqual(backup.check(out).get("app"), backup.app_version())  # package.json's version
@@ -246,6 +251,7 @@ class BackupTest(unittest.TestCase):
         backup.backup(src, z)
         backup.apply(z, dst)
         self.assertEqual(Path(dst["library"], ".config", "ai-keys.xml").read_text(encoding="utf8"), "<aikeys>secret old</aikeys>")
+        self.assertEqual(Path(dst["library"], "sr6", ".config", "ai-keys.xml").read_text(encoding="utf8"), "<aikeys>sr6 secret old</aikeys>")
         self.assertEqual(Path(dst["library"], ".config", "ai-providers.xml").read_text(encoding="utf8"), "<aiproviders/>")
         self.assertEqual(Path(dst["characters"], "runner-1.xml").read_text(encoding="utf8"), "<runner>Ghost new</runner>")
 

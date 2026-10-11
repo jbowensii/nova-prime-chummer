@@ -5,7 +5,7 @@
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
 // characters/sr6/ (<username>/, .npcs/, .compendiums/, .trash/) and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters,
-// npcs, trash, npcs/trash, campaigns, compendiums, backgrounds, books, edits and creation (books.mjs in its SR6 area: library/sr6/,
+// npcs, trash, npcs/trash, campaigns, compendiums, backgrounds, books, edits, creation and its own AI (ai-*, ask) (books.mjs in its SR6 area: library/sr6/,
 // custom/sr6/; every other /api/sr6/ path: 404). Each game's store takes only its own root (sr6:character or ca2:character, first in the file,
 // in its namespace); a campaign holds only its game's runners and NPCs. Accounts span both: a rename moves both games'
 // folders and memberships, a delete retires both. While an account called sr6 from before exists (its runners are in
@@ -445,7 +445,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
       if (await compendiums.sr6.handle(req, res, u, send, who) !== false) return
       if (await backgrounds.sr6.handle(req, res, u, send, who) !== false) return
-      if (/^\/api\/(books|edits|creation)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
+      if (/^\/api\/(books|edits|creation|ai-settings|ai-keys|ai-models|ai-test|ask)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
       return send(res, 404, { error: 'not found' })
     }
     if (await oidc.handle(req, res, url, send, who) !== false) return
