@@ -692,6 +692,11 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIn('id="nb.hum-mic"', line)
         self.assertNotIn("nb.zoom", line)  # (no Capacity: an accessory table's only)
         self.assertEqual(cost, 530)
+        limbs = archetypes._Index({"augmentations": [e("arm-synthetic", "Arm (synthetic)", capacity="8", cost="20000"),
+                                                     e("arm-obvious", "Arm (obvious)", capacity="15", cost="15000")]}, "NB")
+        line, _, cost = archetypes._purchase(limbs, ["augmentations"], "cyberarm (Agility 5; gizmo)", 10, [], {})
+        self.assertIn('id="nb.arm-obvious"', line)  # its kind not printed: the obvious one
+        self.assertIn('id="nb.arm-synthetic"', archetypes._purchase(limbs, ["augmentations"], "cyberarm (synthetic left)", 11, [], {})[0])
 
     def test_sample_karma_the_fit_counts(self):
         """`fake SIN 3` is rating 3; In Debt's printed debt is the Karma turned into nuyen (5,000¥ each); contacts past

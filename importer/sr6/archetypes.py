@@ -509,8 +509,10 @@ def _rank(free):
     return 'points="1" karma="0"' if free > 0 else 'points="0" karma="1"'
 
 
-# a cyberlimb printed by its part and kind (`cyberarm (obvious left, …)`): the catalog's `Arm (obvious)`
-_LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(obvious|synthetic)\b", re.I)
+# a cyberlimb printed by its part and kind (`cyberarm (obvious left, …)`): the catalog's `Arm (obvious)`; printed without
+# its kind (`cyberarm (Agility 5, …)`, CRB p.87), the obvious one: CRB p.290 prices both, and the Street Samurai's
+# printed nuyen holds only the obvious arm's
+_LIMB = re.compile(r"cyber\s?(arm|forearm|hand|leg|lower leg|foot|skull|torso)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
 
 
 def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_of=None, seen=None):
@@ -529,7 +531,7 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     # `Bone lacing (titanium)`: the catalog's own variant (a grade printed with it, `(plastic, alpha)`, left out)
     whole = re.sub(r"\s*,?\s*\b(?:alpha|beta|delta|used)(?:ware)?\b", "", re.split(r"\s+w/", rest, maxsplit=1)[0]).strip()
     if limb := _LIMB.match(rest):
-        whole = f"{limb.group(1)} ({limb.group(2)})"
+        whole = f"{limb.group(1)} ({limb.group(2) or 'obvious'})"
     hit = r = None
     # `Hand razors (retractable, alpha)`: the catalog's `Retractable hand razors`, the variant word before the name
     paren = re.search(r"\(([^()]*)\)", rest)
