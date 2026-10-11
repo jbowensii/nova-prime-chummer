@@ -1,94 +1,176 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The standard SR6 creation settings the app ships with (creation.xsd; docs/sr6-data-format.md, Creation rules): the
-     numbers only, with the printed page of the book that gives each, no book text. CRB: Shadowrun, Sixth World Core
-     Rulebook (CAT28000, current printing). SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
+     numbers only, with the printed page of the book that gives each, no book text. CRB-HK: Shadowrun, Sixth World Core
+     Rulebook, City Edition Hong Kong (CAT28000H, 2025), the latest printing, whose rule wins; its pages. SWC: Sixth World Companion (CAT28005): sum-to-ten, point buy, lifepath.
      FS: Firing Squad (CAT28002): martial arts.
      The server's settings are these, overlaid by the admin's changes in custom/sr6/creation.xml; a campaign's own start
-     as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, skillPointsExpertise
-     (an expertise at creation is bought with the customization karma at advance.expertise: CRB p. 66, step four, at p. 68's
-     prices; owner, 2026-10-09), initiativeDiceMax, advance.powerPoint, advance.karmaToNuyenRate,
-     advance.nuyenToKarmaRate, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book describes. -->
+     as a copy of the server's. Left unset (no book prints them): karmaToNuyenMax, advance.powerPoint, the
+     carry-over, data structure and grade caps, and the karma build (karmaBuild.*, magicKarma:*), which no SR6 book
+     describes: each under a toggle that ships off (owner, 2026-10-11). -->
 <sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">
-  <setting key="startingKarma" value="50" source="CRB" page="66"/>
-  <setting key="qualityNetBonusCap" value="20" source="CRB" page="66"/>
-  <setting key="qualityMaxCount" value="6" source="CRB" page="66"/>
-  <setting key="oneAttributeAtMax" value="true" source="CRB" page="64"/>
-  <setting key="attributeBaseMax" value="6" source="CRB" page="64"/>
-  <setting key="skillCap" value="6" source="CRB" page="65"/>
-  <setting key="skillCapAptitude" value="7" source="CRB" page="65"/>
-  <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB" page="70"/>
-  <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB" page="71"/>
+  <setting key="startingKarma" value="50" source="CRB-HK" page="66"/>
+  <setting key="qualityNetBonusCap" value="20" source="CRB-HK" page="66"/>
+  <setting key="qualityMaxCount" value="6" source="CRB-HK" page="66"/>
+  <setting key="oneAttributeAtMax" value="true" source="CRB-HK" page="63"/>
+  <setting key="attributeBaseMax" value="6" source="CRB-HK" page="63"/>
+  <setting key="skillCap" value="6" source="CRB-HK" page="65"/>
+  <setting key="skillCapAptitude" value="7" source="CRB-HK" page="65"/>
+  <setting key="aptitudeQuality" value="crb.aptitude-skill" source="CRB-HK" page="70"/>
+  <setting key="exceptionalQuality" value="crb.exceptional-attribute" source="CRB-HK" page="71"/>
+  <setting key="incompetentQuality" value="crb.incompetent-skill" source="CRB-HK" page="76"/>
+  <setting key="sensitiveSystemQuality" value="crb.sensitive-system" source="CRB-HK" page="78"/>
+  <setting key="sensitiveSystemEssence" value="2" source="CRB-HK" page="78"/>
+  <setting key="attributeMaxFloor" value="2" source="CRB-HK" page="76"/>
+  <setting key="languageMax" value="4"/>
+  <setting key="fociForcePerMagic" value="5" source="CRB-HK" page="154"/>
+  <setting key="fociBondKarma" value="true" source="CRB-HK" page="154"/>
+  <setting key="improvedAbilityPower" value="crb.improved-ability-skill" source="CRB-HK" page="157"/>
+  <setting key="improvedAbilityFactor" value="1.5" source="CRB-HK" page="157"/>
+  <setting key="mentorSpiritQuality" value="crb.mentor-spirit" source="CRB-HK" page="73"/>
   <setting key="manyTalentsQuality" value="swc.many-talents" source="SWC" page="134"/>
   <setting key="manySkillsQuality" value="swc.many-skills" source="SWC" page="134"/>
-  <setting key="oneSkillAtMax" value="true" source="CRB" page="65"/>
-  <setting key="skillPointsSpec" value="1" source="CRB" page="65"/>
-  <setting key="magicMax" value="6" source="CRB" page="167"/>
-  <setting key="essence" value="6" source="CRB" page="38"/>
-  <setting key="contactPointsPerCha" value="6" source="CRB" page="67"/>
-  <!-- the Sixth World Companion's expanded contact rules (SWC p. 161): karma for points past Charisma x 6 and past a
-       contact's connection + loyalty of 2 x Charisma, no rating above 8 -->
+  <setting key="oneSkillAtMax" value="true" source="CRB-HK" page="65"/>
+  <setting key="skillPointsSpec" value="1" source="CRB-HK" page="65"/>
+  <!-- an expertise with skill points (owner, 2026-10-11: on, as a specialization's one rank; the book disagrees with
+       itself, p. 65 against p. 68's price) -->
+  <setting key="skillPointsExpertise" value="1" source="CRB-HK" page="68"/>
+  <setting key="magicMax" value="6" source="CRB-HK" page="65"/>
+  <setting key="essence" value="6" source="CRB-HK" page="38"/>
+  <setting key="contactPointsPerCha" value="6" source="CRB-HK" page="67"/>
+  <!-- the Sixth World Companion's optional expanded contact rules (SWC p. 161), off: with expandedContacts on, karma for
+       points past Charisma x 6 and past a contact's connection + loyalty of 2 x Charisma, no rating above 8 -->
+  <setting key="expandedContacts" value="false" source="SWC" page="161"/>
   <setting key="contactKarma" value="1" source="SWC" page="161"/>
   <setting key="contactPairPerCha" value="2" source="SWC" page="161"/>
   <setting key="contactRatingMax" value="8" source="SWC" page="161"/>
-  <setting key="knowledgePerLog" value="1" source="CRB" page="67"/>
-  <setting key="maxAvailability" value="6" source="CRB" page="66"/>
-  <!-- availabilityCapIllegalOnly is left unset: the first printing (2019) caps only illegal gear, the Seattle, Berlin and
-       Hong Kong printings (2021-2025) every item; the latest printing wins -->
-  <!-- karmaSpellsAtCreation is left unset (off): CRB p. 66's list of what the customization Karma buys names no spells,
-       rituals or complex forms (Commlink6 has it as an option, off) -->
-  <setting key="maxKarmaLeft" value="5" source="CRB" page="66"/>
-  <setting key="maxNuyenLeft" value="5000" source="CRB" page="68"/>
-  <setting key="freeSpellsPerMagic" value="2" source="CRB" page="65"/>
-  <setting key="freeFormsPerResonance" value="2" source="CRB" page="66"/>
-  <setting key="karmaAttrPerRank" value="5" source="CRB" page="68"/>
-  <setting key="karmaSkillPerRank" value="5" source="CRB" page="68"/>
-  <setting key="karmaSpec" value="5" source="CRB" page="68"/>
-  <setting key="karmaKnowledge" value="3" source="CRB" page="68"/>
-  <setting key="karmaSpell" value="5" source="CRB" page="68"/>
-  <setting key="karmaForm" value="5" source="CRB" page="68"/>
-  <setting key="karmaInitiationBase" value="10" source="CRB" page="68"/>
-  <setting key="karmaInitiationPerGrade" value="1" source="CRB" page="68"/>
-  <setting key="positiveQualityFactor" value="1" source="CRB" page="66"/>
+  <setting key="knowledgePerLog" value="1" source="CRB-HK" page="67"/>
+  <setting key="maxAvailability" value="6" source="CRB-HK" page="66"/>
+  <!-- off: the first printing's (2019) readings; the Hong Kong printing (2025) caps every item's Availability (p. 66)
+       and footnotes that spells, rituals and complex forms can't be bought during character generation (p. 68) -->
+  <setting key="availabilityCapIllegalOnly" value="false" source="CRB-HK" page="66"/>
+  <setting key="karmaSpellsAtCreation" value="false" source="CRB-HK" page="68"/>
+  <setting key="maxKarmaLeft" value="5" source="CRB-HK" page="66"/>
+  <setting key="maxNuyenLeft" value="5000" source="CRB-HK" page="68"/>
+  <!-- house rules (owner, 2026-10-11), off: the GM's own carry-over limits, its own cap on Karma turned into nuyen,
+       Karma for a mystic adept's power points after creation (left unset for the GM to enter) -->
+  <setting key="ownCarryOver" value="false"/>
+  <setting key="karmaToNuyenCap" value="false"/>
+  <setting key="buyPowerPoints" value="false"/>
+  <setting key="freeSpellsPerMagic" value="2" source="CRB-HK" page="65"/>
+  <setting key="freeFormsPerResonance" value="2" source="CRB-HK" page="66"/>
+  <setting key="karmaAttrPerRank" value="5" source="CRB-HK" page="68"/>
+  <setting key="karmaSkillPerRank" value="5" source="CRB-HK" page="68"/>
+  <setting key="karmaSpec" value="5" source="CRB-HK" page="68"/>
+  <setting key="karmaKnowledge" value="3" source="CRB-HK" page="68"/>
+  <setting key="karmaSpell" value="5" source="CRB-HK" page="68"/>
+  <setting key="karmaForm" value="5" source="CRB-HK" page="68"/>
+  <setting key="karmaInitiationBase" value="10" source="CRB-HK" page="68"/>
+  <setting key="karmaInitiationPerGrade" value="1" source="CRB-HK" page="68"/>
+  <!-- options (no book prints them; owner, 2026-10-11): off, the value the table starts from when it turns one on -->
+  <setting key="positiveQualityMultiplier" value="false"/>
+  <setting key="positiveQualityFactor" value="1"/>
   <setting key="karmaMartialArt" value="7" source="FS" page="97"/>
   <setting key="karmaTechnique" value="5" source="FS" page="97"/>
-  <setting key="advance.expertise" value="5" source="CRB" page="68"/>
-  <setting key="advance.expertiseRank" value="5" source="CRB" page="68"/>
-  <setting key="advance.qualityFactor" value="2" source="CRB" page="69"/>
-  <setting key="advance.buyOffFactor" value="2" source="CRB" page="69"/>
-  <setting key="advance.skillMax" value="9" source="CRB" page="65"/>
-  <setting key="karmaToNuyenRate" value="2000" source="CRB" page="66"/>
-  <setting key="karmaToNuyenRateInDebt" value="5000" source="CRB" page="66"/>
-  <setting key="inDebtQuality" value="crb.in-debt" source="CRB" page="77"/>
-  <setting key="fakeSinPerRating" value="2500" source="CRB" page="273"/>
-  <setting key="licencePerRating" value="200" source="CRB" page="273"/>
+  <setting key="advance.expertise" value="5" source="CRB-HK" page="68"/>
+  <setting key="advance.expertiseRank" value="5" source="CRB-HK" page="68"/>
+  <setting key="advance.qualityFactor" value="2" source="CRB-HK" page="69"/>
+  <setting key="advance.buyOffFactor" value="2" source="CRB-HK" page="69"/>
+  <setting key="advance.skillMax" value="9" source="CRB-HK" page="65"/>
+  <setting key="karmaToNuyenRate" value="2000" source="CRB-HK" page="66"/>
+  <setting key="karmaToNuyenRateInDebt" value="5000" source="CRB-HK" page="66"/>
+  <setting key="inDebtQuality" value="crb.in-debt" source="CRB-HK" page="77"/>
+  <setting key="fakeSinPerRating" value="2500" source="CRB-HK" page="273"/>
+  <setting key="licencePerRating" value="200" source="CRB-HK" page="273"/>
+  <setting key="dataStructureNuyen" value="5000" source="HS" page="72"/>
   <!-- an accessory fitted into a host's Capacity (`[2]`) costs no Essence of its own: CRB pp. 285-286's tables print both
        its Essence and its Capacity; the books' samples print the host's Essence alone (Smooth Operations p. 99) -->
-  <setting key="capacityAccessoryEssence" value="false" source="CRB" page="285"/>
-  <setting key="grade:standard:essence" value="1" source="CRB" page="282"/>
-  <setting key="grade:standard:cost" value="1" source="CRB" page="282"/>
-  <setting key="grade:standard:avail" value="0" source="CRB" page="282"/>
-  <setting key="grade:used:essence" value="1.1" source="CRB" page="282"/>
-  <setting key="grade:used:cost" value="0.5" source="CRB" page="282"/>
-  <setting key="grade:used:avail" value="-1" source="CRB" page="282"/>
-  <setting key="grade:alpha:essence" value="0.8" source="CRB" page="282"/>
-  <setting key="grade:alpha:cost" value="1.2" source="CRB" page="282"/>
-  <setting key="grade:alpha:avail" value="1" source="CRB" page="282"/>
-  <setting key="grade:beta:essence" value="0.7" source="CRB" page="282"/>
-  <setting key="grade:beta:cost" value="1.5" source="CRB" page="282"/>
-  <setting key="grade:beta:avail" value="2" source="CRB" page="282"/>
-  <setting key="grade:delta:essence" value="0.5" source="CRB" page="282"/>
-  <setting key="grade:delta:cost" value="2.5" source="CRB" page="282"/>
-  <setting key="grade:delta:avail" value="3" source="CRB" page="282"/>
-  <setting key="monitorBase" value="8" source="CRB" page="38"/>
-  <setting key="monitorDivisor" value="2" source="CRB" page="38"/>
-  <setting key="builtToughQuality" value="crb.built-tough" source="CRB" page="70"/>
-  <setting key="dermalDepositsQuality" value="crb.dermal-deposits" source="CRB" page="71"/>
+  <setting key="capacityAccessoryEssence" value="false" source="CRB-HK" page="285"/>
+  <setting key="grade:standard:essence" value="1" source="CRB-HK" page="282"/>
+  <setting key="grade:standard:cost" value="1" source="CRB-HK" page="282"/>
+  <setting key="grade:standard:avail" value="0" source="CRB-HK" page="282"/>
+  <setting key="grade:used:essence" value="1.1" source="CRB-HK" page="282"/>
+  <setting key="grade:used:cost" value="0.5" source="CRB-HK" page="282"/>
+  <setting key="grade:used:avail" value="-1" source="CRB-HK" page="282"/>
+  <setting key="grade:alpha:essence" value="0.8" source="CRB-HK" page="282"/>
+  <setting key="grade:alpha:cost" value="1.2" source="CRB-HK" page="282"/>
+  <setting key="grade:alpha:avail" value="1" source="CRB-HK" page="282"/>
+  <setting key="grade:beta:essence" value="0.7" source="CRB-HK" page="282"/>
+  <setting key="grade:beta:cost" value="1.5" source="CRB-HK" page="282"/>
+  <setting key="grade:beta:avail" value="2" source="CRB-HK" page="282"/>
+  <setting key="grade:delta:essence" value="0.5" source="CRB-HK" page="282"/>
+  <setting key="grade:delta:cost" value="2.5" source="CRB-HK" page="282"/>
+  <setting key="grade:delta:avail" value="3" source="CRB-HK" page="282"/>
+  <setting key="monitorBase" value="8" source="CRB-HK" page="38"/>
+  <setting key="monitorDivisor" value="2" source="CRB-HK" page="38"/>
+  <setting key="builtToughQuality" value="crb.built-tough" source="CRB-HK" page="70"/>
+  <setting key="dermalDepositsQuality" value="crb.dermal-deposits" source="CRB-HK" page="71"/>
   <setting key="charismaticDefenseQuality" value="pwp.charismatic-defense" source="PWP" page="85"/>
-  <setting key="initiativeDice" value="1" source="CRB" page="39"/>
-  <setting key="astralInitiativeDice" value="2" source="CRB" page="161"/>
-  <setting key="specDice" value="2" source="CRB" page="92"/>
-  <setting key="expertiseDice" value="3" source="CRB" page="92"/>
-  <setting key="untrainedPenalty" value="1" source="CRB" page="93"/>
+  <setting key="initiativeDice" value="1" source="CRB-HK" page="67"/>
+  <setting key="astralInitiativeDice" value="2" source="CRB-HK" page="161"/>
+  <setting key="specDice" value="2" source="CRB-HK" page="92"/>
+  <setting key="expertiseDice" value="3" source="CRB-HK" page="92"/>
+  <setting key="untrainedPenalty" value="1" source="CRB-HK" page="93"/>
+  <!-- the core rulebook's rules as the latest printing (Hong Kong City Edition, CRB-HK) prints them -->
+  <setting key="initiativeDiceMax" value="5" source="CRB-HK" page="39"/>
+  <setting key="overflowPerBody" value="2" source="CRB-HK" page="121"/>
+  <setting key="attributeAugmentMax" value="4" source="CRB-HK" page="37"/>
+  <setting key="skillAugmentMax" value="4" source="CRB-HK" page="39"/>
+  <setting key="monitorMinimum" value="2" source="CRB-HK" page="76"/>
+  <setting key="matrixColdDice" value="1" source="CRB-HK" page="179"/>
+  <setting key="matrixHotDice" value="2" source="CRB-HK" page="179"/>
+  <setting key="moveWalk" value="10" source="CRB-HK" page="42"/>
+  <setting key="moveSprint" value="15" source="CRB-HK" page="44"/>
+  <setting key="moveSprintPerHit" value="1" source="CRB-HK" page="44"/>
+  <setting key="unarmedDV" value="2" source="CRB-HK" page="94"/>
+  <setting key="arDrEdgeGap" value="4" source="CRB-HK" page="45"/>
+  <setting key="meleeArStrength" value="true" source="CRB-HK" page="39"/>
+  <!-- levels of play (off: the standard level): the core rulebook's street level and prime runner (Hong Kong p. 63), and
+       the Sixth World Companion's Alternate Power Levels with their own numbers (pp. 14-15; its elite letters A B B C D
+       add up to 13 while it says sum-to-twelve: both as printed) -->
+  <setting key="priorityLetters" value="ABCDE" source="CRB-HK" page="63"/>
+  <setting key="levelStreet" value="false" source="CRB-HK" page="63"/>
+  <setting key="levelPrime" value="false" source="CRB-HK" page="63"/>
+  <setting key="levelSwcStreet" value="false" source="SWC" page="14"/>
+  <setting key="swcStreet.letters" value="BCCDE" source="SWC" page="14"/>
+  <setting key="swcStreet.sumToTen" value="8" source="SWC" page="15"/>
+  <setting key="swcStreet.pointBuy" value="80" source="SWC" page="15"/>
+  <setting key="swcStreet.modules" value="6" source="SWC" page="15"/>
+  <setting key="levelSwcElite" value="false" source="SWC" page="15"/>
+  <setting key="swcElite.letters" value="ABBCD" source="SWC" page="15"/>
+  <setting key="swcElite.sumToTen" value="12" source="SWC" page="15"/>
+  <setting key="swcElite.pointBuy" value="120" source="SWC" page="15"/>
+  <setting key="swcElite.modules" value="10" source="SWC" page="15"/>
+  <!-- optional rules (off: a table turns them on): the Sixth World Companion's Ways to Play -->
+  <setting key="stackingAdvantage" value="false" source="SWC" page="144"/>
+  <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
+  <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
+  <setting key="suprathyroidStacks" value="false" source="SWC" page="149"/>
+  <setting key="expandedSpecializations" value="false" source="SWC" page="153"/>
+  <setting key="alternateMysticAdept" value="false" source="SWC" page="148"/>
+  <setting key="twentyQuestions" value="false" source="SWC" page="25"/>
+  <setting key="twentyQuestionsKarma" value="3" source="SWC" page="25"/>
+  <setting key="workingForTheMan" value="false" source="SWC" page="153"/>
+  <setting key="workingForThePeople" value="false" source="SWC" page="153"/>
+  <setting key="advance.karmaToNuyenRate" value="2000" source="SWC" page="153"/>
+  <setting key="advance.nuyenToKarmaRate" value="2000" source="SWC" page="153"/>
+  <setting key="unrestrictedSkillRanks" value="false" source="SWC" page="153"/>
+  <setting key="strengthDamageStep1" value="7" source="SWC" page="150"/>
+  <setting key="strengthDamageStep2" value="10" source="SWC" page="150"/>
+  <!-- the owner's decisions (2026-10-11): house rules and options, off (a table turns them on); the GM enters the caps -->
+  <setting key="exoticFirstSpecFree" value="false"/>
+  <setting key="mentorBothAdvantages" value="false"/>
+  <setting key="dataStructureCaps" value="false"/>
+  <setting key="noUsedCulturedBioware" value="false"/>
+  <setting key="gradeCapAtCreation" value="false"/>
+  <setting key="adjustOnLoweredMax" value="false"/>
+  <setting key="pointBuyErrataNuyen" value="false"/>
+  <setting key="knowledgeLogicIntuition" value="false"/>
+  <setting key="magicAboveSixByGrade" value="false" source="CRB-HK" page="167"/>
+  <setting key="eliteSumToThirteen" value="false"/>
+  <setting key="availabilitySeven" value="false"/>
+  <setting key="cargoWithoutSeats" value="false" source="DC" page="126"/>
+  <setting key="metatypeSizePricing" value="true"/>
+  <setting key="karmaBuildMethod" value="false"/>
   <!-- Sum to ten (SWC) -->
   <setting key="sumToTenTarget" value="10" source="SWC" page="27"/>
   <setting key="letterValue:A" value="4" source="SWC" page="27"/>

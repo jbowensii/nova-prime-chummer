@@ -10,6 +10,7 @@ import { gradeKey } from './grades'
 import { rated } from './values'
 import { resolveEntry } from './load'
 import { categoryIndex } from './categories'
+import { atLevel, familyOf, levelOf, sameFamily, siblings, type Sr6Family } from './levels'
 
 /** What each magic kind can have (game vocabulary, no numbers). paysPowers: buys its power points (mystic adept). */
 export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; paysPowers: boolean; resonance: boolean }> = {
@@ -29,6 +30,8 @@ export const metamagicFits = (kind: MagicKind, user?: string) =>
 /** The most levels a pick taken by level may have (a leveled adept power's maxLevel, a metamagic taken again: its
  *  maxLevel, Infinity when none is printed); null: it is taken once. */
 export function pickMaxLevel(data: Pick<Sr6Data, 'powers' | 'metamagics'>, kind: PickKind, id: string): number | null {
+  // (a data structure comes in levels, none printed as its highest: Hack & Slash p. 70)
+  if (kind === 'datastructures') return Infinity
   const v = kind === 'adeptpowers' ? data.powers[id] : kind === 'metamagics' ? data.metamagics[id] : undefined
   return v?.perLevel ? v.maxLevel ?? Infinity : null
 }
@@ -36,7 +39,8 @@ export function pickMaxLevel(data: Pick<Sr6Data, 'powers' | 'metamagics'>, kind:
 /** Which picks a magic kind can have. */
 export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
   const k = MAGIC_KINDS[kind]
-  return { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance, metamagics: k.spells || k.powers, adeptpowers: k.powers }
+  return { spells: k.spells, rituals: k.spells, complexforms: k.resonance, echoes: k.resonance, metamagics: k.spells || k.powers, adeptpowers: k.powers,
+    datastructures: k.resonance }
 }
 
 export type RangeAttr = Exclude<Sr6Attr, 'mag' | 'res'>
@@ -60,14 +64,21 @@ export interface Sr6MetatypeView {
 export interface Sr6SkillView { id: string; name: string; attr: string; untrained: boolean; specs: string[]; page: number }
 /** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
 export interface Sr6QualityChoice { category: string; count: number; max: number | null }
-export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; perLevel: boolean; maxLevel: number; page: number
+/** karmaSteps: the prices it is bought at when its price line lists them (`7 or 12 Karma`), never one between */
+export interface Sr6QualityView { id: string; name: string; positive: boolean; karma: number | null; karmaMax: number | null; karmaSteps?: number[]; perLevel: boolean; maxLevel: number; page: number
   category?: string; granted?: boolean; choices?: Sr6QualityChoice[]
   /** not one of the six qualities a runner may take at creation (its text says so) */
-  uncounted?: boolean }
-export interface Sr6PowerView { id: string; name: string; cost: number | null; perLevel: boolean; maxLevel: number; page: number }
+  uncounted?: boolean
+  /** the metatypes it is for (qualityMetatypes): offered only to them */
+  metatypes?: string[]
+  /** the rated or leveled entry a family of levels was expanded from (levels.ts): read by a runner line still
+   *  naming it, never offered by a picker */
+  parent?: true }
+/** costCombat: its cost when the skill it is for is a combat skill (Improved Ability, CRB Hong Kong p. 157) */
+export interface Sr6PowerView { id: string; name: string; cost: number | null; costCombat?: number | null; perLevel: boolean; maxLevel: number; page: number; parent?: true }
 /** user: who may take it (absent: any initiate); perLevel: taken again, each time one more initiation's metamagic, up to
  *  maxLevel times (none printed: no limit) */
-export interface Sr6MetamagicView { id: string; name: string; user?: 'adept' | 'magician'; perLevel: boolean; maxLevel: number | null; page: number }
+export interface Sr6MetamagicView { id: string; name: string; user?: 'adept' | 'magician'; perLevel: boolean; maxLevel: number | null; page: number; parent?: true }
 export interface Sr6LifeModuleView {
   id: string; name: string; stage: 'opening' | 'adult'; requires?: string; grants: Partial<Record<Grant, number>>
   /** the contact types its contact points buy or raise (absent: any) */
@@ -95,6 +106,14 @@ export interface Sr6Data extends CreationCatalog {
   named?(name: string, kind?: Sr6Kind): Sr6Entry | undefined
   /** the categories' records (categories.ts categoryIndex): an accessory category's hosts */
   categories: Map<string, Sr6Entry[]>
+  /** levels (src/sr6/engine/levels.ts): the family an id belongs to (a level's, a printed row's or the hidden parent's),
+   *  the entry at a level of it, its levels lowest first, an entry's own level, and whether an id is `target` or a level
+   *  of the family `target` names (a creation setting's quality) */
+  family(kind: Sr6Kind, id: string | undefined): Sr6Family | undefined
+  atLevel(kind: Sr6Kind, id: string | undefined, level: number): Sr6Entry | undefined
+  siblings(kind: Sr6Kind, id: string | undefined): Sr6Entry[]
+  levelOf(e: Sr6Entry | undefined): number | undefined
+  sameFamily(kind: Sr6Kind, id: string, target: string | undefined): boolean
   /** names that didn't resolve (data.unresolved), numbers that didn't read (data.bookValue) and the entries' issues
    *  (catalog.issue), as warnings */
   problems: Violation[]
@@ -108,11 +127,36 @@ export function normName(name: string): string {
   return out.startsWith('the ') ? out.slice(4) : out
 }
 
+const METATYPE_WORDS: Record<string, string> = { human: 'human', humans: 'human', elf: 'elf', elves: 'elf', elven: 'elf', dwarf: 'dwarf',
+  dwarfs: 'dwarf', dwarves: 'dwarf', ork: 'ork', orks: 'ork', troll: 'troll', trolls: 'troll' }
+/** The metatypes a poser or human-looking quality is for, read from its description (owner's decision 4, 2026-10-11):
+ *  its first sentence names them (`Your blood may be human or ork`, `Small orks, tall dwarfs, and ugly elves`), less the
+ *  one it imitates (Elf Poser: elf; Human-Looking: human). Any other quality, or one without its text: undefined (every
+ *  metatype). ponytail: the core five by name; a metavariant isn't offered one (add a base metatype to the catalog's
+ *  metavariants if a table wants it). */
+export function qualityMetatypes(name: string, text: string): string[] | undefined {
+  const n = normName(name), like = /^(\w+) poser$/.exec(n)?.[1] ?? (n === 'human looking' ? 'human' : undefined)
+  if (!like || !text) return undefined
+  const words = normName(text.split(/(?<=[.!?])\s/)[0]).split(' ').map(w => METATYPE_WORDS[w]).filter((w): w is string => !!w && w !== like)
+  return words.length ? [...new Set(words)] : undefined
+}
+/** Whether the runner's metatype may take quality `id` (qualityMetatypes; none picked: no metatype-bound quality). */
+export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes'>, metatype: string, id: string) => {
+  const m = data.qualities[id]?.metatypes
+  return !m || m.includes(normName(data.metatypes[metatype]?.name ?? ''))
+}
+
 export function sr6Data(c: Sr6Catalog): Sr6Data {
   const problems: Violation[] = []
   const all = (k: Sr6Kind) => [...c.entries[k].values()]
+  // (the hidden parents of the families of levels too, marked: a runner line still naming one reads as before)
+  const parentEntries = (k: Sr6Kind) => [...c.levels?.values() ?? []].filter(f => f.kind === k && f.parent).map(f => f.parent!)
+  const withParents = (k: Sr6Kind) => [...all(k), ...parentEntries(k)]
+  const isParent = (e: Sr6Entry) => (c.entries[e.kind].get(e.id) === e ? {} : { parent: true as const })
+  // (a level derived from a rated or leveled parent, levels.ts, warns through its parent, once)
+  const derived = (e: Sr6Entry) => !!e.attrs.family && !!c.levels?.get(`${e.kind}/${e.attrs.family}`)?.parent
   const warn = (code: string, e: Sr6Entry, message: string) =>
-    problems.push({ code, severity: 'warning', path: `${e.kind}.${e.id}`, message, source: e.source, page: e.page })
+    { if (!derived(e)) problems.push({ code, severity: 'warning', path: `${e.kind}.${e.id}`, message, source: e.source, page: e.page }) }
   /** a whole number printed as such (XSD-checked, but an edit or a new import may hold anything); else 0 and a warning */
   const count = (e: Sr6Entry, raw: string | undefined, what: string, absent = 0): number => {
     if (raw == null) return absent
@@ -127,7 +171,9 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     warn('data.bookValue', e, `${e.name}: the ${what} “${raw}” isn’t a number the app can read.`)
     return null
   }
-  const byName = (k: Sr6Kind) => new Map(all(k).map(e => [normName(e.name), e.id]))
+  // (a family's parent by its printed name too: its lowest level, `Hardy` the trait at level 1, `Hardy 2` the level)
+  const parents = (k: Sr6Kind) => [...c.levels?.values() ?? []].filter(f => f.kind === k && f.parent).map(f => ({ name: f.parent!.name, id: f.levels.get(Math.min(...f.levels.keys()))! }))
+  const byName = (k: Sr6Kind) => new Map([...parents(k), ...all(k)].map(e => [normName(e.name), e.id]))
   const metatypeIds = byName('metatypes'), qualityIds = byName('qualities')
   const parts = (e: Sr6Entry, tag: string) => e.parts.filter(p => p.tag === tag)
 
@@ -170,15 +216,17 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   const skills = Object.fromEntries(all('skills').map(e => [e.id, { id: e.id, name: e.name, attr: e.attrs.attr ?? '',
     untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page }]))
   // (a quality path's bare step shows with its path: `Gestalt: Step 2`)
-  const qualities = Object.fromEntries(all('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative',
+  const qualities = Object.fromEntries(withParents('qualities').map(e => [e.id, { id: e.id, name: e.attrs.group ? `${e.attrs.group}: ${e.name}` : e.name, positive: e.attrs.kind !== 'negative', ...isParent(e),
     karma: bookNum(e, e.attrs.karma, 'karma'), karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'), ...levels(e), page: e.page,
+    ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
     ...(e.attrs.category ? { category: e.attrs.category } : {}), ...(e.attrs.granted === 'true' ? { granted: true } : {}),
     ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
+    ...(qualityMetatypes(e.name, e.text) ? { metatypes: qualityMetatypes(e.name, e.text) } : {}),
     ...(parts(e, 'choice').length ? { choices: parts(e, 'choice').map(p => ({ category: p.attrs.category ?? '',
       count: count(e, p.attrs.count, 'choice count', 1), max: p.attrs.max ? count(e, p.attrs.max, 'choice max', 1) : null })) } : {}) }]))
-  const powers = Object.fromEntries(all('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'),
-    ...levels(e), page: e.page }]))
-  const metamagics = Object.fromEntries(all('metamagics').map(e => [e.id, { id: e.id, name: e.name, perLevel: e.attrs.perLevel === 'true',
+  const powers = Object.fromEntries(withParents('adeptpowers').map(e => [e.id, { id: e.id, name: e.name, cost: bookNum(e, e.attrs.cost, 'cost'), ...isParent(e),
+    ...(e.attrs.costCombat ? { costCombat: bookNum(e, e.attrs.costCombat, 'costCombat') } : {}), ...levels(e), page: e.page }]))
+  const metamagics = Object.fromEntries(withParents('metamagics').map(e => [e.id, { id: e.id, name: e.name, perLevel: e.attrs.perLevel === 'true', ...isParent(e),
     maxLevel: e.attrs.maxLevel ? count(e, e.attrs.maxLevel, 'highest level', 1) : null, page: e.page,
     ...(e.attrs.user === 'adept' || e.attrs.user === 'magician' ? { user: e.attrs.user as 'adept' | 'magician' } : {}) }]))
   const lifemodules = Object.fromEntries(all('lifemodules').map(e => [e.id, {
@@ -205,7 +253,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   }))
 
   // an entry the book leaves a value out of (or the importer couldn't read): Review notes it on the runners that use it
-  for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
+  for (const k of Object.keys(c.entries) as Sr6Kind[]) for (const e of withParents(k)) for (const x of derived(e) ? [] : e.issues ?? [])
     problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
   let nameIndex: Map<string, Sr6Entry> | undefined
@@ -217,9 +265,17 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         if (!nameIndex.has(`${k}/${n}`)) nameIndex.set(`${k}/${n}`, e)
         if (!nameIndex.has(`/${n}`)) nameIndex.set(`/${n}`, e)
       }
+      // (a family's parent name answers its lowest level; a link's `level` picks another: effects.ts linkedEntries)
+      for (const k of Object.keys(c.entries) as Sr6Kind[]) for (const p of parents(k)) {
+        const n = normName(p.name), e = c.entries[k].get(p.id)
+        if (e && !nameIndex.has(`${k}/${n}`)) nameIndex.set(`${k}/${n}`, e)
+        if (e && !nameIndex.has(`/${n}`)) nameIndex.set(`/${n}`, e)
+      }
     }
     return nameIndex.get(`${kind ?? ''}/${normName(name)}`) ?? (kind ? undefined : nameIndex.get(`/${normName(name)}`))
   }
   return { priorities, metatypes, skills, qualities, powers, metamagics, lifemodules, grades, problems, entry: (kind, id) => resolveEntry(c, kind, id), named,
-    categories: categoryIndex(all('categories')) }
+    categories: categoryIndex(all('categories')),
+    family: (kind, id) => familyOf(c, kind, id), atLevel: (kind, id, level) => atLevel(c, kind, id, level), siblings: (kind, id) => siblings(c, kind, id),
+    levelOf, sameFamily: (kind, id, target) => sameFamily(c, kind, id, target) }
 }

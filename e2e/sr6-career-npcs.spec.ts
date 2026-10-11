@@ -58,7 +58,10 @@ async function shoot(page: Page, name: string) {
 
 test('career: the Ledger tab records earnings and spends, voids the newest, and the other tabs show the runner as it stands', async ({ page }) => {
   await signIn(page, '/#/sr6', 'pat')
+  // (its Karma and nuyen left carry over: a GM approved it, owner's decision L2)
   const xml = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8').replace(/(<entry id="l-1"[^>]*\/>)[\s\S]*<\/ledger>/, '$1\n  </ledger>')
+    .replace('</sr6:character>', '  <override code="leftover.karma" path="review">The Karma carries over</override>\n'
+      + '  <override code="leftover.nuyen" path="review">The nuyen carries over</override>\n</sr6:character>')
   const put = await page.request.put(`/api/sr6/characters/${RUNNER}`, { data: xml, headers: { 'Content-Type': 'application/xml', Origin: base.replace(/\/$/, '') } })
   expect(put.status()).toBe(201)
   await page.goto(`/#/sr6/c/${RUNNER}/attributes`)

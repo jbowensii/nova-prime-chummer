@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { armorSocial, bookValue, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
+import { armorSocial, bookValue, chosenRating, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
 import { formulaOf, formulaText } from '../../engine/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
@@ -66,10 +66,12 @@ export function LineName({ x }: { x: Sr6Purchase }) {
 }
 
 export interface PickedItem { e: Sr6Entry; rating?: number; grade?: string }
+// (the stepper's top for a rating the player picks: the book's rules bound it elsewhere, chosenRating)
+const MAX_CHOSEN = 99
 
 /** A grade as a select shows it: one the entry's type doesn't take marked (Review's gear.grade). */
 const gradeLabel = (data: Sr6Data, cr: CreationRules, g: string, e: Sr6Entry) =>
-  `${gradeName(data, g)}${gradesFor(cr, data, e).includes(g) ? '' : ` (not for ${e.attrs.type || 'this item'})`}`
+  `${gradeName(data, g)}${gradesFor(cr, data, e).includes(g) ? '' : ` (not for ${/cultured/i.test(e.attrs.category ?? '') && gradesFor(cr, data).includes(g) ? 'cultured bioware' : e.attrs.type || 'this item'})`}`
 
 /** The catalog picker in a dialog. onAdd answers null when added (the dialog closes) or the refusal. `note` marks an
  *  entry the runner lacks a prerequisite for (it may still be picked: Review flags it). */
@@ -88,12 +90,12 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   const pick = (key: string) => {
     const e = entries.find(x => `${x.kind}:${x.id}` === key)
     if (!e) return
-    const range = ratingRange(e.attrs.rating)
+    const range = ratingRange(e.attrs.rating), free = chosenRating(e)
     const gs = offered(e)
-    if (range.length > 1 || gs.length) setChosen({ e, rating: range.length > 1 ? range[0] : undefined, grade: gs[0] })
+    if (range.length > 1 || free || gs.length) setChosen({ e, rating: range.length > 1 || free ? range[0] ?? 1 : undefined, grade: gs[0] })
     else add({ e })
   }
-  const range = chosen ? ratingRange(chosen.e.attrs.rating) : []
+  const range = chosen ? ratingRange(chosen.e.attrs.rating) : [], free = chosen && chosenRating(chosen.e)
   const price = chosen && priceAt(chosen.e, chosen.rating ?? range[0] ?? 1, cr, chosen.grade, data)
   return (
     <Modal open={open} onClose={close} title={title}
@@ -105,6 +107,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
           {range.length > 1 && <label className="inline">Rating
             <select value={chosen.rating} onChange={e => setChosen({ ...chosen, rating: Number(e.target.value) })}>
               {range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>}
+          {free && <label className="inline">{free} <Stepper label={free} value={chosen.rating ?? 1} min={1} max={MAX_CHOSEN}
+            onChange={v => setChosen({ ...chosen, rating: v })} /></label>}
           {grades && gradeOptions(cr, data, chosen.e).length > 0 && <label className="inline">Grade
             <select value={chosen.grade ?? ''} onChange={e => setChosen({ ...chosen, grade: e.target.value || undefined })}>
               <option value="">None</option>
@@ -127,7 +131,8 @@ export function CatalogPicker({ title, open, onClose, kinds, filter, grades, not
   )
 }
 
-const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'stun' ? 'Stun monitor boxes' : t === 'overflow' ? 'Damage Overflow boxes' : t === 'skill' ? 'Skill dice pool' : ATTR_NAMES[t])
+const targetName = (t: Bonus['target']) => (t === 'initDice' ? 'Initiative dice' : t === 'defense' ? 'Defense Rating' : t === 'physical' ? 'Physical monitor boxes' : t === 'stun' ? 'Stun monitor boxes' : t === 'overflow' ? 'Damage Overflow boxes' : t === 'skill' ? 'Skill dice pool'
+  : t === 'unarmedAR' ? 'Unarmed Attack Rating' : t === 'unarmedDV' ? 'Unarmed DV' : t === 'movement' ? 'Movement (metres)' : t === 'matrixInitDice' ? 'Matrix initiative dice' : ATTR_NAMES[t])
 /** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
 export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) => `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
   x.target === 'skill' ? `${data.skills[x.skill ?? '']?.name ?? x.skill ?? 'skill'} dice` : targetName(x.target)}${x.perRating ? ' × rating' : ''}`
@@ -178,11 +183,14 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
     {host.accessories.map(a => {
       const e = entryOf(a, data), own = e ? entryLabel(e) : a.name ?? 'Accessory', label = `${own}${a.rating ? ` ${a.rating}` : ''}`
       // on an implant an add-on has its grade (CRB p. 282): shown, never chosen
-      const range = ratingRange(e?.attrs.rating), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
-      // its rating and grade change in place, as a line's do
-      return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 ? own : label}</Sr6Ref>
-        {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? range[0]}
+      const range = levelsOf(data, a), implant = host.kind === 'augmentations', grades = e && !implant ? gradeOptions(cr, data, e) : []
+      const free = chosenRating(e)
+      // its rating and grade change in place, as a line's do (a level of a family: to that level's entry)
+      return <span key={a.uid} className="chip"><Sr6Ref kind={a.kind} id={e?.id}>{range.length > 1 || free ? own : label}</Sr6Ref>
+        {range.length > 1 && <select aria-label={`${own} on ${name}: rating`} value={a.rating ?? data.levelOf(e) ?? range[0]}
           onChange={ev => act({ op: 'rate', uid: a.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select>}
+        {free && <Stepper label={`${own} on ${name}: ${free.toLowerCase()}`} value={a.rating ?? 1} min={1} max={MAX_CHOSEN}
+          onChange={v => act({ op: 'rate', uid: a.uid, rating: v })} />}
         {grades.length > 0 && <select aria-label={`${own} on ${name}: grade`} value={a.grade ?? ''}
           onChange={ev => act({ op: 'rate', uid: a.uid, grade: ev.target.value || null })}>
           <option value="">No grade</option>{grades.map(g => <option key={g} value={g}>{gradeLabel(data, cr, g, e!)}</option>)}</select>}
@@ -203,15 +211,25 @@ export const isAccessory = (e: Sr6Entry) => /accessor|modification|\bmods?\b|enh
  *  weapons): the picker keeps those that fit the line. */
 export const ACCESSORY_KINDS: PurchaseKind[] = ['gear', 'weapons', 'augmentations', 'electronics', 'armor']
 
+/** The ratings a line can be set to: its family's levels (levels.ts: the select moves the line to that level's entry),
+ *  else the entry's printed range. */
+const levelsOf = (data: Sr6Data, x: Sr6Purchase): number[] => {
+  const sibs = x.id ? data.siblings(x.kind, x.id) : []
+  return sibs.length > 1 ? sibs.map(s => data.levelOf(s)!) : ratingRange(entryOf(x, data)?.attrs.rating)
+}
+
 /** A line's rating and grade, changed in place where the entry comes in ratings or grades are offered. */
 function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades?: boolean }) {
   const { data, cr, act } = useSr6Editor()
-  const e = entryOf(x, data), range = ratingRange(e?.attrs.rating), offered = grades && e ? gradeOptions(cr, data, e) : []
-  if (range.length < 2 && !offered.length) return (x.rating || x.grade)
+  const e = entryOf(x, data), range = levelsOf(data, x), offered = grades && e ? gradeOptions(cr, data, e) : []
+  const free = chosenRating(e)
+  if (range.length < 2 && !free && !offered.length) return (x.rating || x.grade)
     ? <div className="muted">{[x.rating && `Rating ${x.rating}`, x.grade && gradeName(data, x.grade)].filter(Boolean).join(' · ')}</div> : null
   return <div className="row muted">
-    {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? range[0]}
+    {range.length > 1 ? <label className="inline">Rating <select aria-label={`${name} rating`} value={x.rating ?? data.levelOf(e) ?? range[0]}
       onChange={ev => act({ op: 'rate', uid: x.uid, rating: Number(ev.target.value) })}>{range.map(r => <option key={r} value={r}>{r}</option>)}</select></label>
+      : free ? <label className="inline">{free} <Stepper label={`${name} ${free.toLowerCase()}`} value={x.rating ?? 1} min={1} max={MAX_CHOSEN}
+        onChange={v => act({ op: 'rate', uid: x.uid, rating: v })} /></label>
       : x.rating && `Rating ${x.rating}`}
     {offered.length > 0 ? <label className="inline">Grade <select aria-label={`${name} grade`} value={x.grade ?? ''}
       onChange={ev => act({ op: 'rate', uid: x.uid, grade: ev.target.value || null })}>
@@ -225,8 +243,10 @@ const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear'])
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
-export function PurchaseSection({ kind, title, one, grades, detail, accessories, bonuses, hint }: {
+export function PurchaseSection({ kind, title, one, grades, detail, accessories, bonuses, hint, offer }: {
   kind: PurchaseKind; title: string; one: string; grades?: boolean; detail?: (x: Sr6Purchase) => ReactNode
+  /** which catalog entries the picker offers (none: all) */
+  offer?: (e: Sr6Entry) => boolean
   accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }; bonuses?: boolean; hint?: ReactNode
 }) {
   const { ch, data, cr, act, d } = useSr6Editor()
@@ -262,7 +282,7 @@ export function PurchaseSection({ kind, title, one, grades, detail, accessories,
         </tr>
       })}</tbody>
     </table></div>}
-    <CatalogPicker title={`Add ${one}`} open={adding} onClose={() => setAdding(false)} kinds={[kind]} grades={grades}
+    <CatalogPicker title={`Add ${one}`} open={adding} onClose={() => setAdding(false)} kinds={[kind]} grades={grades} filter={offer}
       onAdd={p => act({ op: 'purchase', kind, id: p.e.id, rating: p.rating, grade: p.grade })} />
   </section>
 }

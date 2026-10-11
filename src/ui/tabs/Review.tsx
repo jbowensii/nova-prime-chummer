@@ -1,10 +1,38 @@
 import { useState } from 'react'
-import { activeEvents, canFinalize, effectLines, finalize, reopen } from '../../engine'
+import { activeEvents, canFinalize, effectLines, finalize, optionOn, reopen, sinnerFree } from '../../engine'
 import type { Violation } from '../../model/types'
 import { fmt, Modal } from '../bits'
 import { editHref, useEditor } from '../editor'
 import { NpcBlock } from '../NpcBlock'
 import { AnarchyRef, entryOfPath } from '../AnarchyRef'
+import { HOUSE_RULES, ruleHelp, seeds } from '../TableRules'
+import { SourceLabel } from '../SourceLabel'
+
+/** The books' optional rules for this runner: the table's choice (Table setup) unless the runner sets its own. */
+function OptionalRules() {
+  const { c, ch, ro, table, update } = useEditor()
+  // the books' optional rules (off unless switched on) and the app's house rules (on unless switched off)
+  const rules = [...seeds(c).map(r => ({ id: r.id, title: r.title, help: ruleHelp(c, { name: r.title, text: r.text, rule: r }), rule: r, tableOn: table?.optional?.includes(r.id) ?? false, inPlay: optionOn(r.id, ch, table) })),
+    ...HOUSE_RULES.map(h => ({ id: h.id, title: h.name, help: ruleHelp(c, { name: h.name, text: h.text }), rule: undefined, tableOn: table?.freeSinner ?? true, inPlay: sinnerFree(ch, table) }))]
+  if (ch.npc) return null
+  const set = (id: string, v: string) => update(d => {
+    const own = { ...d.optionalRules }
+    if (v === '') delete own[id]; else own[id] = v === 'on'
+    if (Object.keys(own).length) d.optionalRules = own; else delete d.optionalRules
+  })
+  return <section aria-labelledby="review-optional">
+    <h3 id="review-optional">Optional rules</h3>
+    <p className="muted small">The books’ optional rules and the house rules play as your GM set them on Table setup, unless this runner sets its own; a rule the GM locked plays as the table has it.</p>
+    <ul className="optional-rules">{rules.map(({ id, title, help, rule: r, tableOn, inPlay }) => {
+      const own = ch.optionalRules?.[id], locked = table?.locked?.includes(id) ?? false
+      return <li key={id}><label title={`${help} Choose On or Off for this runner, or leave it as the table has it.`}>{title} {r ? <SourceLabel c={c} source={r.source} page={r.page} id={r.id} /> : <span className="muted">House rule</span>}{' '}
+        <select value={locked || own === undefined ? '' : own ? 'on' : 'off'} disabled={ro || locked} onChange={e => set(id, e.target.value)}
+          aria-label={`${title} for this runner`}>
+          <option value="">As the table: {tableOn ? 'on' : 'off'}</option><option value="on">On</option><option value="off">Off</option>
+        </select></label> <span className="muted">{inPlay ? 'in play' : 'not in play'}{locked && ' (locked by the GM)'}</span></li>
+    })}</ul>
+  </section>
+}
 
 const tabFor = (path: string) => {
   const head = path.split('.')[0]
@@ -12,7 +40,7 @@ const tabFor = (path: string) => {
 }
 
 export function ReviewTab() {
-  const { c, ch, d, v, p, balance, replace, career, ro, approve: approveAll } = useEditor()
+  const { c, ch, d, v, p, balance, replace, career, ro, table, approve: approveAll } = useEditor()
   const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [approving, setApproving] = useState<Violation | null>(null)
   const [note, setNote] = useState('')
@@ -67,6 +95,8 @@ export function ReviewTab() {
           sentence the importer isn’t sure of is listed but not counted: change it in the Amp Builder (or on the Gear tab for an item) to count it.</p>
       </section>}
 
+      <OptionalRules />
+
       {err && <p className="banner err" role="alert">{err}</p>}
       {!ch.npc && !ro && <><hr className="sep" />
       <h2>Finalize</h2>
@@ -93,7 +123,7 @@ export function ReviewTab() {
       </Modal>
       <Modal open={finalizing} onClose={() => setFinalizing(false)} title={`Finalize ${ch.identity.streetName || ch.identity.name || 'this runner'}?`}
         actions={<><button className="btn" onClick={() => setFinalizing(false)}>Not yet</button>
-          <button className="btn primary" onClick={() => { replace(finalize(c, ch)); setFinalizing(false); location.hash = `#/c/${ch.id}/ledger` }}>Finalize</button></>}>
+          <button className="btn primary" onClick={() => { replace(finalize(c, ch, table)); setFinalizing(false); location.hash = `#/c/${ch.id}/ledger` }}>Finalize</button></>}>
         <p>The ledger starts with “Creation finished” and what is left. Until you record earnings, you can reopen creation here.</p>
       </Modal>
     </div>

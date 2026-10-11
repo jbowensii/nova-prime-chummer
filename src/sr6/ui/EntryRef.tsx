@@ -6,7 +6,7 @@ import { EditedMark } from '../../ui/EditEntry'
 import type { BrowseRow } from '../../ui/CatalogBrowser'
 import { EntryHover, type CardEffect } from '../../ui/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
-import { catalogFind } from '../engine/load'
+import { catalogFind, resolveEntry } from '../engine/load'
 import type { Find } from '../engine/values'
 import { type Sr6Advance, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { effectState, effectText } from '../engine/effects'
@@ -38,7 +38,7 @@ export function sr6Row(c: Sr6Catalog, e: Sr6Entry, find: Find = catalogFind(c)):
 /** `children` naming an entry of the runner's catalog, with its card on hover, focus or tap (none when it's gone). */
 export function Sr6Ref({ kind, id, children, open, tabbable }: { kind: Sr6Kind; id?: string; children: ReactNode; open?: boolean; tabbable?: boolean }) {
   const { c } = useSr6Editor()
-  const e = id ? c.entries[kind]?.get(id) : undefined
+  const e = id ? resolveEntry(c, kind, id) : undefined  // (a family's hidden parent too, levels.ts)
   return <EntryHover row={e && (() => sr6Row(c, e))} kind={SR6_KINDS[kind].label} open={open} tabbable={tabbable}>{children}</EntryHover>
 }
 
@@ -57,7 +57,7 @@ export function entryOfPath(ch: Sr6Character, path: string): { kind: Sr6Kind; id
 
 /** A picker item's card (src/ui/bits.tsx PickItem): the entry's row, made when shown. */
 export function cardOf(c: Sr6Catalog, kind: Sr6Kind, id: string): { card?: () => BrowseRow; cardKind?: string } {
-  const e = c.entries[kind]?.get(id)
+  const e = resolveEntry(c, kind, id)
   return e ? { card: () => sr6Row(c, e), cardKind: SR6_KINDS[kind].label } : {}
 }
 
@@ -77,7 +77,9 @@ export function sr6AttrRow(ctx: Pick<Sr6Ctx, 'c' | 'data' | 'cr' | 'ch' | 'p' | 
   const { natural, augmented } = ctx.d.attrs[a], r = attrRange(ctx, a)
   const raised = [...bonusSources(ctx.ch.build, ctx.data, a).map(x => ({ text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}`, state: 'applied' as const })),
     ...bracketNotes(ctx.ch.build, ctx.data, a).map(x => ({ text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}${x.when ? ` (${x.when})` : ''}`, state: 'conditional' as const }))]
-  const values = [`natural ${natural}`, `augmented ${br(augmented, ctx.d.on.attrs[a].augmented)}`, r ? `max ${r[1]}` : 'no max set', ...(a === 'mag' || a === 'res') && ctx.d.magicLoss ? [`${ctx.d.magicLoss} lost to Essence`] : []].join(' · ')
+  const values = [`natural ${natural}`, `augmented ${br(augmented, ctx.d.on.attrs[a].augmented)}`, r ? `max ${r[1]}` : 'no max set', ...(a === 'mag' || a === 'res') && ctx.d.magicLoss ? [`${ctx.d.magicLoss} lost to Essence`] : [],
+    // (CRB Hong Kong p. 37: an adjusted attribute is never above its rank + 4)
+    ...ctx.d.on.capped[a] ? [`${br(ctx.d.capped[a] ?? 0, ctx.d.on.capped[a])} of the bonus not counted: capped at +${ctx.cr.get('attributeAugmentMax')?.value} (CRB Hong Kong p. 37)`] : []].join(' · ')
   return { key: a, name: ATTR_NAMES[a], source: e?.source ?? '', page: e?.page ?? 0, details: values, effects: raised, text: e?.text || undefined,
     issues: e?.issues, marks: e?.edited ? <EditedMark /> : undefined }
 }

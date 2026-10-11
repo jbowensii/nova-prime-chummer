@@ -1,5 +1,6 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
-import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, EffectParam, EffectPick, ItemEntry } from '../model/types'
+import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectParam, EffectPick, ItemEntry } from '../model/types'
+import type { TableFlags } from './validate'
 // the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
 import RULES from './rule-effects.json'
 
@@ -38,8 +39,14 @@ export function ruleText(c: Catalog, e: EffectPick): string | undefined {
   return t.replace('{p}', p).replace('{v}', String(e.value ?? 1)).replace(/\s+:|:\s*$/g, '').replace(/\s+/g, ' ').trim()
 }
 
-/** negativeOk: the GM approved this amp's rating below 0 (validate.ts amp.negativeRating); otherwise it counts as 0 */
-export interface AmpCtx { isFirstQuality: boolean; negativeOk?: boolean }
+/** freeSinner: the SINner house rule in play for this runner (sinnerFree); undefined: in play */
+export interface AmpCtx { isFirstQuality: boolean; freeSinner?: boolean }
+
+/** The house rule (owner, 0.5.5) that a SINner is always free and never the first Quality, a Table setup switch since
+ *  0.12, on by default: the runner's own switch unless the GM locked it, else the table's, else on. */
+export const FREE_SINNER = 'ca2.free-sinner'
+export const sinnerFree = (ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'freeSinner' | 'locked'>) =>
+  (table?.locked?.includes(FREE_SINNER) ? undefined : ch.optionalRules?.[FREE_SINNER]) ?? table?.freeSinner ?? true
 
 /** case and spacing aside */
 export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
@@ -71,14 +78,13 @@ export function effectRating(c: Catalog, pick: EffectPick): number {
   return eff.rating
 }
 
-/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects, never below 0 without
- *  the GM (no creation credit, CRB p.61); a SINner is free (house rule) */
+/** base rating of the type (Qualities: 0 for the first, then baseAfterFirst) + sum of effects; below 0 too, and a
+ *  negative rating gives nuyen back (owner, 2026-10-10: the book only leaves reductions to the GM, p.61); a SINner is
+ *  free (house rule) */
 export function ampRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
-  if (isSinner(amp, c)) return 0
-  const r = rawAmpRating(c, amp, ctx)
-  return ctx.negativeOk ? r : Math.max(0, r)
+  return ctx.freeSinner !== false && isSinner(amp, c) ? 0 : rawAmpRating(c, amp, ctx)
 }
-/** The rating as its effects add up, below 0 included (validate.ts). */
+/** The rating as its effects add up. */
 export function rawAmpRating(c: Catalog, amp: AmpEntry, ctx: AmpCtx): number {
   const t = c.ampTypes.get(amp.type)
   const base = !t ? 0 : amp.type === 'quality' && !ctx.isFirstQuality ? (t.baseAfterFirst ?? t.base) : t.base
@@ -101,9 +107,11 @@ export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   }
 }
 
-export const firstQualityUid = (b: Build, c?: Catalog) => b.amps.find(a => a.type === 'quality' && !isSinner(a, c))?.uid
+export const firstQualityUid = (b: Build, c?: Catalog, freeSinner = true) =>
+  b.amps.find(a => a.type === 'quality' && !(freeSinner && isSinner(a, c)))?.uid
 
-export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog): AmpCtx => ({ isFirstQuality: firstQualityUid(b, c) === amp.uid })
+export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog, freeSinner = true): AmpCtx =>
+  ({ isFirstQuality: firstQualityUid(b, c, freeSinner) === amp.uid, freeSinner })
 
 /** Initiative levels an amp holds (init-1..3): the most "limited to one realm" reductions it may take (CRB p.61). */
 export const initLevels = (amp: AmpEntry) => new Set(amp.effects.map(e => e.ref).filter(r => /^init-[123]$/.test(r))).size
@@ -125,7 +133,25 @@ export function effectBlocked(c: Catalog, amp: AmpEntry, eff: AmpEffect): string
   if (eff.max != null && count >= eff.max) return `max ${eff.max} per amp`
   if (eff.id === 'init-realm' && count >= initLevels(amp)) return 'one per initiative level held'
   if (eff.id === 'firewall-plus' && amp.type === 'cyberdeck' && 1 + count >= FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
+  const body = vehicleBody(c, amp)
+  if (eff.id === 'vehicle-armor' && body != null && count >= body) return `Armor at most the vehicle's Body (${body})`
   if (eff.excludes && amp.effects.some(e => e.ref === eff.excludes)) return `not with ${c.ampEffects.get(eff.excludes)?.name ?? eff.excludes}`
+  return undefined
+}
+
+const vehicleBody = (c: Catalog, amp: AmpEntry) => (amp.type === 'vehicle' ? (c.vehicles.get(amp.vehicle ?? '') ?? amp.chassis)?.body : undefined)
+
+/** Why an amp's effects go past a cap (an effect's max, a cyberdeck's Firewall 5, a vehicle's Armor above its Body, CRB
+ *  p.61-62), else undefined: an add-on that would do so isn't offered (DHSA's Additional plates: up to the Body). */
+export function overCap(c: Catalog, amp: AmpEntry): string | undefined {
+  const n = (ref: string) => amp.effects.filter(e => e.ref === ref).length
+  for (const ref of new Set(amp.effects.map(e => e.ref))) {
+    const d = c.ampEffects.get(ref)
+    if (d?.max != null && n(ref) > d.max) return `${d.name}: max ${d.max} per amp`
+  }
+  if (amp.type === 'cyberdeck' && 1 + n('firewall-plus') > FIREWALL_MAX) return `Firewall ${FIREWALL_MAX} at most`
+  const body = vehicleBody(c, amp)
+  if (body != null && n('vehicle-armor') > body) return `Armor at most the vehicle's Body (${body})`
   return undefined
 }
 

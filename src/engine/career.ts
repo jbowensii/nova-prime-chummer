@@ -7,6 +7,7 @@ import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, 
 import { ATTRS, newId } from '../model/types'
 import { ampCtx, ampChangeCost, ampRating } from './amps'
 import { attrCost, attrMax, catalogItem, itemCost, partPrices, price, skillCost } from './price'
+import type { TableFlags } from './validate'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
 const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent
@@ -87,18 +88,18 @@ export function settle(c: Catalog, ch: Character): Character {
 
 /** Career nuyen: the ledger's running balance (what creation left, + earnings, - each change's recorded price). A
  *  draft's: what's left to spend. */
-export function balance(c: Catalog, ch: Character): number {
-  if (!ch.finalizedAt) return price(c, ch).remaining
+export function balance(c: Catalog, ch: Character, table?: TableFlags): number {
+  if (!ch.finalizedAt) return price(c, ch, table).remaining
   return ledgerRunning(settle(c, ch)).at(-1)?.running ?? 0
 }
 
 /** What creation leaves (a reopened runner's carry included) becomes the ledger's first entry; the carry is used up. */
-export function finalize(c: Catalog, ch: Character): Character {
-  const remaining = price(c, ch).remaining
+export function finalize(c: Catalog, ch: Character, table?: TableFlags): Character {
+  const remaining = price(c, ch, table).remaining
   const at = new Date().toISOString()
   const { carry: _, ...rest } = ch
   return { ...rest, finalizedAt: at, finalRemaining: remaining,
-    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining, prices: Object.fromEntries(partPrices(c, ch)) }] }
+    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining, prices: Object.fromEntries(partPrices(c, ch, table)) }] }
 }
 
 /** What each thing in the build was paid (price.ts priceParts keys): the last Finalize's prices, updated by every
@@ -187,18 +188,19 @@ const MERGE_MS = 10 * 60 * 1000
 /** A finalized runner's edit, logged: one "change" entry with the lines diffBuild finds and the price difference
  *  (positive: charged, negative: refunded). A single-line change to the same thing as the last entry, within ten
  *  minutes, updates that entry instead (stepping a skill 3 → 4 → 5 is one line); undone completely, it goes. */
-export function logChange(c: Catalog, before: Character, after: Character): Character {
+export function logChange(c: Catalog, before: Character, after: Character, table?: TableFlags): Character {
   if (!before.finalizedAt || !after.finalizedAt) return after
   const lines = diffBuild(c, before.build, after.build)
   // each thing whose price moved: an addition or a raise costs today's price; a removal gives back what was paid for
   // it, a lowering that share of it (recordedPrices), so a price changed since can't be turned into nuyen
-  const paid = recordedPrices(before), was = partPrices(c, before), now = partPrices(c, after)
+  const paid = recordedPrices(before), was = partPrices(c, before, table), now = partPrices(c, after, table)
   const prices: Record<string, number> = {}
   let cost = 0
   for (const k of new Set([...was.keys(), ...now.keys()])) {
     const w = was.get(k), n = now.get(k), r = paid.get(k) ?? w ?? 0
     if (w === n) continue
-    const next = n === undefined ? 0 : w === undefined ? n : n >= w ? r + n - w : Math.round(r * n / w)
+    // below 0 (an amp rated under 0 gives nuyen back): the paid share down to 0, then the credit
+    const next = n === undefined ? 0 : w === undefined ? n : n >= w || w <= 0 ? r + n - w : Math.round(r * Math.max(n, 0) / w) + Math.min(n, 0)
     cost += next - (w === undefined ? 0 : r)
     prices[k] = next
   }

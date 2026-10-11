@@ -232,3 +232,7 @@
 /* Table setup → Creation rules: a long quality name in a value's dropdown widened the table past its panel and cut off the
    right-hand columns; the dropdown wraps to the column instead */
 .sr6-creation table.data :is(select, input:not([type=checkbox])) { max-width: 16rem; width: 100%; }
+
+/* nested optional rules (creation.ts RULE_DEPS): a rule under its parent, greyed while it doesn't apply */
+:is(.sr6-creation, .runner-rules) tr.nested > td:first-child { padding-left: 1.75rem; border-left: 2px solid var(--rule); }
+:is(.sr6-creation, .runner-rules) tr.blocked > td:first-child { opacity: 0.65; }

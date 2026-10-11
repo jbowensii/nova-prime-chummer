@@ -58,7 +58,7 @@ test('the CRB source is the shipped one (with its publication date) plus the imp
 
 test('texts fill descriptions; the edited weapon has its new cost, the edit’s text, and the book’s version in original', async () => {
   const c = await load()
-  expect(c.entries.qualities.get('crb.lucky-streak')!.text).toBe('Invented luck, a little at a time.')
+  expect(c.entries.qualities.get('crb.lucky-streak.1')!.text).toBe('Invented luck, a little at a time.')
   const gun = c.entries.weapons.get('crb.zap-gun')!
   expect(gun).toMatchObject({ edited: true, by: 'eve', text: 'A made-up gun that zaps, now cheaper.' })
   expect(gun.attrs.cost).toBe('290')

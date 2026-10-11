@@ -46,7 +46,7 @@ test.describe('Shadowrun 6', () => {
     // the picker: hovering an item shows its card, as does the item having focus
     await tabs.filter({ hasText: 'Qualities' }).click()
     await work.getByRole('button', { name: 'Add a positive quality…' }).click()
-    const item = dlg.getByRole('listitem').filter({ hasText: 'Lucky Streak' })
+    const item = dlg.getByRole('listitem').filter({ hasText: 'Lucky Streak 1' })  // (one entry per level, levels.ts)
     await item.locator('b').hover()
     await expect(card).toContainText('CRB p.70')
     await expect(card).toContainText('karma 4')
@@ -60,7 +60,7 @@ test.describe('Shadowrun 6', () => {
     // the taken quality: hover, then focus and Escape
     const name = work.locator('.entry-ref', { hasText: 'Lucky Streak' })
     await name.hover()
-    await expect(card).toContainText('perLevel true')
+    await expect(card).toContainText('level 1')  // (one entry per level: its family and level, levels.ts)
     await page.mouse.move(0, 0)
     await expect(card).toHaveCount(0)
     await name.focus()

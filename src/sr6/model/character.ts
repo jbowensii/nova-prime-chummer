@@ -30,9 +30,14 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
 
 /** What a ware, power or item adds, entered by the player (or read from its catalog entry's effects, budgets.ts
  *  lineBonuses): an attribute, initiative dice, Defense Rating (dermal plating), Physical or Stun condition monitor boxes
- *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes or a skill's dice pool (skill: its catalog id). perRating: × the
- *  line's rating. */
-export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill'; skill?: string; value: number; perRating?: true
+ *  (a cyberlimb's, CRB p. 288), Damage Overflow boxes, a skill's dice pool (skill: its catalog id), the unarmed Attack
+ *  Rating or Damage Value (bone lacing, CRB Hong Kong p. 286), movement metres or Matrix initiative dice (Hack & Slash's
+ *  Matrix initiative booster). perRating: × the line's rating. */
+export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill' | 'unarmedAR' | 'unarmedDV' | 'movement' | 'matrixInitDice'; skill?: string; value: number; perRating?: true
+  /** less so much after the rating is counted (`R-1`: a level after the first, owner 2026-10-11); with perRating */
+  minus?: number
+  /** a value per rating, the book's own table (`1,1,2,2`: rating 1 gives 1, rating 3 gives 2; owner 2026-10-11) */
+  byRating?: number[]
   /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
   /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else
@@ -47,10 +52,11 @@ export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' |
 /** the switch both games' effects share (src/engine/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
-export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill']
+export const BONUS_TARGETS: Bonus['target'][] = [...SR6_ATTRS, 'initDice', 'defense', 'physical', 'stun', 'overflow', 'skill', 'unarmedAR', 'unarmedDV', 'movement', 'matrixInitDice']
 
-export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes'
-export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes']
+/** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
+export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
+export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
 export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes'
 export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes']
 
@@ -59,13 +65,18 @@ export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentation
 export interface Sr6Purchase {
   uid: string; kind: PurchaseKind; id?: string; name?: string; cost?: number; avail?: number; essence?: number; rating?: number
   qty: number; grade?: string; worn?: true; bonuses?: Bonus[]; note?: string; accessories: Sr6Purchase[]; snapshot?: Sr6Entry
+  /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
+  seatsRemoved?: number
 }
-export interface Sr6Skill { id: string; points: number; karma: number; spec?: string; expertise?: string }
+/** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
+ *  Expanded Specializations, p. 153) */
+export interface Sr6Skill { id: string; points: number; karma: number; spec?: string; expertise?: string; specs?: string[] }
 export interface Sr6Knowledge { uid: string; name: string; kind: 'knowledge' | 'language'; native?: true; points: number; karma: number }
 /** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes).
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */
 export interface Sr6Quality { uid: string; id: string; level: number; free?: true; note?: string; name?: string; karma?: number }
-export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string }
+/** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
+export interface Sr6Pick { uid: string; kind: PickKind; id: string; level?: number; bonuses?: Bonus[]; name?: string; note?: string }
 /** A martial arts style (catalog martialarts) and the techniques learned under it (martialtechniques; its signature one
  *  free, Firing Squad p. 97). name: the catalog name when it was added. */
 export interface Sr6MartialArt { uid: string; id: string; name?: string; techniques: Sr6Technique[] }
@@ -98,6 +109,9 @@ export interface Sr6Build {
   metatype: string
   magic: MagicKind
   aspectedSkill?: string; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'
+  /** the mentor spirit followed (a catalog mentorspirits id; it comes with the Mentor Spirit quality, mentorSpiritQuality), and
+   *  a mystic adept's pick of its advantages (CRB Hong Kong pp. 162–163: one, for good) */
+  mentorSpirit?: string; mentorAdvantage?: 'magician' | 'adept'
   /** lifepath: the best attribute (raised by lifepath.bestAttributeBonus up to its metatype maximum) and the one that
    *  takes what the maximum leaves over */
   bestAttr?: Sr6Attr; bestExtra?: Sr6Attr
@@ -124,16 +138,21 @@ export type Sr6Advance =
   | { op: 'spec'; target: string; name: string }
   | { op: 'expertise'; target: string; name: string }
   | { op: 'knowledge'; line: Sr6Knowledge }
-  | { op: 'quality'; line: Sr6Quality }
+  /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference */
+  | { op: 'quality'; line: Sr6Quality; target?: string }
   | { op: 'buyoff'; target: string; line?: Sr6Quality }
-  | { op: 'pick'; line: Sr6Pick }
+  /** target: as a quality's, the lower level replaced */
+  | { op: 'pick'; line: Sr6Pick; target?: string }
   /** a style (with its signature technique), or a technique learned under the style whose uid is target */
   | { op: 'martialart'; line: Sr6MartialArt }
   | { op: 'technique'; target: string; line: Sr6Technique }
   | { op: 'powerpoint' }
-  | { op: 'initiate'; line?: Sr6Pick }
+  | { op: 'initiate'; line?: Sr6Pick; target?: string }
   | { op: 'purchase'; line: Sr6Purchase }
   | { op: 'drop'; target: string; line?: Sr6Purchase }
+  /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
+   *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
+  | { op: 'upgrade'; target: string; line: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -145,7 +164,7 @@ export type Sr6Advance =
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = ['attribute', 'skill', 'spec', 'expertise', 'knowledge', 'quality', 'buyoff', 'pick',
-  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'contact', 'sin', 'lifestyle', 'convert', 'other']
+  'martialart', 'technique', 'powerpoint', 'initiate', 'purchase', 'drop', 'upgrade', 'contact', 'sin', 'lifestyle', 'convert', 'other']
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
 export type Sr6LedgerEntry = { id: string; at: string } & (
   | { type: 'finalize'; karma: number; nuyen: number }

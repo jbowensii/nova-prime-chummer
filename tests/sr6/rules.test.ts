@@ -4,6 +4,7 @@
 import { expect, test } from 'vitest'
 import { blankSr6, type MagicKind, type PurchaseKind, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
+import { runnerRules } from '../../src/sr6/engine/creation'
 import { buildOf, GLIM, made, STONE } from './fixture'
 
 type Over = Parameters<typeof made>[0]
@@ -34,10 +35,13 @@ const pick = (b: Sr6Build, kind: Sr6Build['picks'][number]['kind'], id: string, 
   return uid
 }
 const errors = (ch: Sr6Character, over?: Over) => check(ch, over).filter(v => v.severity === 'error').map(v => v.code)
+/** (owner's decision L2: an unspent runner keeps more than carries over, a problem a GM approves; these tests aren't about it) */
+const NO_LEFT: Over = { unset: ['maxKarmaLeft', 'maxNuyenLeft'] }
 
 test('a blank legal runner has no errors; the catalog’s own problems pass through as warnings', () => {
   const v = check(runner())
-  expect(v.filter(x => x.severity === 'error')).toEqual([])
+  // (but what it hasn't spent: more Karma and nuyen left than carry over, owner's decision L2)
+  expect(v.filter(x => x.severity === 'error').map(x => x.code)).toEqual(['leftover.karma', 'leftover.nuyen'])
   // a catalog problem shows only on a runner that uses the entry: this stonefolk runner gets Stonefolk's, a glimmerkin doesn't
   expect(v.filter(x => x.code === 'data.unresolved').map(x => x.path)).toEqual(['metatypes.crb.stonefolk'])
   const glim = runner(); glim.build.metatype = 'crb.glimmerkin'
@@ -208,15 +212,28 @@ test('qualities: one granted only needs a quality offering its list, and no more
 })
 
 // karma, nuyen, gear
-test('karma and nuyen overspent are errors; leftovers above the settings are warnings', () => {
+test('karma and nuyen overspent are errors no GM approves; leftovers above the settings are errors a GM approves', () => {
   const ch = runner()
   quality(ch.build, 'crb.knack')
   ch.build.attributes.bod.karma = 4
   buy(ch.build, 'weapons', 'crb.fizz-rifle-70', { qty: 8 })
   expect(errors(ch)).toEqual(expect.arrayContaining(['karma.overspent', 'nuyen.overspent']))
+  // owner's decision 19: Finalize waits until neither is negative, whatever a GM approves
+  ch.overrides = [{ code: 'karma.overspent', path: 'review', note: 'no' }, { code: 'nuyen.overspent', path: 'gear', note: 'no' }]
+  const v = check(ch).filter(x => x.code.endsWith('.overspent') && !x.code.startsWith('attr'))
+  expect(v.map(x => [x.code, !!x.hard, !!x.approved])).toEqual([['karma.overspent', true, false], ['nuyen.overspent', true, false]])
+  expect(canFinalizeSr6(v)).toBe(false)
+  // owner's decision L2: more left than carries over is an error a GM may approve
   const rich = runner({ letters: 'ACDBA' })
-  expect(only(rich, 'leftover.karma')).toMatchObject([{ severity: 'warning', page: 64 }])
-  expect(only(rich, 'leftover.nuyen')).toMatchObject([{ severity: 'warning' }])
+  expect(only(rich, 'leftover.karma')).toMatchObject([{ severity: 'error', page: 64 }])
+  expect(only(rich, 'leftover.nuyen')).toMatchObject([{ severity: 'error' }])
+  rich.overrides = [{ code: 'leftover.karma', path: 'review', note: 'ok' }]
+  expect(only(rich, 'leftover.karma')[0].approved).toBe(true)
+  // the GM's own carry-over limits in place of the book's, with the house rule on (runnerRules puts them in place)
+  const left = (on: boolean) => { const { data, cr } = made({ rules: { ownCarryOver: on, 'carryOver.karma': 999, 'carryOver.nuyen': 9e9 } })
+    return validateSr6(data, runnerRules(cr), rich).filter(x => x.code.startsWith('leftover.')).map(x => x.code) }
+  expect(left(true)).toEqual([])
+  expect(left(false)).toEqual(['leftover.karma', 'leftover.nuyen'])
 })
 
 test('most karma kept after creation is optional: unset, any karma left carries over with no warning', () => {
@@ -415,9 +432,9 @@ test('a line whose entry left the catalog is an error naming it from its snapsho
 test('a GM override approves an error; canFinalizeSr6 then allows it', () => {
   const ch = runner()
   ch.build.attributes.bod.points = 9
-  expect(canFinalizeSr6(check(ch))).toBe(false)
+  expect(canFinalizeSr6(check(ch, NO_LEFT))).toBe(false)
   ch.overrides.push({ code: 'attr.creationMax', path: 'attributes.bod', note: 'Born big' })
-  const v = check(ch)
+  const v = check(ch, NO_LEFT)
   expect(v.find(x => x.code === 'attr.creationMax')?.approved).toBe(true)
   expect(canFinalizeSr6(v)).toBe(true)
 })
@@ -427,8 +444,8 @@ test('a placeholder SIN is a Review note on Contacts, never a block on Finalize;
   ch.build.sins = [{ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] }]
   const v = only(ch, 'sin.placeholder')
   expect(v).toEqual([expect.objectContaining({ severity: 'warning', path: 'contacts.sin.ph', message: expect.stringContaining('give it a name') })])
-  expect(errors(ch)).toEqual([])
-  expect(canFinalizeSr6(check(ch))).toBe(true)
+  expect(errors(ch, NO_LEFT)).toEqual([])
+  expect(canFinalizeSr6(check(ch, NO_LEFT))).toBe(true)
   delete ch.build.sins[0].placeholder
   expect(only(ch, 'sin.placeholder')).toEqual([])
 })

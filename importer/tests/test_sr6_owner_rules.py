@@ -112,7 +112,7 @@ class AccuracyRoundTest(unittest.TestCase):
         from importer.sr6 import formula, sections
         self.assertEqual(formula.read("(Rating) x 500")[0], "R*500")  # (not a price off another item: `(Camera) x 2`)
         self.assertEqual(sections.quality_attrs("Zorp Rejection", ["Negative Qualities"], "• **Bonus:** 4 or 8 Karma"),
-                         {"kind": "negative", "karma": "4", "karmaMax": "8"})
+                         {"kind": "negative", "karma": "4", "karmaMax": "8", "karmaSteps": "4 8"})
         md = "\n".join(["<!-- page 9 -->", "# MAGIC", "## Powers", "#### Zap Vanish", "(Ability/Critter Power)",
                         "**Type:** Physical **Action:** Minor", "**Range:** Self **Duration:** Immediate", "Beings vanish.",
                         "#### Lie Zap", "**Cost:** 0.25 PP per level", "**Activation: Passive**", "You spot liars.", ""])
@@ -170,7 +170,12 @@ class AccuracyRound2Test(unittest.TestCase):
         self.assertEqual(sections.karma_list("3,6, or 9 Karma"), [3, 6, 9])
         self.assertEqual(sections.karma_list("5/8 Karma"), [5, 8])
         self.assertEqual(sections.quality_attrs("Zorp Pool", [], "• **Cost:** 3,6, or 9 Karma"),
-                         {"kind": "positive", "karma": "3", "karmaMax": "9"})
+                         {"kind": "positive", "karma": "3", "karmaMax": "9", "karmaSteps": "3 6 9"})
+        # (the prices a line lists are its choices; a range is every value between)
+        self.assertEqual(sections.karma_steps("7 or 12 Karma"), "7 12")
+        self.assertEqual(sections.karma_steps("Common: 12 Karma; Uncommon: 9 Karma"), "9 12")
+        self.assertIsNone(sections.karma_steps("2 to 20 Karma"))
+        self.assertIsNone(sections.karma_steps("8 Karma"))
         md = "\n".join(["<!-- page 9 -->", "# QUALITIES", "## Negative Qualities", "#### Zorpation I/II",
                         "**Bonus:** 5/8 Karma", "**Game Effect:** You zorp.", ""])
         q = extract(md).get("qualities", {})
@@ -212,7 +217,13 @@ class FinalDecisionsTest(unittest.TestCase):
         self.assertEqual((a.get("category"), a.get("cost"), a.get("capacity")), ("Armor accessory", "100", "0"))
         self.assertEqual(sorted(es["magictypes"])[:2], ["Adept", "Aspected magician"])  # (the core vocabulary)
         self.assertEqual(_band_tier([["1–3", "Rating x 10¥"], ["4–6", "Rating x 1,000¥"]]),
-                         ("tier(R; 1-3: R*10; 4-6: R*1000)", 1, 6))
+                         ("tier(R; 1-3: R*10; 4-6: R*1000)", None, 1, 6, ""))
+        # (a later printing's added column, in any order; an item's row in the table is not a band; an unknown column is
+        # not a band table)
+        self.assertEqual(_band_tier([["1–3", "1(I)", "Rating x 10¥"], ["4–6", "2(I)", "Rating x 50¥"], ["Zap Cap", "4(I)", "75¥"]],
+                                    ["RATING", "AVAILABILITY", "COST"]),
+                         ("tier(R; 1-3: R*10; 4-6: R*50)", "tier(R; 1-3: 1; 4-6: 2)", 1, 6, "I"))
+        self.assertIsNone(_band_tier([["1–3", "x", "Rating x 10¥"]], ["RATING", "BLAST", "COST"]))
         self.assertEqual([c[1]["kind"] for c in _skill_choices(
             "choose one from Zorping, Blooping, or Piloting and a Specialization in the chosen skill as well as an "
             "appropriate Knowledge Skill")], ["skill", "specialization", "knowledgeskill"])

@@ -104,7 +104,8 @@ test('a book sample runner (the importer’s, tests/fixtures/sr6/sample-glow-run
   expect(b.attributes.agi).toEqual({ points: 4, adjust: 0, karma: 0 })
   expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 0, karma: 3, spec: 'Gizmos' }])
   expect(b.priorities).toEqual({ metatype: 'E', attributes: 'A', magic: 'A', skills: 'D', resources: 'D' })
-  expect(r.ch.rules).toEqual([{ key: 'startingKarma', value: '100', assumed: true, source: 'CRB', page: 64 }])
+  expect(r.ch.rules).toEqual([{ key: 'levelPrime', value: 'true', assumed: true, source: 'CRB-HK', page: 63 },
+    { key: 'expandedContacts', value: 'true', assumed: true, source: 'SWC', page: 161 }])
   expect(b.purchases.map(x => x.id)).toEqual(['crb.padded-vest', 'crb.gizmo-kit', 'crb.glow-gland', 'crb.tail-obvious', 'crb.zoom-bike', 'crb.zap-gun'])
   expect(r.ch.printed).toMatchObject({ source: 'CRB', page: 81, values: { agi: '5(6)', init: '8 + 2D6', dr: '5' } })
   expect(b.sins).toHaveLength(2)

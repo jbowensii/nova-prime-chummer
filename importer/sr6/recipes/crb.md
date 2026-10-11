@@ -12,7 +12,10 @@ printing).
 
 Each City Edition's city chapter is a source of its own (CRB-SEA, CRB-BER, CRB-HK; `crb.extra` -> `Result.extra`, which
 run.py writes to custom/sr6/imported/<source>/ beside the CRB, records in import.xml `extra`, and removes with the
-book), so the CRB catalog stays the 2019 printing's. Only its game pages are read (`CITIES`: PDF pages Seattle 328-341,
+book), so the CRB source holds only pages 1-321. Of several printings in the library the one published last is loaded
+as the CRB catalog (`PRINTINGS`: 2019, Seattle 2021, Berlin 2023, Hong Kong 2025), the others listed as superseded;
+field by field, a value it leaves out or prints as no SR6 value takes the newest older printing's valid one
+(`<found how="printing">`, run.py `older_printings`). Only its game pages are read (`CITIES`: PDF pages Seattle 328-341,
 Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back cover are left out. In them:
 
 - Qualities: level-3 headings with `Cost:` / `Bonus:` lines (bold or, in Berlin, plain bullets).
@@ -115,7 +118,8 @@ Before an issue is written, the same book is searched (every recipe that reads t
   autosofts by their type.
 
 The core rulebook's errata (Aug 2019, Feb 2020) predate the City Editions; their statements apply only to the 2019
-printing (the loaded printing is the newest).
+printing. A City Edition PDF carries no date, so a known printing is dated by its `PRINTINGS` month (resolve.py), never
+by its source's first printing: an errata older than the loaded printing is not applied.
 
 ## Sections read as kinds (importer v3, sections.py)
 

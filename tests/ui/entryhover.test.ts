@@ -36,7 +36,7 @@ test('hover shows the card (values, effects with their state, source, descriptio
   expect(c.textContent).toContain('NB p.12')
   expect(c.textContent).toContain('cost 300 · avail 4')
   expect(c.textContent).toContain('+1 Agility (applied)')
-  expect(c.textContent).toContain('wireless: +2 Zapping dice (switchable: in brackets)')
+  expect(c.textContent).toContain('☐ wireless: +2 Zapping dice (switchable or conditional: in brackets, tick when it applies)')  // (a tick box: owner decision 17)
   expect(c.textContent).toContain('Made-up gloves that zap.')
   expect(ref.getAttribute('aria-describedby')).toBe(c.id)
   leave(ref)

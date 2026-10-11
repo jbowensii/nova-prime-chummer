@@ -7,23 +7,31 @@
 import { newId } from '../../model/types'
 import { CONTACT_TYPES, CORE_ATTRS, type Bonus, type ContactType, type CpPool, type Letter, type MagicKind, type PickKind, type PriorityColumn, type PurchaseKind, type Sr6Attr,
   type Sr6Build, type Sr6Character, type Sr6Knowledge, type Sr6Method, type Sr6Purchase } from '../model/character'
-import { num, type CreationRules } from './creation'
-import { MAGIC_KINDS, pickMaxLevel, picksFor, type Sr6Data } from './data'
+import { num, str, type CreationRules } from './creation'
+import { MAGIC_KINDS, normName, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
-import { ratingRange } from './values'
+import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
+import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
   | { op: 'skill'; target: string; pool: 'points' | 'karma'; delta: number }
   | { op: 'spec'; target: string; spec: string | null }
   | { op: 'expertise'; target: string; expertise: string | null }
-  /** add a quality, or set the level of one taken (leveled ones only) */
-  | { op: 'quality'; id: string; level?: number; karma?: number } | { op: 'quality'; remove: string }
+  /** a skill's specializations past the first (Exotic Weapons; Expanded Specializations) */
+  | { op: 'specs'; target: string; specs: string[] }
+  /** add a quality, or set the level, karma or note (the attribute or skill it is for) of one taken (`uid`: that line;
+   *  else the quality's line). A quality that names its choice (`Exceptional (Attribute)`) may be taken again, for
+   *  another one. One of a family of levels (levels.ts): the level's own entry takes the line, `id` naming any
+   *  level or the rated parent. */
+  | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string } | { op: 'quality'; remove: string }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string } | { op: 'pick'; remove: string }
   | { op: 'powerLevel'; uid: string; level: number }
+  /** a pick's note: the skill or attribute a power naming its choice is for ('' clears it) */
+  | { op: 'pickNote'; uid: string; note: string }
   /** add a martial arts style (with its signature technique, a martialtechniques id: martial.ts signatureOf), or a
    *  technique under the style whose uid is `style`; or take one away (a style goes with its techniques) */
   | { op: 'martialart'; id: string; signature?: string } | { op: 'martialart'; remove: string }
@@ -35,7 +43,8 @@ export type Op =
   | { op: 'quantity'; uid: string; qty: number }
   | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number } | { op: 'accessory'; host: string; remove: string }
   | { op: 'wear'; uid: string; worn: boolean }
-  /** a line's (or accessory's) rating or grade changed in place; grade null: none */
+  /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
+   *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
@@ -60,6 +69,11 @@ export type Op =
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
   | { op: 'submersion'; delta: number }
+  /** follow a mentor spirit (a mentorspirits id; null: none): its Mentor Spirit quality comes and goes with it (owner's
+   *  decision 5, 2026-10-11); advantage: a mystic adept's pick of its magician or adept advantages (null: none yet) */
+  | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
+  /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
+  | { op: 'seats'; uid: string; removed: number }
 export type Result = { ok: true } | { ok: false; reason: string }
 
 /** R: weapons, armor, augmentations and vehicles always get their own line (each can carry its own accessories). */
@@ -105,6 +119,7 @@ export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr:
   if (!k.resonance) b.submersion = 0
   if (!k.spells && !k.powers) b.attributes.mag = { points: 0, adjust: 0, karma: 0 }
   if (!k.resonance) b.attributes.res = { points: 0, adjust: 0, karma: 0 }
+  if (kind !== 'mystic-adept') delete b.mentorAdvantage
 }
 
 /** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). */
@@ -142,10 +157,24 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const v = s[op.pool] + op.delta
       if (v < 0) return no('below-zero')
+      // owner's decision 3 (2026-10-11): a pure adept takes no Sorcery, Conjuring or Enchanting (Astral is p. 93's)
+      if (op.delta > 0 && adeptBars(b, data, op.target)) return no('not-for-adept')
       s[op.pool] = v
       if (!b.skills.includes(s)) b.skills.push(s)
       // no rank left: the skill goes, its spec and expertise with it
       if (!s.points && !s.karma) b.skills = b.skills.filter(x => x !== s)
+      return OK
+    }
+    case 'specs': {
+      const v = [...new Set(op.specs.map(x => x.trim().slice(0, 80)).filter(Boolean))].slice(0, 20)
+      let s = b.skills.find(x => x.id === op.target)
+      if (!s) {
+        if (!data.skills[op.target]) return no('unknown-entry')
+        if (!v.length) return OK
+        b.skills.push(s = { id: op.target, points: 0, karma: 0 })
+      }
+      if (v.length) s.specs = v; else delete s.specs
+      if (!s.points && !s.karma && !s.spec && !s.expertise && !s.specs) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
     case 'spec': case 'expertise': {
@@ -159,7 +188,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       if (v) s[op.op] = v; else delete s[op.op]
       // a line left with no rank, specialization nor expertise goes
-      if (!s.points && !s.karma && !s.spec && !s.expertise) b.skills = b.skills.filter(x => x !== s)
+      if (!s.points && !s.karma && !s.spec && !s.expertise && !s.specs) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
     case 'quality': {
@@ -168,18 +197,46 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!q) return no('not-taken')
         if (q.free) return no('free-trait')
         b.qualities = b.qualities.filter(x => x !== q)
+        // (owner's decision 5: the mentor spirit goes with its quality)
+        const mentor = str(cr, 'mentorSpiritQuality')
+        if (q.id === mentor && !b.qualities.some(x => x.id === mentor)) { delete b.mentorSpirit; delete b.mentorAdvantage }
+        return OK
+      }
+      // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
+      const fam = data.family('qualities', op.id)
+      if (fam) {
+        const cur = b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        if (op.level !== undefined && op.level < 1) return no('below-one')
+        const e = data.atLevel('qualities', op.id, op.level ?? data.levelOf(data.entry('qualities', op.id)) ?? Math.min(...fam.levels.keys()))
+        if (!e) return no('max-level')
+        // (its note, the attribute or skill it is for, as on any quality)
+        if (op.note !== undefined && cur) { const t = op.note.trim().slice(0, 200); if (t) cur.note = t; else delete cur.note; if (op.level === undefined && op.karma === undefined) return OK }
+        if (cur && cur.id === e.id && op.karma === undefined) return no('already-taken')
+        const v = data.qualities[e.id]
+        if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
+        if (cur) { cur.id = e.id; cur.level = 1; cur.name = v.name; if (op.karma !== undefined) cur.karma = op.karma }
+        else b.qualities.push({ uid: newId(), id: e.id, level: 1, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
         return OK
       }
       const v = data.qualities[op.id]
       if (!v) return no('unknown-entry')
-      const taken = b.qualities.find(x => x.id === op.id && !x.free)
-      if (taken && op.level === undefined && op.karma === undefined) return no('already-taken')
+      const taken = op.uid ? b.qualities.find(x => x.uid === op.uid && x.id === op.id) : b.qualities.find(x => x.id === op.id && !x.free)
+      if (op.uid && !taken) return no('not-taken')
+      // owner's decision 4: a poser quality only for the metatypes its description names
+      if (!taken && !qualityFitsMetatype(data, b.metatype, op.id)) return no('not-for-metatype')
+      // owner's decision 2: Aptitude and Incompetent never on the same skill (exact opposites)
+      if (op.note !== undefined && opposite(b, data, cr, op.id, op.note, taken?.uid)) return no('aptitude-incompetent')
+      if (op.note !== undefined && taken) { const t = op.note.trim().slice(0, 200); if (t) taken.note = t; else delete taken.note }
+      // (a quality naming its choice is taken again for another: CRB Hong Kong p. 71, "once per attribute")
+      const again = !op.uid && !!qualityChoice(v.name) && op.level === undefined && op.karma === undefined && op.note === undefined
+      if (taken && !again && op.level === undefined && op.karma === undefined) return op.note !== undefined ? OK : no('already-taken')
       const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
       if (level < 1) return no('below-one')
       if (level > v.maxLevel && v.perLevel) return no('max-level')
-      if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax))) return no('karma-range')
-      if (taken) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
+      if (op.karma !== undefined && (v.karmaMax == null || op.karma < Math.abs(v.karma ?? 0) || op.karma > Math.abs(v.karmaMax)
+        || (v.karmaSteps?.length && !v.karmaSteps.map(Math.abs).includes(op.karma)))) return no('karma-range')
+      if (taken && !again) { taken.level = level; if (op.karma !== undefined) taken.karma = op.karma }
       else b.qualities.push({ uid: newId(), id: op.id, level, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
       return OK
     }
@@ -191,8 +248,21 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const e = data.entry(op.kind, op.id)
       if (!e) return no('unknown-entry')
+      // a family of levels (levels.ts): taken again, the line moves to the next level's entry
+      const fam = data.family(op.kind, op.id)
+      if (fam) {
+        const cur = b.picks.find(x => x.kind === op.kind && data.family(op.kind, x.id) === fam), curLevel = cur ? data.levelOf(data.entry(op.kind, cur.id)) ?? 1 : 0
+        const asked = data.levelOf(e)
+        if (cur && asked !== undefined && asked <= curLevel) return no('duplicate')
+        const next = data.atLevel(op.kind, op.id, asked ?? (cur ? curLevel + 1 : Math.min(...fam.levels.keys())))
+        if (!next) return no('max-level')
+        if (cur) { cur.id = next.id; cur.name = next.name } else b.picks.push({ uid: newId(), kind: op.kind, id: next.id, name: next.name })
+        return OK
+      }
       const max = pickMaxLevel(data, op.kind, op.id)
-      const had = b.picks.find(x => x.kind === op.kind && x.id === op.id)
+      // (a power naming its choice is bought again for another: Improved Ability "can be purchased for multiple skills",
+      // CRB Hong Kong p. 157)
+      const had = !qualityChoice(e.name) && b.picks.find(x => x.kind === op.kind && x.id === op.id)
       if (had) {
         // a leveled power is bought per level, a metamagic taken again is one more: taking it again raises the level
         if (max === null) return no('duplicate')
@@ -203,9 +273,23 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       b.picks.push({ uid: newId(), kind: op.kind, id: op.id, name: e.name, ...(max !== null ? { level: 1 } : {}) })
       return OK
     }
+    case 'pickNote': {
+      const x = b.picks.find(p => p.uid === op.uid)
+      if (!x) return no('not-taken')
+      const t = op.note.trim().slice(0, 200)
+      if (t) x.note = t; else delete x.note
+      return OK
+    }
     case 'powerLevel': {
       const x = b.picks.find(p => p.uid === op.uid)
       if (!x) return no('not-taken')
+      if (data.family(x.kind, x.id)) {  // (a family of levels: that level's entry)
+        if (op.level < 1) return no('below-one')
+        const e = data.atLevel(x.kind, x.id, op.level)
+        if (!e) return no('max-level')
+        x.id = e.id; x.name = e.name; delete x.level
+        return OK
+      }
       const max = pickMaxLevel(data, x.kind, x.id)
       if (max === null) return no('no-levels')
       if (op.level < 1) return no('below-one')
@@ -242,6 +326,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const line = newLine(op, data, cr)
       if ('reason' in line) return line
+      // owner's decision 9: each augmentation once a runner, a paired body part once a side
+      if (op.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
       const same = !OWN_LINE.has(op.kind) && !line.grade && b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind
         && x.rating === line.rating && !x.grade && !x.accessories.length)
       if (same) same.qty += line.qty
@@ -279,16 +365,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'rate': {
       const x = allLines(b).find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
-      if (op.rating !== undefined) {
+      const level = op.rating !== undefined && x.id && data.family(x.kind, x.id) ? data.atLevel(x.kind, x.id, op.rating) : undefined
+      if (op.rating !== undefined && !level) {
         const e = x.id ? data.entry(x.kind, x.id) : undefined
-        if (!e || !ratingRange(e.attrs.rating).includes(op.rating)) return no('rating-range')
+        if (!e || !(chosenRating(e) ? Number.isInteger(op.rating) && op.rating >= 1 : ratingRange(e.attrs.rating).includes(op.rating))) return no('rating-range')
       }
       const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
       if (gp) return no(gp)
       // an implant's add-on has its grade (CRB p. 282): never one of its own
       const host = b.purchases.find(h => h.kind === 'augmentations' && h.accessories.includes(x))
       if (host && op.grade !== undefined) return no('grade-follows-host')
-      if (op.rating !== undefined) x.rating = op.rating
+      // (a level of a family: the level's own entry takes the line, which then needs no rating of its own)
+      if (level) { x.id = level.id; x.name = level.name; delete x.rating } else if (op.rating !== undefined) x.rating = op.rating
       if (op.grade) x.grade = op.grade; else if (op.grade === null) delete x.grade
       // its add-ons follow it (a grade a file gave one is dropped: they have the implant's)
       if (op.grade !== undefined && x.kind === 'augmentations') for (const a of x.accessories) delete a.grade
@@ -321,6 +409,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'knowledge': {
       if ('remove' in op) return removeBy(b.knowledge, op.remove, l => { b.knowledge = l })
       if (!op.uid) {
+        if (op.native && b.knowledge.some(x => x.native)) return no('one-native')
         // a native language is free; anything else starts with one point
         b.knowledge.push({ uid: newId(), name: op.name ?? '', kind: op.kind ?? 'knowledge', ...(op.native ? { native: true as const, points: 0 } : { points: 1 }), karma: 0 })
         return OK
@@ -329,6 +418,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!k) return no('unknown-line')
       if (op.name !== undefined) k.name = op.name
       if (op.kind) k.kind = op.kind
+      // owner's decision 6: one native language a runner
+      if (op.native && b.knowledge.some(x => x !== k && x.native)) return no('one-native')
       if (op.native) { k.native = true; k.points = 0 } else if (op.native === false) delete k.native
       return OK
     }
@@ -336,6 +427,9 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const k = b.knowledge.find(x => x.uid === op.uid)
       if (!k) return no('unknown-line')
       if (k.native) return no('native')
+      // (owner 2026-10-11: no language above languageMax; the Native one counts as that level)
+      const most = num(cr, 'languageMax')
+      if (k.kind === 'language' && most !== undefined && op.delta > 0 && k.points + k.karma + op.delta > most) return no('language-max')
       return step(() => k[op.pool], v => { k[op.pool] = v }, op.delta)
     }
     case 'cp':
@@ -436,6 +530,33 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       b.karmaToNuyen = v
       return OK
     }
+    case 'mentor': {
+      const mentor = str(cr, 'mentorSpiritQuality')
+      if (op.id !== undefined) {
+        if (op.id && !data.entry('mentorspirits', op.id)) return no('unknown-entry')
+        const had = mentor ? b.qualities.filter(q => q.id === mentor) : []
+        if (op.id) {
+          b.mentorSpirit = op.id
+          if (mentor && !had.length && data.qualities[mentor]) b.qualities.push({ uid: newId(), id: mentor, level: 1, name: data.qualities[mentor].name })
+        } else {
+          delete b.mentorSpirit; delete b.mentorAdvantage
+          b.qualities = b.qualities.filter(q => q.id !== mentor || q.free)
+        }
+      }
+      if (op.advantage !== undefined) {
+        if (op.advantage && b.magic !== 'mystic-adept') return no('not-mystic-adept')
+        if (op.advantage) b.mentorAdvantage = op.advantage; else delete b.mentorAdvantage
+      }
+      return OK
+    }
+    case 'seats': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if (op.removed < 0) return no('below-zero')
+      if (op.removed > seatsOf(entryOf(x, data))) return no('at-maximum')
+      if (op.removed) x.seatsRemoved = op.removed; else delete x.seatsRemoved
+      return OK
+    }
     case 'initiation': case 'submersion': {
       const k = MAGIC_KINDS[b.magic], v = b[op.op] + op.delta
       if (v < 0) return no('below-zero')
@@ -444,6 +565,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
   }
+}
+
+/** Whether a pure adept may not take skill `id`: a Magic skill but Astral (owner's decision 3, 2026-10-11). */
+export const adeptBars = (b: Sr6Build, data: Sr6Data, id: string) =>
+  b.magic === 'adept' && data.skills[id]?.attr === 'mag' && normName(data.skills[id].name) !== 'astral'
+
+/** Whether quality `id` with note `note` would name the skill an opposite quality names (Aptitude against Incompetent,
+ *  aptitudeQuality and incompetentQuality; owner's decision 2, 2026-10-11). self: the line being changed. */
+export function opposite(b: Sr6Build, data: Sr6Data, cr: CreationRules, id: string, note: string, self?: string): boolean {
+  const apt = str(cr, 'aptitudeQuality'), inc = str(cr, 'incompetentQuality'), skill = noteSkill(data, note)
+  const other = id === apt ? inc : id === inc ? apt : undefined
+  return !!skill && !!other && b.qualities.some(q => q.uid !== self && q.id === other && noteSkill(data, q.note) === skill)
 }
 
 function removeBy<T extends { uid: string }>(list: T[], uid: string, set: (l: T[]) => void): Result {
@@ -467,9 +600,15 @@ function newLine(op: { kind: PurchaseKind; id?: string; rating?: number; qty?: n
   }
   const e = data.entry(op.kind, op.id)
   if (!e) return { ok: false, reason: 'unknown-entry' }
+  // a family of levels (levels.ts): the level asked for (the line then carries no rating of its own)
+  const fam = data.family(op.kind, op.id)
+  const level = fam ? data.atLevel(op.kind, op.id, op.rating ?? data.levelOf(e) ?? Math.min(...fam.levels.keys())) : undefined
+  if (fam && !level) return { ok: false, reason: 'rating-range' }
   const range = ratingRange(e.attrs.rating)
-  if (op.rating !== undefined && range.length && !range.includes(op.rating)) return { ok: false, reason: 'rating-range' }
-  const gp = op.grade && gradeProblem(cr, data, op.grade, e)
+  if (!fam && op.rating !== undefined && (range.length ? !range.includes(op.rating) : chosenRating(e) && !(Number.isInteger(op.rating) && op.rating >= 1)))
+    return { ok: false, reason: 'rating-range' }
+  const gp = op.grade && gradeProblem(cr, data, op.grade, level ?? e)
   if (gp) return { ok: false, reason: gp }
+  if (level) return { ...base, id: level.id, name: level.name }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
 }

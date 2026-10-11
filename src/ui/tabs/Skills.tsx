@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NATIVE_HELP } from '../TableRules'
 import { bracketed, knowledgeList, poolMarks, rrNotes, skillCost, type KnowledgeRow } from '../../engine'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
@@ -44,7 +45,7 @@ export function SkillsTab() {
   const addSpec = (id: string, spec: string) => {
     if (!spec) return
     if (spec === 'custom') {
-      const name = prompt('Name the specialization (the GM should approve it):')?.trim()
+      const name = prompt('Name the specialization:')?.trim()
       if (!name) return
       spec = `custom:${name}`
     }
@@ -196,7 +197,7 @@ function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
       <div className="row"><h3 style={{ margin: 0 }}>{title}</h3><span className="spacer" />
         {custom && <button className="btn small quiet" onClick={() => setOrder(reorderKeys(b.knowledgeOrder, keys))}>Sort A–Z</button>}
       </div>
-      {lang && <p className="muted" style={{ margin: 0 }}>Mark one language <b>Native</b>: it’s free (one per runner), and the first language you add is marked for you. This is the app’s reading of the rules: the book’s knowledge skills cover foreign languages, so the one you grew up with isn’t bought.</p>}
+      {lang && <p className="muted" style={{ margin: 0 }}>Mark one language <b>Native</b>: it’s free (one per runner), and the first language you add is marked for you. House rule (not in the books, which price every language as a knowledge skill): the one you grew up with isn’t bought.</p>}
       <div className="scroll-x"><table className="data knowledge" aria-label={title}>
         <thead><tr><th aria-label="Drag to reorder" /><th>Name</th><th>Type</th>{lang && <th>Native</th>}<th>Where it comes from</th><th aria-label="Actions" /></tr></thead>
         <tbody>
@@ -216,7 +217,7 @@ function KnowledgeList({ kind }: { kind: KnowledgeEntry['kind'] }) {
                 <td><select value={r.kind} aria-label={`Type of ${r.name}`} onChange={e => change(r, { kind: e.target.value as KnowledgeEntry['kind'] })}>
                       <option value="knowledge">Knowledge</option><option value="language">Language</option>
                     </select></td>
-                {lang && <td><label className="check tight">
+                {lang && <td><label className="check tight" title={NATIVE_HELP}>
                   <input type="checkbox" checked={!!r.native} aria-label={`${r.name} is the native language`} onChange={e => setNative(r, e.target.checked)} /> <span>Native</span></label></td>}
                 <td className={lapsed ? 'warn' : r.paid ? '' : 'muted'}>{r.source}{r.paid && ` · ${fmt(c.pricing.knowledge)}`}</td>
                 <td className="actions">

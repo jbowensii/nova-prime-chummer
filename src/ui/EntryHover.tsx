@@ -13,7 +13,8 @@ import { Prose } from './Prose'
  *  on some tests only: in the bracketed total, `6 (9)`), target (a spell's on its target: never on the caster) or low
  *  (read with low confidence from its prose: shown, never applied). */
 export interface CardEffect { text: string; state: 'applied' | 'conditional' | 'target' | 'low' }
-const STATE: Record<CardEffect['state'], string> = { applied: 'applied', conditional: 'switchable: in brackets',
+// (a conditional or switchable effect gets a tick box as a reminder, as the printed sheet prints one; owner decision 17, 2026-10-11)
+const STATE: Record<CardEffect['state'], string> = { applied: 'applied', conditional: 'switchable or conditional: in brackets, tick when it applies',
   target: 'affects target(s)', low: 'low confidence: shown, not applied' }
 
 /** The entry as Game data shows it: name, source and page, its marks (Edited, House…) and issues, its values, effects and
@@ -25,7 +26,7 @@ export function EntryCard({ row, kind }: { row: BrowseRow; kind?: string }) {
       <span className="srcline">{row.source && <span className="src">{row.source} p.{row.page}</span>}{row.marks}<IssueBadges issues={row.issues} source={row.source} /></span>
       {row.details && <span className="muted entry-card-values">{row.details}</span>}
       {!!row.effects?.length && <span className="entry-card-effects" role="list" aria-label="Effects">
-        {row.effects.map((x, i) => <span role="listitem" key={i} className={x.state}>{x.text} <span className="muted">({STATE[x.state]})</span></span>)}</span>}
+        {row.effects.map((x, i) => <span role="listitem" key={i} className={x.state}>{x.state === 'conditional' ? '☐ ' : ''}{x.text} <span className="muted">({STATE[x.state]})</span></span>)}</span>}
       {row.text && <span className="entry-card-text"><Prose text={row.text} /></span>}
     </span>
   )

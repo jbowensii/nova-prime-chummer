@@ -3,15 +3,19 @@
 import type { AttrId, Catalog, Character, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
-import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, rawAmpRating } from './amps'
+import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, sinnerFree } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
 import { derive } from './derive'
 import { catalogItem, itemPrice, price, slotLapse } from './price'
 import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
+import { familyName } from './levels'
 
-/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. */
-export interface TableFlags { nonCanon: boolean; realSin: boolean }
+/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
+ *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
+ *  every runner. */
+/** freeSinner: the table's SINner house rule switch (amps.ts sinnerFree); undefined: on */
+export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[]; locked?: string[]; freeSinner?: boolean }
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
@@ -35,7 +39,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   // budget
   if (npc) { /* no budget */ } else if (creation) {
-    const p = price(c, ch)
+    const p = price(c, ch, table)
     if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 85)
   } else {
     const bal = balance(c, ch)
@@ -62,8 +66,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     if (!npc && s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
     if (s.specs.length && s.rating < 1) add('spec.noSkill', 'error', `skills.${s.id}`, `${sk.name} specializations need at least rating 1.`, 52)
     for (const sp of s.specs) {
-      if (sp.startsWith('custom:')) add('custom.content', 'warning', `skills.${s.id}`, `Custom specialization "${sp.slice(7)}" (GM should approve).`, 52)
-      else if (!sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
+      // a custom specialization is the runner's to learn (CRB p.52; owner, 2026-10-10): no warning
+      if (!sp.startsWith('custom:') && !sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
     }
   }
   if (limited) for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {
@@ -79,14 +83,26 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     if (a.catalogId && !c.amps.has(a.catalogId)) gone(path, a.name, a.snapshot) ?? add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
     if (a.vehicle && !c.vehicles.has(a.vehicle)) gone(path, a.name, a.chassis)
     const template = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
+    // an amp named as one of the books' own catalog amps of its type (a sample runner's Jazz is the core rulebook's drug,
+    // p.150): what that entry prints is the book's too
+    // (or as one of its levels without the level: engine/levels.ts)
+    const named = !a.catalogId ? [...c.amps.values()].find(t => !t.mod && t.type === a.type && [t.name, familyName(t)].some(n => plain(n) === plain(a.name))) : undefined
+    // the books' add-ons for this amp type (DHSA's cyberdeck "Response increase" mods print Initiative in VR, p.19): an
+    // effect one of them prints is one the books give the type
+    const typeMods = [...c.amps.values()].filter(t => t.mod && t.type === a.type)
+    // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry)
+    const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
+    const rules = ampRating(c, a, ampCtx(b, a, c, sinnerFree(ch, table)))
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
       if (!eff) { add('ref.unknown', 'warning', ep, `${a.name}: unknown effect "${e.ref}".`); return }
       // The book's own catalog amps sometimes break the effect table (combat drugs are
       // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
-      const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && t.name === e.note && t.effects.some(x => x.ref === e.ref)) : undefined
+      // (an add-on applied before it was split into levels notes its name without one)
+      const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && (t.name === e.note || familyName(t) === e.note) && t.effects.some(x => x.ref === e.ref)) : undefined
       const fromBook = (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) || !!fromMod
+        || !!named?.effects.some(t => t.ref === e.ref) || typeMods.some(t => t.effects.some(x => x.ref === e.ref))
       if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
@@ -97,9 +113,13 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       if (e.param && eff.param === 'skill' && !c.skills.has(e.param)) add('ref.unknown', 'warning', ep, `${a.name}: unknown skill "${e.param}".`)
       if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
-        // a catalog amp's own drawback, as its book prints it (a player's pick); on a runner's own amp, sample or not, the GM approves
+        // a catalog amp's own drawback, as its book prints it (a player's pick); a book sample's amp that rates exactly as
+        // its book prints it: the limitation is the book's own (owner, 2026-10-11). Any other negative effect, a player's
+        // or one on a sample amp changed since, the GM approves (p.61)
         const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
           || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
+          || named?.effects.some(t => t.ref === 'negative' && t.value === e.value)
+          || (printed != null && rules === printed)
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })
@@ -110,6 +130,10 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     }
     if (a.type === 'equipment' && !(a.linkedItem && b.items.some(i => i.uid === a.linkedItem)))
       add('amp.noItem', 'error', path, `${a.name}: an Equipment amp needs its item bought first.`, 60)
+    // spells aren't equipment and can't be made Amps (p.178); complex forms follow the spell rules (CG p.9)
+    const linkedKind = a.type === 'equipment' ? b.items.find(i => i.uid === a.linkedItem)?.kind : undefined
+    if (linkedKind === 'spell' || linkedKind === 'complex-form')
+      add('amp.spellItem', 'error', path, `${a.name}: a ${linkedKind === 'spell' ? 'spell' : 'complex form'} isn’t equipment and can’t be made an Amp; a stronger one is a new ${linkedKind === 'spell' ? 'spell' : 'complex form'}.`, 178)
     if (a.type === 'adept' && !allRefs.has('awk-adept')) add('adept.requiresAwakened', 'error', path, `${a.name}: adept powers need the Awakened amp with the Adept option.`, 58)
     if (a.type === 'vehicle' && a.vehicle) {
       const body = (c.vehicles.get(a.vehicle) ?? a.chassis)?.body ?? 0
@@ -121,13 +145,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       add('amp.initRealm', 'error', path, `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`, 61)
     const fw = 1 + a.effects.filter(e => e.ref === 'firewall-plus').length
     if (a.type === 'cyberdeck' && fw > FIREWALL_MAX) add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
-    const r = rawAmpRating(c, a, ampCtx(b, a, c))
-    if (r < 0 && !isSinner(a, c))
-      add('amp.negativeRating', 'error', path, `${a.name}: rating ${r}. An amp below 0 would give nuyen back, so it counts as 0 unless the GM approves.`, 61)
-    // a book sample's own amp keeps the rating its book prints (its snapshot, no catalog entry): where the rules give
-    // another, say so. The book's number is never corrected in the file.
-    const printed = !a.catalogId ? a.snapshot?.printedRating : undefined
-    const rules = ampRating(c, a, ampCtx(b, a, c))
+    // where the rules give a book sample's amp another rating than its book prints, say so. The book's number is never
+    // corrected in the file.
     if (printed != null && printed !== rules)
       add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page,
         a.snapshot?.source)
@@ -149,13 +168,18 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (rating('conjuring') > 0 && !allRefs.has('awk-conjuring')) add('skill.requiresAwakened', 'error', 'skills.conjuring', 'Conjuring needs the Awakened amp with Conjuring.', 54)
   const emerged = b.amps.some(a => a.type === 'emerged')
   if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
+  // a DNI: VR access from cyberware (a datajack or cyberjack, p.155); the Emerged connect as if they had one (CG p.8)
+  const dni = emerged || allRefs.has('vr-cold') || allRefs.has('vr-hot')
+  if (rating('cracking') > 0 && !dni) add('skill.requiresDni', 'error', 'skills.cracking', 'Cracking needs a direct neural interface (cyberware with cold- or hot-sim VR).', 212)
+  for (const [ref, what] of [['rcc', 'A rigger command console'], ['vcr', 'A vehicle control rig']] as const)
+    if (allRefs.has(ref) && !dni) add('rig.requiresVr', 'error', 'amps', `${what} needs VR access from cyberware (cold- or hot-sim VR).`, 62)
   if (rating('tasking') > 0 && !emerged) add('skill.requiresEmerged', 'error', 'skills.tasking', 'Tasking needs the Emerged amp.', 8, 'CG')
   if (emerged && b.amps.some(a => a.type === 'awakened')) add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
   if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'error', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
   if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'error', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
-  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free; ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
+  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free (house rule); ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
   if (!npc) b.knowledge.forEach((k, i) => { // knowledge slots are a player rule
     if (k === natives[0]) return // free whatever its slot does
     const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
@@ -164,7 +188,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   // Risk Reduction caps at creation: the total on one Test (Attribute + Skill + specialization RR, stacked) against the
   // level's limit for that kind of Test (owner's reading of CRB p.85 "including from stacking")
-  const d = derive(c, { ...ch, build: b, finalizedAt: undefined })
+  const d = derive(c, { ...ch, build: b, finalizedAt: undefined }, table)
   const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
     if (limited && level && total > limit)
       add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)
@@ -198,7 +222,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     const path = `items.${i.uid}`
     if (i.catalogId && !c.items.has(i.catalogId)) gone(path, i.name, i.snapshot) ?? add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && i.price < 0) add('item.negativePrice', 'error', path, `${i.name}: a price below 0 would pay the runner; it counts as 0.`, 83)
-    else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 83)
+    else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 84)
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
     if (i.over && !/\bshield\b/i.test(i.name))
       add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)

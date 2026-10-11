@@ -132,13 +132,19 @@ test('qualities: taken once, a level within the highest, removed by uid', () => 
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 2 })).toEqual(ok)
   expect(act({ op: 'quality', id: 'crb.knack' })).toEqual(ok)
   expect(act({ op: 'quality', id: 'crb.knack' })).toEqual(no('already-taken'))
+  // (a leveled quality is one entry per level, levels.ts: the line moves to the level's entry, at level 1)
+  expect(b.qualities[0]).toMatchObject({ id: 'crb.lucky-streak.2', level: 1, name: 'Lucky Streak 2' })
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 3 })).toEqual(ok)
-  expect(b.qualities.find(q => q.id === 'crb.lucky-streak')!.level).toBe(3)
+  expect(b.qualities[0]).toMatchObject({ id: 'crb.lucky-streak.3', level: 1 })
+  expect(act({ op: 'quality', id: 'crb.lucky-streak.3' })).toEqual(no('already-taken'))
+  expect(act({ op: 'quality', id: 'crb.lucky-streak.3', level: 1 })).toEqual(ok)
+  expect(b.qualities[0].id).toBe('crb.lucky-streak.1')
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 4 })).toEqual(no('max-level'))
+  expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 0 })).toEqual(no('below-one'))
   expect(act({ op: 'quality', id: 'crb.knack', level: 2 })).toEqual(no('no-levels'))
   expect(act({ op: 'quality', id: 'crb.nope' })).toEqual(no('unknown-entry'))
   expect(act({ op: 'quality', remove: b.qualities[1].uid })).toEqual(ok)
-  expect(b.qualities.map(q => q.id)).toEqual(['crb.lucky-streak'])
+  expect(b.qualities.map(q => q.id)).toEqual(['crb.lucky-streak.1'])
   expect(act({ op: 'quality', remove: 'gone' })).toEqual(no('not-taken'))
 })
 
@@ -194,22 +200,36 @@ test('initiation needs an awakened runner, submersion an emerged one', () => {
 
 // magic picks
 test('adept powers: a power without levels twice is a duplicate; a leveled one rises to its highest level', () => {
-  const { b, act } = runner({ letters: 'CBBDE', magic: 'adept', over: { data: d => { d.powers['crb.quick-step'].maxLevel = 2 } } })
+  // (a leveled power is one entry per level, levels.ts: taken again, the line moves to the next level's entry)
+  const { b, act } = runner({ letters: 'CBBDE', magic: 'adept' })
   expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok)
   expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok)
   expect(b.picks).toHaveLength(1)
-  expect(b.picks[0].level).toBe(2)
+  expect(b.picks[0]).toMatchObject({ id: 'crb.quick-step.2', name: 'Quick Step 2' })
+  expect(b.picks[0].level).toBeUndefined()
+  expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step.1' })).toEqual(no('duplicate'))
+  expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step.4' })).toEqual(ok)
+  expect(b.picks[0].id).toBe('crb.quick-step.4')
   expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(no('max-level'))
   expect(act({ op: 'powerLevel', uid: b.picks[0].uid, level: 1 })).toEqual(ok)
+  expect(b.picks[0].id).toBe('crb.quick-step.1')
+  expect(act({ op: 'powerLevel', uid: b.picks[0].uid, level: 5 })).toEqual(no('max-level'))
   expect(act({ op: 'powerLevel', uid: b.picks[0].uid, level: 0 })).toEqual(no('below-one'))
   expect(act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })).toEqual(ok)
   expect(act({ op: 'pick', kind: 'spells', id: 'crb.glow-ward' })).toEqual(no('duplicate'))
   expect(act({ op: 'powerLevel', uid: b.picks[1].uid, level: 2 })).toEqual(no('no-levels'))
   expect(act({ op: 'pick', remove: b.picks[1].uid })).toEqual(ok)
-  expect(b.picks.map(x => x.name)).toEqual(['Quick Step'])
-  const flat = runner({ magic: 'adept', letters: 'CBBDE', over: { data: d => { d.powers['crb.quick-step'].perLevel = false } } })
-  flat.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })
-  expect(flat.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(no('duplicate'))
+  expect(b.picks.map(x => x.name)).toEqual(['Quick Step 1'])
+  // a power taken by level with no printed maximum stays one entry, its level on the line
+  const open = runner({ magic: 'adept', letters: 'CBBDE', over: { data: d => {
+    d.powers['crb.static-veil'] = { id: 'crb.static-veil', name: 'Static Veil', cost: 0.5, perLevel: true, maxLevel: 2, page: 1 }
+    const e = d.entry
+    d.entry = (k, id) => (id === 'crb.static-veil' ? { id, kind: 'adeptpowers', name: 'Static Veil', source: 'CRB', page: 1, attrs: { perLevel: 'true', maxLevel: '2' }, parts: [], text: '' } : e(k, id))
+  } } })
+  expect(open.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.static-veil' })).toEqual(ok)
+  expect(open.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.static-veil' })).toEqual(ok)
+  expect(open.b.picks[0]).toMatchObject({ id: 'crb.static-veil', level: 2 })
+  expect(open.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.static-veil' })).toEqual(no('max-level'))
 })
 
 // purchases (Forge's stacking tests)
@@ -237,10 +257,11 @@ test('two Zap Guns are two lines and an accessory fits one; ammo stacks; the pri
 
 test('rated gear stacks by id and rating; a rating outside the range or an ungraded grade is refused', () => {
   const { b, act } = runner()
+  // (a rated item is one entry per rating, levels.ts: the line holds the rating's entry, no rating of its own)
   act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2 })
-  act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 3 })
+  act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope.3' })
   act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, qty: 2 })
-  expect(b.purchases.map(x => [x.rating, x.qty])).toEqual([[2, 3], [3, 1]])
+  expect(b.purchases.map(x => [x.id, x.rating, x.qty])).toEqual([['crb.tangle-rope.2', undefined, 3], ['crb.tangle-rope.3', undefined, 1]])
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 5 })).toEqual(no('rating-range'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'delta' })).toEqual(no('unknown-grade'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha' })).toEqual(ok)
@@ -255,26 +276,27 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
   const [eyes, gun] = b.purchases
   expect(act({ op: 'rate', uid: eyes.uid, rating: 3 })).toEqual(ok)
   expect(act({ op: 'rate', uid: eyes.uid, grade: 'standard' })).toEqual(ok)
-  expect(b.purchases[0]).toMatchObject({ uid: eyes.uid, rating: 3, grade: 'standard' })
+  expect(b.purchases[0]).toMatchObject({ uid: eyes.uid, id: 'crb.glow-eyes.3', grade: 'standard' })  // (the rating's entry, levels.ts)
   expect(act({ op: 'rate', uid: eyes.uid, grade: null })).toEqual(ok)
   expect(b.purchases[0].grade).toBeUndefined()
   expect(act({ op: 'rate', uid: eyes.uid, rating: 9 })).toEqual(no('rating-range'))
   expect(act({ op: 'rate', uid: eyes.uid, grade: 'delta' })).toEqual(no('unknown-grade'))
   expect(act({ op: 'rate', uid: gun.uid, rating: 2 })).toEqual(no('rating-range'))
   expect(act({ op: 'rate', uid: 'nope', rating: 2 })).toEqual(no('unknown-line'))
-  expect(b.purchases[0]).toMatchObject({ rating: 3 })
+  expect(b.purchases[0]).toMatchObject({ id: 'crb.glow-eyes.3' })
 })
 
 test('only cyberware and bioware come in grades: one on geneware is taken, an error a GM may approve; gear is refused one', () => {
   const genes = { id: 'crb.glow-genes', kind: 'augmentations' as const, name: 'Glow Genes', source: 'CRB', page: 1,
     attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' }, parts: [], text: '' }
-  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : old(k, id)) } } })
+  const dark = { ...genes, id: 'crb.dark-genes', name: 'Dark Genes' }
+  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : id === dark.id ? dark : old(k, id)) } } })
   expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(ok)
-  expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id })).toEqual(ok)
+  expect(act({ op: 'purchase', kind: 'augmentations', id: dark.id })).toEqual(ok)
   expect(act({ op: 'rate', uid: b.purchases[1].uid, grade: 'alpha' })).toEqual(ok)
   const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
   expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([0, 1].map(i =>
-    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, 'Glow Genes (geneware) doesn’t come in Alpha.']))
+    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, `${['Glow', 'Dark'][i]} Genes (geneware) doesn’t come in Alpha.`]))
   ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
   expect(validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade').map(x => !!x.approved)).toEqual([true, false])
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, grade: 'alpha' })).toEqual(no('no-grade'))

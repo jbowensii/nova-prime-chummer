@@ -150,18 +150,18 @@ test('Game data: a book, then a kind with its counts, its sub-categories, one ki
   await expect(book.locator('option')).toHaveText(['All books', 'Shadowrun, Sixth World Core Rulebook'])
   // the kinds with their counts; the first one with entries is open
   await expect(kindButton(page, 'Weapons')).toHaveAccessibleName('Weapons 2')
-  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 4')
+  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 9')  // (a rated item is one entry per rating, levels.ts)
   await kindButton(page, 'Weapons').click()
   await expect(kindButton(page, 'Weapons')).toHaveAttribute('aria-pressed', 'true')
   await expect(browseRows(page)).toHaveCount(2)
   await expect(page.locator('table.browse')).not.toContainText('Glow Eyes') // one kind at a time
   // augmentations: cyberware or bioware, then the body area
   await kindButton(page, 'Augmentations').click()
-  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 5$/, /^Bioware: basic bioware 1$/, /^Cyberware: eyeware 1$/,
-    /^Cyberware: Eyeware accessory 1$/, /^Cyberware: Torqlimb 1$/, /^Cyberware: Torqlimb accessory 1$/])
+  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 12$/, /^Bioware: basic bioware 4$/, /^Cyberware: eyeware 3$/,
+    /^Cyberware: Eyeware accessory 1$/, /^Cyberware: Torqlimb 1$/, /^Cyberware: Torqlimb accessory 3$/])
   await category(page, 'Cyberware: eyeware').click()
-  await expect(browseRows(page)).toHaveCount(1)
-  await expect(browseRows(page)).toContainText('Glow Eyes')
+  await expect(browseRows(page)).toHaveCount(3)
+  await expect(browseRows(page).first()).toContainText('Glow Eyes 1')
   await page.screenshot({ path: `${SHOTS}/data-sr6-categories-desktop.png`, fullPage: true })
   await page.setViewportSize(PHONE)
   await fits(page, 'SR6 Game data')

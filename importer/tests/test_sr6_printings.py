@@ -16,8 +16,9 @@ from importer.tests.test_sr6_crb import BOOK_MD
 from importer.tests.test_sr6_crb_city import CITY, CITY_MD, SHA as CITY_SHA
 
 OLD, MID, NEW = b"%PDF- old", b"%PDF- mid", b"%PDF- new"
-PRINTINGS = {hashlib.sha256(b).hexdigest(): label for b, label in
-             ((OLD, "Old Printing"), (MID, "Middle Printing"), (NEW, "New Printing"))}  # oldest first
+# (listed out of order: a printing ranks by the month it was published, not by its place in the list)
+PRINTINGS = {hashlib.sha256(b).hexdigest(): (month, label) for b, month, label in
+             ((NEW, "2099-01", "New Printing"), (OLD, "2090-06", "Old Printing"), (MID, "2095-11", "Middle Printing"))}
 
 
 def _sha(b):
@@ -132,6 +133,26 @@ class PrintingsTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported", "crb-fz")))
         self.assertIn("crb.zap-gun", self.weapons())
 
+    def test_field_by_field_an_open_field_takes_the_newest_older_printing_valid_value_in_either_order(self):
+        # (made up: the new printing prints the Zapp Rifle's cost as no value, `12x`; the middle and old ones print it,
+        # and the old one another Zap Gun cost, which the new one's own valid value outranks)
+        mid_md = BOOK_MD.replace("| 12x |", "| 1,100¥ |")
+        old_md = BOOK_MD.replace("| 12x |", "| 1,200¥ |").replace("| 2 | 2 | 1,250¥ |", "| 2 | 2 | 999¥ |")
+        for order in (("new", "old", "mid"), ("old", "mid", "new"), ("mid", "new", "old")):
+            with self.subTest(order=order):
+                self.setUp()
+                ds = {"new": self.book("a-new", NEW), "mid": self.book("b-mid", MID, mid_md), "old": self.book("c-old", OLD, old_md)}
+                for k in order:
+                    run(ds[k], self.custom, convert_pdf=False)
+                w = {e.get("id"): e for e in ET.fromstring(self.weapons().encode("utf8"))}
+                rifle = w["crb.zapp-rifle"]
+                self.assertEqual(rifle.get("cost"), "1100")  # (the newest printing printing it: the middle one, not the old)
+                self.assertEqual((rifle.find("found").get("how"), rifle.find("found").get("field"), rifle.find("found").text),
+                                 ("printing", "cost", "Middle Printing"))
+                self.assertIsNone(rifle.find("issue"))
+                self.assertEqual(w["crb.zap-gun"].get("cost"), "1250")  # (its own valid value wins)
+                self.assertEqual(self.status(ds["new"]), ("done", ""))
+
     def test_the_same_printing_twice_stays_as_before(self):
         a, b = self.book("a", NEW), self.book("b", NEW)
         run(a, self.custom, convert_pdf=False)
@@ -194,9 +215,10 @@ class PrintingsTest(unittest.TestCase):
 
 
 class SkippedTest(unittest.TestCase):
-    def test_the_core_rulebook_printings_are_in_order(self):
-        cats = [label.split("(")[1].split(",")[0].rstrip(")") for label in crb.PRINTINGS.values()]
-        self.assertEqual(cats, ["CAT28000", "CAT28000B", "CAT28000S", "CAT28000H"])  # oldest first
+    def test_the_core_rulebook_printings_rank_by_date(self):
+        ranked = [label.split("(")[1].split(",")[0] for _, label in sorted(crb.PRINTINGS.values())]
+        self.assertEqual(ranked, ["CAT28000", "CAT28000S", "CAT28000B", "CAT28000H"])  # 2019, Seattle 2021, Berlin 2023, Hong Kong 2025
+        self.assertTrue(all(len(month) == 7 and month[4] == "-" for month, _ in crb.PRINTINGS.values()))
         self.assertEqual(set(crb.PRINTINGS), set(crb.SHA256))
 
     def test_known_files_with_nothing_to_import(self):

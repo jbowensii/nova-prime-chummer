@@ -198,18 +198,18 @@ test('nuyen to karma is off while advance.nuyenToKarmaRate is unset', () => {
 })
 
 test('nuyen to karma once the rate is set: 1 karma costs that much nuyen', () => {
-  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300 } }), ch = runner({ karma: 10 })
+  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300, workingForThePeople: true } }), ch = runner({ karma: 10 })
   expect(preview(ch, { op: 'convert', karma: -1 }, data, cr)).toEqual({ ok: true, label: '1,300¥ to 1 karma', karma: -1, nuyen: 1300 })
   expect(balances(ok(record(ch, { op: 'convert', karma: -1 }, data, cr)))).toEqual({ karma: 11, nuyen: 3700 })
 })
 
 test('nuyen to karma without the nuyen is refused', () => {
-  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300 } })
+  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300, workingForThePeople: true } })
   expect(preview(runner({ nuyen: 1000 }), { op: 'convert', karma: -1 }, data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })
 })
 
 test('voiding a conversion puts both balances back', () => {
-  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300 } }), ch = runner({ karma: 10 })
+  const { data, cr } = made({ rules: { 'advance.nuyenToKarmaRate': 1300, workingForThePeople: true } }), ch = runner({ karma: 10 })
   const r = ok(record(ch, { op: 'convert', karma: -2 }, data, cr))
   expect(balances(r)).toEqual({ karma: 12, nuyen: 2400 })
   const v = voidEntry(r, r.ledger.at(-1)!.id, 'GM said no')
@@ -310,8 +310,9 @@ test('an adept power costs no karma while power points are left; a mystic adept 
   const power: Sr6Advance = { op: 'pick', line: { uid: '', kind: 'adeptpowers', id: 'crb.quick-step' } }
   expect(preview(adept, power, data, cr)).toEqual({ ok: true, label: 'Adept power: Quick Step 1', karma: 0, nuyen: 0 })
   const twice = ok(record(ok(record(adept, power, data, cr)), power, data, cr))
-  expect(currentBuild(twice).picks).toMatchObject([{ id: 'crb.quick-step', level: 2 }])
-  const dear = made({ data: d => { d.powers['crb.quick-step'].cost = 2 } })
+  expect(currentBuild(twice).picks).toMatchObject([{ id: 'crb.quick-step.2', name: 'Quick Step 2' }])  // (one entry per level, levels.ts)
+  expect(twice.ledger.at(-1)).toMatchObject({ label: 'Adept power: Quick Step 2', karma: 0 })
+  const dear = made({ data: d => { d.powers['crb.quick-step.1'].cost = 2 } })
   expect(preview(adept, power, dear.data, dear.cr)).toEqual({ ok: false, reason: 'no-power-points' })
   const mystic = runner({ magic: 'mystic-adept' })
   expect(preview(mystic, power, data, cr)).toEqual({ ok: false, reason: 'no-power-points' })

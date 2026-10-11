@@ -170,6 +170,12 @@ class _Row(list):
 _INDENT, _BOLD_MARK = "\u00a0", "\u2002"  # the converter's first-cell marks (layout._first_marks)
 
 
+def _valueless(cells):
+    """True when a row's value cells hold no value: empty, a dash, or a bare word (`Extreme`, `Special`: a group
+    header's placeholder, owner 2026-10-11), never a number, a rating formula or an availability code."""
+    return all(not c.strip() or re.fullmatch(r"[—–-]+|[A-Za-z]+", c.strip()) for c in cells)
+
+
 def _row_groups(lines, rows):
     """rows (the table's final rows) as _Row with their group: a name-only row heads the rows printed indented under
     it until the indent ends; a bold name-only row with no indent under it (a centred column gives none) heads the
@@ -180,7 +186,7 @@ def _row_groups(lines, rows):
     for ln in lines:
         first = ln.strip()[1:-1].split("|")[0].lstrip(" \t")
         cells = _cells(ln)
-        raw.append((cells[0], first.startswith(_INDENT), _BOLD_MARK in first[:3], not any(cells[1:]),
+        raw.append((cells[0], first.startswith(_INDENT), _BOLD_MARK in first[:3], _valueless(cells[1:]),
                     re.sub(r"\d[\d,.]*", "N", " | ".join(cells[1:]))))
     group = [""] * len(raw)
     i = 0
@@ -1202,14 +1208,21 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         if id(t) in own:
             t.unpaired = list(t.rows)
             continue
+        heads = {getattr(r, "group", "") for r in t.rows} - {""}
         for r in t.rows:
             k = norm(r[0]) if r else ""  # duplicates are by the printed name, not its alias
+            if r and r[0] in heads and _valueless(r[1:]):
+                continue  # (a group header row, `Awareness | Extreme | —`: no item; its rows are, below)
             cands = [d for d in found(r[0]) if (id(d), k) not in taken] if k else []
+            if not cands and getattr(r, "group", ""):  # (a row under a group header: its group's description, shared)
+                cands = [d for d in found(r.group) if d.name and norm(d.name) == norm(r.group)]
+                k = ""
             d = min(cands, key=lambda d: abs(d.pos - t.pos)) if cands else None
             if d:
-                taken.add((id(d), k))
+                if k:
+                    taken.add((id(d), k))
                 d.rows.append((t, r))
-                if full_name(r[0], d.name):  # (paired by an alias: the heading prints the full name)
+                if k and full_name(r[0], d.name):  # (paired by an alias: the heading prints the full name)
                     d.full.add(id(r))
             if k and k in seen:
                 report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],

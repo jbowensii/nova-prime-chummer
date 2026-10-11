@@ -74,6 +74,8 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
 
   // Attributes: STR at its maximum from the bonus, AGI one up
   await tabs.filter({ hasText: 'Attributes' }).click()
+  // (the Creation method tab's rules name Strength too: wait for the Attributes tab)
+  await expect(work.getByRole('heading', { name: 'Attributes', exact: true })).toBeVisible()
   await expect(work.locator('tr', { hasText: 'Strength' })).toContainText('4 max')
   await expect(work.locator('tr', { hasText: 'Agility' }).locator('td.num').first()).toHaveText('2')
   await expect(page.getByText('Attribute points:')).toContainText('4 left of 4')  // Rooftop Chase 2, both Dock Hand choices

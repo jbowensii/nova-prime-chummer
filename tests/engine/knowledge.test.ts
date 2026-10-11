@@ -26,7 +26,7 @@ test('keywords and skills at 4+ are free entries; only the others cost', () => {
   expect(rows.map(r => [r.name, r.kind, r.source, r.paid])).toEqual([
     ['Tinkerer', 'knowledge', 'Free: keyword', false],
     ['Night owl', 'knowledge', 'Free: keyword', false],
-    ['Electronics', 'knowledge', 'Free: Electronics 4+', false],
+    ['Knowledge of Electronics', 'knowledge', 'Free: Electronics 4+', false],
     ['Toy trains', 'knowledge', 'Paid', true],
     ['Made-up tongue', 'language', 'Paid', true],
   ])
@@ -42,7 +42,7 @@ test('keywords and skills at 4+ are free entries; only the others cost', () => {
 test('a skill reaching 4 adds a free entry; dropping below 4 makes its renamed entry paid and flagged', () => {
   const ch = runner()
   ch.build.skills[1].rating = 4
-  expect(derive(cat, ch).knowledge.map(r => r.name)).toContain('Athletics')
+  expect(derive(cat, ch).knowledge.map(r => r.name)).toContain('Knowledge of Athletics')
   ch.build.knowledge.push({ name: 'Parkour routes', kind: 'knowledge', from: 'skill:athletics' })
   expect(validate(cat, ch).some(v => v.code === 'knowledge.lapsed')).toBe(false)
   ch.build.skills[1].rating = 3

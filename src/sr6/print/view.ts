@@ -12,7 +12,7 @@ import { entryLabel } from '../engine/categories'
 import { effectState, effectText } from '../engine/effects'
 
 export const PICKS: [PickKind, string][] = [['spells', 'Spells'], ['rituals', 'Rituals'], ['adeptpowers', 'Adept powers'], ['metamagics', 'Metamagics'],
-  ['complexforms', 'Complex forms'], ['echoes', 'Echoes']]
+  ['complexforms', 'Complex forms'], ['echoes', 'Echoes'], ['datastructures', 'Data structures']]
 /** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
 export function pickFlags(e: Sr6Entry): string[] {
   const a = e.attrs
@@ -77,7 +77,8 @@ export function effectNotes(b: Sr6Character['build'], data: Sr6Data): { from: st
     for (const p of e?.parts ?? []) {
       if (p.tag !== 'effect' && p.tag !== 'link') continue
       if (p.tag === 'effect' && p.attrs.op === 'add' && effectState(p) === 'applied' && COUNTED.test(p.attrs.target ?? '')) continue
-      out.push({ from: entryLabel(e!), text: effectText(p) })
+      // (owner 2026-10-11: a conditional or switchable effect gets a tick box on the sheet, a reminder to count it when it holds)
+      out.push({ from: entryLabel(e!), text: `${effectState(p) === 'conditional' ? '☐ ' : ''}${effectText(p)}` })
     }
   }
   for (const q of b.qualities) take(data.entry('qualities', q.id))

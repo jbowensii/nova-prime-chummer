@@ -59,15 +59,14 @@ test('a cyberlimb accessory goes on the arm, and its bonus is the arm’s only',
 
   // its accessories: the Torqlimb's, and the eyeware's marked (it may still be fitted: a Review error)
   await work.getByRole('button', { name: 'Add an accessory to Torqlimb: Limb (synthetic)' }).click()
-  await expect(dlg).toContainText('Torqlimb accessory: Plating')
+  await expect(dlg).toContainText('Torqlimb accessory: Plating 1')
   await expect(dlg.locator('li', { hasText: 'Glare filter' })).toContainText('for Eyeware, not this')
-  await dlg.getByText('Torqlimb accessory: Plating').click()
-  await dlg.getByLabel('Rating').selectOption('2')
-  await dlg.getByRole('button', { name: 'Add', exact: true }).click()
+  // (a rated accessory is one entry per rating: the level is picked outright)
+  await dlg.getByText('Torqlimb accessory: Plating 2', { exact: true }).click()
   await expect(dlg).toHaveCount(0)
 
   // a Strength bonus on the plating: the arm's own Strength
-  await work.getByRole('button', { name: 'Add a bonus to Torqlimb accessory: Plating on Torqlimb: Limb (synthetic)' }).click()
+  await work.getByRole('button', { name: 'Add a bonus to Torqlimb accessory: Plating 2 on Torqlimb: Limb (synthetic)' }).click()
   await dlg.getByLabel('Bonus to').selectOption({ label: 'Strength' })
   await dlg.getByLabel('Value').fill('2')
   await dlg.getByRole('button', { name: 'Add bonus' }).click()
@@ -81,5 +80,5 @@ test('a cyberlimb accessory goes on the arm, and its bonus is the arm’s only',
 
   // the sheet: the arm's line with its accessory and its own Strength
   await tabs.filter({ hasText: 'Print' }).click()
-  await expect(page.getByText(`Torqlimb accessory: Plating (STR ${str + 2})`).first()).toBeVisible()
+  await expect(page.getByText(`Torqlimb accessory: Plating 2 (STR ${str + 2})`).first()).toBeVisible()
 })

@@ -309,7 +309,7 @@ test('Pat: no menu entry, no page, no data, and no compendium entry in his picke
   await expect(page.getByRole('link', { name: 'Compendiums' })).toHaveCount(0)
   expect((await page.request.get('/api/sr6/compendiums')).status()).toBe(403)
   const picker = await qualityPicker(page, 'Pat Test Runner')
-  await expect(picker.getByText('Lucky Streak')).toBeVisible()
+  await expect(picker.getByText('Lucky Streak 1', { exact: true })).toBeVisible()
   await expect(picker.getByText('Lucky Socks')).toHaveCount(0)
   await page.goto('/#/sr6/data')
   await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()

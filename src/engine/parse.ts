@@ -78,7 +78,8 @@ export const toAmp = (el: Element): AmpTemplate => {
     specialist: bool(it, 'specialist') || undefined, armor: num(it, 'armor'), dv: str(it, 'dv'), ranges: str(it, 'ranges') }
   return { ...ref(el), name: child(el, 'name'), type: el.getAttribute('type')!, item, mod: bool(el, 'mod') || undefined,
     effects: picks(el),
-    narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle'), ...extras(el) }
+    narrative: child(el, 'narrative'), printedRating: num(el, 'printedRating'), vehicle: str(el, 'vehicle'),
+    family: str(el, 'family'), level: num(el, 'level'), ...extras(el) }
 }
 
 export const toVehicle = (el: Element): VehicleBase => ({ ...ref(el), name: child(el, 'name'), pilot: req(el, 'pilot'),

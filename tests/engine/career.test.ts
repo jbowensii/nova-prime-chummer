@@ -235,3 +235,16 @@ test('removing gives back what was paid, not today’s price: a price raise can�
   const back = xmlToCharacter(characterToXml(y))
   expect(back.ok && back.character.career).toEqual(y.career)
 })
+
+test('removing an amp effect after Finalize is replacing it with nothing (p.84): the effect’s cost comes back', () => {
+  const amp = { uid: 'ware', type: 'cyberware', name: 'Made-up ware', narrative: '', effects: [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'armor-plus' }] }
+  const ch = finalize(cat, { ...runner(), build: { ...runner().build, amps: [amp] } })
+  const next = edit(ch, d => { d.build.amps[0].effects = [{ ref: 'rr-skill', param: 'stealth' }] })
+  const armor = cat.ampEffects.get('armor-plus')!.rating * P.ampPoint
+  expect(changes(next).at(-1)!.cost).toBe(-armor)
+  expect(balance(cat, next)).toBe(balance(cat, ch) + armor)
+  // at creation alike (owner decision 7, 2026-10-10): the build's price drops by the effect's rating × an amp point
+  const both = { ...runner(), build: { ...runner().build, amps: [amp] } }, one = { ...runner(), build: { ...runner().build, amps: [{ ...amp, effects: amp.effects.slice(0, 1) }] } }
+  expect(price(cat, one).remaining - price(cat, both).remaining).toBe(armor)
+})
+

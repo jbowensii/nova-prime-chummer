@@ -26,14 +26,18 @@ from importer.xmlio import HEAD, ILLEGAL
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
 SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
-          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle, Berlin
+          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin (2023)
           "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
           "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
           "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f")
-# the printings, oldest first: of several imported, the newest is the one loaded (run.py); each City Edition's city
-# chapter is a source of its own and loads from its own printing regardless
-PRINTINGS = {SHA256[0]: "Current Printing (CAT28000, 2019)", SHA256[3]: "City Edition Berlin (CAT28000B)",
-             SHA256[2]: "City Edition Seattle (CAT28000S, 2021)", SHA256[1]: "City Edition Hong Kong (CAT28000H, 2025)"}
+# the printings, each with the month it was published (sources.xml's CRB, CRB-SEA, CRB-BER, CRB-HK): of several imported,
+# the one published last is loaded (run.py), and a printing whose PDF carries no date is dated by it (resolve.py: an
+# errata older than the printing never overrides it); each City Edition's city chapter is a source of its own and loads
+# from its own printing regardless
+PRINTINGS = {SHA256[0]: ("2019-08", "Current Printing (CAT28000, 2019)"),
+             SHA256[2]: ("2021-09", "City Edition Seattle (CAT28000S, 2021)"),
+             SHA256[3]: ("2023-06", "City Edition Berlin (CAT28000B, 2023)"),
+             SHA256[1]: ("2025-03", "City Edition Hong Kong (CAT28000H, 2025)")}
 # heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
 HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
@@ -460,6 +464,21 @@ class _Catalog:
                                if word_stems(re.sub(r"\([^()]*\)", "", e["name"])) == want_set
                                and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
         rule, kids, attrs = a["_rule"], [], {}
+        if base is None:  # (owner 2026-10-11) the base printed as a group header over its versions (`Awareness` over
+            # `Basic`, `Tactical`): one entry per version, each priced from its own base, named `… (Basic)`
+            rows = [(e, k) for k in kinds for e in self.entries[k]
+                    if [regroup_stem(w) for w in norm(e["attrs"].get("group") or "").split()] == want
+                    and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()]
+            if rows:
+                for e, k in rows:
+                    attrs = {x: e["attrs"][x] for x in ("type", "category", "rating", "avail") if e["attrs"].get(x)}
+                    r = ", R" if e["attrs"].get("rating") else ""
+                    kids = []
+                    for fld, x in a["_factors"].items():
+                        attrs[fld] = _short_rule(rule, fld)
+                        kids.append(("formula", {"field": fld}, f"ref({k}:{self.source.lower()}.{e['id']}, {fld}{r})*{x:g}"))
+                    self.add(k, f"{f.name} ({e['name']})", f.page, attrs, kids, f.text)["derived"] = True
+                return
         if base:
             attrs = {k: base["attrs"][k] for k in ("type", "category", "rating", "avail") if base["attrs"].get(k)}
             r = ", R" if base["attrs"].get("rating") else ""
@@ -707,6 +726,8 @@ class _Catalog:
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()] + name[m.end():].strip(), m.group(1)
+            if b.group:  # (its id with its group, `awareness-basic`, not `basic`; owner 2026-10-11)
+                attrs["_id"] = f"{attrs['group']} {name}"
             if "rating" not in f and (m := TAG_RATING.match(b.tags or "")):
                 f["rating"] = m.group(1)  # the heading's tag line gives its range: `(rating 1-4)`
             if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
@@ -730,12 +751,14 @@ class _Catalog:
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
                 fx = [("formula", {"field": k[9:]}, g.pop(k)) for k in [k for k in g if k.startswith("_formula:")]]
                 a = {**attrs, **g}
+                cid = a.pop("_id", None)
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 e = self.add(kind, n, page, a, [*notes, *fx], "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
                              aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
                              or (printed_short(n, self.index) if n != name else [])  # (a heading's fuller name first)
-                             or (grouped_names(n, a["group"]) if a.get("group") else []))
+                             or ([f"{a['group']} {n}", *grouped_names(n, a["group"])] if a.get("group") else []),
+                             cid=slug(f"{cid} {n}") if cid and n != name else slug(cid) if cid else None)
                 e["tab"] = self.table_of(b, page)
                 if b.product:
                     e["product"] = b.product
@@ -752,6 +775,7 @@ class _Catalog:
             ks = sections.karma_list(karma) or [int(m.group(1)) for m in re.finditer(r"(-?\d+)", karma)][:1]
             ks = ks or ([0] if re.fullmatch(r"\s*none\W*", karma, re.I) else [])  # (`Bonus: None`: In Debt, CRB p. 77)
             attrs = {"kind": cat, "karma": min(ks) if ks else None, "karmaMax": max(ks) if len(set(ks)) > 1 else None,
+                     "karmaSteps": sections.karma_steps(karma) if len(set(ks)) > 1 else None,
                      "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None}
             name, attrs["maxLevel"] = self._levels(name)
             if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
@@ -767,6 +791,7 @@ class _Catalog:
                 levels = int(n.group(1))  # `0.25 PP per level (max 4 levels)`
             attrs = {"cost": m.group(1) if m else cost or None,
                      "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None, "maxLevel": levels}
+            attrs.update(effects.split_cost(cost))
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
                 # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none,
@@ -1471,16 +1496,38 @@ def _skill_choices(defn):
     return kids
 
 
-def _band_tier(rows):
-    """`tier(R; 1-3: R*10; …)` from a RATING | COST band table's rows (`1–3`, `Rating x 10¥`), or None."""
-    parts = []
+# a rating-band price table's columns by what they print, under any of the book's headers (a later printing adds an
+# AVAILABILITY column to the core rulebook's Explosive Packages: `RATING | AVAILABILITY | COST`)
+_BAND_COLUMNS = {"RATING": "rating", "COST": "cost", "AVAILABILITY": "avail", "AVAIL": "avail", "AVAIL.": "avail"}
+
+
+def _band_tier(rows, header=("RATING", "COST")):
+    """A rating-band price table read by its columns (_BAND_COLUMNS; RATING and COST required, any other column not a
+    band table's): (`tier(R; 1-3: R*10; …)` of the cost, the availability's tier or None, lowest rating, highest rating,
+    the availability's legality letter when every band prints the same one); None when it isn't one. A row naming an
+    item instead of a band (`Detonator Cap`) is the item's, not a band."""
+    cols = {_BAND_COLUMNS.get(" ".join(h.split()).upper()): i for i, h in enumerate(header)}
+    if None in cols or not {"rating", "cost"} <= set(cols):
+        return None
+    cost, avail, legal = [], [], set()
     for r in rows:
-        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", r[0] or "")
-        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", r[1] or "", re.I) if len(r) > 1 else None
-        if not b or not c:
+        cell = lambda k: (r[cols[k]] or "") if k in cols and cols[k] < len(r) else ""  # noqa: E731
+        b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", cell("rating"))
+        if not b:
+            continue
+        c = re.fullmatch(r"\s*Rating\s*[x×]\s*([\d,]+)\s*¥?\s*", cell("cost"), re.I)
+        a = re.fullmatch(r"\s*(\d+)\s*(?:\(([LIF])\)|([LIF]))?\s*", cell("avail"))
+        if not c or "avail" in cols and not a:
             return None
-        parts.append((int(b.group(1)), int(b.group(2)), f"{b.group(1)}-{b.group(2)}: R*{c.group(1).replace(',', '')}"))
-    return (f"tier(R; {'; '.join(p for _, _, p in parts)})", parts[0][0], parts[-1][1]) if parts else None
+        band = f"{b.group(1)}-{b.group(2)}"
+        cost.append((int(b.group(1)), int(b.group(2)), f"{band}: R*{c.group(1).replace(',', '')}"))
+        if a:
+            avail.append(f"{band}: {a.group(1)}")
+            legal.add(a.group(2) or a.group(3) or "")
+    if not cost:
+        return None
+    return (f"tier(R; {'; '.join(p for _, _, p in cost)})", f"tier(R; {'; '.join(avail)})" if avail else None,
+            cost[0][0], cost[-1][1], legal.pop() if len(legal) == 1 else "")
 
 
 def stated_items(bs, cat, offset, core=False):
@@ -1558,9 +1605,9 @@ def stated_items(bs, cat, offset, core=False):
             band = next(((d, t) for d in sec
                          for h, rows in ([(list(d.stats[0]), [list(x.values()) for x in d.stats])] if d.stats else [])
                          + _tables(d.text)
-                         if [x.upper() for x in h] == ["RATING", "COST"] and (t := _band_tier(rows))), None)
+                         if (t := _band_tier(rows, h))), None)
             if band:
-                (tb, (tier, lo, hi)), noun = band, b.name.split()[-1]
+                (tb, (tier, avail, lo, hi, legal)), noun = band, b.name.split()[-1]
                 stem = noun.lower().rstrip("s")
                 for d in sec:
                     if d is tb or d.row is not None or d.stats or d.type != "item":
@@ -1571,10 +1618,12 @@ def stated_items(bs, cat, offset, core=False):
                         continue  # (a detonator cap is used with them, it is none of them)
                     name = d.name if stem in d.name.lower() else f"{d.name} {noun}"
                     dp = max(1, d.page - offset)
+                    priced = {"avail": f"By rating ({tb.name})" + (f"({legal})" if legal else "")} if avail else {}
                     add("weapons", name, dp, {"category": categories.singular(tb.name) or "Explosive", "rating": f"{lo}–{hi}",
-                                              "cost": f"By rating ({tb.name})"},
+                                              "cost": f"By rating ({tb.name})", **priced},
                         [("formula", {"field": "cost"}, tier),
-                         ("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")],
+                         *([("formula", {"field": "avail"}, avail)] if avail else
+                           [("issue", {"field": "avail", "code": "missing", "page": dp}, "not printed: the packages table prices it")])],
                         d.text, aliases=[d.name] if name != d.name else ())
         for m in _CHOOSE_SENSE.finditer(text):
             for s in _LIST_SPLIT.split(m.group(1)):

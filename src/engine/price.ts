@@ -2,7 +2,8 @@
 import type { Build, Catalog, Character, Item, ItemEntry, KnowledgeEntry, Pricing } from '../model/types'
 import { evalFormula, formulaOf, type Formula } from './formula'
 import { ATTRS } from '../model/types'
-import { ampCtx, ampRating } from './amps'
+import { ampCtx, ampRating, sinnerFree } from './amps'
+import type { TableFlags } from './validate'
 
 /** Attribute points from..to; the point that reaches the metatype max costs attrLastPoint. */
 export function attrCost(p: Pricing, from: number, to: number, max: number): number {
@@ -78,7 +79,7 @@ export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) =
 
 /** What each thing in a build costs, keyed as the ledger names it (career.ts diffBuild): attr:<a>, skill:<id> (its
  *  points), spec:<skill>:<spec>, knowledge:<row key>, amp:<uid>, item:<uid>. The parts add up to the build's price. */
-export function priceParts(c: Catalog, b: Build, metatype: string, keywords: string[] = [], negativeOk = new Set<string>()): { key: string; cat: keyof Breakdown; price: number }[] {
+export function priceParts(c: Catalog, b: Build, metatype: string, keywords: string[] = [], freeSinner = true): { key: string; cat: keyof Breakdown; price: number }[] {
   const p = c.pricing
   const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
   return [
@@ -86,29 +87,27 @@ export function priceParts(c: Catalog, b: Build, metatype: string, keywords: str
     ...b.skills.flatMap(sk => [{ key: `skill:${sk.id}`, cat: 'skills' as const, price: skillCost(p, 0, sk.rating) },
       ...sk.specs.map(sp => ({ key: `spec:${sk.id}:${sp}`, cat: 'skills' as const, price: p.spec }))]),
     ...b.knowledge.map(k => ({ key: `knowledge:${k.from ?? k.id ?? `${k.kind}:${k.name}`}`, cat: 'skills' as const, price: knowledgePaid(b, keywords, k) ? p.knowledge : 0 })),
-    ...b.amps.map(a => ({ key: `amp:${a.uid}`, cat: 'amps' as const, price: ampRating(c, a, { ...ampCtx(b, a, c), negativeOk: negativeOk.has(a.uid) }) * p.ampPoint })),
+    ...b.amps.map(a => ({ key: `amp:${a.uid}`, cat: 'amps' as const, price: ampRating(c, a, ampCtx(b, a, c, freeSinner)) * p.ampPoint })),
     ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? 'spells' as const : 'gear' as const, price: itemCost(p, i, catalogItem(c, i)) })),
   ]
 }
 
-/** negativeOk: uids of amps the GM approved below rating 0 (validate.ts amp.negativeRating) */
-export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = [], negativeOk = new Set<string>()): Breakdown {
+export function priceBuild(c: Catalog, b: Build, metatype: string, keywords: string[] = [], freeSinner = true): Breakdown {
   const out: Breakdown = { attributes: 0, skills: 0, amps: 0, gear: 0, spells: 0 }
-  for (const x of priceParts(c, b, metatype, keywords, negativeOk)) out[x.cat] += x.price
+  for (const x of priceParts(c, b, metatype, keywords, freeSinner)) out[x.cat] += x.price
   return out
 }
 
-export const gmNegativeOk = (ch: Character) => new Set((ch.overrides ?? []).filter(o => o.code === 'amp.negativeRating').map(o => o.path.replace(/^amps\./, '')))
 /** A character's priceParts as key -> price (keys that repeat add up). */
-export function partPrices(c: Catalog, ch: Character): Map<string, number> {
+export function partPrices(c: Catalog, ch: Character, table?: TableFlags): Map<string, number> {
   const m = new Map<string, number>()
-  for (const x of priceParts(c, ch.build, ch.identity.metatype, ch.narrative.keywords, gmNegativeOk(ch))) m.set(x.key, (m.get(x.key) ?? 0) + x.price)
+  for (const x of priceParts(c, ch.build, ch.identity.metatype, ch.narrative.keywords, sinnerFree(ch, table))) m.set(x.key, (m.get(x.key) ?? 0) + x.price)
   return m
 }
 
 /** Price of the build against the level-of-play budget (+ a reopened runner's carry). */
-export function price(c: Catalog, ch: Character): PriceBreakdown {
-  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, gmNegativeOk(ch))
+export function price(c: Catalog, ch: Character, table?: TableFlags): PriceBreakdown {
+  const b = priceBuild(c, ch.build, ch.identity.metatype, ch.narrative.keywords, sinnerFree(ch, table))
   const total = b.attributes + b.skills + b.amps + b.gear + b.spells
   // an NPC has no budget (budget 0, nothing remaining to overspend)
   if (ch.npc) return { ...b, total, budget: 0, remaining: 0 }

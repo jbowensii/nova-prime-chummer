@@ -29,6 +29,7 @@
   <setting key="karmaForm" value="7" source="CRB" page="65"/>
   <setting key="karmaInitiationBase" value="9" source="CRB" page="65"/>
   <setting key="karmaInitiationPerGrade" value="3" source="CRB" page="65"/>
+  <setting key="positiveQualityMultiplier" value="true"/>
   <setting key="positiveQualityFactor" value="1" source="CRB" page="65"/>
   <setting key="karmaMartialArt" value="8" source="CRB" page="65"/>
   <setting key="karmaTechnique" value="4" source="CRB" page="65"/>
@@ -37,11 +38,13 @@
   <setting key="advance.qualityFactor" value="3" source="CRB" page="73"/>
   <setting key="advance.buyOffFactor" value="3" source="CRB" page="73"/>
   <setting key="advance.skillMax" value="11" source="CRB" page="73"/>
+  <setting key="buyPowerPoints" value="true"/>
   <setting key="advance.powerPoint" value="7" source="CRB" page="74"/>
   <setting key="advance.karmaToNuyenRate" value="1100" source="CRB" page="74"/>
   <setting key="karmaToNuyenRate" value="1500" source="CRB" page="64"/>
   <setting key="karmaToNuyenRateInDebt" value="3500" source="CRB" page="64"/>
   <setting key="inDebtQuality" value="crb.deep-pockets-debt" source="CRB" page="64"/>
+  <setting key="karmaToNuyenCap" value="true"/>
   <setting key="karmaToNuyenMax" value="7" source="CRB" page="64"/>
   <setting key="fakeSinPerRating" value="1500" source="CRB" page="66"/>
   <setting key="licencePerRating" value="300" source="CRB" page="66"/>
@@ -77,6 +80,7 @@
   <setting key="pointBuy.oneSpecialization" value="true" source="CRB" page="69"/>
   <setting key="metatypeKarma:crb.glimmerkin" value="7" source="CRB" page="70"/>
   <setting key="metatypeKarma:crb.stonefolk" value="11" source="CRB" page="70"/>
+  <setting key="karmaBuildMethod" value="true"/>
   <setting key="karmaBuild.start" value="900" source="CRB" page="71"/>
   <setting key="karmaBuild.startRating" value="1" source="CRB" page="71"/>
   <setting key="magicKarma:full" value="31" source="CRB" page="71"/>
@@ -118,4 +122,7 @@
   <setting key="specDice" value="4" source="CRB" page="78"/>
   <setting key="expertiseDice" value="5" source="CRB" page="78"/>
   <setting key="untrainedPenalty" value="2" source="CRB" page="78"/>
+  <setting key="overflowPerBody" value="1" source="CRB" page="66"/>
+  <setting key="workingForTheMan" value="true" source="CRB" page="66"/>
+  <setting key="expandedContacts" value="true" source="CRB" page="66"/>
 </sr6:creation>

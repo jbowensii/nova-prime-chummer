@@ -9,8 +9,8 @@ import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
 import { attrRating } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
-import { CORE_ATTRS, MAGIC_KIND_LABELS, PURCHASE_KINDS, sinName, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry } from '../../model/character'
-import type { Sr6Kind } from '../../model/types'
+import { CORE_ATTRS, MAGIC_KIND_LABELS, PURCHASE_KINDS, sinName, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Attr, type Sr6LedgerEntry, type Sr6Purchase } from '../../model/character'
+import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
@@ -21,7 +21,7 @@ const OPS = [['attribute', 'Raise attribute'], ['skill', 'Raise skill'], ['spec'
   ['knowledge', 'Knowledge or language'], ['quality', 'Buy quality'], ['buyoff', 'Buy off quality'],
   ['pick', 'Learn spell, ritual, complex form or adept power'], ['martialart', 'Learn martial arts style'],
   ['technique', 'Learn martial arts technique'], ['powerpoint', 'Power point (mystic adepts)'],
-  ['initiate', 'Initiate or submerge'], ['purchase', 'Buy gear'], ['drop', 'Drop gear'], ['sin', 'SIN'], ['lifestyle', 'Lifestyle'], ['contact', 'Contact'],
+  ['initiate', 'Initiate or submerge'], ['purchase', 'Buy gear'], ['upgrade', 'Upgrade gear to a higher level'], ['drop', 'Drop gear'], ['sin', 'SIN'], ['lifestyle', 'Lifestyle'], ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'], ['n2k', 'Nuyen to karma'], ['other', 'Other']] as const
 type OpKey = (typeof OPS)[number][0]
 const LEARN: PickKind[] = ['spells', 'rituals', 'complexforms', 'adeptpowers']
@@ -54,6 +54,9 @@ export function LedgerTab() {
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
+  // a bought item with a higher level in its family (levels.ts) can be upgraded to one
+  const upgradable = b.purchases.filter(x => x.id && data.siblings(x.kind, x.id).some(s => (data.levelOf(s) ?? 0) > (data.levelOf(data.entry(x.kind, x.id!)) ?? 0)))
+  const above = (x: Sr6Purchase | undefined) => (e: Sr6Entry) => !!x?.id && data.family(e.kind, e.id) === data.family(x.kind, x.id) && (data.levelOf(e) ?? 0) > (data.levelOf(data.entry(x.kind, x.id)) ?? 0)
   // a lifestyle is paid under a SIN: the first unless another is picked
   const sin = b.sins.some(s => s.uid === f.sin) ? f.sin : b.sins[0]?.uid ?? ''
   /** what the form says to buy, or null while it's incomplete */
@@ -77,6 +80,9 @@ export function LedgerTab() {
       case 'purchase': return e ? { op, line: { uid: '', kind: e.kind as PurchaseKind, id: e.id, qty: 1, accessories: [],
         ...(picked!.rating ? { rating: picked!.rating } : {}), ...(picked!.grade ? { grade: picked!.grade } : {}) } } : null
       case 'drop': return f.target ? { op, target: f.target } : null
+      // the line's higher level (the old line's grade kept; its accessories follow in applyAdvance)
+      case 'upgrade': return f.target && e ? { op, target: f.target, line: { uid: '', kind: e.kind as PurchaseKind, id: e.id, qty: 1, accessories: [],
+        ...(upgradable.find(x => x.uid === f.target)?.grade ? { grade: upgradable.find(x => x.uid === f.target)!.grade } : {}) } } : null
       // a new SIN, or (target) the placeholder one named
       case 'sin': return f.name.trim() ? { op, line: { uid: f.target, name: f.name.trim(), kind: f.sinKind === 'real' ? 'real' : 'fake',
         ...(f.sinKind === 'real' ? {} : { rating: whole(f.rating) }), ...(f.gender.trim() ? { gender: f.gender.trim() } : {}), licences } } : null
@@ -143,7 +149,9 @@ export function LedgerTab() {
         </>}
         {op === 'technique' && <label>Style<select value={f.target} onChange={e => { set({ target: e.target.value }); setPicked(null) }}>
           <option value="">Pick one</option>{b.martialArts.map(m => <option key={m.uid} value={m.uid}>{styleName(data, m)}</option>)}</select></label>}
-        {(op === 'quality' || op === 'pick' || op === 'purchase' || op === 'martialart' || (op === 'technique' && f.target)) && <div style={{ alignSelf: 'end' }}>
+        {op === 'upgrade' && <label>Item<select value={f.target} onChange={e => { set({ target: e.target.value }); setPicked(null) }}>
+          <option value="">Pick one</option>{upgradable.map(x => <option key={x.uid} value={x.uid}>{entryLabel(data.entry(x.kind, x.id!)!)}</option>)}</select></label>}
+        {(op === 'quality' || op === 'pick' || op === 'purchase' || op === 'martialart' || (op === 'technique' && f.target) || (op === 'upgrade' && f.target)) && <div style={{ alignSelf: 'end' }}>
           {picked && <span><Sr6Ref kind={picked.e.kind} id={picked.e.id}>{entryLabel(picked.e)}</Sr6Ref>{picked.rating ? ` (rating ${picked.rating})` : ''}{picked.grade ? `, ${picked.grade}` : ''} </span>}
           <button className="btn small" onClick={() => setPicking(true)}>{picked ? 'Change…' : 'Pick from the catalog…'}</button></div>}
         {op === 'buyoff' && <label>Quality<select value={f.target} onChange={e => set({ target: e.target.value })}>
@@ -226,10 +234,10 @@ export function LedgerTab() {
       </table></div>
 
       <CatalogPicker open={picking} onClose={() => setPicking(false)} grades={op === 'purchase'}
-        title={op === 'quality' ? 'Buy a quality' : op === 'pick' || op === 'martialart' || op === 'technique' ? 'Learn' : 'Buy gear'}
+        title={op === 'quality' ? 'Buy a quality' : op === 'pick' || op === 'martialart' || op === 'technique' ? 'Learn' : op === 'upgrade' ? 'Upgrade to' : 'Buy gear'}
         kinds={op === 'quality' ? ['qualities'] : op === 'pick' ? LEARN : op === 'martialart' ? ['martialarts']
-          : op === 'technique' ? ['martialtechniques'] : PURCHASE_KINDS as Sr6Kind[]}
-        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true : undefined}
+          : op === 'technique' ? ['martialtechniques'] : op === 'upgrade' ? [upgradable.find(x => x.uid === f.target)?.kind ?? 'gear'] : PURCHASE_KINDS as Sr6Kind[]}
+        filter={op === 'quality' ? e => data.qualities[e.id]?.positive === true : op === 'upgrade' ? above(upgradable.find(x => x.uid === f.target)) : undefined}
         note={op === 'pick' ? e => (picksFor(b.magic)[e.kind as PickKind] ? undefined : `not for ${an(kindName)} ${kindName}`)
           : op === 'technique' ? e => (techniqueFits(styleOf(f.target), e) ? undefined : 'not taught by this style') : undefined}
         onAdd={x => { setPicked(x); return null }} />

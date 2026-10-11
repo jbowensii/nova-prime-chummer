@@ -14,7 +14,7 @@ ID = re.compile(r"[a-z0-9][a-z0-9.\-]*")
 POS = re.compile(r"[1-9][0-9]*")
 BOOL = ("true", "false", "1", "0")
 # what edits.xsd (common.xsd's Amp, Item, Rule) allows: attributes, required ones, child sequence
-ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod"}, "item": {"kind", "specialist", "armor", "dv", "ranges", "category"},
+ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod", "family", "level"}, "item": {"kind", "specialist", "armor", "dv", "ranges", "category"},
          "rule": {"sheet", "section", "effects"}}
 REQUIRED = {"amp": "type", "item": "kind", "rule": "sheet"}
 CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile(r"name (effect )*text "), "rule": re.compile("title text ")}

@@ -261,7 +261,8 @@ class PregensTest(unittest.TestCase):
         root = self.xml["crb.test-rigger.xml"]
         self.assertEqual((root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll"))
         self.assertEqual(root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"})
-        self.assertEqual([k.text for k in root.iter("knowledge")], ["Made-up lore", "Toy trains"])
+        # the first takes the free slot of the one skill at 4+ (Piloting 5, CRB p.58); the second is paid
+        self.assertEqual([(k.text, k.get("from")) for k in root.iter("knowledge")], [("Made-up lore", "skill:piloting"), ("Toy trains", None)])
         # a pair is two items; a weapon printed without a type is named by it; spells link to the book's catalog
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"], [
             ("armor", "Padded Coat", "armored-clothes-coat"), ("armor", "Clothes", "armored-clothes"),  # the made-up ratings 3 and 2
@@ -279,7 +280,8 @@ class PregensTest(unittest.TestCase):
             "Rusty Sedan": (["vehicle-armor"], "sedan"),
             "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
             "Old Pal, fixer": (["rr-spec:network.street"], None),
-            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage"], None),  # its printed limitation: a Disadvantage, not a Negative effect
+            # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61)
+            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage", "negative"], None),
         })
         # the printed ratings, on the snapshots
         self.assertEqual([(a.get("printedRating"), a.get("source"), a.get("page")) for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
@@ -324,16 +326,17 @@ class PregensTest(unittest.TestCase):
             ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
         self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
             ("armor", "Armor jacket", "armored-clothes-coat"), ("weapon", "Traditional knife", "short-weapon"),
-            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None)])
-        # the focus amp's item isn't printed: none is made up (Review says it needs one)
-        self.assertIsNone(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"))
+            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None),
+            ("gear", "Sustaining focus", None)])
+        # the focus amp's item isn't printed: the amp brings its own (CRB p.144), as a catalog amp does
+        self.assertEqual(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"), "it-6")
 
     def test_every_printed_number_is_a_report_row(self):
         rows = [r for r in self.res.report if r.get("sample")]
         self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
         self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
         self.assertEqual([(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
-                         [("amp", "amp-2", 7), ("amp", "amp-6", 3),  # as printed, the rules rate them otherwise
+                         [("amp", "amp-2", 7),  # as printed, the rules rate it otherwise
                           ("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
                           ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
@@ -569,7 +572,8 @@ AMP_ITEMS = {
 # v1.8 prints Amps DHSA doesn't reprint in black (contacts, vehicle control rigs, eyes and ears, bone lacing,
 # base vehicles, more weapons, drugs and drones): counted by type, no names. Of these, 22 are printed only on the
 # pregen sheets (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5).
-EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 9, "quality": 5,
+# equipment: 10 since Psyche (non-caster), its own entry (owner, 2026-10-11)
+EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 10, "quality": 5,
                  "vehicle": 15}
 
 
@@ -648,6 +652,10 @@ To avoid made-up trouble, a table follows.
 | EXTENDED SOCIAL TESTS |
 | Invented social duels go on for a while�<br>Each side marks made-up social damage� |
 Prose after the box.
+<!-- page 74 -->
+| ALTERNATIVE RISK RULES |
+|---|
+| Made-up special dice replace the risky ones�<br>Nobody glitches in this invented way� |
 """
 
 
@@ -664,6 +672,9 @@ class OptionalRulesTest(unittest.TestCase):
             ("optional-extended-social-tests", "optional", "CRB", "139", "Extended social tests"),
             ("optional-vehicle-damage-for-all", "optional", "CRB", "68", "Vehicle and drone damage for characters, critters and devices"),
             ("optional-planning-pool", "optional", "CRB", "80", "Planning pool or personal Edge"),  # not found: the known page
+            ("optional-darker-and-more-lethal", "optional", "CRB", "69",
+             "Darker and more lethal (worsening wound effects, longer natural healing)"),  # not found: the known page
+            ("optional-alternative-risk", "optional", "CRB", "72", "Alternative risk rules"),
         ])
         for r in self.rules:
             self.assertEqual(r.find("text").text or "", "")
@@ -673,14 +684,16 @@ class OptionalRulesTest(unittest.TestCase):
             "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
             "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "
                                                "It makes them sturdier in an invented way.",
+            "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",
         })
 
 
 @unittest.skipUnless(BOOK.exists(), "owner's converted CRB book not present")
 class OptionalRulesBookTest(unittest.TestCase):
-    def test_all_three_found(self):
+    def test_all_found(self):
         rules = crb.optional_rules(BOOK.read_text(encoding="utf8"))
         self.assertEqual([(r[0], r[2]) for r in rules], [("optional-extended-social-tests", 139),
-                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80)])
+                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80),
+                                                         ("optional-darker-and-more-lethal", 69), ("optional-alternative-risk", 72)])
         for r in rules:
             self.assertGreater(len(r[3]), 100, r[0])

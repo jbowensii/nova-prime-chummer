@@ -30,23 +30,28 @@ test('metatypes: ranges per attribute, traits resolved to quality ids; an unreso
 
 test('a trait printed with a level resolves to the leveled quality at that level; picking the metatype gives it', () => {
   const d = sr6Data(fixtureCatalog((f, x) => (f.endsWith('metatypes.xml') ? x.replace('<trait>Unresolved Trait</trait>', '<trait>Lucky Streak 2</trait>') : x)))
-  expect(d.metatypes['crb.stonefolk']).toMatchObject({ traits: ['crb.stoneskin', 'crb.lucky-streak'], traitLevels: { 'crb.lucky-streak': 2 } })
+  // (the leveled quality is one entry per level, levels.ts: `Lucky Streak 2` is the level's own entry)
+  expect(d.metatypes['crb.stonefolk']).toMatchObject({ traits: ['crb.stoneskin', 'crb.lucky-streak.2'] })
+  expect(d.metatypes['crb.stonefolk'].traitLevels).toBeUndefined()
   const ch = blankSr6('priority', 'r', '2026-10-04T00:00:00Z')
   setMetatype(ch, 'crb.stonefolk', d)
-  expect(ch.build.qualities.map(q => [q.id, q.level, q.free])).toEqual([['crb.stoneskin', 1, true], ['crb.lucky-streak', 2, true]])
+  expect(ch.build.qualities.map(q => [q.id, q.level, q.free])).toEqual([['crb.stoneskin', 1, true], ['crb.lucky-streak.2', 1, true]])
 })
 
 test('skills, qualities, powers and life modules', () => {
   const d = sr6Data(fixtureCatalog())
   expect(d.skills['crb.gab']).toEqual({ id: 'crb.gab', name: 'Gab', attr: 'cha', untrained: true, specs: ['Haggling', 'Fibbing'], page: 99 })
   expect(d.skills['crb.hexing']).toMatchObject({ attr: 'mag', untrained: false })
-  expect(d.qualities['crb.lucky-streak']).toEqual({ id: 'crb.lucky-streak', name: 'Lucky Streak', positive: true, karma: 4, karmaMax: null, perLevel: true, maxLevel: 3, page: 70 })
+  // (a leveled quality's parent stays in the view, marked, for a line still naming it; its levels are plain qualities)
+  expect(d.qualities['crb.lucky-streak']).toEqual({ id: 'crb.lucky-streak', name: 'Lucky Streak', positive: true, karma: 4, karmaMax: null, perLevel: true, maxLevel: 3, page: 70, parent: true })
+  expect(d.qualities['crb.lucky-streak.2']).toEqual({ id: 'crb.lucky-streak.2', name: 'Lucky Streak 2', positive: true, karma: 8, karmaMax: null, perLevel: false, maxLevel: 1, page: 70 })
   expect(d.qualities['crb.butterfingers']).toMatchObject({ positive: false, karma: 8, perLevel: false, maxLevel: 1 })
   expect(d.qualities['crb.made-up-gift']).toMatchObject({ karma: 0, granted: true, category: 'Wanderer gift' })
   expect(d.qualities['crb.wanderer']).toMatchObject({ karma: 9, choices: [{ category: 'Wanderer gift', count: 1, max: 2 }] })
   expect(d.qualities['crb.knack'].granted).toBeUndefined()
   expect(d.qualities['crb.wander-path-step-1']).toMatchObject({ name: 'Wander Path: Step 1', karma: 10 })
-  expect(d.powers['crb.quick-step']).toEqual({ id: 'crb.quick-step', name: 'Quick Step', cost: 0.25, perLevel: true, maxLevel: 4, page: 157 })
+  expect(d.powers['crb.quick-step']).toEqual({ id: 'crb.quick-step', name: 'Quick Step', cost: 0.25, perLevel: true, maxLevel: 4, page: 157, parent: true })
+  expect(d.powers['crb.quick-step.3']).toEqual({ id: 'crb.quick-step.3', name: 'Quick Step 3', cost: 0.75, perLevel: false, maxLevel: 1, page: 157 })
   expect(d.lifemodules['crb.hatchling-days']).toEqual({ id: 'crb.hatchling-days', name: 'Hatchling Days', stage: 'opening',
     grants: { attributePoints: 3, skillPoints: 1, nuyen: 1000 }, choices: [], page: 31 })
   expect(d.lifemodules['crb.glow-apprentice']).toMatchObject({ stage: 'adult', requires: 'awakened', grants: { skillPoints: 3 },

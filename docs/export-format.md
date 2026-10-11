@@ -111,8 +111,11 @@ array of 3 integers: the thresholds for a light, a serious and an incapacitating
 `{ source, amps, items, vehicles, skills, specs, rules }`, and optionally `metatypes`, `reference`, `characters` and `npcs`.
 
 - `source`: `{ id, name, publisher, canon }`, and `compendium: true` (optional) when the "book" is a GM's compendium rather than a book: its own source id, `publisher` the owner's name, `canon` false, descriptions always included (the GM's own text), and its NPCs in `npcs`. Absent on books.
-- `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`.
-  A book amp's `rating` is computed as a non-first quality (`isFirstQuality` false), and a negative rating is clamped to 0.
+- `amps`: `id`, `source`, `page`, `canon`, `type`, `typeName`, `name`, `rating`, `essence`, `mod`, `effects`, `rr`, `bonuses`, and optionally `printedRating`, `item` (`{ kind, specialist, armor?, dv?, ranges? }`), `vehicle`, `description`,
+  and for one level of an entry the book prints with several (data-format.md, Levels) `family` (the id the entry had before
+  it was split, which the lowest level keeps as its `id`, so an importer keying entries by id updates the entry an earlier
+  export gave it) and `level`.
+  A book amp's `rating` is computed as a non-first quality (`isFirstQuality` false); it may be below 0 (a negative rating gives nuyen back).
   `printedRating`, when present, is what the book printed.
 - `items`: `id`, `source`, `page`, `canon`, `kind`, `name`, `specialist`, and optionally `category`, `armor`, `dv`, `ranges`, `effects` (as on amps), `description`.
 - `vehicles`: `id`, `source`, `page`, `name`, `pilot`, `body`, `handling`, `speed`, `armor`, `mount`, optionally `flyingSpeed` (the chassis' flying speed, when it has one).

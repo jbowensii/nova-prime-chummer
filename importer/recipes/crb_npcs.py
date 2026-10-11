@@ -242,7 +242,7 @@ def _amp(text):
         rest, low = f"{paren}; {rest}" if rest else paren, ""  # "Cyberdeck (Attack 1, Firewall 2)": the paren is its effects
     atype = AMP_TYPES.get(low) or (low.capitalize() if low else NAMED_TYPES.get(name.split()[0].lower(), "Quality"))
     lines = statblock._crb_amp_lines([rest.rstrip(".")]) if rest else []
-    return {"name": name, "type": atype, "ess": None, "rating": 0, "count": count, "lines": lines}
+    return {"name": name, "type": atype, "ess": None, "rating": None, "count": count, "lines": lines}  # none printed
 
 
 def characters(page, raw_name, lines, rules, spell_ids, updated, taken):

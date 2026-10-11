@@ -473,6 +473,8 @@ class Reader:
             cost = next((v for k, v in b.labels.items() if k.lower() == "cost"), "")
             if m := re.match(r"\s*([\d.]+)\s*(?:PP|power\s+points?)\b(\s*per\s+level)?", cost, re.I):
                 attrs = {"cost": m.group(1), "perLevel": "true" if m.group(2) else None}
+            elif split := effects.split_cost(cost):
+                attrs = {**split, "perLevel": "true" if re.search(r"per\s+level", cost, re.I) else None}
         if kind == "qualities":
             attrs = quality_attrs(name, chain, _body(b))
             if not attrs:
@@ -649,6 +651,16 @@ def karma_list(s):
     return [int(n) for m in _KARMA_LIST.finditer(s or "") for n in [m.group(1), *re.findall(r"\d+", m.group(2))]]
 
 
+def karma_steps(line):
+    """The prices a quality's price line lists as its choices (`7 or 12 Karma`, `3,6, or 9 Karma`, `Common: 12 Karma;
+    Uncommon: 9 Karma`): `7 12`, the karmaSteps it is bought at (Bilko Contacts, Seattle p. 327); None for one price or a
+    range (`2 to 20 Karma`, every value between)."""
+    if re.search(r"\d\s*(?:to|[–—-])\s*\d", line or "", re.I):
+        return None
+    ks = sorted(set(karma_list(line)))
+    return " ".join(map(str, ks)) if len(ks) > 1 else None
+
+
 def quality_attrs(name, chain, text):
     """A quality's kind (positive, negative: its heading's words, else its Cost or Bonus line, else its text naming
     it a positive or negative quality) and Karma; {} when nothing says which."""
@@ -670,7 +682,8 @@ def quality_attrs(name, chain, text):
     if karma is None and _NONE.search(text or ""):
         karma = "0"  # (`Bonus: None`: In Debt, CRB p. 77, gives no Karma)
     top =max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
-    return {"kind": kind, "karma": karma, **({"karmaMax": str(top)} if karma and top > int(karma) else {})}
+    steps = karma_steps(k.group(0)) if k and karma and top > int(karma) else None
+    return {"kind": kind, "karma": karma, **({"karmaMax": str(top)} if karma and top > int(karma) else {}), **({"karmaSteps": steps} if steps else {})}
 
 
 def template_headings(bs, chapters=3):
@@ -781,6 +794,7 @@ def optional_rule_quality(b, page):
     attrs = {"kind": "positive", "karma": str(min(ks)), "category": "Optional rule"}
     if len(set(ks)) > 1:
         attrs["karmaMax"] = str(max(ks))
+        attrs["karmaSteps"] = " ".join(map(str, sorted(set(ks))))  # (one price or the other: a choice, never between)
     return Found("qualities", b.name.strip(), page, attrs, [], _body(b), b)
 
 
