@@ -4,7 +4,8 @@ Resonance) above the magic priority's rating and Edge go on adjustment points, w
 raised attributes; the core attributes on attribute points; skill ranks on skill points, a specialization on the
 points still left. Whatever a pool can't hold is bought with karma, the cheapest ranks first, and nuyen past the
 resources with karma turned into nuyen. Overspent is then karma past the starting karma (and power points past the magic rating); ties go
-to the nuyen left nearest the printed starting nuyen. The numbers are the creation settings the app ships
+to the fewest leftovers past the carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), then to the nuyen left
+nearest the printed starting nuyen (karma turned into nuyen past what the gear needs, while karma is left). The numbers are the creation settings the app ships
 (public/data/sr6/creation-defaults.xml) and the catalog's priority rows; nothing is read from the book's text."""
 import itertools
 import math
@@ -153,15 +154,28 @@ def spend(need, rows, cs):
         karma += max(0, need["forms"] - free) * n("karmaForm") + need["spells"] * n("karmaSpell")
     else:
         karma += max(0, need["spells"] - free) * n("karmaSpell") + need["forms"] * n("karmaForm")
+    # karma into nuyen: at least what the gear needs past the resources (never nuyen left below 0 while karma could
+    # cover it), more while karma is left: the count that leaves least past the carry-over limits (maxKarmaLeft,
+    # maxNuyenLeft, CRB Hong Kong pp. 66, 68; nuyen counted in the karma it was, rounded up, so turning karma into nuyen
+    # already past its limit gains nothing), then the nuyen left nearest the printed starting nuyen, then the fewest
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
-    to_nuyen = math.ceil(short / rate) if short > 0 and rate else 0
+    low = math.ceil(short / rate) if short > 0 and rate else 0
+    room = n("startingKarma") + need["neg"] - karma  # karma left before any turns into nuyen
+    top = lambda k: cs[k] if isinstance(cs.get(k), float) else math.inf  # noqa: E731
+
+    def leftover(k):
+        nuyen = res.get("nuyen", 0) + k * rate - need["nuyen"]
+        over_n = nuyen - top("maxNuyenLeft")
+        carry = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 else 0)
+        return carry, abs(nuyen - need["left"]) if need["left"] is not None else 0, k
+    to_nuyen = min(range(low, max(low, math.floor(room)) + 1), key=leftover) if rate else 0
+    carry, gap, _ = leftover(to_nuyen)
     karma += to_nuyen
     over = max(0.0, karma - n("startingKarma") - need["neg"])
     pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
-    gap = abs(left - need["left"]) if need["left"] is not None else 0
-    return (pp_over, over, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
+    return (pp_over, over, carry, gap), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
                                    "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "extraMagic": extra}
 
 
