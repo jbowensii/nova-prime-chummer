@@ -142,6 +142,11 @@ class GameInformationShapesTest(unittest.TestCase):
         rows = crb.stat_lines(_b("Zap Stakes", 3, "Cheap.\n| TYPE | DV | AR | AVAIL | COST |\n|---|---|---|---|---|\n"
                                                   "| Wooden | 2P | 5/—/—/—/— | 3 | 25¥ |\n| Silver | 3P | 5/—/—/—/— | 4 | 35¥ |"))
         self.assertEqual([(x.type, x.name, x.row["DV"]) for x in rows], [("item", "Zap Stakes (Wooden)", "2P"), ("item", "Zap Stakes (Silver)", "3P")])
+        # (one row the book also names elsewhere, a weapon modification, is still a variant; most rows so named: a list)
+        three = _b("Zap Stakes", 3, "Cheap.\n| TYPE | DV | AVAIL | COST |\n|---|---|---|---|\n| Wooden | 2P | 3 | 25¥ |\n"
+                                    "| Silver | 3P | 4 | 35¥ |\n| Glow alloy | 3P | 4 | 345¥ |")
+        self.assertEqual(len(crb.stat_lines(three, {"glow alloy"})), 3)
+        self.assertEqual(crb.stat_lines(three, {"glow alloy", "silver"}), [three])
         grades = _b("Grades", 3, "| GRADE | ESS COST | AVAIL | COST |\n|---|---|---|---|\n| Alpha | x0.8 | +1 | x1.2 |\n| Beta | x0.7 | +2 | x1.5 |")
         self.assertEqual(crb.stat_lines(grades), [grades])  # (a rule table: no variants)
 

@@ -311,7 +311,8 @@ def stat_lines(b, names=frozenset()):
     that item, its row the table's (the acid thrower, Collapsing Now p. 38; the Lamplighter, Deadly Arts p. 136;
     Krime Gloves, p. 30: the first of its mode tables). Several rows of a TYPE column with an availability and a
     cost, each type a word or two of its own (`Wooden`, `Silver` under `Stakes`, Shadows in Focus: New Orleans p. 27;
-    not a list of items the book names elsewhere, `names`): one item a row, named `<heading> (<first cell>)`. [b] when
+    not a list of items the book names elsewhere, `names`, half its rows or more; one such row, `Hunter's alloy` also a
+    weapon modification, is still a variant): one item a row, named `<heading> (<first cell>)`. [b] when
     the block is no such thing."""
     if b.row is None and b.stats and b.type == "item" and not b.text.strip() and list(b.stats[0])[:1] == ["TYPE"] \
             and _STAT_PRICE & {k.upper() for k in b.stats[0]}:
@@ -348,8 +349,9 @@ def stat_lines(b, names=frozenset()):
             or any(not r[0] or r[0].upper() == h[0].upper() for r in rows):
         return [b]
     if len(rows) > 1 and (h[0].upper() != "TYPE" or len({x.upper() for x in h} & _STAT_PRICE) < 2
-                          or any(not re.match(r"[^\W\d_]", r[0]) or len(r[0].split()) > 2 or "(" in r[0] or norm(r[0]) in names
-                                 or set(norm(r[0]).split()) & hw for r in rows)):
+                          or any(not re.match(r"[^\W\d_]", r[0]) or len(r[0].split()) > 2 or "(" in r[0]
+                                 or set(norm(r[0]).split()) & hw for r in rows)
+                          or 2 * sum(norm(r[0]) in names for r in rows) >= len(rows)):
         return [b]
     text = b.text
     for th, trows in md_all or [(h, rows)]:
