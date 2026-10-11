@@ -42,7 +42,7 @@ the new effect kinds (install it with this).
   `affects="others"` (worded "others get: …", never counted); an "after …" clause as a condition. The printed sheet
   prefixes a tick box (☐) to every conditional effect note, a reminder to count it when it holds.
 - Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
-  1,206 → 1,364 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
+  1,206 → 1,446 effects of ours it lacks (82 of them what others get, decision 16). The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.
 
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
