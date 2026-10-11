@@ -109,8 +109,10 @@ const DERIVED_WORDS: Record<string, string> = { defense: 'Defense Rating', 'defe
   initiative: 'Initiative', 'initiative-dice': 'Initiative Dice', 'matrix-initiative': 'Matrix Initiative', 'matrix-initiative-dice': 'Matrix Initiative Dice',
   'physical-monitor': 'Physical boxes', 'stun-monitor': 'Stun boxes', 'matrix-monitor': 'Matrix boxes', overflow: 'Damage Overflow boxes', composure: 'Composure',
   'judge-intentions': 'Judge Intentions', memory: 'Memory', lift: 'Lift/Carry', movement: 'movement', 'minor-actions': 'Minor Actions',
-  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction' }
-const ITEM_WORDS: Record<string, string> = { ar: 'Attack Rating', dv: 'Damage Value', 'speed-interval': 'Speed Interval', 'top-speed': 'Top Speed' }
+  'major-actions': 'Major Actions', 'hardened-armor': 'Hardened Armor', 'damage-reduction': 'damage reduction', 'monthly-cost': 'monthly cost (¥)',
+  'power-points': 'Power Points' }
+const ITEM_WORDS: Record<string, string> = { ar: 'Attack Rating', dv: 'Damage Value', 'speed-interval': 'Speed Interval', 'top-speed': 'Top Speed', ammo: 'ammunition' }
+const PRICE_WORDS: Record<string, string> = { armor: 'armor and clothing prices', lifestyle: 'lifestyle costs', gear: 'gear prices', everything: 'all prices' }
 const words = (s: string) => s.replace(/-/g, ' ')
 const title = (s: string) => words(s).replace(/(^| )\w/g, m => m.toUpperCase())
 
@@ -121,6 +123,11 @@ export function targetText(t: string): string {
   if (k === 'attr') return ATTR_WORDS[v] ?? v
   if (k === 'attr-max') return `maximum ${ATTR_WORDS[v] ?? v}`
   if (k === 'skill') return v === 'choice' ? 'a chosen skill' : title(v)
+  if (k === 'skill-max') return v === 'choice' ? 'a chosen skill’s maximum' : `maximum ${title(v)}`
+  if (k === 'sense') return title(v)
+  if (k === 'pool') return v === 'chase' ? 'the chase pool’s Edge' : `the ${title(v)} pool`
+  if (k === 'pricemod') return PRICE_WORDS[v] ?? `${title(v)} prices`
+  if (k === 'complex-form') return `the ${title(v)} complex form`
   if (k === 'test') {
     if (v.startsWith('attr-')) return `tests using ${ATTR_WORDS[v.slice(5)] ?? v.slice(5)}`
     if (v.startsWith('spell-')) return `${title(v.slice(6))} spells`
@@ -137,6 +144,9 @@ export function targetText(t: string): string {
 
 const valueText = (v: string) => {
   if (/^-?R$/.test(v)) return v.startsWith('-') ? '−rating' : 'rating'
+  if (v === 'N') return 'native'
+  if (v === 'R/-R') return '+rating on-road, −rating off-road'
+  if (/^0\.\d+$/.test(v)) return `${Math.round(Number(v) * 100)}%`
   const r = /^R\*(-?[\d.]+)$/.exec(v) ?? /^(-?[\d.]+)\*R$/.exec(v)
   if (r) return `${r[1]} × rating`
   if (v.includes(',')) return v.split(',').map(x => (Number(x) > 0 ? `+${x}` : x === '0' ? '–' : x)).join('/')
@@ -155,6 +165,8 @@ export function effectText(p: Sr6Part): string {
   const when = [a.when && a.target !== 'test:other' ? a.when : '', a.affects === 'caster' ? 'affects the caster' : ''].filter(Boolean).join(', ')
   const how = `${a.affects === 'target' ? 'on the target: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text = a.op === 'set' ? `${t} ${valueText(v)}`
+    : a.target?.startsWith('pricemod:') ? `${t} ${signed(v)}`
+    : a.target?.startsWith('sense:') ? t
     : a.op === 'edge' ? `${signed(v)} Edge on ${t}`
       : a.op === 'edge-cost' ? `Edge boosts and actions cost ${valueText(v.replace(/^[-–−]/, ''))} ${/^[-–−]/.test(v) ? 'less' : 'more'} on ${t}`
         : a.op === 'edge-cost-set' ? `${t} costs ${v} Edge`
