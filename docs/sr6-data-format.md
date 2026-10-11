@@ -215,7 +215,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   decision 2026-10-11); `R[1,1,2,2]` (the book's own value per rating, a per-rating table: rating 3 gives the third,
   beyond the table the last; owner decision 2026-10-11, for the owner's overrides of table-driven items); a range
   band `x` in an `item:ar` list (`2,1,-2,0,x`: the band removed, `removes the longest-range Attack Rating`, shown `—`;
-  owner decision 2026-10-11); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
+  owner decision 2026-10-11); a formula with the book's rounding (`edg/2 RD`: half Edge rounded down, `RU` when the
+  book is silent; `nanite-volume/2 RU`: +1 for every two points of nanite volume; owner decision 13, 2026-10-11:
+  shown with the formula, never applied); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
   subject's Defense Rating`, `each hit increases the target's Overwatch Score by 1`); `N` a native language; `20%` a
   percent of the base value; `R/-R` a vehicle's on-road and off-road Handling; or a formula over attributes (`edg`,
   `edg/2`: a drake's Armor by its Edge). `hits`, percents and formulas are shown, never applied.
@@ -255,6 +257,14 @@ you …`, `tests made against you`), what using it costs (`3 additional Major Ac
 threshold, a cap (`up to a maximum of five initiative dice`). Not a condition: use-it-or-lose-it clauses (`that must
 be spent on that test, or it goes away`), the test an Edge is given on (`When performing a Juryrigging test`, `when
 targeted by spells`), `can only be spent`, `each time it is used`.
+
+**Across sentences** (owner decision 8, 2026-10-11): a stat printed with its number (`Weapon commlinks have … Firewall
+2.`) carries into the next sentence that refers back to it (`Its Firewall attribute is cumulative with other devices`):
+`matrix:firewall add 2`. **Edge on a condition with no test named** (decision 9): `offers a bonus Edge if the
+opposition doesn't have a vision enhancement` is `test:other edge 1` with the condition's words. **A section's own
+rule** (decision 10): a section intro sentence opening with the section's noun (`Missiles are rockets … with sensor
+packages adding their rating to the attack roll`) is an effect of the items that noun names (`test:combat add R` on
+the Missile Variant; `All rockets and missiles …` on every item), as an `Each …` sentence is.
 
 **A condition from what a test resists** (owner decision 2026-10-11): `more resistant to ingested poisons and toxins,
 gaining +1 Edge on tests to resist` is Edge on Toxin Resistance tests with `when="ingested poisons and toxins"`

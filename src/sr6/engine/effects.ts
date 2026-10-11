@@ -162,6 +162,9 @@ const valueText = (v: string) => {
   if (after) return `${after[1] ? `${after[1]} × ` : ''}(rating − ${after[2]})`
   const by = /^R\[(.*)\]$/.exec(v)
   if (by) return `${by[1].split(',').join('/')} by rating`
+  const formula = /^(-?)([a-z][a-z-]*)\/(\d+)(?: (RD|RU))?$/.exec(v)  // (`edg/2 RD`: half Edge, rounded down; owner decision 2026-10-11)
+  if (formula) return `${formula[1]}${ATTR_WORDS[formula[2]] ?? words(formula[2])} ÷ ${formula[3]}${formula[4] ? ` (round ${formula[4] === 'RD' ? 'down' : 'up'})` : ''}`
+  if (/^-?[a-z]{3}$/.test(v) && ATTR_WORDS[v.replace('-', '')]) return `${v.startsWith('-') ? '−' : ''}${ATTR_WORDS[v.replace('-', '')]}`
   if (v.includes(',')) return v.split(',').map(x => (x === 'x' ? '— (removed)' : Number(x) > 0 ? `+${x}` : x === '0' ? '–' : x)).join('/')
   if (v === 'N') return 'native'
   if (v === 'R/-R') return '+rating on-road, −rating off-road'

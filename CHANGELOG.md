@@ -34,9 +34,13 @@ the new effect kinds (install it with this).
   counted and shown as rating − 1), the book's own value per rating (`R[1,1,2,2]`, for table-driven items), a raised
   maximum (`action-max:take-aim +rating`, Tremor reducer), `tests to resist X` as a condition in the bracket (Tough
   Gut: ingested poisons), a removed range band (`x`, shown `—`, Short Barrel), Attribute Overclocking's +1 per hit
-  activated and shown.
-- Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 840 of 1,107 effects agree (66.6% → 75.9%);
-  1,206 → 1,327 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
+  activated and shown; a stat's number carried into the next sentence that refers back to it (Weapon Commlink's
+  Firewall 2, cumulative), Edge on a condition with no test named (Flare compensation: `test:other` with the book's
+  words), a section intro's own-noun rule for the items it names (a missile's sensor rating on the attack), a
+  formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
+  formula (`nanite-volume/2 RU`), all shown, never applied.
+- Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
+  1,206 → 1,315 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.
 
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games

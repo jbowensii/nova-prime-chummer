@@ -237,7 +237,7 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("You get a 25 percent boost in Lifestyle costs."), [("pricemod:lifestyle", "add", "0.25", None, None)])
         self.assertEqual(fx("Gain Mystic Armor equal to your Edge rating.", "critterpowers"), [("derived:defense-astral", "add", "edg", None, None)])
         self.assertEqual(fx("Increase your dracoform Armor or Mystic Armor by half your Edge score (rounded down).", "critterpowers"),
-                         [("derived:defense", "add", "edg/2", None, None), ("derived:defense-astral", "add", "edg/2", None, None)])
+                         [("derived:defense", "add", "edg/2 RD", None, None), ("derived:defense-astral", "add", "edg/2 RD", None, None)])
         self.assertEqual(fx("With each point of this mod taken, the passenger capacity of the vehicle is increased by one seat.", "gear"), [("item:seats", "add", "R", None, None)])
         self.assertEqual(fx("This codemod increases the reaction speed of the AI. Add +1 initiative and 1 additional initiative dice per point of rating, up to the normal maximum of 5 dice.", "gear"),
                          [("derived:matrix-initiative-dice", "add", "R", None, None), ("derived:matrix-initiative", "add", "R", None, None)])
@@ -286,6 +286,20 @@ class RoundThreeTest(unittest.TestCase):
                          [("item:ar", "add", "2,1,-2,0,x", None, None)])
         self.assertEqual(fx("Once activated, roll dice. Each hit temporarily boosts the rating of the designated attribute by 1.", "gear"),
                          [("attr:choice", "add", "hits", "activated", None)])
+
+    def test_owner_decisions_8_to_13(self):
+        self.assertEqual(fx("Zap commlinks have a device rating 1, Data Processing 1, and Firewall 2. Its Firewall attribute is cumulative with other devices.", "weapons"),
+                         [("matrix:firewall", "add", "2", None, None)])
+        self.assertEqual(fx("This modification offers a bonus Edge if the opposition doesn't have a vision enhancement to mitigate glare.", "gear"),
+                         [("test:other", "edge", "1", "conditional", "if the opposition doesn't have a vision enhancement")])
+        self.assertEqual(fx("Increase your dracoform Armor by half your Edge score (rounded down).", "critterpowers"), [("derived:defense", "add", "edg/2 RD", None, None)])
+        self.assertEqual(fx("Gain Armor equal to half your Edge.", "critterpowers")[0][2], "edg/2 RU")  # (silent: round up)
+        self.assertEqual(fx("Toughskin grants +1 Defense Rating for every two points of nanite volume.", "gear"),
+                         [("derived:defense", "add", "nanite-volume/2 RU", "conditional", "per point of nanite volume")])
+        intro = "Rockets fly. Missiles are rockets with sensor packages adding their rating to the attack roll. All rockets and missiles have a wireless feature: +1 Attack Rating."
+        self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.section_effects(intro, "", "Missile Variant", "weapons", "Rockets and Missiles")],
+                         [("test:combat", "R"), ("item:ar", "1")])
+        self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.section_effects(intro, "", "Gas Rocket", "weapons", "Rockets and Missiles")], [("item:ar", "1")])
 
     def test_rows_under_a_group_header_read_their_own_paragraph_and_a_transgenic_links_to_each(self):
         files = {"augmentations.xml": '<sr6:data kind="augmentations">\n'
