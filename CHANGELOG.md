@@ -1,9 +1,9 @@
 # Release notes
 
-## Unreleased: Anarchy sample runners from a fresh import, owner rulings on the unreferenced rules
+## Unreleased: Anarchy sample runners from a fresh import, owner rulings on the unreferenced rules, one entry per level
 
-**Re-import the Anarchy books** (Books → **Re-import all**) to get them: the sample runners and the core effect table are
-written at import.
+**Re-import the Anarchy books** (Books → **Re-import all**) to get them: the sample runners, the core effect table and
+the per-level entries are written at import.
 
 **Shadowrun Anarchy**
 - Sample runners read the same in any import order: a book that adds skills, amp types or effects (or the core) has the
@@ -25,6 +25,24 @@ written at import.
   "Response increase" mods, Initiative in VR, p.19).
 - On a fresh import of the eight books, in either order, the 28 sample runners show 3 Review errors (27 at 0.12.0),
   each the booklet's own: Keran's Cracking without a deck, Noonchi and Ty over budget.
+- One entry per level (owner, 2026-10-11): an entry Daegann's list prints with several levels is one catalog entry per
+  level, each with its own rating and effects. Freefall 1–3, Secret Room 1–5, Secure safe 1–2 (the gear stays; its
+  levels are Equipment amps), and the add-ons Attack +1…+5 and Firewall +1…+4 (cyberdecks), Additional Autosofts
+  +1…+6, Engine Customization +1…+3, Smart Suspension +1…+3 and Identical additional drone +1…+2 (vehicles): 8 entries
+  became 33. A level's rating is what the book prints for it ("up to level 3 for 15,000¥"); an add-on's level is the
+  add-on taken that many times. Two ranges have no top and stay one entry, listed in the import report: Enhanced
+  Perception "3+" and Additional plates "max +Body".
+  - The amp picker lists a family's levels together ("Level 2 (1–3)"), as does Game data; the Amp Builder has a
+    **Level** select for a book amp printed with levels, so a runner steps to the next level (after Finalize the
+    change is priced and logged like any edit).
+  - Runners saved before keep loading: an amp with the old id becomes the level its effects rate as (else the lowest),
+    its name and effects kept; an add-on applied before is still the book's on Review.
+  - Vehicle add-ons that only say what they improve in their text are read as that effect: Additional Autosofts adds
+    Pilot, Engine Customization Speed, Smart Suspension Handling (they were narrative effects at the same rating).
+  - The Foundry export gives each level `family` and `level`, the lowest one the old id as an alias, so re-importing a
+    book into Foundry updates the entry it made before and adds the other levels.
+  - The Amp Builder's own effect table is unchanged: Firewall +1 up to 5, the Negative effect −1 to −5 or an RCC's
+    drones build the player's own amp, one amp with its rating computed.
 - Every Anarchy switch says what it does when you hover it, in plain English, then its book and page or "house rule":
   Table setup's switches and Lock boxes, Review's Optional rules choices for a runner, and a language's Native box. No label
   or hover text names another app any more (the Foundry export page said "sra2"; it now just says the Anarchy 2.0 importer

@@ -181,3 +181,21 @@ test('runners saved in the browser move to the server on first load', async ({ p
   await expect(page.getByRole('link', { name: 'Legacy Browser Runner' })).toBeVisible()
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ca2.library.v1') ?? '[]').length)).toBe(0)
 })
+
+test('a book amp printed with levels: one entry per level in the picker, the Amp Builder steps between them', async ({ page }) => {
+  await newRunner(page, 'Glider')
+  await page.getByRole('link', { name: 'Shadow Amps' }).click()
+  await page.getByRole('button', { name: 'Add an amp' }).click()
+  await page.getByPlaceholder('Search the book’s amps').fill('Glide Step')
+  const picker = page.locator('.picker li')
+  await expect(picker).toHaveCount(3) // made-up TEST2 Glide Step 1-3
+  await expect(picker.nth(1)).toContainText('Level 2 (1–3)')
+  await picker.filter({ hasText: 'Glide Step 1' }).getByText('Glide Step 1', { exact: true }).click()
+  await expect(page.locator('.ampfoot b').first()).toHaveText('2')
+  await page.getByLabel('Level').selectOption({ label: 'Glide Step 3' })
+  await expect(page.getByLabel('Name')).toHaveValue('Glide Step 3')
+  await expect(page.locator('.ampfoot b').first()).toHaveText('6') // the made-up core: adept 2 + two narrative effects at 2
+  await page.getByRole('button', { name: 'Add amp' }).click()
+  await expect(page.getByRole('cell', { name: /Glide Step 3/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Rating 6' })).toBeVisible()
+})

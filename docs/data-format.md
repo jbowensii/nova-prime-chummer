@@ -242,7 +242,7 @@ These are the base chassis for vehicle amps.
 
 ### amps
 
-`<amp id type printedRating? vehicle? mod?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>*<formula/>*<issue/>*<narrative/></amp>`
+`<amp id type printedRating? vehicle? mod? family? level?><name/><item kind specialist? armor? dv? ranges?/>?<effect ref param? value? note? unpriced? switch? when? confidence? from? affects?/>*<formula/>*<issue/>*<narrative/></amp>`
 
 - `<item>` (equipment amps only) is the base item bought with the amp, priced
   from `pricing.xml`. Book price = item price + rating × `ampPoint`.
@@ -265,6 +265,34 @@ These are the base chassis for vehicle amps.
 - `mod="true"` marks an add-on (ammo, accessory, vehicle or deck mod,
   implant grade). It has no base rating: the Amp Builder appends its
   effects to an existing amp of the same `type`.
+- `family` and `level` (both or neither) mark one level of an entry the book prints with several (Levels, below).
+
+#### Levels
+
+Owner's rule (2026-10-11): an entry the book prints with several levels is one entry per level, otherwise duplicates of
+one another, each with its own rating and effects (positive or negative levels alike). The importer writes them
+(`importer/recipes/dhsa.py` `level_range`), reading the three ways Daegann's list prints a range:
+
+| the book prints | levels | each level |
+|---|---|---|
+| an add-on "Amp +1 … max +N" ("Max improvement +6"; "Max 3 identical drones": the core table's max for its one effect) | +1 … +N | the add-on taken that many times: its effects ×N, rating ×N; named "Attack +3" |
+| "can be taken up to level N" (Freefall) | printed rating … N | that rating; what it adds over the printed one is "Additional narrative effect"s; named "Freefall 2" |
+| a rating that "can be increased by 1 (max +N) for an additional Amp point" (Secret Room's threshold and maglock: they add up) | printed … printed + ΣN | as above; gear printed so (Secure safe) keeps its item and gets Equipment amps for levels 1 … ΣN |
+
+- `id` is `<family>-level-<n>` (`-level-minus-<n>` below 0); `family` is the id the entry had before it was split
+  (scoped like one, `dhsa.freefall`); no entry has it any more. `level` is the level (an add-on's: how many times it is
+  taken, negative for a drawback add-on). The levels follow each other in the file, lowest first, each with the
+  description.
+- A range with no top level stays one entry, as printed, and the import report lists it (`kind="levels-open"`): a rating
+  "3+" with "each additional rating" (Enhanced Perception), an add-on's "max +Body" (Additional plates).
+- The app: pickers list a family's levels together, each with "Level 2 (1–3)"; the Amp Builder has a Level select for a
+  book amp printed with levels (after Finalize the change is priced and logged as any edit); a runner whose `catalogId`
+  is a family gets the level its effects rate as, else the lowest (`src/engine/levels.ts`, `rescope.ts`); the Foundry
+  export carries `family`, `level` and, on the lowest level, the family id as an alias.
+- `npm run validate:data` checks that `family` and `level` come together, that no two entries are the same level of a
+  family, and that no amp has a family's id.
+- The Amp Builder's own effect table is not split: its "levels" (Firewall +1 up to 5, the Negative effect −1 to −5, an
+  RCC's drones) are how a player builds their own amp, one amp with its rating computed, not book entries to pick.
 
 ### lifestyles
 
