@@ -48,10 +48,15 @@ SOURCE_ID = re.compile(r"[A-Z][A-Z0-9-]{0,19}")
 PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
 
 
-def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
+# what the sample runners are read with besides their own book (statblock.load_rules): the core and these, as books add them
+READER_FILES = {"skills.xml", "amptypes.xml", "ampeffects.xml"}
+
+
+def run(book_dir, custom_dir, convert_pdf=True, file_name=None, reread=True):
     """Convert library/<id>/original.pdf to book.md (unless convert_pdf is False), identify the recipe,
     extract, and write custom/imported/<source>/, custom/imported/core/ (the CRB's core files),
-    custom/texts/<source>.xml and the records."""
+    custom/texts/<source>.xml and the records. A book that adds to what sample runners are read with (READER_FILES, the
+    core) has the other imported books' samples read again (`reread`): they come out the same in any import order."""
     pdf, md_path = os.path.join(book_dir, "original.pdf"), os.path.join(book_dir, "book.md")
     old = xmlio.read_import(book_dir)
     file_name = file_name or (old.get("file") if old is not None else None) or "original.pdf"
@@ -110,10 +115,27 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None):
         xmlio.update_index(custom_dir)
         xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         xmlio.write_status(book_dir, "done")
-        return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
         raise
+    if reread and (res.core or READER_FILES & set(res.files)):
+        _reread_samples(book_dir, custom_dir)
+    return res
+
+
+def _reread_samples(book_dir, custom_dir):
+    """Import again, from their book.md, the library's other imported books with sample runners (a book Conversion Guide
+    imported after the pregens booklet brings the Tasking skill its technomancers print). One that fails keeps its
+    status "failed" with the reason; the book just imported stays imported."""
+    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
+    for b in sorted(os.listdir(library)):
+        d = os.path.join(library, b)
+        imp = xmlio.read_import(d) if b != me and b.lower() != "sr6" and os.path.isdir(d) else None
+        src = imp.get("source") if imp is not None else None
+        if (src and SAFE_SOURCE_ID.fullmatch(src) and xmlio.read_state(d) == "done" and os.path.isfile(os.path.join(d, "book.md"))
+                and os.path.isdir(os.path.join(custom_dir, "imported", src.lower(), "samples"))):
+            with contextlib.suppress(Exception):
+                run(d, custom_dir, convert_pdf=False, reread=False)
 
 
 def _no_core_overrides(files):

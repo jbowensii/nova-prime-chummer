@@ -195,3 +195,29 @@ class Sr6FolderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RereadTest(unittest.TestCase):
+    def test_a_book_adding_to_what_samples_are_read_with_rereads_them(self):
+        # the sample runners come out the same in any import order: a book that adds a skill, an amp type or effect (or
+        # the core) imports the other books with sample runners again, from their book.md, once
+        import importer.__main__ as m
+        tmp = tempfile.mkdtemp()
+        lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+        for b in ("b1", "b2"):
+            os.makedirs(os.path.join(lib, b))
+            Path(lib, b, "book.md").write_text(MD, encoding="utf8")
+        with mock.patch.object(m, "run", wraps=m.run) as again:
+            run(os.path.join(lib, "b1"), custom, convert_pdf=False)
+        again.assert_not_called()  # these sheets add no skill, amp type or effect
+        os.makedirs(os.path.join(custom, "imported", "qref", "samples"))  # b1's source has sample runners
+        real = qref.extract
+
+        def adds_a_skill(md, ctx):
+            res = real(md, ctx)
+            res.files["skills.xml"] = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1"/>'
+            return res
+        with mock.patch.object(qref, "extract", side_effect=adds_a_skill), mock.patch.object(m, "run", wraps=m.run) as again:
+            run(os.path.join(lib, "b2"), custom, convert_pdf=False)
+        again.assert_called_once_with(os.path.join(lib, "b1"), custom, convert_pdf=False, reread=False)
+        self.assertEqual([xmlio.read_state(os.path.join(lib, b)) for b in ("b1", "b2")], ["done", "done"])

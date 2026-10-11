@@ -383,11 +383,17 @@ The numbers the book prints for each runner are report rows in
 `status`).
 
 How a stat page becomes a runner (0.5.6): as printed (the owner's rule). Each amp keeps its printed type, the effects
-its lines read (an effect its type can't take too: Review flags it; a line no effect reads stays the amp's text) and
-its printed rating on its snapshot; nothing is added, dropped or retyped to meet that rating. Every printed item is
+its lines read (an effect its type can't take too: Review flags it, unless the books' catalog amp of that name and type
+prints it, like a sample's Jazz; a line no effect reads stays the amp's text) and its printed rating on its snapshot;
+nothing is added, dropped or retyped to meet that rating. Two printed types are read by the book's rules instead: a
+"(Quality)" with a deck's Firewall – Attack is a Cyberdeck (CRB p.62), and a "(Quality)" the equipment list also prints
+is an Equipment amp on that item (CRB p.60). Every printed item is
 bought as printed (a branded commlink too; the app makes a plain "Commlink" and "Fake SIN" its free starting gear
 when it loads the runner); an armor row "(2+1)" or "(+1)" is an armor of that total. An Equipment amp is linked to the
-printed item of its name (or the one with most words in common); with none printed, none is made up. A spec rolled
+printed item of its name (or the one with most words in common); with none printed, the amp brings its own, a gear
+item of its name, as the book's Equipment Amps cost the item and the upgrades (CRB p.144) and a catalog amp brings its
+item in the app. A book that adds a skill, an amp type or effect (or the core) has the other books' runners read again,
+so they don't depend on the import order. A spec rolled
 with two attributes is bought once; a weapon's astral row isn't a second weapon. With the book's PDF, the core
 rulebook's dispositions and cues are read from the page layout (an item that wraps stays one). The file holds no
 override and no note: what the book prints against the rules shows on Review.
