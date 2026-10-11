@@ -182,17 +182,26 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
  * `missing` lists the files an index or source names that weren't. */
 export async function collectSr6Files(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[] }> {
   const files: SourceFile[] = [], missing: string[] = []
+  // each file's fetch starts as soon as its name is known (a few hundred one after another were seconds of round
+  // trips); they are still added in load order
+  const asked = new Map<string, Promise<string | null>>()
+  const fetchOnce = (path: string) => asked.get(path) ?? asked.set(path, get(path)).get(path)!
   const add = async (path: string, listed = false) => {
-    const xml = await get(path)
+    const xml = await fetchOnce(path)
     if (xml != null) files.push({ file: path, xml, overlay: !path.startsWith(SHIPPED) })
     else if (listed) missing.push(path)
     return xml
   }
-  const sources = [await add(`${SHIPPED}sources.xml`, true), await add(`${CUSTOM}imported/sources.xml`)]
-  const index = await get(`${CUSTOM}imported/index.xml`)
-  for (const href of index ? hrefs(index) : []) await add(`${CUSTOM}imported/${href}`, true)
-  for (const t of new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))) await add(CUSTOM + t)
-  for (const e of ['edits', 'texts']) await add(`${CUSTOM}edits/${e}.xml`)
+  const first = [`${SHIPPED}sources.xml`, `${CUSTOM}imported/sources.xml`, `${CUSTOM}imported/index.xml`, ...['edits', 'texts'].map(e => `${CUSTOM}edits/${e}.xml`)]
+  first.forEach(fetchOnce)
+  const sources = [await add(first[0], true), await add(first[1])]
+  const index = await fetchOnce(first[2])
+  const books = (index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`)
+  const texts = [...new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => CUSTOM + m[1]))]
+  ;[...books, ...texts].forEach(fetchOnce)
+  for (const path of books) await add(path, true)
+  for (const path of texts) await add(path)
+  for (const path of first.slice(3)) await add(path)
   files.push(...extra)
   return { files, missing }
 }
