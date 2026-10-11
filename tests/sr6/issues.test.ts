@@ -6,7 +6,7 @@ import { validateXML } from 'xmllint-wasm'
 import { describe, expect, it } from 'vitest'
 import { priced } from '../../src/sr6/engine/budgets'
 import { sr6Data } from '../../src/sr6/engine/data'
-import { catalogFind, sr6EntryXml } from '../../src/sr6/engine/load'
+import { catalogFind, resolveEntry, sr6EntryXml } from '../../src/sr6/engine/load'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { bookValue, formulaRange } from '../../src/sr6/engine/values'
 import { blankSr6, type Sr6Purchase } from '../../src/sr6/model/character'
@@ -29,7 +29,7 @@ it('the made-up file fits the SR6 gear schema', async () => {
 
 describe('loading', () => {
   const c = catalog()
-  const e = (id: string) => c.entries.gear.get(id)!
+  const e = (id: string) => resolveEntry(c, 'gear', id)!  // (a rated entry is read by id; its levels are the listed entries)
   it('reads formulas and issues apart from the parts; the attribute stays as printed', () => {
     expect(e('crb.flare-kit')).toMatchObject({ attrs: { cost: 'Rating × 200' }, parts: [], formulas: [{ field: 'cost', expr: 'R * 200' }] })
     expect(e('crb.null-box').issues).toEqual([{ field: 'avail', code: 'missing', page: 91, note: 'no availability printed' }])
@@ -51,7 +51,7 @@ describe('loading', () => {
 })
 
 describe('values', () => {
-  const c = catalog(), find = catalogFind(c), e = (id: string) => c.entries.gear.get(id)!
+  const c = catalog(), find = catalogFind(c), e = (id: string) => resolveEntry(c, 'gear', id)!
   it('a formula at the rating; its range over the ratings', () => {
     expect(bookValue(e('crb.flare-kit'), 'cost', 3, find)).toMatchObject({ n: 600, ok: true })
     expect(formulaRange(e('crb.flare-kit'), 'cost', find)).toEqual([200, 1200])
@@ -87,7 +87,7 @@ describe('prices in the builder', () => {
   })
   it('notes a rating the line doesn’t have', () => {
     const c = catalog()
-    delete c.entries.gear.get('crb.flare-kit')!.attrs.rating // an unrated item whose formula wants one
+    delete resolveEntry(c, 'gear', 'crb.flare-kit')!.attrs.rating // an unrated item whose formula wants one
     expect(priced(line('crb.flare-kit'), sr6Data(c), cr)).toMatchObject({ cost: 200, notes: ['cost: no rating given: worked out at rating 1'] })
   })
   it('a broken formula leaves the line unpriced', () => {
@@ -106,13 +106,15 @@ describe('edits', () => {
     const c = catalog('<gear id="crb.null-box" source="CRB" page="271" category="tools" cost="150" by="eve"><name>Null Box</name><text/></gear>'
       + '<gear id="crb.flare-kit" source="CRB" page="270" category="survival" rating="1–6" avail="3" cost="Rating × 200" by="eve"><name>Flare Kit</name><text/></gear>')
     expect(c.entries.gear.get('crb.null-box')!.issues).toHaveLength(1)
-    expect(c.entries.gear.get('crb.flare-kit')!.formulas).toEqual([{ field: 'cost', expr: 'R * 200' }])
+    expect(resolveEntry(c, 'gear', 'crb.flare-kit')!.formulas).toEqual([{ field: 'cost', expr: 'R * 200' }])
+    expect(c.entries.gear.get('crb.flare-kit.3')!.formulas).toEqual([{ field: 'cost', expr: 'R * 200' }])  // (the levels follow the edit)
   })
   it('an edit that sets the cost drops the book’s cost formula', () => {
     const c = catalog('<gear id="crb.flare-kit" source="CRB" page="270" category="survival" rating="1–6" avail="2" cost="Rating × 150" by="eve"><name>Flare Kit</name><text/></gear>')
-    const e = c.entries.gear.get('crb.flare-kit')!
+    const e = resolveEntry(c, 'gear', 'crb.flare-kit')!
     expect(e).not.toHaveProperty('formulas')
     expect(bookValue(e, 'cost', 2).n).toBe(300)
+    expect(bookValue(c.entries.gear.get('crb.flare-kit.2')!, 'cost', 2).n).toBe(300)
   })
 })
 

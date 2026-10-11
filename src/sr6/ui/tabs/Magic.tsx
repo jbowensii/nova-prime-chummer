@@ -40,13 +40,15 @@ export function MagicTab() {
       {rows.length === 0 ? <p className="muted">None yet.</p> : <div className="scroll-x"><table className="data">
         <tbody>{rows.map(x => {
           const e = data.entry(kind, x.id), power = kind === 'adeptpowers' ? data.powers[x.id] : undefined, name = e?.name ?? x.name ?? x.id
-          const max = pickMaxLevel(data, kind, x.id)
+          const max = pickMaxLevel(data, kind, x.id), levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
           return <tr key={x.uid}>
             <td><Sr6Ref kind={kind} id={e?.id}><b>{name}</b></Sr6Ref>{!e && <span className="err"> (no longer in the catalog)</span>}
               {e && <span className="muted"> {[e.attrs.category, ...pickFlags(e), e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
               <div><Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} /></div></td>
-            <td>{max !== null && <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
-              onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
+            <td>{max !== null ? <Stepper label={`${name} level`} value={x.level ?? 1} min={1} max={Number.isFinite(max) ? max : 99}
+              onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />
+              : levels.length > 1 && <Stepper label={`${name} level`} value={data.levelOf(e) ?? 1} min={levels[0]} max={levels.at(-1)!}
+                onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
             <td className="num">{power && (power.cost == null ? '? PP' : `${n(power.cost * (power.perLevel ? x.level ?? 1 : 1))} PP`)}</td>
             <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
           </tr>

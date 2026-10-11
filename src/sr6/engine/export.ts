@@ -4,7 +4,7 @@
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
-import { entryOf, fitted, lineBonuses, priced, skillRank } from './budgets'
+import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
@@ -216,8 +216,12 @@ const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times =
 
 /** As augmentBonus counts it: a line’s bonuses (lineBonuses: entered, else its entry’s effects) × its rating (perRating) × its quantity; an accessory's by its own rating
  *  (they are its host's, not the runner's: derived.attributes leaves them out). */
+/** The level's own entry for a line still naming a family's rated parent (levels.ts), else the entry as it is. */
+const leveled = (data: Sr6Data, e: Sr6Entry | undefined, level: number | undefined) =>
+  (e && data.family(e.kind, e.id)?.parent === e ? data.atLevel(e.kind, e.id, level ?? Math.min(...data.family(e.kind, e.id)!.levels.keys())) ?? e : e)
+
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {
-  const e = entryOf(x, data)
+  const e = leveled(data, entryOf(x, data), x.rating)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
   const base = e ? item(c, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
   const one = priced({ ...x, qty: 1, accessories: [] }, data, cr), values = { ...base.values }
@@ -225,7 +229,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
   return defined({ ...base, uid: x.uid, values, qty: x.qty, grade: x.grade, worn: !!x.worn, note: x.note,
-    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), x.rating ?? 1, top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)) })
+    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1), accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)) })
 }
 
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt
@@ -258,12 +262,12 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
       spec: s.spec, expertise: s.expertise })),
     knowledge: b.knowledge.map(k => ({ name: k.name, kind: k.kind, native: !!k.native, rank: k.points + k.karma })),
     qualities: b.qualities.map(q => {
-      const e = data.entry('qualities', q.id)
+      const e = leveled(data, data.entry('qualities', q.id), q.level)
       return defined({ ...(e ? item(c, e, true) : bare('qualities', q.name ?? q.id, q.id)), uid: q.uid, positive: e?.attrs.kind !== 'negative',
         level: q.level, free: !!q.free, note: q.note })
     }),
     picks: b.picks.map(p => {
-      const e = data.entry(p.kind, p.id)
+      const e = leveled(data, data.entry(p.kind, p.id), p.level)
       return defined({ ...(e ? item(c, e, true) : bare(p.kind, p.name ?? p.id, p.id)), uid: p.uid, pick: p.kind, level: p.level,
         bonuses: bonuses(data, lineBonuses(data, p.bonuses, e), p.level ?? 1) })
     }),

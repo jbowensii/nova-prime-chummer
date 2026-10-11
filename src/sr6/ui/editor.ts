@@ -104,6 +104,7 @@ export const REASONS: Record<string, string> = {
   'needs-name': 'Give it a name first.',
   'not-a-number': 'An amount isn’t a whole number.',
   'already-known': 'The runner already has that.',
+  'not-a-level': 'That isn’t a higher level of the same item.',
   'not-positive': 'Only a positive quality can be bought.',
   'not-negative': 'Only a negative quality can be bought off.',
   'cannot-learn': 'This runner’s magic kind can’t learn that.',

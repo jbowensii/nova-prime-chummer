@@ -45,12 +45,14 @@ test('who may take a metamagic: an adept’s an adept or mystic adept, a magicia
 test('a metamagic taken again goes up a level, to its most; one taken once can’t be', () => {
   const { data, cr } = made(), b = runner('adept').build
   const act = (id: string) => apply(b, { op: 'pick', kind: 'metamagics', id }, data, cr)
+  // (one entry per level, levels.ts: taken again, the line moves to the next level's entry)
   expect(act('crb.glow-point')).toEqual({ ok: true })
-  expect(b.picks[0]).toMatchObject({ id: 'crb.glow-point', level: 1 })
+  expect(b.picks[0]).toMatchObject({ id: 'crb.glow-point.1', name: 'Glow Point 1' })
   act('crb.glow-point'); act('crb.glow-point')
-  expect(b.picks[0].level).toBe(3)
+  expect(b.picks[0].id).toBe('crb.glow-point.3')
   expect(act('crb.glow-point')).toEqual({ ok: false, reason: 'max-level' })
   expect(apply(b, { op: 'powerLevel', uid: b.picks[0].uid, level: 2 }, data, cr)).toEqual({ ok: true })
+  expect(b.picks[0].id).toBe('crb.glow-point.2')
   expect(act('crb.soft-echo')).toEqual({ ok: true })
   expect(act('crb.soft-echo')).toEqual({ ok: false, reason: 'duplicate' })
 })
@@ -83,7 +85,7 @@ test('career: a metamagic the runner may not take is recorded, an error a GM may
   const rm = record(mage, line('crb.glow-point'), data, cr)
   if (!rm.ok) throw new Error(rm.reason)
   const vm = validateCareer(data, cr, rm.ch).filter(x => x.code === 'magic.metamagicUser')
-  expect(vm.map(x => [x.severity, x.page, x.message])).toEqual([['error', 160, 'Glow Point is for adepts only, not a full magician.']])
+  expect(vm.map(x => [x.severity, x.page, x.message])).toEqual([['error', 160, 'Glow Point 1 is for adepts only, not a full magician.']])
   expect(validateCareer(data, cr, { ...rm.ch, overrides: [{ code: vm[0].code, path: vm[0].path, note: 'GM ok' }] })
     .find(x => x.code === 'magic.metamagicUser')?.approved).toBe(true)
   expect(preview(mage, line('crb.hum-craft'), data, cr)).toMatchObject({ ok: true })
@@ -91,7 +93,8 @@ test('career: a metamagic the runner may not take is recorded, an error a GM may
   adept.build.attributes.mag.points = 5
   let ch = adept
   for (let i = 0; i < 2; i++) { const r = record(ch, line('crb.glow-point'), data, cr); if (!r.ok) throw new Error(r.reason); ch = r.ch }
-  expect(currentBuild(ch)).toMatchObject({ initiation: 2, picks: [{ id: 'crb.glow-point', level: 2, name: 'Glow Point' }] })
+  expect(currentBuild(ch)).toMatchObject({ initiation: 2, picks: [{ id: 'crb.glow-point.2', name: 'Glow Point 2' }] })
+  expect(currentBuild(ch).picks).toHaveLength(1)
   expect(ch.ledger.at(-1)).toMatchObject({ type: 'advance', label: 'Initiation grade 2 (Glow Point 2)' })
   const known = record(ch, line('crb.soft-echo'), data, cr)
   if (!known.ok) throw new Error(known.reason)

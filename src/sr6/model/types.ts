@@ -114,6 +114,9 @@ export interface Sr6Catalog {
   original: Map<string, Sr6Entry>
   /** an id an entry had in an earlier import (its <alias id kind>), by entryKey(old kind, old id): where it is now */
   moved: Map<string, { kind: Sr6Kind; id: string }>
+  /** the families of levels (src/sr6/engine/levels.ts), by entryKey(kind, family): a rated or leveled entry expanded
+   *  into one entry per level (the parent kept here, out of `entries`), or rows the book prints one per level */
+  levels?: Map<string, import('../engine/levels').Sr6Family>
   files: { file: string; kind: string; entries: number }[]
   errors: { file: string; message: string }[]
   /** corrections of book sample runners' printed lines (the edits layer's <samplefix>), by sample id */

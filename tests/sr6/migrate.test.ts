@@ -19,7 +19,8 @@ test('an old id resolves to the entry that holds it as an alias, across kinds; a
   expect(resolveEntry(c, 'augmentations', 'crb.spring-tendons-1-4')?.id).toBe('crb.spring-tendons')
   expect(sr6Data(c).entry('gear', 'crb.fizz-rounds')?.kind).toBe('ammotypes')
   expect(resolveEntry(c, 'gear', 'crb.no-such-thing')).toBeUndefined()
-  expect(c.entries.augmentations.get('crb.spring-tendons')!.parts.map(p => p.tag)).not.toContain('alias')
+  expect(resolveEntry(c, 'augmentations', 'crb.spring-tendons')!.parts.map(p => p.tag)).not.toContain('alias')
+  expect(c.entries.augmentations.get('crb.spring-tendons.2')!.parts.map(p => p.tag)).not.toContain('alias')
 })
 
 test('a runner’s old ids become the new ones, accessories and ledger lines too, recorded once', () => {
@@ -30,11 +31,12 @@ test('a runner’s old ids become the new ones, accessories and ledger lines too
     { uid: 'g5', kind: 'gear', id: 'crb.gone-for-good', qty: 1, accessories: [] }] })
   const ch = migrateSr6Ids(old, c, '2026-10-06T01:00:00.000Z')
   expect(ch.build.purchases.map(p => `${p.kind}/${p.id}`)).toEqual(
-    ['ammotypes/crb.fizz-rounds', 'weapons/crb.zap-gun', 'augmentations/crb.spring-tendons', 'gear/crb.gone-for-good'])
+    ['ammotypes/crb.fizz-rounds', 'weapons/crb.zap-gun', 'augmentations/crb.spring-tendons.2', 'gear/crb.gone-for-good'])
+  expect(ch.build.purchases[2].rating).toBeUndefined()  // (the level's entry carries it: levels.ts)
   expect(ch.build.purchases[1].accessories[0]).toMatchObject({ kind: 'ammotypes', id: 'crb.fizz-rounds' })
   expect(ch.build.purchases[0].qty).toBe(2)
   expect(ch.migrated?.map(m => `${m.from} → ${m.to}`)).toEqual(['gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds',
-    'gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds', 'augmentations/crb.spring-tendons-1-4 → augmentations/crb.spring-tendons'])
+    'gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds', 'augmentations/crb.spring-tendons-1-4 → augmentations/crb.spring-tendons.2'])
   expect(migrateSr6Ids(ch, c)).toBe(ch) // once: nothing left to turn
   const back = xmlToSr6(sr6ToXml(ch))
   expect(back.ok && back.character.migrated).toEqual(ch.migrated)

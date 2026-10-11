@@ -51,8 +51,10 @@ export function linkedEntries(data: Sr6Data, e: Sr6Entry | undefined): { part: S
   const out: { part: Sr6Part; entry: Sr6Entry }[] = []
   for (const p of e?.parts ?? []) {
     if (p.tag !== 'link') continue
-    const kind = p.attrs.kind as Sr6Kind | undefined, ref = p.attrs.ref
-    const found = (ref && kind ? data.entry(kind, ref) : undefined) ?? data.named?.(p.attrs.name ?? '', kind)
+    const kind = p.attrs.kind as Sr6Kind | undefined, ref = p.attrs.ref, level = Number(p.attrs.level)
+    let found = (ref && kind ? data.entry(kind, ref) : undefined) ?? data.named?.(p.attrs.name ?? '', kind)
+    // (`1 free level of Rapid Healing`, `Mystic Armor 2`: that level of the family, levels.ts)
+    if (found && level >= 1) found = data.atLevel?.(found.kind, found.id, level) ?? found
     if (found && found !== e) out.push({ part: p, entry: found })
   }
   return out

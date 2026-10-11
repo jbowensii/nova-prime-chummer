@@ -60,7 +60,7 @@ const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:o
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
 function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
   for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
-  for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), x.rating ?? 1, x.qty, e?.name ?? x.name ?? 'Custom item') }
+  for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item') }
   for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e), 1, q.level, e?.name ?? q.name ?? q.id) }
 }
 /** The bonuses to `target` (for `skill` the one skill's dice pool) that only the bracketed total holds (switchable, some
@@ -116,7 +116,7 @@ export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
     if (value) out.push({ from: e ? entryLabel(e) : name ?? id ?? 'Custom item', kind, id, value })
   }
   for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
-  for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, x.rating ?? 1, skill) * x.qty, e, x.kind, x.id, x.name) }
+  for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name) }
   for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
   return out
 }
@@ -125,8 +125,8 @@ export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
 export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
   const out: Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> = {}
   for (const a of x.accessories) {
-    const bs = lineBonuses(data, a.bonuses, entryOf(a, data))
-    for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, a.rating ?? 1, undefined, on)
+    const e = entryOf(a, data), bs = lineBonuses(data, a.bonuses, e)
+    for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, ratingOf(a, e), undefined, on)
   }
   return out
 }
@@ -150,13 +150,14 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
     if (x?.set !== undefined) max = x.set
     if (x?.add) max += x.add * (x.perRating ? q.level : 1)
   }
-  return max + (id ? b.qualities.filter(q => q.id === id && named(q.note)).length : 0)
+  return max + (id ? b.qualities.filter(q => data.sameFamily('qualities', q.id, id) && named(q.note)).length : 0)
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
 
 /** The catalog entry a purchase is priced from: the live one, else the snapshot it was exported with. */
 export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => (x.id ? data.entry(x.kind, x.id) ?? x.snapshot : undefined)
-/** The rating a purchase is priced at: its own, else the lowest its entry comes in, else 1. */
+/** The rating a purchase is priced at and its per-rating effects count at: its own, else the lowest its entry comes in
+ *  (a level's entry, levels.ts, comes in that rating only), else 1. */
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
 /** An accessory as its host carries it: on an augmentation it has the host's grade, whatever the file says ("All
@@ -320,7 +321,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
     add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
   }
-  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => q.id === debt)
+  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => data.sameFamily('qualities', q.id, debt))
   const karma = toNuyen(b, cr), converted = karma * n0(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)

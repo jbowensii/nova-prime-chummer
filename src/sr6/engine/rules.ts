@@ -49,7 +49,7 @@ function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: S
   }
 }
 /** 1 when the runner has the quality a setting names (Many Talents, Many Skills: Sixth World Companion p. 134), else 0. */
-const has = (c: Ctx, key: string) => { const id = str(c.cr, key); return id && c.b.qualities.some(q => q.id === id) ? 1 : 0 }
+const has = (c: Ctx, key: string) => { const id = str(c.cr, key); return id && c.b.qualities.some(q => c.data.sameFamily('qualities', q.id, id)) ? 1 : 0 }
 const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => { const e = c.data.entry(x.kind, x.id); return e ? entryLabel(e) : x.name ?? x.id }
 
 const RULES: Rule[] = [
@@ -271,7 +271,8 @@ const RULES: Rule[] = [
       ...entryCite(c.data.entry('metamagics', x.id)) })) },
   // CRB p. 167: each initiation grade brings one metamagic (one taken again, a level each)
   { code: 'magic.metamagicCount', severity: 'error', tab: 'magic', check: c => {
-    const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? 1), 0)
+    // (one taken again is a level each time: the pick's level, or the level of the entry it holds, levels.ts)
+    const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
     return n > c.b.initiation ? { message: `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.` } : null
   } },
   { code: 'adept.ppBudget', severity: 'error', tab: 'magic', check: c => {

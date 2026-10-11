@@ -60,14 +60,15 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'attribute': case 'skill': return [{ target: a.target }, '']
     case 'spec': case 'expertise': return [{ target: a.target, name: a.name }, '']
     case 'knowledge': return [{}, knowledgeXml(a.line)]
-    case 'quality': return [{}, qualityXml(a.line)]
+    case 'quality': return [{ target: a.target }, qualityXml(a.line)]
     case 'buyoff': return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
-    case 'pick': return [{}, pickXml(a.line)]
+    case 'pick': return [{ target: a.target }, pickXml(a.line)]
     case 'martialart': return [{}, martialXml(a.line)]
     case 'technique': return [{ target: a.target }, techniqueXml(a.line)]
-    case 'initiate': return [{}, a.line ? pickXml(a.line) : '']
+    case 'initiate': return [{ target: a.target }, a.line ? pickXml(a.line) : '']
     case 'purchase': return [{}, purchaseXml(a.line)]
     case 'drop': return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
+    case 'upgrade': return [{ target: a.target }, purchaseXml(a.line)]
     case 'contact': return [{}, contactXml(a.line)]
     case 'sin': return [{}, sinXml(a.line)]
     case 'lifestyle': return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
@@ -243,14 +244,15 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'skill': return { op, target: req(e, 'target') }
     case 'spec': case 'expertise': return { op, target: req(e, 'target'), name: req(e, 'name') }
     case 'knowledge': return { op, line: line(e, 'knowledge', readKnowledge, true) }
-    case 'quality': return { op, line: line(e, 'quality', readQuality, true) }
+    case 'quality': return def({ op, line: line(e, 'quality', readQuality, true), target: str(e, 'target') })
     case 'buyoff': return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
-    case 'pick': return { op, line: line(e, 'pick', readPick, true) }
+    case 'pick': return def({ op, line: line(e, 'pick', readPick, true), target: str(e, 'target') })
     case 'martialart': return { op, line: line(e, 'martialart', x => readMartial(x, fix), true) }
     case 'technique': return { op, target: req(e, 'target'), line: line(e, 'technique', readTechnique, true) }
-    case 'initiate': return def({ op, line: line(e, 'pick', readPick) })
+    case 'initiate': return def({ op, line: line(e, 'pick', readPick), target: str(e, 'target') })
     case 'purchase': return { op, line: line(e, 'purchase', purchase, true) }
     case 'drop': return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
+    case 'upgrade': return { op, target: req(e, 'target'), line: line(e, 'purchase', purchase, true) }
     case 'contact': return { op, line: line(e, 'contact', readContact, true) }
     case 'sin': return { op, line: line(e, 'sin', readSin, true) }
     case 'lifestyle': return def({ op, id: req(e, 'lifestyle'), months: num(e, 'months', 0), sin: str(e, 'sin'), uid: str(e, 'uid') })
