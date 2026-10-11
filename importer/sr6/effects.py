@@ -103,7 +103,7 @@ DERIVED = {"defense rating": "defense", "astral defense rating": "defense-astral
            "social rating": "social", "composure": "composure", "judge intentions": "judge-intentions",
            "memory": "memory", "lift": "lift", "lift/carry": "lift", "power point": "power-points", "power points": "power-points"}
 MATRIX = {"data processing": "data-processing", "firewall": "firewall", "sleaze": "sleaze", "attack attribute": "attack",
-          "matrix attack": "attack"}
+          "matrix attack": "attack", "overwatch score": "overwatch"}
 ITEM = {"attack ratings": "ar", "attack rating": "ar", "ar": "ar", "damage value": "dv", "dv": "dv",
         "concealability threshold": "concealability", "concealability": "concealability", "handling": "handling",
         "acceleration": "acceleration", "speed interval": "speed-interval", "top speed": "top-speed",
@@ -175,6 +175,7 @@ _TEST_WORDS = [  # (pattern, target): the test types a phrase names, longest fir
     (r"mental (?:tests?|skills?)|tests? (?:involving|using|that use) (?:one of )?(?:the |your )?(?:four )?mental attributes?", "test:mental"),
     (r"(?<!close )(?:attack|combat) tests?", "test:combat"),
     (r"surprise tests?", "test:surprise"),
+    (r"(?:when )?targeted by (?:a |any )?spells?", "test:magic-resistance"),
     (r"crash tests?", "test:crash"),
 ]
 
@@ -247,6 +248,8 @@ def targets(phrase, kind=None):
     for m in re.finditer(r"\b(?:the |that |this )?(?:chosen|selected|designated|that|same|this) (?P<mx>matrix )?attribute\b|\bone (?:of )?(?:the |your |their |its |[a-z]+'s )?"
                          r"(?:[a-z]+'s )?(?:basic |physical |mental |special )?attributes\b|\ban attribute of (?:your|their|the player's) choice\b", p):
         add("matrix:choice" if m.groupdict().get("mx") else "attr:choice", m.start(), m.end())
+    for m in re.finditer(r"\(attribute\)", p):  # (a complex form's `(attribute)`: the Matrix attribute it is bought for)
+        add("matrix:choice" if kind == "complexforms" else "attr:choice", m.start(), m.end())
     for m in re.finditer(r"\b(?:the |that |the chosen |the selected |a )?(?:chosen|selected) skill\b|\bthat skill\b", p):
         add("skill:choice", m.start(), m.end())
     for m in re.finditer(r"\b(knowledge|language) (?:skill )?(?:tests?|checks?)\b", p):
@@ -341,7 +344,8 @@ def _sw(s, label=""):
             continue  # (`When this way is taken`: the entry itself)
         if m.group(0) == "only" and re.search(r"\b(?:can|may|must|should|could|will)\s*$", low[:m.start()]) or words == "used":
             continue  # (`that can only be spent on …`, `each time it is used`: no condition on the effect)
-        if re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?[a-z' ()-]*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\))?\s*$", words) \
+        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?[a-z' ()-]*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\))?\s*$", words)
+                or re.fullmatch(r"(?:when|whenever|while|if) (?:you are |they are )?targeted by (?:a |any )?spells?", words)) \
                 and (targets(words) or _activity(words)):
             continue  # (`When performing a Juryrigging test`: which test, not a condition; `… tests to recognize people` is one)
         if m.group(0) in ("involving", "related to", "that use", "used") and                 (targets(low[max(0, m.start() - 8):m.start()] + words) or any(re.search(rf"\b(?:{rx})\b", words) for rx, _ in ACTIVITIES)):
@@ -426,7 +430,7 @@ def read(text, kind=None, name=None):
                     x[1]["affects"] = who
                 if low_formula:
                     x[1]["confidence"] = "low"
-                if re.search(r"\bnet hits?\b", s, re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
+                if re.search(r"\bnet hits?\b|\b(?:each|every|per) hit\b", s, re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
                     x[1]["value"] = ("-" if x[1]["value"].startswith("-") else "") + "hits"  # (`1 per net hit`: shown, never applied)
             out.append(x)
         for m in _TEST.finditer(s):
@@ -780,6 +784,15 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False):
         bonus(targets(m.group("t"), kind), "R")
     for m in re.finditer(r"\badds? the (?:rating|force|level) of (?:the |this |these |its )?[a-z' -]{0,40}? to (?:your |their |the |its )?(?P<t>[^.;]*)", low):
         bonus(targets(m.group("t"), kind)[:4], "R")
+    # a spell's or complex form's per hit (`net hits are added to the subject's Defense Rating`, `each net hit increases
+    # the target's Overwatch Score by 1`): `hits`, shown, never applied
+    for m in re.finditer(r"\b(?:net )?hits\b(?: on the [a-z ]+ test)? (?:are|is) added to (?:the (?:subject|target|caster|character)'s |your |their )?(?P<t>[^.;]*)|"
+                         r"\b(?:each|every|per) (?:net )?hit (?:temporarily )?(?P<dir>increases?|adds?|raises?|boosts?|reduces?|decreases?|lowers?) (?:the (?:subject|target|caster|character)'s |your |their |the )?(?P<t2>[a-z ()' -]{2,40}?) by (?P<v>\d+|one|two)\b", low):
+        if m.group("t2") and re.search(r"\bnoise\b", m.group("t2")):
+            continue  # (a noise rating: no target of ours)
+        for t, spec in targets(m.group("t") or m.group("t2"), kind)[:3]:
+            sign = "-" if m.group("dir") and m.group("dir").startswith(("reduc", "decreas", "lower")) else ""
+            found.append((t, sign + "hits", spec, None))
     for m in re.finditer(r"\badds? (?P<v>a|one|two|\d+) (?:point|box)s? to (?:your |their |the |its )?(?P<t>[^.;]*)", low):
         if _negated(low, m.start()):
             continue

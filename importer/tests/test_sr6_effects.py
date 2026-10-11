@@ -266,6 +266,14 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("Dwarfs have thermographic vision (p. 73)."), [("sense:thermographic-vision", "add", "1", None, None)])
         self.assertEqual(fx("The light allows persons with low-light vision to see for twenty meters in total darkness."), [])
 
+    def test_per_hit_effects_and_spell_defense(self):
+        self.assertEqual(fx("Net hits on the Spellcasting test are added to the subject's Defense Rating and dice pool for Surprise tests as long as the spell is sustained.", "spells"),
+                         [("derived:defense", "add", "hits", "sustained", None), ("test:surprise", "add", "hits", "sustained", None)])
+        self.assertEqual(fx("Make an Electronics + Resonance test. Each hit increases the target's Overwatch Score by 1.", "complexforms"),
+                         [("matrix:overwatch", "add", "hits", "sustained", None)])
+        self.assertEqual(fx("Each net hit increases (attribute) by 1 up to twice the target's normal rating.", "complexforms"), [("matrix:choice", "add", "hits", "sustained", None)])
+        self.assertEqual(fx("Gain a point of Edge when targeted by spells.", "adeptpowers"), [("test:magic-resistance", "edge", "1", None, None)])
+
     def test_variant_rows_take_their_parents_sentences_and_resolve_its_choice(self):
         files = {"gear.xml": '<sr6:data kind="gear">\n  <gear id="zb" source="X" page="1"><name>Zapjack Boosters</name></gear>\n'
                              '  <gear id="zb-f1" source="X" page="2" rating="1"><name>Zapjack Boosters (Firewall) (Rating 1)</name></gear>\n'
