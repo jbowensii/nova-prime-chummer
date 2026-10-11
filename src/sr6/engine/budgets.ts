@@ -14,7 +14,7 @@ import { fieldName } from '../../engine/formula'
 import { bookValue, dataFind, rated, ratingRange } from './values'
 import { capacityUsed, entryLabel } from './categories'
 import { martialKarma } from './martial'
-import { effectBonuses, maxEffects, sr6Counts as counts, TEST_TYPES } from './effects'
+import { bonusValue, effectBonuses, maxEffects, sr6Counts as counts, TEST_TYPES } from './effects'
 
 /** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
 export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
@@ -54,7 +54,7 @@ export function attrRating(b: Sr6Build, k: Sr6Attr, p: Provider): number {
 // and in the skill's bracketed total for a specialization the runner hasn't)
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string, on = false, spec?: string) =>
   (bonuses ?? []).filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
-    .reduce((s, x) => s + x.value * (x.perRating ? rating : 1), 0)
+    .reduce((s, x) => s + bonusValue(x, rating), 0)
 // (`Etiquette or Negotiation`: either)
 const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
@@ -73,7 +73,7 @@ export function bracketNotes(b: Sr6Build, data: Sr6Data, target: Bonus['target']
   const out: { value: number; when: string; from: string }[] = []
   eachLine(b, data, (bs, rating, times, from) => {
     for (const x of bs) if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
-      out.push({ value: x.value * (x.perRating ? rating : 1) * times, from,
+      out.push({ value: bonusValue(x, rating) * times, from,
         when: [x.spec, x.when, x.switch !== 'conditional' && x.switch, x.affects === 'caster' && 'affects the caster'].filter(Boolean).join(', ') })
   })
   return out
@@ -88,7 +88,7 @@ export function specBonus(b: Sr6Build, data: Sr6Data, skill: string, spec: strin
   let total = 0
   eachLine(b, data, (bs, rating, times) => {
     for (const x of bs) if (x.target === 'skill' && x.skill === skill && sameSpec(x.spec, spec) && counts({ ...x, spec: undefined } as Bonus, on))
-      total += x.value * (x.perRating ? rating : 1) * times
+      total += bonusValue(x, rating) * times
   })
   return total
 }

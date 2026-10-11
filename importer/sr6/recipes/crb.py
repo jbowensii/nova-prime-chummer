@@ -464,6 +464,21 @@ class _Catalog:
                                if word_stems(re.sub(r"\([^()]*\)", "", e["name"])) == want_set
                                and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()), (None, kinds[0]))
         rule, kids, attrs = a["_rule"], [], {}
+        if base is None:  # (owner 2026-10-11) the base printed as a group header over its versions (`Awareness` over
+            # `Basic`, `Tactical`): one entry per version, each priced from its own base, named `… (Basic)`
+            rows = [(e, k) for k in kinds for e in self.entries[k]
+                    if [regroup_stem(w) for w in norm(e["attrs"].get("group") or "").split()] == want
+                    and (e["attrs"].get("type") or "").lower() == a["_basekind"].lower()]
+            if rows:
+                for e, k in rows:
+                    attrs = {x: e["attrs"][x] for x in ("type", "category", "rating", "avail") if e["attrs"].get(x)}
+                    r = ", R" if e["attrs"].get("rating") else ""
+                    kids = []
+                    for fld, x in a["_factors"].items():
+                        attrs[fld] = _short_rule(rule, fld)
+                        kids.append(("formula", {"field": fld}, f"ref({k}:{self.source.lower()}.{e['id']}, {fld}{r})*{x:g}"))
+                    self.add(k, f"{f.name} ({e['name']})", f.page, attrs, kids, f.text)["derived"] = True
+                return
         if base:
             attrs = {k: base["attrs"][k] for k in ("type", "category", "rating", "avail") if base["attrs"].get(k)}
             r = ", R" if base["attrs"].get("rating") else ""
@@ -711,6 +726,8 @@ class _Catalog:
                 attrs = {"type": ware_type([*ctx, attrs["category"]]), **attrs}
             if (m := NAME_RATING.search(name)) and "rating" not in f and kind not in ("weapons", "armor", "vehicles"):
                 name, f["rating"] = name[:m.start()] + name[m.end():].strip(), m.group(1)
+            if b.group:  # (its id with its group, `awareness-basic`, not `basic`; owner 2026-10-11)
+                attrs["_id"] = f"{attrs['group']} {name}"
             if "rating" not in f and (m := TAG_RATING.match(b.tags or "")):
                 f["rating"] = m.group(1)  # the heading's tag line gives its range: `(rating 1-4)`
             if "rating" not in f and re.search(r"(?i)\b(?:size|level|force|grade)\b", f.get("cost", "") + f.get("avail", "")):
@@ -734,12 +751,14 @@ class _Catalog:
                     g["rating"] = g["capacity"]  # priced by capacity: bought at a capacity in its range
                 fx = [("formula", {"field": k[9:]}, g.pop(k)) for k in [k for k in g if k.startswith("_formula:")]]
                 a = {**attrs, **g}
+                cid = a.pop("_id", None)
                 self.check(kind, n, a, page)
                 # (its printed cells, those a recipe moved to labels too: a per-unit price's count range)
                 e = self.add(kind, n, page, a, [*notes, *fx], "\n".join(prose + [_text(b)]), row={**b.labels, **(b.row or {})},
                              aliases=(b.aliases if n == name else []) or code_alias(n, b.label)
                              or (printed_short(n, self.index) if n != name else [])  # (a heading's fuller name first)
-                             or (grouped_names(n, a["group"]) if a.get("group") else []))
+                             or ([f"{a['group']} {n}", *grouped_names(n, a["group"])] if a.get("group") else []),
+                             cid=slug(f"{cid} {n}") if cid and n != name else slug(cid) if cid else None)
                 e["tab"] = self.table_of(b, page)
                 if b.product:
                     e["product"] = b.product

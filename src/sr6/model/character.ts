@@ -34,6 +34,10 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
  *  Rating or Damage Value (bone lacing, CRB Hong Kong p. 286), movement metres or Matrix initiative dice (Hack & Slash's
  *  Matrix initiative booster). perRating: × the line's rating. */
 export interface Bonus { target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill' | 'unarmedAR' | 'unarmedDV' | 'movement' | 'matrixInitDice'; skill?: string; value: number; perRating?: true
+  /** less so much after the rating is counted (`R-1`: a level after the first, owner 2026-10-11); with perRating */
+  minus?: number
+  /** a value per rating, the book's own table (`1,1,2,2`: rating 1 gives 1, rating 3 gives 2; owner 2026-10-11) */
+  byRating?: number[]
   /** only on some tests or situations (`sound-based Con tests`): in the bracketed total (owner decision 2026-10-10) */
   when?: string
   /** only on the tests of a specialization (`Climbing`): added to that specialization's pool when the runner has it, else

@@ -5,6 +5,7 @@
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
+import { bonusValue } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import type { CreationRules } from './creation'
@@ -41,7 +42,7 @@ export type Sr6ExportBonus = ({ target: Exclude<Bonus['target'], 'skill'>; value
  *  or complex form's, on its caster or its target(s) (never counted on the caster). A reader applies the always-on `add`
  *  ones it has a field for (Eden: an Active Effect), the switchable ones as an effect the player turns on, and shows the
  *  rest. */
-export interface Sr6ExportEffect { target: string; op: string; value: string; low?: true; switch?: string; when?: string; spec?: string; affects?: 'caster' | 'target' }
+export interface Sr6ExportEffect { target: string; op: string; value: string; low?: true; switch?: string; when?: string; spec?: string; affects?: 'caster' | 'target' | 'others' }
 /** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects */
 export interface Sr6ExportLink { rel: 'grants' | 'as'; name: string; kind?: string; id?: string; level?: number; when?: string }
 /** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
@@ -164,7 +165,7 @@ function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'link
   const effects = e.parts.filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && p.attrs.op)
     .map(p => ({ target: p.attrs.target, op: p.attrs.op, value: p.attrs.value, ...(p.attrs.confidence === 'low' ? { low: true as const } : {}),
       ...(p.attrs.switch ? { switch: p.attrs.switch } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}), ...(p.attrs.spec ? { spec: p.attrs.spec } : {}),
-      ...(p.attrs.affects === 'caster' || p.attrs.affects === 'target' ? { affects: p.attrs.affects as 'caster' | 'target' } : {}) }))
+      ...(p.attrs.affects === 'caster' || p.attrs.affects === 'target' || p.attrs.affects === 'others' ? { affects: p.attrs.affects as 'caster' | 'target' | 'others' } : {}) }))
   const links = e.parts.filter(p => p.tag === 'link' && p.attrs.name && (p.attrs.rel === 'grants' || p.attrs.rel === 'as'))
     .map(p => ({ rel: p.attrs.rel as Sr6ExportLink['rel'], name: p.attrs.name, ...(p.attrs.kind ? { kind: p.attrs.kind } : {}),
       ...(p.attrs.ref ? { id: p.attrs.ref } : {}), ...(Number(p.attrs.level) > 0 ? { level: Number(p.attrs.level) } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }))
@@ -210,7 +211,7 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem =>
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
   (bs ?? []).map(b => {
-    const value = b.value * (b.perRating ? rating : 1) * times
+    const value = bonusValue(b, rating) * times
     // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
     const when = { ...(b.when ? { when: b.when } : {}), ...(b.switch ? { switch: b.switch } : {}), ...(b.spec ? { spec: b.spec } : {}), ...(b.affects ? { affects: b.affects } : {}) }
     return b.target === 'skill' ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when } : { target: b.target, value, ...when }

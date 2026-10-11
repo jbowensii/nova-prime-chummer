@@ -100,6 +100,51 @@
   - A sample runner whose numbers need the first printing's illegal-only Availability cap says "assumed: 2019 printing".
   - Sample runners: the only Review errors added are the Karma and nuyen left past the limits, which were notes before.
 
+## Unreleased: Shadowrun 6 effects, third round
+
+**Re-import the Shadowrun 6 books** (Books → **Re-import all**) to get them. The Foundry importer module 0.5.1 maps
+the new effect kinds (install it with this).
+
+**Shadowrun 6**
+- The effects reader (importer/sr6/effects.py) reads the phrasings Commlink6 had and we missed, by general rules:
+  a chosen attribute or Matrix attribute (`this attribute`, `the chosen Matrix attribute`), resolved by a variant row's
+  words (`Cyberjack Boosters (Firewall)`), named actions and complex forms (`bonus dice on a Snoop action or Static
+  Veil complex form`, a list after `action:`), a data structure's level in bonus dice (activated for one action, Hack
+  & Slash p. 70), an Attack Rating modifier limited to fire modes (shock pads), an ammunition belt, a sense an entry is
+  named for or grants (low-light and thermographic vision), a skill's maximum (Aptitude, Genetic Optimization), a
+  knowledge or language skill granted, Edge cost on a named action (Called Shot—Disarm), a chase pool's Edge, costs in
+  percent (armor +10%) and nuyen a month, a drake's Armor by its Edge, Handling moved between on- and off-road, a
+  rating subtracted from a stat, an AI's Matrix initiative, a spell's or complex form's per-hit modifiers (`net hits
+  are added to the subject's Defense Rating`), the Overwatch Score, `an additional two Minor Actions`, `use the Move
+  Minor Action an additional time`. A use-it-or-lose-it clause, the test an Edge is given on, `can only be spent` and
+  `each time it is used` are no longer conditions; `each point of this mod` and `each point of X rating` are per
+  rating; a `**Wireless bonus:**` label holds for the sentences after it in its paragraph; a cap (`up to a maximum of
+  five initiative dice`) is not a bonus.
+- A variant or rating row with no text of its own reads its parent's sentences about it (or the book's block when the
+  parent is no entry); a text that is only label lines takes the rule the book describes the item under; an ammo
+  table's `–1S(e)` and `–2 to all` are modifiers; a skillsoft kind named in a program or gear row gives its skill at
+  its rating.
+- A table row whose value cells hold no value (Body Shop p. 67, `Awareness | Extreme | —`) over rows indented under it
+  is a group header, not an item: the indented rows are the items, shown with their group (`Awareness: Basic`,
+  `Awareness: Tactical` at rating 1–3), each with its own paragraph of the heading's text (Basic: Edge on Surprise
+  tests; Tactical: +rating dice on defense and surprise tests), ids carrying the group (`bs.awareness-basic`), the old
+  `bs.awareness` kept as an alias; a transgenic of such a base links to each of its rows. Grouped rows everywhere
+  (`DocWagon contract: Basic`) get ids with their group, the old ids as aliases.
+- Owner decisions of 2026-10-11, modelled as written: a bonus per level after the first (`R-1`, Nimble Fingers:
+  counted and shown as rating − 1), the book's own value per rating (`R[1,1,2,2]`, for table-driven items), a raised
+  maximum (`action-max:take-aim +rating`, Tremor reducer), `tests to resist X` as a condition in the bracket (Tough
+  Gut: ingested poisons), a removed range band (`x`, shown `—`, Short Barrel), Attribute Overclocking's +1 per hit
+  activated and shown; a stat's number carried into the next sentence that refers back to it (Weapon Commlink's
+  Firewall 2, cumulative), Edge on a condition with no test named (Flare compensation: `test:other` with the book's
+  words), a section intro's own-noun rule for the items it names (a missile's sensor rating on the attack), a
+  formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
+  formula (`nanite-volume/2 RU`), all shown, never applied; what others get against the entry kept as
+  `affects="others"` (worded "others get: …", never counted); an "after …" clause as a condition. The printed sheet
+  prefixes a tick box (☐) to every conditional effect note, a reminder to count it when it holds.
+- Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
+  1,206 → 1,446 effects of ours it lacks (82 of them what others get, decision 16). The remaining gap is mostly Commlink6's own encodings (variants, choices,
+  copied rules) and values the book doesn't print beside the target.
+
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games
 
 **Import the books of both games again** (Books → **Re-import all**): every entry gets the effects the new readers
