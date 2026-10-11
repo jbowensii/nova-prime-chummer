@@ -125,7 +125,7 @@ One `<pricing>` element. All values are in nuyen.
 | spec, knowledge | per specialization and per knowledge skill |
 | ampPoint | cost per Shadow Amp rating point |
 | equipment, weaponStandard, weaponSpecialist, armorPoint, spell, complexForm | item prices |
-| refundEffectRemoval | only for ledgers from before 0.5.5 (`amp-modify` events): `true` refunded rating lost when an amp effect was removed. Since 0.5.5 anything removed after Finalize gives its book price back |
+| refundEffectRemoval | only for ledgers from before 0.5.5 (`amp-modify` events): `true` refunded rating lost when an amp effect was removed. Since 0.5.5 removing an effect is priced as replacing it with nothing (CRB p.84: a replacement costs the difference): its cost comes back, at creation and after Finalize alike |
 
 A book can carry a partial pricing overlay: `imported/<source>/pricing.xml` with one `<prices id source page …/>`
 holding only the attributes it sets (the Conversion Guide's import writes `complexForm`, read from its page). The

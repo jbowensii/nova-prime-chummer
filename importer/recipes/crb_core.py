@@ -35,7 +35,7 @@ SKIP_WEAPONS = {"unarmed"}
 # values the book doesn't state, and why
 DEFAULTS = {
     "complexForm": "spell",          # CRB has no technomancers: a stand-in until the CG's import sets its own price (<prices>)
-    "refundEffectRemoval": "false",  # CRB is silent on refunds when an Amp effect is removed: no refund
+    "refundEffectRemoval": "false",  # pre-0.5.5 ledgers only; the app prices a removal as p.84's replacement with nothing
 }
 
 # Shadow Amp effects (pp.58-63): id, category, the book row (regex on its text), app attributes.
