@@ -40,7 +40,7 @@ the new effect kinds (install it with this).
   formula's rounding noted (`edg/2 RD`, `RU` when the book is silent) and a bonus per N points of a quantity as a
   formula (`nanite-volume/2 RU`), all shown, never applied.
 - Against Commlink6 1.14.0 (owner's measure, never committed): 737 → 835 of 1,107 effects agree (66.6% → 75.4%; Commlink6 keeps Awareness as one record whose Tactical variants no longer pair with our split);
-  1,206 → 1,315 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
+  1,206 → 1,364 effects of ours it lacks. The remaining gap is mostly Commlink6's own encodings (variants, choices,
   copied rules) and values the book doesn't print beside the target.
 
 ## 0.12.0 — 2026-10-10: effects for every entry in both games, totals as the books print them, Game data alike in both games

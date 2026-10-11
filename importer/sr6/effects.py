@@ -1307,8 +1307,13 @@ def section_effects(intro, text, name, kind, section=""):
         nouns = {w.rstrip("s") for w in m.groups() if w} & kinds if m else set()
         if not nouns:
             continue  # (about the section's items, `Each cyberlimb` under Cyberlimbs, `Missiles are …`; not `Each point of nanite volume`)
-        if not re.match(r"^\W*(?:each|every|all|any)\b", s.casefold()) and nouns < kinds and not nouns & {w.rstrip("s") for w in base.split()}:
-            continue  # (owner decision 10, 2026-10-11: `Missiles are …` under Rockets and Missiles is the missiles' rule, not a rocket's)
+        if not re.match(r"^\W*(?:each|every|all|any)\b", s.casefold()):
+            # (owner decision 10, 2026-10-11: a sentence about the section's items as a class, its plural noun the subject:
+            # `Missiles are rockets …` under Rockets and Missiles is the missiles' rule, not a rocket's; `This genotype
+            # enhancement offsets …` is one item's)
+            if not re.match(r"^\W*(?:[a-z-]+ and )?[a-z-]+s\s+(?:are|have|has|carry|get|gain|receive|add|adds|provide|grant|use|come|include|count|can|may|must|do)\b", s.casefold()) \
+                    or nouns < kinds and not nouns & {w.rstrip("s") for w in base.split()}:
+                continue
         for t, a, _ in read(s, kind):
             if t != "effect":
                 continue
