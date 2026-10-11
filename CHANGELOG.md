@@ -1,5 +1,73 @@
 # Release notes
 
+## 0.13.1 — 2026-10-11
+
+**Admins, after updating:**
+- **Re-import all the books in both games** (Books → **Re-import all**, in Shadowrun 6 and in Anarchy): the Shadowrun 6
+  books for the Commlink6 gap fixes and the sample runners' new fit; Anarchy's so both games' data match this release.
+- **To give Shadowrun 6 its own AI**, open SR6 Books → **AI settings** and set its provider and its own key there; with
+  AnythingLLM, use a workspace that holds only the Shadowrun 6 books. Anarchy's AI settings and keys stay as they were and
+  keep working; nothing is copied over from Anarchy's, as the two games never share books.
+
+**Both games**
+- **Faster pages**: the catalog's data files are fetched all at once instead of one after another; the server lets the
+  browser reuse a file it already has while it is unchanged, gzips text, and keeps each character file's read until the
+  file changes, so the runner and NPC lists and every save are quicker; searches no longer redo work on every keystroke.
+- **Each game has its own AI**: its own AI settings page (provider, model, key, AnythingLLM workspace), its own data to
+  answer from and its own prompt. Anarchy's AI never sees the Shadowrun 6 books, and SR6's never sees Anarchy's. Who may
+  set it up (the admin) and who may ask (anyone signed in) are as before; the daily question limit counts both games
+  together. Backups treat SR6's key as they do Anarchy's (only with "Include my API keys").
+- **AI search on Rules and Game data**: once a game's AI is set up, a plain-words search box on its Rules page (the rules
+  only; each find links to its rule) and on Game data (each find looks the entry up in the catalog).
+- **Export book data for Foundry** is in the header of every page for those who may export (admin and editors, GMs in
+  Shadowrun 6), not only on Game data, and Game data has an **Export to Foundry VTT** button at the top. Both open the
+  export, unfolded: `#/data/foundry`, `#/sr6/data/foundry`.
+- **Foundry export file names**: one runner or NPC downloads as `<street name>-<date>`; several together as
+  `runners-<count>-<date>`, so downloads are easy to tell apart.
+- **Sheet background art shows through**: the white veil over a sheet's background picture is half as strong; the paper
+  behind the text stays.
+
+**Shadowrun 6**
+- **Creation rules, tidied** (Table setup, a campaign's own settings, a runner's Creation rules panel): the one long table
+  is nine foldable sections: Budgets & priorities; Attributes & skills; Qualities; Magic & Resonance; Gear & augmentations;
+  Contacts & lifestyle; Levels of play; Optional rules (book); House rules. A closed section draws nothing, so the page opens
+  fast; **Open all sections** and **Close all sections**, and a search box that finds a setting by name and opens its
+  section. Every on/off rule is a real switch with its label (no more Not set / Yes / No); a number that needs a switch sits
+  indented under it, greyed with "needs …" while the switch is off, and keeps its stored value. A value at the standard is
+  grey; a changed one stands out with the standard (and its page) beside it; **Reset** per value, **Reset section** and
+  **Reset all to standard**. Each row has a short name, the plain-English hover text, and its book and page. Every setting,
+  its stored key and what it does are as before; a switch stores `true`, or `false` where the standard has the setting.
+  A runner's panel groups the same way; its switch follows the table's value until the runner chooses its own.
+- **The Karma build option ships with Commlink6's default numbers** (owner's one-off exception, 2026-10-11). No SR6 book
+  prints a Karma build, so it stays an option, off (Table setup → Budgets & priorities → Karma build); turned on, it starts
+  from 1000 Karma (800 with the Companion's street level, 1200 with its elite level), Magic or Resonance at 1, and Karma to
+  be a full magician 60, an aspected magician 45, a mystic adept 75, an adept 45 or a technomancer 45. Its prices are the
+  Karma prices already there (5 times the new rating for an attribute or skill rank, 5 a specialization, 3 a knowledge or
+  language rank, 5 a spell or complex form; 2,000 nuyen a Karma). New: `karmaBuild.freeSpellsPerMagic` and
+  `karmaBuild.freeFormsPerResonance` (0: every spell and complex form costs its Karma, and the Magic tab no longer shows a
+  Karma-build runner's spells in red), and the two levels' starting Karma. Each number's hover text says no SR6 book prints
+  a Karma build and gives its source as "option (Commlink6 defaults)".
+- **Ask the rules**: the **?** button in the header and the bar on a campaign's page, answering from the Shadowrun 6 books
+  only and citing book and page, in SR6's look and words.
+- **Commlink6 gaps closed**: the effects reader now reads per-rating tables under an entry, a clause's own "per level"
+  wording, formulas over the character's values, run-in rows and "same as" links between versions; items whose stat line
+  sits in their own heading, variant tables (Stakes), stacked one-row tables (Silver Arrows, Silver Bolts) and propulsion
+  versions are now catalog items; spells carry every feature tag the book gives them. Against Commlink6, effects that
+  agree went from 75.8% to 83.2% and missing items from 42 to 26.
+- **Sample runners**: the priority fit now prices a troll- or dwarf-sized runner's gear as the app does (metatype size
+  pricing, on by default), so the troll samples no longer read as overspent; and a book whose samples name something a
+  later import brings is read again once, so the samples come out the same whatever order the books were imported in
+  (a full import of every book takes longer: about 850 s instead of 515 s).
+- **Your runners**: each row has its own **Export for Foundry** button, as the NPC rows do.
+- **NPCs & Critters**: a **Professional Rating** picker beside the search (All, then the ratings the grunts have) and
+  grunts always listed first, in other accounts' lists too.
+- **Quicker editor and pages**: a closed catalog picker works nothing out, the books' texts are read without the browser's
+  XML parser, and Game data, Table setup and Rules work out their lists once per catalog instead of on every change.
+
+**Anarchy**
+- **Sheets**: two sheet ink colours are a shade darker so text over the background art stays easy to read now that the
+  art shows through more.
+
 ## 0.13.0 — 2026-10-11: the books' rules as switches, effects round three, one catalog item per level in both games
 
 **Re-import the books of both games** (Books → **Re-import all**): the Shadowrun 6 books for the printing fixes, the

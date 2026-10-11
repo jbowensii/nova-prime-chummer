@@ -3,7 +3,7 @@
 // Game data (GMs), a compendium from its page.
 import { useState } from 'react'
 import { NonCanon } from '../../ui/bits'
-import { downloadJson, fileDate } from '../../ui/Foundry'
+import { downloadJson, fileDate, runnersStem } from '../../ui/Foundry'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { exportSr6Books, exportSr6Compendium, exportSr6Runners, type Sr6ExportOpts } from '../engine/export'
@@ -13,13 +13,13 @@ import type { Sr6Catalog, Sr6Compendium } from '../model/types'
 /** ExportRunnersDialog's line for SR6 */
 export const SR6_FOUNDRY_ABOUT = 'For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.'
 export const sr6ExportOpts = (descriptions: boolean): Sr6ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
-export const sr6RunnersFileName = (now: Date) => `runners-${fileDate(now)}.sr6foundry.json`
+export const sr6RunnersFileName = (now: Date, stem = 'runners') => `${stem}-${fileDate(now)}.sr6foundry.json`
 export const sr6BooksFileName = (now: Date) => `books-${fileDate(now)}.sr6foundry.json`
 export const sr6CompendiumFileName = (source: string, now: Date) => `compendium-${source}-${fileDate(now)}.sr6foundry.json`
 
 /** One or more runners (or NPCs) as a runners file; their things' text always (the runner's own, as Anarchy's). */
 export const downloadSr6Runners = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules | ((ch: Sr6Character) => CreationRules), chs: Sr6Character[]) =>
-  downloadJson(sr6RunnersFileName(new Date()), exportSr6Runners(c, data, cr, chs, sr6ExportOpts(true)))
+  downloadJson(sr6RunnersFileName(new Date(), runnersStem(chs)), exportSr6Runners(c, data, cr, chs, sr6ExportOpts(true)))
 /** A GM's compendium as a books file of one book marked compendium: its own text always, its NPCs. */
 export const downloadSr6Compendium = (c: Sr6Catalog, data: Sr6Data, cr: CreationRules, comp: Sr6Compendium) =>
   downloadJson(sr6CompendiumFileName(comp.source, new Date()), exportSr6Compendium(c, data, cr, comp, sr6ExportOpts(true)))

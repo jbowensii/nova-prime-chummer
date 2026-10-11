@@ -59,7 +59,7 @@ test('Gil: a runner’s editor downloads it for Foundry', async ({ page }) => {
   const dl = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export for Foundry' }).click()
   const { name, f } = await file(dl)
-  expect(name).toBe(`runners-${today()}.sr6foundry.json`)
+  expect(name).toBe(`Gil-One-${today()}.sr6foundry.json`)
   expect(f).toMatchObject({ format: 'chummer-sr6-export', version: 1, kind: 'runners', descriptions: true, app: { name: 'Chummer Anarchy 2.0' } })
   expect(streets(f)).toEqual(['Gil One'])
   expect(f.runners[0]).toMatchObject({ id: 'gil-one', finalized: true, karma: expect.any(Number) })
@@ -91,6 +91,15 @@ test('the runner list: ticked runners in one file; Tick a campaign ticks that SR
   expect(streets((await file(dl)).f)).toEqual(['Gil One', 'Gil Two'])
 })
 
+test('the runner list: each row has its own Export for Foundry button, one runner in the file', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'gil')
+  const dl = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export Gil Two for Foundry' }).click()
+  const { name, f } = await file(dl)
+  expect(name).toBe(`Gil-Two-${today()}.sr6foundry.json`)
+  expect(streets(f)).toEqual(['Gil Two'])
+})
+
 test('NPCs & Critters: a grunt’s row downloads its NPC block; the header dialog says NPCs', async ({ page }) => {
   await signIn(page, '/#/sr6/npcs', 'gil')
   await page.getByRole('button', { name: 'New NPC' }).click()
@@ -101,7 +110,7 @@ test('NPCs & Critters: a grunt’s row downloads its NPC block; the header dialo
   const dl = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export Corner Goon for Foundry' }).click()
   const { name, f } = await file(dl)
-  expect(name).toBe(`runners-${today()}.sr6foundry.json`)
+  expect(name).toBe(`Corner-Goon-${today()}.sr6foundry.json`)
   expect(f.runners[0]).toMatchObject({ streetName: 'Corner Goon', npc: { kind: 'grunt', rating: 2, from: { id: 'crb.corner-goon' } } })
   expect(f.runners[0].derived).toBeUndefined()
   await page.getByRole('button', { name: 'Export for Foundry…' }).click()

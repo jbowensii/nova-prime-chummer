@@ -39,7 +39,7 @@ docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path
 | Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) on every push to `main` |
 | Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
 | House rules | `/mnt/user/appdata/chummer-anarchy2/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
-| Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600). Never served over HTTP; back it up with the rest of appdata |
+| Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600; Shadowrun 6's own in `sr6/.config/`). Never served over HTTP; back it up with the rest of appdata |
 | Icon | written to `/var/lib/docker/unraid/images/` and the dockerman runtime images folder. The template's GitHub raw URL can't serve from a private repo. |
 
 Characters live on the server, in the characters folder. Rebuilding the

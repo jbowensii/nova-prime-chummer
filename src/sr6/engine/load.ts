@@ -61,10 +61,47 @@ function mergeSource(prev: Sr6Source | undefined, s: Sr6Source): Sr6Source {
   return { ...prev, ...Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined)) }
 }
 
+const MISC = String.raw`(?:\s|<!--(?:(?!--)[\s\S])*-->)*` // whitespace and comments
+const ATTRS = String.raw`((?:\s+[\w:.-]+="[^"<&\t\n\r]*")*)\s*`
+const PLAIN_ROOT = new RegExp(String.raw`^(?:<\?xml[^>]*\?>)?${MISC}<([A-Za-z_][\w.-]*):data${ATTRS}>([\s\S]*)</\1:data>${MISC}$`)
+const PLAIN_TEXT = new RegExp(String.raw`<text${ATTRS}>([^<]*)</text>`, 'g')
+const ENTITY: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+const attrMap = (s: string) => {
+  const a = new Map<string, string>()
+  for (const [, k, v] of s.matchAll(/([\w:.-]+)="([^"]*)"/g)) { if (a.has(k)) return null; a.set(k, v) }
+  return a
+}
+/** A texts file's <text of id> elements read without the DOM (the books' texts are tens of megabytes: parsing them was
+ *  most of the catalog's load), or null for anything but the plain shape the importer and the edits layer write: an SR6
+ *  texts root holding only <text> elements of text, the five named entities and no CR, control character or `]]>`. A
+ *  null file is read with the DOM, as before, which reports what's wrong with it. */
+export function plainTexts(xml: string): { of: string; id: string; text: string }[] | null {
+  if (!xml.includes('kind="texts"')) return null
+  const m = PLAIN_ROOT.exec(xml), root = m && attrMap(m[2])
+  if (!m || !root || root.get(`xmlns:${m[1]}`) !== SR6_NS || root.get('kind') !== 'texts') return null
+  const out: { of: string; id: string; text: string }[] = []
+  let ok = true
+  const rest = m[3].replace(PLAIN_TEXT, (_, attrs: string, raw: string) => {
+    const a = attrMap(attrs)
+    // eslint-disable-next-line no-control-regex
+    if (!a || /[\x00-\x08\x0b\x0c\x0e-\x1f\r]|]]>/.test(raw)) ok = false
+    const text = raw.replace(/&([a-z]*);?/g, (all, name: string) => { if (!all.endsWith(';') || !(name in ENTITY)) ok = false; return ENTITY[name] ?? '' })
+    out.push({ of: a?.get('of') ?? '', id: a?.get('id') ?? '', text })
+    return ''
+  })
+  return ok && !rest.trim() ? out : null
+}
+
 export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
   const c: Sr6Catalog = { entries: Object.fromEntries(Object.keys(SR6_KINDS).map(k => [k, new Map()])) as Sr6Catalog['entries'],
     sources: new Map(), original: new Map(), moved: new Map(), files: [], errors: [] }
   for (const f of files) {
+    const plain = plainTexts(f.xml)
+    if (plain) {
+      for (const t of plain) { const e = KINDS.has(t.of) ? c.entries[t.of as Sr6Kind].get(t.id) : undefined; if (e) e.text = t.text }
+      c.files.push({ file: f.file, kind: 'texts', entries: plain.length })
+      continue
+    }
     const doc = new DOMParser().parseFromString(f.xml, 'text/xml')
     const perr = doc.getElementsByTagName('parsererror')[0]
     if (perr) { c.errors.push({ file: f.file, message: `XML parse error: ${perr.textContent?.trim().split('\n')[0]}` }); continue }
@@ -182,17 +219,26 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
  * `missing` lists the files an index or source names that weren't. */
 export async function collectSr6Files(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[] }> {
   const files: SourceFile[] = [], missing: string[] = []
+  // each file's fetch starts as soon as its name is known (a few hundred one after another were seconds of round
+  // trips); they are still added in load order
+  const asked = new Map<string, Promise<string | null>>()
+  const fetchOnce = (path: string) => asked.get(path) ?? asked.set(path, get(path)).get(path)!
   const add = async (path: string, listed = false) => {
-    const xml = await get(path)
+    const xml = await fetchOnce(path)
     if (xml != null) files.push({ file: path, xml, overlay: !path.startsWith(SHIPPED) })
     else if (listed) missing.push(path)
     return xml
   }
-  const sources = [await add(`${SHIPPED}sources.xml`, true), await add(`${CUSTOM}imported/sources.xml`)]
-  const index = await get(`${CUSTOM}imported/index.xml`)
-  for (const href of index ? hrefs(index) : []) await add(`${CUSTOM}imported/${href}`, true)
-  for (const t of new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))) await add(CUSTOM + t)
-  for (const e of ['edits', 'texts']) await add(`${CUSTOM}edits/${e}.xml`)
+  const first = [`${SHIPPED}sources.xml`, `${CUSTOM}imported/sources.xml`, `${CUSTOM}imported/index.xml`, ...['edits', 'texts'].map(e => `${CUSTOM}edits/${e}.xml`)]
+  first.forEach(fetchOnce)
+  const sources = [await add(first[0], true), await add(first[1])]
+  const index = await fetchOnce(first[2])
+  const books = (index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`)
+  const texts = [...new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => CUSTOM + m[1]))]
+  ;[...books, ...texts].forEach(fetchOnce)
+  for (const path of books) await add(path, true)
+  for (const path of texts) await add(path)
+  for (const path of first.slice(3)) await add(path)
   files.push(...extra)
   return { files, missing }
 }

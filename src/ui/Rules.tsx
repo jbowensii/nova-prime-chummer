@@ -1,6 +1,7 @@
 // Rules (admin and editors, the GMs): the rules reference, the imported quick-reference sheets (rules kind), text from the
 // private texts file. The page is a table of contents; a title opens the rule in a drawer at its own address (#/rules/<id>).
-// The table rules they switch on for their players are on Table setup (TableRules.tsx).
+// The table rules they switch on for their players are on Table setup (TableRules.tsx). Above the contents, the AI search
+// (AskSearch, the rules only): its finds link to their rules.
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useMemo, useState } from 'react'
@@ -11,6 +12,7 @@ import { BookSelect } from './CatalogBrowser'
 import { Prose } from './Prose'
 import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
 import { isAdmin, useMe } from './auth'
+import { AskSearch } from './AskRules'
 
 const SHEETS: [string, string][] = [['base', 'Base rules'], ['magic', 'Magic'], ['matrix', 'Matrix'], ['vehicles', 'Vehicles']]
 
@@ -44,6 +46,8 @@ export function RulesScreen({ c, open }: { c: Catalog; open?: string }) {
       </p>
       {!hasText && rules.length > 0 && <p className="banner" role="status">
         Only titles are shown: the rules text isn’t installed. {admin ? <>Re-import the quick-reference sheets on the <a href="#/books">Books page</a>.</> : 'Ask the admin to import the quick-reference sheets again.'}</p>}
+      <AskSearch game="ca2" scope="rules" label="Ask AI about the rules" placeholder="Search the rules in plain words, e.g. what stops a bullet?"
+        link={s => s.kind === 'rule' && s.id && c.rules.has(s.id) ? <a href={`#/rules/${encodeURIComponent(s.id)}`}>{s.title}</a> : null} />
       <div className="row browse-top">
         <BookSelect books={sources.map(s => ({ id: s!.id, name: s!.name }))} value={book} onChange={setBook} />
         <select value={sheet} onChange={e => setSheet(e.target.value)} aria-label="Sheet">

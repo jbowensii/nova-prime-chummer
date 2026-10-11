@@ -37,17 +37,19 @@ test('the kinds down the left with counts, the categories across the top, the bo
   }
 })
 
-test('the sources are folded, with the number of books; no export: no fold and no link', () => {
+test('the sources are folded, with the number of books; no export: no fold and no button', () => {
   const el = mount('ca2')
   const fold = q(el, 'details.fold')
   expect(fold).toHaveLength(1)
   expect((fold[0] as HTMLDetailsElement).open).toBe(false)
   expect(fold[0].querySelector('summary')!.textContent).toBe('Sources 1 book')
-  expect(el.querySelector('a[aria-label="Export book data for Foundry"]')).toBeNull()
+  expect(el.querySelector('details#foundry-export')).toBeNull()
+  expect(q(el, 'a.btn').map(a => a.textContent)).not.toContain('Export to Foundry VTT')
 })
 
-test('an export: its link sits in row 1’s right-hand group and opens the folded export', () => {
+test('an export: its link sits in row 1’s right-hand group of the header (the game’s own page) and its button at the top; both open the folded export', () => {
   for (const [game, href] of [['ca2', '#/data/foundry'], ['sr6', '#/sr6/data/foundry']] as const) {
+    location.hash = game === 'sr6' ? '#/sr6/data' : '#/data'
     const el = mount(game, { foundry: createElement('section', { 'aria-label': 'Export book data for Foundry' }, 'the panel') })
     const link = el.querySelector<HTMLAnchorElement>('.menubar .tools a[aria-label="Export book data for Foundry"]')!
     expect(link.getAttribute('href')).toBe(href)
@@ -55,6 +57,11 @@ test('an export: its link sits in row 1’s right-hand group and opens the folde
     expect(fold.open).toBe(false)
     Element.prototype.scrollIntoView ??= () => {}
     act(() => link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
+    expect(fold.open).toBe(true)
+    fold.open = false
+    const button = [...el.querySelectorAll<HTMLAnchorElement>('a.btn')].find(a => a.textContent === 'Export to Foundry VTT')!
+    expect(button.getAttribute('href')).toBe(href)
+    act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })))
     expect(fold.open).toBe(true)
     act(() => root!.unmount()); root = null
   }

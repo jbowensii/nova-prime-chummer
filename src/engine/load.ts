@@ -172,23 +172,32 @@ const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').match
 export async function collectFiles(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[]; coreMissing: string[] }> {
   const files: SourceFile[] = []
   const missing: string[] = []
-  const data = await Promise.all(DATA_FILES.map(n => get(`data/${n}.xml`)))
-  const core = await Promise.all(CORE_FILES.map(n => get(`${IMPORTED}core/${n}.xml`)))
+  const [data, core] = await Promise.all([Promise.all(DATA_FILES.map(n => get(`data/${n}.xml`))),
+    Promise.all(CORE_FILES.map(n => get(`${IMPORTED}core/${n}.xml`)))])
   data.forEach((xml, i) => { if (xml != null) files.push({ file: `${DATA_FILES[i]}.xml`, xml, overlay: false }) })
   core.forEach((xml, i) => { if (xml != null) files.push({ file: `${IMPORTED}core/${CORE_FILES[i]}.xml`, xml, overlay: false }) })
   if (data[0] == null) missing.push('sources')
   const coreMissing = CORE_FILES.filter((_, i) => data[i + 1] == null && core[i] == null)
-  const optional = async (path: string) => { const xml = await get(path); if (xml != null) files.push({ file: path, xml, overlay: true }); return xml }
+  // each file's fetch starts as soon as its name is known (one after another were seconds of round trips); they are
+  // still added in load order
+  const asked = new Map<string, Promise<string | null>>()
+  const fetchOnce = (path: string) => asked.get(path) ?? asked.set(path, get(path)).get(path)!
+  const optional = async (path: string) => { const xml = await fetchOnce(path); if (xml != null) files.push({ file: path, xml, overlay: true }); return xml }
   const listed = async (dir: string) => {
-    const index = await get(`${dir}index.xml`)
-    for (const href of index ? hrefs(index) : []) {
-      const xml = await get(dir + href)
+    const index = await fetchOnce(`${dir}index.xml`)
+    const hs = index ? hrefs(index) : []
+    hs.forEach(href => fetchOnce(dir + href))
+    for (const href of hs) {
+      const xml = await fetchOnce(dir + href)
       if (xml == null) missing.push(dir + href); else files.push({ file: dir + href, xml, overlay: true })
     }
   }
+  ;[`${IMPORTED}sources.xml`, 'custom/sources.xml', `${IMPORTED}index.xml`, 'custom/index.xml', 'custom/texts.xml',
+    ...['sources', 'edits', 'texts'].map(e => `custom/edits/${e}.xml`)].forEach(fetchOnce)
   const sourceXml = [files.find(f => f.file === 'sources.xml')?.xml, await optional(`${IMPORTED}sources.xml`), await optional('custom/sources.xml')]
-  await listed(IMPORTED)
   const texts = new Set([...sourceXml.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => m[1]))
+  for (const t of texts) fetchOnce(`custom/${t}`)
+  await listed(IMPORTED)
   for (const t of [...texts, 'texts.xml']) await optional(`custom/${t}`)
   for (const e of ['sources', 'edits', 'texts']) await optional(`custom/edits/${e}.xml`)
   files.push(...extra)

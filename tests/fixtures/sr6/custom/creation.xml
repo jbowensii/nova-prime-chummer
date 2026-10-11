@@ -83,6 +83,8 @@
   <setting key="karmaBuildMethod" value="true"/>
   <setting key="karmaBuild.start" value="900" source="CRB" page="71"/>
   <setting key="karmaBuild.startRating" value="1" source="CRB" page="71"/>
+  <setting key="karmaBuild.freeSpellsPerMagic" value="1" source="CRB" page="71"/>
+  <setting key="karmaBuild.freeFormsPerResonance" value="1" source="CRB" page="71"/>
   <setting key="magicKarma:full" value="31" source="CRB" page="71"/>
   <setting key="magicKarma:aspected" value="21" source="CRB" page="71"/>
   <setting key="magicKarma:mystic-adept" value="37" source="CRB" page="71"/>

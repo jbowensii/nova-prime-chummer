@@ -104,6 +104,12 @@ export function npcGroups<T extends { ch: Sr6Character }>(rows: T[]): [string, T
   return [...groups].sort(([, a], [, b]) => a.at - b.at || a.r - b.r).map(([label, g]) => [label, g.rows])
 }
 
+/** The Professional Ratings the grunts in the list have, lowest first (the picker beside the search). */
+export const gruntRatings = (rows: { ch: Sr6Character }[]) =>
+  [...new Set(rows.flatMap(({ ch }) => ch.npc?.kind === 'grunt' && ch.npc.rating != null ? [ch.npc.rating] : []))].sort((a, b) => a - b)
+/** The rows at a Professional Rating ('': all of them); a rating leaves out whatever has none (contacts, critters). */
+export const atRating = <T extends { ch: Sr6Character }>(rows: T[], pr: string): T[] => (pr === '' ? rows : rows.filter(({ ch }) => ch.npc?.rating === Number(pr) && ch.npc.kind === 'grunt'))
+
 export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; section?: Section }) {
   const repo = useMemo(() => sr6NpcRepo(), [])
   const me = useMe()
@@ -116,6 +122,7 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
   const [qs, setQs] = useState<Record<Section, string>>({ npcs: '', critters: '' }) // each section its own search
   const q = qs[section], setQ = (v: string) => setQs(x => ({ ...x, [section]: v }))
   const sec = SECTIONS[section]
+  const [pr, setPr] = useState('') // the Professional Rating shown on the NPCs tab ('': all)
   const [sort, setSortState] = useState<SortBy>(() => { try { const v = localStorage.getItem(SORT_KEY); return v === 'za' || v === 'recent' ? v : 'az' } catch { return 'az' } })
   const setSort = (v: SortBy) => { setSortState(v); try { localStorage.setItem(SORT_KEY, v) } catch { /* not remembered */ } }
   const [creating, setCreating] = useState(false)
@@ -148,7 +155,9 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
   const count = (k: Section) => (list ?? []).filter(s => npcSection(s.ch.npc) === k).length
   // a file that won't open has no kind: it shows under NPCs
   const others = ownerGroups((list ?? []).filter(s => !own(s) && here(s)), section === 'npcs' ? unreadable.filter(u => !own(u)) : [], sort, q)
-  const rows = arrange(mine.filter(here), sort, q)
+  const ratings = section === 'npcs' ? gruntRatings((list ?? []).filter(here)) : []
+  const shown = section === 'npcs' && ratings.includes(Number(pr)) ? pr : ''
+  const rows = atRating(arrange(mine.filter(here), sort, q), shown)
   const gmOf = campaigns.filter(x => x.you === 'gm' && !x.archived)
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
   const entriesOf = (k: Sr6NpcKind) => [...c.entries[NPC_KINDS[k].kind].values()].filter(e => npcKindOf(e) === k).sort((a, b) => a.name.localeCompare(b.name))
@@ -314,6 +323,10 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
         <button className="btn small" disabled={!!busy} onClick={() => setTidying(true)}>Tidy book copies</button></p>}
       {list !== null && list.length > 0 && <div className="row listtools">
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Name" aria-label={`Search ${sec.label.toLowerCase()}`} />
+        {ratings.length > 0 && <label className="inline">Professional Rating
+          <select value={shown} onChange={e => setPr(e.target.value)}>
+            <option value="">All</option>{ratings.map(r => <option key={r} value={r}>{r}</option>)}
+          </select></label>}
         <label className="inline">Sort
           <select value={sort} onChange={e => setSort(e.target.value as SortBy)}>
             <option value="az">A–Z</option><option value="za">Z–A</option><option value="recent">Recently edited</option>
@@ -333,7 +346,9 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
         {others.map(({ owner, name, rows, broken: bad }) => <section key={owner} aria-label={`${name}’s ${sec.label}`}>
           <h2>{name}’s {sec.label}</h2>
           {bad.map(broken)}
-          {rows.map(s => row(s, false))}
+          {npcGroups(atRating(rows, shown)).map(([label, rs]) => <section key={label} aria-label={`${name}’s ${label}`}>
+            <h3 className="npcgroup">{label} <span className="muted">({rs.length})</span></h3>
+            {rs.map(s => row(s, false))}</section>)}
         </section>)}
       </>}
 

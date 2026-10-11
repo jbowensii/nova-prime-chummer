@@ -80,3 +80,21 @@ test('/custom/sr6/ has its own route (never campaigns.xml); other spellings of i
   const ok = await fetch(`${base}/custom/index.xml`)
   expect([ok.status, await ok.text()]).toEqual([200, '<overlays/>'])
 })
+
+test('a static file has a validator: unchanged it is a 304; text goes gzipped to a browser that takes it', async () => {
+  const r = await fetch(`${base}/data/sr6/sources.xml`)
+  const etag = r.headers.get('etag')!
+  expect(etag).toMatch(/^W\/"/)
+  expect(r.headers.get('content-encoding')).toBe('gzip')
+  expect(await r.text()).toContain('<sr6:data')
+  expect((await fetch(`${base}/data/sr6/sources.xml`, { headers: { 'If-None-Match': etag } })).status).toBe(304)
+  const plain = await fetch(`${base}/data/sr6/sources.xml`, { headers: { 'Accept-Encoding': 'identity' } })
+  expect(plain.headers.get('content-encoding')).toBeNull()
+})
+
+test('the runner list reads a file changed on disk again (its index is kept per file while unchanged)', async () => {
+  const file = join(dir, 'chars', 'admin', 'Test-Runner.xml')
+  writeFileSync(file, readFileSync(file, 'utf8').replace('streetName="Test Runner"', 'streetName="Changed On Disk"'))
+  const list = await (await fetch(`${base}/api/characters`)).json()
+  expect(list.find((c: { file: string }) => c.file === 'Test-Runner.xml').xml).toContain('Changed On Disk')
+})

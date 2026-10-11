@@ -296,6 +296,19 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
     + 'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
   await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
 
+  // the Professional Rating picker beside the search: the ratings the grunts have; grunts are listed first
+  const pr = page.locator('.listtools').getByLabel('Professional Rating')
+  await expect(pr.locator('option')).toHaveText(['All', '2', '4'])
+  await expect(page.locator('h3.npcgroup').first()).toContainText('Grunts')
+  await pr.selectOption('4')
+  await expect(page.locator('.dossier')).toHaveCount(1)
+  await expect(npcRow(page, 'Lot Boss')).toHaveCount(1)
+  await pr.selectOption('2')
+  await expect(page.locator('.dossier')).toHaveCount(2)
+  await page.screenshot({ path: `${SHOTS}/npc-rating-picker.png` })
+  await pr.selectOption('')
+  await expect(page.locator('.dossier')).toHaveCount(4)
+
   // search, export: each section searches its own
   await page.getByLabel('Search NPCs').fill('goon')
   await expect(page.locator('.dossier')).toHaveCount(2)

@@ -7,25 +7,14 @@
 import { useEffect, type ReactNode } from 'react'
 import { CatalogBrowser, type Book, type BrowseKind } from './CatalogBrowser'
 import { STATE_TEXT } from './EditEntry'
-import { IconLink } from './icons'
-import { PageHeader } from './nav'
+import { FOUNDRY, PageHeader, showFoundry } from './nav'
 
 export interface SourceRow { id: string; name: string; publisher: string; status: ReactNode; entries: number; texts: ReactNode; file?: string; sha256?: string; hash?: string }
 export interface EditRow { key: string; name: string; source: ReactNode; kind: string; state: keyof typeof STATE_TEXT; action: ReactNode }
 export interface LoadError { file: string; line?: number; message: string }
 
-const FOUNDRY = 'foundry-export'
 /** the last kind looked at on Game data, per game (`chummer.gamedata.kind.ca2`, `….sr6`): this browser only */
 export const KIND_KEY = 'chummer.gamedata.kind'
-/** Unfold the Foundry export and bring it into view (its header link; a page opened at …/data/foundry). */
-function showFoundry() {
-  const d = document.getElementById(FOUNDRY) as HTMLDetailsElement | null
-  if (!d) return
-  d.open = true
-  d.scrollIntoView({ block: 'start' })
-  d.querySelector('summary')?.focus({ preventScroll: true })
-}
-
 export function GameDataPage({ game, kinds, books, banner, sourcesIntro, sources, foundry, edits, errors, docs, children }: {
   /** classes: `sr6-browse`, `sr6-sources`, `sr6-edits` (Anarchy: `edits`); the Foundry link's address */
   game: 'ca2' | 'sr6'
@@ -49,9 +38,10 @@ export function GameDataPage({ game, kinds, books, banner, sourcesIntro, sources
   const lines = errors.some(e => e.line != null)
   return (
     <main className="lib gamedata">
-      <PageHeader title="Game data" tools={foundry && <IconLink href={href} icon="foundry" label="Export book data for Foundry" onClick={showFoundry} />} />
+      <PageHeader title="Game data" />
+      {foundry && <p><a className="btn" href={href} onClick={showFoundry}>Export to Foundry VTT</a></p>}
       {banner}
-      <CatalogBrowser kinds={kinds} books={books} tableClass={sr6 ? 'sr6-browse' : undefined} main={sr6 ? 'qualities' : 'amps'} remember={`${KIND_KEY}.${game}`} />
+      <CatalogBrowser kinds={kinds} books={books} tableClass={sr6 ? 'sr6-browse' : undefined} main={sr6 ? 'qualities' : 'amps'} remember={`${KIND_KEY}.${game}`} ai={game} />
 
       <details className="fold">
         <summary><h2>Sources</h2> <span className="muted">{sources.length} {sources.length === 1 ? 'book' : 'books'}</span></summary>

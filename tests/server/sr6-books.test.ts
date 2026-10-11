@@ -123,10 +123,11 @@ test('the SR6 edits list names entries, not their parts that share a kind’s ta
   } finally { writeFileSync(path, before) }
 })
 
-test('what SR6 doesn’t have answers 404: AI, review, data pack, house sources, settings', async () => {
+// (SR6 has its own AI settings and Ask the rules: tests/server/ask.test.ts)
+test('what SR6 doesn’t have answers 404: AI book import, review, data pack, house sources, settings', async () => {
   for (const [m, p] of [['POST', `/api/sr6/books/${book}/ai`], ['GET', '/api/sr6/review/x'], ['PUT', '/api/sr6/review/x'], ['POST', '/api/sr6/datapack'],
-    ['POST', '/api/sr6/edits/sources'], ['GET', '/api/sr6/ai-settings'], ['GET', '/api/sr6/samples'], ['PUT', '/api/sr6/table-rules'],
-    ['POST', '/api/sr6/backup'], ['GET', '/api/sr6/ask']])
+    ['POST', '/api/sr6/edits/sources'], ['GET', '/api/sr6/samples'], ['PUT', '/api/sr6/table-rules'],
+    ['POST', '/api/sr6/backup']])
     expect([m, p, (await fetch(`${base}${p}`, { method: m })).status]).toEqual([m, p, 404])
 })
 

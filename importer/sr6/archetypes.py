@@ -319,6 +319,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                                  _bonuses(hit[2], level, skill_of, chosen=_chosen(p), seen=boosts), "pick"))
 
     sins, worn, legal_over = [], [], []  # worn: (Defense Rating, uid) of each armor line
+    bought = []  # (purchase XML, its cost) of each gear line: the metatype's size pricing below
     for label, kinds in PURCHASES.items():
         for item in _per_skill(split(labels.get(label, "")), skill_of):
             # (`fake SIN 3`: rating 3, as a trailing number is any item's rating)
@@ -330,6 +331,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
                 continue
             line, worn, cost = _purchase(idx, kinds, item, next(uid), worn, cs, legal_over=legal_over, skill_of=skill_of, seen=boosts, nat=attrs)
             need["nuyen"] += cost
+            bought.append((line, cost))
             if line:
                 lines.append(line)
             else:
@@ -338,11 +340,18 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         item = f"{m.group(1)} [{m.group(2)}]"
         line, worn, cost = _purchase(idx, ["weapons"], m.group(1), next(uid), worn, cs, note=item, legal_over=legal_over, skill_of=skill_of, seen=boosts)
         need["nuyen"] += cost
+        bought.append((line, cost))
         if line:
             lines.append(line)
         else:
             miss("Weapons", item)
 
+    # the metatype's size pricing as the app's nuyen budget adds it (metatypeSizePricing, budgets.ts nuyenBudget): 10% of
+    # everything bought for a troll-sized runner, of the armor for a dwarf-sized one, one rounded line
+    size = fit.metatype_size(meta[2]) if meta and cs.get("metatypeSizePricing") == "true" else None
+    if size:
+        # (a line's kind its first purchase's; Math.round's half up)
+        need["nuyen"] += math.floor(sum(c for x, c in bought if x and (size == "troll" or ' kind="armor"' in x.split(">", 1)[0])) * 0.1 + 0.5)
     if worn:  # the armor worn: the highest Defense Rating (the first of equals); the rest carried
         best = max(worn, key=lambda w: w[0])[1]
         lines = [re.sub(rf'^(<purchase uid="g{best}" [^>]*?qty="\d+"(?: grade="\w+")?)', r'\1 worn="true"', x) for x in lines]

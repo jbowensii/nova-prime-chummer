@@ -103,7 +103,7 @@ function stubFetch(extra: Record<string, string>, offline?: string) {
   return { fetched, restore: () => { globalThis.fetch = real } }
 }
 
-test('loadCatalog fetches data, sources, imported files, texts, edits, then house rules, in that order', async () => {
+test('loadCatalog loads data, sources, imported files, texts, edits, then house rules, in that order', async () => {
   const extra: Record<string, string> = {
     'custom/sources.xml': `<ca2:data ${NS} kind="sources" version="1"><source id="HOUSE" publisher="Me" canon="false" texts="texts/house.xml"><name>House</name></source></ca2:data>`,
     'custom/texts/house.xml': `<ca2:data ${NS} kind="texts" version="1"><text of="amps" id="test.rush">Fast.</text></ca2:data>`,
@@ -116,11 +116,12 @@ test('loadCatalog fetches data, sources, imported files, texts, edits, then hous
     expect(c.amps.get('test.rush')!.narrative).toBe('Fast.')
     expect(c.amps.has('test2.keen-eye')).toBe(false) // house rules load last
     expect(c.sources.get('HOUSE')!.origin).toBe('user')
-    const at = (p: string) => fetched.indexOf(p)
-    expect(at('custom/imported/sources.xml')).toBeGreaterThan(at('data/sources.xml'))
+    // (the files are fetched at once: the order is the load order, c.files; a listed file is asked for after its index)
+    const at = (p: string) => c.files.findIndex(f => f.file === p)
+    expect(at('custom/imported/sources.xml')).toBeGreaterThan(at('sources.xml'))
     expect(at('custom/sources.xml')).toBeGreaterThan(at('custom/imported/sources.xml'))
-    expect(at('custom/imported/index.xml')).toBeGreaterThan(at('custom/sources.xml'))
-    expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/imported/index.xml'))
+    expect(fetched.indexOf('custom/imported/testc/amps.xml')).toBeGreaterThan(fetched.indexOf('custom/imported/index.xml'))
+    expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/sources.xml'))
     expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/items.xml'))
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
     expect(c.files.map(f => f.file).slice(-6)).toEqual(['custom/imported/testc/skills.xml', 'custom/texts/house.xml',

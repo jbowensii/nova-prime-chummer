@@ -113,7 +113,7 @@ class AnswerTest(unittest.TestCase):
         self.assertEqual(code, 0)
         r = json.loads(out)
         self.assertEqual(r["answer"], "You leap it with Athletics; a miss means wet boots [ZZ p.61].")
-        self.assertEqual(r["sources"], [{"source": "ZZ", "page": "61", "title": "Puddle jumping"}])  # the cited one
+        self.assertEqual(r["sources"], [{"source": "ZZ", "page": "61", "title": "Puddle jumping", "kind": "rule", "id": "zz.puddle-jumping"}])  # the cited one
         self.assertTrue(r["covered"] and r["called"])
         body = s.requests[0]["body"]
         system, user = body["messages"][0]["content"], body["messages"][1]["content"]
@@ -147,6 +147,66 @@ class AnswerTest(unittest.TestCase):
         code, _, err = run(self.argv(), "puddle jumping?")
         self.assertEqual(code, 3)
         self.assertIn("isn’t enabled", err)
+
+
+S = D.replace("ca2", "sr6").replace("chummer-anarchy2", "chummer-sr6")  # the SR6 root and namespace
+# SR6's own custom folder (custom/sr6), every name and rule invented
+SR6_FILES = {
+    "imported/qq/rules.xml": S.format("rules", '<rule id="qq.puddle-vaulting" source="QQ" page="44"><name>Puddle vaulting</name>'
+                                      '<text>A vault over a puddle uses Athletics + Agility.</text></rule>'
+                                      + "".join(f'<rule id="qq.filler-{i}" source="QQ" page="{50 + i}"><name>Filler {w}</name><text>About {w} only.</text></rule>'
+                                                for i, w in enumerate(["teapots", "lanterns", "kites", "hats"]))),
+    "imported/qq/gear.xml": S.format("gear", '<gear id="qq.puddle-boots" source="QQ" page="250"><name>Puddle boots</name></gear>'),
+    "imported/index.xml": '<overlays><file href="qq/rules.xml"/><file href="qq/gear.xml"/></overlays>',
+    "texts/qq.xml": S.format("texts", '<text of="gear" id="qq.puddle-boots">Boots that keep a puddle out entirely.</text>'),
+    "edits/edits.xml": S.format("edits", '<samplefix id="qq.fix" source="QQ" page="1"><name>Puddle fix</name></samplefix>'),
+}
+
+
+class Sr6Test(unittest.TestCase):
+    """`importer sr6 ask`: SR6's data and AI settings only, never Anarchy's (which sit in their usual places)."""
+
+    def setUp(self):
+        self.anarchy, self.lib = custom(self), tempfile.mkdtemp()  # Anarchy's custom folder holds a puddle rule too
+        self.custom = os.path.join(self.anarchy, "sr6")
+        for rel, text in SR6_FILES.items():
+            xmlio.write_file(os.path.join(self.custom, *rel.split("/")), text)
+        self.sr6lib = os.path.join(self.lib, "sr6")
+        self.s = Stub(lambda p: (200, {"choices": [{"message": {"content": json.dumps({"answer": "Vault it [QQ p.44]."})}}]}))
+        self.addCleanup(self.s.close)
+        write_providers(os.path.join(self.sr6lib, ".config"), url=self.s.url + "/v1")
+        AI.set_key(os.path.join(self.sr6lib, ".config"), "openai", KEY)
+
+    def ask(self, question, *extra):
+        with unittest.mock.patch.dict(os.environ, {"CA2_CUSTOM_DIR": self.anarchy}):
+            return run(["sr6", "ask", "--custom", self.custom, "--library", self.sr6lib, *extra], question)
+
+    def test_sr6_reads_only_its_own_data_and_settings(self):
+        docs = {p["title"]: p for p in ask.passages(self.custom, "sr6")}
+        self.assertEqual({t for t in docs if not t.startswith("Filler")}, {"Puddle vaulting", "Puddle boots"})  # no Anarchy entry, no sample fix
+        self.assertIn("keep a puddle out", docs["Puddle boots"]["text"])  # its private description (of= the kind)
+        code, out, _ = self.ask("How do I vault a puddle?")
+        self.assertEqual(code, 0)
+        r = json.loads(out)
+        self.assertEqual(r["sources"], [{"source": "QQ", "page": "44", "title": "Puddle vaulting", "kind": "rule", "id": "qq.puddle-vaulting"}])
+        body = self.s.requests[0]["body"]
+        system, user = body["messages"][0]["content"], body["messages"][1]["content"]
+        self.assertIn("Shadowrun Sixth World", system)
+        self.assertNotIn("Anarchy 2.0", system)
+        self.assertNotIn("Puddle jumping", user)  # Anarchy's rule never reaches SR6's provider
+        # without SR6's own settings it isn't set up, whatever Anarchy's say
+        write_providers(os.path.join(self.lib, ".config"), url=self.s.url + "/v1")
+        AI.set_key(os.path.join(self.lib, ".config"), "openai", KEY)
+        os.remove(os.path.join(self.sr6lib, ".config", "ai-providers.xml"))
+        self.assertEqual(self.ask("How do I vault a puddle?")[0], 3)
+
+    def test_rules_scope_searches_the_rules_only(self):
+        sent = lambda: self.s.requests[-1]["body"]["messages"][1]["content"]  # the passages the provider was given
+        self.ask("puddle boots?", "--scope", "rules")
+        self.assertIn("Puddle vaulting", sent())
+        self.assertNotIn("Puddle boots", sent())
+        self.ask("puddle boots?")
+        self.assertIn("[1] [QQ p.250] Puddle boots", sent())
 
 
 if __name__ == "__main__":

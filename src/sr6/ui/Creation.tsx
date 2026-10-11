@@ -2,12 +2,14 @@
 // default on Table setup (#/sr6/table; the admin edits it, editors and players read it) and a campaign's own on its page (its GMs and the admin choose the server's or their own copy; its players read
 // it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
 // other runner with the server's.
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
 import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
-import { aboutOf, applyDeps, blockedBy, CREATION_GROUPS, CREATION_KEYS, expandKeys, levelRules, mergeRules, nested, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationRow, type CreationRules } from '../engine/creation'
+import { aboutOf, applyDeps, blockedBy, CREATION_KEYS, expandKeys, levelRules, mergeRules, readSettingsFile, rulesFrom, RUNNER_RULE_KEYS, runnerRules, type CreationKey, type CreationRow, type CreationRules } from '../engine/creation'
 import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
+import { ruleKind, splitLabel } from './creationLayout'
+import { RuleSearch, RuleSections } from './RuleSections'
 
 /** std: the shipped standard settings (loadCreation), which rules are overlaid on. */
 export type Loaded = { rules: CreationRules; errors: string[]; std?: CreationRules }
@@ -47,6 +49,42 @@ export function RuleWhy({ k, eff, label }: { k: string; eff: CreationRules; labe
   return b ? <div className="muted small rule-why">{'needs' in b ? `needs ${label(b.needs)}` : `can’t be on with ${label(b.conflicts)}, which is on`}</div> : null
 }
 
+/** One setting's row: its name (short, then the rest of its label), a switch or the number, quality or letters, its book and
+ *  page, and, once it differs from the standard, the standard in grey with a Reset. Only the rows of an open section exist. */
+const RuleRow = memo(function RuleRow({ k, depth, r, d, known, ro, why, qopts, full, qname, set, setOn, reset }: {
+  k: CreationKey; depth: number; r: Row; d?: Row; known: boolean; ro: boolean; why: string; qopts: React.ReactElement[]; full: boolean; qname: (id: string) => string
+  set: (key: string, f: Partial<Row>) => void; setOn: (key: string, on: boolean) => void; reset: (key: string) => void
+}) {
+  const changed = known && !isStd(r, d), off = why !== '' || ro, { title, hint } = splitLabel(k.label), kind = ruleKind(k.key)
+  const shown = (x: string) => k.type === 'bool' ? x === 'true' ? 'On' : 'Off' : k.type === 'quality' ? qname(x) : x
+  const id = `cr-${k.key}`, v = (value: string) => set(k.key, { value })
+  const name = <>
+    {depth > 0 && hint ? <b>{hint[0].toUpperCase() + hint.slice(1)}</b> : <><b>{title}</b>{hint && <span className="hint">: {hint}</span>}</>}
+    {kind && <span className="tag">{kind === 'option' ? 'option' : 'house rule'}</span>}
+  </>
+  return <div className={['cr-row', k.type === 'bool' ? 'bool' : '', depth ? 'nested' : '', off ? 'blocked' : '', changed ? 'changed' : known ? 'at-std' : ''].join(' ').trim()}>
+    <div className="cr-name" title={aboutOf(k.key) || undefined}>
+      {k.type === 'bool' ? <label htmlFor={id}>{name}</label> : <span>{name}</span>}
+      {why && <div className="muted small rule-why">{why}</div>}
+    </div>
+    <div className="cr-val">{k.type === 'bool'
+      ? <label className="tgl"><input id={id} type="checkbox" role="switch" aria-label={k.label} checked={r.value === 'true'} disabled={off} onChange={e => setOn(k.key, e.target.checked)} /><span className="track" aria-hidden /></label>
+      : k.type === 'number' ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} disabled={off} onChange={e => v(e.target.value)} />
+      : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6} disabled={off} onChange={e => v(e.target.value.toUpperCase())} />
+      : <select aria-label={k.label} value={r.value} disabled={off} onChange={e => v(e.target.value)}>
+        <option value="">Not set</option>
+        {r.value && !qopts.some(o => o.key === r.value) && <option value={r.value}>{r.value} (not in the catalog)</option>}
+        {full ? qopts : qopts.filter(o => o.key === r.value)}
+      </select>}</div>
+    <div className="cr-book">
+      <input className="src-id" aria-label={`${k.label}: source`} placeholder="Book" value={r.source} disabled={ro} onChange={e => set(k.key, { source: e.target.value.toUpperCase() })} />
+      <input type="number" min={1} step={1} aria-label={`${k.label}: page`} placeholder="Page" value={r.page} disabled={ro} onChange={e => set(k.key, { page: e.target.value })} />
+    </div>
+    {changed && !ro && <div className="cr-std">Standard: {d ? `${shown(d.value)}${d.source ? ` (${d.source}${d.page ? ` p. ${d.page}` : ''})` : ''}` : 'none'}{' '}
+      <button type="button" className="btn small" aria-label={`Reset ${k.label} to standard`} onClick={() => reset(k.key)}>Reset</button></div>}
+  </div>
+})
+
 /** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
  *  values in the form for review (readSettingsFile); only Save sends them. */
 export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; cr: Loaded; std?: CreationRules; onSave?: (settings: CreationRow[]) => Promise<void>; children?: React.ReactNode }) {
@@ -55,12 +93,24 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
   useEffect(() => setDraft(rowsOf(cr.rules)), [cr])
   const [msg, setMsg] = useState(''), [err, setErr] = useState(''), [saving, setSaving] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
-  const keys = expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) }), ordered = nested(keys)
-  const labelOf = new Map(keys.map(k => [k.key, k.label])), label = (k: string) => labelOf.get(k) ?? k
+  const [q, setQ] = useState('')
+  const ro = !onSave || saving
+  const keys = useMemo(() => expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) }), [c])
+  const labelOf = useMemo(() => new Map(keys.map(k => [k.key, k.label.replace(/ \((house rule|option)\)$/, '')])), [keys]), label = (k: string) => labelOf.get(k) ?? k
   // the draft as the engine would apply it: a nested rule whose parent is off, or one that can't be on with another, is greyed
   const eff = useMemo(() => applyDeps(rulesFrom(Object.entries(draft).filter(([, r]) => r.value.trim()).map(([key, r]) => ({ key, value: r.value }))).rules), [draft])
-  const qualities = [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
-  const set = (key: string, f: Partial<Row>) => { setMsg(''); setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } })) }
+  // a quality setting's select lists every quality (thousands of options over the form): the list once per catalog, and
+  // only the chosen one until the form has painted (the rest follow in the background)
+  const full = useDeferredValue(true, false)
+  const qualityOptions = useMemo(() => [...c.entries.qualities.values()].sort((a, b) => a.name.localeCompare(b.name))
+    .map(q => <option key={q.id} value={q.id}>{q.name}</option>), [c])
+  const qname = useCallback((x: string) => c.entries.qualities.get(x)?.name ?? x, [c])
+  const set = useCallback((key: string, f: Partial<Row>) => { setMsg(''); setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } })) }, [])
+  // a switch: on is "true"; off is "false", or no value where the standard has none (a setting the book doesn't give)
+  const setOn = useCallback((key: string, on: boolean) => set(key, { value: on ? 'true' : stdRows[key] ? 'false' : '' }), [set, stdRows])
+  const reset = useCallback((key: string) => { setMsg(''); setDraft(x => { const { [key]: _, ...rest } = x; return stdRows[key] ? { ...rest, [key]: stdRows[key] } : rest }) }, [stdRows])
+  const resetKeys = (ks: string[]) => { setMsg(''); setDraft(x => { const n = { ...x }; for (const key of ks) { if (stdRows[key]) n[key] = stdRows[key]; else delete n[key] } return n }) }
+  const changedKey = (key: string) => !!std && !isStd(draft[key] ?? NO_ROW, stdRows[key])
   async function load(f: File) {
     setMsg(''); setErr(''); setSkipped([])
     if (f.size > 1024 * 1024) return setErr(`${f.name} is larger than 1 MB: it isn’t a creation rules file.`)
@@ -89,40 +139,16 @@ export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; 
       {std && <>{' '}<button type="button" className="btn" disabled={saving || Object.keys({ ...draft, ...stdRows }).every(k => isStd(draft[k] ?? NO_ROW, stdRows[k]))}
         onClick={() => { setMsg('All settings are back to the standard values in the form; Save creation rules to keep them.'); setDraft({ ...stdRows }) }}>Reset all to standard</button></>}</p>}
     {skipped.length > 0 && <div className="warn"><p>Left out of the file:</p><ul>{skipped.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}
-    <fieldset className="bare" disabled={!onSave || saving}>
-      {CREATION_GROUPS.map(g => {
-        const rows = ordered.filter(o => o.root.group === g)
-        return rows.length > 0 && <div key={g}>
-          <h3>{g}</h3>
-          {g === 'Karma prices' && <p>Also the career prices.</p>}
-          <div className="scroll-x"><table className="data"><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Page</th>{std && <th>Standard</th>}</tr></thead>
-            <tbody>{rows.map(({ item: k, depth }) => {
-              const r = draft[k.key] ?? NO_ROW, v = (value: string) => set(k.key, { value }), d = stdRows[k.key]
-              const shown = (x: string) => k.type === 'bool' ? x === 'true' ? 'Yes' : 'No' : k.type === 'quality' ? c.entries.qualities.get(x)?.name ?? x : x
-              const off = !!blockedBy(eff, k.key)
-              return <tr key={k.key} className={[depth ? 'nested' : '', off ? 'blocked' : ''].join(' ').trim() || undefined}>
-                <td title={aboutOf(k.key) || undefined}>{k.label}<RuleWhy k={k.key} eff={eff} label={label} /></td>
-                <td>{k.type === 'number'
-                  ? <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} disabled={off} onChange={e => v(e.target.value)} />
-                  : k.type === 'letters' ? <input aria-label={k.label} value={r.value} placeholder={d?.value ?? 'ABCDE'} maxLength={5} size={6} disabled={off}
-                    onChange={e => v(e.target.value.toUpperCase())} />
-                  : <select aria-label={k.label} value={r.value} disabled={off} onChange={e => v(e.target.value)}>
-                    <option value="">Not set</option>
-                    {k.type === 'bool' ? <><option value="true">Yes</option><option value="false">No</option></>
-                      : <>{r.value && !c.entries.qualities.has(r.value) && <option value={r.value}>{r.value} (not in the catalog)</option>}
-                        {qualities.map(q => <option key={q.id} value={q.id}>{q.name}</option>)}</>}
-                  </select>}</td>
-                <td><input className="src-id" aria-label={`${k.label}: source`} value={r.source} onChange={e => set(k.key, { source: e.target.value.toUpperCase() })} /></td>
-                <td><input type="number" min={1} step={1} aria-label={`${k.label}: page`} value={r.page} onChange={e => set(k.key, { page: e.target.value })} /></td>
-                {std && <td>{isStd(r, d) ? <span className="muted">{d ? 'Standard' : 'No standard'}</span>
-                  : <>{d ? `${shown(d.value)}${d.source ? ` (${d.source}${d.page ? ` p. ${d.page}` : ''})` : ''}` : 'No standard'}{' '}
-                    <button type="button" className="btn" aria-label={`Reset ${k.label} to standard`}
-                      onClick={() => { setMsg(''); setDraft(x => { const { [k.key]: _, ...rest } = x; return d ? { ...rest, [k.key]: d } : rest }) }}>Reset</button></>}</td>}
-              </tr>
-            })}</tbody></table></div>
-        </div>
-      })}
-    </fieldset>
+    <RuleSearch q={q} setQ={setQ} label="Search the settings" />
+    <div className="bare">
+      <RuleSections items={keys} q={q} changed={std ? k => changedKey(k.key) : undefined} onReset={std && !ro ? resetKeys : undefined}
+        head={<div className="cr-head" aria-hidden><span>Setting</span><span>Value</span><span>Book and page</span></div>}
+        row={(k, depth) => {
+          const b = blockedBy(eff, k.key), why = b ? 'needs' in b ? `needs ${label(b.needs)}` : `can’t be on with ${label(b.conflicts)}, which is on` : ''
+          return <RuleRow key={k.key} k={k} depth={depth} r={draft[k.key] ?? NO_ROW} d={stdRows[k.key]} known={!!std} ro={ro} why={why} qopts={qualityOptions} full={full} qname={qname}
+            set={set} setOn={setOn} reset={reset} />
+        }} />
+    </div>
     {onSave && <p><button type="button" className="btn" disabled={saving} onClick={() => void save()}>Save creation rules</button></p>}
     <div role="status" aria-live="polite">{msg && <p className="ok">{msg}</p>}</div>
     {err && <p className="err" role="alert">{err}</p>}
@@ -139,7 +165,7 @@ export function ServerCreation({ c, cr, reload }: { c: Sr6Catalog; cr: Loaded; r
       <h2>Creation rules</h2>
       <p>The numbers the books give in their text: the server’s settings, which every runner is built and checked
         against unless its campaign has its own. They start as the standard values from the core rulebook and the Sixth World
-        Companion (the Standard column); {admin ? 'change what your table plays differently, or reset a value to the standard.' : 'the admin changes what the table plays differently.'}{' '}
+        Companion (a value at the standard is grey; one you changed stands out, with the standard beside it); {admin ? 'change what your table plays differently, or reset a value or a whole section to the standard.' : 'the admin changes what the table plays differently.'}{' '}
         {staff ? <>A GM can give a campaign they run its own settings on <a href="#/sr6/campaigns">its campaign page</a>.</>
           : 'A campaign’s GM can give it its own settings; they show on the campaign’s page.'}</p>
       {own.length > 0 && <p>Campaigns with their own settings: {own.map((x, i) => <span key={x.id}>{i > 0 && ', '}<a href={`#/sr6/campaigns/${x.id}`}>{x.name}</a></span>)}.</p>}

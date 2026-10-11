@@ -57,7 +57,7 @@ test('ask is off until a provider is chosen, enabled and has its key', async () 
 test('every signed-in role may ask; nobody else, and not from another page', async () => {
   for (const who of ['admin', 'eddie']) {
     const r = await ask(who, 'What happens when I jump a puddle?')
-    expect(await r.json(), who).toEqual({ answer: 'Invented answer [ZZ p.61].', sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping' }],
+    expect(await r.json(), who).toEqual({ answer: 'Invented answer [ZZ p.61].', sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping', kind: 'rule', id: 'zz.puddle-jumping' }],
       covered: true, used: 1, limit: null })
   }
   expect((await rawFetch(`${base}/api/ask`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{"question":"x"}' })).status).toBe(401)
@@ -173,4 +173,40 @@ test('the admin sets dailyQuestions on the users update route; nobody else can',
   expect((await (await put('admin', { dailyQuestions: null })).json()).user.dailyQuestions).toBeNull()
   expect(readFileSync(join(lib, '.config', 'users.xml'), 'utf8')).not.toMatch(/username="eddie"[^>]*dailyQuestions/)
   expect(existsSync(join(lib, '.config', 'ask-counts.xml'))).toBe(true)
+})
+
+test('each game has its own AI: SR6’s settings, keys and questions apart from Anarchy’s', async () => {
+  const sr6 = (who: string, body: unknown) => as(who, '/api/sr6/ask', { method: 'POST', body: JSON.stringify(body) })
+  // Anarchy's provider is set up (above); SR6's isn't
+  expect((await (await as('admin', '/api/sr6/ask')).json()).available).toBe(false)
+  const off = await sr6('admin', { question: 'puddles?' })
+  expect([off.status, (await off.json()).error]).toEqual([409, 'Ask the rules isn’t set up for Shadowrun 6: the admin chooses an AI provider and its key in AI settings'])
+  expect(await (await as('admin', '/api/sr6/ai-settings')).text()).toContain('<key provider="anthropic" set="false"/>')
+  // who may configure it: the admin only, as Anarchy's
+  for (const who of ['pia', 'eddie']) {
+    expect((await as(who, '/api/sr6/ai-settings')).status, who).toBe(403)
+    expect((await as(who, '/api/sr6/ai-keys', { method: 'PUT', body: '<key provider="openai">x</key>' })).status, who).toBe(403)
+  }
+  const anarchy = readFileSync(join(lib, '.config', 'ai-providers.xml'), 'utf8')
+  expect((await as('admin', '/api/sr6/ai-settings', { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
+    body: '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai"><provider id="openai" enabled="true" baseUrl="http://sr6.example/v1"/></ca2:aiproviders>' })).status).toBe(200)
+  expect((await as('admin', '/api/sr6/ai-keys', { method: 'PUT', body: '<key provider="openai">sk-SR6SECRET99</key>' })).status).toBe(204)
+  // in library/sr6/.config; Anarchy's files untouched
+  expect(readFileSync(join(lib, 'sr6', '.config', 'ai-providers.xml'), 'utf8')).toContain('use="openai"')
+  expect(readFileSync(join(lib, 'sr6', '.config', 'ai-keys.xml'), 'utf8')).toContain('SR6SECRET99')
+  expect(readFileSync(join(lib, '.config', 'ai-providers.xml'), 'utf8')).toBe(anarchy)
+  expect(readFileSync(join(lib, '.config', 'ai-keys.xml'), 'utf8')).not.toContain('SR6SECRET')
+  expect(await (await as('admin', '/api/ai-settings')).text()).toContain('<key provider="openai" set="false"/>')
+  // anyone signed in asks SR6's own; the Rules page's search asks the rules only
+  expect((await (await as('pat', '/api/sr6/ask')).json()).available).toBe(true)
+  const before = (await (await as('pat', '/api/ask')).json()).used
+  expect(await (await sr6('pat', { question: 'puddles?' })).json()).toMatchObject({ answer: 'Invented SR6 answer [ZZ p.61].', covered: true })
+  expect((await (await sr6('pat', { question: 'puddles?', scope: 'rules' })).json()).answer).toBe('Invented SR6 answer (rules only) [ZZ p.61].')
+  expect((await (await ask('pat', 'puddles?')).json()).answer).toBe('Invented answer [ZZ p.61].') // Anarchy's still Anarchy's
+  expect((await (await as('pat', '/api/ask')).json()).used).toBe(before + 3) // one daily count for both games
+  // SR6's key never comes back either
+  const leak = await (await sr6('pat', { question: 'leak puddles' })).text()
+  expect(leak).toContain('[key]')
+  expect(leak).not.toContain('SR6SECRET')
+  expect((await rawFetch(`${base}/api/sr6/ask`)).status).toBe(401)
 })

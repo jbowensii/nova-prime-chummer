@@ -1,9 +1,10 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the server's creation rules (loadCreation) load once here, then the page: Books (admin; the
-// Anarchy Books page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
+// Anarchy Books page with game="sr6", and #/sr6/books/ai: SR6's own AI settings, the Anarchy page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
 // list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's
 // editor (#/sr6/n/<id>/<tab>) and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
+import { AiSettings } from '../../ui/AiSettings'
 import { BooksScreen } from '../../ui/Books'
 import { CampaignScreen, CampaignsScreen } from '../../ui/Campaigns'
 import { listShared, readable } from '../../ui/compendiumStore'
@@ -51,7 +52,8 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const page = ((route[0] === 'books' || route[0] === 'users') && !admin) || ((route[0] === 'npcs' || route[0] === 'n') && !canEdit(me))
     || (route[0] === 'compendiums' && !staff) ? '' : route[0] === 'table-rules' ? 'table' : route[0]
 
-  const body = page === 'books' ? <BooksScreen game="sr6" reload={() => void refresh()} />
+  const body = page === 'books' && route[1] === 'ai' ? <AiSettings game="sr6" />
+    : page === 'books' ? <BooksScreen game="sr6" reload={() => void refresh()} />
     : page === 'users' ? <UsersScreen game="sr6" />
     : page === 'trash' ? <TrashScreen game="sr6" user={route[1]} />
     : page === 'npcs' && route[1] === 'trash' ? <TrashScreen game="sr6" npcs user={route[2]} />

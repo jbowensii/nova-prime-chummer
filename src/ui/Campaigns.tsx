@@ -154,7 +154,7 @@ export function CampaignScreen({ id, label, game = 'ca2', extra }: { id: string;
 
       <section aria-labelledby={`${listId}-r`}>
         <h2 id={`${listId}-r`}>Runners</h2>
-        {game === 'ca2' && <AskRules />}
+        <AskRules game={game === 'sr6' ? 'sr6' : 'ca2'} />
         {camp.runners.length === 0 ? <p className="empty-note">No runners in this campaign yet. Players add theirs from their runner list with <b>Add to campaign…</b></p>
           : [...groups].map(([owner, rows]) => <div key={owner} className="cgroup">
             <h3>{rows[0].ownerName}</h3>

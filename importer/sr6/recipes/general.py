@@ -210,21 +210,6 @@ def _box_named(b):
     return replace(b, name=b.section, aliases=[*b.aliases, b.name])
 
 
-def _stat_line(b):
-    """An item's heading whose text holds its one stat line: a one-row priced table with no name column (`TYPE | MODE |
-    DV | … | AVAIL | COST`, the type its first cell): that row is the item's, named by the heading."""
-    if b.type != "section" or b.level < 3 or b.stats or b.row is not None:
-        return b
-    ts = crb._tables(b.text)
-    if len(ts) != 1 or len(ts[0][1]) != 1:
-        return b
-    h, rows = ts[0]
-    if not _PRICE & {x.upper() for x in h} or h[0].upper() in _NAME_COLUMNS | {"ITEM", "NAME"} or len(rows[0]) != len(h):
-        return b
-    row = {"ITEM": b.name, **dict(zip(h, rows[0]))}
-    return replace(b, type="item", row=row, header=list(row), text=b.text.replace(_md_table(h, rows), "", 1).strip())
-
-
 def _spell_box(b):
     """A spell box printing its category under TYPE and its type under DV (`TYPE Illusion | RANGE LOS | DV P | DURATION S
     | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
@@ -489,7 +474,7 @@ class Book:
         heading (a book printing none) is in the book's."""
         if not b.chapter:
             b = replace(b, chapter=self.BOOK, name=b.name or self.BOOK)
-        b = _spell_box(_stat_line(_box_named(b)))
+        b = _spell_box(_box_named(b))  # (an item's own stat line: crb.stat_lines, every book's)
         if b.type == "item" or b.level >= 2:
             b = _text_bands(b)
             if b.type == "section" and _being(b):

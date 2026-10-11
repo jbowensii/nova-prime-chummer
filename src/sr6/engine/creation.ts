@@ -112,7 +112,8 @@ export const CREATION_KEYS: CreationKey[] = [
     ['pointBuy.cost.complexForm', 'Character points per complex form'], ['pointBuy.nuyenPerCp', 'Nuyen per character point']]),
   { key: 'pointBuy.oneSpecialization', label: 'Only one specialization', type: 'bool', group: 'Point buy', methods: ['pointbuy'] },
   { key: 'karmaBuildMethod', label: 'Karma build: a creation method no SR6 book describes, with the numbers below (option)', type: 'bool', group: 'Karma build', methods: [] },
-  ...n('Karma build', ['karma'], [['karmaBuild.start', 'Starting karma (karma build)'], ['karmaBuild.startRating', 'Starting Magic or Resonance (karma build)']]),
+  ...n('Karma build', ['karma'], [['karmaBuild.start', 'Starting karma (karma build)'], ['karmaBuild.startRating', 'Starting Magic or Resonance (karma build)'],
+    ['karmaBuild.freeSpellsPerMagic', 'Free spells per Magic (karma build)'], ['karmaBuild.freeFormsPerResonance', 'Free complex forms per Resonance (karma build)']]),
   ...n('Lifepath', ['lifepath'], [['lifepath.moduleCount', 'Adult life modules to take'], ['lifepath.contactRatingCap', 'Highest contact rating']]),
   // optional: unset, the rule is off (no raise, no module twice, contact ratings past the points aren't bought)
   ...n('Lifepath', [], [['lifepath.bestAttributeBonus', 'Best attribute raised by (unset: no raise)'],
@@ -143,11 +144,11 @@ export const CREATION_KEYS: CreationKey[] = [
   { key: 'levelPrime', label: 'Prime runner: twice the customization karma', type: 'bool', group: 'Levels of play', methods: [] },
   { key: 'levelSwcStreet', label: 'Street-level (Sixth World Companion): the letters, targets and module count below; no illegal gear but cyberdecks', type: 'bool', group: 'Levels of play', methods: [] },
   ...n('Levels of play', [], [['swcStreet.sumToTen', 'Street-level: sum-to-ten target'], ['swcStreet.pointBuy', 'Street-level: character points'],
-    ['swcStreet.modules', 'Street-level: adult life modules']]),
+    ['swcStreet.modules', 'Street-level: adult life modules'], ['swcStreet.karmaBuild', 'Street-level: Karma build starting karma']]),
   { key: 'swcStreet.letters', label: 'Street-level: the priority letters', type: 'letters', group: 'Levels of play', methods: [] },
   { key: 'levelSwcElite', label: 'Elite (Sixth World Companion): the letters, targets and module count below; no Availability cap', type: 'bool', group: 'Levels of play', methods: [] },
   ...n('Levels of play', [], [['swcElite.sumToTen', 'Elite: sum-to-ten target'], ['swcElite.pointBuy', 'Elite: character points'],
-    ['swcElite.modules', 'Elite: adult life modules']]),
+    ['swcElite.modules', 'Elite: adult life modules'], ['swcElite.karmaBuild', 'Elite: Karma build starting karma']]),
   { key: 'swcElite.letters', label: 'Elite: the priority letters', type: 'letters', group: 'Levels of play', methods: [] },
   { key: 'priorityLetters', label: 'The priority letters a runner takes, one a column (unset: A, B, C, D and E once each)', type: 'letters', group: 'Levels of play', methods: [] },
   { key: 'meleeArStrength', label: 'STR adds to a melee weapon’s Attack Rating', type: 'bool', group: 'Derived values', methods: [] },
@@ -255,8 +256,8 @@ export const str = (cr: CreationRules, key: string) => { const v = cr.get(key)?.
 /** The levels of play that replace other settings' values while on (the Sixth World Companion's Alternate Power Levels,
  *  pp. 14–15): the level's key, then [the setting it replaces, the level's own setting holding the value]. */
 export const LEVELS: [string, [string, string][]][] = [
-  ['levelSwcStreet', [['sumToTenTarget', 'swcStreet.sumToTen'], ['pointBuy.total', 'swcStreet.pointBuy'], ['lifepath.moduleCount', 'swcStreet.modules'], ['priorityLetters', 'swcStreet.letters']]],
-  ['levelSwcElite', [['sumToTenTarget', 'swcElite.sumToTen'], ['pointBuy.total', 'swcElite.pointBuy'], ['lifepath.moduleCount', 'swcElite.modules'], ['priorityLetters', 'swcElite.letters']]],
+  ['levelSwcStreet', [['sumToTenTarget', 'swcStreet.sumToTen'], ['pointBuy.total', 'swcStreet.pointBuy'], ['lifepath.moduleCount', 'swcStreet.modules'], ['priorityLetters', 'swcStreet.letters'], ['karmaBuild.start', 'swcStreet.karmaBuild']]],
+  ['levelSwcElite', [['sumToTenTarget', 'swcElite.sumToTen'], ['pointBuy.total', 'swcElite.pointBuy'], ['lifepath.moduleCount', 'swcElite.modules'], ['priorityLetters', 'swcElite.letters'], ['karmaBuild.start', 'swcElite.karmaBuild']]],
   // L2 (owner, 2026-10-11): the GM's own carry-over limits in place of the book's
   ['ownCarryOver', [['maxKarmaLeft', 'carryOver.karma'], ['maxNuyenLeft', 'carryOver.nuyen']]],
 ]
@@ -290,6 +291,8 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   ...Object.fromEntries(LEVEL_KEYS.map((k, i) => [k, { conflicts: LEVEL_KEYS.slice(i + 1) }])),
   levelSwcElite: { replaces: ['maxAvailability'] },
   ...Object.fromEntries(['sumToTen', 'pointBuy', 'modules', 'letters'].flatMap(s => [[`swcStreet.${s}`, { requires: ['levelSwcStreet'] }], [`swcElite.${s}`, { requires: ['levelSwcElite'] }]])),
+  // the Karma build's starting karma at a level of play (it needs the Karma build option too)
+  'swcStreet.karmaBuild': { requires: ['levelSwcStreet', 'karmaBuildMethod'] }, 'swcElite.karmaBuild': { requires: ['levelSwcElite', 'karmaBuildMethod'] },
   // SWC p. 161: "Instead of a flat limit of Charisma ... use the following rules"
   ...Object.fromEntries(['contactKarma', 'contactPairPerCha', 'contactRatingMax'].map(k => [k, { requires: ['expandedContacts'] }])),
   twentyQuestionsKarma: { requires: ['twentyQuestions'] },  // SWC p. 25
@@ -304,7 +307,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   // the owner's decisions (2026-10-11): a toggle with the values the GM sets under it
   ...Object.fromEntries([['ownCarryOver', ['carryOver.karma', 'carryOver.nuyen']], ['karmaToNuyenCap', ['karmaToNuyenMax']],
     ['positiveQualityMultiplier', ['positiveQualityFactor']], ['buyPowerPoints', ['advance.powerPoint']],
-    ['karmaBuildMethod', ['karmaBuild.start', 'karmaBuild.startRating', ...AWAKENED.map(k => `magicKarma:${k}`)]],
+    ['karmaBuildMethod', ['karmaBuild.start', 'karmaBuild.startRating', 'karmaBuild.freeSpellsPerMagic', 'karmaBuild.freeFormsPerResonance', ...AWAKENED.map(k => `magicKarma:${k}`)]],
     ['dataStructureCaps', ['dataStructure.maxCount', 'dataStructure.maxRating']], ['gradeCapAtCreation', ['gradeCap.initiation', 'gradeCap.submersion']],
   ].flatMap(([parent, kids]) => (kids as string[]).map(k => [k, { requires: [parent as string] }]))),
   eliteSumToThirteen: { requires: ['levelSwcElite'] },
@@ -419,9 +422,12 @@ export interface RunnerRule { key: string; value: string; assumed?: true; source
 export interface RuleLock { key: string; by: string }
 
 /** What each setting does, in plain words, and where a book prints it, else "house rule" or "option" (owner, 2026-10-11):
- *  the hover text of its row on Table setup and on a runner's Creation rules. Never names another app. [what, where] */
+ *  the hover text of its row on Table setup and on a runner's Creation rules. Never names another app, but the Karma build's (KARMA_BUILD). [what, where] */
 const HK = (p: number | string) => `CRB Hong Kong p. ${p}`, SWC = (p: number | string) => `Sixth World Companion p. ${p}`
 const HOUSE = 'house rule', OPTION = 'option'
+// (owner, one-off exception, 2026-10-11: the one place another app is named) the Karma build option's numbers are the ones
+// that app starts a Karma build from, since no SR6 book prints one
+const KARMA_BUILD = 'option (Commlink6 defaults)', NO_BOOK = 'no SR6 book prints a Karma build'
 const ABOUT: Record<string, [string, string]> = {
   startingKarma: ['The customization Karma every runner starts with; a prime runner doubles it', HK(66)],
   qualityNetBonusCap: ['The most Karma negative qualities may give beyond what the positive ones cost', HK(66)],
@@ -507,9 +513,13 @@ const ABOUT: Record<string, [string, string]> = {
   'pointBuy.cost.complexForm': ['Point buy: character points per complex form', SWC(29)],
   'pointBuy.nuyenPerCp': ['Point buy: nuyen per character point', SWC(29)],
   'pointBuy.oneSpecialization': ['Point buy: only one specialization at creation', SWC(29)],
-  karmaBuildMethod: ['On: the Karma build can be picked as a creation method, with the numbers below', OPTION],
-  'karmaBuild.start': ['Karma build: the Karma a runner starts with', OPTION],
-  'karmaBuild.startRating': ['Karma build: the Magic or Resonance an awakened or emerged runner starts at', OPTION],
+  karmaBuildMethod: ['On: the Karma build can be picked as a creation method, with the numbers below; off: it can’t. No SR6 book prints a Karma build', KARMA_BUILD],
+  'karmaBuild.start': [`Karma build: the Karma a runner starts with, to buy everything; ${NO_BOOK}`, KARMA_BUILD],
+  'karmaBuild.startRating': [`Karma build: the Magic or Resonance an awakened or emerged runner starts at, before raising it with Karma; ${NO_BOOK}`, KARMA_BUILD],
+  'karmaBuild.freeSpellsPerMagic': [`Karma build: free spells and rituals per point of Magic (0: every one costs its Karma, as the Karma prices have it); ${NO_BOOK}`, KARMA_BUILD],
+  'karmaBuild.freeFormsPerResonance': [`Karma build: free complex forms per point of Resonance (0: every one costs its Karma); ${NO_BOOK}`, KARMA_BUILD],
+  'swcStreet.karmaBuild': [`Street-level with the Karma build: the Karma a runner starts with, in place of the standard level's; ${NO_BOOK}`, KARMA_BUILD],
+  'swcElite.karmaBuild': [`Elite with the Karma build: the Karma a runner starts with, in place of the standard level's; ${NO_BOOK}`, KARMA_BUILD],
   'lifepath.moduleCount': ['Lifepath: the adult life modules a runner takes', SWC(32)],
   'lifepath.contactRatingCap': ['Lifepath: the highest contact rating', SWC(31)],
   'lifepath.bestAttributeBonus': ['Lifepath: the best attribute goes up by this, up to its maximum', SWC(32)],
@@ -589,7 +599,7 @@ export function aboutOf(key: string): string {
   const grade = key.split(':'), part = { essence: 'Essence factor', cost: 'cost factor', avail: 'Availability modifier' }[grade[2] ?? '']
   const [what, where] = ABOUT[key] ?? (key.startsWith('metatypeKarma:') ? ['Karma a runner pays to be this metatype (point buy, Karma build, lifepath)', SWC('28, 91')]
     : key.startsWith('pointBuy.startRating:') ? ['Point buy: the Magic or Resonance this kind starts at', SWC(29)]
-    : key.startsWith('magicKarma:') ? ['Karma build: Karma to be this kind', OPTION]
+    : key.startsWith('magicKarma:') ? [`Karma build: Karma to be this kind, taken from the Karma a runner starts with; ${NO_BOOK}`, KARMA_BUILD]
     : key.startsWith('lifepath.startRating:') ? ['Lifepath: the Magic or Resonance this kind starts at', SWC(32)]
     : key.startsWith('letterValue:') ? [`Sum to ten: what priority ${key.slice(12)} counts`, SWC(27)]
     : /^pointBuy\.(free|max)\./.test(key) ? [`Point buy: ${key.includes('.free.') ? 'the free' : 'the most'} ${key.endsWith('nuyen') ? 'nuyen' : `${key.split('.')[2]} points`}`, SWC(29)]

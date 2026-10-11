@@ -15,6 +15,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from importer import DATA_DIR
+from importer.sr6.regroup import norm
 
 COLUMNS = ("metatype", "attributes", "magic", "skills", "resources")
 CORE = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha")
@@ -29,6 +30,17 @@ def settings(path=None):
         v = s.get("value", "")
         out[s.get("key")] = float(v) if re.fullmatch(r"-?\d+(?:\.\d+)?", v) else v
     return out
+
+
+# budgets.ts metatypeSize's words (a test keeps the two lists the same)
+TROLL_SIZED = ("troll", "trolls", "cyclops", "fomori", "fomorian", "giant", "minotaur")
+DWARF_SIZED = ("dwarf", "dwarfs", "dwarves", "gnome", "hanuman", "koborokuru", "menehune")
+
+
+def metatype_size(name):
+    """'troll' or 'dwarf' when the metatype's name has a troll- or dwarf-sized word (metatypeSizePricing), else None."""
+    words = norm(name or "").split()
+    return "troll" if any(w in TROLL_SIZED for w in words) else "dwarf" if any(w in DWARF_SIZED for w in words) else None
 
 
 def value(v, rating=1):

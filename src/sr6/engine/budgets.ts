@@ -285,10 +285,10 @@ export function extraMagic(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
 export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): number {
   const k = MAGIC_KINDS[b.magic]
   if (b.method === 'pointbuy') return k.resonance ? b.cp.complexForms : k.spells ? b.cp.spells : 0
-  const rating = Math.max(0, p.magicRating(b) - magicLoss(b, data, cr))
-  if (k.resonance) return rating * n0(cr, 'freeFormsPerResonance')
+  const rating = Math.max(0, p.magicRating(b) - magicLoss(b, data, cr)), karma = b.method === 'karma' // (the Karma build has its own)
+  if (k.resonance) return rating * n0(cr, karma ? 'karmaBuild.freeFormsPerResonance' : 'freeFormsPerResonance')
   if (!k.spells) return 0
-  return Math.max(0, rating - (k.paysPowers ? b.powerPointsBought : 0)) * n0(cr, 'freeSpellsPerMagic')
+  return Math.max(0, rating - (k.paysPowers ? b.powerPointsBought : 0)) * n0(cr, karma ? 'karmaBuild.freeSpellsPerMagic' : 'freeSpellsPerMagic')
 }
 
 /** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality), both ways: turning
