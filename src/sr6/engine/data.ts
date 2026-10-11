@@ -224,7 +224,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   }))
 
   // an entry the book leaves a value out of (or the importer couldn't read): Review notes it on the runners that use it
-  for (const map of Object.values(c.entries)) for (const e of map.values()) for (const x of e.issues ?? [])
+  for (const k of Object.keys(c.entries) as Sr6Kind[]) for (const e of withParents(k)) for (const x of derived(e) ? [] : e.issues ?? [])
     problems.push({ code: 'catalog.issue', severity: 'warning', path: `${e.kind}.${e.id}`, message: issueNote(e.name, x), source: e.source, page: x.page ?? e.page })
 
   let nameIndex: Map<string, Sr6Entry> | undefined

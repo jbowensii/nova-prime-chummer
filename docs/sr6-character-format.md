@@ -145,7 +145,10 @@ the entry its `event` names.
   the text is the reason). An unknown `type` or `op` is refused; repair drops the entry ("Dropped ledger entry 3: …").
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
-  element), `buyoff` and `drop` (`target`: the uid of the line removed; the removed line may follow for the history),
+  element; a `quality`, `pick` or `initiate` whose line is a higher level of a family the runner has, docs/sr6-data-format.md
+  "Levels", names the lower level's uid in `target`: that line moves to the new level), `buyoff` and `drop` (`target`:
+  the uid of the line removed; the removed line may follow for the history), `upgrade` (`target`: the uid of the bought
+  item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),

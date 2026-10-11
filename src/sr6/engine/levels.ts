@@ -18,7 +18,7 @@ type Levels = Pick<Sr6Catalog, 'entries' | 'levels'>
 
 const round2 = (x: number) => Math.round(x * 100) / 100
 /** a trailing printed range in a name: `Will to Live (1-3)`, `Blind (rating 1–3)` */
-const RANGE = /\s*\((?:(?:rating|level|force)\s+)?\d+\s*[-–]\s*\d+\)\s*$/i
+const RANGE = /\s*\((?:(?:rating|level|force)\s+)?(\d+)\s*[-–]\s*(\d+)\)\s*$/i
 /** a name the book prints with its level: `Cyberjack (Rating 2)`, `Telescoping (Level 1)`, `Wired Reflexes 3` */
 const PRINTED = /^(.+?)\s*(?:\((?:rating|level)\s+(\d{1,2})\)|\s(\d{1,2}))$/i
 /** the fields a level multiplies: a quality's Karma (a range's both ends), a power's power points */
@@ -31,8 +31,12 @@ const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/\p{M}/gu,
 function mode(e: Sr6Entry): { mode: 'rating' | 'level'; levels: number[] } | undefined {
   const range = ratingRange(e.attrs.rating)
   if (range.length > 1) return { mode: 'rating', levels: range }
+  if (e.attrs.perLevel !== 'true') return undefined
   const max = Number(e.attrs.maxLevel)
-  if (e.attrs.perLevel === 'true' && Number.isInteger(max) && max >= 2) return { mode: 'level', levels: Array.from({ length: max }, (_, i) => i + 1) }
+  if (Number.isInteger(max) && max >= 2) return { mode: 'level', levels: Array.from({ length: max }, (_, i) => i + 1) }
+  // (the range printed in the name, `Will to Live (1-3)`)
+  const m = RANGE.exec(e.name), lo = m ? Number(m[1]) : NaN, hi = m ? Number(m[2]) : NaN
+  if (m && lo >= 1 && hi > lo) return { mode: 'level', levels: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) }
   return undefined
 }
 
