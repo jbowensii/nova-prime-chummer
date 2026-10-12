@@ -16,6 +16,10 @@ test('a known ?signin= says its reason', async () => {
   expect(location.search).toBe('') // taken off the address
 })
 
+test('too many tries (the server’s per-network limit) says to wait a minute', async () => {
+  expect(await pageAt('?signin=too-many')).toContain('Wait a minute')
+})
+
 test('an unknown ?signin= says the generic reason; __proto__ and toString do not blank the page', async () => {
   for (const key of ['nope', '__proto__', 'toString', 'constructor']) expect(await pageAt('?signin=' + key)).toContain('Signing in with Authelia didn’t work')
 })

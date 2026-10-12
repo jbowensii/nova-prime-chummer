@@ -60,6 +60,7 @@ const OIDC_ERRORS: Record<string, string> = {
   'no-account': 'Authelia knows you, but this app has no account for you. Ask the admin for an account.',
   expired: 'That sign-in took too long or was already used. Try again.',
   denied: 'Authelia didn’t sign you in. Try again.',
+  'too-many': 'Too many sign-in tries from your network just now. Wait a minute, then try again.',
   off: 'Sign in with Authelia is turned off. Sign in with your username and password.',
   restoring: 'The server is being restored from a backup. Try again in a minute.',
   failed: 'Signing in with Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',

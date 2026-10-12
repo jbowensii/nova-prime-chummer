@@ -825,7 +825,7 @@ test('the token exchange is limited per client network: past the limit a minute,
     await on(s)
     for (let i = 0; i < 2; i++) expect((await flow(s)).location).toBe('/') // signed in
     const before = s.f.hits['/token'] ?? 0
-    expect((await flow(s)).location).toBe('/?signin=failed')
+    expect((await flow(s)).location).toBe('/?signin=too-many')
     expect(s.f.hits['/token'] ?? 0).toBe(before)
     expect(logged.some(l => l.includes('too many sign-ins from this network in a minute'))).toBe(true)
   } finally {

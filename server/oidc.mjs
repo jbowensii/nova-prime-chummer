@@ -5,13 +5,13 @@
 //                                   cookie, sealed with AES-256-GCM (library/.config/oidc-key.xml): nothing is kept here
 //                                   per start, so a flood of starts can't push anyone's sign-in out (and needs no limit)
 //   GET  /api/auth/oidc/callback    public: code + state -> the ID token checked, the account matched -> 302 to / with a
-//                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL).
-//                                   Its calls to the issuer (the token exchange) are limited per client network: EXCHANGES
-//                                   a minute, more refused (failed)
+//                                   session, or to /?signin=<no-account|expired|denied|too-many|failed|off> (no details in the
+//                                   URL). Its calls to the issuer (the token exchange) are limited per client network:
+//                                   EXCHANGES a minute, more refused (too-many)
 //   POST /api/auth/oidc/link/start  a signed-in password account: -> { url } (the issuer's, for the browser to open); the sealed
 //                                   cookie also holds the account id and its session. The callback then links the account
 //                                   (server/auth.mjs linkExternal): method authelia, no password, other sessions ended ->
-//                                   302 to /?link=<done|taken|other-account|stale|session|expired|denied|failed>. The body is
+//                                   302 to /?link=<done|taken|other-account|stale|session|expired|denied|too-many|failed>. The body is
 //                                   { current } (the account's password); Authelia is asked to sign in afresh (prompt=login)
 //   GET  /api/auth-settings         admin: -> { issuer, clientId, tokenAuth, enabled, secretSet, redirectUri } (never the secret)
 //   PUT  /api/auth-settings         admin: any of { issuer, clientId, tokenAuth, enabled, secret } -> the same; a new issuer
@@ -486,7 +486,7 @@ export function oidcApi({
       k = netKey(ip),
       e = exchanges.get(k)
     if (e && now - e.since < MINUTE) {
-      if (e.n >= exchangesPerMinute) throw refuse('failed', 'too many sign-ins from this network in a minute')
+      if (e.n >= exchangesPerMinute) throw refuse('too-many', 'too many sign-ins from this network in a minute')
       e.n++
       return
     }
