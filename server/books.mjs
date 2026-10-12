@@ -164,7 +164,7 @@ export const readSettings = xml => [...xml.matchAll(/<setting\b[^>]*>/g)].map(([
 export function safeName(header) {
   let name = String(header || '')
   try { name = decodeURIComponent(name) } catch { /* keep as sent */ }
-  name = clean(name.split(/[\\/]/).pop()).replace(/[^\p{L}\p{N} ._()'&,+-]/gu, '_').replace(/^[\s.-]+/, '').trim().slice(-120)
+  name = clean(name.split(/[\\/]/).pop()).replace(/[^\p{L}\p{N} ._()'&,+-]/gu, '_').slice(-120).replace(/^[\s.-]+/, '').trim() // the dashes after the cut: never read as an option
   return name || 'book.pdf'
 }
 
@@ -1193,7 +1193,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
       if (!apply) return send(res, 204, '', 'text/plain')
       await setStatus(id, 'queued')
       enqueue(id, [core ? ['apply-review', dir, '--custom', customDir, '--core']
-        : ['apply-review', dir, '--custom', customDir, '--source', source, '--name', clean(name), '--canon', canon]])
+        : ['apply-review', dir, '--custom', customDir, '--source', source, `--name=${clean(name)}`, '--canon', canon]]) // one argument, as add-source
       return send(res, 202, { id })
     }
 
