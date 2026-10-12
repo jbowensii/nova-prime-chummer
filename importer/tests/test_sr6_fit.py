@@ -25,6 +25,8 @@ class FitTest(unittest.TestCase):
     def test_value_reads_as_the_app(self):
         self.assertEqual([fit.value(v, 3) for v in ("Rating x 50", ".5", "(Rating/2)", "7(L)", "—", "40/60", "lots")],
                          [150, 0.5, 2, 7, None, None, None])
+        # values.ts rated(): a unit price's "each" is the price of one; a value past 100 characters isn't read
+        self.assertEqual([fit.value("1500 each"), fit.value("5 " * 60)], [1500, None])
 
     def test_the_letters_that_overspend_least(self):
         """A mundane pixie with 6 attribute ranks, 4 skill ranks and 650 nuyen of things: the karma covers what the rows

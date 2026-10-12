@@ -20,6 +20,7 @@ from importer.sr6.regroup import norm
 COLUMNS = ("metatype", "attributes", "magic", "skills", "resources")
 CORE = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha")
 _LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
+_EACH = re.compile(r"\s+each\s*$", re.I)  # a unit price's word: `1500 each` is the price of one
 
 
 def settings(path=None):
@@ -45,9 +46,9 @@ def metatype_size(name):
 
 def value(v, rating=1):
     """A catalog value at `rating`, read as src/sr6/engine/values.ts rated() reads it; None when it can't be."""
-    if v is None or re.fullmatch(r"\s*[—–-]?\s*", v):
+    if v is None or len(v) > 100 or re.fullmatch(r"\s*[—–-]?\s*", v):  # values.ts MAX_VALUE
         return None
-    s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", v).strip().lstrip("+")),
+    s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", _EACH.sub("", v)).strip().lstrip("+")),
                flags=re.I)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", s)
     if "/" in toks and "R" not in toks:
