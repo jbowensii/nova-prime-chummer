@@ -50,7 +50,7 @@ list, and layout from rendered pages (cover, p.61, 83, 88, 144). The CSS
 | `--oxblood` | `#581500` | dark emphasis text |
 | `--grey` | `#555756` | secondary text |
 
-**Dark theme** (a toggle, not in the book): built from the book's own
+**Dark theme** (a choice in Settings, not in the book; the default, Match my system, follows the device): built from the book's own
 sidebar. The ground is `--indigo-deep`, panels are `--indigo`, text is
 cream, headings are yellow, and rust is lifted to `#c86a45` for contrast.
 

@@ -60,7 +60,8 @@ export function samplesToLoad<T extends { key: string }>(rows: T[], mine: Sr6Cha
 /** What `method` still needs, in the Game data form's words. */
 export function missingLabels(method: Sr6Method, cr: CreationRules, data: Sr6Data): string[] {
   const labels = new Map(expandKeys(data).map(k => [k.key, k.label]))
-  return missingFor(method, cr, data).map(k => labels.get(k) ?? k)
+  // the Karma build option's own label is a long sentence that starts with the method's name: say the reason short
+  return missingFor(method, cr, data).map(k => (k === 'karmaBuildMethod' ? 'the option is switched off' : (labels.get(k) ?? k)))
 }
 
 export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {

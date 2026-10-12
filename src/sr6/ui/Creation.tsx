@@ -349,25 +349,26 @@ export function CreationForm({
       )}
       {children}
       {onSave && (
-        <p>
-          <label className="btn file">
-            Load settings file…
-            <input
-              type="file"
-              accept=".xml,application/xml,text/xml"
-              aria-label="Load settings file"
-              disabled={saving}
-              onChange={e => {
-                const f = e.target.files?.[0]
-                e.target.value = ''
-                if (f) void load(f)
-              }}
-            />
-          </label>{' '}
-          <span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span>
+        <div className="creation-tools">
+          <div>
+            <label className="btn file">
+              Load settings file…
+              <input
+                type="file"
+                accept=".xml,application/xml,text/xml"
+                aria-label="Load settings file"
+                disabled={saving}
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if (f) void load(f)
+                }}
+              />
+            </label>
+            <span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span>
+          </div>
           {std && (
-            <>
-              {' '}
+            <div>
               <button
                 type="button"
                 className="btn"
@@ -379,9 +380,9 @@ export function CreationForm({
               >
                 Reset all to standard
               </button>
-            </>
+            </div>
           )}
-        </p>
+        </div>
       )}
       {skipped.length > 0 && (
         <div className="warn">

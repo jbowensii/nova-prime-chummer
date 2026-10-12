@@ -3,7 +3,7 @@
 // those who may export), the game switch, Ask, Settings and the account (and a page's own tools). Row 2, only on a page that has any, holds that page's own actions. Pages a role can't use aren't listed
 // (App.tsx sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask asks SR6's own AI
 // (its books, its settings; shown once the admin sets it up).
-import { Children, type ReactNode } from 'react'
+import { Children, type CSSProperties, type ReactNode } from 'react'
 import { AskButton } from './AskRules'
 import { AccountMenu, canEdit, isAdmin, useMe } from './auth'
 import { Brand } from './bits'
@@ -78,15 +78,16 @@ export function MainMenu({ tools }: { tools?: ReactNode } = {}) {
 
 function Bar({ items, section, sr6, tools }: { items: [string, IconName, string, boolean][]; section: string; sr6?: boolean; tools?: ReactNode }) {
   const other = sr6 ? 'ca2' : 'sr6',
-    me = useMe()
+    me = useMe(),
+    shown = items.filter(i => i[3])
+  // on a phone the icons sit in an even grid: up to 6 in one row, more in two rows of equal length (no lone icon on a row)
+  const cols = shown.length <= 6 ? shown.length : Math.ceil(shown.length / 2)
   return (
     <div className="menubar">
-      <nav aria-label="Main menu" className="iconbar">
-        {items
-          .filter(i => i[3])
-          .map(([page, icon, label]) => (
-            <IconLink key={page} href={`#/${page}`} icon={icon} label={label} aria-current={section === page ? 'page' : undefined} />
-          ))}
+      <nav aria-label="Main menu" className="iconbar" style={{ '--cols': cols } as CSSProperties}>
+        {shown.map(([page, icon, label]) => (
+          <IconLink key={page} href={`#/${page}`} icon={icon} label={label} aria-current={section === page ? 'page' : undefined} />
+        ))}
       </nav>
       <div className="iconbar tools">
         {tools}
