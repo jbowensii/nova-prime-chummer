@@ -20,7 +20,7 @@ The tests (`classify`, `bare_part`) are general rules over the book's own words;
 import collections
 import re
 
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6.formula import _stem
 from importer.sr6.regroup import norm
 

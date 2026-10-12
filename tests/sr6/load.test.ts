@@ -7,7 +7,8 @@ import { compendiumXml, type SourceFile } from '../../src/engine'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { sr6Data } from '../../src/sr6/engine/data'
-import { buildSr6Catalog, collectSr6Files, entryKey, plainTexts, sr6EntryXml } from '../../src/sr6/engine/load'
+import { buildSr6Catalog, collectSr6Files, plainTexts, sr6EntryXml } from '../../src/sr6/engine/load'
+import { entryKey } from '../../src/sr6/engine/names'
 import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
 
 const get = async (path: string) => {

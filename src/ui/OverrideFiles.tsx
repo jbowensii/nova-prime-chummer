@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { because } from './auth'
 import { Modal } from './bits'
 import { api } from './Books'
-import { esc } from './EditEntry'
+import { esc } from '../shared/xml'
 
 export interface OverrideGame {
   /** the edits folder under the site root ("custom/edits/") and the routes' prefix ("edits") */

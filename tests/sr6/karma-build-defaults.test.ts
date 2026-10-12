@@ -3,15 +3,16 @@
 // made up; the catalog is the fixture's.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { applyDeps, flag, levelRules, missingFor, num, parseCreation, runnerRules, type CreationRules } from '../../src/sr6/engine/creation'
+import { applyDeps, flag, levelRules, missingFor, num, parseCreation, rulesFrom, runnerRules, type CreationRules } from '../../src/sr6/engine/creation'
 import { allBudgets, freeSpellSlots } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import type { MagicKind, Sr6Build } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 
 const SHIPPED = parseCreation(readFileSync('public/data/sr6/creation-defaults.xml', 'utf8')).rules
-/** the shipped rules with the Karma build option on (as a table would turn it on), plus what a test adds */
-const rules = (...own: [string, string][]): CreationRules => runnerRules(SHIPPED, [{ key: 'karmaBuildMethod', value: 'true' }, ...own.map(([key, value]) => ({ key, value }))])
+/** the shipped rules with the Karma build option on, plus what a test adds: the table's (a runner can't set most of these) */
+const rules = (...own: [string, string][]): CreationRules =>
+  runnerRules(new Map([...SHIPPED, ...rulesFrom([['karmaBuildMethod', 'true'], ...own].map(([key, value]) => ({ key, value }))).rules]))
 const { data } = made()
 
 /** A Karma-build runner, all made up: attributes 2 ranks of Body (1 to 3), 1 of Edge, a skill with 3 ranks and a

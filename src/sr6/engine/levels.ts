@@ -8,8 +8,8 @@
 // expansion runs once at the end of buildSr6Catalog, after the edits layer, so an edit on the parent reaches every
 // level; an edit keyed by a child id is kept as that level. docs/sr6-data-format.md, "Levels".
 import type { Sr6Catalog, Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
-import { effectValue } from './effects'
-import { entryKey } from './load'
+import { bonusValue, effectValue } from './effects'
+import { entryKey } from './names'
 import { rated, ratingRange } from './values'
 
 /** A family of levels: the parent (absent for rows the book prints apart) and each level's entry id. */
@@ -40,10 +40,11 @@ function mode(e: Sr6Entry): { mode: 'rating' | 'level'; levels: number[] } | und
   return undefined
 }
 
-/** A per-level effect value at level n: `R` → n, `R*2` → 2n; another value as it is. */
+/** A per-level effect value at level n, as a bonus counts it (bonusValue): `R` → n, `R*2` → 2n, `R-1` → n − 1 (never
+ *  below 0), `R[1,2,5]` → the table's nth (its last past the end); another value as it is. */
 const scaled = (p: Sr6Part, n: number): Sr6Part => {
   const v = p.tag === 'effect' ? effectValue(p.attrs.value) : undefined
-  return v?.perRating ? { ...p, attrs: { ...p.attrs, value: String(round2(v.value * n)) } } : p
+  return v?.perRating || v?.byRating ? { ...p, attrs: { ...p.attrs, value: String(round2(bonusValue(v, n))) } } : p
 }
 
 /** The level-n child of `e`. */

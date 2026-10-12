@@ -1,8 +1,9 @@
 // The table's SR6 creation rules (custom/sr6/creation.xml, public/data/sr6/schema/creation.xsd): every number the core
-// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered on the Rules
-// page by the admin from their own book: the server's default. A campaign's GM may give it its own (server/campaigns.mjs),
-// which its runners use instead. The app ships the standard values (DEFAULTS_PATH; the admin's file holds only what they
-// changed); a method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
+// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…). The app ships the
+// standard values with their pages (DEFAULTS_PATH, public/data/sr6/creation-defaults.xml); the admin changes them on the
+// Table setup page (#/sr6/table), and their file holds only what they changed: the server's default. A campaign's GM may
+// give it its own (server/campaigns.mjs), which its runners use instead, and a runner may choose the optional ones in
+// RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
 
@@ -631,6 +632,9 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'gradeCap.initiation', 'gradeCap.submersion', 'adjustOnLoweredMax', 'pointBuyErrataNuyen', 'knowledgeLogicIntuition', 'magicAboveSixByGrade',
   'availabilitySeven', 'cargoWithoutSeats', 'metatypeSizePricing',
 ].map(key => ({ key, about: aboutOf(key) }))
+/** A runner file may set only these (mergeRules): a hand-edited one naming any other setting keeps the table's. */
+export const isRunnerRuleKey = (key: string) => RUNNER_KEYS.has(key)
+const RUNNER_KEYS = new Set(RUNNER_RULE_KEYS.map(k => k.key))
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with
  *  the runner's own choices over them, except where its campaign locked the setting. Each setting says where it comes from
@@ -645,7 +649,7 @@ export function mergeRules(base: CreationRules, own: RunnerRule[] = [], locks: R
   const lockedBy = new Map(locks.map(l => [l.key, l.by]))
   const out: CreationRules = new Map([...base].map(([k, s]) => [k, { ...s, from: s.from ?? layer, ...(lockedBy.has(k) ? { lockedBy: lockedBy.get(k) } : {}) }]))
   for (const r of own) {
-    if (lockedBy.has(r.key) || !keyType(r.key)) continue
+    if (lockedBy.has(r.key) || !RUNNER_KEYS.has(r.key) || !keyType(r.key)) continue
     if (r.value.trim() === '') { out.delete(r.key); continue }
     const got = rulesFrom([r]).rules.get(r.key)
     if (got) out.set(r.key, { ...got, from: 'runner', ...(r.assumed ? { assumed: true as const } : {}) })

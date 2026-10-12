@@ -9,7 +9,7 @@ that doesn't read is reported, never guessed."""
 import re
 
 from importer.recipes import Result
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6 import KINDS, resolve, sections
 from importer.sr6.recipes import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value

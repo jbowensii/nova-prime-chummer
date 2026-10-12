@@ -94,8 +94,9 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
-- `<skill specs>`: the specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; any skill with
-  the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
+- `<skill><spec>…</spec></skill>`: the specializations past the first, one element each (Exotic Weapons, CRB Hong Kong
+  p. 95; any skill with the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
+  A file from before 0.13.2 holds them in a `specs` attribute, `; `-separated: still read.
 - `<pick kind>`: `spells`, `rituals`, `adeptpowers`, `complexforms`, `metamagics`, `echoes` or `datastructures` (a
   technomancer's data structures, by `level`: Hack & Slash pp. 70–72); `level` for leveled powers
   and for a metamagic taken again (its catalog `perLevel`: the times taken, each one initiation grade's metamagic);
@@ -120,7 +121,8 @@ copy". Book entries are never copied here.
   cyberlimb's, CRB p. 288), `stun`, `overflow`, `unarmedAR`, `unarmedDV` (the unarmed Attack Rating and Damage Value),
   `movement` (metres), `matrixInitDice` (VR initiative dice) or `skill` (that skill's dice pool:
   `skill` holds the catalog skill's id, `<bonus target="skill" skill="crb.firearms" value="1"/>`); `perRating`: times the
-  line's rating.
+  line's rating, less `minus` (`R-1`: `minus="1"`, nothing at rating 1); `byRating`: the book's value per rating,
+  comma-separated (`1,2,5`; past its end, the last).
 - `<sin kind="real|fake" rating? gender? placeholder?>` with its `<licence>`s and the `<lifestyle uid id months>`s paid
   under it: a lifestyle always belongs to a SIN, a SIN may have none, and a runner may have several of each. `gender` is
   that identity's own (optional; the runner's is the root's `gender`). `placeholder="true"`: an unnamed stand-in

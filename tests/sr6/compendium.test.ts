@@ -194,3 +194,9 @@ test('sr6EntryXml is unchanged for the edits layer (empty <text/>); the compendi
   // the NPC is written as sr6ToXml writes it, <npc> first
   expect(sr6CompendiumXml(kit)).toContain(sr6ToXml(grunt).replace(/^<\?xml[^>]*\?>\s*/, '').trimEnd())
 })
+
+test('a name or text with what XML can’t hold (U+FFFF, half a surrogate pair, a tab) still writes a readable file', () => {
+  const odd = { ...kit, name: 'Street￿ Kit\uD800', entries: [{ ...kit.entries[0], name: 'Zap￾ Stick', attrs: { ...kit.entries[0].attrs, modes: 'SS\tBF' }, text: 'Our￿ words' }], npcs: [] }
+  const back = read(sr6CompendiumXml(odd))
+  expect([back.name, back.entries[0].name, back.entries[0].attrs.modes, back.entries[0].text]).toEqual(['Street Kit', 'Zap Stick', 'SS\tBF', 'Our words'])
+})

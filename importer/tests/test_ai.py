@@ -501,6 +501,8 @@ class SettingsTest(unittest.TestCase):
                            ("", '<provider id="openai" enabled="true" apiBase="https://x"/>'),
                            ("", '<key provider="openai">k</key>'),
                            ("", '<provider id="openai" enabled="true">text</provider>'),
+                           ("", '<provider id="openai" enabled="true" baseUrl="file:///etc/passwd"/>'),
+                           ("", '<provider id="openai" enabled="true" baseUrl="http:///no-host"/>'),
                            (' use="evil"', ""), (' version="0"', "")]:
             with self.assertRaises(AI.SettingsError, msg=rows or root):
                 AI.set_settings(config, ok.format(root, rows).replace('version="1" version="0"', 'version="0"'))
@@ -509,6 +511,10 @@ class SettingsTest(unittest.TestCase):
             with self.assertRaises(AI.SettingsError, msg=bad):
                 AI.set_settings(config, bad)
         self.assertFalse(os.path.exists(os.path.join(config, "ai-providers.xml")))
+        # and a call never reads a file: or ftp: address saved by hand
+        for url in ("file:///etc/passwd", "ftp://example.test/x"):
+            with self.assertRaises(AI.ProviderError, msg=url):
+                AI.complete({"id": "openai", "baseUrl": url, "model": "m"}, "", "s", "u")
 
     def test_cli_set_settings(self):
         lib = tempfile.mkdtemp()

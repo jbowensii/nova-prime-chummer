@@ -430,8 +430,9 @@ setting naming a quality, `builtToughQuality`, matches any level of it).
 `quality` and `pick` ops take the parent id with a rating or level too and store the level's); the line's rating select
 and a quality's or power's level stepper move it to the sibling level (`rate`, `quality`, `powerLevel`). A saved runner
 naming the parent (with `rating`, or a quality's or pick's `level`) is turned into the level's entry once on load
-(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level it lacks: the lowest) and until then still reads at
-its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
+(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level the family lacks: left as it is, so Review still flags
+it; a career level-up saved before levels were entries, with no `target`: the level it reached, on the line it raised)
+and until then still reads at its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
 replaced, the Karma the difference × `advance.qualityFactor`; the advance's `target` names the line replaced) and the
 `upgrade` spend replaces a bought item with a higher level of its family at the new level's full price (the core
 rulebook prints no trade-in rule). The export writes the level's entry (`attrs.family`, `attrs.level`; a line still
@@ -765,7 +766,7 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 `option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`), except the Karma build option's
 numbers, whose source reads `option (Commlink6 defaults)`.
 
-Every key, in the order Table setup shows them. *Needed by*: the methods that can't be picked while it is unset (`all`:
+Every key (Table setup sorts them into its nine sections, `src/sr6/ui/creationLayout.ts`, not in this order). *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
 a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
 chosen while its Essence factor is unset). `karmaToNuyenMax` isn't printed in the core rulebook (`maxKarmaLeft` is, from the
@@ -787,6 +788,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | General | `qualityNetBonusCap` | number | all |  |  |  | Most net karma from qualities |
 | General | `qualityMaxCount` | number | all |  |  |  | Most paid qualities |
 | General | `oneAttributeAtMax` | true/false | all |  |  |  | Only one attribute at its maximum |
+| General | `oneSkillAtMax` | true/false | optional |  |  |  | Only one skill at the highest rank (CRB Hong Kong p. 65) |
 | General | `attributeBaseMax` | number | optional |  |  |  | Adjustment points go on attributes whose metatype maximum is above |
 | General | `skillCap` | number | all |  |  |  | Highest skill rank |
 | General | `skillCapAptitude` | number | all |  |  |  | Highest skill rank with the aptitude quality |
@@ -798,6 +800,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | General | `contactPointsPerCha` | number | all |  |  |  | Contact points per Charisma (the augmented Charisma, as Logic's knowledge skills the augmented Logic: owner, 2026-10-09) |
 | General | `knowledgePerLog` | number | all |  |  |  | Free knowledge skills per Logic |
 | General | `maxAvailability` | number | all |  |  |  | Highest Availability |
+| General | `karmaSpellsAtCreation` | true/false | optional |  |  |  | On: spells, rituals and complex forms past the free ones can be bought with the customization Karma (the core rulebook's 2019 printing p. 68); off: they can't, as the later printings say |
 | General | `maxNuyenLeft` | number | all |  |  |  | Most nuyen kept after creation (CRB Hong Kong p. 68: 5,000); more is Review's `leftover.nuyen`, an error a GM can approve |
 | General | `freeSpellsPerMagic` | number | all |  |  |  | Free spells per Magic |
 | General | `freeFormsPerResonance` | number | all |  |  |  | Free complex forms per Resonance |
@@ -895,6 +898,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Lifepath | `lifepath.contactKarma` | number | optional |  |  |  | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
 | Lifepath | `lifepath.raisedAttributeStart` | number | optional |  |  |  | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
 | Lifepath | `lifepath.mundaneEdge` | number | optional |  |  |  | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
+| Augmentation grades | `capacityAccessoryEssence` | true/false | optional |  |  |  | On: an accessory fitted into a host's Capacity costs its own Essence too; off: only the host's, as the books' sample runners print it (option) |
 | Augmentation grades | `grade:standard:essence` | number | optional |  |  |  | Standard: Essence times |
 | Augmentation grades | `grade:standard:cost` | number | optional |  |  |  | Standard: cost times |
 | Augmentation grades | `grade:standard:avail` | number | optional |  |  |  | Standard: Availability plus |

@@ -1,12 +1,14 @@
 """The priorities a book's sample runner (importer/sr6/archetypes.py) was most likely built with: of the 120 ways to give
-the letters A-E to the five columns, the one that overspends least for the build the stat block prints. Magic (or
-Resonance) above the magic priority's rating and Edge go on adjustment points, what's left of those on the metatype's
-raised attributes; the core attributes on attribute points; skill ranks on skill points, a specialization on the
-points still left. Whatever a pool can't hold is bought with karma, the cheapest ranks first, and nuyen past the
-resources with karma turned into nuyen. Overspent is then karma past the starting karma (and power points past the magic rating); ties go
-to the fewest leftovers past the carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), then to the nuyen left
-nearest the printed starting nuyen (karma turned into nuyen past what the gear needs, while karma is left), then to
-the least past the limits. The numbers are the creation settings the app ships
+the letters A-E to the five columns, the one that overspends least for the build the stat block prints; when even that
+one overspends, Sum-to-Ten's assignments too (SWC p.28: any letters whose values add up to at most sumToTenTarget),
+taken when one overspends less. Magic (or Resonance) above the magic priority's rating and Edge go on adjustment
+points, what's left of those on the metatype's raised attributes; the core attributes on attribute points; skill ranks
+on skill points, a specialization on the points still left. Whatever a pool can't hold is bought with karma, the
+cheapest ranks first, and nuyen past the resources with karma turned into nuyen. Assignments are compared on, in
+order: power points past the Magic rating (an adept's), Karma past the starting Karma, the count of leftovers past the
+carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), the nuyen left's distance from the printed starting
+nuyen (karma turned into nuyen past what the gear needs, while karma is left), then the least past the limits; a
+full tie keeps the first in letter order. The numbers are the creation settings the app ships
 (public/data/sr6/creation-defaults.xml) and the catalog's priority rows; nothing is read from the book's text."""
 import itertools
 import math
@@ -20,6 +22,7 @@ from importer.sr6.regroup import norm
 COLUMNS = ("metatype", "attributes", "magic", "skills", "resources")
 CORE = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha")
 _LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
+_EACH = re.compile(r"\s+each\s*$", re.I)  # a unit price's word: `1500 each` is the price of one
 
 
 def settings(path=None):
@@ -45,9 +48,9 @@ def metatype_size(name):
 
 def value(v, rating=1):
     """A catalog value at `rating`, read as src/sr6/engine/values.ts rated() reads it; None when it can't be."""
-    if v is None or re.fullmatch(r"\s*[—–-]?\s*", v):
+    if v is None or len(v) > 100 or re.fullmatch(r"\s*[—–-]?\s*", v):  # values.ts MAX_VALUE
         return None
-    s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", v).strip().lstrip("+")),
+    s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", _EACH.sub("", v)).strip().lstrip("+")),
                flags=re.I)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", s)
     if "/" in toks and "R" not in toks:

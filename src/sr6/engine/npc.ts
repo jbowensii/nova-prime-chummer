@@ -3,7 +3,8 @@
 // that rating with formula(); its skills line gives dice pools against the catalog's skills. No book numbers here.
 import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Entry } from '../model/types'
-import { normName, type Sr6Data } from './data'
+import type { Sr6Data } from './data'
+import { normName } from './names'
 import { formula } from './values'
 
 export const NPC_KINDS: Record<Sr6NpcKind, { label: string; kind: 'npcs' | 'critters' | 'spirits' | 'sprites';

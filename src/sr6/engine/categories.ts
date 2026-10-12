@@ -4,7 +4,7 @@
 // (a bare part: `Arm (synthetic)`) carries `group`; the app shows `Cyberlimb: Arm (synthetic)`. The printed name stays
 // the entry's name.
 import type { Sr6Entry, Sr6Kind } from '../model/types'
-import { normName } from './data'
+import { normName } from './names'
 import { rated } from './values'
 
 /** How a catalog entry is named in lists, pickers, Review, the ledger, sheets and exports: its category first when its

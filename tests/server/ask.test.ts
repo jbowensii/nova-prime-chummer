@@ -152,10 +152,13 @@ test('the key never comes back, in an answer or an error', async () => {
   expect(r.status).toBe(200)
   expect(text).toContain('[key]')
   expect(text).not.toContain('SECRETASK')
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
   const f = await ask('eddie', 'fail puddles')
   const ft = await f.text()
   expect(f.status).toBe(502)
-  expect(ft).toContain('the provider didn’t accept the API key [key]')
+  expect(JSON.parse(ft)).toEqual({ error: 'the AI provider isn’t answering; tell the admin' }) // the reason is the admin's
+  expect(errors.mock.calls.flat().join(' ')).toContain('the provider didn’t accept the API key [key]')
+  errors.mockRestore()
   expect(ft).not.toContain('SECRETASK')
 })
 

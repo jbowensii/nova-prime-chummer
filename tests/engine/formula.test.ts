@@ -88,6 +88,7 @@ describe('as shown', () => {
   it('reads as words, with ¥ and the unit', () => {
     expect(formulaText(f('R * 200'))).toBe('Rating × 200¥')
     expect(formulaText(f('B', { unit: 'rounds', qty: '10' }), '20')).toBe('20¥ per 10 rounds')
+    expect(formulaText(f('H * 0.1'))).toBe('The item it goes on × 0.1¥') // H: the item an add-on fits, named like the others
     expect(formulaText(f('B * 2'))).toBe('Printed value × 2¥')
     expect(formulaText({ field: 'avail', expr: 'R/2' })).toBe('Rating ÷ 2')
   })

@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { cookieFor, createServer } from './_signin'
+// @ts-expect-error plain JS module
+import { safeName } from '../../server/books.mjs'
 
 // the stub worker runs as a child process: a loaded machine can take seconds per job (waitFor allows 15 s)
 vi.setConfig({ testTimeout: 30000 })
@@ -229,9 +231,11 @@ test('AI proposals: dry run, propose, review, apply', async () => {
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: accepted })).status).toBe(204)
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: '<!DOCTYPE x [<!ENTITY a "b">]><review/>' })).status).toBe(400)
   expect((await fetch(`${base}/api/review/${id}?apply=1&source=../x&name=A&canon=false`, { method: 'PUT', body: accepted })).status).toBe(400)
-  const r = await fetch(`${base}/api/review/${id}?apply=1&source=MYBOOK&name=My%20Book&canon=false`, { method: 'PUT', body: accepted })
+  // a name that reads like the worker's own flag stays the name: one --name=… argument
+  const r = await fetch(`${base}/api/review/${id}?apply=1&source=MYBOOK&name=--canon&canon=false`, { method: 'PUT', body: accepted })
   expect(r.status).toBe(202)
   expect(await waitFor(id, 'done')).toMatchObject({ source: 'MYBOOK' })
+  expect(readFileSync(join(library, id, 'import.xml'), 'utf8')).toMatch(/name="--canon" canon="false"/)
   expect(existsSync(join(custom, 'imported', 'mybook', 'amps.xml'))).toBe(true)
   expect((await fetch(`${base}/api/books/${id}/reimport`, { method: 'POST' })).status).toBe(409) // would drop the applied review
 })
@@ -306,4 +310,8 @@ test('on start, the same PDF uploaded more than once (per game) is merged: the n
     expect(readFileSync(join(lib, 'x-mid', 'core-rebuild.xml'), 'utf8')).toContain('pack="2026-01-01"')
     expect(said.mock.calls.flat().join('\n')).toContain('x-mid.pdf was uploaded 3 times: kept x-mid, removing x-new, x-old')
   } finally { said.mockRestore(); vi.unstubAllEnvs(); s.stopJobs(); s.close() }
+})
+
+test('an uploaded file name cut to its last 120 characters never starts with a dash', () => {
+  expect(safeName('x'.repeat(200) + '-'.repeat(10) + 'y'.repeat(110) + '.pdf')).toBe('y'.repeat(110) + '.pdf')
 })

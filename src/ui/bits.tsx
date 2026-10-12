@@ -11,7 +11,7 @@ export function Stepper({ value, min, max, onChange, label }: { value: number; m
   return (
     <span className="stepper" role="group" aria-label={label}>
       <button type="button" aria-label={`Lower ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
-      <output aria-live="polite">{value}</output>
+      <output aria-live="polite" aria-label={`${label}: ${value}`}>{value}</output>
       <button type="button" aria-label={`Raise ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
     </span>
   )
@@ -49,10 +49,24 @@ export interface PickItem { id: string; name: string; meta?: string; text?: stri
   /** its catalog entry's card (src/ui/EntryHover.tsx), shown on hover and while the item has focus */
   card?: () => BrowseRow; cardKind?: string }
 
+/** A picker option's keys: Enter or Space picks it; Up and Down move to the next one that can be picked (from the first,
+ *  Up goes back to the search box). Keys on a control inside it (its action) are its own. */
+function pickKey(e: React.KeyboardEvent<HTMLLIElement>, pick: () => void) {
+  if (e.target !== e.currentTarget) return
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); return }
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  e.preventDefault()
+  const all = [...e.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[role=option][tabindex]')], k = all.indexOf(e.currentTarget)
+  const next = all[k + (e.key === 'ArrowDown' ? 1 : -1)]
+  if (next) next.focus()
+  else if (e.key === 'ArrowUp') e.currentTarget.closest('.picker')?.querySelector<HTMLElement>('input[type=search]')?.focus()
+}
+
 export function Picker({ items, onPick, placeholder = 'Search', groups }: { items: PickItem[]; onPick: (id: string) => void; placeholder?: string; groups?: string[] }) {
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('')
   const [focused, setFocused] = useState('')
+  const list = useRef<HTMLUListElement>(null)
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
     return items.filter(i => (!group || i.group === group) &&
@@ -61,7 +75,8 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
   return (
     <div className="picker">
       <div className="row">
-        <input type="search" autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} style={{ flex: 1 }} />
+        <input type="search" autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} style={{ flex: 1 }}
+          onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); list.current?.querySelector<HTMLElement>('[role=option][tabindex]')?.focus() } }} />
         {groups && (
           <select value={group} onChange={e => setGroup(e.target.value)} aria-label="Filter">
             <option value="">All</option>
@@ -69,18 +84,19 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
           </select>
         )}
       </div>
-      <ul>
+      <ul role="listbox" aria-label="Matches" ref={list}>
         {shown.map(i => (
-          <li key={i.id} tabIndex={i.disabled ? undefined : 0} className={i.disabled ? 'off' : undefined}
+          <li key={i.id} role="option" aria-selected={focused === i.id} tabIndex={i.disabled ? undefined : 0}
+            className={i.disabled ? 'off' : undefined}
             onFocus={() => setFocused(i.id)} onBlur={() => setFocused(f => (f === i.id ? '' : f))}
-            onClick={() => !i.disabled && onPick(i.id)} onKeyDown={e => !i.disabled && e.key === 'Enter' && onPick(i.id)}>
+            onClick={() => !i.disabled && onPick(i.id)} onKeyDown={e => pickKey(e, () => !i.disabled && onPick(i.id))}>
             <span><EntryHover row={i.card} kind={i.cardKind} open={focused === i.id} tabbable={false}><b>{i.name}</b></EntryHover>
               {' '}{i.meta && <span className="muted">{i.meta}</span>} {i.label}</span>
             <span className="num">{i.price}{i.action && <span onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}> {i.action}</span>}</span>
             {i.text && <span className="t">{i.text}</span>}
           </li>
         ))}
-        {!shown.length && <li className="muted">Nothing matches “{q}”.</li>}
+        {!shown.length && <li role="option" aria-selected={false} aria-disabled className="muted">Nothing matches “{q}”.</li>}
       </ul>
     </div>
   )

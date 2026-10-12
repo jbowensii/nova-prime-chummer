@@ -169,13 +169,15 @@
       </xs:element>
       <xs:element name="skill" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType>
+          <!-- specializations past the first, one each (Exotic Weapons, CRB Hong Kong p. 95; Expanded Specializations,
+               Sixth World Companion p. 153) -->
+          <xs:sequence><xs:element name="spec" type="xs:string" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
           <xs:attribute name="id" type="xs:string" use="required"/>
           <xs:attribute name="points" type="c:Count" use="required"/>
           <xs:attribute name="karma" type="c:Count" use="required"/>
           <xs:attribute name="spec" type="xs:string"/>
           <xs:attribute name="expertise" type="xs:string"/>
-          <!-- specializations past the first, `; `-separated (Exotic Weapons, CRB Hong Kong p. 95; Expanded Specializations,
-               Sixth World Companion p. 153) -->
+          <!-- the same, `; `-separated, in a file from before 0.13.2 (read, never written) -->
           <xs:attribute name="specs" type="xs:string"/>
         </xs:complexType>
       </xs:element>
@@ -434,6 +436,11 @@
     <xs:attribute name="skill" type="xs:string"/>
     <xs:attribute name="value" type="xs:integer" use="required"/>
     <xs:attribute name="perRating" type="xs:boolean"/>
+    <!-- less so much after the rating is counted (`R-1`: nothing at rating 1); with perRating -->
+    <xs:attribute name="minus" type="xs:decimal"/>
+    <!-- a value per rating, the book's own table, comma-separated (`1,1,2,2`; past its end: the last) -->
+    <xs:attribute name="byRating"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:pattern value="-?\d+(\.\d+)?(,-?\d+(\.\d+)?)*"/></xs:restriction></xs:simpleType></xs:attribute>
     <!-- only on some tests or situations (a voice modulator's sound-based Con tests): in the bracketed total -->
     <xs:attribute name="when" type="xs:string"/>
     <!-- only on a specialization's tests (Climbing): in that specialization's pool when the runner has it, else in the

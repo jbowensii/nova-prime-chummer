@@ -249,12 +249,13 @@ td.hash { font-family: ui-monospace, monospace; font-size: 0.8rem; }
 .receipt .warn { color: var(--yellow); }
 .receipt .err { color: #ff9d8c; }
 @media (max-width: 900px) {
-  .receipt { position: fixed; inset: auto 0 0 0; top: auto; max-height: 3.4rem; overflow: hidden; border-left: 0; border-top: 4px solid var(--yellow); padding: 0.6rem 1rem; z-index: 5; cursor: pointer; clip-path: none !important; }
+  .receipt { position: fixed; inset: auto 0 0 0; top: auto; max-height: 3.4rem; overflow: hidden; border-left: 0; border-top: 4px solid var(--yellow); padding: 0.6rem 1rem; z-index: 5; clip-path: none !important; }
   .receipt.open { max-height: 80vh; overflow-y: auto; }
-  .receipt .peek { display: flex !important; justify-content: space-between; align-items: center; }
+  .receipt .peek { display: flex !important; justify-content: space-between; align-items: center; width: 100%; cursor: pointer; }
   .receipt h2 { margin-inline: -1rem; padding-inline: 1rem; }
 }
-.receipt .peek { display: none; font-weight: 700; margin-bottom: 0.5rem; }
+.receipt .peek { display: none; font: inherit; font-weight: 700; color: inherit; background: none; border: 0; padding: 0; text-align: left; margin-bottom: 0.5rem; }
+.receipt .peek:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .receipt .money-note { font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.2em; }
 
 /* ---- tables: the book's indigo head band and cream zebra rows ---- */
@@ -322,9 +323,9 @@ tr.starting input.note { margin-top: 0.3rem; }
 .lib { max-width: 64rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .lib header { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .lib h1 { font-size: 2.4rem; margin-top: 0.4rem; }
-.dossier { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 1rem; align-items: center; padding: 0.8rem 0; border-bottom: 1px solid var(--rule); }
+.dossier { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr) auto; gap: 1rem; align-items: center; padding: 0.8rem 0; border-bottom: 1px solid var(--rule); }
 .dossier .face { width: 3.5rem; height: 3.5rem; background: var(--bd, var(--indigo)); object-fit: cover; display: grid; place-items: center; font-family: var(--graffiti); font-size: 1.6rem; color: var(--yellow); }
-.dossier .title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; }
+.dossier .title { font-family: var(--display); font-size: 1.25rem; color: var(--heading); text-decoration: none; text-transform: uppercase; overflow-wrap: anywhere; }
 .dossier a.title:hover { color: var(--rust); text-decoration: underline; text-decoration-color: var(--yellow); }
 .dossier .meta { color: var(--text-2); font-size: 0.92rem; }
 .dossier.unreadable .face { background: var(--err); color: #fff; font-family: var(--display); }
@@ -533,13 +534,10 @@ table.campaigns tr.off td { color: var(--text-3); }
 :root[data-theme='dark'] .campaign-note { border-left-color: var(--yellow); }
 .cgroup { margin-top: 1rem; }
 .cgroup h3 { margin-bottom: 0; }
-.cgroup .dossier .title { overflow-wrap: anywhere; }
 .roster { list-style: none; margin: 0 0 1rem; padding: 0; }
 .roster li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.3rem 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--rule); }
 .addrow { align-items: end; margin-bottom: 0.8rem; }
 .addrow label { flex: 1 1 14rem; max-width: 22rem; }
-@media (max-width: 600px) { .cgroup .dossier { grid-template-columns: 2.5rem minmax(0, 1fr); } .cgroup .dossier .face { width: 2.5rem; height: 2.5rem; }
-  .cgroup .dossier > .row { grid-column: 1 / -1; } }
 
 /* ---- ask the rules (AskRules.tsx): a compact bar, and the header's drawer. The answer is plain text. ---- */
 .ask { margin: 0 0 1.2rem; padding: 0.55rem 0.7rem; background: var(--zebra); border-left: 4px solid var(--yellow); }
@@ -587,10 +585,12 @@ dialog.drawer h2 { margin-top: 0; }
 .art-strength { display: flex; flex-direction: row; align-items: center; gap: 0.6rem; margin-top: 0.5rem; }
 .art-strength input { flex: 1; max-width: 16rem; accent-color: var(--rust); }
 .art-strength output { min-width: 3.2em; font-variant-numeric: tabular-nums; }
+/* a phone: every runner row (both games' lists, campaigns, unreadable files) stacks its buttons under the title */
 @media (max-width: 600px) {
-  .dossier.unreadable { grid-template-columns: 2.5rem minmax(0, 1fr); }
-  .dossier.unreadable .face { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }
-  .dossier.unreadable > .row { grid-column: 1 / -1; }
+  .dossier { grid-template-columns: 2.5rem minmax(0, 1fr); }
+  .dossier .face { width: 2.5rem; height: 2.5rem; }
+  .dossier.unreadable .face { font-size: 1.2rem; }
+  .dossier > .row { grid-column: 1 / -1; }
 }
 
 /* the version after the logo (bits.tsx Brand) */

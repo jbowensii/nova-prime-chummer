@@ -18,7 +18,7 @@ import math
 import re
 from xml.sax.saxutils import escape, quoteattr
 
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6 import fit, formula
 from importer.sr6.regroup import keys, norm
 from importer.xmlio import HEAD, ILLEGAL

@@ -3,6 +3,7 @@
 // public/data/schema/compendium.xsd). The loader adds its entries to the catalog like a house-rule overlay.
 import type { AmpTemplate, Catalog, Character, Compendium, EffectPick, Item, Rule, Source, VehicleBase } from '../model/types'
 import { effectStateAttrs } from './effects'
+import { esc, escAttr } from '../shared/xml'
 import { characterToXml, xmlToCharacter } from './charxml'
 import { toAmp, toItem, toVehicle } from './parse'
 
@@ -11,10 +12,8 @@ const DATA_NS = 'urn:chummer-anarchy2:data:1'
 export const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
 const SHARING = ['private', 'campaign', 'table'] as const
 
-// eslint-disable-next-line no-control-regex
-const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const attrs = (o: Record<string, string | number | boolean | undefined>) =>
-  Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
+  Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false).map(([k, v]) => ` ${k}="${escAttr(String(v))}"`).join('')
 
 export type EntryKind = 'amps' | 'items' | 'rules'
 const effectEl = (f: EffectPick) => `<effect${attrs({ ref: f.ref, param: f.param, value: f.value, note: f.note, unpriced: f.unpriced, ...effectStateAttrs(f) })}/>`

@@ -6,7 +6,7 @@
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useEffect, type ReactNode } from 'react'
 import { CatalogBrowser, type Book, type BrowseKind } from './CatalogBrowser'
-import { STATE_TEXT } from './EditEntry'
+import { STATE_TEXT } from '../shared/ui'
 import { FOUNDRY, PageHeader, showFoundry } from './nav'
 
 export interface SourceRow { id: string; name: string; publisher: string; status: ReactNode; entries: number; texts: ReactNode; file?: string; sha256?: string; hash?: string }

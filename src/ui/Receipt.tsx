@@ -5,6 +5,7 @@ import { activeEvents, bracketed, itemCost, packageGuide, sinceFinalize, voidedI
 import type { Character, Pricing } from '../model/types'
 import { fmt, Line } from './bits'
 import { useEditor } from './editor'
+import { SidePanel } from '../shared/ui'
 
 /** "+2,500¥: Ares Predator added; −2,500¥: Fake SIN removed": what the last change to the items cost or gave back. */
 export function itemChange(pricing: Pricing, before: Character['build']['items'], after: Character['build']['items']): string {
@@ -16,7 +17,6 @@ export function itemChange(pricing: Pricing, before: Character['build']['items']
 
 export function Receipt() {
   const { c, ch, d, v, p, balance, career } = useEditor()
-  const [open, setOpen] = useState(false)
   // a creation build's items changed: say what it cost or gave back, for a few seconds (the total alone can hide a refund)
   const [note, setNote] = useState('')
   const last = useRef({ id: ch.id, items: ch.build.items })
@@ -43,9 +43,8 @@ export function Receipt() {
   const T = d.thresholds
 
   return (
-    <aside className={`receipt${open ? ' open' : ''}`} aria-label="Nuyen and summary" onClick={() => setOpen(o => !o)}>
-      <div className="peek"><span>{career ? 'Balance' : over ? 'Over budget by' : 'Left to spend'}</span><span className={balance < 0 ? 'err' : ''}>{fmt(over ? -balance : balance)}</span></div>
-      <div onClick={e => e.stopPropagation()}>
+    <SidePanel className="receipt" label="Nuyen and summary"
+      peek={<><span>{career ? 'Balance' : over ? 'Over budget by' : 'Left to spend'}</span><span className={balance < 0 ? 'err' : ''}>{fmt(over ? -balance : balance)}</span></>}>
         <h2>{c.levels.get(ch.level)?.name ?? ch.level} build</h2>
         <div className="sub">{pkg ? <><AnarchyRef kind="packages" id={pkg.id}>{pkg.name}</AnarchyRef> package guide</> : 'Free allocation'}, budget {fmt(p.budget)}</div>
         {cats.map(([k, label]) => <Line key={k} label={label} amount={fmt(p[k])} guide={guide ? fmt(guide[k]) : undefined} over={!!guide && p[k] > guide[k]} />)}
@@ -108,7 +107,6 @@ export function Receipt() {
           {errors > 0 && warnings > 0 && ', '}
           {warnings > 0 && <span className="warn">{warnings} {warnings === 1 ? 'note' : 'notes'}</span>}
         </a>
-      </div>
-    </aside>
+    </SidePanel>
   )
 }

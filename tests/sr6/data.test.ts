@@ -1,6 +1,7 @@
 // Typed views over the SR6 catalog (src/sr6/engine/data.ts) on the made-up fixture.
 import { expect, test } from 'vitest'
-import { MAGIC_KINDS, normName, sr6Data } from '../../src/sr6/engine/data'
+import { MAGIC_KINDS, sr6Data } from '../../src/sr6/engine/data'
+import { normName } from '../../src/sr6/engine/names'
 import { missingFor } from '../../src/sr6/engine/creation'
 import { setMetatype } from '../../src/sr6/engine/actions'
 import { blankSr6 } from '../../src/sr6/model/character'

@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Campaigns (server/campaigns.mjs): who may do what, who sees which runners, one campaign per runner, saves keep it and
 // copies drop it, account renames and deletes, campaigns.xml schema-valid and never served.
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -209,6 +209,17 @@ test('trash: a trashed runner leaves its campaign; a restored one keeps a campai
   expect(await restore(runner('t2', 'Gone', ' campaign="ffffffffffff"'))).not.toContain('campaign=') // no such campaign
   expect((await call('eve', 'DELETE', `/api/campaigns/${c3}/members/pat`)).status).toBe(200)
   expect(await restore(runner('t3', 'Left', ` campaign="${c3}"`))).not.toContain('campaign=') // pat left c3
+})
+
+test('a runner moved to another account leaves its campaign, as a trashed one does', async () => {
+  mkdirSync(join(chars, 'kira'), { recursive: true })
+  writeFileSync(join(chars, 'kira', 'Mover.xml'), runner('m1', 'Mover', ` campaign="${c1}"`))
+  const users = await (await call('ada', 'GET', '/api/users')).json() as { id: string; username: string }[]
+  const id = (n: string) => users.find(u => u.username === n)!.id
+  const r = await call('ada', 'POST', `/api/users/${id('kira')}/move-runner`, { file: 'Mover.xml', to: id('pat') })
+  expect(r.status).toBe(200)
+  expect(file('pat', (await r.json()).file)).not.toContain('campaign=')
+  expect(existsSync(join(chars, 'kira', 'Mover.xml'))).toBe(false)
 })
 
 test('a save whose root attributes aren’t well formed is refused; campaigns.xml can’t be read by another name', async () => {

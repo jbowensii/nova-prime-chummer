@@ -1,7 +1,10 @@
 // Augmentation grades (src/sr6/engine/grades.ts): the creation settings' grades, else the catalog's (the made-up
 // fixture: Rustyware, Clunkware for cyberware only, Dreamware with no cost), by key.
 import { expect, test } from 'vitest'
-import { apply, gradeFactor, gradeFits, gradeKey, gradeName, gradesFor, priced, validateSr6, type Op } from '../../src/sr6/engine'
+import { apply, type Op } from '../../src/sr6/engine/actions'
+import { priced } from '../../src/sr6/engine/budgets'
+import { gradeFactor, gradeFits, gradeKey, gradeName, gradesFor } from '../../src/sr6/engine/grades'
+import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6 } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 

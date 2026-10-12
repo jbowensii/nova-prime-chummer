@@ -18,7 +18,8 @@ const FORMAT_VERSION = 1
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
-const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating, when: x.when, spec: x.spec, switch: x.switch, affects: x.affects })
+const bonusXml = (x: Bonus) => el('bonus', { target: x.target, skill: x.skill, value: x.value, perRating: x.perRating, minus: x.minus,
+  byRating: x.byRating?.length ? x.byRating.join(',') : undefined, when: x.when, spec: x.spec, switch: x.switch, affects: x.affects })
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el('purchase', { uid: p.uid, kind: p.kind, id: p.id, name: p.name, cost: p.cost, avail: p.avail, essence: p.essence, rating: p.rating,
@@ -43,7 +44,8 @@ function buildXml(b: Sr6Build): string {
     ...CP_POOLS.map(pool => el('cp', { pool, points: b.cp[pool] })),
     ...b.lifepath.map(m => el('lifemodule', { id: m.id }, Object.entries(m.choices).map(([index, pick]) => el('choice', { index, pick })).join(''))),
     ...SR6_ATTRS.map(id => el('attribute', { id, ...b.attributes[id] })),
-    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise, specs: s.specs?.length ? s.specs.join('; ') : undefined })),
+    // (the specializations past the first one element each: a name may hold any character)
+    ...b.skills.map(s => el('skill', { id: s.id, points: s.points, karma: s.karma, spec: s.spec, expertise: s.expertise }, (s.specs ?? []).map(x => text('spec', x)).join(''))),
     ...b.knowledge.map(knowledgeXml), ...b.qualities.map(qualityXml), ...b.picks.map(pickXml), ...b.martialArts.map(martialXml), ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
     ...b.sins.map(sinXml),
@@ -120,6 +122,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
 // ---- reading ----
 /** Leave out what isn't set, so a runner reads back exactly as written. */
 const def = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
+const listOrNone = <T,>(xs: T[]) => (xs.length ? xs : undefined)
 const str = (e: Element, a: string) => e.getAttribute(a) ?? undefined
 const yes = (e: Element, a: string) => (e.getAttribute(a) === 'true' ? (true as const) : undefined)
 /** A number attribute: absent → `absent`; not a number → throws naming it. */
@@ -144,7 +147,9 @@ const label = (e: Element, i: number) => `${e.localName} ${i + 1}`
 function readBonus(e: Element): Bonus {
   const target = oneOf(e.getAttribute('target'), BONUS_TARGETS, 'bonus target')!, skill = str(e, 'skill')
   if (target === 'skill' && !skill) throw new Error('a skill bonus names no skill')
-  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating'), when: str(e, 'when'),
+  const by = str(e, 'byRating')?.split(',').map(Number)
+  return def({ target, skill: target === 'skill' ? skill : undefined, value: num(e, 'value', 0), perRating: yes(e, 'perRating'), minus: num(e, 'minus'),
+    byRating: by?.length && by.every(Number.isFinite) ? by : undefined, when: str(e, 'when'),
     spec: str(e, 'spec'), switch: (BONUS_SWITCHES as string[]).includes(str(e, 'switch') ?? '') ? str(e, 'switch') as BonusSwitch : undefined,
     affects: str(e, 'affects') === 'caster' || str(e, 'affects') === 'target' ? str(e, 'affects') as Bonus['affects'] : undefined })
 }
@@ -198,7 +203,8 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   }, label, fix)
   out.skills = each(kids(b, 'skill'), e => def({ id: e.getAttribute('id') ?? '', points: num(e, 'points', 0), karma: num(e, 'karma', 0),
     spec: str(e, 'spec'), expertise: str(e, 'expertise'),
-    specs: str(e, 'specs')?.split(/;\s*/).map(x => x.trim()).filter(Boolean) }), label, fix)
+    // (a file from before 0.13.2 kept them in one `; `-separated attribute)
+    specs: listOrNone([...kids(e, 'spec').map(x => x.textContent ?? ''), ...str(e, 'specs')?.split(/;\s*/) ?? []].map(x => x.trim()).filter(Boolean)) }), label, fix)
   out.knowledge = each(kids(b, 'knowledge'), readKnowledge, label, fix)
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)

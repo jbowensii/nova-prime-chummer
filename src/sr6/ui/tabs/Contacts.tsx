@@ -4,12 +4,13 @@
 // finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
-import { NameField } from '../../../ui/tabs/Skills'
+import { NameField } from '../../../shared/ui'
 import { num } from '../../engine/creation'
 import { nuyenPerKarma } from '../../engine/budgets'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
@@ -31,7 +32,7 @@ export function ContactsTab() {
   return (
     <div className="stack">
       <h2>Contacts</h2>
-      <p className="muted">Contact points: <b className={cp.left < 0 ? 'err' : ''}>{n(cp.left)} left</b> of {n(cp.max)}.
+      <p className="muted">Contact points: <Left x={cp} />.
         {cp.ratingCap > 0 && ` Connection and loyalty go up to ${cp.ratingCap}.`}
         {typed && ' Each life module’s points go to contacts of its types.'}
         {!!cp.karma && <> Ratings past the points: <b>{n(cp.karma)} karma</b>.</>}</p>

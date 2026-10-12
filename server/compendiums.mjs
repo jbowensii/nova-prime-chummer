@@ -32,10 +32,25 @@ const fail = (code, message) => Object.assign(new Error(message), { code })
 const HIDDEN_NS = /<!DOCTYPE|\sxmlns(?::[\w.-]+)?="[^"]*&/i
 
 // an embedded NPC (any prefix, or none): a <character> element and everything in it. Characters don't nest.
-const NPC = /<(?:[\w.-]+:)?character\b(?:[^>]*\/>|[\s\S]*?<\/(?:[\w.-]+:)?character\s*>)/g
-/** The compendium file without its NPCs, for players; null when one can't be taken out cleanly (never sent then). */
+const OPEN = /<(?:[\w.-]+:)?character\b/g, CLOSE = /<\/(?:[\w.-]+:)?character\s*>/g
+/** The compendium file without its NPCs, for players; null when one can't be taken out cleanly (never sent then).
+ *  Linear: an NPC ends at its first '>' when that is "/>", else at the first closing tag after it. One with neither means
+ *  no later one can close either, so the file is refused there rather than rescanned from every opening tag. */
 export function withoutNpcs(xml) {
-  const out = xml.replace(NPC, '')
+  let out = '', at = 0, open
+  for (OPEN.lastIndex = 0; (open = OPEN.exec(xml));) {
+    const after = OPEN.lastIndex, gt = xml.indexOf('>', after)
+    let end
+    if (gt > 0 && xml[gt - 1] === '/') end = gt + 1
+    else {
+      CLOSE.lastIndex = after
+      if (!CLOSE.exec(xml)) return null
+      end = CLOSE.lastIndex
+    }
+    out += xml.slice(at, open.index)
+    at = OPEN.lastIndex = end
+  }
+  out += xml.slice(at)
   return /<(?:[\w.-]+:)?character\b|<!DOCTYPE|<!\[CDATA\[/i.test(out) ? null : out
 }
 

@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb, swc
 from importer.sr6.recipes.fs import _md_table

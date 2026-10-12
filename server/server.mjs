@@ -172,11 +172,14 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     /** game: 'ca2' or 'sr6' (auth.mjs checks it); SR6's is refused while an account called sr6 holds its folder. */
     async move(from, file, to, game = 'ca2') {
       if (game === 'sr6' && legacy()) throw fail(409, 'rename the account sr6 first')
-      const folder = games[game === 'sr6' ? 'sr6' : 'ca2'].folder
+      const { folder } = games[game === 'sr6' ? 'sr6' : 'ca2'], tag = GAMES[game === 'sr6' ? 'sr6' : 'ca2'].tag
       if (!await exists(join(folder(from), file))) throw fail(404, 'no such runner')
       await mkdir(folder(to), { recursive: true })
-      const name = await freeName(folder(to), base(file))
-      await rename(join(folder(from), file), join(folder(to), name))
+      const name = await freeName(folder(to), base(file)), xml = await readFile(join(folder(from), file), 'utf8')
+      if (campaignOf(xml, tag)) { // a moved runner leaves its campaign, as a trashed one does (its new owner isn't a member)
+        await writeAtomic(join(folder(to), name), setCampaign(xml, null, tag))
+        await unlink(join(folder(from), file))
+      } else await rename(join(folder(from), file), join(folder(to), name))
       return name
     },
     /** A deleted account (no runners left): each game's part (gameStore retire), then each game's compendiums and their
@@ -248,7 +251,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       }
       const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
       if (!m) return send(res, 404, { error: 'not found' })
-      const id = decodeURIComponent(m[1])
+      let id
+      try { id = decodeURIComponent(m[1]) } catch { id = '' } // a malformed %-escape: a bad id, not a 500
       if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
       if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
       const xml = req.method === 'PUT' ? await readBody(req) : null

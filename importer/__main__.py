@@ -511,8 +511,10 @@ def _cmd_ask(argv, game="ca2"):
         from importer.ai import providers
         if not isinstance(e, providers.ProviderError):
             raise
-        print("the answer was too long; ask a narrower question" if isinstance(e, providers.TruncatedReply) else e, file=sys.stderr)
-        print(json.dumps({"called": called}))
+        truncated = isinstance(e, providers.TruncatedReply)
+        print("the answer was too long; ask a narrower question" if truncated else e, file=sys.stderr)
+        # provider: the reason is the admin's (the server logs it and tells the asker only that the provider failed)
+        print(json.dumps({"called": called, **({} if truncated else {"provider": True})}))
         return 3
     print(json.dumps({**out, "called": called}, ensure_ascii=False))
     return 0

@@ -4,12 +4,13 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
-import { canFinalize } from '../../engine/validate'
+import { canFinalize } from '../../shared/rules'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, PICK_KINDS, PURCHASE_KINDS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, augmentationSlot, dataStructureLevels, isFocus, magicCap, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
-import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, metamagicFits, normName, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
+import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from './creation'
+import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
+import { normName } from './names'
 import { adeptBars, opposite } from './actions'
 import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
@@ -295,7 +296,11 @@ const RULES: Rule[] = [
 
   // owner's decision 19 (2026-10-11): negative Karma or nuyen is fine while building; Finalize waits until neither is
   { code: 'karma.overspent', severity: 'error', tab: 'review', hard: true, check: c => over(c.budgets.karma, 'Karma') },
-  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', hard: true, check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
+  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', hard: true, check: c => {
+    const hit = over(c.budgets.nuyen, 'Nuyen', '¥'), size = c.budgets.nuyen.breakdown?.find(l => l.key === 'sizePricing')?.amount
+    // a GM can't approve this one: name the table's house rule when it is part of the cost (metatypeSizePricing)
+    return hit && size ? { message: `${hit.message.slice(0, -1)}; the house rule ‘size pricing’ adds ${fmt(size)}¥.` } : hit
+  } },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
     // the Sixth World Companion's elite level (p. 15, levelSwcElite): no availability restrictions
     if (flag(c.cr, 'levelSwcElite')) return null
@@ -830,7 +835,8 @@ function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string
   if (clash.length) out.push({ code: 'rules.conflict', severity: 'warning', path: 'method', message: `${clash.map(name).join('; ')}: these can’t be on together.` })
   for (const r of ch.rules ?? []) {
     const s = cr.get(r.key), b = !s && r.value.trim() && r.value !== 'false' ? blockedBy(cr, r.key) : undefined
-    if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
+    if (!isRunnerRuleKey(r.key)) out.push({ code: 'rules.tableOnly', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; only the table sets this.` })
+    else if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
     else if (b) out.push({ code: 'rules.setAside', severity: 'warning', path: 'method',
       message: `${name(r.key)}: your choice is set aside; ${'needs' in b ? `it needs ${name(b.needs)}, which is off` : `it can’t be on with ${name(b.conflicts)}`}.` })
     else if (r.assumed) out.push({ code: 'rules.assumed', severity: 'warning', path: 'method', ...(r.source ? { source: r.source } : {}), ...(r.page ? { page: r.page } : {}),

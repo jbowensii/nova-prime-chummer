@@ -57,6 +57,7 @@ test('delete moves the file to .trash', async () => {
 
 test('trust boundary: bad ids, mismatched bodies and path traversal are refused', async () => {
   expect((await put('..%2Fetc', xml('x'))).status).toBe(400)
+  expect((await put('%E0%A4%A', xml('x'))).status).toBe(400) // a malformed escape: a bad id, not a 500
   expect((await put('a9', xml('other'))).status).toBe(400)
   expect((await put('a9', '<html/>')).status).toBe(400)
   expect((await fetch(`${base}/custom/..%2F..%2Fpackage.json`)).status).not.toBe(200)

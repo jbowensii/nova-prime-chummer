@@ -140,7 +140,7 @@ class AnswerTest(unittest.TestCase):
         write_providers(os.path.join(self.lib, ".config"), url=s.url + "/v1")
         AI.set_key(os.path.join(self.lib, ".config"), "openai", KEY)
         code, out, err = run(self.argv(), "puddle jumping?")
-        self.assertEqual((code, json.loads(out)), (3, {"called": True}))  # the request went out: it counts
+        self.assertEqual((code, json.loads(out)), (3, {"called": True, "provider": True}))  # the request went out: it counts
         self.assertIn("bad key [key]", err)
         self.assertNotIn(KEY, err)
         write_providers(os.path.join(self.lib, ".config"), enabled="false")

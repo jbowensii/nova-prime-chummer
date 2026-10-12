@@ -3,10 +3,11 @@
 // skill.specUntrained); then knowledge skills and languages.
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { NameField } from '../../../ui/tabs/Skills'
+import { NameField } from '../../../shared/ui'
 import { num } from '../../engine/creation'
 import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
-import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { ATTR_NAMES, useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { Sr6Ref } from '../EntryRef'
 import { br, poolOn } from '../../print/view'
 import { manySpecs, notesText } from '../../engine/budgets'
@@ -39,7 +40,7 @@ export function SkillsTab() {
     <div className="stack">
       <h2>Skills</h2>
       <p className="muted">
-        Skill points: <b className={budgets.skillPoints.left < 0 ? 'err' : ''}>{n(budgets.skillPoints.left)} left</b> of {n(budgets.skillPoints.max)}.
+        Skill points: <Left x={budgets.skillPoints} />.
         {cap !== undefined && ` The highest rank at creation is ${cap}.`}
         {spec !== undefined && ` A specialization takes ${spec} skill points`}{exp !== undefined && `, an expertise ${exp}`}{spec !== undefined && '.'}
         {exp === undefined && expKarma !== undefined && ` An expertise costs ${expKarma} karma (it needs the specialization and a rank of ${num(cr, 'advance.expertiseRank') ?? 1} or more).`}
@@ -74,7 +75,7 @@ export function SkillsTab() {
 
       <hr className="sep" />
       <h2>Knowledge &amp; languages</h2>
-      <p className="muted">Knowledge points: <b className={budgets.knowledgePoints.left < 0 ? 'err' : ''}>{n(budgets.knowledgePoints.left)} left</b> of {n(budgets.knowledgePoints.max)}. One native language is free: tick Native on its line; it counts as level {num(cr, 'languageMax') ?? 4}, the highest a language goes.</p>
+      <p className="muted">Knowledge points: <Left x={budgets.knowledgePoints} />. One native language is free: tick Native on its line; it counts as level {num(cr, 'languageMax') ?? 4}, the highest a language goes.</p>
       {b.knowledge.length > 0 && <div className="scroll-x"><table className="data">
         <thead><tr><th>Name</th><th>Kind</th><th>Native</th><th>Points</th><th>Karma</th><th /></tr></thead>
         <tbody>{b.knowledge.map(k => <tr key={k.uid}>
@@ -87,7 +88,7 @@ export function SkillsTab() {
             onChange={e => act({ op: 'knowledge', uid: k.uid, native: e.target.checked })} />}</td>
           {(['points', 'karma'] as const).map(p => <td key={p}>{k.native ? (p === 'points' ? <span className="muted">native</span> : null) : <Stepper label={`${k.name} ${p}`} value={k[p]} min={0} max={99}
             onChange={to => act({ op: 'knowledgeRank', uid: k.uid, pool: p, delta: to - k[p] })} />}</td>)}
-          <td><button className="btn small quiet" onClick={() => act({ op: 'knowledge', remove: k.uid })}>Remove</button></td>
+          <td><button className="btn small quiet" aria-label={`Remove ${k.name}`} onClick={() => act({ op: 'knowledge', remove: k.uid })}>Remove</button></td>
         </tr>)}</tbody>
       </table></div>}
       <div className="row">

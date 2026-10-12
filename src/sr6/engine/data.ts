@@ -10,6 +10,7 @@ import { gradeKey } from './grades'
 import { rated } from './values'
 import { resolveEntry } from './load'
 import { categoryIndex } from './categories'
+import { normName } from './names'
 import { atLevel, familyOf, levelOf, sameFamily, siblings, type Sr6Family } from './levels'
 
 /** What each magic kind can have (game vocabulary, no numbers). paysPowers: buys its power points (mystic adept). */
@@ -117,14 +118,6 @@ export interface Sr6Data extends CreationCatalog {
   /** names that didn't resolve (data.unresolved), numbers that didn't read (data.bookValue) and the entries' issues
    *  (catalog.issue), as warnings */
   problems: Violation[]
-}
-
-/** As the importer's norm() (importer/sr6/regroup.py): accents and quotes dropped, & as "and", punctuation as spaces,
- *  lower case, no leading "the". */
-export function normName(name: string): string {
-  const s = name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/&/g, ' and ').replace(/['‘’"“”]/g, '')
-  const out = s.replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean).join(' ')
-  return out.startsWith('the ') ? out.slice(4) : out
 }
 
 const METATYPE_WORDS: Record<string, string> = { human: 'human', humans: 'human', elf: 'elf', elves: 'elf', elven: 'elf', dwarf: 'dwarf',

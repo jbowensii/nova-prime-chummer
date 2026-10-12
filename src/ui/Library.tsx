@@ -322,13 +322,13 @@ export function Library({ c }: { c: Catalog }) {
         </div>
       </div>
       {own ? <div className="row">
-        <button className="btn small" onClick={async () => { await store(exportCharacter(c, ch), rev); void refresh() }}>Export</button>
+        <button className="btn small" aria-label={`Export ${shownName(ch)}`} onClick={async () => { await store(exportCharacter(c, ch), rev); void refresh() }}>Export</button>
         <button className="btn small quiet" onClick={() => void duplicate(ch)}>Duplicate</button>
         {campaignOf(ch) ? <button className="btn small quiet" onClick={() => void assign(ch, null)}>Remove from campaign</button>
           : open.length > 0 && <button className="btn small quiet" onClick={() => { setTarget(open[0].id); setJoining(ch) }}>Add to campaign…</button>}
-        <button className="btn small quiet" onClick={() => setToDelete(ch)}>Delete</button>
+        <button className="btn small quiet" aria-label={`Delete ${shownName(ch)}`} onClick={() => setToDelete(ch)}>Delete</button>
       </div> : <div className="row">
-        <button className="btn small" onClick={() => exportCharacter(c, ch)}>Export</button>
+        <button className="btn small" aria-label={`Export ${shownName(ch)}`} onClick={() => exportCharacter(c, ch)}>Export</button>
       </div>}
     </div>
   )

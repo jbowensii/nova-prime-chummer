@@ -25,6 +25,7 @@ import { AskRules } from './AskRules'
 import { IconButton } from './icons'
 import { HeaderBars } from './nav'
 import { Face } from './Portrait'
+import { TabBoundary } from '../shared/ui'
 
 /** The print page: the sheet the toolbar's Sheet type (or Settings) picks. */
 function PrintSheet() { return usePrintStyle() === 'book' ? <BookSheet /> : <Sheet /> }
@@ -119,7 +120,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
-          <a key={k} href={editHref(ch, k)} aria-current={tab === k ? 'page' : undefined}>
+          <a key={k} href={editHref(ch, k)} aria-current={tab === k ? 'page' : undefined} aria-label={k === 'review' && errors > 0 ? `${label}, ${errors} ${errors === 1 ? 'problem' : 'problems'}` : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
         ))}
@@ -128,7 +129,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
         {' '}<a href={editHref(ch, 'print')}>print it</a> or export a copy.</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{TABS.find(([k]) => k === tab)?.[1]}</div>
-        <main className="work"><AskRules /><fieldset className="bare" disabled={ro && !(tab === 'review' && ctx.approve)}>
+        <main className="work"><AskRules /><fieldset className="bare" disabled={ro && !(tab === 'review' && ctx.approve)}><TabBoundary key={tab}>
           {tab === 'concept' && <ConceptTab />}
           {tab === 'attributes' && <AttributesTab />}
           {tab === 'skills' && <SkillsTab />}
@@ -136,7 +137,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
           {tab === 'gear' && <GearTab />}
           {tab === 'review' && <ReviewTab />}
           {tab === 'ledger' && <LedgerTab />}
-        </fieldset></main>
+        </TabBoundary></fieldset></main>
         {!npc && <Receipt />}
       </div>
       <ConflictDialog s={save} name={name} />

@@ -18,13 +18,17 @@ Targets:
 - `item:<field>` the item's own stat, or, on an add-on (an accessory, an ammo type, a vehicle mod), the stat of the
   item it fits: `ar` (one value per range band), `dv`, `concealability`, `handling`, `acceleration`,
   `speed-interval`, `top-speed`, `body`, `armor`, `pilot`, `sensor`, `seats`, `size`, `ammo`;
-- `action:<name>` an Edge action (its Edge cost);
-- `resource:<name>` a creation resource (`contact-points`).
+- `action:<name>` an Edge or Matrix action; `action-max:<name>` the cap on an action's bonus;
+- `complex-form:<name>` a complex form named as what the bonus is on; `lifestyle:<name>` lifestyle points;
+- `resource:<name>` a creation resource (`contact-points`); `skill-max:<id>` a skill's maximum;
+- `sense:<name>` a sense the entry is named for or grants; `pool:chase` the chase pool's Edge; `pricemod:<what>` a
+  price in percent; and the derived `monthly-cost`, `essence-hole`, `unarmed-damage` and `power-points`.
+docs/sr6-data-format.md, "Effects", is the full grammar (every target family, operation and value).
 
 Operations: `add` (+N, or -N), `set` (the value replaces it: an infected type's attribute maximum), `edge` (N bonus
 Edge on those tests), `edge-cost` (Edge boosts and actions on them cost N more, -N less), `edge-cost-set` (an Edge
 action's new cost), `no-edge` (no Edge may be spent on them), `no-edge-gain` (no Edge may be gained on them),
-`wild-die` (a die of the pool is a wild die), `hits` (N extra hits).
+`wild-die` (a die of the pool is a wild die), `hits` (N extra hits), `threshold` (the test's threshold changes by N).
 
 Values: a number; `R` (× the line's rating, level or Force: `adds its rating`, `per level`), `R*N`; or a formula over
 attributes (`edg/2`: half your Edge, rounded down), which is shown, never applied.
