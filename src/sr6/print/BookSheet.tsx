@@ -143,8 +143,8 @@ export function BookSheet({ art }: { art: SheetArt }) {
   const picks = (kinds: string[]) => b.picks.filter(x => kinds.includes(x.kind))
   const head = (
     <header className="k-head">
-      <span className="k-brand" role="img" aria-label="Chummer Shadowrun 6">
-        Chummer <b>Shadowrun</b> 6
+      <span className="k-brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+        Nova Prime Chummer <b>Shadowrun</b> 6
       </span>
       <div className="k-who">
         <F l="Character" v={v.name} />

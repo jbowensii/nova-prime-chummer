@@ -43,8 +43,8 @@ export function Sheet() {
                 </div>
                 {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}
               </div>
-              <span className="brand" role="img" aria-label="Chummer Anarchy 2.0">
-                Chummer <b>Anarchy</b> 2.0
+              <span className="brand" role="img" aria-label="Nova Prime Chummer Anarchy 2.0">
+                Nova Prime Chummer <b>Anarchy</b> 2.0
               </span>
             </header>
             {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}

@@ -55,7 +55,7 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.getByRole('heading', { name: 'Choose your game' })).toBeVisible()
   await expect(page.getByLabel('Username')).toHaveCount(0)
   // no game picked yet: the neutral name and the version, neither game's brand
-  await expect(page.locator('.gamepick .brand-row .brand')).toHaveText('Chummer')
+  await expect(page.locator('.gamepick .brand-row .brand')).toHaveText('Nova Prime Chummer')
   await expect(page.locator('.gamepick .brand-row .ver')).toHaveText(/^v\d/)
   await expect(page.getByRole('link', { name: /Chummer/ })).toHaveCount(0)
   const ca2 = page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }),
@@ -80,7 +80,7 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page).toHaveURL(/#\/sr6$/)
   expect(await stored(page)).toBe('sr6')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toHaveAttribute('href', '#/sr6')
+  await expect(page.getByRole('link', { name: 'Nova Prime Chummer Shadowrun 6' })).toHaveAttribute('href', '#/sr6')
   await signIn(page, 'ada')
   await expect(page.getByText('No runners yet.')).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
@@ -124,7 +124,7 @@ test('the header switch changes game and is remembered across reloads', async ({
   await expect(page).toHaveURL(/#\/$/)
   // wait for the Anarchy page itself: SR6's page has the same menu labels and New runner button, and the Anarchy page
   // shows no header while its game data loads, so a one-shot read of the menu must come after the brand link
-  await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toHaveAttribute('href', '#/')
+  await expect(page.getByRole('link', { name: 'Nova Prime Chummer Anarchy 2.0' })).toHaveAttribute('href', '#/')
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
     'Your runners',
@@ -145,7 +145,7 @@ test('the header switch changes game and is remembered across reloads', async ({
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Choose your game' })).toHaveCount(0)
   await toSr6.click()
-  await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Nova Prime Chummer Shadowrun 6' })).toBeVisible()
   await expect(page.getByText('No runners yet.')).toBeVisible()
   await page.goto('/') // a bare address opens the remembered game
   await expect(page).toHaveURL(/#\/sr6$/)
@@ -175,7 +175,7 @@ test('the games keep their runners apart; a deep link opens its own game', async
   expect(await stored(page)).toBe('sr6')
   await page.goto(`/#/c/${runner}`)
   await expect(page.getByLabel('Street name')).toHaveValue('Jinx')
-  await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Nova Prime Chummer Anarchy 2.0' })).toBeVisible()
 })
 
 test('a player sees no SR6 Books', async ({ page }) => {

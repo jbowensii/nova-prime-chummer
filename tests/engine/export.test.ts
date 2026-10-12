@@ -38,7 +38,7 @@ describe('export: runners', () => {
       version: 1,
       kind: 'runners',
       exportedAt: OPTS.now,
-      app: { name: 'Chummer Anarchy 2.0', version: '0.6.0' },
+      app: { name: 'Nova Prime Chummer', version: '0.6.0' },
       descriptions: true,
     })
     expect(f.runners).toHaveLength(1)

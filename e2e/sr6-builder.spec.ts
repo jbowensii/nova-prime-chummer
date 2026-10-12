@@ -999,7 +999,7 @@ test('isolation: the Anarchy list never shows an SR6 runner', async ({ page }) =
   await signIn(page, '/#/sr6', 'pat')
   await expect(page.getByRole('link', { name: 'Zip Spark' }).first()).toBeVisible()
   await page.getByRole('link', { name: 'Switch to Shadowrun Anarchy' }).click()
-  await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Nova Prime Chummer Anarchy 2.0' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   await expect(page.getByText('Zip Spark')).toHaveCount(0)
   expect(await page.evaluate(() => fetch('./api/characters').then(r => r.text()))).not.toContain('sr6:character')

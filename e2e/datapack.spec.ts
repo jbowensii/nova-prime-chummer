@@ -10,7 +10,7 @@ test('download a data pack, lose the core data, upload the pack from the setup s
     away = `${core}-away`
   await page.goto('/#/books')
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download data pack' }).click()])
-  expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-datapack-\d{4}-\d{2}-\d{2}\.zip$/)
+  expect(download.suggestedFilename()).toMatch(/^nova-prime-chummer-datapack-\d{4}-\d{2}-\d{2}\.zip$/)
   const zip = info.outputPath('datapack.zip')
   await download.saveAs(zip)
   await expect(page.getByText('The data pack is ready.')).toBeVisible()

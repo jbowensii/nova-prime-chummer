@@ -25,7 +25,7 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
   await expect(page.getByText('Anyone with the file can use your keys')).toBeVisible()
   await page.getByLabel('Include my API keys').uncheck()
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download backup' }).click()])
-  expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-backup-\d{4}-\d{2}-\d{2}\.zip$/)
+  expect(download.suggestedFilename()).toMatch(/^nova-prime-chummer-backup-\d{4}-\d{2}-\d{2}\.zip$/)
   const zip = info.outputPath('backup.zip')
   await download.saveAs(zip)
   await expect(page.getByRole('group', { name: 'Backup' }).getByRole('status')).toContainText('The backup is ready')

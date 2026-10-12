@@ -1,4 +1,4 @@
-// Chummer Anarchy 2.0 server: serves the built app and stores runners as XML files, one folder per account
+// Nova Prime Chummer server: serves the built app and stores runners as XML files, one folder per account
 // (characters/<username>/, deleted ones in its .trash/). No dependencies. Accounts, sessions and the role table:
 // server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/. A
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
@@ -771,7 +771,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     trustProxy: process.env.TRUST_PROXY ?? '', // comma-separated IPs or CIDRs of the reverse proxy
     publicUrl: process.env.PUBLIC_URL ?? '', // the app's one public address (Origin check, Authelia redirect URI)
   })
-  server.listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
+  server.listen(port, () => console.log(`nova-prime-chummer on :${port}`))
   // docker stop: end the importer job too (the next start marks its book interrupted); sessions.xml is saved
   const quit = () => {
     server.stopJobs()

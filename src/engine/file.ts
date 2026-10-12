@@ -155,7 +155,7 @@ export function parseCharacterFile(text: string): Parsed {
   }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'Not a character file.' }
   const v = raw.formatVersion
-  if (typeof v !== 'number') return { ok: false, reason: 'Missing formatVersion; not a Chummer Anarchy 2.0 character.' }
+  if (typeof v !== 'number') return { ok: false, reason: 'Missing formatVersion; not a Nova Prime Chummer Anarchy 2.0 character.' }
   if (v > FORMAT_VERSION) return { ok: false, reason: `This file is from a newer version of the app (format ${v}).` }
   const ch = migrate(raw)
   const b = ch.build as Partial<Character['build']> | undefined

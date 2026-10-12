@@ -57,7 +57,7 @@ test('a backup is made, then downloads once as a dated zip; its folder is gone a
   expect(token).toMatch(/^[0-9a-f]{32}$/)
   expect(r.status).toBe(200)
   expect(r.headers.get('content-type')).toBe('application/zip')
-  expect(r.headers.get('content-disposition')).toBe(`attachment; filename="chummer-anarchy2-backup-${new Date().toISOString().slice(0, 10)}.zip"`)
+  expect(r.headers.get('content-disposition')).toBe(`attachment; filename="nova-prime-chummer-backup-${new Date().toISOString().slice(0, 10)}.zip"`)
   expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
   expect(bytes.toString()).toContain(`"app":"${version}"`) // --version from package.json (the image: /app/VERSION)
   await vi.waitFor(() => expect(temps()).toEqual([]))

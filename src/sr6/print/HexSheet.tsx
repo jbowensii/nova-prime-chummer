@@ -84,8 +84,8 @@ export function HexSheet({ art }: { art: SheetArt }) {
     <article className="sr6-hex" style={art.vars}>
       {art.layer}
       <header className="x-head">
-        <span className="k-brand" role="img" aria-label="Chummer Shadowrun 6">
-          Chummer <b>Shadowrun</b> 6
+        <span className="k-brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+          Nova Prime Chummer <b>Shadowrun</b> 6
         </span>
       </header>
 

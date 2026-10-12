@@ -329,7 +329,7 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   await expect(dos.getByRole('region', { name: 'Weapons' }).locator('.d-ranged tr', { hasText: 'Fizz Rifle' })).toContainText('SA/BF')
   await expect(dos.getByRole('region', { name: 'Weapons' }).locator('.d-melee')).toContainText('Made-up Shock Baton')
   await expect(dos.getByRole('region', { name: 'Armor' }).locator('tr', { hasText: 'Defensive rating' })).toContainText(defense)
-  await expect(dos.locator('.d-foot')).toContainText('created with Chummer')
+  await expect(dos.locator('.d-foot')).toContainText('created with Nova Prime Chummer')
   await shootAndPrint(page, 'article.sr6-dossier', 'dossier', 2, true)
 
   // Settings on an SR6 page offers the same six

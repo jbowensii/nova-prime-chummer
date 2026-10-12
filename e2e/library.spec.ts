@@ -25,7 +25,7 @@ test('A–Z by default, then Recently edited puts a new runner on top; search; D
   await expect(page.locator('.topbar .runstate')).toHaveText('Finalized')
   await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: every change is logged in the ledger')
   await newRunner(page, 'Aardvark')
-  await page.getByRole('link', { name: /Chummer Anarchy/ }).click()
+  await page.getByRole('link', { name: /Nova Prime Chummer Anarchy/ }).click()
   await expect(page.getByRole('link', { name: 'Aardvark' })).toBeVisible()
 
   const titles = await list(page).allTextContents()

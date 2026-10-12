@@ -65,13 +65,13 @@
 //                                     asking it is free. Only the username and the time are logged; counts in library/.config/ask-counts.xml
 //   POST   /api/backup[?keys=1]     makes the zip of characters/, custom/ and library/ (keys=1: with the API keys) -> { token };
 //                                     one at a time (409); the zip waits 10 min for its token
-//   GET    /api/backup/:token         the zip, once, as chummer-anarchy2-backup-<date>.zip
+//   GET    /api/backup/:token         the zip, once, as nova-prime-chummer-backup-<date>.zip
 //   POST   /api/restore?preview=1     body: a backup zip -> { token, manifest }; the zip waits 30 min for its token
 //   POST   /api/restore/:token        replaces all three folders from that zip (a safety backup is kept) -> { ok }
 //                                     409 while a job, a write or a backup runs; every other write gets 409 while it runs
 //   POST   /api/datapack              makes the data pack of custom/imported/core/ -> { token };
 //                                     the zip waits 10 min for its token; 409 when there is no core data
-//   GET    /api/datapack/:token       the pack, once, as chummer-anarchy2-datapack-<date>.zip
+//   GET    /api/datapack/:token       the pack, once, as nova-prime-chummer-datapack-<date>.zip
 //   POST   /api/datapack/import       body: a data pack zip (50 MB at most), checked in full (importer/datapack.py check)
 //                                     -> { token, pack: { app, created, files: [name…], replaces: [name…] } } (replaces: the core
 //                                     files the server has now); the zip waits 30 min for its token, one pending at a time

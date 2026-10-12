@@ -88,8 +88,8 @@ export function Sr6Sheet() {
                 <div className="s-role">{npcHeadline(ch.npc)}</div>
                 {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}
               </div>
-              <span className="brand" role="img" aria-label="Chummer Shadowrun 6">
-                Chummer <b>Shadowrun</b> 6
+              <span className="brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+                Nova Prime Chummer <b>Shadowrun</b> 6
               </span>
             </header>
             {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}
@@ -121,8 +121,8 @@ export function Sr6Sheet() {
                 </div>
                 {ch.identity.name && ch.identity.name !== name && <div className="s-small">{ch.identity.name}</div>}
               </div>
-              <span className="brand" role="img" aria-label="Chummer Shadowrun 6">
-                Chummer <b>Shadowrun</b> 6
+              <span className="brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+                Nova Prime Chummer <b>Shadowrun</b> 6
               </span>
             </header>
             {ch.identity.portrait && <img className={`portrait${bdClass(printBackdrop(ch.identity.backdrop))}`} src={ch.identity.portrait} alt="" />}

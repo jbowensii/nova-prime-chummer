@@ -18,7 +18,7 @@ export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {
       {/* no game yet: the neutral name, not either game's brand (bits.tsx Brand) */}
       <div>
         <span className="brand-row">
-          <span className="brand">Chummer</span>
+          <span className="brand">Nova Prime Chummer</span>
           <span className="ver">v{__APP_VERSION__}</span>
         </span>
       </div>

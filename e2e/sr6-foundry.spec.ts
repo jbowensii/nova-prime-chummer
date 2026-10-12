@@ -80,7 +80,7 @@ test('Gil: a runner’s editor downloads it for Foundry', async ({ page }) => {
   await page.getByRole('button', { name: 'Export for Foundry' }).click()
   const { name, f } = await file(dl)
   expect(name).toBe(`Gil-One-${today()}.sr6foundry.json`)
-  expect(f).toMatchObject({ format: 'chummer-sr6-export', version: 1, kind: 'runners', descriptions: true, app: { name: 'Chummer Anarchy 2.0' } })
+  expect(f).toMatchObject({ format: 'chummer-sr6-export', version: 1, kind: 'runners', descriptions: true, app: { name: 'Nova Prime Chummer' } })
   expect(streets(f)).toEqual(['Gil One'])
   expect(f.runners[0]).toMatchObject({ id: 'gil-one', finalized: true, karma: expect.any(Number) })
 })
