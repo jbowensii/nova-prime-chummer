@@ -7,6 +7,7 @@ from pathlib import Path
 
 from importer import statblock
 from importer.recipes import crb, identify
+from importer.recipes.common import strip_tab
 
 # Invented spells, laid out as the converter prints the CRB's spell boxes: a one-cell table titled
 # "<FAMILY> SPELLS" whose lines are <br>-separated, two text columns interleaved, the chapter's margin
@@ -67,15 +68,15 @@ class FurnitureTest(unittest.TestCase):
     def test_real_words_survive(self):
         lines = ["Oracle of the made-up kind", "Lore about nothing", "A spell of invented use", "I made this up",
                  "Detection 4 An invented note", "Eerie hum"]
-        self.assertEqual(crb._furniture(lines), lines)
+        self.assertEqual(strip_tab(lines, crb.TAB), lines)
 
     def test_tab_letters_go(self):
-        self.assertEqual(crb._furniture(["W", "d Odd Hunch Detection 0", "A * Made-up footnote", "Some notes N"]),
+        self.assertEqual(strip_tab(["W", "d Odd Hunch Detection 0", "A * Made-up footnote", "Some notes N"], crb.TAB),
                          ["Odd Hunch Detection 0", "* Made-up footnote", "Some notes"])
 
 
     def test_other_chapters_tabs(self):
-        self.assertEqual(crb._furniture(["I Tests; more", "I made this", "v", "u **Name:** words"], "vIrTuALWOd"),
+        self.assertEqual(strip_tab(["I Tests; more", "I made this", "v", "u **Name:** words"], "vIrTuALWOd"),
                          ["Tests; more", "I made this", "**Name:** words"])
 
 

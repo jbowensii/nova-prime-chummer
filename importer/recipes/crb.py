@@ -27,7 +27,6 @@ NPCs, critters and spirits (pp.244-265): crb_npcs.py reads them from the PDF's l
 Markdown alone, with no PDF, has none).
 """
 import contextlib
-import functools
 import os
 import re
 import shutil
@@ -39,6 +38,7 @@ from xml.sax.saxutils import escape
 
 from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
+from importer.recipes.common import join_lines, strip_tab
 from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     SKILLS, ATTRS, Mapper, attr, core, dv_num, fx_xml, item_effects, load_skills, parts as _parts, read_amp, reconcile, slug,
     non_caster, specialist, stated, unpriced_rows, weapon_base)
@@ -70,29 +70,9 @@ def match(meta, md_head):
     return 0.9 if re.search(r"alternate core rulebook", md_head, re.I) and re.search(r"shadowrun", md_head, re.I) else 0.0
 
 
-@functools.cache
-def _tab_regexes(tab):
-    # a glued lead letter; "A" only before a mark and "I" only before a mark or a capital, since they start sentences
-    return (re.compile(rf"^[{tab}]$"), re.compile(rf" [{tab}]$"),
-            re.compile(rf"^(?:[{tab.replace('A', '').replace('I', '')}] |A (?=[*(+•])|I (?=[*(+•A-Z]))"))
-
-
-def _tab(page):
+def tab_at(page):
+    """The margin tab letters printed on a page, or None."""
     return next((t for a, b, t in TABS if a <= page <= b), None)
-
-
-def _furniture(lines, tab=TAB):
-    """Drop the margin tab letters: lone lines, and a letter glued to a line's start or end."""
-    lone, trail, lead = _tab_regexes(tab)
-    out = []
-    for l in lines:
-        l = l.strip()
-        if lone.match(l):
-            continue
-        l = trail.sub("", lead.sub("", l))
-        if l:
-            out.append(l)
-    return out
 
 
 def spell_rows(md):
@@ -108,7 +88,7 @@ def spell_rows(md):
             continue
         fam = m.group(1).title()
         start = re.compile(rf"^([A-Z][^()]*?) {fam}(?=$| [(\dA-Z])")
-        body = _furniture(lines[i + 2].strip()[1:-1].split("<br>"))
+        body = strip_tab(lines[i + 2].strip()[1:-1].split("<br>"), TAB)
         rows, cur, chaining, second = [], None, False, False
         for l in body[next((k + 1 for k, b in enumerate(body) if b.startswith("SPELL TYPE THRESHOLD")), len(body)):]:
             if l.startswith("*"):  # footnotes: "**Area-based threshold:**", "* A, B … are different spells"
@@ -151,23 +131,11 @@ def boxes(md):
             while j < len(lines) and lines[j].startswith("| ") and not lines[j + 1:j + 2] == ["|---|"]:  # to the next box
                 body += [c for cell in lines[j].strip().strip("|").split(" | ") for c in cell.split("<br>")]
                 j += 1
-            tab = _tab(page)
+            tab = tab_at(page)
             title = line.strip("| ").strip()
             if tab:
-                body, title = _furniture(body, tab), re.sub(rf"^[{tab}] (?=[A-Z]{{2}})", "", title)
+                body, title = strip_tab(body, tab), re.sub(rf"^[{tab}] (?=[A-Z]{{2}})", "", title)
             yield page, title, body
-
-
-def _join(lines):
-    """One string: a word hyphenated at a line's end is joined ("con-" "tains"; "Logic-" "based" keeps its
-    hyphen) and the "." the boxes print as U+FFFD is restored."""
-    out = ""
-    for l in lines:
-        if out.endswith("-") and out[-2:-1].islower() and l[:1].islower():
-            out = out[:-1] + ("-" if re.match(r"based|sim\b", l) else "") + l
-        else:
-            out += " " + l
-    return out.replace("�", ".").strip()
 
 
 def entries(text):
@@ -312,7 +280,7 @@ def amps_and_gear(md, mapper):
     """Amp rows (dicts for build_amp's shape) and plain gear rows from every box's bold entries."""
     amps, gear = [], []
     for page, title, body in boxes(md):
-        text = _join(body)
+        text = join_lines(body)
         es = entries(text)
         for k, (name, paren, rest) in enumerate(es):
             if re.fullmatch(r"[Ee]quipment, .*", paren):
@@ -445,10 +413,10 @@ def sample_runners(md, spell_names, pdf=None):
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
     rules = statblock.load_rules()
     updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    spell_ids = {statblock._norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in spell_names}  # scoped as run() scopes them
+    spell_ids = {statblock.norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in spell_names}  # scoped as run() scopes them
     samples, report, sheets = [], [], []
     for page, title, body in boxes(md):
-        example = creation_example(_join(body), rules, spell_names) if title == "CHARACTER CREATION EXAMPLE" else None
+        example = creation_example(join_lines(body), rules, spell_names) if title == "CHARACTER CREATION EXAMPLE" else None
         if example:
             name, block = example
             s, rows = statblock.sample(block, rules, ID, name, "Character creation example", page,
@@ -485,10 +453,10 @@ def sheet_amps(sheets, rows, rules):
 
     def bag(atype, name):
         # the sheets say "Cybernetic Arm", the cyberware box "cyberarm"
-        return atype, frozenset(w.rstrip("s") for w in statblock._norm(name).replace("cybernetic arm", "cyberarm").split()
+        return atype, frozenset(w.rstrip("s") for w in statblock.norm(name).replace("cybernetic arm", "cyberarm").split()
                                 if w not in ("a", "an", "the"))
     for r in rows:
-        known.setdefault(r["type"], {})[statblock._norm(r["name"])] = r["id"]
+        known.setdefault(r["type"], {})[statblock.norm(r["name"])] = r["id"]
         bags.add(bag(r["type"], r["name"]))
     for page, block in sheets:
         for a in block["amps"]:
@@ -498,16 +466,16 @@ def sheet_amps(sheets, rows, rules):
             if atype in (None, "awakened", "contact") or bag(atype, a["name"]) in bags \
                     or statblock.catalog_id(a["name"], known.get(atype, {})):
                 continue
-            known.setdefault(atype, {})[statblock._norm(a["name"])] = slug(a["name"])
+            known.setdefault(atype, {})[statblock.norm(a["name"])] = slug(a["name"])
             bags.add(bag(atype, a["name"]))
             # the sheet's line text stays out of the overlay: a narrative effect balances the printed rating
             fx = [("narrative", "", None, "balances printed rating") if f[0] == "narrative" else
                   ("weapon-mount", "", *f[2:]) if f[0] == "weapon-mount" else f for f in fx]
             item = ""
             if atype == "equipment":  # a sheet weapon the amp's name starts or ends with is its base item
-                n = statblock._norm(a["name"])
-                w = next((w for w in block["weapons"] if w["kind"] and (n.startswith(statblock._norm(w["name"]) + " ")
-                                                                         or n.endswith(" " + statblock._norm(w["name"])))), None)
+                n = statblock.norm(a["name"])
+                w = next((w for w in block["weapons"] if w["kind"] and (n.startswith(statblock.norm(w["name"]) + " ")
+                                                                         or n.endswith(" " + statblock.norm(w["name"])))), None)
                 rng = re.sub(r"[�–—]", "-", w["ranges"]).replace("Dis.", "Dis") if w else ""
                 item = f'<item kind="weapon"{attr("dv", w["dv"])}{attr("ranges", rng)}/>' if w else '<item kind="gear"/>'
             out.append({"id": slug(a["name"]), "name": a["name"], "type": atype, "rating": a["rating"], "page": page,
@@ -547,15 +515,15 @@ def _paragraph(md, pattern):
                 out.append(l.strip())
                 if l.rstrip().endswith(".") and len(l.strip()) < 45:
                     break
-            return page, _join(out)
+            return page, join_lines(out)
     return None
 
 
 def optional_rules(md):
     """[(id, name, page, text)]: the optional rules; the page the book prints when it's found (else the known page) and
     its description ("" when not found)."""
-    found = {(t, b[0].strip()): (p, _join(b[1:])) for p, t, b in boxes(md) if b}
-    titled = {t: (p, _join(b)) for p, t, b in boxes(md) if b}
+    found = {(t, b[0].strip()): (p, join_lines(b[1:])) for p, t, b in boxes(md) if b}
+    titled = {t: (p, join_lines(b)) for p, t, b in boxes(md) if b}
     out = []
     for oid, name, page, where in OPTIONAL:
         hit = found.get(where[1:]) if where[0] == "box" else titled.get(where[1]) if where[0] == "title" else _paragraph(md, where[1])
@@ -631,7 +599,7 @@ def _extract(md, report, spells_only=False, pdf=None):
         rows += sheet_amps(sheets, rows, statblock.load_rules())
         if pdf is not None:  # the NPC chapter is read from the PDF's layout (an import from Markdown alone has none)
             from importer.recipes import crb_npcs
-            spell_ids = {statblock._norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in names}  # scoped as run() scopes them
+            spell_ids = {statblock.norm(n): f"{ID.lower()}.spell-{slug(n)}" for n in names}  # scoped as run() scopes them
             npcs, npc_rows = crb_npcs.npcs(crb_npcs.chapter(pdf), statblock.load_rules(), spell_ids,
                                            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
             sample_rows += npc_rows

@@ -238,7 +238,7 @@ def _plain(s):
     return re.sub(r"(^|[.!?…] )(\w)", lambda m: m.group(1) + m.group(2).upper(), s)
 
 
-def _crb_amp_lines(lines):
+def crb_amp_lines(lines):
     """The CRB's amp effect lines in the booklet's phrasing, one effect a line: a line ending in "," or a lone
     "Tests" continues the one before; "A; B", "A. B" and "Attack N, Firewall N" are two effects; "Drug: +1 …"
     loses its label; "by narration", "cold- and hot-sim", "Jumping in vehicles", "control up to N vehicles"
@@ -304,7 +304,7 @@ def crb_statblock(md_page):
             out.append(t if t.startswith("(") else f"**{t}**")
 
     out.append("SHADOW AMPS")
-    for t in _crb_amp_lines(parts["SHADOW AMPS"]):
+    for t in crb_amp_lines(parts["SHADOW AMPS"]):
         m = CRB_AMP.match(t)
         if m:
             n, name, atype, ess, rating = m.groups()
@@ -574,19 +574,19 @@ def _num(x):
     return int(x) if float(x).is_integer() else x
 
 
-def _weapon_id(rules, kind):
+def weapon_id(rules, kind):
     k = kind.lower()
     return rules["weapons"].get(WEAPON_ALIASES.get(k, k).replace("-", " ")) or rules["weapons"].get(k)
 
 
-def _norm(s):
+def norm(s):
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
 def catalog_id(name, ids):
     """The id of the catalog entry `name` names: the same normalized name, or the only entry whose name starts
     with it ("Lightning" -> Lightning bolt). ids: normalized name -> id."""
-    n = _norm(name)
+    n = norm(name)
     hits = [v for k, v in ids.items() if k.startswith(n + " ")]
     return ids.get(n) or (hits[0] if len(hits) == 1 else None)
 
@@ -604,10 +604,10 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     # ---- amps (first: the unarmed DV vote needs their DV bonuses)
     amps, report = [], []
     traits = [a for a in block["amps"] if a["type"].lower() in METATYPES]
-    gear = {_norm(n) for n in block["equipment"]}
+    gear = {norm(n) for n in block["equipment"]}
     for a in (a for a in block["amps"] if a not in traits):
         # a "(Quality)" the runner's equipment list also prints is bought gear made an Amp: Equipment (CRB p.60), on that item
-        if a["type"].lower() == "quality" and _norm(a["name"]) in gear:
+        if a["type"].lower() == "quality" and norm(a["name"]) in gear:
             a = {**a, "type": "Equipment"}
         first = not any(x["type"] == "quality" for x in amps)  # the rules price the first Quality from 0
         atype, fx, loose, vehicle, computed = map_amp(a, rules, mapper, first)
@@ -693,11 +693,11 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     for w in block["weapons"]:
         # no type printed: a weapon named by its type ("Stun Gloves", "Submachine Gun"), an implant named for what it is
         # ("Implanted knuckles", bought as a weapon on top of its cyberware), else an attack (unarmed, astral)
-        kind = w["kind"] or (w["name"] if _weapon_id(rules, w["name"]) else "knife" if SHORT_WEAPON.search(w["name"]) else None)
+        kind = w["kind"] or (w["name"] if weapon_id(rules, w["name"]) else "knife" if SHORT_WEAPON.search(w["name"]) else None)
         # repeats: another configuration of one weapon, or the same weapon's astral row ("Made-up knife in astral")
         if kind is None or w["name"] in (i["name"] for i in items) or re.search(r"\bin astral\b", w["name"], re.I):
             continue
-        cid = _weapon_id(rules, kind)
+        cid = weapon_id(rules, kind)
         for _ in range(w["count"]):  # "2x Sword": two items
             item("weapon", w["name"], catalogId=cid, specialist=None if cid and cid not in rules["specialist"] else True)
         if not cid:
@@ -715,12 +715,12 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     # commlink, the free one (CRB p.85); an amp on it upgrades it. Gear an implant has built in ("Integrated Ares SkyOp
     # RCC" on a cyberarm) is part of that amp, not bought again.
     plain = {"commlink", "commlink with trodes"}
-    named = None if any(_norm(n) in plain for n in block["equipment"]) else \
+    named = None if any(norm(n) in plain for n in block["equipment"]) else \
         next((n for n in block["equipment"] if re.search(r"\bcommlin", n, re.I)), None)
-    built_in = {_norm(ln) for a in block["amps"] if AMP_TYPES.get(a["type"].lower()) != "equipment"
+    built_in = {norm(ln) for a in block["amps"] if AMP_TYPES.get(a["type"].lower()) != "equipment"
                 for ln in a["lines"] if ln.lower().startswith("integrated ")}
     for n in block["equipment"]:
-        if n.lower() not in (i["name"].lower() for i in items) and _norm(n) not in built_in:
+        if n.lower() not in (i["name"].lower() for i in items) and norm(n) not in built_in:
             item("gear", n, starting="commlink" if n == named else None)
 
     # An Equipment amp is on a printed item (CRB p.60): the item of its name (the same name, one name in the other, else
@@ -728,14 +728,14 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
     # the price of the weapon as well as Amp upgrades", CRB p.144; the gear, drug and focus Amps alike) and as a catalog amp
     # does in the app (engine/amps.ts ampFromTemplate): a gear item of its name, bought with it.
     def words(s):
-        return {w.rstrip("s") for w in _norm(s).replace("-", " ").split() if len(w) >= 4 and w not in LINK_STOP}
+        return {w.rstrip("s") for w in norm(s).replace("-", " ").split() if len(w) >= 4 and w not in LINK_STOP}
     for a in (a for a in amps if a["type"] == "equipment"):
         taken = {x.get("linkedItem") for x in amps}
         free = [i for i in items if i["kind"] in ("gear", "weapon", "armor") and i["uid"] not in taken]
-        n = _norm(a["name"])
+        n = norm(a["name"])
         shared = max(free, key=lambda i: len(words(i["name"]) & words(a["name"])), default=None)
-        hit = next((i for i in free if _norm(i["name"]) == n), None) \
-            or next((i for i in free if n in _norm(i["name"]) or _norm(i["name"]) in n), None) \
+        hit = next((i for i in free if norm(i["name"]) == n), None) \
+            or next((i for i in free if n in norm(i["name"]) or norm(i["name"]) in n), None) \
             or (shared if shared and words(shared["name"]) & words(a["name"]) else None)
         a["linkedItem"] = (hit or item("gear", a["name"]))["uid"]
 

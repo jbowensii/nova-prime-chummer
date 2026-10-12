@@ -14,7 +14,8 @@ import re
 from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import crb
-from importer.recipes.dhsa import slug
+from importer.recipes.common import join_lines, strip_tab
+from importer.recipes.dhsa import parts, slug
 
 CONCEPTS = "GAMECONPTS"  # the GAME CONCEPTS margin tab's letters
 DECOR = re.compile(r"^\*\*(?:\d+|SHADOWRUN|ANARCHY)\*\*$")  # page numbers and running heads
@@ -116,7 +117,7 @@ def _pages(md):
 
 def _lines(pages, a, b, tab=CONCEPTS):
     """[(printed page, line)] of pages a..b without the margin tab, page numbers and running heads."""
-    return [(p, l) for p in range(a, b + 1) for l in crb._furniture(pages.get(p, "").splitlines(), tab) if not DECOR.match(l)]
+    return [(p, l) for p in range(a, b + 1) for l in strip_tab(pages.get(p, "").splitlines(), tab) if not DECOR.match(l)]
 
 
 def _box(md, title):
@@ -185,7 +186,7 @@ def skills(md, pages, attrs):
     """Names, specializations and their attributes from the SKILLS, SPECIALIZATIONS, AND RELATED ATTRIBUTES box (p.54);
     linked attributes, page and who can use it from each Skill's description (pp.53-57)."""
     _, body = _box(md, "SKILLS, SPECIALIZATIONS")
-    sheet = [(n, re.findall(r"\s*([^,()]+?) \(\+([SAWLC])", rest)) for n, _, rest in crb.entries(crb._join(body))]
+    sheet = [(n, re.findall(r"\s*([^,()]+?) \(\+([SAWLC])", rest)) for n, _, rest in crb.entries(join_lines(body))]
     by_name = {a["name"]: a["id"] for a in attrs}
     lines = _lines(pages, 53, 57)
     heads = sorted((i, n) for i, (_, l) in enumerate(lines) for n, _ in sheet if l == n.upper())
@@ -215,7 +216,7 @@ def amptypes(pages):
     heads = [(i, l, m) for i, (_, l) in enumerate(lines[:-1]) if re.fullmatch(r"[A-Z][A-Z ]+", l)
              and (m := re.fullmatch(r"\*\*Base rating (\d+)(?: then (\d+))?(?:, Essence -([\d.]+))?\*\*", lines[i + 1][1]))]
     for k, (i, head, m) in enumerate(heads):
-        text = crb._join(l for _, l in lines[i + 2:heads[k + 1][0] if k + 1 < len(heads) else len(lines)])
+        text = join_lines(l for _, l in lines[i + 2:heads[k + 1][0] if k + 1 < len(heads) else len(lines)])
         req = re.search(r"requires the Awakened Amp with the (\w+) option", text)
         out.append({"id": head.split()[0].lower(), "name": _cap(head.lower()), "base": m[1], "after": m[2], "essence": m[3] or "0",
                     "requires": f"awk-{req[1].lower()}" if req else None, "page": lines[i][0]})
@@ -225,7 +226,7 @@ def amptypes(pages):
 def vehicles(pages):
     """The base vehicle and drone types, p.60: "• **Name:** Pilot P, Body B, Handling H, Speed S (flying F), Armor A, mount"."""
     lines = [l for _, l in _lines(pages, 60, 60) if not l.startswith("|")]
-    text = crb._join(lines)
+    text = join_lines(lines)
     default = re.search(r"weapon mount for (\w+) weapon", text)
     out = []
     for m in re.finditer(r"•\s*\*\*([^*]+?):\*\*\s*Pilot (\d+), Body (\d+), Handling (\d+), Speed (\d+)(?: \(flying (\d+)\))?, "
@@ -323,7 +324,7 @@ def ampeffects(pages, types):
                 raise Unreadable(f"no notes for the effect {eid}")
             section = next(o for o in out if o["category"] == cat)
             out.append({"id": eid, "category": cat, "name": a["label"], "rating": str(-int(cut[1])), "types": section["types"],
-                        "max": str(len(crb._parts(realms[1]))), "requires": a["requires"], "param": a["param"], "page": section["page"]})
+                        "max": str(len(parts(realms[1]))), "requires": a["requires"], "param": a["param"], "page": section["page"]})
             continue
         if a.get("derive") == "mental":
             astral = next(((p, m) for p, t in sorted(pages.items()) if (m := re.search(r"\*\*Astral Armor:\*\* \(Rating (\d+) Adept power Amp", t))), None)
@@ -501,7 +502,7 @@ def armor(md):
     i = next((i for i, l in enumerate(body) if l == "ARMOR RATING"), None)
     if i is None:
         raise Unreadable("no armor table")
-    rows, tab = [], crb._tab(page) or ""
+    rows, tab = [], crb.tab_at(page) or ""
     for l in body[i + 1:]:
         if l.startswith("Armor costs"):
             break
@@ -523,7 +524,7 @@ def lifestyles(md):
     """The LIFESTYLE box, p.166: "**Name:** description … earns an extra N¥ / N¥ less per run …"."""
     page, body = _box(md, "LIFESTYLE")
     out = []
-    for name, _, rest in crb.entries(crb._join(body)):
+    for name, _, rest in crb.entries(join_lines(body)):
         m = re.search(r"earns (an extra )?([\d,]+)\s?¥( less)?", rest)
         per = 0 if not m else _num(m[2]) * (-1 if m[3] else 1)
         rules = [s for s in re.split(r"(?<=\.)\s+", _text(rest)) if re.search(r"¥|Advantage|Disadvantage|Edge|default|rules", s)]

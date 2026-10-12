@@ -35,7 +35,7 @@ SHEET = "technomancers"
 HEADS = ["BORN TECHNOMANCER", "COMPLEX FORMS", "SPRITES", "COURIER SPRITE", "CRACK SPRITE",
          "DATA SPRITE", "FAULT SPRITE", "MACHINE SPRITE"]
 
-# margin tab letters, glued to real lines the way CRB's are (see importer/recipes/crb.py _furniture);
+# margin tab letters, glued to real lines the way CRB's are (see importer/recipes/common.py strip_tab);
 # unique letters of "SHADOWRUN & ANARCHY" as printed down the page edge, minus "A" for leading strips
 # only (real sentences start "A character..."; a solo "A" line or one trailing " A" is still furniture)
 TAB = "hS&ycrAndowu"
