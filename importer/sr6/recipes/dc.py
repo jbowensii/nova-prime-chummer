@@ -12,6 +12,7 @@ import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
+from importer.sr6 import search
 from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
@@ -387,7 +388,7 @@ def extract(regrouped, ctx=None):
     res = crb.extract(_prep(bs, report), ctx, book=sys.modules[__name__])
     res.report += report  # a vehicle box whose values don't read
     cat = crb._Catalog(ID, ID.lower(), BOOK)
-    cat.index = crb.resolve.Index(bs, PAGE_OFFSET, crb._tables, crb.shapes.RENAME)
+    cat.index = search.Index(bs, PAGE_OFFSET, crb._tables, crb.shapes.RENAME)
     _autosofts(bs, cat)
     if cat.entries["programs"]:  # (beside the programs the shared reading found: the e-softs' run-ins)
         new = cat.xml("programs")

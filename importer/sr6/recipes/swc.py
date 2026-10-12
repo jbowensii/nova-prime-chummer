@@ -10,7 +10,7 @@ import re
 
 from importer.recipes import Result
 from importer.sr6.ids import slug
-from importer.sr6 import KINDS, resolve, sections
+from importer.sr6 import KINDS, search, sections
 from importer.sr6 import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm, text_page
@@ -449,7 +449,7 @@ def extract(regrouped, ctx=None):
     cat = _Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
-    cat.index = resolve.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
+    cat.index = search.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
     kinds, found = sections.Reader(), []
     for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)

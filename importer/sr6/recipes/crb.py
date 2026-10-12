@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import Result
 from importer.sr6.ids import slug
-from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, resolve, sections, tables
+from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, search, sections, tables
 from importer.sr6 import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
@@ -381,7 +381,7 @@ class _Catalog:
         self.last_meta = None
         self.unrated = None  # a book's group for named NPCs printed with no Professional Rating (else they're no NPCs)
         self.split = None  # a book's split_being(block): the blocks a stat block printed for several names stands for
-        self.index = None  # the book's tables and prose (resolve.Index): where a value an entry's row leaves out is found
+        self.index = None  # the book's tables and prose (search.Index): where a value an entry's row leaves out is found
         self.last_weapon = None  # the weapon read last: a supply table printed right after it is its ammunition
         self.where = ("", "")  # the (chapter, section) of the block being read: an entry's place, for section rules
         # the tables the catalog rows come from (categories.py): index -> {title, section, header, page}; the open one
@@ -991,14 +991,14 @@ class _Catalog:
             f = a["field"]
             if re.fullmatch(r"\s*(?:[*†‡]+|see text)\s*", str(e["attrs"].get(f) or ""), re.I):
                 continue  # (a cell printing `*`, see text: its value is the entry's text, no other row's)
-            r = resolve.search_book(self.index, HEADERS, kind, e, f, e.get("text") or "")
+            r = search.search_book(self.index, HEADERS, kind, e, f, e.get("text") or "")
             if not r:
                 continue
             v, how, page = r
             e["attrs"][f] = int(v) if kind == "qualities" and f == "karma" else v
             out.append(("found", {"field": f, "how": how, "source": self.source, "page": page}, None))
             if how == "table":  # the same row's other columns the entry's own row leaves empty (a capacity range)
-                for g, w in resolve.same_row(self.index, HEADERS, kind, e, f, v).items():
+                for g, w in search.same_row(self.index, HEADERS, kind, e, f, v).items():
                     if not (e["attrs"].get(g) or "").strip():
                         e["attrs"][g] = w
                         out.append(("found", {"field": g, "how": how, "source": self.source, "page": page}, None))
@@ -1885,7 +1885,7 @@ def extract(regrouped, ctx=None, book=None):
     bs = list(blocks(regrouped) if isinstance(regrouped, str) else regrouped)
     known = {norm(b.name) for b in bs if b.name} | {norm(b.row.get(b.header[0], "")) for b in bs if b.row and b.header}
     bs = [x for b in bs for x in stat_lines(b, known)]  # (a heading whose text holds its stat line: that item)
-    cat.index = resolve.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
+    cat.index = search.Index(bs, bk.PAGE_OFFSET, _tables, shapes.RENAME)
     sec, found = sections.Reader(), []
     for b in bs:
         if b.chapter != chapter:
