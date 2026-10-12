@@ -1,7 +1,7 @@
 """Block shapes the SR6 core-line books (Deadly Arts, Hack & Slash, Street Wyrd) print past the core rulebook's, as
 regroup hands them over: a stat box listing several items one a row (a name wrapped onto a second row, a second band
 of columns under the first), a box under the heading it describes, an item's stat band printed as its own little
-table. Pure functions over regroup's blocks; the recipes map what comes out with crb.extract. Nothing is guessed: a
+table. Pure functions over regroup's blocks; the recipes map what comes out with catalog.read. Nothing is guessed: a
 box that doesn't read stays where it was (a rule's table)."""
 import re
 from dataclasses import replace
@@ -191,7 +191,7 @@ def configurations(b, items, col, described, lower=frozenset()):
 
 
 def boxes(bs):
-    """Stat boxes -> item blocks with the box as their row (crb.extract's ROW_KINDS read a row): a box listing several
+    """Stat boxes -> item blocks with the box as their row (catalog.read's ROW_KINDS read a row): a box listing several
     items one a row becomes one block a row, each with the description of the heading of its name (its words all in
     that heading, nearest first) when there is one, that heading then going; a box of one item (its bands joined)
     takes the heading right before it when the box's title is that heading's or its words all are in it (`Shadowdancer`

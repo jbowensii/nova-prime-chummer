@@ -2,14 +2,14 @@
 vehicles and drones (and the vehicle mounted weapons), armor and armor modifications, augmentations, electronics, gear
 (ammunition, tac-apps, foci), the martial art styles and techniques, qualities, spells, adept powers, metamagics,
 rituals and the rule sections, ids unscoped (run scopes them as da.<slug>), descriptions in the private texts. Reads
-only regrouped.md with the core rulebook's reading (crb.extract); the book's own box shapes (several items a box, a box
-under its heading) through importer/sr6/recipes/shapes.py. Layout notes in da.md."""
+only regrouped.md with the core rulebook's reading (catalog.read); the book's own box shapes (several items a box, a box
+under its heading) through importer/sr6/shapes.py. Layout notes in da.md."""
 import re
 import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "DA", "Shadowrun: Deadly Arts", "Catalyst Game Labs", True
@@ -119,7 +119,7 @@ def _swap_avail(bs):
 
 
 def prepare(bs):
-    """The book's shapes as crb.extract reads them: stat boxes as rows (shapes.boxes), a spell section (`Aerial Flare
+    """The book's shapes as catalog.read reads them: stat boxes as rows (shapes.boxes), a spell section (`Aerial Flare
     (Manipulation)` over its band) as a spell item of that category, a quality's `(Positive)` suffix dropped, a ritual's
     `(Anchored, Spell)` its keywords, the martial arts' lines as labels, a `New Cyberware:` line naming the next box's
     category."""
@@ -135,8 +135,8 @@ def prepare(bs):
         m = _PAREN.search(b.name)
         cat = m and m.group(1).lower()
         if b.type == "section" and b.level == 3 and cat in SPELL_CATEGORIES and "RANGE" in b.text:
-            b = crb._text_stats(replace(b, type="item", level=4, name=b.name[:m.start()], tags=m.group(1).title(),
-                                        section=m.group(1).title()), crb.HEADERS["spells"])
+            b = catalog.text_stats(replace(b, type="item", level=4, name=b.name[:m.start()], tags=m.group(1).title(),
+                                           section=m.group(1).title()), catalog.HEADERS["spells"])
         elif b.type == "item" and b.stats and cat in SPELL_CATEGORIES:
             b = replace(b, name=b.name[:m.start()], tags=b.tags or m.group(1).title(), section=m.group(1).title())
         elif m and cat in ("positive", "negative") and {"cost", "bonus"} & {k.lower() for k in b.labels}:
@@ -148,4 +148,4 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -7,17 +7,16 @@ import tempfile
 import unittest
 from unittest import mock
 
-from importer.sr6 import resolve
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import catalog, resolve, search, shapes
 from importer.tests.test_sr6_resolve import block
 
 
 class GoodTest(unittest.TestCase):
     def check(self, field, yes, no):
         for v in yes:
-            self.assertTrue(resolve.good(field, v), (field, v))
+            self.assertTrue(search.good(field, v), (field, v))
         for v in no:
-            self.assertFalse(resolve.good(field, v), (field, v))
+            self.assertFalse(search.good(field, v), (field, v))
 
     def test_values_by_field(self):
         self.check("rating", ["1–6", "4"], ["x", "—"])
@@ -34,32 +33,32 @@ class GoodTest(unittest.TestCase):
         self.check("dv", [], ["3P"])  # (no reader for the field)
 
     def test_clean(self):
-        self.assertEqual(resolve._clean("1-6", "rating"), "1–6")
-        self.assertEqual(resolve._clean("5 Karma", "karma"), "5")
-        self.assertEqual(resolve._clean("1,200¥", "cost"), "1200")
+        self.assertEqual(search.clean("1-6", "rating"), "1–6")
+        self.assertEqual(search.clean("5 Karma", "karma"), "5")
+        self.assertEqual(search.clean("1,200¥", "cost"), "1200")
 
 
 class TextValuesTest(unittest.TestCase):
     def test_ratings_outside_what_a_rating_can_be(self):
-        self.assertEqual(resolve.text_values("rating", ["Ratings 6 to 3.", "Rating 1 to 30."]), set())  # (backwards, or past 20)
-        self.assertEqual(resolve.text_values("rating", ["Maximum rating 1.", "Maximum rating 25.", "Ratings up to 4."]), {"1–4"})
+        self.assertEqual(search.text_values("rating", ["Ratings 6 to 3.", "Rating 1 to 30."]), set())  # (backwards, or past 20)
+        self.assertEqual(search.text_values("rating", ["Maximum rating 1.", "Maximum rating 25.", "Ratings up to 4."]), {"1–4"})
 
 
 class DisagreementTest(unittest.TestCase):
     def test_two_rows_that_disagree_give_no_value(self):
-        idx = resolve.Index([block("Lists", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 50¥ |"),
-                             block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, crb._tables, shapes.RENAME)
+        idx = search.Index([block("Lists", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 50¥ |"),
+                            block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
-        self.assertIsNone(resolve.search_book(idx, crb.HEADERS, "gear", e, "cost", ""))
-        self.assertEqual(resolve.search_book(idx, crb.HEADERS, "gear", e, "avail", ""), ("2", "table", 29))  # (the same value twice is one)
+        self.assertIsNone(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", ""))
+        self.assertEqual(search.search_book(idx, catalog.HEADERS, "gear", e, "avail", ""), ("2", "table", 29))  # (the same value twice is one)
         # (a second row giving the value: the other gaps are no one row's)
-        self.assertEqual(resolve.same_row(idx, crb.HEADERS, "gear", e, "avail", "2"), {})
+        self.assertEqual(search.same_row(idx, catalog.HEADERS, "gear", e, "avail", "2"), {})
 
     def test_an_entrys_own_text_that_prints_two_values_gives_none(self):
-        idx = resolve.Index([], 1, crb._tables, shapes.RENAME)
+        idx = search.Index([], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Wobble Lock", "page": 39, "attrs": {}}
-        self.assertIsNone(resolve.search_book(idx, crb.HEADERS, "gear", e, "cost", "It costs 300¥, or costs 400¥ with a case."))
-        self.assertEqual(resolve.search_book(idx, crb.HEADERS, "gear", e, "cost", "It costs 300¥."), ("300", "text", 39))
+        self.assertIsNone(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", "It costs 300¥, or costs 400¥ with a case."))
+        self.assertEqual(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", "It costs 300¥."), ("300", "text", 39))
 
 
 class ErrataMoreTest(unittest.TestCase):

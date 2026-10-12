@@ -185,7 +185,7 @@ class FsRecipeTest(unittest.TestCase):
         self.assertFalse(any(n.startswith("*") for n in w))
 
     def test_ammo_armor_and_modifications(self):
-        # (priced as a multiple of the ammunition: an ammunition type, crb.ammo_type)
+        # (priced as a multiple of the ammunition: an ammunition type, catalog.ammo_type)
         self.assertEqual(entries(self.res, "ammotypes")["Fizz Rounds"]["category"], "Ammo")
         a = entries(self.res, "armor")
         self.assertEqual({k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},

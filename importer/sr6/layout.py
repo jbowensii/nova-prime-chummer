@@ -12,7 +12,9 @@ from dataclasses import dataclass
 
 import pdfplumber
 
-from importer.convert import _BOLD, _LINE_TOLERANCE, _cluster_lines, _find_gutter, _is_bold
+from importer.pdf.columns import find_gutter
+from importer.pdf.lines import LINE_TOLERANCE, cluster_lines
+from importer.pdf.markdown import BOLD_FONT, is_bold
 
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
@@ -285,7 +287,7 @@ def _split_x(words, gap):
 def _text(words):
     """A cell's words in reading order; a line wrapped after `-` or `/` (`Shin-` `hyung`) joins without a space."""
     out = ""
-    for line in _cluster_lines(words):
+    for line in cluster_lines(words):
         text = " ".join(w["text"] for w in line)
         out += ("" if not out or out.endswith(("-", "/")) else " ") + text
     return out
@@ -295,7 +297,7 @@ def _opens_with_label(line):
     """The line's leading bold run ends in ':' (a stat-box label such as `Skills:`)."""
     run = []
     for w in line:
-        if not _is_bold(w):
+        if not is_bold(w):
             break
         run.append(w)
     return bool(run) and run[-1]["text"].endswith(":")
@@ -303,8 +305,8 @@ def _opens_with_label(line):
 
 def _is_head_bold(w):
     """Bold, or a sign with no letters or digits set in a bold face (a header's `#`)."""
-    return _is_bold(w) or (not any(c["text"].isalnum() for c in w["chars"])
-                           and all(_BOLD.search(c["fontname"]) for c in w["chars"]))
+    return is_bold(w) or (not any(c["text"].isalnum() for c in w["chars"])
+                          and all(BOLD_FONT.search(c["fontname"]) for c in w["chars"]))
 
 
 def _side_by_side(words):
@@ -358,7 +360,7 @@ def _headers(lines, height, boxes=()):
                                      for w in values)
                          and len({_box_of(w, boxes) for w in g + h} - {None}) <= 1
                          and min(w["x0"] for w in h) - _STACK_PAD < x1 and x0 < max(w["x1"] for w in h) + _STACK_PAD
-                         and all(abs(g[0]["top"] - w["top"]) > _LINE_TOLERANCE for w in h)
+                         and all(abs(g[0]["top"] - w["top"]) > LINE_TOLERANCE for w in h)
                          and (x0 < max(w["x1"] for w in h) and min(w["x0"] for w in h) < x1
                               or (n := min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP)))) == 1
                               or n == 2 and max(x0 - max(w["x1"] for w in h), min(w["x0"] for w in h) - x1) < _COLUMN_GAP)),
@@ -463,8 +465,8 @@ def band_tables(words, fonts, rects=(), width=None):
     other = [w for w in words if not _is_table_word(w, fonts)]
     boxes = [r for r in rects if r.get("fill") and r["bottom"] - r["top"] > _STRIPE_MAX]
     # the page's gutter, from its text (two boxes' rows side by side are split across it)
-    mid = _find_gutter(_cluster_lines(other), width, tol=GUTTER_TOL) if width and other else None
-    lines = [part for ln in _cluster_lines(table) for part in _column_parts(ln, boxes, mid)]
+    mid = find_gutter(cluster_lines(other), width, tol=GUTTER_TOL) if width and other else None
+    lines = [part for ln in cluster_lines(table) for part in _column_parts(ln, boxes, mid)]
     if not lines:
         return []
     rects = [r for r in rects if r.get("fill") and 2 < r["bottom"] - r["top"] <= _STRIPE_MAX]
@@ -619,7 +621,7 @@ def _first_marks(firsts):
         if not edges or x - edges[-1] > 1:
             edges.append(x)
     flush = len(edges) <= 3 and len(known) > len(edges)  # (a centred column: an edge for almost every name)
-    bold = [bool(f) and all(_is_bold(w) for w in f) for f in firsts]
+    bold = [bool(f) and all(is_bold(w) for w in f) for f in firsts]
     some_bold = any(bold) and not all(b for b, f in zip(bold, firsts) if f)
     return [(INDENT if flush and x is not None and _INDENT_MIN <= x - base <= _INDENT_MAX else "")
             + (BOLD if some_bold and b else "") for x, b in zip(xs, bold)]

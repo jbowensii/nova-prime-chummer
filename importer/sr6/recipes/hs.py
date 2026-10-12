@@ -3,14 +3,14 @@ cyberdeck cases, components and modifications, data taps, tag bombs, commlink ha
 agents, cyberkits, codemods: electronics and gear), cyberprograms, complex forms, echoes, sprites, qualities, the
 matrix security NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms,
 virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
-only regrouped.md with the core rulebook's reading (crb.extract); the book's own shapes through
-importer/sr6/recipes/shapes.py. Layout notes in hs.md."""
+only regrouped.md with the core rulebook's reading (catalog.read); the book's own shapes through
+importer/sr6/shapes.py. Layout notes in hs.md."""
 import re
 import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "HS", "Shadowrun: Hack & Slash", "Catalyst Game Labs", True
@@ -82,7 +82,7 @@ def kind(chapter, b, parent2):
 
 
 def prepare(bs):
-    """The book's shapes as crb.extract reads them: stat boxes and catalog rows (shapes.boxes); a complex form's
+    """The book's shapes as catalog.read reads them: stat boxes and catalog rows (shapes.boxes); a complex form's
     `Fade Value Duration` line over its values as its labels; labels printed two to a line split; a sprite's section
     (its band in its text) as an item; an NPC's `(Professional Rating N)` (a tag line, or its heading's, printed over
     the section) as the core rulebook's section form; `Agent rating (Rating 1–6)` as `Agent (Rating 1–6)`, a titled
@@ -112,7 +112,7 @@ def prepare(bs):
         if b.stats and (m := _RATING.search(b.tags)) and "professional rating" not in norm(b.section):
             b = replace(b, section=f"Professional Rating {m.group(1)}: {b.section}")
         if b.type == "section" and b.level == 3 and norm(b.name).endswith("sprite") and "A | S | D | F" in b.text:
-            b = crb._text_stats(replace(b, type="item", level=4), crb.HEADERS["sprites"])
+            b = catalog.text_stats(replace(b, type="item", level=4), catalog.HEADERS["sprites"])
         if b.row is not None:
             b = _row_name(b, rated)
             if (m := _RECHARGE.match(b.row.get("COST (RECHARGE)", ""))):  # a cyberkit's price and its recharge's
@@ -134,7 +134,7 @@ def prepare(bs):
 def _row_name(b, rated):
     """A catalog row's name as the book means it: `Rating 1–6` under `AGENT RATING` -> `Agent (Rating 1–6)`; a titled
     table's rating rows (`cyberhacks`: `1`, `2`, …) -> `Cyberhacks (Rating 1)`; a name priced at several ratings, a
-    row each (`Core` at 1–4, 5 and 6) -> `Core (Rating 5)` (a range stays the rating: crb.NAME_RATING)."""
+    row each (`Core` at 1–4, 5 and 6) -> `Core (Rating 5)` (a range stays the rating: catalog.NAME_RATING)."""
     first, name = b.header[0], b.name
     if re.match(r"(?i)rating\s", name):
         name = f"{_TRAILING_RATING.sub('', first).title()} ({name})"
@@ -146,4 +146,4 @@ def _row_name(b, rated):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -6,7 +6,7 @@ table's kind comes from its column signature, then its category's words:
 | columns | kind |
 |---|---|
 | HANDLING / ACCEL / SPEED / PILOT / BODY (two or more) | vehicles |
-| ESSENCE | augmentations (cyberware, bioware… from the title's words: crb.ware_type) |
+| ESSENCE | augmentations (cyberware, bioware… from the title's words: catalog.ware_type) |
 | DV with ATTACK RATING, MODE or AMMO | weapons |
 | DEFENSE RATING (or DR with CAPACITY) | armor |
 | DEVICE RATING, ATTRIBUTE ARRAY or PROGRAMS | electronics |

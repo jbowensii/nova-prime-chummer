@@ -8,7 +8,7 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 from importer.sr6.ids import slug
-from importer.sr6 import regroup
+from importer.sr6 import catalog, regroup
 from importer.sr6.recipes import crb, ts
 from importer.sr6.regroup import blocks, norm
 
@@ -22,7 +22,7 @@ CITIES = {
         ("CRB-HK", "Shadowrun, Sixth World Core Rulebook: City Edition Hong Kong", "HONG KONG", 330, 340),
 }
 NAME_HEADERS = frozenset({"ITEM", "VEHICLE", "TYPE"})
-# printed header -> the core rulebook's (crb.HEADERS)
+# printed header -> the core rulebook's (catalog.HEADERS)
 RENAME = {"HANDL": "HANDLING", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "INTERVAL": "SPEED INTERVAL",
           "ARM": "ARMOR", "SENS": "SENSOR", "SEAT": "SEATS", "ACCEL.": "ACCEL", "AVAIL.": "AVAIL", "CAP": "CAPACITY",
           "AVAIL (BERLIN)": "AVAIL", "AVAIL. (BERLIN)": "AVAIL"}
@@ -46,7 +46,7 @@ def extra(md, sha):
                            SECTIONS=[], SECTION_KINDS={"qualities"}, LABEL_SECTIONS={}, RULE_CHAPTERS=(norm(chapter),),
                            ATTRIBUTE_CHAPTERS=(), CATALOG_CHAPTERS=(), fix=fix, kind=kind)
     rows = []
-    res = crb.extract(_prep(list(blocks(text)), rows), book=book)
+    res = catalog.read(_prep(list(blocks(text)), rows), None, book)
     for r in report:  # regroup reports PDF pages; the import report prints the book's
         if isinstance(r.get("page"), int):
             r["page"] = max(1, r["page"] - crb.PAGE_OFFSET)
@@ -57,13 +57,13 @@ def extra(md, sha):
 def _bands(b):
     """How many attribute bands the block prints (more than one: two beings' boxes printed into each other)."""
     return sum("B" in {h.upper() for h in s} for s in b.stats) + len(ts.band(b.text)) + \
-        sum("B" in {h.upper() for h in t[0]} for t in crb._tables(b.text))
+        sum("B" in {h.upper() for h in t[0]} for t in catalog.md_tables(b.text))
 
 
 def _contact(b, p):
     """The block with its band as a contact block (crb's contact: a contact and its NPC), named by its person's section
     `p` (its description and labels, its metatype line)."""
-    b = crb._text_stats(b, crb.HEADERS["npcs"])
+    b = catalog.text_stats(b, catalog.HEADERS["npcs"])
     return replace(b, type="item", level=4, name=p.name, section="contact", labels={"Metatype": p.tags, **p.labels, **b.labels},
                    stats=ts.band(b.text) + b.stats, text="\n\n".join(t for t in ((p.text if p is not b else ""), b.text) if t))
 
@@ -75,7 +75,7 @@ def _prep(bs, report):
     by the section (unless a box of that name has its own: then it's another's, reported); the weapons printed as
     bold names with bracketed stats -> rows. A person or a titled box whose values don't read is reported."""
     out, persons, sections, used, empty = [], {}, [], set(), []
-    boxed = {norm(b.name) for b in bs if b.type == "item" and (b.stats or crb._tables(b.text))}
+    boxed = {norm(b.name) for b in bs if b.type == "item" and (b.stats or catalog.md_tables(b.text))}
     for i, b in enumerate(bs):
         nxt = bs[i + 1] if i + 1 < len(bs) else None
         page = max(1, b.page - crb.PAGE_OFFSET)
@@ -111,7 +111,7 @@ def _prep(bs, report):
         if b.type == "section" and (lines := re.findall(r"^•?\s*(Cost|Bonus):\s*(.+)$", b.text, re.M)):
             b = replace(b, labels={**dict(lines), **b.labels})  # a quality's `• Cost: 5 Karma` printed plain
         tabs = [(list(s), [list(s.values())]) for s in b.stats] if b.row is None and b.type == "item" else []
-        tabs += [t for t in crb._tables(b.text) if t[0][:1] and t[0][0].upper() not in NAME_HEADERS]  # (those are rows)
+        tabs += [t for t in catalog.md_tables(b.text) if t[0][:1] and t[0][0].upper() not in NAME_HEADERS]  # (those are rows)
         tabs = [t for t in tabs if _PRICE & {h.upper() for h in t[0]}]
         if tabs:
             text = "\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))

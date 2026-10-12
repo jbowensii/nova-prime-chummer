@@ -3,7 +3,7 @@ books) -> the SR6 catalog, one general reading for all: the NPC, grunt and conta
 Professional Rating where printed; a contact's also as a contacts entry), critters, the gear, weapon, armor,
 augmentation and vehicle tables, spells, qualities, life modules and the rule sections, ids unscoped (run scopes them
 as <id>.<slug>), descriptions in the private texts. Each known book is a recipe of its own in RECIPES (its source id,
-name, and how its title or first page names it); they share the core rulebook's reading (crb.extract). Reads only
+name, and how its title or first page names it); they share the core rulebook's reading (catalog.read). Reads only
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
 import difflib
@@ -12,8 +12,8 @@ from collections import Counter
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6 import regroup, sections
-from importer.sr6.recipes import crb, swc
+from importer.sr6 import catalog, regroup, sections
+from importer.sr6.recipes import swc
 from importer.sr6.recipes.fs import _md_table
 from importer.sr6.regroup import blocks, keys, norm
 
@@ -88,7 +88,7 @@ def _text_bands(b):
     if b.stats or "| B |" not in b.text and "| BOD |" not in b.text:
         return b
     stats, text = [], b.text
-    for h, rows in crb._tables(b.text):
+    for h, rows in catalog.md_tables(b.text):
         k = _band_head(h)
         if not k or k == "B" and stats or k == "D" and not stats or not rows:
             if stats:
@@ -163,9 +163,9 @@ def _split_shared(lines):
     out, i = [], 0
     while i < len(lines):
         ln = lines[i]
-        cells = crb._cells(ln) if _BAND_LINE.match(ln) else []
+        cells = catalog.table_cells(ln) if _BAND_LINE.match(ln) else []
         starts = [n for n, c in enumerate(cells) if c == cells[0]]
-        if len(starts) < 2 or i + 2 >= len(lines) or len(crb._cells(lines[i + 2])) != len(cells):
+        if len(starts) < 2 or i + 2 >= len(lines) or len(catalog.table_cells(lines[i + 2])) != len(cells):
             out.append(ln)
             i += 1
             continue
@@ -180,7 +180,7 @@ def _split_shared(lines):
             out.append(ln)
             i += 1
             continue
-        vals, end = crb._cells(lines[i + 2]), i + 3
+        vals, end = catalog.table_cells(lines[i + 2]), i + 3
         while end < len(lines) and not lines[end].startswith("#") and not _BAND_LINE.match(lines[end]):
             end += 1
         if end < len(lines) and _BAND_LINE.match(lines[end]) and (g := _name_group(lines, end)):
@@ -215,7 +215,7 @@ def _spell_box(b):
     | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
     (`Illusion spells`: the catalog's spell category)."""
     s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
-    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in crb.SPELL_CATEGORIES \
+    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in catalog.SPELL_CATEGORIES \
             or s["DV"][1].strip().upper() not in ("P", "M"):
         return b
     box = {h: v for h, v in b.stats[0].items() if h.upper() not in ("TYPE", "DV", "DRAIN")}
@@ -395,7 +395,7 @@ def _contact(b):
 
 
 class Book:
-    """One known book: the attributes crb.extract reads (a recipe module's), its match() and extract()."""
+    """One known book: the attributes catalog.read reads (a recipe module's), its match() and extract()."""
     __name__ = "importer.sr6.recipes.general"  # run records the recipe as `general`
     PUBLISHER, CANON = "Catalyst Game Labs", True
     PAGE_OFFSET = 1  # printed page = PDF page - 1 (a cover page first)
@@ -474,7 +474,7 @@ class Book:
         heading (a book printing none) is in the book's."""
         if not b.chapter:
             b = replace(b, chapter=self.BOOK, name=b.name or self.BOOK)
-        b = _spell_box(_box_named(b))  # (an item's own stat line: crb.stat_lines, every book's)
+        b = _spell_box(_box_named(b))  # (an item's own stat line: catalog.stat_lines, every book's)
         if b.type == "item" or b.level >= 2:
             b = _text_bands(b)
             if b.type == "section" and _being(b):
@@ -551,10 +551,10 @@ class Book:
         self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
         sections.Reader.toxins = True  # (the adventure books' toxins have no price table: read from their lines)
         try:
-            res = crb.extract(bs, ctx, book=self)
+            res = catalog.read(bs, ctx, self)
         finally:
             sections.Reader.toxins = False
-        cat = crb._Catalog(self.ID, self.ID.lower(), self.BOOK)
+        cat = catalog.Catalog(self.ID, self.ID.lower(), self.BOOK)
         for name, text, page in _modules(bs):
             swc._lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))
         if cat.entries["lifemodules"]:  # (the blocks stay rules too: the modules print no description of their own)

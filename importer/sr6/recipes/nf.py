@@ -2,7 +2,7 @@
 gear; yo-yos, rolling blades and the other weapons; clothing: armor; the two vehicles; the cybersenses and bioware:
 augmentations), the new qualities and the rule sections (performing and its status, instruments of death, the life
 modules: no catalog kind of their own), ids unscoped (run scopes them as nf.<slug>), descriptions in the private texts.
-Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in
+Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes in
 nf.md. The book has no NPC or contact with stats.
 
 Its gear prints in small tables under lower-case titles, some with Fifth Edition columns (a range's attack ratings
@@ -12,7 +12,7 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "NF", "Shadowrun: No Future", "Catalyst Game Labs", True
@@ -141,4 +141,4 @@ def _prep(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(_prep(list(blocks(regrouped))), ctx, book=sys.modules[__name__])
+    return catalog.read(_prep(list(blocks(regrouped))), ctx, sys.modules[__name__])

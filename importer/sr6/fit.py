@@ -189,7 +189,10 @@ def spend(need, rows, cs):
     # least past them (nuyen counted in the karma it was, rounded up), then the fewest
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
+    # the house rule's limit on the karma turned (karmaToNuyenCap on: karmaToNuyenMax; budgets.ts toNuyen counts no more)
+    cap = int(cs["karmaToNuyenMax"]) if cs.get("karmaToNuyenCap") == "true" and isinstance(cs.get("karmaToNuyenMax"), float) else None
     low = math.ceil(short / rate) if short > 0 and rate else 0
+    low = low if cap is None else min(low, cap)
     room = n("startingKarma") + need["neg"] - karma  # karma left before any turns into nuyen
     top = lambda k: cs[k] if isinstance(cs.get(k), float) else math.inf  # noqa: E731
 
@@ -200,11 +203,11 @@ def spend(need, rows, cs):
         return ((room - k > top("maxKarmaLeft")) + (over_n > 0), abs(nuyen - need["left"]) if need["left"] is not None else 0,
                 excess, k)
     # (more than the gear needs only while the nuyen stays within its limit)
-    ks = [k for k in range(low, max(low, math.floor(room)) + 1)
+    ks = [k for k in range(low, max(low, math.floor(room) if cap is None else min(math.floor(room), cap)) + 1)
           if k == low or res.get("nuyen", 0) + k * rate - need["nuyen"] <= top("maxNuyenLeft")]
     to_nuyen = min(ks, key=leftover) if rate else 0
     if need.get("toNuyen") is not None:  # printed (In Debt's debt): that many, or what the gear needs when more
-        to_nuyen = max(low, need["toNuyen"])
+        to_nuyen = max(low, need["toNuyen"]) if cap is None else min(max(low, need["toNuyen"]), cap)
     errors, gap, excess, _ = leftover(to_nuyen)
     karma += to_nuyen
     over = max(0.0, karma - n("startingKarma") - need["neg"])

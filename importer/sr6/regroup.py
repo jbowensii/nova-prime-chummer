@@ -381,7 +381,7 @@ def _bold_row(cols, ln, cost=None):
     columns the line leaves out, next to the name, are printed around it (a wrapped cell, _WRAPS: None) or empty
     (""), but a row reads its price columns and two more at least."""
     # the cells are read with their footnote marks set aside; a value keeps its cell's mark at its end (`10/6*/—` ->
-    # `10/6/—*`), for its footnote (crb.footnote)
+    # `10/6/—*`), for its footnote (catalog.footnote)
     marks, keep = {}, []
     for ch in re.sub(r"\s+(?=[*†‡])", "", ln.strip()):
         if ch in "*†‡":
@@ -787,7 +787,7 @@ def _names_class(header, first):
 _VARIANT_LINE = re.compile(r"[a-z][a-z-]*(?: [a-z][a-z-]*){0,2}")
 # a table's title set as a plain line right over it: lower case, one to three words (`sprayers`)
 _SET_TITLE = re.compile(r"[a-z][a-z-]+(?: [a-z][a-z-]+){0,2}")
-# a line pricing the item over it (`Availability 6, Cost 5,000¥`; crb._PRICE_LINE reads it)
+# a line pricing the item over it (`Availability 6, Cost 5,000¥`; catalog._PRICE_LINE reads it)
 _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*\d+\s*(?:\([A-Z]\))?\s*,\s*Cost:?\s*[\d,]+\s*¥\s*$")
 
 
