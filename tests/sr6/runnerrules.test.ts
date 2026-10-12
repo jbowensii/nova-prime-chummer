@@ -43,6 +43,14 @@ test('the runner’s Karma comes from its own starting Karma; Review notes an as
   expect(validateSr6(data, runnerRules(cr, ch.rules), ch).map(v => v.code)).not.toContain('setting.unset')
 })
 
+test('a hand-edited runner file can’t set a table-only setting: the table’s stays, and Review says so', () => {
+  const { data, cr } = made(), ch = runner()
+  ch.rules = [{ key: 'karmaSkillPerRank', value: '0' }, { key: 'skillCap', value: '12' }]
+  const eff = runnerRules(cr, ch.rules)
+  expect([eff.get('karmaSkillPerRank')?.value, eff.get('skillCap')?.value]).toEqual([cr.get('karmaSkillPerRank')?.value, cr.get('skillCap')?.value])
+  expect(validateSr6(data, eff, ch).filter(v => v.code === 'rules.tableOnly')).toHaveLength(2)
+})
+
 test('the export lists the rules that aren’t the server’s; the file keeps the runner’s own', () => {
   const { cr } = made(), ch = runner()
   ch.rules = [{ key: 'startingKarma', value: '100', assumed: true, source: 'CRB', page: 64 }, { key: 'maxAvailability', value: '' }]

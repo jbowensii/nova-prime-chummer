@@ -8,7 +8,7 @@ import { canFinalize } from '../../engine/validate'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, PICK_KINDS, PURCHASE_KINDS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, augmentationSlot, dataStructureLevels, isFocus, magicCap, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'
-import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, num, str, type CreationRules } from './creation'
+import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, metamagicFits, normName, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
 import { adeptBars, opposite } from './actions'
 import type { Sr6Entry } from '../model/types'
@@ -830,7 +830,8 @@ function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string
   if (clash.length) out.push({ code: 'rules.conflict', severity: 'warning', path: 'method', message: `${clash.map(name).join('; ')}: these can’t be on together.` })
   for (const r of ch.rules ?? []) {
     const s = cr.get(r.key), b = !s && r.value.trim() && r.value !== 'false' ? blockedBy(cr, r.key) : undefined
-    if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
+    if (!isRunnerRuleKey(r.key)) out.push({ code: 'rules.tableOnly', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; only the table sets this.` })
+    else if (s?.lockedBy) out.push({ code: 'rules.locked', severity: 'warning', path: 'method', message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.` })
     else if (b) out.push({ code: 'rules.setAside', severity: 'warning', path: 'method',
       message: `${name(r.key)}: your choice is set aside; ${'needs' in b ? `it needs ${name(b.needs)}, which is off` : `it can’t be on with ${name(b.conflicts)}`}.` })
     else if (r.assumed) out.push({ code: 'rules.assumed', severity: 'warning', path: 'method', ...(r.source ? { source: r.source } : {}), ...(r.page ? { page: r.page } : {}),

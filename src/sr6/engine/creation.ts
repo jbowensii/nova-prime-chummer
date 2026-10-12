@@ -631,6 +631,9 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'gradeCap.initiation', 'gradeCap.submersion', 'adjustOnLoweredMax', 'pointBuyErrataNuyen', 'knowledgeLogicIntuition', 'magicAboveSixByGrade',
   'availabilitySeven', 'cargoWithoutSeats', 'metatypeSizePricing',
 ].map(key => ({ key, about: aboutOf(key) }))
+/** A runner file may set only these (mergeRules): a hand-edited one naming any other setting keeps the table's. */
+export const isRunnerRuleKey = (key: string) => RUNNER_KEYS.has(key)
+const RUNNER_KEYS = new Set(RUNNER_RULE_KEYS.map(k => k.key))
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with
  *  the runner's own choices over them, except where its campaign locked the setting. Each setting says where it comes from
@@ -645,7 +648,7 @@ export function mergeRules(base: CreationRules, own: RunnerRule[] = [], locks: R
   const lockedBy = new Map(locks.map(l => [l.key, l.by]))
   const out: CreationRules = new Map([...base].map(([k, s]) => [k, { ...s, from: s.from ?? layer, ...(lockedBy.has(k) ? { lockedBy: lockedBy.get(k) } : {}) }]))
   for (const r of own) {
-    if (lockedBy.has(r.key) || !keyType(r.key)) continue
+    if (lockedBy.has(r.key) || !RUNNER_KEYS.has(r.key) || !keyType(r.key)) continue
     if (r.value.trim() === '') { out.delete(r.key); continue }
     const got = rulesFrom([r]).rules.get(r.key)
     if (got) out.set(r.key, { ...got, from: 'runner', ...(r.assumed ? { assumed: true as const } : {}) })
