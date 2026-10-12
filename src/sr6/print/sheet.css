@@ -136,7 +136,6 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--k-ink-2);
-  white-space: nowrap;
 }
 .k-brand b {
   display: inline-block;

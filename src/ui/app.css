@@ -554,6 +554,14 @@ td.hash {
   .topbar {
     padding-inline: 1rem;
   }
+  /* "Nova Prime Chummer Anarchy 2.0" is wider than a phone: let the name wrap */
+  .brand-row {
+    flex-wrap: wrap;
+  }
+  .brand {
+    white-space: normal;
+    font-size: 0.95rem;
+  }
 }
 
 /* ---- the receipt: a book sidebar (indigo panel, yellow title strip, halftone) ---- */
