@@ -147,7 +147,7 @@ The server enforces every rule. A hidden button is only convenience. There is al
 
 - **Local accounts** with an app password. This is the default.
 - **Authelia (OpenID Connect)**: admin turns it on under **Settings, Sign-in**. An account is set to sign in with Authelia on the Users page. It needs a public https address (`PUBLIC_URL` or a trusted proxy). Authelia 4.39 or later.
-- **Behind a reverse proxy**: set `TRUST_PROXY` (Unraid template: _Trusted proxy_) to the proxy's address. Set `PUBLIC_URL` (_Public address_) to the one address people use.
+- **Behind a reverse proxy**: set `TRUST_PROXY` (Unraid template: _Trusted proxy_) to the proxy's address. Set `PUBLIC_URL` (_Public address_) to the one address people use. Full setup, including rate-limiting sign-in at the proxy and the Authelia client config: [docs/hosting-auth.md](docs/hosting-auth.md).
 
 ### AI providers
 
