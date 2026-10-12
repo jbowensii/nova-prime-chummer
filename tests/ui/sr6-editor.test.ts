@@ -161,7 +161,22 @@ test('Review: the GM approves every problem, Finalize opens the ledger; earnings
   await change(field('Note'), 'Met a made-up fixer')
   await click(button('Add note'))
   expect(pageText()).toMatch(/Met a made-up fixer/)
+
+  // a karma spend: priced first, confirmed, then voided as the newest spend
+  await change(field('What'), 'attribute')
+  await change(field('Attribute'), 'bod')
+  expect(document.querySelector('[aria-label="Price"]')?.textContent).toMatch(/karma/i)
+  await click(button('Record'))
+  await click(button('Record it'))
+  const spent = await e.saved()
+  expect(spent.ledger.some(x => x.type === 'advance' && x.advance.op === 'attribute')).toBe(true)
+  await click(button(/^Void BOD 1 → 2$/))
+  await change(field('Why'), 'Made-up mistake')
+  await click(button('Void', dialog()))
+  expect(pageText()).toMatch(/Made-up mistake/)
+  expect((await e.saved()).ledger.find(x => x.type === 'void')).toBeTruthy()
+
   const got = await e.saved()
   expect(got.finalizedAt).toBeTruthy()
-  expect(got.ledger.length).toBeGreaterThanOrEqual(2)
+  expect(got.ledger.length).toBeGreaterThanOrEqual(4)
 })

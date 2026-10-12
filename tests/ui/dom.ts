@@ -73,6 +73,8 @@ export function field<T extends HTMLElement = HTMLInputElement>(name: string | R
   const f =
     all.find(x => matches(x.getAttribute('aria-label') ?? '', name)) ??
     all.find(x => matches(labelText(x.closest('label') ?? (x.id ? document.querySelector(`label[for="${x.id}"]`) : null)), name)) ??
+    // a check box whose label's words are in a <span> beside it
+    all.find(x => x.tagName === 'INPUT' && !!x.closest('label') && matches(text(x.closest('label')!), name)) ??
     all.find(x => matches(x.getAttribute('placeholder') ?? '', name))
   if (!f) throw new Error(`no field ${name}`)
   return f as T
