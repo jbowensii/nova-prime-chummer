@@ -1,4 +1,4 @@
-# Chummer SR6 data format
+# Nova Prime Chummer: Shadowrun 6 data format
 
 The Shadowrun 6 (SR6) catalog is XML, like Anarchy's (`docs/data-format.md`), but in its own namespace, folders and
 schemas: neither game reads the other's files. The app ships only `public/data/sr6/sources.xml` (the books an SR6

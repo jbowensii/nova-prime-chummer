@@ -1,6 +1,7 @@
 name: publish
 
-# Builds and pushes the app image to GHCR. No book data ships in the image;
+# Builds and pushes the app image to GHCR as ghcr.io/jbowensii/nova-prime-chummer, and (while installs move over) under
+# the old name ghcr.io/jbowensii/chummer-anarchy2 too. No book data ships in the image;
 # users bring their own PDFs on the Books page.
 # main: only after ci passed on that push (latest + sha-<short>, built from the commit ci checked). A release tag (v*,
 # pushed by `gh release create`): at once, as <version> (its commit already passed ci on main).
@@ -45,7 +46,9 @@ jobs:
       - id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
-          images: ghcr.io/jbowensii/chummer-anarchy2
+          images: |
+            ghcr.io/jbowensii/nova-prime-chummer
+            ghcr.io/jbowensii/chummer-anarchy2
           labels: |
             org.opencontainers.image.description=Character generator and career tracker for Shadowrun: Anarchy 2.0
           tags: |

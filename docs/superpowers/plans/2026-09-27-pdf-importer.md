@@ -216,7 +216,7 @@ def convert(pdf_path, md_path):
 
 `__main__.py` adds `convert <pdf> <md>` (prints the dict as XML attributes) and later `run <dir>`.
 
-- [ ] **Step 4: Run tests** → PASS. Then convert the real quick-reference PDF and eyeball it: `py -3.12 -m importer convert "C:/Users/johnb/Downloads/Shadowrun Anachy 2.0/1358228-SRA2_-_Matrix.pdf" .extract/matrix.md`. Expected: page markers, `# MATRIX QUICK REFERENCE`, `## ACTIONS`, bullets as lines.
+- [ ] **Step 4: Run tests** → PASS. Then convert the real quick-reference PDF and eyeball it: `py -3.12 -m importer convert "Downloads/Shadowrun Anachy 2.0/1358228-SRA2_-_Matrix.pdf" .extract/matrix.md`. Expected: page markers, `# MATRIX QUICK REFERENCE`, `## ACTIONS`, bullets as lines.
 
 - [ ] **Step 5: Commit** `importer: PDF to Markdown converter (pdfplumber, MIT)`.
 

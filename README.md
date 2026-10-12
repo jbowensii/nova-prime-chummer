@@ -1,8 +1,8 @@
-# Chummer Anarchy 2.0
+# Nova Prime Chummer
 
-Version 0.9.5 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+Version 0.14.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
 
-A character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
+Nova Prime Chummer (until 0.13 “Chummer Anarchy 2.0”) is a character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
 Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
 (Not Anarchy 1st edition, which uses different rules.) Since 0.9.0 it is also a
 builder for **Shadowrun 6th World**: see [Shadowrun 6th World](#shadowrun-6th-world).
@@ -232,10 +232,10 @@ npm run serve      # build + server on :80 (set PORT, CHAR_DIR, CUSTOM_DIR, LIBR
 
 1. **Docker** tab → **Template repositories** → add
    `https://github.com/jbowensii/unraid-templates` → **Save**.
-2. **Add Container** → pick *chummer-anarchy2* from the template list → Apply.
+2. **Add Container** → pick *nova-prime-chummer* from the template list → Apply.
    The web UI is on port 8480.
 
-This pulls the published image `ghcr.io/jbowensii/chummer-anarchy2:latest` —
+This pulls the published image `ghcr.io/jbowensii/nova-prime-chummer:latest` —
 no build step on the server.
 
 ### Docker / any dashboard (Portainer, Dockge, Yacht, …)
@@ -245,7 +245,7 @@ docker run -d --init -p 8480:80 \
   -v /path/to/characters:/data/characters \
   -v /path/to/custom:/data/custom \
   -v /path/to/library:/data/library \
-  ghcr.io/jbowensii/chummer-anarchy2:latest
+  ghcr.io/jbowensii/nova-prime-chummer:latest
 ```
 
 The container starts as root only to hand the three mounted folders to `PUID`:`PGID` (default `99`:`100`, Unraid's
@@ -255,8 +255,8 @@ first start. Add `-e PUID=1000 -e PGID=1000` to match another host user, or use 
 ### Build it yourself
 
 ```bash
-docker build -t chummer-anarchy2:latest .
-docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
+docker build -t nova-prime-chummer:latest .
+docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library nova-prime-chummer:latest
 ```
 
 ### Accounts
@@ -265,7 +265,7 @@ Sign-in is required: everyone needs an account on the server. There's no
 self sign-up — the admin creates each one on the **Users** page.
 
 **First start.** With no accounts yet, the app shows a setup page. Read the
-one-time setup code from the container log (`docker logs chummer-anarchy2`)
+one-time setup code from the container log (`docker logs nova-prime-chummer`)
 and enter it with a name, username and password to create the first admin.
 The code is new on every restart and works once. Upgrading a server from
 0.3 (no accounts yet) does the same thing: on setup, any runners already
@@ -394,7 +394,7 @@ in Settings too.
 **Locked out?** From the host:
 
 ```bash
-docker exec chummer-anarchy2 node server/users.mjs reset <username>
+docker exec nova-prime-chummer node server/users.mjs reset <username>
 ```
 
 prints a one-time code (15 minutes) to use at `<app address>/#/setup/reset`
@@ -460,8 +460,8 @@ password account can't use Authelia.
    identity_providers:
      oidc:
        clients:
-         - client_id: 'chummer-anarchy2'
-           client_name: 'Chummer Anarchy 2.0'
+         - client_id: 'nova-prime-chummer'
+           client_name: 'Nova Prime Chummer'
            # a digest, not the secret itself. This prints both; the app gets the plain "Random Password", Authelia keeps the "Digest":
            #   authelia crypto hash generate pbkdf2 --variant sha512 --random --random.length 72 --random.charset rfc3986
            client_secret: '$pbkdf2-sha512$310000$…'

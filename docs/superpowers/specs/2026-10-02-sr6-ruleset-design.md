@@ -3,7 +3,7 @@
 Date: 2026-10-02. Owner's direction in conversation: add a screen before the first screen to pick Shadowrun Anarchy 2.0
 or Shadowrun 6e; SR6 gets the same capabilities as the Anarchy side (character builder, book importer, content
 creation, NPCs, compendiums, print, export) and its own Foundry module for the `shadowrun6-eden` system. This restarts
-the owner's earlier SR6-eden-Forge project (`C:\Users\johnb\Documents\Projects\SR6-eden-Forge`) inside this framework.
+the owner's earlier SR6-eden-Forge project (`../SR6-eden-Forge`) inside this framework.
 
 ## 1. Decisions
 
