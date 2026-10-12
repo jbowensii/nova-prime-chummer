@@ -70,7 +70,8 @@ const FAIL_KEYS = 10000
 const DEVICE_COOKIE = 'ca2_device',
   HOST_DEVICE_COOKIE = '__Host-ca2_device',
   DEVICE_TTL = 365 * DAY,
-  DEVICE_TRIES = 5
+  DEVICE_TRIES = 5,
+  MAX_DEVICES = 50 // devices counted per account while it waits
 // scrypt (32 MB, tens of ms each) runs on the libuv threadpool, which file reads share: a few at a time, a short queue,
 // the rest refused (UV_THREADPOOL_SIZE=16 in the image keeps threads for files)
 const MAX_HASHING = 4,
@@ -586,7 +587,13 @@ export function authApi({
         fresh = !a || now - a.last >= ACCOUNT_FORGET,
         c = fresh ? 1 : a.n + 1
       const devices = fresh ? new Map() : a.devices
-      if (device) devices.set(device, (devices.get(device) ?? 0) + 1)
+      if (device) {
+        const n = (devices.get(device) ?? 0) + 1
+        devices.delete(device) // re-inserted last: the oldest failed device is first
+        devices.set(device, n)
+        // ponytail: oldest past MAX_DEVICES forgotten (a device that had used up its tries gets them again); per-device store if that matters
+        if (devices.size > MAX_DEVICES) devices.delete(devices.keys().next().value)
+      }
       accountFails.delete(account) // re-inserted last: the map's order is least recently failed first
       accountFails.set(account, {
         n: c,
