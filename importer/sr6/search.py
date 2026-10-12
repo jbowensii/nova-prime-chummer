@@ -159,7 +159,7 @@ class Index:
                 self.paras.append((page, b.name, text))
         self._sents = None
 
-    def table(self, name, cols, field, skip_page=None, kind=None):
+    def table(self, name, cols, field, kind=None):
         """{value: page} of the rows naming the item with a column for the field (the entry's own row, on its page
         with nothing in that column, gives nothing); for an item no augmentation, no augmentation's row (one printing
         Essence: the core rulebook's `Ultrasound sensor` implant for the sensor function `Ultrasound`)."""
@@ -207,8 +207,8 @@ def same_row(index, headers, kind, entry, field, value):
 
 
 def columns(headers, kind, field):
-    """The printed headers (upper case) that hold the field for an entry of this kind: the kind's own, else any
-    kind's that map to the field and mean nothing else to this kind (a quality's COST is its Karma)."""
+    """The printed headers (upper case) that hold the field for an entry of this kind: the kind's own plus any
+    other kind's that map to the field and mean nothing else to this kind (a quality's COST is its Karma)."""
     own = {h for h, a in headers.get(kind, {}).items() if a == field}
     other = {h for k, cols in headers.items() for h, a in cols.items() if a == field and h not in headers.get(kind, {})}
     return own | other

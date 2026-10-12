@@ -11,8 +11,9 @@ _MAX_CROSS_FRACTION = 0.10
 
 
 def _jump(a, b):
-    """Word b doesn't follow word a in the page's content stream: two text columns meet on this row (the SR6 layout
-    numbers each char, `i`; a book whose columns sit closer than a word space has no whitespace gutter to find)."""
+    """Word b doesn't follow word a in the page's content stream: two text columns meet on this row (a book whose
+    columns sit closer than a word space has no whitespace gutter to find). Only the SR6 layout asks, as it asks for a
+    tol (each caller below checks tol first), and only its chars carry the stream number `i` (importer/convert.py)."""
     ia, ib = a["chars"][-1].get("i"), b["chars"][0].get("i")
     return ia is not None and ib is not None and not 0 < ib - ia <= 3
 
@@ -55,7 +56,7 @@ def gutter_crossings(rows, x, tol=0):
         parts = split_at(row, x, tol)
         if len(parts) == 2:
             splits += 1
-            jumps += _jump(parts[0][-1], parts[1][0])
+            jumps += bool(tol) and _jump(parts[0][-1], parts[1][0])
         for line in parts:
             span = (min(w["top"] for w in line), max(w["bottom"] for w in line))
             side = column_kind(*line_extent(line), x, tol)
@@ -100,7 +101,7 @@ def find_gutter(rows, right, left=0, tol=0):
         round((a["x1"] + b["x0"]) / 2)
         for row in rows
         for a, b in zip(row, row[1:])
-        if (b["x0"] - a["x1"] >= 2 * GUTTER_HALF or b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
+        if (b["x0"] - a["x1"] >= 2 * GUTTER_HALF or tol and b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
     scored = [(c, x) for x in sorted(cands) if (c := gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None

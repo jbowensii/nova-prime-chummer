@@ -1,8 +1,8 @@
-"""Block shapes the SR6 core-line books (Deadly Arts, Hack & Slash, Street Wyrd) print past the core rulebook's, as
-regroup hands them over: a stat box listing several items one a row (a name wrapped onto a second row, a second band
-of columns under the first), a box under the heading it describes, an item's stat band printed as its own little
-table. Pure functions over regroup's blocks; the recipes map what comes out with catalog.read. Nothing is guessed: a
-box that doesn't read stays where it was (a rule's table)."""
+"""Block shapes SR6 books print past the core rulebook's (first read for Deadly Arts, Hack & Slash and Street Wyrd; the
+other books' recipes and catalog.py use them too), as regroup hands them over: a stat box listing several items one a
+row (a name wrapped onto a second row, a second band of columns under the first), a box under the heading it
+describes, an item's stat band printed as its own little table. Pure functions over regroup's blocks; the recipes map
+what comes out with catalog.read. Nothing is guessed: a box that doesn't read stays where it was (a rule's table)."""
 import re
 from dataclasses import replace
 
