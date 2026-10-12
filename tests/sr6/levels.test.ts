@@ -129,9 +129,9 @@ test('a saved runner’s lines naming the parent move to the level’s entry onc
   const ch = migrateSr6Ids(old, c, at)
   expect(ch.build.purchases.map(p => [p.id, p.rating, p.grade])).toEqual([['crb.glow-eyes.2', undefined, 'alpha'], ['crb.tangle-rope.1', undefined, undefined], ['crb.glow-eyes.3', undefined, undefined]])
   expect(ch.build.qualities).toEqual([{ uid: 'q1', id: 'crb.lucky-streak.3', level: 1 }, { uid: 'q2', id: 'crb.knack', level: 1 }])
-  expect(ch.build.picks).toEqual([{ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step.2' }, { uid: 'p2', kind: 'metamagics', id: 'crb.glow-point.1' }])  // (a level it lacks: the lowest)
+  expect(ch.build.picks).toEqual([{ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step.2' }, { uid: 'p2', kind: 'metamagics', id: 'crb.glow-point', level: 9 }])  // (a level it lacks: left as it is)
   expect(ch.migrated?.map(m => `${m.from} → ${m.to}`)).toEqual(['augmentations/crb.glow-eyes → augmentations/crb.glow-eyes.2', 'gear/crb.tangle-rope → gear/crb.tangle-rope.1',
-    'adeptpowers/crb.quick-step → adeptpowers/crb.quick-step.2', 'metamagics/crb.glow-point → metamagics/crb.glow-point.1', 'qualities/crb.lucky-streak → qualities/crb.lucky-streak.3'])
+    'adeptpowers/crb.quick-step → adeptpowers/crb.quick-step.2', 'qualities/crb.lucky-streak → qualities/crb.lucky-streak.3'])
   expect(migrateSr6Ids(ch, c)).toBe(ch)
   // before the move, the lines still read: the parent prices at the rating, the quality at its level
   const data = sr6Data(c), cr = fixtureCreation()
@@ -212,4 +212,36 @@ test('a leveled quality’s R-1 and R[..] effects are worked out per level: Luck
   expect(at('R-1')).toEqual([0, 1, 2])
   expect(at('R[1,2,5]')).toEqual([1, 2, 5])
   expect(at('R')).toEqual([1, 2, 3])
+})
+
+test('a rating the family doesn’t have stays on the line naming the parent, so Review still flags it', () => {
+  const c = fixtureCatalog(), data = sr6Data(c), cr = fixtureCreation()
+  const old: Sr6Character = { ...blankSr6('priority', 'r1'), build: { ...blankBuild('priority'),
+    purchases: [{ uid: 'g1', kind: 'augmentations', id: 'crb.glow-eyes', rating: 7, qty: 1, accessories: [] }] } }
+  const ch = migrateSr6Ids(old, c)
+  expect(ch.build.purchases[0]).toMatchObject({ id: 'crb.glow-eyes', rating: 7 })
+  expect(validateSr6(data, cr, ch).map(v => v.code)).toContain('gear.ratingRange')
+})
+
+test('career level-ups saved before levels were entries reach the right level; a lifestyle and an upgrade in the ledger get their new ids', () => {
+  const c = fixtureCatalog((f, x) => (f.endsWith('crb/lifestyles.xml')
+    ? x.replace('id="crb.cozy"', 'id="crb.cozy-new"').replace('<name>Cozy</name>', '<name>Cozy</name><alias id="crb.cozy"/>') : x))
+  const b = blankBuild(); b.metatype = GLIM; b.magic = 'adept'
+  b.picks = [{ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step', level: 2 }]
+  b.qualities = [{ uid: 'q1', id: 'crb.lucky-streak', level: 1 }]
+  b.sins = [{ uid: 's1', name: 'A', kind: 'real', licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] }]
+  b.purchases = [{ uid: 'g1', kind: 'augmentations', id: 'crb.glow-eyes.1', qty: 1, accessories: [] }]
+  const adv = (id: string, advance: Sr6Advance) => ({ id, at: '', type: 'advance' as const, advance, label: '', karma: 0, nuyen: 0 })
+  const ch: Sr6Character = { ...blankSr6('priority', 'r1', '2026-01-01T00:00:00Z'), build: b, finalizedAt: '2026-01-01', ledger: [
+    { id: 'f', at: '', type: 'finalize', karma: 50, nuyen: 9000 },
+    adv('a1', { op: 'pick', line: { uid: 'p2', kind: 'adeptpowers', id: 'crb.quick-step', level: 1 } }),
+    adv('a2', { op: 'quality', line: { uid: 'q2', id: 'crb.lucky-streak', level: 1 } }),
+    adv('a3', { op: 'lifestyle', id: 'crb.cozy', months: 2, sin: 's1', uid: 'l9' }),
+    adv('a4', { op: 'upgrade', target: 'g1', line: { uid: 'g1', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, qty: 1, accessories: [] } })] }
+  const before = currentBuild(ch), after = currentBuild(migrateSr6Ids(ch, c))
+  expect([before.picks.map(p => p.level), before.qualities.map(q => q.level)]).toEqual([[3], [2]])
+  expect(after.picks.map(p => [p.uid, p.id])).toEqual([['p1', 'crb.quick-step.3']])
+  expect(after.qualities.map(q => [q.uid, q.id, q.level])).toEqual([['q1', 'crb.lucky-streak.2', 1]])
+  expect(after.sins[0].lifestyles!.map(l => [l.id, l.months])).toEqual([['crb.cozy-new', 3]])
+  expect(after.purchases.map(p => [p.uid, p.id])).toEqual([['g1', 'crb.glow-eyes.2']])
 })

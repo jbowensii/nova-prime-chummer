@@ -430,8 +430,9 @@ setting naming a quality, `builtToughQuality`, matches any level of it).
 `quality` and `pick` ops take the parent id with a rating or level too and store the level's); the line's rating select
 and a quality's or power's level stepper move it to the sibling level (`rate`, `quality`, `powerLevel`). A saved runner
 naming the parent (with `rating`, or a quality's or pick's `level`) is turned into the level's entry once on load
-(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level it lacks: the lowest) and until then still reads at
-its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
+(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level the family lacks: left as it is, so Review still flags
+it; a career level-up saved before levels were entries, with no `target`: the level it reached, on the line it raised)
+and until then still reads at its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
 replaced, the Karma the difference × `advance.qualityFactor`; the advance's `target` names the line replaced) and the
 `upgrade` spend replaces a bought item with a higher level of its family at the new level's full price (the core
 rulebook prints no trade-in rule). The export writes the level's entry (`attrs.family`, `attrs.level`; a line still
