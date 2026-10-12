@@ -2,12 +2,17 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { rootAttr, serverRepo, type Codec } from '../../src/ui/repo'
 
 // a toy game: <toy:doc id=".." name=".."/>; "bad" in the file makes it unreadable
-interface Toy { id: string; name: string }
+interface Toy {
+  id: string
+  name: string
+}
 const toy: Codec<Toy> = {
   tag: 'toy:doc',
   toXml: d => `<toy:doc xmlns:toy="urn:toy" id="${d.id}" name="${d.name}"/>`,
-  fromXml: xml => xml.includes('bad') ? { ok: false, reason: 'bad toy' }
-    : { ok: true, character: { id: rootAttr(xml, 'id', 'toy:doc')!, name: rootAttr(xml, 'name', 'toy:doc')! } },
+  fromXml: xml =>
+    xml.includes('bad')
+      ? { ok: false, reason: 'bad toy' }
+      : { ok: true, character: { id: rootAttr(xml, 'id', 'toy:doc')!, name: rootAttr(xml, 'name', 'toy:doc')! } },
 }
 
 afterEach(() => vi.unstubAllGlobals())
@@ -24,9 +29,12 @@ test('serverRepo with a codec: lists, gets by the codec’s root id, saves its X
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
     if (init?.method === 'PUT') return new Response(JSON.stringify({ rev: 8, file: 'zip.xml' }))
-    return new Response(JSON.stringify([
-      { file: 'zip.xml', rev: 7, xml: toy.toXml({ id: 'z1', name: 'Zip' }), owner: 'pat' },
-      { file: 'bad.xml', rev: 2, xml: '<toy:doc id="b1" name="Broke" bad="1"/>' }]))
+    return new Response(
+      JSON.stringify([
+        { file: 'zip.xml', rev: 7, xml: toy.toXml({ id: 'z1', name: 'Zip' }), owner: 'pat' },
+        { file: 'bad.xml', rev: 2, xml: '<toy:doc id="b1" name="Broke" bad="1"/>' },
+      ]),
+    )
   })
   const repo = serverRepo<Toy>('/', 'toy/characters', toy)
   const all = await repo.listAll()

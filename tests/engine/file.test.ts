@@ -21,15 +21,17 @@ test('bad files are rejected with a reason, never thrown', () => {
   expect(parseCharacterFile('{')).toMatchObject({ ok: false, reason: expect.stringContaining('JSON') })
   const noBuild = { ...testChar(), build: undefined }
   expect(parseCharacterFile(JSON.stringify(noBuild))).toMatchObject({ ok: false, reason: expect.stringContaining('build') })
-  expect(parseCharacterFile(JSON.stringify({ ...testChar(), formatVersion: 99 }))).toMatchObject({ ok: false, reason: expect.stringContaining('newer version') })
+  expect(parseCharacterFile(JSON.stringify({ ...testChar(), formatVersion: 99 }))).toMatchObject({
+    ok: false,
+    reason: expect.stringContaining('newer version'),
+  })
   expect(parseCharacterFile('[]')).toMatchObject({ ok: false })
 })
 
 test('snapshots keep an entry printable after its catalog data disappears, flagged ref.unknown', () => {
   const ch = snapshotEntries(cat, testChar())
   expect(ch.build.items.find(i => i.catalogId === 'light-armor')!.snapshot!.armor).toBe(4)
-  const noArmor = base.map(f => f.file === 'custom/imported/core/armor.xml'
-    ? { ...f, xml: f.xml.replace(/<item id="light-armor"[\s\S]*?<\/item>/, '') } : f)
+  const noArmor = base.map(f => (f.file === 'custom/imported/core/armor.xml' ? { ...f, xml: f.xml.replace(/<item id="light-armor"[\s\S]*?<\/item>/, '') } : f))
   const reduced = buildCatalog(noArmor)
   expect(reduced.items.has('light-armor')).toBe(false)
   const v = validate(reduced, ch)

@@ -8,7 +8,19 @@
 // level the family doesn't have leaves the line as it is, so Review still flags it. A career level-up saved before levels
 // were entries (no target: a pick one level up, a quality its line's levels up) becomes the level it reached, raising
 // the line it raised (career.ts applyAdvance), worked out by replaying the ledger over the build as it stood.
-import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Advance, type Sr6Character, type Sr6Lifestyle, type Sr6MartialArt, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
+import {
+  PICK_KINDS,
+  PURCHASE_KINDS,
+  type PickKind,
+  type PurchaseKind,
+  type Sr6Advance,
+  type Sr6Character,
+  type Sr6Lifestyle,
+  type Sr6MartialArt,
+  type Sr6Pick,
+  type Sr6Purchase,
+  type Sr6Quality,
+} from '../model/character'
 import type { Sr6Catalog, Sr6Kind } from '../model/types'
 import { entryKey } from './names'
 import { applyAdvance, voidedIds } from './career'
@@ -36,9 +48,13 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
     return e
   }
   const purchase = (p: Sr6Purchase): Sr6Purchase => {
-    const m = to<PurchaseKind>(p.kind, p.id, PURCHASE_KINDS), acc = p.accessories.map(purchase)
+    const m = to<PurchaseKind>(p.kind, p.id, PURCHASE_KINDS),
+      acc = p.accessories.map(purchase)
     const l = level(m?.kind ?? p.kind, m?.id ?? p.id, p.rating, p.id)
-    if (l) { const { rating: _, ...rest } = p; return { ...rest, kind: m?.kind ?? p.kind, id: l.id, accessories: acc } }
+    if (l) {
+      const { rating: _, ...rest } = p
+      return { ...rest, kind: m?.kind ?? p.kind, id: l.id, accessories: acc }
+    }
     return m || acc.some((a, i) => a !== p.accessories[i]) ? { ...p, ...m, accessories: acc } : p
   }
   const pick = <T extends Sr6Pick | undefined>(p: T): T => {
@@ -53,16 +69,33 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
     const l = q && level('qualities', m?.id ?? q.id, q.level, q.id)
     return l ? { ...q, id: l.id, level: 1 } : m ? { ...q, id: m.id } : q
   }
-  const technique = <T extends { id: string }>(t: T): T => { const m = to('martialtechniques', t.id, ['martialtechniques']); return m ? { ...t, id: m.id } : t }
-  const martial = (x: Sr6MartialArt): Sr6MartialArt => { const m = to('martialarts', x.id, ['martialarts']); return { ...x, ...m ? { id: m.id } : {}, techniques: x.techniques.map(technique) } }
+  const technique = <T extends { id: string }>(t: T): T => {
+    const m = to('martialtechniques', t.id, ['martialtechniques'])
+    return m ? { ...t, id: m.id } : t
+  }
+  const martial = (x: Sr6MartialArt): Sr6MartialArt => {
+    const m = to('martialarts', x.id, ['martialarts'])
+    return { ...x, ...(m ? { id: m.id } : {}), techniques: x.techniques.map(technique) }
+  }
   const b = ch.build
-  const lifestyle = (l: Sr6Lifestyle): Sr6Lifestyle => { const m = to('lifestyles', l.id, ['lifestyles']); return m ? { ...l, id: m.id } : l }
+  const lifestyle = (l: Sr6Lifestyle): Sr6Lifestyle => {
+    const m = to('lifestyles', l.id, ['lifestyles'])
+    return m ? { ...l, id: m.id } : l
+  }
   const meta = to('metatypes', b.metatype, ['metatypes'])
   const sins = b.sins.map(s => (s.lifestyles ? { ...s, lifestyles: s.lifestyles.map(lifestyle) } : s))
-  const build = { ...b, purchases: b.purchases.map(purchase), picks: b.picks.map(pick), qualities: b.qualities.map(quality),
-    martialArts: b.martialArts.map(martial), sins, ...meta ? { metatype: meta.id } : {} }
+  const build = {
+    ...b,
+    purchases: b.purchases.map(purchase),
+    picks: b.picks.map(pick),
+    qualities: b.qualities.map(quality),
+    martialArts: b.martialArts.map(martial),
+    sins,
+    ...(meta ? { metatype: meta.id } : {}),
+  }
   const lifestyleId = (id: string) => to('lifestyles', id, ['lifestyles'])?.id ?? id
-  const state = structuredClone(b), voided = voidedIds(ch) // the build as it stood before each ledger line (old ids)
+  const state = structuredClone(b),
+    voided = voidedIds(ch) // the build as it stood before each ledger line (old ids)
   /** a level-up without a target (from before levels were entries): the level it reached, on the line it raised */
   const relative = (a: Sr6Advance): Sr6Advance | undefined => {
     if ((a.op === 'pick' || a.op === 'initiate') && a.line && !a.target) {
@@ -72,7 +105,8 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
       return line && !('level' in line) ? { ...a, target: had!.uid, line } : undefined // (no level left: a level's entry)
     }
     if (a.op === 'quality' && !a.target) {
-      const had = state.qualities.find(q => q.id === a.line.id && !q.free), lv = had && had.level + a.line.level
+      const had = state.qualities.find(q => q.id === a.line.id && !q.free),
+        lv = had && had.level + a.line.level
       const line = lv !== undefined ? quality({ ...a.line, level: lv }) : undefined
       return line && line.id !== (to('qualities', a.line.id, ['qualities'])?.id ?? a.line.id) ? { ...a, target: had!.uid, line } : undefined
     }
@@ -81,14 +115,31 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
   const ledger = ch.ledger.map(e => {
     if (e.type !== 'advance') return e
     const a = e.advance
-    const advance = relative(a) ?? (a.op === 'purchase' || a.op === 'upgrade' ? { ...a, line: purchase(a.line) } : a.op === 'drop' && a.line ? { ...a, line: purchase(a.line) }
-      : a.op === 'pick' ? { ...a, line: pick(a.line) } : a.op === 'initiate' && a.line ? { ...a, line: pick(a.line) }
-        : a.op === 'martialart' ? { ...a, line: martial(a.line) } : a.op === 'technique' ? { ...a, line: technique(a.line) }
-        : a.op === 'quality' ? { ...a, line: quality(a.line) } : a.op === 'buyoff' && a.line ? { ...a, line: quality(a.line) }
-        : a.op === 'lifestyle' ? { ...a, id: lifestyleId(a.id) } : a)
+    const advance =
+      relative(a) ??
+      (a.op === 'purchase' || a.op === 'upgrade'
+        ? { ...a, line: purchase(a.line) }
+        : a.op === 'drop' && a.line
+          ? { ...a, line: purchase(a.line) }
+          : a.op === 'pick'
+            ? { ...a, line: pick(a.line) }
+            : a.op === 'initiate' && a.line
+              ? { ...a, line: pick(a.line) }
+              : a.op === 'martialart'
+                ? { ...a, line: martial(a.line) }
+                : a.op === 'technique'
+                  ? { ...a, line: technique(a.line) }
+                  : a.op === 'quality'
+                    ? { ...a, line: quality(a.line) }
+                    : a.op === 'buyoff' && a.line
+                      ? { ...a, line: quality(a.line) }
+                      : a.op === 'lifestyle'
+                        ? { ...a, id: lifestyleId(a.id) }
+                        : a)
     if (!voided.has(e.id)) applyAdvance(state, a)
     return { ...e, advance }
   })
-  return done.length ? { ...ch, build, ledger, identity: meta ? { ...ch.identity, metatype: meta.id } : ch.identity,
-    migrated: [...ch.migrated ?? [], ...done] } : ch
+  return done.length
+    ? { ...ch, build, ledger, identity: meta ? { ...ch.identity, metatype: meta.id } : ch.identity, migrated: [...(ch.migrated ?? []), ...done] }
+    : ch
 }

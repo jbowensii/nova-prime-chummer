@@ -10,7 +10,8 @@ import { augmentedRating } from './attributes'
 /** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
  *  whose note names no skill adds none (Review's quality.choice asks for it). */
 export function aptitudeSkills(data: Sr6Data, cr: CreationRules, b: Sr6Build): string[] | null {
-  const id = str(cr, 'aptitudeQuality'), qs = b.qualities.filter(q => data.sameFamily('qualities', q.id, id))
+  const id = str(cr, 'aptitudeQuality'),
+    qs = b.qualities.filter(q => data.sameFamily('qualities', q.id, id))
   return id && qs.length ? qs.map(q => noteSkill(data, q.note)).filter((x): x is string => !!x) : null
 }
 export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s.karma
@@ -22,9 +23,14 @@ export const skillRank = (s: Pick<Sr6Skill, 'points' | 'karma'>) => s.points + s
  *  "you cannot acquire an expertise" is the priority skill points'; step four, p. 66, buys advancement at p. 68's
  *  prices), unless the table gives it skill points (skillPointsExpertise), which it then takes as a specialization does. */
 export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number, data?: Sr6Data): { points: number; karma: number; expertise: number } {
-  let points = b.skills.reduce((t, sk) => t + sk.points, 0), karma = 0, expertise = 0
+  let points = b.skills.reduce((t, sk) => t + sk.points, 0),
+    karma = 0,
+    expertise = 0
   const take = (on: boolean, cost: number) => {
-    if (on && (cost === 0 || points + cost <= pool)) { points += cost; return true }
+    if (on && (cost === 0 || points + cost <= pool)) {
+      points += cost
+      return true
+    }
     return false
   }
   const expPoints = num(cr, 'skillPointsExpertise')

@@ -9,19 +9,24 @@ import { cat } from '../helpers'
 test('bad files are refused with a reason', () => {
   expect(xmlToCharacter('<x')).toMatchObject({ ok: false, reason: expect.stringMatching(/^Not valid XML/) })
   expect(xmlToCharacter('<?xml version="1.0"?><foo/>')).toMatchObject({ ok: false })
-  expect(xmlToCharacter('<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="9" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'))
-    .toMatchObject({ ok: false, reason: expect.stringContaining('newer version') })
+  expect(
+    xmlToCharacter(
+      '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="9" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>',
+    ),
+  ).toMatchObject({ ok: false, reason: expect.stringContaining('newer version') })
 })
 
 test('a runner’s campaign survives the round trip', () => {
-  const xml = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" campaign="0123456789ab" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+  const xml =
+    '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" campaign="0123456789ab" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
   const r = xmlToCharacter(xml)
   expect(r.ok && r.character.campaign).toBe('0123456789ab')
   expect(r.ok && characterToXml(r.character)).toContain(' campaign="0123456789ab"')
 })
 
 test('a runner’s portrait backdrop survives the round trip; none or unknown is no backdrop', () => {
-  const xml = (a: string) => `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner"${a} updatedAt="x"><portrait>data:image/png;base64,iVBORw0KGgo=</portrait><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
+  const xml = (a: string) =>
+    `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner"${a} updatedAt="x"><portrait>data:image/png;base64,iVBORw0KGgo=</portrait><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
   const r = xmlToCharacter(xml(' backdrop="neon"'))
   expect(r.ok && r.character.identity.backdrop).toBe('neon')
   const back = r.ok ? characterToXml(r.character) : ''
@@ -35,7 +40,8 @@ test('a runner’s portrait backdrop survives the round trip; none or unknown is
 })
 
 test('a runner’s optional gender survives the round trip; none writes none', () => {
-  const xml = (a: string) => `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner"${a} updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
+  const xml = (a: string) =>
+    `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner"${a} updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
   const r = xmlToCharacter(xml(' gender="Made-up &amp; more"'))
   expect(r.ok && r.character.identity.gender).toBe('Made-up & more')
   const back = r.ok ? characterToXml(r.character) : ''
@@ -46,11 +52,13 @@ test('a runner’s optional gender survives the round trip; none writes none', (
   expect(none.ok && characterToXml(none.character)).not.toContain('gender=')
 })
 
-const NPC_XML = (npc: string, meta = 'elf') => `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="${meta}" level="runner" updatedAt="x">${npc}<build><attributes str="9" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
+const NPC_XML = (npc: string, meta = 'elf') =>
+  `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="${meta}" level="runner" updatedAt="x">${npc}<build><attributes str="9" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>`
 
 test('an NPC’s npc block survives the round trip as the root’s first child; none is a runner', async () => {
   const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
-  const valid = async (xml: string) => (await validateXML({ xml: { fileName: 'n.xml', contents: xml }, schema: { fileName: 'character.xsd', contents: xsd } })).errors.map(e => e.message)
+  const valid = async (xml: string) =>
+    (await validateXML({ xml: { fileName: 'n.xml', contents: xml }, schema: { fileName: 'character.xsd', contents: xsd } })).errors.map(e => e.message)
   const cases = [
     ['<npc kind="npc" tier="prime" fightingSpirit="high"/>', 'human', { kind: 'npc', tier: 'prime', fightingSpirit: 'high' }],
     ['<npc kind="critter" tier="regular"/>', '', { kind: 'critter', tier: 'regular' }],
@@ -63,7 +71,8 @@ test('an NPC’s npc block survives the round trip as the root’s first child; 
     if (!want) expect('npc' in r.character).toBe(false)
     expect(r.character.identity.metatype).toBe(meta)
     const back = characterToXml(r.character)
-    if (npc) expect(back.split('\n')[2]).toBe(`  ${npc}`) // the root's first child
+    if (npc)
+      expect(back.split('\n')[2]).toBe(`  ${npc}`) // the root's first child
     else expect(back).not.toContain('<npc')
     expect(xmlToCharacter(back)).toMatchObject({ ok: true, character: { identity: { metatype: meta } } })
     expect(await valid(back)).toEqual([])
@@ -83,8 +92,9 @@ test('an unknown npc block reads as a regular NPC; repair says what it fixed; th
   const back = characterToXml(r.character)
   const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
   expect((await validateXML({ xml: { fileName: 'n.xml', contents: back }, schema: { fileName: 'character.xsd', contents: xsd } })).errors).toEqual([])
-  const check = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
-    .compile(JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')))
+  const check = new Ajv2020({ allErrors: true, strict: false, validateFormats: false }).compile(
+    JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')),
+  )
   const f = JSON.parse(JSON.stringify(exportRunners(cat, [r.character], { descriptions: true, now: 'x', appVersion: '0' })))
   expect(check(f), JSON.stringify(check.errors)).toBe(true)
   expect(f.runners[0].npc).toEqual({ kind: 'npc', tier: 'regular' })
@@ -100,7 +110,8 @@ test('NPCs get no free starting gear; runners do', () => {
 })
 
 test('a runner’s own switches for the optional rules survive the round trip and validate', async () => {
-  const xml = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build><optionalRule id="optional-a" on="true"/><optionalRule id="optional-b" on="false"/></ca2:character>'
+  const xml =
+    '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build><optionalRule id="optional-a" on="true"/><optionalRule id="optional-b" on="false"/></ca2:character>'
   const r = xmlToCharacter(xml)
   expect(r.ok && r.character.optionalRules).toEqual({ 'optional-a': true, 'optional-b': false })
   const back = r.ok ? characterToXml(r.character) : ''

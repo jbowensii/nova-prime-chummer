@@ -19,7 +19,9 @@ import { makePng } from '../png'
 vi.setConfig({ testTimeout: 30000 })
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
 type Who = keyof typeof PW | 'nobody'
-const dir = mkdtempSync(join(tmpdir(), 'ca2-backgrounds-')), lib = join(dir, 'library'), bgDir = join(lib, 'backgrounds')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-backgrounds-')),
+  lib = join(dir, 'library'),
+  bgDir = join(lib, 'backgrounds')
 const jar: Record<string, string> = { nobody: '' }
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
@@ -27,22 +29,37 @@ const PNG = makePng(4, 4, x => [x * 60, 20, 90])
 
 beforeAll(async () => {
   mkdirSync(join(lib, '.config'), { recursive: true })
-  writeFileSync(join(lib, '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada },
-    { username: 'eve', password: PW.eve, role: 'editor' }, { username: 'pat', password: PW.pat, role: 'player' }]))
+  writeFileSync(
+    join(lib, '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada },
+      { username: 'eve', password: PW.eve, role: 'editor' },
+      { username: 'pat', password: PW.pat, role: 'player' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: lib })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW) as (keyof typeof PW)[]) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
-const call = (who: Who, method: string, path: string, body?: unknown, type = 'application/json', name?: string) => fetch(`${base}${path}`, { method,
-  body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body),
-  headers: { Origin: base, Cookie: jar[who], ...body !== undefined ? { 'Content-Type': type } : {}, ...name ? { 'X-Filename': name } : {} } })
+const call = (who: Who, method: string, path: string, body?: unknown, type = 'application/json', name?: string) =>
+  fetch(`${base}${path}`, {
+    method,
+    body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body),
+    headers: { Origin: base, Cookie: jar[who], ...(body !== undefined ? { 'Content-Type': type } : {}), ...(name ? { 'X-Filename': name } : {}) },
+  })
 const upload = (data: Buffer, type = 'image/png', who: Who = 'ada', name = 'art.png') => call(who, 'POST', '/api/backgrounds', data, type, name)
 
 test('sniff knows PNG, JPEG and WebP by their bytes, and nothing else', () => {
@@ -81,7 +98,8 @@ test('the admin uploads; editors and players canâ€™t; nobody signed out reaches 
 })
 
 test('uploads are checked by their bytes, size and count', async () => {
-  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'), html = Buffer.from('<html><script>alert(1)</script></html>')
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'),
+    html = Buffer.from('<html><script>alert(1)</script></html>')
   expect((await upload(svg, 'image/svg+xml', 'ada', 'x.svg')).status).toBe(415)
   expect((await upload(svg, 'image/png', 'ada', 'x.png')).status).toBe(415) // SVG named as a PNG
   expect((await upload(html, 'image/png', 'ada', 'x.png')).status).toBe(415)
@@ -115,8 +133,10 @@ test('enable, disable and delete: the admin only; a disabled image is the adminâ
   expect((await call('pat', 'GET', `/api/backgrounds/${id}`)).status).toBe(404)
   expect((await call('ada', 'GET', `/api/backgrounds/${id}`)).status).toBe(200) // the gallery's thumbnail
   const xml = readFileSync(join(bgDir, 'backgrounds.xml'), 'utf8')
-  const v = await validateXML({ xml: { fileName: 'backgrounds.xml', contents: xml },
-    schema: { fileName: 'backgrounds.xsd', contents: readFileSync('public/data/schema/backgrounds.xsd', 'utf8') } })
+  const v = await validateXML({
+    xml: { fileName: 'backgrounds.xml', contents: xml },
+    schema: { fileName: 'backgrounds.xsd', contents: readFileSync('public/data/schema/backgrounds.xsd', 'utf8') },
+  })
   expect(v.errors).toEqual([])
   expect((await call('ada', 'DELETE', `/api/backgrounds/${id}`)).status).toBe(204)
   expect((await call('ada', 'DELETE', `/api/backgrounds/${id}`)).status).toBe(404)
@@ -124,8 +144,13 @@ test('enable, disable and delete: the admin only; a disabled image is the adminâ
 })
 
 const SEED = { file: 'server/defaults/sr6-circuit.webp', name: 'Circuit board (default)' }
-const validate = async (xml: string) => (await validateXML({ xml: { fileName: 'backgrounds.xml', contents: xml },
-  schema: { fileName: 'backgrounds.xsd', contents: readFileSync('public/data/schema/backgrounds.xsd', 'utf8') } })).errors
+const validate = async (xml: string) =>
+  (
+    await validateXML({
+      xml: { fileName: 'backgrounds.xml', contents: xml },
+      schema: { fileName: 'backgrounds.xsd', contents: readFileSync('public/data/schema/backgrounds.xsd', 'utf8') },
+    })
+  ).errors
 
 test('the default circuit board: a WebP under 500 KB', () => {
   const data = readFileSync(SEED.file)
@@ -137,8 +162,15 @@ test('a gallery with a default gets it once, after whatâ€™s there; never again o
   type Item = { id: string; name: string; enabled: boolean }
   const items = async (libraryDir: string, seed?: typeof SEED) => {
     let out: { items: Item[] } = { items: [] }
-    await backgroundsApi({ libraryDir, auth: {}, seed }).handle({ method: 'GET', headers: {} }, {}, new URL('http://x/api/backgrounds'),
-      (_r: unknown, _c: number, body: typeof out) => { out = body }, { role: 'admin' })
+    await backgroundsApi({ libraryDir, auth: {}, seed }).handle(
+      { method: 'GET', headers: {} },
+      {},
+      new URL('http://x/api/backgrounds'),
+      (_r: unknown, _c: number, body: typeof out) => {
+        out = body
+      },
+      { role: 'admin' },
+    )
     return out.items
   }
   // a new server: the default alone, on
@@ -157,12 +189,19 @@ test('a gallery with a default gets it once, after whatâ€™s there; never again o
   writeFileSync(join(fresh, 'backgrounds', 'backgrounds.xml'), xml.replace(/ *<background [^>]*\/>\n/, ''))
   expect(await items(fresh, SEED)).toEqual([])
   // a server with art already (never seeded): the default joins at the end, on
-  const old = mkdtempSync(join(tmpdir(), 'ca2-seed-')), oldDir = join(old, 'backgrounds')
+  const old = mkdtempSync(join(tmpdir(), 'ca2-seed-')),
+    oldDir = join(old, 'backgrounds')
   mkdirSync(oldDir)
   writeFileSync(join(oldDir, 'a1b2c3d4e5f6.png'), PNG)
-  writeFileSync(join(oldDir, 'backgrounds.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">\n'
-    + `  <background id="a1b2c3d4e5f6" type="png" name="Neon alley.png" enabled="false" uploaded="2026-01-02T03:04:05Z" size="${PNG.length}"/>\n</ca2:backgrounds>\n`)
-  expect((await items(old, SEED)).map(b => [b.name, b.enabled])).toEqual([['Neon alley.png', false], ['Circuit board (default)', true]])
+  writeFileSync(
+    join(oldDir, 'backgrounds.xml'),
+    '<?xml version="1.0" encoding="UTF-8"?>\n<ca2:backgrounds xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">\n' +
+      `  <background id="a1b2c3d4e5f6" type="png" name="Neon alley.png" enabled="false" uploaded="2026-01-02T03:04:05Z" size="${PNG.length}"/>\n</ca2:backgrounds>\n`,
+  )
+  expect((await items(old, SEED)).map(b => [b.name, b.enabled])).toEqual([
+    ['Neon alley.png', false],
+    ['Circuit board (default)', true],
+  ])
   // no default (Anarchy): nothing added, nothing written
   const none = mkdtempSync(join(tmpdir(), 'ca2-seed-'))
   expect(await items(none)).toEqual([])

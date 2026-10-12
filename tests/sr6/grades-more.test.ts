@@ -8,9 +8,9 @@ const bio = () => made().data.entry('augmentations', 'crb.spring-tendons')!
 
 test('a grade is known once its Essence factor is set, or the catalog gives both factors', () => {
   const { data, cr } = made()
-  expect(gradeKnown(cr, data, 'alpha')).toBe(true)   // a setting
-  expect(gradeKnown(cr, data, 'rusty')).toBe(true)   // a catalog grade with both factors
-  expect(gradeKnown(cr, data, 'dream')).toBe(false)  // no cost printed
+  expect(gradeKnown(cr, data, 'alpha')).toBe(true) // a setting
+  expect(gradeKnown(cr, data, 'rusty')).toBe(true) // a catalog grade with both factors
+  expect(gradeKnown(cr, data, 'dream')).toBe(false) // no cost printed
   expect(gradeKnown(cr, data, 'nothing')).toBe(false)
 })
 

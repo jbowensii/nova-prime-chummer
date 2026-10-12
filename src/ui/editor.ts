@@ -4,7 +4,12 @@ import { createContext, useContext } from 'react'
 import type { CareerEvent, Catalog, Character, Override, Violation } from '../model/types'
 import type { Derived, PriceBreakdown, TableFlags } from '../engine'
 
-export interface ConfirmSpec { title: string; lines: [string, string][]; cost: number; balanceAfter: number }
+export interface ConfirmSpec {
+  title: string
+  lines: [string, string][]
+  cost: number
+  balanceAfter: number
+}
 
 export interface EditorCtx {
   c: Catalog
@@ -44,4 +49,4 @@ export const useEditor = () => {
 /** A tab of the character's editor: #/c/<id>/<tab> for a runner, #/n/<id>/<tab> for an NPC (its own store). */
 export const editHref = (ch: Pick<Character, 'id' | 'npc'>, tab: string) => `#/${ch.npc ? 'n' : 'c'}/${ch.id}/${tab}`
 /** Where the editor's "back" goes: the runner list, or the NPC area's section: NPCs, or Critters (critters and spirits). */
-export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => !ch?.npc ? '#/' : ch.npc.kind === 'npc' ? '#/npcs' : '#/npcs/critters'
+export const homeHref = (ch: Pick<Character, 'npc'> | undefined) => (!ch?.npc ? '#/' : ch.npc.kind === 'npc' ? '#/npcs' : '#/npcs/critters')

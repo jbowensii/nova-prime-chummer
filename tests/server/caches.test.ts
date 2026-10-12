@@ -13,11 +13,17 @@ type Lru = { get: (k: string) => unknown; set: (k: string, v: unknown) => unknow
 const dir = mkdtempSync(join(tmpdir(), 'ca2-caches-'))
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number }; caches: { indexed: Lru; zipped: Lru } }
-beforeAll(() => new Promise<void>(ok => {
-  mkdirSync(join(dir, 'custom'), { recursive: true })
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      mkdirSync(join(dir, 'custom'), { recursive: true })
+      srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
 test('lru: the least recently used go first past the cap, counted by size; one bigger than the cap goes at once', () => {
@@ -41,7 +47,10 @@ const xml = (id: string, street: string) =>
 const cached = () => [...((srv.caches.indexed.get(join(dir, 'chars', 'admin')) as Map<string, unknown>) ?? new Map()).keys()].sort()
 
 test('the runner index drops a deleted runner, and a folder left empty', async () => {
-  for (const [id, street] of [['r1', 'One'], ['r2', 'Two']])
+  for (const [id, street] of [
+    ['r1', 'One'],
+    ['r2', 'Two'],
+  ])
     expect((await fetch(`${base}/api/characters/${id}`, { method: 'PUT', body: xml(id, street) })).status).toBe(201)
   expect((await fetch(`${base}/api/characters`)).status).toBe(200)
   expect(cached()).toEqual(['One.xml', 'Two.xml'])

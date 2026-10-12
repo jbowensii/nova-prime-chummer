@@ -12,7 +12,9 @@ import { anarchyState } from './session'
 // On a server of its own (the tables it replaces would break the other specs), with the stub worker
 // (tests/fixtures/stub-worker.mjs, marker "core-unread"); the importer's checks of these rows are importer/tests/test_crb_core.py's.
 const PW = 'ada-password-1'
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
@@ -22,14 +24,24 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW, name: 'Ada Admin' }]))
-  writeFileSync(join(dir, 'library', '.config', 'ai-keys.xml'), // a made-up key: the stub sends nothing anywhere
-    '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-e2e-not-a-real-key</key></ca2:aikeys>\n')
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(dir, 'library', '.config', 'ai-keys.xml'), // a made-up key: the stub sends nothing anywhere
+    '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-e2e-not-a-real-key</key></ca2:aikeys>\n',
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 test('unread core tables: the AI proposes rows, the admin edits nested rows and accepts, the tables go live', async ({ page }) => {
   await page.goto('/')
@@ -39,7 +51,9 @@ test('unread core tables: the AI proposes rows, the admin edits nested rows and 
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
 
   await page.goto('/#/books')
-  await page.getByLabel('Choose PDF files').setInputFiles({ name: 'Made-up Core.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 core-unread\n%%EOF\n') })
+  await page
+    .getByLabel('Choose PDF files')
+    .setInputFiles({ name: 'Made-up Core.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 core-unread\n%%EOF\n') })
   const row = page.locator('.book', { hasText: 'Made-up Core' })
   await expect(row).toContainText('Couldn’t read these core tables: weapons, metatypes, skills. Read them with AI, or upload a data pack.', { timeout: 10000 })
   await row.getByRole('button', { name: 'Read the tables with AI' }).click()
@@ -83,7 +97,9 @@ test('unread core tables: the AI proposes rows, the admin edits nested rows and 
   await expect(row).not.toContainText('Couldn’t read these core tables')
   const core = (f: string) => readFileSync(join(dir, 'custom', 'imported', 'core', f), 'utf8')
   expect(core('metatypes.xml')).toContain('<range attr="str" min="2" max="4"/>')
-  expect(core('skills.xml')).toContain('<spec id="tinkering.gadgets" attr="log">Gizmos</spec><spec id="tinkering.wind-up-toys" attr="agi">Wind-up Toys</spec></skill>')
+  expect(core('skills.xml')).toContain(
+    '<spec id="tinkering.gadgets" attr="log">Gizmos</spec><spec id="tinkering.wind-up-toys" attr="agi">Wind-up Toys</spec></skill>',
+  )
   expect(core('skills.xml')).not.toContain('Clocks')
 
   // live: a new runner can be a Glimmerkin, with the edited range

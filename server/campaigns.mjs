@@ -41,59 +41,96 @@ import { attr, creationSettings, esc, readSettings, rootTag, settingXml, unesc, 
 
 const NS = 'urn:chummer-anarchy2:config:1'
 export const CAMPAIGN_ID = /^[0-9a-f]{12}$/
-const MAX_NAME = 80, MAX_NOTE = 4000
-// eslint-disable-next-line no-control-regex
-const oneLine = s => String(s ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim()
-// eslint-disable-next-line no-control-regex
-const text = s => String(s ?? '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffe\uffff]/g, '').trim()
+const MAX_NAME = 80,
+  MAX_NOTE = 4000
+const oneLine = s =>
+  String(s ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .trim()
+const text = s =>
+  String(s ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffe\uffff]/g, '')
+    .trim()
 const fail = (code, message) => Object.assign(new Error(message), { code })
 const iso = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 // `tag`: the game's character root (server/games.mjs); Anarchy's unless given
 const charTag = (xml, tag = 'ca2:character') => rootTag(xml, tag)
 
 /** A runner's campaign id (null: none, or not one this server could have written). */
-export const campaignOf = (xml, tag = 'ca2:character') => { const v = attr(charTag(xml, tag), 'campaign'); return v && CAMPAIGN_ID.test(v) ? v : null }
-const MAX_OVERRIDES = 200, MAX_OVERRIDE_TEXT = 2000
+export const campaignOf = (xml, tag = 'ca2:character') => {
+  const v = attr(charTag(xml, tag), 'campaign')
+  return v && CAMPAIGN_ID.test(v) ? v : null
+}
+const MAX_OVERRIDES = 200,
+  MAX_OVERRIDE_TEXT = 2000
 /** A runner's GM approvals as sent: [{ code, path, note }], each a short line and a note. */
 function overridesOf(b) {
   const list = b?.overrides
   if (!Array.isArray(list) || list.length > MAX_OVERRIDES) throw fail(400, `overrides is a list of ${MAX_OVERRIDES} at most`)
   return list.map(o => {
-    const code = oneLine(o?.code), path = oneLine(o?.path), note = text(o?.note)
+    const code = oneLine(o?.code),
+      path = oneLine(o?.path),
+      note = text(o?.note)
     if (!code || code.length > 200 || path.length > 200 || note.length > MAX_OVERRIDE_TEXT) throw fail(400, 'an override is { code, path, note }')
     return { code, path, note }
   })
 }
 /** The runner's XML with its <override> elements replaced (they come last in the file, both games) and rev="<rev>". */
 export function setOverrides(xml, list, rev, tag = 'ca2:character') {
-  const close = `</${tag}>`, i = xml.lastIndexOf(close)
-  const bare = xml.slice(0, i).replace(/\s*<override\b[^>]*?(?:\/>|>[\s\S]*?<\/override>)/g, '').replace(/\s*$/, '')
+  const close = `</${tag}>`,
+    i = xml.lastIndexOf(close)
+  const bare = xml
+    .slice(0, i)
+    .replace(/\s*<override\b[^>]*?(?:\/>|>[\s\S]*?<\/override>)/g, '')
+    .replace(/\s*$/, '')
   const kids = list.map(o => `\n  <override code="${esc(o.code)}" path="${esc(o.path)}">${esc(o.note)}</override>`).join('')
   return `${bare}${kids}\n${xml.slice(i)}`.replace(new RegExp(`<${tag}\\b[^>]*>`), t =>
-    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`))
+    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`),
+  )
 }
 
 /** The runner's XML with campaign="<id>" on its root, or none (id null). */
-export const setCampaign = (xml, id, tag = 'ca2:character') => xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
-  const bare = t.replace(/\scampaign="[^"]*"/g, '')
-  return id ? bare.replace(/\s*>$/, ` campaign="${id}">`) : bare
-})
+export const setCampaign = (xml, id, tag = 'ca2:character') =>
+  xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
+    const bare = t.replace(/\scampaign="[^"]*"/g, '')
+    return id ? bare.replace(/\s*>$/, ` campaign="${id}">`) : bare
+  })
 
 export function parseCampaigns(xml) {
-  return [...xml.matchAll(/<campaign\b[^>]*?(?:\/>|>[\s\S]*?<\/campaign>)/g)].map(([m]) => {
-    const tag = rootTag(m, 'campaign'), users = el => [...m.matchAll(new RegExp(`<${el}\\b[^>]*>`, 'g'))].map(([t]) => attr(t, 'user'))
-    return { id: attr(tag, 'id'), name: attr(tag, 'name') ?? '', created: attr(tag, 'created') ?? iso(), archived: attr(tag, 'archived') === 'true',
-      note: unesc(m.match(/<note>([\s\S]*?)<\/note>/)?.[1] ?? ''), gms: users('gm'), members: users('member'),
-      creation: (x => x ? readSettings(x[0]) : null)(m.match(/<creation\b[^>]*?(?:\/>|>[\s\S]*?<\/creation>)/)),
-      locks: [...m.matchAll(/<lock\b[^>]*>/g)].map(([t]) => ({ key: attr(t, 'key'), by: attr(t, 'by') })).filter(l => l.key && l.by) }
-  }).filter(c => CAMPAIGN_ID.test(c.id ?? ''))
+  return [...xml.matchAll(/<campaign\b[^>]*?(?:\/>|>[\s\S]*?<\/campaign>)/g)]
+    .map(([m]) => {
+      const tag = rootTag(m, 'campaign'),
+        users = el => [...m.matchAll(new RegExp(`<${el}\\b[^>]*>`, 'g'))].map(([t]) => attr(t, 'user'))
+      return {
+        id: attr(tag, 'id'),
+        name: attr(tag, 'name') ?? '',
+        created: attr(tag, 'created') ?? iso(),
+        archived: attr(tag, 'archived') === 'true',
+        note: unesc(m.match(/<note>([\s\S]*?)<\/note>/)?.[1] ?? ''),
+        gms: users('gm'),
+        members: users('member'),
+        creation: (x => (x ? readSettings(x[0]) : null))(m.match(/<creation\b[^>]*?(?:\/>|>[\s\S]*?<\/creation>)/)),
+        locks: [...m.matchAll(/<lock\b[^>]*>/g)].map(([t]) => ({ key: attr(t, 'key'), by: attr(t, 'by') })).filter(l => l.key && l.by),
+      }
+    })
+    .filter(c => CAMPAIGN_ID.test(c.id ?? ''))
 }
-const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campaigns (campaigns.xsd). Written by the server. -->\n'
-  + `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list.map(c => `  <campaign id="${esc(c.id)}" name="${esc(c.name)}" created="${esc(c.created)}"${
-    c.archived ? ' archived="true"' : ''}>\n${c.note ? `    <note>${esc(c.note)}</note>\n` : ''}${
-    c.gms.map(u => `    <gm user="${esc(u)}"/>\n`).join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}${
-    c.creation ? `    <creation>\n${c.creation.map(s => `      ${settingXml(s)}\n`).join('')}    </creation>\n` : ''}${
-    (c.locks ?? []).map(l => `    <lock key="${esc(l.key)}" by="${esc(l.by)}"/>\n`).join('')}  </campaign>\n`).join('')}</ca2:campaigns>\n`
+const campaignsXml = list =>
+  '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campaigns (campaigns.xsd). Written by the server. -->\n' +
+  `<ca2:campaigns xmlns:ca2="${NS}" version="1">\n${list
+    .map(
+      c =>
+        `  <campaign id="${esc(c.id)}" name="${esc(c.name)}" created="${esc(c.created)}"${
+          c.archived ? ' archived="true"' : ''
+        }>\n${c.note ? `    <note>${esc(c.note)}</note>\n` : ''}${c.gms
+          .map(u => `    <gm user="${esc(u)}"/>\n`)
+          .join('')}${c.members.map(u => `    <member user="${esc(u)}"/>\n`).join('')}${
+          c.creation ? `    <creation>\n${c.creation.map(s => `      ${settingXml(s)}\n`).join('')}    </creation>\n` : ''
+        }${(c.locks ?? []).map(l => `    <lock key="${esc(l.key)}" by="${esc(l.by)}"/>\n`).join('')}  </campaign>\n`,
+    )
+    .join('')}</ca2:campaigns>\n`
 
 /** `lock`: the runners' write lock (server.mjs), which account changes hold too; `auth`: server/auth.mjs's api;
  *  `runnersOf(username)` -> [{ file, id, rev, xml }]; `writeRunner(username, file, xml)` writes one atomically;
@@ -101,8 +138,17 @@ const campaignsXml = list => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Campa
  *  `creation`: campaigns have their own creation settings (SR6). */
 export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, npcsOf = async () => [], writeNpc, tag = 'ca2:character', creation = false }) {
   const path = join(customDir, 'campaigns.xml')
-  const load = async () => parseCampaigns(await readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e }))
-  const save = async list => { await mkdir(customDir, { recursive: true }); await writeAtomic(path, campaignsXml(list)) }
+  const load = async () =>
+    parseCampaigns(
+      await readFile(path, 'utf8').catch(e => {
+        if (e.code === 'ENOENT') return ''
+        throw e
+      }),
+    )
+  const save = async list => {
+    await mkdir(customDir, { recursive: true })
+    await writeAtomic(path, campaignsXml(list))
+  }
 
   const staff = u => ['admin', 'editor'].includes(auth.roleOf(u))
   const isGm = (c, u) => c.gms.includes(u) && staff(u) // a GM demoted to player keeps only a member's view
@@ -111,7 +157,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
   /** The runners in `c`: its GMs' and members' with campaign="<id>". */
   async function runners(c) {
     const out = []
-    for (const owner of new Set([...c.gms, ...c.members])) for (const r of await runnersOf(owner)) if (campaignOf(r.xml, tag) === c.id) out.push({ ...r, owner })
+    for (const owner of new Set([...c.gms, ...c.members]))
+      for (const r of await runnersOf(owner)) if (campaignOf(r.xml, tag) === c.id) out.push({ ...r, owner })
     return out
   }
   /** The NPCs shared with `c`: its GMs' with campaign="<id>". */
@@ -120,28 +167,57 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
     for (const owner of c.gms) if (isGm(c, owner)) for (const r of await npcsOf(owner)) if (campaignOf(r.xml, tag) === c.id) out.push({ ...r, owner })
     return out
   }
-  const unshare = async (c, owner) => { // `owner`'s NPCs leave `c`
+  const unshare = async (c, owner) => {
+    // `owner`'s NPCs leave `c`
     for (const r of await npcsOf(owner)) if (campaignOf(r.xml, tag) === c.id) await writeNpc(owner, r.file, setCampaign(r.xml, null, tag))
   }
   async function view(c, me) {
     const you = isGm(c, me.username) ? 'gm' : me.role === 'admin' ? 'admin' : 'member'
     // a member gets names only: no usernames, and a runner's id only for their own (to take it out)
     const roster = you === 'member'
-    const person = username => roster ? { name: auth.nameOf(username) } : { username, name: auth.nameOf(username) }
-    return { id: c.id, name: c.name, note: c.note, archived: c.archived, created: c.created, you, gms: c.gms.map(person), members: c.members.map(person),
+    const person = username => (roster ? { name: auth.nameOf(username) } : { username, name: auth.nameOf(username) })
+    return {
+      id: c.id,
+      name: c.name,
+      note: c.note,
+      archived: c.archived,
+      created: c.created,
+      you,
+      gms: c.gms.map(person),
+      members: c.members.map(person),
       runners: (await runners(c)).map(r => {
-        const t = charTag(r.xml, tag), a = n => unesc(t.match(new RegExp(`\\s${n}="([^"]*)"`))?.[1] ?? '')
-        const mine = r.owner === me.username, key = createHash('sha256').update(`${c.id}/${r.owner}/${a('id')}`).digest('hex').slice(0, 12)
-        return { key, mine, ownerName: auth.nameOf(r.owner), streetName: a('streetName') || 'Unnamed runner', level: a('level'), package: a('package'),
-          ...roster && !mine ? {} : { id: a('id') }, ...roster ? {} : { owner: r.owner, file: r.file } }
+        const t = charTag(r.xml, tag),
+          a = n => unesc(t.match(new RegExp(`\\s${n}="([^"]*)"`))?.[1] ?? '')
+        const mine = r.owner === me.username,
+          key = createHash('sha256')
+            .update(`${c.id}/${r.owner}/${a('id')}`)
+            .digest('hex')
+            .slice(0, 12)
+        return {
+          key,
+          mine,
+          ownerName: auth.nameOf(r.owner),
+          streetName: a('streetName') || 'Unnamed runner',
+          level: a('level'),
+          package: a('package'),
+          ...(roster && !mine ? {} : { id: a('id') }),
+          ...(roster ? {} : { owner: r.owner, file: r.file }),
+        }
       }),
-      ...creation ? { creation: c.creation ?? null, locks: (c.locks ?? []).map(l => ({ key: l.key, by: l.by, byName: auth.nameOf(l.by) })) } : {},
-      ...roster ? {} : { npcs: (await npcs(c)).map(r => {
-        const t = charTag(r.xml, tag), a = n => attr(t, n) ?? ''
-        return { id: a('id'), name: a('streetName') || a('name') || 'Unnamed NPC', owner: r.owner, ownerName: auth.nameOf(r.owner) }
-      }) } }
+      ...(creation ? { creation: c.creation ?? null, locks: (c.locks ?? []).map(l => ({ key: l.key, by: l.by, byName: auth.nameOf(l.by) })) } : {}),
+      ...(roster
+        ? {}
+        : {
+            npcs: (await npcs(c)).map(r => {
+              const t = charTag(r.xml, tag),
+                a = n => attr(t, n) ?? ''
+              return { id: a('id'), name: a('streetName') || a('name') || 'Unnamed NPC', owner: r.owner, ownerName: auth.nameOf(r.owner) }
+            }),
+          }),
+    }
   }
-  const leave = async (c, owner) => { // `owner`'s runners in `c` leave it
+  const leave = async (c, owner) => {
+    // `owner`'s runners in `c` leave it
     for (const r of await runnersOf(owner)) if (campaignOf(r.xml, tag) === c.id) await writeRunner(owner, r.file, setCampaign(r.xml, null, tag))
   }
   const account = u => {
@@ -160,7 +236,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       if (out.note.length > MAX_NOTE) throw fail(400, `a note is ${MAX_NOTE} characters at most`)
     }
     if (creation && c.id && 'creation' in b) out.creation = b.creation === null ? null : creationSettings(b.creation)
-    if (creation && c.id && 'locks' in b) { // each kept with who locked it first; a new one: the caller
+    if (creation && c.id && 'locks' in b) {
+      // each kept with who locked it first; a new one: the caller
       const keys = b.locks
       if (!Array.isArray(keys) || keys.length > 500 || keys.some(k => typeof k !== 'string' || !/^[A-Za-z0-9.:_-]{1,80}$/.test(k)))
         throw fail(400, 'locks is a list of creation setting keys')
@@ -179,10 +256,15 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
     const p = url.pathname
     if (p !== '/api/campaigns' && !p.startsWith('/api/campaigns/')) return false
     const m = p.match(/^\/api\/campaigns(?:\/([0-9a-f]{12})(?:\/(members|gms|runners|npcs)(?:\/([^/]+)(\/overrides)?)?)?)?$/)
-    if (!m || m[4] && m[2] !== 'runners') return send(res, 404, { error: 'not found' })
+    if (!m || (m[4] && m[2] !== 'runners')) return send(res, 404, { error: 'not found' })
     const [, id, part, raw, approvals] = m
     let key = null
-    if (raw != null) try { key = decodeURIComponent(raw) } catch { return send(res, 400, { error: 'bad name' }) }
+    if (raw != null)
+      try {
+        key = decodeURIComponent(raw)
+      } catch {
+        return send(res, 400, { error: 'bad name' })
+      }
     const want = !id ? ['GET', 'POST'] : !part ? ['GET', 'PUT', 'DELETE'] : key == null ? ['POST'] : approvals ? ['PUT'] : ['DELETE']
     if (!want.includes(req.method)) return send(res, 405, { error: 'method not allowed' })
 
@@ -194,7 +276,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       return send(res, 200, id ? out[0] : out)
     }
     // a campaign's creation settings run to 500 rows: the creation route's 1 MB (books.mjs) for an SR6 campaign's PUT
-    const b = req.method === 'POST' || req.method === 'PUT' ? await auth.json(req, creation && id && !part && req.method === 'PUT' ? 1024 * 1024 : undefined) : {}
+    const b =
+      req.method === 'POST' || req.method === 'PUT' ? await auth.json(req, creation && id && !part && req.method === 'PUT' ? 1024 * 1024 : undefined) : {}
     return lock(async () => {
       const me = auth.current(who.id) // as it is now: renamed, demoted, disabled or deleted while this waited
       if (!me) return send(res, 401, { error: 'sign in first' })
@@ -202,7 +285,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       if (!id) {
         if (!staff(me.username)) throw fail(403, 'only the admin and editors run campaigns')
         let cid
-        do cid = randomBytes(6).toString('hex'); while (list.some(c => c.id === cid))
+        do cid = randomBytes(6).toString('hex')
+        while (list.some(c => c.id === cid))
         const c = { id: cid, note: '', archived: false, created: iso(), ...fields(b), gms: [me.username], members: [] }
         list.push(c)
         await save(list)
@@ -210,10 +294,15 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
       }
       const c = list.find(x => x.id === id)
       if (!c || !(me.role === 'admin' || inIt(c, me.username))) throw fail(404, 'no such campaign')
-      const done = async (changed = true) => { if (changed) await save(list); return send(res, 200, await view(c, me)) }
-      if (part === 'runners' && approvals) { // GM approval: only its GMs and the admin, never the runner's player
+      const done = async (changed = true) => {
+        if (changed) await save(list)
+        return send(res, 200, await view(c, me))
+      }
+      if (part === 'runners' && approvals) {
+        // GM approval: only its GMs and the admin, never the runner's player
         if (!manages(c, me)) throw fail(403, 'only a GM of this campaign or the admin approves a runner’s rule problems')
-        const list = overridesOf(b), r = (await runners(c)).find(x => x.id === key)
+        const list = overridesOf(b),
+          r = (await runners(c)).find(x => x.id === key)
         if (!r) throw fail(404, 'that runner isn’t in this campaign')
         const rev = (r.rev ?? 0) + 1
         await writeRunner(r.owner, r.file, setOverrides(r.xml, list, rev, tag))
@@ -225,7 +314,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
           if (!r) throw fail(404, 'no such runner of yours')
           if (!inIt(c, me.username)) throw fail(403, 'join this campaign first: its GM adds players')
           if (c.archived) throw fail(409, 'this campaign is archived')
-          const other = campaignOf(r.xml, tag), there = other && other !== id && list.find(x => x.id === other)
+          const other = campaignOf(r.xml, tag),
+            there = other && other !== id && list.find(x => x.id === other)
           if (there && inIt(there, me.username)) throw fail(409, `this runner is in ${there.name}: remove it there first, or copy it`)
           if (other !== id) await writeRunner(me.username, r.file, setCampaign(r.xml, id, tag))
           return done(false)
@@ -244,7 +334,8 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
           const r = (await npcsOf(me.username)).find(x => x.id === String(b.id ?? ''))
           if (!r) throw fail(404, 'no such NPC of yours')
           if (c.archived) throw fail(409, 'this campaign is archived')
-          const other = campaignOf(r.xml, tag), there = other && other !== id && list.find(x => x.id === other)
+          const other = campaignOf(r.xml, tag),
+            there = other && other !== id && list.find(x => x.id === other)
           if (there && isGm(there, me.username)) throw fail(409, `That NPC is shared with ${there.name}; unshare it there first.`)
           if (other !== id) await writeNpc(me.username, r.file, setCampaign(r.xml, id, tag))
           return done(false)
@@ -255,8 +346,12 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
         return done(false)
       }
       if (!manages(c, me)) throw fail(403, 'only its GMs and the admin can change a campaign')
-      if (!part && req.method === 'PUT') { Object.assign(c, fields(b, c, me)); return done() }
-      if (!part) { // DELETE
+      if (!part && req.method === 'PUT') {
+        Object.assign(c, fields(b, c, me))
+        return done()
+      }
+      if (!part) {
+        // DELETE
         if ((await runners(c)).length) throw fail(409, 'this campaign still has runners: they leave it first')
         list.splice(list.indexOf(c), 1)
         await save(list)
@@ -296,29 +391,47 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
     },
     /** Another account's NPCs the editor `me` may read: those shared with the campaigns they GM. */
     async readableNpcs(me) {
-      const seen = new Set(), out = []
-      for (const c of await load()) if (isGm(c, me.username)) for (const r of await npcs(c))
-        if (r.owner !== me.username && !seen.has(`${r.owner}/${r.file}`)) { seen.add(`${r.owner}/${r.file}`); out.push(r) }
+      const seen = new Set(),
+        out = []
+      for (const c of await load())
+        if (isGm(c, me.username))
+          for (const r of await npcs(c))
+            if (r.owner !== me.username && !seen.has(`${r.owner}/${r.file}`)) {
+              seen.add(`${r.owner}/${r.file}`)
+              out.push(r)
+            }
       return out
     },
     /** Another account's runners the editor `me` may read: those in the campaigns they GM (the admin reads everyone's). */
     async readable(me) {
-      const seen = new Set(), out = []
-      for (const c of await load()) if (isGm(c, me.username)) for (const r of await runners(c))
-        if (r.owner !== me.username && !seen.has(`${r.owner}/${r.file}`)) { seen.add(`${r.owner}/${r.file}`); out.push(r) }
+      const seen = new Set(),
+        out = []
+      for (const c of await load())
+        if (isGm(c, me.username))
+          for (const r of await runners(c))
+            if (r.owner !== me.username && !seen.has(`${r.owner}/${r.file}`)) {
+              seen.add(`${r.owner}/${r.file}`)
+              out.push(r)
+            }
       return out
     },
     /** A username changed (under the lock, before users.xml is saved). */
     async rename(from, to) {
       const list = await load()
       let changed = false
-      for (const c of list) for (const k of ['gms', 'members']) if (c[k].includes(from)) { c[k] = c[k].map(u => u === from ? to : u); changed = true }
+      for (const c of list)
+        for (const k of ['gms', 'members'])
+          if (c[k].includes(from)) {
+            c[k] = c[k].map(u => (u === from ? to : u))
+            changed = true
+          }
       if (changed) await save(list)
     },
     /** An account is deleted (under the lock; it has no runners): its memberships and GM roles go; a campaign left without
      *  a GM gets the first other admin. `check`: only whether it may (each game's, before any changes). */
     async drop(u, check = false) {
-      const list = await load(), admin = auth.usernames().find(x => x !== u && auth.roleOf(x) === 'admin')
+      const list = await load(),
+        admin = auth.usernames().find(x => x !== u && auth.roleOf(x) === 'admin')
       if (!admin && list.some(c => c.gms.length === 1 && c.gms[0] === u))
         throw fail(409, 'this account is the only GM of a campaign and there is no other enabled admin to take it over')
       if (check) return

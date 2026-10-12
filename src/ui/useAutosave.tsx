@@ -27,8 +27,12 @@ export interface AutosaveOpts<T> {
 export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: AutosaveOpts<T>) {
   const me = useMe()
   // the latest options and account, for the handlers and the load's callback (kept current after each render)
-  const opt = useRef(o), meNow = useRef(me)
-  useLayoutEffect(() => { opt.current = o; meNow.current = me })
+  const opt = useRef(o),
+    meNow = useRef(me)
+  useLayoutEffect(() => {
+    opt.current = o
+    meNow.current = me
+  })
   // someone else's runner (admin and editors can open everyone's): read-only, their name on the bar
   const [owner, setOwner] = useState<string | null>(null)
   const [doc, setDoc] = useState<T | undefined>()
@@ -41,44 +45,74 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
   const [conflict, setConflict] = useState<Conflict | null>(null)
   const [copyName, setCopyName] = useState('')
   // saving: one request at a time; the latest unsaved state follows when it finishes
-  const sync = useRef({ rev: undefined as number | undefined, loaded: undefined as T | undefined, saved: undefined as T | undefined,
-    latest: undefined as T | undefined, busy: false, queued: undefined as T | undefined, paused: false,
-    run: Promise.resolve(), failed: false })
+  const sync = useRef({
+    rev: undefined as number | undefined,
+    loaded: undefined as T | undefined,
+    saved: undefined as T | undefined,
+    latest: undefined as T | undefined,
+    busy: false,
+    queued: undefined as T | undefined,
+    paused: false,
+    run: Promise.resolve(),
+    failed: false,
+  })
   /** changed since it was loaded or last saved, or the last save failed: worth a warning before the page goes */
-  const unsaved = () => { const st = sync.current; return st.failed || (!!st.latest && st.latest !== st.loaded && st.latest !== st.saved) }
+  const unsaved = () => {
+    const st = sync.current
+    return st.failed || (!!st.latest && st.latest !== st.loaded && st.latest !== st.saved)
+  }
 
   // fetched once per doc: a catalog reload (a catalog edit saved) must not replace unsaved or conflicted state
   useEffect(() => {
-    repo.get(id).then(s => {
-      sync.current.rev = s?.rev
-      sync.current.loaded = s?.ch
-      const me = meNow.current, theirs = !!(me && s?.owner && s.owner !== me.username)
-      sync.current.paused = theirs // never saved
-      setOwner(theirs ? s!.ownerName ?? s!.owner! : null)
-      setDoc(s && opt.current.prepare(s.ch))
-      if (s) setStatus({ state: 'saved', at: s.ch.updatedAt })
-      setLoaded(true)
-    }, e => { setLoadError((e as Error).message ?? String(e)); setLoaded(true) })
+    repo.get(id).then(
+      s => {
+        sync.current.rev = s?.rev
+        sync.current.loaded = s?.ch
+        const me = meNow.current,
+          theirs = !!(me && s?.owner && s.owner !== me.username)
+        sync.current.paused = theirs // never saved
+        setOwner(theirs ? (s!.ownerName ?? s!.owner!) : null)
+        setDoc(s && opt.current.prepare(s.ch))
+        if (s) setStatus({ state: 'saved', at: s.ch.updatedAt })
+        setLoaded(true)
+      },
+      e => {
+        setLoadError((e as Error).message ?? String(e))
+        setLoaded(true)
+      },
+    )
   }, [repo, id])
 
   // the returned promise covers the queued follow-up too; sign-out waits for it (auth.tsx track)
   const persist = (next: T, keepalive = false): Promise<void> => {
     const st = sync.current
     if (st.paused || session.held || next === st.saved) return st.busy ? st.run : Promise.resolve()
-    if (st.busy) { st.queued = next; return st.run }
+    if (st.busy) {
+      st.queued = next
+      return st.run
+    }
     st.busy = true
     setStatus({ state: 'saving' })
-    return st.run = track((async () => {
-      const r = await repo.save(next, st.rev, { keepalive })
-      st.busy = false
-      st.failed = !r.ok && !r.conflict
-      if (r.ok) { st.rev = r.rev; st.saved = next; setStatus({ state: 'saved', at: new Date().toISOString() }) }
-      else if (r.conflict) { st.paused = true; setStatus({ state: 'conflict' }); setCopyName(`${next.identity.streetName || next.identity.name || opt.current.noun} copy`); setConflict(r.conflict) }
-      else setStatus({ state: 'failed', error: session.held ? 'Signed out. Sign back in and it’s sent.' : r.error ?? 'Saving failed.' })
-      const q = st.queued
-      st.queued = undefined
-      if (q && !st.paused) await persist(q)
-    })())
+    return (st.run = track(
+      (async () => {
+        const r = await repo.save(next, st.rev, { keepalive })
+        st.busy = false
+        st.failed = !r.ok && !r.conflict
+        if (r.ok) {
+          st.rev = r.rev
+          st.saved = next
+          setStatus({ state: 'saved', at: new Date().toISOString() })
+        } else if (r.conflict) {
+          st.paused = true
+          setStatus({ state: 'conflict' })
+          setCopyName(`${next.identity.streetName || next.identity.name || opt.current.noun} copy`)
+          setConflict(r.conflict)
+        } else setStatus({ state: 'failed', error: session.held ? 'Signed out. Sign back in and it’s sent.' : (r.error ?? 'Saving failed.') })
+        const q = st.queued
+        st.queued = undefined
+        if (q && !st.paused) await persist(q)
+      })(),
+    ))
   }
   /** Save now: the latest state, through the same path as the autosave. True when everything is saved. */
   const saveNow = async () => {
@@ -87,7 +121,9 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     await st.run
     return !unsaved()
   }
-  const saveAndClose = async () => { if (await saveNow()) location.hash = opt.current.home(sync.current.loaded) }
+  const saveAndClose = async () => {
+    if (await saveNow()) location.hash = opt.current.home(sync.current.loaded)
+  }
 
   useEffect(() => {
     sync.current.latest = doc
@@ -106,7 +142,9 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     addEventListener('ca2-signed-in', flush) // the same account signed back in after the session ended: send what didn't save
     addEventListener('ca2-leaving', flush) // signing out: send it before the session ends
     // closing or reloading the tab while a change is unsent or failed: the browser asks first
-    const warn = (e: BeforeUnloadEvent) => { if (unsaved() && !sync.current.paused) e.preventDefault() }
+    const warn = (e: BeforeUnloadEvent) => {
+      if (unsaved() && !sync.current.paused) e.preventDefault()
+    }
     // a link out of this doc: send the change first; if it can't be saved, ask before leaving it behind
     const leave = (e: MouseEvent) => {
       const a = (e.target as Element | null)?.closest?.('a[href^="#"]') as HTMLAnchorElement | null
@@ -131,15 +169,20 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     if (!doc) return
     if (how === 'overwrite') {
       const r = await repo.save(doc, undefined, { force: true })
-      if (r.ok) { sync.current.rev = r.rev; sync.current.saved = doc; sync.current.failed = false; setStatus({ state: 'saved', at: new Date().toISOString() }) }
-      else setStatus({ state: 'failed', error: r.error ?? 'Saving failed.' })
+      if (r.ok) {
+        sync.current.rev = r.rev
+        sync.current.saved = doc
+        sync.current.failed = false
+        setStatus({ state: 'saved', at: new Date().toISOString() })
+      } else setStatus({ state: 'failed', error: r.error ?? 'Saving failed.' })
     } else if (how === 'copy') {
       const copy = { ...doc, id: newId(), campaign: undefined, identity: { ...doc.identity, streetName: copyName.trim() || `${doc.identity.streetName} copy` } }
       const r = await repo.save(copy, undefined, { filename: copyName.trim() })
       if (r.ok) location.hash = opt.current.editHref(copy, opt.current.tab)
     } else {
       const s = await repo.get(doc.id)
-      sync.current.rev = s?.rev; sync.current.loaded = s?.ch
+      sync.current.rev = s?.rev
+      sync.current.loaded = s?.ch
       setDoc(s && opt.current.prepare(s.ch))
       setStatus({ state: 'saved', at: s?.ch.updatedAt })
     }
@@ -155,11 +198,42 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     setCan({ undo: hist.current.past.length > 0, redo: false })
   }
   const stacks = () => setCan({ undo: hist.current.past.length > 0, redo: hist.current.future.length > 0 })
-  const undo = () => { const prev = hist.current.past.pop(); if (prev && doc) { hist.current.future.push(doc); setDoc(prev); stacks() } }
-  const redo = () => { const next = hist.current.future.pop(); if (next && doc) { hist.current.past.push(doc); setDoc(next); stacks() } }
+  const undo = () => {
+    const prev = hist.current.past.pop()
+    if (prev && doc) {
+      hist.current.future.push(doc)
+      setDoc(prev)
+      stacks()
+    }
+  }
+  const redo = () => {
+    const next = hist.current.future.pop()
+    if (next && doc) {
+      hist.current.past.push(doc)
+      setDoc(next)
+      stacks()
+    }
+  }
 
-  return { doc, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose, conflict, copyName, setCopyName, resolveConflict,
-    commit, undo, redo, canUndo: can.undo, canRedo: can.redo }
+  return {
+    doc,
+    setDoc,
+    loaded,
+    loadError,
+    owner,
+    status,
+    saveNow,
+    saveAndClose,
+    conflict,
+    copyName,
+    setCopyName,
+    resolveConflict,
+    commit,
+    undo,
+    redo,
+    canUndo: can.undo,
+    canRedo: can.redo,
+  }
 }
 export type Autosave<T extends Doc> = ReturnType<typeof useAutosave<T>>
 
@@ -167,9 +241,17 @@ export function SaveLine({ status, onRetry }: { status: SaveStatus; onRetry: () 
   return (
     <span className={`save-status ${status.state}`} role="status" aria-label="Save status">
       {status.state === 'saving' && 'Saving…'}
-      {status.state === 'saved' && `All changes saved${status.at ? ` · ${new Date(status.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+      {status.state === 'saved' &&
+        `All changes saved${status.at ? ` · ${new Date(status.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}
       {status.state === 'conflict' && 'Not saved — changed in another browser; choose which version to keep.'}
-      {status.state === 'failed' && <>Not saved — {status.error} <button className="btn small" onClick={onRetry}>Retry</button></>}
+      {status.state === 'failed' && (
+        <>
+          Not saved — {status.error}{' '}
+          <button className="btn small" onClick={onRetry}>
+            Retry
+          </button>
+        </>
+      )}
     </span>
   )
 }
@@ -178,16 +260,36 @@ export function SaveLine({ status, onRetry }: { status: SaveStatus; onRetry: () 
 export function ConflictDialog({ s, name }: { s: Pick<Autosave<Doc>, 'conflict' | 'copyName' | 'setCopyName' | 'resolveConflict'>; name: string }) {
   const { conflict, copyName, setCopyName, resolveConflict } = s
   return (
-    <Modal open={!!conflict} onClose={() => void resolveConflict('reload')} title="Saved elsewhere"
-      actions={<>
-        <button className="btn" onClick={() => void resolveConflict('reload')}>Discard mine, load theirs</button>
-        <button className="btn" onClick={() => void resolveConflict('copy')}>Save mine as a new file</button>
-        <button className="btn primary" onClick={() => void resolveConflict('overwrite')}>Overwrite with mine</button>
-      </>}>
-      {conflict && <div className="stack">
-        <p>{name} was saved on the server from another browser{conflict.updatedAt ? ` (${new Date(conflict.updatedAt).toLocaleString()})` : ''}, after you opened it. File: <code>{conflict.file}</code>.</p>
-        <label>File name if you save yours as a new file<input value={copyName} onChange={e => setCopyName(e.target.value)} /></label>
-      </div>}
+    <Modal
+      open={!!conflict}
+      onClose={() => void resolveConflict('reload')}
+      title="Saved elsewhere"
+      actions={
+        <>
+          <button className="btn" onClick={() => void resolveConflict('reload')}>
+            Discard mine, load theirs
+          </button>
+          <button className="btn" onClick={() => void resolveConflict('copy')}>
+            Save mine as a new file
+          </button>
+          <button className="btn primary" onClick={() => void resolveConflict('overwrite')}>
+            Overwrite with mine
+          </button>
+        </>
+      }
+    >
+      {conflict && (
+        <div className="stack">
+          <p>
+            {name} was saved on the server from another browser{conflict.updatedAt ? ` (${new Date(conflict.updatedAt).toLocaleString()})` : ''}, after you
+            opened it. File: <code>{conflict.file}</code>.
+          </p>
+          <label>
+            File name if you save yours as a new file
+            <input value={copyName} onChange={e => setCopyName(e.target.value)} />
+          </label>
+        </div>
+      )}
     </Modal>
   )
 }

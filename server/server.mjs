@@ -61,8 +61,18 @@ import { compendiumsApi } from './compendiums.mjs'
 import { GAMES, scoped } from './games.mjs'
 import { oidcApi } from './oidc.mjs'
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.xml': 'application/xml; charset=utf-8',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.xsd': 'application/xml' }
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.xml': 'application/xml; charset=utf-8',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.xsd': 'application/xml',
+}
 const MAX_BODY = 5 * 1024 * 1024
 const gzipAsync = promisify(gzip)
 const ID = /^[A-Za-z0-9._-]{1,80}$/
@@ -71,28 +81,42 @@ const CA2 = GAMES.ca2.tag
 
 // the root's attribute, still escaped (rootTag: linear on a body whose root never closes)
 const rootAttr = (xml, name, tag = CA2) => rootTag(xml, tag)?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]
-const slug = s => (s || '').normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'runner'
+const slug = s =>
+  (s || '')
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 60) || 'runner'
 const fail = (code, message) => Object.assign(new Error(message), { code })
 // on every response. The built app loads only its own scripts, styles and fonts; inline style attributes (React) and
 // data:/blob: images (portraits) are allowed; nothing may frame it.
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+  'Content-Security-Policy':
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
     "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
-  'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin', 'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'same-origin',
+  'X-Frame-Options': 'DENY',
 }
 
 function setRev(xml, rev, tag = CA2) {
   return xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t =>
-    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`))
+    /\srev="[^"]*"/.test(t) ? t.replace(/\srev="[^"]*"/, ` rev="${rev}"`) : t.replace(/\sid="/, ` rev="${rev}" id="`),
+  )
 }
 
 /** A trashed runner restored next to one with its id: a new id, rev 1 and "(restored copy)" after its street name (or name). */
 export function restoredCopy(xml, id, tag = CA2) {
-  return setRev(xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
-    const street = t.match(/\sstreetName="([^"]*)"/)?.[1] || t.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
-    // a copy is in no campaign
-    return t.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(new RegExp(`^<${tag}`), `$& id="${id}" streetName="${street} (restored copy)"`)
-  }), 1, tag)
+  return setRev(
+    xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
+      const street = t.match(/\sstreetName="([^"]*)"/)?.[1] || t.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
+      // a copy is in no campaign
+      return t.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(new RegExp(`^<${tag}`), `$& id="${id}" streetName="${street} (restored copy)"`)
+    }),
+    1,
+    tag,
+  )
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
@@ -102,38 +126,94 @@ const inside = (path, dir) => path === dir || path.startsWith(dir + sep)
 export function lru(max, size = () => 1) {
   const map = new Map()
   let total = 0
-  const drop = k => { if (map.has(k)) { total -= size(map.get(k)); map.delete(k) } }
+  const drop = k => {
+    if (map.has(k)) {
+      total -= size(map.get(k))
+      map.delete(k)
+    }
+  }
   return {
-    get: k => { const v = map.get(k); if (v !== undefined) { map.delete(k); map.set(k, v) } return v },
+    get: k => {
+      const v = map.get(k)
+      if (v !== undefined) {
+        map.delete(k)
+        map.set(k, v)
+      }
+      return v
+    },
     set: (k, v) => {
       drop(k)
       map.set(k, v)
       total += size(v)
-      for (const old of map.keys()) { if (total <= max) break; drop(old) }
+      for (const old of map.keys()) {
+        if (total <= max) break
+        drop(old)
+      }
       return v
     },
     delete: drop,
-    get size() { return map.size },
-    get total() { return total },
+    get size() {
+      return map.size
+    },
+    get total() {
+      return total
+    },
   }
 }
 // the app version for backups: VERSION (written by the Dockerfile, which ships no package.json), else package.json
 const VERSION = (() => {
-  try { return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim() } catch { /* not in the image */ }
-  try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version } catch { return 'unknown' }
+  try {
+    return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim()
+  } catch {
+    /* not in the image */
+  }
+  try {
+    return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
+  } catch {
+    return 'unknown'
+  }
 })()
 
-export function createServer({ staticDir, charDir, customDir, libraryDir, python = 'python3', restoreTtl, downloadTtl, askTimeout, trustProxy = '', publicUrl = '', accountKeys, oidc: oidcOpts = {} }) {
-  staticDir = resolve(staticDir); charDir = resolve(charDir); customDir = resolve(customDir)
+export function createServer({
+  staticDir,
+  charDir,
+  customDir,
+  libraryDir,
+  python = 'python3',
+  restoreTtl,
+  downloadTtl,
+  askTimeout,
+  trustProxy = '',
+  publicUrl = '',
+  accountKeys,
+  oidc: oidcOpts = {},
+}) {
+  staticDir = resolve(staticDir)
+  charDir = resolve(charDir)
+  customDir = resolve(customDir)
   libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
   let auth = null
-  const books = booksApi({ charDir, customDir, libraryDir, python, importerRoot: ROOT, version: VERSION, restoreTtl, downloadTtl, askTimeout,
+  const books = booksApi({
+    charDir,
+    customDir,
+    libraryDir,
+    python,
+    importerRoot: ROOT,
+    version: VERSION,
+    restoreTtl,
+    downloadTtl,
+    askTimeout,
     onRestore: () => auth.reload(oidc.issuer()), // the restored auth.xml's issuer
-    compendiumSources: () => compendiums.ca2.sources() }) // a house source never takes an Anarchy compendium's id (SR6 has none)
+    compendiumSources: () => compendiums.ca2.sources(),
+  }) // a house source never takes an Anarchy compendium's id (SR6 has none)
   // runner writes, and the account changes that move runner folders: one at a time
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
   let chain = Promise.resolve()
-  const lock = fn => { const run = chain.then(fn); chain = run.catch(() => {}); return run }
+  const lock = fn => {
+    const run = chain.then(fn)
+    chain = run.catch(() => {})
+    return run
+  }
   // each folder's files as index() last read them (both games'), kept while a file's size, time and inode stay: every list
   // and every save read all of an account's files again (a GM with the books' thousand NPCs: half a second a request). A
   // folder's entry holds only the files it has now; past 64 MB of XML the least recently listed folders go.
@@ -146,7 +226,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (!taken.has(name.toLowerCase())) return name
     }
   }
-  const exists = path => stat(path).then(() => true, () => false)
+  const exists = path =>
+    stat(path).then(
+      () => true,
+      () => false,
+    )
   const base = file => file.replace(/\.xml$/, '')
   /** Every file of the folder `from` into `to`, each under a free name there (prefixed). */
   async function moveAll(from, to, prefix = '') {
@@ -157,7 +241,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   // the games whose folders account changes touch: while an account called sr6 from before SR6 exists, its runner folder is
   // characters/sr6/, so nothing of the SR6 area is read or written (its routes answer 409)
   const legacy = () => auth.usernames().includes(GAMES.sr6.sub)
-  const live = () => legacy() ? [games.ca2] : [games.ca2, games.sr6]
+  const live = () => (legacy() ? [games.ca2] : [games.ca2, games.sr6])
   /** Runner folders for auth.mjs, which calls these under `lock`. Both games' (adopt: Anarchy's; move: the given game's). */
   const runners = {
     async count(u) {
@@ -174,10 +258,17 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       const moves = [] // runners, then NPCs, then compendiums; Anarchy's, then SR6's
       for (const m of stores()) if (await exists(m[0](from))) moves.push(m)
       for (const [f, label] of moves) if (await exists(f(to))) throw fail(409, `${label}${to} already exists; move it away first`)
-      const done = [], renamed = []
+      const done = [],
+        renamed = []
       try {
-        for (const [f] of moves) { await rename(f(from), f(to)); done.push(f) }
-        for (const g of live()) { await g.campaigns.rename(from, to); renamed.push(g) }
+        for (const [f] of moves) {
+          await rename(f(from), f(to))
+          done.push(f)
+        }
+        for (const g of live()) {
+          await g.campaigns.rename(from, to)
+          renamed.push(g)
+        }
       } catch (e) {
         // users.xml keeps the old name: so do the campaigns and the folders
         for (const g of renamed.reverse()) await g.campaigns.rename(to, from).catch(e2 => console.error(`campaigns keep ${to} for ${from}: ${e2.message}`))
@@ -197,11 +288,14 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     /** game: 'ca2' or 'sr6' (auth.mjs checks it); SR6's is refused while an account called sr6 holds its folder. */
     async move(from, file, to, game = 'ca2') {
       if (game === 'sr6' && legacy()) throw fail(409, 'rename the account sr6 first')
-      const { folder } = games[game === 'sr6' ? 'sr6' : 'ca2'], tag = GAMES[game === 'sr6' ? 'sr6' : 'ca2'].tag
-      if (!await exists(join(folder(from), file))) throw fail(404, 'no such runner')
+      const { folder } = games[game === 'sr6' ? 'sr6' : 'ca2'],
+        tag = GAMES[game === 'sr6' ? 'sr6' : 'ca2'].tag
+      if (!(await exists(join(folder(from), file)))) throw fail(404, 'no such runner')
       await mkdir(folder(to), { recursive: true })
-      const name = await freeName(folder(to), base(file)), xml = await readFile(join(folder(from), file), 'utf8')
-      if (campaignOf(xml, tag)) { // a moved runner leaves its campaign, as a trashed one does (its new owner isn't a member)
+      const name = await freeName(folder(to), base(file)),
+        xml = await readFile(join(folder(from), file), 'utf8')
+      if (campaignOf(xml, tag)) {
+        // a moved runner leaves its campaign, as a trashed one does (its new owner isn't a member)
         await writeAtomic(join(folder(to), name), setCampaign(xml, null, tag))
         await unlink(join(folder(from), file))
       } else await rename(join(folder(from), file), join(folder(to), name))
@@ -224,40 +318,63 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
    *  always, SR6's the same shape in characters/sr6/ and custom/sr6/. A body must have the game's root, first in the file,
    *  in its namespace. Its routes are the unprefixed ones (api() strips /api/sr6). */
   function gameStore(g) {
-    const tag = g.tag, home = g.sub ? join(charDir, g.sub) : charDir, label = g.sub ? `characters/${g.sub}/` : 'characters/'
+    const tag = g.tag,
+      home = g.sub ? join(charDir, g.sub) : charDir,
+      label = g.sub ? `characters/${g.sub}/` : 'characters/'
     // a comment never runs past its own -->: with a lazy [\s\S]*? one comment could swallow the next ones, and a body of
     // ~40 empty comments then took the whole server minutes to refuse (exponential backtracking)
     const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--(?:(?!-->)[\\s\\S])*-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
     const WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
     /** An <npc> block first in the root (a closed root: WELL passed). Root only, by rootTag: a pattern tried at every later
      *  <tag in the body backtracked quadratically. */
-    const isNpc = xml => { const r = rootTag(xml, tag); return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length)) }
+    const isNpc = xml => {
+      const r = rootTag(xml, tag)
+      return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+    }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
-    const npcRoot = join(home, '.npcs'), npcFolder = username => join(npcRoot, username)
+    const npcRoot = join(home, '.npcs'),
+      npcFolder = username => join(npcRoot, username)
 
     /** The folder's character files as { file, id, rev, xml }, from `indexed` while unchanged. */
     async function index(dir) {
       const files = (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))
-      const was = indexed.get(dir), now = new Map()
-      const out = await Promise.all(files.map(async file => {
-        const path = join(dir, file), s = await stat(path), key = `${s.size}/${s.mtimeMs}/${s.ino}`
-        const hit = was?.get(file)
-        if (hit?.key === key) { now.set(file, hit); return hit.entry }
-        const xml = await readFile(path, 'utf8')
-        const entry = { file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml }
-        now.set(file, { key, entry })
-        return entry
-      }))
-      if (now.size) indexed.set(dir, now) // (a file deleted or renamed since: its entry is gone)
+      const was = indexed.get(dir),
+        now = new Map()
+      const out = await Promise.all(
+        files.map(async file => {
+          const path = join(dir, file),
+            s = await stat(path),
+            key = `${s.size}/${s.mtimeMs}/${s.ino}`
+          const hit = was?.get(file)
+          if (hit?.key === key) {
+            now.set(file, hit)
+            return hit.entry
+          }
+          const xml = await readFile(path, 'utf8')
+          const entry = { file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml }
+          now.set(file, { key, entry })
+          return entry
+        }),
+      )
+      if (now.size)
+        indexed.set(dir, now) // (a file deleted or renamed since: its entry is gone)
       else indexed.delete(dir)
       return out
     }
 
-    const campaigns = campaignsApi({ customDir: g.sub ? join(customDir, g.sub) : customDir, tag, lock, auth, runnersOf: u => index(folder(u)),
+    const campaigns = campaignsApi({
+      customDir: g.sub ? join(customDir, g.sub) : customDir,
+      tag,
+      lock,
+      auth,
+      runnersOf: u => index(folder(u)),
       writeRunner: (u, file, xml) => writeAtomic(join(folder(u), file), xml),
-      npcsOf: u => index(npcFolder(u)), writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml), creation: g.id === 'sr6' })
+      npcsOf: u => index(npcFolder(u)),
+      writeNpc: (u, file, xml) => writeAtomic(join(npcFolder(u), file), xml),
+      creation: g.id === 'sr6',
+    })
     // the two stores the character and trash routes serve; NPCs: admin and editors only (need() gates /api/npcs, and a
     // request that waited for the lock checks the role again)
     const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
@@ -272,28 +389,30 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (url.pathname === (kind.npc ? '/api/npcs' : '/api/characters') && req.method === 'GET') {
         const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
         const out = []
-        for (const owner of owners) for (const { file, rev, xml } of await index(kind.folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
-        if (who.role === 'editor') for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
+        for (const owner of owners)
+          for (const { file, rev, xml } of await index(kind.folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
+        if (who.role === 'editor')
+          for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
         return send(res, 200, out)
       }
       const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
       if (!m) return send(res, 404, { error: 'not found' })
       let id
-      try { id = decodeURIComponent(m[1]) } catch { id = '' } // a malformed %-escape: a bad id, not a 500
+      try {
+        id = decodeURIComponent(m[1])
+      } catch {
+        id = ''
+      } // a malformed %-escape: a bad id, not a 500
       if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
       if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
       const xml = req.method === 'PUT' ? await readBody(req) : null
-      if (xml != null && (!NS.test(xml) || attrOf(xml, 'id') !== id))
-        return send(res, 400, { error: 'body is not a character file for this id' })
+      if (xml != null && (!NS.test(xml) || attrOf(xml, 'id') !== id)) return send(res, 400, { error: 'body is not a character file for this id' })
       // the root's attributes as the app writes them (double-quoted, < and > escaped): the server edits that tag (rev, campaign)
       // (a root that never closes: refused here, not a 500)
-      if (xml != null && !WELL.test(rootTag(xml, tag) ?? ''))
-        return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
-      if (xml != null && kind.npc && !isNpc(xml))
-        return send(res, 400, { error: 'an NPC file has an <npc> block' })
+      if (xml != null && !WELL.test(rootTag(xml, tag) ?? '')) return send(res, 400, { error: 'the character element’s attributes aren’t well formed' })
+      if (xml != null && kind.npc && !isNpc(xml)) return send(res, 400, { error: 'an NPC file has an <npc> block' })
       // and the other way: an NPC never lands in a runner folder, which players' paths list
-      if (xml != null && !kind.npc && isNpc(xml))
-        return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
+      if (xml != null && !kind.npc && isNpc(xml)) return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
       return lock(async () => {
         // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
         const me = auth.current(who.id)
@@ -301,14 +420,16 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
         const dir = kind.folder(me.username)
         const existing = (await index(dir)).find(c => c.id === id)
-        if (!existing) for (const u of auth.usernames())
-          if (u !== me.username && (await index(kind.folder(u))).some(c => c.id === id))
-            return send(res, 403, { error: `this ${kind.noun} belongs to another account; only its owner can change it` })
+        if (!existing)
+          for (const u of auth.usernames())
+            if (u !== me.username && (await index(kind.folder(u))).some(c => c.id === id))
+              return send(res, 403, { error: `this ${kind.noun} belongs to another account; only its owner can change it` })
         if (req.method === 'DELETE') {
           if (!existing) return send(res, 404, { error: `no such ${kind.noun}` })
           await mkdir(join(dir, '.trash'), { recursive: true })
           const to = join(dir, '.trash', `${base(existing.file)}-${Date.now()}.xml`)
-          if (campaignOf(existing.xml, tag)) { // a trashed runner leaves its campaign
+          if (campaignOf(existing.xml, tag)) {
+            // a trashed runner leaves its campaign
             await writeAtomic(to, setCampaign(existing.xml, null, tag))
             await unlink(join(dir, existing.file))
           } else await rename(join(dir, existing.file), to)
@@ -320,7 +441,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
           return send(res, 409, { error: 'conflict', rev: existing.rev, file: existing.file, updatedAt: attrOf(existing.xml, 'updatedAt') })
         const rev = (existing?.rev ?? 0) + 1
         await mkdir(dir, { recursive: true })
-        const file = existing?.file ?? await freeName(dir, slug(url.searchParams.get('filename') || attrOf(xml, 'streetName') || attrOf(xml, 'name')))
+        const file = existing?.file ?? (await freeName(dir, slug(url.searchParams.get('filename') || attrOf(xml, 'streetName') || attrOf(xml, 'name'))))
         // the campaign is the stored runner's (set by /api/campaigns), never the body's
         await writeAtomic(join(dir, file), setRev(setCampaign(xml, existing && campaignOf(existing.xml, tag), tag), rev, tag))
         return send(res, existing ? 200 : 201, { rev, file })
@@ -334,7 +455,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       if (!m) return send(res, 404, { error: 'not found' })
       let file = null
       if (m[1] != null) {
-        try { file = decodeURIComponent(m[1]) } catch { file = '' }
+        try {
+          file = decodeURIComponent(m[1])
+        } catch {
+          file = ''
+        }
         if (!TRASH_FILE.test(file) || file.includes('..')) return send(res, 400, { error: 'bad file name' })
       }
       const want = !file ? ['GET', 'DELETE'] : m[2] ? ['POST'] : ['DELETE']
@@ -346,15 +471,22 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         return u
       }
       /** The runner files in a trash folder: regular files with a trash name (no links, no folders called *.xml). */
-      const files = async dir => (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
+      const files = async dir =>
+        (await readdir(dir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && TRASH_FILE.test(d.name)).map(d => d.name)
       if (req.method === 'GET') {
-        const user = whose(who), dir = join(kind.folder(user), '.trash'), items = []
+        const user = whose(who),
+          dir = join(kind.folder(user), '.trash'),
+          items = []
         for (const f of await files(dir)) {
           const [xml, s] = await Promise.all([readFile(join(dir, f), 'utf8'), stat(join(dir, f))]).catch(() => [])
           if (!xml) continue
           const at = Number(f.match(/-(\d{13})\.xml$/)?.[1] ?? s.mtimeMs)
-          items.push({ file: f, id: attrOf(xml, 'id') ?? '', name: unesc(attrOf(xml, 'streetName') || attrOf(xml, 'name') || '') || base(f),
-            deletedAt: new Date(at).toISOString() })
+          items.push({
+            file: f,
+            id: attrOf(xml, 'id') ?? '',
+            name: unesc(attrOf(xml, 'streetName') || attrOf(xml, 'name') || '') || base(f),
+            deletedAt: new Date(at).toISOString(),
+          })
         }
         return send(res, 200, { user, name: auth.nameOf(user), items: items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)) })
       }
@@ -362,22 +494,37 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         const me = auth.current(who.id) // as it is now (renamed, disabled or deleted while this waited)
         if (!me) return send(res, 401, { error: 'sign in first' })
         if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
-        const user = whose(me), home = kind.folder(user), dir = join(home, '.trash')
+        const user = whose(me),
+          home = kind.folder(user),
+          dir = join(home, '.trash')
         if (!file) {
           // { files: [...] }: only those (what the page showed), each checked; no body: all of them
           const body = await readBody(req)
           let only = null
           if (body.trim()) {
-            try { only = JSON.parse(body).files } catch { /* checked below */ }
-            if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string')) return send(res, 400, { error: 'body is { files: [file names] }' })
+            try {
+              only = JSON.parse(body).files
+            } catch {
+              /* checked below */
+            }
+            if (!Array.isArray(only) || only.length > 10000 || !only.every(f => typeof f === 'string'))
+              return send(res, 400, { error: 'body is { files: [file names] }' })
           }
           let deleted = 0
-          for (const f of await files(dir)) if (!only || only.includes(f)) { await unlink(join(dir, f)); deleted++ }
+          for (const f of await files(dir))
+            if (!only || only.includes(f)) {
+              await unlink(join(dir, f))
+              deleted++
+            }
           return send(res, 200, { deleted })
         }
         const path = join(dir, file)
         if (!inside(path, dir) || !(await lstat(path).catch(() => null))?.isFile()) return send(res, 404, { error: `no such ${kind.noun} in the trash` })
-        if (req.method === 'DELETE') { await unlink(path); res.writeHead(204).end(); return }
+        if (req.method === 'DELETE') {
+          await unlink(path)
+          res.writeHead(204).end()
+          return
+        }
         const xml = await readFile(path, 'utf8')
         // the other game's file (or anything else) never comes back here
         if (!NS.test(xml)) return send(res, 400, { error: `this file isn’t a${kind.npc ? 'n' : ''} ${kind.noun}, so it can’t be restored` })
@@ -392,7 +539,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
           await writeFile(tmp, restoredCopy(xml, id, tag), 'utf8')
           await rename(tmp, join(home, name))
           await unlink(path) // a crash before this leaves it in the trash too: nothing is lost
-        } else if (campaignOf(xml, tag) && !await kind.holds(user, campaignOf(xml, tag))) { // its campaign is gone, or the owner left it
+        } else if (campaignOf(xml, tag) && !(await kind.holds(user, campaignOf(xml, tag)))) {
+          // its campaign is gone, or the owner left it
           await writeAtomic(join(home, name), setCampaign(xml, null, tag))
           await unlink(path)
         } else await rename(path, join(home, name))
@@ -405,14 +553,27 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
      *  NPCs and their trash to <home>/.npcs/.trash/, named after it; then its folders go. */
     async function retire(u) {
       await campaigns.drop(u)
-      for (const [d, to] of [[join(folder(u), '.trash'), join(home, '.trash')], [folder(u), null],
-        [join(npcFolder(u), '.trash'), join(npcRoot, '.trash')], [npcFolder(u), join(npcRoot, '.trash')]]) {
+      for (const [d, to] of [
+        [join(folder(u), '.trash'), join(home, '.trash')],
+        [folder(u), null],
+        [join(npcFolder(u), '.trash'), join(npcRoot, '.trash')],
+        [npcFolder(u), join(npcRoot, '.trash')],
+      ]) {
         if (to) await moveAll(d, to, `${u}-`)
         await rmdir(d).catch(() => {})
       }
     }
 
-    return { handle, campaigns, retire, folder, stores: [[folder, label], [npcFolder, `${label}.npcs/`]] }
+    return {
+      handle,
+      campaigns,
+      retire,
+      folder,
+      stores: [
+        [folder, label],
+        [npcFolder, `${label}.npcs/`],
+      ],
+    }
   }
 
   let oidc = null
@@ -422,14 +583,30 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
   const compendiums = {
     ca2: compendiumsApi({ home: charDir, sourceFiles: sourceFiles(join(staticDir, 'data'), customDir), lock, auth, campaigns: games.ca2.campaigns }),
-    sr6: compendiumsApi({ game: GAMES.sr6, home: join(charDir, GAMES.sr6.sub), sourceFiles: sourceFiles(join(staticDir, 'data', 'sr6'), join(customDir, 'sr6')),
-      lock, auth, campaigns: games.sr6.campaigns }),
+    sr6: compendiumsApi({
+      game: GAMES.sr6,
+      home: join(charDir, GAMES.sr6.sub),
+      sourceFiles: sourceFiles(join(staticDir, 'data', 'sr6'), join(customDir, 'sr6')),
+      lock,
+      auth,
+      campaigns: games.sr6.campaigns,
+    }),
   }
-  const stores = () => [...games.ca2.stores, [compendiums.ca2.folder, 'characters/.compendiums/'],
-    ...legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]]
+  const stores = () => [
+    ...games.ca2.stores,
+    [compendiums.ca2.folder, 'characters/.compendiums/'],
+    ...(legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]),
+  ]
   // each game's own art set: Anarchy's in library/backgrounds/, SR6's in library/sr6/backgrounds/ (SR6's starts with our circuit board)
-  const backgrounds = { ca2: backgroundsApi({ libraryDir, auth }), sr6: backgroundsApi({ libraryDir: join(libraryDir, GAMES.sr6.sub), auth,
-    seed: { file: join(ROOT, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' }, track: books.track }) }
+  const backgrounds = {
+    ca2: backgroundsApi({ libraryDir, auth }),
+    sr6: backgroundsApi({
+      libraryDir: join(libraryDir, GAMES.sr6.sub),
+      auth,
+      seed: { file: join(ROOT, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
+      track: books.track,
+    }),
+  }
   oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
 
   const send = (res, code, body, type = 'application/json') => {
@@ -461,16 +638,27 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     try {
       const s = await stat(path)
       if (s.isDirectory()) return serveFile(res, base, rel.replace(/\/?$/, '/index.html'), req)
-      const type = TYPES[extname(path)] ?? 'application/octet-stream', text = /^text\/|xml|json|svg/.test(type)
+      const type = TYPES[extname(path)] ?? 'application/octet-stream',
+        text = /^text\/|xml|json|svg/.test(type)
       const etag = `W/"${s.size.toString(36)}-${Math.floor(s.mtimeMs).toString(36)}"`
-      const head = { 'Content-Type': type, 'Cache-Control': rel.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
-        ETag: etag, ...text ? { Vary: 'Accept-Encoding' } : {} }
+      const head = {
+        'Content-Type': type,
+        'Cache-Control': rel.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        ETag: etag,
+        ...(text ? { Vary: 'Accept-Encoding' } : {}),
+      }
       let z = zipped.get(path)
-      if (z && z.etag !== etag) { zipped.delete(path); z = undefined } // changed since it was zipped
-      if (req?.headers['if-none-match'] === etag) { res.writeHead(304, head).end(); return true }
+      if (z && z.etag !== etag) {
+        zipped.delete(path)
+        z = undefined
+      } // changed since it was zipped
+      if (req?.headers['if-none-match'] === etag) {
+        res.writeHead(304, head).end()
+        return true
+      }
       let body = await readFile(path)
       if (text && body.length > 1024 && /\bgzip\b/.test(req?.headers['accept-encoding'] ?? '')) {
-        if (!z) zipped.set(path, z = { etag, body: await gzipAsync(body) })
+        if (!z) zipped.set(path, (z = { etag, body: await gzipAsync(body) }))
         body = z.body
         head['Content-Encoding'] = 'gzip'
       }
@@ -495,23 +683,28 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   async function api(req, res, url, who) {
     if (url.pathname === '/api/health') return send(res, 200, { ok: true, storage: 'server' })
     const s = scoped(url.pathname)
-    if (s.game === 'sr6') { // the SR6 area: its game stores only, as the same routes without the prefix
+    if (s.game === 'sr6') {
+      // the SR6 area: its game stores only, as the same routes without the prefix
       if (legacy()) return send(res, 409, { error: 'rename the account sr6 first' })
       const u = new URL(url)
       u.pathname = s.path
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
       if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
-      if (await compendiums.sr6.handle(req, res, u, send, who) !== false) return
-      if (await backgrounds.sr6.handle(req, res, u, send, who) !== false) return
-      if (/^\/api\/(books|edits|creation|ai-settings|ai-keys|ai-models|ai-test|ask)(\/|$)/.test(s.path) && await books.handle(req, res, u, send, who, 'sr6') !== false) return
+      if ((await compendiums.sr6.handle(req, res, u, send, who)) !== false) return
+      if ((await backgrounds.sr6.handle(req, res, u, send, who)) !== false) return
+      if (
+        /^\/api\/(books|edits|creation|ai-settings|ai-keys|ai-models|ai-test|ask)(\/|$)/.test(s.path) &&
+        (await books.handle(req, res, u, send, who, 'sr6')) !== false
+      )
+        return
       return send(res, 404, { error: 'not found' })
     }
-    if (await oidc.handle(req, res, url, send, who) !== false) return
-    if (await auth.handle(req, res, url, send, who) !== false) return
-    if (await books.handle(req, res, url, send, who) !== false) return
-    if (await games.ca2.campaigns.handle(req, res, url, send, who) !== false) return
-    if (await compendiums.ca2.handle(req, res, url, send, who) !== false) return
-    if (await backgrounds.ca2.handle(req, res, url, send, who) !== false) return
+    if ((await oidc.handle(req, res, url, send, who)) !== false) return
+    if ((await auth.handle(req, res, url, send, who)) !== false) return
+    if ((await books.handle(req, res, url, send, who)) !== false) return
+    if ((await games.ca2.campaigns.handle(req, res, url, send, who)) !== false) return
+    if ((await compendiums.ca2.handle(req, res, url, send, who)) !== false) return
+    if ((await backgrounds.ca2.handle(req, res, url, send, who)) !== false) return
     return games.ca2.handle(req, res, url, who)
   }
 
@@ -525,23 +718,29 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
         // every write except backup and restore themselves is counted for its whole life: a restore waits for it, and it
         // is refused while a restore runs
         return await (req.method === 'GET' || /^\/api\/(backup|restore)(\/|$)/.test(url.pathname)
-          ? api(req, res, url, who) : books.track(() => api(req, res, url, who)))
+          ? api(req, res, url, who)
+          : books.track(() => api(req, res, url, who)))
       }
-      if (url.pathname.startsWith('/custom/')) { // imported book data: signed-in users only
+      if (url.pathname.startsWith('/custom/')) {
+        // imported book data: signed-in users only
         if (!auth.session(req, res)) return send(res, 401, 'sign in first', 'text/plain')
         // the Shadowrun 6 area's catalog: only at this exact lowercase prefix, only from custom/sr6/
         const sr6 = url.pathname.startsWith('/custom/sr6/')
         if (sr6 && legacy()) return send(res, 404, 'not found', 'text/plain') // an account called sr6 from before: no SR6 area
-        const dir = sr6 ? join(customDir, 'sr6') : customDir, rel = url.pathname.slice(sr6 ? '/custom/sr6'.length : '/custom'.length)
+        const dir = sr6 ? join(customDir, 'sr6') : customDir,
+          rel = url.pathname.slice(sr6 ? '/custom/sr6'.length : '/custom'.length)
         const asked = resolve(dir, '.' + rel)
         // Anarchy's /custom/: custom/sr6/ never, in any case or spelling (SR6's is the branch above)
-        const top = relative(customDir, asked).split(sep)[0].replace(/[. ]+$/, '').toLowerCase()
-        if ((!sr6 && top === 'sr6') || await customGuard(dir, asked, url.pathname)) return send(res, 404, 'not found', 'text/plain')
+        const top = relative(customDir, asked)
+          .split(sep)[0]
+          .replace(/[. ]+$/, '')
+          .toLowerCase()
+        if ((!sr6 && top === 'sr6') || (await customGuard(dir, asked, url.pathname))) return send(res, 404, 'not found', 'text/plain')
         if (await serveFile(res, dir, rel, req)) return
         return send(res, 404, 'not found', 'text/plain')
       }
       if (await serveFile(res, staticDir, url.pathname, req)) return
-      if (!extname(url.pathname) && await serveFile(res, staticDir, '/index.html', req)) return // SPA
+      if (!extname(url.pathname) && (await serveFile(res, staticDir, '/index.html', req))) return // SPA
       send(res, 404, 'not found', 'text/plain')
     } catch (e) {
       if (res.headersSent) return res.destroy()
@@ -552,7 +751,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     }
   })
   server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
-  server.stopJobs = () => { books.stop(); auth.stop() }
+  server.stopJobs = () => {
+    books.stop()
+    auth.stop()
+  }
   server.caches = { indexed, zipped } // tests
   server.started = books.started // the start-up checks (interrupted jobs, core data re-import) have queued their jobs
   return server
@@ -571,7 +773,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   })
   server.listen(port, () => console.log(`chummer-anarchy2 on :${port}`))
   // docker stop: end the importer job too (the next start marks its book interrupted); sessions.xml is saved
-  const quit = () => { server.stopJobs(); server.close(); setTimeout(() => process.exit(0), 2000).unref() }
+  const quit = () => {
+    server.stopJobs()
+    server.close()
+    setTimeout(() => process.exit(0), 2000).unref()
+  }
   process.on('SIGTERM', quit)
   process.on('SIGINT', quit)
 }

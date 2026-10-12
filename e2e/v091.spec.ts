@@ -12,8 +12,11 @@ import { anarchyState } from './session'
 // games (tests/fixtures/mini/custom, tests/fixtures/sr6/custom). Ada the admin. Screenshots to .extract/screenshots/0.9.1.
 const PW = { ada: 'ada-password-1' }
 const SHOTS = '.extract/screenshots/0.9.1'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
@@ -25,10 +28,16 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   // made-up rules text: one as the importer writes it now (paragraphs, bold, italic), one from an older import (the PDF's lines)
   const texts = join(dir, 'custom', 'sr6', 'texts', 'crb.xml')
-  writeFileSync(texts, readFileSync(texts, 'utf8')
-    .replace('Invented rule text about trouble.', 'Invented **trouble** rules, *made up* for this test, long enough to run past one narrow column of a book page.&#10;&#10;'
-      + 'A second invented paragraph.&#10;- an invented list item&#10;- another')
-    .replace('</sr6:data>', '  <text of="rules" id="crb.making-trouble-dice">An invented line&#10;that wraps in&#10;the old way.</text></sr6:data>'))
+  writeFileSync(
+    texts,
+    readFileSync(texts, 'utf8')
+      .replace(
+        'Invented rule text about trouble.',
+        'Invented **trouble** rules, *made up* for this test, long enough to run past one narrow column of a book page.&#10;&#10;' +
+          'A second invented paragraph.&#10;- an invented list item&#10;- another',
+      )
+      .replace('</sr6:data>', '  <text of="rules" id="crb.making-trouble-dice">An invented line&#10;that wraps in&#10;the old way.</text></sr6:data>'),
+  )
   const anarchyRules = join(dir, 'custom', 'imported', 'test', 'rules.xml')
   writeFileSync(anarchyRules, readFileSync(anarchyRules, 'utf8').replace('<text></text>', '<text>Invented quick-reference text for this test.</text>'))
   mkdirSync(config, { recursive: true })
@@ -50,7 +59,10 @@ async function signIn(page: Page, path: string) {
 const fits = async (page: Page, what: string) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${what} scrolls sideways`).toBeLessThanOrEqual(0)
 const mainMenu = (page: Page) => page.getByRole('navigation', { name: 'Main menu' })
-const menuLabels = (page: Page) => mainMenu(page).getByRole('link').evaluateAll(as => as.map(a => a.getAttribute('aria-label')))
+const menuLabels = (page: Page) =>
+  mainMenu(page)
+    .getByRole('link')
+    .evaluateAll(as => as.map(a => a.getAttribute('aria-label')))
 const actions = (page: Page) => page.getByRole('group', { name: 'Page actions' })
 const MENU = ['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup']
 
@@ -64,9 +76,16 @@ async function rows(page: Page, what: string, sr6: boolean, acts: string[] | nul
   await expect(row1.getByRole('button', { name: 'Settings' })).toBeVisible()
   await expect(row1.locator('.account > button')).toBeVisible()
   if (!acts) return expect(actions(page), `${what}: no actions row`).toHaveCount(0)
-  for (const a of acts) await expect(actions(page).getByRole('button', { name: a, exact: true }).or(actions(page).getByRole('link', { name: a, exact: true })), `${what}: ${a}`).toBeVisible()
+  for (const a of acts)
+    await expect(
+      actions(page)
+        .getByRole('button', { name: a, exact: true })
+        .or(actions(page).getByRole('link', { name: a, exact: true })),
+      `${what}: ${a}`,
+    ).toBeVisible()
   await expect(mainMenu(page).getByRole('link', { name: acts[0] })).toHaveCount(0) // not in row 1
-  const r1 = (await row1.boundingBox())!, r2 = (await actions(page).boundingBox())!
+  const r1 = (await row1.boundingBox())!,
+    r2 = (await actions(page).boundingBox())!
   expect(r2.y, `${what}: row 2 under row 1`).toBeGreaterThanOrEqual(r1.y + r1.height - 1)
   expect(Math.abs(r2.x - r1.x), `${what}: both rows from the left`).toBeLessThanOrEqual(1)
 }
@@ -89,7 +108,10 @@ const SR6: [string, string, string[] | null][] = [
 
 test('the header: row 1 the main menu on every page of a game, row 2 the page’s own actions only when it has any', async ({ page }) => {
   await signIn(page, '/#/')
-  for (const [game, pages] of [['ca2', ANARCHY], ['sr6', SR6]] as const) {
+  for (const [game, pages] of [
+    ['ca2', ANARCHY],
+    ['sr6', SR6],
+  ] as const) {
     for (const [path, current, acts] of pages) {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
@@ -150,15 +172,21 @@ test('Game data: a book, then a kind with its counts, its sub-categories, one ki
   await expect(book.locator('option')).toHaveText(['All books', 'Shadowrun, Sixth World Core Rulebook'])
   // the kinds with their counts; the first one with entries is open
   await expect(kindButton(page, 'Weapons')).toHaveAccessibleName('Weapons 2')
-  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 9')  // (a rated item is one entry per rating, levels.ts)
+  await expect(kindButton(page, 'Gear')).toHaveAccessibleName('Gear 9') // (a rated item is one entry per rating, levels.ts)
   await kindButton(page, 'Weapons').click()
   await expect(kindButton(page, 'Weapons')).toHaveAttribute('aria-pressed', 'true')
   await expect(browseRows(page)).toHaveCount(2)
   await expect(page.locator('table.browse')).not.toContainText('Glow Eyes') // one kind at a time
   // augmentations: cyberware or bioware, then the body area
   await kindButton(page, 'Augmentations').click()
-  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([/^All 12$/, /^Bioware: basic bioware 4$/, /^Cyberware: eyeware 3$/,
-    /^Cyberware: Eyeware accessory 1$/, /^Cyberware: Torqlimb 1$/, /^Cyberware: Torqlimb accessory 3$/])
+  await expect(page.getByRole('group', { name: 'Category' }).getByRole('button')).toHaveText([
+    /^All 12$/,
+    /^Bioware: basic bioware 4$/,
+    /^Cyberware: eyeware 3$/,
+    /^Cyberware: Eyeware accessory 1$/,
+    /^Cyberware: Torqlimb 1$/,
+    /^Cyberware: Torqlimb accessory 3$/,
+  ])
   await category(page, 'Cyberware: eyeware').click()
   await expect(browseRows(page)).toHaveCount(3)
   await expect(browseRows(page).first()).toContainText('Glow Eyes 1')
@@ -220,30 +248,31 @@ test('Rules: a book, a chapter (or sheet) and a search, both games', async ({ pa
 for (const [game, toc, hash, title, text] of [
   ['Anarchy', '#/rules', '#/rules/test.gadget-basics', 'Risk Reduction (spec)', 'Invented quick-reference text for this test.'],
   ['SR6', '#/sr6/rules', '#/sr6/rules/crb.making-trouble', 'Making Trouble', 'A second invented paragraph.'],
-]) test(`${game} Rules: a table of contents; a title opens its drawer at its own address, a reload keeps it, Esc goes back`, async ({ page }) => {
-  const at = (h: string) => new RegExp(`${h.replace(/[./]/g, '\\$&')}$`)
-  await signIn(page, `/${toc}`)
-  await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
-  await expect(page.locator('.prose')).toHaveCount(0) // titles only: no rule text on the page itself
-  await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-desktop.png`, fullPage: true })
-  await page.locator('.rule-toc').getByRole('link', { name: title, exact: true }).click()
-  await expect(page).toHaveURL(at(hash))
-  const drawer = page.getByRole('dialog', { name: title })
-  await expect(drawer).toContainText(text)
-  await page.reload()
-  await expect(drawer).toContainText(text)
-  await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-desktop.png` })
-  await page.setViewportSize(PHONE)
-  await fits(page, `${game} rule drawer`)
-  await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-phone.png` })
-  await page.keyboard.press('Escape')
-  await expect(drawer).toBeHidden()
-  await expect(page).toHaveURL(at(toc))
-  await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
-  await fits(page, `${game} rules contents`)
-  await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-phone.png`, fullPage: true })
-  await page.setViewportSize(DESK)
-})
+])
+  test(`${game} Rules: a table of contents; a title opens its drawer at its own address, a reload keeps it, Esc goes back`, async ({ page }) => {
+    const at = (h: string) => new RegExp(`${h.replace(/[./]/g, '\\$&')}$`)
+    await signIn(page, `/${toc}`)
+    await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
+    await expect(page.locator('.prose')).toHaveCount(0) // titles only: no rule text on the page itself
+    await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-desktop.png`, fullPage: true })
+    await page.locator('.rule-toc').getByRole('link', { name: title, exact: true }).click()
+    await expect(page).toHaveURL(at(hash))
+    const drawer = page.getByRole('dialog', { name: title })
+    await expect(drawer).toContainText(text)
+    await page.reload()
+    await expect(drawer).toContainText(text)
+    await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-desktop.png` })
+    await page.setViewportSize(PHONE)
+    await fits(page, `${game} rule drawer`)
+    await page.screenshot({ path: `${SHOTS}/rules-drawer-${game}-phone.png` })
+    await page.keyboard.press('Escape')
+    await expect(drawer).toBeHidden()
+    await expect(page).toHaveURL(at(toc))
+    await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
+    await fits(page, `${game} rules contents`)
+    await page.screenshot({ path: `${SHOTS}/rules-toc-${game}-phone.png`, fullPage: true })
+    await page.setViewportSize(DESK)
+  })
 
 test('Rules text: paragraphs at a readable width, bold and italic shown as such, no markers', async ({ page }) => {
   await signIn(page, '/#/sr6/rules')
@@ -270,7 +299,10 @@ test('Rules text: paragraphs at a readable width, bold and italic shown as such,
   await page.setViewportSize(DESK)
   // Game data: the same text under the entry's Description
   await page.goto('/#/sr6/data')
-  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: counted('Rules') }).click()
+  await page
+    .getByRole('group', { name: 'Kind' })
+    .getByRole('button', { name: counted('Rules') })
+    .click()
   const row = page.locator('table.browse tr', { hasText: 'Making Trouble' })
   await row.getByText('Description').click()
   await expect(row.locator('.prose strong')).toHaveText('trouble')

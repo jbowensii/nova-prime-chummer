@@ -7,7 +7,8 @@ import { CONFIG_NS, SOURCE_ID, attr, body, clean, esc, fail, readOr, rootTag, se
 
 const ENTRY_ID = /^[a-z0-9][a-z0-9.-]{0,99}$/ // importer/edits.py's ID, bounded
 const MAX_TABLE_RULES = 200 // tablerules.xsd
-const MAX_SETTINGS = 500, SETTING_KEY = /^[A-Za-z0-9.:_-]{1,80}$/ // creation.xsd (SR6)
+const MAX_SETTINGS = 500,
+  SETTING_KEY = /^[A-Za-z0-9.:_-]{1,80}$/ // creation.xsd (SR6)
 const MAX_EDIT = 1024 * 1024 + 4096 // the importer's cap on one entry and its description, plus the <edit> wrapper
 const SET_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,60}$/ // a folder in custom/samples/, and each file in it
 const BUILTIN = { name: 'Built-in samples (first release)', canon: true } // custom/samples/builtin/ without a set.xml
@@ -18,24 +19,28 @@ export function creationSettings(list) {
   if (!Array.isArray(list) || list.length > MAX_SETTINGS) throw fail(400, `send settings as [{ key, value, source?, page? }], ${MAX_SETTINGS} at most`)
   const seen = new Set()
   return list.map(s => {
-    const key = String(s?.key ?? ''), value = clean(String(s?.value ?? '')).trim()
-    const source = s?.source == null ? '' : String(s.source), page = s?.page == null ? '' : String(s.page)
+    const key = String(s?.key ?? ''),
+      value = clean(String(s?.value ?? '')).trim()
+    const source = s?.source == null ? '' : String(s.source),
+      page = s?.page == null ? '' : String(s.page)
     if (!SETTING_KEY.test(key)) throw fail(400, 'a setting’s key is 1 to 80 letters, digits and . : _ -')
     if (seen.has(key)) throw fail(400, `the setting ${key} is set twice`)
     seen.add(key)
     if (!value || value.length > 200) throw fail(400, `the value of ${key} is 1 to 200 characters`)
     if (source && !SOURCE_ID.test(source)) throw fail(400, `the source of ${key} is a book id such as CRB`)
     if (page && !/^[1-9]\d{0,5}$/.test(page)) throw fail(400, `the page of ${key} is a whole number from 1`)
-    return { key, value, ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
+    return { key, value, ...(source ? { source } : {}), ...(page ? { page: Number(page) } : {}) }
   })
 }
 /** One checked setting as creation.xsd's <setting/>. */
 export const settingXml = s => `<setting key="${s.key}" value="${esc(s.value)}"${s.source ? ` source="${s.source}"` : ''}${s.page ? ` page="${s.page}"` : ''}/>`
 /** The <setting/> tags in `xml` as [{ key, value, source?, page? }]. */
-export const readSettings = xml => [...xml.matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
-  const source = attr(t, 'source'), page = attr(t, 'page')
-  return { key: attr(t, 'key'), value: attr(t, 'value'), ...source ? { source } : {}, ...page ? { page: Number(page) } : {} }
-})
+export const readSettings = xml =>
+  [...xml.matchAll(/<setting\b[^>]*>/g)].map(([t]) => {
+    const source = attr(t, 'source'),
+      page = attr(t, 'page')
+    return { key: attr(t, 'key'), value: attr(t, 'value'), ...(source ? { source } : {}), ...(page ? { page: Number(page) } : {}) }
+  })
 
 /** ctx (books.mjs): AREAS, customDir, compendiumSources and the importer (jobs.mjs). */
 export function editsApi(ctx) {
@@ -55,20 +60,31 @@ export function editsApi(ctx) {
   }
 
   async function edits(req, res, url, send, who, game = 'ca2') {
-    const p = url.pathname, method = req.method, area = AREAS[game]
+    const p = url.pathname,
+      method = req.method,
+      area = AREAS[game]
     if (p === '/api/edits' && method === 'GET') {
       const xml = (await readOr(join(area.custom, 'edits', 'edits.xml'), '')).replace(/<!--[\s\S]*?-->/g, '')
       const kind = Object.fromEntries(Object.entries(area.kinds).map(([k, t]) => [t, k]))
       // entries only: an SR6 entry's parts can share a kind's tag (a priority's <metatype>, a critter's <gear>) but have no id
-      return send(res, 200, [...xml.matchAll(/<([a-z]+)\b[^>]*>/g)].filter(m => Object.hasOwn(kind, m[1]) && attr(m[0], 'id'))
-        .map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })))
+      return send(
+        res,
+        200,
+        [...xml.matchAll(/<([a-z]+)\b[^>]*>/g)]
+          .filter(m => Object.hasOwn(kind, m[1]) && attr(m[0], 'id'))
+          .map(m => ({ kind: kind[m[1]], id: attr(m[0], 'id') })),
+      )
     }
     if (p === '/api/edits/sources' && game === 'sr6') return send(res, 404, { error: 'not found' }) // S1: no SR6 house sources
     if (p === '/api/edits/sources') {
       if (method !== 'POST') return send(res, 405, { error: 'method not allowed' })
       if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the source as application/json' })
       let b
-      try { b = JSON.parse(await body(req, 4096)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { id, name } as JSON') }
+      try {
+        b = JSON.parse(await body(req, 4096))
+      } catch (e) {
+        throw e.code === 413 ? e : fail(400, 'send { id, name } as JSON')
+      }
       const name = clean(String(b?.name ?? '')).trim()
       if (!SOURCE_ID.test(b?.id ?? '') || !name || name.length > 120) throw fail(400, 'a source needs an id (A–Z, 0–9, -, starting with a letter) and a name')
       if ((await compendiumSources()).has(b.id)) throw fail(409, `the source id ${b.id} is a compendium’s; choose another`)
@@ -78,14 +94,19 @@ export function editsApi(ctx) {
     const m = p.match(/^\/api\/edits\/([a-z]+)\/([^/]+)$/)
     if (!m) return send(res, 404, { error: 'not found' })
     let id
-    try { id = decodeURIComponent(m[2]) } catch { throw fail(400, 'bad entry id') }
+    try {
+      id = decodeURIComponent(m[2])
+    } catch {
+      throw fail(400, 'bad entry id')
+    }
     if (!Object.hasOwn(area.kinds, m[1])) throw fail(400, game === 'ca2' ? 'kind is amps, items or rules' : 'unknown kind')
     if (!ENTRY_ID.test(id)) throw fail(400, 'bad entry id')
     if (method === 'PUT') {
       await edit(['set', m[1], id, '--by', who.username], xmlBody(await body(req, MAX_EDIT), 'edit'), area)
       return send(res, 204, '', 'text/plain')
     }
-    if (method === 'DELETE') return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id], undefined, area), 'result'), 'removed') === 'true' })
+    if (method === 'DELETE')
+      return send(res, 200, { removed: attr(rootTag(await edit(['remove', m[1], id], undefined, area), 'result'), 'removed') === 'true' })
     return send(res, 405, { error: 'method not allowed' })
   }
 
@@ -93,7 +114,8 @@ export function editsApi(ctx) {
    *  its folder and isn't canon, except "builtin" (the first release's runners, built from the core rulebook only). */
   async function sampleSets(req, res, send) {
     if (req.method !== 'GET') return send(res, 405, { error: 'method not allowed' })
-    const root = join(customDir, 'samples'), sets = []
+    const root = join(customDir, 'samples'),
+      sets = []
     for (const d of (await readdir(root, { withFileTypes: true }).catch(() => [])).filter(d => d.isDirectory() && SET_ID.test(d.name))) {
       const tag = rootTag(await readOr(join(root, d.name, 'set.xml')), 'ca2:sampleset')
       const def = d.name === 'builtin' ? BUILTIN : { name: d.name, canon: false }
@@ -112,11 +134,18 @@ export function editsApi(ctx) {
     if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the table rules as application/json' })
     let b
-    try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { rules: [{ id, on, name?, text? }] } as JSON') }
-    if (!Array.isArray(b?.rules) || b.rules.length > MAX_TABLE_RULES) throw fail(400, `send { rules: [{ id, on, name?, text? }] }, ${MAX_TABLE_RULES} rules at most`)
+    try {
+      b = JSON.parse(await body(req, 1024 * 1024))
+    } catch (e) {
+      throw e.code === 413 ? e : fail(400, 'send { rules: [{ id, on, name?, text? }] } as JSON')
+    }
+    if (!Array.isArray(b?.rules) || b.rules.length > MAX_TABLE_RULES)
+      throw fail(400, `send { rules: [{ id, on, name?, text? }] }, ${MAX_TABLE_RULES} rules at most`)
     const seen = new Set()
     const rows = b.rules.map(r => {
-      const id = String(r?.id ?? ''), name = clean(String(r?.name ?? '')).trim(), text = clean(String(r?.text ?? '')).trim()
+      const id = String(r?.id ?? ''),
+        name = clean(String(r?.name ?? '')).trim(),
+        text = clean(String(r?.text ?? '')).trim()
       if (!ENTRY_ID.test(id) || seen.has(id)) throw fail(400, 'each rule needs an id of its own')
       seen.add(id)
       if (typeof r.on !== 'boolean') throw fail(400, 'a rule is on (true) or off (false)')
@@ -125,8 +154,12 @@ export function editsApi(ctx) {
       if (name.length > 120 || text.length > 4000) throw fail(400, 'a house rule’s name is 120 characters at most, its description 4,000')
       return `  <rule id="${id}" on="${r.on}"${r.locked ? ' locked="true"' : ''}>${name ? `<name>${esc(name)}</name><text>${esc(text)}</text>` : ''}</rule>\n`
     })
-    await serial('table', () => writeAtomic(join(customDir, 'table-rules.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n'
-      + `<ca2:tablerules xmlns:ca2="${CONFIG_NS}" version="1">\n${rows.join('')}</ca2:tablerules>\n`))
+    await serial('table', () =>
+      writeAtomic(
+        join(customDir, 'table-rules.xml'),
+        '<?xml version="1.0" encoding="UTF-8"?>\n' + `<ca2:tablerules xmlns:ca2="${CONFIG_NS}" version="1">\n${rows.join('')}</ca2:tablerules>\n`,
+      ),
+    )
     return send(res, 204, '', 'text/plain')
   }
 
@@ -137,12 +170,20 @@ export function editsApi(ctx) {
     if (req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return send(res, 415, { error: 'send the creation rules as application/json' })
     let b
-    try { b = JSON.parse(await body(req, 1024 * 1024)) } catch (e) { throw e.code === 413 ? e : fail(400, 'send { settings: [{ key, value, source?, page? }] } as JSON') }
+    try {
+      b = JSON.parse(await body(req, 1024 * 1024))
+    } catch (e) {
+      throw e.code === 413 ? e : fail(400, 'send { settings: [{ key, value, source?, page? }] } as JSON')
+    }
     if (!Array.isArray(b?.settings)) throw fail(400, `send { settings: [{ key, value, source?, page? }] }, ${MAX_SETTINGS} settings at most`)
     const rows = creationSettings(b.settings).map(s => `  ${settingXml(s)}\n`)
     await mkdir(AREAS.sr6.custom, { recursive: true })
-    await serial('creation', () => writeAtomic(path, '<?xml version="1.0" encoding="UTF-8"?>\n'
-      + `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">\n${rows.join('')}</sr6:creation>\n`))
+    await serial('creation', () =>
+      writeAtomic(
+        path,
+        '<?xml version="1.0" encoding="UTF-8"?>\n' + `<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1">\n${rows.join('')}</sr6:creation>\n`,
+      ),
+    )
     return send(res, 204, '', 'text/plain')
   }
 

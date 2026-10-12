@@ -16,20 +16,28 @@ import { contactPoints } from './contacts'
 export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
   // (a price line listing its prices, `7 or 12 Karma`: one of them, the highest at or below the karma it was taken for)
   const steps = v.karmaSteps?.map(Math.abs).sort((a, b) => a - b)
-  const lo = Math.abs(v.karma ?? 0), each = steps?.length ? (q.karma == null ? steps[0] : [...steps].reverse().find(k => k <= q.karma!) ?? steps[0])
-    : v.karmaMax != null && q.karma != null ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma)) : lo
+  const lo = Math.abs(v.karma ?? 0),
+    each = steps?.length
+      ? q.karma == null
+        ? steps[0]
+        : ([...steps].reverse().find(k => k <= q.karma!) ?? steps[0])
+      : v.karmaMax != null && q.karma != null
+        ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma))
+        : lo
   return each * (v.perLevel ? q.level : 1)
 }
 
 /** Karma from qualities: positive ones cost qualityCost (× positiveQualityFactor), negative ones give it; free traits and
  *  qualities gone from the catalog count nothing. */
 export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { pos: number; neg: number } {
-  let pos = 0, neg = 0
+  let pos = 0,
+    neg = 0
   for (const q of b.qualities) {
     const v = data.qualities[q.id]
     if (q.free || !v) continue
     const total = qualityCost(q, v)
-    if (v.positive) pos += total * (num(cr, 'positiveQualityFactor') ?? 1); else neg += total
+    if (v.positive) pos += total * (num(cr, 'positiveQualityFactor') ?? 1)
+    else neg += total
   }
   return { pos, neg }
 }
@@ -37,7 +45,8 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
 /** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality), both ways: turning
  *  nuyen back into karma only undoes a conversion, at the same rate. Unset: undefined. */
 export function nuyenPerKarma(b: Sr6Build, cr: CreationRules, data?: Sr6Data): number | undefined {
-  const debt = str(cr, 'inDebtQuality'), inDebt = !!debt && b.qualities.some(q => (data ? data.sameFamily('qualities', q.id, debt) : q.id === debt))
+  const debt = str(cr, 'inDebtQuality'),
+    inDebt = !!debt && b.qualities.some(q => (data ? data.sameFamily('qualities', q.id, debt) : q.id === debt))
   return num(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
 }
 /** Karma turned into nuyen, up to karmaToNuyenMax when it's set. */
@@ -54,7 +63,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   // a karma rank costs the per-rank price times the rating it reaches, step by step from the top
   const perRank = n0(cr, 'karmaAttrPerRank')
   for (const k of SR6_ATTRS) {
-    const ranks = b.attributes[k].karma, to = attrRating(b, k, p)
+    const ranks = b.attributes[k].karma,
+      to = attrRating(b, k, p)
     let cost = 0
     for (let i = 0; i < ranks; i++) cost += (to - i) * perRank
     add(`attr:${k}`, `${k.toUpperCase()} ${to - ranks} → ${to} (${s(ranks, 'rank')} by karma)`, cost, 'attributes')
@@ -70,8 +80,15 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('expertise', `${s(spend.expertise, 'expertise')} bought with karma`, spend.expertise * n0(cr, 'advance.expertise'), 'skills')
   // CRB Hong Kong p. 154: a focus is used only once bonded, for the Karma the Magical Goods table gives (p. 168; its
   // catalog `karma`, by Force: the line's rating), when fociBondKarma is on
-  if (flag(cr, 'fociBondKarma')) add('foci', 'Foci bonded', b.purchases.filter(x => isFocus(entryOf(x, data)))
-    .reduce((t, x) => t + (rated(entryOf(x, data)?.attrs.karma, ratingOf(x, entryOf(x, data))).n ?? 0) * x.qty, 0), 'gear')
+  if (flag(cr, 'fociBondKarma'))
+    add(
+      'foci',
+      'Foci bonded',
+      b.purchases
+        .filter(x => isFocus(entryOf(x, data)))
+        .reduce((t, x) => t + (rated(entryOf(x, data)?.attrs.karma, ratingOf(x, entryOf(x, data))).n ?? 0) * x.qty, 0),
+      'gear',
+    )
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
@@ -79,7 +96,11 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('spells', 'Spells and rituals past the free ones', extra.spells * n0(cr, 'karmaSpell'), 'magic')
   add('complexForms', 'Complex forms past the free ones', extra.forms * n0(cr, 'karmaForm'), 'magic')
   // R: initiation and submersion can be bought at creation, base + grade × per-grade for each grade
-  const grades = (g: number) => { let t = 0; for (let i = 1; i <= g; i++) t += n0(cr, 'karmaInitiationBase') + i * n0(cr, 'karmaInitiationPerGrade'); return t }
+  const grades = (g: number) => {
+    let t = 0
+    for (let i = 1; i <= g; i++) t += n0(cr, 'karmaInitiationBase') + i * n0(cr, 'karmaInitiationPerGrade')
+    return t
+  }
   add('initiation', `Initiation grade ${b.initiation}`, grades(b.initiation), 'magic')
   add('submersion', `Submersion grade ${b.submersion}`, grades(b.submersion), 'magic')
   // Hack & Slash p. 71: a data structure is integrated for Karma equal to its level

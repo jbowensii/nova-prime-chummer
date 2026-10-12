@@ -11,11 +11,17 @@ type Over = Parameters<typeof made>[0]
 /** A legal priority runner: Stonefolk at A, attributes C (13), magic D, skills B (23), resources E (8,200¥). */
 function runner(o: { letters?: string; magic?: MagicKind; metatype?: string; method?: Sr6Build['method'] } = {}): Sr6Character {
   const ch = blankSr6(o.method ?? 'priority', 'r1', '2026-10-03T00:00:00Z')
-  ch.build = buildOf(o.method ?? 'priority', { letters: o.method && o.method !== 'priority' ? undefined : o.letters ?? 'ACDBE',
-    metatype: o.metatype ?? STONE, magic: o.magic ?? 'mundane' })
+  ch.build = buildOf(o.method ?? 'priority', {
+    letters: o.method && o.method !== 'priority' ? undefined : (o.letters ?? 'ACDBE'),
+    metatype: o.metatype ?? STONE,
+    magic: o.magic ?? 'mundane',
+  })
   return ch
 }
-const check = (ch: Sr6Character, over?: Over) => { const { data, cr } = made(over); return validateSr6(data, cr, ch) }
+const check = (ch: Sr6Character, over?: Over) => {
+  const { data, cr } = made(over)
+  return validateSr6(data, cr, ch)
+}
 const codes = (ch: Sr6Character, over?: Over) => check(ch, over).map(v => v.code)
 const only = (ch: Sr6Character, code: string, over?: Over) => check(ch, over).filter(v => v.code === code)
 let n = 0
@@ -34,7 +40,10 @@ const pick = (b: Sr6Build, kind: Sr6Build['picks'][number]['kind'], id: string, 
   b.picks.push({ uid, kind, id, ...more })
   return uid
 }
-const errors = (ch: Sr6Character, over?: Over) => check(ch, over).filter(v => v.severity === 'error').map(v => v.code)
+const errors = (ch: Sr6Character, over?: Over) =>
+  check(ch, over)
+    .filter(v => v.severity === 'error')
+    .map(v => v.code)
 /** (owner's decision L2: an unspent runner keeps more than carries over, a problem a GM approves; these tests aren't about it) */
 const NO_LEFT: Over = { unset: ['maxKarmaLeft', 'maxNuyenLeft'] }
 
@@ -44,8 +53,13 @@ test('a blank legal runner has no errors; the catalog’s own problems pass thro
   expect(v.filter(x => x.severity === 'error').map(x => x.code)).toEqual(['leftover.karma', 'leftover.nuyen'])
   // a catalog problem shows only on a runner that uses the entry: this stonefolk runner gets Stonefolk's, a glimmerkin doesn't
   expect(v.filter(x => x.code === 'data.unresolved').map(x => x.path)).toEqual(['metatypes.crb.stonefolk'])
-  const glim = runner(); glim.build.metatype = 'crb.glimmerkin'
-  expect(check(glim).filter(x => x.code === 'data.unresolved').map(x => x.path)).not.toContain('metatypes.crb.stonefolk')
+  const glim = runner()
+  glim.build.metatype = 'crb.glimmerkin'
+  expect(
+    check(glim)
+      .filter(x => x.code === 'data.unresolved')
+      .map(x => x.path),
+  ).not.toContain('metatypes.crb.stonefolk')
 })
 
 // priorities and legality
@@ -68,7 +82,13 @@ test('the metatype and magic kind must be legal at their letters', () => {
   const ch = runner({ metatype: '' })
   expect(only(ch, 'prio.metatypeAllowed')[0].message).toBe('Pick a metatype.')
   ch.build.metatype = STONE
-  expect(codes(ch, { data: d => { delete d.priorities.A!.metatypes[STONE] } })).toContain('prio.metatypeAllowed')
+  expect(
+    codes(ch, {
+      data: d => {
+        delete d.priorities.A!.metatypes[STONE]
+      },
+    }),
+  ).toContain('prio.metatypeAllowed')
   ch.build.magic = 'full' // magic D: adept and aspected only
   expect(only(ch, 'prio.magicAllowed')[0].message).toBe('Full magician isn’t available at magic priority D.')
 })
@@ -146,20 +166,23 @@ test('skills: the cap, karma ranks counting toward it; with the aptitude quality
 test('skills: only one at the highest rank when the table says so; an expertise at creation is no error by itself', () => {
   const ch = runner()
   ch.build.skills.push({ id: 'crb.gab', points: 5, karma: 0 }, { id: 'crb.tinkering', points: 5, karma: 0 })
-  expect(codes(ch)).not.toContain('skill.oneAtMax')  // the fixture's oneSkillAtMax is false
+  expect(codes(ch)).not.toContain('skill.oneAtMax') // the fixture's oneSkillAtMax is false
   expect(only(ch, 'skill.oneAtMax', { rules: { oneSkillAtMax: true } })).toHaveLength(1)
   ch.build.skills[1].points = 4
   expect(codes(ch, { rules: { oneSkillAtMax: true } })).not.toContain('skill.oneAtMax')
   ch.build.skills[0].spec = 'Haggling'
   ch.build.skills[0].expertise = 'Bargains'
   expect(codes(ch)).not.toContain('skill.expertise')
-  expect(codes(ch, { unset: ['skillPointsExpertise'] })).not.toContain('skill.expertise')  // bought with karma instead
+  expect(codes(ch, { unset: ['skillPointsExpertise'] })).not.toContain('skill.expertise') // bought with karma instead
 })
 
 test('skills: overspent skill points are flagged', () => {
   const ch = runner()
-  ch.build.skills.push({ id: 'crb.gab', points: 5, karma: 0, spec: 'Fibbing' }, { id: 'crb.tinkering', points: 5, karma: 0 },
-    { id: 'crb.hexing', points: 0, karma: 0 })
+  ch.build.skills.push(
+    { id: 'crb.gab', points: 5, karma: 0, spec: 'Fibbing' },
+    { id: 'crb.tinkering', points: 5, karma: 0 },
+    { id: 'crb.hexing', points: 0, karma: 0 },
+  )
   expect(codes(ch)).not.toContain('skill.overspent') // 5 + 3 + 5 = 13 of 23
   ch.build.skills[1].points = 16 // 21 ranks: the specialization's 3 points don't fit, so karma buys it instead
   expect(codes(ch)).not.toContain('skill.overspent')
@@ -174,7 +197,9 @@ test('qualities: the cap is on net bonus karma; free traits don’t count toward
   quality(ch.build, 'crb.deep-pockets-debt') // 17 net, the cap
   quality(ch.build, 'crb.stoneskin', 1, true)
   expect(codes(ch)).not.toContain('quality.netBonusCap')
-  expect(only(ch, 'quality.netBonusCap', { rules: { qualityNetBonusCap: 16 } })).toMatchObject([{ message: 'Negative qualities give 17 karma more than positive ones cost; the most is 16.' }])
+  expect(only(ch, 'quality.netBonusCap', { rules: { qualityNetBonusCap: 16 } })).toMatchObject([
+    { message: 'Negative qualities give 17 karma more than positive ones cost; the most is 16.' },
+  ])
   expect(codes(ch, { rules: { qualityMaxCount: 2 } })).not.toContain('quality.maxCount')
   expect(codes(ch, { rules: { qualityMaxCount: 1 } })).toContain('quality.maxCount')
 })
@@ -219,9 +244,15 @@ test('karma and nuyen overspent are errors no GM approves; leftovers above the s
   buy(ch.build, 'weapons', 'crb.fizz-rifle-70', { qty: 8 })
   expect(errors(ch)).toEqual(expect.arrayContaining(['karma.overspent', 'nuyen.overspent']))
   // owner's decision 19: Finalize waits until neither is negative, whatever a GM approves
-  ch.overrides = [{ code: 'karma.overspent', path: 'review', note: 'no' }, { code: 'nuyen.overspent', path: 'gear', note: 'no' }]
+  ch.overrides = [
+    { code: 'karma.overspent', path: 'review', note: 'no' },
+    { code: 'nuyen.overspent', path: 'gear', note: 'no' },
+  ]
   const v = check(ch).filter(x => x.code.endsWith('.overspent') && !x.code.startsWith('attr'))
-  expect(v.map(x => [x.code, !!x.hard, !!x.approved])).toEqual([['karma.overspent', true, false], ['nuyen.overspent', true, false]])
+  expect(v.map(x => [x.code, !!x.hard, !!x.approved])).toEqual([
+    ['karma.overspent', true, false],
+    ['nuyen.overspent', true, false],
+  ])
   expect(canFinalizeSr6(v)).toBe(false)
   // owner's decision L2: more left than carries over is an error a GM may approve
   const rich = runner({ letters: 'ACDBA' })
@@ -230,8 +261,12 @@ test('karma and nuyen overspent are errors no GM approves; leftovers above the s
   rich.overrides = [{ code: 'leftover.karma', path: 'review', note: 'ok' }]
   expect(only(rich, 'leftover.karma')[0].approved).toBe(true)
   // the GM's own carry-over limits in place of the book's, with the house rule on (runnerRules puts them in place)
-  const left = (on: boolean) => { const { data, cr } = made({ rules: { ownCarryOver: on, 'carryOver.karma': 999, 'carryOver.nuyen': 9e9 } })
-    return validateSr6(data, runnerRules(cr), rich).filter(x => x.code.startsWith('leftover.')).map(x => x.code) }
+  const left = (on: boolean) => {
+    const { data, cr } = made({ rules: { ownCarryOver: on, 'carryOver.karma': 999, 'carryOver.nuyen': 9e9 } })
+    return validateSr6(data, runnerRules(cr), rich)
+      .filter(x => x.code.startsWith('leftover.'))
+      .map(x => x.code)
+  }
   expect(left(true)).toEqual([])
   expect(left(false)).toEqual(['leftover.karma', 'leftover.nuyen'])
 })
@@ -249,8 +284,13 @@ test('gear: Availability by rating against the cap; an accessory counts too', ()
   expect(only(ch, 'gear.availCap')).toMatchObject([{ path: `gear.${box.uid}`, message: 'Buzz Box’s Availability 6 is above 5.', page: 63 }])
   box.rating = 1
   buy(ch.build, 'weapons', 'crb.zap-gun', { accessories: [{ uid: 'acc', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }] })
-  expect(only(ch, 'gear.availCap', { data: d => { d.entry('gear', 'crb.zap-scope')!.attrs.avail = '6' } }))
-    .toMatchObject([{ message: 'Zap Scope’s Availability 6 is above 5.' }])
+  expect(
+    only(ch, 'gear.availCap', {
+      data: d => {
+        d.entry('gear', 'crb.zap-scope')!.attrs.avail = '6'
+      },
+    }),
+  ).toMatchObject([{ message: 'Zap Scope’s Availability 6 is above 5.' }])
 })
 
 test('gear: a rating outside the item’s range is flagged; Essence at 0 is flagged', () => {
@@ -265,8 +305,13 @@ test('gear: a rating outside the item’s range is flagged; Essence at 0 is flag
 test('gear: a value the app can’t read is a warning with the entry’s page', () => {
   const ch = runner({ letters: 'ACDBA' })
   const gun = buy(ch.build, 'weapons', 'crb.zap-gun')
-  expect(only(ch, 'catalog.bookValue', { data: d => { d.entry('weapons', 'crb.zap-gun')!.attrs.cost = '12x' } }))
-    .toMatchObject([{ severity: 'warning', path: `gear.${gun.uid}`, source: 'CRB', page: 250 }])
+  expect(
+    only(ch, 'catalog.bookValue', {
+      data: d => {
+        d.entry('weapons', 'crb.zap-gun')!.attrs.cost = '12x'
+      },
+    }),
+  ).toMatchObject([{ severity: 'warning', path: `gear.${gun.uid}`, source: 'CRB', page: 250 }])
 })
 
 // magic
@@ -297,15 +342,15 @@ test('magic: overspent power points; a mystic adept buys no more than its priori
 // contacts and knowledge
 test('lifepath: karma buys contact ratings only up to Charisma; above it the module points must pay', () => {
   const ch = runner({ method: 'lifepath', metatype: GLIM })
-  ch.build.lifepath.push({ id: 'crb.street-sweeper', choices: {} })  // 3 contact points, any type
-  ch.build.attributes.cha.points = 1  // Charisma 2
-  ch.build.contacts.push({ uid: 'c1', name: 'Fixer', archetype: 'fixer', connection: 4, loyalty: 1 })  // 2 above Charisma
-  expect(codes(ch)).not.toContain('contact.karmaCap')  // the points pay for what's above it, karma the rest
-  ch.build.contacts.push({ uid: 'c2', name: 'Doc', archetype: 'doc', connection: 4, loyalty: 2 })  // 2 more above it: 4, 3 points
+  ch.build.lifepath.push({ id: 'crb.street-sweeper', choices: {} }) // 3 contact points, any type
+  ch.build.attributes.cha.points = 1 // Charisma 2
+  ch.build.contacts.push({ uid: 'c1', name: 'Fixer', archetype: 'fixer', connection: 4, loyalty: 1 }) // 2 above Charisma
+  expect(codes(ch)).not.toContain('contact.karmaCap') // the points pay for what's above it, karma the rest
+  ch.build.contacts.push({ uid: 'c2', name: 'Doc', archetype: 'doc', connection: 4, loyalty: 2 }) // 2 more above it: 4, 3 points
   expect(only(ch, 'contact.karmaCap')[0].message).toMatch(/above your Charisma \(2\).*Fixer, Doc/)
-  ch.build.attributes.cha.points = 2  // Charisma 3: 2 above it, the points cover them
+  ch.build.attributes.cha.points = 2 // Charisma 3: 2 above it, the points cover them
   expect(codes(ch)).not.toContain('contact.karmaCap')
-  expect(codes(ch, { unset: ['lifepath.contactKarma'] })).not.toContain('contact.karmaCap')  // karma buys none at all then
+  expect(codes(ch, { unset: ['lifepath.contactKarma'] })).not.toContain('contact.karmaCap') // karma buys none at all then
 })
 
 test('contacts: a rating above Charisma and overspent points are flagged', () => {
@@ -353,8 +398,16 @@ test('point buy: each pool has its most; only one specialization', () => {
 test('lifepath: exactly the setting’s count of adult modules; every mixed choice assigned', () => {
   const ch = runner({ method: 'lifepath', magic: 'full' })
   expect(only(ch, 'lifepath.moduleCount')[0]).toMatchObject({ message: '0 adult life modules taken; take 7.', page: 72 })
-  for (const id of ['crb.street-sweeper', 'crb.wage-drone', 'crb.back-alley-medic', 'crb.glow-apprentice', 'crb.rooftop-runner',
-    'crb.dock-rat', 'crb.gutter-poet']) ch.build.lifepath.push({ id, choices: {} })
+  for (const id of [
+    'crb.street-sweeper',
+    'crb.wage-drone',
+    'crb.back-alley-medic',
+    'crb.glow-apprentice',
+    'crb.rooftop-runner',
+    'crb.dock-rat',
+    'crb.gutter-poet',
+  ])
+    ch.build.lifepath.push({ id, choices: {} })
   expect(codes(ch)).not.toContain('lifepath.moduleCount')
   expect(only(ch, 'lifepath.mixedChoices')).toMatchObject([{ path: 'method.crb.glow-apprentice', message: 'Glow Apprentice: pick where its choice goes.' }])
   ch.build.lifepath[3].choices = { 0: 'edg' }
@@ -366,10 +419,13 @@ test('lifepath: a module twice only as the setting allows; the best attribute pi
   ch.build.lifepath.push({ id: 'crb.wage-drone', choices: {} }, { id: 'crb.wage-drone', choices: {} })
   expect(codes(ch)).not.toContain('lifepath.repeat')
   ch.build.lifepath.push({ id: 'crb.dock-rat', choices: {} }, { id: 'crb.dock-rat', choices: {} })
-  expect(only(ch, 'lifepath.repeat')[0]).toMatchObject({ message: 'Wage Drone (2 times), Dock Rat (2 times): one module may be taken twice, none more.', page: 72 })
+  expect(only(ch, 'lifepath.repeat')[0]).toMatchObject({
+    message: 'Wage Drone (2 times), Dock Rat (2 times): one module may be taken twice, none more.',
+    page: 72,
+  })
   expect(only(ch, 'lifepath.repeat', { unset: ['lifepath.repeatModules'] })[0].message).toMatch(/no module may be taken twice/)
   expect(only(ch, 'lifepath.bestAttr')[0]).toMatchObject({ message: 'Pick the best attribute (it goes up by 4).', page: 72 })
-  ch.build.bestAttr = 'str'  // Glimmerkin STR 1–4: 1 left over
+  ch.build.bestAttr = 'str' // Glimmerkin STR 1–4: 1 left over
   expect(only(ch, 'lifepath.bestAttr')[0].message).toBe('STR reaches its maximum: pick the attribute that takes the other 1.')
   ch.build.bestExtra = 'agi'
   expect(codes(ch)).not.toContain('lifepath.bestAttr')
@@ -380,8 +436,18 @@ test('lifepath: a module twice only as the setting allows; the best attribute pi
 test('a book sample: each printed number the rules give otherwise is a warning citing its page; the file is never corrected', () => {
   const ch = runner()
   ch.build.attributes.rea.points = 3 // REA 4
-  ch.build.purchases.push({ uid: 'w1', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1, qty: 1, accessories: [],
-    bonuses: [{ target: 'rea', value: 1, perRating: true }, { target: 'initDice', value: 1, perRating: true }] })
+  ch.build.purchases.push({
+    uid: 'w1',
+    kind: 'augmentations',
+    id: 'crb.glow-eyes',
+    rating: 1,
+    qty: 1,
+    accessories: [],
+    bonuses: [
+      { target: 'rea', value: 1, perRating: true },
+      { target: 'initDice', value: 1, perRating: true },
+    ],
+  })
   const { data, cr } = made({ rules: { initiativeDice: 1, monitorBase: 8, monitorDivisor: 2 } })
   // invented printed numbers: REA (augmented), BOD (`1(1)` reads as 1) and initiative as the rules give them, the rest not
   ch.printed = { source: 'CRB', page: 81, values: { rea: '4(5)', bod: '1(1)', agi: '3', ess: '9', init: '5(6) + 2D6', cm: '1/2', dr: '7' } }
@@ -400,7 +466,8 @@ test('a book sample: each printed number the rules give otherwise is a warning c
 
 test('every violation whose setting has a page carries it', () => {
   const ch = runner()
-  ch.build.attributes.bod.points = 8; ch.build.attributes.str.points = 8
+  ch.build.attributes.bod.points = 8
+  ch.build.attributes.str.points = 8
   ch.build.skills.push({ id: 'crb.gab', points: 6, karma: 0 })
   for (const v of check(ch).filter(x => ['attr.oneAtMax', 'skill.cap'].includes(x.code))) expect(v.page, v.code).toBeGreaterThan(0)
 })
@@ -411,7 +478,9 @@ test('an unset setting is one warning naming it, and the rule it feeds is skippe
   buy(ch.build, 'electronics', 'crb.buzz-box', { rating: 6 })
   const v = check(ch, { unset: ['maxAvailability'] })
   expect(v.filter(x => x.code === 'gear.availCap')).toEqual([])
-  expect(v.filter(x => x.code === 'setting.unset')).toMatchObject([{ severity: 'warning', message: 'Highest Availability isn’t set: Table setup → Creation rules.' }])
+  expect(v.filter(x => x.code === 'setting.unset')).toMatchObject([
+    { severity: 'warning', message: 'Highest Availability isn’t set: Table setup → Creation rules.' },
+  ])
 })
 
 test('a line whose entry left the catalog is an error naming it from its snapshot or stored name', () => {
@@ -422,9 +491,18 @@ test('a line whose entry left the catalog is an error naming it from its snapsho
   ch.build.qualities[0].name = 'Vanished Luck'
   pick(ch.build, 'spells', 'crb.nope', { name: 'Lost Spell' })
   ch.build.skills.push({ id: 'crb.forgotten', points: 1, karma: 0 })
-  const v = only(ch, 'catalog.missing', { data: d => { const e = d.entry; d.entry = (k, id) => (id === 'crb.zap-gun' ? undefined : e(k, id)) } })
-  expect(v.map(x => x.message)).toEqual(['crb.forgotten is no longer in the catalog.', 'Vanished Luck is no longer in the catalog.',
-    'Lost Spell is no longer in the catalog.', 'Old Zap Gun is no longer in the catalog.'])
+  const v = only(ch, 'catalog.missing', {
+    data: d => {
+      const e = d.entry
+      d.entry = (k, id) => (id === 'crb.zap-gun' ? undefined : e(k, id))
+    },
+  })
+  expect(v.map(x => x.message)).toEqual([
+    'crb.forgotten is no longer in the catalog.',
+    'Vanished Luck is no longer in the catalog.',
+    'Lost Spell is no longer in the catalog.',
+    'Old Zap Gun is no longer in the catalog.',
+  ])
   expect(v.find(x => x.message.startsWith('Old'))?.path).toBe(`gear.${gun.uid}`)
   expect(v.every(x => x.severity === 'error')).toBe(true)
 })
@@ -461,15 +539,19 @@ test('Glimmerkin and karma build: nothing throws on a runner with every list fil
 
 test('spells past the free ones at creation: an error while the optional rule is off (CRB p. 66), none with it on', () => {
   const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
-  ch.build = buildOf('priority', { letters: 'CBADA', metatype: GLIM, magic: 'full' })  // magic A: full 4, 12 free spells
+  ch.build = buildOf('priority', { letters: 'CBADA', metatype: GLIM, magic: 'full' }) // magic A: full 4, 12 free spells
   for (let i = 0; i < 13; i++) ch.build.picks.push({ uid: `s${i}`, kind: 'spells', id: 'crb.glow-ward' })
   const hit = (rules: Record<string, boolean>, unset: string[] = []) => {
     const { data, cr } = made({ rules, unset })
     return validateSr6(data, cr, ch).find(v => v.code === 'magic.karmaAtCreation')
   }
-  expect(hit({}, ['karmaSpellsAtCreation'])).toMatchObject({ severity: 'error', source: 'CRB', page: 66,
-    message: '1 spell past the free ones: buying them with the customization Karma is an optional rule, off.' })
+  expect(hit({}, ['karmaSpellsAtCreation'])).toMatchObject({
+    severity: 'error',
+    source: 'CRB',
+    page: 66,
+    message: '1 spell past the free ones: buying them with the customization Karma is an optional rule, off.',
+  })
   expect(hit({ karmaSpellsAtCreation: true })).toBeUndefined()
   ch.build.picks.pop()
-  expect(hit({}, ['karmaSpellsAtCreation'])).toBeUndefined()  // within the free ones
+  expect(hit({}, ['karmaSpellsAtCreation'])).toBeUndefined() // within the free ones
 })

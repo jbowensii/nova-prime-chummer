@@ -14,15 +14,23 @@ import { noteAttr, noteSkill } from './choices'
 // and conditional ones too; a skill bonus limited to a specialization counts in that specialization's pool (specBonus),
 // and in the skill's bracketed total for a specialization the runner hasn't)
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string, on = false, spec?: string) =>
-  (bonuses ?? []).filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
+  (bonuses ?? [])
+    .filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
     .reduce((s, x) => s + bonusValue(x, rating), 0)
 // (`Etiquette or Negotiation`: either)
 const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
 function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
-  for (const x of b.picks) f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
-  for (const x of b.purchases) { const e = entryOf(x, data); f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item') }
-  for (const q of b.qualities) { const e = data.entry('qualities', q.id); f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id) }
+  for (const x of b.picks)
+    f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
+  for (const x of b.purchases) {
+    const e = entryOf(x, data)
+    f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item')
+  }
+  for (const q of b.qualities) {
+    const e = data.entry('qualities', q.id)
+    f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id)
+  }
 }
 /** The skill and attribute a pick's or quality's note names: its `skill:choice` and `attr:choice` effects' target. */
 const choiceOf = (data: Sr6Data, note?: string) => (note ? { skill: noteSkill(data, note), attr: noteAttr(note) } : {})
@@ -30,12 +38,22 @@ const choiceOf = (data: Sr6Data, note?: string) => (note ? { skill: noteSkill(da
  *  tests only, or a specialization the runner hasn't), each with its line's name, value at its rating and its note (its
  *  switch, condition or specialization, and `affects the caster`): why the bracket differs (owner decision 2026-10-10:
  *  the hover card, Review and the sheet name it). */
-export function bracketNotes(b: Sr6Build, data: Sr6Data, target: Bonus['target'], skill?: string, spec?: string): { value: number; when: string; from: string }[] {
+export function bracketNotes(
+  b: Sr6Build,
+  data: Sr6Data,
+  target: Bonus['target'],
+  skill?: string,
+  spec?: string,
+): { value: number; when: string; from: string }[] {
   const out: { value: number; when: string; from: string }[] = []
   eachLine(b, data, (bs, rating, times, from) => {
-    for (const x of bs) if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
-      out.push({ value: bonusValue(x, rating) * times, from,
-        when: [x.spec, x.when, x.switch !== 'conditional' && x.switch, x.affects === 'caster' && 'affects the caster'].filter(Boolean).join(', ') })
+    for (const x of bs)
+      if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
+        out.push({
+          value: bonusValue(x, rating) * times,
+          from,
+          when: [x.spec, x.when, x.switch !== 'conditional' && x.switch, x.affects === 'caster' && 'affects the caster'].filter(Boolean).join(', '),
+        })
   })
   return out
 }
@@ -48,8 +66,9 @@ export const notesText = (xs: { value: number; when: string; from: string }[]) =
 export function specBonus(b: Sr6Build, data: Sr6Data, skill: string, spec: string, on = false): number {
   let total = 0
   eachLine(b, data, (bs, rating, times) => {
-    for (const x of bs) if (x.target === 'skill' && x.skill === skill && sameSpec(x.spec, spec) && counts({ ...x, spec: undefined } as Bonus, on))
-      total += bonusValue(x, rating) * times
+    for (const x of bs)
+      if (x.target === 'skill' && x.skill === skill && sameSpec(x.spec, spec) && counts({ ...x, spec: undefined } as Bonus, on))
+        total += bonusValue(x, rating) * times
   })
   return total
 }
@@ -67,7 +86,9 @@ export const lineBonuses = (data: Sr6Data, entered: Bonus[] | undefined, e?: Sr6
  *  accessory's bonuses are its host item's, never the runner's (hostBonus). */
 export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string, on = false, spec?: string): number {
   let total = 0
-  eachLine(b, data, (bs, rating, times) => { total += bonusOf(bs, k, rating, skill, on, spec) * times })
+  eachLine(b, data, (bs, rating, times) => {
+    total += bonusOf(bs, k, rating, skill, on, spec) * times
+  })
   return total
 }
 /** augmentBonus line by line: each pick, purchase or quality that adds to `k` in the total shown first, with its name and
@@ -76,11 +97,20 @@ export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
 export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], skill?: string): { from: string; kind?: Sr6Kind; id?: string; value: number }[] {
   const out: { from: string; kind?: Sr6Kind; id?: string; value: number }[] = []
   const add = (value: number, e: Sr6Entry | undefined, kind: Sr6Kind, id: string | undefined, name?: string) => {
-    if (value) out.push({ from: e ? entryLabel(e) : name ?? id ?? 'Custom item', kind, id, value })
+    if (value) out.push({ from: e ? entryLabel(e) : (name ?? id ?? 'Custom item'), kind, id, value })
   }
-  for (const x of b.picks) { const e = data.entry(x.kind, x.id); add(bonusOf(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), k, x.level ?? 1, skill), e, x.kind, x.id, x.name) }
-  for (const x of b.purchases) { const e = entryOf(x, data); add(bonusOf(lineBonuses(data, x.bonuses, e), k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name) }
-  for (const q of b.qualities) { const e = data.entry('qualities', q.id); add(bonusOf(entryBonuses(data, e, choiceOf(data, q.note)), k, 1, skill) * q.level, e, 'qualities', q.id, q.name) }
+  for (const x of b.picks) {
+    const e = data.entry(x.kind, x.id)
+    add(bonusOf(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), k, x.level ?? 1, skill), e, x.kind, x.id, x.name)
+  }
+  for (const x of b.purchases) {
+    const e = entryOf(x, data)
+    add(bonusOf(lineBonuses(data, x.bonuses, e), k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name)
+  }
+  for (const q of b.qualities) {
+    const e = data.entry('qualities', q.id)
+    add(bonusOf(entryBonuses(data, e, choiceOf(data, q.note)), k, 1, skill) * q.level, e, 'qualities', q.id, q.name)
+  }
   return out
 }
 /** What a line's accessories add to the line itself (a cyberlimb's Strength, its armor), each by its own rating:
@@ -88,7 +118,8 @@ export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
 export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> {
   const out: Partial<Record<Exclude<Bonus['target'], 'skill'>, number>> = {}
   for (const a of x.accessories) {
-    const e = entryOf(a, data), bs = lineBonuses(data, a.bonuses, e)
+    const e = entryOf(a, data),
+      bs = lineBonuses(data, a.bonuses, e)
     for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, ratingOf(a, e), undefined, on)
   }
   return out

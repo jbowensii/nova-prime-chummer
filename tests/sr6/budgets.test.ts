@@ -14,7 +14,8 @@ function runner(o: { letters?: string; magic?: MagicKind; metatype?: string } = 
   return buildOf('priority', { letters: o.letters ?? 'CABDA', metatype: o.metatype ?? GLIM, magic: o.magic ?? 'mundane' })
 }
 function budgets(b: Sr6Build, over?: Over) {
-  const { data, cr } = made(over), p = makeProvider(b.method, data, cr)
+  const { data, cr } = made(over),
+    p = makeProvider(b.method, data, cr)
   return { ...allBudgets(b, data, cr, p), p, data, cr }
 }
 let n = 0
@@ -23,14 +24,13 @@ const buy = (b: Sr6Build, kind: PurchaseKind, id: string | undefined, more: Part
   b.purchases.push(p)
   return p
 }
-const quality = (b: Sr6Build, id: string, level = 1, free?: true) =>
-  b.qualities.push({ uid: `q${++n}`, id, level, ...(free ? { free } : {}) })
-const pick = (b: Sr6Build, kind: Sr6Build['picks'][number]['kind'], id: string, more: object = {}) =>
-  b.picks.push({ uid: `k${++n}`, kind, id, ...more })
+const quality = (b: Sr6Build, id: string, level = 1, free?: true) => b.qualities.push({ uid: `q${++n}`, id, level, ...(free ? { free } : {}) })
+const pick = (b: Sr6Build, kind: Sr6Build['picks'][number]['kind'], id: string, more: object = {}) => b.picks.push({ uid: `k${++n}`, kind, id, ...more })
 
 // attributes and augmentations
 test('a natural rating is 1 plus points, adjustment and karma; Magic starts at the priority rating', () => {
-  const b = runner({ magic: 'full' }), { p } = budgets(b)
+  const b = runner({ magic: 'full' }),
+    { p } = budgets(b)
   b.attributes.rea = { points: 2, adjust: 1, karma: 1 }
   expect(attrRating(b, 'rea', p)).toBe(5)
   b.attributes.mag.adjust = 1
@@ -41,7 +41,8 @@ test('a natural rating is 1 plus points, adjustment and karma; Magic starts at t
 })
 
 test('a power bonus shows as augmented and not natural; a rated ware bonus scales by rating; no bonus leaves it alone', () => {
-  const b = runner({ magic: 'adept' }), { p, data } = budgets(b)
+  const b = runner({ magic: 'adept' }),
+    { p, data } = budgets(b)
   const natural = attrRating(b, 'rea', p)
   pick(b, 'adeptpowers', 'crb.quick-step', { level: 3, bonuses: [{ target: 'rea', value: 1, perRating: true }] })
   expect(augmentBonus(b, data, 'rea')).toBe(3)
@@ -87,8 +88,8 @@ test('a specialization the skill points left over can’t cover is bought with k
   let { skillPoints, karma } = budgets(b)
   expect(skillPoints).toEqual({ max: 11, spent: 9, left: 2 }) // 9 ranks: 2 points left, neither specialization fits
   expect(karma.spent).toBe(2 * 7)
-  b.skills[1].points = 2;
-  ({ skillPoints, karma } = budgets(b))
+  b.skills[1].points = 2
+  ;({ skillPoints, karma } = budgets(b))
   expect(skillPoints).toEqual({ max: 11, spent: 8 + 3, left: 0 }) // 3 left: the first takes them, the second is karma's
   expect(karma.spent).toBe(7)
 })
@@ -103,7 +104,12 @@ test('a specialization on a skill with only karma ranks is bought with karma', (
 
 // qualities and karma
 test('a quality priced in a range costs the karma it was taken for, kept within the range; unset, the lowest', () => {
-  const b = runner(), ranged: Over = { data: d => { d.qualities['crb.butterfingers'].karmaMax = 14 } }
+  const b = runner(),
+    ranged: Over = {
+      data: d => {
+        d.qualities['crb.butterfingers'].karmaMax = 14
+      },
+    }
   quality(b, 'crb.butterfingers')
   expect(budgets(b, ranged).karma.max).toBe(40 + 8)
   b.qualities[0].karma = 11
@@ -149,17 +155,19 @@ test('karma turns into nuyen at the rate, at the in-debt rate with the quality, 
 })
 
 test('nuyen turns back into karma at the same rate (In Debt’s too), only undoing a conversion; nuyen spent shows overspent, not refused', () => {
-  const { data, cr } = made(), b = runner({ letters: 'CABDE' })  // resources E
+  const { data, cr } = made(),
+    b = runner({ letters: 'CABDE' }) // resources E
   const step = (delta: number) => apply(b, { op: 'karmaToNuyen', delta }, data, cr)
-  expect(step(-1)).toEqual({ ok: false, reason: 'below-zero' })  // nothing to undo
-  step(1); step(1)
+  expect(step(-1)).toEqual({ ok: false, reason: 'below-zero' }) // nothing to undo
+  step(1)
+  step(1)
   quality(b, 'crb.deep-pockets-debt')
   expect(nuyenPerKarma(b, cr)).toBe(3500)
   const before = budgets(b).nuyen
   expect(step(-1)).toEqual({ ok: true })
   expect(b.karmaToNuyen).toBe(1)
   const after = budgets(b)
-  expect(before.max - after.nuyen.max).toBe(3500)  // back at the rate it went
+  expect(before.max - after.nuyen.max).toBe(3500) // back at the rate it went
   expect(after.karma.spent).toBe(budgets({ ...b, karmaToNuyen: 0 }).karma.spent + 1)
   // spend the converted nuyen, then turn it back: the budget is overspent, as any overspend is
   buy(b, 'gear', undefined, { name: 'Made-up thing', cost: after.nuyen.left - 100 })
@@ -217,7 +225,7 @@ test('initiation grades are bought with karma, base plus grade times the per-gra
   const b = runner({ magic: 'full' })
   b.initiation = 2
   const { karma } = budgets(b)
-  expect(karma.spent).toBe((9 + 3) + (9 + 6))
+  expect(karma.spent).toBe(9 + 3 + (9 + 6))
   expect(karma.breakdown).toContainEqual({ key: 'initiation', label: 'Initiation grade 2', amount: 27, sign: 'spend', tab: 'magic' })
 })
 
@@ -225,8 +233,10 @@ test('initiation grades are bought with karma, base plus grade times the per-gra
 test('knowledge: Logic times the setting free, a native language free, karma ranks at the flat price', () => {
   const b = runner()
   b.attributes.log.points = 2
-  b.knowledge.push({ uid: 'k1', name: 'Rooftops', kind: 'knowledge', points: 2, karma: 2 },
-    { uid: 'k2', name: 'Cant', kind: 'language', native: true, points: 0, karma: 0 })
+  b.knowledge.push(
+    { uid: 'k1', name: 'Rooftops', kind: 'knowledge', points: 2, karma: 2 },
+    { uid: 'k2', name: 'Cant', kind: 'language', native: true, points: 0, karma: 0 },
+  )
   const r = budgets(b)
   expect(r.knowledgePoints).toEqual({ max: 3 * 2, spent: 2, left: 4 })
   expect(r.karma.spent).toBe(2 * 3)
@@ -247,8 +257,13 @@ test('rated gear costs, weighs Essence and rises in Availability by rating; unra
 
 test('an accessory adds its cost; a grade multiplies Essence and cost and raises Availability', () => {
   const { data, cr } = made()
-  const gun: Sr6Purchase = { uid: 'g', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [
-    { uid: 'a', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }] }
+  const gun: Sr6Purchase = {
+    uid: 'g',
+    kind: 'weapons',
+    id: 'crb.zap-gun',
+    qty: 1,
+    accessories: [{ uid: 'a', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
+  }
   expect(priced(gun, data, cr)).toMatchObject({ cost: 290 + 350, avail: 2 })
   const eyes: Sr6Purchase = { uid: 'e', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha', qty: 1, accessories: [] }
   const r = priced(eyes, data, cr)
@@ -258,9 +273,14 @@ test('an accessory adds its cost; a grade multiplies Essence and cost and raises
 })
 
 test('an add-on priced as a multiple of its host (an ammunition type, `x1.5`) adds host × (N − 1); alone it has no price', () => {
-  const fizzy = { file: 'custom/sr6/imported/zz/ammotypes.xml', xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="ammotypes" version="1">'
-    + '<ammotype id="zz.fizzy" source="ZZ" page="1" cost="x1.5"><name>Fizzy</name></ammotype></sr6:data>' }
-  const data = sr6Data(fixtureCatalog(undefined, [fizzy])), { cr } = made()
+  const fizzy = {
+    file: 'custom/sr6/imported/zz/ammotypes.xml',
+    xml:
+      '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="ammotypes" version="1">' +
+      '<ammotype id="zz.fizzy" source="ZZ" page="1" cost="x1.5"><name>Fizzy</name></ammotype></sr6:data>',
+  }
+  const data = sr6Data(fixtureCatalog(undefined, [fizzy])),
+    { cr } = made()
   const type: Sr6Purchase = { uid: 't', kind: 'ammotypes', id: 'zz.fizzy', qty: 1, accessories: [] }
   const ammo: Sr6Purchase = { uid: 'a', kind: 'gear', id: 'crb.tangle-rope', rating: 2, qty: 10, accessories: [type] }
   expect(priced(ammo, data, cr)).toMatchObject({ cost: 10 * 100 * 1.5, ok: true })
@@ -269,8 +289,12 @@ test('an add-on priced as a multiple of its host (an ammunition type, `x1.5`) ad
 
 test('a custom item costs what the player says; a stacked line costs per unit', () => {
   const { data, cr } = made()
-  expect(priced({ uid: 'c', kind: 'gear', name: 'Lucky charm', cost: 75, avail: 1, qty: 1, accessories: [] }, data, cr))
-    .toMatchObject({ cost: 75, avail: 1, essence: 0, ok: true })
+  expect(priced({ uid: 'c', kind: 'gear', name: 'Lucky charm', cost: 75, avail: 1, qty: 1, accessories: [] }, data, cr)).toMatchObject({
+    cost: 75,
+    avail: 1,
+    essence: 0,
+    ok: true,
+  })
   expect(priced({ uid: 's', kind: 'gear', id: 'crb.zap-pellets', qty: 3, accessories: [] }, data, cr).cost).toBe(63)
 })
 
@@ -278,7 +302,11 @@ test('a value the app can’t read counts 0 and says so; totals stay numbers', (
   const b = runner()
   buy(b, 'weapons', 'crb.zap-gun')
   buy(b, 'weapons', 'crb.fizz-rifle-70')
-  const r = budgets(b, { data: d => { d.entry('weapons', 'crb.zap-gun')!.attrs.cost = '12x' } })
+  const r = budgets(b, {
+    data: d => {
+      d.entry('weapons', 'crb.zap-gun')!.attrs.cost = '12x'
+    },
+  })
   expect(priced(b.purchases[0], r.data, r.cr)).toMatchObject({ cost: 0, avail: 2, essence: 0, ok: false })
   expect(r.nuyen.spent).toBe(1150)
   expect(Number.isFinite(r.nuyen.left)).toBe(true)
@@ -301,8 +329,17 @@ test('nuyen: an empty breakdown with nothing bought', () => {
 test('nuyen: gear per line, lifestyle times months, a fake SIN and licences by rating, a real SIN free', () => {
   const b = runner({ letters: 'CABDE' })
   buy(b, 'weapons', 'crb.zap-gun')
-  b.sins.push({ uid: 's1', name: 'Jo Nobody', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 2 }] },
-    { uid: 's2', name: 'Me', kind: 'real', licences: [{ name: 'Driving', rating: 2 }], lifestyles: [{ uid: 'l2', id: 'crb.cozy', months: 1 }] })
+  b.sins.push(
+    {
+      uid: 's1',
+      name: 'Jo Nobody',
+      kind: 'fake',
+      rating: 2,
+      licences: [{ name: 'Zapper', rating: 1 }],
+      lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 2 }],
+    },
+    { uid: 's2', name: 'Me', kind: 'real', licences: [{ name: 'Driving', rating: 2 }], lifestyles: [{ uid: 'l2', id: 'crb.cozy', months: 1 }] },
+  )
   const { nuyen } = budgets(b)
   expect(nuyen.breakdown).toEqual([
     { key: `purchase:${b.purchases[0].uid}`, label: 'Zap Gun', amount: 290, sign: 'spend', tab: 'gear' },
@@ -319,7 +356,10 @@ test('nuyen: augmentations and vehicles link to their own tabs', () => {
   const b = runner()
   buy(b, 'augmentations', 'crb.glow-eyes', { rating: 1 })
   buy(b, 'vehicles', 'crb.hover-buzzer')
-  expect(budgets(b).nuyen.breakdown?.map(l => [l.label, l.tab])).toEqual([['Glow Eyes (rating 1)', 'augmentations'], ['Hover Buzzer', 'vehicles']])
+  expect(budgets(b).nuyen.breakdown?.map(l => [l.label, l.tab])).toEqual([
+    ['Glow Eyes (rating 1)', 'augmentations'],
+    ['Hover Buzzer', 'vehicles'],
+  ])
 })
 
 // contacts
@@ -333,8 +373,22 @@ test('contacts: Charisma times the setting, rating cap Charisma; three contacts 
 // the bag
 test('allBudgets: every budget; character points only for point buy, attribute points from the provider', () => {
   const pr = budgets(runner())
-  expect(Object.keys(pr).filter(k => !['p', 'data', 'cr'].includes(k)).sort()).toEqual(['adjustmentPoints', 'attributePoints',
-    'contactPoints', 'essence', 'karma', 'knowledgePoints', 'nuyen', 'powerPoints', 'skillPoints', 'spellSlots'])
+  expect(
+    Object.keys(pr)
+      .filter(k => !['p', 'data', 'cr'].includes(k))
+      .sort(),
+  ).toEqual([
+    'adjustmentPoints',
+    'attributePoints',
+    'contactPoints',
+    'essence',
+    'karma',
+    'knowledgePoints',
+    'nuyen',
+    'powerPoints',
+    'skillPoints',
+    'spellSlots',
+  ])
   const b = buildOf('pointbuy', { metatype: STONE })
   b.cp.attribute = 2
   b.attributes.bod.points = 4

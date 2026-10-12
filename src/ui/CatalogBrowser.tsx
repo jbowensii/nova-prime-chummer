@@ -14,7 +14,10 @@ import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
 export interface BrowseRow {
-  key: string; name: string; source: string; page: number
+  key: string
+  name: string
+  source: string
+  page: number
   /** the sub-category inside its kind ("Handguns", "Cyberware: eyeware") */
   group?: string
   /** the printed values, one line */
@@ -32,26 +35,39 @@ export interface BrowseRow {
   /** what it does on a runner (SR6: its effects, applied or shown only) */
   effects?: CardEffect[]
 }
-export interface BrowseKind { id: string; label: string; rows: BrowseRow[] }
-export interface Book { id: string; name: string }
+export interface BrowseKind {
+  id: string
+  label: string
+  rows: BrowseRow[]
+}
+export interface Book {
+  id: string
+  name: string
+}
 
 const LIMIT = 200 // rows a table shows before "Show all" (a real book's gear or rules run to hundreds)
 const OTHER = 'Other'
-const cap = (s: string) => s ? s[0].toUpperCase() + s.slice(1) : s
+const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s)
 // each row's search text lower-cased once (descriptions run to megabytes: not again on every keystroke)
 const hays = new WeakMap<BrowseRow, string>()
 const hay = (r: BrowseRow) => {
   let h = hays.get(r)
-  if (h === undefined) hays.set(r, h = `${r.name} ${r.search ?? ''} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase())
+  if (h === undefined) hays.set(r, (h = `${r.name} ${r.search ?? ''} ${r.details ?? ''} ${r.text ?? ''}`.toLowerCase()))
   return h
 }
 
 /** "Book": All books, then each source that has entries. */
 export function BookSelect({ books, value, onChange }: { books: Book[]; value: string; onChange: (id: string) => void }) {
   return (
-    <label className="inline book-pick">Book
+    <label className="inline book-pick">
+      Book
       <select value={value} onChange={e => onChange(e.target.value)} aria-label="Book">
-        <option value="">All books</option>{books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+        <option value="">All books</option>
+        {books.map(b => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
       </select>
     </label>
   )
@@ -62,15 +78,52 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
   const shown = all ? rows : rows.slice(0, LIMIT)
   return (
     <div className="scroll-x">
-      <table className={`data browse ${className ?? ''}`.trim()}><thead><tr><th>Entry</th><th>Values</th><th /></tr></thead>
-        <tbody>{shown.map(r => (
-          <tr key={r.key}><td><b>{r.name}</b> <span className="srcline"><span className="src">{r.source} p.{r.page}</span>{r.marks}<IssueBadges issues={r.issues} source={r.source} /></span></td>
-            <td><span className="muted">{r.details}</span>
-              {!!r.effects?.length && <div className="muted small">Effects: {r.effects.map(x => `${x.text}${x.state === 'applied' ? '' : ` (${x.state})`}`).join(' · ')}</div>}
-              {r.text && <details className="desc"><summary>Description</summary><Prose text={r.text} /></details>}</td><td className="num">{r.action}</td></tr>
-        ))}</tbody></table>
-      {shown.length < rows.length && <p className="muted">Showing {shown.length} of {rows.length}. Search to narrow it, or{' '}
-        <button type="button" className="btn small quiet" onClick={() => setAll(true)}>Show all {rows.length}</button></p>}
+      <table className={`data browse ${className ?? ''}`.trim()}>
+        <thead>
+          <tr>
+            <th>Entry</th>
+            <th>Values</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map(r => (
+            <tr key={r.key}>
+              <td>
+                <b>{r.name}</b>{' '}
+                <span className="srcline">
+                  <span className="src">
+                    {r.source} p.{r.page}
+                  </span>
+                  {r.marks}
+                  <IssueBadges issues={r.issues} source={r.source} />
+                </span>
+              </td>
+              <td>
+                <span className="muted">{r.details}</span>
+                {!!r.effects?.length && (
+                  <div className="muted small">Effects: {r.effects.map(x => `${x.text}${x.state === 'applied' ? '' : ` (${x.state})`}`).join(' · ')}</div>
+                )}
+                {r.text && (
+                  <details className="desc">
+                    <summary>Description</summary>
+                    <Prose text={r.text} />
+                  </details>
+                )}
+              </td>
+              <td className="num">{r.action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {shown.length < rows.length && (
+        <p className="muted">
+          Showing {shown.length} of {rows.length}. Search to narrow it, or{' '}
+          <button type="button" className="btn small quiet" onClick={() => setAll(true)}>
+            Show all {rows.length}
+          </button>
+        </p>
+      )}
     </div>
   )
 }
@@ -79,12 +132,25 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
  *  first with entries. Storage that's blocked or holds a kind that's gone falls back the same way. */
 export function startKind(kinds: BrowseKind[], main?: string, remember?: string): string | undefined {
   let last: string | null = null
-  try { last = remember ? localStorage.getItem(remember) : null } catch { /* private mode, blocked: not remembered */ }
+  try {
+    last = remember ? localStorage.getItem(remember) : null
+  } catch {
+    /* private mode, blocked: not remembered */
+  }
   return [last, main].find(id => id && kinds.some(k => k.id === id)) ?? kinds.find(k => k.rows.length)?.id ?? kinds[0]?.id
 }
 
-export function CatalogBrowser({ kinds, books, tableClass, main, remember, ai }: {
-  kinds: BrowseKind[]; books: Book[]; tableClass?: string
+export function CatalogBrowser({
+  kinds,
+  books,
+  tableClass,
+  main,
+  remember,
+  ai,
+}: {
+  kinds: BrowseKind[]
+  books: Book[]
+  tableClass?: string
   /** the game whose AI search goes above it (Game data): each find a button that searches the browser for it */
   ai?: AskGame
   /** the kind it opens on when none is remembered (Game data: Amps, Qualities) */
@@ -101,56 +167,122 @@ export function CatalogBrowser({ kinds, books, tableClass, main, remember, ai }:
   const [kindId, setKindState] = useState(() => startKind(kinds, main, remember))
   const setKind = (id: string) => {
     setKindState(id)
-    try { if (remember) localStorage.setItem(remember, id) } catch { /* not remembered */ }
+    try {
+      if (remember) localStorage.setItem(remember, id)
+    } catch {
+      /* not remembered */
+    }
   }
   const [group, setGroup] = useState('')
   const t = q.trim().toLowerCase()
   const kind = inBook.find(k => k.id === kindId) ?? inBook[0]
-  const groups = kind ? [...new Set(kind.rows.map(r => r.group || OTHER))].sort((a, b) => a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b)) : []
+  const groups = kind ? [...new Set(kind.rows.map(r => r.group || OTHER))].sort((a, b) => (a === OTHER ? 1 : b === OTHER ? -1 : a.localeCompare(b))) : []
   const rows = kind?.rows.filter(r => !group || (r.group || OTHER) === group) ?? []
-  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => hay(r).includes(t)) }))
-    .filter(k => k.rows.length) : []
-  const pick = (id: string) => { setKind(id); setGroup('') }
+  const hits = t ? inBook.map(k => ({ ...k, rows: k.rows.filter(r => hay(r).includes(t)) })).filter(k => k.rows.length) : []
+  const pick = (id: string) => {
+    setKind(id)
+    setGroup('')
+  }
 
   return (
     <section className="browser" aria-label="Catalog">
-      {ai && <AskSearch game={ai} label="Ask AI to find entries"
-        placeholder={`Find entries in plain words, e.g. ${ai === 'sr6' ? 'cyberware that helps a decker' : 'a quiet pistol'}`}
-        link={s => s.title ? <button type="button" className="btn small quiet" onClick={() => { setBook(''); setAttention(false); setQ(s.title) }}>{s.title}</button> : null} />}
+      {ai && (
+        <AskSearch
+          game={ai}
+          label="Ask AI to find entries"
+          placeholder={`Find entries in plain words, e.g. ${ai === 'sr6' ? 'cyberware that helps a decker' : 'a quiet pistol'}`}
+          link={s =>
+            s.title ? (
+              <button
+                type="button"
+                className="btn small quiet"
+                onClick={() => {
+                  setBook('')
+                  setAttention(false)
+                  setQ(s.title)
+                }}
+              >
+                {s.title}
+              </button>
+            ) : null
+          }
+        />
+      )}
       <div className="row browse-top">
-        <BookSelect books={books} value={book} onChange={b => { setBook(b); setGroup('') }} />
+        <BookSelect
+          books={books}
+          value={book}
+          onChange={b => {
+            setBook(b)
+            setGroup('')
+          }}
+        />
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search everything" aria-label="Search the catalog" />
-        <button type="button" className="attention" aria-pressed={attention} disabled={!needing && !attention}
+        <button
+          type="button"
+          className="attention"
+          aria-pressed={attention}
+          disabled={!needing && !attention}
           title="Entries whose book leaves a value out, or prints one the importer couldn’t read"
           onClick={() => {
-            const on = !attention, first = bookRows.find(k => k.rows.some(r => r.issues?.length))
-            setAttention(on); setGroup('')
+            const on = !attention,
+              first = bookRows.find(k => k.rows.some(r => r.issues?.length))
+            setAttention(on)
+            setGroup('')
             if (on && first && !bookRows.find(k => k.id === kindId)?.rows.some(r => r.issues?.length)) setKind(first.id)
-          }}>Needs attention <span className="n">{needing}</span></button>
+          }}
+        >
+          Needs attention <span className="n">{needing}</span>
+        </button>
       </div>
       {t ? (
         <div className="browse-hits">
           {hits.length === 0 && <p className="muted">Nothing matches “{q}”.</p>}
-          {hits.map(k => <section key={k.id} aria-label={k.label}><h3>{k.label} <span className="muted">({k.rows.length})</span></h3>
-            <Rows key={`${k.id} ${book} ${t}`} rows={k.rows} className={tableClass} /></section>)}
+          {hits.map(k => (
+            <section key={k.id} aria-label={k.label}>
+              <h3>
+                {k.label} <span className="muted">({k.rows.length})</span>
+              </h3>
+              <Rows key={`${k.id} ${book} ${t}`} rows={k.rows} className={tableClass} />
+            </section>
+          ))}
         </div>
-      ) : kind && (
-        <div className="browse-body">
-          <div className="kinds" role="group" aria-label="Kind">
-            {inBook.map(k => <button key={k.id} type="button" aria-pressed={k.id === kind.id} className={k.rows.length ? undefined : 'none'}
-              onClick={() => pick(k.id)}>{k.label} <span className="n">{k.rows.length}</span></button>)}
+      ) : (
+        kind && (
+          <div className="browse-body">
+            <div className="kinds" role="group" aria-label="Kind">
+              {inBook.map(k => (
+                <button key={k.id} type="button" aria-pressed={k.id === kind.id} className={k.rows.length ? undefined : 'none'} onClick={() => pick(k.id)}>
+                  {k.label} <span className="n">{k.rows.length}</span>
+                </button>
+              ))}
+            </div>
+            <div className="browse-main">
+              <h3>{kind.label}</h3>
+              {groups.length > 1 && (
+                <div className="groups" role="group" aria-label="Category">
+                  <button type="button" aria-pressed={!group} onClick={() => setGroup('')}>
+                    All <span className="n">{kind.rows.length}</span>
+                  </button>
+                  {groups.map(g => (
+                    <button key={g} type="button" aria-pressed={g === group} onClick={() => setGroup(g)}>
+                      {cap(g)} <span className="n">{kind.rows.filter(r => (r.group || OTHER) === g).length}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {rows.length === 0 ? (
+                <p className="muted">
+                  No {kind.label.toLowerCase()}
+                  {attention ? ' needs attention' : ''}
+                  {book ? ' in this book' : attention ? '' : ' yet'}.
+                </p>
+              ) : (
+                <Rows key={`${kind.id} ${book} ${group}`} rows={rows} className={tableClass} />
+              )}
+            </div>
           </div>
-          <div className="browse-main">
-            <h3>{kind.label}</h3>
-            {groups.length > 1 && <div className="groups" role="group" aria-label="Category">
-              <button type="button" aria-pressed={!group} onClick={() => setGroup('')}>All <span className="n">{kind.rows.length}</span></button>
-              {groups.map(g => <button key={g} type="button" aria-pressed={g === group} onClick={() => setGroup(g)}>
-                {cap(g)} <span className="n">{kind.rows.filter(r => (r.group || OTHER) === g).length}</span></button>)}
-            </div>}
-            {rows.length === 0 ? <p className="muted">No {kind.label.toLowerCase()}{attention ? ' needs attention' : ''}{book ? ' in this book' : attention ? '' : ' yet'}.</p>
-              : <Rows key={`${kind.id} ${book} ${group}`} rows={rows} className={tableClass} />}
-          </div>
-        </div>
+        )
       )}
     </section>
   )

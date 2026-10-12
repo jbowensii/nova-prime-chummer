@@ -17,43 +17,72 @@ import { buildOf, fixtureCatalog, fixtureCreation, STONE } from './fixture'
 const doc = (kind: string, rows: string) => `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="${kind}" version="1">${rows}</sr6:data>`
 // invented entries: two metatypes the posers' words name, two posers with invented descriptions, an exotic skill, ware
 const EXTRA = [
-  { file: 'custom/sr6/imported/x/metatypes.xml', xml: doc('metatypes', ['human', 'ork', 'troll', 'gnome'].map(m =>
-    `<metatype id="x.${m}" source="CRB" page="1"><name>${m[0].toUpperCase()}${m.slice(1)}</name></metatype>`).join('')) },
-  { file: 'custom/sr6/imported/x/qualities.xml', xml: doc('qualities',
-    '<quality id="x.elf-poser" source="CRB" page="1" kind="negative" karma="2"><name>Elf Poser</name></quality>'
-    + '<quality id="x.human-looking" source="CRB" page="1" kind="positive" karma="3"><name>Human-Looking</name></quality>') },
-  { file: 'custom/sr6/imported/x/skills.xml', xml: doc('skills', '<skill id="x.exotic" source="CRB" page="1" attr="agi" untrained="false"><name>Exotic Weapons</name></skill>') },
-  { file: 'custom/sr6/imported/x/augmentations.xml', xml: doc('augmentations',
-    '<augmentation id="x.arm-a" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Arm (synthetic)</name></augmentation>'
-    + '<augmentation id="x.arm-b" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Arm (obvious)</name></augmentation>'
-    + '<augmentation id="x.torso" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Torso (synthetic)</name></augmentation>'
-    + '<augmentation id="x.buzz-2" source="CRB" page="1" type="cyberware" category="Bodyware" essence="1" avail="1" cost="10"><name>Buzz Wires 2</name></augmentation>'
-    + '<augmentation id="x.buzz-3" source="CRB" page="1" type="cyberware" category="Bodyware" essence="1" avail="1" cost="10"><name>Buzz Wires 3</name></augmentation>'
-    + '<augmentation id="x.recorder" source="CRB" page="1" type="cyberware" category="Bodyware" essence="0.1" avail="1" cost="10"><name>Recorder (Skill)</name></augmentation>'
-    + '<augmentation id="x.cultured" source="CRB" page="1" type="bioware" category="Cultured bioware" essence="0.2" avail="1" cost="10"><name>Grown Gland</name></augmentation>') },
+  {
+    file: 'custom/sr6/imported/x/metatypes.xml',
+    xml: doc(
+      'metatypes',
+      ['human', 'ork', 'troll', 'gnome']
+        .map(m => `<metatype id="x.${m}" source="CRB" page="1"><name>${m[0].toUpperCase()}${m.slice(1)}</name></metatype>`)
+        .join(''),
+    ),
+  },
+  {
+    file: 'custom/sr6/imported/x/qualities.xml',
+    xml: doc(
+      'qualities',
+      '<quality id="x.elf-poser" source="CRB" page="1" kind="negative" karma="2"><name>Elf Poser</name></quality>' +
+        '<quality id="x.human-looking" source="CRB" page="1" kind="positive" karma="3"><name>Human-Looking</name></quality>',
+    ),
+  },
+  {
+    file: 'custom/sr6/imported/x/skills.xml',
+    xml: doc('skills', '<skill id="x.exotic" source="CRB" page="1" attr="agi" untrained="false"><name>Exotic Weapons</name></skill>'),
+  },
+  {
+    file: 'custom/sr6/imported/x/augmentations.xml',
+    xml: doc(
+      'augmentations',
+      '<augmentation id="x.arm-a" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Arm (synthetic)</name></augmentation>' +
+        '<augmentation id="x.arm-b" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Arm (obvious)</name></augmentation>' +
+        '<augmentation id="x.torso" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Torso (synthetic)</name></augmentation>' +
+        '<augmentation id="x.buzz-2" source="CRB" page="1" type="cyberware" category="Bodyware" essence="1" avail="1" cost="10"><name>Buzz Wires 2</name></augmentation>' +
+        '<augmentation id="x.buzz-3" source="CRB" page="1" type="cyberware" category="Bodyware" essence="1" avail="1" cost="10"><name>Buzz Wires 3</name></augmentation>' +
+        '<augmentation id="x.recorder" source="CRB" page="1" type="cyberware" category="Bodyware" essence="0.1" avail="1" cost="10"><name>Recorder (Skill)</name></augmentation>' +
+        '<augmentation id="x.cultured" source="CRB" page="1" type="bioware" category="Cultured bioware" essence="0.2" avail="1" cost="10"><name>Grown Gland</name></augmentation>',
+    ),
+  },
 ]
 function setup(rules: Record<string, CreationValue> = {}, o: { metatype?: string; magic?: MagicKind; letters?: string } = {}) {
   const cat = fixtureCatalog(undefined, EXTRA)
   cat.entries.qualities.get('x.elf-poser')!.text = 'Your blood may be human or ork, but your ears say elf. More words.'
   cat.entries.qualities.get('x.human-looking')!.text = 'Small orks and tall dwarfs do exist. You look human.'
-  const data: Sr6Data = sr6Data(cat), base = fixtureCreation()
+  const data: Sr6Data = sr6Data(cat),
+    base = fixtureCreation()
   for (const [key, value] of Object.entries(rules)) base.set(key, { key, value })
   const cr: CreationRules = runnerRules(base)
   const ch: Sr6Character = blankSr6('priority', 'r1', '2026-10-11T00:00:00Z')
   ch.build = buildOf('priority', { letters: o.letters ?? 'ACDBE', metatype: o.metatype ?? STONE, magic: o.magic ?? 'mundane' })
   const act = (op: Op) => apply(ch.build, op, data, cr)
-  const v = () => validateSr6(data, cr, ch), codes = () => v().map(x => x.code)
+  const v = () => validateSr6(data, cr, ch),
+    codes = () => v().map(x => x.code)
   const budgets = () => allBudgets(ch.build, data, cr, makeProvider('priority', data, cr))
   return { cat, data, cr, ch, b: ch.build, act, v, codes, budgets }
 }
-const ok = { ok: true }, no = (reason: string) => ({ ok: false, reason })
+const ok = { ok: true },
+  no = (reason: string) => ({ ok: false, reason })
 
 test('1, 7, 8: points left, no lifestyle, no name or alias are notes, never blocks', () => {
   const { ch, b, v } = setup()
   const notes = v().filter(x => ['points.unspent', 'lifestyle.none', 'identity.name'].includes(x.code))
   expect(notes.every(x => x.severity === 'warning')).toBe(true)
-  expect(notes.map(x => x.message)).toEqual(expect.arrayContaining([expect.stringMatching(/attribute points left: they’re lost/),
-    expect.stringMatching(/skill points left/), 'No lifestyle bought: the runner lives somewhere (a lifestyle goes on a SIN).', 'The runner has no name and no alias.']))
+  expect(notes.map(x => x.message)).toEqual(
+    expect.arrayContaining([
+      expect.stringMatching(/attribute points left: they’re lost/),
+      expect.stringMatching(/skill points left/),
+      'No lifestyle bought: the runner lives somewhere (a lifestyle goes on a SIN).',
+      'The runner has no name and no alias.',
+    ]),
+  )
   ch.identity.streetName = 'Moth'
   b.sins = [{ uid: 's', name: 'Me', kind: 'real', licences: [], lifestyles: [{ uid: 'l', id: 'crb.cozy', months: 1 }] }]
   expect(v().filter(x => x.code === 'lifestyle.none')).toEqual([])
@@ -93,7 +122,7 @@ test('4: a poser quality is for the metatypes its description names, less the on
   expect(act({ op: 'quality', id: 'x.human-looking' })).toEqual(ok)
   b.metatype = 'x.human'
   expect(act({ op: 'quality', id: 'x.elf-poser' })).toEqual(ok)
-  expect(codes()).toContain('quality.metatype')  // the human-looking human
+  expect(codes()).toContain('quality.metatype') // the human-looking human
   b.metatype = STONE
   expect(act({ op: 'quality', id: 'crb.knack' })).toEqual(ok)
   expect(setup({}, { metatype: STONE }).act({ op: 'quality', id: 'x.elf-poser' })).toEqual(no('not-for-metatype'))
@@ -137,17 +166,24 @@ test('6 (continued), effects 12: no language above languageMax; the Native one c
   expect(act({ op: 'knowledge', name: 'Sperethiel', kind: 'language', native: true })).toEqual(ok)
   expect(act({ op: 'knowledge', name: 'Or’zet', kind: 'language' })).toEqual(ok)
   expect(act({ op: 'knowledge', name: 'Made-up lore', kind: 'knowledge' })).toEqual(ok)
-  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 3 })).toEqual(ok)  // 4
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 3 })).toEqual(ok) // 4
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'karma', delta: 1 })).toEqual(no('language-max'))
-  expect(act({ op: 'knowledgeRank', uid: b.knowledge[2].uid, pool: 'points', delta: 5 })).toEqual(ok)  // a knowledge skill: no cap here
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[2].uid, pool: 'points', delta: 5 })).toEqual(ok) // a knowledge skill: no cap here
   const out = exportSr6Runner(cat, data, cr, ch, { descriptions: false, now: '2026-10-11T00:00:00.000Z', appVersion: 'test' })
-  expect(out.knowledge.map(k => [k.name, k.native, k.rank])).toEqual([['Sperethiel', true, 4], ['Or’zet', false, 4], ['Made-up lore', false, 6]])
+  expect(out.knowledge.map(k => [k.name, k.native, k.rank])).toEqual([
+    ['Sperethiel', true, 4],
+    ['Or’zet', false, 4],
+    ['Made-up lore', false, 6],
+  ])
 })
 
 test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
   const bought = (metatype: string, on = true) => {
     const s = setup({ metatypeSizePricing: on }, { metatype })
-    s.b.purchases.push({ uid: 'v', kind: 'armor', id: 'crb.padded-vest', qty: 1, accessories: [] }, { uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 2, accessories: [] })
+    s.b.purchases.push(
+      { uid: 'v', kind: 'armor', id: 'crb.padded-vest', qty: 1, accessories: [] },
+      { uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 2, accessories: [] },
+    )
     const line = s.budgets().nuyen.breakdown.find(l => l.key === 'sizePricing')
     return [s.budgets().nuyen.spent, line?.label]
   }
@@ -181,28 +217,41 @@ test('10 (house rule): the first Exotic Weapons specialization costs nothing', (
     s.b.skills.push({ id: 'x.exotic', points: 0, karma: 1, spec: 'Whips' })
     return s.budgets().karma.spent
   }
-  expect(run(false) - run(true)).toBe(7)  // the fixture's specialization price
+  expect(run(false) - run(true)).toBe(7) // the fixture's specialization price
 })
 
 test('11: a gun with no ammunition for it is a reminder', () => {
   const { b, v } = setup()
   b.purchases.push({ uid: 'g', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [] })
-  expect(v().filter(x => x.code === 'gear.ammo').map(x => [x.severity, x.message])).toEqual([['warning', 'Zap Gun has no ammunition bought for it.']])
+  expect(
+    v()
+      .filter(x => x.code === 'gear.ammo')
+      .map(x => [x.severity, x.message]),
+  ).toEqual([['warning', 'Zap Gun has no ammunition bought for it.']])
   b.purchases.push({ uid: 'a', kind: 'gear', id: 'crb.zap-pellets', qty: 1, accessories: [] })
-  expect(v().filter(x => x.code === 'gear.ammo').map(x => x.message + x.path)).toEqual([])
+  expect(
+    v()
+      .filter(x => x.code === 'gear.ammo')
+      .map(x => x.message + x.path),
+  ).toEqual([])
 })
 
 test('13 (house rule): data structures cost their level in Karma and level × the price in nuyen; the GM’s caps flag past them', () => {
   const { b, act, budgets, codes, v } = setup({ dataStructureNuyen: 100 }, { magic: 'technomancer', letters: 'ACBDE' })
   expect(act({ op: 'pick', kind: 'datastructures', id: 'crb.zap-shell' })).toEqual(ok)
-  expect(act({ op: 'pick', kind: 'datastructures', id: 'crb.zap-shell' })).toEqual(ok)  // level 2
+  expect(act({ op: 'pick', kind: 'datastructures', id: 'crb.zap-shell' })).toEqual(ok) // level 2
   expect(b.picks[0].level).toBe(2)
   expect(budgets().karma.breakdown?.find(l => l.key === 'dataStructures')?.amount).toBe(2)
   expect(budgets().nuyen.breakdown?.find(l => l.key === 'dataStructures')?.amount).toBe(200)
   expect(codes()).not.toContain('magic.dataStructureCaps')
   const capped = setup({ dataStructureCaps: true, 'dataStructure.maxCount': 0, 'dataStructure.maxRating': 1 }, { magic: 'technomancer', letters: 'ACBDE' })
   capped.b.picks.push({ uid: 'd', kind: 'datastructures', id: 'crb.zap-shell', level: 2 })
-  expect(capped.v().filter(x => x.code === 'magic.dataStructureCaps').map(x => x.severity)).toEqual(['error', 'error'])
+  expect(
+    capped
+      .v()
+      .filter(x => x.code === 'magic.dataStructureCaps')
+      .map(x => x.severity),
+  ).toEqual(['error', 'error'])
   expect(v().filter(x => x.code === 'setting.unset')).toEqual([])
 })
 
@@ -225,7 +274,11 @@ test('15 (house rule): the GM’s grade caps at creation', () => {
 
 test('16 (house rule): adjustment points on an attribute whose metatype maximum is lowered', () => {
   // Stonefolk: Logic 5, below the base 6
-  const run = (on: boolean) => { const s = setup({ adjustOnLoweredMax: on }); s.b.attributes.log.adjust = 1; return s.codes().includes('attr.adjustTargets') }
+  const run = (on: boolean) => {
+    const s = setup({ adjustOnLoweredMax: on })
+    s.b.attributes.log.adjust = 1
+    return s.codes().includes('attr.adjustTargets')
+  }
   expect([run(false), run(true)]).toEqual([true, false])
 })
 
@@ -233,14 +286,18 @@ test('17, 21 (house rules): numbers that are the rule itself, while on', () => {
   const on = (rules: Record<string, CreationValue>) => setup(rules).cr
   expect(on({ pointBuyErrataNuyen: true }).get('pointBuy.max.nuyen')?.value).toBe(450000)
   expect(on({ availabilitySeven: true }).get('maxAvailability')?.value).toBe(7)
-  expect(on({ eliteSumToThirteen: true }).get('sumToTenTarget')?.value).toBe(11)  // needs Elite
+  expect(on({ eliteSumToThirteen: true }).get('sumToTenTarget')?.value).toBe(11) // needs Elite
   expect(on({ eliteSumToThirteen: true, levelSwcElite: true, 'swcElite.sumToTen': 12 }).get('sumToTenTarget')?.value).toBe(13)
   expect(on({}).get('maxAvailability')?.value).toBe(5)
 })
 
 test('18 (house rule): knowledge points from Logic + Intuition', () => {
-  const k = (on: boolean) => { const s = setup({ knowledgeLogicIntuition: on }); s.b.attributes.int.points = 2; return s.budgets().knowledgePoints.max }
-  expect(k(true) - k(false)).toBe(2 * 3)  // INT 3 × the fixture's 2 a point
+  const k = (on: boolean) => {
+    const s = setup({ knowledgeLogicIntuition: on })
+    s.b.attributes.int.points = 2
+    return s.budgets().knowledgePoints.max
+  }
+  expect(k(true) - k(false)).toBe(2 * 3) // INT 3 × the fixture's 2 a point
 })
 
 test('19: negative Karma or nuyen blocks Finalize, whatever a GM approves', () => {
@@ -260,7 +317,8 @@ test('20 (option): Magic at creation up to the highest plus the initiation grade
 })
 
 test('22 (option): a vehicle’s Cargo Factor, and seats removed add to it', () => {
-  const car = { attrs: { category: 'Car', seats: '2/4' } } as unknown as Sr6Entry, bike = { attrs: { category: 'Bike', seats: '2' } } as unknown as Sr6Entry
+  const car = { attrs: { category: 'Car', seats: '2/4' } } as unknown as Sr6Entry,
+    bike = { attrs: { category: 'Bike', seats: '2' } } as unknown as Sr6Entry
   const truck = { attrs: { category: 'Truck', seats: '2' } } as unknown as Sr6Entry
   const line = (n?: number) => ({ uid: 'v', kind: 'vehicles' as const, qty: 1, accessories: [], ...(n ? { seatsRemoved: n } : {}) })
   expect(cargoFactor(line(), car)).toEqual({ seats: 4, cargo: 6 })
@@ -277,7 +335,7 @@ test('U25–U28: a value under its toggle applies only while the toggle is on', 
   const off = setup({ ...base, karmaToNuyenCap: false, positiveQualityMultiplier: false, buyPowerPoints: false, karmaBuildMethod: false }).cr
   expect(['karmaToNuyenMax', 'positiveQualityFactor', 'advance.powerPoint', 'karmaBuild.start'].filter(k => off.has(k))).toEqual([])
   const { b, act } = setup({ ...base, karmaToNuyenCap: false })
-  expect(act({ op: 'karmaToNuyen', delta: 5 })).toEqual(ok)  // no limit: the book prints none
+  expect(act({ op: 'karmaToNuyen', delta: 5 })).toEqual(ok) // no limit: the book prints none
   expect(b.karmaToNuyen).toBe(5)
   expect(setup({ ...base, karmaToNuyenCap: true }).act({ op: 'karmaToNuyen', delta: 3 })).toEqual(no('conversion-cap'))
 })
@@ -294,14 +352,24 @@ test('23, L1, 0 (verified): metatype traits never count toward the six in any me
   for (const method of ['priority', 'pointbuy', 'lifepath'] as const) {
     const { ch, data, cr } = setup({ qualityMaxCount: 1 })
     ch.build = buildOf(method, { letters: method === 'priority' ? 'ACDBE' : undefined, metatype: STONE })
-    ch.build.qualities = [{ uid: 't1', id: 'crb.stoneskin', level: 1, free: true }, { uid: 't2', id: 'crb.lucky-streak', level: 1, free: true },
-      { uid: 'q', id: 'crb.knack', level: 1 }]
-    expect(validateSr6(data, cr, ch).map(x => x.code), method).not.toContain('quality.maxCount')
+    ch.build.qualities = [
+      { uid: 't1', id: 'crb.stoneskin', level: 1, free: true },
+      { uid: 't2', id: 'crb.lucky-streak', level: 1, free: true },
+      { uid: 'q', id: 'crb.knack', level: 1 },
+    ]
+    expect(
+      validateSr6(data, cr, ch).map(x => x.code),
+      method,
+    ).not.toContain('quality.maxCount')
   }
   const levels = setup({ levelStreet: true, levelSwcElite: true, levelPrime: true }).cr
   expect(['levelStreet', 'levelPrime', 'levelSwcStreet', 'levelSwcElite'].filter(k => levels.get(k)?.value === true)).toHaveLength(1)
   const { b, act } = setup()
-  expect([act({ op: 'karmaToNuyen', delta: 2 }), act({ op: 'karmaToNuyen', delta: -2 }), act({ op: 'karmaToNuyen', delta: -1 })]).toEqual([ok, ok, no('below-zero')])
+  expect([act({ op: 'karmaToNuyen', delta: 2 }), act({ op: 'karmaToNuyen', delta: -2 }), act({ op: 'karmaToNuyen', delta: -1 })]).toEqual([
+    ok,
+    ok,
+    no('below-zero'),
+  ])
   expect(b.karmaToNuyen).toBe(0)
 })
 

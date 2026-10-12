@@ -10,10 +10,19 @@ export const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
 export const CONFIG_NS = 'urn:chummer-anarchy2:config:1'
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-export const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+export const unesc = s =>
+  s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
 // eslint-disable-next-line no-control-regex
 export const clean = s => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g, '')
-export const attr = (tag, name) => { const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]; return v == null ? undefined : unesc(v) }
+export const attr = (tag, name) => {
+  const v = tag?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1]
+  return v == null ? undefined : unesc(v)
+}
 /** The first <name …> tag, up to its first `>`. Found by a plain search: `<name\b[^>]*>` scanned to the end of the text
  *  from every later <name when the tag never closed (quadratic: a 5 MB request body held the server for minutes). */
 export const rootTag = (xml, name) => {
@@ -27,8 +36,16 @@ export const fail = (code, message) => Object.assign(new Error(message), { code 
 /** The uploaded file name without any path, safe to show and pass as an argument. */
 export function safeName(header) {
   let name = String(header || '')
-  try { name = decodeURIComponent(name) } catch { /* keep as sent */ }
-  name = clean(name.split(/[\\/]/).pop()).replace(/[^\p{L}\p{N} ._()'&,+-]/gu, '_').slice(-120).replace(/^[\s.-]+/, '').trim() // the dashes after the cut: never read as an option
+  try {
+    name = decodeURIComponent(name)
+  } catch {
+    /* keep as sent */
+  }
+  name = clean(name.split(/[\\/]/).pop())
+    .replace(/[^\p{L}\p{N} ._()'&,+-]/gu, '_')
+    .slice(-120)
+    .replace(/^[\s.-]+/, '')
+    .trim() // the dashes after the cut: never read as an option
   return name || 'book.pdf'
 }
 
@@ -38,8 +55,13 @@ export async function writeAtomic(path, text, mode = 0o666) {
   // Windows refuses to rename over a file another request is reading at that moment (a listing, not under the write
   // lock): try again for a moment. Elsewhere rename replaces it atomically and this never loops.
   for (let i = 0; ; i++) {
-    try { return await rename(tmp, path) } catch (e) {
-      if (i >= 20 || !['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || process.platform !== 'win32') { await rm(tmp, { force: true }); throw e }
+    try {
+      return await rename(tmp, path)
+    } catch (e) {
+      if (i >= 20 || !['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || process.platform !== 'win32') {
+        await rm(tmp, { force: true })
+        throw e
+      }
       await new Promise(ok => setTimeout(ok, 10 * (i + 1)))
     }
   }

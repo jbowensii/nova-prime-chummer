@@ -23,8 +23,10 @@ test('the importer’s sample XML reads as a character', () => {
   // its printed limitation is the Negative effect the printed rating took off (CRB p.61): the book's own, as printed, so no
   // GM approval (owner, 2026-10-11); no override;
   // the free starting gear is the app's (it takes the printed Fake SIN and Commlink)
-  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([{ ref: 'rr-skill', param: 'influence' },
-    { ref: 'negative', value: 1, note: 'RR 1 on Influence tests (first meeting only).' }])
+  expect(ch.build.amps.find(a => a.name === 'Big Grin')?.effects).toEqual([
+    { ref: 'rr-skill', param: 'influence' },
+    { ref: 'negative', value: 1, note: 'RR 1 on Influence tests (first meeting only).' },
+  ])
   expect(validate(cat, ch).filter(v => v.code === 'amp.negative')).toEqual([])
   expect(ch.build.items.find(i => i.name === 'Padded coat and hat')).toMatchObject({ armor: 1, over: 'it-1' })
   expect(ch.overrides).toEqual([])
@@ -32,8 +34,9 @@ test('the importer’s sample XML reads as a character', () => {
   expect(ch.narrative.dispositions).toEqual(['Smiles a lot, and then some more.', 'Never early.'])
   // the app's writer gives the same bytes, but for the app's own marking of the printed Fake SIN and Commlink as the free
   // starting gear when it reads the runner: both writers stay pinned to this file
-  expect(characterToXml(ch)).toBe(golden.replace('name="Fake SIN"/>', 'name="Fake SIN" starting="fake-sin"/>')
-    .replace('name="Commlink"/>', 'name="Commlink" starting="commlink"/>'))
+  expect(characterToXml(ch)).toBe(
+    golden.replace('name="Fake SIN"/>', 'name="Fake SIN" starting="fake-sin"/>').replace('name="Commlink"/>', 'name="Commlink" starting="commlink"/>'),
+  )
 })
 
 test('the engine gives the numbers the recipe computed', () => {
@@ -41,12 +44,19 @@ test('the engine gives the numbers the recipe computed', () => {
   const ch = r.character
   const d = derive(cat, ch)
   const dp = (skill: string, spec: string | null, attr: string) => d.pools.find(p => p.skill === skill && (p.spec ?? null) === spec && p.attr === attr)?.dp
-  expect([dp('athletics', 'athletics.ranged-defense', 'wil'), dp('influence', 'influence.bluff', 'log'), dp('electronics', 'custom:Mystery trick', 'wil')]).toEqual([8, 10, 6])
+  expect([
+    dp('athletics', 'athletics.ranged-defense', 'wil'),
+    dp('influence', 'influence.bluff', 'log'),
+    dp('electronics', 'custom:Mystery trick', 'wil'),
+  ]).toEqual([8, 10, 6])
   expect([d.thresholds.physicalNone[0], d.thresholds.physicalMain[0], d.thresholds.physicalAlt[0], d.thresholds.mental[0], d.essence]).toEqual([2, 4, 5, 3, 5])
   // printed 4, 9, 4, 6, 0: as printed, the rules rate some otherwise (the recipe reports them, Review notes them)
   const got = ch.build.amps.map(a => ampRating(cat, a, ampCtx(ch.build, a)))
-  expect(validate(cat, ch).filter(v => v.code === 'amp.printedRating').map(v => v.path))
-    .toEqual(ch.build.amps.filter((a, i) => a.snapshot?.printedRating !== got[i]).map(a => `amps.${a.uid}`))
+  expect(
+    validate(cat, ch)
+      .filter(v => v.code === 'amp.printedRating')
+      .map(v => v.path),
+  ).toEqual(ch.build.amps.filter((a, i) => a.snapshot?.printedRating !== got[i]).map(a => `amps.${a.uid}`))
 })
 
 // An NPC (a critter: no metatype, an npc block): the importer's writer (importer/tests/test_statblock.py) and the app's

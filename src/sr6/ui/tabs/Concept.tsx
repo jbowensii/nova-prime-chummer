@@ -8,45 +8,129 @@ import { Sr6Ref } from '../EntryRef'
 
 export function ConceptTab() {
   const { ch, data, update } = useSr6Editor()
-  const [pe, setPe] = useState(false), [te, setTe] = useState(false)
+  const [pe, setPe] = useState(false),
+    [te, setTe] = useState(false)
   const meta = data.metatypes[ch.build.metatype]
   return (
     <div className="stack">
       <h2>Concept</h2>
-      <p className="muted">{ch.npc ? 'Who are they, and what are they doing in your story?' : 'Who are they, what do they do on a run, and what makes them fun to play?'}</p>
+      <p className="muted">
+        {ch.npc ? 'Who are they, and what are they doing in your story?' : 'Who are they, what do they do on a run, and what makes them fun to play?'}
+      </p>
       <div className="grid2">
-        <label>Street name<input value={ch.identity.streetName} onChange={e => update(d => { d.identity.streetName = e.target.value })} /></label>
-        <label>Real name<input value={ch.identity.name} onChange={e => update(d => { d.identity.name = e.target.value })} /></label>
-        <label>Gender<input value={ch.identity.gender ?? ''} placeholder="optional" list={GENDER_LIST}
-          onChange={e => update(d => { if (e.target.value.trim()) d.identity.gender = e.target.value; else delete d.identity.gender })} /><GenderList /></label>
+        <label>
+          Street name
+          <input
+            value={ch.identity.streetName}
+            onChange={e =>
+              update(d => {
+                d.identity.streetName = e.target.value
+              })
+            }
+          />
+        </label>
+        <label>
+          Real name
+          <input
+            value={ch.identity.name}
+            onChange={e =>
+              update(d => {
+                d.identity.name = e.target.value
+              })
+            }
+          />
+        </label>
+        <label>
+          Gender
+          <input
+            value={ch.identity.gender ?? ''}
+            placeholder="optional"
+            list={GENDER_LIST}
+            onChange={e =>
+              update(d => {
+                if (e.target.value.trim()) d.identity.gender = e.target.value
+                else delete d.identity.gender
+              })
+            }
+          />
+          <GenderList />
+        </label>
       </div>
-      {!ch.npc && <p>Metatype: <Sr6Ref kind="metatypes" id={ch.build.metatype || undefined}><b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b></Sr6Ref>. <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.</p>}
+      {!ch.npc && (
+        <p>
+          Metatype:{' '}
+          <Sr6Ref kind="metatypes" id={ch.build.metatype || undefined}>
+            <b>{meta?.name ?? (ch.build.metatype || 'none yet')}</b>
+          </Sr6Ref>
+          . <a href={sr6EditHref(ch.id, 'method')}>Pick it on Creation method</a>.
+        </p>
+      )}
       <div className="portrait-row">
         <Face ch={ch} />
         <div className="stack">
-          <button className="btn" onClick={() => setPe(true)}>{ch.identity.portrait ? 'Change portrait…' : 'Add a portrait…'}</button>
+          <button className="btn" onClick={() => setPe(true)}>
+            {ch.identity.portrait ? 'Change portrait…' : 'Add a portrait…'}
+          </button>
           <span className="muted">Backdrop: {ch.identity.backdrop ? BACKDROP_NAMES[ch.identity.backdrop] : 'none'}</span>
         </div>
-        <PortraitEditor ch={ch} open={pe} onClose={() => setPe(false)} onSave={(portrait, backdrop) => {
-          setPe(false)
-          update(d => {
-            if (portrait) d.identity.portrait = portrait; else delete d.identity.portrait
-            if (backdrop) d.identity.backdrop = backdrop; else delete d.identity.backdrop
-          })
-        }} />
+        <PortraitEditor
+          ch={ch}
+          open={pe}
+          onClose={() => setPe(false)}
+          onSave={(portrait, backdrop) => {
+            setPe(false)
+            update(d => {
+              if (portrait) d.identity.portrait = portrait
+              else delete d.identity.portrait
+              if (backdrop) d.identity.backdrop = backdrop
+              else delete d.identity.backdrop
+            })
+          }}
+        />
         <Face ch={ch} token />
         <div className="stack">
-          <button className="btn" onClick={() => setTe(true)}>{ch.identity.token ? 'Change token…' : 'Set a token…'}</button>
+          <button className="btn" onClick={() => setTe(true)}>
+            {ch.identity.token ? 'Change token…' : 'Set a token…'}
+          </button>
           <span className="muted">Token: {ch.identity.token ? 'its own picture' : 'same as portrait'}</span>
         </div>
-        <PortraitEditor token ch={ch} open={te} onClose={() => setTe(false)} onSave={token => {
-          setTe(false)
-          update(d => { if (token) d.identity.token = token; else delete d.identity.token })
-        }} />
+        <PortraitEditor
+          token
+          ch={ch}
+          open={te}
+          onClose={() => setTe(false)}
+          onSave={token => {
+            setTe(false)
+            update(d => {
+              if (token) d.identity.token = token
+              else delete d.identity.token
+            })
+          }}
+        />
       </div>
       <hr className="sep" />
-      <label>Background<textarea value={ch.identity.background} onChange={e => update(d => { d.identity.background = e.target.value })} /></label>
-      <label>Notes<textarea value={ch.identity.notes} onChange={e => update(d => { d.identity.notes = e.target.value })} /></label>
+      <label>
+        Background
+        <textarea
+          value={ch.identity.background}
+          onChange={e =>
+            update(d => {
+              d.identity.background = e.target.value
+            })
+          }
+        />
+      </label>
+      <label>
+        Notes
+        <textarea
+          value={ch.identity.notes}
+          onChange={e =>
+            update(d => {
+              d.identity.notes = e.target.value
+            })
+          }
+        />
+      </label>
     </div>
   )
 }

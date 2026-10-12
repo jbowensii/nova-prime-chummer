@@ -12,9 +12,13 @@ import { savedOnServer } from './session'
 // order. Screenshots go to .extract/screenshots/sr6-s2 (not committed).
 const PW = { ada: 'ada-password-1', gil: 'gil-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-s2'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
-const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
+const CA2 =
+  '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: DESK })
@@ -25,14 +29,23 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -44,7 +57,10 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(v => { document.documentElement.dataset.theme = v }, t)
+  const theme = (t: string) =>
+    page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, t)
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')
   await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
@@ -58,13 +74,14 @@ async function shoot(page: Page, name: string) {
 const row = (page: Page, name: string) => page.locator('.dossier', { hasText: name })
 /** Gil (an editor) in a page of his own; the runner `id` of Pat's in Gil's campaign Zip Table (made the first time). */
 async function gilWith(browser: Browser, pat: Page, id: string): Promise<Page> {
-  const origin = base.replace(/\/$/, ''), headers = { Origin: origin }
+  const origin = base.replace(/\/$/, ''),
+    headers = { Origin: origin }
   const gil = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
   await signIn(gil, '/#/sr6', 'gil')
-  const mine = await (await gil.request.get('/api/sr6/campaigns')).json() as { id: string; name: string }[]
+  const mine = (await (await gil.request.get('/api/sr6/campaigns')).json()) as { id: string; name: string }[]
   let camp = mine.find(c => c.name === 'Zip Table')?.id
   if (!camp) {
-    camp = (await (await gil.request.post('/api/sr6/campaigns', { data: { name: 'Zip Table' }, headers })).json() as { id: string }).id
+    camp = ((await (await gil.request.post('/api/sr6/campaigns', { data: { name: 'Zip Table' }, headers })).json()) as { id: string }).id
     expect((await gil.request.post(`/api/sr6/campaigns/${camp}/members`, { data: { user: 'pat' }, headers })).ok()).toBe(true)
     expect((await pat.request.post(`/api/sr6/campaigns/${camp}/runners`, { data: { id }, headers })).ok()).toBe(true)
   }
@@ -99,9 +116,12 @@ test('the runners page: empty, a method that needs settings, a new runner, impor
 
   // back on the list: the row, then a file the app can't read, listed with Download and Try to repair
   const id = page.url().split('/c/')[1].split('/')[0]
-  const folder = join(dir, 'characters', 'sr6', 'pat'), xml = readFileSync(join(folder, readdirSync(folder)[0]), 'utf8')
+  const folder = join(dir, 'characters', 'sr6', 'pat'),
+    xml = readFileSync(join(folder, readdirSync(folder)[0]), 'utf8')
   expect(xml).toContain(`id="${id}"`)
-  const broken = xml.replace(`id="${id}"`, 'id="broken-1"').replace('streetName="Zip Spark"', 'streetName="Cracked Kit"')
+  const broken = xml
+    .replace(`id="${id}"`, 'id="broken-1"')
+    .replace('streetName="Zip Spark"', 'streetName="Cracked Kit"')
     .replace('</build>', '<purchase uid="p1" kind="gear" id="crb.zap-pellets" qty="x"/></build>')
   writeFileSync(join(folder, 'cracked-kit.xml'), broken)
   await page.goto('/#/sr6')
@@ -119,11 +139,16 @@ test('the runners page: empty, a method that needs settings, a new runner, impor
   await expect(row(page, 'Cracked Kit').getByRole('link', { name: 'Cracked Kit' })).toBeVisible()
 
   // export, import it back (a copy with a new id), an Anarchy file refused
-  const [down] = await Promise.all([page.waitForEvent('download'), row(page, 'Zip Spark').getByRole('button', { name: 'Export Zip Spark', exact: true }).click()])
+  const [down] = await Promise.all([
+    page.waitForEvent('download'),
+    row(page, 'Zip Spark').getByRole('button', { name: 'Export Zip Spark', exact: true }).click(),
+  ])
   const exported = readFileSync(await down.path(), 'utf8')
   expect(exported).toContain('lastExportedAt=')
   await page.locator('input[type=file]').setInputFiles([file('zip.xml', exported), file('anarchy.xml', CA2)])
-  await expect(page.getByRole('status').filter({ hasText: 'Imported Zip Spark.' })).toContainText('anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
+  await expect(page.getByRole('status').filter({ hasText: 'Imported Zip Spark.' })).toContainText(
+    'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.',
+  )
   await expect(row(page, 'Zip Spark')).toHaveCount(2)
 
   // search and sort
@@ -150,8 +175,20 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
   // a mundane runner has no Magic tab
-  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Martial arts', 'Augmentations', 'Gear', 'Vehicles',
-    'Contacts & lifestyle', /^Review\d*$/, 'Print'])
+  await expect(tabs).toHaveText([
+    'Concept',
+    'Creation method',
+    'Attributes',
+    'Skills',
+    'Qualities',
+    'Martial arts',
+    'Augmentations',
+    'Gear',
+    'Vehicles',
+    'Contacts & lifestyle',
+    /^Review\d*$/,
+    'Print',
+  ])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   const budgets = page.getByRole('complementary', { name: 'Budgets' })
   await expect(budgets).toContainText('Priority build')
@@ -166,7 +203,13 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
 
   // Creation method: the letters, then sum to ten's running total, then back
   await tabs.filter({ hasText: 'Creation method' }).click()
-  for (const [col, l] of [['Magic or Resonance', 'A'], ['Attributes', 'B'], ['Skills', 'C'], ['Metatype', 'D'], ['Resources', 'E']])
+  for (const [col, l] of [
+    ['Magic or Resonance', 'A'],
+    ['Attributes', 'B'],
+    ['Skills', 'C'],
+    ['Metatype', 'D'],
+    ['Resources', 'E'],
+  ])
     await page.getByLabel(`${col} priority`).selectOption(l)
   await expect(page.locator('tr', { hasText: 'Attributes' }).first()).toContainText('17 points')
   await page.getByLabel('Method').selectOption('sumtoten')
@@ -235,7 +278,11 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await page.getByLabel('New one is a').selectOption('language')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.getByLabel('Gutterspeak is native')).toBeDisabled()
-  await page.locator('tr').filter({ has: page.getByLabel('Gutterspeak is native') }).getByRole('button', { name: 'Remove' }).click()
+  await page
+    .locator('tr')
+    .filter({ has: page.getByLabel('Gutterspeak is native') })
+    .getByRole('button', { name: 'Remove' })
+    .click()
   await shoot(page, 'editor-skills')
 
   // the budgets panel: karma's breakdown, each line a link to its tab
@@ -263,12 +310,15 @@ test('phone width: the budgets bar is a button that names the worst overspend; c
   await signIn(page, '/#/sr6', 'pat')
   // the runner list at 375 px: each row's buttons under its title, nothing past the edge
   await fits(page)
-  const zip = row(page, 'Zip Spark').first(), title = await zip.locator('.title').boundingBox(), del = await zip.getByRole('button', { name: /^Delete / }).boundingBox()
+  const zip = row(page, 'Zip Spark').first(),
+    title = await zip.locator('.title').boundingBox(),
+    del = await zip.getByRole('button', { name: /^Delete / }).boundingBox()
   expect(del!.y).toBeGreaterThan(title!.y + title!.height - 1)
   mkdirSync('.extract/screenshots/review-0131', { recursive: true })
   await page.screenshot({ path: '.extract/screenshots/review-0131/sr6-runners-375.png', fullPage: true })
   await zip.getByRole('link', { name: 'Zip Spark' }).click()
-  const budgets = page.getByRole('complementary', { name: 'Budgets' }), bar = budgets.locator('.peek')
+  const budgets = page.getByRole('complementary', { name: 'Budgets' }),
+    bar = budgets.locator('.peek')
   await expect(bar).toHaveRole('button')
   await expect(bar).toHaveAttribute('aria-expanded', 'false')
   await expect(bar).toContainText('Karma left')
@@ -306,10 +356,24 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), budgets = page.getByRole('complementary', { name: 'Budgets' })
+  const work = page.locator('main.work'),
+    budgets = page.getByRole('complementary', { name: 'Budgets' })
   const dlg = page.getByRole('dialog')
-  await expect(tabs).toHaveText(['Concept', 'Creation method', 'Attributes', 'Skills', 'Qualities', 'Martial arts', 'Magic', 'Augmentations', 'Gear', 'Vehicles',
-    'Contacts & lifestyle', /^Review\d*$/, 'Print'])
+  await expect(tabs).toHaveText([
+    'Concept',
+    'Creation method',
+    'Attributes',
+    'Skills',
+    'Qualities',
+    'Martial arts',
+    'Magic',
+    'Augmentations',
+    'Gear',
+    'Vehicles',
+    'Contacts & lifestyle',
+    /^Review\d*$/,
+    'Print',
+  ])
 
   // a technomancer's tab is Resonance: complex forms, echoes, submersion
   await tabs.filter({ hasText: 'Creation method' }).click()
@@ -489,7 +553,8 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
   await expect(work.getByText('Zap Gun licence (2)')).toBeVisible()
   // karma to nuyen both ways (one missed click undone with one more): back is refused at none, then 2 there, 1 back
-  const toNuyen = work.getByRole('button', { name: '1 Karma → 1,500¥' }), toKarma = work.getByRole('button', { name: '1,500¥ → 1 Karma' })
+  const toNuyen = work.getByRole('button', { name: '1 Karma → 1,500¥' }),
+    toKarma = work.getByRole('button', { name: '1,500¥ → 1 Karma' })
   await expect(toKarma).toBeDisabled()
   await toNuyen.click()
   await toNuyen.click()
@@ -512,13 +577,15 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), dlg = page.getByRole('dialog')
+  const work = page.locator('main.work'),
+    dlg = page.getByRole('dialog')
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.getByRole('heading', { name: 'Review' })).toBeVisible()
   // three problems, each message a link to its tab: nuyen overspent (Gear: only fixing clears it), alpha Glow Eyes above
   // the Availability cap (Augmentations) and more Karma left than carries over; the contact above Charisma is bought with
   // karma (the Sixth World Companion's expanded contacts)
-  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' }), left = work.locator('.viol', { hasText: 'karma left' })
+  const eyes = work.locator('.viol', { hasText: 'Glow Eyes' }),
+    left = work.locator('.viol', { hasText: 'karma left' })
   await expect(eyes).toContainText('Problem')
   await expect(eyes).toContainText('CRB p.63')
   await expect(work.locator('.viol .sev.err')).toHaveCount(3)
@@ -546,7 +613,8 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   const zipId = page.url().split('/c/')[1].split('/')[0]
   const gil = await gilWith(browser, page, zipId)
   await gil.goto(`/#/sr6/c/${zipId}/review`)
-  const geyes = gil.locator('main.work .viol', { hasText: 'Glow Eyes' }), gdlg = gil.getByRole('dialog')
+  const geyes = gil.locator('main.work .viol', { hasText: 'Glow Eyes' }),
+    gdlg = gil.getByRole('dialog')
   await geyes.getByRole('button', { name: 'GM approve' }).click()
   await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend, agreed at session zero')
   await gdlg.getByRole('button', { name: 'Approve' }).click()
@@ -620,7 +688,14 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
   await expect(sheet).toContainText('Cozy × 1 month')
   await expect(sheet).toContainText('Zap Gun licence (2)')
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Neon', 'Hex', 'Dossier'])
+  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText([
+    'Printer-friendly',
+    'Full color',
+    'Book style',
+    'Neon',
+    'Hex',
+    'Dossier',
+  ])
   await page.screenshot({ path: `${SHOTS}/print-sheet-light.png`, fullPage: true })
   await page.getByRole('combobox', { name: 'Sheet type' }).selectOption('color')
   await page.screenshot({ path: `${SHOTS}/print-sheet-color.png`, fullPage: true })
@@ -635,14 +710,21 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
     for (const format of ['Letter', 'A4']) {
       const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${name}-${format.toLowerCase()}.pdf` }))
       expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBeLessThanOrEqual(max)
-      expect(glyphs.every(k => k > 0), `${name} ${format}: a blank page (${glyphs})`).toBe(true)
-      expect(glyphs.slice(0, -1).every(k => k > 400), `${name} ${format}: a near-empty page (${glyphs})`).toBe(true)
+      expect(
+        glyphs.every(k => k > 0),
+        `${name} ${format}: a blank page (${glyphs})`,
+      ).toBe(true)
+      expect(
+        glyphs.slice(0, -1).every(k => k > 400),
+        `${name} ${format}: a near-empty page (${glyphs})`,
+      ).toBe(true)
     }
   }
   await pdfOk('print-sheet', 2)
 
   // a long copy (made-up lore padding page 1's skills column): the blocks break between rows, page 1 isn't left empty
-  const id = page.url().split('/c/')[1].split('/')[0], origin = new URL(base).origin
+  const id = page.url().split('/c/')[1].split('/')[0],
+    origin = new URL(base).origin
   const all: { xml: string }[] = await page.evaluate(() => fetch('./api/sr6/characters').then(r => r.json()))
   const xml = all.map(r => r.xml).find(x => x.includes(`id="${id}"`))!
   const lore = Array.from({ length: 70 }, (_, i) => `<knowledge uid="pad${i}" kind="knowledge" points="0" karma="0">Made-up lore ${i + 1}</knowledge>`).join('')
@@ -669,7 +751,10 @@ test('a point-buy runner: character points left, Review cites the rule; two tabs
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
   const budgets = page.getByRole('complementary', { name: 'Budgets' })
   await expect(budgets.locator('.budget', { hasText: 'Character points' }).first()).toContainText(/\d+left of \d+/)
-  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review/ }).click()
+  await page
+    .getByRole('navigation', { name: 'Character sections' })
+    .getByRole('link', { name: /^Review/ })
+    .click()
   const unspent = page.locator('.viol', { hasText: 'character points left: spend them all.' })
   await expect(unspent).toContainText('CRB p.68')
   await expect(unspent.getByRole('link', { name: /character points left/ })).toHaveAttribute('href', /\/method$/)
@@ -698,9 +783,13 @@ test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s ru
   await page.context().clearCookies()
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()
-  await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review/ }).click()
+  await page
+    .getByRole('navigation', { name: 'Character sections' })
+    .getByRole('link', { name: /^Review/ })
+    .click()
   // finalized, Review shows the career checks (S3); back to draft, the creation rules again
-  const cap = page.locator('.viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' }), dlg = page.getByRole('dialog')
+  const cap = page.locator('.viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' }),
+    dlg = page.getByRole('dialog')
   await expect(page.getByRole('button', { name: 'Back to draft' })).toBeEnabled()
   await expect(cap).toHaveCount(0)
   await page.getByRole('button', { name: 'Back to draft' }).click()
@@ -724,7 +813,7 @@ test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s ru
   // the later tests open it from the server: approved, then finalized again (the ledger's last entry)
   await savedOnServer(page, /type="finalize"[^>]*\/>\s*<\/ledger>[\s\S]*Old cap/)
   // Zip Spark leaves Zip Table again
-  const camps = await (await page.request.get('/api/sr6/campaigns')).json() as { id: string; name: string }[]
+  const camps = (await (await page.request.get('/api/sr6/campaigns')).json()) as { id: string; name: string }[]
   const zip = camps.find(c => c.name === 'Zip Table')!.id
   expect((await page.request.delete(`/api/sr6/campaigns/${zip}/runners/${zipId}`, { headers: { Origin: base.replace(/\/$/, '') } })).ok()).toBe(true)
 })
@@ -732,7 +821,9 @@ test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s ru
 test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat’s runner in it uses them, Pat reads them', async ({ page, browser }) => {
   const origin = base.replace(/\/$/, '')
   await signIn(page, '/#/sr6', 'gil')
-  const camp = await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Table' }, headers: { Origin: origin } })).json() as { id: string }
+  const camp = (await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Table' }, headers: { Origin: origin } })).json()) as {
+    id: string
+  }
   expect((await page.request.post(`/api/sr6/campaigns/${camp.id}/members`, { data: { user: 'pat' }, headers: { Origin: origin } })).ok()).toBe(true)
   // Pat makes a runner and puts it in the campaign
   const pat = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
@@ -741,7 +832,8 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   await pat.getByRole('dialog', { name: 'New runner' }).getByLabel('Street name').fill('Camp Kid')
   await pat.getByRole('button', { name: 'Create runner' }).click()
   await expect(pat).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
-  const kid = pat.url(), kidId = kid.split('/c/')[1].split('/')[0]
+  const kid = pat.url(),
+    kidId = kid.split('/c/')[1].split('/')[0]
   await savedOnServer(pat, /streetName="Camp Kid"/)
   expect((await pat.request.post(`/api/sr6/campaigns/${camp.id}/runners`, { data: { id: kidId }, headers: { Origin: origin } })).ok()).toBe(true)
   const karma = pat.locator('.sr6-budgets .budget', { hasText: 'Karma' }).first()
@@ -783,10 +875,15 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
   expect((await pat.request.put(`/api/sr6/campaigns/${camp.id}`, { data: { creation: [] }, headers: { Origin: origin } })).status()).toBe(403)
 
   // Load settings file in the campaign's form: reviewed, then saved as the campaign's
-  await sec.getByLabel('Load settings file').setInputFiles({ name: 'table.xml', mimeType: 'application/xml', buffer: Buffer.from(
-    '<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="88"/></sr6:creation>') })
+  await sec.getByLabel('Load settings file').setInputFiles({
+    name: 'table.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from('<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="88"/></sr6:creation>'),
+  })
   await expect(sec.getByLabel('Starting karma', { exact: true })).toHaveValue('88')
-  expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toContainEqual(expect.objectContaining({ key: 'startingKarma', value: '77' }))
+  expect((await (await pat.request.get(`/api/sr6/campaigns/${camp.id}`)).json()).creation).toContainEqual(
+    expect.objectContaining({ key: 'startingKarma', value: '77' }),
+  )
   await sec.getByRole('button', { name: 'Save creation rules' }).click()
   await expect(sec.getByRole('status').filter({ hasText: 'Creation rules saved.' })).toBeVisible()
   // the file's value; the standard values filled the rest of the form
@@ -809,7 +906,7 @@ test('a campaign’s own creation rules: Gil (its GM) sets them on its page, Pat
 test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the Creation method tab; Gil locks it for his campaign', async ({ page, browser }) => {
   const origin = base.replace(/\/$/, '')
   await signIn(page, '/#/sr6', 'gil')
-  const camp = await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Locked Table' }, headers: { Origin: origin } })).json() as { id: string }
+  const camp = (await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Locked Table' }, headers: { Origin: origin } })).json()) as { id: string }
   expect((await page.request.post(`/api/sr6/campaigns/${camp.id}/members`, { data: { user: 'pat' }, headers: { Origin: origin } })).ok()).toBe(true)
   const pat = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
   await signIn(pat, '/#/sr6', 'pat')
@@ -817,12 +914,14 @@ test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the
   await pat.getByRole('dialog', { name: 'New runner' }).getByLabel('Street name').fill('Prime Kid')
   await pat.getByRole('button', { name: 'Create runner' }).click()
   await expect(pat).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
-  const kid = pat.url(), kidId = kid.split('/c/')[1].split('/')[0]
+  const kid = pat.url(),
+    kidId = kid.split('/c/')[1].split('/')[0]
   await savedOnServer(pat, /streetName="Prime Kid"/)
   expect((await pat.request.post(`/api/sr6/campaigns/${camp.id}/runners`, { data: { id: kidId }, headers: { Origin: origin } })).ok()).toBe(true)
   await pat.goto(kid.replace(/concept$/, 'method'))
   await pat.reload()
-  const rules = pat.locator('section[aria-labelledby="runner-rules"]'), karma = pat.locator('.sr6-budgets .budget', { hasText: 'Karma' }).first()
+  const rules = pat.locator('section[aria-labelledby="runner-rules"]'),
+    karma = pat.locator('.sr6-budgets .budget', { hasText: 'Karma' }).first()
   await rules.getByLabel('Search the rules').fill('starting karma')
   const row = rules.locator('.cr-row', { hasText: 'Starting karma' })
   await expect(row).toContainText('Server (Table setup)')
@@ -867,11 +966,11 @@ test('a runner’s own creation rules: Pat picks a prime runner’s Karma on the
   await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeEnabled()
   const parent = rules.getByRole('switch', { name: /^Expanded contacts: karma buys/ })
   await expect(parent).toBeChecked()
-  await parent.uncheck()  // (the test table has them on)
+  await parent.uncheck() // (the test table has them on)
   await expect(child).toHaveClass(/nested blocked/)
   await expect(child).toContainText('needs Expanded contacts: karma buys')
   await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeDisabled()
-  await expect(child.getByLabel(/karma per contact point.*: choice/)).toContainText('The table’s: 1')  // its value kept
+  await expect(child.getByLabel(/karma per contact point.*: choice/)).toContainText('The table’s: 1') // its value kept
   await parent.check() // (the table's again)
   await expect(child.getByLabel(/karma per contact point.*: choice/)).toBeEnabled()
   await expect(child).not.toContainText('needs')

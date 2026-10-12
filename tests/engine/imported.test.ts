@@ -10,8 +10,7 @@ import type { AmpEntry, CareerEvent, ItemEntry } from '../../src/model/types'
 import { base, cat, catFiles } from '../helpers'
 
 const NS = 'xmlns:ca2="urn:chummer-anarchy2:data:1"'
-const sources = (file: string, body: string): SourceFile =>
-  ({ file, xml: `<ca2:data ${NS} kind="sources" version="1">${body}</ca2:data>`, overlay: true })
+const sources = (file: string, body: string): SourceFile => ({ file, xml: `<ca2:data ${NS} kind="sources" version="1">${body}</ca2:data>`, overlay: true })
 
 describe('duplicates', () => {
   test('both books’ Rush are kept', () => {
@@ -44,21 +43,39 @@ describe('sources', () => {
     expect(cat.sources.get('CRB')!.origin).toBe('shipped')
   })
   test('a shipped book that is imported stays one source: shipped description, imported file', () => {
-    const c = buildCatalog([...base, sources('custom/imported/sources.xml',
-      '<source id="QREF" publisher="x" canon="true" file="q.pdf" sha256="ab" imported="2026-09-27"><name>Other</name></source>')])
-    expect(c.sources.get('QREF')).toMatchObject({ name: 'Quick reference sheets: Base, Magic, Matrix, Vehicles', canon: false,
-      texts: 'texts/qref.xml', file: 'q.pdf', sha256: 'ab', imported: '2026-09-27', origin: 'imported' })
+    const c = buildCatalog([
+      ...base,
+      sources(
+        'custom/imported/sources.xml',
+        '<source id="QREF" publisher="x" canon="true" file="q.pdf" sha256="ab" imported="2026-09-27"><name>Other</name></source>',
+      ),
+    ])
+    expect(c.sources.get('QREF')).toMatchObject({
+      name: 'Quick reference sheets: Base, Magic, Matrix, Vehicles',
+      canon: false,
+      texts: 'texts/qref.xml',
+      file: 'q.pdf',
+      sha256: 'ab',
+      imported: '2026-09-27',
+      origin: 'imported',
+    })
   })
   test('the user’s sources file wins for name and canon', () => {
-    const c = buildCatalog([...base, sources('custom/imported/sources.xml',
-      '<source id="QREF" publisher="x" canon="false" file="q.pdf"><name>Other</name></source>'),
-      sources('custom/sources.xml', '<source id="QREF" publisher="Me" canon="true"><name>My refs</name></source>')])
+    const c = buildCatalog([
+      ...base,
+      sources('custom/imported/sources.xml', '<source id="QREF" publisher="x" canon="false" file="q.pdf"><name>Other</name></source>'),
+      sources('custom/sources.xml', '<source id="QREF" publisher="Me" canon="true"><name>My refs</name></source>'),
+    ])
     expect(c.sources.get('QREF')).toMatchObject({ name: 'My refs', canon: true, file: 'q.pdf', origin: 'user' })
   })
   test('a house-rule entry citing an unlisted source is reported, once per file', () => {
-    const ov: SourceFile = { file: 'custom/house.xml', overlay: true, xml: `<ca2:data ${NS} kind="gear" version="1">
+    const ov: SourceFile = {
+      file: 'custom/house.xml',
+      overlay: true,
+      xml: `<ca2:data ${NS} kind="gear" version="1">
       <item id="a" kind="gear" source="HOUSE" page="1"><name>A</name></item>
-      <item id="b" kind="gear" source="HOUSE" page="1"><name>B</name></item></ca2:data>` }
+      <item id="b" kind="gear" source="HOUSE" page="1"><name>B</name></item></ca2:data>`,
+    }
     const c = buildCatalog([...base, ov])
     expect(c.errors).toEqual([{ file: 'custom/house.xml', message: 'source "HOUSE" isn’t listed in any sources file; treated as not canon' }])
     const listed = buildCatalog([...base, sources('custom/sources.xml', '<source id="HOUSE" publisher="Me" canon="false"><name>House</name></source>'), ov])
@@ -67,8 +84,7 @@ describe('sources', () => {
 })
 
 describe('skill additions', () => {
-  const skills = (file: string, body: string): SourceFile =>
-    ({ file, xml: `<ca2:data ${NS} kind="skills" version="1">${body}</ca2:data>`, overlay: true })
+  const skills = (file: string, body: string): SourceFile => ({ file, xml: `<ca2:data ${NS} kind="skills" version="1">${body}</ca2:data>`, overlay: true })
   const cc = (specs: string) => `<skill id="close-combat" attr="agi" source="X" page="1"><name>Mine</name>${specs}</skill>`
   const spec = (id: string) => `<spec id="close-combat.${id}" attr="agi">${id}</spec>`
 
@@ -100,7 +116,12 @@ function stubFetch(extra: Record<string, string>, offline?: string) {
     const body = extra[path] ?? (existsSync(disk) ? readFileSync(disk, 'utf8') : null)
     return { ok: body != null, text: async () => body ?? '' }
   }) as typeof fetch
-  return { fetched, restore: () => { globalThis.fetch = real } }
+  return {
+    fetched,
+    restore: () => {
+      globalThis.fetch = real
+    },
+  }
 }
 
 test('loadCatalog loads data, sources, imported files, texts, edits, then house rules, in that order', async () => {
@@ -124,14 +145,29 @@ test('loadCatalog loads data, sources, imported files, texts, edits, then house 
     expect(at('custom/imported/testc/amps.xml')).toBeGreaterThan(at('custom/sources.xml'))
     expect(at('custom/texts/house.xml')).toBeGreaterThan(at('custom/imported/testc/items.xml'))
     expect(at('custom/house.xml')).toBeGreaterThan(at('custom/texts/house.xml'))
-    expect(c.files.map(f => f.file).slice(-6)).toEqual(['custom/imported/testc/skills.xml', 'custom/texts/house.xml',
-      'custom/edits/sources.xml', 'custom/edits/edits.xml', 'custom/edits/texts.xml', 'custom/house.xml'])
-  } finally { restore() }
+    expect(c.files.map(f => f.file).slice(-6)).toEqual([
+      'custom/imported/testc/skills.xml',
+      'custom/texts/house.xml',
+      'custom/edits/sources.xml',
+      'custom/edits/edits.xml',
+      'custom/edits/texts.xml',
+      'custom/house.xml',
+    ])
+  } finally {
+    restore()
+  }
 })
 
 describe('rescope', () => {
-  const ampWith = (patch: Partial<AmpEntry>): AmpEntry =>
-    ({ uid: 'u1', catalogId: 'rush', type: 'equipment', name: 'Rush', narrative: '', effects: [], ...patch })
+  const ampWith = (patch: Partial<AmpEntry>): AmpEntry => ({
+    uid: 'u1',
+    catalogId: 'rush',
+    type: 'equipment',
+    name: 'Rush',
+    narrative: '',
+    effects: [],
+    ...patch,
+  })
 
   test('an old unscoped id is mapped to the scoped entry matching its snapshot source', () => {
     const ch = blankCharacter()
@@ -160,16 +196,27 @@ describe('rescope', () => {
 
   test('no source match: falls back to the scoped entry with the same normalized name and type', () => {
     const ch = blankCharacter()
-    ch.build.amps = [ampWith({ catalogId: 'ghost-deck', type: 'cyberdeck', name: 'Ghost Deck',
-      snapshot: { ...cat.amps.get('test.ghost-deck')!, id: 'ghost-deck', source: 'GONE' } })]
+    ch.build.amps = [
+      ampWith({
+        catalogId: 'ghost-deck',
+        type: 'cyberdeck',
+        name: 'Ghost Deck',
+        snapshot: { ...cat.amps.get('test.ghost-deck')!, id: 'ghost-deck', source: 'GONE' },
+      }),
+    ]
     const out = rescope(cat, ch)
     expect(out.build.amps[0].catalogId).toBe('test.ghost-deck')
   })
 
   test('several books match by name: the canon one wins (fixture’s Nano Tape group)', () => {
     const ch = blankCharacter()
-    const item: ItemEntry = { uid: 'u3', catalogId: 'nano-tape', kind: 'gear', name: 'Nano Tape',
-      snapshot: { ...cat.items.get('test.nano-tape')!, id: 'nano-tape', source: 'GONE' } }
+    const item: ItemEntry = {
+      uid: 'u3',
+      catalogId: 'nano-tape',
+      kind: 'gear',
+      name: 'Nano Tape',
+      snapshot: { ...cat.items.get('test.nano-tape')!, id: 'nano-tape', source: 'GONE' },
+    }
     ch.build.items = [item]
     const out = rescope(cat, ch)
     expect(out.build.items[0].catalogId).toBe('testc.nano-tape')
@@ -197,19 +244,24 @@ describe('rescope', () => {
 
 test('an unreachable server fails the load; an unreachable imports index just means no imports', async () => {
   const down = stubFetch({}, 'data/levels.xml')
-  try { await expect(loadCatalog('./')).rejects.toThrow('offline') } finally { down.restore() }
+  try {
+    await expect(loadCatalog('./')).rejects.toThrow('offline')
+  } finally {
+    down.restore()
+  }
   const noIndex = stubFetch({}, 'custom/imported/index.xml')
   try {
     const c = await loadCatalog('./')
     expect(c.levels.size).toBeGreaterThan(0)
     expect(c.amps.has('test.rush')).toBe(false)
     expect(c.sources.get('TEST')!.origin).toBe('imported')
-  } finally { noIndex.restore() }
+  } finally {
+    noIndex.restore()
+  }
 })
 
 describe('a book’s pricing overlay', () => {
-  const pricing = (file: string, body: string): SourceFile =>
-    ({ file, xml: `<ca2:data ${NS} kind="pricing" version="1">${body}</ca2:data>`, overlay: true })
+  const pricing = (file: string, body: string): SourceFile => ({ file, xml: `<ca2:data ${NS} kind="pricing" version="1">${body}</ca2:data>`, overlay: true })
   const prices = (file: string, src: string, cf: number) => pricing(file, `<prices id="${src.toLowerCase()}.p" complexForm="${cf}" source="${src}" page="1"/>`)
   const core = buildCatalog(base).pricing
 
@@ -222,9 +274,12 @@ describe('a book’s pricing overlay', () => {
     expect(p.complexForm).toBe(2222)
   })
   test('house rules still override: a full <pricing> replaces, a <prices> sets its own', () => {
-    const house = pricing('custom/house-pricing.xml', `<pricing id="core" source="CRB" page="1" attrPoint="1" attrLastPoint="2" skillLow="3"
+    const house = pricing(
+      'custom/house-pricing.xml',
+      `<pricing id="core" source="CRB" page="1" attrPoint="1" attrLastPoint="2" skillLow="3"
       skillLowMax="4" skillHigh="5" spec="6" knowledge="7" ampPoint="8" equipment="9" weaponStandard="10" weaponSpecialist="11" armorPoint="12"
-      spell="13" complexForm="14" refundEffectRemoval="true"/>`)
+      spell="13" complexForm="14" refundEffectRemoval="true"/>`,
+    )
     const book = prices('custom/imported/cg/pricing.xml', 'CG', 4321)
     expect(buildCatalog([...base, book, house]).pricing).toMatchObject({ attrPoint: 1, complexForm: 14, refundEffectRemoval: true })
     expect(buildCatalog([...base, book, prices('custom/house-cf.xml', 'CRB', 99)]).pricing).toEqual({ ...core, complexForm: 99 })
@@ -238,11 +293,15 @@ describe('a book’s pricing overlay', () => {
     const full = `<pricing id="core" source="CRB" page="1" attrPoint="1" attrLastPoint="2" skillLow="3" skillLowMax="4" skillHigh="5" spec="6"
       knowledge="7" ampPoint="8" equipment="9" weaponStandard="10" weaponSpecialist="11" armorPoint="12" spell="13" complexForm="14" refundEffectRemoval="false"/>`
     const p = (id: string, a: string) => `<prices id="${id}" ${a} source="CRB" page="1"/>`
-    expect(buildCatalog([...base, pricing('custom/h.xml', p('a', 'spell="99"') + full + p('b', 'knowledge="70"') + p('c', 'ampPoint="80"'))]).pricing)
-      .toMatchObject({ spell: 13, knowledge: 70, ampPoint: 80, complexForm: 14 })
+    expect(
+      buildCatalog([...base, pricing('custom/h.xml', p('a', 'spell="99"') + full + p('b', 'knowledge="70"') + p('c', 'ampPoint="80"'))]).pricing,
+    ).toMatchObject({ spell: 13, knowledge: 70, ampPoint: 80, complexForm: 14 })
   })
   test('a <prices> attribute that isn’t a price or a number is ignored', () => {
-    const p = buildCatalog([...base, pricing('custom/h.xml', '<prices id="a" source="CRB" page="1" spell="lots" knowledge="" bogus="5" ampPoint="81"/>')]).pricing
+    const p = buildCatalog([
+      ...base,
+      pricing('custom/h.xml', '<prices id="a" source="CRB" page="1" spell="lots" knowledge="" bogus="5" ampPoint="81"/>'),
+    ]).pricing
     expect(p).toEqual({ ...core, ampPoint: 81 })
   })
   test('the made-up catalog prices complex forms from its book', () => {

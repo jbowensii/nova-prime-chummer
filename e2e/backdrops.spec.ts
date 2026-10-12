@@ -7,10 +7,17 @@ import { disc, stripes } from '../tests/png'
 // Screenshots go to .extract/ (not committed).
 const SHOTS = '.extract/screenshots/backdrops'
 const PHONE = { width: 390, height: 844 }
-const bg = (page: Page, sel: string) => page.locator(sel).first().evaluate(e => getComputedStyle(e).backgroundImage + ' ' + getComputedStyle(e).backgroundColor)
+const bg = (page: Page, sel: string) =>
+  page
+    .locator(sel)
+    .first()
+    .evaluate(e => getComputedStyle(e).backgroundImage + ' ' + getComputedStyle(e).backgroundColor)
 
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png` })
   await theme('dark')
@@ -84,7 +91,11 @@ test('the background art strength slider fades the layer, live, and is remembere
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   const png = [...stripes()]
   const artId: string = await page.evaluate(async png => {
-    const r = await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png), headers: { 'Content-Type': 'image/png', 'X-Filename': 'test-stripes.png' } })
+    const r = await fetch('./api/backgrounds', {
+      method: 'POST',
+      body: new Uint8Array(png),
+      headers: { 'Content-Type': 'image/png', 'X-Filename': 'test-stripes.png' },
+    })
     return (await r.json()).id
   }, png)
   try {
@@ -130,8 +141,19 @@ test('character sheet: weapons and spells apart, knowledge under the skills, por
   mkdirSync(SHOTS, { recursive: true })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
-  const artId: string = await page.evaluate(async png => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png),
-    headers: { 'Content-Type': 'image/png', 'X-Filename': 'test-stripes.png' } })).json()).id, [...stripes()])
+  const artId: string = await page.evaluate(
+    async png =>
+      (
+        await (
+          await fetch('./api/backgrounds', {
+            method: 'POST',
+            body: new Uint8Array(png),
+            headers: { 'Content-Type': 'image/png', 'X-Filename': 'test-stripes.png' },
+          })
+        ).json()
+      ).id,
+    [...stripes()],
+  )
   try {
     await page.getByRole('button', { name: 'New runner' }).click()
     await page.getByRole('button', { name: 'Create runner' }).click()
@@ -171,7 +193,8 @@ test('character sheet: weapons and spells apart, knowledge under the skills, por
     await expect(note).toBeHidden() // screen only
     await page.emulateMedia({ media: 'screen' })
     // 0.8.1: the switches and the strength sit behind the toolbar's Background button
-    const bgButton = page.getByRole('button', { name: 'Background', exact: true }), bgDlg = page.getByRole('dialog', { name: 'Background' })
+    const bgButton = page.getByRole('button', { name: 'Background', exact: true }),
+      bgDlg = page.getByRole('dialog', { name: 'Background' })
     await bgButton.click()
     await bgDlg.getByLabel('Print it').check()
     await page.emulateMedia({ media: 'print' })

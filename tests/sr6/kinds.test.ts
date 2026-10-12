@@ -33,7 +33,8 @@ test('a broken SR6 copy fails: missing category, a non-integer karma, an entry o
   const dir = join(mkdtempSync(join(tmpdir(), 'sr6-validate-')), 'custom')
   cpSync(FIXTURE, dir, { recursive: true })
   const edit = (f: string, from: RegExp, to: string) => {
-    const p = join(dir, 'imported', 'crb', f), xml = readFileSync(p, 'utf8')
+    const p = join(dir, 'imported', 'crb', f),
+      xml = readFileSync(p, 'utf8')
     expect(xml).toMatch(from)
     writeFileSync(p, xml.replace(from, to))
   }
@@ -54,7 +55,8 @@ test('a broken SR6 copy fails: missing category, a non-integer karma, an entry o
 test('a life module choice option that is not an attribute, skill:<id> or nuyen:<number> fails', () => {
   const dir = join(mkdtempSync(join(tmpdir(), 'sr6-validate-')), 'custom')
   cpSync(FIXTURE, dir, { recursive: true })
-  const p = join(dir, 'imported', 'crb', 'lifemodules.xml'), xml = readFileSync(p, 'utf8')
+  const p = join(dir, 'imported', 'crb', 'lifemodules.xml'),
+    xml = readFileSync(p, 'utf8')
   expect(xml).toContain('nuyen:3000')
   writeFileSync(p, xml.replace('nuyen:3000', 'nuyen:x'))
   const r = validate(dir)

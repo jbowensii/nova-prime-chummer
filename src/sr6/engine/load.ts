@@ -25,8 +25,19 @@ const CUSTOM = 'custom/sr6/'
 
 function toSource(el: Element, origin: Sr6Source['origin']): Sr6Source {
   const a = (n: string) => el.getAttribute(n) ?? undefined
-  return { id: a('id') ?? '', name: el.getElementsByTagName('name')[0]?.textContent ?? '', publisher: a('publisher') ?? '',
-    canon: a('canon') === 'true', published: a('published'), cat: a('cat'), texts: a('texts'), file: a('file'), sha256: a('sha256'), imported: a('imported'), origin }
+  return {
+    id: a('id') ?? '',
+    name: el.getElementsByTagName('name')[0]?.textContent ?? '',
+    publisher: a('publisher') ?? '',
+    canon: a('canon') === 'true',
+    published: a('published'),
+    cat: a('cat'),
+    texts: a('texts'),
+    file: a('file'),
+    sha256: a('sha256'),
+    imported: a('imported'),
+    origin,
+  }
 }
 
 /** As src/engine/load.ts mergeSource: an imported book the app also ships stays the shipped description, plus the
@@ -45,7 +56,10 @@ const PLAIN_TEXT = new RegExp(String.raw`<text${ATTRS}>([^<]*)</text>`, 'g')
 const ENTITY: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
 const attrMap = (s: string) => {
   const a = new Map<string, string>()
-  for (const [, k, v] of s.matchAll(/([\w:.-]+)="([^"]*)"/g)) { if (a.has(k)) return null; a.set(k, v) }
+  for (const [, k, v] of s.matchAll(/([\w:.-]+)="([^"]*)"/g)) {
+    if (a.has(k)) return null
+    a.set(k, v)
+  }
   return a
 }
 /** A texts file's <text of id> elements read without the DOM (the books' texts are tens of megabytes: parsing them was
@@ -54,7 +68,8 @@ const attrMap = (s: string) => {
  *  null file is read with the DOM, as before, which reports what's wrong with it. */
 export function plainTexts(xml: string): { of: string; id: string; text: string }[] | null {
   if (!xml.includes('kind="texts"')) return null
-  const m = PLAIN_ROOT.exec(xml), root = m && attrMap(m[2])
+  const m = PLAIN_ROOT.exec(xml),
+    root = m && attrMap(m[2])
   if (!m || !root || root.get(`xmlns:${m[1]}`) !== SR6_NS || root.get('kind') !== 'texts') return null
   const out: { of: string; id: string; text: string }[] = []
   let ok = true
@@ -62,7 +77,10 @@ export function plainTexts(xml: string): { of: string; id: string; text: string 
     const a = attrMap(attrs)
     // eslint-disable-next-line no-control-regex
     if (!a || /[\x00-\x08\x0b\x0c\x0e-\x1f\r]|]]>/.test(raw)) ok = false
-    const text = raw.replace(/&([a-z]*);?/g, (all, name: string) => { if (!all.endsWith(';') || !(name in ENTITY)) ok = false; return ENTITY[name] ?? '' })
+    const text = raw.replace(/&([a-z]*);?/g, (all, name: string) => {
+      if (!all.endsWith(';') || !(name in ENTITY)) ok = false
+      return ENTITY[name] ?? ''
+    })
     out.push({ of: a?.get('of') ?? '', id: a?.get('id') ?? '', text })
     return ''
   })
@@ -70,33 +88,59 @@ export function plainTexts(xml: string): { of: string; id: string; text: string 
 }
 
 export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
-  const c: Sr6Catalog = { entries: Object.fromEntries(Object.keys(SR6_KINDS).map(k => [k, new Map()])) as Sr6Catalog['entries'],
-    sources: new Map(), original: new Map(), moved: new Map(), files: [], errors: [] }
+  const c: Sr6Catalog = {
+    entries: Object.fromEntries(Object.keys(SR6_KINDS).map(k => [k, new Map()])) as Sr6Catalog['entries'],
+    sources: new Map(),
+    original: new Map(),
+    moved: new Map(),
+    files: [],
+    errors: [],
+  }
   for (const f of files) {
     const plain = plainTexts(f.xml)
     if (plain) {
-      for (const t of plain) { const e = KINDS.has(t.of) ? c.entries[t.of as Sr6Kind].get(t.id) : undefined; if (e) e.text = t.text }
+      for (const t of plain) {
+        const e = KINDS.has(t.of) ? c.entries[t.of as Sr6Kind].get(t.id) : undefined
+        if (e) e.text = t.text
+      }
       c.files.push({ file: f.file, kind: 'texts', entries: plain.length })
       continue
     }
     const doc = new DOMParser().parseFromString(f.xml, 'text/xml')
     const perr = doc.getElementsByTagName('parsererror')[0]
-    if (perr) { c.errors.push({ file: f.file, message: `XML parse error: ${perr.textContent?.trim().split('\n')[0]}` }); continue }
-    const root = doc.documentElement, kind = root.getAttribute('kind') ?? ''
-    if (root.localName !== 'data' || root.namespaceURI !== SR6_NS) { c.errors.push({ file: f.file, message: 'not an SR6 data file' }); continue }
+    if (perr) {
+      c.errors.push({ file: f.file, message: `XML parse error: ${perr.textContent?.trim().split('\n')[0]}` })
+      continue
+    }
+    const root = doc.documentElement,
+      kind = root.getAttribute('kind') ?? ''
+    if (root.localName !== 'data' || root.namespaceURI !== SR6_NS) {
+      c.errors.push({ file: f.file, message: 'not an SR6 data file' })
+      continue
+    }
     let els = [...root.children]
     if (kind === 'compendium') {
       const r = readSr6Compendium(f.xml)
-      if (!r.ok) { c.errors.push({ file: f.file, message: r.error }); continue }
+      if (!r.ok) {
+        c.errors.push({ file: f.file, message: r.error })
+        continue
+      }
       const comp = r.compendium
       // a book's source id (imported after the compendium was made): the book keeps it, the compendium waits
-      if (c.sources.has(comp.source)) { c.errors.push({ file: f.file, message: `its source id ${comp.source} is already a book’s; its entries didn’t load` }); continue }
+      if (c.sources.has(comp.source)) {
+        c.errors.push({ file: f.file, message: `its source id ${comp.source} is already a book’s; its entries didn’t load` })
+        continue
+      }
       c.sources.set(comp.source, sr6CompendiumSource({ ...comp, owner: f.owner, ownerName: f.publisher }))
       let n = 0
       for (const e of comp.entries) {
         const had = c.entries[e.kind].get(e.id)
-        if (had && had.source !== comp.source) { c.errors.push({ file: f.file, message: `<${SR6_KINDS[e.kind].tag}> ${e.id}: ${had.source} already has that id; it didn’t load` }); continue }
-        c.entries[e.kind].set(e.id, e); n++
+        if (had && had.source !== comp.source) {
+          c.errors.push({ file: f.file, message: `<${SR6_KINDS[e.kind].tag}> ${e.id}: ${had.source} already has that id; it didn’t load` })
+          continue
+        }
+        c.entries[e.kind].set(e.id, e)
+        n++
       }
       c.files.push({ file: f.file, kind, entries: n }) // its NPCs aren't catalog entries
       continue
@@ -115,11 +159,23 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
         for (const el of els.filter(x => x.localName === 'samplefix')) {
           const a = (n: string) => el.getAttribute(n) ?? ''
           c.sampleFixes ??= new Map()
-          c.sampleFixes.set(a('id'), { id: a('id'), source: a('source'), page: Number(a('page')) || 0, by: el.getAttribute('by') ?? undefined,
-            name: [...el.children].find(k => k.localName === 'name')?.textContent ?? '', text: [...el.children].find(k => k.localName === 'text')?.textContent ?? '',
-            corrects: [...el.children].filter(k => k.localName === 'correct').map(k => ({ item: k.getAttribute('item') ?? '',
-              field: (k.getAttribute('field') ?? 'rating') as 'rating', from: k.getAttribute('from') ?? '', to: k.getAttribute('to') ?? '',
-              ...(k.getAttribute('note') ? { note: k.getAttribute('note')! } : {}) })) })
+          c.sampleFixes.set(a('id'), {
+            id: a('id'),
+            source: a('source'),
+            page: Number(a('page')) || 0,
+            by: el.getAttribute('by') ?? undefined,
+            name: [...el.children].find(k => k.localName === 'name')?.textContent ?? '',
+            text: [...el.children].find(k => k.localName === 'text')?.textContent ?? '',
+            corrects: [...el.children]
+              .filter(k => k.localName === 'correct')
+              .map(k => ({
+                item: k.getAttribute('item') ?? '',
+                field: (k.getAttribute('field') ?? 'rating') as 'rating',
+                from: k.getAttribute('from') ?? '',
+                to: k.getAttribute('to') ?? '',
+                ...(k.getAttribute('note') ? { note: k.getAttribute('note')! } : {}),
+              })),
+          })
         }
         els = els.filter(x => x.localName !== 'samplefix')
         const edits = els.map(el => {
@@ -128,7 +184,9 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
           return toEntry(el, k)
         })
         els.forEach((el, i) => {
-          const e = edits[i], map = c.entries[e.kind], prev = map.get(e.id)
+          const e = edits[i],
+            map = c.entries[e.kind],
+            prev = map.get(e.id)
           if (prev && !prev.edited) c.original.set(entryKey(e.kind, e.id), prev)
           if (!e.text && prev) e.text = prev.text
           const book = c.original.get(entryKey(e.kind, e.id))
@@ -137,33 +195,40 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
             // the edit's own formulas win, the book's fill in the rest
             const changed = (f: string) => (e.attrs[f] ?? '') !== (book.attrs[f] ?? '')
             const own = new Set(e.formulas?.map(f => f.field))
-            const formulas = [...e.formulas ?? [], ...(book.formulas ?? []).filter(f => !own.has(f.field) && !changed(f.field))]
+            const formulas = [...(e.formulas ?? []), ...(book.formulas ?? []).filter(f => !own.has(f.field) && !changed(f.field))]
             const issues = openIssues(book.issues, changed) ?? []
-            if (formulas.length) e.formulas = formulas; else delete e.formulas
-            if (issues.length) e.issues = issues; else delete e.issues
+            if (formulas.length) e.formulas = formulas
+            else delete e.formulas
+            if (issues.length) e.issues = issues
+            else delete e.issues
           }
           map.set(e.id, { ...e, edited: true, by: el.getAttribute('by') ?? undefined })
         })
       } else if (KINDS.has(kind)) {
-        const k = kind as Sr6Kind, tag = SR6_KINDS[k].tag
+        const k = kind as Sr6Kind,
+          tag = SR6_KINDS[k].tag
         const bad = els.find(el => el.localName !== tag && el.localName !== 'remove')
         if (bad) throw new Error(`<${bad.localName}> doesn’t belong in a ${kind} file (<${tag}> entries only)`)
         const entries = els.filter(el => el.localName === tag).map(el => toEntry(el, k))
         for (const e of entries) c.entries[k].set(e.id, e)
         // an id the entry had in an earlier import (importer/sr6/moved.py): resolveEntry finds it under the old one
-        els.forEach(el => { for (const a of el.children) if (a.localName === 'alias' && a.getAttribute('id')) {
-          const from = a.getAttribute('kind') ?? k
-          if (KINDS.has(from)) c.moved.set(entryKey(from as Sr6Kind, a.getAttribute('id')!), { kind: k, id: el.getAttribute('id') ?? '' })
-        } })
+        els.forEach(el => {
+          for (const a of el.children)
+            if (a.localName === 'alias' && a.getAttribute('id')) {
+              const from = a.getAttribute('kind') ?? k
+              if (KINDS.has(from)) c.moved.set(entryKey(from as Sr6Kind, a.getAttribute('id')!), { kind: k, id: el.getAttribute('id') ?? '' })
+            }
+        })
         for (const el of els.filter(el => el.localName === 'remove')) c.entries[k].delete(el.getAttribute('id') ?? '')
       } else throw new Error(`unknown kind "${kind}"`)
     } catch (e) {
-      c.errors.push({ file: f.file, message: (e as Error).message }); continue
+      c.errors.push({ file: f.file, message: (e as Error).message })
+      continue
     }
     c.files.push({ file: f.file, kind, entries: els.filter(el => el.localName !== 'remove').length })
   }
   formulaIssues(c)
-  expandLevels(c)  // (one entry per level, after the edits so an edit on the rated entry reaches every level)
+  expandLevels(c) // (one entry per level, after the edits so an edit on the rated entry reaches every level)
   return c
 }
 
@@ -171,10 +236,13 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
  *  its entry, so Game data, the pickers and Review show it; the entry stays unpriced, never 0. Checked at its lowest rating. */
 function formulaIssues(c: Sr6Catalog) {
   const find = catalogFind(c)
-  for (const map of Object.values(c.entries)) for (const e of map.values()) for (const f of e.formulas ?? []) {
-    const r = bookValue(e, f.field, ratingRange(e.attrs.rating)[0], find)
-    if (r.error && !e.issues?.some(x => x.field === f.field)) e.issues = [...e.issues ?? [], { field: f.field, code: 'unreadable', note: `its formula: ${r.error}` }]
-  }
+  for (const map of Object.values(c.entries))
+    for (const e of map.values())
+      for (const f of e.formulas ?? []) {
+        const r = bookValue(e, f.field, ratingRange(e.attrs.rating)[0], find)
+        if (r.error && !e.issues?.some(x => x.field === f.field))
+          e.issues = [...(e.issues ?? []), { field: f.field, code: 'unreadable', note: `its formula: ${r.error}` }]
+      }
 }
 
 /** The entry of (kind, id), the rated parent of a family of levels (out of the lists, still read by id: levels.ts), or
@@ -187,15 +255,21 @@ export function resolveEntry(c: Pick<Sr6Catalog, 'entries' | 'moved' | 'levels'>
 }
 
 /** The catalog's entries by kind and id (a family's parent too), for a formula's ref(). */
-export const catalogFind = (c: Sr6Catalog): Find => (kind, id) =>
-  (KINDS.has(kind) ? c.entries[kind as Sr6Kind].get(id) ?? c.levels?.get(entryKey(kind as Sr6Kind, id))?.parent : undefined)
+export const catalogFind =
+  (c: Sr6Catalog): Find =>
+  (kind, id) =>
+    KINDS.has(kind) ? (c.entries[kind as Sr6Kind].get(id) ?? c.levels?.get(entryKey(kind as Sr6Kind, id))?.parent) : undefined
 
 const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
 
 /** Every SR6 file, in load order (see the top of this file). `get` returns a file's text, or null when it isn't there;
  * `missing` lists the files an index or source names that weren't. */
-export async function collectSr6Files(get: (path: string) => Promise<string | null>, extra: SourceFile[] = []): Promise<{ files: SourceFile[]; missing: string[] }> {
-  const files: SourceFile[] = [], missing: string[] = []
+export async function collectSr6Files(
+  get: (path: string) => Promise<string | null>,
+  extra: SourceFile[] = [],
+): Promise<{ files: SourceFile[]; missing: string[] }> {
+  const files: SourceFile[] = [],
+    missing: string[] = []
   // each file's fetch starts as soon as its name is known (a few hundred one after another were seconds of round
   // trips); they are still added in load order
   const asked = new Map<string, Promise<string | null>>()
@@ -206,7 +280,12 @@ export async function collectSr6Files(get: (path: string) => Promise<string | nu
     else if (listed) missing.push(path)
     return xml
   }
-  const first = [`${SHIPPED}sources.xml`, `${CUSTOM}imported/sources.xml`, `${CUSTOM}imported/index.xml`, ...['edits', 'texts'].map(e => `${CUSTOM}edits/${e}.xml`)]
+  const first = [
+    `${SHIPPED}sources.xml`,
+    `${CUSTOM}imported/sources.xml`,
+    `${CUSTOM}imported/index.xml`,
+    ...['edits', 'texts'].map(e => `${CUSTOM}edits/${e}.xml`),
+  ]
   first.forEach(fetchOnce)
   const sources = [await add(first[0], true), await add(first[1])]
   const index = await fetchOnce(first[2])
@@ -223,8 +302,14 @@ export async function collectSr6Files(get: (path: string) => Promise<string | nu
 /** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/ui/compendiumStore.ts). An
  * unreachable server fails the load; missing custom files are listed as errors. */
 export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Promise<Sr6Catalog> {
-  const get = (path: string) => fetch(base + path, { cache: 'no-cache' })
-    .then(r => r.ok ? r.text() : null, e => { if (path.startsWith(SHIPPED)) throw e; return null })
+  const get = (path: string) =>
+    fetch(base + path, { cache: 'no-cache' }).then(
+      r => (r.ok ? r.text() : null),
+      e => {
+        if (path.startsWith(SHIPPED)) throw e
+        return null
+      },
+    )
   const { files, missing } = await collectSr6Files(get, extra)
   const c = buildSr6Catalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })

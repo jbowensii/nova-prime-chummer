@@ -14,7 +14,8 @@ test('token: same as portrait by default; its own picture framed in the round di
   await expect(pd.locator('.pe-stage img')).toBeVisible()
   await pd.getByRole('button', { name: 'Save portrait' }).click()
   // no token yet: the round one shows the portrait
-  const token = page.locator('.portrait-row img.tokenface'), portrait = page.locator('.portrait-row img.face')
+  const token = page.locator('.portrait-row img.tokenface'),
+    portrait = page.locator('.portrait-row img.face')
   await expect(token).toHaveCSS('border-radius', '50%')
   expect(await token.getAttribute('src')).toBe(await portrait.getAttribute('src'))
   await expect(page.getByText('Token: same as portrait')).toBeVisible()

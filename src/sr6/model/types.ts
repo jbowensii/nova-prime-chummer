@@ -4,10 +4,53 @@ import type { Formula, Issue } from '../../engine/formula'
 import type { Sr6Character } from './character'
 
 export type Sr6Kind =
-  | 'priorities' | 'metatypes' | 'attributes' | 'skills' | 'qualities' | 'weapons' | 'armor' | 'augmentations' | 'grades'
-  | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics'
-  | 'echoes' | 'martialarts' | 'martialtechniques' | 'traditions' | 'critterpowers' | 'critters' | 'spirits' | 'npcs' | 'sprites' | 'lifestyles' | 'contacts' | 'lifemodules'
-  | 'actions' | 'packs' | 'vehicledesign' | 'ammotypes' | 'mentorspirits' | 'datastructures' | 'qualitypaths' | 'spellfeatures' | 'contacttypes' | 'qualitysets' | 'licencetypes' | 'magictypes' | 'ruleoptions' | 'senses' | 'trueelements' | 'categories' | 'rules'
+  | 'priorities'
+  | 'metatypes'
+  | 'attributes'
+  | 'skills'
+  | 'qualities'
+  | 'weapons'
+  | 'armor'
+  | 'augmentations'
+  | 'grades'
+  | 'electronics'
+  | 'programs'
+  | 'gear'
+  | 'vehicles'
+  | 'spells'
+  | 'rituals'
+  | 'adeptpowers'
+  | 'complexforms'
+  | 'metamagics'
+  | 'echoes'
+  | 'martialarts'
+  | 'martialtechniques'
+  | 'traditions'
+  | 'critterpowers'
+  | 'critters'
+  | 'spirits'
+  | 'npcs'
+  | 'sprites'
+  | 'lifestyles'
+  | 'contacts'
+  | 'lifemodules'
+  | 'actions'
+  | 'packs'
+  | 'vehicledesign'
+  | 'ammotypes'
+  | 'mentorspirits'
+  | 'datastructures'
+  | 'qualitypaths'
+  | 'spellfeatures'
+  | 'contacttypes'
+  | 'qualitysets'
+  | 'licencetypes'
+  | 'magictypes'
+  | 'ruleoptions'
+  | 'senses'
+  | 'trueelements'
+  | 'categories'
+  | 'rules'
 
 export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
   priorities: { tag: 'priority', label: 'Priorities' },
@@ -61,9 +104,24 @@ export const SR6_KINDS: Record<Sr6Kind, { tag: string; label: string }> = {
 
 /** The kinds read from the books' own sections and tables (actions, packs, …): listed in Game data as printed, with no
  *  rules of their own yet (the owner decides how each is used); the Foundry book export carries them (reference journals). */
-export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>(['actions', 'packs', 'vehicledesign', 'ammotypes',
-  'mentorspirits', 'datastructures', 'qualitypaths', 'spellfeatures', 'contacttypes', 'qualitysets', 'licencetypes',
-  'magictypes', 'ruleoptions', 'senses', 'trueelements', 'categories'])
+export const DISPLAY_KINDS: ReadonlySet<Sr6Kind> = new Set<Sr6Kind>([
+  'actions',
+  'packs',
+  'vehicledesign',
+  'ammotypes',
+  'mentorspirits',
+  'datastructures',
+  'qualitypaths',
+  'spellfeatures',
+  'contacttypes',
+  'qualitysets',
+  'licencetypes',
+  'magictypes',
+  'ruleoptions',
+  'senses',
+  'trueelements',
+  'categories',
+])
 
 /** An augmentation's type (common.xsd). Grades (alpha, beta…) apply to cyberware and bioware only (CRB p. 283, Body Shop
  *  p. 29); the others are bought as printed. */
@@ -76,12 +134,24 @@ export const augFamily = (type: string | undefined): 'cyberware' | 'bioware' =>
   type === 'bioware' || type === 'geneware' || type === 'symbionts' || type === 'transgenics' ? 'bioware' : 'cyberware'
 
 /** An entry's child element other than <name>, <text>, <formula> and <issue> (a priority's <metatype>, a skill's <spec>, a critter's <skills>…). */
-export interface Sr6Part { tag: string; attrs: Record<string, string>; text: string }
+export interface Sr6Part {
+  tag: string
+  attrs: Record<string, string>
+  text: string
+}
 /** One catalog entry, generic in S1 (S2 adds typed views). attrs: every attribute but id, source and page, as printed;
  * text: its description (the texts files); edited/by: from the edits layer (custom/sr6/edits/edits.xml). */
 export interface Sr6Entry {
-  id: string; kind: Sr6Kind; name: string; source: string; page: number; attrs: Record<string, string>; parts: Sr6Part[]; text: string
-  edited?: boolean; by?: string
+  id: string
+  kind: Sr6Kind
+  name: string
+  source: string
+  page: number
+  attrs: Record<string, string>
+  parts: Sr6Part[]
+  text: string
+  edited?: boolean
+  by?: string
   /** <formula> children: how a field is worked out (src/engine/formula.ts); the attribute stays as printed */
   formulas?: Formula[]
   /** <issue> children: a field the book prints nothing for, or that the importer couldn't read; also a formula that can't
@@ -96,16 +166,33 @@ export interface Sr6Entry {
 /** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
  *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */
 export interface Sr6Source {
-  id: string; name: string; publisher: string; canon: boolean; published?: string; cat?: string; texts?: string; file?: string; sha256?: string; imported?: string
+  id: string
+  name: string
+  publisher: string
+  canon: boolean
+  published?: string
+  cat?: string
+  texts?: string
+  file?: string
+  sha256?: string
+  imported?: string
   origin: 'shipped' | 'imported' | 'user'
   compendium?: { id: string; owner: string; campaign?: string }
 }
 /** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
  *  owner/ownerName come from the server (the folder it's stored in), never from the file. */
 export interface Sr6Compendium {
-  id: string; name: string; source: string; sharing: 'private' | 'campaign' | 'table'; campaign?: string; rev?: number; updatedAt: string
-  owner?: string; ownerName?: string
-  entries: Sr6Entry[]; npcs: Sr6Character[]
+  id: string
+  name: string
+  source: string
+  sharing: 'private' | 'campaign' | 'table'
+  campaign?: string
+  rev?: number
+  updatedAt: string
+  owner?: string
+  ownerName?: string
+  entries: Sr6Entry[]
+  npcs: Sr6Character[]
 }
 /** original: the book's version of each edited entry, keyed by entryKey(kind, id) (src/sr6/engine/load.ts). */
 export interface Sr6Catalog {
@@ -124,5 +211,12 @@ export interface Sr6Catalog {
 }
 /** A book sample runner's printed lines corrected (the owner's override file, edits.xsd <samplefix>): each `correct` sets
  *  `field` of the line buying catalog item `item` from `from` to `to`, while the runner's line still has `from`. */
-export interface Sr6SampleFix { id: string; source: string; page: number; name: string; by?: string; text: string
-  corrects: { item: string; field: 'rating' | 'qty' | 'grade'; from: string; to: string; note?: string }[] }
+export interface Sr6SampleFix {
+  id: string
+  source: string
+  page: number
+  name: string
+  by?: string
+  text: string
+  corrects: { item: string; field: 'rating' | 'qty' | 'grade'; from: string; to: string; note?: string }[]
+}

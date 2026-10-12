@@ -8,7 +8,8 @@ import { entryOf, priced, round2 } from './purchases'
 /** The Essence factor Sensitive System puts on a line (CRB Hong Kong p. 78: doubled for cyberware, bioware and nanoware,
  *  not geneware; sensitiveSystemQuality, sensitiveSystemEssence): 1 without it. */
 export function sensitiveFactor(b: Sr6Build, data: Sr6Data, cr: CreationRules, x: Sr6Purchase): number {
-  const id = str(cr, 'sensitiveSystemQuality'), f = num(cr, 'sensitiveSystemEssence')
+  const id = str(cr, 'sensitiveSystemQuality'),
+    f = num(cr, 'sensitiveSystemEssence')
   if (!id || f === undefined || !b.qualities.some(q => q.id === id)) return 1
   return /^(cyberware|bioware|nanoware)/i.test(entryOf(x, data)?.attrs.type ?? '') ? f : 1
 }

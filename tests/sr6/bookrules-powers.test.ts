@@ -14,9 +14,21 @@ import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
 
 function setup() {
-  const data = sr6Data(fixtureCatalog((f, x) => f.endsWith('crb/adeptpowers.xml') ? x.replace('</sr6:data>',
-    `<adeptpower id="crb.sharp-knack-skill" source="CRB" page="157" cost="0.25" costCombat="0.75" perLevel="true"><name>Sharp Knack (Skill)</name><effect target="skill:choice" op="add" value="R"/><text/></adeptpower>\n</sr6:data>`)
-    : f.endsWith('crb/skills.xml') ? x.replace('</sr6:data>', `<skill id="crb.firearms" source="CRB" page="95" attr="agi" untrained="true"><name>Firearms</name><text/></skill>\n</sr6:data>`) : x))
+  const data = sr6Data(
+    fixtureCatalog((f, x) =>
+      f.endsWith('crb/adeptpowers.xml')
+        ? x.replace(
+            '</sr6:data>',
+            `<adeptpower id="crb.sharp-knack-skill" source="CRB" page="157" cost="0.25" costCombat="0.75" perLevel="true"><name>Sharp Knack (Skill)</name><effect target="skill:choice" op="add" value="R"/><text/></adeptpower>\n</sr6:data>`,
+          )
+        : f.endsWith('crb/skills.xml')
+          ? x.replace(
+              '</sr6:data>',
+              `<skill id="crb.firearms" source="CRB" page="95" attr="agi" untrained="true"><name>Firearms</name><text/></skill>\n</sr6:data>`,
+            )
+          : x,
+    ),
+  )
   const cr = fixtureCreation()
   cr.set('improvedAbilityPower', { key: 'improvedAbilityPower', value: 'crb.sharp-knack-skill', source: 'CRB', page: 99 })
   cr.set('improvedAbilityFactor', { key: 'improvedAbilityFactor', value: 1.5 })
@@ -31,29 +43,39 @@ function adept(): Sr6Character {
 }
 
 test('the price by the skill the note names: combat or other; the levels add to that skill’s pool', () => {
-  const { data, cr } = setup(), ch = adept()
-  ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 2, note: 'Firearms' },
-    { uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1, note: 'Gab' })
+  const { data, cr } = setup(),
+    ch = adept()
+  ch.build.picks.push(
+    { uid: 'k1', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 2, note: 'Firearms' },
+    { uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1, note: 'Gab' },
+  )
   expect(powerCost(data, ch.build.picks[0])).toBe(0.75 * 2)
   expect(powerCost(data, ch.build.picks[1])).toBe(0.25)
   const pools = deriveSr6(data, cr, ch).pools
-  expect(pools.find(p => p.skill === 'crb.firearms')!.dp).toBe(4 + 1 + 2)  // (AGI 1)
-  expect(pools.find(p => p.skill === 'crb.gab')!.dp).toBe(2 + 1 + 1)  // (CHA 1)
+  expect(pools.find(p => p.skill === 'crb.firearms')!.dp).toBe(4 + 1 + 2) // (AGI 1)
+  expect(pools.find(p => p.skill === 'crb.gab')!.dp).toBe(2 + 1 + 1) // (CHA 1)
   expect(validateSr6(data, cr, ch).filter(v => v.code.startsWith('adept.improvedAbility') || v.code === 'magic.choice')).toEqual([])
 })
 
 test('a rank in the skill; the boosted skill at most 1.5 times the rank, rounded up; a note naming no skill asks for one', () => {
-  const { data, cr } = setup(), ch = adept()
-  ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 2, note: 'Gab' },
-    { uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1, note: 'Tinkering' }, { uid: 'k3', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1 })
+  const { data, cr } = setup(),
+    ch = adept()
+  ch.build.picks.push(
+    { uid: 'k1', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 2, note: 'Gab' },
+    { uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1, note: 'Tinkering' },
+    { uid: 'k3', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1 },
+  )
   const v = validateSr6(data, cr, ch)
   expect(v.filter(x => x.code === 'adept.improvedAbility').map(x => [x.path, x.message])).toEqual([
-    ['magic.k1', 'Sharp Knack (Skill) 2 raises Gab 2 to 4; at most 3.'], ['magic.k2', 'Sharp Knack (Skill) for Tinkering: it needs a rank in Tinkering.']])
+    ['magic.k1', 'Sharp Knack (Skill) 2 raises Gab 2 to 4; at most 3.'],
+    ['magic.k2', 'Sharp Knack (Skill) for Tinkering: it needs a rank in Tinkering.'],
+  ])
   expect(v.filter(x => x.code === 'magic.choice').map(x => x.path)).toEqual(['magic.k3'])
 })
 
 test('bought again for another skill: a new line, not a level; its note set on the line', () => {
-  const { data, cr } = setup(), ch = adept()
+  const { data, cr } = setup(),
+    ch = adept()
   expect(apply(ch.build, { op: 'pick', kind: 'adeptpowers', id: 'crb.sharp-knack-skill' }, data, cr)).toEqual({ ok: true })
   expect(apply(ch.build, { op: 'pick', kind: 'adeptpowers', id: 'crb.sharp-knack-skill' }, data, cr)).toEqual({ ok: true })
   expect(ch.build.picks.map(x => x.level)).toEqual([1, 1])
@@ -62,24 +84,28 @@ test('bought again for another skill: a new line, not a level; its note set on t
 })
 
 test('a career level of Improved Ability is checked at the price for the skill the raised line names', () => {
-  const { data, cr } = setup(), ch = adept(), NOW = '2026-10-06T10:00:00.000Z'
+  const { data, cr } = setup(),
+    ch = adept(),
+    NOW = '2026-10-06T10:00:00.000Z'
   data.powers['crb.sharp-knack-skill'] = { ...data.powers['crb.sharp-knack-skill'], maxLevel: 9 }
-  ch.finalizedAt = NOW; ch.final = { karma: 0, nuyen: 0 }; ch.ledger = [{ id: 'f1', at: NOW, type: 'finalize', karma: 0, nuyen: 0 }]
+  ch.finalizedAt = NOW
+  ch.final = { karma: 0, nuyen: 0 }
+  ch.ledger = [{ id: 'f1', at: NOW, type: 'finalize', karma: 0, nuyen: 0 }]
   ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: 1, note: 'Firearms' })
   // a Gab line uses all but 0.5 power points: room for an other-skill level (0.25), not a combat one (0.75)
   const left = () => careerPowerPoints(ch.build, data, cr, makeProvider('priority', data, cr)).left
   ch.build.picks.push({ uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: (left() - 0.5) / 0.25, note: 'Gab' })
   expect(left()).toBe(0.5)
   const raise = { op: 'pick' as const, line: { uid: '', kind: 'adeptpowers' as const, id: 'crb.sharp-knack-skill' } }
-  expect(preview(ch, raise, data, cr)).toMatchObject({ ok: false, reason: 'no-power-points' })   // Firearms: 0.75
+  expect(preview(ch, raise, data, cr)).toMatchObject({ ok: false, reason: 'no-power-points' }) // Firearms: 0.75
   ch.build.picks[0].note = 'Gab'
-  expect(preview(ch, raise, data, cr)).toMatchObject({ ok: true })   // Gab: 0.25
+  expect(preview(ch, raise, data, cr)).toMatchObject({ ok: true }) // Gab: 0.25
   // a family of levels (Quick Step 1–4, 0.25 a level): the next level for the difference at the line's price
   for (const n of [1, 2]) data.powers[`crb.quick-step.${n}`] = { ...data.powers[`crb.quick-step.${n}`], costCombat: 0.5 * n }
   ch.build.picks.splice(0, 2, { uid: 'q1', kind: 'adeptpowers', id: 'crb.quick-step.1', note: 'Firearms' })
   ch.build.picks.push({ uid: 'k2', kind: 'adeptpowers', id: 'crb.sharp-knack-skill', level: (left() - 0.25) / 0.25, note: 'Gab' })
   const next = { op: 'pick' as const, line: { uid: '', kind: 'adeptpowers' as const, id: 'crb.quick-step' } }
-  expect(preview(ch, next, data, cr)).toMatchObject({ ok: false, reason: 'no-power-points' })   // Firearms: 1 − 0.5
+  expect(preview(ch, next, data, cr)).toMatchObject({ ok: false, reason: 'no-power-points' }) // Firearms: 1 − 0.5
   ch.build.picks[0].note = 'Gab'
-  expect(preview(ch, next, data, cr)).toMatchObject({ ok: true })   // Gab: 0.5 − 0.25
+  expect(preview(ch, next, data, cr)).toMatchObject({ ok: true }) // Gab: 0.5 − 0.25
 })

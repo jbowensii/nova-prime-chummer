@@ -8,12 +8,25 @@ import type { AmpEntry, Catalog, ItemEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
 const item = (catalogId: string, more: Partial<ItemEntry> = {}): ItemEntry => ({ uid: 'i', catalogId, kind: 'gear', name: 'Nano Tape', ...more })
-const amp = (catalogId: string, more: Partial<AmpEntry> = {}): AmpEntry => ({ uid: 'a', catalogId, type: 'equipment', name: 'Rush', narrative: '', effects: [], ...more })
+const amp = (catalogId: string, more: Partial<AmpEntry> = {}): AmpEntry => ({
+  uid: 'a',
+  catalogId,
+  type: 'equipment',
+  name: 'Rush',
+  narrative: '',
+  effects: [],
+  ...more,
+})
 const withItems = (ids: string[]): Catalog => ({ ...cat, items: new Map([...cat.items].filter(([id]) => ids.includes(id))) })
-const run = (it: ItemEntry, c: Catalog = cat) => { const ch = blankCharacter(); ch.build.items = [it]; return rescope(c, ch).build.items[0].catalogId }
+const run = (it: ItemEntry, c: Catalog = cat) => {
+  const ch = blankCharacter()
+  ch.build.items = [it]
+  return rescope(c, ch).build.items[0].catalogId
+}
 
 test('an id the catalog has is left alone; a runner with nothing to remap is the same object', () => {
-  const ch = blankCharacter(); ch.build.items = [item('test.nano-tape'), { uid: 'free', kind: 'gear', name: 'Rope' }]
+  const ch = blankCharacter()
+  ch.build.items = [item('test.nano-tape'), { uid: 'free', kind: 'gear', name: 'Rope' }]
   expect(rescope(cat, ch)).toBe(ch)
 })
 
@@ -27,7 +40,8 @@ test('with no snapshot, the same name and kind in a canon book wins over the oth
 })
 
 test('among books of the same standing the lowest source id wins, whatever the catalog’s order', () => {
-  const forward = withItems(['test.nano-tape', 'test2.nano-tape']), backward = withItems(['test2.nano-tape', 'test.nano-tape'])
+  const forward = withItems(['test.nano-tape', 'test2.nano-tape']),
+    backward = withItems(['test2.nano-tape', 'test.nano-tape'])
   expect(run(item('nano-tape'), forward)).toBe('test.nano-tape')
   expect(run(item('nano-tape'), backward)).toBe('test.nano-tape')
   const canon = withItems(['testc.nano-tape', 'test.nano-tape'])
@@ -50,12 +64,19 @@ test('a name written with other case and spacing still matches; the snapshot’s
 
 test('amps are rescoped the same way: by snapshot source, else by name and type', () => {
   const ch = blankCharacter()
-  ch.build.amps = [amp('rush', { snapshot: { ...cat.amps.get('test.rush')! } }), amp('rush', { uid: 'b', name: 'Rush (Equipment)' }), amp('nothing', { uid: 'c', name: 'No Such Thing' }), amp('test.rush', { uid: 'd' })]
+  ch.build.amps = [
+    amp('rush', { snapshot: { ...cat.amps.get('test.rush')! } }),
+    amp('rush', { uid: 'b', name: 'Rush (Equipment)' }),
+    amp('nothing', { uid: 'c', name: 'No Such Thing' }),
+    amp('test.rush', { uid: 'd' }),
+  ]
   const out = rescope(cat, ch).build.amps.map(a => a.catalogId)
   expect(out).toEqual(['test.rush', 'testc.rush', 'nothing', 'test.rush'])
-  const gone = blankCharacter(); gone.build.amps = [amp('test.gone', { snapshot: { ...cat.amps.get('test.rush')!, id: 'test.gone' } })]
+  const gone = blankCharacter()
+  gone.build.amps = [amp('test.gone', { snapshot: { ...cat.amps.get('test.rush')!, id: 'test.gone' } })]
   expect(rescope(cat, gone)).toBe(gone)
-  const wrongType = blankCharacter(); wrongType.build.amps = [amp('rush', { type: 'cyberware' })]
+  const wrongType = blankCharacter()
+  wrongType.build.amps = [amp('rush', { type: 'cyberware' })]
   expect(rescope(cat, wrongType)).toBe(wrongType)
 })
 

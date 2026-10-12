@@ -12,9 +12,12 @@ import { createServer } from '../server/server.mjs'
 // order. Screenshots go to .extract/screenshots/sr6-s4 (not committed).
 const PW = { ada: 'ada-password-1', gil: 'gil-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-s4'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
 const BOOK = 'Shadowrun, Sixth World Core Rulebook' // the fixture's made-up source name
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 let kit = '' // Street Kit's id
 
 test.describe.configure({ mode: 'serial' })
@@ -26,15 +29,24 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' }, { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -52,7 +64,10 @@ const ORIGIN = () => ({ Origin: base.replace(/\/$/, '') })
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(v => { document.documentElement.dataset.theme = v }, t)
+  const theme = (t: string) =>
+    page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, t)
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')
   await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
@@ -146,7 +161,7 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
   await expect(group(page, 'Weapons')).toHaveCount(0)
   await page.getByLabel('Search entries').fill('')
   await shoot(page, 'compendium')
-  const file = await (await page.request.get('/api/sr6/compendiums')).json() as { id: string; xml: string }[]
+  const file = (await (await page.request.get('/api/sr6/compendiums')).json()) as { id: string; xml: string }[]
   expect(file.map(f => f.id)).toEqual([kit])
   expect(file[0].xml).toContain('<skills>Lurking 3, Fumbling 2</skills>')
 
@@ -163,7 +178,10 @@ test('Gil makes Street Kit and fills it; its entries reach his pickers and Game 
 
   // Game data: the weapon marked House; its Edit opens it in Street Kit (the edits layer never edits it); a book's Edit is the edits dialog
   await page.goto('/#/sr6/data')
-  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
+  await page
+    .getByRole('group', { name: 'Kind' })
+    .getByRole('button', { name: /^Weapons \d+$/ })
+    .click()
   const row = page.locator('table.sr6-browse tr', { hasText: 'Pop Stick' })
   await expect(row.locator('.noncanon')).toHaveText('House')
   await expect(row.getByRole('link', { name: 'Edit Pop Stick' })).toHaveAttribute('href', `#/sr6/compendiums/${kit}/street.pop-stick`)
@@ -199,11 +217,14 @@ test('copy from the book: a new STREET id, page 1, no description; the book’s 
   const copy = group(page, 'Weapons').locator('tr', { hasText: 'Zap Gun' })
   await expect(copy.locator('.src')).toHaveText('STREET p.1')
   await expect(copy).not.toContainText('A made-up gun that zaps.')
-  const xml = (await (await page.request.get('/api/sr6/compendiums')).json() as { xml: string }[])[0].xml
+  const xml = ((await (await page.request.get('/api/sr6/compendiums')).json()) as { xml: string }[])[0].xml
   expect(xml).toMatch(/<weapon id="street\.zap-gun" source="STREET" page="1" [^>]*><name>Zap Gun<\/name><text\/><\/weapon>/)
   expect(xml).not.toContain('zaps')
   await page.goto('/#/sr6/data')
-  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
+  await page
+    .getByRole('group', { name: 'Kind' })
+    .getByRole('button', { name: /^Weapons \d+$/ })
+    .click()
   await page.getByLabel('Search the catalog').fill('Zap Gun')
   const rows = page.locator('table.sr6-browse tbody tr')
   await expect(rows).toHaveCount(2)
@@ -271,7 +292,10 @@ test('Eve: Gil’s private id is refused inline; shared with the table she reads
   await toast(page, 'Copied Pop Stick to Eve Bits.')
   // Game data: Gil's entry is in her catalog, with no Edit (it's his)
   await page.goto('/#/sr6/data')
-  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
+  await page
+    .getByRole('group', { name: 'Kind' })
+    .getByRole('button', { name: /^Weapons \d+$/ })
+    .click()
   await page.getByLabel('Search the catalog').fill('Pop Stick')
   await expect(page.locator('table.sr6-browse tr', { hasText: 'STREET p.1' }).getByRole('link', { name: 'Edit Pop Stick' })).toHaveCount(0)
   await expect(page.locator('table.sr6-browse tr', { hasText: 'EVEBITS p.1' }).getByRole('link', { name: 'Edit Pop Stick' })).toBeVisible()
@@ -284,7 +308,7 @@ test('Eve: Gil’s private id is refused inline; shared with the table she reads
 
 test('shared with Gil’s SR6 campaign’s GMs: Eve sees it only once she co-GMs it', async ({ page, browser }) => {
   await signIn(page, '/#/sr6/compendiums', 'gil')
-  const camp = await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Kit Table' }, headers: ORIGIN() })).json() as { id: string }
+  const camp = (await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Kit Table' }, headers: ORIGIN() })).json()) as { id: string }
   await page.reload()
   await page.getByRole('button', { name: 'Details of Street Kit' }).click()
   await dialog(page).getByLabel('Sharing').selectOption('campaign')
@@ -312,7 +336,10 @@ test('Pat: no menu entry, no page, no data, and no compendium entry in his picke
   await expect(picker.getByText('Lucky Streak 1', { exact: true })).toBeVisible()
   await expect(picker.getByText('Lucky Socks')).toHaveCount(0)
   await page.goto('/#/sr6/data')
-  await page.getByRole('group', { name: 'Kind' }).getByRole('button', { name: /^Weapons \d+$/ }).click()
+  await page
+    .getByRole('group', { name: 'Kind' })
+    .getByRole('button', { name: /^Weapons \d+$/ })
+    .click()
   await expect(page.locator('table.sr6-browse')).not.toContainText('Pop Stick')
 })
 

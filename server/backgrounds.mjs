@@ -19,7 +19,8 @@ import { join } from 'node:path'
 import { attr, esc, safeName, writeAtomic } from './books.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
-export const MAX_IMAGE = 10 * 1024 * 1024, MAX_IMAGES = 50
+export const MAX_IMAGE = 10 * 1024 * 1024,
+  MAX_IMAGES = 50
 const ID = /^[0-9a-f]{12}$/
 const TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' }
 const fail = (code, message) => Object.assign(new Error(message), { code })
@@ -33,13 +34,22 @@ export function sniff(b) {
 }
 
 export function parseBackgrounds(xml) {
-  return [...xml.matchAll(/<background\b[^>]*>/g)].map(([t]) => ({ id: attr(t, 'id'), type: attr(t, 'type'), name: attr(t, 'name') ?? '',
-    enabled: attr(t, 'enabled') !== 'false', uploaded: attr(t, 'uploaded') ?? '', size: Number(attr(t, 'size') ?? 0) }))
+  return [...xml.matchAll(/<background\b[^>]*>/g)]
+    .map(([t]) => ({
+      id: attr(t, 'id'),
+      type: attr(t, 'type'),
+      name: attr(t, 'name') ?? '',
+      enabled: attr(t, 'enabled') !== 'false',
+      uploaded: attr(t, 'uploaded') ?? '',
+      size: Number(attr(t, 'size') ?? 0),
+    }))
     .filter(b => ID.test(b.id ?? '') && b.type in TYPES)
 }
-const backgroundsXml = (list, seeded) => '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Background art (backgrounds.xsd). Written by the server. -->\n'
-  + `<ca2:backgrounds xmlns:ca2="${NS}" version="1"${seeded ? ' seeded="true"' : ''}>\n${list.map(b => `  <background id="${b.id}" type="${b.type}" name="${esc(b.name)}" enabled="${
-    b.enabled}" uploaded="${b.uploaded}" size="${b.size}"/>\n`).join('')}</ca2:backgrounds>\n`
+const backgroundsXml = (list, seeded) =>
+  '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Background art (backgrounds.xsd). Written by the server. -->\n' +
+  `<ca2:backgrounds xmlns:ca2="${NS}" version="1"${seeded ? ' seeded="true"' : ''}>\n${list
+    .map(b => `  <background id="${b.id}" type="${b.type}" name="${esc(b.name)}" enabled="${b.enabled}" uploaded="${b.uploaded}" size="${b.size}"/>\n`)
+    .join('')}</ca2:backgrounds>\n`
 
 const newId = () => randomBytes(6).toString('hex')
 const now = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
@@ -47,39 +57,65 @@ const now = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 /** `auth`: server/auth.mjs's api (its JSON body reader). `seed`: { file, name }, the game's default image (none: no default);
  *  `track`: books.track, so seeding is a counted write like any other (a restore waits for it; during one it waits). */
 export function backgroundsApi({ libraryDir, auth, seed, track = fn => fn() }) {
-  const dir = join(libraryDir, 'backgrounds'), path = join(dir, 'backgrounds.xml')
+  const dir = join(libraryDir, 'backgrounds'),
+    path = join(dir, 'backgrounds.xml')
   const file = b => join(dir, `${b.id}.${b.type}`)
-  const read = () => readFile(path, 'utf8').catch(e => { if (e.code === 'ENOENT') return ''; throw e })
+  const read = () =>
+    readFile(path, 'utf8').catch(e => {
+      if (e.code === 'ENOENT') return ''
+      throw e
+    })
   const load = async () => parseBackgrounds(await read())
-  const save = async list => { await mkdir(dir, { recursive: true }); await writeAtomic(path, backgroundsXml(list, !!seed)) }
+  const save = async list => {
+    await mkdir(dir, { recursive: true })
+    await writeAtomic(path, backgroundsXml(list, !!seed))
+  }
   let chain = Promise.resolve() // backgrounds.xml's read-modify-writes: one at a time
-  const serial = fn => { const run = chain.then(fn); chain = run.catch(() => {}); return run }
+  const serial = fn => {
+    const run = chain.then(fn)
+    chain = run.catch(() => {})
+    return run
+  }
   // the default, once per gallery, after any images already there; a failure (a restore running) tries again next request
   let seeded = !seed
-  const seeding = () => seeded || Promise.resolve().then(() => track(() => serial(async () => {
-    const xml = await read()
-    if (!/<ca2:backgrounds\b[^>]*\bseeded="true"/.test(xml)) {
-      const list = parseBackgrounds(xml)
-      if (list.length < MAX_IMAGES) {
-        const data = await readFile(seed.file)
-        const b = { id: newId(), type: sniff(data), name: seed.name, enabled: true, uploaded: now(), size: data.length }
-        await mkdir(dir, { recursive: true })
-        await writeAtomic(file(b), data)
-        list.push(b)
-      }
-      await save(list)
-    }
-    seeded = true
-  }))).catch(() => {})
+  const seeding = () =>
+    seeded ||
+    Promise.resolve()
+      .then(() =>
+        track(() =>
+          serial(async () => {
+            const xml = await read()
+            if (!/<ca2:backgrounds\b[^>]*\bseeded="true"/.test(xml)) {
+              const list = parseBackgrounds(xml)
+              if (list.length < MAX_IMAGES) {
+                const data = await readFile(seed.file)
+                const b = { id: newId(), type: sniff(data), name: seed.name, enabled: true, uploaded: now(), size: data.length }
+                await mkdir(dir, { recursive: true })
+                await writeAtomic(file(b), data)
+                list.push(b)
+              }
+              await save(list)
+            }
+            seeded = true
+          }),
+        ),
+      )
+      .catch(() => {})
   const item = ({ id, name, enabled, uploaded, size }) => ({ id, name, enabled, uploaded, size })
 
   async function body(req, res) {
     if (!/^image\/(png|jpeg|webp)\s*(;|$)/i.test(req.headers['content-type'] ?? '')) throw fail(415, 'only PNG, JPEG and WebP images can be uploaded')
-    if (Number(req.headers['content-length']) > MAX_IMAGE) { res.setHeader('Connection', 'close'); throw fail(413, 'the image is larger than 10 MB') }
+    if (Number(req.headers['content-length']) > MAX_IMAGE) {
+      res.setHeader('Connection', 'close')
+      throw fail(413, 'the image is larger than 10 MB')
+    }
     const chunks = []
     let size = 0
     for await (const c of req) {
-      if ((size += c.length) > MAX_IMAGE) { res.setHeader('Connection', 'close'); throw fail(413, 'the image is larger than 10 MB') }
+      if ((size += c.length) > MAX_IMAGE) {
+        res.setHeader('Connection', 'close')
+        throw fail(413, 'the image is larger than 10 MB')
+      }
       chunks.push(c)
     }
     return Buffer.concat(chunks)
@@ -100,18 +136,19 @@ export function backgroundsApi({ libraryDir, auth, seed, track = fn => fn() }) {
 
     if (req.method === 'GET' && id == null) {
       const list = await load()
-      return send(res, 200, { enabled: list.filter(b => b.enabled).map(b => b.id), ...admin ? { items: list.map(item) } : {} })
+      return send(res, 200, { enabled: list.filter(b => b.enabled).map(b => b.id), ...(admin ? { items: list.map(item) } : {}) })
     }
     if (req.method === 'GET') {
       const b = (await load()).find(x => x.id === id && (x.enabled || admin))
-      const data = b && await readFile(file(b)).catch(() => null)
+      const data = b && (await readFile(file(b)).catch(() => null))
       if (!data) return send(res, 404, { error: 'no such image' })
       // an id is never reused, so its bytes never change; private: only signed-in browsers have it
       res.writeHead(200, { 'Content-Type': TYPES[b.type], 'Content-Length': data.length, 'Cache-Control': 'private, max-age=86400' })
       return res.end(data)
     }
     if (req.method === 'POST') {
-      const data = await body(req, res), type = sniff(data)
+      const data = await body(req, res),
+        type = sniff(data)
       if (!type) throw fail(415, 'this file isn’t a PNG, JPEG or WebP image')
       const name = req.headers['x-filename'] ? safeName(req.headers['x-filename']) : 'image'
       return serial(async () => {
@@ -127,7 +164,8 @@ export function backgroundsApi({ libraryDir, auth, seed, track = fn => fn() }) {
     }
     const b0 = req.method === 'PUT' ? await auth.json(req) : null
     return serial(async () => {
-      const list = await load(), b = list.find(x => x.id === id)
+      const list = await load(),
+        b = list.find(x => x.id === id)
       if (!b) throw fail(404, 'no such image')
       if (req.method === 'DELETE') {
         list.splice(list.indexOf(b), 1)
@@ -144,4 +182,3 @@ export function backgroundsApi({ libraryDir, auth, seed, track = fn => fn() }) {
 
   return { handle }
 }
-

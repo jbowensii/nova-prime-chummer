@@ -14,7 +14,10 @@ test('refusals say what is wrong: no version, no id, no build, a Shadowrun 6 fil
   expect(xmlToCharacter(`<ca2:character ${NS} id="a"><build/></ca2:character>`)).toEqual({ ok: false, reason: 'The <character> element has no formatVersion.' })
   expect(xmlToCharacter(doc('metatype="elf"'))).toEqual({ ok: false, reason: 'The <character> element has no id.' })
   expect(xmlToCharacter(doc('id="a"', ''))).toEqual({ ok: false, reason: 'The file has no <build> element.' })
-  expect(xmlToCharacter('<sr6:character xmlns:sr6="urn:chummer-sr6:character:1"/>')).toMatchObject({ ok: false, reason: expect.stringContaining('Shadowrun 6') })
+  expect(xmlToCharacter('<sr6:character xmlns:sr6="urn:chummer-sr6:character:1"/>')).toMatchObject({
+    ok: false,
+    reason: expect.stringContaining('Shadowrun 6'),
+  })
   expect(xmlToCharacter('<character/>')).toEqual({ ok: false, reason: 'Not a Chummer Anarchy 2.0 character file.' })
 })
 
@@ -42,7 +45,9 @@ test('the knowledge order and hidden keys, optional rules, overrides and an amp�
   ch.build.knowledgeHidden = ['k:3']
   ch.optionalRules = { 'test.optional-long-haggles': true, other: false }
   ch.overrides = [{ code: 'x.y', path: 'p', note: 'GM ok' }]
-  ch.build.amps = [{ uid: 'a', type: 'equipment', name: 'Odd', narrative: '', effects: [{ ref: 'rr-spec', param: 'p', value: 2, note: 'n', unpriced: true }], realSin: true }]
+  ch.build.amps = [
+    { uid: 'a', type: 'equipment', name: 'Odd', narrative: '', effects: [{ ref: 'rr-spec', param: 'p', value: 2, note: 'n', unpriced: true }], realSin: true },
+  ]
   const back = xmlToCharacter(characterToXml(ch))
   if (!back.ok) throw new Error(back.reason)
   expect(back.character.build.knowledgeOrder).toEqual(['k:1', 'k:2'])
@@ -56,7 +61,18 @@ const amp = (uid: string) => ({ uid, type: 'equipment', name: uid, narrative: ''
 const EVENTS: CareerEvent[] = [
   { id: 'e1', at: 't', type: 'earn', amount: 12, run: 'A run', date: '2026-10-01' },
   { id: 'e2', at: 't', type: 'finalize', remaining: 40, prices: { 'skill:stealth': 8 } },
-  { id: 'e3', at: 't', type: 'change', cost: 4, prices: { 'attr:agi': 12 }, changes: [{ key: 'attr:agi', label: 'Finesse', from: '2', to: '3' }, { key: 'item:x', label: 'Knife', to: '' }, { key: 'item:y', label: 'Rope', from: '' }] },
+  {
+    id: 'e3',
+    at: 't',
+    type: 'change',
+    cost: 4,
+    prices: { 'attr:agi': 12 },
+    changes: [
+      { key: 'attr:agi', label: 'Finesse', from: '2', to: '3' },
+      { key: 'item:x', label: 'Knife', to: '' },
+      { key: 'item:y', label: 'Rope', from: '' },
+    ],
+  },
   { id: 'e4', at: 't', type: 'advance', path: 'skills.stealth', from: 2, to: 3, cost: 5 },
   { id: 'e5', at: 't', type: 'buy', cost: 7, item: { uid: 'i1', kind: 'gear', name: 'Rope' } },
   { id: 'e6', at: 't', type: 'sell', itemUid: 'i1' },
@@ -87,10 +103,14 @@ test('a ledger event the reader does not know is an error naming it; repair drop
 })
 
 test('a buy without its item is an error naming where; repair drops the event; an amp-modify needs both sides', () => {
-  expect(xmlToCharacter(doc('id="a"', '<build/><career><event id="e" at="t" type="buy" cost="1"/></career>')))
-    .toEqual({ ok: false, reason: 'Couldn’t read career event 1 (buy): no <item> inside <event>.' })
-  expect(xmlToCharacter(doc('id="a"', '<build/><career><event id="e" at="t" type="amp-modify" ampUid="a" cost="1"><before/></event></career>')))
-    .toEqual({ ok: false, reason: 'Couldn’t read career event 1 (amp-modify): no <amp> inside <before>.' })
+  expect(xmlToCharacter(doc('id="a"', '<build/><career><event id="e" at="t" type="buy" cost="1"/></career>'))).toEqual({
+    ok: false,
+    reason: 'Couldn’t read career event 1 (buy): no <item> inside <event>.',
+  })
+  expect(xmlToCharacter(doc('id="a"', '<build/><career><event id="e" at="t" type="amp-modify" ampUid="a" cost="1"><before/></event></career>'))).toEqual({
+    ok: false,
+    reason: 'Couldn’t read career event 1 (amp-modify): no <amp> inside <before>.',
+  })
   expect(() => need(undefined, 'x', 'y')).toThrow('no <x> inside <y>')
 })
 
@@ -98,7 +118,9 @@ test('each: a failure names the element (name, id, uid or position); with a list
   const dom = new DOMParser().parseFromString('<r><e name="A"/><e id="B"/><e uid="C"/><e/></r>', 'text/xml')
   const els = [...dom.documentElement.children]
   const label = (e: Element, i: number) => `<${e.localName}> ${e.getAttribute('name') || e.getAttribute('id') || e.getAttribute('uid') || i + 1}`
-  const boom = () => { throw new Error('bad') }
+  const boom = () => {
+    throw new Error('bad')
+  }
   expect(() => each(els, boom, label)).toThrow('<e> A: bad')
   const fix: string[] = []
   expect(each(els, boom, label, fix)).toEqual([])

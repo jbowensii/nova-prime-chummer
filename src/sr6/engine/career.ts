@@ -19,8 +19,18 @@ import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
 /** Contact and Other: the amounts and label the player types. */
-export interface Typed { karma?: number; nuyen?: number; label?: string }
-export interface LedgerRow { e: Sr6LedgerEntry; karma: number; nuyen: number; voided: boolean; reason?: string }
+export interface Typed {
+  karma?: number
+  nuyen?: number
+  label?: string
+}
+export interface LedgerRow {
+  e: Sr6LedgerEntry
+  karma: number
+  nuyen: number
+  voided: boolean
+  reason?: string
+}
 
 /** The entries after the last Finalize (all of them for a runner finalized before S3). */
 export function sinceFinalize(ch: Sr6Character): Sr6LedgerEntry[] {
@@ -36,47 +46,70 @@ export function liveAdvances(ch: Sr6Character): Extract<Sr6LedgerEntry, { type: 
 /** One advance onto the build, in place. Structural only (no catalog lookups), so it replays whatever the catalog holds. */
 export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
   switch (a.op) {
-    case 'attribute': b.attributes[a.target].karma += 1; return
+    case 'attribute':
+      b.attributes[a.target].karma += 1
+      return
     case 'skill': {
       const s = b.skills.find(x => x.id === a.target)
-      if (s) s.karma += 1; else b.skills.push({ id: a.target, points: 0, karma: 1 })
+      if (s) s.karma += 1
+      else b.skills.push({ id: a.target, points: 0, karma: 1 })
       return
     }
-    case 'spec': case 'expertise': {
+    case 'spec':
+    case 'expertise': {
       const s = b.skills.find(x => x.id === a.target)
-      if (s && a.op === 'spec' && s.spec && s.spec !== a.name) s.specs = [...s.specs ?? [], a.name]
-      else if (s) s[a.op] = a.name; else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
+      if (s && a.op === 'spec' && s.spec && s.spec !== a.name) s.specs = [...(s.specs ?? []), a.name]
+      else if (s) s[a.op] = a.name
+      else b.skills.push({ id: a.target, points: 0, karma: 0, [a.op]: a.name })
       return
     }
-    case 'knowledge': b.knowledge.push(structuredClone(a.line)); return
+    case 'knowledge':
+      b.knowledge.push(structuredClone(a.line))
+      return
     case 'quality': {
       // (target: the lower level of its family it replaces, levels.ts)
       const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id) && !q.free)
       if (had && a.target) Object.assign(had, { id: a.line.id, level: a.line.level, ...(a.line.name ? { name: a.line.name } : {}) })
-      else if (had) had.level += a.line.level; else b.qualities.push(structuredClone(a.line))
+      else if (had) had.level += a.line.level
+      else b.qualities.push(structuredClone(a.line))
       return
     }
-    case 'buyoff': b.qualities = b.qualities.filter(q => q.uid !== a.target); return
+    case 'buyoff':
+      b.qualities = b.qualities.filter(q => q.uid !== a.target)
+      return
     case 'pick': {
       // a leveled power taken again goes up a level (a family of levels: the lower level, target, moves to the new one)
       const had = b.picks.find(x => x.kind === a.line.kind && (a.target ? x.uid === a.target : x.id === a.line.id))
       if (had && a.target) Object.assign(had, { id: a.line.id, ...(a.line.name ? { name: a.line.name } : {}) })
-      else if (had?.level !== undefined) had.level += 1; else if (!had) b.picks.push(structuredClone(a.line))
+      else if (had?.level !== undefined) had.level += 1
+      else if (!had) b.picks.push(structuredClone(a.line))
       return
     }
-    case 'martialart': b.martialArts.push(structuredClone(a.line)); return
-    case 'technique': b.martialArts.find(m => m.uid === a.target)?.techniques.push(structuredClone(a.line)); return
-    case 'powerpoint': b.powerPointsBought += 1; return
+    case 'martialart':
+      b.martialArts.push(structuredClone(a.line))
+      return
+    case 'technique':
+      b.martialArts.find(m => m.uid === a.target)?.techniques.push(structuredClone(a.line))
+      return
+    case 'powerpoint':
+      b.powerPointsBought += 1
+      return
     case 'initiate': {
-      if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1; else b.initiation += 1
+      if (MAGIC_KINDS[b.magic].resonance) b.submersion += 1
+      else b.initiation += 1
       // a metamagic taken again goes up a level (a family of levels: the lower level, target, moves to the new one)
       const had = a.line && b.picks.find(x => x.kind === a.line!.kind && (a.target ? x.uid === a.target : x.id === a.line!.id))
       if (had && a.target) Object.assign(had, { id: a.line!.id, ...(a.line!.name ? { name: a.line!.name } : {}) })
-      else if (had) had.level = (had.level ?? 1) + 1; else if (a.line) b.picks.push(structuredClone(a.line))
+      else if (had) had.level = (had.level ?? 1) + 1
+      else if (a.line) b.picks.push(structuredClone(a.line))
       return
     }
-    case 'purchase': b.purchases.push(structuredClone(a.line)); return
-    case 'drop': b.purchases = b.purchases.filter(x => x.uid !== a.target); return
+    case 'purchase':
+      b.purchases.push(structuredClone(a.line))
+      return
+    case 'drop':
+      b.purchases = b.purchases.filter(x => x.uid !== a.target)
+      return
     case 'upgrade': {
       const i = b.purchases.findIndex(x => x.uid === a.target)
       if (i >= 0) b.purchases[i] = { ...structuredClone(a.line), uid: a.target, accessories: b.purchases[i].accessories }
@@ -84,27 +117,34 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     }
     case 'contact': {
       const i = b.contacts.findIndex(x => x.uid === a.line.uid)
-      if (i >= 0) b.contacts[i] = structuredClone(a.line); else b.contacts.push(structuredClone(a.line))
+      if (i >= 0) b.contacts[i] = structuredClone(a.line)
+      else b.contacts.push(structuredClone(a.line))
       return
     }
     case 'sin': {
       // a placeholder named (line.uid its uid) keeps its lifestyles
-      const i = b.sins.findIndex(x => x.uid === a.line.uid), line = structuredClone(a.line), had = b.sins[i]?.lifestyles
-      if (i >= 0) b.sins[i] = had ? { ...line, lifestyles: had } : line; else b.sins.push(line)
+      const i = b.sins.findIndex(x => x.uid === a.line.uid),
+        line = structuredClone(a.line),
+        had = b.sins[i]?.lifestyles
+      if (i >= 0) b.sins[i] = had ? { ...line, lifestyles: had } : line
+      else b.sins.push(line)
       return
     }
     case 'lifestyle': {
       // more months of a lifestyle the SIN has add to it, another is added; an entry from before lifestyles belonged to
       // SINs (no sin) is the first SIN's one lifestyle: more months of it, or another replacing it
       const sin = a.sin ? b.sins.find(s => s.uid === a.sin) : b.sins[0]
-      if (!sin) return  // charxml.ts gives an older runner with a lifestyle a SIN
-      const ls = sin.lifestyles ??= [], had = a.sin ? ls.find(l => l.id === a.id) : ls[0]
+      if (!sin) return // charxml.ts gives an older runner with a lifestyle a SIN
+      const ls = (sin.lifestyles ??= []),
+        had = a.sin ? ls.find(l => l.id === a.id) : ls[0]
       if (had?.id === a.id) had.months += a.months
       else if (had) Object.assign(had, { id: a.id, months: a.months })
       else ls.push({ uid: a.uid ?? `${sin.uid}-${a.id}`, id: a.id, months: a.months })
       return
     }
-    case 'convert': case 'other': return
+    case 'convert':
+    case 'other':
+      return
   }
 }
 
@@ -120,24 +160,40 @@ export function currentBuild(ch: Sr6Character): Sr6Build {
  *  voided entries and voids leave them. Without any finalize entry (a runner finalized before S3) they start at `final`. */
 export function ledgerRows(ch: Sr6Character): LedgerRow[] {
   const voids = new Map(ch.ledger.flatMap(e => (e.type === 'void' ? [[e.eventId, e.reason] as const] : [])))
-  let karma = 0, nuyen = 0
+  let karma = 0,
+    nuyen = 0
   if (!ch.ledger.some(e => e.type === 'finalize')) ({ karma, nuyen } = ch.final ?? { karma: 0, nuyen: 0 })
   return ch.ledger.map(e => {
     const voided = voids.has(e.id)
     if (!voided) {
-      if (e.type === 'finalize') { karma = e.karma; nuyen = e.nuyen }
-      else if (e.type === 'earn') { karma += e.karma; nuyen += e.nuyen }
-      else if (e.type === 'advance') { karma -= e.karma; nuyen -= e.nuyen }
+      if (e.type === 'finalize') {
+        karma = e.karma
+        nuyen = e.nuyen
+      } else if (e.type === 'earn') {
+        karma += e.karma
+        nuyen += e.nuyen
+      } else if (e.type === 'advance') {
+        karma -= e.karma
+        nuyen -= e.nuyen
+      }
     }
     return { e, karma, nuyen, voided, ...(voided ? { reason: voids.get(e.id) } : {}) }
   })
 }
 /** An entry as the ledger shows it (and the SR6 export writes it). */
-export const ledgerLabel = (e: Sr6LedgerEntry) => e.type === 'finalize' ? 'Creation finished' : e.type === 'earn' ? `Earned: ${e.run} (${e.date})`
-  : e.type === 'advance' ? e.label : e.type === 'note' ? e.text : `Voided: ${e.reason}`
+export const ledgerLabel = (e: Sr6LedgerEntry) =>
+  e.type === 'finalize'
+    ? 'Creation finished'
+    : e.type === 'earn'
+      ? `Earned: ${e.run} (${e.date})`
+      : e.type === 'advance'
+        ? e.label
+        : e.type === 'note'
+          ? e.text
+          : `Voided: ${e.reason}`
 export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
   const last = ledgerRows(ch).at(-1)
-  return last ? { karma: last.karma, nuyen: last.nuyen } : ch.final ?? { karma: 0, nuyen: 0 }
+  return last ? { karma: last.karma, nuyen: last.nuyen } : (ch.final ?? { karma: 0, nuyen: 0 })
 }
 
 /** Adept power points after creation: an adept's are its Magic (a point per point of Magic, CRB p. 156), a mystic
@@ -147,16 +203,28 @@ export function careerPowerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules,
   // (Magic as Essence leaves it, as at creation: budgets.ts powerPoints)
   // (the Sixth World Companion's Alternate Mystic Adept, p. 148: half a point for each point of Magic raised)
   const alt = k.paysPowers && !!flag(cr, 'alternateMysticAdept')
-  const max = !k.powers ? 0 : alt ? (b.powerPointsBought + Math.max(0, attrRating(b, 'mag', p) - p.magicRating(b))) / 2
-    : k.paysPowers ? b.powerPointsBought : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
+  const max = !k.powers
+    ? 0
+    : alt
+      ? (b.powerPointsBought + Math.max(0, attrRating(b, 'mag', p) - p.magicRating(b))) / 2
+      : k.paysPowers
+        ? b.powerPointsBought
+        : Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
   const spent = b.picks.filter(x => x.kind === 'adeptpowers').reduce((t, x) => t + powerCost(data, x), 0)
   return { max, spent, left: Math.round((max - spent) * 100) / 100 }
 }
 
 const PICK_LABEL: Partial<Record<PickKind, string>> = { spells: 'Spell', rituals: 'Ritual', complexforms: 'Complex form', adeptpowers: 'Adept power' }
 const fmt = (x: number) => x.toLocaleString('en-US')
-class Refused { reason: string; constructor(reason: string) { this.reason = reason } }
-const no = (reason: string): never => { throw new Refused(reason) }
+class Refused {
+  reason: string
+  constructor(reason: string) {
+    this.reason = reason
+  }
+}
+const no = (reason: string): never => {
+  throw new Refused(reason)
+}
 
 /** What a spend would cost (karma, nuyen; negative is gained) and its label, priced on the current build, or why not. */
 export function preview(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typed: Typed = {}): Preview {
@@ -175,7 +243,8 @@ export function preview(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: Crea
 }
 
 function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typed: Typed): { label: string; karma?: number; nuyen?: number } {
-  const p = makeProvider(b.method, data, cr), k = MAGIC_KINDS[b.magic]
+  const p = makeProvider(b.method, data, cr),
+    k = MAGIC_KINDS[b.magic]
   const need = (key: string) => num(cr, key) ?? no(`unset:${key}`)
   const skillName = (id: string) => data.skills[id]?.name ?? id
   switch (a.op) {
@@ -184,8 +253,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if ((t === 'mag' && !k.spells && !k.powers) || (t === 'res' && !k.resonance)) no('unknown-attribute')
       const cur = attrRating(b, t, p)
       // CRB pp. 167, 195: Magic or Resonance tops out at magicMax plus the initiation (submersion) grade
-      const cap = t === 'mag' ? need('magicMax') + b.initiation : t === 'res' ? need('magicMax') + b.submersion
-        : attrMax(data, cr, b, t)
+      const cap = t === 'mag' ? need('magicMax') + b.initiation : t === 'res' ? need('magicMax') + b.submersion : attrMax(data, cr, b, t)
       if (cap !== undefined && cur >= cap) no('at-maximum')
       return { label: `${t.toUpperCase()} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaAttrPerRank') }
     }
@@ -193,16 +261,18 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const s = b.skills.find(x => x.id === a.target)
       if (!s && !data.skills[a.target]) no('unknown-entry')
       // (the Sixth World Companion's Unrestricted Skill Ranks, p. 153: no cap after creation)
-      const cur = s ? skillRank(s) : 0, cap = flag(cr, 'unrestrictedSkillRanks') ? undefined : num(cr, 'advance.skillMax')
+      const cur = s ? skillRank(s) : 0,
+        cap = flag(cr, 'unrestrictedSkillRanks') ? undefined : num(cr, 'advance.skillMax')
       // CRB Hong Kong p. 70: the aptitude quality lets the selected skill go as far above the cap as it does at creation
       // (10 instead of 9); one whose note names no skill, any one skill
-      const up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0), named = aptitudeSkills(data, cr, b)
-      const aptitude = !!named && up > 0 && (named.length ? named.includes(a.target)
-        : !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!))
+      const up = (num(cr, 'skillCapAptitude') ?? 0) - (num(cr, 'skillCap') ?? 0),
+        named = aptitudeSkills(data, cr, b)
+      const aptitude = !!named && up > 0 && (named.length ? named.includes(a.target) : !b.skills.some(x => x.id !== a.target && skillRank(x) > cap!))
       if (cap !== undefined && cur >= cap + (aptitude ? up : 0)) no('at-maximum')
       return { label: `${skillName(a.target)} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaSkillPerRank') }
     }
-    case 'spec': case 'expertise': {
+    case 'spec':
+    case 'expertise': {
       // on a skill without a rank, an expertise without a specialization or below advance.expertiseRank: recorded (Review's
       // skill.specUntrained, skill.expertiseSpec, skill.expertiseRank)
       const s = b.skills.find(x => x.id === a.target)
@@ -210,7 +280,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // (a further specialization: Exotic Weapons', CRB Hong Kong p. 95, or any with Expanded Specializations, SWC p. 153)
       if (s?.[a.op] && !(a.op === 'spec' && manySpecs(data, cr, a.target))) no('already-known')
       if (!a.name.trim()) no('needs-name')
-      return a.op === 'spec' ? { label: `${skillName(a.target)}: ${a.name}`, karma: need('karmaSpec') }
+      return a.op === 'spec'
+        ? { label: `${skillName(a.target)}: ${a.name}`, karma: need('karmaSpec') }
         : { label: `${skillName(a.target)} expertise: ${a.name}`, karma: need('advance.expertise') }
     }
     case 'knowledge':
@@ -222,9 +293,10 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const fam = data.family('qualities', a.line.id)
       if (fam) {
         const cur = b.qualities.find(q => !q.free && data.family('qualities', q.id) === fam)
-        const curLevel = cur ? data.levelOf(data.entry('qualities', cur.id)) ?? 1 : 0
+        const curLevel = cur ? (data.levelOf(data.entry('qualities', cur.id)) ?? 1) : 0
         const e = data.atLevel('qualities', a.line.id, data.levelOf(data.entry('qualities', a.line.id)) ?? curLevel + (a.line.level || 1)) ?? no('at-maximum')
-        const v = data.qualities[e.id], was = cur && data.qualities[cur.id]
+        const v = data.qualities[e.id],
+          was = cur && data.qualities[cur.id]
         if (!v.positive) no('not-positive')
         if (v.karma === null || (was && was.karma === null)) no('book-value')
         if (cur && (data.levelOf(e) ?? 1) <= curLevel) no('already-known')
@@ -263,21 +335,23 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const fam = data.family(kind, id)
       if (fam) {
         const cur = b.picks.find(x => x.kind === kind && data.family(kind, x.id) === fam)
-        const curLevel = cur ? data.levelOf(data.entry(kind, cur.id)) ?? 1 : 0
+        const curLevel = cur ? (data.levelOf(data.entry(kind, cur.id)) ?? 1) : 0
         const lv = data.atLevel(kind, id, data.levelOf(e) ?? curLevel + 1) ?? no('at-maximum')
-        const v = data.powers[lv.id], was = cur && data.powers[cur.id]
+        const v = data.powers[lv.id],
+          was = cur && data.powers[cur.id]
         if (cur && (data.levelOf(lv) ?? 1) <= curLevel) no('already-known')
         if (v?.cost == null || (was && was.cost == null)) no('book-value')
         // (at its price for the skill its note names: Improved Ability for a combat skill costs more; a raised line keeps its note)
         const note = cur?.note ?? a.line.note
-        if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id: lv.id, note }) - (cur ? powerCost(data, { id: cur.id, note }) : 0)) no('no-power-points')
+        if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id: lv.id, note }) - (cur ? powerCost(data, { id: cur.id, note }) : 0))
+          no('no-power-points')
         return { label: `Adept power: ${lv.name}`, karma: 0 }
       }
       const v = data.powers[id]
       if (had && !v?.perLevel) no('already-known')
       if (had && (had.level ?? 1) >= (v?.maxLevel ?? 1)) no('at-maximum')
       if (v?.cost == null) no('book-value')
-      if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id, note: had?.note ?? a.line.note })) no('no-power-points')  // (one level)
+      if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id, note: had?.note ?? a.line.note })) no('no-power-points') // (one level)
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }
     }
     case 'martialart': {
@@ -293,7 +367,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `Martial art: ${e.name}${sig}`, karma: need('karmaMartialArt') }
     }
     case 'technique': {
-      const m = b.martialArts.find(x => x.uid === a.target) ?? no('not-taken'), style = data.entry('martialarts', m.id)
+      const m = b.martialArts.find(x => x.uid === a.target) ?? no('not-taken'),
+        style = data.entry('martialarts', m.id)
       const e = data.entry('martialtechniques', a.line.id) ?? no('unknown-entry')
       if (learned(b).some(x => x.id === e.id)) no('already-known')
       // (one the style doesn't teach is recorded: Review's martial.category)
@@ -316,12 +391,13 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         const fam = data.family(a.line.kind, a.line.id)
         if (fam) {
           const cur = b.picks.find(x => x.kind === a.line!.kind && data.family(a.line!.kind, x.id) === fam)
-          const curLevel = cur ? data.levelOf(data.entry(a.line.kind, cur.id)) ?? 1 : 0
+          const curLevel = cur ? (data.levelOf(data.entry(a.line.kind, cur.id)) ?? 1) : 0
           const lv = data.atLevel(a.line.kind, a.line.id, data.levelOf(e) ?? curLevel + 1) ?? no('at-maximum')
           if (cur && (data.levelOf(lv) ?? 1) <= curLevel) no('already-known')
           what = ` (${lv.name})`
         } else {
-          const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id), max = pickMaxLevel(data, a.line.kind, a.line.id)
+          const had = b.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id),
+            max = pickMaxLevel(data, a.line.kind, a.line.id)
           if (had && max === null) no('already-known')
           if (had && (had.level ?? 1) >= max!) no('at-maximum')
           what = ` (${e.name}${had ? ` ${(had.level ?? 1) + 1}` : ''})`
@@ -330,13 +406,15 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const next = b[field] + 1
       // CRB pp. 167, 195: the grade never exceeds Magic (Resonance)
       if (next > attrRating(b, field === 'submersion' ? 'res' : 'mag', p)) no('at-maximum')
-      return { label: `${field === 'submersion' ? 'Submersion' : 'Initiation'} grade ${next}${what}`,
-        karma: need('karmaInitiationBase') + next * need('karmaInitiationPerGrade') }
+      return {
+        label: `${field === 'submersion' ? 'Submersion' : 'Initiation'} grade ${next}${what}`,
+        karma: need('karmaInitiationBase') + next * need('karmaInitiationPerGrade'),
+      }
     }
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      const e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : undefined
+      const e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)
@@ -345,7 +423,10 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // R: a cost the app can't read isn't guessed; the GM can buy it as a custom line
       const pr = priced(x, data, cr)
       if (!pr.ok) no('book-value')
-      return { label: `${e ? entryLabel(e) : x.name ?? 'Custom item'}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`, nuyen: pr.cost }
+      return {
+        label: `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
+        nuyen: pr.cost,
+      }
     }
     case 'drop': {
       // R: no refund; an earning records a sale
@@ -357,7 +438,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // prints no trade-in rule, so none is applied (an earning records a sale)
       const old = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
       const fam = old.id && data.family(old.kind, old.id)
-      const x = a.line, e = x.id ? data.entry(x.kind, x.id) ?? no('unknown-entry') : no('unknown-entry')
+      const x = a.line,
+        e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : no('unknown-entry')
       if (!fam || data.family(x.kind, x.id) !== fam) no('not-a-level')
       if ((data.levelOf(e) ?? 0) <= (data.levelOf(data.entry(old.kind, old.id!)) ?? 0)) no('already-known')
       const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
@@ -382,7 +464,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `SIN: ${x.name.trim()} (${what})${x.uid ? ', was the unnamed SIN' : ''}`, nuyen: sinCost(x, need) }
     }
     case 'lifestyle': {
-      const sin = a.sin ? b.sins.find(s => s.uid === a.sin) ?? no('unknown-line') : undefined
+      const sin = a.sin ? (b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')) : undefined
       const e = data.entry('lifestyles', a.id) ?? no('unknown-entry')
       if (!(a.months >= 1)) no('below-one')
       const v = bookValue(e, 'cost', undefined, dataFind(data))
@@ -394,80 +476,149 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // the Sixth World Companion's Working for the Man and for the People (p. 153): optional, each its own switch
       if (a.karma > 0) {
         if (!flag(cr, 'workingForTheMan')) no('optional-rule-off')
-        const n = a.karma * need('advance.karmaToNuyenRate'); return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n }
+        const n = a.karma * need('advance.karmaToNuyenRate')
+        return { label: `${a.karma} karma to ${fmt(n)}¥`, karma: a.karma, nuyen: -n }
       }
       if (!flag(cr, 'workingForThePeople')) no('optional-rule-off')
-      const rate = num(cr, 'advance.nuyenToKarmaRate') ?? no('optional-rule-off'), n = -a.karma * rate
+      const rate = num(cr, 'advance.nuyenToKarmaRate') ?? no('optional-rule-off'),
+        n = -a.karma * rate
       return { label: `${fmt(n)}¥ to ${-a.karma} karma`, karma: a.karma, nuyen: n }
     }
-    case 'other': return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }
+    case 'other':
+      return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }
   }
 }
 
 /** The runner with the spend appended (new lines get their uid and catalog name here; a buy off or drop keeps the line it
  *  removes, for the history), or why not. */
-export function record(ch: Sr6Character, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typed?: Typed, now = new Date().toISOString()):
-  { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
+export function record(
+  ch: Sr6Character,
+  a: Sr6Advance,
+  data: Sr6Data,
+  cr: CreationRules,
+  typed?: Typed,
+  now = new Date().toISOString(),
+): { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
   const pv = preview(ch, a, data, cr, typed)
   if (!pv.ok) return pv
-  const b = currentBuild(ch), adv = structuredClone(a)
-  const named = <T extends { uid: string; name?: string }>(line: T, name?: string): T => ({ ...line, uid: line.uid || newId(), ...(name && !line.name ? { name } : {}) })
+  const b = currentBuild(ch),
+    adv = structuredClone(a)
+  const named = <T extends { uid: string; name?: string }>(line: T, name?: string): T => ({
+    ...line,
+    uid: line.uid || newId(),
+    ...(name && !line.name ? { name } : {}),
+  })
   /** a family of levels (levels.ts): the level the spend lands on, and the runner's lower level it replaces */
   const level = <K extends 'qualities' | PickKind>(kind: K, id: string, asked?: number) => {
     const fam = data.family(kind, id)
     if (!fam) return undefined
     const lines: { uid: string; id: string }[] = kind === 'qualities' ? b.qualities.filter(q => !q.free) : b.picks.filter(x => x.kind === kind)
-    const cur = lines.find(x => data.family(kind, x.id) === fam), curLevel = cur ? data.levelOf(data.entry(kind, cur.id)) ?? 1 : 0
+    const cur = lines.find(x => data.family(kind, x.id) === fam),
+      curLevel = cur ? (data.levelOf(data.entry(kind, cur.id)) ?? 1) : 0
     const e = data.atLevel(kind, id, data.levelOf(data.entry(kind, id)) ?? curLevel + (asked || 1))
     return e ? { e, target: cur?.uid } : undefined
   }
   switch (adv.op) {
-    case 'knowledge': adv.line = { ...named(adv.line), points: 0, karma: 1 }; break
+    case 'knowledge':
+      adv.line = { ...named(adv.line), points: 0, karma: 1 }
+      break
     case 'quality': {
       const lv = level('qualities', adv.line.id, adv.line.level)
-      if (lv) { adv.line = { ...adv.line, id: lv.e.id, level: 1 }; if (lv.target) adv.target = lv.target }
-      adv.line = named(adv.line, data.qualities[adv.line.id]?.name); break
+      if (lv) {
+        adv.line = { ...adv.line, id: lv.e.id, level: 1 }
+        if (lv.target) adv.target = lv.target
+      }
+      adv.line = named(adv.line, data.qualities[adv.line.id]?.name)
+      break
     }
     case 'pick': {
       const lv = level(adv.line.kind, adv.line.id)
-      if (lv) { const { level: _, ...rest } = adv.line; adv.line = { ...rest, id: lv.e.id }; if (lv.target) adv.target = lv.target }
-      adv.line = named({ ...adv.line, ...(!lv && data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
-        data.entry(adv.line.kind, adv.line.id)?.name); break
+      if (lv) {
+        const { level: _, ...rest } = adv.line
+        adv.line = { ...rest, id: lv.e.id }
+        if (lv.target) adv.target = lv.target
+      }
+      adv.line = named(
+        { ...adv.line, ...(!lv && data.powers[adv.line.id]?.perLevel && adv.line.kind === 'adeptpowers' ? { level: 1 } : {}) },
+        data.entry(adv.line.kind, adv.line.id)?.name,
+      )
+      break
     }
-    case 'martialart': adv.line = { ...named(adv.line, data.entry('martialarts', adv.line.id)?.name),
-      techniques: adv.line.techniques.map(t => named(t, data.entry('martialtechniques', t.id)?.name)) }; break
-    case 'technique': adv.line = named(adv.line, data.entry('martialtechniques', adv.line.id)?.name); break
+    case 'martialart':
+      adv.line = {
+        ...named(adv.line, data.entry('martialarts', adv.line.id)?.name),
+        techniques: adv.line.techniques.map(t => named(t, data.entry('martialtechniques', t.id)?.name)),
+      }
+      break
+    case 'technique':
+      adv.line = named(adv.line, data.entry('martialtechniques', adv.line.id)?.name)
+      break
     case 'initiate': {
       const lv = adv.line && level(adv.line.kind, adv.line.id)
-      if (adv.line && lv) { adv.line = { ...adv.line, id: lv.e.id }; delete adv.line.level; if (lv.target) adv.target = lv.target }
-      if (adv.line) adv.line = named({ ...adv.line, ...(!lv && pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
-        data.entry(adv.line.kind, adv.line.id)?.name); break
+      if (adv.line && lv) {
+        adv.line = { ...adv.line, id: lv.e.id }
+        delete adv.line.level
+        if (lv.target) adv.target = lv.target
+      }
+      if (adv.line)
+        adv.line = named(
+          { ...adv.line, ...(!lv && pickMaxLevel(data, adv.line.kind, adv.line.id) !== null ? { level: 1 } : {}) },
+          data.entry(adv.line.kind, adv.line.id)?.name,
+        )
+      break
     }
-    case 'purchase': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
-    case 'upgrade': adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined); break
-    case 'contact': adv.line = named(adv.line); break
-    case 'buyoff': adv.line = b.qualities.find(q => q.uid === adv.target); break
-    case 'drop': adv.line = b.purchases.find(x => x.uid === adv.target); break
+    case 'purchase':
+      adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
+      break
+    case 'upgrade':
+      adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
+      break
+    case 'contact':
+      adv.line = named(adv.line)
+      break
+    case 'buyoff':
+      adv.line = b.qualities.find(q => q.uid === adv.target)
+      break
+    case 'drop':
+      adv.line = b.purchases.find(x => x.uid === adv.target)
+      break
     case 'sin': {
       // stored as it'll stand: no lifestyles (a placeholder's stay on it) nor placeholder flag; a fake SIN's rating set
       const { uid, name, kind, rating, gender, licences } = adv.line
-      adv.line = { uid: uid || newId(), name: name.trim(), kind, ...(kind === 'fake' ? { rating: rating ?? 1 } : {}), ...(gender?.trim() ? { gender } : {}), licences }
+      adv.line = {
+        uid: uid || newId(),
+        name: name.trim(),
+        kind,
+        ...(kind === 'fake' ? { rating: rating ?? 1 } : {}),
+        ...(gender?.trim() ? { gender } : {}),
+        licences,
+      }
       break
     }
-    case 'lifestyle': if (adv.sin && !adv.uid) adv.uid = newId(); break
+    case 'lifestyle':
+      if (adv.sin && !adv.uid) adv.uid = newId()
+      break
   }
   const entry: Sr6LedgerEntry = { id: newId(), at: now, type: 'advance', advance: adv, label: pv.label, karma: pv.karma, nuyen: pv.nuyen }
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, entry] } }
 }
 
-export const earn = (ch: Sr6Character, karma: number, nuyen: number, run: string, date: string, now = new Date().toISOString()): Sr6Character =>
-  ({ ...ch, ledger: [...ch.ledger, { id: newId(), at: now, type: 'earn', karma, nuyen, run, date }] })
-export const note = (ch: Sr6Character, text: string, now = new Date().toISOString()): Sr6Character =>
-  ({ ...ch, ledger: [...ch.ledger, { id: newId(), at: now, type: 'note', text }] })
+export const earn = (ch: Sr6Character, karma: number, nuyen: number, run: string, date: string, now = new Date().toISOString()): Sr6Character => ({
+  ...ch,
+  ledger: [...ch.ledger, { id: newId(), at: now, type: 'earn', karma, nuyen, run, date }],
+})
+export const note = (ch: Sr6Character, text: string, now = new Date().toISOString()): Sr6Character => ({
+  ...ch,
+  ledger: [...ch.ledger, { id: newId(), at: now, type: 'note', text }],
+})
 
 /** Void an entry since the last Finalize: an earning or note any time, an advance only when it's the newest live one. */
-export function voidEntry(ch: Sr6Character, id: string, reason: string, now = new Date().toISOString()):
-  { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
+export function voidEntry(
+  ch: Sr6Character,
+  id: string,
+  reason: string,
+  now = new Date().toISOString(),
+): { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
   const e = sinceFinalize(ch).find(x => x.id === id)
   if (!e || e.type === 'void' || e.type === 'finalize') return { ok: false, reason: 'not-voidable' }
   if (voidedIds(ch).has(id)) return { ok: false, reason: 'already-voided' }
@@ -478,8 +629,13 @@ export function voidEntry(ch: Sr6Character, id: string, reason: string, now = ne
 /** The ids voidEntry would allow, worked out once for the whole history (the Ledger tab's Void buttons: calling voidEntry
  *  per row is quadratic in the ledger's length). */
 export function voidableIds(ch: Sr6Character): Set<string> {
-  const voided = voidedIds(ch), newest = liveAdvances(ch).at(-1)?.id
-  return new Set(sinceFinalize(ch).filter(e => !voided.has(e.id) && (e.type === 'earn' || e.type === 'note' || e.id === newest)).map(e => e.id))
+  const voided = voidedIds(ch),
+    newest = liveAdvances(ch).at(-1)?.id
+  return new Set(
+    sinceFinalize(ch)
+      .filter(e => !voided.has(e.id) && (e.type === 'earn' || e.type === 'note' || e.id === newest))
+      .map(e => e.id),
+  )
 }
 
 /** Back to draft is allowed only with no live earning or spend since the last Finalize. */
@@ -491,10 +647,25 @@ export function canDraft(ch: Sr6Character): boolean {
 /** Review in career: a balance below 0 (after a void), and S2's catalog, Essence and prerequisite checks on the current
  *  build (what a spend may record though the runner lacks it). */
 export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Violation[] {
-  const bal = balances(ch), out: Violation[] = []
+  const bal = balances(ch),
+    out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
-  const keep = new Set(['catalog.missing', 'essence.positive', 'sin.placeholder', 'skill.specUntrained', 'skill.expertiseSpec', 'skill.expertiseRank', 'skill.restricted',
-    'magic.spellsAllowed', 'magic.metamagicUser', 'martial.category', 'martial.requires', 'martial.augmentation', 'gear.grade', 'catalog.accessoryHost'])
+  const keep = new Set([
+    'catalog.missing',
+    'essence.positive',
+    'sin.placeholder',
+    'skill.specUntrained',
+    'skill.expertiseSpec',
+    'skill.expertiseRank',
+    'skill.restricted',
+    'magic.spellsAllowed',
+    'magic.metamagicUser',
+    'martial.category',
+    'martial.requires',
+    'martial.augmentation',
+    'gear.grade',
+    'catalog.accessoryHost',
+  ])
   return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
 }

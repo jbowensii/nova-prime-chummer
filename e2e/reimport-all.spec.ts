@@ -10,8 +10,10 @@ import { createServer } from '../server/server.mjs'
 // Screenshots (light and dark) go to ISSUES_SHOTS, else .extract/screenshots/issues (not committed).
 const PW = 'ada-password-1'
 const SHOTS = process.env.ISSUES_SHOTS ?? '.extract/screenshots/issues'
-const CONFIRM = (n: number) => `Re-import all ${n} books? Each book’s catalog, rules and samples are rebuilt from its PDF. Your edits, runners and NPCs are kept. This can take a while.`
-let server: ReturnType<typeof createServer>, base = ''
+const CONFIRM = (n: number) =>
+  `Re-import all ${n} books? Each book’s catalog, rules and samples are rebuilt from its PDF. Your edits, runners and NPCs are kept. This can take a while.`
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
@@ -24,7 +26,8 @@ function book(lib: string, id: string, file: string, marker = '') {
 }
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-reimport-all-e2e-')), library = join(dir, 'library')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-reimport-all-e2e-')),
+    library = join(dir, 'library')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   book(library, 'a1-first', 'Made-up Gadgets.pdf', 'slow')
   book(library, 'a2-second', 'Made-up Gizmos.pdf')
@@ -32,13 +35,21 @@ test.beforeAll(async () => {
   book(join(library, 'sr6'), 's2-second', 'Made-up Sixth Again.pdf')
   mkdirSync(join(library, '.config'), { recursive: true })
   writeFileSync(join(library, '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW, name: 'Ada Admin' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string) {
   await page.goto(path)
@@ -49,10 +60,14 @@ async function signIn(page: Page, path: string) {
 }
 async function shoot(page: Page, name: string) {
   for (const theme of ['light', 'dark']) {
-    await page.evaluate(v => { document.documentElement.dataset.theme = v }, theme)
+    await page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, theme)
     await page.screenshot({ path: `${SHOTS}/${name}-${theme}.png` })
   }
-  await page.evaluate(() => { document.documentElement.dataset.theme = 'light' })
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light'
+  })
 }
 const row = (page: Page, name: string) => page.locator('.book', { hasText: name })
 

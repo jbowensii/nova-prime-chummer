@@ -32,26 +32,72 @@ export function Sr6ExportBooksPanel({ c, data }: { c: Sr6Catalog; data: Sr6Data 
   const [err, setErr] = useState('')
   const download = () => {
     setErr('')
-    try { downloadJson(sr6BooksFileName(new Date()), exportSr6Books(c, data, all.filter(s => picked.has(s.id)).map(s => s.id), sr6ExportOpts(desc))) }
-    catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
+    try {
+      downloadJson(
+        sr6BooksFileName(new Date()),
+        exportSr6Books(
+          c,
+          data,
+          all.filter(s => picked.has(s.id)).map(s => s.id),
+          sr6ExportOpts(desc),
+        ),
+      )
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
   }
   return (
-    <section aria-label="Export book data for Foundry" className="stack">{/* (its heading is the fold's, src/ui/GameData.tsx) */}
-      <p className="muted">For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your
-        corrections. Compendiums export from their own page.</p>
+    <section aria-label="Export book data for Foundry" className="stack">
+      {/* (its heading is the fold's, src/ui/GameData.tsx) */}
+      <p className="muted">
+        For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your corrections. Compendiums export from
+        their own page.
+      </p>
       <div className="row">
-        <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>All</button>
-        <button className="btn small quiet" onClick={() => setPicked(new Set())}>None</button>
+        <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>
+          All
+        </button>
+        <button className="btn small quiet" onClick={() => setPicked(new Set())}>
+          None
+        </button>
       </div>
       <ul className="stack" style={{ listStyle: 'none', padding: 0 }}>
-        {all.map(s => <li key={s.id}><label className="check"><input type="checkbox" checked={picked.has(s.id)}
-          onChange={e => { const n = new Set(picked); if (e.target.checked) n.add(s.id); else n.delete(s.id); setPicked(n) }} />
-          <span><b>{s.id}</b> {s.name} {s.canon ? <span className="muted">Canon</span> : <NonCanon />}</span></label></li>)}
+        {all.map(s => (
+          <li key={s.id}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={picked.has(s.id)}
+                onChange={e => {
+                  const n = new Set(picked)
+                  if (e.target.checked) n.add(s.id)
+                  else n.delete(s.id)
+                  setPicked(n)
+                }}
+              />
+              <span>
+                <b>{s.id}</b> {s.name} {s.canon ? <span className="muted">Canon</span> : <NonCanon />}
+              </span>
+            </label>
+          </li>
+        ))}
       </ul>
-      <label className="check"><input type="checkbox" checked={desc} onChange={e => setDesc(e.target.checked)} />
-        <span>Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span></span></label>
-      <div><button className="btn primary" disabled={!picked.size} onClick={download}>Download book data</button></div>
-      {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
+      <label className="check">
+        <input type="checkbox" checked={desc} onChange={e => setDesc(e.target.checked)} />
+        <span>
+          Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span>
+        </span>
+      </label>
+      <div>
+        <button className="btn primary" disabled={!picked.size} onClick={download}>
+          Download book data
+        </button>
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          Couldn’t build the book data: {err}
+        </p>
+      )}
     </section>
   )
 }

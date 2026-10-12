@@ -31,8 +31,11 @@ export * from './contacts'
 export * from './karma'
 
 export interface Sr6Budgets {
-  attributePoints: Budget; adjustmentPoints: Budget; skillPoints: Budget
-  karma: Budget; nuyen: Budget
+  attributePoints: Budget
+  adjustmentPoints: Budget
+  skillPoints: Budget
+  karma: Budget
+  nuyen: Budget
   /** magicLoss: the Magic or Resonance lost, 1 per started point of Essence spent (CRB p. 38) */
   essence: Budget & { magicLoss: number }
   /** cap: the most power points a mystic adept may buy (its priority Magic) */
@@ -54,31 +57,56 @@ export function sinCost(sin: Sr6Sin, price: (key: string) => number): number {
   return own + (sin.licences.length ? sin.licences.reduce((t, l) => t + l.rating, 0) * price('licencePerRating') : 0)
 }
 
-const purchaseName = (x: Sr6Purchase, data: Sr6Data) => { const e = entryOf(x, data); return e ? entryLabel(e) : x.name ?? x.id ?? 'Custom item' }
+const purchaseName = (x: Sr6Purchase, data: Sr6Data) => {
+  const e = entryOf(x, data)
+  return e ? entryLabel(e) : (x.name ?? x.id ?? 'Custom item')
+}
 
 export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
   const breakdown: BudgetLine[] = []
-  const add = (key: string, label: string, amount: number, tab: string) => { if (amount) breakdown.push({ key, label, amount: Math.round(amount), sign: 'spend', tab }) }
-  for (const x of b.purchases)
-    add(`purchase:${x.uid}`, `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
-      priced(x, data, cr).cost, PURCHASE_TAB[x.kind])
-  for (const sin of b.sins) for (const l of sin.lifestyles ?? []) {
-    const e = data.entry('lifestyles', l.id)
-    add(`lifestyle:${l.uid}`, `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sinName(sin)})`,
-      (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months, 'contacts')
+  const add = (key: string, label: string, amount: number, tab: string) => {
+    if (amount) breakdown.push({ key, label, amount: Math.round(amount), sign: 'spend', tab })
   }
+  for (const x of b.purchases)
+    add(
+      `purchase:${x.uid}`,
+      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
+      priced(x, data, cr).cost,
+      PURCHASE_TAB[x.kind],
+    )
+  for (const sin of b.sins)
+    for (const l of sin.lifestyles ?? []) {
+      const e = data.entry('lifestyles', l.id)
+      add(
+        `lifestyle:${l.uid}`,
+        `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sinName(sin)})`,
+        (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months,
+        'contacts',
+      )
+    }
   for (const sin of b.sins) {
     const what = sin.placeholder ? 'placeholder' : sin.kind === 'real' ? 'real SIN' : `fake SIN, rating ${sin.rating ?? 1}`
-    add(`sin:${sin.uid}`, `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`, sinCost(sin, k => n0(cr, k)), 'contacts')
+    add(
+      `sin:${sin.uid}`,
+      `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`,
+      sinCost(sin, k => n0(cr, k)),
+      'contacts',
+    )
   }
   // the owner's house rule (metatypeSizePricing, 2026-10-11): a troll-sized runner pays 10% more for everything bought, a
   // dwarf-sized one 10% more for armor; one line, so each item still shows its printed price
   const size = flag(cr, 'metatypeSizePricing') ? metatypeSize(data, b.metatype) : undefined
-  if (size) add('sizePricing', `${size === 'troll' ? 'Troll' : 'Dwarf'}-sized: 10% more on ${size === 'troll' ? 'everything bought' : 'armor'}`,
-    b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1, 'gear')
+  if (size)
+    add(
+      'sizePricing',
+      `${size === 'troll' ? 'Troll' : 'Dwarf'}-sized: 10% more on ${size === 'troll' ? 'everything bought' : 'armor'}`,
+      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
+      'gear',
+    )
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
   add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
-  const karma = toNuyen(b, cr), converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
+  const karma = toNuyen(b, cr),
+    converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.nuyen(b) + converted, spent), breakdown }
@@ -96,7 +124,8 @@ export function metatypeSize(data: Pick<Sr6Data, 'metatypes'>, metatype: string)
 /** Every budget, as the editor's budget panel shows them. */
 export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Sr6Budgets {
   const spend = (pool_: 'points' | 'adjust') => SR6_ATTRS.reduce((t, k) => t + b.attributes[k][pool_], 0)
-  const k = MAGIC_KINDS[b.magic], slots = freeSpellSlots(b, data, cr, p)
+  const k = MAGIC_KINDS[b.magic],
+    slots = freeSpellSlots(b, data, cr, p)
   const cp = p.characterPoints?.(b)
   return {
     attributePoints: pool(p.attributePoints(b), spend('points')),

@@ -17,29 +17,46 @@ const PW: Record<string, string> = { eve: 'eve-password-1', pat: 'pat-password-1
 const STUB = [process.execPath, 'tests/fixtures/stub-worker.mjs']
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-books-'))
-const custom = join(dir, 'custom'), library = join(dir, 'library'), log = join(dir, 'calls.log')
-let base = '', srv: Srv
+const custom = join(dir, 'custom'),
+  library = join(dir, 'library'),
+  log = join(dir, 'calls.log')
+let base = '',
+  srv: Srv
 const cookies: Record<string, string> = {}
 beforeAll(async () => {
   mkdirSync(join(library, '.config'), { recursive: true })
-  writeFileSync(join(library, '.config', 'users.xml'), await usersFile([ADMIN, { username: 'eve', role: 'editor', password: PW.eve, name: 'Eve' },
-    { username: 'pat', role: 'player', password: PW.pat, name: 'Pat' }]))
+  writeFileSync(
+    join(library, '.config', 'users.xml'),
+    await usersFile([
+      ADMIN,
+      { username: 'eve', role: 'editor', password: PW.eve, name: 'Eve' },
+      { username: 'pat', role: 'player', password: PW.pat, name: 'Pat' },
+    ]),
+  )
   writeFileSync(log, '')
   vi.stubEnv('STUB_LOG', log)
   srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library, python: STUB })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of ['eve', 'pat']) {
-    const r = await rawFetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    cookies[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await rawFetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    cookies[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
 /** fetch as an account: admin (the default, through _signin's fetch), eve (editor) or pat (player). */
-const as = (who: string, path: string, init: RequestInit = {}) => who === 'admin' ? fetch(`${base}${path}`, init)
-  : rawFetch(`${base}${path}`, { ...init, headers: { ...init.headers as Record<string, string>, Origin: base, Cookie: cookies[who] } })
+const as = (who: string, path: string, init: RequestInit = {}) =>
+  who === 'admin'
+    ? fetch(`${base}${path}`, init)
+    : rawFetch(`${base}${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), Origin: base, Cookie: cookies[who] } })
 type Book = { id: string; state: string; source?: string; recipe?: string; counts: Record<string, number>; busy: boolean }
 const list = async (path = '/api/sr6/books'): Promise<Book[]> => (await fetch(`${base}${path}`)).json()
 async function waitFor(id: string, state: string, path = '/api/sr6/books'): Promise<Book | undefined> {
@@ -51,13 +68,17 @@ async function waitFor(id: string, state: string, path = '/api/sr6/books'): Prom
   throw new Error(`${id} never reached ${state}`)
 }
 const pdf = (marker = '') => Buffer.concat([Buffer.from(`%PDF-1.4 ${marker}\n`), Buffer.alloc(256)])
-const upload = (path: string, marker = '') => fetch(`${base}${path}`, { method: 'POST', body: pdf(marker),
-  headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'made-up-sr6.pdf' } })
-const GUN = '<edit><weapon id="crb.zap-gun" source="CRB" page="250" category="zappers" cost="275"><name>Zap Gun</name><text/></weapon>' +
+const upload = (path: string, marker = '') =>
+  fetch(`${base}${path}`, { method: 'POST', body: pdf(marker), headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'made-up-sr6.pdf' } })
+const GUN =
+  '<edit><weapon id="crb.zap-gun" source="CRB" page="250" category="zappers" cost="275"><name>Zap Gun</name><text/></weapon>' +
   '<description>Mine.</description></edit>'
 function raw(path: string, cookie = cookieFor(base)): Promise<number> {
   return new Promise((ok, fail) => {
-    const req = request(`${base}${path}`, { headers: { Origin: base, Cookie: cookie } }, res => { res.resume(); ok(res.statusCode ?? 0) })
+    const req = request(`${base}${path}`, { headers: { Origin: base, Cookie: cookie } }, res => {
+      res.resume()
+      ok(res.statusCode ?? 0)
+    })
     req.on('error', fail)
     req.end()
   })
@@ -95,8 +116,14 @@ test('report, reimport and delete; Anarchy’s routes don’t know the SR6 book'
 })
 
 test('roles: a player gets 403 on SR6 book routes; editors edit; anyone signed in lists the edits', async () => {
-  for (const [m, p] of [['GET', '/api/sr6/books'], ['POST', '/api/sr6/books'], ['GET', `/api/sr6/books/${book}/report`],
-    ['POST', `/api/sr6/books/${book}/reimport`], ['DELETE', `/api/sr6/books/${book}`], ['PUT', '/api/sr6/edits/weapons/crb.zap-gun']])
+  for (const [m, p] of [
+    ['GET', '/api/sr6/books'],
+    ['POST', '/api/sr6/books'],
+    ['GET', `/api/sr6/books/${book}/report`],
+    ['POST', `/api/sr6/books/${book}/reimport`],
+    ['DELETE', `/api/sr6/books/${book}`],
+    ['PUT', '/api/sr6/edits/weapons/crb.zap-gun'],
+  ])
     expect([m, p, (await as('pat', p, { method: m })).status]).toEqual([m, p, 403])
   expect((await as('eve', '/api/sr6/books')).status).toBe(403)
   const put = await as('eve', '/api/sr6/edits/weapons/crb.zap-gun', { method: 'PUT', body: GUN })
@@ -114,20 +141,36 @@ test('roles: a player gets 403 on SR6 book routes; editors edit; anyone signed i
 })
 
 test('the SR6 edits list names entries, not their parts that share a kind’s tag', async () => {
-  const path = join(custom, 'sr6', 'edits', 'edits.xml'), before = readFileSync(path, 'utf8')
-  writeFileSync(path, '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="edits" version="1">' +
-    '<critter id="crb.fuzzbeast" source="CRB" page="400" by="eve"><name>Fuzzbeast</name><gear>Made-up collar</gear><text/></critter>' +
-    '<priority id="crb.priority-a" source="CRB" page="40" letter="A" by="eve"><name>Priority A</name><metatype name="Elf" points="13"/><text/></priority></sr6:data>')
+  const path = join(custom, 'sr6', 'edits', 'edits.xml'),
+    before = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="edits" version="1">' +
+      '<critter id="crb.fuzzbeast" source="CRB" page="400" by="eve"><name>Fuzzbeast</name><gear>Made-up collar</gear><text/></critter>' +
+      '<priority id="crb.priority-a" source="CRB" page="40" letter="A" by="eve"><name>Priority A</name><metatype name="Elf" points="13"/><text/></priority></sr6:data>',
+  )
   try {
-    expect(await (await as('pat', '/api/sr6/edits')).json()).toEqual([{ kind: 'critters', id: 'crb.fuzzbeast' }, { kind: 'priorities', id: 'crb.priority-a' }])
-  } finally { writeFileSync(path, before) }
+    expect(await (await as('pat', '/api/sr6/edits')).json()).toEqual([
+      { kind: 'critters', id: 'crb.fuzzbeast' },
+      { kind: 'priorities', id: 'crb.priority-a' },
+    ])
+  } finally {
+    writeFileSync(path, before)
+  }
 })
 
 // (SR6 has its own AI settings and Ask the rules: tests/server/ask.test.ts)
 test('what SR6 doesn’t have answers 404: AI book import, review, data pack, house sources, settings', async () => {
-  for (const [m, p] of [['POST', `/api/sr6/books/${book}/ai`], ['GET', '/api/sr6/review/x'], ['PUT', '/api/sr6/review/x'], ['POST', '/api/sr6/datapack'],
-    ['POST', '/api/sr6/edits/sources'], ['GET', '/api/sr6/samples'], ['PUT', '/api/sr6/table-rules'],
-    ['POST', '/api/sr6/backup']])
+  for (const [m, p] of [
+    ['POST', `/api/sr6/books/${book}/ai`],
+    ['GET', '/api/sr6/review/x'],
+    ['PUT', '/api/sr6/review/x'],
+    ['POST', '/api/sr6/datapack'],
+    ['POST', '/api/sr6/edits/sources'],
+    ['GET', '/api/sr6/samples'],
+    ['PUT', '/api/sr6/table-rules'],
+    ['POST', '/api/sr6/backup'],
+  ])
     expect([m, p, (await fetch(`${base}${p}`, { method: m })).status]).toEqual([m, p, 404])
 })
 
@@ -138,7 +181,12 @@ test('an Anarchy and an SR6 upload queued together run one at a time', async () 
   expect((await list()).find(b => b.id === s)?.state).toBe('queued') // waits for the Anarchy job
   await waitFor(a, 'done', '/api/books')
   await waitFor(s, 'done')
-  expect(readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))).toEqual([`run ${a}`, `sr6:run ${s}`])
+  expect(
+    readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map(l => l.split(' ').slice(0, 2).join(' ')),
+  ).toEqual([`run ${a}`, `sr6:run ${s}`])
   expect((await list('/api/books')).map(b => b.id)).toEqual([a])
   expect((await list()).map(b => b.id)).not.toContain(a)
 })
@@ -152,12 +200,25 @@ test('/custom/sr6/: signed in only, never campaigns.xml in any spelling or link;
   const ok = await fetch(`${base}/custom/sr6/imported/index.xml`)
   expect([ok.status, await ok.text()]).toEqual([200, expect.stringContaining('crb/weapons.xml')])
   expect((await rawFetch(`${base}/custom/sr6/imported/index.xml`)).status).toBe(401)
-  for (const p of ['/custom/sr6/campaigns.xml', '/custom/sr6/CAMPAIGNS.XML', '/custom/sr6/campaigns.xml.', '/custom/sr6/campaigns.xml%20',
-    '/custom/sr6/campaigns.xml::$DATA', '/custom/sr6/CAMPAI~1.XML', '/custom/sr6/linked.xml', '/custom/sr6/linked-ca2.xml',
-    '/custom/SR6/imported/index.xml', '/custom/sr6./imported/index.xml', '/custom/sr6/../campaigns.xml', '/custom/sr6/imported/../campaigns.xml',
-    '/custom/sr6/..%2Fcampaigns.xml', '/custom/sr6/%2e%2e/campaigns.xml'])
+  for (const p of [
+    '/custom/sr6/campaigns.xml',
+    '/custom/sr6/CAMPAIGNS.XML',
+    '/custom/sr6/campaigns.xml.',
+    '/custom/sr6/campaigns.xml%20',
+    '/custom/sr6/campaigns.xml::$DATA',
+    '/custom/sr6/CAMPAI~1.XML',
+    '/custom/sr6/linked.xml',
+    '/custom/sr6/linked-ca2.xml',
+    '/custom/SR6/imported/index.xml',
+    '/custom/sr6./imported/index.xml',
+    '/custom/sr6/../campaigns.xml',
+    '/custom/sr6/imported/../campaigns.xml',
+    '/custom/sr6/..%2Fcampaigns.xml',
+    '/custom/sr6/%2e%2e/campaigns.xml',
+  ])
     expect([p, await raw(p)]).toEqual([p, 404])
-  const anarchy = await fetch(`${base}/custom/imported/index.xml`), text = await anarchy.text()
+  const anarchy = await fetch(`${base}/custom/imported/index.xml`),
+    text = await anarchy.text()
   expect([anarchy.status, text]).toEqual([200, expect.stringContaining('stub/amps.xml')])
   expect(text).not.toContain('crb/')
 })

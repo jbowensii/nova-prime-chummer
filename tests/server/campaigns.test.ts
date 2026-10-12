@@ -16,36 +16,55 @@ import { usersFile } from '../../server/auth.mjs'
 vi.setConfig({ testTimeout: 30000 })
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', ed: 'ed-password-12', pat: 'pat-password-1', kim: 'kim-password-1' }
 type Who = keyof typeof PW
-const dir = mkdtempSync(join(tmpdir(), 'ca2-campaigns-')), chars = join(dir, 'chars'), custom = join(dir, 'custom')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-campaigns-')),
+  chars = join(dir, 'chars'),
+  custom = join(dir, 'custom')
 const jar = {} as Record<Who, string>
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 
 beforeAll(async () => {
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'ed', password: PW.ed, role: 'editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }, { username: 'kim', password: PW.kim, role: 'player' }]))
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'ed', password: PW.ed, role: 'editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+      { username: 'kim', password: PW.kim, role: 'player' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: chars, customDir: custom, libraryDir: join(dir, 'library') })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW) as Who[]) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
-const call = (who: Who, method: string, path: string, body?: unknown) => fetch(`${base}${path}`, { method,
-  body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-  headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}) } })
+const call = (who: Who, method: string, path: string, body?: unknown) =>
+  fetch(`${base}${path}`, {
+    method,
+    body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+    headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}) },
+  })
 const runner = (id: string, street: string, extra = '') =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="${id}" streetName="${street}" metatype="ork" level="runner" package="runner-face"${extra} updatedAt="2026-09-29"><build/></ca2:character>`
-const sheets = async (who: Who) => (await (await call(who, 'GET', '/api/characters')).json()).map((c: { owner: string; xml: string }) =>
-  `${c.owner}/${c.xml.match(/ id="([^"]+)"/)![1]}`).sort()
+const sheets = async (who: Who) =>
+  (await (await call(who, 'GET', '/api/characters')).json()).map((c: { owner: string; xml: string }) => `${c.owner}/${c.xml.match(/ id="([^"]+)"/)![1]}`).sort()
 const file = (user: string, name: string) => readFileSync(join(chars, user, name), 'utf8')
-let c1 = '', c2 = ''
+let c1 = '',
+  c2 = ''
 
 test('the admin and editors make campaigns (the maker is its GM); players can’t', async () => {
   expect((await call('pat', 'POST', '/api/campaigns', { name: 'Nope' })).status).toBe(403)
@@ -53,8 +72,15 @@ test('the admin and editors make campaigns (the maker is its GM); players can’
   const r = await call('eve', 'POST', '/api/campaigns', { name: 'Seattle <Nights> & Days', note: 'Session 0 on Friday' })
   expect(r.status).toBe(201)
   const c = await r.json()
-  expect(c).toMatchObject({ name: 'Seattle <Nights> & Days', note: 'Session 0 on Friday', archived: false, you: 'gm',
-    gms: [{ username: 'eve', name: 'Eve Editor' }], members: [], runners: [] })
+  expect(c).toMatchObject({
+    name: 'Seattle <Nights> & Days',
+    note: 'Session 0 on Friday',
+    archived: false,
+    you: 'gm',
+    gms: [{ username: 'eve', name: 'Eve Editor' }],
+    members: [],
+    runners: [],
+  })
   c1 = c.id
   c2 = (await (await call('ed', 'POST', '/api/campaigns', { name: 'Ed’s table' })).json()).id
   for (const who of ['pat', 'kim'] as const) expect(await (await call(who, 'GET', '/api/campaigns')).json()).toEqual([])
@@ -76,8 +102,10 @@ test('members and co-GMs: the GM picks players; only the admin adds co-GMs, and 
   expect((await call('eve', 'PUT', `/api/campaigns/${c1}`, { name: 'Seattle Nights', archived: 'yes' })).status).toBe(400)
   expect(await (await call('eve', 'PUT', `/api/campaigns/${c1}`, { name: 'Seattle Nights' })).json()).toMatchObject({ name: 'Seattle Nights' })
   const xml = readFileSync(join(custom, 'campaigns.xml'), 'utf8')
-  const v = await validateXML({ xml: { fileName: 'campaigns.xml', contents: xml },
-    schema: { fileName: 'campaigns.xsd', contents: readFileSync('public/data/schema/campaigns.xsd', 'utf8') } })
+  const v = await validateXML({
+    xml: { fileName: 'campaigns.xml', contents: xml },
+    schema: { fileName: 'campaigns.xsd', contents: readFileSync('public/data/schema/campaigns.xsd', 'utf8') },
+  })
   expect(v.errors).toEqual([])
   expect((await call('pat', 'GET', '/custom/campaigns.xml')).status).toBe(404)
   expect((await call('pat', 'GET', '/custom/./campaigns.xml')).status).toBe(404)
@@ -108,7 +136,8 @@ test('a player puts their own runner in one campaign; its GM reads the sheet, me
   const key = expect.stringMatching(/^[0-9a-f]{12}$/)
   expect(roster.runners).toEqual([
     { key, mine: false, ownerName: 'Pat Player', streetName: 'Ratchet & Co', level: 'runner', package: 'runner-face' },
-    { key, mine: true, id: 'k1', ownerName: 'kim', streetName: 'Kestrel', level: 'runner', package: 'runner-face' }])
+    { key, mine: true, id: 'k1', ownerName: 'kim', streetName: 'Kestrel', level: 'runner', package: 'runner-face' },
+  ])
   expect(roster.gms).toEqual([{ name: 'Eve Editor' }])
   expect((await (await call('eve', 'GET', `/api/campaigns/${c1}`)).json()).runners[0]).toMatchObject({ id: 'p1', owner: 'pat', file: 'Ratchet-amp-Co.xml' })
   // a GM reads, never writes, a player's runner
@@ -170,7 +199,8 @@ test('renaming an account renames it in campaigns; deleting one drops it, and a 
 })
 
 let c3 = ''
-const userId = async (n: string) => ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
+const userId = async (n: string) =>
+  ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
 
 test('a GM demoted to player keeps only a member’s view: no changes, no sheets', async () => {
   c3 = (await (await call('eve', 'POST', '/api/campaigns', { name: 'Demo' })).json()).id
@@ -214,7 +244,7 @@ test('trash: a trashed runner leaves its campaign; a restored one keeps a campai
 test('a runner moved to another account leaves its campaign, as a trashed one does', async () => {
   mkdirSync(join(chars, 'kira'), { recursive: true })
   writeFileSync(join(chars, 'kira', 'Mover.xml'), runner('m1', 'Mover', ` campaign="${c1}"`))
-  const users = await (await call('ada', 'GET', '/api/users')).json() as { id: string; username: string }[]
+  const users = (await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]
   const id = (n: string) => users.find(u => u.username === n)!.id
   const r = await call('ada', 'POST', `/api/users/${id('kira')}/move-runner`, { file: 'Mover.xml', to: id('pat') })
   expect(r.status).toBe(200)
@@ -241,9 +271,13 @@ test('a save whose root attributes aren’t well formed is refused; campaigns.xm
 
 test('a root that never closes, or a closed one followed by thousands of unclosed ones, is refused at once', async () => {
   // patterns tried at every <ca2:character in the body backtracked quadratically: ~1 MB held the server for tens of seconds
-  const many = '<ca2:character '.repeat(70000), open = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1"'
-  for (const [who, path, body] of [['pat', '/api/characters/x', `${open} ${many}`], ['pat', '/api/characters/x', `${open} id="x" ${many}`],
-    ['eve', '/api/npcs/x', runner('x', 'X').replace('<build/>', many)]] as [Who, string, string][]) {
+  const many = '<ca2:character '.repeat(70000),
+    open = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1"'
+  for (const [who, path, body] of [
+    ['pat', '/api/characters/x', `${open} ${many}`],
+    ['pat', '/api/characters/x', `${open} id="x" ${many}`],
+    ['eve', '/api/npcs/x', runner('x', 'X').replace('<build/>', many)],
+  ] as [Who, string, string][]) {
     const t = Date.now()
     expect([path, (await call(who, 'PUT', path, body)).status]).toEqual([path, 400])
     expect(Date.now() - t, path).toBeLessThan(3000)

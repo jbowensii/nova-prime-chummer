@@ -5,17 +5,35 @@ import { api, sendFile } from './api'
 import { because } from './auth'
 import { useRepo } from './repo'
 
-interface Manifest { app: string; created: string; keys: boolean; users: number; authSecret: boolean; files: number; bytes: number; folders: Record<string, { files: number; bytes: number }> }
+interface Manifest {
+  app: string
+  created: string
+  keys: boolean
+  users: number
+  authSecret: boolean
+  files: number
+  bytes: number
+  folders: Record<string, { files: number; bytes: number }>
+}
 type Step = { at: 'idle' } | { at: 'uploading'; pct: number } | { at: 'preview'; token: string; m: Manifest } | { at: 'restoring' } | { at: 'done' }
 
 const UNREACHABLE = 'the server can’t be reached'
 /** Set before the reload after a restore: the sign-in page says why everyone was signed out (App.tsx). */
 export const RESTORED = 'ca2-restored'
-const FOLDERS: [string, string][] = [['characters', 'Runners'], ['custom', 'House rules, edits and imported books'], ['library', 'Uploaded PDFs, accounts and settings']]
-const size = (b: number) => b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`
+const FOLDERS: [string, string][] = [
+  ['characters', 'Runners'],
+  ['custom', 'House rules, edits and imported books'],
+  ['library', 'Uploaded PDFs, accounts and settings'],
+]
+const size = (b: number) =>
+  b < 1024 ** 2 ? `${Math.max(1, Math.round(b / 1024))} KB` : b < 1024 ** 3 ? `${(b / 1024 ** 2).toFixed(1)} MB` : `${(b / 1024 ** 3).toFixed(2)} GB`
 const files = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`
-const plain = (why?: string) => !why ? 'Something went wrong. Try again.'
-  : why === UNREACHABLE ? 'The server can’t be reached. Check it’s running, then try again.' : `${why[0].toUpperCase()}${why.slice(1).replace(/\.$/, '')}.`
+const plain = (why?: string) =>
+  !why
+    ? 'Something went wrong. Try again.'
+    : why === UNREACHABLE
+      ? 'The server can’t be reached. Check it’s running, then try again.'
+      : `${why[0].toUpperCase()}${why.slice(1).replace(/\.$/, '')}.`
 
 export function BackupSettings() {
   const repo = useRepo()
@@ -23,7 +41,9 @@ export function BackupSettings() {
   const [step, setStep] = useState<Step>({ at: 'idle' })
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [zipping, setZipping] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null), headRef = useRef<HTMLHeadingElement>(null), prev = useRef(step.at)
+  const fileRef = useRef<HTMLInputElement>(null),
+    headRef = useRef<HTMLHeadingElement>(null),
+    prev = useRef(step.at)
   // the focused picker or button unmounts as the step changes: focus the preview's heading, or the picker again
   useEffect(() => {
     if (step.at === 'preview') headRef.current?.focus()
@@ -44,7 +64,9 @@ export function BackupSettings() {
       a.download = '' // the server's name: chummer-anarchy2-backup-<date>.zip
       a.click()
       setMsg({ text: 'The backup is ready. Your browser is saving it; its downloads list shows the progress.' })
-    } catch (e) { setMsg({ text: `Couldn’t make the backup. ${plain((e as Error).message)}`, err: true }) }
+    } catch (e) {
+      setMsg({ text: `Couldn’t make the backup. ${plain((e as Error).message)}`, err: true })
+    }
     setZipping(false)
   }
 
@@ -57,9 +79,17 @@ export function BackupSettings() {
       setStep({ at: 'preview', token: r.token, m: r.manifest })
     } catch (e) {
       setStep({ at: 'idle' })
-      const why = (e as Error).message, status = (e as { status?: number }).status
-      setMsg({ err: true, text: status === 413 ? 'This file is larger than 20 GB, the most a restore can take. Choose a backup made by this app.'
-        : (status === 400 || status === 415) && why ? because('This file can’t be restored', why) : plain(why) })
+      const why = (e as Error).message,
+        status = (e as { status?: number }).status
+      setMsg({
+        err: true,
+        text:
+          status === 413
+            ? 'This file is larger than 20 GB, the most a restore can take. Choose a backup made by this app.'
+            : (status === 400 || status === 415) && why
+              ? because('This file can’t be restored', why)
+              : plain(why),
+      })
     }
   }
 
@@ -68,56 +98,125 @@ export function BackupSettings() {
     try {
       await api(`restore/${token}`, { method: 'POST' })
       setStep({ at: 'done' })
-      try { sessionStorage.setItem(RESTORED, '1') } catch { /* the sign-in page just won't say why */ }
+      try {
+        sessionStorage.setItem(RESTORED, '1')
+      } catch {
+        /* the sign-in page just won't say why */
+      }
       setTimeout(() => location.reload(), 1500) // the catalog, the runner list and any open runner all come from the server again
     } catch (e) {
       setStep({ at: 'idle' })
       const why = (e as Error).message // a lost connection doesn't stop the server's restore
-      setMsg({ err: true, text: why === UNREACHABLE ? 'Lost contact with the server. The restore may still be running — reload in a minute to check.'
-        : because('The restore didn’t run', plain(why)) })
+      setMsg({
+        err: true,
+        text:
+          why === UNREACHABLE
+            ? 'Lost contact with the server. The restore may still be running — reload in a minute to check.'
+            : because('The restore didn’t run', plain(why)),
+      })
     }
   }
 
   return (
     <fieldset className="backup">
       <legend>Backup</legend>
-      <p className="muted">Everything this server keeps: runners, accounts, house rules and edits, imported books, uploaded PDFs, background art and settings.</p>
+      <p className="muted">
+        Everything this server keeps: runners, accounts, house rules and edits, imported books, uploaded PDFs, background art and settings.
+      </p>
       <div className="row">
-        <button className="btn" disabled={zipping || step.at === 'restoring'} onClick={() => void download()}>Download backup</button>
-        <label className="check inline"><input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined}
-          onChange={e => setKeys(e.target.checked)} />Include my API keys</label>
+        <button className="btn" disabled={zipping || step.at === 'restoring'} onClick={() => void download()}>
+          Download backup
+        </button>
+        <label className="check inline">
+          <input type="checkbox" checked={keys} aria-describedby={keys ? 'backup-keys-warning' : undefined} onChange={e => setKeys(e.target.checked)} />
+          Include my API keys
+        </label>
       </div>
-      {keys && <p id="backup-keys-warning" className="err small">Anyone with the file can use your keys, and pay with them. Keep it private.</p>}
-      {zipping && <p>Making the backup… a big library takes a while. <progress /></p>}
+      {keys && (
+        <p id="backup-keys-warning" className="err small">
+          Anyone with the file can use your keys, and pay with them. Keep it private.
+        </p>
+      )}
+      {zipping && (
+        <p>
+          Making the backup… a big library takes a while. <progress />
+        </p>
+      )}
 
       {step.at === 'idle' && (
-        <label className="btn file">Restore from backup…
-          <input ref={fileRef} type="file" accept=".zip,application/zip" aria-label="Restore from backup" onChange={e => { void pick(e.target.files?.[0]); e.target.value = '' }} />
+        <label className="btn file">
+          Restore from backup…
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".zip,application/zip"
+            aria-label="Restore from backup"
+            onChange={e => {
+              void pick(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
         </label>
       )}
-      {step.at === 'uploading' && <p>Uploading the backup: {step.pct}% <progress max={100} value={step.pct} /></p>}
+      {step.at === 'uploading' && (
+        <p>
+          Uploading the backup: {step.pct}% <progress max={100} value={step.pct} />
+        </p>
+      )}
       {step.at === 'preview' && (
         <div className="restore-preview">
-          <h3 ref={headRef} tabIndex={-1}>Restore this backup?</h3>
+          <h3 ref={headRef} tabIndex={-1}>
+            Restore this backup?
+          </h3>
           <dl>
-            {([['Made', new Date(step.m.created).toLocaleString()], ['App version', step.m.app],
-              ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [label, files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : '')]),
-              ['Accounts', step.m.users ? `${step.m.users} ${step.m.users === 1 ? 'account' : 'accounts'}` : 'None: the server asks for a first admin again, who gets the backup’s runners'],
-              ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)'],
-              ['Authelia client secret', step.m.authSecret ? 'Included' : 'Not included (the server keeps its own if the backup’s sign-in settings name the same issuer)']] as [string, string][])
-              .map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+            {(
+              [
+                ['Made', new Date(step.m.created).toLocaleString()],
+                ['App version', step.m.app],
+                ...FOLDERS.filter(([f]) => step.m.folders[f]).map(([f, label]) => [
+                  label,
+                  files(step.m.folders[f].files) + (step.m.folders[f].bytes > 0 ? `, ${size(step.m.folders[f].bytes)}` : ''),
+                ]),
+                [
+                  'Accounts',
+                  step.m.users
+                    ? `${step.m.users} ${step.m.users === 1 ? 'account' : 'accounts'}`
+                    : 'None: the server asks for a first admin again, who gets the backup’s runners',
+                ],
+                ['API keys', step.m.keys ? 'Included' : 'Not included (the server keeps its own, except for a provider whose address the backup changes)'],
+                [
+                  'Authelia client secret',
+                  step.m.authSecret ? 'Included' : 'Not included (the server keeps its own if the backup’s sign-in settings name the same issuer)',
+                ],
+              ] as [string, string][]
+            ).map(([k, v]) => (
+              <div key={k}>
+                <dt>{k}</dt>
+                <dd>{v}</dd>
+              </div>
+            ))}
           </dl>
-          <p className="err">This replaces every runner, account, house rule, imported book and setting on the server with the backup’s.
-            Anything changed since the backup was made is lost.</p>
+          <p className="err">
+            This replaces every runner, account, house rule, imported book and setting on the server with the backup’s. Anything changed since the backup was
+            made is lost.
+          </p>
           <p>Everyone is signed out, you too. {step.m.users ? 'Sign in again with an account from the backup.' : 'Then the server asks for a first admin.'}</p>
           <p className="muted">The server’s current data is saved first as a safety backup in its Library (library/.backups; the newest 3 are kept).</p>
           <div className="row">
-            <button className="btn" onClick={() => setStep({ at: 'idle' })}>Cancel</button>
-            <button className="btn danger" onClick={() => void restore(step.token)}>Replace everything on the server</button>
+            <button className="btn" onClick={() => setStep({ at: 'idle' })}>
+              Cancel
+            </button>
+            <button className="btn danger" onClick={() => void restore(step.token)}>
+              Replace everything on the server
+            </button>
           </div>
         </div>
       )}
-      {step.at === 'restoring' && <p>Restoring. This can take a few minutes; keep this page open. <progress /></p>}
+      {step.at === 'restoring' && (
+        <p>
+          Restoring. This can take a few minutes; keep this page open. <progress />
+        </p>
+      )}
       <div role="status" aria-live="polite">
         {step.at === 'done' && <p className="banner">Restored. Reloading the app…</p>}
         {msg && !msg.err && <p className="banner">{msg.text}</p>}

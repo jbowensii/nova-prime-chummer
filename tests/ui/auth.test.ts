@@ -17,16 +17,23 @@ describe('accounts in the UI', () => {
 
   test('a lead and a reason: one colon at most', () => {
     expect(because('Couldn’t load the data pack', 'the file is larger than 50 MB')).toBe('Couldn’t load the data pack: the file is larger than 50 MB.')
-    expect(because('This file can’t be loaded', 'the pack has a file a data pack can’t hold: notes.xml (only datapack.xml)'))
-      .toBe('This file can’t be loaded. The pack has a file a data pack can’t hold: notes.xml (only datapack.xml).')
-    expect(because('Couldn’t save', 'you were signed out: sign in again, then send it again.')).toBe('Couldn’t save. You were signed out: sign in again, then send it again.')
+    expect(because('This file can’t be loaded', 'the pack has a file a data pack can’t hold: notes.xml (only datapack.xml)')).toBe(
+      'This file can’t be loaded. The pack has a file a data pack can’t hold: notes.xml (only datapack.xml).',
+    )
+    expect(because('Couldn’t save', 'you were signed out: sign in again, then send it again.')).toBe(
+      'Couldn’t save. You were signed out: sign in again, then send it again.',
+    )
     expect(because('Couldn’t save', '')).toBe('Couldn’t save.')
   })
 
   test('sign-out waits for a save at most so long, then says so; nothing is ended meanwhile', async () => {
     const logout = vi.spyOn(window, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
     let finish = () => {}
-    void track(new Promise<void>(ok => { finish = ok })) // a save that hangs
+    void track(
+      new Promise<void>(ok => {
+        finish = ok
+      }),
+    ) // a save that hangs
     expect(await signOut(false, 50)).toBe(false)
     expect(session.held).toBe(false)
     expect(logout).not.toHaveBeenCalled()

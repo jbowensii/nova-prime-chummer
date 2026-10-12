@@ -15,7 +15,11 @@ const status = (page: Page) => page.getByRole('status', { name: 'Save status' })
 
 async function shots(page: Page, name: string) {
   mkdirSync(SHOTS, { recursive: true })
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png` })
   await theme('dark')
@@ -48,8 +52,11 @@ test('the concept page saves: status line, leave and come back, Save and close, 
 
 test('a failed save says so in red with the server’s reason; Retry sends it', async ({ page }) => {
   await newRunner(page, 'Flaky')
-  await page.route('**/api/characters/*', r => r.request().method() === 'PUT'
-    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) }) : r.fallback())
+  await page.route('**/api/characters/*', r =>
+    r.request().method() === 'PUT'
+      ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) })
+      : r.fallback(),
+  )
   await page.getByLabel('Real name').fill('Retry me')
   await expect(status(page)).toContainText('Not saved — the disk is full (test)')
   await expect(status(page)).toHaveCSS('color', /rgb\(164, 39, 27\)/)

@@ -1,12 +1,25 @@
 // SR6 NPC stat blocks (src/sr6/engine/npc.ts): copied from the made-up fixture's catalog entries and read at a rating.
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { blankSr6Npc, bookNpc, bookNpcKey, NPC_KINDS, npcFromEntry, npcHeadline, npcKindOf, npcParts, npcPools, npcValues, poolText } from '../../src/sr6/engine/npc'
+import {
+  blankSr6Npc,
+  bookNpc,
+  bookNpcKey,
+  NPC_KINDS,
+  npcFromEntry,
+  npcHeadline,
+  npcKindOf,
+  npcParts,
+  npcPools,
+  npcValues,
+  poolText,
+} from '../../src/sr6/engine/npc'
 import type { Sr6Character } from '../../src/sr6/model/character'
 import type { Sr6Kind } from '../../src/sr6/model/types'
 import { fixtureCatalog, made } from './fixture'
 
-const c = fixtureCatalog(), { data } = made()
+const c = fixtureCatalog(),
+  { data } = made()
 const entry = (kind: Sr6Kind, id: string) => c.entries[kind].get(id)!
 const NOW = '2026-10-03T10:00:00.000Z'
 const value = (ch: Sr6Character, key: string) => npcValues(ch.npc!).find(v => v.key === key)
@@ -20,7 +33,11 @@ test('the four kinds and what their rating is called', () => {
 
 test('a spirit at a Force: its F stats follow the Force', () => {
   const s = npcFromEntry(entry('spirits', 'crb.spirit-of-puddles'), 4, NOW)
-  expect(s.npc).toMatchObject({ kind: 'spirit', rating: 4, from: { kind: 'spirits', id: 'crb.spirit-of-puddles', name: 'Spirit of Puddles', source: 'CRB', page: 230 } })
+  expect(s.npc).toMatchObject({
+    kind: 'spirit',
+    rating: 4,
+    from: { kind: 'spirits', id: 'crb.spirit-of-puddles', name: 'Spirit of Puddles', source: 'CRB', page: 230 },
+  })
   expect(s.identity.streetName).toBe('Spirit of Puddles')
   expect(s.npc!.stats.category).toBeUndefined()
   expect(value(s, 'agi')).toEqual({ key: 'agi', label: 'AGI', printed: 'F+1', value: '5', ok: true })
@@ -28,13 +45,21 @@ test('a spirit at a Force: its F stats follow the Force', () => {
   expect(value(s, 'cm')?.value).toBe('10')
   expect(value(s, 'init')).toMatchObject({ label: 'Initiative', value: '8 + 2D6' })
   const six = { ...s.npc!, rating: 6 }
-  expect(npcValues(six).filter(v => ['agi', 'dr', 'cm', 'init'].includes(v.key)).map(v => v.value)).toEqual(['7', '12', '12 + 2D6', '11'])
+  expect(
+    npcValues(six)
+      .filter(v => ['agi', 'dr', 'cm', 'init'].includes(v.key))
+      .map(v => v.value),
+  ).toEqual(['7', '12', '12 + 2D6', '11'])
   expect(s.npc!.lines.map(l => l.part)).toEqual(['skills', 'powers', 'optionalPowers'])
 })
 
 test('a spirit attribute is never below 1 at a low Force; other stats may be', () => {
   const v = npcValues({ kind: 'spirit', rating: 1, stats: { str: 'F–3', mag: 'F', dr: 'F – 3' }, lines: [] })
-  expect(v.map(x => [x.key, x.value])).toEqual([['str', '1'], ['mag', '1'], ['dr', '-2']])
+  expect(v.map(x => [x.key, x.value])).toEqual([
+    ['str', '1'],
+    ['mag', '1'],
+    ['dr', '-2'],
+  ])
 })
 
 test('a grunt: its Professional Rating, group and source; printed values as they are; lines in order', () => {
@@ -42,11 +67,19 @@ test('a grunt: its Professional Rating, group and source; printed values as they
   expect(g.npc).toMatchObject({ kind: 'grunt', rating: 2, group: 'Street Crew', from: { kind: 'npcs', source: 'CRB', page: 205 } })
   expect(g.npc!.stats.rating).toBeUndefined()
   expect(g.npc!.stats.group).toBeUndefined()
-  expect(g.npc!.lines).toEqual([{ part: 'skills', text: 'Close Combat 4, Firearms 3' }, { part: 'gear', text: 'Padded Vest' }, { part: 'weapons', text: 'Zap Gun' }])
+  expect(g.npc!.lines).toEqual([
+    { part: 'skills', text: 'Close Combat 4, Firearms 3' },
+    { part: 'gear', text: 'Padded Vest' },
+    { part: 'weapons', text: 'Zap Gun' },
+  ])
   expect(value(g, 'bod')).toEqual({ key: 'bod', label: 'BOD', printed: '3', value: '3', ok: true })
   expect(value(g, 'init')?.value).toBe('6 + 1D6')
   expect(value(g, 'actions')?.value).toBe('1/2')
-  expect(npcValues(g.npc!).map(v => v.label).slice(0, 12)).toEqual(['BOD', 'AGI', 'REA', 'STR', 'WIL', 'LOG', 'INT', 'CHA', 'EDG', 'Essence', 'Defense Rating', 'Initiative'])
+  expect(
+    npcValues(g.npc!)
+      .map(v => v.label)
+      .slice(0, 12),
+  ).toEqual(['BOD', 'AGI', 'REA', 'STR', 'WIL', 'LOG', 'INT', 'CHA', 'EDG', 'Essence', 'Defense Rating', 'Initiative'])
   // the file it makes reads back the same
   const back = xmlToSr6(sr6ToXml(g))
   expect(back.ok && back.character).toEqual(g)
@@ -76,12 +109,17 @@ test('pools: "Name N" or a bare name (a spirit’s at its Force), resolved by na
   expect(npcPools(puddles.npc!, data)[0]).toEqual({ name: 'Splashing', rating: 4, printed: 'Splashing' })
   // a bare skill on a critter has no rating
   const beast = npcFromEntry(entry('critters', 'crb.fuzzbeast'), undefined, NOW)
-  expect(npcPools({ ...beast.npc!, lines: [{ part: 'skills', text: 'Tinkering' }] }, data)).toEqual([{ name: 'Tinkering', rating: null, attr: 'log', printed: 'Tinkering' }])
+  expect(npcPools({ ...beast.npc!, lines: [{ part: 'skills', text: 'Tinkering' }] }, data)).toEqual([
+    { name: 'Tinkering', rating: null, attr: 'log', printed: 'Tinkering' },
+  ])
 })
 
 test('pools: a skill printed with its augmented rank or a specialization bonus keeps its rank', () => {
   const npc = { kind: 'grunt' as const, stats: { cha: '4', log: '3' }, lines: [{ part: 'skills' as const, text: 'Gab 5 (Haggling +2), Tinkering 2(3)' }] }
-  expect(npcPools(npc, data).map(p => [p.name, p.rating, p.pool])).toEqual([['Gab', 5, 9], ['Tinkering', 2, 5]])
+  expect(npcPools(npc, data).map(p => [p.name, p.rating, p.pool])).toEqual([
+    ['Gab', 5, 9],
+    ['Tinkering', 2, 5],
+  ])
 })
 
 test('a stat the evaluator can’t read is shown as printed and not ok; its pool is left out', () => {

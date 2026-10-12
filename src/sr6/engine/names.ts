@@ -5,8 +5,17 @@ import type { Sr6Kind } from '../model/types'
 /** As the importer's norm() (importer/sr6/regroup.py): accents and quotes dropped, & as "and", punctuation as spaces,
  *  lower case, no leading "the". */
 export function normName(name: string): string {
-  const s = name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/&/g, ' and ').replace(/['‘’"“”]/g, '')
-  const out = s.replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean).join(' ')
+  const s = name
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/['‘’"“”]/g, '')
+  const out = s
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(' ')
   return out.startsWith('the ') ? out.slice(4) : out
 }
 

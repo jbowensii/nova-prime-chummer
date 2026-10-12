@@ -25,47 +25,76 @@ export function showFoundry() {
 
 /** tools: the page's own icons at the start of row 1's right-hand group. */
 export function MainMenu({ tools }: { tools?: ReactNode } = {}) {
-  const me = useMe(), server = useRepo().mode === 'server'
+  const me = useMe(),
+    server = useRepo().mode === 'server'
   const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
-  if (here === 'sr6') return <Bar section={sub === 'table' || sub === 'table-rules' ? 'sr6/table'
-    : (sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' || sub === 'campaigns' ? `sr6/${sub}`
-    : (sub === 'npcs' || sub === 'n') && canEdit(me) ? 'sr6/npcs' : sub === 'compendiums' && canEdit(me) && server ? 'sr6/compendiums' : 'sr6'} sr6 tools={tools} items={[
-    ['sr6', 'runners', 'Your runners', true],
-    ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
-    ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
-    ['sr6/campaigns', 'campaigns', 'Campaigns', server],
-    ['sr6/books', 'books', 'Books', isAdmin(me)],
-    ['sr6/rules', 'rules', 'Rules', true],
-    ['sr6/data', 'data', 'Game data', true],
-    ['sr6/table', 'table', 'Table setup', true],
-  ]} />
+  if (here === 'sr6')
+    return (
+      <Bar
+        section={
+          sub === 'table' || sub === 'table-rules'
+            ? 'sr6/table'
+            : (sub === 'books' && isAdmin(me)) || sub === 'rules' || sub === 'data' || sub === 'campaigns'
+              ? `sr6/${sub}`
+              : (sub === 'npcs' || sub === 'n') && canEdit(me)
+                ? 'sr6/npcs'
+                : sub === 'compendiums' && canEdit(me) && server
+                  ? 'sr6/compendiums'
+                  : 'sr6'
+        }
+        sr6
+        tools={tools}
+        items={[
+          ['sr6', 'runners', 'Your runners', true],
+          ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
+          ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
+          ['sr6/campaigns', 'campaigns', 'Campaigns', server],
+          ['sr6/books', 'books', 'Books', isAdmin(me)],
+          ['sr6/rules', 'rules', 'Rules', true],
+          ['sr6/data', 'data', 'Game data', true],
+          ['sr6/table', 'table', 'Table setup', true],
+        ]}
+      />
+    )
   // a runner's or NPC's editor: its list; the old Table rules link and a player's #/rules: Table setup
   const section = here === 'c' ? '' : here === 'n' ? 'npcs' : here === 'table-rules' || (here === 'rules' && !canEdit(me)) ? 'table' : here
-  return <Bar section={section} tools={tools} items={[
-    ['', 'runners', 'Your runners', true],
-    ['npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
-    ['compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
-    ['campaigns', 'campaigns', 'Campaigns', server],
-    ['books', 'books', 'Books', isAdmin(me)],
-    ['rules', 'rules', 'Rules', canEdit(me)],
-    ['data', 'data', 'Game data', true],
-    ['table', 'table', 'Table setup', true],
-  ]} />
+  return (
+    <Bar
+      section={section}
+      tools={tools}
+      items={[
+        ['', 'runners', 'Your runners', true],
+        ['npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
+        ['compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
+        ['campaigns', 'campaigns', 'Campaigns', server],
+        ['books', 'books', 'Books', isAdmin(me)],
+        ['rules', 'rules', 'Rules', canEdit(me)],
+        ['data', 'data', 'Game data', true],
+        ['table', 'table', 'Table setup', true],
+      ]}
+    />
+  )
 }
 
 function Bar({ items, section, sr6, tools }: { items: [string, IconName, string, boolean][]; section: string; sr6?: boolean; tools?: ReactNode }) {
-  const other = sr6 ? 'ca2' : 'sr6', me = useMe()
+  const other = sr6 ? 'ca2' : 'sr6',
+    me = useMe()
   return (
     <div className="menubar">
       <nav aria-label="Main menu" className="iconbar">
-        {items.filter(i => i[3]).map(([page, icon, label]) =>
-          <IconLink key={page} href={`#/${page}`} icon={icon} label={label} aria-current={section === page ? 'page' : undefined} />)}
+        {items
+          .filter(i => i[3])
+          .map(([page, icon, label]) => (
+            <IconLink key={page} href={`#/${page}`} icon={icon} label={label} aria-current={section === page ? 'page' : undefined} />
+          ))}
       </nav>
       <div className="iconbar tools">
         {tools}
         {canEdit(me) && <IconLink href={`#/${sr6 ? 'sr6/' : ''}data/foundry`} icon="foundry" label="Export book data for Foundry" onClick={showFoundry} />}
         <IconLink href={homeOf(other)} icon="switch" label={sr6 ? 'Switch to Shadowrun Anarchy' : 'Switch to Shadowrun 6'} onClick={() => storeGame(other)} />
-        <AskButton game={sr6 ? 'sr6' : 'ca2'} /><SettingsButton /><AccountMenu />
+        <AskButton game={sr6 ? 'sr6' : 'ca2'} />
+        <SettingsButton />
+        <AccountMenu />
       </div>
     </div>
   )
@@ -77,7 +106,11 @@ export function HeaderBars({ children, tools }: { children?: ReactNode; tools?: 
   return (
     <div className="bars">
       <MainMenu tools={tools} />
-      {Children.toArray(children).length > 0 && <div className="iconbar actions" role="group" aria-label="Page actions">{children}</div>}
+      {Children.toArray(children).length > 0 && (
+        <div className="iconbar actions" role="group" aria-label="Page actions">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -86,7 +119,10 @@ export function HeaderBars({ children, tools }: { children?: ReactNode; tools?: 
 export function PageHeader({ title, children, tools }: { title: ReactNode; children?: ReactNode; tools?: ReactNode }) {
   return (
     <header className="pagehead">
-      <div className="titles"><Brand /><h1>{title}</h1></div>
+      <div className="titles">
+        <Brand />
+        <h1>{title}</h1>
+      </div>
       <HeaderBars tools={tools}>{children}</HeaderBars>
     </header>
   )

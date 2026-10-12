@@ -19,13 +19,17 @@ export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/n
 export function snapshotSr6(c: Sr6Catalog, runner: Sr6Character): Sr6Character {
   const ch = keepSr6House(c, runner)
   const snap = (x: Sr6Purchase): Sr6Purchase => {
-    const live = x.id ? resolveEntry(c, x.kind, x.id) ?? c.original.get(entryKey(x.kind, x.id)) : undefined
+    const live = x.id ? (resolveEntry(c, x.kind, x.id) ?? c.original.get(entryKey(x.kind, x.id))) : undefined
     return { ...x, accessories: x.accessories.map(snap), ...(live ? { snapshot: live } : {}) }
   }
   const ledger = ch.ledger.map((e): Sr6LedgerEntry => {
     if (e.type !== 'advance') return e
     const a = e.advance
-    return a.op === 'purchase' ? { ...e, advance: { ...a, line: snap(a.line) } } : a.op === 'drop' && a.line ? { ...e, advance: { ...a, line: snap(a.line) } } : e
+    return a.op === 'purchase'
+      ? { ...e, advance: { ...a, line: snap(a.line) } }
+      : a.op === 'drop' && a.line
+        ? { ...e, advance: { ...a, line: snap(a.line) } }
+        : e
   })
   return { ...ch, build: { ...ch.build, purchases: ch.build.purchases.map(snap) }, ledger }
 }
@@ -34,7 +38,10 @@ export function snapshotSr6(c: Sr6Catalog, runner: Sr6Character): Sr6Character {
 export function exportSr6(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
   const out = { ...snapshotSr6(c, ch), lastExportedAt: new Date().toISOString() }
   const url = URL.createObjectURL(new Blob([sr6ToXml(out)], { type: 'application/xml' }))
-  Object.assign(document.createElement('a'), { href: url, download: `${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml` }).click()
+  Object.assign(document.createElement('a'), {
+    href: url,
+    download: `${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`,
+  }).click()
   URL.revokeObjectURL(url)
   return out
 }

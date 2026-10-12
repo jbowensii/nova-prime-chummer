@@ -10,7 +10,8 @@ import { canFinalizeSr6 } from './rules'
 /** The runner finalized now, or null while an error isn't approved. */
 export function finalizeSr6(ch: Sr6Character, budgets: Sr6Budgets, v: Violation[], now = new Date().toISOString()): Sr6Character | null {
   if (!canFinalizeSr6(v)) return null
-  const karma = budgets.karma.left, nuyen = budgets.nuyen.left
+  const karma = budgets.karma.left,
+    nuyen = budgets.nuyen.left
   return { ...ch, finalizedAt: now, final: { karma, nuyen }, ledger: [...ch.ledger, { id: newId(), at: now, type: 'finalize', karma, nuyen }] }
 }
 

@@ -8,10 +8,16 @@ import { createServer } from './_signin'
 const dir = mkdtempSync(join(tmpdir(), 'ca2-'))
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
 const xml = (id: string, street = 'Street Sam', rev?: number) =>

@@ -18,7 +18,7 @@ test('a catalog grade’s key is its name without “ware” or “grade”', ()
 test('offered: the settings’ grades, then the catalog’s with both factors, for the types each is for', () => {
   const { data, cr } = made()
   expect(gradesFor(cr, data, cyber())).toEqual(['standard', 'alpha', 'rusty', 'clunk'])
-  expect(gradesFor(cr, data, bio())).toEqual(['standard', 'alpha', 'rusty'])  // Clunkware is for cyberware only
+  expect(gradesFor(cr, data, bio())).toEqual(['standard', 'alpha', 'rusty']) // Clunkware is for cyberware only
   expect(gradesFor(cr, data, { ...cyber(), attrs: { type: 'geneware' } })).toEqual([])
   expect(gradeName(data, 'rusty')).toBe('Rustyware')
   expect(gradeName(data, 'alpha')).toBe('Alpha')
@@ -40,17 +40,31 @@ test('a catalog grade prices a line; where it doesn’t apply it is taken, an er
   expect(priced(ch.build.purchases[0], data, cr)).toMatchObject({ cost: 400, essence: 0.24, avail: 2 })
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'clunk' })).toEqual({ ok: true })
   const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
-  expect(v.map(x => [x.severity, x.path, x.source, x.page])).toEqual([['error', `augmentations.${ch.build.purchases[1].uid}`,
-    data.entry('grades', data.grades.clunk.id)!.source, data.grades.clunk.page]])
+  expect(v.map(x => [x.severity, x.path, x.source, x.page])).toEqual([
+    ['error', `augmentations.${ch.build.purchases[1].uid}`, data.entry('grades', data.grades.clunk.id)!.source, data.grades.clunk.page],
+  ])
   ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
   expect(validateSr6(data, cr, ch).find(x => x.code === 'gear.grade')?.approved).toBe(true)
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1, grade: 'dream' })).toEqual({ ok: false, reason: 'unknown-grade' })
 })
 
 test('programs and autosofts are bought at a rating and priced by their formula; they stack', () => {
-  const soft = { id: 'crb.glide', kind: 'programs' as const, name: 'Glide', source: 'CRB', page: 201,
-    attrs: { type: 'autosoft', rating: '1-6', avail: 'Rating', cost: 'Rating x 50' }, parts: [], text: '' }
-  const { data, cr } = made({ data: d => { const old = d.entry; d.entry = (k, id) => (id === soft.id ? soft : old(k, id)) } })
+  const soft = {
+    id: 'crb.glide',
+    kind: 'programs' as const,
+    name: 'Glide',
+    source: 'CRB',
+    page: 201,
+    attrs: { type: 'autosoft', rating: '1-6', avail: 'Rating', cost: 'Rating x 50' },
+    parts: [],
+    text: '',
+  }
+  const { data, cr } = made({
+    data: d => {
+      const old = d.entry
+      d.entry = (k, id) => (id === soft.id ? soft : old(k, id))
+    },
+  })
   const ch = blankSr6('priority', 'r1', '2026-10-05T00:00:00Z')
   const act = (op: Op) => apply(ch.build, op, data, cr)
   expect(act({ op: 'purchase', kind: 'programs', id: soft.id, rating: 4 })).toEqual({ ok: true })
@@ -61,8 +75,12 @@ test('programs and autosofts are bought at a rating and priced by their formula;
 })
 
 test('a grade a later book redefines gives way to the new one; a line already in it still fits', () => {
-  const { data, cr } = made({ data: d => { d.grades.rusty.replaces = 'clunk' } })
-  expect(gradesFor(cr, data, cyber())).toEqual(['standard', 'alpha', 'rusty'])  // Clunkware gone, Rustyware offered
+  const { data, cr } = made({
+    data: d => {
+      d.grades.rusty.replaces = 'clunk'
+    },
+  })
+  expect(gradesFor(cr, data, cyber())).toEqual(['standard', 'alpha', 'rusty']) // Clunkware gone, Rustyware offered
   expect(gradeFits(cr, data, cyber(), 'clunk')).toBe(true)
   expect(gradeFits(cr, data, cyber(), 'dream')).toBe(false)
 })
@@ -82,7 +100,7 @@ test('an implant’s add-ons have its grade (CRB p. 282): priced at it, changed 
   // alpha ×1.5 cost, ×0.7 Essence: the limb 9,000 → 13,500, its plating 3,000 → 4,500, the filter 800 → 1,200; the
   // add-ons in its Capacity cost no Essence (capacityAccessoryEssence off)
   expect(priced(limb, data, cr)).toMatchObject({ cost: 19200, essence: 0.7 })
-  const on = run({ capacityAccessoryEssence: true })  // (the setting on: the filter's 0.1 × 0.7 too)
+  const on = run({ capacityAccessoryEssence: true }) // (the setting on: the filter's 0.1 × 0.7 too)
   expect(priced(limb, on.data, on.cr).essence).toBe(0.77)
   const plating = limb.accessories[0]
   expect(act({ op: 'rate', uid: plating.uid, grade: 'rusty' })).toEqual({ ok: false, reason: 'grade-follows-host' })

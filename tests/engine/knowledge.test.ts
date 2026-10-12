@@ -14,8 +14,14 @@ const K = cat.pricing.knowledge
 function runner(): Character {
   const ch = blankCharacter()
   ch.narrative.keywords = ['Tinkerer', '', 'Night owl', '', '']
-  ch.build.skills = [{ id: 'electronics', rating: 5, specs: [] }, { id: 'athletics', rating: 2, specs: [] }]
-  ch.build.knowledge = [{ id: 'k0', name: 'Toy trains', kind: 'knowledge' }, { id: 'k1', name: 'Made-up tongue', kind: 'language' }]
+  ch.build.skills = [
+    { id: 'electronics', rating: 5, specs: [] },
+    { id: 'athletics', rating: 2, specs: [] },
+  ]
+  ch.build.knowledge = [
+    { id: 'k0', name: 'Toy trains', kind: 'knowledge' },
+    { id: 'k1', name: 'Made-up tongue', kind: 'language' },
+  ]
   return ch
 }
 const skillsCost = (ch: Character) => priceBuild(cat, ch.build, 'human', ch.narrative.keywords).skills
@@ -57,9 +63,14 @@ test('old files: plain strings load as paid knowledge, "Language: X" as a langua
   ch.build.knowledge = ['Toy trains', 'Language: Made-up tongue', 'language:Other tongue']
   const json = parseCharacterFile(JSON.stringify(ch))
   // each gets an id of its own on load (its key for order and hiding)
-  const want = [{ id: 'k0', name: 'Toy trains', kind: 'knowledge' }, { id: 'k1', name: 'Made-up tongue', kind: 'language' }, { id: 'k2', name: 'Other tongue', kind: 'language' }]
+  const want = [
+    { id: 'k0', name: 'Toy trains', kind: 'knowledge' },
+    { id: 'k1', name: 'Made-up tongue', kind: 'language' },
+    { id: 'k2', name: 'Other tongue', kind: 'language' },
+  ]
   expect(json.ok && json.character.build.knowledge).toEqual(want)
-  const oldXml = characterToXml(runner()).replace(/<knowledge[^>]*>([^<]*)<\/knowledge>/g, '')
+  const oldXml = characterToXml(runner())
+    .replace(/<knowledge[^>]*>([^<]*)<\/knowledge>/g, '')
     .replace('<attributes', '<knowledge>Toy trains</knowledge><knowledge>Language: Made-up tongue</knowledge><attributes')
   // knowledge follows skills in the schema, but the reader doesn't mind the order
   const xml = xmlToCharacter(oldXml)
@@ -111,5 +122,7 @@ test('a keyword entry follows the keyword’s text; removing the keyword makes a
   ch.narrative.keywords = ['', 'Tinkerer', '', '', '']
   expect(derive(cat, ch).knowledge.find(r => r.at === 2)).toMatchObject({ name: 'Night owl', paid: true, source: 'Paid (keyword “Night owl” removed)' })
   expect(skillsCost(ch) - free).toBe(K)
-  expect(validate(cat, ch).find(v => v.code === 'knowledge.lapsed')?.message).toBe('“Night owl” was free; with keyword “Night owl” removed it’s a paid knowledge skill.')
+  expect(validate(cat, ch).find(v => v.code === 'knowledge.lapsed')?.message).toBe(
+    '“Night owl” was free; with keyword “Night owl” removed it’s a paid knowledge skill.',
+  )
 })

@@ -1,9 +1,12 @@
 {
-  "formatVersion": 1, "id": "npc.test-hound",
+  "formatVersion": 1,
+  "id": "npc.test-hound",
   "npc": { "kind": "critter", "tier": "regular", "fightingSpirit": "low" },
   "identity": { "name": "Test Hound", "streetName": "Test Hound", "metatype": "", "background": "A made-up critter & its <bark>.", "notes": "" },
   "narrative": { "keywords": ["Made-up beast"], "dispositions": ["Bites first."], "cues": [] },
-  "level": "runner", "package": "free", "origin": "TEST",
+  "level": "runner",
+  "package": "free",
+  "origin": "TEST",
   "build": {
     "attributes": { "str": 9, "agi": 4, "wil": 2, "log": 1, "cha": 1 },
     "skills": [{ "id": "athletics", "rating": 3, "specs": [] }],
@@ -11,5 +14,7 @@
     "amps": [{ "uid": "amp-1", "type": "quality", "name": "Made-up Fangs", "narrative": "", "effects": [{ "ref": "armor-plus" }] }],
     "items": [{ "uid": "item-1", "kind": "weapon", "name": "Bite", "dv": "4P", "ranges": "OK/–/–/–" }]
   },
-  "career": [], "overrides": [], "updatedAt": "2026-10-02T00:00:00.000Z"
+  "career": [],
+  "overrides": [],
+  "updatedAt": "2026-10-02T00:00:00.000Z"
 }

@@ -12,19 +12,34 @@ import { SR6_KINDS, type Sr6Compendium, type Sr6Kind } from '../../src/sr6/model
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()
-const grunt = (() => { const r = xmlToSr6(readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')); if (!r.ok) throw new Error(r.reason); return r.character })()
+const grunt = (() => {
+  const r = xmlToSr6(readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8'))
+  if (!r.ok) throw new Error(r.reason)
+  return r.character
+})()
 const kit: Sr6Compendium = { id: '0123456789ab', name: 'Street Kit', source: 'STREET', sharing: 'private', updatedAt: '', entries: [], npcs: [] }
 const made = (kind: Sr6Kind, name: string, attrs: Record<string, string> = {}) => ({ ...blankSr6Entry(c, kind, kit, name), attrs })
 
 test('rows: one group per compendium kind in COMP_KINDS order, then the NPCs; by name; values and lines as the detail', () => {
-  const list = [made('spirits', 'Gutter Spirit', { bod: 'F+1' }), made('weapons', 'Zip Stick', { category: 'Clubs', dv: '2S' }),
-    made('weapons', 'Ash Bat', { category: 'Clubs' }), made('qualities', 'Lucky Socks', { kind: 'positive' })]
-  list[0].parts = [{ tag: 'skills', attrs: {}, text: 'Lurking 3' }, { tag: 'powers', attrs: {}, text: '' }]
+  const list = [
+    made('spirits', 'Gutter Spirit', { bod: 'F+1' }),
+    made('weapons', 'Zip Stick', { category: 'Clubs', dv: '2S' }),
+    made('weapons', 'Ash Bat', { category: 'Clubs' }),
+    made('qualities', 'Lucky Socks', { kind: 'positive' }),
+  ]
+  list[0].parts = [
+    { tag: 'skills', attrs: {}, text: 'Lurking 3' },
+    { tag: 'powers', attrs: {}, text: '' },
+  ]
   const rows = sr6Rows(list, [grunt])
   expect([...rows.keys()]).toEqual([...Object.keys(COMP_KINDS).map(k => SR6_KINDS[k as Sr6Kind].label), NPC_GROUP])
   const filled = [...rows].filter(([, r]) => r.length).map(([g, r]) => [g, r.map(x => x.name)])
-  expect(filled).toEqual([['Qualities', ['Lucky Socks']], ['Weapons', ['Ash Bat', 'Zip Stick']], ['Spirits', ['Gutter Spirit']],
-    [NPC_GROUP, [grunt.identity.streetName || grunt.identity.name]]])
+  expect(filled).toEqual([
+    ['Qualities', ['Lucky Socks']],
+    ['Weapons', ['Ash Bat', 'Zip Stick']],
+    ['Spirits', ['Gutter Spirit']],
+    [NPC_GROUP, [grunt.identity.streetName || grunt.identity.name]],
+  ])
   expect(rows.get('Weapons')![1]).toMatchObject({ detail: 'category Clubs · dv 2S', source: 'STREET', page: 1 })
   expect(rows.get('Spirits')![0].detail).toBe('bod F+1 · skills: Lurking 3')
   expect(rows.get(NPC_GROUP)![0].npc).toBe(grunt)
@@ -59,7 +74,16 @@ test('move in: saved into the compendium unshared, then deleted from the NPC are
   expect('campaign' in comp.npcs[0]).toBe(false)
   expect(remove).toHaveBeenCalledWith('npc-shared-1')
   // saved but not taken out of the NPC area: named, the compendium keeps it
-  expect(await moveNpcsIn(stored([]), [shared], async () => { throw new Error('gone') }, save)).toMatchObject({ ok: true, left: [{ id: 'npc-shared-1' }] })
+  expect(
+    await moveNpcsIn(
+      stored([]),
+      [shared],
+      async () => {
+        throw new Error('gone')
+      },
+      save,
+    ),
+  ).toMatchObject({ ok: true, left: [{ id: 'npc-shared-1' }] })
 })
 
 test('move out: a copy under a new id in the NPC area, then the compendium saved without it; a failed compendium save removes the copy', async () => {
@@ -71,7 +95,8 @@ test('move out: a copy under a new id in the NPC area, then the compendium saved
   expect(copy.id).not.toBe(grunt.id)
   expect(npcs.remove).toHaveBeenCalledWith(copy.id)
 
-  npcs.save.mockClear(); npcs.remove.mockClear()
+  npcs.save.mockClear()
+  npcs.remove.mockClear()
   const save = vi.fn(async (_c: Sr6Compendium, _rev?: number) => ({ ok: true as const, rev: 4 }))
   const ok = await moveNpcOut(stored(), grunt.id, npcs, save)
   expect(ok.ok && ok.ch.id).toBe(npcs.save.mock.calls[0][0].id)
@@ -79,6 +104,9 @@ test('move out: a copy under a new id in the NPC area, then the compendium saved
   expect(npcs.remove).not.toHaveBeenCalled()
   // the NPC area refusing it: the compendium isn't touched
   save.mockClear()
-  expect(await moveNpcOut(stored(), grunt.id, { ...npcs, save: async () => ({ ok: false as const, error: 'refused (test)' }) }, save)).toEqual({ ok: false, error: 'refused (test)' })
+  expect(await moveNpcOut(stored(), grunt.id, { ...npcs, save: async () => ({ ok: false as const, error: 'refused (test)' }) }, save)).toEqual({
+    ok: false,
+    error: 'refused (test)',
+  })
   expect(save).not.toHaveBeenCalled()
 })

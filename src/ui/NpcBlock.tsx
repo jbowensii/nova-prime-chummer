@@ -19,17 +19,47 @@ export function NpcBlock({ c, ch, d, className }: { c: Catalog; ch: Character; d
   return (
     <section className={`npc-block ${className ?? ''}`} aria-label="NPC">
       <h2>NPC</h2>
-      <p><b>{KIND[n.kind]}</b>, {n.tier} NPC{regular ? '. No Edge.' : <>. Edge <b>{d.edge}</b>.</>}</p>
-      {regular && (d.initiative ?? d.switched?.initiative) && <p>Without Edge (CRB p.81): its initiative enhancement’s Edge is one more
-        action per combat instead; an amp’s special effect for Edge works once per combat, free.</p>}
-      {n.fightingSpirit && <p>Fighting spirit: <b>{n.fightingSpirit[0].toUpperCase() + n.fightingSpirit.slice(1)}</b>. {SPIRIT[n.fightingSpirit]}.</p>}
-      {regular ? <>
-        <p>Average hits (pool in dice, skill rating + attribute, Risk Reduction):</p>
-        <ul>{d.pools.map((p, i) => {
-          const spec = p.spec ? p.label.replace(/^.*\(|\)$/g, '') : undefined
-          return <li key={i}>{npcPoolLabel(c.skills.get(p.skill)?.name ?? p.skill, spec, p.rating, p.attr, p.dp - p.rating - (spec ? 2 : 0), p.rr)}</li>
-        })}</ul>
-      </> : <ul>{d.pools.map((p, i) => <li key={i}>{p.label} {p.dp} ({p.rating}{p.spec ? '+2' : ''}+{p.attr[0].toUpperCase()}, RR {p.rr})</li>)}</ul>}
+      <p>
+        <b>{KIND[n.kind]}</b>, {n.tier} NPC
+        {regular ? (
+          '. No Edge.'
+        ) : (
+          <>
+            . Edge <b>{d.edge}</b>.
+          </>
+        )}
+      </p>
+      {regular && (d.initiative ?? d.switched?.initiative) && (
+        <p>
+          Without Edge (CRB p.81): its initiative enhancement’s Edge is one more action per combat instead; an amp’s special effect for Edge works once per
+          combat, free.
+        </p>
+      )}
+      {n.fightingSpirit && (
+        <p>
+          Fighting spirit: <b>{n.fightingSpirit[0].toUpperCase() + n.fightingSpirit.slice(1)}</b>. {SPIRIT[n.fightingSpirit]}.
+        </p>
+      )}
+      {regular ? (
+        <>
+          <p>Average hits (pool in dice, skill rating + attribute, Risk Reduction):</p>
+          <ul>
+            {d.pools.map((p, i) => {
+              const spec = p.spec ? p.label.replace(/^.*\(|\)$/g, '') : undefined
+              return <li key={i}>{npcPoolLabel(c.skills.get(p.skill)?.name ?? p.skill, spec, p.rating, p.attr, p.dp - p.rating - (spec ? 2 : 0), p.rr)}</li>
+            })}
+          </ul>
+        </>
+      ) : (
+        <ul>
+          {d.pools.map((p, i) => (
+            <li key={i}>
+              {p.label} {p.dp} ({p.rating}
+              {p.spec ? '+2' : ''}+{p.attr[0].toUpperCase()}, RR {p.rr})
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

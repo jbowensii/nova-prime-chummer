@@ -7,8 +7,16 @@ import { sr6Data } from '../../src/sr6/engine/data'
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/model/types'
 import { fixtureCatalog } from './fixture'
 
-const entry = (kind: Sr6Kind, attrs: Record<string, string>, parts: Sr6Part[] = []): Sr6Entry =>
-  ({ id: `x.${kind}`, kind, name: 'Odd', source: 'CRB', page: 1, attrs, parts, text: '' })
+const entry = (kind: Sr6Kind, attrs: Record<string, string>, parts: Sr6Part[] = []): Sr6Entry => ({
+  id: `x.${kind}`,
+  kind,
+  name: 'Odd',
+  source: 'CRB',
+  page: 1,
+  attrs,
+  parts,
+  text: '',
+})
 
 test('damage reads as a number and stun; a long or oddly written one is none; a spell’s damage code is its drain, not damage', () => {
   expect(entryValues(entry('weapons', { dv: '5P' }))).toMatchObject({ dv: 5, stun: false })
@@ -32,13 +40,18 @@ test('attack ratings, modes and ammunition are read; unreadable ones leave nothi
 })
 
 test('a vehicle’s numbers are exported when it prints any; a vehicle printing none has no vehicle block', () => {
-  const v = entryValues(entry('vehicles', { handling: '3/5', accel: '10', body: '5', armor: '2', pilot: '1', sensor: '1', seats: '4', topSpeed: '140', interval: '15' }))
+  const v = entryValues(
+    entry('vehicles', { handling: '3/5', accel: '10', body: '5', armor: '2', pilot: '1', sensor: '1', seats: '4', topSpeed: '140', interval: '15' }),
+  )
   expect(v.vehicle).toMatchObject({ body: 5, armor: 2, pilot: 1, sensor: 1, seats: 4, topSpeed: 140 })
   expect(entryValues(entry('vehicles', {})).vehicle).toBeUndefined()
 })
 
 test('legality, capacity in brackets, defense and karma read as numbers at the rating; a power’s cost is its power cost, not nuyen', () => {
-  const v = entryValues(entry('augmentations', { avail: '6(L)', capacity: '[Rating]', rating: '1–3', cost: 'Rating × 500', essence: 'Rating × 0.1', karma: '4' }), 2)
+  const v = entryValues(
+    entry('augmentations', { avail: '6(L)', capacity: '[Rating]', rating: '1–3', cost: 'Rating × 500', essence: 'Rating × 0.1', karma: '4' }),
+    2,
+  )
   expect(v).toMatchObject({ rating: 2, capacity: 2, essence: 0.2, karma: 4, legality: 'L' })
   const power = entryValues(entry('adeptpowers', { cost: '0.5' }))
   expect(power).toMatchObject({ powerCost: 0.5 })
@@ -64,10 +77,14 @@ test('a book export lists an entry’s effects, links and tests with their condi
   const knack = c.entries.qualities.get('crb.knack')!
   knack.parts = [
     effect({ target: 'derived:defense', op: 'add', value: '2', confidence: 'low', switch: 'wireless', when: 'in the dark', spec: 'x', affects: 'caster' }),
-    effect({ target: 'attr:bod', op: 'add', value: '1', affects: 'others' }), effect({ target: 'attr:agi', op: 'add', value: '1', affects: 'everyone' }), effect({ target: 'attr:str', op: 'add' }),
+    effect({ target: 'attr:bod', op: 'add', value: '1', affects: 'others' }),
+    effect({ target: 'attr:agi', op: 'add', value: '1', affects: 'everyone' }),
+    effect({ target: 'attr:str', op: 'add' }),
     { tag: 'link', attrs: { rel: 'grants', name: 'Stoneskin', kind: 'qualities', ref: 'crb.stoneskin', level: '2', when: 'always' }, text: '' },
-    { tag: 'link', attrs: { rel: 'as', name: 'Wanderer' }, text: '' }, { tag: 'link', attrs: { rel: 'mimics', name: 'Nothing' }, text: '' },
-    { tag: 'test', attrs: { skill: 'skill:perception', attr: 'attr:int', threshold: '3' }, text: '' }, { tag: 'test', attrs: { skill: 'skill:gab', attr: 'attr:cha', threshold: 'half' }, text: '' },
+    { tag: 'link', attrs: { rel: 'as', name: 'Wanderer' }, text: '' },
+    { tag: 'link', attrs: { rel: 'mimics', name: 'Nothing' }, text: '' },
+    { tag: 'test', attrs: { skill: 'skill:perception', attr: 'attr:int', threshold: '3' }, text: '' },
+    { tag: 'test', attrs: { skill: 'skill:gab', attr: 'attr:cha', threshold: 'half' }, text: '' },
     { tag: 'test', attrs: { skill: 'skill:gab' }, text: '' },
   ]
   c.moved.set('qualities/crb.old-knack', { kind: 'qualities', id: 'crb.knack' })
@@ -76,9 +93,17 @@ test('a book export lists an entry’s effects, links and tests with their condi
   const e = file.books![0].entries.find(x => x.id === 'crb.knack')!
   expect(e.effects).toEqual([
     { target: 'derived:defense', op: 'add', value: '2', low: true, switch: 'wireless', when: 'in the dark', spec: 'x', affects: 'caster' },
-    { target: 'attr:bod', op: 'add', value: '1', affects: 'others' }, { target: 'attr:agi', op: 'add', value: '1' }])
-  expect(e.links).toEqual([{ rel: 'grants', name: 'Stoneskin', kind: 'qualities', id: 'crb.stoneskin', level: 2, when: 'always' }, { rel: 'as', name: 'Wanderer' }])
-  expect(e.tests).toEqual([{ skill: 'skill:perception', attr: 'attr:int', threshold: 3 }, { skill: 'skill:gab', attr: 'attr:cha' }])
+    { target: 'attr:bod', op: 'add', value: '1', affects: 'others' },
+    { target: 'attr:agi', op: 'add', value: '1' },
+  ])
+  expect(e.links).toEqual([
+    { rel: 'grants', name: 'Stoneskin', kind: 'qualities', id: 'crb.stoneskin', level: 2, when: 'always' },
+    { rel: 'as', name: 'Wanderer' },
+  ])
+  expect(e.tests).toEqual([
+    { skill: 'skill:perception', attr: 'attr:int', threshold: 3 },
+    { skill: 'skill:gab', attr: 'attr:cha' },
+  ])
   expect(e.aliases).toEqual([{ id: 'crb.old-knack' }, { id: 'crb.older-knack', kind: 'gear' }])
   expect(file.books![0].entries.find(x => x.id === 'crb.stoneskin')).not.toHaveProperty('aliases')
 })

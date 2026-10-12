@@ -1,7 +1,20 @@
 // The career engine's refusals and the less-travelled spends (src/sr6/engine/career.ts): every reason a spend is turned
 // down, and each advance replayed onto the build. The made-up fixture and invented prices (see career.test.ts).
 import { expect, test } from 'vitest'
-import { applyAdvance, balances, careerPowerPoints, currentBuild, ledgerLabel, ledgerRows, note, earn, preview, record, validateCareer, voidEntry } from '../../src/sr6/engine/career'
+import {
+  applyAdvance,
+  balances,
+  careerPowerPoints,
+  currentBuild,
+  ledgerLabel,
+  ledgerRows,
+  note,
+  earn,
+  preview,
+  record,
+  validateCareer,
+  voidEntry,
+} from '../../src/sr6/engine/career'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { blankBuild, blankSr6, type MagicKind, type Sr6Advance, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
@@ -25,10 +38,18 @@ const ok = (ch: Sr6Character, a: Sr6Advance, m = made(), typed = {}) => {
   if (!r.ok) throw new Error(r.reason)
   return r.ch
 }
-const gear = (id: string, extra: Partial<Sr6Purchase> = {}): Sr6Purchase => ({ uid: 'g1', kind: id === 'crb.zap-gun' ? 'weapons' : 'gear', id, qty: 1, accessories: [], ...extra })
+const gear = (id: string, extra: Partial<Sr6Purchase> = {}): Sr6Purchase => ({
+  uid: 'g1',
+  kind: id === 'crb.zap-gun' ? 'weapons' : 'gear',
+  id,
+  qty: 1,
+  accessories: [],
+  ...extra,
+})
 
 test('a draft runner has nothing to spend', () => {
-  const ch = runner(); ch.finalizedAt = undefined
+  const ch = runner()
+  ch.finalizedAt = undefined
   expect(why(ch, { op: 'other' })).toBe('not-finalized')
 })
 
@@ -36,9 +57,9 @@ test('attributes: Magic and Resonance only for those who have them, and never pa
   expect(why(runner(), { op: 'attribute', target: 'mag' })).toBe('unknown-attribute')
   expect(why(runner({ magic: 'full' }), { op: 'attribute', target: 'res' })).toBe('unknown-attribute')
   const mage = runner({ magic: 'full' })
-  mage.build.attributes.mag.points = 6   // rating 7 = magicMax
+  mage.build.attributes.mag.points = 6 // rating 7 = magicMax
   expect(why(mage, { op: 'attribute', target: 'mag' })).toBe('at-maximum')
-  mage.build.initiation = 1              // one more with a grade of initiation
+  mage.build.initiation = 1 // one more with a grade of initiation
   expect(why(mage, { op: 'attribute', target: 'mag' })).toMatch(/^ok:MAG 7 → 8/)
   const tm = runner({ magic: 'technomancer' })
   tm.build.attributes.res.points = 6
@@ -64,7 +85,8 @@ test('a further specialization is kept beside the first once the table allows se
   const s = ok(ch, { op: 'spec', target: 'crb.tinkering', name: 'Locks' }, m)
   expect(currentBuild(s).skills[0]).toMatchObject({ spec: 'Gizmos', specs: ['Locks'] })
   // naming the first again does not duplicate it
-  const b2 = structuredClone(ch.build); applyAdvance(b2, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' })
+  const b2 = structuredClone(ch.build)
+  applyAdvance(b2, { op: 'spec', target: 'crb.tinkering', name: 'Gizmos' })
   expect(b2.skills[0].specs).toBeUndefined()
 })
 
@@ -72,15 +94,23 @@ test('a spec or expertise on a skill the runner lacks adds it at rank 0', () => 
   const b = blankBuild('karma')
   applyAdvance(b, { op: 'spec', target: 'crb.gab', name: 'Haggling' })
   applyAdvance(b, { op: 'expertise', target: 'crb.hexing', name: 'Curses' })
-  expect(b.skills).toEqual([{ id: 'crb.gab', points: 0, karma: 0, spec: 'Haggling' }, { id: 'crb.hexing', points: 0, karma: 0, expertise: 'Curses' }])
+  expect(b.skills).toEqual([
+    { id: 'crb.gab', points: 0, karma: 0, spec: 'Haggling' },
+    { id: 'crb.hexing', points: 0, karma: 0, expertise: 'Curses' },
+  ])
 })
 
 test('knowledge and languages need a name, cost karmaKnowledge and join at rank 1 karma', () => {
-  const ch = runner(), m = made()
+  const ch = runner(),
+    m = made()
   const line = (name: string, kind: 'knowledge' | 'language') => ({ uid: '', name, kind, points: 0, karma: 0 })
   expect(why(ch, { op: 'knowledge', line: line(' ', 'knowledge') })).toBe('needs-name')
-  expect(preview(ch, { op: 'knowledge', line: line('Old maps', 'knowledge') }, m.data, m.cr))
-    .toEqual({ ok: true, label: 'Knowledge: Old maps', karma: 3, nuyen: 0 })
+  expect(preview(ch, { op: 'knowledge', line: line('Old maps', 'knowledge') }, m.data, m.cr)).toEqual({
+    ok: true,
+    label: 'Knowledge: Old maps',
+    karma: 3,
+    nuyen: 0,
+  })
   const r = ok(ch, { op: 'knowledge', line: line('Glimmerish', 'language') })
   expect(ledgerLabel(r.ledger.at(-1)!)).toBe('Language: Glimmerish')
   expect(currentBuild(r).knowledge).toMatchObject([{ name: 'Glimmerish', kind: 'language', points: 0, karma: 1 }])
@@ -98,21 +128,28 @@ test('qualities: positive only, once unless leveled, never past the maximum, and
   ch.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1 })
   expect(why(ch, q('crb.knack'))).toBe('already-known')
   // a free (metatype) trait does not count as taken
-  const free = runner(); free.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1, free: true })
+  const free = runner()
+  free.build.qualities.push({ uid: 'q1', id: 'crb.knack', level: 1, free: true })
   expect(why(free, q('crb.knack'))).toBe('ok:Quality: Knack')
 })
 
 test('a quality with no printed Karma is a book value the app will not guess', () => {
-  const m = made({ data: d => { d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], karma: null } } })
+  const m = made({
+    data: d => {
+      d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], karma: null }
+    },
+  })
   expect(why(runner(), { op: 'quality', line: { uid: '', id: 'crb.knack', level: 1 } }, m)).toBe('book-value')
 })
 
 test('leveled qualities: the next level replaces the lower at the difference; past the top is refused', () => {
-  const ch = runner(), m = made()
+  const ch = runner(),
+    m = made()
   ch.build.qualities.push({ uid: 'q1', id: 'crb.lucky-streak.1', level: 1 })
   expect(why(ch, { op: 'quality', line: { uid: '', id: 'crb.lucky-streak.1', level: 1 } })).toBe('already-known')
   expect(why(ch, { op: 'quality', line: { uid: '', id: 'crb.lucky-streak.3', level: 1 } })).toBe('ok:Quality: Lucky Streak 3')
-  const top = runner(); top.build.qualities.push({ uid: 'q1', id: 'crb.lucky-streak.3', level: 1 })
+  const top = runner()
+  top.build.qualities.push({ uid: 'q1', id: 'crb.lucky-streak.3', level: 1 })
   expect(why(top, { op: 'quality', line: { uid: '', id: 'crb.lucky-streak', level: 1 } })).toBe('at-maximum')
   const fresh = runner()
   expect(why(fresh, { op: 'quality', line: { uid: '', id: 'crb.lucky-streak.2', level: 1 } })).toBe('ok:Quality: Lucky Streak 2')
@@ -122,14 +159,22 @@ test('leveled qualities: the next level replaces the lower at the difference; pa
 
 test('buying off: only a negative quality the runner took, not a free one, with a printed Karma', () => {
   const ch = runner()
-  ch.build.qualities.push({ uid: 'n1', id: 'crb.butterfingers', level: 1 }, { uid: 'n2', id: 'crb.butterfingers', level: 1, free: true },
-    { uid: 'p1', id: 'crb.knack', level: 1 }, { uid: 'x1', id: 'crb.gone', level: 1 })
+  ch.build.qualities.push(
+    { uid: 'n1', id: 'crb.butterfingers', level: 1 },
+    { uid: 'n2', id: 'crb.butterfingers', level: 1, free: true },
+    { uid: 'p1', id: 'crb.knack', level: 1 },
+    { uid: 'x1', id: 'crb.gone', level: 1 },
+  )
   expect(why(ch, { op: 'buyoff', target: 'zz' })).toBe('not-taken')
   expect(why(ch, { op: 'buyoff', target: 'n2' })).toBe('free-trait')
   expect(why(ch, { op: 'buyoff', target: 'x1' })).toBe('unknown-entry')
   expect(why(ch, { op: 'buyoff', target: 'p1' })).toBe('not-negative')
   expect(why(ch, { op: 'buyoff', target: 'n1' })).toBe('ok:Buy off: Butterfingers')
-  const m = made({ data: d => { d.qualities['crb.butterfingers'] = { ...d.qualities['crb.butterfingers'], karma: null } } })
+  const m = made({
+    data: d => {
+      d.qualities['crb.butterfingers'] = { ...d.qualities['crb.butterfingers'], karma: null }
+    },
+  })
   expect(why(ch, { op: 'buyoff', target: 'n1' }, m)).toBe('book-value')
   // the line stays in the ledger for the history, and the quality leaves the build
   const r = ok(ch, { op: 'buyoff', target: 'n1' })
@@ -151,7 +196,7 @@ test('spells and forms: only the kinds that can be learned, once each, from the 
 test('adept powers: power points, a maximum level, a printed cost; a leveled one taken again goes up a level', () => {
   const m = made()
   const adept = runner({ magic: 'adept' })
-  adept.build.attributes.mag.points = 2   // Magic 3: 3 power points
+  adept.build.attributes.mag.points = 2 // Magic 3: 3 power points
   const pick = (id = 'crb.quick-step'): Sr6Advance => ({ op: 'pick', line: { uid: '', kind: 'adeptpowers', id } })
   expect(why(adept, pick('crb.nope'), m)).toBe('unknown-entry')
   expect(why(adept, pick('crb.quick-step.1'), m)).toMatch(/^ok:Adept power: Quick Step/)
@@ -160,21 +205,34 @@ test('adept powers: power points, a maximum level, a printed cost; a leveled one
   const poor = runner({ magic: 'adept' })
   poor.build.picks.push({ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step.4' })
   expect(why(poor, pick('crb.quick-step.1'), m)).toBe('already-known')
-  const lowest = made({ data: d => { d.powers['crb.quick-step.2'] = { ...d.powers['crb.quick-step.2'], cost: 5 } } })
-  expect(why(runner({ magic: 'adept' }), pick('crb.quick-step.2'), lowest)).toBe('no-power-points')   // Magic 1: one point
-  const nocost = made({ data: d => { d.powers['crb.quick-step.2'] = { ...d.powers['crb.quick-step.2'], cost: null } } })
+  const lowest = made({
+    data: d => {
+      d.powers['crb.quick-step.2'] = { ...d.powers['crb.quick-step.2'], cost: 5 }
+    },
+  })
+  expect(why(runner({ magic: 'adept' }), pick('crb.quick-step.2'), lowest)).toBe('no-power-points') // Magic 1: one point
+  const nocost = made({
+    data: d => {
+      d.powers['crb.quick-step.2'] = { ...d.powers['crb.quick-step.2'], cost: null }
+    },
+  })
   expect(why(adept, pick('crb.quick-step.2'), nocost)).toBe('book-value')
 })
 
 test('a power that is not leveled: taken once; one with levels goes up to its maximum', () => {
-  const m = made({ data: d => {
-    d.powers['crb.solo'] = { ...d.powers['crb.quick-step'], perLevel: false, maxLevel: 1, cost: 0.5 }
-    d.powers['crb.stack'] = { ...d.powers['crb.quick-step'], perLevel: true, maxLevel: 2, cost: 0.25 }
-    const old = d.entry
-    d.entry = (k, id) => (k === 'adeptpowers' && (id === 'crb.solo' || id === 'crb.stack')
-      ? { ...old('adeptpowers', 'crb.quick-step')!, id, name: id === 'crb.solo' ? 'Solo' : 'Stack' } : old(k, id))
-  } })
-  const adept = runner({ magic: 'adept' }); adept.build.attributes.mag.points = 4
+  const m = made({
+    data: d => {
+      d.powers['crb.solo'] = { ...d.powers['crb.quick-step'], perLevel: false, maxLevel: 1, cost: 0.5 }
+      d.powers['crb.stack'] = { ...d.powers['crb.quick-step'], perLevel: true, maxLevel: 2, cost: 0.25 }
+      const old = d.entry
+      d.entry = (k, id) =>
+        k === 'adeptpowers' && (id === 'crb.solo' || id === 'crb.stack')
+          ? { ...old('adeptpowers', 'crb.quick-step')!, id, name: id === 'crb.solo' ? 'Solo' : 'Stack' }
+          : old(k, id)
+    },
+  })
+  const adept = runner({ magic: 'adept' })
+  adept.build.attributes.mag.points = 4
   const pick = (id: string): Sr6Advance => ({ op: 'pick', line: { uid: '', kind: 'adeptpowers', id } })
   expect(why(adept, pick('crb.solo'), m)).toBe('ok:Adept power: Solo')
   expect(why(adept, pick('crb.stack'), m)).toBe('ok:Adept power: Stack 1')
@@ -190,7 +248,7 @@ test('a power that is not leveled: taken once; one with levels goes up to its ma
   applyAdvance(b, { op: 'pick', line: { uid: 'z', kind: 'adeptpowers', id: 'crb.stack' } })
   expect(b.picks[0].level).toBe(2)
   applyAdvance(b, { op: 'pick', line: { uid: 'z', kind: 'adeptpowers', id: 'crb.solo' } })
-  applyAdvance(b, { op: 'pick', line: { uid: 'z2', kind: 'adeptpowers', id: 'crb.solo' } })   // not leveled: no change
+  applyAdvance(b, { op: 'pick', line: { uid: 'z2', kind: 'adeptpowers', id: 'crb.solo' } }) // not leveled: no change
   expect(b.picks.map(p => p.id)).toEqual(['crb.stack', 'crb.solo'])
 })
 
@@ -205,7 +263,13 @@ test('martial arts: a style with its signature technique free; other techniques 
   expect(currentBuild(r).martialArts[0]).toMatchObject({ id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ id: 'crb.glow-jab', name: 'Glow Jab' }] })
   expect(why(r, art([]))).toBe('already-known')
   expect(why(r, { op: 'technique', target: currentBuild(r).martialArts[0].uid, line: { uid: '', id: 'crb.glow-jab' } })).toBe('already-known')
-  const m = made({ data: d => { const old = d.entry; d.entry = (k, id) => (k === 'martialarts' && id === 'crb.glow-fist' ? { ...old(k, id)!, attrs: { ...old(k, id)!.attrs, signature: 'Other' } } : old(k, id)) } })
+  const m = made({
+    data: d => {
+      const old = d.entry
+      d.entry = (k, id) =>
+        k === 'martialarts' && id === 'crb.glow-fist' ? { ...old(k, id)!, attrs: { ...old(k, id)!.attrs, signature: 'Other' } } : old(k, id)
+    },
+  })
   expect(why(ch, art([{ uid: '', id: 'crb.glow-jab' }]), m)).toBe('not-signature')
 })
 
@@ -217,7 +281,12 @@ test('a technique: under a style the runner has, not twice; the signature is fre
   expect(why(learned, tech('crb.nope'))).toBe('unknown-entry')
   const m0 = made()
   expect(preview(learned, tech('crb.glow-jab'), m0.data, m0.cr)).toEqual({ ok: true, label: 'Technique: Glow Jab (Glow Fist)', karma: 0, nuyen: 0 })
-  const m = made({ data: d => { const old = d.entry; d.entry = (k, id) => (k === 'martialarts' ? undefined : old(k, id)) } })
+  const m = made({
+    data: d => {
+      const old = d.entry
+      d.entry = (k, id) => (k === 'martialarts' ? undefined : old(k, id))
+    },
+  })
   const fallback = preview(learned, tech('crb.glow-jab'), m.data, m.cr)
   expect(fallback).toMatchObject({ ok: true, karma: 4 })
   const r = ok(learned, tech('crb.glow-jab'))
@@ -228,7 +297,7 @@ test('power points: bought only by those who pay for powers (a mystic adept), up
   expect(why(runner({ magic: 'full' }), { op: 'powerpoint' })).toBe('cannot-learn')
   const ma = runner({ magic: 'mystic-adept' })
   expect(why(ma, { op: 'powerpoint' })).toBe('ok:Power point')
-  ma.build.powerPointsBought = 1   // Magic 1
+  ma.build.powerPointsBought = 1 // Magic 1
   expect(why(ma, { op: 'powerpoint' })).toBe('at-maximum')
   const r = ok(runner({ magic: 'mystic-adept' }), { op: 'powerpoint' })
   expect(currentBuild(r).powerPointsBought).toBe(1)
@@ -237,7 +306,8 @@ test('power points: bought only by those who pay for powers (a mystic adept), up
 
 test('initiation: a mundane cannot; a metamagic must be the kind the path takes, from the catalog, and not taken twice', () => {
   expect(why(runner(), { op: 'initiate' })).toBe('mundane-cannot-initiate')
-  const mage = runner({ magic: 'full' }); mage.build.attributes.mag.points = 3
+  const mage = runner({ magic: 'full' })
+  mage.build.attributes.mag.points = 3
   const meta = (id: string, kind: 'metamagics' | 'echoes' = 'metamagics'): Sr6Advance => ({ op: 'initiate', line: { uid: '', kind, id } })
   expect(why(mage, meta('crb.quiet-loop', 'echoes'))).toBe('cannot-learn')
   expect(why(mage, meta('crb.nope'))).toBe('unknown-entry')
@@ -245,7 +315,8 @@ test('initiation: a mundane cannot; a metamagic must be the kind the path takes,
   mage.build.picks.push({ uid: 'm1', kind: 'metamagics', id: 'crb.soft-echo' })
   expect(why(mage, meta('crb.soft-echo'))).toBe('already-known')
   // a leveled metamagic goes up to its maximum, naming the level
-  const lv = runner({ magic: 'full' }); lv.build.attributes.mag.points = 4
+  const lv = runner({ magic: 'full' })
+  lv.build.attributes.mag.points = 4
   expect(why(lv, meta('crb.glow-point'))).toBe('ok:Initiation grade 1 (Glow Point 1)')
   lv.build.picks.push({ uid: 'm2', kind: 'metamagics', id: 'crb.glow-point.3' })
   expect(why(lv, meta('crb.glow-point'))).toBe('at-maximum')
@@ -253,16 +324,19 @@ test('initiation: a mundane cannot; a metamagic must be the kind the path takes,
   expect(why(lv, meta('crb.glow-point'))).toBe('ok:Initiation grade 1 (Glow Point 2)')
   expect(why(lv, meta('crb.glow-point.1'))).toBe('already-known')
   // the grade never goes past Magic
-  const capped = runner({ magic: 'full' }); capped.build.initiation = 1
+  const capped = runner({ magic: 'full' })
+  capped.build.initiation = 1
   expect(why(capped, { op: 'initiate' })).toBe('at-maximum')
 })
 
 test('submersion takes echoes only, and a repeated metamagic is levelled on replay', () => {
-  const tm = runner({ magic: 'technomancer' }); tm.build.attributes.res.points = 2
+  const tm = runner({ magic: 'technomancer' })
+  tm.build.attributes.res.points = 2
   expect(why(tm, { op: 'initiate', line: { uid: '', kind: 'metamagics', id: 'crb.soft-echo' } })).toBe('cannot-learn')
   const r = ok(tm, { op: 'initiate', line: { uid: '', kind: 'echoes', id: 'crb.quiet-loop' } })
   expect(currentBuild(r)).toMatchObject({ submersion: 1, picks: [{ kind: 'echoes', id: 'crb.quiet-loop', name: 'Quiet Loop' }] })
-  const b = blankBuild('karma'); b.magic = 'full'
+  const b = blankBuild('karma')
+  b.magic = 'full'
   applyAdvance(b, { op: 'initiate', line: { uid: 'u1', kind: 'metamagics', id: 'crb.glow-point', level: 1 } })
   applyAdvance(b, { op: 'initiate', line: { uid: 'u2', kind: 'metamagics', id: 'crb.glow-point' } })
   applyAdvance(b, { op: 'initiate' })
@@ -284,7 +358,11 @@ test('gear: a count of at least one, a catalog line, a rating it comes in, a gra
 
 test('dropping gear: only a line the runner has; a custom line is named as such', () => {
   const ch = runner()
-  ch.build.purchases.push(gear('crb.zap-gun'), { uid: 'c1', kind: 'gear', qty: 1, accessories: [] }, { uid: 'c2', kind: 'gear', name: 'Mine', qty: 1, accessories: [] })
+  ch.build.purchases.push(
+    gear('crb.zap-gun'),
+    { uid: 'c1', kind: 'gear', qty: 1, accessories: [] },
+    { uid: 'c2', kind: 'gear', name: 'Mine', qty: 1, accessories: [] },
+  )
   expect(why(ch, { op: 'drop', target: 'zz' })).toBe('unknown-line')
   expect(why(ch, { op: 'drop', target: 'g1' })).toBe('ok:Dropped: Zap Gun')
   expect(why(ch, { op: 'drop', target: 'c1' })).toBe('ok:Dropped: Custom item')
@@ -307,13 +385,17 @@ test('upgrading gear: a line the runner has, to a higher level of the same famil
   const r = ok(ch, up('g1', 'crb.tangle-rope.3'))
   expect(currentBuild(r).purchases[0]).toMatchObject({ uid: 'g1', id: 'crb.tangle-rope.3', name: 'Tangle Rope 3' })
   // an upgrade whose target is gone replays as nothing
-  const b = structuredClone(currentBuild(ch)); applyAdvance(b, { op: 'upgrade', target: 'zz', line: gear('crb.tangle-rope.3') })
+  const b = structuredClone(currentBuild(ch))
+  applyAdvance(b, { op: 'upgrade', target: 'zz', line: gear('crb.tangle-rope.3') })
   expect(b.purchases.map(x => x.id)).toEqual(['crb.tangle-rope.2', 'crb.zap-gun'])
 })
 
 test('a contact needs connection and loyalty of at least one; a typed label, else a name; the contact replaces itself by uid', () => {
   const ch = runner()
-  const c = (connection: number, loyalty: number, name = 'Mo'): Sr6Advance => ({ op: 'contact', line: { uid: 'k1', name, archetype: 'fixer', connection, loyalty } })
+  const c = (connection: number, loyalty: number, name = 'Mo'): Sr6Advance => ({
+    op: 'contact',
+    line: { uid: 'k1', name, archetype: 'fixer', connection, loyalty },
+  })
   expect(why(ch, c(0, 1))).toBe('below-one')
   expect(why(ch, c(1, 0))).toBe('below-one')
   expect(why(ch, c(1, 1))).toBe('ok:Contact: Mo')
@@ -322,7 +404,8 @@ test('a contact needs connection and loyalty of at least one; a typed label, els
   expect(why(ch, c(1, 1), made(), { karma: Number.NaN })).toBe('not-a-number')
   expect(why(ch, c(1, 1), made(), { karma: 500 })).toBe('not-enough-karma')
   expect(why(ch, c(1, 1), made(), { nuyen: 50000 })).toBe('not-enough-nuyen')
-  const one = ok(ch, c(1, 1)), two = ok(one, c(3, 4))
+  const one = ok(ch, c(1, 1)),
+    two = ok(one, c(3, 4))
   expect(currentBuild(two).contacts).toMatchObject([{ uid: 'k1', connection: 3, loyalty: 4 }])
 })
 
@@ -353,10 +436,14 @@ test('a placeholder SIN that is named keeps its lifestyles when replayed; a new 
   b.sins.push({ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true, lifestyles: [{ uid: 'l', id: 'crb.cozy', months: 2 }] })
   applyAdvance(b, { op: 'sin', line: { uid: 'ph', name: 'Ann', kind: 'real', licences: [] } })
   applyAdvance(b, { op: 'sin', line: { uid: 'n', name: 'Bo', kind: 'real', licences: [] } })
-  expect(b.sins).toMatchObject([{ uid: 'ph', name: 'Ann', lifestyles: [{ id: 'crb.cozy', months: 2 }] }, { uid: 'n', name: 'Bo' }])
+  expect(b.sins).toMatchObject([
+    { uid: 'ph', name: 'Ann', lifestyles: [{ id: 'crb.cozy', months: 2 }] },
+    { uid: 'n', name: 'Bo' },
+  ])
   expect(b.sins[0]).not.toHaveProperty('placeholder')
   // a placeholder with no lifestyles is replaced outright
-  const c = blankBuild('karma'); c.sins.push({ uid: 'ph', name: '', kind: 'real', licences: [] })
+  const c = blankBuild('karma')
+  c.sins.push({ uid: 'ph', name: '', kind: 'real', licences: [] })
   applyAdvance(c, { op: 'sin', line: { uid: 'ph', name: 'Ann', kind: 'real', licences: [] } })
   expect(c.sins).toEqual([{ uid: 'ph', name: 'Ann', kind: 'real', licences: [] }])
 })
@@ -370,7 +457,12 @@ test('a lifestyle: a SIN the runner has, a catalog lifestyle, at least a month, 
   expect(why(ch, ls({ months: 0 }))).toBe('below-one')
   expect(why(ch, ls())).toBe('ok:Lifestyle: Cozy × 1 month (Ann)')
   expect(why(ch, ls({ months: 2, sin: undefined }))).toBe('ok:Lifestyle: Cozy × 2 months')
-  const m = made({ data: d => { const old = d.entry; d.entry = (k, id) => (k === 'lifestyles' && id === 'crb.cozy' ? { ...old(k, id)!, attrs: { ...old(k, id)!.attrs, cost: 'varies' } } : old(k, id)) } })
+  const m = made({
+    data: d => {
+      const old = d.entry
+      d.entry = (k, id) => (k === 'lifestyles' && id === 'crb.cozy' ? { ...old(k, id)!, attrs: { ...old(k, id)!.attrs, cost: 'varies' } } : old(k, id))
+    },
+  })
   expect(why(ch, ls(), m)).toBe('book-value')
   const none = blankBuild('karma')
   applyAdvance(none, { op: 'lifestyle', id: 'crb.cozy', months: 1 })
@@ -397,7 +489,12 @@ test('the ledger reads as a history: labels, balances, voids, earnings and notes
   ch = ok(ch, { op: 'other' }, made(), { label: ' Odd job ', karma: 2, nuyen: -300 })
   const rows = ledgerRows(ch)
   expect(rows.map(r => ledgerLabel(r.e))).toEqual(['Creation finished', 'Earned: The Dock Job (2026-10-07)', 'Met a fixer', 'Odd job'])
-  expect(rows.map(r => [r.karma, r.nuyen])).toEqual([[100, 5000], [105, 5800], [105, 5800], [103, 6100]])
+  expect(rows.map(r => [r.karma, r.nuyen])).toEqual([
+    [100, 5000],
+    [105, 5800],
+    [105, 5800],
+    [103, 6100],
+  ])
   const v = voidEntry(ch, ch.ledger[1].id, 'wrong run', NOW)
   if (!v.ok) throw new Error(v.reason)
   expect(ledgerLabel(v.ch.ledger.at(-1)!)).toBe('Voided: wrong run')
@@ -416,6 +513,12 @@ test('Review in career: a negative balance is a warning on each of karma and nuy
   const voided = voidEntry(spent, earned.ledger[1].id, 'mistake', NOW)
   if (!voided.ok) throw new Error(voided.reason)
   const ch = voided.ch
-  expect(validateCareer(m.data, m.cr, ch).filter(v => v.code.startsWith('career.')).map(v => [v.code, v.severity, v.message]))
-    .toEqual([['career.karma', 'warning', 'The karma balance is below zero (-4).'], ['career.nuyen', 'warning', 'The nuyen balance is below zero (-9¥).']])
+  expect(
+    validateCareer(m.data, m.cr, ch)
+      .filter(v => v.code.startsWith('career.'))
+      .map(v => [v.code, v.severity, v.message]),
+  ).toEqual([
+    ['career.karma', 'warning', 'The karma balance is below zero (-4).'],
+    ['career.nuyen', 'warning', 'The nuyen balance is below zero (-9¥).'],
+  ])
 })

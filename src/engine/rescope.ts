@@ -10,7 +10,8 @@ import type { AmpEntry, Catalog, Character, ItemEntry } from '../model/types'
 function pickBest<T extends { source: string }>(c: Catalog, matches: T[]): T | undefined {
   return matches.reduce<T | undefined>((best, m) => {
     if (!best) return m
-    const mCanon = isCanon(c, m), bCanon = isCanon(c, best)
+    const mCanon = isCanon(c, m),
+      bCanon = isCanon(c, best)
     if (mCanon !== bCanon) return mCanon ? m : best
     return m.source.localeCompare(best.source) < 0 ? m : best
   }, undefined)
@@ -23,7 +24,10 @@ function rescopeAmp(c: Catalog, e: AmpEntry): AmpEntry {
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.amps.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)
-  const match = pickBest(c, [...c.amps.values()].filter(a => a.type === e.type && normalizeName(a.name) === name))
+  const match = pickBest(
+    c,
+    [...c.amps.values()].filter(a => a.type === e.type && normalizeName(a.name) === name),
+  )
   return match ? { ...e, catalogId: match.id } : e
 }
 
@@ -34,7 +38,10 @@ function rescopeItem(c: Catalog, e: ItemEntry): ItemEntry {
   const scoped = source ? `${source}.${e.catalogId}` : undefined
   if (scoped && c.items.has(scoped)) return { ...e, catalogId: scoped }
   const name = normalizeName(e.snapshot?.name ?? e.name)
-  const match = pickBest(c, [...c.items.values()].filter(i => i.kind === e.kind && normalizeName(i.name) === name))
+  const match = pickBest(
+    c,
+    [...c.items.values()].filter(i => i.kind === e.kind && normalizeName(i.name) === name),
+  )
   return match ? { ...e, catalogId: match.id } : e
 }
 
@@ -49,10 +56,17 @@ export function rescope(c: Catalog, ch: Character): Character {
   const amps = mapUnlessSame(ch.build.amps, e => rescopeAmp(c, e))
   const items = mapUnlessSame(ch.build.items, e => rescopeItem(c, e))
   const career = mapUnlessSame(ch.career, ev => {
-    if (ev.type === 'buy') { const item = rescopeItem(c, ev.item); return item === ev.item ? ev : { ...ev, item } }
-    if (ev.type === 'amp-add') { const amp = rescopeAmp(c, ev.amp); return amp === ev.amp ? ev : { ...ev, amp } }
+    if (ev.type === 'buy') {
+      const item = rescopeItem(c, ev.item)
+      return item === ev.item ? ev : { ...ev, item }
+    }
+    if (ev.type === 'amp-add') {
+      const amp = rescopeAmp(c, ev.amp)
+      return amp === ev.amp ? ev : { ...ev, amp }
+    }
     if (ev.type === 'amp-modify') {
-      const before = rescopeAmp(c, ev.before), after = rescopeAmp(c, ev.after)
+      const before = rescopeAmp(c, ev.before),
+        after = rescopeAmp(c, ev.after)
       return before === ev.before && after === ev.after ? ev : { ...ev, before, after }
     }
     return ev

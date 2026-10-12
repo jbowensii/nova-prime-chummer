@@ -11,23 +11,34 @@ import { GAME_KEY } from './session'
 const PW = { ada: 'ada-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-s0'
 const PHONE = { width: 390, height: 844 }
-let server: ReturnType<typeof createServer>, base = '', runner = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  runner = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-games-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-games-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.getByLabel('Username').fill(username)
@@ -47,7 +58,8 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.locator('.gamepick .brand-row .brand')).toHaveText('Chummer')
   await expect(page.locator('.gamepick .brand-row .ver')).toHaveText(/^v\d/)
   await expect(page.getByRole('link', { name: /Chummer/ })).toHaveCount(0)
-  const ca2 = page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }), sr6 = page.getByRole('button', { name: 'Shadowrun 6th World' })
+  const ca2 = page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }),
+    sr6 = page.getByRole('button', { name: 'Shadowrun 6th World' })
   // Shadowrun 6th World comes first (on the left)
   await expect(page.locator('.gamepick .game').first()).toHaveAccessibleName('Shadowrun 6th World')
   await expect(ca2).toHaveAccessibleDescription(/story-first/)
@@ -71,7 +83,16 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.getByRole('link', { name: 'Chummer Shadowrun 6' })).toHaveAttribute('href', '#/sr6')
   await signIn(page, 'ada')
   await expect(page.getByText('No runners yet.')).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup'])
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
+    'Your runners',
+    'NPCs & Critters',
+    'Compendiums',
+    'Campaigns',
+    'Books',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   await expect(page.getByRole('link', { name: 'Your runners' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('button', { name: 'Ask the rules' })).toHaveCount(0)
   await page.screenshot({ path: `${SHOTS}/sr6-shell.png`, fullPage: true })
@@ -105,8 +126,16 @@ test('the header switch changes game and is remembered across reloads', async ({
   // shows no header while its game data loads, so a one-shot read of the menu must come after the brand link
   await expect(page.getByRole('link', { name: 'Chummer Anarchy 2.0' })).toHaveAttribute('href', '#/')
   await expect(page.getByRole('button', { name: 'New runner' })).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label'))))
-    .toEqual(['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup'])
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
+    'Your runners',
+    'NPCs & Critters',
+    'Compendiums',
+    'Campaigns',
+    'Books',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   const toSr6 = page.getByRole('link', { name: 'Switch to Shadowrun 6' })
   await toSr6.hover()
   await page.screenshot({ path: `${SHOTS}/header-switch-anarchy.png`, clip: { x: 0, y: 0, width: 1400, height: 240 } })
@@ -153,6 +182,12 @@ test('a player sees no SR6 Books', async ({ page }) => {
   await page.goto('/#/sr6/books')
   await signIn(page, 'pat')
   await expect(page.getByText('No runners yet.')).toBeVisible()
-  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual(['Your runners', 'Campaigns', 'Rules', 'Game data', 'Table setup'])
+  expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
+    'Your runners',
+    'Campaigns',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
 })

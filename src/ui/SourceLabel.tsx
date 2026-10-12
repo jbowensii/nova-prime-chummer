@@ -21,9 +21,15 @@ export function SourceLabel(p: Props) {
   const edited = !!id && [c.amps, c.items, c.rules].some(m => m.get(id)?.edited)
   return (
     <span className="srcline">
-      <span className="src" title={title}>{source} p.{page}</span>
+      <span className="src" title={title}>
+        {source} p.{page}
+      </span>
       {s?.compendium ? <HouseChip name={s.name} /> : !isCanonSource(c, source) && <NonCanon source={source} />}
-      {dupe?.kind === 'book' && <span className="booktag" title={dupe.title}>{dupe.text}</span>}
+      {dupe?.kind === 'book' && (
+        <span className="booktag" title={dupe.title}>
+          {dupe.text}
+        </span>
+      )}
       {edited && <EditedMark />}
     </span>
   )

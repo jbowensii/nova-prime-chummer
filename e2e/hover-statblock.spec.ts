@@ -9,7 +9,8 @@ import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 
 const PW = 'pat-password-1'
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe('Shadowrun 6', () => {
   test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
@@ -24,7 +25,10 @@ test.describe('Shadowrun 6', () => {
     await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
     base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   })
-  test.afterAll(() => { server.stopJobs(); server.close() })
+  test.afterAll(() => {
+    server.stopJobs()
+    server.close()
+  })
 
   async function runner(page: Page) {
     await page.goto('/#/sr6')
@@ -41,12 +45,15 @@ test.describe('Shadowrun 6', () => {
   }
 
   test('a quality and a line of ware show their card on hover, on focus (Escape closes) and in the picker', async ({ page }) => {
-    const tabs = await runner(page), work = page.locator('main.work'), dlg = page.getByRole('dialog'), card = page.getByRole('tooltip')
+    const tabs = await runner(page),
+      work = page.locator('main.work'),
+      dlg = page.getByRole('dialog'),
+      card = page.getByRole('tooltip')
 
     // the picker: hovering an item shows its card, as does the item having focus
     await tabs.filter({ hasText: 'Qualities' }).click()
     await work.getByRole('button', { name: 'Add a positive quality…' }).click()
-    const item = dlg.getByRole('option').filter({ hasText: 'Lucky Streak 1' })  // (one entry per level, levels.ts)
+    const item = dlg.getByRole('option').filter({ hasText: 'Lucky Streak 1' }) // (one entry per level, levels.ts)
     await item.locator('b').hover()
     await expect(card).toContainText('CRB p.70')
     await expect(card).toContainText('karma 4')
@@ -60,7 +67,7 @@ test.describe('Shadowrun 6', () => {
     // the taken quality: hover, then focus and Escape
     const name = work.locator('.entry-ref', { hasText: 'Lucky Streak' })
     await name.hover()
-    await expect(card).toContainText('level 1')  // (one entry per level: its family and level, levels.ts)
+    await expect(card).toContainText('level 1') // (one entry per level: its family and level, levels.ts)
     await page.mouse.move(0, 0)
     await expect(card).toHaveCount(0)
     await name.focus()
@@ -84,7 +91,8 @@ test.describe('Shadowrun 6', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 400, height: 860 } })
     test('a tap opens the card and a second tap closes it', async ({ page }) => {
       await runner(page)
-      const work = page.locator('main.work'), card = page.getByRole('tooltip')
+      const work = page.locator('main.work'),
+        card = page.getByRole('tooltip')
       await page.goto(page.url().replace(/\/concept$/, '/skills'))
       const skill = work.locator('.entry-ref').first()
       await skill.tap()

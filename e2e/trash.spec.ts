@@ -11,7 +11,8 @@ import { anarchyState } from './session'
 const PW = { ada: 'ada-password-1', pat: 'pat-password-1', kim: 'kim-password-1' }
 const SHOTS = '.extract/screenshots/0.4.4'
 const PHONE = { width: 390, height: 844 }
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
@@ -20,15 +21,29 @@ test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-trash-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }, { username: 'kim', password: PW.kim, role: 'player', name: 'Kim Player' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+      { username: 'kim', password: PW.kim, role: 'player', name: 'Kim Player' },
+    ]),
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.goto('/')
@@ -47,12 +62,19 @@ async function newRunner(page: Page, name: string) {
 }
 async function remove(page: Page, name: string) {
   await page.locator('.dossier', { hasText: name }).getByRole('button', { name: 'Delete' }).click()
-  await page.getByRole('dialog', { name: `Delete ${name}?` }).getByRole('button', { name: 'Delete runner' }).click()
+  await page
+    .getByRole('dialog', { name: `Delete ${name}?` })
+    .getByRole('button', { name: 'Delete runner' })
+    .click()
   await expect(page.getByRole('link', { name, exact: true })).toBeHidden()
 }
 /** Light, dark and phone (dark) screenshots of the page as it is. */
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')

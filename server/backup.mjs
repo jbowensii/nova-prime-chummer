@@ -25,7 +25,10 @@ export function backupApi(ctx) {
   /** Tokens for a made backup or data pack (downloads, packs) and an uploaded one (uploads, packUploads): random, single
    *  use, and each map holds one at a time (a new one drops the old). The path is deleted on expiry, on replacement and on stop; on use, by the caller.
    *  A token works only for the account that was given it (`user`: its id; undefined: expiry and stop). */
-  const downloads = new Map(), uploads = new Map(), packs = new Map(), packUploads = new Map() // token -> { path, timer, user }
+  const downloads = new Map(),
+    uploads = new Map(),
+    packs = new Map(),
+    packUploads = new Map() // token -> { path, timer, user }
   const take = (map, token, user) => {
     const t = map.get(token)
     if (!t || (user !== undefined && t.user !== user)) return null
@@ -50,8 +53,10 @@ export function backupApi(ctx) {
     if (lock.zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
     if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
     lock.zipping++
-    const folder = join(backups, `download-${randomBytes(12).toString('hex')}`), out = join(folder, 'backup.zip')
-    let gone = false, r
+    const folder = join(backups, `download-${randomBytes(12).toString('hex')}`),
+      out = join(folder, 'backup.zip')
+    let gone = false,
+      r
     res.on('close', () => {
       if (res.writableFinished) return
       gone = true
@@ -59,9 +64,13 @@ export function backupApi(ctx) {
     })
     try {
       await mkdir(folder, { recursive: true })
-      r = await importer(['backup', ...dirArgs(), '--out', out, ...(url.searchParams.get('keys') === '1' ? ['--keys'] : [])],
-        { timeout: RESTORE_TIMEOUT, tag: out })
-    } finally { lock.zipping-- }
+      r = await importer(['backup', ...dirArgs(), '--out', out, ...(url.searchParams.get('keys') === '1' ? ['--keys'] : [])], {
+        timeout: RESTORE_TIMEOUT,
+        tag: out,
+      })
+    } finally {
+      lock.zipping--
+    }
     if (gone || r.code !== 0) {
       await rm(folder, { recursive: true, force: true }).catch(() => {}) // after the process has let go of its files (Windows)
       return gone ? undefined : send(res, 500, { error: 'couldn’t make the backup: ' + (await redact(r.err)).trim().split('\n').pop() })
@@ -75,9 +84,14 @@ export function backupApi(ctx) {
     const folder = /^[0-9a-f]{32}$/.test(token) ? take(kind === 'backup' ? downloads : packs, token, who.id) : null
     if (!folder) throw fail(404, kind === 'backup' ? 'this backup has expired; make it again' : 'this data pack has expired; make it again')
     res.on('close', () => void rm(folder, { recursive: true, force: true }).catch(() => {}))
-    const out = join(folder, `${kind}.zip`), date = new Date().toISOString().slice(0, 10)
-    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Length': (await stat(out)).size,
-      'Content-Disposition': `attachment; filename="chummer-anarchy2-${kind}-${date}.zip"`, 'Cache-Control': 'no-store' })
+    const out = join(folder, `${kind}.zip`),
+      date = new Date().toISOString().slice(0, 10)
+    res.writeHead(200, {
+      'Content-Type': 'application/zip',
+      'Content-Length': (await stat(out)).size,
+      'Content-Disposition': `attachment; filename="chummer-anarchy2-${kind}-${date}.zip"`,
+      'Cache-Control': 'no-store',
+    })
     await pipeline(createReadStream(out), res).catch(() => {}) // a client that leaves mid-way: 'close' removes the folder
   }
 
@@ -96,11 +110,23 @@ export function backupApi(ctx) {
       if (r.code === 3) throw fail(400, (await redact(r.err)).trim().split('\n').pop() || 'this file isn’t a backup from this app')
       const m = rootTag(r.out, 'backup')
       if (r.code !== 0 || !m) throw Object.assign(fail(500, 'couldn’t check the file: ' + (await redact(r.err)).trim().split('\n').pop()), { say: true })
-      const folders = Object.fromEntries([...r.out.matchAll(/<folder\b[^>]*>/g)].map(f => [attr(f[0], 'name'), { files: Number(attr(f[0], 'files')), bytes: Number(attr(f[0], 'bytes')) }]))
+      const folders = Object.fromEntries(
+        [...r.out.matchAll(/<folder\b[^>]*>/g)].map(f => [attr(f[0], 'name'), { files: Number(attr(f[0], 'files')), bytes: Number(attr(f[0], 'bytes')) }]),
+      )
       const token = await issue(uploads, file, restoreTtl, who.id)
-      return send(res, 200, { token, manifest: { app: attr(m, 'app'), created: attr(m, 'created'), keys: attr(m, 'keys') === 'yes',
-        users: Number(attr(m, 'users')), authSecret: attr(m, 'authSecret') === 'yes',
-        files: Number(attr(m, 'files')), bytes: Number(attr(m, 'bytes')), folders } })
+      return send(res, 200, {
+        token,
+        manifest: {
+          app: attr(m, 'app'),
+          created: attr(m, 'created'),
+          keys: attr(m, 'keys') === 'yes',
+          users: Number(attr(m, 'users')),
+          authSecret: attr(m, 'authSecret') === 'yes',
+          files: Number(attr(m, 'files')),
+          bytes: Number(attr(m, 'bytes')),
+          folders,
+        },
+      })
     } catch (e) {
       await rm(file, { force: true })
       if (e.code === 413) res.setHeader('Connection', 'close')
@@ -138,12 +164,16 @@ export function backupApi(ctx) {
    *  starts like a zip. The caller removes the file on failure. */
   async function receiveZip(req, file, max, big, notZip) {
     let size = 0
-    await pipeline(req, async function* (src) {
-      for await (const c of src) {
-        if ((size += c.length) > max) throw fail(413, big)
-        yield c
-      }
-    }, createWriteStream(file, { flags: 'wx', mode: 0o600 }))
+    await pipeline(
+      req,
+      async function* (src) {
+        for await (const c of src) {
+          if ((size += c.length) > max) throw fail(413, big)
+          yield c
+        }
+      },
+      createWriteStream(file, { flags: 'wx', mode: 0o600 }),
+    )
     if ((await head(file))?.slice(0, 4) !== 'PK\x03\x04') throw fail(415, notZip)
   }
 
@@ -193,11 +223,17 @@ export function backupApi(ctx) {
       if (r.code !== 0 || !out) return send(res, 500, { error: `couldn’t load the data pack (${why})` })
       // the core now comes from the pack: the start-up re-import leaves it alone (rebuildCore)
       const files = (attr(out, 'files') ?? '').split(' ').filter(Boolean)
-      try { // the pack is in: a failed mark is logged, not reported as a failed upload
+      try {
+        // the pack is in: a failed mark is logged, not reported as a failed upload
         const crb = (await ctx.coreBooks()).find(b => b.order === 0)
-        if (crb) await writeAtomic(join(libraryDir, crb.id, 'core-rebuild.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${
-          esc(crb.sha)}" pack="${new Date().toISOString()}" files="${esc(files.join(' '))}"/>\n`)
-      } catch (e) { console.error(`the data pack is loaded, but the start-up re-import mark wasn’t written: ${e.message}`) }
+        if (crb)
+          await writeAtomic(
+            join(libraryDir, crb.id, 'core-rebuild.xml'),
+            `<?xml version="1.0" encoding="UTF-8"?>\n<rebuild sha256="${esc(crb.sha)}" pack="${new Date().toISOString()}" files="${esc(files.join(' '))}"/>\n`,
+          )
+      } catch (e) {
+        console.error(`the data pack is loaded, but the start-up re-import mark wasn’t written: ${e.message}`)
+      }
       await ctx.dropCoreAi(files).catch(e => console.error(`the data pack is loaded, but a book still says it read a table by AI: ${e.message}`))
       return send(res, 200, { files })
     } finally {
@@ -229,12 +265,17 @@ export function backupApi(ctx) {
     void ctx.rebuildCore().catch(e => console.error(e.stack)) // a backup from before the core data was imported
     const why = (await redact(r.err)).trim().split('\n').pop()
     if (r.code === 3) throw fail(400, why || 'the backup was refused')
-    if (r.code !== 0) return send(res, 500, { error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in library/.backups` })
+    if (r.code !== 0)
+      return send(res, 500, {
+        error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in library/.backups`,
+      })
     return send(res, 200, { ok: true })
   }
 
   /** Shutdown: pending restore uploads and unfetched backups and packs are deleted. */
-  const stop = () => { for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true }) }
+  const stop = () => {
+    for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
+  }
 
   return { makeBackup, sendZip, preview, restore, makePack, previewPack, loadPack, stop }
 }

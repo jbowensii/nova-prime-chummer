@@ -8,9 +8,17 @@ import { cat } from '../helpers'
 const codes = (ch: Parameters<typeof validate>[1]) => validate(cat, ch).map(v => v.code)
 
 // CRB p.81: dice pool band (low, high) -> average hits at RR 0..3
-const TABLE: [number, number, number[]][] = [[2, 4, [2, 3, 4, 5]], [5, 7, [3, 4, 5, 6]], [8, 10, [4, 5, 6, 7]], [11, 13, [5, 6, 7, 8]], [14, 16, [6, 7, 8, 9]]]
+const TABLE: [number, number, number[]][] = [
+  [2, 4, [2, 3, 4, 5]],
+  [5, 7, [3, 4, 5, 6]],
+  [8, 10, [4, 5, 6, 7]],
+  [11, 13, [5, 6, 7, 8]],
+  [14, 16, [6, 7, 8, 9]],
+]
 test.each(TABLE.flatMap(([lo, hi, row]) => [lo, hi].flatMap(dp => row.map((want, rr) => [dp, rr, want] as const))))(
-  'averageHits(%i, RR %i) = %i', (dp, rr, want) => expect(averageHits(dp, rr)).toBe(want))
+  'averageHits(%i, RR %i) = %i',
+  (dp, rr, want) => expect(averageHits(dp, rr)).toBe(want),
+)
 test('averageHits holds across each whole band', () => {
   for (const [lo, hi, row] of TABLE) for (let dp = lo; dp <= hi; dp++) row.forEach((w, rr) => expect(averageHits(dp, rr)).toBe(w))
 })
@@ -24,7 +32,9 @@ test('npcPoolLabel', () => {
 })
 
 test('blankNpc: npc block, no gear, no metatype for critters and spirits unless given', () => {
-  const n = blankNpc('npc', 'regular'), c = blankNpc('critter', 'prime'), s = blankNpc('spirit', 'regular', 'spirit-x')
+  const n = blankNpc('npc', 'regular'),
+    c = blankNpc('critter', 'prime'),
+    s = blankNpc('spirit', 'regular', 'spirit-x')
   expect(isNpc(n) && isNpc(c)).toBe(true)
   expect(isNpc(blankCharacter())).toBe(false)
   expect(n.npc).toEqual({ kind: 'npc', tier: 'regular' })
@@ -36,7 +46,11 @@ test('blankNpc: npc block, no gear, no metatype for critters and spirits unless 
 
 test('a regular NPC skips budget, caps, basics and narrative but keeps structural checks', () => {
   const ch = blankNpc('npc', 'regular')
-  ch.build.skills = [{ id: 'stealth', rating: 12, specs: [] }, { id: 'sorcery', rating: 3, specs: [] }, { id: 'athletics', rating: 0, specs: ['no-such'] }]
+  ch.build.skills = [
+    { id: 'stealth', rating: 12, specs: [] },
+    { id: 'sorcery', rating: 3, specs: [] },
+    { id: 'athletics', rating: 0, specs: ['no-such'] },
+  ]
   ch.build.attributes = { str: 5, agi: 5, wil: 5, log: 2, cha: 2 }
   ch.build.items = [{ uid: 'x', kind: 'gear', name: 'Ghost', catalogId: 'no-such-thing' }]
   ch.level = 'no-such-level'

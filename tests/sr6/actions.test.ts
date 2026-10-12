@@ -11,8 +11,11 @@ import { buildOf, GLIM, made, STONE } from './fixture'
 type Over = Parameters<typeof made>[0]
 function runner(o: { method?: Sr6Method; letters?: string; metatype?: string; magic?: MagicKind; over?: Over } = {}) {
   const ch: Sr6Character = blankSr6(o.method ?? 'priority', 'r1', '2026-10-03T00:00:00Z')
-  ch.build = buildOf(o.method ?? 'priority', { letters: o.letters ?? (o.method && o.method !== 'priority' ? undefined : 'CABDA'),
-    metatype: o.metatype ?? GLIM, magic: o.magic ?? 'mundane' })
+  ch.build = buildOf(o.method ?? 'priority', {
+    letters: o.letters ?? (o.method && o.method !== 'priority' ? undefined : 'CABDA'),
+    metatype: o.metatype ?? GLIM,
+    magic: o.magic ?? 'mundane',
+  })
   ch.identity.metatype = ch.build.metatype
   const { data, cr } = made(o.over)
   const act = (op: Op) => apply(ch.build, op, data, cr)
@@ -51,7 +54,14 @@ test('priority ↔ sum-to-ten keeps the letters; leaving lifepath drops the modu
 })
 
 test('a metatype letter that no longer offers the metatype clears it and its traits', () => {
-  const { ch, b, data, cr } = runner({ metatype: STONE, over: { data: d => { delete d.priorities.D!.metatypes[STONE] } } })
+  const { ch, b, data, cr } = runner({
+    metatype: STONE,
+    over: {
+      data: d => {
+        delete d.priorities.D!.metatypes[STONE]
+      },
+    },
+  })
   setMetatype(ch, STONE, data)
   expect(b.qualities.map(q => q.id)).toEqual(['crb.stoneskin'])
   setPriority(ch, 'metatype', 'D', data, cr)
@@ -118,7 +128,13 @@ test('a metatype swap moves the free traits and keeps the paid qualities; a free
 })
 
 test('a quality priced in a range takes the karma chosen within it; one with a single price refuses it', () => {
-  const { b, act } = runner({ over: { data: d => { d.qualities['crb.butterfingers'].karmaMax = 14 } } })
+  const { b, act } = runner({
+    over: {
+      data: d => {
+        d.qualities['crb.butterfingers'].karmaMax = 14
+      },
+    },
+  })
   expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 12 })).toEqual(ok)
   expect(act({ op: 'quality', id: 'crb.butterfingers', karma: 13 })).toEqual(ok)
   expect(b.qualities.map(q => [q.id, q.level, q.karma])).toEqual([['crb.butterfingers', 1, 13]])
@@ -221,11 +237,20 @@ test('adept powers: a power without levels twice is a duplicate; a leveled one r
   expect(act({ op: 'pick', remove: b.picks[1].uid })).toEqual(ok)
   expect(b.picks.map(x => x.name)).toEqual(['Quick Step 1'])
   // a power taken by level with no printed maximum stays one entry, its level on the line
-  const open = runner({ magic: 'adept', letters: 'CBBDE', over: { data: d => {
-    d.powers['crb.static-veil'] = { id: 'crb.static-veil', name: 'Static Veil', cost: 0.5, perLevel: true, maxLevel: 2, page: 1 }
-    const e = d.entry
-    d.entry = (k, id) => (id === 'crb.static-veil' ? { id, kind: 'adeptpowers', name: 'Static Veil', source: 'CRB', page: 1, attrs: { perLevel: 'true', maxLevel: '2' }, parts: [], text: '' } : e(k, id))
-  } } })
+  const open = runner({
+    magic: 'adept',
+    letters: 'CBBDE',
+    over: {
+      data: d => {
+        d.powers['crb.static-veil'] = { id: 'crb.static-veil', name: 'Static Veil', cost: 0.5, perLevel: true, maxLevel: 2, page: 1 }
+        const e = d.entry
+        d.entry = (k, id) =>
+          id === 'crb.static-veil'
+            ? { id, kind: 'adeptpowers', name: 'Static Veil', source: 'CRB', page: 1, attrs: { perLevel: 'true', maxLevel: '2' }, parts: [], text: '' }
+            : e(k, id)
+      },
+    },
+  })
   expect(open.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.static-veil' })).toEqual(ok)
   expect(open.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.static-veil' })).toEqual(ok)
   expect(open.b.picks[0]).toMatchObject({ id: 'crb.static-veil', level: 2 })
@@ -261,7 +286,10 @@ test('rated gear stacks by id and rating; a rating outside the range or an ungra
   act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2 })
   act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope.3' })
   act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, qty: 2 })
-  expect(b.purchases.map(x => [x.id, x.rating, x.qty])).toEqual([['crb.tangle-rope.2', undefined, 3], ['crb.tangle-rope.3', undefined, 1]])
+  expect(b.purchases.map(x => [x.id, x.rating, x.qty])).toEqual([
+    ['crb.tangle-rope.2', undefined, 3],
+    ['crb.tangle-rope.3', undefined, 1],
+  ])
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 5 })).toEqual(no('rating-range'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'delta' })).toEqual(no('unknown-grade'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 2, grade: 'alpha' })).toEqual(ok)
@@ -276,7 +304,7 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
   const [eyes, gun] = b.purchases
   expect(act({ op: 'rate', uid: eyes.uid, rating: 3 })).toEqual(ok)
   expect(act({ op: 'rate', uid: eyes.uid, grade: 'standard' })).toEqual(ok)
-  expect(b.purchases[0]).toMatchObject({ uid: eyes.uid, id: 'crb.glow-eyes.3', grade: 'standard' })  // (the rating's entry, levels.ts)
+  expect(b.purchases[0]).toMatchObject({ uid: eyes.uid, id: 'crb.glow-eyes.3', grade: 'standard' }) // (the rating's entry, levels.ts)
   expect(act({ op: 'rate', uid: eyes.uid, grade: null })).toEqual(ok)
   expect(b.purchases[0].grade).toBeUndefined()
   expect(act({ op: 'rate', uid: eyes.uid, rating: 9 })).toEqual(no('rating-range'))
@@ -287,18 +315,38 @@ test('a line’s rating and grade change in place; out of range, an unset grade 
 })
 
 test('only cyberware and bioware come in grades: one on geneware is taken, an error a GM may approve; gear is refused one', () => {
-  const genes = { id: 'crb.glow-genes', kind: 'augmentations' as const, name: 'Glow Genes', source: 'CRB', page: 1,
-    attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' }, parts: [], text: '' }
+  const genes = {
+    id: 'crb.glow-genes',
+    kind: 'augmentations' as const,
+    name: 'Glow Genes',
+    source: 'CRB',
+    page: 1,
+    attrs: { type: 'geneware', category: 'made-up', essence: '0.1', cost: '900' },
+    parts: [],
+    text: '',
+  }
   const dark = { ...genes, id: 'crb.dark-genes', name: 'Dark Genes' }
-  const { ch, b, data, cr, act } = runner({ over: { data: d => { const old = d.entry; d.entry = (k, id) => (id === genes.id ? genes : id === dark.id ? dark : old(k, id)) } } })
+  const { ch, b, data, cr, act } = runner({
+    over: {
+      data: d => {
+        const old = d.entry
+        d.entry = (k, id) => (id === genes.id ? genes : id === dark.id ? dark : old(k, id))
+      },
+    },
+  })
   expect(act({ op: 'purchase', kind: 'augmentations', id: genes.id, grade: 'alpha' })).toEqual(ok)
   expect(act({ op: 'purchase', kind: 'augmentations', id: dark.id })).toEqual(ok)
   expect(act({ op: 'rate', uid: b.purchases[1].uid, grade: 'alpha' })).toEqual(ok)
   const v = validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade')
-  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual([0, 1].map(i =>
-    ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, `${['Glow', 'Dark'][i]} Genes (geneware) doesn’t come in Alpha.`]))
+  expect(v.map(x => [x.severity, x.path, x.source, x.page, x.message])).toEqual(
+    [0, 1].map(i => ['error', `augmentations.${b.purchases[i].uid}`, 'CRB', 283, `${['Glow', 'Dark'][i]} Genes (geneware) doesn’t come in Alpha.`]),
+  )
   ch.overrides = [{ code: 'gear.grade', path: v[0].path, note: 'GM ok' }]
-  expect(validateSr6(data, cr, ch).filter(x => x.code === 'gear.grade').map(x => !!x.approved)).toEqual([true, false])
+  expect(
+    validateSr6(data, cr, ch)
+      .filter(x => x.code === 'gear.grade')
+      .map(x => !!x.approved),
+  ).toEqual([true, false])
   expect(act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 2, grade: 'alpha' })).toEqual(no('no-grade'))
   expect(act({ op: 'purchase', kind: 'augmentations', id: 'crb.spring-tendons', rating: 1, grade: 'alpha' })).toEqual(ok)
 })
@@ -335,7 +383,10 @@ test('contacts and knowledge are added, changed and removed by uid', () => {
   expect(b.contacts).toEqual([])
   expect(act({ op: 'knowledge', name: 'Sewer Maps', kind: 'knowledge' })).toEqual(ok)
   expect(act({ op: 'knowledge', name: 'Gutterspeak', kind: 'language', native: true })).toEqual(ok)
-  expect(b.knowledge.map(k => [k.name, k.points])).toEqual([['Sewer Maps', 1], ['Gutterspeak', 0]])
+  expect(b.knowledge.map(k => [k.name, k.points])).toEqual([
+    ['Sewer Maps', 1],
+    ['Gutterspeak', 0],
+  ])
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[0].uid, pool: 'karma', delta: 2 })).toEqual(ok)
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 1 })).toEqual(no('native'))
   expect(act({ op: 'knowledge', remove: b.knowledge[1].uid })).toEqual(ok)
@@ -357,7 +408,7 @@ test('a lifestyle belongs to a SIN: added, changed and removed on it; a SIN has 
   expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 0 })).toEqual(no('below-one'))
   expect(act({ op: 'lifestyle', sin: fake.uid, uid: l.uid, months: 5 })).toEqual(ok)
   expect(fake.lifestyles).toEqual([{ uid: l.uid, id: 'crb.cozy', months: 5 }])
-  expect(real.lifestyles).toBeUndefined()  // a SIN may have none
+  expect(real.lifestyles).toBeUndefined() // a SIN may have none
   expect(act({ op: 'lifestyle', sin: fake.uid, remove: l.uid })).toEqual(ok)
   expect(fake.lifestyles).toBeUndefined()
   expect(act({ op: 'sin', uid: fake.uid, gender: '' })).toEqual(ok)
@@ -367,14 +418,28 @@ test('a lifestyle belongs to a SIN: added, changed and removed on it; a SIN has 
 test('a placeholder SIN is free; naming it or setting its kind makes it a normal SIN, a gender alone doesn’t', () => {
   const { b, data, cr, act } = runner()
   const p = makeProvider(b.method, data, cr)
-  const holder = () => ({ uid: 'ph', name: '', kind: 'real' as const, licences: [], placeholder: true as const, lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  const holder = () => ({
+    uid: 'ph',
+    name: '',
+    kind: 'real' as const,
+    licences: [],
+    placeholder: true as const,
+    lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }],
+  })
   b.sins = [holder()]
   const lines = () => nuyenBudget(b, data, cr, p).breakdown.filter(l => l.key.startsWith('sin:') || l.key.startsWith('lifestyle:'))
   expect(lines()).toEqual([{ key: 'lifestyle:l1', label: 'Cozy lifestyle × 1 month (Unnamed SIN)', amount: 2500, sign: 'spend', tab: 'contacts' }])
   expect(act({ op: 'sin', uid: 'ph', gender: 'Other' })).toEqual(ok)
   expect(b.sins[0].placeholder).toBe(true)
   expect(act({ op: 'sin', uid: 'ph', name: 'Jo Placeholder' })).toEqual(ok)
-  expect(b.sins[0]).toEqual({ uid: 'ph', name: 'Jo Placeholder', kind: 'real', gender: 'Other', licences: [], lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }] })
+  expect(b.sins[0]).toEqual({
+    uid: 'ph',
+    name: 'Jo Placeholder',
+    kind: 'real',
+    gender: 'Other',
+    licences: [],
+    lifestyles: [{ uid: 'l1', id: 'crb.cozy', months: 1 }],
+  })
   // made fake: rating 1, priced as any fake SIN; back to real drops the rating
   b.sins = [holder()]
   expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(ok)
@@ -407,7 +472,9 @@ test('life modules: a mixed choice is stored by its index; a module twice only a
   const mundane = runner({ method: 'lifepath' })
   expect(mundane.act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(ok)
   const v = validateSr6(mundane.data, mundane.cr, mundane.ch).filter(x => x.code === 'lifepath.requires')
-  expect(v.map(x => [x.severity, x.path, x.message])).toEqual([['error', 'method.crb.glow-apprentice', 'Glow Apprentice is for an awakened runner, not a mundane.']])
+  expect(v.map(x => [x.severity, x.path, x.message])).toEqual([
+    ['error', 'method.crb.glow-apprentice', 'Glow Apprentice is for an awakened runner, not a mundane.'],
+  ])
   expect(v[0].page).toBeGreaterThan(0)
   mundane.ch.overrides = [{ code: 'lifepath.requires', path: 'method.crb.glow-apprentice', note: 'GM ok' }]
   expect(validateSr6(mundane.data, mundane.cr, mundane.ch).find(x => x.code === 'lifepath.requires')?.approved).toBe(true)
@@ -417,13 +484,16 @@ test('life modules: a mixed choice is stored by its index; a module twice only a
 test('life modules: one taken twice keeps a choice per copy; remove takes the one asked for', () => {
   const { b, act } = runner({ method: 'lifepath', magic: 'full' })
   for (const id of ['crb.glow-apprentice', 'crb.wage-drone', 'crb.glow-apprentice']) expect(act({ op: 'lifemodule', id })).toEqual(ok)
-  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('already-taken'))  // a third time
-  expect(act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('already-taken'))  // a second doubled module
+  expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice' })).toEqual(no('already-taken')) // a third time
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(no('already-taken')) // a second doubled module
   expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'edg', at: 2 })).toEqual(ok)
   expect(act({ op: 'lifemodule', id: 'crb.glow-apprentice', choice: 0, pick: 'agi', at: 1 })).toEqual(no('not-taken'))
   expect(b.lifepath.map(m => m.choices)).toEqual([{}, {}, { 0: 'edg' }])
   expect(act({ op: 'lifemodule', remove: 'crb.glow-apprentice', at: 0 })).toEqual(ok)
-  expect(b.lifepath).toEqual([{ id: 'crb.wage-drone', choices: {} }, { id: 'crb.glow-apprentice', choices: { 0: 'edg' } }])
+  expect(b.lifepath).toEqual([
+    { id: 'crb.wage-drone', choices: {} },
+    { id: 'crb.glow-apprentice', choices: { 0: 'edg' } },
+  ])
 })
 
 test('the best attribute: a core attribute, lifepath only; none clears the extra', () => {

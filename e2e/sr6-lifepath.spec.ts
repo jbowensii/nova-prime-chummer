@@ -12,7 +12,9 @@ import { savedOnServer } from './session'
 // points). All names made up.
 const PW = 'ada-password-1'
 const SHOTS = '.extract/screenshots/sr6-lifepath'
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
@@ -30,7 +32,10 @@ test.beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 test('lifepath: opening modules, the best attribute, a module twice, typed contact points and karma past them', async ({ page }) => {
   await page.goto('/#/sr6')
@@ -44,7 +49,8 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await dlg.getByRole('button', { name: 'Create runner' }).click()
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), budgets = page.getByRole('complementary', { name: 'Budgets' })
+  const work = page.locator('main.work'),
+    budgets = page.getByRole('complementary', { name: 'Budgets' })
 
   // Creation method: the metatype (its karma), the opening modules, the best attribute and where its rest goes
   await tabs.filter({ hasText: 'Creation method' }).click()
@@ -52,7 +58,7 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await expect(work).toContainText('Cradle Days')
   await expect(work).toContainText('First Hustle 3 skill points, 12,000¥, 2 contact points')
   await page.getByLabel('Best attribute', { exact: true }).selectOption('str')
-  await page.getByLabel('Best attribute rest').selectOption('agi')  // Glimmerkin STR 1–4: 3 of the 4, 1 on AGI
+  await page.getByLabel('Best attribute rest').selectOption('agi') // Glimmerkin STR 1–4: 3 of the 4, 1 on AGI
 
   // seven adult modules, Dock Hand twice (a choice per copy); a third copy and a second doubled module aren't offered
   await page.getByRole('button', { name: 'Add Dock Hand' }).click()
@@ -61,7 +67,7 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await expect(page.getByRole('button', { name: 'Add Dock Hand' })).toHaveCount(0)
   for (const m of ['Clinic Aide', 'Wire Monkey', 'Night Market', 'Rooftop Chase', 'Odd Jobs']) {
     await page.getByRole('button', { name: `Add ${m}` }).click()
-    await expect(page.getByRole('button', { name: `Add ${m}` })).toHaveCount(0)  // no second doubled module
+    await expect(page.getByRole('button', { name: `Add ${m}` })).toHaveCount(0) // no second doubled module
   }
   await expect(page.getByRole('heading', { name: 'Adult modules: 7 of 7' })).toBeVisible()
   // awakened only: offered to this mundane runner too, marked (taken, it is a Review error)
@@ -78,7 +84,7 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await expect(work.getByRole('heading', { name: 'Attributes', exact: true })).toBeVisible()
   await expect(work.locator('tr', { hasText: 'Strength' })).toContainText('4 max')
   await expect(work.locator('tr', { hasText: 'Agility' }).locator('td.num').first()).toHaveText('2')
-  await expect(page.getByText('Attribute points:')).toContainText('4 left of 4')  // Rooftop Chase 2, both Dock Hand choices
+  await expect(page.getByText('Attribute points:')).toContainText('4 left of 4') // Rooftop Chase 2, both Dock Hand choices
 
   // Contacts: street points for a street contact, medical (and any-type) for a medical one, a rating past them in karma
   await tabs.filter({ hasText: 'Contacts & lifestyle' }).click()
@@ -93,11 +99,11 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await page.getByLabel('Contact 2 type 1').selectOption('medical')
   await page.getByRole('button', { name: 'Raise Contact 2 connection' }).click()
   await page.getByRole('button', { name: 'Raise Contact 2 loyalty' }).click()
-  await expect(work).toContainText('2 left of 12')  // Wire Monkey's matrix and engineering points
+  await expect(work).toContainText('2 left of 12') // Wire Monkey's matrix and engineering points
   await expect(work).not.toContainText('Ratings past the points')
   await page.getByRole('button', { name: 'Raise Contact 2 loyalty' }).click()
   await expect(work).toContainText('Ratings past the points: 2 karma.')
-  await expect(budgets.locator('details', { hasText: 'Karma' }).locator('summary')).toContainText('31left of 40')  // Glimmerkin 7, the rating 2
+  await expect(budgets.locator('details', { hasText: 'Karma' }).locator('summary')).toContainText('31left of 40') // Glimmerkin 7, the rating 2
   await page.screenshot({ path: `${SHOTS}/contacts.png`, fullPage: true })
 
   // the contacts table fits: both type selects side by side, Remove inside the box, no sideways scroll (desktop to phone)
@@ -123,7 +129,8 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   for (const t of ['adult life modules taken', 'taken twice', 'best attribute', 'reaches its maximum', 'Contact points overspent'])
     await expect(work).not.toContainText(t)
   await savedOnServer(page, /bestAttr="str" bestExtra="agi"/)
-  const folder = join(dir, 'characters', 'sr6', 'ada'), xml = readFileSync(join(folder, readdirSync(folder)[0]), 'utf8')
+  const folder = join(dir, 'characters', 'sr6', 'ada'),
+    xml = readFileSync(join(folder, readdirSync(folder)[0]), 'utf8')
   expect(xml).toContain('bestAttr="str" bestExtra="agi"')
   expect(xml.match(/<lifemodule id="crb\.dock-hand"/g)).toHaveLength(2)
   expect(xml).toMatch(/<contact [^>]*types="medical"/)

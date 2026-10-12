@@ -10,11 +10,18 @@ import { ATTR_NAMES, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { attrRange, Sr6AttrRef } from '../EntryRef'
 
-const POOLS = [['points', 'Points'], ['adjust', 'Adjustment'], ['karma', 'Karma']] as const
+const POOLS = [
+  ['points', 'Points'],
+  ['adjust', 'Adjustment'],
+  ['karma', 'Karma'],
+] as const
 
 export function AttributesTab() {
-  const ctx = useSr6Editor(), { ch, data, d, budgets, act, cr } = ctx
-  const b = ch.build, kind = MAGIC_KINDS[b.magic], meta = data.metatypes[b.metatype]
+  const ctx = useSr6Editor(),
+    { ch, data, d, budgets, act, cr } = ctx
+  const b = ch.build,
+    kind = MAGIC_KINDS[b.magic],
+    meta = data.metatypes[b.metatype]
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
   const range = (a: Sr6Attr) => attrRange(ctx, a)
   const karmaPrice = num(cr, 'karmaAttrPerRank')
@@ -22,26 +29,58 @@ export function AttributesTab() {
     <div className="stack">
       <h2>Attributes</h2>
       <p className="muted">
-        Attribute points: <Left x={budgets.attributePoints} />.
-        {' '}Adjustment points: <Left x={budgets.adjustmentPoints} />.
+        Attribute points: <Left x={budgets.attributePoints} />. Adjustment points: <Left x={budgets.adjustmentPoints} />.
         {karmaPrice !== undefined && ` A rank bought with karma costs ${karmaPrice} × the new rating.`}
         {!meta && ' Pick a metatype on Creation method to see the ranges.'}
       </p>
-      <div className="scroll-x"><table className="data">
-        <thead><tr><th>Attribute</th><th>Range</th>{POOLS.map(([, l]) => <th key={l}>{l}</th>)}<th className="num">Natural</th><th className="num">Augmented</th></tr></thead>
-        <tbody>{attrs.map(a => {
-          const r = range(a), s = b.attributes[a], { natural, augmented } = d.attrs[a], top = r ? natural >= r[1] : false
-          return <tr key={a}>
-            <td><Sr6AttrRef attr={a}>{ATTR_NAMES[a]}</Sr6AttrRef></td>
-            <td className="muted">{r ? `${r[0]}–${r[1]}` : '—'}</td>
-            {POOLS.map(([k, l]) => <td key={k}><Stepper label={`${ATTR_NAMES[a]} ${l.toLowerCase()}`} value={s[k]} min={0} max={top ? s[k] : 99}
-              onChange={to => act({ op: 'attribute', target: a, pool: k, delta: to - s[k] })} /></td>)}
-            <td className="num">{natural}{top && <span className="muted"> max</span>}</td>
-            {/* (owner decision 2026-10-10: the switchable and conditional bonuses in brackets, each named on the attribute's card) */}
-            <td className="num">{augmented !== natural || d.on.attrs[a].augmented !== augmented ? br(augmented, d.on.attrs[a].augmented) : ''}</td>
-          </tr>
-        })}</tbody>
-      </table></div>
+      <div className="scroll-x">
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Range</th>
+              {POOLS.map(([, l]) => (
+                <th key={l}>{l}</th>
+              ))}
+              <th className="num">Natural</th>
+              <th className="num">Augmented</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attrs.map(a => {
+              const r = range(a),
+                s = b.attributes[a],
+                { natural, augmented } = d.attrs[a],
+                top = r ? natural >= r[1] : false
+              return (
+                <tr key={a}>
+                  <td>
+                    <Sr6AttrRef attr={a}>{ATTR_NAMES[a]}</Sr6AttrRef>
+                  </td>
+                  <td className="muted">{r ? `${r[0]}–${r[1]}` : '—'}</td>
+                  {POOLS.map(([k, l]) => (
+                    <td key={k}>
+                      <Stepper
+                        label={`${ATTR_NAMES[a]} ${l.toLowerCase()}`}
+                        value={s[k]}
+                        min={0}
+                        max={top ? s[k] : 99}
+                        onChange={to => act({ op: 'attribute', target: a, pool: k, delta: to - s[k] })}
+                      />
+                    </td>
+                  ))}
+                  <td className="num">
+                    {natural}
+                    {top && <span className="muted"> max</span>}
+                  </td>
+                  {/* (owner decision 2026-10-10: the switchable and conditional bonuses in brackets, each named on the attribute's card) */}
+                  <td className="num">{augmented !== natural || d.on.attrs[a].augmented !== augmented ? br(augmented, d.on.attrs[a].augmented) : ''}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

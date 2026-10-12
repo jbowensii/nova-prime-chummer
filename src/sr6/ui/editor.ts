@@ -14,10 +14,17 @@ import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../mod
 import type { Sr6Catalog } from '../model/types'
 
 export interface Sr6Ctx {
-  c: Sr6Catalog; data: Sr6Data; cr: CreationRules; ch: Sr6Character
+  c: Sr6Catalog
+  data: Sr6Data
+  cr: CreationRules
+  ch: Sr6Character
   /** the table's rules (the server's or its campaign's) without the runner's own choices, and its campaign's locks */
-  table: CreationRules; locks: RuleLock[]
-  p: Provider; budgets: Sr6Budgets; v: Violation[]; d: Sr6Derived
+  table: CreationRules
+  locks: RuleLock[]
+  p: Provider
+  budgets: Sr6Budgets
+  v: Violation[]
+  d: Sr6Derived
   /** someone else's runner, or a finalized one (every tab but Concept, Review and Ledger) */
   ro: boolean
   /** finalized: ch is then the runner as it stands (its build with the ledger's live spends replayed) */
@@ -39,7 +46,10 @@ export interface Sr6Ctx {
   record(a: Sr6Advance, typed?: Typed): string | null
   /** career: an earning, a note or a void on the stored runner; null when done, else why not */
   ledger(fn: (ch: Sr6Character) => { ok: true; ch: Sr6Character } | { ok: false; reason: string }): string | null
-  undo(): void; redo(): void; canUndo: boolean; canRedo: boolean
+  undo(): void
+  redo(): void
+  canUndo: boolean
+  canRedo: boolean
 }
 
 export const Sr6Editor = createContext<Sr6Ctx | null>(null)
@@ -53,14 +63,25 @@ export const SR6_FINAL_TIP = 'Finalized: spend karma and nuyen on the Ledger tab
 export const sr6EditHref = (id: string, tab: string) => `#/sr6/c/${id}/${tab}`
 export const sr6NpcHref = (id: string, tab = 'stats') => `#/sr6/n/${id}/${tab}`
 /** NPCs & Critters' two sections: grunts and contacts are NPCs; critters, spirits and sprites are critters. */
-export const npcSection = (npc?: Sr6Npc): 'npcs' | 'critters' => npc && npc.kind !== 'grunt' && npc.kind !== 'contact' ? 'critters' : 'npcs'
+export const npcSection = (npc?: Sr6Npc): 'npcs' | 'critters' => (npc && npc.kind !== 'grunt' && npc.kind !== 'contact' ? 'critters' : 'npcs')
 /** The NPC list section an NPC lists in (its editor's way back): #/sr6/npcs or #/sr6/npcs/critters. */
-export const sr6NpcsHref = (npc?: Sr6Npc) => npcSection(npc) === 'critters' ? '#/sr6/npcs/critters' : '#/sr6/npcs'
+export const sr6NpcsHref = (npc?: Sr6Npc) => (npcSection(npc) === 'critters' ? '#/sr6/npcs/critters' : '#/sr6/npcs')
 /** The editor link for a runner or an NPC. */
-export const sr6Href = (ch: { id: string; npc?: unknown }, tab: string) => ch.npc ? sr6NpcHref(ch.id, tab) : sr6EditHref(ch.id, tab)
+export const sr6Href = (ch: { id: string; npc?: unknown }, tab: string) => (ch.npc ? sr6NpcHref(ch.id, tab) : sr6EditHref(ch.id, tab))
 
-export const ATTR_NAMES: Record<Sr6Attr, string> = { bod: 'Body', agi: 'Agility', rea: 'Reaction', str: 'Strength', wil: 'Willpower',
-  log: 'Logic', int: 'Intuition', cha: 'Charisma', edg: 'Edge', mag: 'Magic', res: 'Resonance' }
+export const ATTR_NAMES: Record<Sr6Attr, string> = {
+  bod: 'Body',
+  agi: 'Agility',
+  rea: 'Reaction',
+  str: 'Strength',
+  wil: 'Willpower',
+  log: 'Logic',
+  int: 'Intuition',
+  cha: 'Charisma',
+  edg: 'Edge',
+  mag: 'Magic',
+  res: 'Resonance',
+}
 /** whole numbers with thousands separators; Essence-like values to two places */
 export const n = (x: number) => (Number.isInteger(x) ? x : Math.round(x * 100) / 100).toLocaleString('en-US')
 
@@ -126,9 +147,10 @@ export const REASONS: Record<string, string> = {
 }
 const LABELS = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
 /** A refusal code as a sentence; `unset:<key>` names the setting and where it's set. */
-export const reasonText = (code: string) => code.startsWith('unset:')
-  ? `${(LABELS.get(code.slice(6)) ?? code.slice(6)).replace(/ \(unset:[^)]*\)$/, '')} isn’t set: Table setup → Creation rules.`
-  : REASONS[code] ?? `${code[0].toUpperCase()}${code.slice(1).replace(/-/g, ' ')}.`
+export const reasonText = (code: string) =>
+  code.startsWith('unset:')
+    ? `${(LABELS.get(code.slice(6)) ?? code.slice(6)).replace(/ \(unset:[^)]*\)$/, '')} isn’t set: Table setup → Creation rules.`
+    : (REASONS[code] ?? `${code[0].toUpperCase()}${code.slice(1).replace(/-/g, ' ')}.`)
 
 /** One engine step on a copy of the runner: the changed copy, or why not. */
 export function runAct(ch: Sr6Character, op: Op, data: Sr6Data, cr: CreationRules): { ch: Sr6Character } | { error: string } {

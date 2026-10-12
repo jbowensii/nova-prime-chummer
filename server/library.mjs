@@ -23,25 +23,50 @@ export function libraryApi(ctx) {
 
   async function book(id, game = 'ca2') {
     const dir = join(AREAS[game].library, id)
-    const [imp, status, upload, reviewHead] = await Promise.all([...['import.xml', 'status.xml', 'upload.xml'].map(f => readOr(join(dir, f))), head(join(dir, 'review.xml'))])
+    const [imp, status, upload, reviewHead] = await Promise.all([
+      ...['import.xml', 'status.xml', 'upload.xml'].map(f => readOr(join(dir, f))),
+      head(join(dir, 'review.xml')),
+    ])
     const rv = rootTag(reviewHead, 'review')
-    const it = rootTag(imp, 'import'), st = rootTag(status, 'status')
+    const it = rootTag(imp, 'import'),
+      st = rootTag(status, 'status')
     const counts = Object.fromEntries([...(imp ?? '').matchAll(/<file\b[^>]*>/g)].map(m => [attr(m[0], 'name'), Number(attr(m[0], 'entries'))]))
     // a busy book shows its job (Waiting; Importing… and its step; Removing), never its last state or error, which its
     // status.xml may hold until the job's first step writes (if the new import fails, its own error shows)
-    const running = ctx.running, now = attr(st, 'state'), job = running?.game === game && running.id === id ? running : null
+    const running = ctx.running,
+      now = attr(st, 'state'),
+      job = running?.game === game && running.id === id ? running : null
     const cmd = job?.steps.at(-1)?.[AREAS[game].pre.length]
     // a folder with no status yet (its PDF put there by hand or a restore, never imported): not imported, nothing running
-    const state = !busy(id, game) ? now ?? 'uploaded' : !job ? 'queued' : cmd === 'run' ? 'importing' : cmd === 'remove' ? 'removing'
-      : STEPS.includes(now) ? now : 'queued'
+    const state = !busy(id, game)
+      ? (now ?? 'uploaded')
+      : !job
+        ? 'queued'
+        : cmd === 'run'
+          ? 'importing'
+          : cmd === 'remove'
+            ? 'removing'
+            : STEPS.includes(now)
+              ? now
+              : 'queued'
     return {
-      id, file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'), state, ...state === 'importing' && STEPS.includes(now) ? { step: now } : {},
-      message: status && (!busy(id, game) || now === 'queued' || STEPS.includes(now)) ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
-      source: attr(it, 'source'), name: attr(it, 'name'), canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
-      recipe: attr(it, 'recipe'), imported: attr(it, 'imported'), counts, busy: busy(id, game),
-      ...attr(it, 'extra') ? { extra: attr(it, 'extra').split(' ').filter(Boolean) } : {}, // further sources (an SR6 city chapter)
+      id,
+      file: attr(rootTag(upload, 'upload'), 'file') ?? attr(it, 'file'),
+      state,
+      ...(state === 'importing' && STEPS.includes(now) ? { step: now } : {}),
+      message:
+        status && (!busy(id, game) || now === 'queued' || STEPS.includes(now)) ? unesc(status.replace(/^[\s\S]*?<status\b[^>]*>|<\/status>[\s\S]*$/g, '')) : '',
+      source: attr(it, 'source'),
+      name: attr(it, 'name'),
+      canon: attr(it, 'canon') === undefined ? undefined : attr(it, 'canon') === 'true',
+      recipe: attr(it, 'recipe'),
+      imported: attr(it, 'imported'),
+      counts,
+      busy: busy(id, game),
+      ...(attr(it, 'extra') ? { extra: attr(it, 'extra').split(' ').filter(Boolean) } : {}), // further sources (an SR6 city chapter)
       review: rv ? (attr(rv, 'done') === attr(rv, 'parts') ? 'done' : 'partial') : undefined,
-      coreUnread: coreUnread(imp), coreAi: coreRows(imp, 'core-ai'),
+      coreUnread: coreUnread(imp),
+      coreAi: coreRows(imp, 'core-ai'),
     }
   }
 
@@ -54,18 +79,23 @@ export function libraryApi(ctx) {
     }
     const id = `${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`
     // streamed to a hidden folder (not a book id, so not listed), then made the entry: a new one, or the same file's
-    const tmp = join(area.library, `.upload-${id}`), file = safeName(req.headers['x-filename'])
+    const tmp = join(area.library, `.upload-${id}`),
+      file = safeName(req.headers['x-filename'])
     await mkdir(tmp, { recursive: true })
     const sha = createHash('sha256')
     let size = 0
     try {
-      await pipeline(req, async function* (src) {
-        for await (const c of src) {
-          if ((size += c.length) > MAX_PDF) throw fail(413, 'the file is larger than 500 MB')
-          sha.update(c)
-          yield c
-        }
-      }, createWriteStream(join(tmp, 'original.pdf'), { flags: 'wx' }))
+      await pipeline(
+        req,
+        async function* (src) {
+          for await (const c of src) {
+            if ((size += c.length) > MAX_PDF) throw fail(413, 'the file is larger than 500 MB')
+            sha.update(c)
+            yield c
+          }
+        },
+        createWriteStream(join(tmp, 'original.pdf'), { flags: 'wx' }),
+      )
       const fh = await open(join(tmp, 'original.pdf'))
       const head = Buffer.alloc(5)
       await fh.read(head, 0, 5, 0).finally(() => fh.close())
@@ -81,7 +111,8 @@ export function libraryApi(ctx) {
     const same = (await entries(game)).filter(e => e.sha === hex).sort(newestFirst)[0]
     if (same && (busy(same.id, game) || same.recipe === 'ai')) {
       await rm(tmp, { recursive: true, force: true })
-      return busy(same.id, game) ? send(res, 409, { error: 'this book is already being imported or removed; try again when it’s done' })
+      return busy(same.id, game)
+        ? send(res, 409, { error: 'this book is already being imported or removed; try again when it’s done' })
         : send(res, 202, { id: same.id })
     }
     const dir = join(area.library, same?.id ?? id)
@@ -89,23 +120,40 @@ export function libraryApi(ctx) {
       await rename(join(tmp, 'original.pdf'), join(dir, 'original.pdf'))
       await rm(tmp, { recursive: true, force: true })
     } else await rename(tmp, dir)
-    await writeAtomic(join(dir, 'upload.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${hex}" uploaded="${new Date().toISOString()}"/>\n`)
+    await writeAtomic(
+      join(dir, 'upload.xml'),
+      `<?xml version="1.0" encoding="UTF-8"?>\n<upload file="${esc(file)}" size="${size}" sha256="${hex}" uploaded="${new Date().toISOString()}"/>\n`,
+    )
     if (game === 'ca2') await ctx.dropPackMarks(hex) // a book file uploaded again: chosen over a loaded data pack, as with Re-import
     await setStatus(same?.id ?? id, 'queued', '', game)
-    enqueue(same?.id ?? id, [...same ? [[...area.pre, 'remove', dir, '--custom', area.custom]] : [],
-      [...area.pre, 'run', dir, '--custom', area.custom, '--file', file]], game)
+    enqueue(
+      same?.id ?? id,
+      [...(same ? [[...area.pre, 'remove', dir, '--custom', area.custom]] : []), [...area.pre, 'run', dir, '--custom', area.custom, '--file', file]],
+      game,
+    )
     return send(res, 202, { id: same?.id ?? id })
   }
 
   /** The game's Library entries with a PDF's sha256: [{ id, sha, state, recipe, when (uploaded, else imported) }]. */
   async function entries(game) {
-    const lib = AREAS[game].library, out = []
+    const lib = AREAS[game].library,
+      out = []
     for (const d of await readdir(lib, { withFileTypes: true }).catch(() => [])) {
       if (!d.isDirectory() || !BOOK_ID.test(d.name)) continue
-      const [up, imp, st] = await Promise.all([['upload.xml', 'upload'], ['import.xml', 'import'], ['status.xml', 'status']]
-        .map(async ([f, root]) => rootTag(await readOr(join(lib, d.name, f)), root)))
-      out.push({ id: d.name, sha: attr(up, 'sha256') ?? attr(imp, 'sha256') ?? '', state: attr(st, 'state'), recipe: attr(imp, 'recipe'),
-        when: attr(up, 'uploaded') ?? attr(imp, 'imported') ?? '' })
+      const [up, imp, st] = await Promise.all(
+        [
+          ['upload.xml', 'upload'],
+          ['import.xml', 'import'],
+          ['status.xml', 'status'],
+        ].map(async ([f, root]) => rootTag(await readOr(join(lib, d.name, f)), root)),
+      )
+      out.push({
+        id: d.name,
+        sha: attr(up, 'sha256') ?? attr(imp, 'sha256') ?? '',
+        state: attr(st, 'state'),
+        recipe: attr(imp, 'recipe'),
+        when: attr(up, 'uploaded') ?? attr(imp, 'imported') ?? '',
+      })
     }
     return out.filter(e => SHA256.test(e.sha))
   }
@@ -116,23 +164,33 @@ export function libraryApi(ctx) {
     if (req.method === 'POST') return upload(req, res, send, game)
     const lib = AREAS[game].library
     await mkdir(lib, { recursive: true })
-    const ids = (await readdir(lib, { withFileTypes: true })).filter(d => d.isDirectory() && BOOK_ID.test(d.name)).map(d => d.name).sort()
+    const ids = (await readdir(lib, { withFileTypes: true }))
+      .filter(d => d.isDirectory() && BOOK_ID.test(d.name))
+      .map(d => d.name)
+      .sort()
     return send(res, 200, await Promise.all(ids.map(id => book(id, game))))
   }
 
   /** One book's routes: m = [, books|review, id, action]. */
   async function bookRoute(req, res, url, send, m, game = 'ca2') {
-    const method = req.method, area = AREAS[game]
+    const method = req.method,
+      area = AREAS[game]
     const [, kind, rawId, action] = m
     let id
-    try { id = decodeURIComponent(rawId) } catch { throw fail(400, 'bad book id') }
+    try {
+      id = decodeURIComponent(rawId)
+    } catch {
+      throw fail(400, 'bad book id')
+    }
     const dir = bookDir(id, game)
     const status = await readOr(join(dir, 'status.xml'))
-    const hasUpload = await readOr(join(dir, 'upload.xml')) ?? await readOr(join(dir, 'import.xml'))
+    const hasUpload = (await readOr(join(dir, 'upload.xml'))) ?? (await readOr(join(dir, 'import.xml')))
     if (status == null && hasUpload == null) return send(res, 404, { error: 'no such book' })
     const imp = rootTag(await readOr(join(dir, 'import.xml')), 'import')
     const state = attr(rootTag(status, 'status'), 'state')
-    const needsQuiet = () => { if (busy(id, game)) throw fail(409, 'this book is busy; wait for it to finish') }
+    const needsQuiet = () => {
+      if (busy(id, game)) throw fail(409, 'this book is busy; wait for it to finish')
+    }
 
     if (kind === 'review') {
       if (method === 'GET') {
@@ -141,8 +199,11 @@ export function libraryApi(ctx) {
       }
       if (method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
       needsQuiet()
-      const q = url.searchParams, apply = q.get('apply') === '1'
-      const source = q.get('source') ?? '', name = (q.get('name') ?? '').trim(), canon = q.get('canon')
+      const q = url.searchParams,
+        apply = q.get('apply') === '1'
+      const source = q.get('source') ?? '',
+        name = (q.get('name') ?? '').trim(),
+        canon = q.get('canon')
       const old = await readOr(join(dir, 'review.xml'))
       if (old == null) return send(res, 404, { error: 'no proposals for this book' })
       const core = attr(rootTag(old, 'review'), 'core') === 'true' // rows for the core tables a recipe couldn't read
@@ -151,13 +212,18 @@ export function libraryApi(ctx) {
       await writeAtomic(join(dir, 'review.xml'), xmlBody(await body(req), 'review'))
       if (!apply) return send(res, 204, '', 'text/plain')
       await setStatus(id, 'queued')
-      enqueue(id, [core ? ['apply-review', dir, '--custom', customDir, '--core']
-        : ['apply-review', dir, '--custom', customDir, '--source', source, `--name=${clean(name)}`, '--canon', canon]]) // one argument, as add-source
+      enqueue(id, [
+        core
+          ? ['apply-review', dir, '--custom', customDir, '--core']
+          : ['apply-review', dir, '--custom', customDir, '--source', source, `--name=${clean(name)}`, '--canon', canon],
+      ]) // one argument, as add-source
       return send(res, 202, { id })
     }
 
     if (action === 'report' && method === 'GET')
-      return imp ? send(res, 200, await readFile(join(dir, 'import.xml'), 'utf8'), 'application/xml; charset=utf-8') : send(res, 404, { error: 'not imported yet' })
+      return imp
+        ? send(res, 200, await readFile(join(dir, 'import.xml'), 'utf8'), 'application/xml; charset=utf-8')
+        : send(res, 404, { error: 'not imported yet' })
     if (action === 'reimport' && method === 'POST') {
       needsQuiet()
       if (attr(imp, 'recipe') === 'ai') throw fail(409, 'a book read by AI can’t be re-imported; remove it, or apply its review again')

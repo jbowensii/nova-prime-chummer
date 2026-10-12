@@ -69,8 +69,10 @@ describe('ref', () => {
     expect(n('ref(gear:crb.kit, cost, 1) * 2', { R: 3 }, ref)).toBe(400)
   })
   it('a broken ref leaves no number (never 0) and says why', () => {
-    expect(evalFormula(f('ref(gear:crb.gone, cost)'), { R: 1 }, ref))
-      .toMatchObject({ n: null, error: 'it refers to gear:crb.gone’s cost, which isn’t in the catalog' })
+    expect(evalFormula(f('ref(gear:crb.gone, cost)'), { R: 1 }, ref)).toMatchObject({
+      n: null,
+      error: 'it refers to gear:crb.gone’s cost, which isn’t in the catalog',
+    })
     expect(evalFormula(f('ref(gear:crb.kit, cost)'), {}).n).toBeNull() // no lookup at all
   })
 })
@@ -93,8 +95,11 @@ describe('as shown', () => {
     expect(formulaText({ field: 'avail', expr: 'R/2' })).toBe('Rating ÷ 2')
   })
   it('Review’s note for an issue', () => {
-    expect(issueNote('Null Box', { field: 'avail', code: 'missing', page: 91, note: '' }))
-      .toBe('Null Box: the book prints no availability, set it in Game data or an override file.')
-    expect(issueNote('Odd Blade', { field: 'dv', code: 'unreadable', note: '' })).toBe('Odd Blade: the app can’t read the book’s damage, set it in Game data or an override file.')
+    expect(issueNote('Null Box', { field: 'avail', code: 'missing', page: 91, note: '' })).toBe(
+      'Null Box: the book prints no availability, set it in Game data or an override file.',
+    )
+    expect(issueNote('Odd Blade', { field: 'dv', code: 'unreadable', note: '' })).toBe(
+      'Odd Blade: the app can’t read the book’s damage, set it in Game data or an override file.',
+    )
   })
 })

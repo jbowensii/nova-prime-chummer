@@ -23,14 +23,21 @@ async function addSinner(page: Page) {
 const status = (page: Page) => page.getByRole('status', { name: 'Save status' })
 const tab = (page: Page, name: string) => page.getByRole('link', { name, exact: true }).click()
 /** the names in a knowledge list, top to bottom (a paid entry's name is in its text field) */
-const names = (t: Locator) => t.locator('tbody tr').evaluateAll(trs => trs.map(tr => {
-  const cell = (tr as HTMLTableRowElement).cells[1]
-  return cell?.querySelector('input')?.value ?? cell?.querySelector('b')?.textContent ?? ''
-}))
+const names = (t: Locator) =>
+  t.locator('tbody tr').evaluateAll(trs =>
+    trs.map(tr => {
+      const cell = (tr as HTMLTableRowElement).cells[1]
+      return cell?.querySelector('input')?.value ?? cell?.querySelector('b')?.textContent ?? ''
+    }),
+  )
 
 async function shots(page: Page, name: string, at?: Locator) {
   mkdirSync(SHOTS, { recursive: true })
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png` })
   await theme('dark')
@@ -82,14 +89,16 @@ test('starting gear is free and locked; the SINner quality brings a free Real SI
   await expect(status(page)).toContainText('All changes saved')
   const id = page.url().match(/#\/c\/([^/]+)\//)![1]
   await page.goto(`/#/c/${id}/print`)
-  await expect(page.locator('.s-cols').locator('h2', { hasText: 'Equipment' }).locator('+ p'))
-    .toHaveText('Fake SIN: Jane Roe (Made-up nation, rating unknown), Commlink (with trodes).')
+  await expect(page.locator('.s-cols').locator('h2', { hasText: 'Equipment' }).locator('+ p')).toHaveText(
+    'Fake SIN: Jane Roe (Made-up nation, rating unknown), Commlink (with trodes).',
+  )
 })
 
 test('knowledge and languages: two A–Z lists, drag and keyboard order, Sort A–Z, hide, one native language', async ({ page }) => {
   await newRunner(page, 'Bookworm')
   await tab(page, 'Skills')
-  const know = page.getByRole('table', { name: 'Knowledge' }), langs = page.getByRole('table', { name: 'Languages' })
+  const know = page.getByRole('table', { name: 'Knowledge' }),
+    langs = page.getByRole('table', { name: 'Languages' })
   for (const n of ['Charlie lore', 'Alpha lore', 'Bravo lore']) {
     await page.getByLabel('New knowledge skill').fill(n)
     await page.getByRole('button', { name: /^Add knowledge skill/ }).click()
@@ -182,7 +191,10 @@ test('over budget reads as such; adding or removing a priced item says what it c
   await newRunner(page, 'Tight Wallet')
   await tab(page, 'Gear & spells')
   const receipt = page.locator('.receipt')
-  await page.locator('section', { has: page.getByRole('heading', { name: 'Equipment' }) }).getByRole('button', { name: 'Custom' }).click()
+  await page
+    .locator('section', { has: page.getByRole('heading', { name: 'Equipment' }) })
+    .getByRole('button', { name: 'Custom' })
+    .click()
   await page.getByLabel('Name', { exact: true }).fill('Made-up yacht')
   await page.getByLabel(/Price set by the GM/).fill('900000')
   await page.getByRole('button', { name: 'Add item' }).click()

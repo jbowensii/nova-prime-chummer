@@ -8,8 +8,14 @@ import { validate } from '../../src/engine/validate'
 import type { AmpEntry, Character } from '../../src/model/types'
 import { cat } from '../helpers'
 
-const amp = (uid: string, type: string, refs: (string | [string, string])[], extra: Partial<AmpEntry> = {}): AmpEntry =>
-  ({ uid, type, name: `Made-up ${uid}`, narrative: '', effects: refs.map(r => (Array.isArray(r) ? { ref: r[0], param: r[1] } : { ref: r })), ...extra })
+const amp = (uid: string, type: string, refs: (string | [string, string])[], extra: Partial<AmpEntry> = {}): AmpEntry => ({
+  uid,
+  type,
+  name: `Made-up ${uid}`,
+  narrative: '',
+  effects: refs.map(r => (Array.isArray(r) ? { ref: r[0], param: r[1] } : { ref: r })),
+  ...extra,
+})
 const runner = (...amps: AmpEntry[]): Character => {
   const ch = blankCharacter()
   ch.build.attributes = { str: 2, agi: 2, wil: 2, log: 2, cha: 2 }
@@ -53,13 +59,21 @@ test('a cyberdeck’s Firewall is 5 at most (p.210-211)', () => {
 
 test('Armor +1 and damage +1 stack across amps only up to the effect’s max (p.61)', () => {
   // made-up maxima: armor-plus 2, dv-plus 3
-  const ch = runner(amp('a', 'quality', ['armor-plus', 'armor-plus']), amp('b', 'cyberware', ['armor-plus', 'dv-plus', 'dv-plus']), amp('c', 'adept', ['dv-plus', 'dv-plus']))
+  const ch = runner(
+    amp('a', 'quality', ['armor-plus', 'armor-plus']),
+    amp('b', 'cyberware', ['armor-plus', 'dv-plus', 'dv-plus']),
+    amp('c', 'adept', ['dv-plus', 'dv-plus']),
+  )
   ch.build.items.push({ uid: 'vest', kind: 'armor', name: 'Made-up vest', armor: 3 })
   ch.build.mainArmor = 'vest'
   const d = derive(cat, ch)
   expect(d.armor).toMatchObject({ none: 2, main: 5 })
   expect(d.weapons[0].dv).toBe('5') // STR 2 + 3
-  expect(validate(cat, ch).filter(v => v.code === 'amp.stackMax').map(v => v.severity)).toEqual(['warning', 'warning'])
+  expect(
+    validate(cat, ch)
+      .filter(v => v.code === 'amp.stackMax')
+      .map(v => v.severity),
+  ).toEqual(['warning', 'warning'])
 })
 
 test('flying doubles the base Speed only; Speed upgrades add after', () => {
@@ -71,7 +85,14 @@ test('flying doubles the base Speed only; Speed upgrades add after', () => {
 
 test('RR cap at creation: the total on one Test (Attribute + Skill + specialization), with a clear message', () => {
   // made-up Pro: RR 3 on an Attribute, 2 on a Skill Test, 3 on a specialization Test
-  const ch = runner(amp('q', 'quality', [['rr-attr', 'agi']]), amp('w', 'cyberware', [['rr-skill', 'stealth'], ['rr-skill', 'stealth'], ['rr-spec', 'stealth.palming']]))
+  const ch = runner(
+    amp('q', 'quality', [['rr-attr', 'agi']]),
+    amp('w', 'cyberware', [
+      ['rr-skill', 'stealth'],
+      ['rr-skill', 'stealth'],
+      ['rr-spec', 'stealth.palming'],
+    ]),
+  )
   ch.build.skills = [{ id: 'stealth', rating: 3, specs: ['stealth.palming'] }]
   const rr = validate(cat, ch).filter(v => v.code === 'rr.cap')
   expect(rr.map(v => v.severity)).toEqual(['error', 'error'])
@@ -118,8 +139,10 @@ test('a SINner given any effect, a narrative one too, is priced like any Quality
 })
 
 test('the SINner house rule is a Table setup switch, on by default; a runner may set its own unless the GM locks it', () => {
-  const sin = { ...amp('sin', 'quality', []), name: 'SINner' }, lucky = amp('lucky', 'quality', [])
-  const ch = runner(sin, lucky), plain = runner(lucky)
+  const sin = { ...amp('sin', 'quality', []), name: 'SINner' },
+    lucky = amp('lucky', 'quality', [])
+  const ch = runner(sin, lucky),
+    plain = runner(lucky)
   const flags = (freeSinner?: boolean, locked = false) => ({ nonCanon: true, realSin: true, freeSinner, locked: locked ? [FREE_SINNER] : [] })
   expect(sinnerFree(ch)).toBe(true)
   expect(price(cat, ch, flags(true)).amps).toBe(price(cat, plain).amps)
@@ -133,4 +156,3 @@ test('the SINner house rule is a Table setup switch, on by default; a runner may
   expect(sinnerFree(ch, flags(false, true))).toBe(false)
   expect(price(cat, ch, flags(false, true)).amps).toBe(off)
 })
-

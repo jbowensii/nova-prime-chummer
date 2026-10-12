@@ -8,25 +8,48 @@ import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { createServer } from './_signin'
 
 vi.setConfig({ testTimeout: 30000 })
-const dir = mkdtempSync(join(tmpdir(), 'ca2-aitest-')), log = join(dir, 'stub.log')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-aitest-')),
+  log = join(dir, 'stub.log')
 let base = ''
 let srv: { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  vi.stubEnv('STUB_LOG', log)
-  writeFileSync(log, '')
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
-afterAll(() => { srv.stopJobs(); srv.close() })
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      vi.stubEnv('STUB_LOG', log)
+      writeFileSync(log, '')
+      srv = createServer({
+        staticDir: 'public',
+        charDir: join(dir, 'chars'),
+        customDir: join(dir, 'custom'),
+        libraryDir: join(dir, 'library'),
+        python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
+afterAll(() => {
+  srv.stopJobs()
+  srv.close()
+})
 
 const test_ = (p: string) => fetch(`${base}/api/ai-test?provider=${p}`, { method: 'POST' })
 const key = (p: string, k: string) => fetch(`${base}/api/ai-keys`, { method: 'PUT', body: `<key provider="${p}">${k}</key>` })
 
 test('a test asks the saved provider and answers with its model, a short text reply and the time', async () => {
-  expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
-    body: '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1" model="made-up-1"/>' +
-      '<provider id="anythingllm" enabled="true" baseUrl="http://127.0.0.1:1" workspace="shadowrun"/></ca2:aiproviders>' })).status).toBe(200)
+  expect(
+    (
+      await fetch(`${base}/api/ai-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/xml' },
+        body:
+          '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1" model="made-up-1"/>' +
+          '<provider id="anythingllm" enabled="true" baseUrl="http://127.0.0.1:1" workspace="shadowrun"/></ca2:aiproviders>',
+      })
+    ).status,
+  ).toBe(200)
   expect((await key('openai', 'sk-test-GOODKEY1234')).status).toBe(204)
   const r = await test_('openai')
   const body = await r.json()

@@ -29,7 +29,11 @@ export function itemCost(p: Pricing, i: ItemEntry, cat: Item | undefined = i.sna
 }
 
 /** itemCost with its workings: the formula (B: `base`, the standard price), what it assumed, why it can't be worked out. */
-export function itemPrice(p: Pricing, i: ItemEntry, cat: Item | undefined = i.snapshot): { n: number; base: number; formula?: Formula; notes: string[]; error?: string } {
+export function itemPrice(
+  p: Pricing,
+  i: ItemEntry,
+  cat: Item | undefined = i.snapshot,
+): { n: number; base: number; formula?: Formula; notes: string[]; error?: string } {
   const std = standardCost(p, i)
   if (i.starting) return { n: 0, base: std, notes: [] }
   if (i.price != null) return { n: Math.max(0, i.price), base: std, notes: [] } // a GM price below 0 would pay the runner (validate.ts item.negativePrice)
@@ -41,22 +45,36 @@ export function itemPrice(p: Pricing, i: ItemEntry, cat: Item | undefined = i.sn
 
 function standardCost(p: Pricing, i: ItemEntry): number {
   switch (i.kind) {
-    case 'armor': return (i.armor ?? 0) * p.armorPoint
-    case 'weapon': return i.specialist ? p.weaponSpecialist : p.weaponStandard
-    case 'spell': return p.spell
-    case 'complex-form': return p.complexForm
-    default: return p.equipment
+    case 'armor':
+      return (i.armor ?? 0) * p.armorPoint
+    case 'weapon':
+      return i.specialist ? p.weaponSpecialist : p.weaponStandard
+    case 'spell':
+      return p.spell
+    case 'complex-form':
+      return p.complexForm
+    default:
+      return p.equipment
   }
 }
 
 /** The item's catalog entry: the live one, else its snapshot. */
 export const catalogItem = (c: Catalog, i: ItemEntry) => (i.catalogId ? c.items.get(i.catalogId) : undefined) ?? i.snapshot
 
-export interface Breakdown { attributes: number; skills: number; amps: number; gear: number; spells: number }
-export interface PriceBreakdown extends Breakdown { total: number; budget: number; remaining: number }
+export interface Breakdown {
+  attributes: number
+  skills: number
+  amps: number
+  gear: number
+  spells: number
+}
+export interface PriceBreakdown extends Breakdown {
+  total: number
+  budget: number
+  remaining: number
+}
 
-export const attrMax = (c: Catalog, metatype: string, a: keyof Build['attributes']) =>
-  c.metatypes.get(metatype)?.ranges[a][1] ?? Infinity
+export const attrMax = (c: Catalog, metatype: string, a: keyof Build['attributes']) => c.metatypes.get(metatype)?.ranges[a][1] ?? Infinity
 
 /** Why an entry's free slot no longer holds ("Stealth below 4", "keyword “X” removed"), or null (it holds, or it
  *  has none). skillName: the skill's display name. */
@@ -74,21 +92,32 @@ export function slotLapse(b: Build, keywords: string[], k: KnowledgeEntry, skill
 /** The free native language: the first language entry marked native (one per runner). */
 export const nativeLanguage = (b: Build) => b.knowledge.find(k => k.native && k.kind === 'language')
 /** Paid: not the native language, and no free slot or a slot that no longer holds (its skill below 4, its keyword gone). */
-export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) =>
-  k !== nativeLanguage(b) && (!k.from || slotLapse(b, keywords, k) !== null)
+export const knowledgePaid = (b: Build, keywords: string[], k: KnowledgeEntry) => k !== nativeLanguage(b) && (!k.from || slotLapse(b, keywords, k) !== null)
 
 /** What each thing in a build costs, keyed as the ledger names it (career.ts diffBuild): attr:<a>, skill:<id> (its
  *  points), spec:<skill>:<spec>, knowledge:<row key>, amp:<uid>, item:<uid>. The parts add up to the build's price. */
-export function priceParts(c: Catalog, b: Build, metatype: string, keywords: string[] = [], freeSinner = true): { key: string; cat: keyof Breakdown; price: number }[] {
+export function priceParts(
+  c: Catalog,
+  b: Build,
+  metatype: string,
+  keywords: string[] = [],
+  freeSinner = true,
+): { key: string; cat: keyof Breakdown; price: number }[] {
   const p = c.pricing
   const magic = (i: { kind: string }) => i.kind === 'spell' || i.kind === 'complex-form'
   return [
     ...ATTRS.map(a => ({ key: `attr:${a}`, cat: 'attributes' as const, price: attrCost(p, 0, b.attributes[a] ?? 0, attrMax(c, metatype, a)) })),
-    ...b.skills.flatMap(sk => [{ key: `skill:${sk.id}`, cat: 'skills' as const, price: skillCost(p, 0, sk.rating) },
-      ...sk.specs.map(sp => ({ key: `spec:${sk.id}:${sp}`, cat: 'skills' as const, price: p.spec }))]),
-    ...b.knowledge.map(k => ({ key: `knowledge:${k.from ?? k.id ?? `${k.kind}:${k.name}`}`, cat: 'skills' as const, price: knowledgePaid(b, keywords, k) ? p.knowledge : 0 })),
+    ...b.skills.flatMap(sk => [
+      { key: `skill:${sk.id}`, cat: 'skills' as const, price: skillCost(p, 0, sk.rating) },
+      ...sk.specs.map(sp => ({ key: `spec:${sk.id}:${sp}`, cat: 'skills' as const, price: p.spec })),
+    ]),
+    ...b.knowledge.map(k => ({
+      key: `knowledge:${k.from ?? k.id ?? `${k.kind}:${k.name}`}`,
+      cat: 'skills' as const,
+      price: knowledgePaid(b, keywords, k) ? p.knowledge : 0,
+    })),
     ...b.amps.map(a => ({ key: `amp:${a.uid}`, cat: 'amps' as const, price: ampRating(c, a, ampCtx(b, a, c, freeSinner)) * p.ampPoint })),
-    ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? 'spells' as const : 'gear' as const, price: itemCost(p, i, catalogItem(c, i)) })),
+    ...b.items.map(i => ({ key: `item:${i.uid}`, cat: magic(i) ? ('spells' as const) : ('gear' as const), price: itemCost(p, i, catalogItem(c, i)) })),
   ]
 }
 
@@ -125,8 +154,7 @@ export function packageGuide(c: Catalog, pkgId: string): Breakdown | undefined {
     attributes: k.attrPoints * p.attrPoint + k.attrAtMax * (p.attrLastPoint - p.attrPoint),
     skills: k.skillPoints * p.skillLow + k.skillsAtSix * (p.skillHigh - p.skillLow),
     amps: k.ampPoints * p.ampPoint,
-    gear: k.armor * p.armorPoint + k.standardWeapons * p.weaponStandard + k.specialistWeapons * p.weaponSpecialist
-      + k.equipment * p.equipment,
+    gear: k.armor * p.armorPoint + k.standardWeapons * p.weaponStandard + k.specialistWeapons * p.weaponSpecialist + k.equipment * p.equipment,
     spells: k.spells * p.spell,
   }
 }

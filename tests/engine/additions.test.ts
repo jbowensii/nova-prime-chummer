@@ -9,8 +9,14 @@ import { validate } from '../../src/engine/validate'
 import type { AmpEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
-const amp = (uid: string, type: string, refs: string[], extra: Partial<AmpEntry> = {}): AmpEntry =>
-  ({ uid, type, name: uid, narrative: '', effects: refs.map(ref => ({ ref })), ...extra })
+const amp = (uid: string, type: string, refs: string[], extra: Partial<AmpEntry> = {}): AmpEntry => ({
+  uid,
+  type,
+  name: uid,
+  narrative: '',
+  effects: refs.map(ref => ({ ref })),
+  ...extra,
+})
 const first = { isFirstQuality: true }
 const codes = (ch: ReturnType<typeof blankCharacter>) => validate(cat, ch).map(v => v.code)
 
@@ -37,7 +43,10 @@ test('technomancer (a book adds Tasking and Emerged; made-up base 6): Emerged co
   const ch = blankCharacter()
   ch.build.attributes = { str: 2, agi: 2, wil: 4, log: 4, cha: 3 }
   ch.build.amps = [amp('e', 'emerged', [])]
-  ch.build.skills = [{ id: 'tasking', rating: 3, specs: ['tasking.compiling'] }, { id: 'cracking', rating: 2, specs: [] }]
+  ch.build.skills = [
+    { id: 'tasking', rating: 3, specs: ['tasking.compiling'] },
+    { id: 'cracking', rating: 2, specs: [] },
+  ]
   ch.build.items = [{ uid: 'cf', kind: 'complex-form', name: 'Editor' }]
   expect(ampRating(cat, ch.build.amps[0], first) * cat.pricing.ampPoint).toBe(36000)
   expect(itemCost(cat.pricing, ch.build.items[0])).toBe(7250) // the book’s <prices> over the core's 6,500
@@ -76,7 +85,12 @@ test('mods add their printed rating, and their effects need no GM approval', () 
 })
 
 test('lifestyles load with their per-run adjustments', () => {
-  expect([...cat.lifestyles.values()].map(l => [l.id, l.perRun])).toEqual([['squatter', 1500], ['low', 0], ['middle', -1500], ['high', -3000]])
+  expect([...cat.lifestyles.values()].map(l => [l.id, l.perRun])).toEqual([
+    ['squatter', 1500],
+    ['low', 0],
+    ['middle', -1500],
+    ['high', -3000],
+  ])
 })
 
 test('catalog entries cite their source and page', () => {

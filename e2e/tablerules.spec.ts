@@ -12,7 +12,9 @@ import { anarchyState } from './session'
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/0.4.1'
 const PHONE = { width: 390, height: 844 }
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
@@ -21,15 +23,29 @@ test.beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'ca2-tablerules-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.goto('/')
@@ -40,7 +56,11 @@ async function signIn(page: Page, username: keyof typeof PW) {
 }
 /** Light, dark and phone (dark) screenshots of the page as it is. */
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')
@@ -139,12 +159,17 @@ test('two quick switches both count: the second save waits for the first and bui
   await signIn(page, 'ada')
   await page.getByRole('link', { name: 'Table setup' }).click()
   const gm = page.getByRole('region', { name: 'Table rules' })
-  const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' }),
+    streets = gm.getByRole('switch', { name: 'Quieter streets' })
   await expect(haggles).toBeChecked()
   await expect(streets).toBeChecked()
   let first = true
-  await page.route('**/api/table-rules', async r => { // the first save is slow to reach the server
-    if (first) { first = false; await new Promise(ok => setTimeout(ok, 800)) }
+  await page.route('**/api/table-rules', async r => {
+    // the first save is slow to reach the server
+    if (first) {
+      first = false
+      await new Promise(ok => setTimeout(ok, 800))
+    }
     await r.continue()
   })
   await haggles.click()
@@ -163,7 +188,8 @@ test('the same switch twice during a slow save ends as the last click; a failed 
   await signIn(page, 'ada')
   await page.getByRole('link', { name: 'Table setup' }).click()
   const gm = page.getByRole('region', { name: 'Table rules' })
-  const haggles = gm.getByRole('switch', { name: 'Long haggles' }), streets = gm.getByRole('switch', { name: 'Quieter streets' })
+  const haggles = gm.getByRole('switch', { name: 'Long haggles' }),
+    streets = gm.getByRole('switch', { name: 'Quieter streets' })
   await expect(haggles).not.toBeChecked()
   let n = 0
   await page.route('**/api/table-rules', async r => {
@@ -181,7 +207,10 @@ test('the same switch twice during a slow save ends as the last click; a failed 
 
   let first = true // the first save fails, the next one succeeds: the error stays
   await page.route('**/api/table-rules', async r => {
-    if (first) { first = false; return r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"server error"}' }) }
+    if (first) {
+      first = false
+      return r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"server error"}' })
+    }
     await r.continue()
   })
   await haggles.click()
@@ -206,7 +235,10 @@ test('a runner plays the table’s optional rules unless it sets its own (Review
   const pick = own.getByLabel('Long haggles for this runner')
   await expect(pick).toHaveValue('')
   await expect(pick.locator('option').first()).toHaveText('As the table: on')
-  const state = own.getByRole('listitem').filter({ hasText: 'Long haggles' }).getByText(/^(not )?in play$/)
+  const state = own
+    .getByRole('listitem')
+    .filter({ hasText: 'Long haggles' })
+    .getByText(/^(not )?in play$/)
   await expect(state).toHaveText('in play')
   await pick.selectOption('off')
   await expect(state).toHaveText('not in play')
@@ -246,12 +278,15 @@ test('the SINner house rule: on by default, a runner may switch it off on the Re
   await expect(row.getByText(/^(not )?in play$/)).toHaveText('not in play')
 })
 
-
 test('hovering a Table setup switch shows what it does and where it comes from', async ({ page }) => {
   await signIn(page, 'eve')
   await page.getByRole('link', { name: 'Table setup' }).click()
   const gm = page.getByRole('region', { name: 'Table rules' })
-  for (const [name, text] of [['Long haggles', 'Source: Test Book One p.42.'], ['SINner free, never the first Quality', 'Source: house rule.'], ['Real SINs allowed', 'Source: house rule.']]) {
+  for (const [name, text] of [
+    ['Long haggles', 'Source: Test Book One p.42.'],
+    ['SINner free, never the first Quality', 'Source: house rule.'],
+    ['Real SINs allowed', 'Source: house rule.'],
+  ]) {
     const sw = gm.locator('label.switch').filter({ has: page.getByRole('switch', { name }) })
     await sw.hover()
     const tip = await sw.getAttribute('title') // (the browser draws the title as its tooltip)

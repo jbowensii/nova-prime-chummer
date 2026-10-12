@@ -30,7 +30,8 @@ const buy = (ch: Sr6Character, kind: Sr6Purchase['kind'], id: string | undefined
 }
 
 test('each formula on one invented runner', () => {
-  const ch = runner(), { d, data, cr } = derive(ch)
+  const ch = runner(),
+    { d, data, cr } = derive(ch)
   expect(d.attrs.rea).toEqual({ natural: 5, augmented: 5 })
   expect(d.initiative).toEqual({ base: 5 + 5, dice: 2 })
   expect(d.monitors).toEqual({ physical: 9 + Math.ceil(4 / 3), stun: 9 + Math.ceil(3 / 3), overflow: 4 })
@@ -41,7 +42,8 @@ test('each formula on one invented runner', () => {
   expect(d.essence).toBe(5)
   expect(d.magicMax).toBe(7)
   expect([d.drain, d.fading, d.astralInit]).toEqual([undefined, undefined, undefined])
-  const p = makeProvider('priority', data, cr), bud = allBudgets(ch.build, data, cr, p)
+  const p = makeProvider('priority', data, cr),
+    bud = allBudgets(ch.build, data, cr, p)
   expect([d.karmaLeft, d.nuyenLeft]).toEqual([bud.karma.left, bud.nuyen.left])
   expect(d.unset).toEqual([])
 })
@@ -50,7 +52,16 @@ test('no bonus leaves the attributes alone; a power bonus is augmented, not natu
   const plain = derive(runner()).d
   for (const a of Object.values(plain.attrs)) expect(a.augmented).toBe(a.natural)
   const ch = runner('adept')
-  ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, bonuses: [{ target: 'agi', value: 1 }, { target: 'initDice', value: 1 }] })
+  ch.build.picks.push({
+    uid: 'k1',
+    kind: 'adeptpowers',
+    id: 'crb.quick-step',
+    level: 2,
+    bonuses: [
+      { target: 'agi', value: 1 },
+      { target: 'initDice', value: 1 },
+    ],
+  })
   buy(ch, 'augmentations', 'crb.glow-eyes', { rating: 2, bonuses: [{ target: 'int', value: 1, perRating: true }] })
   const { d } = derive(ch)
   expect(d.attrs.agi).toEqual({ natural: 3, augmented: 4 })
@@ -89,18 +100,21 @@ test('a Defense Rating bonus (a made-up plating at rating 2) adds to the Defense
 })
 
 test('worn armor adds its defense; armor not worn doesn’t', () => {
-  const ch = runner(), vest = buy(ch, 'armor', 'crb.padded-vest')
+  const ch = runner(),
+    vest = buy(ch, 'armor', 'crb.padded-vest')
   expect(derive(ch).d.defenseRating).toBe(4)
   vest.worn = true
   expect(derive(ch).d.defenseRating).toBe(4 + 2)
 })
 
 test('a weapon AR of 4/10/8/—/— gives three bands', () => {
-  const ch = runner(), rifle = buy(ch, 'weapons', 'crb.fizz-rifle-70')
+  const ch = runner(),
+    rifle = buy(ch, 'weapons', 'crb.fizz-rifle-70')
   const custom = buy(ch, 'weapons', undefined, { name: 'Pipe' })
   expect(derive(ch).d.attackRatings.weapons).toEqual([
     { uid: rifle.uid, name: 'Fizz Rifle 70', bands: [4, 10, 8, null, null] },
-    { uid: custom.uid, name: 'Pipe', bands: [null, null, null, null, null] }])
+    { uid: custom.uid, name: 'Pipe', bands: [null, null, null, null, null] },
+  ])
 })
 
 test('dice pools: rank plus the augmented attribute, a spec and an expertise on top, untrained skills at the attribute less the penalty', () => {

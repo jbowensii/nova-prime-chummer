@@ -5,8 +5,7 @@ import { price } from '../../src/engine/price'
 import type { AmpEntry, Character } from '../../src/model/types'
 import { cat } from '../helpers'
 
-const amp = (uid: string, type: string, refs: string[]): AmpEntry =>
-  ({ uid, type, name: uid, narrative: '', effects: refs.map(ref => ({ ref })) })
+const amp = (uid: string, type: string, refs: string[]): AmpEntry => ({ uid, type, name: uid, narrative: '', effects: refs.map(ref => ({ ref })) })
 
 /** A made-up dwarf face: armor 3 main, a closet amp adding 1 to the alternate. */
 function face(): Character {
@@ -46,8 +45,10 @@ test('thresholds with no armor, main armor, alternate armor, and mental', () => 
 test('an armor add-on worn over another armor counts on top of it and pays only its own points', () => {
   const ch = blankCharacter('runner', 'ork')
   ch.build.attributes.str = 4
-  ch.build.items = [{ uid: 'jacket', kind: 'armor', name: 'Made-up jacket', armor: 2 },
-    { uid: 'mask', kind: 'armor', name: 'Made-up jacket + mask', armor: 1, over: 'jacket' }]
+  ch.build.items = [
+    { uid: 'jacket', kind: 'armor', name: 'Made-up jacket', armor: 2 },
+    { uid: 'mask', kind: 'armor', name: 'Made-up jacket + mask', armor: 1, over: 'jacket' },
+  ]
   ch.build.mainArmor = 'jacket'
   ch.build.altArmor = 'mask'
   const t = derive(cat, ch).thresholds
@@ -82,9 +83,18 @@ test('Essence 6 - 2 cyberware - 1 bioware = 3.25 (made-up 1.25 and 0.25), cancel
 test('wound boxes, RR from amps, and the RR cap of 3', () => {
   const ch = blankCharacter()
   ch.build.skills = [{ id: 'stealth', rating: 2, specs: ['stealth.physical-sneaking'] }]
-  ch.build.amps = [amp('a', 'bioware', ['wound-light', 'wound-serious']),
-    { ...amp('b', 'quality', []), effects: [{ ref: 'rr-skill', param: 'stealth' }, { ref: 'rr-spec', param: 'stealth.physical-sneaking' },
-      { ref: 'rr-spec', param: 'stealth.physical-sneaking' }, { ref: 'rr-spec', param: 'stealth.physical-sneaking' }] }]
+  ch.build.amps = [
+    amp('a', 'bioware', ['wound-light', 'wound-serious']),
+    {
+      ...amp('b', 'quality', []),
+      effects: [
+        { ref: 'rr-skill', param: 'stealth' },
+        { ref: 'rr-spec', param: 'stealth.physical-sneaking' },
+        { ref: 'rr-spec', param: 'stealth.physical-sneaking' },
+        { ref: 'rr-spec', param: 'stealth.physical-sneaking' },
+      ],
+    },
+  ]
   const d = derive(cat, ch)
   expect(d.monitor).toEqual({ light: 3, serious: 2, incap: 1 })
   expect(d.pools.find(p => p.spec === 'stealth.physical-sneaking')!.rr).toBe(3)
@@ -108,11 +118,18 @@ test('a weapon lists its ammunition DVs', () => {
 test('a DNI and a deck: Cracking (cybercombat) gets an Advantage in hot-sim only (CRB p.212); cold-sim gets none', () => {
   // the made-up catalog's Cracking with the book's cybercombat specialization
   const sk = cat.skills.get('cracking')!
-  const c = { ...cat, skills: new Map(cat.skills).set('cracking', { ...sk, specs: [...sk.specs, { id: 'cracking.cybercombat', name: 'Cybercombat', attr: sk.attr }] }) }
+  const c = {
+    ...cat,
+    skills: new Map(cat.skills).set('cracking', { ...sk, specs: [...sk.specs, { id: 'cracking.cybercombat', name: 'Cybercombat', attr: sk.attr }] }),
+  }
   const ch = face()
   ch.build.skills.push({ id: 'cracking', rating: 2, specs: ['cracking.cybercombat'] })
   ch.build.amps.push(amp('deck', 'cyberdeck', []), amp('jack', 'cyberware', ['vr-cold']))
-  expect(derive(c, ch).pools.filter(p => p.skill === 'cracking').flatMap(p => p.notes ?? [])).toEqual([])
+  expect(
+    derive(c, ch)
+      .pools.filter(p => p.skill === 'cracking')
+      .flatMap(p => p.notes ?? []),
+  ).toEqual([])
   ch.build.amps[2].effects.push({ ref: 'vr-hot' })
   const spec = derive(c, ch).pools.find(p => p.spec === 'cracking.cybercombat')!
   expect(spec.notes).toEqual([expect.objectContaining({ ref: 'advantage', from: 'Hot-sim VR (CRB p.212)', how: 'in hot-sim VR' })])

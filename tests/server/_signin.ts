@@ -18,8 +18,11 @@ export const cookieFor = (origin: string) => jar.get(origin) ?? ''
 
 /** Sign `who` in at `origin`; the cookie, or null. */
 export async function signIn(origin: string, who = ADMIN): Promise<string | null> {
-  const r = await rawFetch(`${origin}/api/auth/login`, { method: 'POST', body: JSON.stringify(who),
-    headers: { 'Content-Type': 'application/json', Origin: origin } })
+  const r = await rawFetch(`${origin}/api/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify(who),
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+  })
   const cookie = r.headers.get('set-cookie')?.split(';')[0] ?? null
   if (r.ok && cookie) jar.set(origin, cookie)
   return r.ok ? cookie : null
@@ -36,7 +39,7 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
     return rawFetch(input, { ...init, headers: h })
   }
   const r = await go()
-  return r.status === 401 && !url.pathname.startsWith('/api/auth/') && await signIn(url.origin) ? go() : r
+  return r.status === 401 && !url.pathname.startsWith('/api/auth/') && (await signIn(url.origin)) ? go() : r
 }) as typeof fetch
 
 type Opts = { charDir: string; libraryDir?: string; [k: string]: unknown }

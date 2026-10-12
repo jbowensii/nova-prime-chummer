@@ -17,7 +17,9 @@ const OLD = `<?xml version="1.0" encoding="UTF-8"?>
   </build>
 </sr6:character>
 `
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
 
@@ -33,7 +35,10 @@ test.beforeAll(async () => {
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 test('a runner saved with old ids loads them under the new ones, saved once with the record', async ({ page }) => {
   await page.goto('/#/sr6/c/old-ids-1/gear')
@@ -49,7 +54,7 @@ test('a runner saved with old ids loads them under the new ones, saved once with
   const file = join(dir, 'characters', 'sr6', 'pat', 'old-ids-1.xml')
   await expect.poll(() => readFileSync(file, 'utf8')).toContain('kind="ammotypes" id="crb.fizz-rounds"')
   const xml = readFileSync(file, 'utf8')
-  expect(xml).toContain('kind="augmentations" id="crb.spring-tendons.2"')  // (the level's entry, levels.ts: its rating is the level)
+  expect(xml).toContain('kind="augmentations" id="crb.spring-tendons.2"') // (the level's entry, levels.ts: its rating is the level)
   expect(xml).toMatch(/<migrated from="gear\/crb\.fizz-rounds" to="ammotypes\/crb\.fizz-rounds" at="[^"]+"\/>/)
   expect(xml.match(/<migrated /g)).toHaveLength(2)
 })

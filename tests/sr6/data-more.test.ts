@@ -12,14 +12,23 @@ test('a whole number the app cannot read is 0 (or the default) and a warning cit
   const d = data('priorities.xml', x => x.replace('<attributes points="22"/>', '<attributes points="lots"/>'))
   expect(d.priorities.A!.attributes).toBe(0)
   expect(warnings(d)).toEqual(['priorities.crb.priority-a: Priority A: the attribute points “lots” isn’t a number the app can read.'])
-  const q = data('qualities.xml', x => x.replace('<choice kind="quality" category="Wanderer gift" count="1" max="2"/>', '<choice kind="quality" category="Wanderer gift" count="many" max="few"/>'))
+  const q = data('qualities.xml', x =>
+    x.replace(
+      '<choice kind="quality" category="Wanderer gift" count="1" max="2"/>',
+      '<choice kind="quality" category="Wanderer gift" count="many" max="few"/>',
+    ),
+  )
   expect(q.qualities['crb.wanderer'].choices).toEqual([{ category: 'Wanderer gift', count: 1, max: 1 }])
   expect(warnings(q)).toHaveLength(2)
 })
 
 test('a quality’s Karma that is no number is null with a warning; its steps, flags and category are kept', () => {
-  const d = data('qualities.xml', x => x.replace('<quality id="crb.knack" source="CRB" page="71" kind="positive" karma="13">',
-    '<quality id="crb.knack" source="CRB" page="71" kind="positive" karma="thirteen" karmaMax="26" karmaSteps="13 18 x 26" category="Gift" uncounted="true">'))
+  const d = data('qualities.xml', x =>
+    x.replace(
+      '<quality id="crb.knack" source="CRB" page="71" kind="positive" karma="13">',
+      '<quality id="crb.knack" source="CRB" page="71" kind="positive" karma="thirteen" karmaMax="26" karmaSteps="13 18 x 26" category="Gift" uncounted="true">',
+    ),
+  )
   const k = d.qualities['crb.knack']
   expect(k).toMatchObject({ karma: null, karmaMax: 26, karmaSteps: [13, 18, 26], category: 'Gift', uncounted: true })
   expect(warnings(d)).toEqual(['qualities.crb.knack: Knack: the karma “thirteen” isn’t a number the app can read.'])
@@ -34,8 +43,11 @@ test('a grade’s factors are decimals; one that is not is null with a warning; 
 })
 
 test('a metatype’s trait at a level (`Name 2`), its priority adjustment points, and a missing range are read; an unknown trait is a warning', () => {
-  const d = data('metatypes.xml', x => x.replace('<trait>Moonsight</trait>', '<trait>Lucky Streak 2</trait><priority letter="A" points="3"/><priority letter="B" points="2"/>')
-    .replace('<range attr="cha" min="1" max="8"/>', ''))
+  const d = data('metatypes.xml', x =>
+    x
+      .replace('<trait>Moonsight</trait>', '<trait>Lucky Streak 2</trait><priority letter="A" points="3"/><priority letter="B" points="2"/>')
+      .replace('<range attr="cha" min="1" max="8"/>', ''),
+  )
   const m = d.metatypes['crb.glimmerkin']
   expect(m.traits).toContain('crb.lucky-streak.2')
   expect(m.priority).toEqual({ A: 3, B: 2 })
@@ -47,7 +59,9 @@ test('a metatype’s trait at a level (`Name 2`), its priority adjustment points
 })
 
 test('life modules read their contact types, grants and choices', () => {
-  const d = data('lifemodules.xml', x => x.replace(/<lifemodule id="crb\.glow-apprentice"/, '<lifemodule id="crb.glow-apprentice" contactTypes="magic  street"'))
+  const d = data('lifemodules.xml', x =>
+    x.replace(/<lifemodule id="crb\.glow-apprentice"/, '<lifemodule id="crb.glow-apprentice" contactTypes="magic  street"'),
+  )
   expect(d.lifemodules['crb.glow-apprentice'].contactTypes).toEqual(['magic', 'street'])
   expect(d.lifemodules['crb.wage-drone']).not.toHaveProperty('contactTypes')
 })

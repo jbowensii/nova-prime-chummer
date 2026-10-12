@@ -4,9 +4,12 @@
 import type { Catalog, Ref } from '../model/types'
 import { isCanon } from './canon'
 
-export const normalizeName = (s: string) => s.toLowerCase()
-  .replace(/\s*\((cyberware|bioware|quality|adept power|equipment|weapon|vehicle|drone)\)\s*$/i, '')
-  .replace(/[^a-z0-9]+/g, ' ').trim()
+export const normalizeName = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/\s*\((cyberware|bioware|quality|adept power|equipment|weapon|vehicle|drone)\)\s*$/i, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 
 const entries = (c: Catalog): [key: string, e: Ref][] => [
   ...[...c.amps.values()].map(a => [`${a.type}|${normalizeName(a.name)}`, a] as [string, Ref]),
@@ -19,7 +22,7 @@ function index(c: Catalog) {
   let x = cache.get(c)
   if (!x) {
     const all = new Map<string, Ref[]>()
-    for (const [k, e] of entries(c)) all.set(k, [...all.get(k) ?? [], e])
+    for (const [k, e] of entries(c)) all.set(k, [...(all.get(k) ?? []), e])
     const dupes = [...all].filter(([, g]) => g.length > 1)
     x = { groups: new Map(dupes.map(([k, g]) => [k, g.map(e => e.id)])), byId: new Map(dupes.flatMap(([, g]) => g.map(e => [e.id, g]))) }
     cache.set(c, x)

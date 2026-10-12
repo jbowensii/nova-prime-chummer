@@ -10,8 +10,14 @@ import { fixtureCatalog } from './fixture'
 
 const c = fixtureCatalog()
 const runner = (over: Partial<Sr6Character['build']> = {}): Sr6Character => ({
-  formatVersion: 1, id: 'r1', identity: { name: '', streetName: 'Zip', metatype: '', background: '', notes: '' },
-  build: { ...blankBuild('priority'), ...over }, ledger: [], overrides: [], updatedAt: '2026-10-06T00:00:00.000Z' })
+  formatVersion: 1,
+  id: 'r1',
+  identity: { name: '', streetName: 'Zip', metatype: '', background: '', notes: '' },
+  build: { ...blankBuild('priority'), ...over },
+  ledger: [],
+  overrides: [],
+  updatedAt: '2026-10-06T00:00:00.000Z',
+})
 
 test('an old id resolves to the entry that holds it as an alias, across kinds; a current id is never shadowed', () => {
   expect(c.moved.get('gear/crb.fizz-rounds')).toEqual({ kind: 'ammotypes', id: 'crb.fizz-rounds' })
@@ -24,19 +30,29 @@ test('an old id resolves to the entry that holds it as an alias, across kinds; a
 })
 
 test('a runner’s old ids become the new ones, accessories and ledger lines too, recorded once', () => {
-  const old = runner({ purchases: [
-    { uid: 'g1', kind: 'gear', id: 'crb.fizz-rounds', qty: 2, accessories: [] },
-    { uid: 'g2', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g3', kind: 'gear', id: 'crb.fizz-rounds', qty: 1, accessories: [] }] },
-    { uid: 'g4', kind: 'augmentations', id: 'crb.spring-tendons-1-4', rating: 2, qty: 1, accessories: [] },
-    { uid: 'g5', kind: 'gear', id: 'crb.gone-for-good', qty: 1, accessories: [] }] })
+  const old = runner({
+    purchases: [
+      { uid: 'g1', kind: 'gear', id: 'crb.fizz-rounds', qty: 2, accessories: [] },
+      { uid: 'g2', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [{ uid: 'g3', kind: 'gear', id: 'crb.fizz-rounds', qty: 1, accessories: [] }] },
+      { uid: 'g4', kind: 'augmentations', id: 'crb.spring-tendons-1-4', rating: 2, qty: 1, accessories: [] },
+      { uid: 'g5', kind: 'gear', id: 'crb.gone-for-good', qty: 1, accessories: [] },
+    ],
+  })
   const ch = migrateSr6Ids(old, c, '2026-10-06T01:00:00.000Z')
-  expect(ch.build.purchases.map(p => `${p.kind}/${p.id}`)).toEqual(
-    ['ammotypes/crb.fizz-rounds', 'weapons/crb.zap-gun', 'augmentations/crb.spring-tendons.2', 'gear/crb.gone-for-good'])
-  expect(ch.build.purchases[2].rating).toBeUndefined()  // (the level's entry carries it: levels.ts)
+  expect(ch.build.purchases.map(p => `${p.kind}/${p.id}`)).toEqual([
+    'ammotypes/crb.fizz-rounds',
+    'weapons/crb.zap-gun',
+    'augmentations/crb.spring-tendons.2',
+    'gear/crb.gone-for-good',
+  ])
+  expect(ch.build.purchases[2].rating).toBeUndefined() // (the level's entry carries it: levels.ts)
   expect(ch.build.purchases[1].accessories[0]).toMatchObject({ kind: 'ammotypes', id: 'crb.fizz-rounds' })
   expect(ch.build.purchases[0].qty).toBe(2)
-  expect(ch.migrated?.map(m => `${m.from} → ${m.to}`)).toEqual(['gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds',
-    'gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds', 'augmentations/crb.spring-tendons-1-4 → augmentations/crb.spring-tendons.2'])
+  expect(ch.migrated?.map(m => `${m.from} → ${m.to}`)).toEqual([
+    'gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds',
+    'gear/crb.fizz-rounds → ammotypes/crb.fizz-rounds',
+    'augmentations/crb.spring-tendons-1-4 → augmentations/crb.spring-tendons.2',
+  ])
   expect(migrateSr6Ids(ch, c)).toBe(ch) // once: nothing left to turn
   const back = xmlToSr6(sr6ToXml(ch))
   expect(back.ok && back.character.migrated).toEqual(ch.migrated)

@@ -102,52 +102,97 @@ export { creationSettings, readSettings, settingXml } from './edits.mjs'
 const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
 
-export function booksApi({ charDir, customDir, libraryDir, python = 'python3', importerRoot, version = 'unknown', restoreTtl = 30 * 60 * 1000, downloadTtl = 10 * 60 * 1000, askTimeout = 60000,
-  onRestore = async () => {}, compendiumSources = async () => new Set() }) {
+export function booksApi({
+  charDir,
+  customDir,
+  libraryDir,
+  python = 'python3',
+  importerRoot,
+  version = 'unknown',
+  restoreTtl = 30 * 60 * 1000,
+  downloadTtl = 10 * 60 * 1000,
+  askTimeout = 60000,
+  onRestore = async () => {},
+  compendiumSources = async () => new Set(),
+}) {
   const backups = join(libraryDir, '.backups')
   // each game's books and catalog (server/games.mjs): Anarchy's at the top of library/ and custom/, SR6's in their sr6/
   // folders, run as `python -m importer sr6 …`. One job queue for both.
-  const AREAS = { ca2: { library: libraryDir, custom: customDir, pre: [], kinds: EDIT_KINDS },
+  const AREAS = {
+    ca2: { library: libraryDir, custom: customDir, pre: [], kinds: EDIT_KINDS },
     // (samplefixes: a book sample runner's printed line corrected, importer/sr6/edits.py)
-    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } } }
+    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } },
+  }
   // the modules' shared state; each adds its functions for the others (jobs first: the rest take theirs when made)
-  const ctx = { charDir, customDir, libraryDir, python, importerRoot, version, restoreTtl, downloadTtl, askTimeout, onRestore, compendiumSources,
-    AREAS, config: join(libraryDir, '.config'), backups,
-    queue: [], running: null, // the job queue (the running job not in it)
+  const ctx = {
+    charDir,
+    customDir,
+    libraryDir,
+    python,
+    importerRoot,
+    version,
+    restoreTtl,
+    downloadTtl,
+    askTimeout,
+    onRestore,
+    compendiumSources,
+    AREAS,
+    config: join(libraryDir, '.config'),
+    backups,
+    queue: [],
+    running: null, // the job queue (the running job not in it)
     spawned: new Set(), // backup and ask processes, stopped with the server
     // the server-wide write lock: counted writes (track), a backup being made, a restore, a data pack being made or loaded
     lock: { writes: 0, zipping: 0, restoring: false, packing: false },
-    batches: { ca2: null, sr6: null } } // each game's last Re-import all (jobs.json)
+    batches: { ca2: null, sr6: null },
+  } // each game's last Re-import all (jobs.json)
   const jobs = jobsApi(ctx)
   Object.assign(ctx, jobs)
   Object.assign(ctx, libraryApi(ctx))
   Object.assign(ctx, resumeApi(ctx))
-  const { ai } = aiApi(ctx), { edits, sampleSets, tableRules, creation } = editsApi(ctx), backup = backupApi(ctx)
+  const { ai } = aiApi(ctx),
+    { edits, sampleSets, tableRules, creation } = editsApi(ctx),
+    backup = backupApi(ctx)
   const { books, bookRoute, reimportAll, track, pump } = ctx
 
   // pump() resolves when its first job ends: started (and dedupe, rebuildCore) must not wait for a resumed import
-  const started = ctx.resume().then(ctx.recoverCore).then(() => { pump() }).then(ctx.dedupe).then(ctx.rebuildCore).catch(e => console.error(e.stack))
-  for (const a of Object.values(AREAS)) { // uploads cut off by a stop
+  const started = ctx
+    .resume()
+    .then(ctx.recoverCore)
+    .then(() => {
+      pump()
+    })
+    .then(ctx.dedupe)
+    .then(ctx.rebuildCore)
+    .catch(e => console.error(e.stack))
+  for (const a of Object.values(AREAS)) {
+    // uploads cut off by a stop
     try {
       for (const f of readdirSync(a.library)) if (f.startsWith('.upload-')) rmSync(join(a.library, f), { recursive: true, force: true })
-    } catch { /* no folder yet */ }
+    } catch {
+      /* no folder yet */
+    }
   }
   // zips left by a stop mid-download, mid-preview or mid-restore
   try {
-    for (const f of readdirSync(backups, { withFileTypes: true }))
-      if (TEMP_ZIP.test(f.name)) rmSync(join(backups, f.name), { recursive: true, force: true })
-  } catch { /* no .backups yet */ }
+    for (const f of readdirSync(backups, { withFileTypes: true })) if (TEMP_ZIP.test(f.name)) rmSync(join(backups, f.name), { recursive: true, force: true })
+  } catch {
+    /* no .backups yet */
+  }
   // a killed restore's unpack and swap folders, at the top of each data folder (importer/backup.py; the safety backup
   // in library/.backups holds everything the old ones did)
   for (const d of [charDir, customDir, libraryDir]) {
     try {
       for (const f of readdirSync(d)) if (/^\.restore-(old|new|done)-/.test(f)) rmSync(join(d, f), { recursive: true, force: true })
-    } catch { /* no folder yet */ }
+    } catch {
+      /* no folder yet */
+    }
   }
 
   /** `game` 'sr6': an /api/sr6/… request with the prefix taken off (server.mjs); see sr6(). */
   async function handle(req, res, url, send, who, game = 'ca2') {
-    const p = url.pathname, method = req.method
+    const p = url.pathname,
+      method = req.method
     if (game === 'sr6') return sr6(req, res, url, send, who)
     if (p === '/api/backup' && method === 'POST') return backup.makeBackup(req, res, url, send, who)
     const bt = p.match(/^\/api\/backup\/([^/]+)$/)
@@ -166,7 +211,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     if (pt && method === 'GET' && pt[1] !== 'import') return backup.sendZip('datapack', pt[1], res, who)
     if (p === '/api/datapack' || pt) return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/books' && (method === 'POST' || method === 'GET')) return books(req, res, send)
-    if (await ai(req, res, url, send, who) !== false) return
+    if ((await ai(req, res, url, send, who)) !== false) return
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who)
     if (p === '/api/table-rules') return tableRules(req, res, send)
     if (p === '/api/samples') return sampleSets(req, res, send)
@@ -180,7 +225,7 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
    *  creation rules (S2) and its own AI (settings, keys, Ask the rules). Any other path: false (server.mjs answers 404). */
   async function sr6(req, res, url, send, who) {
     const p = url.pathname
-    if (await ai(req, res, url, send, who, 'sr6') !== false) return
+    if ((await ai(req, res, url, send, who, 'sr6')) !== false) return
     if (p === '/api/books' && (req.method === 'POST' || req.method === 'GET')) return books(req, res, send, 'sr6')
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
     if (p === '/api/creation') return creation(req, res, send)

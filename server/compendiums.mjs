@@ -32,14 +32,18 @@ const fail = (code, message) => Object.assign(new Error(message), { code })
 const HIDDEN_NS = /<!DOCTYPE|\sxmlns(?::[\w.-]+)?="[^"]*&/i
 
 // an embedded NPC (any prefix, or none): a <character> element and everything in it. Characters don't nest.
-const OPEN = /<(?:[\w.-]+:)?character\b/g, CLOSE = /<\/(?:[\w.-]+:)?character\s*>/g
+const OPEN = /<(?:[\w.-]+:)?character\b/g,
+  CLOSE = /<\/(?:[\w.-]+:)?character\s*>/g
 /** The compendium file without its NPCs, for players; null when one can't be taken out cleanly (never sent then).
  *  Linear: an NPC ends at its first '>' when that is "/>", else at the first closing tag after it. One with neither means
  *  no later one can close either, so the file is refused there rather than rescanned from every opening tag. */
 export function withoutNpcs(xml) {
-  let out = '', at = 0, open
+  let out = '',
+    at = 0,
+    open
   for (OPEN.lastIndex = 0; (open = OPEN.exec(xml));) {
-    const after = OPEN.lastIndex, gt = xml.indexOf('>', after)
+    const after = OPEN.lastIndex,
+      gt = xml.indexOf('>', after)
     let end
     if (gt > 0 && xml[gt - 1] === '/') end = gt + 1
     else {
@@ -57,7 +61,8 @@ export function withoutNpcs(xml) {
 /** game: GAMES.ca2 or GAMES.sr6 (its data root and the other game's namespace); home: that game's characters folder;
  *  sourceFiles: its books' source lists (missing ones are skipped); campaigns: that game's. */
 export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth, campaigns }) {
-  const root = join(home, '.compendiums'), folder = u => join(root, u) // a username never starts with a dot
+  const root = join(home, '.compendiums'),
+    folder = u => join(root, u) // a username never starts with a dot
   // the root first (after the XML declaration), in the game's data namespace, its attributes as the app writes them
   // (double-quoted, < and > escaped): the server edits that tag (rev, updatedAt). Linear: each attribute ends at its quote.
   const ROOT = new RegExp(`^\\s*(?:<\\?xml[^?]*\\?>\\s*)?(<${game.data.tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>)`)
@@ -68,7 +73,8 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
     return tag && attr(tag, xmlns) === game.data.ns && attr(tag, 'kind') === 'compendium' ? tag : null
   }
   function setAttr(xml, name, value) {
-    const tag = xml.match(ROOT)[1], re = new RegExp(`\\s${name}="[^"]*"`)
+    const tag = xml.match(ROOT)[1],
+      re = new RegExp(`\\s${name}="[^"]*"`)
     const next = re.test(tag) ? tag.replace(re, ` ${name}="${value}"`) : tag.replace(/\s*>$/, ` ${name}="${value}">`)
     return xml.replace(tag, next)
   }
@@ -76,7 +82,8 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
   async function index(owner) {
     const out = []
     for (const file of (await readdir(folder(owner)).catch(() => [])).filter(f => ID.test(f.replace(/\.xml$/, '')) && f.endsWith('.xml'))) {
-      const xml = await readFile(join(folder(owner), file), 'utf8'), tag = rootOf(xml)
+      const xml = await readFile(join(folder(owner), file), 'utf8'),
+        tag = rootOf(xml)
       if (tag) out.push({ id: file.slice(0, -4), file, rev: Number(attr(tag, 'rev') ?? 0), xml, owner, tag })
     }
     return out
@@ -91,9 +98,15 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
     const out = []
     let camp = null // campaigns.xml, read once and only for a campaign-shared row
     for (const c of await all()) {
-      const sharing = attr(c.tag, 'sharing'), cid = attr(c.tag, 'campaign')
-      if (c.owner === me.username || me.role === 'admin' || sharing === 'table'
-        || (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).leads(me.username, cid) && camp.leads(c.owner, cid))) out.push(c)
+      const sharing = attr(c.tag, 'sharing'),
+        cid = attr(c.tag, 'campaign')
+      if (
+        c.owner === me.username ||
+        me.role === 'admin' ||
+        sharing === 'table' ||
+        (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).leads(me.username, cid) && camp.leads(c.owner, cid))
+      )
+        out.push(c)
     }
     return out
   }
@@ -102,13 +115,18 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
     const out = []
     let camp = null // campaigns.xml, read once and only for a campaign-shared row
     for (const c of await all()) {
-      const sharing = attr(c.tag, 'sharing'), cid = attr(c.tag, 'campaign')
-      if (sharing === 'table' || (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).holds(me.username, cid) && camp.leads(c.owner, cid))) out.push(c)
+      const sharing = attr(c.tag, 'sharing'),
+        cid = attr(c.tag, 'campaign')
+      if (sharing === 'table' || (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).holds(me.username, cid) && camp.leads(c.owner, cid)))
+        out.push(c)
     }
     return out
   }
   async function body(req, res) {
-    const big = () => { res.setHeader('Connection', 'close'); return fail(413, 'a compendium can’t be larger than 20 MB') }
+    const big = () => {
+      res.setHeader('Connection', 'close')
+      return fail(413, 'a compendium can’t be larger than 20 MB')
+    }
     if (Number(req.headers['content-length']) > MAX) throw big()
     const chunks = []
     let size = 0
@@ -126,7 +144,11 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
       if (req.method !== 'GET') return send(res, 405, { error: 'method not allowed' })
       const me = auth.current(who.id)
       if (!me || !['admin', 'editor'].includes(me.role)) return send(res, 403, { error: 'your account can’t do this' })
-      return send(res, 200, (await readable(me)).map(({ id, file, rev, xml, owner }) => ({ id, file, rev, xml, owner, ownerName: auth.nameOf(owner) })))
+      return send(
+        res,
+        200,
+        (await readable(me)).map(({ id, file, rev, xml, owner }) => ({ id, file, rev, xml, owner, ownerName: auth.nameOf(owner) })),
+      )
     }
     if (p === '/api/compendiums/shared') {
       if (req.method !== 'GET') return send(res, 405, { error: 'method not allowed' })
@@ -142,7 +164,11 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
     const m = p.match(/^\/api\/compendiums\/([^/]+)$/)
     if (!m) return send(res, 404, { error: 'not found' })
     let id
-    try { id = decodeURIComponent(m[1]) } catch { id = '' }
+    try {
+      id = decodeURIComponent(m[1])
+    } catch {
+      id = ''
+    }
     if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
     if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
     const xml = req.method === 'PUT' ? await body(req, res) : null
@@ -151,7 +177,9 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
       if (xml.includes(game.foreign) || HIDDEN_NS.test(xml)) return send(res, 400, { error: 'this is the other game’s file' })
       tag = rootOf(xml)
       if (!tag || attr(tag, 'id') !== id) return send(res, 400, { error: 'body is not a compendium file for this id' })
-      const name = attr(tag, 'name')?.trim(), sharing = attr(tag, 'sharing'), cid = attr(tag, 'campaign')
+      const name = attr(tag, 'name')?.trim(),
+        sharing = attr(tag, 'sharing'),
+        cid = attr(tag, 'campaign')
       if (!name || name.length > 120) return send(res, 400, { error: 'a compendium needs a name (up to 120 characters)' })
       if (!SOURCE_ID.test(attr(tag, 'source') ?? '')) return send(res, 400, { error: 'a source id is A–Z, 0–9 and -, starting with a letter (up to 20)' })
       if (!SHARING.includes(sharing)) return send(res, 400, { error: 'sharing is private, campaign or table' })
@@ -163,7 +191,8 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
       const me = auth.current(who.id)
       if (!me) return send(res, 401, { error: 'sign in first' })
       if (!['admin', 'editor'].includes(me.role)) return send(res, 403, { error: 'your account can’t do this' })
-      const everyone = await all(), existing = everyone.find(c => c.owner === me.username && c.id === id)
+      const everyone = await all(),
+        existing = everyone.find(c => c.owner === me.username && c.id === id)
       if (!existing && everyone.some(c => c.id === id))
         return send(res, 403, { error: 'this compendium belongs to another account; only its owner can change it' })
       const dir = folder(me.username)
@@ -174,14 +203,17 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
         res.writeHead(204).end()
         return
       }
-      const source = attr(tag, 'source'), cid = attr(tag, 'campaign')
+      const source = attr(tag, 'source'),
+        cid = attr(tag, 'campaign')
       if (existing && attr(existing.tag, 'source') !== source) return send(res, 400, { error: 'a compendium’s source id can’t change' })
       if (!existing && ((await bookSources()).has(source) || everyone.some(c => attr(c.tag, 'source') === source)))
         return send(res, 409, { error: `the source id ${source} is taken; choose another` })
-      if (cid && !await campaigns.leads(me.username, cid)) return send(res, 400, { error: 'you can only share a compendium with a campaign you GM' })
+      if (cid && !(await campaigns.leads(me.username, cid))) return send(res, 400, { error: 'you can only share a compendium with a campaign you GM' })
       if (existing && url.searchParams.get('force') !== '1' && String(existing.rev) !== String(req.headers['if-match'] ?? ''))
         return send(res, 409, { error: 'conflict', rev: existing.rev, file: existing.file, updatedAt: attr(existing.tag, 'updatedAt') })
-      const rev = (existing?.rev ?? 0) + 1, updatedAt = new Date().toISOString(), file = `${id}.xml`
+      const rev = (existing?.rev ?? 0) + 1,
+        updatedAt = new Date().toISOString(),
+        file = `${id}.xml`
       await mkdir(dir, { recursive: true })
       await writeAtomic(join(dir, file), setAttr(setAttr(xml, 'rev', rev), 'updatedAt', updatedAt))
       return send(res, existing ? 200 : 201, { rev, file, updatedAt })

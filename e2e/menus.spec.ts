@@ -10,17 +10,22 @@ const TAG = process.env.MENUS_TAG ?? 'after' // MENUS_TAG=before: screenshots on
 const PHONE = { width: 390, height: 844 }
 
 /** A made-up night skyline: a gradient sky, a sun and dark blocks (no artwork is committed). */
-const skyline = () => makePng(480, 320, (x, y) => {
-  const t = y / 320
-  if (Math.hypot(x - 330, y - 120) < 60) return [255, 196, 40]
-  const h = 150 + ((Math.floor(x / 40) * 53) % 110)
-  if (y > 320 - h + (x % 40 < 4 ? 400 : 0)) return (x + y) % 17 === 0 ? [255, 214, 90] : [28, 22, 50]
-  return [Math.round(40 + 180 * t), Math.round(20 + 30 * t), Math.round(110 - 30 * t)]
-})
+const skyline = () =>
+  makePng(480, 320, (x, y) => {
+    const t = y / 320
+    if (Math.hypot(x - 330, y - 120) < 60) return [255, 196, 40]
+    const h = 150 + ((Math.floor(x / 40) * 53) % 110)
+    if (y > 320 - h + (x % 40 < 4 ? 400 : 0)) return (x + y) % 17 === 0 ? [255, 214, 90] : [28, 22, 50]
+    return [Math.round(40 + 180 * t), Math.round(20 + 30 * t), Math.round(110 - 30 * t)]
+  })
 
 async function shots(page: Page, name: string, full = false) {
-  const theme = (t: string) => page.evaluate(t => { const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
-    localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${TAG}-${name}-light.png`, fullPage: full })
   await theme('dark')
@@ -31,14 +36,28 @@ async function shots(page: Page, name: string, full = false) {
   await page.setViewportSize({ width: 1400, height: 900 })
   await theme('light')
 }
-const printStyle = (page: Page, print: string) => page.evaluate(p => { const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
-  localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, print: p })) }, print)
+const printStyle = (page: Page, print: string) =>
+  page.evaluate(p => {
+    const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
+    localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, print: p }))
+  }, print)
 
 test('every menu as icons with tooltips; the print page background behind one button, strong at 100%', async ({ page }) => {
   mkdirSync(SHOTS, { recursive: true })
   await page.goto('/')
-  const artId: string = await page.evaluate(async png => (await (await fetch('./api/backgrounds', { method: 'POST', body: new Uint8Array(png),
-    headers: { 'Content-Type': 'image/png', 'X-Filename': 'menus-skyline.png' } })).json()).id, [...skyline()])
+  const artId: string = await page.evaluate(
+    async png =>
+      (
+        await (
+          await fetch('./api/backgrounds', {
+            method: 'POST',
+            body: new Uint8Array(png),
+            headers: { 'Content-Type': 'image/png', 'X-Filename': 'menus-skyline.png' },
+          })
+        ).json()
+      ).id,
+    [...skyline()],
+  )
   try {
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
@@ -54,15 +73,25 @@ test('every menu as icons with tooltips; the print page background behind one bu
       await page.mouse.move(0, 0)
       await expect(tip).toBeHidden()
       await npcs.focus()
-      await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab') // keyboard focus: :focus-visible
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Tab') // keyboard focus: :focus-visible
       await expect(tip).toHaveText('NPCs & Critters')
       await page.screenshot({ path: `${SHOTS}/${TAG}-tooltip.png`, clip: { x: 0, y: 0, width: 1400, height: 260 } })
     }
     await shots(page, 'runners')
-    for (const [hash, name] of [['npcs', 'npcs'], ['compendiums', 'compendiums'], ['campaigns', 'campaigns'], ['books', 'books'], ['rules', 'rules'], ['data', 'data'], ['trash', 'trash']]) {
+    for (const [hash, name] of [
+      ['npcs', 'npcs'],
+      ['compendiums', 'compendiums'],
+      ['campaigns', 'campaigns'],
+      ['books', 'books'],
+      ['rules', 'rules'],
+      ['data', 'data'],
+      ['trash', 'trash'],
+    ]) {
       await page.goto(`/#/${hash}`)
       await expect(page.locator('main h1')).toBeVisible()
-      if (TAG === 'after') await expect(page.getByRole('navigation', { name: 'Main menu' }).locator('[aria-current="page"]')).toHaveCount(hash === 'trash' ? 0 : 1)
+      if (TAG === 'after')
+        await expect(page.getByRole('navigation', { name: 'Main menu' }).locator('[aria-current="page"]')).toHaveCount(hash === 'trash' ? 0 : 1)
       await shots(page, name)
     }
     // account menu open

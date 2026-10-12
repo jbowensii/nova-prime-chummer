@@ -4,14 +4,23 @@
 // needs a toggle (RULE_DEPS) sits under it, in its section.
 import { aboutOf, CREATION_KEYS, RULE_DEPS } from '../engine/creation'
 
-export const SECTIONS = ['Budgets & priorities', 'Attributes & skills', 'Qualities', 'Magic & Resonance', 'Gear & augmentations',
-  'Contacts & lifestyle', 'Levels of play', 'Optional rules (book)', 'House rules'] as const
+export const SECTIONS = [
+  'Budgets & priorities',
+  'Attributes & skills',
+  'Qualities',
+  'Magic & Resonance',
+  'Gear & augmentations',
+  'Contacts & lifestyle',
+  'Levels of play',
+  'Optional rules (book)',
+  'House rules',
+] as const
 export type Section = (typeof SECTIONS)[number]
 /** What a section's rows are, under its heading. */
 export const SECTION_ABOUT: Record<Section, string> = {
   'Budgets & priorities': 'Karma, nuyen and points: the creation methods’ numbers, the karma prices and the career prices.',
   'Attributes & skills': 'Attribute and skill limits, and the numbers behind the derived values.',
-  'Qualities': 'How many, how much, and the catalog qualities the rules look for by name.',
+  Qualities: 'How many, how much, and the catalog qualities the rules look for by name.',
   'Magic & Resonance': 'The highest rating, free spells and forms, and foci.',
   'Gear & augmentations': 'Availability, augmentation grades and data structures.',
   'Contacts & lifestyle': 'Contact points and the price of fake SINs and licences.',
@@ -21,16 +30,57 @@ export const SECTION_ABOUT: Record<Section, string> = {
 }
 
 const G: Record<string, Section> = {
-  'Levels of play': 'Levels of play', 'Karma prices': 'Budgets & priorities', Advancement: 'Budgets & priorities', Nuyen: 'Budgets & priorities',
-  'Sum to ten': 'Budgets & priorities', 'Point buy': 'Budgets & priorities', 'Karma build': 'Budgets & priorities', Metatypes: 'Budgets & priorities',
-  Lifepath: 'Budgets & priorities', 'Augmentation grades': 'Gear & augmentations', 'Derived values': 'Attributes & skills', 'Optional rules': 'House rules', General: 'Budgets & priorities',
+  'Levels of play': 'Levels of play',
+  'Karma prices': 'Budgets & priorities',
+  Advancement: 'Budgets & priorities',
+  Nuyen: 'Budgets & priorities',
+  'Sum to ten': 'Budgets & priorities',
+  'Point buy': 'Budgets & priorities',
+  'Karma build': 'Budgets & priorities',
+  Metatypes: 'Budgets & priorities',
+  Lifepath: 'Budgets & priorities',
+  'Augmentation grades': 'Gear & augmentations',
+  'Derived values': 'Attributes & skills',
+  'Optional rules': 'House rules',
+  General: 'Budgets & priorities',
 }
 const PUT: [Section, string[]][] = [
-  ['Attributes & skills', ['oneAttributeAtMax', 'attributeBaseMax', 'skillCap', 'skillCapAptitude', 'oneSkillAtMax', 'skillPointsSpec', 'skillPointsExpertise',
-    'languageMax', 'knowledgePerLog', 'essence']],
-  ['Qualities', ['qualityNetBonusCap', 'qualityMaxCount', 'aptitudeQuality', 'exceptionalQuality', 'incompetentQuality', 'sensitiveSystemQuality',
-    'improvedAbilityPower', 'mentorSpiritQuality', 'improvedAbilityFactor', 'sensitiveSystemEssence', 'attributeMaxFloor', 'manyTalentsQuality',
-    'manySkillsQuality', 'builtToughQuality', 'dermalDepositsQuality', 'charismaticDefenseQuality']],
+  [
+    'Attributes & skills',
+    [
+      'oneAttributeAtMax',
+      'attributeBaseMax',
+      'skillCap',
+      'skillCapAptitude',
+      'oneSkillAtMax',
+      'skillPointsSpec',
+      'skillPointsExpertise',
+      'languageMax',
+      'knowledgePerLog',
+      'essence',
+    ],
+  ],
+  [
+    'Qualities',
+    [
+      'qualityNetBonusCap',
+      'qualityMaxCount',
+      'aptitudeQuality',
+      'exceptionalQuality',
+      'incompetentQuality',
+      'sensitiveSystemQuality',
+      'improvedAbilityPower',
+      'mentorSpiritQuality',
+      'improvedAbilityFactor',
+      'sensitiveSystemEssence',
+      'attributeMaxFloor',
+      'manyTalentsQuality',
+      'manySkillsQuality',
+      'builtToughQuality',
+      'dermalDepositsQuality',
+      'charismaticDefenseQuality',
+    ],
+  ],
   ['Magic & Resonance', ['magicMax', 'freeSpellsPerMagic', 'freeFormsPerResonance', 'fociForcePerMagic', 'fociBondKarma']],
   ['Gear & augmentations', ['maxAvailability', 'dataStructureNuyen']],
   ['Contacts & lifestyle', ['contactPointsPerCha', 'fakeSinPerRating', 'licencePerRating']],

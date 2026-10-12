@@ -15,7 +15,11 @@ const status = (page: Page) => page.getByRole('status', { name: 'Save status' })
 
 async function shots(page: Page, name: string) {
   mkdirSync(SHOTS, { recursive: true })
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png` })
   await theme('dark')
@@ -56,7 +60,10 @@ test('knowledge & languages: free keyword and skill entries, rename a free slot,
   await expect(page.locator('.receipt .peek')).not.toHaveText(left!)
 
   // dropping Electronics below 4 asks first, then the renamed entry is paid (and flagged)
-  page.once('dialog', d => { expect(d.message()).toContain('“Gadget blogs” is no longer free'); void d.accept() })
+  page.once('dialog', d => {
+    expect(d.message()).toContain('“Gadget blogs” is no longer free')
+    void d.accept()
+  })
   await page.getByRole('button', { name: 'Lower Electronics' }).click()
   await expect(list.getByRole('row', { name: /Gadget blogs.*Paid \(Electronics below 4\)/ })).toBeVisible()
   await page.getByRole('button', { name: 'Raise Electronics' }).click()

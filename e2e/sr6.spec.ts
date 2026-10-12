@@ -10,25 +10,42 @@ import { createServer } from '../server/server.mjs'
 // Ada the admin, Eve an editor, Pat a player. Runs in order. Screenshots go to .extract/ (not committed).
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-s1'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
-let server: ReturnType<typeof createServer>, base = ''
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -46,7 +63,10 @@ const kind = (page: Page, name: string) => page.getByRole('group', { name: 'Kind
 
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string, dir = SHOTS) {
-  const theme = (t: string) => page.evaluate(v => { document.documentElement.dataset.theme = v }, t)
+  const theme = (t: string) =>
+    page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, t)
   await page.screenshot({ path: `${dir}/${name}-light.png`, fullPage: true })
   await theme('dark')
   await page.screenshot({ path: `${dir}/${name}-dark.png`, fullPage: true })
@@ -134,8 +154,17 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   const cap = page.getByLabel('Highest skill rank', { exact: true })
   // nine sections, folded: a closed section draws no rows; the search finds a setting by name and opens its section
   const openAll = () => page.getByRole('button', { name: 'Open all sections' }).click()
-  await expect(page.locator('.sr6-creation details.fold.sub > summary h3')).toHaveText(['Budgets & priorities', 'Attributes & skills', 'Qualities', 'Magic & Resonance',
-    'Gear & augmentations', 'Contacts & lifestyle', 'Levels of play', 'Optional rules (book)', 'House rules'])
+  await expect(page.locator('.sr6-creation details.fold.sub > summary h3')).toHaveText([
+    'Budgets & priorities',
+    'Attributes & skills',
+    'Qualities',
+    'Magic & Resonance',
+    'Gear & augmentations',
+    'Contacts & lifestyle',
+    'Levels of play',
+    'Optional rules (book)',
+    'House rules',
+  ])
   await expect(page.locator('.sr6-creation .cr-row')).toHaveCount(0)
   await page.getByLabel('Search the settings').fill('highest skill rank')
   await expect(cap).toBeVisible()
@@ -163,9 +192,15 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   const load = page.getByLabel('Load settings file')
   await load.setInputFiles({ name: 'notes.xml', mimeType: 'application/xml', buffer: Buffer.from('<tablerules/>') })
   await expect(page.locator('.sr6-creation [role=alert]')).toContainText('notes.xml isn’t a creation rules file')
-  await load.setInputFiles({ name: 'made-up-creation.xml', mimeType: 'application/xml', buffer: Buffer.from('<?xml version="1.0"?>'
-    + '<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="33" source="HOUSE" page="7"/>'
-    + '<setting key="skillCap" value="6"/><setting key="noSuchSetting" value="1"/></sr6:creation>') })
+  await load.setInputFiles({
+    name: 'made-up-creation.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(
+      '<?xml version="1.0"?>' +
+        '<sr6:creation xmlns:sr6="urn:chummer-sr6:config:1" version="1"><setting key="startingKarma" value="33" source="HOUSE" page="7"/>' +
+        '<setting key="skillCap" value="6"/><setting key="noSuchSetting" value="1"/></sr6:creation>',
+    ),
+  })
   await expect(page.locator('.sr6-creation [role=status]')).toContainText('Loaded 2 settings from made-up-creation.xml')
   await expect(page.getByLabel('Starting karma', { exact: true })).toHaveValue('33')
   await expect(page.getByLabel('Starting karma: source', { exact: true })).toHaveValue('HOUSE')
@@ -210,7 +245,8 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await shoot(page, 'table-setup-folded', U)
   const house = page.locator('details.fold.sub[data-section="House rules"]')
   await house.locator('summary').click()
-  const carry = house.getByRole('switch', { name: /^Own carry-over limits: the Karma/ }), most = house.getByLabel('Own carry-over limits: most Karma kept', { exact: true })
+  const carry = house.getByRole('switch', { name: /^Own carry-over limits: the Karma/ }),
+    most = house.getByLabel('Own carry-over limits: most Karma kept', { exact: true })
   await expect(carry).not.toBeChecked()
   await expect(most).toBeDisabled()
   await carry.check()

@@ -12,17 +12,29 @@ import { findPython } from '../../tools/python.mjs'
 const python: string[] | null = findPython()
 const FIXTURE = 'tests/fixtures/mini/custom/imported/core'
 const dir = mkdtempSync(join(tmpdir(), 'ca2-pack-py-'))
-const custom = join(dir, 'custom'), core = join(custom, 'imported', 'core')
+const custom = join(dir, 'custom'),
+  core = join(custom, 'imported', 'core')
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-const files = (d: string) => Object.fromEntries(readdirSync(d).sort().map(f => [f, readFileSync(join(d, f), 'utf8')]))
+const files = (d: string) =>
+  Object.fromEntries(
+    readdirSync(d)
+      .sort()
+      .map(f => [f, readFileSync(join(d, f), 'utf8')]),
+  )
 
 describe.skipIf(!python)('with the real importer', () => {
-  beforeAll(() => new Promise<void>(ok => {
-    cpSync(FIXTURE, core, { recursive: true })
-    srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: join(dir, 'library'), python })
-    srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-  }))
+  beforeAll(
+    () =>
+      new Promise<void>(ok => {
+        cpSync(FIXTURE, core, { recursive: true })
+        srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: join(dir, 'library'), python })
+        srv.listen(0, () => {
+          base = `http://127.0.0.1:${srv.address().port}`
+          ok()
+        })
+      }),
+  )
   afterAll(() => srv?.close())
 
   test('download a pack, lose the core files, upload it: they are back as they were', async () => {
@@ -54,7 +66,8 @@ describe.skipIf(!python)('with the real importer', () => {
   }, 60000)
 
   test('a pack import killed mid-swap: the next start puts the moved-aside files back', async () => {
-    const other = mkdtempSync(join(tmpdir(), 'ca2-pack-kill-')), otherCore = join(other, 'custom', 'imported', 'core')
+    const other = mkdtempSync(join(tmpdir(), 'ca2-pack-kill-')),
+      otherCore = join(other, 'custom', 'imported', 'core')
     cpSync(FIXTURE, otherCore, { recursive: true })
     mkdirSync(join(otherCore, '.restore-old-x'))
     renameSync(join(otherCore, 'skills.xml'), join(otherCore, '.restore-old-x', 'skills.xml'))

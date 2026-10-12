@@ -32,7 +32,8 @@ const value = (v: string): CreationValue => (v === 'true' ? true : v === 'false'
 describe.skipIf(!python)('the importer prices a sample runner as the app does', () => {
   const [cmd, ...pre] = python ?? ['']
   const run = python ? spawnSync(cmd, [...pre, '-m', 'importer.tests.sr6_parity'], { encoding: 'utf8', maxBuffer: 1 << 26 }) : null
-  const out: Out = run?.status === 0 ? JSON.parse(run.stdout) : { patch: ['', ''], files: [], runners: [], deps: { requires: {}, levelKeys: [], levels: [], sets: [] } }
+  const out: Out =
+    run?.status === 0 ? JSON.parse(run.stdout) : { patch: ['', ''], files: [], runners: [], deps: { requires: {}, levelKeys: [], levels: [], sets: [] } }
 
   test('the generator runs', () => expect(run?.status, run?.stderr).toBe(0))
   // fit.resolve applies the settings as runnerRules does (applyDeps, levelRules): the same tables

@@ -17,32 +17,53 @@ vi.setConfig({ testTimeout: 30000 })
 type Srv = { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 const PW: Record<string, string> = { eve: 'eve-password-1', pat: 'pat-password-1', gus: 'gus-password-1', nia: 'nia-password-1' }
 const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-creation-'))
-const custom = join(dir, 'custom'), library = join(dir, 'library')
-let base = '', srv: Srv
+const custom = join(dir, 'custom'),
+  library = join(dir, 'library')
+let base = '',
+  srv: Srv
 const cookies: Record<string, string> = {}
 beforeAll(async () => {
   mkdirSync(join(library, '.config'), { recursive: true })
-  writeFileSync(join(library, '.config', 'users.xml'), await usersFile([ADMIN, { username: 'eve', role: 'editor', password: PW.eve, name: 'Eve' },
-    { username: 'pat', role: 'player', password: PW.pat, name: 'Pat' }, { username: 'gus', role: 'editor', password: PW.gus, name: 'Gus' },
-    { username: 'nia', role: 'player', password: PW.nia, name: 'Nia' }]))
+  writeFileSync(
+    join(library, '.config', 'users.xml'),
+    await usersFile([
+      ADMIN,
+      { username: 'eve', role: 'editor', password: PW.eve, name: 'Eve' },
+      { username: 'pat', role: 'player', password: PW.pat, name: 'Pat' },
+      { username: 'gus', role: 'editor', password: PW.gus, name: 'Gus' },
+      { username: 'nia', role: 'player', password: PW.nia, name: 'Nia' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW)) {
-    const r = await rawFetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    cookies[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await rawFetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    cookies[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
 /** fetch as admin (the default, through _signin's fetch), eve (editor) or pat (player). */
-const as = (who: string, path: string, init: RequestInit = {}) => who === 'admin' ? fetch(`${base}${path}`, init)
-  : rawFetch(`${base}${path}`, { ...init, headers: { ...init.headers as Record<string, string>, Origin: base, Cookie: cookies[who] } })
+const as = (who: string, path: string, init: RequestInit = {}) =>
+  who === 'admin'
+    ? fetch(`${base}${path}`, init)
+    : rawFetch(`${base}${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), Origin: base, Cookie: cookies[who] } })
 const put = (who: string, settings: unknown[], path = '/api/sr6/creation') =>
   as(who, path, { method: 'PUT', body: JSON.stringify({ settings }), headers: { 'Content-Type': 'application/json' } })
-const SETTINGS = [{ key: 'startingKarma', value: '40', source: 'CRB', page: 61 }, { key: 'aptitudeQuality', value: 'crb.knack' },
-  { key: 'grade:alpha:essence', value: '0.7', source: 'CRB', page: '283' }, { key: 'metatypeKarma:crb.stonefolk', value: '11' }]
+const SETTINGS = [
+  { key: 'startingKarma', value: '40', source: 'CRB', page: 61 },
+  { key: 'aptitudeQuality', value: 'crb.knack' },
+  { key: 'grade:alpha:essence', value: '0.7', source: 'CRB', page: '283' },
+  { key: 'metatypeKarma:crb.stonefolk', value: '11' },
+]
 
 test('nothing saved yet: GET gives [] and the file isn’t there', async () => {
   const r = await as('pat', '/api/sr6/creation')
@@ -61,8 +82,11 @@ test('the admin saves the server’s settings: 204, served at /custom/sr6/creati
   const xsd = readFileSync('public/data/sr6/schema/creation.xsd', 'utf8')
   expect((await validateXML({ xml: { fileName: 'creation.xml', contents: xml }, schema: { fileName: 'creation.xsd', contents: xsd } })).errors).toEqual([])
   expect(await (await as('pat', '/api/sr6/creation')).json()).toEqual([
-    { key: 'startingKarma', value: '40', source: 'CRB', page: 61 }, { key: 'aptitudeQuality', value: 'crb.knack' },
-    { key: 'grade:alpha:essence', value: '0.7', source: 'CRB', page: 283 }, { key: 'metatypeKarma:crb.stonefolk', value: '11' }])
+    { key: 'startingKarma', value: '40', source: 'CRB', page: 61 },
+    { key: 'aptitudeQuality', value: 'crb.knack' },
+    { key: 'grade:alpha:essence', value: '0.7', source: 'CRB', page: 283 },
+    { key: 'metatypeKarma:crb.stonefolk', value: '11' },
+  ])
   expect((await put('admin', SETTINGS.slice(0, 1))).status).toBe(204)
   expect(await (await as('pat', '/api/sr6/creation')).json()).toHaveLength(1)
 })
@@ -74,10 +98,17 @@ test('editors and players can’t save the server’s settings', async () => {
 
 test('a bad key, a duplicate, an empty or 201-character value, a bad source or a page of 0 is refused with 400', async () => {
   const bad = [
-    [{ key: 'bad key', value: '1' }], [{ key: 'x'.repeat(81), value: '1' }],
-    [{ key: 'skillCap', value: '1' }, { key: 'skillCap', value: '2' }],
-    [{ key: 'skillCap', value: '' }], [{ key: 'skillCap', value: 'x'.repeat(201) }],
-    [{ key: 'skillCap', value: '5', source: 'crb' }], [{ key: 'skillCap', value: '5', page: 0 }], [{ key: 'skillCap', value: '5', page: 1.5 }],
+    [{ key: 'bad key', value: '1' }],
+    [{ key: 'x'.repeat(81), value: '1' }],
+    [
+      { key: 'skillCap', value: '1' },
+      { key: 'skillCap', value: '2' },
+    ],
+    [{ key: 'skillCap', value: '' }],
+    [{ key: 'skillCap', value: 'x'.repeat(201) }],
+    [{ key: 'skillCap', value: '5', source: 'crb' }],
+    [{ key: 'skillCap', value: '5', page: 0 }],
+    [{ key: 'skillCap', value: '5', page: 1.5 }],
   ]
   for (const s of bad) {
     const r = await put('admin', s)
@@ -85,7 +116,14 @@ test('a bad key, a duplicate, an empty or 201-character value, a bad source or a
     expect((await r.json()).error).toBeTruthy()
   }
   expect((await put('admin', [{ key: 'skillCap', value: 'x'.repeat(200) }])).status).toBe(204)
-  expect((await put('admin', Array.from({ length: 501 }, (_, i) => ({ key: `k${i}`, value: '1' })))).status).toBe(400)
+  expect(
+    (
+      await put(
+        'admin',
+        Array.from({ length: 501 }, (_, i) => ({ key: `k${i}`, value: '1' })),
+      )
+    ).status,
+  ).toBe(400)
   expect((await as('admin', '/api/sr6/creation', { method: 'PUT', body: 'x', headers: { 'Content-Type': 'text/plain' } })).status).toBe(415)
 })
 
@@ -98,14 +136,18 @@ test('Anarchy has no creation rules: /api/creation is 404 and nothing lands in c
 })
 
 // a campaign's own settings
-const json = (who: string, method: string, path: string, body?: unknown) => as(who, path, { method,
-  ...body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } } })
+const json = (who: string, method: string, path: string, body?: unknown) =>
+  as(who, path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }) })
 const campaign = async (who: string, name: string, game = 'sr6/') => (await (await json(who, 'POST', `/api/${game}campaigns`, { name })).json()).id as string
-const OWN = [{ key: 'startingKarma', value: '55', source: 'HOUSE', page: 3 }, { key: 'skillCap', value: '4' }]
+const OWN = [
+  { key: 'startingKarma', value: '55', source: 'HOUSE', page: 3 },
+  { key: 'skillCap', value: '4' },
+]
 
 test('a campaign uses the server’s settings until its GM sets its own; players read them, nobody else sees them', async () => {
   expect((await put('admin', SETTINGS)).status).toBe(204)
-  const id = await campaign('eve', 'Made-up Table'), other = await campaign('gus', 'Other Table')
+  const id = await campaign('eve', 'Made-up Table'),
+    other = await campaign('gus', 'Other Table')
   expect((await json('eve', 'POST', `/api/sr6/campaigns/${id}/members`, { user: 'pat' })).status).toBe(200)
   expect((await (await json('eve', 'GET', `/api/sr6/campaigns/${id}`)).json()).creation).toBeNull()
   // its GM sets its own
@@ -150,13 +192,20 @@ test('a campaign’s GM locks creation settings for its runners: kept with who l
   expect((await json('eve', 'POST', `/api/sr6/campaigns/${id}/members`, { user: 'pat' })).status).toBe(200)
   expect((await (await json('eve', 'GET', `/api/sr6/campaigns/${id}`)).json()).locks).toEqual([])
   const r = await (await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: ['startingKarma', 'contactKarma'] })).json()
-  expect(r.locks).toEqual([{ key: 'startingKarma', by: 'eve', byName: 'Eve' }, { key: 'contactKarma', by: 'eve', byName: 'Eve' }])
+  expect(r.locks).toEqual([
+    { key: 'startingKarma', by: 'eve', byName: 'Eve' },
+    { key: 'contactKarma', by: 'eve', byName: 'Eve' },
+  ])
   // the admin adds one: the ones there keep who locked them
   const r2 = await (await json('admin', 'PUT', `/api/sr6/campaigns/${id}`, { locks: ['startingKarma', 'maxKarmaLeft'] })).json()
-  expect(r2.locks.map((l: { key: string; by: string }) => [l.key, l.by])).toEqual([['startingKarma', 'eve'], ['maxKarmaLeft', 'admin']])
+  expect(r2.locks.map((l: { key: string; by: string }) => [l.key, l.by])).toEqual([
+    ['startingKarma', 'eve'],
+    ['maxKarmaLeft', 'admin'],
+  ])
   expect((await (await json('pat', 'GET', `/api/sr6/campaigns/${id}`)).json()).locks).toHaveLength(2)
   expect((await json('pat', 'PUT', `/api/sr6/campaigns/${id}`, { locks: [] })).status).toBe(403)
-  for (const bad of ['startingKarma', [3], ['bad key']]) expect((await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: bad })).status, JSON.stringify(bad)).toBe(400)
+  for (const bad of ['startingKarma', [3], ['bad key']])
+    expect((await json('eve', 'PUT', `/api/sr6/campaigns/${id}`, { locks: bad })).status, JSON.stringify(bad)).toBe(400)
   const xml = readFileSync(join(custom, 'sr6', 'campaigns.xml'), 'utf8')
   expect(xml).toContain('<lock key="maxKarmaLeft" by="admin"/>')
   const xsd = readFileSync('public/data/schema/campaigns.xsd', 'utf8')

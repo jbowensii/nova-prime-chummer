@@ -7,7 +7,14 @@ import type { AmpEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
 const P = cat.pricing
-const amp = (type: string, effects: AmpEntry['effects'], more: Partial<AmpEntry> = {}): AmpEntry => ({ uid: 'a', type, name: 'Odd', narrative: '', effects, ...more })
+const amp = (type: string, effects: AmpEntry['effects'], more: Partial<AmpEntry> = {}): AmpEntry => ({
+  uid: 'a',
+  type,
+  name: 'Odd',
+  narrative: '',
+  effects,
+  ...more,
+})
 const eff = (id: string) => cat.ampEffects.get(id)!
 
 test('lowering an attribute or skill refunds exactly what raising it cost', () => {
@@ -30,18 +37,26 @@ test('a package guide for an id that is not there is nothing', () => {
 })
 
 test('why an effect cannot go on an amp: its type, its maximum, one per level, the deck’s Firewall, a vehicle’s Body, an effect it excludes', () => {
-  expect(effectBlocked(cat, amp('contact', []), eff('armor-plus'))).toBe('not available for Contact'.replace('Contact', cat.ampTypes.get('contact')?.name ?? 'contact'))
+  expect(effectBlocked(cat, amp('contact', []), eff('armor-plus'))).toBe(
+    'not available for Contact'.replace('Contact', cat.ampTypes.get('contact')?.name ?? 'contact'),
+  )
   expect(effectBlocked(cat, amp('mystery', []), eff('armor-plus'))).toBe('not available for mystery')
   expect(effectBlocked(cat, amp('cyberware', [{ ref: 'armor-plus' }, { ref: 'armor-plus' }]), eff('armor-plus'))).toBe('max 2 per amp')
   expect(effectBlocked(cat, amp('cyberware', [{ ref: 'init-1' }]), eff('init-realm'))).toBeUndefined()
   expect(effectBlocked(cat, amp('cyberware', [{ ref: 'init-1' }, { ref: 'init-realm' }]), eff('init-realm'))).toBe('one per initiative level held')
   const loose = { ...cat, ampEffects: new Map(cat.ampEffects).set('firewall-plus', { ...eff('firewall-plus'), max: undefined }) }
-  const wall = (n: number) => amp('cyberdeck', Array.from({ length: n }, () => ({ ref: 'firewall-plus' })))
+  const wall = (n: number) =>
+    amp(
+      'cyberdeck',
+      Array.from({ length: n }, () => ({ ref: 'firewall-plus' })),
+    )
   expect(effectBlocked(loose, wall(4), loose.ampEffects.get('firewall-plus')!)).toBe('Firewall 5 at most')
   expect(effectBlocked(loose, wall(3), loose.ampEffects.get('firewall-plus')!)).toBeUndefined()
   expect(effectBlocked(cat, wall(4), eff('firewall-plus'))).toBe('max 4 per amp')
-  const sky = amp('vehicle', [{ ref: 'vehicle-armor' }], { chassis: { id: 'x', name: 'X', pilot: 1, body: 1, handling: 1, speed: 1, armor: 0, mount: 'none', source: 'TEST', page: 1 } })
-  expect(effectBlocked(cat, sky, eff('vehicle-armor'))).toBe('Armor at most the vehicle\'s Body (1)')
+  const sky = amp('vehicle', [{ ref: 'vehicle-armor' }], {
+    chassis: { id: 'x', name: 'X', pilot: 1, body: 1, handling: 1, speed: 1, armor: 0, mount: 'none', source: 'TEST', page: 1 },
+  })
+  expect(effectBlocked(cat, sky, eff('vehicle-armor'))).toBe("Armor at most the vehicle's Body (1)")
   const xml = { ...cat, ampEffects: new Map(cat.ampEffects).set('odd-x', { ...eff('armor-plus'), id: 'odd-x', excludes: 'armor-plus', max: undefined }) }
   expect(effectBlocked(xml, amp('cyberware', [{ ref: 'armor-plus' }]), xml.ampEffects.get('odd-x')!)).toBe(`not with ${eff('armor-plus').name}`)
   expect(effectBlocked(xml, amp('cyberware', [{ ref: 'armor-plus' }]), { ...xml.ampEffects.get('odd-x')!, excludes: 'gone-effect' })).toBeUndefined()
@@ -56,7 +71,11 @@ test('an effect that needs another says so, with its name or its id; one it has 
 
 test('an amp over its caps names the first one broken: an effect’s maximum, Firewall, a vehicle’s Armor above Body', () => {
   expect(overCap(cat, amp('cyberware', [{ ref: 'armor-plus' }, { ref: 'armor-plus' }, { ref: 'armor-plus' }]))).toBe(`${eff('armor-plus').name}: max 2 per amp`)
-  const wall = (n: number) => amp('cyberdeck', Array.from({ length: n }, () => ({ ref: 'firewall-plus' })))
+  const wall = (n: number) =>
+    amp(
+      'cyberdeck',
+      Array.from({ length: n }, () => ({ ref: 'firewall-plus' })),
+    )
   expect(overCap(cat, wall(5))).toBe(`${eff('firewall-plus').name}: max 4 per amp`)
   const loose = { ...cat, ampEffects: new Map(cat.ampEffects).set('firewall-plus', { ...eff('firewall-plus'), max: undefined }) }
   expect(overCap(loose, wall(5))).toBe('Firewall 5 at most')

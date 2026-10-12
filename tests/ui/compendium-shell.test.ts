@@ -6,20 +6,38 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import { DetailsDialog, shelf, type CompBase, type CompGame } from '../../src/ui/CompendiumShell'
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = '' })
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+afterEach(() => {
+  vi.restoreAllMocks()
+  document.body.innerHTML = ''
+})
 
 const adapter = (taken: (s: string) => boolean): CompGame<CompBase> => ({
-  game: 'sr6', href: '#/sr6/compendiums', intro: '', list: async () => ({ comps: [], bad: [] }), blank: m => ({ ...m, npcs: [] }),
-  save: async () => ({ ok: true, rev: 1 }), remove: async () => {}, books: [], taken, loaded: () => true, count: () => 0, cite: () => null,
+  game: 'sr6',
+  href: '#/sr6/compendiums',
+  intro: '',
+  list: async () => ({ comps: [], bad: [] }),
+  blank: m => ({ ...m, npcs: [] }),
+  save: async () => ({ ok: true, rev: 1 }),
+  remove: async () => {},
+  books: [],
+  taken,
+  loaded: () => true,
+  count: () => 0,
+  cite: () => null,
 })
 
 async function typeSource(taken: (s: string) => boolean, value: string) {
   // jsdom's <dialog> may lack showModal: open it by hand
-  if (!HTMLDialogElement.prototype.showModal) HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) { this.open = true }
+  if (!HTMLDialogElement.prototype.showModal)
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true
+    }
   const el = document.body.appendChild(document.createElement('div'))
   const root = createRoot(el)
-  await act(async () => root.render(createElement(DetailsDialog<CompBase>, { g: adapter(taken), comp: null, campaigns: [], onClose: () => {}, onSaved: async () => {} })))
+  await act(async () =>
+    root.render(createElement(DetailsDialog<CompBase>, { g: adapter(taken), comp: null, campaigns: [], onClose: () => {}, onSaved: async () => {} })),
+  )
   const input = [...el.querySelectorAll('input')].find(i => i.placeholder === 'STREET')!
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
@@ -43,15 +61,23 @@ test('Books: none a listed compendium cites, by name', () => {
 })
 
 test('New compendium: a source id the server refuses as taken (another GM’s private compendium) is shown inline and blocks Create', async () => {
-  if (!HTMLDialogElement.prototype.showModal) HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) { this.open = true }
+  if (!HTMLDialogElement.prototype.showModal)
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.open = true
+    }
   const save = vi.fn(async () => ({ ok: false as const, error: 'the source id HIDDEN is taken; choose another' }))
   const el = document.body.appendChild(document.createElement('div'))
   const root = createRoot(el)
-  await act(async () => root.render(createElement(DetailsDialog<CompBase>, { g: { ...adapter(() => false), save }, comp: null, campaigns: [], onClose: () => {}, onSaved: async () => {} })))
-  const set = async (input: HTMLInputElement, value: string) => act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-  })
+  await act(async () =>
+    root.render(
+      createElement(DetailsDialog<CompBase>, { g: { ...adapter(() => false), save }, comp: null, campaigns: [], onClose: () => {}, onSaved: async () => {} }),
+    ),
+  )
+  const set = async (input: HTMLInputElement, value: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
   const [name, source] = [...el.querySelectorAll('input')]
   await set(name, 'Hidden Kit')
   await set(source, 'HIDDEN')

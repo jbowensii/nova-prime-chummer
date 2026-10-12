@@ -12,7 +12,8 @@ import { usersFile } from '../../server/auth.mjs'
 import { limitReached } from '../../server/books.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
-const dir = mkdtempSync(join(tmpdir(), 'ca2-ask-')), lib = join(dir, 'library')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-ask-')),
+  lib = join(dir, 'library')
 const PLAYER = { username: 'pia', password: 'player-password-1', role: 'player', dailyQuestions: 2 }
 const EDITOR = { username: 'eddie', password: 'editor-password-1', role: 'editor' }
 const PAT = { username: 'pat', password: 'player-password-2', role: 'player' }
@@ -20,8 +21,14 @@ type Srv = { close: () => void; stopJobs: () => void; listen: (p: number, cb: ()
 const servers: Srv[] = []
 function start(): Promise<string> {
   return new Promise(ok => {
-    const s: Srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: lib,
-      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], askTimeout: 2000 })
+    const s: Srv = createServer({
+      staticDir: 'public',
+      charDir: join(dir, 'chars'),
+      customDir: join(dir, 'custom'),
+      libraryDir: lib,
+      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      askTimeout: 2000,
+    })
     servers.push(s)
     s.listen(0, () => ok(`http://127.0.0.1:${s.address().port}`))
   })
@@ -34,19 +41,33 @@ beforeAll(async () => {
   base = await start()
   for (const u of [ADMIN, PLAYER, EDITOR, PAT]) cookies[u.username] = (await signIn(base, u))!
 })
-afterAll(() => { for (const s of servers) { s.stopJobs(); s.close() } })
-afterEach(() => { vi.useRealTimers() })
+afterAll(() => {
+  for (const s of servers) {
+    s.stopJobs()
+    s.close()
+  }
+})
+afterEach(() => {
+  vi.useRealTimers()
+})
 
-const as = (who: string, path: string, init: RequestInit = {}) => rawFetch(`${base}${path}`, { ...init,
-  headers: { Origin: base, Cookie: cookies[who], 'Content-Type': 'application/json', ...init.headers as Record<string, string> } })
+const as = (who: string, path: string, init: RequestInit = {}) =>
+  rawFetch(`${base}${path}`, {
+    ...init,
+    headers: { Origin: base, Cookie: cookies[who], 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) },
+  })
 const ask = (who: string, question: string) => as(who, '/api/ask', { method: 'POST', body: JSON.stringify({ question }) })
 
 test('ask is off until a provider is chosen, enabled and has its key', async () => {
   expect(await (await as('pia', '/api/ask')).json()).toEqual({ available: false, limit: 2, used: 0 })
   const r = await ask('pia', 'How far can I jump?')
   expect([r.status, (await r.json()).error]).toEqual([409, 'Ask the rules isn’t set up: the admin chooses an AI provider and its key in AI settings'])
-  const settings = (enabled: string) => as('admin', '/api/ai-settings', { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
-    body: `<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="${enabled}"/></ca2:aiproviders>` })
+  const settings = (enabled: string) =>
+    as('admin', '/api/ai-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/xml' },
+      body: `<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="${enabled}"/></ca2:aiproviders>`,
+    })
   expect((await settings('false')).status).toBe(200)
   expect((await as('admin', '/api/ai-keys', { method: 'PUT', body: '<key provider="anthropic">sk-ant-SECRETASK1234</key>' })).status).toBe(204)
   expect((await (await as('eddie', '/api/ask')).json()).available).toBe(false) // disabled
@@ -57,10 +78,17 @@ test('ask is off until a provider is chosen, enabled and has its key', async () 
 test('every signed-in role may ask; nobody else, and not from another page', async () => {
   for (const who of ['admin', 'eddie']) {
     const r = await ask(who, 'What happens when I jump a puddle?')
-    expect(await r.json(), who).toEqual({ answer: 'Invented answer [ZZ p.61].', sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping', kind: 'rule', id: 'zz.puddle-jumping' }],
-      covered: true, used: 1, limit: null })
+    expect(await r.json(), who).toEqual({
+      answer: 'Invented answer [ZZ p.61].',
+      sources: [{ source: 'ZZ', page: '61', title: 'Puddle jumping', kind: 'rule', id: 'zz.puddle-jumping' }],
+      covered: true,
+      used: 1,
+      limit: null,
+    })
   }
-  expect((await rawFetch(`${base}/api/ask`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{"question":"x"}' })).status).toBe(401)
+  expect(
+    (await rawFetch(`${base}/api/ask`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: '{"question":"x"}' })).status,
+  ).toBe(401)
   expect((await rawFetch(`${base}/api/ask`)).status).toBe(401)
   expect((await as('pia', '/api/ask', { method: 'POST', body: '{"question":"x"}', headers: { Origin: 'https://evil.example' } })).status).toBe(403)
   expect((await as('pia', '/api/ask', { method: 'DELETE' })).status).toBe(405)
@@ -74,8 +102,11 @@ test('the question is checked: text, 500 characters at most, JSON', async () => 
 })
 
 test('the limit message: none, one, or all N', () => {
-  expect([0, 1, 5].map(limitReached)).toEqual(['You have no questions today.', 'You’ve used today’s question. Ask again tomorrow.',
-    'You’ve used all 5 of today’s questions. Ask again tomorrow.'])
+  expect([0, 1, 5].map(limitReached)).toEqual([
+    'You have no questions today.',
+    'You’ve used today’s question. Ask again tomorrow.',
+    'You’ve used all 5 of today’s questions. Ask again tomorrow.',
+  ])
 })
 
 test('a daily limit counts every question the provider got, answers 429 with Retry-After, and resets at UTC midnight', async () => {
@@ -96,7 +127,8 @@ test('a daily limit counts every question the provider got, answers 429 with Ret
   expect(counts).toMatch(/<ca2:askcounts [^>]*date="\d{4}-\d\d-\d\d"/)
   expect(counts).not.toContain('puddle')
   // a restart keeps them
-  const again = await start(), prev = base
+  const again = await start(),
+    prev = base
   base = again
   cookies.pia = (await signIn(again, PLAYER))!
   expect(await (await as('pia', '/api/ask')).json()).toEqual({ available: true, limit: 2, used: 2 })
@@ -183,7 +215,10 @@ test('each game has its own AI: SR6’s settings, keys and questions apart from 
   // Anarchy's provider is set up (above); SR6's isn't
   expect((await (await as('admin', '/api/sr6/ask')).json()).available).toBe(false)
   const off = await sr6('admin', { question: 'puddles?' })
-  expect([off.status, (await off.json()).error]).toEqual([409, 'Ask the rules isn’t set up for Shadowrun 6: the admin chooses an AI provider and its key in AI settings'])
+  expect([off.status, (await off.json()).error]).toEqual([
+    409,
+    'Ask the rules isn’t set up for Shadowrun 6: the admin chooses an AI provider and its key in AI settings',
+  ])
   expect(await (await as('admin', '/api/sr6/ai-settings')).text()).toContain('<key provider="anthropic" set="false"/>')
   // who may configure it: the admin only, as Anarchy's
   for (const who of ['pia', 'eddie']) {
@@ -191,8 +226,15 @@ test('each game has its own AI: SR6’s settings, keys and questions apart from 
     expect((await as(who, '/api/sr6/ai-keys', { method: 'PUT', body: '<key provider="openai">x</key>' })).status, who).toBe(403)
   }
   const anarchy = readFileSync(join(lib, '.config', 'ai-providers.xml'), 'utf8')
-  expect((await as('admin', '/api/sr6/ai-settings', { method: 'PUT', headers: { 'Content-Type': 'application/xml' },
-    body: '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai"><provider id="openai" enabled="true" baseUrl="http://sr6.example/v1"/></ca2:aiproviders>' })).status).toBe(200)
+  expect(
+    (
+      await as('admin', '/api/sr6/ai-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/xml' },
+        body: '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai"><provider id="openai" enabled="true" baseUrl="http://sr6.example/v1"/></ca2:aiproviders>',
+      })
+    ).status,
+  ).toBe(200)
   expect((await as('admin', '/api/sr6/ai-keys', { method: 'PUT', body: '<key provider="openai">sk-SR6SECRET99</key>' })).status).toBe(204)
   // in library/sr6/.config; Anarchy's files untouched
   expect(readFileSync(join(lib, 'sr6', '.config', 'ai-providers.xml'), 'utf8')).toContain('use="openai"')

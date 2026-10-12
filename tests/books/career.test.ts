@@ -2,7 +2,17 @@
 // budget: settled the 0.5.5 way, their balance and build stay what the old ledger said.
 import { test, expect } from 'vitest'
 import {
-  appendEvent, balance, currentBuild, finalize, makeAdvance, makeAmpAdd, makeAmpModify, makeBuy, makeEarn, makeSell, voidEvent,
+  appendEvent,
+  balance,
+  currentBuild,
+  finalize,
+  makeAdvance,
+  makeAmpAdd,
+  makeAmpModify,
+  makeBuy,
+  makeEarn,
+  makeSell,
+  voidEvent,
 } from '../../src/engine/career'
 import type { AmpEntry } from '../../src/model/types'
 import { books, legacy, sample } from '../helpers'
@@ -36,10 +46,17 @@ describeBooks('pre-0.5.5 career (book samples)', () => {
   })
 
   test('amp upgrade costs the rating difference (smartlink spec -> skill)', () => {
-    const P = books!.pricing, rate = (ref: string) => books!.ampEffects.get(ref)!.rating
+    const P = books!.pricing,
+      rate = (ref: string) => books!.ampEffects.get(ref)!.rating
     const base = books!.ampTypes.get('cyberware')!.base
     let ch = appendEvent(start(), makeEarn(100000, 'run', '2086-03-01'))
-    const smart: AmpEntry = { uid: 'smart', type: 'cyberware', name: 'Smartlink', narrative: '', effects: [{ ref: 'rr-spec', param: 'ranged-weapons.pistols' }] }
+    const smart: AmpEntry = {
+      uid: 'smart',
+      type: 'cyberware',
+      name: 'Smartlink',
+      narrative: '',
+      effects: [{ ref: 'rr-spec', param: 'ranged-weapons.pistols' }],
+    }
     const add = makeAmpAdd(books!, ch, smart)
     expect(add).toMatchObject({ cost: (base + rate('rr-spec')) * P.ampPoint })
     ch = appendEvent(ch, add)

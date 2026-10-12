@@ -15,7 +15,8 @@ export const countPicks = (b: Sr6Build, ...kinds: Sr6Build['picks'][number]['kin
 
 /** The spells and rituals, and the complex forms, past the free ones (freeSpellSlots): bought with Karma. */
 export function extraMagic(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): { spells: number; forms: number } {
-  const free = freeSpellSlots(b, data, cr, p), res = MAGIC_KINDS[b.magic].resonance
+  const free = freeSpellSlots(b, data, cr, p),
+    res = MAGIC_KINDS[b.magic].resonance
   return { spells: Math.max(0, countPicks(b, 'spells', 'rituals') - (res ? 0 : free)), forms: Math.max(0, countPicks(b, 'complexforms') - (res ? free : 0)) }
 }
 
@@ -25,7 +26,8 @@ export function extraMagic(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
 export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): number {
   const k = MAGIC_KINDS[b.magic]
   if (b.method === 'pointbuy') return k.resonance ? b.cp.complexForms : k.spells ? b.cp.spells : 0
-  const rating = Math.max(0, p.magicRating(b) - magicLoss(b, data, cr)), karma = b.method === 'karma' // (the Karma build has its own)
+  const rating = Math.max(0, p.magicRating(b) - magicLoss(b, data, cr)),
+    karma = b.method === 'karma' // (the Karma build has its own)
   if (k.resonance) return rating * n0(cr, karma ? 'karmaBuild.freeFormsPerResonance' : 'freeFormsPerResonance')
   if (!k.spells) return 0
   return Math.max(0, rating - (k.paysPowers ? b.powerPointsBought : 0)) * n0(cr, karma ? 'karmaBuild.freeSpellsPerMagic' : 'freeSpellsPerMagic')
@@ -36,7 +38,8 @@ export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p:
  *  character points. A leveled power costs per level. */
 export function powerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget & { cap: number } {
   // (Magic as Essence leaves it: a point of Magic lost is a power point lost, CRB pp. 38, 156)
-  const k = MAGIC_KINDS[b.magic], rating = Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
+  const k = MAGIC_KINDS[b.magic],
+    rating = Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr))
   // (the Sixth World Companion's Alternate Mystic Adept, p. 148: half a point a point of Magic, and half a point for each
   // point of Magic raised past the priority's)
   const alt = k.paysPowers && !!flag(cr, 'alternateMysticAdept')
@@ -50,9 +53,10 @@ export function powerPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
  *  (CRB Hong Kong p. 157: 1.0 a level, other skills 0.5; the combat skills Close Combat, Exotic Weapons and Firearms,
  *  p. 95). */
 export function powerCost(data: Sr6Data, x: Pick<Sr6Build['picks'][number], 'id' | 'level' | 'note'>): number {
-  const v = data.powers[x.id], sk = x.note ? noteSkill(data, x.note) : undefined
+  const v = data.powers[x.id],
+    sk = x.note ? noteSkill(data, x.note) : undefined
   const combat = !!sk && TEST_TYPES.combat.includes(normName(data.skills[sk]?.name ?? ''))
-  return ((combat && v?.costCombat != null ? v.costCombat : v?.cost) ?? 0) * (v?.perLevel ? x.level ?? 1 : 1)
+  return ((combat && v?.costCombat != null ? v.costCombat : v?.cost) ?? 0) * (v?.perLevel ? (x.level ?? 1) : 1)
 }
 
 /** The levels of the runner's data structures added up (their Karma and, times dataStructureNuyen, their nuyen). */

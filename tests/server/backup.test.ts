@@ -9,24 +9,37 @@ import { createServer } from './_signin'
 vi.setConfig({ testTimeout: 30000 })
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-backup-'))
-const chars = join(dir, 'chars'), library = join(dir, 'library'), backups = join(library, '.backups')
+const chars = join(dir, 'chars'),
+  library = join(dir, 'library'),
+  backups = join(library, '.backups')
 const mine = join(chars, 'admin') // the signed-in admin's runners
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version
 let base = ''
 let srv: { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  mkdirSync(join(dir, 'custom', 'edits'), { recursive: true })
-  writeFileSync(join(dir, 'custom', 'edits', 'edits.xml'), '<edits/>')
-  srv = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      mkdirSync(join(dir, 'custom', 'edits'), { recursive: true })
+      writeFileSync(join(dir, 'custom', 'edits', 'edits.xml'), '<edits/>')
+      srv = createServer({
+        staticDir: 'public',
+        charDir: chars,
+        customDir: join(dir, 'custom'),
+        libraryDir: library,
+        python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
 const runner = (street: string) =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="r1" streetName="${street}" metatype="ork" level="runner" updatedAt="2026-09-27"><build/></ca2:character>`
 const putRunner = (street: string) => fetch(`${base}/api/characters/r1?force=1`, { method: 'PUT', body: runner(street) })
-const temps = () => existsSync(backups) ? readdirSync(backups).filter(f => /^(download|upload)-/.test(f)) : []
+const temps = () => (existsSync(backups) ? readdirSync(backups).filter(f => /^(download|upload)-/.test(f)) : [])
 const make = (q = '', at = base, signal?: AbortSignal) => fetch(`${at}/api/backup${q}`, { method: 'POST', signal })
 /** Both steps: make the zip, then fetch it by its token. */
 const download = async (q = '', at = base) => {
@@ -103,7 +116,9 @@ test('a preview refuses files that aren’t backups', async () => {
   expect([notZip.status, await notZip.json()]).toEqual([415, { error: 'this file isn’t a backup (not a zip file)' }])
   const badZip = await preview('PK\x03\x04 not really')
   expect([badZip.status, await badZip.json()]).toEqual([400, { error: 'this isn’t a readable zip file (stub)' }])
-  const big = await fetch(`${base}/api/restore?preview=1`, { method: 'POST', body: 'x', headers: { 'Content-Length': String(21 * 1024 ** 3) } }).catch(() => null)
+  const big = await fetch(`${base}/api/restore?preview=1`, { method: 'POST', body: 'x', headers: { 'Content-Length': String(21 * 1024 ** 3) } }).catch(
+    () => null,
+  )
   if (big) expect(big.status).toBe(413) // some fetch versions refuse to send a wrong length at all
   expect(temps()).toEqual([])
 })
@@ -120,7 +135,11 @@ test('backup → change → preview → restore brings the runner back; the toke
   expect(temps()).toHaveLength(1) // the upload waits for its token
   const r = await apply(token)
   expect([r.status, await r.json()]).toEqual([200, { ok: true }])
-  expect(readdirSync(mine).map(f => readFileSync(join(mine, f), 'utf8')).join()).toContain('streetName="Before"')
+  expect(
+    readdirSync(mine)
+      .map(f => readFileSync(join(mine, f), 'utf8'))
+      .join(),
+  ).toContain('streetName="Before"')
   expect(readFileSync(join(library, '.config', 'ai-keys.xml'), 'utf8')).toContain('KEEPOUT') // a backup without keys keeps the server's
   expect(readdirSync(backups).some(f => /^\d{14}_\d{6}Z\.zip$/.test(f))).toBe(true) // the safety backup
   expect(temps()).toEqual([])
@@ -138,14 +157,25 @@ test('a restore is refused while a write runs, and nothing writes while a restor
   await writing
   const restoring = apply(token) // the refusal didn't use up the token; the stub's apply takes 400 ms
   await new Promise(r => setTimeout(r, 150))
-  for (const r of [await putRunner('During'), await setKey('sk-test-DURING1234'), await make(),
+  for (const r of [
+    await putRunner('During'),
+    await setKey('sk-test-DURING1234'),
+    await make(),
     await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7', headers: { 'Content-Type': 'application/pdf' } }),
-    await fetch(`${base}/api/edits/items/x`, { method: 'PUT', body: '<edit/>' }), await fetch(`${base}/api/review/abc-1`, { method: 'PUT', body: '<review/>' }),
-    await fetch(`${base}/api/characters/r1`, { method: 'DELETE' }), await fetch(`${base}/api/trash`, { method: 'DELETE' }),
-    await fetch(`${base}/api/trash/r1.xml`, { method: 'DELETE' }), await fetch(`${base}/api/trash/r1.xml/restore`, { method: 'POST' })])
+    await fetch(`${base}/api/edits/items/x`, { method: 'PUT', body: '<edit/>' }),
+    await fetch(`${base}/api/review/abc-1`, { method: 'PUT', body: '<review/>' }),
+    await fetch(`${base}/api/characters/r1`, { method: 'DELETE' }),
+    await fetch(`${base}/api/trash`, { method: 'DELETE' }),
+    await fetch(`${base}/api/trash/r1.xml`, { method: 'DELETE' }),
+    await fetch(`${base}/api/trash/r1.xml/restore`, { method: 'POST' }),
+  ])
     expect(r.status).toBe(409)
   expect((await restoring).status).toBe(200)
-  expect(readdirSync(mine).map(f => readFileSync(join(mine, f), 'utf8')).join()).not.toContain('During')
+  expect(
+    readdirSync(mine)
+      .map(f => readFileSync(join(mine, f), 'utf8'))
+      .join(),
+  ).not.toContain('During')
 })
 
 test('a new preview or backup replaces the pending one; stopping the server deletes them', async () => {
@@ -164,8 +194,15 @@ test('a new preview or backup replaces the pending one; stopping the server dele
 })
 
 test('an unused preview or backup expires and its file is deleted', async () => {
-  const short = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], restoreTtl: 1000, downloadTtl: 1000 })
+  const short = createServer({
+    staticDir: 'public',
+    charDir: chars,
+    customDir: join(dir, 'custom'),
+    libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+    restoreTtl: 1000,
+    downloadTtl: 1000,
+  })
   await new Promise<void>(ok => short.listen(0, ok))
   const at = `http://127.0.0.1:${short.address().port}`
   try {
@@ -176,21 +213,24 @@ test('an unused preview or backup expires and its file is deleted', async () => 
     await vi.waitFor(() => expect(temps()).toEqual([]), { timeout: 4000 })
     expect((await fetch(`${at}/api/restore/${token}`, { method: 'POST' })).status).toBe(404)
     expect((await fetch(`${at}/api/backup/${made}`)).status).toBe(404)
-  } finally { short.close() }
+  } finally {
+    short.close()
+  }
 })
 
 test('start-up removes temp files a stop left (library/.backups, restore swap folders), and keeps safety backups', () => {
-  const lib = join(dir, 'lib-sweep'), bk = join(lib, '.backups')
+  const lib = join(dir, 'lib-sweep'),
+    bk = join(lib, '.backups')
   mkdirSync(join(bk, 'download-abc123'), { recursive: true })
   for (const f of ['upload-abc123.zip', '.backup.x1y2.tmp', 'download-abc123/backup.zip', '20260928T000000_000000Z.zip', 'mine.zip'])
     writeFileSync(join(bk, f), 'x')
-  const ch = join(dir, 'chars-sweep'), cu = join(dir, 'custom-sweep') // and a killed restore's swap folders
+  const ch = join(dir, 'chars-sweep'),
+    cu = join(dir, 'custom-sweep') // and a killed restore's swap folders
   for (const d of [join(ch, '.restore-old-a1'), join(cu, '.restore-new-b2'), join(lib, '.restore-old-c3'), join(ch, 'keep')]) {
     mkdirSync(d, { recursive: true })
     writeFileSync(join(d, 'x.xml'), 'x')
   }
-  createServer({ staticDir: 'public', charDir: ch, customDir: cu, libraryDir: lib,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  createServer({ staticDir: 'public', charDir: ch, customDir: cu, libraryDir: lib, python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
   expect(readdirSync(bk).sort()).toEqual(['20260928T000000_000000Z.zip', 'mine.zip'])
   expect([readdirSync(ch), readdirSync(cu), readdirSync(lib).sort()]).toEqual([['keep'], [], ['.backups', '.config']]) // .config: the test admin
 })

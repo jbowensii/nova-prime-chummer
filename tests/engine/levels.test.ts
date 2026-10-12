@@ -16,12 +16,19 @@ import { cat } from '../helpers'
 const OPTS = { now: '2026-10-11T00:00:00.000Z', appVersion: 'test', descriptions: false }
 // the lowest level keeps the id the entry had (owner, 2026-10-11), the others are new
 const level = (n: number) => cat.amps.get(n === 1 ? 'test2.glide-step' : `test2.glide-step-level-${n}`)!
-const withAmp = (amp: AmpEntry): Character => { const ch = blankCharacter(); ch.build.amps = [amp]; return ch }
+const withAmp = (amp: AmpEntry): Character => {
+  const ch = blankCharacter()
+  ch.build.amps = [amp]
+  return ch
+}
 
 describe('levels', () => {
   test('each level is its own entry, read with its family and level, lowest first', () => {
     expect(levelsOf(cat, 'test2.glide-step').map(t => [t.id, t.name, t.level])).toEqual([
-      ['test2.glide-step', 'Glide Step 1', 1], ['test2.glide-step-level-2', 'Glide Step 2', 2], ['test2.glide-step-level-3', 'Glide Step 3', 3]])
+      ['test2.glide-step', 'Glide Step 1', 1],
+      ['test2.glide-step-level-2', 'Glide Step 2', 2],
+      ['test2.glide-step-level-3', 'Glide Step 3', 3],
+    ])
     expect(levelsOf(cat, 'test.keen-eye')).toEqual([])
     expect(levelsOf(cat, undefined)).toEqual([])
   })
@@ -49,7 +56,13 @@ describe('levels', () => {
   })
 
   test('an add-on applied before it was split (noted by its name without a level) is still the book’s', () => {
-    const amp = (note: string): AmpEntry => ({ uid: 'c1', type: 'cyberware', name: 'Jack', narrative: '', effects: [{ ref: 'vr-cold' }, { ref: 'attack-plus', note }] })
+    const amp = (note: string): AmpEntry => ({
+      uid: 'c1',
+      type: 'cyberware',
+      name: 'Jack',
+      narrative: '',
+      effects: [{ ref: 'vr-cold' }, { ref: 'attack-plus', note }],
+    })
     const illegal = (note: string) => validate(cat, withAmp(amp(note))).filter(v => v.code === 'amp.typeIllegal')
     expect(illegal('Overclock')).toEqual([])
     expect(illegal('Overclock +2')).toEqual([])
@@ -75,7 +88,10 @@ describe('levels', () => {
   test('an entry printed "Rating 3+" stays one: each extra rating is one more chosen narrative effect, priced by rating', () => {
     // made-up "Keen Eye" quality as such an entry: the player adds an Additional narrative effect per extra rating
     const { amp } = ampFromTemplate(cat.amps.get('test.keen-eye')!, () => 'k')
-    const at = (a: AmpEntry) => { const ch = withAmp(a); return [ampRating(cat, a, ampCtx(ch.build, a, cat)), price(cat, ch).total] as const }
+    const at = (a: AmpEntry) => {
+      const ch = withAmp(a)
+      return [ampRating(cat, a, ampCtx(ch.build, a, cat)), price(cat, ch).total] as const
+    }
     const [r0, p0] = at(amp)
     const more = { ...amp, effects: [...amp.effects, { ref: 'narrative', param: 'Low-light vision' }] }
     const step = cat.ampEffects.get('narrative')!.rating
@@ -84,7 +100,13 @@ describe('levels', () => {
   })
 
   test('caps: an add-on that would pass an effect’s max, Firewall 5 or a vehicle’s Body is not offered', () => {
-    const deck: AmpEntry = { uid: 'd', type: 'cyberdeck', name: 'Deck', narrative: '', effects: [{ ref: 'attack-plus' }, { ref: 'attack-plus' }, { ref: 'attack-plus' }] }
+    const deck: AmpEntry = {
+      uid: 'd',
+      type: 'cyberdeck',
+      name: 'Deck',
+      narrative: '',
+      effects: [{ ref: 'attack-plus' }, { ref: 'attack-plus' }, { ref: 'attack-plus' }],
+    }
     expect(overCap(cat, deck)).toBeUndefined()
     expect(overCap(cat, applyMod(deck, cat.amps.get('test2.mod-overclock')!))).toBeUndefined() // made-up Attack max 4
     expect(overCap(cat, applyMod(deck, cat.amps.get('test2.mod-overclock-level-2')!))).toMatch(/max 4/)

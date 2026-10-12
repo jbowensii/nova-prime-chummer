@@ -16,9 +16,8 @@ test('skill breakpoint after skillLowMax', () => {
   expect(skillCost(P, 4, 6)).toBe(12000)
 })
 
-test.each(['ganger', 'runner', 'prime'].flatMap(l => ['balanced', 'magician', 'fighter'].map(a => `${l}-${a}`)))(
-  '%s package totals its level budget', id => {
-    const g = packageGuide(cat, id)!
-    const level = cat.levels.get(cat.packages.get(id)!.level)!
-    expect(g.attributes + g.skills + g.amps + g.gear + g.spells).toBe(level.nuyen)
-  })
+test.each(['ganger', 'runner', 'prime'].flatMap(l => ['balanced', 'magician', 'fighter'].map(a => `${l}-${a}`)))('%s package totals its level budget', id => {
+  const g = packageGuide(cat, id)!
+  const level = cat.levels.get(cat.packages.get(id)!.level)!
+  expect(g.attributes + g.skills + g.amps + g.gear + g.spells).toBe(level.nuyen)
+})

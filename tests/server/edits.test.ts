@@ -12,11 +12,22 @@ const dir = mkdtempSync(join(tmpdir(), 'ca2-edits-'))
 const custom = join(dir, 'custom')
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      srv = createServer({
+        staticDir: 'public',
+        charDir: join(dir, 'chars'),
+        customDir: custom,
+        libraryDir: join(dir, 'library'),
+        python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
 const item = (id: string, name: string, desc = '') =>
@@ -42,8 +53,13 @@ test('a refused edit is a 400 with the importer’s reason', async () => {
 })
 
 test('kind, id and body are checked before the importer runs', async () => {
-  for (const [kind, id, body] of [['spells', 'x', item('x', 'X')], ['items', 'Bad Id', item('Bad Id', 'X')], ['items', '.hidden', item('.hidden', 'X')],
-    ['items', 'x', '<!DOCTYPE x [<!ENTITY a "b">]><edit/>'], ['items', 'x', '<item id="x"/>']])
+  for (const [kind, id, body] of [
+    ['spells', 'x', item('x', 'X')],
+    ['items', 'Bad Id', item('Bad Id', 'X')],
+    ['items', '.hidden', item('.hidden', 'X')],
+    ['items', 'x', '<!DOCTYPE x [<!ENTITY a "b">]><edit/>'],
+    ['items', 'x', '<item id="x"/>'],
+  ])
     expect((await put(kind, id, body)).status, `${kind} ${id} ${body}`).toBe(400)
   expect((await put('items', 'x', item('x', 'X', 'y'.repeat(1100 * 1024)))).status).toBe(413)
   expect((await fetch(`${base}/api/edits/items/x`, { method: 'POST' })).status).toBe(405)
@@ -57,7 +73,8 @@ test('edits run one at a time: parallel saves all land', async () => {
 })
 
 test('house-rule sources: checked, created, duplicates refused', async () => {
-  const post = (b: unknown, type = 'application/json') => fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify(b), headers: { 'Content-Type': type } })
+  const post = (b: unknown, type = 'application/json') =>
+    fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify(b), headers: { 'Content-Type': type } })
   expect((await post({ id: 'TABLE', name: 'x' }, 'text/plain')).status).toBe(415)
   expect((await post({ id: 'table', name: 'x' })).status).toBe(400)
   expect((await post({ id: 'TABLE' })).status).toBe(400)

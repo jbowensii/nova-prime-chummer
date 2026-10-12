@@ -4,16 +4,34 @@ import type { Compendium } from '../../src/model/types'
 import { deleteCompendium, listCompendiums, readable, saveCompendium } from '../../src/ui/compendiumStore'
 
 // made-up compendiums; fetch is mocked
-const comp = (id: string, source: string): Compendium =>
-  ({ id, name: `Made-up ${source}`, source, sharing: 'private', updatedAt: '', amps: [], items: [], vehicles: [], npcs: [] })
-const row = (id: string, source: string, owner: string, ownerName: string) =>
-  ({ id, file: `${id}.xml`, rev: 2, xml: compendiumXml(comp(id, source)), owner, ownerName })
-const answer = (status: number, body?: unknown) => vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body),
-  { status, headers: { 'Content-Type': 'application/json' } }))
+const comp = (id: string, source: string): Compendium => ({
+  id,
+  name: `Made-up ${source}`,
+  source,
+  sharing: 'private',
+  updatedAt: '',
+  amps: [],
+  items: [],
+  vehicles: [],
+  npcs: [],
+})
+const row = (id: string, source: string, owner: string, ownerName: string) => ({
+  id,
+  file: `${id}.xml`,
+  rev: 2,
+  xml: compendiumXml(comp(id, source)),
+  owner,
+  ownerName,
+})
+const answer = (status: number, body?: unknown) =>
+  vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
 afterEach(() => vi.unstubAllGlobals())
 
 test('the list maps to overlay files in owner/id order', async () => {
-  vi.stubGlobal('fetch', answer(200, [row('bbbbbbbbbbbb', 'TWO', 'zed', 'Zed GM'), row('aaaaaaaaaaaa', 'ONE', 'eve', 'Eve GM'), row('cccccccccccc', 'THREE', 'eve', 'Eve GM')]))
+  vi.stubGlobal(
+    'fetch',
+    answer(200, [row('bbbbbbbbbbbb', 'TWO', 'zed', 'Zed GM'), row('aaaaaaaaaaaa', 'ONE', 'eve', 'Eve GM'), row('cccccccccccc', 'THREE', 'eve', 'Eve GM')]),
+  )
   const rows = await listCompendiums()
   expect(readable(rows).map(f => [f.file, f.overlay, f.publisher, f.owner])).toEqual([
     ['compendiums/eve/aaaaaaaaaaaa.xml', true, 'Eve GM', 'eve'],

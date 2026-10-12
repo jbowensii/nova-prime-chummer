@@ -13,7 +13,15 @@ export const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local 
 /** A file name's lead: one runner or NPC's street name (else name) as a slug, so several downloads tell apart; several
  *  together are "runners-N". */
 export const runnersStem = (chs: { identity: { name: string; streetName: string } }[]) => {
-  const slug = chs.length === 1 ? (chs[0].identity.streetName || chs[0].identity.name).normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) : ''
+  const slug =
+    chs.length === 1
+      ? (chs[0].identity.streetName || chs[0].identity.name)
+          .normalize('NFKD')
+          .replace(/[^\w\s-]/g, '')
+          .trim()
+          .replace(/\s+/g, '-')
+          .slice(0, 60)
+      : ''
   return slug || (chs.length === 1 ? 'runner' : `runners-${chs.length}`)
 }
 export const runnersFileName = (now: Date, stem = 'runners') => `${stem}-${fileDate(now)}.ca2foundry.json`
@@ -31,43 +39,122 @@ export const downloadRunners = (c: Catalog, chs: Character[]) =>
 
 /** A GM's compendium as a books file of one book (marked compendium): its own text always, its NPCs, no table rules. */
 export const downloadCompendium = (c: Catalog, comp: Compendium) =>
-  downloadJson(`compendium-${comp.source}-${fileDate(new Date())}.ca2foundry.json`, exportBooks(c, [comp.source], [], exportOpts(true), {}, { [comp.source]: comp.npcs }))
+  downloadJson(
+    `compendium-${comp.source}-${fileDate(new Date())}.ca2foundry.json`,
+    exportBooks(c, [comp.source], [], exportOpts(true), {}, { [comp.source]: comp.npcs }),
+  )
 
 type Exportable = Pick<Character, 'id' | 'identity' | 'campaign'>
 const label = (ch: Exportable) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
 /** The runner list's dialog: tick runners (or a whole campaign), download one file. The NPC area's too (`noun` 'NPC'):
  *  the same runners file, each with its npc block. Either game: `download` writes the file, `about` names the importer. */
-export function ExportRunnersDialog<R extends Exportable>({ runners, campaigns, open, onClose, noun = 'runner', download,
-  about = 'For the Chummer Anarchy 2.0 importer in Foundry VTT: upload the file there with Import from Chummer.' }: {
-  runners: R[]; campaigns: Campaign[]; open: boolean; onClose: () => void; noun?: 'runner' | 'NPC'; download: (picked: R[]) => void; about?: string
+export function ExportRunnersDialog<R extends Exportable>({
+  runners,
+  campaigns,
+  open,
+  onClose,
+  noun = 'runner',
+  download,
+  about = 'For the Chummer Anarchy 2.0 importer in Foundry VTT: upload the file there with Import from Chummer.',
+}: {
+  runners: R[]
+  campaigns: Campaign[]
+  open: boolean
+  onClose: () => void
+  noun?: 'runner' | 'NPC'
+  download: (picked: R[]) => void
+  about?: string
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [camp, setCamp] = useState('')
   // opening starts from nothing ticked (state adjusted while rendering: https://react.dev/learn/you-might-not-need-an-effect)
   const [wasOpen, setWasOpen] = useState(open)
-  if (open !== wasOpen) { setWasOpen(open); if (open) { setPicked(new Set()); setCamp('') } }
-  const set = (ids: string[]) => { setPicked(new Set(ids)); setCamp('') }
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setPicked(new Set())
+      setCamp('')
+    }
+  }
+  const set = (ids: string[]) => {
+    setPicked(new Set(ids))
+    setCamp('')
+  }
   const n = runners.filter(r => picked.has(r.id)).length
   return (
-    <Modal open={open} onClose={onClose} title={`Export ${noun}s for Foundry`}
-      actions={<><button className="btn" onClick={onClose}>Cancel</button>
-        <button className="btn primary" disabled={!n} onClick={() => { download(runners.filter(r => picked.has(r.id))); onClose() }}>
-          Download {n} {noun}{n === 1 ? '' : 's'}</button></>}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Export ${noun}s for Foundry`}
+      actions={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            disabled={!n}
+            onClick={() => {
+              download(runners.filter(r => picked.has(r.id)))
+              onClose()
+            }}
+          >
+            Download {n} {noun}
+            {n === 1 ? '' : 's'}
+          </button>
+        </>
+      }
+    >
       <p className="muted">{about}</p>
       <p className="muted">The file includes the text of the {noun}s’ amps and gear. Share it only with people who own the books.</p>
       <div className="row">
-        <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>All</button>
-        <button className="btn small quiet" onClick={() => set([])}>None</button>
-        {campaigns.length > 0 && <label>Tick a campaign
-          <select value={camp} onChange={e => { setCamp(e.target.value); if (e.target.value) { setPicked(new Set(runners.filter(r => r.campaign === e.target.value).map(r => r.id))) } }}>
-            <option value="">Choose a campaign</option>
-            {campaigns.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-          </select></label>}
+        <button className="btn small quiet" onClick={() => set(runners.map(r => r.id))}>
+          All
+        </button>
+        <button className="btn small quiet" onClick={() => set([])}>
+          None
+        </button>
+        {campaigns.length > 0 && (
+          <label>
+            Tick a campaign
+            <select
+              value={camp}
+              onChange={e => {
+                setCamp(e.target.value)
+                if (e.target.value) {
+                  setPicked(new Set(runners.filter(r => r.campaign === e.target.value).map(r => r.id)))
+                }
+              }}
+            >
+              <option value="">Choose a campaign</option>
+              {campaigns.map(x => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <ul className="stack" style={{ listStyle: 'none', padding: 0, maxHeight: '50vh', overflow: 'auto' }}>
-        {runners.map(r => <li key={r.id}><label className="check"><input type="checkbox" checked={picked.has(r.id)}
-          onChange={e => { const s = new Set(picked); if (e.target.checked) s.add(r.id); else s.delete(r.id); setPicked(s) }} /> {label(r)}</label></li>)}
+        {runners.map(r => (
+          <li key={r.id}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={picked.has(r.id)}
+                onChange={e => {
+                  const s = new Set(picked)
+                  if (e.target.checked) s.add(r.id)
+                  else s.delete(r.id)
+                  setPicked(s)
+                }}
+              />{' '}
+              {label(r)}
+            </label>
+          </li>
+        ))}
       </ul>
     </Modal>
   )
@@ -82,13 +169,16 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
   const [err, setErr] = useState('')
   const [skipped, setSkipped] = useState<string[]>([])
   const download = async () => {
-    setBusy(true); setErr(''); setSkipped([])
+    setBusy(true)
+    setErr('')
+    setSkipped([])
     try {
       const rules = tableRulesForExport(c, await loadTableRules({ strict: true }))
       const ids = all.filter(s => picked.has(s.id)).map(s => s.id)
       // the ticked books' own sample characters and NPCs (source matched case-insensitively); one that can't be read is
       // left out and named
-      const byLower = new Map(ids.map(id => [id.toLowerCase(), id])), bad: string[] = []
+      const byLower = new Map(ids.map(id => [id.toLowerCase(), id])),
+        bad: string[] = []
       const read = async (rows: { url: string; name: string; source?: string }[]) => {
         const out: Record<string, Character[]> = {}
         for (const s of rows) {
@@ -100,31 +190,78 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
         }
         return out
       }
-      const characters = await read(await bookSamples(() => undefined)), npcs = await read(await bookNpcs())
+      const characters = await read(await bookSamples(() => undefined)),
+        npcs = await read(await bookNpcs())
       downloadJson(booksFileName(new Date()), exportBooks(c, ids, rules, exportOpts(desc), characters, npcs))
       setSkipped(bad)
-    } catch (e) { setErr(e instanceof Error ? e.message : String(e))
-    } finally { setBusy(false) }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
   return (
-    <section aria-label="Export book data for Foundry" className="stack">{/* (its heading is the fold's, GameData.tsx) */}
-      <p className="muted">For the Chummer Anarchy 2.0 importer in Foundry VTT. The books go out as this app sees them, with your
-        corrections, house rules and the table rules switched on.</p>
+    <section aria-label="Export book data for Foundry" className="stack">
+      {/* (its heading is the fold's, GameData.tsx) */}
+      <p className="muted">
+        For the Chummer Anarchy 2.0 importer in Foundry VTT. The books go out as this app sees them, with your corrections, house rules and the table rules
+        switched on.
+      </p>
       <div className="row">
-        <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>All</button>
-        <button className="btn small quiet" onClick={() => setPicked(new Set())}>None</button>
+        <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>
+          All
+        </button>
+        <button className="btn small quiet" onClick={() => setPicked(new Set())}>
+          None
+        </button>
       </div>
       <ul className="stack" style={{ listStyle: 'none', padding: 0 }}>
-        {all.map(s => <li key={s.id}><label className="check"><input type="checkbox" checked={picked.has(s.id)}
-          onChange={e => { const n = new Set(picked); if (e.target.checked) n.add(s.id); else n.delete(s.id); setPicked(n) }} />
-          <span><b>{s.id}</b> {s.name} {s.canon ? <span className="muted">Canon</span> : <NonCanon />}</span></label></li>)}
+        {all.map(s => (
+          <li key={s.id}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={picked.has(s.id)}
+                onChange={e => {
+                  const n = new Set(picked)
+                  if (e.target.checked) n.add(s.id)
+                  else n.delete(s.id)
+                  setPicked(n)
+                }}
+              />
+              <span>
+                <b>{s.id}</b> {s.name} {s.canon ? <span className="muted">Canon</span> : <NonCanon />}
+              </span>
+            </label>
+          </li>
+        ))}
       </ul>
-      <label className="check"><input type="checkbox" checked={desc} onChange={e => setDesc(e.target.checked)} />
-        <span>Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span></span></label>
-      <div><button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>Download book data</button></div>
-      {err && <p className="err" role="alert">Couldn’t build the book data: {err}</p>}
-      {skipped.length > 0 && <div role="status"><p>Downloaded without these sample characters and NPCs:</p>
-        <ul>{skipped.map((b, i) => <li key={i}>{b}</li>)}</ul></div>}
+      <label className="check">
+        <input type="checkbox" checked={desc} onChange={e => setDesc(e.target.checked)} />
+        <span>
+          Include book descriptions <span className="muted">For your own Foundry only. Don’t share this file.</span>
+        </span>
+      </label>
+      <div>
+        <button className="btn primary" disabled={!picked.size || busy} onClick={() => void download()}>
+          Download book data
+        </button>
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          Couldn’t build the book data: {err}
+        </p>
+      )}
+      {skipped.length > 0 && (
+        <div role="status">
+          <p>Downloaded without these sample characters and NPCs:</p>
+          <ul>
+            {skipped.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   )
 }

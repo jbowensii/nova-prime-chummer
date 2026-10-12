@@ -11,9 +11,14 @@ import { augmentedRating } from './attributes'
  *  contactRatingMax. */
 export function contactPoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget & { ratingCap: number; karma?: number } {
   if (p.contactPoints) return p.contactPoints(b)
-  const cha = augmentedRating(b, data, 'cha', p), max = cha * n0(cr, 'contactPointsPerCha'), spend = contactSpend(b), price = num(cr, 'contactKarma')
+  const cha = augmentedRating(b, data, 'cha', p),
+    max = cha * n0(cr, 'contactPointsPerCha'),
+    spend = contactSpend(b),
+    price = num(cr, 'contactKarma')
   if (price === undefined || !flag(cr, 'expandedContacts')) return { ...pool(max, spend), ratingCap: cha }
-  const pair = num(cr, 'contactPairPerCha'), soft = pair === undefined ? Infinity : cha * pair, past = Math.max(0, spend - max)
+  const pair = num(cr, 'contactPairPerCha'),
+    soft = pair === undefined ? Infinity : cha * pair,
+    past = Math.max(0, spend - max)
   const pairs = b.contacts.reduce((t, c) => t + Math.max(0, c.connection + c.loyalty - soft), 0)
   return { ...pool(max, spend - past), ratingCap: num(cr, 'contactRatingMax') ?? cha, karma: (past + pairs) * price }
 }

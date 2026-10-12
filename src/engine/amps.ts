@@ -9,8 +9,9 @@ import RULES from './rule-effects.json'
  *  Rating 0: the book prices narrative effects with the amp's base rating and its "Additional narrative effect"s (which
  *  stay), so a kind only says what one does; the loader adds them to every catalog's Amp effects (loadRuleEffects).
  *  `text` reads `{p}` as the effect's param (a Test for the test kinds), `{v}` as its value. */
-export const RULE_EFFECTS: (Omit<AmpEffect, 'types' | 'source' | 'page'> & { text: string })[] =
-  (RULES as { id: string; name: string; text: string; param?: EffectParam }[]).map(e => ({ ...e, category: 'narrative', rating: 0 }))
+export const RULE_EFFECTS: (Omit<AmpEffect, 'types' | 'source' | 'page'> & { text: string })[] = (
+  RULES as { id: string; name: string; text: string; param?: EffectParam }[]
+).map(e => ({ ...e, category: 'narrative', rating: 0 }))
 const RULE_TEXT = new Map(RULE_EFFECTS.map(e => [e.id, e.text]))
 export const isRuleEffect = (ref: string) => RULE_TEXT.has(ref)
 
@@ -35,12 +36,20 @@ export function testName(c: Catalog, param?: string): string {
 export function ruleText(c: Catalog, e: EffectPick): string | undefined {
   const t = RULE_TEXT.get(e.ref)
   if (!t) return undefined
-  const p = c.ampEffects.get(e.ref)?.param === 'test' ? testName(c, e.param) : e.param ?? ''
-  return t.replace('{p}', p).replace('{v}', String(e.value ?? 1)).replace(/\s+:|:\s*$/g, '').replace(/\s+/g, ' ').trim()
+  const p = c.ampEffects.get(e.ref)?.param === 'test' ? testName(c, e.param) : (e.param ?? '')
+  return t
+    .replace('{p}', p)
+    .replace('{v}', String(e.value ?? 1))
+    .replace(/\s+:|:\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /** freeSinner: the SINner house rule in play for this runner (sinnerFree); undefined: in play */
-export interface AmpCtx { isFirstQuality: boolean; freeSinner?: boolean }
+export interface AmpCtx {
+  isFirstQuality: boolean
+  freeSinner?: boolean
+}
 
 /** The house rule (owner, 0.5.5) that a SINner is always free and never the first Quality, a Table setup switch since
  *  0.12, on by default: the runner's own switch unless the GM locked it, else the table's, else on. */
@@ -52,7 +61,11 @@ export const sinnerFree = (ch: Pick<Character, 'optionalRules'>, table?: Pick<Ta
 export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
 /** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
 export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-const effectKey = (es: EffectPick[]) => es.map(e => `${e.ref}|${e.param ?? ''}|${e.value ?? ''}`).sort().join(';')
+const effectKey = (es: EffectPick[]) =>
+  es
+    .map(e => `${e.ref}|${e.param ?? ''}|${e.value ?? ''}`)
+    .sort()
+    .join(';')
 /** An amp that is the SINner quality, and still only that: a Quality that is the catalog's SINner entry (by catalog id
  *  when the catalog is at hand, else its snapshot's name or its own; added by the box or by hand) with that entry's effects, or a
  *  hand-built Quality named exactly SINner (any case) with no effects at all. Renaming another amp, or adding any
@@ -63,8 +76,13 @@ export function isSinner(a: AmpEntry, c?: Catalog): boolean {
   const bare = a.effects.length === 0
   if (a.catalogId) {
     // without the catalog (reading a file): its snapshot, or with none its name
-    const t = c ? (a.catalogId === sinnerTemplate(c)?.id ? c.amps.get(a.catalogId) : undefined)
-      : plain(a.snapshot?.name ?? a.name) === 'sinner' ? a.snapshot ?? { effects: [] } : undefined
+    const t = c
+      ? a.catalogId === sinnerTemplate(c)?.id
+        ? c.amps.get(a.catalogId)
+        : undefined
+      : plain(a.snapshot?.name ?? a.name) === 'sinner'
+        ? (a.snapshot ?? { effects: [] })
+        : undefined
     return !!t && (bare || effectKey(a.effects) === effectKey(t.effects))
   }
   return (!!a.realSin || plain(a.name) === 'sinner') && bare
@@ -107,11 +125,12 @@ export function applyMod(amp: AmpEntry, mod: AmpTemplate): AmpEntry {
   }
 }
 
-export const firstQualityUid = (b: Build, c?: Catalog, freeSinner = true) =>
-  b.amps.find(a => a.type === 'quality' && !(freeSinner && isSinner(a, c)))?.uid
+export const firstQualityUid = (b: Build, c?: Catalog, freeSinner = true) => b.amps.find(a => a.type === 'quality' && !(freeSinner && isSinner(a, c)))?.uid
 
-export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog, freeSinner = true): AmpCtx =>
-  ({ isFirstQuality: firstQualityUid(b, c, freeSinner) === amp.uid, freeSinner })
+export const ampCtx = (b: Build, amp: AmpEntry, c?: Catalog, freeSinner = true): AmpCtx => ({
+  isFirstQuality: firstQualityUid(b, c, freeSinner) === amp.uid,
+  freeSinner,
+})
 
 /** Initiative levels an amp holds (init-1..3): the most "limited to one realm" reductions it may take (CRB p.61). */
 export const initLevels = (amp: AmpEntry) => new Set(amp.effects.map(e => e.ref).filter(r => /^init-[123]$/.test(r))).size
@@ -161,17 +180,36 @@ export const effectNeeds = (c: Catalog, amp: AmpEntry, eff: AmpEffect): string |
 
 /** The effects an amp's type may take; reason: why one is blocked, else what it still needs (allowed). */
 export function legalEffects(c: Catalog, amp: AmpEntry): { effect: AmpEffect; allowed: boolean; reason?: string }[] {
-  return [...c.ampEffects.values()].filter(e => e.types.includes(amp.type))
-    .map(effect => { const reason = effectBlocked(c, amp, effect); return { effect, allowed: !reason, reason: reason ?? effectNeeds(c, amp, effect) } })
+  return [...c.ampEffects.values()]
+    .filter(e => e.types.includes(amp.type))
+    .map(effect => {
+      const reason = effectBlocked(c, amp, effect)
+      return { effect, allowed: !reason, reason: reason ?? effectNeeds(c, amp, effect) }
+    })
 }
 
 /** A catalog amp as a character entry; equipment amps also bring their base item, linked. */
 export function ampFromTemplate(t: AmpTemplate, uid: () => string): { amp: AmpEntry; item?: ItemEntry } {
-  const amp: AmpEntry = { uid: uid(), catalogId: t.id, type: t.type, name: t.name, narrative: t.narrative,
-    effects: t.effects.map(e => ({ ...e })), vehicle: t.vehicle, snapshot: t }
+  const amp: AmpEntry = {
+    uid: uid(),
+    catalogId: t.id,
+    type: t.type,
+    name: t.name,
+    narrative: t.narrative,
+    effects: t.effects.map(e => ({ ...e })),
+    vehicle: t.vehicle,
+    snapshot: t,
+  }
   if (!t.item) return { amp }
-  const item: ItemEntry = { uid: uid(), kind: t.item.kind, name: t.name, specialist: t.item.specialist, armor: t.item.armor,
-    dv: t.item.dv, ranges: t.item.ranges }
+  const item: ItemEntry = {
+    uid: uid(),
+    kind: t.item.kind,
+    name: t.name,
+    specialist: t.item.specialist,
+    armor: t.item.armor,
+    dv: t.item.dv,
+    ranges: t.item.ranges,
+  }
   amp.linkedItem = item.uid
   return { amp, item }
 }

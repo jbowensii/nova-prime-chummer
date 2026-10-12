@@ -8,7 +8,11 @@ import { buildOf, GLIM, made } from './fixture'
 type Over = Parameters<typeof made>[0]
 function runner(o: { method?: Sr6Method; magic?: MagicKind; over?: Over } = {}) {
   const ch: Sr6Character = blankSr6(o.method ?? 'priority', 'r1', '2026-10-03T00:00:00Z')
-  ch.build = buildOf(o.method ?? 'priority', { letters: o.method && o.method !== 'priority' ? undefined : 'CABDA', metatype: GLIM, magic: o.magic ?? 'mundane' })
+  ch.build = buildOf(o.method ?? 'priority', {
+    letters: o.method && o.method !== 'priority' ? undefined : 'CABDA',
+    metatype: GLIM,
+    magic: o.magic ?? 'mundane',
+  })
   ch.identity.metatype = ch.build.metatype
   const { data, cr } = made(o.over)
   const act = (op: Op) => apply(ch.build, op, data, cr)
@@ -41,7 +45,7 @@ test('further specializations: trimmed, deduplicated, capped; none clears them a
   expect(r.b.skills[0].specs).toHaveLength(20)
   expect(r.b.skills[0].specs!.slice(0, 2)).toEqual(['Locks', 'x'.repeat(80)])
   expect(r.act({ op: 'specs', target: 'crb.tinkering', specs: [] })).toEqual(ok)
-  expect(r.b.skills).toEqual([])   // no rank, no spec, no expertise: gone
+  expect(r.b.skills).toEqual([]) // no rank, no spec, no expertise: gone
   r.b.skills.push({ id: 'crb.gab', points: 2, karma: 0, specs: ['a'] })
   expect(r.act({ op: 'specs', target: 'crb.gab', specs: [] })).toEqual(ok)
   expect(r.b.skills).toEqual([{ id: 'crb.gab', points: 2, karma: 0 }])
@@ -66,7 +70,7 @@ test('removing a quality: one taken, not a free trait; the mentor spirit goes wi
   expect(r.act({ op: 'mentor', id: 'crb.glow-moth' })).toEqual(ok)
   expect(r.b.qualities.filter(q => q.id === 'crb.knack')).toHaveLength(1)
   expect(r.b.mentorSpirit).toBe('crb.glow-moth')
-  r.b.qualities.push({ uid: 'k2', id: 'crb.knack', level: 1 })   // a second copy
+  r.b.qualities.push({ uid: 'k2', id: 'crb.knack', level: 1 }) // a second copy
   expect(r.act({ op: 'quality', remove: r.b.qualities.find(q => q.id === 'crb.knack')!.uid })).toEqual(ok)
   expect(r.b.mentorSpirit).toBe('crb.glow-moth')
   expect(r.act({ op: 'quality', remove: 'k2' })).toEqual(ok)
@@ -74,8 +78,13 @@ test('removing a quality: one taken, not a free trait; the mentor spirit goes wi
 })
 
 test('a leveled quality: a level the family lacks, below one, the same level again; a note and a karma range; a replaced level', () => {
-  const m = made({ data: d => { d.qualities['crb.lucky-streak.2'] = { ...d.qualities['crb.lucky-streak.2'], karma: 8, karmaMax: 12 } } })
-  const ch = blankSr6('priority', 'r', 'now'); ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  const m = made({
+    data: d => {
+      d.qualities['crb.lucky-streak.2'] = { ...d.qualities['crb.lucky-streak.2'], karma: 8, karmaMax: 12 }
+    },
+  })
+  const ch = blankSr6('priority', 'r', 'now')
+  ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
   const act = (op: Op) => apply(ch.build, op, m.data, m.cr)
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 0 })).toEqual(no('below-one'))
   expect(act({ op: 'quality', id: 'crb.lucky-streak', level: 9 })).toEqual(no('max-level'))
@@ -93,14 +102,20 @@ test('a leveled quality: a level the family lacks, below one, the same level aga
   expect(act({ op: 'quality', id: 'crb.lucky-streak.2', karma: 10 })).toEqual(ok)
   expect(ch.build.qualities).toMatchObject([{ id: 'crb.lucky-streak.2', level: 1, karma: 10, name: 'Lucky Streak 2' }])
   // the family with no line yet, taken with a karma
-  const fresh = blankSr6('priority', 'r', 'now'); fresh.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  const fresh = blankSr6('priority', 'r', 'now')
+  fresh.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
   expect(apply(fresh.build, { op: 'quality', id: 'crb.lucky-streak.2', karma: 9 }, m.data, m.cr)).toEqual(ok)
   expect(fresh.build.qualities).toMatchObject([{ id: 'crb.lucky-streak.2', karma: 9 }])
 })
 
 test('a single quality: unknown, a line that is not there, levels it does not have, levels past its top, a karma it does not take', () => {
-  const m = made({ data: d => { d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], perLevel: true, maxLevel: 2, karma: 3, karmaMax: 9, karmaSteps: [3, 6, 9] } } })
-  const ch = blankSr6('priority', 'r', 'now'); ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  const m = made({
+    data: d => {
+      d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], perLevel: true, maxLevel: 2, karma: 3, karmaMax: 9, karmaSteps: [3, 6, 9] }
+    },
+  })
+  const ch = blankSr6('priority', 'r', 'now')
+  ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
   const act = (op: Op) => apply(ch.build, op, m.data, m.cr)
   expect(act({ op: 'quality', id: 'crb.nope' })).toEqual(no('unknown-entry'))
   expect(act({ op: 'quality', id: 'crb.knack', uid: 'zz' })).toEqual(no('not-taken'))
@@ -155,7 +170,7 @@ test('a family of power levels: taken again it goes up; a lower or equal level i
   expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step.2' })).toEqual(ok)
   expect(r.b.picks).toMatchObject([{ id: 'crb.quick-step.2', name: 'Quick Step 2' }])
   expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step.1' })).toEqual(no('duplicate'))
-  expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok)   // the parent: the next level
+  expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(ok) // the parent: the next level
   expect(r.b.picks).toMatchObject([{ id: 'crb.quick-step.3' }])
   expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step.4' })).toEqual(ok)
   expect(r.act({ op: 'pick', kind: 'adeptpowers', id: 'crb.quick-step' })).toEqual(no('max-level'))
@@ -172,14 +187,17 @@ test('a family of power levels: taken again it goes up; a lower or equal level i
 })
 
 test('a leveled pick outside a family: taken again it goes up to its maximum; powerLevel sets it within 1 and the maximum', () => {
-  const m = made({ data: d => {
-    d.powers['crb.stack'] = { ...d.powers['crb.quick-step'], perLevel: true, maxLevel: 2 }
-    const old = d.entry
-    d.entry = (k, id) => (id === 'crb.stack' && k === 'adeptpowers' ? { ...old('adeptpowers', 'crb.quick-step')!, id, name: 'Stack' } : old(k, id))
-    const fam = d.family
-    d.family = (k, id) => (id === 'crb.stack' ? undefined : fam(k, id))
-  } })
-  const ch = blankSr6('priority', 'r', 'now'); ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'adept' })
+  const m = made({
+    data: d => {
+      d.powers['crb.stack'] = { ...d.powers['crb.quick-step'], perLevel: true, maxLevel: 2 }
+      const old = d.entry
+      d.entry = (k, id) => (id === 'crb.stack' && k === 'adeptpowers' ? { ...old('adeptpowers', 'crb.quick-step')!, id, name: 'Stack' } : old(k, id))
+      const fam = d.family
+      d.family = (k, id) => (id === 'crb.stack' ? undefined : fam(k, id))
+    },
+  })
+  const ch = blankSr6('priority', 'r', 'now')
+  ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'adept' })
   const act = (op: Op) => apply(ch.build, op, m.data, m.cr)
   expect(act({ op: 'pick', kind: 'adeptpowers', id: 'crb.stack' })).toEqual(ok)
   expect(ch.build.picks[0]).toMatchObject({ id: 'crb.stack', level: 1 })
@@ -224,7 +242,7 @@ test('gear lines: removing, quantity, accessories, wearing and the numbers of a 
   expect(r.act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 9 })).toEqual(no('rating-range'))
   expect(r.act({ op: 'purchase', kind: 'gear', id: 'crb.tangle-rope', rating: 0.5 })).toEqual(no('rating-range'))
   expect(r.act({ op: 'purchase', kind: 'gear', id: 'crb.zap-scope', grade: 'alpha' })).toEqual(no('no-grade'))
-  expect(r.act({ op: 'purchase', kind: 'gear' })).toEqual(ok)   // no catalog id: a blank custom line
+  expect(r.act({ op: 'purchase', kind: 'gear' })).toEqual(ok) // no catalog id: a blank custom line
   expect(r.b.purchases[0]).toMatchObject({ name: '', cost: 0, avail: 0, essence: 0, qty: 1 })
   expect(r.act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
   const gun = r.b.purchases[1].uid
@@ -325,7 +343,8 @@ test('knowledge: one native language a runner (new or changed), edits to one tha
   expect(r.b.knowledge[0]).toMatchObject({ native: true, points: 0, kind: 'language' })
   expect(r.act({ op: 'knowledge', name: 'Other', kind: 'language', native: true })).toEqual(no('one-native'))
   expect(r.act({ op: 'knowledge', name: 'Lore' })).toEqual(ok)
-  const lore = r.b.knowledge[1].uid, native = r.b.knowledge[0].uid
+  const lore = r.b.knowledge[1].uid,
+    native = r.b.knowledge[0].uid
   expect(r.b.knowledge[1]).toMatchObject({ kind: 'knowledge', points: 1, karma: 0 })
   expect(r.act({ op: 'knowledge', uid: 'nope', name: 'x' })).toEqual(no('unknown-line'))
   expect(r.act({ op: 'knowledge', uid: lore, native: true })).toEqual(no('one-native'))
@@ -333,7 +352,7 @@ test('knowledge: one native language a runner (new or changed), edits to one tha
   expect(r.b.knowledge[1]).toMatchObject({ name: 'Old lore', kind: 'language' })
   expect(r.act({ op: 'knowledgeRank', uid: 'nope', pool: 'points', delta: 1 })).toEqual(no('unknown-line'))
   expect(r.act({ op: 'knowledgeRank', uid: native, pool: 'points', delta: 1 })).toEqual(no('native'))
-  expect(r.act({ op: 'knowledgeRank', uid: lore, pool: 'points', delta: 2 })).toEqual(ok)       // 3 of 3
+  expect(r.act({ op: 'knowledgeRank', uid: lore, pool: 'points', delta: 2 })).toEqual(ok) // 3 of 3
   expect(r.act({ op: 'knowledgeRank', uid: lore, pool: 'karma', delta: 1 })).toEqual(no('language-max'))
   expect(r.act({ op: 'knowledgeRank', uid: lore, pool: 'points', delta: -9 })).toEqual(no('below-zero'))
   // the native language gives way: another can become the native one
@@ -394,7 +413,7 @@ test('SINs and licences: ratings of at least one, a licence never above its fake
   expect(r.act({ op: 'sin', name: 'Real', kind: 'real', gender: '  ' })).toEqual(ok)
   expect(r.b.sins[0]).not.toHaveProperty('rating')
   expect(r.b.sins[0]).not.toHaveProperty('gender')
-  expect(r.act({ op: 'sin' })).toEqual(ok)   // the default: a fake SIN, rating 1
+  expect(r.act({ op: 'sin' })).toEqual(ok) // the default: a fake SIN, rating 1
   expect(r.b.sins[1]).toMatchObject({ kind: 'fake', rating: 1, name: '' })
   expect(r.act({ op: 'sin', name: 'Gendered', rating: 3, gender: 'f' })).toEqual(ok)
   const [real, , fake] = r.b.sins.map(s => s.uid)
@@ -433,7 +452,7 @@ test('mentor spirits: unknown ones refused, the quality comes and goes, an advan
   expect(r.act({ op: 'mentor', id: 'crb.glow-moth', advantage: 'magician' })).toEqual(ok)
   expect(r.b).toMatchObject({ mentorSpirit: 'crb.glow-moth', mentorAdvantage: 'magician' })
   expect(r.b.qualities.map(q => q.id)).toEqual(['crb.knack'])
-  expect(r.act({ op: 'mentor', id: 'crb.glow-moth' })).toEqual(ok)   // again: no second quality
+  expect(r.act({ op: 'mentor', id: 'crb.glow-moth' })).toEqual(ok) // again: no second quality
   expect(r.b.qualities).toHaveLength(1)
   expect(r.act({ op: 'mentor', advantage: null })).toEqual(ok)
   expect(r.b.mentorAdvantage).toBeUndefined()
@@ -477,7 +496,7 @@ test('choosing a magic kind keeps the aspected skill only for aspected, and drop
   setMagic(r.ch, 'aspected', r.data, r.cr, 'crb.glowcraft')
   expect(r.b).toMatchObject({ magic: 'aspected', aspectedSkill: 'crb.glowcraft' })
   expect(r.b.mentorAdvantage).toBeUndefined()
-  setMagic(r.ch, 'aspected', r.data, r.cr)           // no new skill named: the old one stays
+  setMagic(r.ch, 'aspected', r.data, r.cr) // no new skill named: the old one stays
   expect(r.b.aspectedSkill).toBe('crb.glowcraft')
   setMagic(r.ch, 'full', r.data, r.cr)
   expect(r.b.aspectedSkill).toBeUndefined()

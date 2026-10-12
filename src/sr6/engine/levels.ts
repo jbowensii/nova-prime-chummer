@@ -13,7 +13,12 @@ import { entryKey } from './names'
 import { rated, ratingRange } from './values'
 
 /** A family of levels: the parent (absent for rows the book prints apart) and each level's entry id. */
-export interface Sr6Family { kind: Sr6Kind; family: string; parent?: Sr6Entry; levels: Map<number, string> }
+export interface Sr6Family {
+  kind: Sr6Kind
+  family: string
+  parent?: Sr6Entry
+  levels: Map<number, string>
+}
 type Levels = Pick<Sr6Catalog, 'entries' | 'levels'>
 
 const round2 = (x: number) => Math.round(x * 100) / 100
@@ -23,9 +28,15 @@ const RANGE = /\s*\((?:(?:rating|level|force)\s+)?(\d+)\s*[-–]\s*(\d+)\)\s*$/i
 const PRINTED = /^(.+?)\s*(?:\((?:rating|level)\s+(\d{1,2})\)|\s(\d{1,2}))$/i
 /** the fields a level multiplies: a quality's Karma (a range's both ends), a power's power points (its combat skill price too) */
 const SCALED = ['karma', 'karmaMax', 'cost', 'costCombat']
-const usesR = (e: Sr6Entry) => e.parts.some(p => p.tag === 'effect' && effectValue(p.attrs.value)?.perRating)
-  || (e.formulas ?? []).some(f => /\bR\b/.test(f.expr))
-const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+const usesR = (e: Sr6Entry) =>
+  e.parts.some(p => p.tag === 'effect' && effectValue(p.attrs.value)?.perRating) || (e.formulas ?? []).some(f => /\bR\b/.test(f.expr))
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 
 /** How an entry expands: by rating, by level, or not at all. */
 function mode(e: Sr6Entry): { mode: 'rating' | 'level'; levels: number[] } | undefined {
@@ -35,7 +46,9 @@ function mode(e: Sr6Entry): { mode: 'rating' | 'level'; levels: number[] } | und
   const max = Number(e.attrs.maxLevel)
   if (Number.isInteger(max) && max >= 2) return { mode: 'level', levels: Array.from({ length: max }, (_, i) => i + 1) }
   // (the range printed in the name, `Will to Live (1-3)`)
-  const m = RANGE.exec(e.name), lo = m ? Number(m[1]) : NaN, hi = m ? Number(m[2]) : NaN
+  const m = RANGE.exec(e.name),
+    lo = m ? Number(m[1]) : NaN,
+    hi = m ? Number(m[2]) : NaN
   if (m && lo >= 1 && hi > lo) return { mode: 'level', levels: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) }
   return undefined
 }
@@ -52,13 +65,24 @@ function child(e: Sr6Entry, how: 'rating' | 'level', n: number): Sr6Entry {
   const attrs: Record<string, string> = { ...e.attrs, family: e.id, level: String(n) }
   if (how === 'rating') attrs.rating = String(n)
   else {
-    delete attrs.perLevel; delete attrs.maxLevel
-    for (const k of SCALED) { const v = rated(attrs[k]); if (attrs[k] !== undefined && v.ok && v.n !== null) attrs[k] = String(round2(v.n * n)) }
+    delete attrs.perLevel
+    delete attrs.maxLevel
+    for (const k of SCALED) {
+      const v = rated(attrs[k])
+      if (attrs[k] !== undefined && v.ok && v.n !== null) attrs[k] = String(round2(v.n * n))
+    }
   }
   const parts = how === 'level' ? e.parts.map(p => scaled(p, n)) : e.parts.map(p => ({ ...p, attrs: { ...p.attrs } }))
-  return { ...e, id: `${e.id}.${n}`, name: `${e.name.replace(RANGE, '')} ${n}`, attrs, parts,
-    ...(e.formulas ? { formulas: e.formulas.map(f => ({ ...f })) } : {}), ...(e.issues ? { issues: e.issues.map(i => ({ ...i })) } : {}),
-    aliases: [...new Set([...e.aliases ?? [], e.name])] }
+  return {
+    ...e,
+    id: `${e.id}.${n}`,
+    name: `${e.name.replace(RANGE, '')} ${n}`,
+    attrs,
+    parts,
+    ...(e.formulas ? { formulas: e.formulas.map(f => ({ ...f })) } : {}),
+    ...(e.issues ? { issues: e.issues.map(i => ({ ...i })) } : {}),
+    aliases: [...new Set([...(e.aliases ?? []), e.name])],
+  }
 }
 
 /** Expand every rated or leveled entry into its levels, in place, and group the rows the book prints per level. */
@@ -71,7 +95,8 @@ export function expandLevels(c: Sr6Catalog): void {
       if (!m) continue
       const fam: Sr6Family = { kind, family: e.id, parent: e, levels: new Map() }
       for (const n of m.levels) {
-        const kid = child(e, m.mode, n), had = map.get(kid.id)
+        const kid = child(e, m.mode, n),
+          had = map.get(kid.id)
         // (an edit keyed by this level's id is that level; it takes the parent's text when it has none)
         map.set(kid.id, had ? { ...had, attrs: { family: e.id, level: String(n), ...had.attrs }, text: had.text || e.text } : kid)
         fam.levels.set(n, kid.id)
@@ -89,16 +114,18 @@ export function expandLevels(c: Sr6Catalog): void {
       const m = PRINTED.exec(e.name)
       if (!m) continue
       const key = `${e.source}|${m[1].toLowerCase()}`
-      groups.set(key, [...groups.get(key) ?? [], { e, n: Number(m[2] ?? m[3]), bare: m[2] === undefined }])
+      groups.set(key, [...(groups.get(key) ?? []), { e, n: Number(m[2] ?? m[3]), bare: m[2] === undefined }])
     }
     for (const rows of groups.values()) {
       const ns = rows.map(r => r.n).sort((a, b) => a - b)
       if (rows.length < 2 || new Set(ns).size !== rows.length) continue
       if (rows.some(r => r.bare) && (ns.some((n, i) => n !== i + 1) || !rows.every(r => usesR(r.e)))) continue
-      const base = PRINTED.exec(rows[0].e.name)![1], family = `${rows[0].e.source.toLowerCase()}.${slug(base)}`
+      const base = PRINTED.exec(rows[0].e.name)![1],
+        family = `${rows[0].e.source.toLowerCase()}.${slug(base)}`
       const fam: Sr6Family = { kind, family, levels: new Map() }
       for (const { e, n } of rows) {
-        e.attrs.family = family; e.attrs.level = String(n)
+        e.attrs.family = family
+        e.attrs.level = String(n)
         // (a row's `R` is its own level: Wired Reflexes 3 adds 3)
         if (e.attrs.rating === undefined && usesR(e)) e.attrs.rating = String(n)
         fam.levels.set(n, e.id)
@@ -115,7 +142,10 @@ export function familyOf(c: Levels, kind: Sr6Kind, id: string | undefined): Sr6F
   return c.levels?.get(entryKey(kind, f))
 }
 /** An entry's level in its family (its `level`), else undefined. */
-export function levelOf(e: Sr6Entry | undefined): number | undefined { const n = Number(e?.attrs.level); return n >= 1 ? n : undefined }
+export function levelOf(e: Sr6Entry | undefined): number | undefined {
+  const n = Number(e?.attrs.level)
+  return n >= 1 ? n : undefined
+}
 /** The entry at `level` of the family `id` belongs to (a parent id, a level's id or a printed row's): undefined when
  *  there is no such level. */
 export function atLevel(c: Levels, kind: Sr6Kind, id: string | undefined, level: number): Sr6Entry | undefined {

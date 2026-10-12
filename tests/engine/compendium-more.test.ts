@@ -10,7 +10,10 @@ import { catFiles } from '../helpers'
 const NS = 'urn:chummer-anarchy2:data:1'
 const file = (attrs: string, body = '') => `<ca2:data xmlns:ca2="${NS}" kind="compendium" version="1" ${attrs}>${body}</ca2:data>`
 const OK = 'id="0123456789ab" name="Mine" source="STREET" sharing="private"'
-const why = (xml: string) => { const r = readCompendium(xml); return r.ok ? 'ok' : r.error }
+const why = (xml: string) => {
+  const r = readCompendium(xml)
+  return r.ok ? 'ok' : r.error
+}
 
 test('each refusal says what is wrong', () => {
   expect(why('<ca2:data')).toBe('Not valid XML.')
@@ -25,10 +28,12 @@ test('each refusal says what is wrong', () => {
 })
 
 test('an entry must cite the compendium’s source, be of a kind a compendium holds', () => {
-  expect(why(file(OK, '<amp id="a" source="OTHER" page="1" type="cyberware"><name>A</name></amp>'))).toBe('<amp> a cites "OTHER", not the compendium’s source STREET.')
+  expect(why(file(OK, '<amp id="a" source="OTHER" page="1" type="cyberware"><name>A</name></amp>'))).toBe(
+    '<amp> a cites "OTHER", not the compendium’s source STREET.',
+  )
   expect(why(file(OK, '<amp id="a" page="1" type="cyberware"><name>A</name></amp>'))).toBe('<amp> a cites "", not the compendium’s source STREET.')
   expect(why(file(OK, '<spell id="s" source="STREET"/>'))).toBe('<spell> can’t be in a compendium.')
-  expect(why(file(OK, '<item source="STREET"><name>Nameless</name></item>'))).toBe('ok')   // (no id is not refused here)
+  expect(why(file(OK, '<item source="STREET"><name>Nameless</name></item>'))).toBe('ok') // (no id is not refused here)
 })
 
 test('an NPC in it must be a readable character with an npc block', () => {
@@ -51,14 +56,28 @@ test('a campaign’s compendium reads back its campaign and revision; another sh
 })
 
 const comp = (source: string, sharing: Compendium['sharing'], campaign?: string): Compendium => ({
-  id: `id-${source}`, name: source, source, sharing, campaign, updatedAt: '2026-10-02T00:00:00.000Z',
+  id: `id-${source}`,
+  name: source,
+  source,
+  sharing,
+  campaign,
+  updatedAt: '2026-10-02T00:00:00.000Z',
   amps: [{ id: `${source}.amp`, type: 'cyberware', name: 'A', effects: [], narrative: '', source, page: 1 }],
   items: [{ id: `${source}.item`, kind: 'gear', name: 'I', text: '', source, page: 1 }],
-  vehicles: [{ id: `${source}.veh`, name: 'V', pilot: 1, body: 1, handling: 1, speed: 1, armor: 0, mount: 'none', source, page: 1 }], npcs: [] })
+  vehicles: [{ id: `${source}.veh`, name: 'V', pilot: 1, body: 1, handling: 1, speed: 1, armor: 0, mount: 'none', source, page: 1 }],
+  npcs: [],
+})
 
 test('a campaign sees its own compendiums’ entries, not those shared with another campaign; none shared elsewhere is the same catalog', () => {
-  const files = [...catFiles, ...[comp('MINE', 'campaign', 'c1'), comp('OTHER', 'campaign', 'c2'), comp('OPEN', 'private')]
-    .map(k => ({ file: `custom/${k.source}.xml`, xml: compendiumXml(k), overlay: true, owner: 'u1' }))]
+  const files = [
+    ...catFiles,
+    ...[comp('MINE', 'campaign', 'c1'), comp('OTHER', 'campaign', 'c2'), comp('OPEN', 'private')].map(k => ({
+      file: `custom/${k.source}.xml`,
+      xml: compendiumXml(k),
+      overlay: true,
+      owner: 'u1',
+    })),
+  ]
   const c = buildCatalog(files)
   const mine = forCampaign(c, 'c1')
   expect([...mine.amps.keys()].filter(k => /^(MINE|OTHER|OPEN)\./.test(k))).toEqual(expect.arrayContaining(['MINE.amp', 'OPEN.amp']))

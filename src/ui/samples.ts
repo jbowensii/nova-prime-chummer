@@ -10,7 +10,13 @@ import type { Character } from '../model/types'
 export type SourceInfo = { canon: boolean; imported?: string }
 export type Sources = (id: string) => SourceInfo | undefined
 
-const slug = (s: string) => s.normalize('NFKD').toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-') || 'runner'
+const slug = (s: string) =>
+  s
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[\s_]+/g, '-') || 'runner'
 export const exampleKey = (name: string, canon: boolean) => `${slug(name)}|${canon ? 'canon' : 'noncanon'}`
 
 /** A character file: our XML, or the older .ca2.json. */
@@ -21,8 +27,13 @@ export const readCharacterFile = (text: string) => (text.trimStart().startsWith(
 async function importedList(kind: 'samples' | 'npcs') {
   const res = await fetch(`./custom/imported/${kind}.xml`, { cache: 'no-cache' }).catch(() => null)
   const xml = res?.ok ? new DOMParser().parseFromString(await res.text(), 'text/xml') : null
-  return xml?.documentElement.localName === kind ? [...xml.documentElement.getElementsByTagName(kind.slice(0, -1))].map(s =>
-    ({ url: `./custom/imported/${s.getAttribute('href')}`, name: s.getAttribute('name') ?? '', source: s.getAttribute('source') ?? '' })) : []
+  return xml?.documentElement.localName === kind
+    ? [...xml.documentElement.getElementsByTagName(kind.slice(0, -1))].map(s => ({
+        url: `./custom/imported/${s.getAttribute('href')}`,
+        name: s.getAttribute('name') ?? '',
+        source: s.getAttribute('source') ?? '',
+      }))
+    : []
 }
 
 /** The imported books' sample runners (custom/imported/samples.xml). Canon: the book's source. */
@@ -40,7 +51,7 @@ export async function readSample(url: string) {
 }
 
 /** Which version wins, as a sortable string: a book's over a set's, then the newest import. */
-const rank = (source: SourceInfo | undefined) => source ? `1|${source.imported ?? ''}` : '0|'
+const rank = (source: SourceInfo | undefined) => (source ? `1|${source.imported ?? ''}` : '0|')
 
 /** The key a runner counts under: its recorded key, with a book's copy's canon-ness as its book (origin) has it now (the
  *  flag may have changed since the copy was loaded; the copy is the same book's character); for a copy loaded before keys
@@ -61,16 +72,26 @@ export function keyOf(ch: Character, sources: Sources): string | null {
 }
 
 /** A row of the example list: `source` is the book's source id, or none for an example set's runner (canon: the set's). */
-export interface Example { url: string; name: string; source?: string; set?: string; canon: boolean }
+export interface Example {
+  url: string
+  name: string
+  source?: string
+  set?: string
+  canon: boolean
+}
 
 /** The version to load of each key: a canon book's over a set's (the newest import among books), the first on a tie.
  *  Two runners of the same name in one book or set are two characters: the second gets "-2" (as 0.4.1's keys did). */
 export function chooseExamples(rows: Example[], sources: Sources): (Example & { key: string })[] {
-  const best = new Map<string, Example & { key: string }>(), seen = new Map<string, number>()
+  const best = new Map<string, Example & { key: string }>(),
+    seen = new Map<string, number>()
   for (const r of rows) {
-    const base = slug(r.name), from = `${r.source ?? ''}/${r.set ?? ''}/${base}`, n = (seen.get(from) ?? 0) + 1
+    const base = slug(r.name),
+      from = `${r.source ?? ''}/${r.set ?? ''}/${base}`,
+      n = (seen.get(from) ?? 0) + 1
     seen.set(from, n)
-    const key = exampleKey(n > 1 ? `${base}-${n}` : base, r.canon), have = best.get(key)
+    const key = exampleKey(n > 1 ? `${base}-${n}` : base, r.canon),
+      have = best.get(key)
     if (!have || rank(r.source ? sources(r.source) : undefined) > rank(have.source ? sources(have.source) : undefined)) best.set(key, { ...r, key })
   }
   return [...best.values()]
@@ -99,7 +120,7 @@ export function extraCopies(runners: Row[], sources: Sources): Character[] {
   const groups = new Map<string, Row[]>()
   for (const r of runners) {
     const key = keyOf(r.ch, sources)
-    if (key) groups.set(key, [...groups.get(key) ?? [], r])
+    if (key) groups.set(key, [...(groups.get(key) ?? []), r])
   }
   const out: Character[] = []
   for (const g of groups.values()) {
@@ -108,16 +129,26 @@ export function extraCopies(runners: Row[], sources: Sources): Character[] {
     const when = (ch: Character) => `${ch.updatedAt}|${ch.lastExportedAt ?? ''}` // the oldest: then the first loaded
     for (const r of [...g].sort((a, b) => when(a.ch).localeCompare(when(b.ch)))) {
       if (r.ch.sampleKey?.includes('|')) continue
-      const f = fingerprint(r.ch), first = old.get(f)
-      if (first) { out.push(r.ch); g.splice(g.indexOf(r), 1) } else old.set(f, r)
+      const f = fingerprint(r.ch),
+        first = old.get(f)
+      if (first) {
+        out.push(r.ch)
+        g.splice(g.indexOf(r), 1)
+      } else old.set(f, r)
     }
     if (g.length < 2) continue
     const loaded = new Map<string, string>()
-    for (const { ch } of g) { const k = sourceOf(ch) ?? ''; if (!loaded.has(k) || ch.updatedAt < loaded.get(k)!) loaded.set(k, ch.updatedAt) }
+    for (const { ch } of g) {
+      const k = sourceOf(ch) ?? ''
+      if (!loaded.has(k) || ch.updatedAt < loaded.get(k)!) loaded.set(k, ch.updatedAt)
+    }
     const fresh = g.filter(r => unedited(r.ch, r.rev, loaded.get(sourceOf(r.ch) ?? '')))
-    if (fresh.length < g.length) { out.push(...fresh.map(r => r.ch)); continue }
+    if (fresh.length < g.length) {
+      out.push(...fresh.map(r => r.ch))
+      continue
+    }
     const score = (ch: Character) => `${rank(sourceOf(ch) ? sources(sourceOf(ch)!) : undefined)}|${ch.updatedAt}`
-    const keep = g.reduce((a, b) => score(b.ch) > score(a.ch) ? b : a)
+    const keep = g.reduce((a, b) => (score(b.ch) > score(a.ch) ? b : a))
     out.push(...g.filter(r => r !== keep).map(r => r.ch))
   }
   return out
@@ -129,7 +160,7 @@ export function extraCopies(runners: Row[], sources: Sources): Character[] {
 export function sameRunners<R extends Row>(runners: R[]): R[][] {
   const key = ({ ch }: Row) => [ch.identity.streetName, ch.identity.name].map(x => (x ?? '').trim().toLowerCase()).join('|') + `|${ch.identity.metatype}`
   const groups = new Map<string, R[]>()
-  for (const r of runners) if (r.ch.identity.streetName?.trim() || r.ch.identity.name?.trim()) groups.set(key(r), [...groups.get(key(r)) ?? [], r]) // unnamed: can't tell
+  for (const r of runners) if (r.ch.identity.streetName?.trim() || r.ch.identity.name?.trim()) groups.set(key(r), [...(groups.get(key(r)) ?? []), r]) // unnamed: can't tell
   const score = (r: Row) => `${(r.rev ?? 1) > 1 ? 1 : 0}|${r.ch.updatedAt}`
   return [...groups.values()].filter(g => g.length > 1).map(g => [...g].sort((a, b) => score(b).localeCompare(score(a))))
 }

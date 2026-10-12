@@ -9,7 +9,11 @@ export const NPC_KEY = 'ca2.npcs.v1'
 const WEEK = 7 * 24 * 3600 * 1000
 
 export function listCharacters(key = KEY): Character[] {
-  try { return JSON.parse(localStorage.getItem(key) ?? '[]').map(migrate) } catch { return [] }
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? '[]').map(migrate)
+  } catch {
+    return []
+  }
 }
 
 export function getCharacter(id: string, key = KEY): Character | undefined {
