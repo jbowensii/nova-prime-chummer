@@ -327,7 +327,7 @@ decision 2026-10-10).
 initiative dice, Physical, Stun or Overflow boxes, a skill's pool, or a test type's pools is a bonus (lineBonuses: a
 player's own bonuses still override, D3). The total shown first holds the always-on ones; the bracketed total
 (`derive.ts` on) adds the switchable and conditional ones, shown `6 (9)` on every sheet, Review and the Skills tab
-(shared rule: `src/engine/effects.ts` counts, both games). `attr-max` effects of a quality set or raise the
+(shared rule: `src/shared/effects.ts` counts, both games). `attr-max` effects of a quality set or raise the
 attribute's maximum (attrMax); the rest (Edge rules, extra actions, Matrix and item
 stats, links) are shown on the hover card and listed on the printed sheet's Effects (runnerView.effectNotes). The
 Foundry export carries every effect and link (`effects`, `links`) and both totals (`derived`, `derivedOn`, an
@@ -458,7 +458,7 @@ override file) is how a table sets what the book leaves out.
 **`<formula field round? unit? qty?>EXPR</formula>`.** `field` is the attribute it works out (`cost`, `avail`, `rating`,
 `ammo`, `essence`…). The builder prices a bought item with it, at the item's rating, quantity and options, in the
 budgets, the ledger and the exports (which show the plain number); without one the printed value is read as above.
-EXPR is read by the app's own small parser (`src/engine/formula.ts`, never `eval`):
+EXPR is read by the app's own small parser (`src/shared/formula.ts`, never `eval`):
 
 - numbers, `+ - * /` (`×` too), parentheses, a leading minus;
 - `R` the rating, `Q` the quantity, `M` the runner's Magic, `B` this field's printed value, `H` the same field of the

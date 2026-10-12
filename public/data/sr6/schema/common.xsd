@@ -181,7 +181,7 @@
       <xs:attribute name="kind" type="xs:string"/>
     </xs:extension></xs:simpleContent>
   </xs:complexType>
-  <!-- how a field is worked out (src/engine/formula.ts): R rating, Q quantity, M Magic, B the field's printed value,
+  <!-- how a field is worked out (src/shared/formula.ts): R rating, Q quantity, M Magic, B the field's printed value,
        opt.<id>; tier(), ref(kind:id, field[, R]), ceil, floor, min, max, + - * /. The attribute stays as printed.
        unit and qty: the price is for qty units ("10" "rounds"). round: up (the default) or down. -->
   <xs:simpleType name="Field">

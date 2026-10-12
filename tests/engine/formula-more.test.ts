@@ -1,4 +1,4 @@
-// The formula parser's error messages and limits (src/engine/formula.ts): each way a formula is refused says why, with the
+// The formula parser's error messages and limits (src/shared/formula.ts): each way a formula is refused says why, with the
 // position; unicode minus and times read; deep nesting stops; a result that is no number is no price.
 import { describe, expect, it } from 'vitest'
 import { evalFormula, fieldName, parseFormula, type Formula } from '../../src/engine/formula'

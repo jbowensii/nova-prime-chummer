@@ -198,7 +198,7 @@ never its dice (CRB p.63: no circumstance changes the pool).
 #### How an effect is turned on
 
 Every `<effect>` (amps, items, metatypes, a runner's amps and items) may say how it is turned on and whether it counts
-(`src/engine/effects.ts`, shared with Shadowrun 6): `switch` (`wireless`, `activated`, `sustained`, `conditional`; absent:
+(`src/shared/effects.ts`, shared with Shadowrun 6): `switch` (`wireless`, `activated`, `sustained`, `conditional`; absent:
 always on), `when` (it holds only then: in darkness, while in the Matrix), `confidence="low"` (read from a sentence the
 importer isn't sure of, a value that depends on hits: shown, not counted) and `from` (the catalog id of the entry it is
 given by: "like an elf", "acts the same way as a mana bolt"). A switchable one (wireless, activated, sustained) and a

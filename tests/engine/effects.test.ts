@@ -1,4 +1,4 @@
-// Effects, Anarchy side (src/engine/effects.ts, amps.ts RULE_EFFECTS, derive.ts): the shared state rules, the narrative
+// Effects, Anarchy side (src/shared/effects.ts, amps.ts RULE_EFFECTS, derive.ts): the shared state rules, the narrative
 // effect kinds, what derive counts and shows, the character file and the export. Made-up data only.
 import { describe, expect, test } from 'vitest'
 import {
