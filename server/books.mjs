@@ -543,6 +543,10 @@ export function booksApi({ charDir, customDir, libraryDir, python = 'python3', i
     }
     if (r.signal) throw fail(502, `no answer within ${askTimeout / 1000} seconds; try again`)
     const why = (await redact(r.err)).trim().split('\n').pop()
+    if (r.code !== 0 && out?.provider) { // the provider's own words are the admin's: the log, and AI settings' Test
+      console.error(`ask${game === 'sr6' ? ' (sr6)' : ''}: the AI provider failed: ${why}`)
+      throw fail(502, 'the AI provider isn’t answering; tell the admin')
+    }
     if (r.code !== 0) throw fail(502, r.code === 3 && why ? why : 'the importer couldn’t answer' + (why ? `: ${why}` : ''))
     if (!out) throw fail(502, 'the importer’s answer couldn’t be read')
     const text = s => String(s ?? '').slice(0, 200)

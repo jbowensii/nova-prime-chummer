@@ -195,7 +195,7 @@ ${got.map(t => `  ${rows[t]}\n`).join('')}</review>\n`)
   const key = (existsSync(keys) ? readFileSync(keys, 'utf8') : '').match(/<key provider="\w+">([^<]*)<\/key>/)?.[1] ?? ''
   if (q.includes('slow')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000)
   if (q.includes('hang')) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10000)
-  if (q.includes('fail')) { process.stderr.write(`the provider didn’t accept the API key ${key}\n`); console.log('{"called": true}'); process.exit(3) }
+  if (q.includes('fail')) { process.stderr.write(`the provider didn’t accept the API key ${key}\n`); console.log('{"called": true, "provider": true}'); process.exit(3) }
   const not = { answer: 'The books on this server don’t cover that.', sources: [], covered: false }
   console.log(JSON.stringify(q.includes('laser') ? { ...not, called: false } : q.includes('refuse') ? { ...not, called: true }
     : { answer: `Invented ${sr6 ? 'SR6 ' : ''}answer${rest.includes('--scope') ? ` (${opt('--scope')} only)` : ''} [ZZ p.61].${q.includes('leak') ? ` ${key}` : ''}`,
