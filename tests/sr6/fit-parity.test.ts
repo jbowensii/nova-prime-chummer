@@ -1,12 +1,14 @@
 // The importer prices a book's sample runners to fit their priorities (importer/sr6/fit.py, archetypes.py); the app prices
 // the runner it writes (budgets.ts). Invented runners (importer/tests/sr6_parity.py: rated items, a formula price, a
-// grade, a unit price, a troll's size pricing, karma turned into nuyen, In Debt) built by the real importer must cost the
-// same here: nuyen spent and left, Karma left. Skipped when no Python with the importer's requirements is found.
+// grade, a unit price, a troll's size pricing, karma turned into nuyen, In Debt, a mystic adept's spells) built by the real
+// importer must cost the same here: nuyen spent and left, Karma left, no power points past those bought. Skipped when no
+// Python with the importer's requirements is found.
 import { spawnSync } from 'node:child_process'
 import { describe, expect, test } from 'vitest'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { applyDeps, LEVELS, levelRules, RULE_DEPS, runnerRules, SETS, type CreationValue } from '../../src/sr6/engine/creation'
 import { karmaBudget, nuyenBudget } from '../../src/sr6/engine/budgets'
+import { powerPoints } from '../../src/sr6/engine/magic'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { fixtureCatalog, fixtureCreation } from './fixture'
@@ -70,5 +72,6 @@ describe.skipIf(!python)('the importer prices a sample runner as the app does', 
         karmaLeft: r.py!.karmaLeft,
         karmaToNuyen: r.py!.karmaToNuyen,
       })
+      expect(powerPoints(b, data, cr, p).left).toBeGreaterThanOrEqual(0) // (a mystic adept's powers: the points it bought)
     })
 })

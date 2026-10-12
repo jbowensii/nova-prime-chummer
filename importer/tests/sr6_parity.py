@@ -64,6 +64,14 @@ RUNNERS = [
     ("in-debt", block("Debtor", "Glimmerkin", gear="Pocketdeck, Putt-Putt", qualities="Deep Pockets Debt")),
     ("in-debt-uncapped", block("Debtor", "Glimmerkin", gear="Pocketdeck, Putt-Putt", qualities="Deep Pockets Debt"),
      {"karmaToNuyenCap": "false"}),
+    # a mystic adept (Magic 1: the lowest row's): the power point its power takes is bought out of its Magic, which
+    # leaves no free spells (magic.ts freeSpellSlots), so its spells and ritual are bought with karma
+    ("mystic", block("Mystic", "Glimmerkin", {"M": "1"}, spells="Glow Ward, Mend Glow", rituals="Moon Circle",
+                     adept_powers="Quick Step 2")),
+    # a magician whose implant took a point of Magic (the fixture's Essence 5, 4.6 printed): no free spells left (CRB
+    # Hong Kong p.66)
+    ("essence-loss", block("Wired Mage", "Glimmerkin", {"M": "1", "ESS": "4.6"}, spells="Glow Ward, Mend Glow",
+                           rituals="Moon Circle", augmentations="Buzz Wires 2")),
     # past the starting Karma: built as a prime runner (its rules say so, assumed)
     ("prime", block("Prime", "Glimmerkin", {k: "6" for k in ("B", "A", "R", "S", "W", "L", "I", "C")},
                     skills="Tinkering 6, Gab 6", qualities="Knack, Lucky Streak 3")),

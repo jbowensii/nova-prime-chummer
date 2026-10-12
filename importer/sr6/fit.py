@@ -240,7 +240,12 @@ def spend(need, rows, cs):
                 left -= ex_cost
             else:
                 karma += n("advance.expertise")
-    free = rating * n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic") if special else 0
+    # the free ones: the priority's rating less what Essence took (CRB Hong Kong p.66) and, a mystic adept's, less the
+    # power points it bought out of its Magic (whole points, what its powers cost; CRB pp. 65-66): magic.ts freeSpellSlots.
+    # The runner says how many it bought.
+    bought = math.ceil(need["pp"]) if kind == "mystic-adept" else 0
+    per = n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic")
+    free = max(0, rating - need.get("loss", 0) - bought) * per if special else 0
     # past the free ones: bought with the customization Karma (an optional rule at creation: karmaSpellsAtCreation)
     extra = max(0, need["forms"] - free) + need["spells"] if special == "res" else max(0, need["spells"] - free) + need["forms"]
     if special == "res":
@@ -279,7 +284,8 @@ def spend(need, rows, cs):
     pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
     return (pp_over, over, errors, gap, excess), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
-                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "karmaLeft": room - to_nuyen, "extraMagic": extra}
+                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "karmaLeft": room - to_nuyen, "extraMagic": extra,
+                                   "powerPointsBought": bought}
 
 
 def fit(need, priorities, cs):
