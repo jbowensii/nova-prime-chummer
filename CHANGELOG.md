@@ -1,5 +1,48 @@
 # Release notes
 
+## 0.15.0 — 2026-10-12
+
+A release of fixes from a full review of the app, plus a few look-and-feel improvements.
+
+**Admins, after updating:**
+- **Shadowrun 6 sample runners may change after Books → Re-import all.** The importer now counts a mystic adept's or
+  an augmented magician's free spells the way the app does (see below), so a sample runner of that kind may be fitted
+  to a slightly different build. Nothing else needs a re-import, and your books are not converted again.
+- **Sign in with Authelia is limited to 10 tries a minute from one network.** Past that, the sign-in page says to wait a
+  minute. Normal use never gets near it.
+- The README is rewritten: what the app does, how data comes in, installing and the options. Proxy and Authelia
+  setup moved to its own page, [docs/hosting-auth.md](docs/hosting-auth.md).
+
+**Both games**
+- **Match my system**: a new theme choice that follows your device's light or dark setting. It is the default for a
+  new browser; a light or dark choice you already saved stays.
+- **Phones**: the header's icon menu wraps into an even grid, with no single icon left alone on a row.
+- **Sign-in**: a sign-in link with an odd value in it shows the usual "didn't work" message instead of a blank page,
+  and too many tries from one network now says so plainly.
+- **Safer runner files**: a hand-edited file with a negative quantity, rating or Karma spend no longer turns a cost
+  into a refund (Review flags it as an error no GM can approve); a rating range past 100 is read as unrated instead
+  of slowing or crashing the page; a Shadowrun 6 entry saves without stray attributes that kept it from reading back.
+- A data pack can't be made while a backup is running.
+
+**Shadowrun 6**
+- **Table setup**: the tools are laid out cleanly, and New runner says briefly why the Karma build is off.
+- **Mystic adepts and Essence loss**: free spells are worked out from Magic after the Essence lost and the power
+  points bought, the same in the importer as in the app.
+- A life module's "Choose an Attribute: +1 to …" line now grants its one choice.
+- A career level-up records each moved line once.
+
+**Shadowrun Anarchy**
+- A vehicle's Armor +1 upgrades count only up to its Body on the sheet (Review still flags the extra).
+- Review's Armor +1 stacking check counts Equipment amps on the armor you wear, as the sheet does.
+- A knowledge row naming an unknown slot is paid, as the sheet already said.
+- Finalizing a runner a second time leaves its Karma and nuyen history alone.
+
+**Behind the scenes**
+- The two games' code is kept further apart: code both games use lives in `src/shared`, and the importer's Shadowrun 6
+  steps and shared book library were separated from Anarchy's.
+- Docker and CI: private local folders never go into an image build, a release image is only published from a commit
+  on main that passed CI, and CI tests the importer on the image's own Python as well.
+
 ## 0.14.0 — 2026-10-12
 
 **The app is now called Nova Prime Chummer** (it was "Chummer Anarchy 2.0"). The games keep their names, Shadowrun

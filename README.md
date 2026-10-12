@@ -4,7 +4,7 @@ A self-hosted character generator and career tracker for two games: **Shadowrun:
 
 You run it on your own network (a home server, a NAS, a PC). Everyone at the table uses it in a browser. It ships the rules engine only. You bring your own books. See [How data comes in](#how-data-comes-in).
 
-- Release history: [CHANGELOG.md](CHANGELOG.md)
+- Version 0.15.0. Release history: [CHANGELOG.md](CHANGELOG.md)
 - Example sheets: [Example character sheets](#example-character-sheets)
 
 ## What it is
@@ -212,6 +212,7 @@ Docs live in [docs/](docs/): data, character and export formats for each game, t
 ### Code map
 
 - `server/books.mjs`: the server's route table (its header lists every route) and the map of the modules behind it.
+- `src/shared/`: code both games use, such as the formula reader (`formula.ts`) and the effect switches (`effects.ts`). Shadowrun 6 imports nothing from Anarchy's engine (`tests/ui/import-cycles.test.ts` checks).
 - `src/sr6/engine/budgets.ts`: Shadowrun 6 budgets. It re-exports choices, purchases, bonuses, attributes, essence, magic, skills, contacts and karma.
 - `src/sr6/engine/creation.ts`: the creation settings (Table setup).
 - `importer/sr6/catalog.py` and `importer/sr6/recipes/crb.md`: the Shadowrun 6 import.
