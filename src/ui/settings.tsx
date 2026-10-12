@@ -14,7 +14,8 @@ import { Modal } from './bits'
 /** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
  *  (each game has its own art; print/shared.tsx useSheetArt) */
 export interface Settings {
-  theme: 'light' | 'dark'
+  /** system: light or dark as this device is set to (prefers-color-scheme); applySettings turns it into one of the two */
+  theme: 'light' | 'dark' | 'system'
   texture: 'flat' | 'accents' | 'full'
   print: 'plain' | 'color' | 'book' | 'neon' | 'hex' | 'dossier'
   art: 'on' | 'off'
@@ -27,7 +28,7 @@ export interface Settings {
   sr6SheetArtStrength?: number
 }
 const KEY = 'ca2.settings.v1'
-export const DEFAULTS: Settings = { theme: 'light', texture: 'accents', print: 'plain', art: 'on', artStrength: 100, sheetArt: 'on', sheetArtPrint: 'off' }
+export const DEFAULTS: Settings = { theme: 'system', texture: 'accents', print: 'plain', art: 'on', artStrength: 100, sheetArt: 'on', sheetArtPrint: 'off' }
 
 /** A whole percentage in 0–100; anything else is the default. Never above 100: that would pass the readability clamp. */
 export const strength = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : 100)
@@ -46,10 +47,22 @@ export function loadSettings(): Settings {
   }
 }
 
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+/** The theme the CSS gets (data-theme is always light or dark): a saved light or dark stands; anything else follows the device. */
+export function resolveTheme(t: unknown): 'light' | 'dark' {
+  if (t === 'light' || t === 'dark') return t
+  return typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
+}
+let following = false
+
 /** Set the data-* attributes the CSS keys off. Call before first render to avoid a flash. */
 export function applySettings(s: Settings) {
   const el = document.documentElement
-  el.dataset.theme = s.theme
+  el.dataset.theme = resolveTheme(s.theme)
+  if (!following && typeof matchMedia === 'function') {
+    following = true // the device switching light/dark while the page is open: follow it, if the saved choice is "Match my system"
+    matchMedia(DARK_QUERY).addEventListener('change', () => applySettings(loadSettings()))
+  }
   el.dataset.texture = s.texture
   el.dataset.print = s.print
   el.dataset.art = s.art
@@ -87,6 +100,7 @@ const GROUPS: { key: keyof Settings; label: string; options: [string, string, st
     key: 'theme',
     label: 'Theme',
     options: [
+      ['system', 'Match my system', 'Light or dark, whichever this device is set to.'],
       ['light', 'Book (light)', 'The printed page: paper, ink, rust and yellow.'],
       ['dark', 'Indigo (dark)', 'The book’s sidebar colors as a dark page.'],
     ],
