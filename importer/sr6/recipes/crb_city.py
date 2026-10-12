@@ -7,7 +7,7 @@ import re
 from dataclasses import replace
 from types import SimpleNamespace
 
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, ts
 from importer.sr6.regroup import blocks, norm

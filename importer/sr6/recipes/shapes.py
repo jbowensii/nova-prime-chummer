@@ -6,7 +6,7 @@ box that doesn't read stays where it was (a rule's table)."""
 import re
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
+from importer.sr6.ids import slug
 from importer.sr6.regroup import full_name, keys, norm, other_name
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
