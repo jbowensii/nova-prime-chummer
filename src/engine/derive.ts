@@ -337,7 +337,8 @@ export function vehicleStats(c: Catalog, a: AmpEntry, on = false): VehicleStats 
   const flying = n('flying') > 0
   const fixed = n('fixed') > 0
   const speed = fixed ? 0 : (flying ? (ch.flyingSpeed ?? Math.max(1, ch.speed * 2)) : ch.speed) + n('speed-plus')
-  const armor = ch.armor + n('vehicle-armor')
+  // Armor +1 is Body at most (p.62; Review's vehicle.armor flags more)
+  const armor = ch.armor + Math.min(n('vehicle-armor'), ch.body)
   return {
     uid: a.uid,
     name: a.name,

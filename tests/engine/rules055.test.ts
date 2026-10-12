@@ -88,6 +88,14 @@ test('Review counts an Equipment amp’s Armor +1 linked to the worn armor, as t
   expect(stack().map(v => v.message)).toEqual([expect.stringMatching(/ 3 times across amps: .*\+2 at most/)])
 })
 
+test('vehicle Armor +1 counts up to the vehicle’s Body on the sheet (p.62); Review flags the rest', () => {
+  // made-up microdrone: Body 1, Armor 1
+  const drone = amp('v', 'vehicle', ['vehicle-armor', 'vehicle-armor', 'vehicle-armor'], { vehicle: 'microdrone' })
+  expect(vehicleStats(cat, drone)!.armor).toBe(2)
+  expect(vehicleStats(cat, { ...drone, effects: [] })!.armor).toBe(1)
+  expect(codes(runner(drone))).toContain('vehicle.armor')
+})
+
 test('flying doubles the base Speed only; Speed upgrades add after', () => {
   const s = (refs: string[]) => vehicleStats(cat, amp('v', 'vehicle', refs, { vehicle: 'medium-drone' }))!.speed
   // made-up medium drone: speed 4, flying speed 7
