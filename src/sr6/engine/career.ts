@@ -268,14 +268,16 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         const v = data.powers[lv.id], was = cur && data.powers[cur.id]
         if (cur && (data.levelOf(lv) ?? 1) <= curLevel) no('already-known')
         if (v?.cost == null || (was && was.cost == null)) no('book-value')
-        if (careerPowerPoints(b, data, cr, p).left < v.cost! - (was?.cost ?? 0)) no('no-power-points')
+        // (at its price for the skill its note names: Improved Ability for a combat skill costs more; a raised line keeps its note)
+        const note = cur?.note ?? a.line.note
+        if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id: lv.id, note }) - (cur ? powerCost(data, { id: cur.id, note }) : 0)) no('no-power-points')
         return { label: `Adept power: ${lv.name}`, karma: 0 }
       }
       const v = data.powers[id]
       if (had && !v?.perLevel) no('already-known')
       if (had && (had.level ?? 1) >= (v?.maxLevel ?? 1)) no('at-maximum')
       if (v?.cost == null) no('book-value')
-      if (careerPowerPoints(b, data, cr, p).left < v!.cost!) no('no-power-points')
+      if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id, note: had?.note ?? a.line.note })) no('no-power-points')  // (one level)
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }
     }
     case 'martialart': {
