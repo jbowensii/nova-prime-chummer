@@ -11,11 +11,11 @@ const GEAR = `<sr6:data ${NS} kind="gear" version="1"><gear id="crb.g" source="C
 
 afterEach(() => vi.unstubAllGlobals())
 
-test('a texts file the plain reader refuses (here a carriage return) is read with the DOM: it fills the text, unknown ids and kinds are skipped', () => {
-  const texts = `<sr6:data ${NS} kind="texts" version="1">\r\n<text of="gear" id="crb.g">New &amp; better</text><text of="gear" id="crb.none">lost</text><text of="nope" id="x">lost</text></sr6:data>`
+test('a texts file the plain reader refuses (here a carriage return in a text) is read with the DOM: it fills the text, unknown ids and kinds are skipped', () => {
+  const texts = `<sr6:data ${NS} kind="texts" version="1"><text of="gear" id="crb.g">New &amp; better\r\n</text><text of="gear" id="crb.none">lost</text><text of="nope" id="x">lost</text></sr6:data>`
   const c = buildSr6Catalog([F('a.xml', GEAR), F('texts.xml', texts)])
   expect(c.errors).toEqual([])
-  expect(c.entries.gear.get('crb.g')!.text).toBe('New & better')
+  expect(c.entries.gear.get('crb.g')!.text.trim()).toBe('New & better')
   expect(c.files.at(-1)).toMatchObject({ file: 'texts.xml', kind: 'texts', entries: 3 })
 })
 
@@ -107,4 +107,29 @@ test('loadSr6Catalog: a shipped file that cannot be reached fails the load; a cu
   const c = await loadSr6Catalog('./', [F('extra.xml', GEAR)])
   expect(c.errors).toEqual([])
   expect(c.entries.gear.has('crb.g')).toBe(true)
+})
+
+test('an unreadable formula on a field that already has an issue adds no second one', () => {
+  const xml = `<sr6:data ${NS} kind="gear" version="1"><gear id="crb.g" source="CRB" page="1" category="c" cost="x"><name>G</name>`
+    + `<issue field="cost" code="unreadable" page="1">printed oddly</issue><formula field="cost">ref(gear:crb.missing, cost, R)</formula></gear></sr6:data>`
+  const c = buildSr6Catalog([F('a.xml', xml)])
+  expect(c.entries.gear.get('crb.g')!.issues).toEqual([{ field: 'cost', code: 'unreadable', page: 1, note: 'printed oddly' }])
+})
+
+test('an edit keeps the book’s formulas and issues except for a field it sets otherwise; its own formulas win', () => {
+  const book = `<sr6:data ${NS} kind="gear" version="1"><gear id="crb.g" source="CRB" page="1" category="c" cost="40" avail="2"><name>G</name>`
+    + `<formula field="cost">R * 100</formula><formula field="avail">R + 1</formula>`
+    + `<issue field="cost" code="missing" page="1">no cost printed</issue><issue field="avail" code="ambiguous" page="1">two avails</issue></gear></sr6:data>`
+  const edit = (attrs: string, extra = '') => `<sr6:data ${NS} kind="edits" version="1"><gear id="crb.g" source="CRB" page="1" category="c" ${attrs} by="eve"><name>G</name>${extra}</gear></sr6:data>`
+  const run = (xml: string) => buildSr6Catalog([F('crb/gear.xml', book), F('edits.xml', xml)]).entries.gear.get('crb.g')!
+  const same = run(edit('cost="40" avail="2"'))
+  expect(same.formulas).toEqual([{ field: 'cost', expr: 'R * 100' }, { field: 'avail', expr: 'R + 1' }])
+  expect(same.issues?.map(i => i.field)).toEqual(['cost', 'avail'])
+  expect(same).toMatchObject({ edited: true, by: 'eve' })
+  const cost = run(edit('cost="55" avail="2"'))
+  expect(cost.formulas).toEqual([{ field: 'avail', expr: 'R + 1' }])
+  expect(cost.issues?.map(i => i.field)).toEqual(['avail'])
+  const own = run(edit('cost="55" avail="9"', '<formula field="cost">R * 3</formula>'))
+  expect(own.formulas).toEqual([{ field: 'cost', expr: 'R * 3' }])
+  expect(own.issues).toBeUndefined()
 })
