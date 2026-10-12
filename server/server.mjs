@@ -773,7 +773,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     publicUrl: process.env.PUBLIC_URL ?? '', // the app's one public address (Origin check, Authelia redirect URI)
   })
   server.listen(port, () => console.log(`nova-prime-chummer on :${port}`))
-  // docker stop: end the importer job too (the next start marks its book interrupted); sessions.xml is saved
+  // docker stop: end the importer job too (the next start runs it again from jobs.json: resume.mjs); sessions.xml is saved
   const quit = () => {
     server.stopJobs()
     server.close()

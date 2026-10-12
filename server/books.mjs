@@ -118,7 +118,10 @@ export function booksApi({
     // (samplefixes: a book sample runner's printed line corrected, importer/sr6/edits.py)
     sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } },
   }
-  // the modules' shared state; each adds its functions for the others (jobs first: the rest take theirs when made)
+  // the modules' shared state; each adds its functions for the others (jobs first: the rest take theirs when made). They
+  // depend on each other both ways (library calls resume's ctx.queueReimport, resume library's ctx.entries): a module
+  // destructures from ctx only what the ones wired before it added, and reads a later one's as ctx.<name> when called,
+  // so the wiring order below matters
   const ctx = {
     charDir,
     customDir,
@@ -229,7 +232,7 @@ export function booksApi({
     return m ? bookRoute(req, res, url, send, m, 'sr6') : false
   }
 
-  // shutdown: stop the running importer (the next start marks its book interrupted) and any model list
+  // shutdown: stop the running importer (the next start runs its job again: it stays in jobs.json, resume.mjs) and any model list
   // and backups being made; pending restore uploads and unfetched backups are deleted
   const stop = () => {
     jobs.stop()
