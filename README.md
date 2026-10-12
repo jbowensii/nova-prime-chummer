@@ -248,6 +248,10 @@ docker run -d --init -p 8480:80 \
   ghcr.io/jbowensii/chummer-anarchy2:latest
 ```
 
+The container starts as root only to hand the three mounted folders to `PUID`:`PGID` (default `99`:`100`, Unraid's
+`nobody`:`users`), then runs the server as that user; files owned by root from an older image are taken over on the
+first start. Add `-e PUID=1000 -e PGID=1000` to match another host user, or use `--user` to skip the step.
+
 ### Build it yourself
 
 ```bash

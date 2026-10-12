@@ -48,6 +48,17 @@ appdata folder as usual. Browsers that saved runners before server storage
 move them to tower04 on first load (done 2026-09-27: 15 runners moved,
 the 2 empty "Unnamed runner" files deleted to `.trash`).
 
+## Running as a non-root user (PUID / PGID)
+
+The image's entrypoint (`docker-entrypoint.sh`) starts as root. When any file under `/data/characters`,
+`/data/custom` or `/data/library` isn't owned by `PUID`:`PGID`, it `chown -R`s that folder (later starts skip the
+walk), then drops to that user with `su-exec` and runs the server. The defaults are `PUID=99`, `PGID=100` (Unraid's
+`nobody`:`users`), so an Unraid install needs no setting; set the two variables to run as another user. Files an
+older, root-running image left behind are handed over on the first start after the upgrade; nothing to fix by hand.
+With `docker run --user UID:GID` (or compose `user:`) the entrypoint skips all of that and just runs the server, so
+those folders must already be writable by that user. Port 80 inside the container works without root because Docker
+lets container processes bind low ports by default.
+
 ## Backup and restore
 
 Settings → **Backup** downloads a zip of all three mounted volumes
