@@ -289,6 +289,11 @@ export function campaignsApi({ customDir, lock, auth, runnersOf, writeRunner, np
     holds: async (owner, id) => (await load()).some(c => c.id === id && inIt(c, owner)),
     /** Whether `owner`'s NPC may keep campaign="<id>": it exists and they are a GM of it. */
     leads: async (owner, id) => (await load()).some(c => c.id === id && isGm(c, owner)),
+    /** holds and leads over one read of campaigns.xml, for a caller checking many rows (compendiums.mjs). */
+    async snapshot() {
+      const list = await load()
+      return { holds: (owner, id) => list.some(c => c.id === id && inIt(c, owner)), leads: (owner, id) => list.some(c => c.id === id && isGm(c, owner)) }
+    },
     /** Another account's NPCs the editor `me` may read: those shared with the campaigns they GM. */
     async readableNpcs(me) {
       const seen = new Set(), out = []
