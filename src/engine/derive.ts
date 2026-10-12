@@ -315,12 +315,17 @@ function wornChain(b: Build, uid?: string) {
 /** Each amp's Armor +1 on the armor worn as `uid` (none: unarmored): an Equipment amp's when it is linked to an item of
  *  that armor, any other amp's (orthoskin, mystic armor…) always; together no more than the effect's max. */
 export function armorShares(c: Catalog, b: Build, uid?: string, on = false): number[] {
-  const chain = new Set(wornChain(b, uid).map(i => i.uid))
+  const counted = armorAmp(b, uid)
   return shares(
     c,
     'armor-plus',
-    b.amps.map(a => (a.type !== 'equipment' || (a.linkedItem && chain.has(a.linkedItem)) ? onFx(a, on).filter(e => e.ref === 'armor-plus').length : 0)),
+    b.amps.map(a => (counted(a) ? onFx(a, on).filter(e => e.ref === 'armor-plus').length : 0)),
   )
+}
+/** Whether an amp's Armor +1 counts on the armor worn as `uid` (armorShares; Review's amp.stackMax). */
+export function armorAmp(b: Build, uid?: string): (a: AmpEntry) => boolean {
+  const chain = new Set(wornChain(b, uid).map(i => i.uid))
+  return a => a.type !== 'equipment' || (!!a.linkedItem && chain.has(a.linkedItem))
 }
 
 /** Vehicle or drone stats: chassis + upgrades (CRB p.60, 62-63). Flying doubles the base Speed only (the chassis' flying

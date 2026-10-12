@@ -76,6 +76,18 @@ test('Armor +1 and damage +1 stack across amps only up to the effect’s max (p.
   ).toEqual(['warning', 'warning'])
 })
 
+test('Review counts an Equipment amp’s Armor +1 linked to the worn armor, as the sheet does (p.61)', () => {
+  // made-up max: armor-plus 2; one from orthoskin-like cyberware, two from equipment on the vest
+  const ch = runner(amp('w', 'cyberware', ['armor-plus']), amp('e', 'equipment', ['armor-plus', 'armor-plus'], { linkedItem: 'vest' }))
+  ch.build.items.push({ uid: 'vest', kind: 'armor', name: 'Made-up vest', armor: 3 }, { uid: 'coat', kind: 'armor', name: 'Made-up coat', armor: 2 })
+  const stack = () => validate(cat, ch).filter(v => v.code === 'amp.stackMax')
+  ch.build.mainArmor = 'coat'
+  expect(stack()).toEqual([]) // the vest's equipment amp isn't worn
+  ch.build.altArmor = 'vest'
+  expect(derive(cat, ch).armor).toMatchObject({ main: 3, alt: 5 })
+  expect(stack().map(v => v.message)).toEqual([expect.stringMatching(/ 3 times across amps: .*\+2 at most/)])
+})
+
 test('flying doubles the base Speed only; Speed upgrades add after', () => {
   const s = (refs: string[]) => vehicleStats(cat, amp('v', 'vehicle', refs, { vehicle: 'medium-drone' }))!.speed
   // made-up medium drone: speed 4, flying speed 7

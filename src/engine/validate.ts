@@ -1,11 +1,11 @@
 // Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them. A prerequisite the runner
 // lacks is always an error (owner, 2026-10-09): the editor lets it be taken, and it stands until met or approved.
-import type { AttrId, Catalog, Character, TableFlags, Violation } from '../model/types'
+import type { AmpEntry, AttrId, Catalog, Character, TableFlags, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
 import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, sinnerFree } from './amps'
 import { balance, currentBuild, qualitiesAddedAfter } from './career'
-import { derive } from './derive'
+import { armorAmp, derive } from './derive'
 import { catalogItem, itemPrice, price, slotLapse } from './price'
 import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
@@ -199,7 +199,9 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     ['armor-plus', 'Armor'],
     ['dv-plus', 'damage'],
   ] as const) {
-    const n = b.amps.filter(a => a.type !== 'equipment').reduce((s, a) => s + a.effects.filter(e => e.ref === ref).length, 0)
+    // (Armor +1 as the sheet counts it on each armor worn: an Equipment amp's when it is linked to that armor, armorAmp)
+    const uses = ref === 'armor-plus' ? [armorAmp(b, b.mainArmor), armorAmp(b, b.altArmor)] : [(a: AmpEntry) => a.type !== 'equipment']
+    const n = Math.max(...uses.map(f => b.amps.filter(f).reduce((s, a) => s + a.effects.filter(e => e.ref === ref).length, 0)))
     const def = c.ampEffects.get(ref)
     if (def?.max != null && n > def.max)
       add(
