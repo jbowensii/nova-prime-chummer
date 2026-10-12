@@ -1,5 +1,6 @@
 """Two text columns: the gutter between them (a whitespace river, or where the content stream jumps), each line's side
-or a full-width band, a box's margin lines and titles, and the reading order (each column, band by band)."""
+or a full-width band, and the reading order (each column, band by band). The SR6 layout's boxes:
+importer/sr6/layout.py."""
 from importer.pdf.lines import line_extent
 
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -103,38 +104,6 @@ def find_gutter(rows, right, left=0, tol=0):
     }
     scored = [(c, x) for x in sorted(cands) if (c := gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
-
-
-_BOX_MARGIN = 4  # pt; a line starting this far left of the left column's lines
-
-
-def box_margin(blocks, xs):
-    """(the SR6 layout) A line set at a full-width box's left margin, left of the left column's (the box's title, or its
-    last short line), above or below the right column, is the box's: a band, not the column's (a heading beside the
-    right column stays in its column). blocks: (top, kind, text), xs: each line's x0."""
-    col = sorted(x for (_, k, _), x in zip(blocks, xs) if k == "left")
-    box = [x for (_, k, _), x in zip(blocks, xs) if k == "band"]
-    right = [t for t, k, _ in blocks if k == "right"]
-    if not col or not box or not right:
-        return blocks
-    edge = col[len(col) // 2] - _BOX_MARGIN
-    return [(t, "band" if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box)
-             and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
-
-
-def box_titles(blocks, geo, boxes):
-    """(the SR6 layout) A heading in one text column, below every line of the other, right over a full-width table
-    (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
-    its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
-    out = []
-    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
-        if lv and k in ("left", "right"):
-            other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
-            under = [b for b in boxes if b >= bottom - 1]
-            if other and t > max(other) and under and min(under) - bottom < 2 * size                     and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k):
-                k = "band"
-        out.append((t, k, s))
-    return out
 
 
 def column_kind(x0, x1, mid, tol=0):

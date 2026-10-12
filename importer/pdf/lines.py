@@ -1,5 +1,5 @@
-"""A page's words into visual lines: rows by top (or the SR6 layout's baselines), a tilted line's letter sizes evened,
-the body size and the heading sizes."""
+"""A page's words into visual lines: rows by top (the SR6 layout groups by baseline: importer/sr6/layout.baseline_rows),
+a tilted line's letter sizes evened, the body size and the heading sizes."""
 import statistics
 
 LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
@@ -41,10 +41,7 @@ def cluster_lines(words):
     jitter between regular and bold runs on one visual line). Rows are NOT
     split at wide word gaps here — justified text has those everywhere.
     Two columns sharing a row are split later, only at an accepted gutter.
-    The SR6 layout's words carry their baseline (`base`): see _baseline_rows.
     """
-    if words and all("base" in w for w in words):
-        return _baseline_rows(words)
     words = sorted(words, key=lambda w: w["top"])
     rows, cur, anchor = [], [], None
     for w in words:
@@ -57,37 +54,6 @@ def cluster_lines(words):
             anchor = w["top"]
     if cur:
         rows.append(cur)
-    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
-
-
-_TINY = 0.5  # x the page's median word size: a glyph smaller than this (a small raised bullet) joins a row beside it
-_TINY_REACH = 30  # pt; how far beside it
-
-
-def _baseline_rows(words):
-    """Rows by baseline, a word joining the row when its baseline is within LINE_TOLERANCE of the previous one (a label
-    set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
-    glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
-    else it is a row of its own."""
-    med = statistics.median(w["size"] for w in words)
-    tiny = [w for w in words if w["size"] < _TINY * med]
-    rows, cur, last = [], [], None
-    for w in sorted((w for w in words if w["size"] >= _TINY * med), key=lambda w: w["base"]):
-        if last is not None and w["base"] - last > LINE_TOLERANCE:
-            rows.append(cur)
-            cur = []
-        cur.append(w)
-        last = w["base"]
-    if cur:
-        rows.append(cur)
-    for t in tiny:
-        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
-                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
-        if near:
-            rows[min(near)[1]].append(t)
-        else:
-            rows.append([t])
-    rows.sort(key=lambda r: min(w["base"] for w in r))
     return [sorted(r, key=lambda w: w["x0"]) for r in rows]
 
 
