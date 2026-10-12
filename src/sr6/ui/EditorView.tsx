@@ -154,7 +154,7 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
-          <a key={k} href={href(ch.id, k)} aria-current={shown === k ? 'page' : undefined}>
+          <a key={k} href={href(ch.id, k)} aria-current={shown === k ? 'page' : undefined} aria-label={k === 'review' && errors > 0 ? `${label}, ${errors} ${errors === 1 ? 'problem' : 'problems'}` : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
         ))}

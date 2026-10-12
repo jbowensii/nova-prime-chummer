@@ -119,7 +119,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
       </header>
       <nav className="tabs" aria-label="Character sections">
         {tabs.map(([k, label]) => (
-          <a key={k} href={editHref(ch, k)} aria-current={tab === k ? 'page' : undefined}>
+          <a key={k} href={editHref(ch, k)} aria-current={tab === k ? 'page' : undefined} aria-label={k === 'review' && errors > 0 ? `${label}, ${errors} ${errors === 1 ? 'problem' : 'problems'}` : undefined}>
             {label}{k === 'review' && errors > 0 && <span className="badge err">{errors}</span>}
           </a>
         ))}
