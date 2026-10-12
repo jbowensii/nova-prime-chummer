@@ -258,6 +258,50 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
   await expect(row(page, 'Zip Spark').first()).toContainText('Glimmerkin, Priority')
 })
 
+test('phone width: the budgets bar is a button that names the worst overspend; closed, the panel is out of the tab order', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await signIn(page, '/#/sr6', 'pat')
+  // the runner list at 375 px: each row's buttons under its title, nothing past the edge
+  await fits(page)
+  const zip = row(page, 'Zip Spark').first(), title = await zip.locator('.title').boundingBox(), del = await zip.getByRole('button', { name: /^Delete / }).boundingBox()
+  expect(del!.y).toBeGreaterThan(title!.y + title!.height - 1)
+  mkdirSync('.extract/screenshots/review-0131', { recursive: true })
+  await page.screenshot({ path: '.extract/screenshots/review-0131/sr6-runners-375.png', fullPage: true })
+  await zip.getByRole('link', { name: 'Zip Spark' }).click()
+  const budgets = page.getByRole('complementary', { name: 'Budgets' }), bar = budgets.locator('.peek')
+  await expect(bar).toHaveRole('button')
+  await expect(bar).toHaveAttribute('aria-expanded', 'false')
+  await expect(bar).toContainText('Karma left')
+  await expect(budgets.locator(`#${await bar.getAttribute('aria-controls')}`)).toHaveAttribute('inert', '')
+  await bar.focus()
+  await page.keyboard.press('Enter')
+  await expect(bar).toHaveAttribute('aria-expanded', 'true')
+  await expect(budgets.locator('a.issues')).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(bar).toHaveAttribute('aria-expanded', 'false')
+
+  // one knowledge point past the pool: the bar names it, and the tab says "over by", not "−1 left"
+  await page.getByRole('link', { name: 'Skills', exact: true }).click()
+  await page.getByRole('button', { name: 'Raise Arcade Lore points' }).click()
+  await expect(bar).toContainText('Knowledge points over by1')
+  await expect(page.getByText('Knowledge points:')).toContainText('over by 1 (of 2)')
+  await expect(page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: /^Review, \d+ problems?$/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Lower Arcade Lore points' }).click()
+  await expect(page.getByText('Knowledge points:')).toContainText('0 left of 2')
+  await expect(page.getByRole('button', { name: 'Remove Arcade Lore', exact: true })).toBeVisible()
+
+  // the picker: Down from the search box to the first option, Space picks it
+  await page.getByRole('link', { name: 'Qualities', exact: true }).click()
+  await page.getByRole('button', { name: 'Add a negative quality…' }).click()
+  await page.getByRole('dialog').getByRole('searchbox').fill('Deep Pockets')
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('dialog').getByRole('option', { name: /Deep Pockets Debt/ })).toBeFocused()
+  await page.keyboard.press('Space')
+  await page.getByRole('button', { name: 'Remove Deep Pockets Debt', exact: true }).click()
+  await expect(page.locator('tr', { hasText: 'Deep Pockets Debt' })).toHaveCount(0)
+  await page.setViewportSize(DESK)
+})
+
 test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & lifestyle', async ({ page }) => {
   await signIn(page, '/#/sr6', 'pat')
   await row(page, 'Zip Spark').first().getByRole('link', { name: 'Zip Spark' }).click()

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { STATE } from './session'
 
 async function newRunner(page: Page, name: string) {
@@ -68,11 +68,17 @@ test('portrait: chosen, zoomed and dragged in its dialog, saved square, shown in
 test('phone width: the receipt collapses to a bar and opens on tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await newRunner(page, 'Phone')
-  const receipt = page.locator('.receipt')
-  await expect(receipt.locator('.peek')).toContainText('Left to spend')
+  const receipt = page.locator('.receipt'), peek = receipt.locator('.peek')
+  await expect(peek).toContainText('Left to spend')
+  // a real button: named by what it shows, says whether it's open; closed, what it hides is inert (out of the tab order)
+  await expect(peek).toHaveRole('button')
+  await expect(peek).toHaveAttribute('aria-expanded', 'false')
+  await expect(receipt.locator(`#${await peek.getAttribute('aria-controls')}`)).toHaveAttribute('inert', '')
   const closed = (await receipt.boundingBox())!.height
   expect(closed).toBeLessThan(80)
-  await receipt.locator('.peek').click()
+  await peek.click()
+  await expect(peek).toHaveAttribute('aria-expanded', 'true')
+  await expect(receipt.locator(`#${await peek.getAttribute('aria-controls')}`)).not.toHaveAttribute('inert', '')
   expect((await receipt.boundingBox())!.height).toBeGreaterThan(300)
   const fits = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth
     && [...document.querySelectorAll('.work p')].every(p => p.getBoundingClientRect().right <= innerWidth + 1))
@@ -82,6 +88,16 @@ test('phone width: the receipt collapses to a bar and opens on tap', async ({ pa
     await page.getByRole('link', { name: tab, exact: true }).click()
     expect(await fits(), tab).toBe(true)
   }
+  // the runner list at 375 px: each row's buttons under its title, nothing past the edge
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/')
+  const row = page.locator('.dossier', { hasText: 'Phone' }).first()
+  await expect(row).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const title = (await row.locator('.title').boundingBox())!, del = (await row.getByRole('button', { name: /^Delete / }).boundingBox())!
+  expect(del.y).toBeGreaterThan(title.y + title.height - 1)
+  mkdirSync('.extract/screenshots/review-0131', { recursive: true })
+  await page.screenshot({ path: '.extract/screenshots/review-0131/anarchy-runners-375.png', fullPage: true })
 })
 
 test('Settings: theme, texture and print style apply and persist', async ({ page }) => {
