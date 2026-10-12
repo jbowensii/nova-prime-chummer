@@ -84,9 +84,9 @@ export function Picker({ items, onPick, placeholder = 'Search', groups }: { item
           </select>
         )}
       </div>
-      <ul role="listbox" aria-label={placeholder} ref={list}>
+      <ul role="listbox" aria-label="Matches" ref={list}>
         {shown.map(i => (
-          <li key={i.id} role="option" aria-selected={focused === i.id} aria-disabled={i.disabled || undefined} tabIndex={i.disabled ? undefined : 0}
+          <li key={i.id} role="option" aria-selected={focused === i.id} tabIndex={i.disabled ? undefined : 0}
             className={i.disabled ? 'off' : undefined}
             onFocus={() => setFocused(i.id)} onBlur={() => setFocused(f => (f === i.id ? '' : f))}
             onClick={() => !i.disabled && onPick(i.id)} onKeyDown={e => pickKey(e, () => !i.disabled && onPick(i.id))}>

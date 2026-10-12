@@ -46,7 +46,7 @@ test.describe('Shadowrun 6', () => {
     // the picker: hovering an item shows its card, as does the item having focus
     await tabs.filter({ hasText: 'Qualities' }).click()
     await work.getByRole('button', { name: 'Add a positive quality…' }).click()
-    const item = dlg.getByRole('listitem').filter({ hasText: 'Lucky Streak 1' })  // (one entry per level, levels.ts)
+    const item = dlg.getByRole('option').filter({ hasText: 'Lucky Streak 1' })  // (one entry per level, levels.ts)
     await item.locator('b').hover()
     await expect(card).toContainText('CRB p.70')
     await expect(card).toContainText('karma 4')
@@ -117,7 +117,7 @@ test.describe('Anarchy', () => {
 
     await page.getByRole('link', { name: 'Gear & spells' }).click()
     await page.getByRole('button', { name: 'Add from the book' }).first().click()
-    await page.getByRole('listitem').filter({ hasText: 'Vest' }).click()
+    await page.getByRole('option').filter({ hasText: 'Vest' }).click()
     const vest = page.locator('main .entry-ref', { hasText: 'Vest' }).first()
     await vest.hover()
     await expect(card).toContainText('Vest')

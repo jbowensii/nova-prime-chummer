@@ -19,7 +19,7 @@ test('create, finalize, earn, advance, print', async ({ page }) => {
 
   await page.getByRole('link', { name: 'Gear & spells' }).click()
   await page.getByRole('button', { name: 'Add from the book' }).first().click()
-  await page.getByRole('listitem').filter({ hasText: 'Vest' }).click()
+  await page.getByRole('option').filter({ hasText: 'Vest' }).click()
 
   await expect(page.locator('.receipt .left')).toHaveText('233,000¥')
 
