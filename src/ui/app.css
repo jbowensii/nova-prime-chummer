@@ -2387,7 +2387,11 @@ dialog.dupes .dupe-group label.check {
 @media (max-width: 600px) {
   .menubar > nav.iconbar {
     display: grid;
-    grid-template-columns: repeat(var(--cols), 2.88rem);
+    /* 6 icons are 292px, a 320px phone has 288: the columns shrink (45px each, over the 44px target) */
+    grid-template-columns: repeat(var(--cols), minmax(0, 2.88rem));
+  }
+  .menubar > nav.iconbar .btn.ibtn {
+    width: 100%;
   }
   .menubar .tools {
     border-left: 0;
