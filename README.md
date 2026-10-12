@@ -537,8 +537,9 @@ provider and how many parts the book goes in; the proposals then wait on a revie
 edit or drop each one (a core table's rows include a metatype's attribute
 ranges and a skill's specializations).
 
-Imports need the server (Docker or `npm run serve`) and Python 3 with
-`importer/requirements.txt`.
+Imports need the server (Docker or `npm run serve`) and Python 3 with the importer's packages:
+`pip install --require-hashes -r importer/requirements.lock` (every package pinned with its hashes; the direct ones are
+listed in `importer/requirements.txt`, which the lock is compiled from).
 
 ## Core data
 
@@ -625,7 +626,7 @@ without the core rulebook's PDF. The setup screen links to it.
 ```bash
 npm test                 # engine tests on a made-up catalog (Vitest); book tests need your own imports
 npm run validate:data    # XSD + reference checks
-npm run test:py          # importer tests: Python 3.12 with importer/requirements.txt ($PYTHON, py -3.12, python3 or python)
+npm run test:py          # importer tests: Python 3.12 with importer/requirements.lock ($PYTHON, py -3.12, python3 or python)
 npm run build && npm run e2e   # Playwright, with a stub importer: smoke, books, AI review, themes…
 ```
 

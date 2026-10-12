@@ -13,10 +13,10 @@ FROM node:22-alpine
 # OCR=1 adds Tesseract for scanned books
 ARG OCR=0
 WORKDIR /app
-COPY importer/requirements.txt ./importer/requirements.txt
+COPY importer/requirements.lock ./importer/requirements.lock
 RUN apk add --no-cache python3 py3-pip \
  && if [ "$OCR" = "1" ]; then apk add --no-cache tesseract-ocr; fi \
- && pip install --no-cache-dir --break-system-packages -r /app/importer/requirements.txt
+ && pip install --no-cache-dir --break-system-packages --require-hashes -r /app/importer/requirements.lock
 COPY --from=build /app/dist ./dist
 # the app version backups record (package.json isn't in this image)
 COPY --from=build /app/VERSION ./VERSION
