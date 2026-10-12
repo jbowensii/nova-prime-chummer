@@ -5,8 +5,8 @@ import { expect, test } from 'vitest'
 import { sr6ToXml } from '../../src/sr6/engine/charxml'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
 import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../src/sr6/ui/repo'
-import { samplesToLoad } from '../../src/sr6/ui/Runners'
-import { fixtureCatalog } from '../sr6/fixture'
+import { missingLabels, samplesToLoad } from '../../src/sr6/ui/Runners'
+import { fixtureCatalog, made } from '../sr6/fixture'
 
 const CA2 =
   '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
@@ -127,4 +127,9 @@ test('Load example characters adds each sample once, by its key, even renamed', 
   copy.identity = { ...copy.identity, streetName: 'Renamed' }
   expect(samplesToLoad(rows, [copy, runner()]).map(r => r.key)).toEqual(['CRB|crb.bit-whisperer'])
   expect(samplesToLoad(rows, [])).toHaveLength(2)
+})
+
+test('a Karma build that is switched off says so short, not with the option’s long label', () => {
+  const { data, cr } = made({ rules: { karmaBuildMethod: false } })
+  expect(missingLabels('karma', cr, data)).toEqual(['the option is switched off'])
 })
