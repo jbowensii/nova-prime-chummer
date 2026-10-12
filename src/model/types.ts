@@ -413,3 +413,15 @@ export interface Violation {
 
 /** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
 export const newId = (): string => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+
+/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
+ *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
+ *  every runner. */
+/** freeSinner: the table's SINner house rule switch (amps.ts sinnerFree); undefined: on */
+export interface TableFlags {
+  nonCanon: boolean
+  realSin: boolean
+  optional?: string[]
+  locked?: string[]
+  freeSinner?: boolean
+}

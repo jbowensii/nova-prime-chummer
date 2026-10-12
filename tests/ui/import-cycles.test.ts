@@ -1,5 +1,6 @@
-// No runtime import cycle in src (as madge with detectiveOptions.ts.skipTypeImports reports them): a module's
-// `import type` and `export type` lines don't count, every other import of a src module does.
+// No import cycle in src, type imports included (as `npx madge --circular --extensions ts,tsx src` reports them): every
+// import or re-export of a src module counts, `import type` and `export type` too. Shared types live in the model and types modules
+// (src/model/types.ts, src/sr6/model/*, src/sr6/engine/types.ts, src/ui/types.ts) so the modules using them don't loop.
 // @vitest-environment node
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -19,12 +20,11 @@ const target = (from: string, spec: string) =>
 function imports(file: string): string[] {
   const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, false)
   return sf.statements.flatMap(s => {
-    const typeOnly = ts.isImportDeclaration(s) ? !!s.importClause?.isTypeOnly : ts.isExportDeclaration(s) ? s.isTypeOnly : true
     const spec =
       (ts.isImportDeclaration(s) || ts.isExportDeclaration(s)) && s.moduleSpecifier && ts.isStringLiteral(s.moduleSpecifier)
         ? s.moduleSpecifier.text
         : undefined
-    const to = !typeOnly && spec ? target(file, spec) : undefined
+    const to = spec ? target(file, spec) : undefined
     return to ? [to] : []
   })
 }
@@ -59,7 +59,7 @@ test('the cycle finder finds one', () => {
   ).toEqual([['a', 'b', 'c']])
 })
 
-test('src has no runtime import cycle', () => {
+test('src has no import cycle, type imports included', () => {
   const graph = new Map(files(SRC).map(f => [f, imports(f)]))
   expect(cycles(graph).map(c => c.map(f => relative(SRC, f).replaceAll('\\', '/')).join(' > '))).toEqual([])
 })

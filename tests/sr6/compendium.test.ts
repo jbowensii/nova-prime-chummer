@@ -18,7 +18,8 @@ import {
 } from '../../src/sr6/engine/compendium'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6EntryXml } from '../../src/sr6/engine/load'
-import { DISPLAY_KINDS, SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
+import { DISPLAY_KINDS, SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import type { Sr6Character } from '../../src/sr6/model/character'
 import { fixtureCatalog } from './fixture'
 

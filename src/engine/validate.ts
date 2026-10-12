@@ -1,6 +1,6 @@
 // Rule checks. Every violation cites the book; errors block Finalize unless a GM approves them. A prerequisite the runner
 // lacks is always an error (owner, 2026-10-09): the editor lets it be taken, and it stands until met or approved.
-import type { AttrId, Catalog, Character, Violation } from '../model/types'
+import type { AttrId, Catalog, Character, TableFlags, Violation } from '../model/types'
 import { ATTRS } from '../model/types'
 import { houseSource, nonCanonUses } from './canon'
 import { FIREWALL_MAX, ampCtx, ampRating, initLevels, isSinner, plain, sinnerFree } from './amps'
@@ -11,17 +11,7 @@ import { issueNote, type Issue } from './formula'
 import { hasNoMetatype } from './npc'
 import { familyName } from './levels'
 
-/** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
- *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
- *  every runner. */
-/** freeSinner: the table's SINner house rule switch (amps.ts sinnerFree); undefined: on */
-export interface TableFlags {
-  nonCanon: boolean
-  realSin: boolean
-  optional?: string[]
-  locked?: string[]
-  freeSinner?: boolean
-}
+export type { TableFlags } from '../model/types'
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []

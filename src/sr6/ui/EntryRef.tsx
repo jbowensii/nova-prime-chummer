@@ -3,8 +3,8 @@
 // only: switchable, conditional or read with low confidence), source and page, issues, and an Edited or House mark.
 import type { ReactNode } from 'react'
 import { EditedMark } from '../../ui/EditEntry'
-import type { BrowseRow } from '../../ui/CatalogBrowser'
-import { EntryHover, type CardEffect } from '../../ui/EntryHover'
+import type { BrowseRow, CardEffect } from '../../ui/types'
+import { EntryHover } from '../../ui/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
 import { catalogFind, resolveEntry } from '../engine/load'
 import { formulaRange, type Find } from '../engine/values'

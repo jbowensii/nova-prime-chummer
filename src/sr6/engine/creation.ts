@@ -5,7 +5,7 @@
 // give it its own (server/campaigns.mjs), which its runners use instead, and a runner may choose the optional ones in
 // RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
-import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
+import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
 export type CreationValue = number | boolean | string
@@ -873,15 +873,6 @@ export async function loadCreation(base = './'): Promise<{ rules: CreationRules;
   return { rules: new Map([...std.rules, ...own.rules]), errors: [...std.errors, ...own.errors], std: std.rules }
 }
 
-/** A runner's own choice of a creation setting (Sr6Character.rules): `value` as stored ('' turns the setting off);
- *  assumed: a sample runner's, from its book's numbers (the book doesn't say). */
-export interface RunnerRule {
-  key: string
-  value: string
-  assumed?: true
-  source?: string
-  page?: number
-}
 /** A setting a campaign's GM (or the admin) locked: its runners can't choose their own. */
 export interface RuleLock {
   key: string

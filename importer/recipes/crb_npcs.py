@@ -241,7 +241,7 @@ def _amp(text):
     if paren and (re.search(r"\d", paren) or low.startswith("choose") or low in ("hermetic", "shamanic")):
         rest, low = f"{paren}; {rest}" if rest else paren, ""  # "Cyberdeck (Attack 1, Firewall 2)": the paren is its effects
     atype = AMP_TYPES.get(low) or (low.capitalize() if low else NAMED_TYPES.get(name.split()[0].lower(), "Quality"))
-    lines = statblock._crb_amp_lines([rest.rstrip(".")]) if rest else []
+    lines = statblock.crb_amp_lines([rest.rstrip(".")]) if rest else []
     return {"name": name, "type": atype, "ess": None, "rating": None, "count": count, "lines": lines}  # none printed
 
 
@@ -269,7 +269,7 @@ def characters(page, raw_name, lines, rules, spell_ids, updated, taken):
         for w in block["printed_weapons"]:  # every attack as printed (a critter's bite too); unarmed is the app's own
             if w["name"].lower() == "unarmed":
                 continue
-            cid = statblock._weapon_id(rules, re.sub(r"\s*\(.*\)$", "", w["name"]))  # "Assault rifle (drones)"
+            cid = statblock.weapon_id(rules, re.sub(r"\s*\(.*\)$", "", w["name"]))  # "Assault rifle (drones)"
             b["items"].append({"uid": f"it-{len(b['items']) + 1}", "kind": "weapon", "name": w["name"],
                                **({"catalogId": cid} if cid else {}), "dv": w["dv"], "ranges": w["ranges"]})
         ch["npc"] = {"kind": kind, "tier": "regular", **({"fightingSpirit": block["fighting"]} if block["fighting"] else {})}

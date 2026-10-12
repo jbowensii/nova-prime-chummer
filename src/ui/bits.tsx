@@ -1,7 +1,7 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Npc } from '../model/types'
-import type { BrowseRow } from './CatalogBrowser'
+import type { BrowseRow } from './types'
 import { EntryHover } from './EntryHover'
 
 export const fmt = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('en-US')}¥`

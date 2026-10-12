@@ -5,7 +5,7 @@
 // prints none, it isn't bought). Grades are for cyberware and bioware; a catalog grade may name fewer types (exoware).
 import { GRADED_TYPES, type Sr6Entry } from '../model/types'
 import { flag, num, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import type { Sr6Data } from './types'
 import { normName } from './names'
 
 export const STANDARD_GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']

@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react'
 import { attrRRBracket, attrRRSources, bracketed, currentBuild, hasNoMetatype } from '../engine'
 import type { AttrId, Catalog, Character } from '../model/types'
-import type { BrowseRow } from './CatalogBrowser'
+import type { BrowseRow } from './types'
 import { useEditor } from './editor'
 import { EntryHover } from './EntryHover'
 import { browseKinds } from './tabs/Data'

@@ -5,17 +5,10 @@
 // entries to a BrowseRow once (src/ui/tabs/Data.tsx anarchyRow, src/sr6/ui/Data.tsx sr6Row).
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { BrowseRow } from './CatalogBrowser'
+import type { BrowseRow, CardEffect } from './types'
 import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
-/** What an entry's effect does on the runner: applied (always on: in the total shown first), conditional (switchable or
- *  on some tests only: in the bracketed total, `6 (9)`), target (a spell's on its target: never on the caster) or low
- *  (read with low confidence from its prose: shown, never applied). */
-export interface CardEffect {
-  text: string
-  state: 'applied' | 'conditional' | 'target' | 'low'
-}
 // (a conditional or switchable effect gets a tick box as a reminder, as the printed sheet prints one; owner decision 17, 2026-10-11)
 const STATE: Record<CardEffect['state'], string> = {
   applied: 'applied',

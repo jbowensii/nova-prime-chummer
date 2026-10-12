@@ -2,7 +2,8 @@
 // invented books (MUS, every kind; MUX, only what Eden doesn't use; MUR, the runner's other things), a finalized mystic
 // adept, a grunt and a GM compendium. tests/sr6/export.test.ts exports them; WRITE_SR6_SAMPLES=<dir> writes the files.
 import { blankBuild, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Compendium, Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/model/types'
+import type { Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { npcFromEntry } from '../../src/sr6/engine/npc'

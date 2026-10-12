@@ -8,7 +8,8 @@ import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { exportSr6Books, exportSr6Compendium, exportSr6Runners, type Sr6ExportOpts } from '../engine/export'
 import type { Sr6Character } from '../model/character'
-import type { Sr6Catalog, Sr6Compendium } from '../model/types'
+import type { Sr6Catalog } from '../model/types'
+import type { Sr6Compendium } from '../model/character'
 
 /** ExportRunnersDialog's line for SR6 */
 export const SR6_FOUNDRY_ABOUT = 'For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.'

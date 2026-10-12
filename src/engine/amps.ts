@@ -1,6 +1,5 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
-import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectParam, EffectPick, ItemEntry } from '../model/types'
-import type { TableFlags } from './validate'
+import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectParam, EffectPick, ItemEntry, TableFlags } from '../model/types'
 // the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
 import RULES from './rule-effects.json'
 

@@ -10,7 +10,7 @@ import { entryValues, exportAttrs, exportSr6Books, exportSr6Compendium, exportSr
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { blankSr6Npc } from '../../src/sr6/engine/npc'
 import type { Sr6Purchase } from '../../src/sr6/model/character'
-import type { Sr6Compendium } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { made, fixtureCatalog } from './fixture'
 import { ganger, mara, SAMPLE_OPTS, sampleWorld, streetKit } from './samples'
 

@@ -7,18 +7,11 @@
 // ref()s and a saved runner's lines naming it still read, and migrate.ts turns those lines into the level's id. The
 // expansion runs once at the end of buildSr6Catalog, after the edits layer, so an edit on the parent reaches every
 // level; an edit keyed by a child id is kept as that level. docs/sr6-data-format.md, "Levels".
-import type { Sr6Catalog, Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
+import type { Sr6Catalog, Sr6Entry, Sr6Family, Sr6Kind, Sr6Part } from '../model/types'
 import { bonusValue, effectValue } from './effects'
 import { entryKey } from './names'
 import { rated, ratingRange } from './values'
 
-/** A family of levels: the parent (absent for rows the book prints apart) and each level's entry id. */
-export interface Sr6Family {
-  kind: Sr6Kind
-  family: string
-  parent?: Sr6Entry
-  levels: Map<number, string>
-}
 type Levels = Pick<Sr6Catalog, 'entries' | 'levels'>
 
 const round2 = (x: number) => Math.round(x * 100) / 100

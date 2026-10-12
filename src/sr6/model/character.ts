@@ -1,8 +1,6 @@
 // The Shadowrun 6 runner model (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): one runner = one
 // <sr6:character> file, read and written by src/sr6/engine/charxml.ts. The build holds what the player spent; budgets,
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
-import type { RunnerRule } from '../engine/creation'
-import type { SampleCorrection } from '../engine/samplefix'
 import { EFFECT_SWITCHES, type EffectSwitch } from '../../engine/effects'
 import { newId, type Character, type Override } from '../../model/types'
 import type { Sr6Entry, Sr6Kind } from './types'
@@ -390,4 +388,42 @@ export function blankSr6(method: Sr6Method = 'priority', id = newId(), now = new
     overrides: [],
     updatedAt: now,
   }
+}
+
+/** A runner's own choice of a creation setting (Sr6Character.rules): `value` as stored ('' turns the setting off);
+ *  assumed: a sample runner's, from its book's numbers (the book doesn't say). */
+export interface RunnerRule {
+  key: string
+  value: string
+  assumed?: true
+  source?: string
+  page?: number
+}
+
+/** One correction applied: the runner's line, what the book prints and what it reads as, the fix's page and note. */
+export interface SampleCorrection {
+  path: string
+  item: string
+  field: string
+  from: string
+  to: string
+  source: string
+  page: number
+  note?: string
+}
+
+/** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
+ *  owner/ownerName come from the server (the folder it's stored in), never from the file. */
+export interface Sr6Compendium {
+  id: string
+  name: string
+  source: string
+  sharing: 'private' | 'campaign' | 'table'
+  campaign?: string
+  rev?: number
+  updatedAt: string
+  owner?: string
+  ownerName?: string
+  entries: Sr6Entry[]
+  npcs: Sr6Character[]
 }
