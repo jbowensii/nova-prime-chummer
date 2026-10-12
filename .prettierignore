@@ -1,0 +1,13 @@
+dist
+coverage
+public
+library
+custom
+.extract
+importer
+playwright-report
+test-results
+package-lock.json
+*.xml
+*.xsd
+*.md
