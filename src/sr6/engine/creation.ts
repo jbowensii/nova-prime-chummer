@@ -1,8 +1,9 @@
 // The table's SR6 creation rules (custom/sr6/creation.xml, public/data/sr6/schema/creation.xsd): every number the core
-// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…), entered on the Rules
-// page by the admin from their own book: the server's default. A campaign's GM may give it its own (server/campaigns.mjs),
-// which its runners use instead. The app ships the standard values (DEFAULTS_PATH; the admin's file holds only what they
-// changed); a method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
+// rulebook prints only in its text (starting karma, caps, exchange rates, point-buy prices, grades…). The app ships the
+// standard values with their pages (DEFAULTS_PATH, public/data/sr6/creation-defaults.xml); the admin changes them on the
+// Table setup page (#/sr6/table), and their file holds only what they changed: the server's default. A campaign's GM may
+// give it its own (server/campaigns.mjs), which its runners use instead, and a runner may choose the optional ones in
+// RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type Sr6Method } from '../model/character'
 

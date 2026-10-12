@@ -1,6 +1,7 @@
-// SR6 creation rules (src/sr6/engine/creation.ts): the form (one row per setting, grouped as CREATION_GROUPS), the server's
-// default on Table setup (#/sr6/table; the admin edits it, editors and players read it) and a campaign's own on its page (its GMs and the admin choose the server's or their own copy; its players read
-// it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
+// SR6 creation rules (src/sr6/engine/creation.ts): the form (one row per setting, in the nine sections of
+// creationLayout.ts), the shipped defaults (creation-defaults.xml) with the admin's changes over them as the server's
+// default on the Table setup page (#/sr6/table; the admin edits it, editors and players read it), and a campaign's own on
+// its page (its GMs and the admin choose the server's or their own copy; its players read it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
 // other runner with the server's.
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
