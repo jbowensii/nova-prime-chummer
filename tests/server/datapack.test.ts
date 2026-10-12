@@ -285,6 +285,8 @@ test('one pack loads at a time; not while a book imports; a job waits for the pa
   await vi.waitFor(() => expect(readdirSync(backups).some(f => f.startsWith('download-'))).toBe(true))
   const during = await load(t2)
   expect([during.status, (await during.json()).error]).toEqual([409, 'a backup is being made; try again when it’s done'])
+  const making = await fetch(`${base}/api/datapack`, { method: 'POST' }) // nor made
+  expect([making.status, (await making.json()).error]).toEqual([409, 'a backup is being made; try again when it’s done'])
   await zipping
   expect((await load(t2)).status).toBe(200)
 })
