@@ -29,3 +29,9 @@ __pycache__/
 /public/data/skills.xml
 /public/data/vehicles.xml
 /public/data/weapons.xml
+
+# coverage output
+coverage/
+.coverage
+.cov_py
+htmlcov/
