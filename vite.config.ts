@@ -21,5 +21,11 @@ export default defineConfig({
   base: './',
   define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('package.json', 'utf8')).version) },
   plugins: [react(), noCoreData()],
-  test: { environment: 'jsdom', include: ['tests/**/*.test.ts'] },
+  test: {
+    environment: 'jsdom', include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8', include: ['src/**'], exclude: ['**/*.d.ts', 'tests/**'],
+      reporter: ['text-summary', 'json-summary'],
+    },
+  },
 })
