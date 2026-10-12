@@ -132,7 +132,7 @@ export function GearTab() {
                         })()}</td>
                         <td className="num">
                           {kind !== 'spell' && kind !== 'complex-form' && !amp && <button className="btn small quiet" onClick={() => toAmp(i)}>Make it an amp</button>}
-                          <button className="btn small quiet" onClick={() => remove(i)}>Remove</button>
+                          <button className="btn small quiet" aria-label={`Remove ${i.name}`} onClick={() => remove(i)}>Remove</button>
                         </td>
                       </tr>
                     )

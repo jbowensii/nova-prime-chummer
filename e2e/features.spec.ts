@@ -196,7 +196,7 @@ test('a book amp printed with levels: one entry per level in the picker, the Amp
   await expect(page.getByLabel('Name')).toHaveValue('Glide Step 3')
   await expect(page.locator('.ampfoot b').first()).toHaveText('6') // the made-up core: adept 2 + two narrative effects at 2
   await page.getByRole('button', { name: 'Add amp' }).click()
-  await expect(page.getByRole('cell', { name: /Glide Step 3/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /^Glide Step 3/ })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Rating 6' })).toBeVisible()
 })
 

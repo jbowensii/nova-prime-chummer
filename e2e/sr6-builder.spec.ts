@@ -119,7 +119,7 @@ test('the runners page: empty, a method that needs settings, a new runner, impor
   await expect(row(page, 'Cracked Kit').getByRole('link', { name: 'Cracked Kit' })).toBeVisible()
 
   // export, import it back (a copy with a new id), an Anarchy file refused
-  const [down] = await Promise.all([page.waitForEvent('download'), row(page, 'Zip Spark').getByRole('button', { name: 'Export', exact: true }).click()])
+  const [down] = await Promise.all([page.waitForEvent('download'), row(page, 'Zip Spark').getByRole('button', { name: 'Export Zip Spark', exact: true }).click()])
   const exported = readFileSync(await down.path(), 'utf8')
   expect(exported).toContain('lastExportedAt=')
   await page.locator('input[type=file]').setInputFiles([file('zip.xml', exported), file('anarchy.xml', CA2)])

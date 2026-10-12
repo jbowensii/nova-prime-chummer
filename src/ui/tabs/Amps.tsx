@@ -86,8 +86,8 @@ export function AmpsTab() {
                     <td className="num">{fmt(r * c.pricing.ampPoint)}</td>
                     <td className="num">{ampEssence(c, a) ? `Ess −${ampEssence(c, a)}` : ''}</td>
                     <td className="num">
-                      <button className="btn small quiet" onClick={() => setEditing({ amp: a, before: a })}>Edit</button>
-                      <button className="btn small quiet" onClick={() => edit(x => { x.build.amps = x.build.amps.filter(z => z.uid !== a.uid) })}>Remove</button>
+                      <button className="btn small quiet" aria-label={`Edit ${a.name}`} onClick={() => setEditing({ amp: a, before: a })}>Edit</button>
+                      <button className="btn small quiet" aria-label={`Remove ${a.name}`} onClick={() => edit(x => { x.build.amps = x.build.amps.filter(z => z.uid !== a.uid) })}>Remove</button>
                     </td>
                   </tr>
                 )

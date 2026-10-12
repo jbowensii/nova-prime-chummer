@@ -44,7 +44,7 @@ export function QualitiesTab() {
             : v.karmaMax != null
             ? <Stepper label={`${v.name} karma`} value={qualityCost(q, v) / (v.perLevel ? q.level : 1)} min={Math.abs(v.karma)} max={Math.abs(v.karmaMax)} onChange={karma => act({ op: 'quality', id: q.id, uid: q.uid, karma })} />
             : `${positive ? '−' : '+'}${n(qualityCost(q, v))}`}</td>
-          <td>{!q.free && <button className="btn small quiet" onClick={() => act({ op: 'quality', remove: q.uid })}>Remove</button>}</td>
+          <td>{!q.free && <button className="btn small quiet" aria-label={`Remove ${v?.name ?? q.id}`} onClick={() => act({ op: 'quality', remove: q.uid })}>Remove</button>}</td>
         </tr>
       })}</tbody>
     </table></div>

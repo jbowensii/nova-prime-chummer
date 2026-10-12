@@ -88,7 +88,7 @@ export function SkillsTab() {
             onChange={e => act({ op: 'knowledge', uid: k.uid, native: e.target.checked })} />}</td>
           {(['points', 'karma'] as const).map(p => <td key={p}>{k.native ? (p === 'points' ? <span className="muted">native</span> : null) : <Stepper label={`${k.name} ${p}`} value={k[p]} min={0} max={99}
             onChange={to => act({ op: 'knowledgeRank', uid: k.uid, pool: p, delta: to - k[p] })} />}</td>)}
-          <td><button className="btn small quiet" onClick={() => act({ op: 'knowledge', remove: k.uid })}>Remove</button></td>
+          <td><button className="btn small quiet" aria-label={`Remove ${k.name}`} onClick={() => act({ op: 'knowledge', remove: k.uid })}>Remove</button></td>
         </tr>)}</tbody>
       </table></div>}
       <div className="row">

@@ -57,7 +57,7 @@ export function MagicTab() {
               : levels.length > 1 && <Stepper label={`${name} level`} value={data.levelOf(e) ?? 1} min={levels[0]} max={levels.at(-1)!}
                 onChange={level => act({ op: 'powerLevel', uid: x.uid, level })} />}</td>
             <td className="num">{power && (power.cost == null ? '? PP' : `${n(powerCost(data, x))} PP`)}</td>
-            <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
+            <td className="num"><button className="btn small quiet" aria-label={`Remove ${name}`} onClick={() => act({ op: 'pick', remove: x.uid })}>Remove</button></td>
           </tr>
         })}</tbody>
       </table></div>}

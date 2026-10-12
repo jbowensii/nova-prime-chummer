@@ -40,7 +40,7 @@ export function MartialArtsTab() {
             {e && <span className="muted">{[e.attrs.categories, `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}</span>}
             <span className="spacer" /><span className="muted">{style !== undefined && `−${n(style)} karma`}</span>
             <button className="btn small" onClick={() => setPicking(m.uid)}>Add a technique…</button>
-            <button className="btn small quiet" onClick={() => act({ op: 'martialart', remove: m.uid })}>Remove</button></div>
+            <button className="btn small quiet" aria-label={`Remove ${styleName(data, m)}`} onClick={() => act({ op: 'martialart', remove: m.uid })}>Remove</button></div>
           {m.techniques.length > 0 && <div className="scroll-x"><table className="data"><tbody>{m.techniques.map(t => {
             const te = data.entry('martialtechniques', t.id), karma = techniqueKarma(data, cr, m, t), pre = prerequisites(data, b, te)
             return <tr key={t.uid}>
@@ -49,7 +49,7 @@ export function MartialArtsTab() {
                 {pre.map((p, i) => <div key={i} className={p.met === false ? 'err' : 'muted'}>
                   {p.met === false ? '⚠ Requires ' : 'Requires '}{prerequisiteText(p)}{p.met === false && ': the runner doesn’t have it'}</div>)}</td>
               <td className="num">{karma ? `−${n(karma)}` : 'free'}</td>
-              <td className="num"><button className="btn small quiet" onClick={() => act({ op: 'technique', style: m.uid, remove: t.uid })}>Remove</button></td>
+              <td className="num"><button className="btn small quiet" aria-label={`Remove ${techniqueName(data, t)}`} onClick={() => act({ op: 'technique', style: m.uid, remove: t.uid })}>Remove</button></td>
             </tr>
           })}</tbody></table></div>}
         </section>
