@@ -201,3 +201,15 @@ test('a sample correction naming the printed id fixes a line holding one of its 
   expect(r.purchases.map(p => [p.id, p.values.rating, p.values.cost])).toEqual([['crb.glow-eyes.3', 3, 1500], ['crb.tangle-rope.2', 2, 100]])
   expect(r.qualities[0]).toMatchObject({ id: 'crb.lucky-streak.2', name: 'Lucky Streak 2', attrs: { family: 'crb.lucky-streak', level: '2', karma: '8' } })
 })
+
+test('a leveled quality’s R-1 and R[..] effects are worked out per level: Lucky Streak 1–3 gives 0, 1, 2 and 1, 2, 5', () => {
+  const at = (v: string) => {
+    const c = fixtureCatalog((f, x) => (f.endsWith('crb/qualities.xml')
+      ? x.replace('<name>Lucky Streak</name>', `<name>Lucky Streak</name><effect target="attr:bod" op="add" value="${v}"/>`) : x))
+    const data = sr6Data(c)
+    return [1, 2, 3].map(n => { const b = blankBuild(); b.metatype = GLIM; b.qualities = [{ uid: 'q', id: `crb.lucky-streak.${n}`, level: 1 }]; return augmentBonus(b, data, 'bod') })
+  }
+  expect(at('R-1')).toEqual([0, 1, 2])
+  expect(at('R[1,2,5]')).toEqual([1, 2, 5])
+  expect(at('R')).toEqual([1, 2, 3])
+})
