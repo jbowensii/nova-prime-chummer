@@ -723,9 +723,15 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     }
     if (p === '/api/auth/password' && method === 'POST') {
       const b = await json(req)
-      const u = await checkCurrent(req, who, b)
+      const u = await checkCurrent(req, who, b), verified = u.password
       const pw = await hashLimited(password(b.password))
-      await lock(async () => { u.password = pw; await saveUsers(); await endSessions(u.id, who.session) }) // every other session
+      await lock(async () => { // as checked, still: a reset, a delete, an Authelia link or a sign-out meanwhile refuses it
+        if (!(users.includes(u) && u.enabled && u.method === 'password' && u.password === verified && sessions.has(who.session)))
+          throw fail(409, 'your account changed meanwhile: sign in again')
+        u.password = pw
+        await saveUsers()
+        await endSessions(u.id, who.session) // every other session
+      })
       log.log(`password changed: ${u.username}`)
       return send(res, 204, '', 'text/plain')
     }
@@ -766,20 +772,24 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     // an account linked to this Authelia subject is it, whatever the name says now; else a first sign-in names it by
     // preferred_username only, or by a verified email when there is no username. Only ASCII is compared: toLowerCase()
     // folds some other letters into ASCII (U+212A KELVIN SIGN -> k)
-    let u = users.find(x => x.oidcSub === sub && x.oidcIss === iss)
-    if (!u) {
-      u = named({ username, email, emailVerified })
-      if (u?.oidcSub) return null // linked to another Authelia user: never taken over by a matching name
-    }
-    if (!u?.enabled || u.method !== 'authelia') return null
-    const linking = !u.oidcSub
-    log.log(`signed in with Authelia: ${u.username} from ${ctx.ip}${linking ? ' (now linked to that Authelia user)' : ''}`)
-    await lock(async () => {
-      if (linking && users.some(x => x !== u && x.oidcSub === sub && x.oidcIss === iss)) throw fail(409, 'already linked')
+    // all checked, and the session started, under the lock: a disable, a method change or another link meanwhile refuses it
+    let started, linking
+    const u = await lock(async () => {
+      let u = users.find(x => x.oidcSub === sub && x.oidcIss === iss)
+      if (!u) {
+        u = named({ username, email, emailVerified })
+        if (u?.oidcSub) return null // linked to another Authelia user: never taken over by a matching name
+      }
+      if (!u?.enabled || u.method !== 'authelia') return null
+      linking = !u.oidcSub
       Object.assign(u, { lastLogin: iso(), ...linking ? { oidcIss: iss, oidcSub: sub } : {} })
       await saveUsers()
+      started = startSession(res, ctx, u)
+      return u
     })
-    await startSession(res, ctx, u)
+    if (!u) return null
+    await started
+    log.log(`signed in with Authelia: ${u.username} from ${ctx.ip}${linking ? ' (now linked to that Authelia user)' : ''}`)
     setDevice(res, ctx, u.id)
     return u
   }

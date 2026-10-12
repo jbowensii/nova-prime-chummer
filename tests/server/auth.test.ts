@@ -594,6 +594,15 @@ test('sign-in: guesses sent at once are counted before hashing, so no more than 
   s.srv.close()
 })
 
+test('change password: two at once from one session with the same current password: only one goes through', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { player: PW.player })
+  const p = await login(s.base, 'player', PW.player)
+  const change = (pw: string) => call(s.base, 'POST', '/api/auth/password', { cookie: p.cookie, ...json({ current: PW.player, password: pw }) })
+  const rs = await Promise.all([change('player-password-7'), change('player-password-8')])
+  expect(rs.filter(r => r.status === 204)).toHaveLength(1)
+  s.srv.close()
+})
+
 test('password hashing: a few at a time, a short queue, the rest refused before hashing', async () => {
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1' })
   const rs = await Promise.all(Array.from({ length: 40 }, (_, i) => login(s.base, `nobody${i}`, 'wrong-password', { 'X-Forwarded-For': `198.51.100.${i}` })))
