@@ -14,7 +14,7 @@ FROM node:22-alpine
 ARG OCR=0
 WORKDIR /app
 COPY importer/requirements.lock ./importer/requirements.lock
-RUN apk add --no-cache python3 py3-pip su-exec 
+RUN apk add --no-cache python3 py3-pip su-exec \
  && if [ "$OCR" = "1" ]; then apk add --no-cache tesseract-ocr; fi \
  && pip install --no-cache-dir --break-system-packages --require-hashes -r /app/importer/requirements.lock
 COPY --from=build /app/dist ./dist
