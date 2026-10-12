@@ -2,9 +2,14 @@ name: publish
 
 # Builds and pushes the app image to GHCR. No book data ships in the image;
 # users bring their own PDFs on the Books page.
+# main: only after ci passed on that push (latest + sha-<short>, built from the commit ci checked). A release tag (v*,
+# pushed by `gh release create`): at once, as <version> (its commit already passed ci on main).
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
+  push:
     tags: ['v*']
   workflow_dispatch:
 
@@ -14,9 +19,20 @@ permissions:
 
 jobs:
   publish:
+    # a ci run of this repository's own push to main that passed (never a pull request's, which may be a fork's)
+    if: >-
+      github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - id: sha
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: echo "short=${SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -33,8 +49,8 @@ jobs:
           labels: |
             org.opencontainers.image.description=Character generator and career tracker for Shadowrun: Anarchy 2.0
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') }}
+            type=raw,value=sha-${{ steps.sha.outputs.short }}
             type=semver,pattern={{version}}
             type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'workflow_dispatch' && github.ref_name != 'main' }}
 
