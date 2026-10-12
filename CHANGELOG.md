@@ -56,7 +56,8 @@
   loader, data view and export, the sample fixes, and Anarchy's catalog loader, compendiums and sheet. The importer's
   sample-runner pricing is checked against the app's budgets.
 - **Lint and formatting**: ESLint 9 (TypeScript and React hooks rules) and Prettier, with `npm run lint` and
-  `npm run format`; the code was formatted once, and CI checks both. The findings were fixed rather than the rules turned off.
+  `npm run format`; the code was formatted once, and CI checks both. The findings were fixed rather than the rules
+  turned off.
 - **Server cleanup**: books.mjs is split into focused modules; the runner index and gzip caches forget deleted and
   changed files and stay within a size cap; a compendium list reads campaigns.xml once.
 - **Importer cleanup**: the shared SR6 catalog reading, the in-book search and the table shapes have their own modules,
