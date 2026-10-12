@@ -1,7 +1,7 @@
 // The editor's saving, shared by both games (moved out of EditorView): load once, autosave 400 ms after a change (one
 // request at a time, the latest state queued), flush on leave (keepalive), ask before a link drops an unsaved change,
 // the "Saved elsewhere" conflict, and undo/redo.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { newId } from '../model/types'
 import { session, track, useMe } from './auth'
 import { Modal } from './bits'
@@ -26,15 +26,16 @@ export interface AutosaveOpts<T> {
 
 export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: AutosaveOpts<T>) {
   const me = useMe()
-  const opt = useRef(o)
-  opt.current = o
+  // the latest options and account, for the handlers and the load's callback (kept current after each render)
+  const opt = useRef(o), meNow = useRef(me)
+  useLayoutEffect(() => { opt.current = o; meNow.current = me })
   // someone else's runner (admin and editors can open everyone's): read-only, their name on the bar
   const [owner, setOwner] = useState<string | null>(null)
   const [doc, setDoc] = useState<T | undefined>()
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const hist = useRef<{ past: T[]; future: T[] }>({ past: [], future: [] })
-  const [, bump] = useState(0)
+  const [can, setCan] = useState({ undo: false, redo: false }) // hist's state, for the render
   // what the bar says: saved (when), saving, or failed (the server's reason, with Retry)
   const [status, setStatus] = useState<SaveStatus>({ state: 'saved' })
   const [conflict, setConflict] = useState<Conflict | null>(null)
@@ -51,7 +52,7 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     repo.get(id).then(s => {
       sync.current.rev = s?.rev
       sync.current.loaded = s?.ch
-      const theirs = !!(me && s?.owner && s.owner !== me.username)
+      const me = meNow.current, theirs = !!(me && s?.owner && s.owner !== me.username)
       sync.current.paused = theirs // never saved
       setOwner(theirs ? s!.ownerName ?? s!.owner! : null)
       setDoc(s && opt.current.prepare(s.ch))
@@ -151,12 +152,14 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     hist.current.past = undoable && doc ? [...hist.current.past.slice(-99), doc] : []
     hist.current.future = []
     setDoc({ ...next, updatedAt: new Date().toISOString() })
+    setCan({ undo: hist.current.past.length > 0, redo: false })
   }
-  const undo = () => { const prev = hist.current.past.pop(); if (prev && doc) { hist.current.future.push(doc); setDoc(prev); bump(n => n + 1) } }
-  const redo = () => { const next = hist.current.future.pop(); if (next && doc) { hist.current.past.push(doc); setDoc(next); bump(n => n + 1) } }
+  const stacks = () => setCan({ undo: hist.current.past.length > 0, redo: hist.current.future.length > 0 })
+  const undo = () => { const prev = hist.current.past.pop(); if (prev && doc) { hist.current.future.push(doc); setDoc(prev); stacks() } }
+  const redo = () => { const next = hist.current.future.pop(); if (next && doc) { hist.current.past.push(doc); setDoc(next); stacks() } }
 
   return { doc, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose, conflict, copyName, setCopyName, resolveConflict,
-    commit, undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 }
+    commit, undo, redo, canUndo: can.undo, canRedo: can.redo }
 }
 export type Autosave<T extends Doc> = ReturnType<typeof useAutosave<T>>
 

@@ -91,13 +91,16 @@ const RuleRow = memo(function RuleRow({ k, depth, r, d, known, ro, why, qopts, f
 export function CreationForm({ c, cr, std, onSave, children }: { c: Sr6Catalog; cr: Loaded; std?: CreationRules; onSave?: (settings: CreationRow[]) => Promise<void>; children?: React.ReactNode }) {
   const [draft, setDraft] = useState(() => rowsOf(cr.rules))
   const stdRows = useMemo(() => rowsOf(std ?? new Map()), [std])
-  useEffect(() => setDraft(rowsOf(cr.rules)), [cr])
+  // new rules loaded: the form starts again from them (state adjusted while rendering)
+  const [draftOf, setDraftOf] = useState(cr)
+  if (draftOf !== cr) { setDraftOf(cr); setDraft(rowsOf(cr.rules)) }
   const [msg, setMsg] = useState(''), [err, setErr] = useState(''), [saving, setSaving] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
   const [q, setQ] = useState('')
   const ro = !onSave || saving
   const keys = useMemo(() => expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) }), [c])
-  const labelOf = useMemo(() => new Map(keys.map(k => [k.key, k.label.replace(/ \((house rule|option)\)$/, '')])), [keys]), label = (k: string) => labelOf.get(k) ?? k
+  const labelOf = useMemo(() => new Map(keys.map(k => [k.key, k.label.replace(/ \((house rule|option)\)$/, '')] as const)), [keys])
+  const label = (k: string) => labelOf.get(k) ?? k
   // the draft as the engine would apply it: a nested rule whose parent is off, or one that can't be on with another, is greyed
   const eff = useMemo(() => applyDeps(rulesFrom(Object.entries(draft).filter(([, r]) => r.value.trim()).map(([key, r]) => ({ key, value: r.value }))).rules), [draft])
   // a quality setting's select lists every quality (thousands of options over the form): the list once per catalog, and
@@ -184,7 +187,8 @@ export function ServerCreation({ c, cr, reload }: { c: Sr6Catalog; cr: Loaded; r
 export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: Loaded; camp: Campaign; onSaved: (camp: Campaign) => void }) {
   const manages = camp.you !== 'member'
   const [mine, setMine] = useState(!!camp.creation)
-  useEffect(() => setMine(!!camp.creation), [camp])
+  const [mineOf, setMineOf] = useState(camp) // (another campaign, or this one saved: its own choice again)
+  if (mineOf !== camp) { setMineOf(camp); setMine(!!camp.creation) }
   const shown: Loaded = useMemo(() => camp.creation ? rulesFrom(camp.creation) : cr, [camp, cr])
   const [msg, setMsg] = useState(''), [err, setErr] = useState('')
   const put = async (creation: CreationRow[] | null) => {
@@ -220,7 +224,8 @@ export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: 
  *  Creation method tab (runnerRules leaves the runner's choice out). Players read the list. */
 export function CampaignLocks({ camp, manages, onSaved }: { camp: Campaign; manages: boolean; onSaved: (camp: Campaign) => void }) {
   const [draft, setDraft] = useState(() => new Set((camp.locks ?? []).map(l => l.key)))
-  useEffect(() => setDraft(new Set((camp.locks ?? []).map(l => l.key))), [camp])
+  const [draftOf, setDraftOf] = useState(camp) // (another campaign, or this one saved: its locks again)
+  if (draftOf !== camp) { setDraftOf(camp); setDraft(new Set((camp.locks ?? []).map(l => l.key))) }
   const [msg, setMsg] = useState(''), [err, setErr] = useState('')
   const by = new Map((camp.locks ?? []).map(l => [l.key, l.byName ?? l.by]))
   const label = new Map(CREATION_KEYS.map(k => [k.key, k.label]))

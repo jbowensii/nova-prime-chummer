@@ -61,12 +61,12 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
   // inert), else on the page. Placed empty first, then filled, so the move doesn't swallow the announcement.
   const [live, setLive] = useState<{ host: Element | null; text: string }>({ host: null, text: '' })
   useEffect(() => { // runs after the edit dialog's own effect has closed it
-    if (!msg) return setLive(l => ({ ...l, text: '' }))
+    if (!msg) return
     const host = [...document.querySelectorAll('dialog[open]')].pop() ?? null
-    setLive({ host, text: '' })
-    const show = setTimeout(() => setLive({ host, text: msg }), 50), hide = setTimeout(() => setMsg(''), 5000)
-    return () => { clearTimeout(show); clearTimeout(hide) }
+    const place = setTimeout(() => setLive({ host, text: '' })), show = setTimeout(() => setLive({ host, text: msg }), 50), hide = setTimeout(() => setMsg(''), 5000)
+    return () => { clearTimeout(place); clearTimeout(show); clearTimeout(hide) }
   }, [msg])
+  const liveText = msg ? live.text : '' // (no message: the region empty where it is)
   const entry = target?.id ? c[target.kind].get(target.id) : undefined
   const done = async (text: string) => { await reload(); setTarget(null); setMsg(text) }
   // the edits layer: the entry without its text, the Description apart (empty: the book's)
@@ -78,7 +78,7 @@ export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () =
     <OpenEdit.Provider value={repo.mode === 'server' && editor ? t => { setMsg(''); setTarget(t) } : null}><EditCatalog.Provider value={c}>
       {children}
       {/* no role=status: pages keep their own single status region */}
-      {(() => { const p = <p className={live.text ? 'toast' : 'sr-only'} aria-live="polite">{live.text}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}
+      {(() => { const p = <p className={liveText ? 'toast' : 'sr-only'} aria-live="polite">{liveText}</p>; return live.host?.isConnected ? createPortal(p, live.host) : p })()}
       <Modal open={!!target} onClose={() => setTarget(null)} actions={<></>}
         title={entry ? `Edit ${nameOf(entry)}` : target ? `Add ${target.kind === 'items' ? 'an' : 'a'} ${NOUN[target.kind]}` : ''}>
         {target && <EntryForm key={`${target.kind} ${target.id}`} c={c} kind={target.kind} entry={entry} save={put(target.kind)} onDone={done} onCancel={() => setTarget(null)} />}

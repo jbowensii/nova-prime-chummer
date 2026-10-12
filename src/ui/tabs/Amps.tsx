@@ -16,15 +16,12 @@ export function AmpsTab() {
   const { c, ch, v, edit } = useEditor()
   const b = ch.build
   const [choosing, setChoosing] = useState(false)
-  const [editing, setEditing] = useState<Editing | null>(null)
-
-  useEffect(() => { // "Make it an amp" on the Gear tab lands here with that amp open
-    const uid = sessionStorage.getItem('ca2.editAmp')
-    if (!uid) return
-    sessionStorage.removeItem('ca2.editAmp')
-    const a = b.amps.find(x => x.uid === uid)
-    if (a) setEditing({ amp: a, before: a })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // "Make it an amp" on the Gear tab lands here with that amp open (the note read as the first state, removed once mounted)
+  const [editing, setEditing] = useState<Editing | null>(() => {
+    const uid = sessionStorage.getItem('ca2.editAmp'), a = uid ? b.amps.find(x => x.uid === uid) : undefined
+    return a ? { amp: a, before: a } : null
+  })
+  useEffect(() => sessionStorage.removeItem('ca2.editAmp'), [])
 
   const describe = (a: AmpEntry) => [...a.effects.reduce((m, e) => m.set(JSON.stringify([e.ref, e.param, e.value]), [e, (m.get(JSON.stringify([e.ref, e.param, e.value]))?.[1] ?? 0) + 1]), new Map<string, [AmpEntry['effects'][number], number]>()).values()].map(([e, n]) => {
     const def = c.ampEffects.get(e.ref), line = ruleText(c, e)

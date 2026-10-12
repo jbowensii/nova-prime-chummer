@@ -143,11 +143,11 @@ export function Library({ c }: { c: Catalog }) {
   const [tidying, setTidying] = useState(false)
   const [foundry, setFoundry] = useState(false)
   const file = useRef<HTMLInputElement>(null)
-  const [noBooks, setNoBooks] = useState(false)
+  const [noBookFiles, setNoBooks] = useState(false)
+  const noBooks = repo.mode === 'server' ? noBookFiles : c.amps.size === 0
   // a fresh install: no book uploaded (server), or no amps at all (a static host has no Books page)
   useEffect(() => {
-    if (repo.mode !== 'server') { setNoBooks(c.amps.size === 0); return }
-    if (!admin) return // only the admin uploads books
+    if (repo.mode !== 'server' || !admin) return // only the admin uploads books
     fetch('./api/books', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => setNoBooks(Array.isArray(b) && b.length === 0), () => {})
   }, [repo.mode, c, admin])
   const [trashed, setTrashed] = useState<number | null>(null) // server only: the browser's storage has no trash

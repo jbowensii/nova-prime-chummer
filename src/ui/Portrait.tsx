@@ -57,14 +57,20 @@ export function PortraitEditor({ ch, open, onClose, onSave, token }: {
   const [err, setErr] = useState<string>()
   const drag = useRef<{ x: number; y: number } | null>(null)
   const file = useRef<HTMLInputElement>(null)
+  // opening starts afresh (state adjusted while rendering), then loads the picture it opened with
+  const [wasOpen, setWasOpen] = useState(false), [src, setSrc] = useState<string>()
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      // a new token starts from the portrait's picture, to be framed for the circle (so it is saved as a picture of its own)
+      setSrc(cur ?? (token ? ch.identity.portrait : undefined))
+      setZoom(1); setOff({ x: 0, y: 0 }); setBackdrop(ch.identity.backdrop); setChanged(!!token && !cur); setErr(undefined); setImg(undefined)
+      setSame(!!token && !cur && !!ch.identity.portrait)
+    }
+  }
   useEffect(() => {
-    if (!open) return
-    // a new token starts from the portrait's picture, to be framed for the circle (so it is saved as a picture of its own)
-    const src = cur ?? (token ? ch.identity.portrait : undefined)
-    setZoom(1); setOff({ x: 0, y: 0 }); setBackdrop(ch.identity.backdrop); setChanged(!!token && !cur); setErr(undefined); setImg(undefined)
-    setSame(!!token && !cur && !!ch.identity.portrait)
-    if (src) loadImage(src).then(setImg, e => setErr((e as Error).message))
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (open && src) loadImage(src).then(setImg, e => setErr((e as Error).message))
+  }, [open, src])
 
   // the picture covers the square at zoom 1; dragging can't pull an edge inside it
   const base = img ? STAGE / Math.min(img.width, img.height) : 1

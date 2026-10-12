@@ -22,7 +22,7 @@ export function RulesScreen({ c, open }: { c: Catalog; open?: string }) {
   const [book, setBook] = useState('')
   const openEdit = useOpenEdit()
   const admin = isAdmin(useMe())
-  const rules = [...c.rules.values()]
+  const rules = useMemo(() => [...c.rules.values()], [c])
   const hasText = rules.some(r => r.text)
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()

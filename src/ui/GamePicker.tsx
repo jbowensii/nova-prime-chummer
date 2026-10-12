@@ -11,7 +11,7 @@ export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {
   const pick = (g: Game) => {
     storeGame(g)
     onPick(g)
-    location.hash = homeOf(g)
+    location.assign(homeOf(g))
   }
   return (
     <main className="lib gamepick">

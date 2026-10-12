@@ -34,7 +34,8 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
   const rule = open ? c.entries.rules.get(open) : undefined
   const link = (r: Sr6Entry) => <a href={`#/sr6/rules/${encodeURIComponent(r.id)}`}>{r.name}</a>
   // (each rule's search text lower-cased once, not on every keystroke: the texts are megabytes)
-  const hay = useMemo(() => t ? new Map(rules.map(r => [r, `${r.name} ${r.text}`.toLowerCase()])) : null, [rules, !t]) // eslint-disable-line react-hooks/exhaustive-deps
+  const searching = t !== ''
+  const hay = useMemo(() => searching ? new Map(rules.map(r => [r, `${r.name} ${r.text}`.toLowerCase()])) : null, [rules, searching])
   const shown = inBook.filter(r => (!chapter || r.attrs.chapter === chapter) && (!hay || hay.get(r)!.includes(t)))
   const byChapter = new Map<string | undefined, Sr6Entry[]>()
   for (const r of shown) { const l = byChapter.get(r.attrs.chapter); if (l) l.push(r); else byChapter.set(r.attrs.chapter, [r]) }

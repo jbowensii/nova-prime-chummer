@@ -1,6 +1,6 @@
 // Export for the Foundry importer module (jbowensii/chummer-anarchy2-foundry): Chummer Anarchy export v1 files
 // (docs/export-format.md). Runners from the editor and the runner list; book data on Game data (GMs).
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { exportBooks, exportRunners, type ExportOpts } from '../engine'
 import type { Catalog, Character, Compendium } from '../model/types'
 import { Modal, NonCanon } from './bits'
@@ -44,7 +44,9 @@ export function ExportRunnersDialog<R extends Exportable>({ runners, campaigns, 
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [camp, setCamp] = useState('')
-  useEffect(() => { if (open) { setPicked(new Set()); setCamp('') } }, [open])
+  // opening starts from nothing ticked (state adjusted while rendering: https://react.dev/learn/you-might-not-need-an-effect)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) { setWasOpen(open); if (open) { setPicked(new Set()); setCamp('') } }
   const set = (ids: string[]) => { setPicked(new Set(ids)); setCamp('') }
   const n = runners.filter(r => picked.has(r.id)).length
   return (

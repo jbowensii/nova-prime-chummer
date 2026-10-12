@@ -5,7 +5,7 @@
 // (`game` 'sr6': /api/sr6/trash, #/sr6/trash[/<username>]) is the same page for SR6 runners.
 import { PageHeader } from './nav'
 import type { Game } from './game'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { because, isAdmin, send, useMe } from './auth'
 import { Modal } from './bits'
 
@@ -34,8 +34,11 @@ export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [confirm, setConfirm] = useState<TrashItem | 'all' | null>(null)
   const [busy, setBusy] = useState(false)
-  const refresh = () => loadTrash(user, npcs, game).then(setTrash, e => { setMsg({ text: because('Couldn’t open the trash', (e as Error).message), err: true }); setTrash({ user: user ?? '', name: '', items: [] }) })
-  useEffect(() => { setMsg(null); setTrash(null); void refresh() }, [user, npcs, game]) // eslint-disable-line react-hooks/exhaustive-deps
+  const refresh = useCallback(() => loadTrash(user, npcs, game).then(setTrash, e => { setMsg({ text: because('Couldn’t open the trash', (e as Error).message), err: true }); setTrash({ user: user ?? '', name: '', items: [] }) }), [user, npcs, game])
+  // another trash: shown from nothing (state adjusted while rendering), then loaded
+  const [shown, setShown] = useState({ user, npcs, game })
+  if (shown.user !== user || shown.npcs !== npcs || shown.game !== game) { setShown({ user, npcs, game }); setMsg(null); setTrash(null) }
+  useEffect(() => { void refresh() }, [refresh])
   useEffect(() => {
     if (admin) send('users', undefined, 'GET').then(r => r.json()).then(setAccounts, () => {})
   }, [admin])

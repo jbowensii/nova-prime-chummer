@@ -39,7 +39,7 @@ export function EntryHover({ row, kind, children, open: forced, tabbable = true 
   /** the entry's row, or a function making it (only when shown: a line names many entries) */
   row?: BrowseRow | (() => BrowseRow); kind?: string; children: ReactNode; open?: boolean; tabbable?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false), [tapped, setTapped] = useState(false) // (tapped: touch's, for the render)
   const id = useId(), ref = useRef<HTMLSpanElement>(null), pop = useRef<HTMLSpanElement>(null), touch = useRef(false)
   const shown = !!row && (open || !!forced)
   // placed by the viewport (fixed), so a table's scroll box never clips it: below the name, or above it near the bottom
@@ -68,14 +68,14 @@ export function EntryHover({ row, kind, children, open: forced, tabbable = true 
   if (!row) return <>{children}</>
   return (
     <span ref={ref} className="entry-ref" tabIndex={tabbable ? 0 : undefined} aria-describedby={shown ? id : undefined}
-      onPointerDown={e => { touch.current = e.pointerType !== 'mouse' }}
+      onPointerDown={e => { touch.current = e.pointerType !== 'mouse'; setTapped(touch.current) }}
       onClick={() => { if (touch.current) setOpen(o => !o) }}
       onMouseEnter={() => { if (!touch.current) setOpen(true) }} onMouseLeave={() => { if (!touch.current) setOpen(false) }}
       onFocus={() => { if (!touch.current) setOpen(true) }} onBlur={e => { if (!ref.current?.contains(e.relatedTarget as Node)) setOpen(false) }}>
       {children}
       {/* (on the page's body: never part of the line's own text, never clipped by its box; a pointer goes through it
           unless a tap opened it, to scroll a long one) */}
-      {shown && createPortal(<span ref={pop} role="tooltip" id={id} className={`entry-pop${touch.current ? ' touch' : ''}`} style={at ?? { visibility: 'hidden' }}>
+      {shown && createPortal(<span ref={pop} role="tooltip" id={id} className={`entry-pop${tapped ? ' touch' : ''}`} style={at ?? { visibility: 'hidden' }}>
         <EntryCard row={typeof row === 'function' ? row() : row} kind={kind} /></span>, document.querySelector('dialog[open]') ?? document.body)}
     </span>
   )
