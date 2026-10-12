@@ -127,12 +127,17 @@ export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
   return (m?.[1] ?? m?.[2]) as 'L' | 'I' | 'F' | undefined
 }
 
-/** The ratings an item comes in: "1–3" → [1, 2, 3], "6" → [6], a dash, nothing or anything else → []. */
+/** The highest rating or level the app reads. ponytail: no book prints one near it; a file's `1-20000000` would build
+ *  that many ratings (or levels) on every render. Raise it if a book ever prints more. */
+export const MAX_RATING = 100
+/** The ratings an item comes in: "1–3" → [1, 2, 3], "6" → [6], a dash, nothing, one above MAX_RATING or anything else
+ *  → [] (the catalog warns of one past MAX_RATING: data.ts). */
 export function ratingRange(s: string | undefined): number[] {
   const m = s?.trim().match(/^(\d+)(?:\s*[–-]\s*(\d+))?$/)
   if (!m) return []
   const lo = Number(m[1]),
     hi = Number(m[2] ?? m[1])
+  if (hi > MAX_RATING) return []
   return Array.from({ length: Math.max(0, hi - lo + 1) }, (_, k) => lo + k)
 }
 

@@ -6,7 +6,7 @@ import type { Violation } from '../../model/types'
 import type { MagicKind, PickKind, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import { gradeKey } from './grades'
-import { rated } from './values'
+import { MAX_RATING, rated } from './values'
 import { resolveEntry } from './load'
 import { categoryIndex } from './categories'
 import { normName } from './names'
@@ -316,6 +316,16 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
           source: e.source,
           page: x.page ?? e.page,
         })
+
+  // a rating range or highest level past what the app reads (values.ts MAX_RATING): read as unrated, or not expanded
+  for (const k of Object.keys(c.entries) as Sr6Kind[])
+    for (const e of withParents(k))
+      for (const [a, what] of [
+        ['rating', 'rating'],
+        ['maxLevel', 'highest level'],
+      ] as const)
+        if ((e.attrs[a]?.match(/\d+/g) ?? []).some(n => Number(n) > MAX_RATING))
+          warn('data.bookValue', e, `${e.name}: the ${what} “${e.attrs[a]}” goes past ${MAX_RATING}, the most the app reads.`)
 
   let nameIndex: Map<string, Sr6Entry> | undefined
   const named = (name: string, kind?: Sr6Kind) => {

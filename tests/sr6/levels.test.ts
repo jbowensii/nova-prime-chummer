@@ -12,6 +12,7 @@ import { exportSr6Runner } from '../../src/sr6/engine/export'
 import { resolveEntry } from '../../src/sr6/engine/load'
 import { migrateSr6Ids } from '../../src/sr6/engine/migrate'
 import { withSampleFixes } from '../../src/sr6/engine/samplefix'
+import { ratingRange } from '../../src/sr6/engine/values'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankBuild, blankSr6, type Sr6Advance, type Sr6Character } from '../../src/sr6/model/character'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM, made } from './fixture'
@@ -433,4 +434,36 @@ test('career level-ups saved before levels were entries reach the right level; a
   expect(after.qualities.map(q => [q.uid, q.id, q.level])).toEqual([['q1', 'crb.lucky-streak.2', 1]])
   expect(after.sins[0].lifestyles!.map(l => [l.id, l.months])).toEqual([['crb.cozy-new', 3]])
   expect(after.purchases.map(p => [p.uid, p.id])).toEqual([['g1', 'crb.glow-eyes.2']])
+})
+
+test('a rating range or highest level past MAX_RATING is read as unrated, not expanded, and the catalog warns', () => {
+  const huge = '1-20000000'
+  const c = fixtureCatalog(undefined, [
+    {
+      file: 'custom/sr6/imported/x/augmentations.xml',
+      xml: FILE(
+        'augmentations',
+        `<augmentation id="x.huge" source="CRB" page="1" type="cyberware" category="Bodyware" essence="1" avail="1" cost="Rating × 10" rating="${huge}"><name>Huge Ware</name></augmentation>`,
+      ),
+    },
+    {
+      file: 'custom/sr6/imported/x/qualities.xml',
+      xml: FILE(
+        'qualities',
+        '<quality id="x.many" source="CRB" page="1" kind="positive" karma="1" perLevel="true" maxLevel="99999999"><name>Many</name></quality>',
+      ),
+    },
+  ])
+  expect(ratingRange(huge)).toEqual([])
+  expect(ratingRange('1-100')).toHaveLength(100)
+  expect(c.entries.augmentations.get('x.huge')?.attrs.rating).toBe(huge)
+  expect(c.entries.qualities.has('x.many')).toBe(true)
+  expect(c.entries.qualities.has('x.many.1')).toBe(false)
+  const warned = sr6Data(c)
+    .problems.filter(p => p.path === 'augmentations.x.huge' || p.path === 'qualities.x.many')
+    .map(p => p.message)
+  expect(warned).toEqual([
+    'Many: the highest level “99999999” goes past 100, the most the app reads.',
+    `Huge Ware: the rating “${huge}” goes past 100, the most the app reads.`,
+  ])
 })

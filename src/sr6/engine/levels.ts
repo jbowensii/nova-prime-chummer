@@ -10,7 +10,7 @@
 import type { Sr6Catalog, Sr6Entry, Sr6Family, Sr6Kind, Sr6Part } from '../model/types'
 import { bonusValue, effectValue } from './effects'
 import { entryKey } from './names'
-import { rated, ratingRange } from './values'
+import { MAX_RATING, rated, ratingRange } from './values'
 
 type Levels = Pick<Sr6Catalog, 'entries' | 'levels'>
 
@@ -37,12 +37,13 @@ function mode(e: Sr6Entry): { mode: 'rating' | 'level'; levels: number[] } | und
   if (range.length > 1) return { mode: 'rating', levels: range }
   if (e.attrs.perLevel !== 'true') return undefined
   const max = Number(e.attrs.maxLevel)
-  if (Number.isInteger(max) && max >= 2) return { mode: 'level', levels: Array.from({ length: max }, (_, i) => i + 1) }
+  // (past MAX_RATING it isn't expanded: the catalog warns, data.ts)
+  if (Number.isInteger(max) && max >= 2 && max <= MAX_RATING) return { mode: 'level', levels: Array.from({ length: max }, (_, i) => i + 1) }
   // (the range printed in the name, `Will to Live (1-3)`)
   const m = RANGE.exec(e.name),
     lo = m ? Number(m[1]) : NaN,
     hi = m ? Number(m[2]) : NaN
-  if (m && lo >= 1 && hi > lo) return { mode: 'level', levels: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) }
+  if (m && lo >= 1 && hi > lo && hi <= MAX_RATING) return { mode: 'level', levels: Array.from({ length: hi - lo + 1 }, (_, i) => lo + i) }
   return undefined
 }
 
