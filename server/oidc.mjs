@@ -23,7 +23,7 @@ import { createCipheriv, createDecipheriv, createHash, createPublicKey, randomBy
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { chmod, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { attr, esc, rootTag, writeAtomic } from './common.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 const MINUTE = 60e3

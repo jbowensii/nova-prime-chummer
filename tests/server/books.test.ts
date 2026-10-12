@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { cookieFor, createServer } from './_signin'
 // @ts-expect-error plain JS module
-import { safeName } from '../../server/books.mjs'
+import { safeName } from '../../server/common.mjs'
 
 // the stub worker runs as a child process: a loaded machine can take seconds per job (waitFor allows 15 s)
 vi.setConfig({ testTimeout: 30000 })

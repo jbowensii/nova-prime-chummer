@@ -28,7 +28,7 @@ import { chmod, mkdir, readFile, rm } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { attr, esc, rootTag, writeAtomic } from './common.mjs'
 import { RESERVED, scoped } from './games.mjs'
 
 const scrypt = promisify(scryptCb)

@@ -37,7 +37,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { attr, creationSettings, esc, readSettings, rootTag, settingXml, unesc, writeAtomic } from './books.mjs'
+import { attr, esc, rootTag, unesc, writeAtomic } from './common.mjs'
+import { creationSettings, readSettings, settingXml } from './edits.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 export const CAMPAIGN_ID = /^[0-9a-f]{12}$/

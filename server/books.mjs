@@ -93,11 +93,6 @@ import { jobsApi } from './jobs.mjs'
 import { libraryApi } from './library.mjs'
 import { resumeApi } from './resume.mjs'
 
-// the helpers the rest of the server imports from here
-export { attr, esc, rootTag, safeName, unesc, writeAtomic } from './common.mjs'
-export { limitReached } from './ai.mjs'
-export { creationSettings, readSettings, settingXml } from './edits.mjs'
-
 // ours in library/.backups (a download's folder holds its zip), and a killed restore's safety-backup temp
 const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }

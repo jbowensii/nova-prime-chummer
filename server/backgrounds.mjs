@@ -16,7 +16,7 @@
 import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { attr, esc, safeName, writeAtomic } from './books.mjs'
+import { attr, esc, safeName, writeAtomic } from './common.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
 export const MAX_IMAGE = 10 * 1024 * 1024,

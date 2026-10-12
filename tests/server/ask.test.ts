@@ -9,7 +9,7 @@ import { ADMIN, createServer, rawFetch, signIn } from './_signin'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
 // @ts-expect-error plain JS module
-import { limitReached } from '../../server/books.mjs'
+import { limitReached } from '../../server/ai.mjs'
 
 vi.setConfig({ testTimeout: 30000 })
 const dir = mkdtempSync(join(tmpdir(), 'ca2-ask-')),

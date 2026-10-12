@@ -19,7 +19,7 @@
 //                                    member of while the owner GMs it. Never private ones, and never their NPCs (taken out)
 import { mkdir, readdir, readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
-import { attr, writeAtomic } from './books.mjs'
+import { attr, writeAtomic } from './common.mjs'
 import { GAMES } from './games.mjs'
 
 const MAX = 20 * 1024 * 1024 // embedded NPC portraits
