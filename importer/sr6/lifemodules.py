@@ -40,7 +40,8 @@ def _options(word):
     if m := re.fullmatch(r"(?:or\s+)?\+?\s*([\d,]+)\s*nuyen", word.strip()):
         return [f"nuyen:{m.group(1).replace(',', '')}"]
     w = re.sub(r"^\d+\s+(?=[a-z])", "", w)  # (an errata's `+1 Con or +1 Influence`: each option its own bonus)
-    if re.fullmatch(r"(?:your )?(?:other )?drain attribute", w):  # Willpower and the tradition's other one
+    # the tradition's drain attribute besides Willpower (every drain has Willpower: an option of its own when offered)
+    if re.fullmatch(r"(?:your )?(?:other )?drain attribute", w):
         return ["log", "int", "cha"]
     if w in ATTRS or w in SKILL_IDS or w + "s" in SKILL_IDS:
         return [ATTRS.get(w) or SKILL_IDS.get(w) or SKILL_IDS[w + "s"]]
@@ -81,14 +82,15 @@ def _module_grants(name, text, page, report):
     def add(k, v):
         attrs[k] = attrs.get(k, 0) + v
     for it in items:
-        if m := re.match(r"Choose (one|two|three):\s*(.*)", it):
-            body = m.group(2)
+        # `Choose two: …`, or one: `Choose an Attribute: +1 to Agility or Strength` (an Alignment's is no grant)
+        if m := re.match(r"Choose (one|two|three|an? \w+):\s*(.*)", it):
+            body, times = m.group(2), NUMBERS.get(m.group(1), 1)
             if re.match(r"\+\d+ to (?:any|an) (?:one )?skill", body):
-                add("skillPoints", int(re.match(r"\+(\d+)", body).group(1)) * NUMBERS[m.group(1)])
+                add("skillPoints", int(re.match(r"\+(\d+)", body).group(1)) * times)
                 continue
             c = _choice(body, name, page, report)
             if c:
-                kids += [("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None)] * NUMBERS[m.group(1)]
+                kids += [("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None)] * times
             continue
         if m := re.match(r"\+(\d+) to (?:any|an) (?:one )?(attribute|skill)", it):
             add("attributePoints" if m.group(2) == "attribute" else "skillPoints", int(m.group(1)))
