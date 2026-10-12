@@ -40,7 +40,7 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   Plays', Shadow Cast's archetype qualities).
 - Life modules: the Sixth World Companion's adult form printed in body type after a `Life Modules` heading or line
   (Dealers of Death, Shadows in Focus: New Orleans): a title run (`Event:` `Brush With Death`), prose, the grants as
-  labelled lines, read with the Companion's reader (`swc._lifemodule`); the run goes on through a page's running head.
+  labelled lines, read with the Companion's reader (`lifemodules.lifemodule`); the run goes on through a page's running head.
   Emerald City prints none (its lifepath-flavoured entries are qualities).
 
 ## Formula styles and issues (importer v2)
