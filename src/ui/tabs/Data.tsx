@@ -194,7 +194,7 @@ export function DataScreen({ c, reload }: { c: Catalog; reload: () => Promise<vo
         <>
           <p>
             All rules and catalog data load from XML files next to this page. House rules and extra content go in the <code>custom/</code> folder (on Unraid:{' '}
-            <code>/mnt/user/appdata/chummer-anarchy2/custom</code>), listed in <code>custom/index.xml</code>. Same id replaces a book entry,
+            <code>/mnt/user/appdata/nova-prime-chummer/custom</code>), listed in <code>custom/index.xml</code>. Same id replaces a book entry,
             <code> &lt;remove id="…"/&gt;</code> deletes one, a new id adds one. Reload the page after changing them.
           </p>
           <p>

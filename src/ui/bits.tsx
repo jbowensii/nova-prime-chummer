@@ -223,14 +223,14 @@ export const Brand = () =>
   /^#\/?sr6(\/|$)/.test(location.hash) ? (
     <span className="brand-row">
       <a className="brand" href="#/sr6">
-        Chummer <b>Shadowrun</b> 6
+        Nova Prime Chummer <b>Shadowrun</b> 6
       </a>
       <span className="ver">v{__APP_VERSION__}</span>
     </span>
   ) : (
     <span className="brand-row">
       <a className="brand" href="#/">
-        Chummer <b>Anarchy</b> 2.0
+        Nova Prime Chummer <b>Anarchy</b> 2.0
       </a>
       <span className="ver">v{__APP_VERSION__}</span>
     </span>

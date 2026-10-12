@@ -100,8 +100,8 @@ export function NeonSheet({ art }: { art: SheetArt }) {
           <div className="n-role">{role || '—'}</div>
           {ch.identity.name && ch.identity.name !== v.name && <div className="n-small">{ch.identity.name}</div>}
         </div>
-        <span className="n-brand" role="img" aria-label="Chummer Shadowrun 6">
-          Chummer <b>SR6</b>
+        <span className="n-brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+          Nova Prime Chummer <b>SR6</b>
         </span>
       </header>
       <dl className="n-keys" aria-label="Key numbers">

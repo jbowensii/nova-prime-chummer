@@ -1,5 +1,5 @@
 // Account recovery from the server's shell:
-//   docker exec chummer-anarchy2 node server/users.mjs reset <username>
+//   docker exec nova-prime-chummer node server/users.mjs reset <username>
 // prints a one-time code (15 minutes) that the setup page's "reset" form (/api/setup/reset) takes with a new password.
 // Only the code's hash is written (library/.config/reset.xml, which the running server reads); a new code replaces the
 // old. LIBRARY_DIR: the Library folder (the image sets /data/library).

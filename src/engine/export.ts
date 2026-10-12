@@ -604,7 +604,7 @@ const envelope = (kind: ExportFile['kind'], o: ExportOpts): ExportFile => ({
   version: EXPORT_VERSION,
   kind,
   exportedAt: o.now,
-  app: { name: 'Chummer Anarchy 2.0', version: o.appVersion },
+  app: { name: 'Nova Prime Chummer', version: o.appVersion },
   descriptions: o.descriptions,
 })
 

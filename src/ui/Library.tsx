@@ -656,7 +656,7 @@ export function Library({ c }: { c: Catalog }) {
       </PageHeader>
       <p className="muted">
         Saved on {where}
-        {repo.mode === 'server' ? ' (appdata/chummer-anarchy2/characters)' : '. Export files to keep them safe.'}
+        {repo.mode === 'server' ? ' (appdata/nova-prime-chummer/characters)' : '. Export files to keep them safe.'}
       </p>
       {noBooks && (
         <p className="banner">

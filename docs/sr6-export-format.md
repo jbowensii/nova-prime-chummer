@@ -35,7 +35,7 @@ block. Each entry also keeps what the book prints (`attrs`, `parts`), so a reade
 | `version` | `1` |
 | `kind` | `"runners"` or `"books"` |
 | `exportedAt` | ISO 8601 time of the export |
-| `app` | `{ name, version }`: `"Chummer Anarchy 2.0"` (the app's name, both games) and its version |
+| `app` | `{ name, version }`: `"Nova Prime Chummer"` (the app's name, both games) and its version |
 | `descriptions` | `true` if description texts are included (see Descriptions) |
 | `runners` | kind `runners` (required there, at least one): runners and NPCs |
 | `books` | kind `books` (required there, at least one): books |

@@ -1,7 +1,7 @@
 # Character file format
 
 A runner is one XML file. That's what the server stores in
-`characters/<username>/`, one folder per account (on Unraid: `/mnt/user/appdata/chummer-anarchy2/characters`), and
+`characters/<username>/`, one folder per account (on Unraid: `/mnt/user/appdata/nova-prime-chummer/characters`), and
 what **Export** downloads. The schema is `public/data/schema/character.xsd`
 (namespace `urn:chummer-anarchy2:character:1`). The Foundry VTT export (`docs/export-format.md`)
 is built from this data; the format itself is ours and stays stable.

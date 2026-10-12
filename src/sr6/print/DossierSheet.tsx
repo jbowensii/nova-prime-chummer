@@ -2,7 +2,7 @@
 // pages. Page 1: personal data, Edge and nuyen, the portrait; attributes beside the derived values; qualities split
 // positive/negative; the condition monitor; every skill in two columns plus languages and knowledge; weapons (ranged and
 // melee) and armor with the Defense Rating. Then augmentations, gear, contacts, IDs, magic and vehicles. A footer: created
-// with Chummer, the date and (printed) the page number. Our own drawing; dark ink, pink frames (sheet.css .sr6-dossier).
+// with Nova Prime Chummer, the date and (printed) the page number. Our own drawing; dark ink, pink frames (sheet.css .sr6-dossier).
 import type { ReactNode } from 'react'
 import { bdClass, printBackdrop } from '../../ui/Portrait'
 import { priced } from '../engine/budgets'
@@ -140,11 +140,11 @@ export function DossierSheet({ art }: { art: SheetArt }) {
     <article className="sr6-dossier" style={art.vars}>
       {art.layer}
       {/* the printed footer: page margin boxes (src/sr6/print/sheet.css @page sr6dossier) with today's date */}
-      <style>{`@page sr6dossier { @bottom-left { content: "${date}, created with Chummer"; } }`}</style>
+      <style>{`@page sr6dossier { @bottom-left { content: "${date}, created with Nova Prime Chummer"; } }`}</style>
       <div className="d-row d-first">
         <div className="d-who">
-          <span className="k-brand" role="img" aria-label="Chummer Shadowrun 6">
-            Chummer <b>Shadowrun</b> 6
+          <span className="k-brand" role="img" aria-label="Nova Prime Chummer Shadowrun 6">
+            Nova Prime Chummer <b>Shadowrun</b> 6
           </span>
           <Panel id="d-personal" title="Personal data">
             <dl className="d-pairs">
@@ -628,7 +628,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
         </Panel>
       )}
 
-      <footer className="d-foot">{date}, created with Chummer</footer>
+      <footer className="d-foot">{date}, created with Nova Prime Chummer</footer>
     </article>
   )
 }

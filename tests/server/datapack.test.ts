@@ -96,7 +96,7 @@ test('a pack is made, then downloads once as a dated zip; its folder is gone aft
   const { r, token, bytes } = await download()
   expect(token).toMatch(/^[0-9a-f]{32}$/)
   expect(r.status).toBe(200)
-  expect(r.headers.get('content-disposition')).toBe(`attachment; filename="chummer-anarchy2-datapack-${new Date().toISOString().slice(0, 10)}.zip"`)
+  expect(r.headers.get('content-disposition')).toBe(`attachment; filename="nova-prime-chummer-datapack-${new Date().toISOString().slice(0, 10)}.zip"`)
   expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
   expect(Object.keys(JSON.parse(bytes.toString().slice(MAGIC.length)).files)).toHaveLength(12)
   await vi.waitFor(() => expect(temps()).toEqual([]))

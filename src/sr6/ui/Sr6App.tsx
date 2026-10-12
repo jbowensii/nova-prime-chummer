@@ -139,7 +139,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       <main className="lib">
         <PageHeader title="Your runners" />
         <div className="empty">
-          <p>Shadowrun 6 runners need the Chummer server.</p>
+          <p>Shadowrun 6 runners need the Nova Prime Chummer server.</p>
         </div>
       </main>
     ) : c && data ? (

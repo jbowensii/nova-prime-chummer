@@ -35,21 +35,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: docker build -t chummer-anarchy2 .
+      - run: docker build -t nova-prime-chummer .
       # musl wheels for pdfplumber, pypdfium2, anthropic and lxml: import everything the server spawns
-      - run: docker run --rm chummer-anarchy2 python3 -c 'import importer.__main__, importer.ai.propose, importer.ai.providers, importer.datapack, pypdfium2'
+      - run: docker run --rm nova-prime-chummer python3 -c 'import importer.__main__, importer.ai.propose, importer.ai.providers, importer.datapack, pypdfium2'
       # the server reads the app version backups record from /app/VERSION
-      - run: docker run --rm chummer-anarchy2 grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+' /app/VERSION
+      - run: docker run --rm nova-prime-chummer grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+' /app/VERSION
       # no core data in the image: the core rulebook's import (or a data pack) builds it on the server. Checks names and
       # contents: no file named like a core file (src/engine/load.ts CORE_FILES), and no file holding core entries
       - run: >-
-          docker run --rm chummer-anarchy2 sh -c 'found=$(find /app -name "*.xml" | grep -E
+          docker run --rm nova-prime-chummer sh -c 'found=$(find /app -name "*.xml" | grep -E
           "/(ampeffects|amptypes|armor|attributes|levels|lifestyles|metatypes|packages|pricing|skills|vehicles|weapons)[.]xml$";
           grep -rlE "<(amptype|effect|level|metatype|package|vehicle|lifestyle) id=.[a-z-]+.[^>]* (base|rating|nuyen|edge|attrPoints|pilot|perRun)=.-?[0-9]|attrLastPoint=.[0-9]|<skill id=.[a-z-]+. attr=.[a-z]{3}.|<attribute id=.[a-z]+. abbr=.[A-Z]{3}.|<item id=.[a-z-]+. kind=.(weapon|armor)." /app);
           [ -z "$found" ] || { echo "core data in the image: $found"; exit 1; }'
       # the image starts: every server module is there, the app is served, and a fresh server logs its setup code
       - run: |
-          docker run -d --name ca2 chummer-anarchy2
+          docker run -d --name ca2 nova-prime-chummer
           for _ in $(seq 30); do docker exec ca2 wget -qO- http://127.0.0.1/api/health > /dev/null 2>&1 && break; sleep 1; done
           docker exec ca2 wget -qO- http://127.0.0.1/api/health | grep -q '"ok":true'
           docker exec ca2 wget -qO- http://127.0.0.1/ | grep -q 'id="root"'
@@ -58,5 +58,5 @@ jobs:
       # started as root, the entrypoint hands root-owned data to PUID:PGID (default 99:100) and drops to it
       - run: |
           docker volume create ca2-data
-          docker run --rm -v ca2-data:/data/characters --entrypoint sh chummer-anarchy2 -c 'echo x > /data/characters/old.xml'
-          docker run --rm -v ca2-data:/data/characters chummer-anarchy2 sh -c '[ "$(id -u)" = 99 ] && [ "$(stat -c %u /data/characters/old.xml)" = 99 ] && echo new > /data/characters/new.xml'
+          docker run --rm -v ca2-data:/data/characters --entrypoint sh nova-prime-chummer -c 'echo x > /data/characters/old.xml'
+          docker run --rm -v ca2-data:/data/characters nova-prime-chummer sh -c '[ "$(id -u)" = 99 ] && [ "$(stat -c %u /data/characters/old.xml)" = 99 ] && echo new > /data/characters/new.xml'

@@ -89,7 +89,7 @@ export function backupApi(ctx) {
     res.writeHead(200, {
       'Content-Type': 'application/zip',
       'Content-Length': (await stat(out)).size,
-      'Content-Disposition': `attachment; filename="chummer-anarchy2-${kind}-${date}.zip"`,
+      'Content-Disposition': `attachment; filename="nova-prime-chummer-${kind}-${date}.zip"`,
       'Cache-Control': 'no-store',
     })
     await pipeline(createReadStream(out), res).catch(() => {}) // a client that leaves mid-way: 'close' removes the folder

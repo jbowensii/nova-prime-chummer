@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Repo: new public `jbowensii/chummer-anarchy2-foundry`, local clone `C:\dev\chummer-anarchy2-foundry`, MIT license, default branch `main`; work lands through a branch + PR.
+- Repo: new public `jbowensii/chummer-anarchy2-foundry`, local clone `../chummer-anarchy2-foundry`, MIT license, default branch `main`; work lands through a branch + PR.
 - Module id `chummer-anarchy2-importer`, title "Chummer Anarchy 2.0 Importer", `compatibility { minimum: 14, verified: 14 }`, `relationships.systems: [{ id: "sra2", type: "system" }]`, `relationships.recommends: [{ id: "quench", type: "module" }]`. Tested sra2 version constant `TESTED_SRA2 = "14.3.3"`; a newer sra2 shows a warning, never a block.
 - Reads only files with `format: "chummer-anarchy2-export"`, `version: 1`, `kind: "runners"`; anything else is refused with the reason and nothing changes. (`kind: "books"` says "Book data import comes in a later version.")
 - GM only: the button shows only for `game.user.isGM`.
@@ -36,7 +36,7 @@
 - [ ] **Step 1: Create the repo**
 
 ```bash
-mkdir -p "C:/dev/chummer-anarchy2-foundry" && cd "C:/dev/chummer-anarchy2-foundry"
+mkdir -p "../chummer-anarchy2-foundry" && cd "../chummer-anarchy2-foundry"
 git init -b main
 gh repo create jbowensii/chummer-anarchy2-foundry --public --source . --description "Foundry VTT (sra2) importer for Chummer Anarchy 2.0 exports" --remote origin
 ```
@@ -156,7 +156,7 @@ export function readExport(text) {
 - `weaponType(name: string): string` — keyword match on the name for sra2's `WEAPON_TYPES` keys (pistol → `heavy-pistols` unless "light"/"hold-out"/"pocket", smg, assault rifle, shotgun, sniper, machine gun, grenade launcher, rocket/missile, bow, crossbow, taser, throwing, knife/katana/blade → `long-weapons` for katana/sword, `short-weapons` otherwise, unarmed → `bare-hands`), else `custom-weapon`.
 - `vehicleType(chassisId: string, name: string): string` — exact sra2 key when the id equals one (`medium-drone` etc.), else keyword match, else `custom-vehicle`.
 
-- [ ] **Step 1: `tools/make-specs.mjs`** reads a local sra2 checkout (`SRA2_DIR` env, default `../sra2x`) `src/packs/anarchy-items-en/specialization_*.json` and prints the `SPECS` array literal, sorted by slug. Run it once against `C:\Users\johnb\AppData\Local\Temp\sra2x` (sra2 v14.3.3, read-only) and paste the output into `scripts/lib/sra2.js` with a comment naming the sra2 version it came from. Also read the sra2 `WEAPON_TYPES` keys (`src/module/models/item-feat.ts`) and `src/module/config/vehicle-types.json` keys into `WEAPON_TYPES` and `VEHICLE_TYPES` constants.
+- [ ] **Step 1: `tools/make-specs.mjs`** reads a local sra2 checkout (`SRA2_DIR` env, default `../sra2x`) `src/packs/anarchy-items-en/specialization_*.json` and prints the `SPECS` array literal, sorted by slug. Run it once against `../sra2x` (sra2 v14.3.3, read-only) and paste the output into `scripts/lib/sra2.js` with a comment naming the sra2 version it came from. Also read the sra2 `WEAPON_TYPES` keys (`src/module/models/item-feat.ts`) and `src/module/config/vehicle-types.json` keys into `WEAPON_TYPES` and `VEHICLE_TYPES` constants.
 
 - [ ] **Step 2: Failing tests** `test/sra2.test.js`
 

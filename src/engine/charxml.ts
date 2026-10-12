@@ -377,7 +377,7 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
   if (!parsed.ok) return parsed
   const r = parsed.root
   if (r.localName === 'character' && r.namespaceURI === SR6_NS) return { ok: false, reason: 'This is a Shadowrun 6 runner. Import it on the Shadowrun 6 side.' }
-  if (r.localName !== 'character' || r.namespaceURI !== CHAR_NS) return { ok: false, reason: 'Not a Chummer Anarchy 2.0 character file.' }
+  if (r.localName !== 'character' || r.namespaceURI !== CHAR_NS) return { ok: false, reason: 'Not a Nova Prime Chummer Anarchy 2.0 character file.' }
   const v = n(r, 'formatVersion')
   if (!v) return { ok: false, reason: 'The <character> element has no formatVersion.' }
   if (v > FORMAT_VERSION) return { ok: false, reason: `This file is from a newer version of the app (format ${v}).` }

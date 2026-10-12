@@ -6,7 +6,7 @@ First deployed 2026-09-27.
 
 **(a) Unraid** — Docker tab → **Template repositories** → add
 `https://github.com/jbowensii/unraid-templates` → Save. Then **Add
-Container** → pick *chummer-anarchy2* → Apply.
+Container** → pick *nova-prime-chummer* → Apply.
 
 **(b) Plain docker / any other dashboard:**
 
@@ -15,31 +15,31 @@ docker run -d --init -p 8480:80 \
   -v /path/to/characters:/data/characters \
   -v /path/to/custom:/data/custom \
   -v /path/to/library:/data/library \
-  ghcr.io/jbowensii/chummer-anarchy2:latest
+  ghcr.io/jbowensii/nova-prime-chummer:latest
 ```
 
 **(c) One-time owner step after the first publish:** the GHCR package is
 created private by default. Go to GitHub → the account's **Packages** tab →
-**chummer-anarchy2** → **Package settings** → **Change visibility** → Public.
+**nova-prime-chummer** → **Package settings** → **Change visibility** → Public.
 Until that's done, pulls from Unraid or any other host will fail with
 "unauthorized".
 
 ### Build it yourself
 
 ```bash
-docker build -t chummer-anarchy2:latest .
-docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library chummer-anarchy2:latest
+docker build -t nova-prime-chummer:latest .
+docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library nova-prime-chummer:latest
 ```
 
 | | |
 |---|---|
 | URL | http://10.47.40.44:8480/ |
-| Container | `chummer-anarchy2`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
+| Container | `nova-prime-chummer`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
 | Template | Added via the `jbowensii/unraid-templates` template repository (see Install above); Unraid manages it |
-| Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) after `ci` passes on a push to `main` |
-| Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
-| House rules | `/mnt/user/appdata/chummer-anarchy2/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
-| Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600; Shadowrun 6's own in `sr6/.config/`). Never served over HTTP; back it up with the rest of appdata |
+| Image | `ghcr.io/jbowensii/nova-prime-chummer:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) after `ci` passes on a push to `main` |
+| Characters | `/mnt/user/appdata/nova-prime-chummer/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
+| House rules | `/mnt/user/appdata/nova-prime-chummer/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
+| Library | `/mnt/user/appdata/nova-prime-chummer/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600; Shadowrun 6's own in `sr6/.config/`). Never served over HTTP; back it up with the rest of appdata |
 | Icon | written to `/var/lib/docker/unraid/images/` and the dockerman runtime images folder. The template's GitHub raw URL can't serve from a private repo. |
 
 Characters live on the server, in the characters folder. Rebuilding the
@@ -88,16 +88,27 @@ published, the tag existed only as a tower-local build and force update
 failed — Unraid's `CreateDocker.php` skipped the container without stopping
 it, so it kept running on the old image. That no longer applies.)
 
+## 0.14.0: the rename to Nova Prime Chummer
+
+The app, image and template have a new name. The old image `ghcr.io/jbowensii/chummer-anarchy2` is still published next
+to the new one for now, so an existing container keeps working, but it is the one to leave.
+
+1. Stop the old container (Docker page → chummer-anarchy2 → Stop).
+2. Move the data folder: `mv /mnt/user/appdata/chummer-anarchy2 /mnt/user/appdata/nova-prime-chummer`.
+3. Docker tab → **Add Container** → pick the *nova-prime-chummer* template (it already points at
+   `/mnt/user/appdata/nova-prime-chummer/{characters,custom,library}` and sets `PUID`/`PGID` to 99/100) → Apply.
+4. Check the runners and Books are there, then remove the old container and its template.
+
 ## 0.4.0 upgrade (accounts, core data)
 
-1. Docker page → chummer-anarchy2 → **docker pull** first (0.4.0 needs a
+1. Docker page → nova-prime-chummer → **docker pull** first (0.4.0 needs a
    fresh image pull, not just a container restart), then Edit → **Apply**.
 2. If tower04 is exposed through a reverse proxy, fill in **Trusted proxy**
    (its address) and, if there's one public address, **Public address**
    before Apply — see [README.md](../README.md#behind-a-reverse-proxy-trust_proxy).
    Leave both empty for LAN-only.
 3. On first start after the upgrade, read the one-time setup code from the
-   container log (`docker logs chummer-anarchy2`) and use it to create the
+   container log (`docker logs nova-prime-chummer`) and use it to create the
    first admin. Any runners already at the top of the characters folder
    move into that admin's own folder.
 4. The core rulebook's tables (levels, metatypes, skills, pricing, amp
@@ -113,8 +124,8 @@ it, so it kept running on the old image. That no longer applies.)
 ## Redeploy after changes
 
 Push (or merge) to `main`; once `ci` passes, the `publish.yml` workflow builds and pushes
-`ghcr.io/jbowensii/chummer-anarchy2:latest`. On tower04: Docker →
-chummer-anarchy2 → **force update** (or Edit → Apply). No local build, no
+`ghcr.io/jbowensii/nova-prime-chummer:latest`. On tower04: Docker →
+nova-prime-chummer → **force update** (or Edit → Apply). No local build, no
 file copy to the tower.
 
 ## Books after a deploy

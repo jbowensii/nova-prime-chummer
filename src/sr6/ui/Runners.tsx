@@ -380,7 +380,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         />
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/trash" badge={trashed || undefined} />}
       </PageHeader>
-      <p className="muted">Shadowrun 6 runners, saved on the server (appdata/chummer-anarchy2/characters/sr6).</p>
+      <p className="muted">Shadowrun 6 runners, saved on the server (appdata/nova-prime-chummer/characters/sr6).</p>
       {banner && (
         <p className="banner err" role="alert">
           {banner}

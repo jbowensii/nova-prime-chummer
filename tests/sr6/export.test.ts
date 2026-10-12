@@ -36,7 +36,7 @@ describe('SR6 export: runners', () => {
       version: 1,
       kind: 'runners',
       exportedAt: OPTS.now,
-      app: { name: 'Chummer Anarchy 2.0', version: '0.9.0' },
+      app: { name: 'Nova Prime Chummer', version: '0.9.0' },
       descriptions: true,
     })
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)

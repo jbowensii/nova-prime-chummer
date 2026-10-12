@@ -61,7 +61,7 @@ export function BackupSettings() {
       const { token } = await api<{ token: string }>(`backup${keys ? '?keys=1' : ''}`, { method: 'POST' })
       const a = document.createElement('a')
       a.href = `./api/backup/${token}`
-      a.download = '' // the server's name: chummer-anarchy2-backup-<date>.zip
+      a.download = '' // the server's name: nova-prime-chummer-backup-<date>.zip
       a.click()
       setMsg({ text: 'The backup is ready. Your browser is saving it; its downloads list shows the progress.' })
     } catch (e) {

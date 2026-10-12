@@ -28,7 +28,7 @@ validation, nginx:alpine for the image.
 - Nothing is dropped silently. An unknown reference is kept and flagged `ref.unknown`.
 - Character file extension: `.ca2.json`. `formatVersion: 1`.
 - Default container port: 8480 → 80. Appdata: `/mnt/user/appdata/chummer-anarchy2/custom`.
-- Book source: `C:\Users\johnb\Downloads\Shadowrun Anachy 2.0\Shadowrun Anarchy 2.0 v1.8.md` (CRB). Printed page numbers appear as bare `**NN**` lines in that file.
+- Book source: `Downloads/Shadowrun Anachy 2.0\Shadowrun Anarchy 2.0 v1.8.md` (CRB). Printed page numbers appear as bare `**NN**` lines in that file.
 - Commits: subject under 70 characters, a body explaining why, and the trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 **Path note:** the spec says `data/` and `custom/` at the repo root. They live

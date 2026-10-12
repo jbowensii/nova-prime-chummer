@@ -1,4 +1,4 @@
-# Chummer Anarchy 2.0 data format
+# Nova Prime Chummer data format (Anarchy 2.0)
 
 All game data is XML. The app ships only `public/data/sources.xml` (the books
 a recipe supports) and the schemas. The **core files** (levels, metatypes,
@@ -482,7 +482,7 @@ never committed:
 | `texts/dhsa.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (recipe `dhsa`) |
 | `texts/qref.xml` | `python -m importer run <library/book-id> --custom <custom dir>` (one run per sheet; entries merged by id) |
 
-On tower04 they live in `/mnt/user/appdata/chummer-anarchy2/custom/texts/`.
+On tower04 they live in `/mnt/user/appdata/nova-prime-chummer/custom/texts/`.
 For local development without the server, copy them to `public/custom/texts/`
 (gitignored).
 

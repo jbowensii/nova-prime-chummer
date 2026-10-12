@@ -1,5 +1,24 @@
 # Release notes
 
+## 0.14.0 — 2026-10-12
+
+**The app is now called Nova Prime Chummer** (it was "Chummer Anarchy 2.0"). The games keep their names, Shadowrun
+Anarchy 2.0 and Shadowrun 6. Nothing about your runners, books or settings changes.
+
+**Admins, after updating:**
+- **Use the new Unraid template.** The Docker image is now `ghcr.io/jbowensii/nova-prime-chummer`. The old image,
+  `ghcr.io/jbowensii/chummer-anarchy2`, is still published alongside it for now, so an existing container keeps
+  working, but it will go away. Add the *nova-prime-chummer* template (it also has the `PUID`/`PGID` settings, 99 and
+  100) and remove the old container.
+- **The data folder moves to `/mnt/user/appdata/nova-prime-chummer`** (characters, custom and library). Stop the old
+  container, move the folder, then point the new container at it (docs/deploy-tower04.md has the steps).
+- Your sign-in accounts, saved runners and settings carry over untouched; the saved-file formats and the Foundry export
+  format ids keep their names, so existing files still open.
+
+**Everyone**
+- The page title, the header, the printed sheets (and the dossier footer), the Settings backup and data-pack files
+  (`nova-prime-chummer-backup-<date>.zip`) and the app name inside the Foundry export files say Nova Prime Chummer.
+
 ## 0.13.2 — 2026-10-12
 
 **Admins, after updating:**

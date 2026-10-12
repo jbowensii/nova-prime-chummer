@@ -18,7 +18,7 @@ test('refusals say what is wrong: no version, no id, no build, a Shadowrun 6 fil
     ok: false,
     reason: expect.stringContaining('Shadowrun 6'),
   })
-  expect(xmlToCharacter('<character/>')).toEqual({ ok: false, reason: 'Not a Chummer Anarchy 2.0 character file.' })
+  expect(xmlToCharacter('<character/>')).toEqual({ ok: false, reason: 'Not a Nova Prime Chummer Anarchy 2.0 character file.' })
 })
 
 test('a sparse file reads with defaults: attributes at 1, level runner, package free, no ledger', () => {

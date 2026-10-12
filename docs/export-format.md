@@ -188,7 +188,7 @@ A made-up runner with one amp and one weapon (no description texts):
   "version": 1,
   "kind": "runners",
   "exportedAt": "2026-10-02T09:15:00.000Z",
-  "app": { "name": "Chummer Anarchy 2.0", "version": "0.6.0" },
+  "app": { "name": "Nova Prime Chummer", "version": "0.6.0" },
   "descriptions": false,
   "runners": [{
     "id": "r-1", "updatedAt": "2026-10-01T18:00:00.000Z", "exportedAt": "2026-10-02T09:15:00.000Z",

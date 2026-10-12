@@ -151,7 +151,7 @@ function DataPack({ reload }: { reload: () => void }) {
       const { token } = await api<{ token: string }>('datapack', { method: 'POST' })
       const a = document.createElement('a')
       a.href = `./api/datapack/${token}`
-      a.download = '' // the server's name: chummer-anarchy2-datapack-<date>.zip
+      a.download = '' // the server's name: nova-prime-chummer-datapack-<date>.zip
       a.click()
       setMsg({ text: 'The data pack is ready. Your browser is saving it.' })
     } catch (e) {

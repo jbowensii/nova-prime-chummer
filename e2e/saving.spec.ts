@@ -36,7 +36,7 @@ test('the concept page saves: status line, leave and come back, Save and close, 
   await expect(status(page)).toContainText('All changes saved')
   await page.getByLabel('Real name').fill('Half typed')
   await page.getByLabel('keywords 1').fill('Night owl')
-  await page.getByRole('link', { name: /Chummer Anarchy/ }).click() // straight away, before the autosave
+  await page.getByRole('link', { name: /Nova Prime Chummer Anarchy/ }).click() // straight away, before the autosave
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   await page.getByRole('link', { name: 'Half typed' }).click()
   await expect(page.getByLabel('Real name')).toHaveValue('Half typed')
@@ -63,7 +63,7 @@ test('a failed save says so in red with the server’s reason; Retry sends it', 
   await shots(page, 'save-failed')
   // leaving now asks first; staying keeps the change
   page.once('dialog', d => void d.dismiss())
-  await page.getByRole('link', { name: /Chummer Anarchy/ }).click()
+  await page.getByRole('link', { name: /Nova Prime Chummer Anarchy/ }).click()
   await expect(page.getByLabel('Real name')).toHaveValue('Retry me')
   await page.unroute('**/api/characters/*')
   await status(page).getByRole('button', { name: 'Retry' }).click()

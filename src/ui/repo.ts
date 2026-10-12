@@ -1,4 +1,4 @@
-// Where runners are saved: the Chummer server when the app is served by it, else this
+// Where runners are saved: the Nova Prime Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
 import { createContext, useContext } from 'react'
 import { characterToXml, xmlToCharacter } from '../engine'
@@ -159,7 +159,7 @@ export const rootAttr = (xml: string, name: string, root = 'ca2:character') => {
 }
 const rootName = (xml: string, root?: string) => rootAttr(xml, 'streetName', root) || rootAttr(xml, 'name', root)
 
-/** The server repo if this page is served by the Chummer server, else the browser repo. */
+/** The server repo if this page is served by the Nova Prime Chummer server, else the browser repo. */
 export async function detectRepo(): Promise<Repo> {
   try {
     const r = await fetch('./api/health', { cache: 'no-store', signal: AbortSignal.timeout(2500) })

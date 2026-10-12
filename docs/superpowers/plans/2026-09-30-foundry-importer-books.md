@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Repo `C:\dev\chummer-anarchy2-foundry`, branch `feat/0.2.0` from `main` (v0.1.1), PR to main; module version 0.2.0, download URL `…/releases/download/v0.2.0/module.zip`.
+- Repo `../chummer-anarchy2-foundry`, branch `feat/0.2.0` from `main` (v0.1.1), PR to main; module version 0.2.0, download URL `…/releases/download/v0.2.0/module.zip`.
 - `readExport` accepts `kind: "books"` (non-empty `books` array, each with `source.id` and `source.name`); runners files work as before.
 - One compendium **folder** per book, named `<book name> (<source id>)`, inside a top folder "Chummer Anarchy". Packs only for content the book has: Amps, Weapons, Armor, Gear, Spells (Item; complex forms go in Spells), Vehicles (Actor), Skills & specializations (Item; only skills/specs sra2 doesn't already have — `skillFor(...).known === false` / `specFor(...).known === false`), Rules (JournalEntry). Pack labels `<Type> — <source id>`, pack names `ca2-<source id lowercased>-<type>` (world packs).
 - Table rules: a pack "Table rules — Chummer" (`ca2-table-rules`, JournalEntry) in the top folder, one journal "Table rules" with a page per rule; replaced wholesale on each books import.
