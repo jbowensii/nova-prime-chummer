@@ -776,6 +776,7 @@ function newLine(
   const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
+    if (c.cost < 0 || c.avail < 0 || c.essence < 0) return { ok: false, reason: 'below-zero' } // Review's hard value.negative would block it for good
     return { ...base, name: c.name, cost: c.cost, avail: c.avail, essence: c.essence }
   }
   const e = data.entry(op.kind, op.id)

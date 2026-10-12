@@ -118,6 +118,14 @@ test('Qualities and gear come from the pickers; contacts are added and removed',
   await click(button(/^Add/, dialog()))
   expect(pageText()).toMatch(/Made-up gizmo/)
 
+  // a negative price is refused in the dialog (it stays open, saying why), not kept for Review to block later
+  await click(button('Custom item…'))
+  await change(field('Name', dialog()), 'Made-up debt')
+  await change(field('Cost', dialog()), '-500')
+  await click(button(/^Add/, dialog()))
+  expect(dialog().querySelector('[role=alert]')?.textContent).toBe('Can’t go below zero.')
+  await click(button('Cancel', dialog()))
+
   await e.tab('contacts')
   await click(button('Add a contact'))
   await click(button('Add a contact'))

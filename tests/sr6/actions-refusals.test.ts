@@ -244,6 +244,9 @@ test('gear lines: removing, quantity, accessories, wearing and the numbers of a 
   expect(r.act({ op: 'purchase', kind: 'gear', id: 'crb.zap-scope', grade: 'alpha' })).toEqual(no('no-grade'))
   expect(r.act({ op: 'purchase', kind: 'gear' })).toEqual(ok) // no catalog id: a blank custom line
   expect(r.b.purchases[0]).toMatchObject({ name: '', cost: 0, avail: 0, essence: 0, qty: 1 })
+  for (const bad of [{ cost: -500 }, { avail: -1 }, { essence: -0.5 }])
+    expect(r.act({ op: 'purchase', kind: 'gear', custom: { name: 'Made-up', cost: 0, avail: 0, essence: 0, ...bad } })).toEqual(no('below-zero'))
+  expect(r.b.purchases).toHaveLength(1) // none of them was kept
   expect(r.act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
   const gun = r.b.purchases[1].uid
   expect(r.act({ op: 'quantity', uid: 'nope', qty: 2 })).toEqual(no('unknown-line'))
