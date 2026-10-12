@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { because } from './auth'
 import { Modal } from './bits'
-import { api } from './Books'
+import { api } from './api'
 import { esc } from '../shared/xml'
 
 export interface OverrideGame {

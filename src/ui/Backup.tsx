@@ -1,7 +1,7 @@
 // Settings → Backup (server only): download everything the server keeps as one zip, or replace it all from one.
 // Restore is two steps: upload + check (a preview with a token), then apply; the page reloads after (server/books.mjs).
 import { useEffect, useRef, useState } from 'react'
-import { api, sendFile } from './Books'
+import { api, sendFile } from './api'
 import { because } from './auth'
 import { useRepo } from './repo'
 

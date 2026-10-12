@@ -7,14 +7,23 @@ import type { BrowseRow } from '../../ui/CatalogBrowser'
 import { EntryHover, type CardEffect } from '../../ui/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
 import { catalogFind, resolveEntry } from '../engine/load'
-import type { Find } from '../engine/values'
+import { formulaRange, type Find } from '../engine/values'
+import { formulaOf, formulaText } from '../../engine/formula'
 import { type Sr6Advance, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { effectState, effectText } from '../engine/effects'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
-import { ATTR_NAMES, useSr6Editor, type Sr6Ctx } from './editor'
+import { ATTR_NAMES, n, useSr6Editor, type Sr6Ctx } from './editor'
 import { attrMax, bonusSources, bracketNotes } from '../engine/budgets'
 import { br } from '../print/view'
-import { formulaShown } from './Picker'
+
+/** A field's formula and its values over the ratings the entry comes in: "Rating × 200¥ (200–1,200¥)", "(unpriced)"
+ *  when it can't be worked out; undefined without a formula. (The picker shows it too.) */
+export function formulaShown(e: Sr6Entry, field: string, find?: Find): string | undefined {
+  const f = formulaOf(e.formulas, field)
+  if (!f) return undefined
+  const r = formulaRange(e, field, find), u = field === 'cost' ? '¥' : ''
+  return `${formulaText(f, e.attrs[field])} (${!r ? 'unpriced' : r[0] === r[1] ? `${n(r[0])}${u}` : `${n(r[0])}–${n(r[1])}${u}`})`
+}
 
 /** What an entry's <effect> and <link> parts do (effects.ts effectText), as the hover card and Game data show them. */
 export function effectsOf(e: Sr6Entry): CardEffect[] {

@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { armorSocial, bookValue, chosenRating, dataFind, formulaRange, legality, ratingRange, type Find } from '../engine/values'
+import { armorSocial, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../engine/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
@@ -14,7 +14,7 @@ import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
-import { Sr6Ref, sr6Row } from './EntryRef'
+import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -31,15 +31,6 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
     avail: show('avail', v => `${v + (g('avail') ?? 0)}${legal ? `(${legal})` : ''}`),
     essence: show('essence', v => n(Math.round(v * (g('essence') ?? 1) * 100) / 100)),
   }
-}
-
-/** A field's formula and its values over the ratings the entry comes in: "Rating × 200¥ (200–1,200¥)", "(unpriced)"
- *  when it can't be worked out; undefined without a formula. */
-export function formulaShown(e: Sr6Entry, field: string, find?: Find): string | undefined {
-  const f = formulaOf(e.formulas, field)
-  if (!f) return undefined
-  const r = formulaRange(e, field, find), u = field === 'cost' ? '¥' : ''
-  return `${formulaText(f, e.attrs[field])} (${!r ? 'unpriced' : r[0] === r[1] ? `${n(r[0])}${u}` : `${n(r[0])}–${n(r[1])}${u}`})`
 }
 
 /** An armor's Social modifier as shown (`Social +2`, `Social –4`), or nothing when it prints none. */

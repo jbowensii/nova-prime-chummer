@@ -3,7 +3,8 @@
 // Each game has its own (game="sr6", #/sr6/books/ai: /api/sr6/ai-*, library/sr6/.config): its own provider, key and
 // AnythingLLM workspace, for its own Ask the rules and AI search; Anarchy's also reads books no recipe knows.
 import { useEffect, useState } from 'react'
-import { api, BooksHeader, PROVIDER_NAMES } from './Books'
+import { api } from './api'
+import { BooksHeader, PROVIDER_NAMES } from './Books'
 import { because } from './auth'
 import { useRepo } from './repo'
 

@@ -21,8 +21,7 @@ import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../engin
 import { makeProvider } from '../engine/providers'
 import { migrateSr6Ids } from '../engine/migrate'
 import { validateSr6 } from '../engine/rules'
-import { MAGIC_KINDS } from '../engine/data'
-import type { MagicKind, Sr6Character } from '../model/character'
+import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 import { Budgets } from './Budgets'
 import { rulesForRunner, tableRulesFor, useRunnerCampaign } from './Creation'
@@ -47,17 +46,9 @@ import { StatsTab } from './tabs/Stats'
 import { VehiclesTab } from './tabs/Vehicles'
 import { Sr6Sheet } from '../print/Sheet'
 import { TabBoundary } from '../../shared/ui'
+import { NPC_TABS, sr6Tabs } from './tabList'
 
-/** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer, and Ledger only in
- *  career (sr6Tabs). */
-export const SR6_TABS: [string, string][] = [['concept', 'Concept'], ['method', 'Creation method'], ['attributes', 'Attributes'],
-  ['skills', 'Skills'], ['qualities', 'Qualities'], ['martial', 'Martial arts'], ['magic', 'Magic'], ['augmentations', 'Augmentations'], ['gear', 'Gear'],
-  ['vehicles', 'Vehicles'], ['contacts', 'Contacts & lifestyle'], ['review', 'Review'], ['ledger', 'Ledger'], ['print', 'Print']]
-export const sr6Tabs = (magic: MagicKind, career = false): [string, string][] => SR6_TABS
-  .filter(([k]) => (k !== 'magic' || magic !== 'mundane') && (k !== 'ledger' || career))
-  .map(([k, l]) => [k, k === 'magic' && MAGIC_KINDS[magic].resonance ? 'Resonance' : l])
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
-export const NPC_TABS: [string, string][] = [['concept', 'Concept'], ['stats', 'Stat block'], ['print', 'Print']]
 
 /** `cr`: the server's creation rules; a runner in a campaign with its own settings uses those instead. */
 export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab, npc = false }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string; tab: string; npc?: boolean }) {

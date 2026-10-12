@@ -9,7 +9,8 @@ import type { Catalog } from '../model/types'
 import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
 import { Modal, NonCanon } from './bits'
 import { useRepo } from './repo'
-import { accountHeader, because, isAdmin, sessionEnded, useMe } from './auth'
+import { because, isAdmin, useMe } from './auth'
+import { api, sendFile } from './api'
 
 export interface Book { id: string; file?: string; state: string; message: string; source?: string; name?: string; canon?: boolean;
   recipe?: string; imported?: string; counts: Record<string, number>; busy: boolean; review?: 'done' | 'partial'
@@ -48,34 +49,6 @@ function counts(c: Record<string, number>, sr6?: boolean) {
 /** A recipe's book with core tables it couldn't read: the AI can propose their rows. */
 const canCoreAi = (b: Book) => !!b.source && !!b.coreUnread?.length
 const tables = (files: string[]) => files.map(f => f.replace(/[.]xml$/, '')).join(', ')
-
-const UNREACHABLE = 'the server can’t be reached'
-
-/** JSON from the Books API, or an Error carrying the server's own message. */
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`./api/${path}`, { cache: 'no-store', ...init }).catch(() => { throw new Error(UNREACHABLE) })
-  if (!r.ok) throw new Error((await r.json().catch(() => null))?.error ?? `the server answered ${r.status}`)
-  return (r.status === 204 ? null : r.headers.get('content-type')?.includes('json') ? r.json() : r.text()) as Promise<T>
-}
-
-/** POST one file with upload progress (fetch can't report it; a book can be hundreds of MB, a backup GBs); the response text. */
-export function sendFile(path: string, file: File, headers: Record<string, string>, onProgress: (pct: number) => void): Promise<string> {
-  return new Promise((ok, fail) => {
-    const x = new XMLHttpRequest()
-    x.open('POST', `./api/${path}`)
-    for (const [k, v] of Object.entries({ ...headers, ...accountHeader() })) x.setRequestHeader(k, v)
-    x.upload.onprogress = e => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
-    x.onload = () => {
-      if (x.status === 401) { // the sign-in form comes up over the page
-        sessionEnded()
-        return fail(Object.assign(new Error('you were signed out: sign in again, then send it again'), { status: 401 }))
-      }
-      return x.status < 300 ? ok(x.responseText) : fail(Object.assign(new Error((() => { try { return JSON.parse(x.responseText).error } catch { return `the server answered ${x.status}` } })()), { status: x.status }))
-    }
-    x.onerror = () => fail(new Error(UNREACHABLE))
-    x.send(file)
-  })
-}
 
 /** Supported books: public/data/sources.xml (SR6: data/sr6/sources.xml) as shipped (the merged catalog can't tell a
  *  shipped source from an import). */
