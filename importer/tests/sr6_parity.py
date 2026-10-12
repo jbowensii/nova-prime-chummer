@@ -67,7 +67,18 @@ RUNNERS = [
     # past the starting Karma: built as a prime runner (its rules say so, assumed)
     ("prime", block("Prime", "Glimmerkin", {k: "6" for k in ("B", "A", "R", "S", "W", "L", "I", "C")},
                     skills="Tinkering 6, Gab 6", qualities="Knack, Lucky Streak 3")),
+    # a level of play (the Sixth World Companion's street-level: its letters, B C C D E, and sum-to-ten target in place of
+    # the table's) and a nested rule on (Twenty Questions' karma), another whose parent is off (sum-to-thirteen, Elite's)
+    ("street-level", block("Streeter", "Glimmerkin", gear="Puff Coat, Buzz Box 2", skills="Tinkering 3, Gab 2",
+                           qualities="Lucky Streak 2"),
+     {"levelSwcStreet": "true", "swcStreet.letters": "BCCDE", "swcStreet.sumToTen": "8", "twentyQuestions": "true",
+      "twentyQuestionsKarma": "6", "eliteSumToThirteen": "true"}),
 ]
+
+
+def _json(v):
+    """A setting's value as the app holds it: true/false, a number, else the text."""
+    return {"true": True, "false": False}.get(v, v) if isinstance(v, str) else int(v) if v == int(v) else v
 
 
 def runners():
@@ -97,7 +108,8 @@ def runners():
             need, got = seen[-1]
             out.append({"name": name, "settings": over, "xml": xml, "unmatched": [r["value"] for r in report],
                         "py": {"nuyen": need["nuyen"], "karmaLeft": got["karmaLeft"], "nuyenLeft": got["nuyenLeft"],
-                               "karmaToNuyen": got["karmaToNuyen"]} if got else None})
+                               "karmaToNuyen": got["karmaToNuyen"]} if got else None,
+                        "resolved": {k: _json(v) for k, v in fit.resolve(cs).items()}})
         return out
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -105,4 +117,5 @@ def runners():
 
 if __name__ == "__main__":
     json.dump({"patch": PATCH, "files": [{"file": f"custom/sr6/imported/mup/{f}", "xml": x} for f, x in FILES.items()],
-               "runners": runners()}, sys.stdout)
+               "runners": runners(), "deps": {"requires": fit.REQUIRES, "levelKeys": fit.LEVEL_KEYS, "levels": fit.LEVELS,
+                                              "sets": fit.SETS}}, sys.stdout)

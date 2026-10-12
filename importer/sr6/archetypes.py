@@ -206,7 +206,8 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     entries, ids unscoped); `core`: the core rulebook's as imported (ids scoped), for what the book cites from it; `cs`:
     the creation settings the priorities are fitted with (fit.py; default the shipped standard ones)."""
     idx, sid = _Index(entries, src, core), f"{src.lower()}.{slug(name) or 'runner'}"
-    cs = fit.settings() if cs is None else cs
+    raw = fit.settings() if cs is None else cs
+    cs = fit.resolve(raw)  # (as the app applies them: nested rules, levels of play)
     num = lambda v: fit.value(str(v)) or 0
     setting = lambda k: cs.get(k) if isinstance(cs.get(k), float) else 0
     # what the printed things cost, for fitting the priorities (fit.spend's `need`)
@@ -431,9 +432,10 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     expanded = cs.get("expandedContacts") == "true"
     wants = pairs and not expanded and (sum(c + l for c, l in pairs) > cha * per or any(max(c, l) > cha for c, l in pairs))
     if pairs and (expanded or wants):
-        soft = cha * setting("contactPairPerCha") if isinstance(cs.get("contactPairPerCha"), float) else math.inf
+        ex = cs if expanded else fit.resolve({**raw, "expandedContacts": "true"})  # (assumed: its nested settings apply)
+        soft = cha * ex["contactPairPerCha"] if isinstance(ex.get("contactPairPerCha"), float) else math.inf
         past = max(0, sum(c + l for c, l in pairs) - cha * per) + sum(max(0, c + l - soft) for c, l in pairs)
-        need["karma"] += past * setting("contactKarma")
+        need["karma"] += past * (ex["contactKarma"] if isinstance(ex.get("contactKarma"), float) else 0)
     got = fit.fit(need, rows, cs) if meta and rows and cs else None
     # the options a book rule gives that the printed numbers need (owner, 2026-10-09), written as the runner's own rules,
     # marked assumed (the book doesn't say): the prime runner's doubled customization Karma (CRB Hong Kong p.63) when no
@@ -442,8 +444,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     # contacts take more than Charisma x 6 points or a rating above Charisma. Nothing a book rule doesn't explain.
     assumed = []
     if got and got.get("over", 0) > 0 and isinstance(cs.get("startingKarma"), float):
-        prime = {**cs, "startingKarma": cs["startingKarma"] * 2}
-        better = fit.fit(need, rows, prime)
+        better = fit.fit(need, rows, fit.resolve({**raw, "levelPrime": "true"}, own={"levelPrime"}))
         if better and better["over"] < got["over"]:
             got = better
             assumed.append(("levelPrime", "true", "CRB-HK", 63))
