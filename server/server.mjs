@@ -251,7 +251,8 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       }
       const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
       if (!m) return send(res, 404, { error: 'not found' })
-      const id = decodeURIComponent(m[1])
+      let id
+      try { id = decodeURIComponent(m[1]) } catch { id = '' } // a malformed %-escape: a bad id, not a 500
       if (!ID.test(id)) return send(res, 400, { error: 'bad id' })
       if (req.method !== 'DELETE' && req.method !== 'PUT') return send(res, 405, { error: 'method not allowed' })
       const xml = req.method === 'PUT' ? await readBody(req) : null
