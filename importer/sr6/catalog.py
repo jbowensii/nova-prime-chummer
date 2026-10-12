@@ -76,7 +76,8 @@ LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPow
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
 PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "lifestyles"}  # cost/avail checked
-ROW_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "ammotypes"}  # need a table row and a category
+# ordered (a tuple): the loops over it decide which kind's entry comes first (a category, a part name), the same every run
+ROW_KINDS = ("weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "ammotypes")  # need a table row and a category
 STAT_KINDS = {"critters", "spirits", "npcs", "sprites"}  # need a stat band
 BOX_KINDS = {"spells", "qualities", "adeptpowers", "critterpowers", "complexforms", "rituals"}  # need a band, labels or tags
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
