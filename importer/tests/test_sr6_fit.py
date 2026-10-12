@@ -103,6 +103,13 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend({**n, "magic": "full"}, {**rows, "magic": {**rows["magic"], "magic": {"full": 3}}},
                                    CS)[1]["extraMagic"], 0)  # a magician's powers buy nothing: 3 free
 
+    def test_no_karma_to_nuyen_rate_turns_none(self):
+        """A karmaToNuyenRate of 0 (a house rule): no karma becomes nuyen, and nuyen past its carry-over limit is no
+        division by zero."""
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "BACDE")}
+        got = fit.spend(need(), rows, {**CS, "karmaToNuyenRate": 0.0, "maxNuyenLeft": 50.0})[1]
+        self.assertEqual(got["karmaToNuyen"], 0)
+
     def test_karma_into_nuyen_past_what_the_gear_needs(self):
         """Karma left over turns into nuyen when that clears the Karma carry-over limit with the nuyen within its own;
         otherwise the count that leaves the printed nuyen; never nuyen below 0 by choice."""

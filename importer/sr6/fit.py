@@ -269,7 +269,7 @@ def spend(need, rows, cs):
     def leftover(k):
         nuyen = res.get("nuyen", 0) + k * rate - need["nuyen"]
         over_n = nuyen - top("maxNuyenLeft")
-        excess = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 else 0)
+        excess = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 and rate else 0)
         return ((room - k > top("maxKarmaLeft")) + (over_n > 0), abs(nuyen - need["left"]) if need["left"] is not None else 0,
                 excess, k)
     # (more than the gear needs only while the nuyen stays within its limit)
