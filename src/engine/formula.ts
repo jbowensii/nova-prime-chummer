@@ -188,7 +188,7 @@ export function evalFormula(f: Formula, vars: Vars, ref?: RefLookup): FormulaRes
  *  stands for (the printed value, a standard price), shown in its place. */
 export function formulaText(f: Formula, base?: string): string {
   const words: Record<string, string> = { R: 'Rating', Q: 'Quantity', M: 'Magic', B: base ?? 'Printed value', H: 'The item it goes on' }
-  const body = f.expr.replace(/\b[RQMB]\b/g, v => words[v]).replace(/\s*\*\s*/g, ' × ').replace(/\s*\/\s*/g, ' ÷ ').replace(/\s+/g, ' ').trim()
+  const body = f.expr.replace(/\b[RQMBH]\b/g, v => words[v]).replace(/\s*\*\s*/g, ' × ').replace(/\s*\/\s*/g, ' ÷ ').replace(/\s+/g, ' ').trim()
   return `${body}${f.field === 'cost' ? '¥' : ''}${f.unit ? ` per ${f.qty ? `${f.qty} ` : ''}${f.unit}` : ''}`
 }
 
