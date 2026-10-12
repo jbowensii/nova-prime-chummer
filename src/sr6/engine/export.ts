@@ -3,7 +3,8 @@
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
 import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
-import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Compendium, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import type { Sr6Compendium } from '../model/character'
 import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
 import { bonusValue } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'

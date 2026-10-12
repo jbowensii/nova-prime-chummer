@@ -13,7 +13,8 @@ import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../../sr
 import { buildSr6Catalog } from '../../src/sr6/engine/load'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Compendium, Sr6Entry, Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Entry, Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation } from './fixture'
 
 const entry = (kind: Sr6Kind, id: string, name: string, attrs: Record<string, string>, source = 'STREET'): Sr6Entry => ({

@@ -8,7 +8,8 @@ import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { NPC_GROUP, sr6Rows } from '../../src/sr6/ui/Compendiums'
 import { moveNpcOut, moveNpcsIn } from '../../src/sr6/ui/compendiumStore'
 import type { Sr6Character } from '../../src/sr6/model/character'
-import { SR6_KINDS, type Sr6Compendium, type Sr6Kind } from '../../src/sr6/model/types'
+import { SR6_KINDS, type Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()

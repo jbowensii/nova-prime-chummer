@@ -1,11 +1,10 @@
 // Derived values shown on the sheet (CRB p.52, 60, 61, 67-68, 77).
-import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, KnowledgeEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, KnowledgeEntry, TableFlags } from '../model/types'
 import { ATTRS } from '../model/types'
 import { ampEssence, FIREWALL_MAX, isRuleEffect, ruleText, testName } from './amps'
 import { applies, counts, effectHow, inBracket, own } from './effects'
 import { currentBuild } from './career'
 import { nativeLanguage, slotLapse } from './price'
-import type { TableFlags } from './validate'
 
 /** The books' optional rules the engine applies, by the unscoped id their import seeds them into Table rules with (the
  *  imported entry's id is scoped by its source: "crb.optional-…"; optionOn matches either). */

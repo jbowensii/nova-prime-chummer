@@ -1,9 +1,8 @@
 // Nuyen pricing (CRB p.83). One price list for creation and advancement.
-import type { Build, Catalog, Character, Item, ItemEntry, KnowledgeEntry, Pricing } from '../model/types'
+import type { Build, Catalog, Character, Item, ItemEntry, KnowledgeEntry, Pricing, TableFlags } from '../model/types'
 import { evalFormula, formulaOf, type Formula } from './formula'
 import { ATTRS } from '../model/types'
 import { ampCtx, ampRating, sinnerFree } from './amps'
-import type { TableFlags } from './validate'
 
 /** Attribute points from..to; the point that reaches the metatype max costs attrLastPoint. */
 export function attrCost(p: Pricing, from: number, to: number, max: number): number {

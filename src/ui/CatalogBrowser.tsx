@@ -6,35 +6,12 @@
 // attention shows only the entries with an issue (a value the book leaves out or the importer
 // couldn't read, src/engine/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { AskSearch, type AskGame } from './AskRules'
-import type { Issue } from '../engine/formula'
-import type { CardEffect } from './EntryHover'
+import type { BrowseRow } from './types'
 import { IssueBadges } from './Issues'
 import { Prose } from './Prose'
 
-export interface BrowseRow {
-  key: string
-  name: string
-  source: string
-  page: number
-  /** the sub-category inside its kind ("Handguns", "Cyberware: eyeware") */
-  group?: string
-  /** the printed values, one line */
-  details?: string
-  /** its description: searched, and shown under Description */
-  text?: string
-  /** other words a search finds it by (its category with its name, the names it is printed under) */
-  search?: string
-  /** after the source: Edited, House… */
-  marks?: ReactNode
-  /** its Edit button or link */
-  action?: ReactNode
-  /** what needs attention: shown as badges, and Needs attention lists only these rows */
-  issues?: Issue[]
-  /** what it does on a runner (SR6: its effects, applied or shown only) */
-  effects?: CardEffect[]
-}
 export interface BrowseKind {
   id: string
   label: string

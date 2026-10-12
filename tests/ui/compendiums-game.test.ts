@@ -4,7 +4,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { compendiumXml } from '../../src/engine'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
-import type { Sr6Compendium } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiumStore'
 import { deleteCompendium, listCompendiums, listShared, parseRows } from '../../src/ui/compendiumStore'
 

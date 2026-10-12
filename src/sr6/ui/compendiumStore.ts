@@ -6,7 +6,7 @@ import { listCompendiums, parseRows, putCompendium, type CompendiumRow, type Sto
 import type { SaveResult } from '../../ui/repo'
 import { readSr6Compendium, sr6CompendiumXml } from '../engine/compendium'
 import type { Sr6Character } from '../model/character'
-import type { Sr6Compendium } from '../model/types'
+import type { Sr6Compendium } from '../model/character'
 
 export const listSr6Compendiums = () => listCompendiums('./', 'sr6')
 export const saveSr6Compendium = (comp: Sr6Compendium, rev?: number) => putCompendium('sr6', comp.id, sr6CompendiumXml(comp), rev)

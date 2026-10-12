@@ -3,7 +3,7 @@
 // pool they cover, and the entries an entry grants or works as (owner decisions 2026-10-10).
 import { BONUS_SWITCHES, SR6_ATTRS, type Bonus, type Sr6Attr } from '../model/character'
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
-import type { Sr6Data } from './data'
+import type { Sr6Data } from './types'
 import { normName } from './names'
 import { counts, type EffectState } from '../../engine/effects'
 

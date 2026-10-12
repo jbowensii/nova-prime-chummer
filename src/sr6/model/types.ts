@@ -1,7 +1,6 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
 // its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
 import type { Formula, Issue } from '../../engine/formula'
-import type { Sr6Character } from './character'
 
 export type Sr6Kind =
   | 'priorities'
@@ -179,21 +178,6 @@ export interface Sr6Source {
   origin: 'shipped' | 'imported' | 'user'
   compendium?: { id: string; owner: string; campaign?: string }
 }
-/** A GM's SR6 compendium (src/sr6/engine/compendium.ts): entries of the compendium kinds citing its own source, and NPCs.
- *  owner/ownerName come from the server (the folder it's stored in), never from the file. */
-export interface Sr6Compendium {
-  id: string
-  name: string
-  source: string
-  sharing: 'private' | 'campaign' | 'table'
-  campaign?: string
-  rev?: number
-  updatedAt: string
-  owner?: string
-  ownerName?: string
-  entries: Sr6Entry[]
-  npcs: Sr6Character[]
-}
 /** original: the book's version of each edited entry, keyed by entryKey(kind, id) (src/sr6/engine/load.ts). */
 export interface Sr6Catalog {
   entries: Record<Sr6Kind, Map<string, Sr6Entry>>
@@ -203,7 +187,7 @@ export interface Sr6Catalog {
   moved: Map<string, { kind: Sr6Kind; id: string }>
   /** the families of levels (src/sr6/engine/levels.ts), by entryKey(kind, family): a rated or leveled entry expanded
    *  into one entry per level (the parent kept here, out of `entries`), or rows the book prints one per level */
-  levels?: Map<string, import('../engine/levels').Sr6Family>
+  levels?: Map<string, Sr6Family>
   files: { file: string; kind: string; entries: number }[]
   errors: { file: string; message: string }[]
   /** corrections of book sample runners' printed lines (the edits layer's <samplefix>), by sample id */
@@ -219,4 +203,12 @@ export interface Sr6SampleFix {
   by?: string
   text: string
   corrects: { item: string; field: 'rating' | 'qty' | 'grade'; from: string; to: string; note?: string }[]
+}
+
+/** A family of levels: the parent (absent for rows the book prints apart) and each level's entry id. */
+export interface Sr6Family {
+  kind: Sr6Kind
+  family: string
+  parent?: Sr6Entry
+  levels: Map<number, string>
 }

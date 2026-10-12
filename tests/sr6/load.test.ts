@@ -9,7 +9,8 @@ import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { buildSr6Catalog, collectSr6Files, plainTexts, sr6EntryXml } from '../../src/sr6/engine/load'
 import { entryKey } from '../../src/sr6/engine/names'
-import { SR6_KINDS, type Sr6Compendium, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
+import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../../src/sr6/model/types'
+import type { Sr6Compendium } from '../../src/sr6/model/character'
 
 const get = async (path: string) => {
   const file = path.startsWith('data/') ? join('public', path) : path.startsWith('custom/sr6/') ? join('tests/fixtures/sr6/custom', path.slice(11)) : null

@@ -3,11 +3,10 @@
 // balance is the ledger's running total: what creation left + earnings - those recorded prices (ledgerRunning).
 // Runners finalized before 0.5.5 kept a baseline build plus events (advance, buy, sell...) applied on top; settle()
 // folds those into the build once, keeps them as history and carries their balance over unchanged.
-import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry } from '../model/types'
+import type { AmpEntry, AttrId, Build, CareerEvent, Catalog, Change, Character, ItemEntry, KnowledgeEntry, TableFlags } from '../model/types'
 import { ATTRS, newId } from '../model/types'
 import { ampCtx, ampChangeCost, ampRating } from './amps'
 import { attrCost, attrMax, catalogItem, itemCost, partPrices, price, skillCost } from './price'
-import type { TableFlags } from './validate'
 
 type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, 'id' | 'at'> : never) : never
 const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent

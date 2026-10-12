@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, test } from 'vitest'
 import { EntryHover } from '../../src/ui/EntryHover'
-import type { BrowseRow } from '../../src/ui/CatalogBrowser'
+import type { BrowseRow } from '../../src/ui/types'
 import { effectsOf } from '../../src/sr6/ui/EntryRef'
 import type { Sr6Entry } from '../../src/sr6/model/types'
 
