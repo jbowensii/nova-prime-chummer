@@ -55,6 +55,12 @@ test('a leveled quality or power is one entry per level with its Karma or power 
   expect(data.qualities['crb.lucky-streak']).toMatchObject({ karma: 4, perLevel: true, maxLevel: 3, parent: true })
 })
 
+test('a leveled power’s combat skill price is its level’s too, like its cost', () => {
+  const c = fixtureCatalog((f, x) => f.endsWith('crb/adeptpowers.xml') ? x.replace('cost="0.25" perLevel="true"', 'cost="0.25" costCombat="0.5" perLevel="true"') : x)
+  expect(c.entries.adeptpowers.get('crb.quick-step.3')!.attrs).toMatchObject({ cost: '0.75', costCombat: '1.5' })
+  expect(sr6Data(c).powers['crb.quick-step.3']).toMatchObject({ cost: 0.75, costCombat: 1.5 })
+})
+
 test('a rated bioware with +R on a test (Awareness: Tactical, rating 1–3) is Tactical 1, 2 and 3 with +1, +2 and +3', () => {
   const c = fixtureCatalog((f, x) => (f.endsWith('crb/augmentations.xml')
     ? x.replace('</sr6:data>', '<augmentation id="crb.zap-sense-tactical" source="CRB" page="1" type="bioware" category="made-up bioware" rating="1–3" essence="Rating × 0.2" avail="2" cost="Rating × 15000">'

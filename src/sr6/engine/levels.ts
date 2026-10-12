@@ -21,8 +21,8 @@ const round2 = (x: number) => Math.round(x * 100) / 100
 const RANGE = /\s*\((?:(?:rating|level|force)\s+)?(\d+)\s*[-–]\s*(\d+)\)\s*$/i
 /** a name the book prints with its level: `Cyberjack (Rating 2)`, `Telescoping (Level 1)`, `Wired Reflexes 3` */
 const PRINTED = /^(.+?)\s*(?:\((?:rating|level)\s+(\d{1,2})\)|\s(\d{1,2}))$/i
-/** the fields a level multiplies: a quality's Karma (a range's both ends), a power's power points */
-const SCALED = ['karma', 'karmaMax', 'cost']
+/** the fields a level multiplies: a quality's Karma (a range's both ends), a power's power points (its combat skill price too) */
+const SCALED = ['karma', 'karmaMax', 'cost', 'costCombat']
 const usesR = (e: Sr6Entry) => e.parts.some(p => p.tag === 'effect' && effectValue(p.attrs.value)?.perRating)
   || (e.formulas ?? []).some(f => /\bR\b/.test(f.expr))
 const slug = (s: string) => s.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
