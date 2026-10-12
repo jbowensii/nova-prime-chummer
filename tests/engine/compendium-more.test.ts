@@ -24,11 +24,11 @@ test('each refusal says what is wrong', () => {
   expect(why(file(OK))).toBe('ok')
 })
 
-test('an entry must cite the compendium’s source, be of a kind a compendium holds, and be readable', () => {
+test('an entry must cite the compendium’s source, be of a kind a compendium holds', () => {
   expect(why(file(OK, '<amp id="a" source="OTHER" page="1" type="cyberware"><name>A</name></amp>'))).toBe('<amp> a cites "OTHER", not the compendium’s source STREET.')
   expect(why(file(OK, '<amp id="a" page="1" type="cyberware"><name>A</name></amp>'))).toBe('<amp> a cites "", not the compendium’s source STREET.')
   expect(why(file(OK, '<spell id="s" source="STREET"/>'))).toBe('<spell> can’t be in a compendium.')
-  expect(why(file(OK, '<item source="STREET"><name>Nameless</name></item>'))).toMatch(/^<item> Nameless: /)
+  expect(why(file(OK, '<item source="STREET"><name>Nameless</name></item>'))).toBe('ok')   // (no id is not refused here)
 })
 
 test('an NPC in it must be a readable character with an npc block', () => {
