@@ -37,7 +37,6 @@ export interface Sr6SkillView {
   specs: string[]
   page: number
 }
-/** granted: never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
 export interface Sr6QualityChoice {
   category: string
   count: number
@@ -55,6 +54,7 @@ export interface Sr6QualityView {
   maxLevel: number
   page: number
   category?: string
+  /** never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
   granted?: boolean
   choices?: Sr6QualityChoice[]
   /** not one of the six qualities a runner may take at creation (its text says so) */

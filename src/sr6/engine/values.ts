@@ -1,6 +1,9 @@
 import { evalFormula, formulaOf, type Formula, type Vars } from '../../engine/formula'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 
+// Reads the values the SR6 catalog keeps as printed text (prices, availability, ratings, attack bands) and works them out
+// as numbers at a rating: rated(), formula(), legality(), ratingRange(), attackRatings() and bookValue() (a <formula>, else the
+// printed string).
 // Book values as the SR6 catalog keeps them (strings, as printed: "Rating × 500", "5(L)", "9/7/—/—/—") read as numbers.
 // Never NaN: a value the app can't read is { n: null, ok: false } and the caller counts it 0 and warns.
 

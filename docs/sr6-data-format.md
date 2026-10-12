@@ -2,7 +2,8 @@
 
 The Shadowrun 6 (SR6) catalog is XML, like Anarchy's (`docs/data-format.md`), but in its own namespace, folders and
 schemas: neither game reads the other's files. The app ships only `public/data/sr6/sources.xml` (the books an SR6
-recipe supports) and the schemas in `public/data/sr6/schema/`. Everything else comes from the PDFs the admin uploads on
+recipe supports), the standard creation numbers in `public/data/sr6/creation-defaults.xml` (numbers only, no book text)
+and the schemas in `public/data/sr6/schema/`. Everything else comes from the PDFs the admin uploads on
 the SR6 Books page. `npm run validate:data` checks the shipped file and the made-up test catalog
 (`tests/fixtures/sr6/custom`), and `node tools/validate-data.mjs --sr6=<dir>` checks any SR6 custom folder.
 

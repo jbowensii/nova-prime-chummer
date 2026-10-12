@@ -61,17 +61,19 @@ Open **Books** (admin) and drop in the PDF of a book you own. The importer conve
 
 **Only use books you own.** Your PDFs stay in your `library` folder and are never served over the web. Nothing is shared or redistributed. Book descriptions stay private to your server.
 
-- Books with a built-in recipe import at once.
-- Any other book can be read by an AI you set up. You review every proposed entry before it is added.
+- Books with a built-in recipe import at once. Shadowrun 6 reads only books that have a recipe.
+- **Anarchy only**: any other book can be read by an AI you set up. You review every proposed entry before it is added.
 - **Re-import** reruns one book. **Re-import all books** reruns every book (after an app update, say). Your edits, runners and NPCs are kept.
-- Each game has its own AI settings, including its own AnythingLLM workspace. Put only that game's books in it.
-- **Data packs**: a small zip of the core tables (no descriptions, PDFs or keys). Download one from a server that has the core book. Upload it to set up another server.
+- Each game has its own AI settings for Ask the rules, including its own AnythingLLM workspace. Put only that game's books in it.
+- **Data packs** (Anarchy only): a small zip of the core tables (no descriptions, PDFs or keys). Download one from a server that has the core book. Upload it to set up another server.
 
 ### 2. Enter data yourself
 
-- **Game data** is a catalog editor. The admin and GMs edit any entry or add new ones under a house-rule source you name. **Restore book version** undoes an edit. A re-import never touches your edits.
+- **Game data** is a catalog editor. **Restore book version** undoes an edit. A re-import never touches your edits.
+  - Anarchy: the admin and GMs edit any entry or add new ones under a house-rule source you name.
+  - Shadowrun 6: you can change existing entries only. There are no new entries and no house-rule sources.
 - **Export my edits** and **Import edits** save your changes as an edits file. Import previews what a file adds, changes and conflicts with.
-- **Custom XML overlays** in the `custom` folder (listed in `custom/index.xml`) add, replace or remove entries. XSD schemas ship in `public/data/schema/`.
+- **Custom XML overlays** (Anarchy only) in the `custom` folder, listed in `custom/index.xml`, add, replace or remove entries. XSD schemas ship in `public/data/schema/`. Shadowrun 6 has no hand-written overlays. Its schemas are in `public/data/sr6/schema/` and describe the files the importer and the edits write.
 - **Table setup** holds your house rules and optional-rule switches.
 
 Formats: [Anarchy data](docs/data-format.md), [SR6 data](docs/sr6-data-format.md).
@@ -205,7 +207,15 @@ npm run format:check   # Prettier (npm run format fixes)
 npm run coverage       # test coverage
 ```
 
-Docs live in [docs/](docs/): data, character and export formats for each game, the design system, and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)). The importer is in `importer/`.
+Docs live in [docs/](docs/): data, character and export formats for each game, the design system, sign-in and hosting ([hosting-auth.md](docs/hosting-auth.md)), and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)).
+
+### Code map
+
+- `server/books.mjs`: the server's route table (its header lists every route) and the map of the modules behind it.
+- `src/sr6/engine/budgets.ts`: Shadowrun 6 budgets. It re-exports choices, purchases, bonuses, attributes, essence, magic, skills, contacts and karma.
+- `src/sr6/engine/creation.ts`: the creation settings (Table setup).
+- `importer/sr6/catalog.py` and `importer/sr6/recipes/crb.md`: the Shadowrun 6 import.
+- `importer/convert.py` and `importer/pdf/`: PDF to Markdown.
 
 ## Thanks
 
