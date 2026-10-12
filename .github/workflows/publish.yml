@@ -1,7 +1,6 @@
 name: publish
 
-# Builds and pushes the app image to GHCR as ghcr.io/jbowensii/nova-prime-chummer, and (while installs move over) under
-# the old name ghcr.io/jbowensii/chummer-anarchy2 too. No book data ships in the image;
+# Builds and pushes the app image to GHCR as ghcr.io/jbowensii/nova-prime-chummer. No book data ships in the image;
 # users bring their own PDFs on the Books page.
 # main: only after ci passed on that push (latest + sha-<short>, built from the commit ci checked). A release tag (v*,
 # pushed by `gh release create`): as <version>, once its commit is checked to be on main with a ci run there that passed
@@ -70,9 +69,8 @@ jobs:
         with:
           images: |
             ghcr.io/jbowensii/nova-prime-chummer
-            ghcr.io/jbowensii/chummer-anarchy2
           labels: |
-            org.opencontainers.image.description=Character generator and career tracker for Shadowrun: Anarchy 2.0
+            org.opencontainers.image.description=Character generator and career tracker for Shadowrun: Anarchy 2.0 and Shadowrun Sixth World (SR6)
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') }}
             type=raw,value=sha-${{ steps.sha.outputs.short }}
