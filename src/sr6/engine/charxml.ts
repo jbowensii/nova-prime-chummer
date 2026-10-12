@@ -39,7 +39,6 @@ import {
   type Sr6Sin,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
-import type { Codec } from '../../ui/repo'
 import { sr6EntryXml, toEntry } from './entryxml'
 
 export const SR6_CHAR_NS = 'urn:chummer-sr6:character:1'
@@ -727,6 +726,3 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }
   }
 }
-
-/** The repo codec (src/ui/repo.ts serverRepo). */
-export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }

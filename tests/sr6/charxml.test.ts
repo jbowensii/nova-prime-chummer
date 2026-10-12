@@ -5,7 +5,8 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { xmlToCharacter } from '../../src/engine/charxml'
 import { currentBuild } from '../../src/sr6/engine/career'
-import { SR6_CHAR_NS, sr6Codec, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { SR6_CHAR_NS, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6Codec } from '../../src/sr6/ui/repo'
 import { blankSr6, SR6_ADVANCE_OPS, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../src/sr6/model/character'
 
 const XSD = readFileSync('public/data/sr6/schema/character.xsd', 'utf8')

@@ -2,14 +2,16 @@
 // export (with a snapshot of every catalog line, so the file still reads where the entry is gone), import (an Anarchy
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
 import { newId } from '../../model/types'
-import { serverRepo } from '../../ui/repo'
+import { serverRepo, type Codec } from '../../ui/repo'
 import { keepSr6House } from '../engine/house'
 import { resolveEntry } from '../engine/load'
 import { entryKey } from '../engine/names'
-import { sr6Codec, sr6ToXml, xmlToSr6 } from '../engine/charxml'
+import { sr6ToXml, xmlToSr6 } from '../engine/charxml'
 import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
 
+/** The repo codec (src/ui/repo.ts serverRepo). */
+export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }
 export const sr6Repo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/characters', sr6Codec)
 /** SR6 NPCs (the server's /api/sr6/npcs, GMs only): SR6 runner files with an <npc> block. */
 export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/npcs', sr6Codec)
