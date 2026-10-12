@@ -2,6 +2,7 @@
 // (COMP_KINDS, under their SR6 tags, common.xsd's types) that all cite the compendium's own source, plus NPCs as embedded
 // <sr6:character> (docs/sr6-data-format.md "Compendiums", public/data/sr6/schema/compendium.xsd). Never the other game's:
 // an Anarchy compendium or runner is refused. The server stores it at /api/sr6/compendiums (server/compendiums.mjs).
+import { escAttr } from '../../shared/xml'
 import { SOURCE_ID } from '../../engine/compendium'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry, Sr6Kind, Sr6Source } from '../model/types'
 import { AUG_TYPES, SR6_KINDS } from '../model/types'
@@ -77,10 +78,8 @@ const ID = /^[0-9a-f]{12}$/
 const SHARING = ['private', 'campaign', 'table'] as const
 const ANARCHY_DATA = 'urn:chummer-anarchy2:data:1'
 
-// eslint-disable-next-line no-control-regex
-const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const attrs = (o: Record<string, string | number | undefined>) =>
-  Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => ` ${k}="${esc(String(v))}"`).join('')
+  Object.entries(o).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => ` ${k}="${escAttr(String(v))}"`).join('')
 
 /** The compendium file. Unset (empty) attributes and line parts are left out; owner/ownerName aren't written (the owner is
  *  the folder it's stored in). */

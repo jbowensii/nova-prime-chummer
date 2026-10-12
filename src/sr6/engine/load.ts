@@ -5,6 +5,7 @@
 // kind="compendium"). Same id replaces, <remove id> deletes; sources merge by id; an edit replaces the entry (the book's
 // version kept in `original`), and an empty description keeps the book's text. A compendium never replaces anything: one
 // whose source id is already a book's is skipped, and so is an entry whose id another source's entry holds.
+import { esc, escAttr } from '../../shared/xml'
 import type { SourceFile } from '../../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import { formulaXml, openIssues, readFormulasAndIssues } from '../../engine/formula'
@@ -254,10 +255,8 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Pro
   return c
 }
 
-// control characters XML 1.0 can't hold are dropped (a pasted description would make the whole file unreadable)
-// eslint-disable-next-line no-control-regex
-const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const attrList = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => ` ${k}="${esc(v)}"`).join('')
+// what XML 1.0 can't hold is dropped (a pasted description would make the whole file unreadable): shared/xml.ts
+const attrList = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => ` ${k}="${escAttr(v)}"`).join('')
 
 /** The entry element: id, source, page, its attributes, <name>, its parts as they are, its formulas (never its issues:
  * those are the book's), then <text>. For an edit body (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
@@ -266,5 +265,5 @@ export function sr6EntryXml(e: Sr6Entry, withText = false): string {
   const tag = SR6_KINDS[e.kind].tag
   const parts = e.parts.map(p => p.text ? `<${p.tag}${attrList(p.attrs)}>${esc(p.text)}</${p.tag}>` : `<${p.tag}${attrList(p.attrs)}/>`).join('')
   const text = withText && e.text ? `<text>${esc(e.text)}</text>` : '<text/>'
-  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, esc)}${text}</${tag}>`
+  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, escAttr)}${text}</${tag}>`
 }

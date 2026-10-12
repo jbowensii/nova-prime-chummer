@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml, fieldName, ISSUE_BOOK, type Issue } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
 import { because, canEdit, useMe } from './auth'
+import { esc } from '../shared/xml'
 import { Modal } from './bits'
 import { api } from './Books'
 import { Editor, type EditorCtx } from './editor'
@@ -28,8 +29,6 @@ const ITEM_KINDS: [ItemKind, string][] = [['gear', 'Gear'], ['weapon', 'Weapon']
 const CATEGORIES: Partial<Record<ItemKind, string[]>> = { spell: ['combat', 'detection', 'health', 'illusion', 'manipulation'], 'complex-form': ['sustained', 'instant'] }
 export const NOUN: Record<FormKind, string> = { amps: 'amp', items: 'item', rules: 'rule', vehicles: 'vehicle' }
 
-// eslint-disable-next-line no-control-regex
-export const esc = (s: string) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 export const nameOf = (e: Entry) => 'title' in e ? e.title : e.name
 const textOf = (e: Entry) => 'narrative' in e ? e.narrative : 'text' in e ? e.text : ''
 

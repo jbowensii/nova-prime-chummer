@@ -6,20 +6,14 @@ import { ATTRS } from '../model/types'
 import { effectStateAttrs, readEffectState } from './effects'
 import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
+import { BAD_XML_CHAR, esc, escAttr } from '../shared/xml'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 /** The Shadowrun 6 runner's (src/sr6/engine/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
 const SR6_NS = 'urn:chummer-sr6:character:1'
 
-/** What XML 1.0 can't hold (control characters pasted from a PDF, U+FFFE/FFFF, half a surrogate pair): dropped on
- *  write; a file that has them is refused on read, saying where, and "Try to repair" drops them. */
-// eslint-disable-next-line no-control-regex
-export const BAD_XML_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
-// a carriage return would read back as a line feed: kept as a character reference
-export const esc = (s: string) => s.replace(BAD_XML_CHAR, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;').replace(/\r/g, '&#13;')
-// in an attribute, tabs and line breaks would read back as spaces
-export const escAttr = (s: string) => esc(s).replace(/\t/g, '&#9;').replace(/\n/g, '&#10;')
+// what XML 1.0 can't hold, and the escapers (shared by both games: src/shared/xml.ts)
+export { BAD_XML_CHAR, esc, escAttr }
 export const attrs = (o: Record<string, unknown>) => Object.entries(o)
   .filter(([, v]) => v !== undefined && v !== null) // an empty value is kept: a draft's blank level or type reads back blank
   .map(([k, v]) => ` ${k}="${escAttr(String(v))}"`).join('')
