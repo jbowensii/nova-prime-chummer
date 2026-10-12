@@ -4,13 +4,14 @@ agents, cyberkits, codemods: electronics and gear), cyberprograms, complex forms
 matrix security NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms,
 virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
 only regrouped.md with the core rulebook's reading (crb.extract); the book's own shapes through
-importer/sr6/recipes/shapes.py. Layout notes in hs.md."""
+importer/sr6/shapes.py. Layout notes in hs.md."""
 import re
 import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "HS", "Shadowrun: Hack & Slash", "Catalyst Game Labs", True

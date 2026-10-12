@@ -13,7 +13,8 @@ import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "FS", "Shadowrun: Firing Squad", "Catalyst Game Labs", True

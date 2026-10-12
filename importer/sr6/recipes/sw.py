@@ -3,12 +3,13 @@ initiate's and the adept's), traditions, preparations and a focus (gear), spirit
 (spirit) powers, qualities and the rule sections (spell design, free and ally spirits, triggers, magical groups,
 mentor spirits, blood magic, mana ebbs: no catalog kind of their own), ids unscoped (run scopes them as sw.<slug>),
 descriptions in the private texts. Reads only regrouped.md with the core rulebook's reading (crb.extract); its few
-boxes through importer/sr6/recipes/shapes.py. Layout notes in sw.md."""
+boxes through importer/sr6/shapes.py. Layout notes in sw.md."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "SW", "Shadowrun: Street Wyrd", "Catalyst Game Labs", True

@@ -3,13 +3,14 @@ vehicles and drones (and the vehicle mounted weapons), armor and armor modificat
 (ammunition, tac-apps, foci), the martial art styles and techniques, qualities, spells, adept powers, metamagics,
 rituals and the rule sections, ids unscoped (run scopes them as da.<slug>), descriptions in the private texts. Reads
 only regrouped.md with the core rulebook's reading (crb.extract); the book's own box shapes (several items a box, a box
-under its heading) through importer/sr6/recipes/shapes.py. Layout notes in da.md."""
+under its heading) through importer/sr6/shapes.py. Layout notes in da.md."""
 import re
 import sys
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "DA", "Shadowrun: Deadly Arts", "Catalyst Game Labs", True

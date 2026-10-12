@@ -11,7 +11,7 @@ import re
 from importer.recipes import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, resolve, sections
-from importer.sr6.recipes import shapes
+from importer.sr6 import shapes
 from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
 from importer.sr6.regroup import blocks, norm, text_page
 

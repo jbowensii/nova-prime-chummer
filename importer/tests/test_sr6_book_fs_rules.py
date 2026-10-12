@@ -6,7 +6,8 @@ import unittest
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import formula, moved, regroup, sections
-from importer.sr6.recipes import crb, fs, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb, fs
 from tools.cl6check import fields, match
 
 

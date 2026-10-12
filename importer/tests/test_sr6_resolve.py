@@ -6,7 +6,8 @@ import unittest
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import resolve
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.sr6.regroup import Block
 
 NS = "urn:chummer-sr6:data:1"

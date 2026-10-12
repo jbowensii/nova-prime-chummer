@@ -8,7 +8,8 @@ import unittest
 from unittest import mock
 
 from importer.sr6 import resolve
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb
 from importer.tests.test_sr6_resolve import block
 
 

@@ -45,7 +45,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `fs.py`): 162 pages, p
 - NPCs (FIGHTING FORCES): a `(Professional Rating N)` tag and a stat band; the level-3 section is the group.
 - Martial arts (HONING YOUR EDGE): styles are level-4 headings with `Similar Styles:`, `Category:` and `Signature
   Technique:` lines, techniques level-4 headings with a `**Category:**` after their last sentence (at times broken
-  over two lines): martialarts and martialtechniques (importer/sr6/recipes/shapes.py `martial`).
+  over two lines): martialarts and martialtechniques (importer/sr6/shapes.py `martial`).
 - Edge actions and boosts, maneuvers, statuses: no catalog kind, rule sections.
 
 ## Errata

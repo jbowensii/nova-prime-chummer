@@ -20,7 +20,7 @@ from xml.sax.saxutils import escape, quoteattr
 from importer.recipes import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, resolve, sections, tables
-from importer.sr6.recipes import shapes
+from importer.sr6 import shapes
 from importer.sr6.regroup import _names, blocks, norm
 from importer.xmlio import HEAD, ILLEGAL
 
