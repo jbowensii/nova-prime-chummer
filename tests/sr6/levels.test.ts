@@ -436,6 +436,32 @@ test('career level-ups saved before levels were entries reach the right level; a
   expect(after.purchases.map(p => [p.uid, p.id])).toEqual([['g1', 'crb.glow-eyes.2']])
 })
 
+test('a migrated line is recorded once, a career level-up of a moved quality too', () => {
+  const c = fixtureCatalog((f, x) =>
+    f.endsWith('crb/qualities.xml')
+      ? x.replace('id="crb.knack"', 'id="crb.knack-new"').replace('<name>Knack</name>', '<name>Knack</name><alias id="crb.knack"/>')
+      : x,
+  )
+  const b = blankBuild()
+  b.qualities = [{ uid: 'q1', id: 'crb.knack', level: 1 }]
+  const ch: Sr6Character = {
+    ...blankSr6('priority', 'r1', '2026-01-01T00:00:00Z'),
+    build: b,
+    finalizedAt: '2026-01-01',
+    ledger: [
+      { id: 'f', at: '', type: 'finalize', karma: 50, nuyen: 9000 },
+      { id: 'a1', at: '', type: 'advance', advance: { op: 'quality', line: { uid: 'q2', id: 'crb.knack', level: 1 } }, label: '', karma: 0, nuyen: 0 },
+    ],
+  }
+  const m = migrateSr6Ids(ch, c)
+  expect(m.ledger[1]).toMatchObject({ advance: { op: 'quality', line: { id: 'crb.knack-new' } } })
+  // one for the build's line, one for the ledger's
+  expect(m.migrated?.map(x => `${x.from} → ${x.to}`)).toEqual([
+    'qualities/crb.knack → qualities/crb.knack-new',
+    'qualities/crb.knack → qualities/crb.knack-new',
+  ])
+})
+
 test('a rating range or highest level past MAX_RATING is read as unrated, not expanded, and the catalog warns', () => {
   const huge = '1-20000000'
   const c = fixtureCatalog(undefined, [
