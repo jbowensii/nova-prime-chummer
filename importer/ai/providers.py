@@ -88,6 +88,8 @@ def _parse_settings(text):
             raise SettingsError(f"provider “{pid}” is listed twice")
         if p.get("enabled") not in ("true", "false", "1", "0"):
             raise SettingsError(f"provider “{pid}” needs enabled=\"true\" or \"false\"")
+        if p.get("baseUrl") and not _web_url(p.get("baseUrl")):
+            raise SettingsError(f"provider “{pid}”: the address is an http:// or https:// URL with a host")
         out[pid] = dict(p.attrib)
     return dict(root.attrib), out
 
@@ -343,11 +345,26 @@ class _NoRedirects(urllib.request.HTTPRedirectHandler):
         raise ProviderError("the provider redirected to another address; check the address")
 
 
-_OPENER = urllib.request.build_opener(_NoRedirects)
+def _web_url(url):
+    """An http(s) URL naming a host: nothing else is ever asked (no file:, ftp: or data: reads)."""
+    try:
+        u = urllib.parse.urlsplit(url)
+        return u.scheme in ("http", "https") and bool(u.hostname)
+    except ValueError:
+        return False
+
+
+# http and https only: build_opener would add file:, ftp: and data: handlers too
+_OPENER = urllib.request.OpenerDirector()
+for _h in (urllib.request.ProxyHandler(), urllib.request.HTTPHandler(), urllib.request.HTTPSHandler(),
+           urllib.request.HTTPDefaultErrorHandler(), _NoRedirects(), urllib.request.HTTPErrorProcessor()):
+    _OPENER.add_handler(_h)
 
 
 def _request(url, headers, body=None, timeout=TIMEOUT):
     """POST `body` as JSON (without one: GET) and return the JSON reply. Redirects are refused."""
+    if not _web_url(url):
+        raise ProviderError("the provider’s address isn’t an http:// or https:// URL with a host")
     host = urllib.parse.urlsplit(url).netloc
     data = None if body is None else json.dumps(body).encode("utf8")
     req = urllib.request.Request(url, data, {"Content-Type": "application/json", **headers}, method="GET" if data is None else "POST")
