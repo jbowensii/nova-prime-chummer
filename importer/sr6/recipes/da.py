@@ -136,7 +136,7 @@ def prepare(bs):
         cat = m and m.group(1).lower()
         if b.type == "section" and b.level == 3 and cat in SPELL_CATEGORIES and "RANGE" in b.text:
             b = catalog.text_stats(replace(b, type="item", level=4, name=b.name[:m.start()], tags=m.group(1).title(),
-                                        section=m.group(1).title()), catalog.HEADERS["spells"])
+                                           section=m.group(1).title()), catalog.HEADERS["spells"])
         elif b.type == "item" and b.stats and cat in SPELL_CATEGORIES:
             b = replace(b, name=b.name[:m.start()], tags=b.tags or m.group(1).title(), section=m.group(1).title())
         elif m and cat in ("positive", "negative") and {"cost", "bonus"} & {k.lower() for k in b.labels}:

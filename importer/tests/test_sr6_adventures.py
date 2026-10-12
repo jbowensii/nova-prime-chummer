@@ -131,7 +131,7 @@ class Cl6GermanNamesTest(unittest.TestCase):
 class GameInformationShapesTest(unittest.TestCase):
     def test_stat_line_table_makes_the_heading_an_item(self):
         b = catalog.stat_lines(_b("Zap Bangle", 3, "About it.\n| TYPE | MODE | DV | AVAIL | COST |\n|---|---|---|---|---|\n"
-                                               "| Light Pistol | SS | 3P | 4L | 900¥ |\nMore."))[0]
+                                                   "| Light Pistol | SS | 3P | 4L | 900¥ |\nMore."))[0]
         self.assertEqual((b.type, b.row), ("item", {"ITEM": "Zap Bangle", "TYPE": "Light Pistol", "MODE": "SS", "DV": "3P",
                                                     "AVAIL": "4L", "COST": "900¥"}))
         self.assertNotIn("|", b.text)
@@ -140,7 +140,7 @@ class GameInformationShapesTest(unittest.TestCase):
         b = _b("Canes", 3, "| NAME | DV | AVAIL | COST |\n|---|---|---|---|\n| Sword Cane | 3P | 2 | 400¥ |")
         self.assertEqual(catalog.stat_lines(b)[0].type, "section")
         rows = catalog.stat_lines(_b("Zap Stakes", 3, "Cheap.\n| TYPE | DV | AR | AVAIL | COST |\n|---|---|---|---|---|\n"
-                                                  "| Wooden | 2P | 5/—/—/—/— | 3 | 25¥ |\n| Silver | 3P | 5/—/—/—/— | 4 | 35¥ |"))
+                                                      "| Wooden | 2P | 5/—/—/—/— | 3 | 25¥ |\n| Silver | 3P | 5/—/—/—/— | 4 | 35¥ |"))
         self.assertEqual([(x.type, x.name, x.row["DV"]) for x in rows], [("item", "Zap Stakes (Wooden)", "2P"), ("item", "Zap Stakes (Silver)", "3P")])
         # (one row the book also names elsewhere, a weapon modification, is still a variant; most rows so named: a list)
         three = _b("Zap Stakes", 3, "Cheap.\n| TYPE | DV | AVAIL | COST |\n|---|---|---|---|\n| Wooden | 2P | 3 | 25¥ |\n"

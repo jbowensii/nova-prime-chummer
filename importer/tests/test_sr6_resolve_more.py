@@ -47,7 +47,7 @@ class TextValuesTest(unittest.TestCase):
 class DisagreementTest(unittest.TestCase):
     def test_two_rows_that_disagree_give_no_value(self):
         idx = search.Index([block("Lists", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 50¥ |"),
-                             block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, catalog.md_tables, shapes.RENAME)
+                            block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
         self.assertIsNone(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", ""))
         self.assertEqual(search.search_book(idx, catalog.HEADERS, "gear", e, "avail", ""), ("2", "table", 29))  # (the same value twice is one)

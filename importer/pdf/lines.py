@@ -1,0 +1,95 @@
+"""A page's words into visual lines: rows by top (or the SR6 layout's baselines), a tilted line's letter sizes evened,
+the body size and the heading sizes."""
+import statistics
+
+LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
+
+
+def size_bands(pdf):
+    sizes = [round(c["size"], 1) for p in pdf.pages[:40] for c in p.chars]
+    if not sizes:
+        return 10, []
+    body = statistics.mode(sizes)
+    big = sorted({s for s in sizes if s >= body * 1.25}, reverse=True)[:3]
+    return body, big  # big[0] -> '#', big[1] -> '##', big[2] -> '###'
+
+
+_SIZE_NOISE = 0.2  # pt; the letters of a slightly tilted line measure a few hundredths of a point apart
+
+
+def even_sizes(chars):
+    """A slightly tilted line's letters (upright, a small rotation in the text matrix) measure a little apart
+    in size, which would split every letter into its own word. Such chars less than _SIZE_NOISE from the next
+    smaller one take its size, so a word still splits at a real size change (a small-caps initial)."""
+    tilted = lambda c: c["upright"] and c["matrix"][1] != 0
+    sizes = sorted({c["size"] for c in chars if tilted(c)})
+    even, base = {}, None
+    for i, s in enumerate(sizes):
+        base = base if i and s - sizes[i - 1] < _SIZE_NOISE else s
+        even[s] = base
+    return [{**c, "size": even[c["size"]]} if tilted(c) else c for c in chars]
+
+
+def heading_level(size, big):
+    return next((i + 1 for i, s in enumerate(big) if abs(size - s) < 0.6), 0)
+
+
+def cluster_lines(words):
+    """Group words into visual rows by y-proximity only.
+
+    Anchored to the first word's top in the row (tolerant of small baseline
+    jitter between regular and bold runs on one visual line). Rows are NOT
+    split at wide word gaps here — justified text has those everywhere.
+    Two columns sharing a row are split later, only at an accepted gutter.
+    The SR6 layout's words carry their baseline (`base`): see _baseline_rows.
+    """
+    if words and all("base" in w for w in words):
+        return _baseline_rows(words)
+    words = sorted(words, key=lambda w: w["top"])
+    rows, cur, anchor = [], [], None
+    for w in words:
+        if anchor is not None and abs(w["top"] - anchor) > LINE_TOLERANCE:
+            rows.append(cur)
+            cur = []
+            anchor = None
+        cur.append(w)
+        if anchor is None:
+            anchor = w["top"]
+    if cur:
+        rows.append(cur)
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
+
+
+_TINY = 0.5  # x the page's median word size: a glyph smaller than this (a small raised bullet) joins a row beside it
+_TINY_REACH = 30  # pt; how far beside it
+
+
+def _baseline_rows(words):
+    """Rows by baseline, a word joining the row when its baseline is within LINE_TOLERANCE of the previous one (a label
+    set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
+    glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
+    else it is a row of its own."""
+    med = statistics.median(w["size"] for w in words)
+    tiny = [w for w in words if w["size"] < _TINY * med]
+    rows, cur, last = [], [], None
+    for w in sorted((w for w in words if w["size"] >= _TINY * med), key=lambda w: w["base"]):
+        if last is not None and w["base"] - last > LINE_TOLERANCE:
+            rows.append(cur)
+            cur = []
+        cur.append(w)
+        last = w["base"]
+    if cur:
+        rows.append(cur)
+    for t in tiny:
+        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
+                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
+        if near:
+            rows[min(near)[1]].append(t)
+        else:
+            rows.append([t])
+    rows.sort(key=lambda r: min(w["base"] for w in r))
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
+
+
+def line_extent(line):
+    return min(w["x0"] for w in line), max(w["x1"] for w in line)

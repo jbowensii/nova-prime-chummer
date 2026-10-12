@@ -27,10 +27,10 @@ ATTRIBUTES = {"body": ("BOD", "physical"), "agility": ("AGI", "physical"), "reac
 
 _PRICE = {"AVAIL": "avail", "AVAILABILITY": "avail", "COST": "cost"}
 BEING = {"B": "bod", "BOD": "bod", "A": "agi", "AGI": "agi", "R": "rea", "REA": "rea", "S": "str", "STR": "str",
-          "W": "wil", "WIL": "wil", "L": "log", "LOG": "log", "I": "int", "INT": "int", "C": "cha", "CHA": "cha",
-          "ESS": "ess", "M": "mag", "MAG": "mag", "RES": "res", "EDG": "edg", "EDGE": "edg", "DR": "dr",
-          "DEFENSE RATING": "dr", "I/ID": "init", "INIT": "init", "INITIATIVE": "init", "AC": "actions",
-          "ACTIONS": "actions", "CM": "cm", "MOVE": "move", "RS": "res", "DEFENSE": "dr"}
+         "W": "wil", "WIL": "wil", "L": "log", "LOG": "log", "I": "int", "INT": "int", "C": "cha", "CHA": "cha",
+         "ESS": "ess", "M": "mag", "MAG": "mag", "RES": "res", "EDG": "edg", "EDGE": "edg", "DR": "dr",
+         "DEFENSE RATING": "dr", "I/ID": "init", "INIT": "init", "INITIATIVE": "init", "AC": "actions",
+         "ACTIONS": "actions", "CM": "cm", "MOVE": "move", "RS": "res", "DEFENSE": "dr"}
 # kind -> {printed column header or label (upper case) -> attribute}; the row's first column is the name
 HEADERS = {
     "weapons": {"DV": "dv", "MODES": "modes", "MODE": "modes", "ATTACK RATINGS": "ar", "ATTACK RATING": "ar", "AR": "ar",
