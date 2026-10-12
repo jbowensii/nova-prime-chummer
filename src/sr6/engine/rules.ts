@@ -8,6 +8,7 @@ import { canFinalize } from '../../shared/rules'
 import type { Severity, Violation } from '../../model/types'
 import {
   CORE_ATTRS,
+  CP_POOLS,
   LETTERS,
   MAGIC_KIND_LABELS,
   PICK_KINDS,
@@ -722,6 +723,9 @@ const RULES: Rule[] = [
       ),
   },
 
+  // a number the build can't hold below 0 (a hand-edited file): it would turn a cost into a refund and clear the hard
+  // blocks below, so it is hard too (owner's decision 19)
+  { code: 'value.negative', severity: 'error', tab: 'review', hard: true, check: c => negatives(c.b) },
   // owner's decision 19 (2026-10-11): negative Karma or nuyen is fine while building; Finalize waits until neither is
   { code: 'karma.overspent', severity: 'error', tab: 'review', hard: true, check: c => over(c.budgets.karma, 'Karma') },
   {
@@ -1618,6 +1622,32 @@ function granted(c: Ctx): (Hit & { none: boolean })[] {
         message: `More than ${room} ${v.category} qualities taken.`,
         ...entryCite(c.data.entry('qualities', q.id)),
       })
+  }
+  return hits
+}
+
+/** Each number on the build below 0 where none can be (a bonus's value can: it isn't checked). */
+function negatives(b: Sr6Build): Hit[] {
+  const hits: Hit[] = []
+  const at = (path: string, o: object, keys: string[]) => {
+    for (const k of keys) {
+      const v = (o as Record<string, unknown>)[k]
+      if (typeof v === 'number' && v < 0) hits.push({ path, message: `${k} is ${v}; it can’t be below 0.` })
+    }
+  }
+  at('method', b, ['powerPointsBought', 'initiation', 'submersion', 'karmaToNuyen'])
+  at('method', b.cp, CP_POOLS)
+  for (const k of SR6_ATTRS) at(`attributes.${k}`, b.attributes[k], ['points', 'adjust', 'karma'])
+  for (const s of b.skills) at(`skills.${s.id}`, s, ['points', 'karma'])
+  for (const k of b.knowledge) at(`skills.${k.uid}`, k, ['points', 'karma'])
+  for (const q of b.qualities) at(`qualities.${q.uid}`, q, ['level', 'karma'])
+  for (const x of b.picks) at(`magic.${x.uid}`, x, ['level'])
+  for (const { x, own, path } of lines(b)) at(path, own ?? x, ['cost', 'avail', 'essence', 'rating', 'qty', 'seatsRemoved'])
+  for (const x of b.contacts) at(`contacts.${x.uid}`, x, ['connection', 'loyalty'])
+  for (const s of b.sins) {
+    at(`contacts.sin.${s.uid}`, s, ['rating'])
+    for (const l of s.licences) at(`contacts.sin.${s.uid}`, l, ['rating'])
+    for (const l of s.lifestyles ?? []) at(`contacts.sin.${s.uid}`, l, ['months'])
   }
   return hits
 }

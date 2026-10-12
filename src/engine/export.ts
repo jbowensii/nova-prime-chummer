@@ -20,7 +20,7 @@ export interface ExportOpts {
   appVersion: string
 }
 /** line: the effect as the sheet says it; applied false: shown, not counted (low confidence, or only `when`); switch,
- *  when, from: src/engine/effects.ts */
+ *  when, from: src/shared/effects.ts */
 export interface ExportEffect extends EffectState {
   id: string
   name: string

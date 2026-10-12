@@ -110,7 +110,7 @@ export interface AmpTemplate extends Ref {
    *  times it is taken; may be negative) */
   family?: string
   level?: number
-  /** <formula> and <issue> children (src/engine/formula.ts): how a field is worked out, what the book left out */
+  /** <formula> and <issue> children (src/shared/formula.ts): how a field is worked out, what the book left out */
   formulas?: Formula[]
   issues?: Issue[]
 }
@@ -152,7 +152,7 @@ export interface Item extends Ref {
   edited?: boolean
   /** what it does, read from its text by the importer (a spell's Advantage, a drug's Disadvantage): engine/derive.ts */
   effects?: EffectPick[]
-  /** <formula> and <issue> children (src/engine/formula.ts); a cost formula prices the item (price.ts itemCost) */
+  /** <formula> and <issue> children (src/shared/formula.ts); a cost formula prices the item (price.ts itemCost) */
   formulas?: Formula[]
   issues?: Issue[]
 }
@@ -216,7 +216,7 @@ export interface Catalog {
 
 // ---- character ----
 /** An effect: an Amp effect table id (rated), or one of the narrative effect kinds (RULE_EFFECTS, rating 0: what a
- *  narrative effect does), with how it is turned on and whether it counts (src/engine/effects.ts). */
+ *  narrative effect does), with how it is turned on and whether it counts (src/shared/effects.ts). */
 export interface EffectPick extends EffectState {
   ref: string
   param?: string
