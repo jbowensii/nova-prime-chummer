@@ -110,7 +110,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, reread=True):
                            canon=str(res.source["canon"]).lower(),
                            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
         xmlio.update_index(custom_dir)
-        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), xmlio.CA2)
         xmlio.write_status(book_dir, "done")
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
@@ -209,7 +209,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
                  for (f, kind), r in rows.items()}
         old = xmlio.read_import(book_dir)
         rec = {k: old.get(k) for k in ("file", "sha256", "converter", "pages", "score")} if old is not None else {}
-        remove(book_dir, custom_dir, status=False)  # a second apply replaces the first; the book stays applying
+        remove(book_dir, custom_dir, status=False, root=xmlio.CA2)  # a second apply replaces the first; the book stays applying
         out_dir = os.path.join(custom_dir, "imported", source.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in files.values()))
         for f, xml in files.items():
@@ -219,7 +219,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
                            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
         os.makedirs(os.path.join(custom_dir, "imported"), exist_ok=True)
         xmlio.update_index(custom_dir)
-        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), xmlio.CA2)
         skipped = f", {len(report)} skipped (see the report)" if report else ""
         xmlio.write_status(book_dir, "done", f"{sum(map(len, rows.values()))} entries applied{skipped}")
     except Exception as e:
@@ -346,7 +346,7 @@ def _cmd_remove(argv):
     if len(argv) < 3 or argv[1] != "--custom":
         print(USAGE, file=sys.stderr)
         return 2
-    remove(argv[0], argv[2], forget="--files" in argv)
+    remove(argv[0], argv[2], forget="--files" in argv, root=xmlio.CA2)
     return 0
 
 

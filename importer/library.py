@@ -22,12 +22,12 @@ def same_source(book_dir, source):
     return [i for i in imps if i is not None and (i.get("source") or "").lower() == source.lower()]
 
 
-def remove(book_dir, custom_dir, forget=False, status=True, root=xmlio.CA2):
+def remove(book_dir, custom_dir, forget=False, status=True, *, root):
     """Undo a book's import: its overlay files, and (unless another book imports the same source) the
     source's folder, texts and samples; then its import record (`forget`: the whole library/<id>) and,
     unless `status` is False (a caller mid-job), status "removed".
     Rebuilds custom/imported/index.xml and sources.xml. A re-import runs this first, so nothing an
-    earlier import wrote outlives it. root: the game's data root of the texts and sources files (xmlio.CA2, SR6's)."""
+    earlier import wrote outlives it. root (required, so a game never gets another's by default): the game's data root of the texts and sources files (xmlio.CA2, SR6's)."""
     library = os.path.dirname(os.path.normpath(book_dir))
     imp = xmlio.read_import(book_dir)
     src = imp.get("source") if imp is not None else None
@@ -69,7 +69,7 @@ def remove(book_dir, custom_dir, forget=False, status=True, root=xmlio.CA2):
         update_sources(custom_dir, library, root)
 
 
-def update_sources(custom_dir, library_dir, root=xmlio.CA2):
+def update_sources(custom_dir, library_dir, root):
     """custom/imported/sources.xml: one <source> per imported source id, from the books' import.xml.
     A source imported from several files (the four quick-reference sheets) lists them all. A book's further sources
     (<extra>: an SR6 City Edition's city chapter) are listed too, a superseded printing's as well (it still loads them).

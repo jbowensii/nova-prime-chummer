@@ -198,7 +198,7 @@ class RunTest(unittest.TestCase):
         for f, xsd in [(index, "npcs.xsd"), (FIXTURE, "character.xsd")]:
             r = node("--input-type=module", "-e", XSD_CHECK, str(f), os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
-        remove(book, custom)
+        remove(book, custom, root=xmlio.CA2)
         self.assertEqual([n.get("source") for n in ET.parse(index).getroot()], ["OTHER"])
         self.assertFalse(os.path.exists(os.path.join(imported, "qref")))
         self.assertEqual(Result(files={}, texts=None).npcs, [])
