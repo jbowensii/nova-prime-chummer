@@ -7,7 +7,7 @@ import { SOURCE_ID } from '../../engine/compendium'
 import type { Sr6Catalog, Sr6Compendium, Sr6Entry, Sr6Kind, Sr6Source } from '../model/types'
 import { AUG_TYPES, SR6_KINDS } from '../model/types'
 import { sr6ToXml, xmlToSr6 } from './charxml'
-import { SR6_NS, sr6EntryXml, toEntry } from './load'
+import { SR6_NS, sr6EntryXml, toEntry } from './entryxml'
 
 const BEING = ['category', 'rating', 'group', 'bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'ess', 'mag', 'res', 'edg', 'dr', 'init',
   'actions', 'cm', 'move']

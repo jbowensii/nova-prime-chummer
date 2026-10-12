@@ -5,47 +5,23 @@
 // kind="compendium"). Same id replaces, <remove id> deletes; sources merge by id; an edit replaces the entry (the book's
 // version kept in `original`), and an empty description keeps the book's text. A compendium never replaces anything: one
 // whose source id is already a book's is skipped, and so is an entry whose id another source's entry holds.
-import { esc, escAttr } from '../../shared/xml'
 import type { SourceFile } from '../../engine/load'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
-import { formulaXml, openIssues, readFormulasAndIssues } from '../../engine/formula'
+import { openIssues } from '../../engine/formula'
 import { readSr6Compendium, sr6CompendiumSource } from './compendium'
 import { bookValue, ratingRange, type Find } from './values'
 import { expandLevels } from './levels'
 import { entryKey } from './names'
+import { SR6_NS, toEntry } from './entryxml'
 
-export const SR6_NS = 'urn:chummer-sr6:data:1'
+// (the entry codec lives in entryxml.ts, apart from the loader, so compendium.ts and charxml.ts read entries without
+// importing the loader that imports them)
+export { SR6_NS, sr6EntryXml, toEntry } from './entryxml'
+
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
 const KINDS = new Set(Object.keys(SR6_KINDS))
-const OWN = new Set(['id', 'source', 'page'])
-const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found', 'alias', 'note']) // (<found>, <alias>, <note>: the importer's notes, not parts)
 const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
-
-/** The key of an entry in Sr6Catalog.original (ids are unique within a kind). */
-
-const attrsOf = (el: Element, skip = new Set<string>()) =>
-  Object.fromEntries([...el.attributes].filter(a => !skip.has(a.name)).map(a => [a.name, a.value]))
-
-/** One entry element as an Sr6Entry (also a runner file's <snapshot>, src/sr6/engine/charxml.ts). */
-export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
-  const kids = [...el.children]
-  const e: Sr6Entry = {
-    id: el.getAttribute('id') ?? '', kind, name: kids.find(k => k.localName === 'name')?.textContent ?? '',
-    source: el.getAttribute('source') ?? '', page: Number(el.getAttribute('page')) || 0, attrs: attrsOf(el, new Set([...OWN, 'by'])),
-    parts: kids.filter(k => !OWN_KIDS.has(k.localName)).map(k => ({ tag: k.localName, attrs: attrsOf(k), text: k.textContent ?? '' })),
-    text: kids.find(k => k.localName === 'text')?.textContent ?? '',
-  }
-  if (!e.id) throw new Error(`a <${el.localName}> has no id`)
-  const { formulas, issues } = readFormulasAndIssues(el)
-  if (formulas.length) e.formulas = formulas
-  if (issues.length) e.issues = issues
-  const aliases = kids.filter(k => k.localName === 'alias' && !k.getAttribute('id') && k.textContent).map(k => k.textContent!.trim())
-  if (aliases.length) e.aliases = aliases
-  const notes = kids.filter(k => k.localName === 'note').map(k => ({ field: k.getAttribute('field') ?? '', text: k.textContent ?? '' }))
-  if (notes.length) e.notes = notes
-  return e
-}
 
 function toSource(el: Element, origin: Sr6Source['origin']): Sr6Source {
   const a = (n: string) => el.getAttribute(n) ?? undefined
@@ -253,17 +229,4 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Pro
   const c = buildSr6Catalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
   return c
-}
-
-// what XML 1.0 can't hold is dropped (a pasted description would make the whole file unreadable): shared/xml.ts
-const attrList = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => ` ${k}="${escAttr(v)}"`).join('')
-
-/** The entry element: id, source, page, its attributes, <name>, its parts as they are, its formulas (never its issues:
- * those are the book's), then <text>. For an edit body (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
- * text (a compendium's, src/sr6/engine/compendium.ts). */
-export function sr6EntryXml(e: Sr6Entry, withText = false): string {
-  const tag = SR6_KINDS[e.kind].tag
-  const parts = e.parts.map(p => p.text ? `<${p.tag}${attrList(p.attrs)}>${esc(p.text)}</${p.tag}>` : `<${p.tag}${attrList(p.attrs)}/>`).join('')
-  const text = withText && e.text ? `<text>${esc(e.text)}</text>` : '<text/>'
-  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, escAttr)}${text}</${tag}>`
 }
