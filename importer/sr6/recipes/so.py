@@ -3,13 +3,13 @@ metamagics, alchemical preparations (gear), the social gear (clothing, armor mod
 espionage gear …), the positive and negative qualities (and the quality paths' priced steps), the six faces as sample
 runners (as the core rulebook's archetypes) and the rule sections, ids unscoped (run scopes them as so.<slug>),
 descriptions in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading
-(crb.extract); layout notes in so.md. A line or value that doesn't read is reported, never guessed."""
+(catalog.read); layout notes in so.md. A line or value that doesn't read is reported, never guessed."""
 import re
 import sys
 from dataclasses import replace
 
+from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, keys, norm
 
 ID, NAME, PUBLISHER, CANON = "SO", "Shadowrun: Smooth Operations", "Catalyst Game Labs", True
@@ -99,10 +99,10 @@ def fix(b, parent2):
     first = next((ln for ln in b.text.splitlines() if ln.strip()), "")
     if ch == MAGIC and b.type == "item" and (m := _TAG.fullmatch(first.strip())):
         b = replace(b, tags=m.group(1), text=b.text.replace(first, "", 1).strip())
-    if ch == MAGIC and b.type == "item" and norm(b.tags) in crb.SPELL_CATEGORIES:  # (or read as a level-5 tag line)
+    if ch == MAGIC and b.type == "item" and norm(b.tags) in catalog.SPELL_CATEGORIES:  # (or read as a level-5 tag line)
         b = replace(b, label=norm(b.tags), tags="")
     if ch == ARCHETYPES and "Metatype" in b.labels and (b.stats or "| B | A |" in b.text):  # (bands in a section's text)
-        b = replace(crb._text_stats(b, crb._BEING), type="item", label=f"metatype: {b.labels['Metatype']}")
+        b = replace(catalog.text_stats(b, catalog.BEING), type="item", label=f"metatype: {b.labels['Metatype']}")
     if ch == MAGIC and norm(parent2) == "alchemical preps" and b.type == "item" and (c := b.labels.get("Cost")):
         m = re.fullmatch(r"(.+?)\s*/\s*(\w+)", c)
         b = replace(b, row={"ITEM": b.name, **({f"COST (PER {m.group(2).upper()})": m.group(1)} if m else {"COST": c})},
@@ -119,7 +119,7 @@ def kind(chapter, b, parent2):
     if chapter == MAGIC and b.type == "item":
         if "threshold" in labels:
             return "rituals", None
-        if p2 == "spells" and b.label in crb.SPELL_CATEGORIES:
+        if p2 == "spells" and b.label in catalog.SPELL_CATEGORIES:
             return "spells", None
         if p2 == "adept powers" and "cost" in labels:
             return "adeptpowers", None
@@ -138,4 +138,4 @@ def kind(chapter, b, parent2):
 
 def extract(regrouped, ctx=None):
     bs = _gear_texts(list(blocks(regrouped)))
-    return crb.extract(bs, ctx, book=sys.modules[__name__])
+    return catalog.read(bs, ctx, sys.modules[__name__])

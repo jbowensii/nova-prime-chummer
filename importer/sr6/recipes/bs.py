@@ -2,7 +2,7 @@
 enhancements), bioware, geneware, symbionts, transgenics and nanoware (each its own type), nanotech and drugs
 (gear), the implant weapons, the augmentation qualities, the augmented critters and the rule sections (the implant
 grades, cybermancy: no catalog kind of their own), ids unscoped (run scopes them as bs.<slug>), descriptions in the
-private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout
+private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout
 notes in bs.md.
 
 The book prints its gear as the core rulebook does: descriptions under level-4 headings, priced in a titled catalog table
@@ -12,8 +12,8 @@ import re
 import sys
 from dataclasses import replace
 
+from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "BS", "Shadowrun: Body Shop", "Catalyst Game Labs", True
@@ -36,7 +36,7 @@ RULE_CHAPTERS = ("augmentations essence", "chrome life", "building your body", "
                  "taming the wild", "edge of essence")
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = RULE_CHAPTERS
-# printed headers -> the core rulebook's (crb.HEADERS)
+# printed headers -> the core rulebook's (catalog.HEADERS)
 RENAME = {"CAP": "CAPACITY", "AVAL": "AVAIL", "AVAILABILITY": "AVAIL", "ESS": "ESSENCE", "DAMAGE": "DV"}
 PROSE = {"POWER", "TRAINING REQ.", "CRITTERJACK REQ.", "TREATMENT TIME"}  # columns kept in the text
 VARIANT_ROWS = True  # a catalog's name-only rows name the rows under them (regroup._variants)
@@ -135,7 +135,7 @@ def _prep(bs):
     out = []
     for b in bs:
         prev = out[-1] if out else None
-        if b.stats and _being(b.stats[0]) and (extra := [h for h in b.stats[0] if h.upper() not in crb._BEING]):
+        if b.stats and _being(b.stats[0]) and (extra := [h for h in b.stats[0] if h.upper() not in catalog.BEING]):
             beside = {h: b.stats[0][h] for h in extra}
             stats = [s for s in ({h: v for h, v in s.items() if h not in extra} for s in b.stats) if any(s.values())]
             b = replace(b, stats=stats)
@@ -216,8 +216,8 @@ def _grades(bs, cat):
 
 def extract(regrouped, ctx=None):
     bs = _prep(list(blocks(regrouped)))
-    res = crb.extract(bs, ctx, book=sys.modules[__name__])
-    cat = crb._Catalog(ID, ID.lower(), BOOK)
+    res = catalog.read(bs, ctx, sys.modules[__name__])
+    cat = catalog.Catalog(ID, ID.lower(), BOOK)
     _grades(bs, cat)
     if cat.entries["grades"]:
         res.files["grades.xml"] = cat.xml("grades")

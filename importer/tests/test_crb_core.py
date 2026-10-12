@@ -689,9 +689,9 @@ class TwoItemRowTest(unittest.TestCase):
     def test_a_row_printing_two_items(self):
         # (owner, 2026-10-08: `A/B` with two prices is two items, each cell's first or second value, a cell without a
         # slash shared; handling's on/off-road slash and seats stay whole)
-        from importer.sr6.recipes.crb import _Catalog
-        got = dict(_Catalog.variants("Zorp Aero Glider/Skyhook X", {"cost": "1000/2000", "avail": "2/4", "interval": "60/80",
-                                                                     "handling": "3/4", "seats": "2/10", "body": "16"}))
+        from importer.sr6.catalog import Catalog
+        got = dict(Catalog.variants("Zorp Aero Glider/Skyhook X", {"cost": "1000/2000", "avail": "2/4", "interval": "60/80",
+                                                                    "handling": "3/4", "seats": "2/10", "body": "16"}))
         self.assertEqual(got["Zorp Aero Glider"], {"cost": "1000", "avail": "2", "interval": "60", "handling": "3/4",
                                                    "seats": "2/10", "body": "16"})
         self.assertEqual(got["Zorp Aero Skyhook X"]["interval"], "80")

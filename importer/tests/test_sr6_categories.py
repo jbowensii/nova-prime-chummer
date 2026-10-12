@@ -130,7 +130,7 @@ class CategoriesTest(unittest.TestCase):
         one by its category."""
         prev = {("gear", "crb.armor"): (["Armor"], [], moved._cat("zorplimb-accessories")),
                 ("gear", "crb.armor-2"): (["Armor"], [], moved._cat("glowware-enhancements"))}
-        xml = crb.ET.tostring(self.f["gear"], encoding="unicode").replace(' id="', ' id="crb.')
+        xml = ET.tostring(self.f["gear"], encoding="unicode").replace(' id="', ' id="crb.')
         out, n = moved.carry(prev, {"gear.xml": xml})
         glow = next(e for e in ET.fromstring(out["gear.xml"]) if e.get("category") == "Glowware enhancement")
         self.assertEqual([a.get("id") for a in glow.findall("alias") if a.get("id")], ["crb.armor-2"])

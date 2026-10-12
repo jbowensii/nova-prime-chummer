@@ -14,7 +14,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   POWER and the critter tables' TRAINING/CRITTERJACK REQ. columns go to the text.
 - A name-only row over rows that no description has (`Cybertails` over `Balance`, `Prehensile`) names them
   `<group> (<row>)` (`VARIANT_ROWS`, regroup's `_variants`); they share the group's description.
-- Each augmentation has its type (`crb.ware_type`, from the table's title, first header or category): cyberware,
+- Each augmentation has its type (`catalog.ware_type`, from the table's title, first header or category): cyberware,
   bioware, geneware (the therapeutic and augmentic tables, the critter genetic augmentations), symbionts, transgenics
   (transgenic infusions) and nanoware (nanohives, the nano-critter augmentations).
 - Nanotech gear (`ITEM | RATING | AVAIL | COST`) and drugs (`DRUG | POWER | AVAIL | COST (PER DOSE)`) are gear. The

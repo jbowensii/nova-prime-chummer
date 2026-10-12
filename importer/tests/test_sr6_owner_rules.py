@@ -4,7 +4,7 @@ prices in words, an FAQ's Karma statement. Invented books and values only."""
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import regroup, resolve
+from importer.sr6 import catalog, regroup, resolve
 from importer.sr6.recipes import crb, dc
 
 
@@ -17,21 +17,21 @@ def extract(md):
 class NamesTest(unittest.TestCase):
     def test_slash_options(self):
         # (`A/B` offered as a choice in the text is two entries; one thing printed two ways stays one)
-        self.assertEqual(crb.slash_options("Widening/Narrowing Zorp Bay (CF Mod)", "This mod widens or narrows the bay."),
+        self.assertEqual(catalog.slash_options("Widening/Narrowing Zorp Bay (CF Mod)", "This mod widens or narrows the bay."),
                          ["Widening Zorp Bay (CF Mod)", "Narrowing Zorp Bay (CF Mod)"])
-        self.assertEqual(crb.slash_options("Easy Zorp/Unzorp", "Zorps come apart and back together."), [])
+        self.assertEqual(catalog.slash_options("Easy Zorp/Unzorp", "Zorps come apart and back together."), [])
 
     def test_known_as_and_versions(self):
-        self.assertEqual(crb.known_as("Zap Systems Glow-One", "One of many, the Glow-One (also known as the G1) glows."), ["G1"])
-        self.assertEqual(crb.known_as("Zorp Van", "A rocker out of Ohio known as Zappy V drove one."), [])
-        self.assertEqual(crb.known_as("Zorp Van IV", "The licensed variants are simply known as the Zorp IV+."), ["Zorp IV+"])
+        self.assertEqual(catalog.known_as("Zap Systems Glow-One", "One of many, the Glow-One (also known as the G1) glows."), ["G1"])
+        self.assertEqual(catalog.known_as("Zorp Van", "A rocker out of Ohio known as Zappy V drove one."), [])
+        self.assertEqual(catalog.known_as("Zorp Van IV", "The licensed variants are simply known as the Zorp IV+."), ["Zorp IV+"])
         t = "Zapboards can be found in both hardened and bladed versions, while glow skates only come in bladed."
-        self.assertEqual(crb.version_names("Rolling Zaps (Bladed)", t), ["Zapboard (bladed)", "Glow skate (bladed)"])
+        self.assertEqual(catalog.version_names("Rolling Zaps (Bladed)", t), ["Zapboard (bladed)", "Glow skate (bladed)"])
 
     def test_words(self):
-        self.assertEqual(crb.number_words("one thousand"), 1000)
-        self.assertEqual(crb.number_words("two hundred fifty"), 250)
-        self.assertEqual(crb.word_stems("webbed hands and feet"), crb.word_stems("Hand and foot webbing"))
+        self.assertEqual(catalog.number_words("one thousand"), 1000)
+        self.assertEqual(catalog.number_words("two hundred fifty"), 250)
+        self.assertEqual(catalog.word_stems("webbed hands and feet"), catalog.word_stems("Hand and foot webbing"))
 
     def test_second_box_after_a_sentence(self):
         nl = "\n"
@@ -46,10 +46,10 @@ class CatalogTest(unittest.TestCase):
         cost = "x2 for tin or other common materials, x5 for glowstone or other rare materials."
         b = regroup.Block("item", "Glow Bullets", "Gear", "Ammo", "glow bullets", 30, ["DV", "COST"],
                           {"DV": "As weapon", "COST": cost})
-        self.assertTrue(crb.ammo_type(b))  # (priced as a multiple of the ammunition: an ammunition type)
-        got = dict(crb._Catalog.variants("Glow Bullets", {"cost": cost, "avail": "2(L)"}))
+        self.assertTrue(catalog.ammo_type(b))  # (priced as a multiple of the ammunition: an ammunition type)
+        got = dict(catalog.Catalog.variants("Glow Bullets", {"cost": cost, "avail": "2(L)"}))
         self.assertEqual(got["Glow Bullets (tin)"]["_formula:cost"], "H*2")
-        self.assertEqual(got["Glow Bullets (glowstone)"]["category"], crb.MATERIAL_ADD_ON)
+        self.assertEqual(got["Glow Bullets (glowstone)"]["category"], catalog.MATERIAL_ADD_ON)
 
     def test_an_item_its_table_leaves_out(self):
         body = "It grows and glows, and it is quite a thing to see when the light is low and the night is long. " * 2
@@ -92,8 +92,8 @@ class UnworkedBooksTest(unittest.TestCase):
 
     def test_an_item_a_note_prices(self):
         t = "DV is the net hits. Glowmarket fizz spray in a 10-dose can can be purchased for 150¥ and has an availability of 6(I)."
-        self.assertEqual([m.groups() for m in crb._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")])
-        self.assertEqual(list(crb._PURCHASED.finditer("Zorp eggs can be purchased for 500 nuyen x the Body.")), [])
+        self.assertEqual([m.groups() for m in catalog._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")])
+        self.assertEqual(list(catalog._PURCHASED.finditer("Zorp eggs can be purchased for 500 nuyen x the Body.")), [])
 
     def test_abilities_each_entry_grants(self):
         md = "\n".join([
@@ -156,7 +156,7 @@ class AccuracyRound2Test(unittest.TestCase):
 
     def test_a_path_step_is_one_quality_named_apart_when_its_name_is_taken(self):
         from importer.sr6.sections import Found
-        cat = crb._Catalog()
+        cat = catalog.Catalog(crb.ID, "crb", crb.BOOK)
         cat.add("qualities", "Zorped", 130, {"kind": "negative", "karma": 25})
         cat.add("qualities", "Obsession: Blorped", 140, {"kind": "negative", "karma": 15})
         cat.section(Found("qualities", "Blorped", 140, {"kind": "negative", "karma": "15", "_heading": "Obsession: Blorped"}))
@@ -187,7 +187,7 @@ class FinalDecisionsTest(unittest.TestCase):
     """The owner's final decisions (importer v6): items the prose states, the core rulebook's vocabularies."""
 
     def test_prose_items(self):
-        from importer.sr6.recipes.crb import _band_tier, _skill_choices
+        from importer.sr6.catalog import _band_tier, _skill_choices
         md = "\n".join([
             "<!-- page 9 -->", "# MAGIC", "## Zorpcraft", "### Zorpspelling",
             "Zorpspelling comes in one of two forms: blue shield and unzorping.",

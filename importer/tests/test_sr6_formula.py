@@ -1,7 +1,7 @@
 """SR6 formulas and issues (importer/sr6/formula.py). Every value and name here is invented."""
 import unittest
 
-from importer.sr6 import formula as F
+from importer.sr6 import catalog, formula as F
 
 
 class GrammarTest(unittest.TestCase):
@@ -143,13 +143,13 @@ if __name__ == "__main__":
 
 
 class CellSplitTest(unittest.TestCase):
-    """crb._Catalog.fields on invented rows: two fields in one cell, a thousands point."""
+    """catalog.Catalog.fields on invented rows: two fields in one cell, a thousands point."""
 
     def fields(self, kind, row):
         from importer.sr6.recipes import crb
         from importer.sr6.regroup import Block
         b = Block("item", next(iter(row.values())), "GEAR", "", "", 3, list(row), row)
-        return crb._Catalog().fields(kind, b, 2)
+        return catalog.Catalog(crb.ID, "crb", crb.BOOK).fields(kind, b, 2)
 
     def test_dv_and_blast(self):
         f = self.fields("weapons", {"WEAPON": "Zorp Cannon", "DV": "9P(15m blast)", "AVAIL": "8", "COST": "9,000¥"})
@@ -186,7 +186,7 @@ class DescriptionValuesTest(unittest.TestCase):
     """Values a row leaves out and its (invented) description words."""
 
     def test_ammo_in_the_description(self):
-        from importer.sr6.recipes.crb import ammo_from_text
+        from importer.sr6.catalog import ammo_from_text
         self.assertEqual(ammo_from_text("Zorpbows have internal magazines that hold up to three bolts."), "3(m)")
         self.assertEqual(ammo_from_text("Its drum holds 30 rounds."), "30(d)")
         self.assertIsNone(ammo_from_text("It holds a grudge."))
@@ -200,7 +200,7 @@ class DescriptionValuesTest(unittest.TestCase):
 
     def test_quality_price_see_text(self):
         from importer.sr6.recipes import swc
-        cat = swc._Catalog("SWC", "swc", "x")
+        cat = catalog.Catalog("SWC", "swc", "x")
         swc._qualities(cat, "Glum Aura", "**Bonus:** See text\nA glum aura grants a bonus of 6 Karma. For the "
                                          "Awakened this quality has a bonus of 11 Karma.", 9)
         a = cat.entries["qualities"][0]["attrs"]

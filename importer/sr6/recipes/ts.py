@@ -3,7 +3,7 @@ explosives and the shields' bash among them), ammunition, armor, shields and hel
 system, badgecams, inhibitor bands, scanners, drugs), vehicles and drones, the ROLL CALL archetypes (NPCs, group
 Archetype), contacts and NPCs and the rule sections (working a case, interviews and blackmail, the gear chapter's
 rules: no catalog kind of their own), ids unscoped (run scopes them as ts.<slug>), descriptions in the private texts.
-Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in
+Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes in
 ts.md. The book prints no qualities.
 
 An item's stat box is a level-5 heading under its description (a level-3 heading, or a level-4 one under it); its
@@ -13,8 +13,8 @@ import re
 import sys
 from dataclasses import replace
 
+from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "TS", "Shadowrun: Tarnished Star", "Catalyst Game Labs", True
@@ -35,7 +35,7 @@ CATALOG_CHAPTERS = ()
 GEAR, ROLL_CALL, WHO = "right tools for the job", "roll call", "its who you know"
 WHO_RULES = ("game information", "blackmail how to play dirty")  # IT'S WHO YOU KNOW's level-2 sections that are rules
 WEAPON_LINE = ("TYPE", "DV", "MODE", "ATTACK RATING", "AMMO", "AVAIL", "COST")  # a weapon box's bold header line
-# a vehicle box's two tables -> the core rulebook's headers (crb.HEADERS)
+# a vehicle box's two tables -> the core rulebook's headers (catalog.HEADERS)
 VEHICLE = {"HAND": "HANDLING", "ACCEL": "ACCEL", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "BOD": "BODY",
            "ARM": "ARMOR", "PILOT": "PILOT", "SENSE": "SENSOR", "SEAT": "SEATS", "AVAIL": "AVAIL", "COST": "COST"}
 PROSE = {"TYPE", "DV", "ATTACK RATING", "POWER", "SOCIAL"}  # gear columns with no attribute: to the text
@@ -75,7 +75,7 @@ def weapon_line(text):
 def _vehicle(text):
     """A vehicle box's two tables -> {header: value} in the core rulebook's headers, else None (none, or more than one
     of either: the Honda Raptor's box prints none, its values run into the VAA Estrada's)."""
-    tabs = crb._tables(text)
+    tabs = catalog.md_tables(text)
     hand = [t for t in tabs if t[0][:1] == ["HAND"]]
     pilot = [t for t in tabs if "PILOT" in t[0]]  # its own table, or the second band joined to the first (regroup)
     if len(hand) != 1 or len(pilot) != 1 or re.search(r"\d¥$", text, re.M) and len(re.findall(r"\d¥", text)) > 1:
@@ -133,7 +133,7 @@ def _prep(bs, report):
             labels = {("Skills" if k == "Active Skills" else k): v for k, v in {**d.labels, **b.labels}.items()}
             section = b.section if d.level == 3 or "professional rating" in norm(b.section) else "Group: Archetype"
             if not b.stats and (bd := band(b.text)):  # its attributes as a header and a value line
-                b = crb._text_stats(b, crb.HEADERS["npcs"])
+                b = catalog.text_stats(b, catalog.HEADERS["npcs"])
                 b = replace(b, stats=bd + b.stats)
             b = replace(b, labels=labels, section=section,
                         text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t))
@@ -182,7 +182,7 @@ def _row(b, name, cells, text):
 
 def fix(b, parent2):
     """Gear columns with no attribute (an ammunition's DV and attack ratings, a drug's power) go to the text; armor's
-    SOCIAL is its social attribute (crb.HEADERS)."""
+    SOCIAL is its social attribute (catalog.HEADERS)."""
     if b.row is None or norm(b.chapter) != GEAR or (k := _kind(b)[0]) in ("weapons", "vehicles"):
         return b
     labels, row = dict(b.labels), {}
@@ -233,6 +233,6 @@ def kind(chapter, b, parent2):
 
 def extract(regrouped, ctx=None):
     report = []
-    res = crb.extract(_prep(list(blocks(regrouped)), report), ctx, book=sys.modules[__name__])
+    res = catalog.read(_prep(list(blocks(regrouped)), report), ctx, sys.modules[__name__])
     res.report += report  # a box whose values don't read
     return res

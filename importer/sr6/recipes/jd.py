@@ -1,13 +1,12 @@
 """Shadowrun: Johnson 'Dex (JD), a runner resource deck of Mr. Johnson cards -> the SR6 catalog: each Mr. Johnson as a
 contact (archetype Mr. Johnson) with its stat block as an NPC (group Contact), and the deck's rules (gear level,
 favors), ids unscoped (run scopes them as jd.<slug>), the bio, plot hooks and favors in the private texts. Reads only
-regrouped.md with the core rulebook's reading (crb.extract). Layout notes in jd.md."""
+regrouped.md with the core rulebook's reading (catalog.read). Layout notes in jd.md."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.sr6 import shapes
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import Block, blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "JD", "Shadowrun: Johnson 'Dex", "Catalyst Game Labs", True
@@ -69,7 +68,7 @@ def prepare(bs):
             if not (x.text or x.labels) or x is stats and norm(x.name) == "stats" or norm(x.name) == "credits":
                 continue
             # a box the stat lines ran into (`stats` in lower case, under the plot hooks): its own lines
-            body = crb._text(replace(x, text=shapes.text_bands(x.text)[1]))
+            body = catalog.block_text(replace(x, text=shapes.text_bands(x.text)[1]))
             if meta:  # the back's metatype line, after the favors
                 body = re.sub(r"\s+" + re.escape(meta) + r"\s*$", "", body, flags=re.I)
             parts.append(f"#### {x.name.title()}\n{body}")
@@ -81,4 +80,4 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -7,8 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from importer.sr6 import resolve, search, shapes
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog, resolve, search, shapes
 from importer.tests.test_sr6_resolve import block
 
 
@@ -48,18 +47,18 @@ class TextValuesTest(unittest.TestCase):
 class DisagreementTest(unittest.TestCase):
     def test_two_rows_that_disagree_give_no_value(self):
         idx = search.Index([block("Lists", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 50¥ |"),
-                             block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, crb._tables, shapes.RENAME)
+                             block("More lists", 31, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | 60¥ |")], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
-        self.assertIsNone(search.search_book(idx, crb.HEADERS, "gear", e, "cost", ""))
-        self.assertEqual(search.search_book(idx, crb.HEADERS, "gear", e, "avail", ""), ("2", "table", 29))  # (the same value twice is one)
+        self.assertIsNone(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", ""))
+        self.assertEqual(search.search_book(idx, catalog.HEADERS, "gear", e, "avail", ""), ("2", "table", 29))  # (the same value twice is one)
         # (a second row giving the value: the other gaps are no one row's)
-        self.assertEqual(search.same_row(idx, crb.HEADERS, "gear", e, "avail", "2"), {})
+        self.assertEqual(search.same_row(idx, catalog.HEADERS, "gear", e, "avail", "2"), {})
 
     def test_an_entrys_own_text_that_prints_two_values_gives_none(self):
-        idx = search.Index([], 1, crb._tables, shapes.RENAME)
+        idx = search.Index([], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Wobble Lock", "page": 39, "attrs": {}}
-        self.assertIsNone(search.search_book(idx, crb.HEADERS, "gear", e, "cost", "It costs 300¥, or costs 400¥ with a case."))
-        self.assertEqual(search.search_book(idx, crb.HEADERS, "gear", e, "cost", "It costs 300¥."), ("300", "text", 39))
+        self.assertIsNone(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", "It costs 300¥, or costs 400¥ with a case."))
+        self.assertEqual(search.search_book(idx, catalog.HEADERS, "gear", e, "cost", "It costs 300¥."), ("300", "text", 39))
 
 
 class ErrataMoreTest(unittest.TestCase):

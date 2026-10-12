@@ -23,6 +23,8 @@ Nothing here names an item: the readers are the books' column headers and value 
 import os
 import re
 
+from importer.sr6 import catalog
+from importer.sr6.recipes import general, printing, swc
 from importer.sr6.search import clean, good, norm
 
 _PDFDATE = re.compile(r"(?:D:)?((?:19|20)\d\d)(\d\d)(\d\d)")
@@ -232,7 +234,6 @@ FIXABLE = ("missing", "unreadable")  # (an ambiguous field is the book's own two
 class _Book:
     def __init__(self, book_dir, custom_dir, sources):
         from importer import xmlio
-        from importer.sr6.recipes import printing
         self.dir, self.custom = book_dir, custom_dir
         imp = xmlio.read_import(book_dir)
         st = os.path.join(book_dir, "status.xml")
@@ -372,13 +373,12 @@ def _errata_modules(bs, files, changed, n):
     errata's page, with a `found` record (how=errata). Returns the files it created."""
     from lxml import etree
     from importer.sr6 import regroup as rg
-    from importer.sr6.recipes import crb, general, swc
     made = []
     for eb, tb in _errata_books(bs):
         mods = general._modules(list(rg.blocks(rg.regroup(eb.md)[0])))
         if not mods:
             continue
-        cat = crb._Catalog(tb.src.upper(), tb.src, "an errata")
+        cat = catalog.Catalog(tb.src.upper(), tb.src, "an errata")
         for name, text, page in mods:
             swc._lifemodule(cat, "adult", name, text, _line_page(eb.md, name) or page)
         path = os.path.join(tb.custom, "imported", tb.src, "lifemodules.xml")

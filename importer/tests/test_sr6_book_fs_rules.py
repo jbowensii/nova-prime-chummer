@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import formula, moved, regroup, sections
+from importer.sr6 import catalog, formula, moved, regroup, sections
 from importer.sr6 import shapes
 from importer.sr6.recipes import crb, fs
 from tools.cl6check import fields, match
@@ -242,7 +242,7 @@ class AddOnsTest(unittest.TestCase):
         self.assertFalse(any(c == "issue" and x["field"] == "cost" for c, x, _ in kids))
 
     def test_a_letter_printed_three_times(self):
-        cat = crb._Catalog()
+        cat = catalog.Catalog(crb.ID, "crb", crb.BOOK)
         e = cat.add("armor", "Glimmeeer Coat", 3, {"category": "Armor"})
         self.assertEqual((e["name"], e["aliases"]), ("Glimmeeer Coat", ["Glimmeer Coat"]))  # (never a rename)
         self.assertEqual(cat.add("armor", "Zap Mark III", 3, {"category": "Armor"})["aliases"], [])  # (a numeral)
@@ -254,11 +254,11 @@ class SmallRulesTest(unittest.TestCase):
         self.assertEqual(formula.read("additional 100¥"), ("B + 100", {}))
         kids = formula.children("weapons", {"cost": "75 (per individual zap)"}, 3)
         self.assertIn(("issue", {"field": "qty", "code": "missing", "page": 3}, "the most one buys (individual zap) isn't printed"), kids)
-        self.assertTrue(crb._MULTIPLE.match("x2¥"))
+        self.assertTrue(catalog._MULTIPLE.match("x2¥"))
 
     def test_group_names_keep_their_capitals(self):
-        self.assertEqual(crb.group_name("Qux Retro Line"), "Qux Retro Line")
-        self.assertEqual(crb.group_name("Zap patches"), "Zap patch")
+        self.assertEqual(catalog.group_name("Qux Retro Line"), "Qux Retro Line")
+        self.assertEqual(catalog.group_name("Zap patches"), "Zap patch")
 
     def test_a_style_heading_naming_two(self):
         b = regroup.Block("item", "Zap Fu and Blip Fu", "HONING YOUR EDGE", "Martial Arts", "", 9,

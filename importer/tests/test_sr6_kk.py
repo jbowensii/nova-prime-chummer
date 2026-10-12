@@ -91,7 +91,7 @@ class KkRecipeTest(unittest.TestCase):
         self.assertEqual((w["Krime Twin"]["cost"], w["Krime Twin (GL)"]["dv"]), ("900", "As Grenade"))
 
     def test_ammo_rows_joined_and_vehicle_across_pages(self):
-        g = entries(self.res, "ammotypes")  # (priced as a multiple of the ammunition: crb.ammo_type)
+        g = entries(self.res, "ammotypes")  # (priced as a multiple of the ammunition: catalog.ammo_type)
         self.assertEqual((g["Krime Fizz Rounds"]["category"], g["Krime Fizz Rounds"]["avail"]), ("Ammo", "3(L)"))
         self.assertEqual(g["Krime Glow Slugs Extra Bright"]["cost"], "x3")
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}

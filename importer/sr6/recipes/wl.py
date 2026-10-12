@@ -1,14 +1,14 @@
 """Shadowrun: Wild Life (WL), the core critter book -> the SR6 catalog: the critters (one a stat box, its habitat the
 category, the description of the section it sits in), the new critter powers (those the book's stat blocks list as a
 weakness marked so), the critter gear and the rule sections, ids unscoped (run scopes them as wl.<slug>), descriptions
-in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract);
+in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read);
 layout notes in wl.md. A line or value that doesn't read is reported, never guessed."""
 import re
 import sys
 from dataclasses import replace
 
+from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.recipes import crb
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "WL", "Shadowrun: Wild Life", "Catalyst Game Labs", True
@@ -58,7 +58,7 @@ def _being(b):
 
 
 def _power_band(b):
-    return next(((h, r) for h, r in crb._tables(b.text) if r and [x.upper() for x in h[:2]] == ["TYPE", "ACTION"]), None)
+    return next(((h, r) for h, r in catalog.md_tables(b.text) if r and [x.upper() for x in h[:2]] == ["TYPE", "ACTION"]), None)
 
 
 def _cap(name):
@@ -91,7 +91,7 @@ def _critters(bs):
     out, taken = [], set()
     for b in bs:
         if b.type == "section" and b.level == 3 and (b.chapter, norm(b.name)) not in boxed and "| B | A |" in b.text:
-            b = replace(crb._text_stats(b, crb._BEING), type="item")  # its box's title lost: its bands in its text
+            b = replace(catalog.text_stats(b, catalog.BEING), type="item")  # its box's title lost: its bands in its text
             b = b if _being(b) else replace(b, type="section", stats=[])
         elif b.type == "item" and _being(b):
             sec = secs.get(owner(b))
@@ -109,7 +109,7 @@ _weak = set()  # the book's weaknesses, set by extract()
 def fix(b, parent2):
     """A power's band read from its text, its WEAKNESS cell set when the stat blocks list it as a weakness."""
     if b.type == "section" and b.level == 3 and norm(b.chapter) == POWERS and _power_band(b):
-        b = crb._text_stats(b, crb.HEADERS["critterpowers"])
+        b = catalog.text_stats(b, catalog.HEADERS["critterpowers"])
         if norm(b.name) in _weak and b.stats:
             b = replace(b, stats=[{**b.stats[0], "WEAKNESS": "true"}] + b.stats[1:])
     return b
@@ -129,4 +129,4 @@ def extract(regrouped, ctx=None):
     bs = _critters(blocks(regrouped))
     _weak.clear()
     _weak.update(_weaknesses(bs))  # ponytail: module state, fine for the one-book-at-a-time importer
-    return crb.extract(bs, ctx, book=sys.modules[__name__])
+    return catalog.read(bs, ctx, sys.modules[__name__])

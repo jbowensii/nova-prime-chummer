@@ -58,7 +58,7 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
 - Priority table (first header PRIORITY: five letter rows) and metatype attribute table (first header METATYPE, a
   "Racial Qualities:" sub-row per metatype): rule tables, kept in their section's text and read from there.
 - Contents (pp 3-6), index (305-310) and the character sheet (320-321) read across columns; nothing maps them.
-- A heading whose text holds its own stat line (every book, `crb.stat_lines`): one priced table with no name column
+- A heading whose text holds its own stat line (every book, `catalog.stat_lines`): one priced table with no name column
   (`TYPE | DV | … | AVAIL | COST`, the type its first cell; a vehicle's `HAND | ACCEL | … | COST` under a title line)
   is that item's row (the acid thrower, Collapsing Now p. 38; the Lamplighter, Deadly Arts p. 136; Krime Gloves p. 30:
   the first of its mode tables). Several rows of a TYPE column with an availability and a cost, each type a word or
@@ -119,7 +119,7 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
 
 ## Where a value the row leaves out is printed (importer v3, resolve.py)
 
-Before an issue is written, the same book is searched (every recipe that reads through `crb.extract` gets this):
+Before an issue is written, the same book is searched (every recipe that reads through `catalog.read` gets this):
 - **Another table naming the item:** the implant weapons (hand razors, spurs, cyberjaw, handblade, hardening) print
   their attack in the weapon tables and their price in the cyberware tables; the shields print DR, avail and cost in
   the armor table; the sensors print `Capacity x N¥` under shorter names (`Laser mic`, `Omni-directional mic`).

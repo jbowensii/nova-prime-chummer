@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 
 from importer import sr6
-from importer.sr6 import archetypes, regroup
+from importer.sr6 import archetypes, catalog, regroup
 from importer.sr6.recipes import crb, identify
 
 BOOK_MD = """<!-- page 1 -->
@@ -564,9 +564,9 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(entries(self.res, "vehicles")["Zoom Bike"].get("category"), "Cars")
         for v in ("Capacity x 70", "Rating^2 x 100", "(Force +3) L", "+500", "(Rating/3)(L)", "100 + (rating x 10)", "—",
                   "Rating x .3"):
-            self.assertTrue(crb.readable(v), v)
+            self.assertTrue(catalog.readable(v), v)
         for v in ("12x", "900 + Gizmo", "300/350", "10–900", "Rating^"):
-            self.assertFalse(crb.readable(v), v)
+            self.assertFalse(catalog.readable(v), v)
 
     def test_archetypes(self):
         """The archetypes chapter's sample characters: SR6 runner files built from the stat block against the catalog,
@@ -917,7 +917,7 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(sorted(crb.HEADING_LEVELS.values()), [1, 2, 3, 4, 5])
 
     def test_footnote_mark_left_out_of_a_name(self):
-        cat = crb._Catalog()
+        cat = catalog.Catalog(crb.ID, "crb", crb.BOOK)
         self.assertEqual(cat.add("weapons", "Zap Whip*", 1)["name"], "Zap Whip")
         self.assertEqual(cat.add("rules", "Glow Up * cannot be bought", 1)["name"], "Glow Up")
 
@@ -933,26 +933,26 @@ if __name__ == "__main__":
 
 class CodeAliasTest(unittest.TestCase):
     def test_a_row_named_by_a_code_takes_its_tables_title(self):
-        self.assertEqual(crb.code_alias("m60", "Zap bombs"), ["Zap bomb m60"])
-        self.assertEqual(crb.code_alias("B25", "Zapcannon Ammunition"), ["Zapcannon B25"])
-        self.assertEqual(crb.code_alias("Zap Gun", "Zappers"), [])
-        self.assertEqual(crb.code_alias("ZX-9", ""), [])
+        self.assertEqual(catalog.code_alias("m60", "Zap bombs"), ["Zap bomb m60"])
+        self.assertEqual(catalog.code_alias("B25", "Zapcannon Ammunition"), ["Zapcannon B25"])
+        self.assertEqual(catalog.code_alias("Zap Gun", "Zappers"), [])
+        self.assertEqual(catalog.code_alias("ZX-9", ""), [])
 
     def test_a_grouped_row_is_named_within_its_group(self):
-        self.assertEqual((crb.group_name("Zorp contracts"), crb.group_name("Glow patches")), ("Zorp contract", "Glow patch"))
-        self.assertEqual(crb.grouped_names("Bronze (month)", "Zorp contract"),
+        self.assertEqual((catalog.group_name("Zorp contracts"), catalog.group_name("Glow patches")), ("Zorp contract", "Glow patch"))
+        self.assertEqual(catalog.grouped_names("Bronze (month)", "Zorp contract"),
                          ["Zorp Bronze contract (month)", "Bronze Zorp contract (month)"])
-        self.assertEqual(crb.grouped_names("Fizz patch", "Glow patch"), ["Glow Fizz patch"])  # (its own last word once)
+        self.assertEqual(catalog.grouped_names("Fizz patch", "Glow patch"), ["Glow Fizz patch"])  # (its own last word once)
 
     def test_a_split_name_the_book_never_prints_takes_its_printed_short_form(self):
         class Index:  # the book's sentences (invented): the short form only
             def mentions(self, name):
                 return [(9, "a Zorp Blaster [Pistol]")] if name.lower() == "zorp blaster" else []
-        self.assertEqual(crb.printed_short("Zorp Mark Blaster", Index()), ["Zorp Blaster"])
-        self.assertEqual(crb.printed_short("Zorp Blaster", Index()), [])  # (two words: nothing to drop)
-        self.assertEqual(crb.printed_short("Zorp Mark Zapper", Index()), [])  # (not printed either way)
+        self.assertEqual(catalog.printed_short("Zorp Mark Blaster", Index()), ["Zorp Blaster"])
+        self.assertEqual(catalog.printed_short("Zorp Blaster", Index()), [])  # (two words: nothing to drop)
+        self.assertEqual(catalog.printed_short("Zorp Mark Zapper", Index()), [])  # (not printed either way)
 
     def test_a_placeholder_series_names_its_models(self):
-        self.assertEqual(crb.series_models("Zap XX-10 Series", "Formula: Zapbolt (ZB-10) or Quakebolt (QB-10)"),
+        self.assertEqual(catalog.series_models("Zap XX-10 Series", "Formula: Zapbolt (ZB-10) or Quakebolt (QB-10)"),
                          ["Zap ZB-10", "Zap QB-10"])
-        self.assertEqual(crb.series_models("Zap Ten", "ZB-10"), [])
+        self.assertEqual(catalog.series_models("Zap Ten", "ZB-10"), [])

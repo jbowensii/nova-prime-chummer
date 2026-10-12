@@ -226,7 +226,7 @@ LOW = WHY[:4]
 
 
 def build(cat, texts, row_kinds):
-    """Categories, groups and composed aliases for a book's catalog `cat` (crb._Catalog) once every block is read.
+    """Categories, groups and composed aliases for a book's catalog `cat` (catalog.Catalog) once every block is read.
     texts: the book's prose. Sets each table row's `category` to its table's category name, adds the categories
     entries, sets `group` and the composed aliases on bare-part rows. Returns the tables' verdicts [(table, name,
     confidence, why, kinds)] and the rows' [(entry, kind, category record, confidence, composed)]."""

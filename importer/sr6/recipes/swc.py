@@ -12,7 +12,7 @@ from importer.recipes import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, search, sections
 from importer.sr6 import shapes
-from importer.sr6.recipes.crb import _BEING, HEADERS, _Catalog, _md, _tables, _text, _value
+from importer.sr6.catalog import BEING, HEADERS, Catalog, block_md, block_text, md_tables, printed_value
 from importer.sr6.regroup import blocks, norm, text_page
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
@@ -234,7 +234,7 @@ def _metavariants(cat, chunks):
         if not ln or ln.startswith("#") or re.fullmatch(r"[-\s]+", ln):
             continue
         if _HEAD.fullmatch(ln):
-            h = [_BEING.get(t, "mag") for t in ln.split()]
+            h = [BEING.get(t, "mag") for t in ln.split()]
             head, part, pending = (h, None, None) if h[0] == "bod" else (head, h, pending)
             traits = None
             continue
@@ -422,7 +422,7 @@ def _contact(cat, name, text, page, band=""):
     cat.add("contacts", name, page, {"archetype": name, "connection": int(m.group(1))}, (), _plain_text(text))
     for i, ln in enumerate(lines[:-1]):
         if _BAND.match(ln) and len(ln.split()) == len(lines[i + 1].split()):
-            stats = {_BEING[h]: v for h, v in zip(ln.split(), lines[i + 1].split()) if h in _BEING}
+            stats = {BEING[h]: v for h, v in zip(ln.split(), lines[i + 1].split()) if h in BEING}
             rest = " ".join(lines[i + 2:])
             sk = re.search(r"Active Skills\s*:\s*(.*?)(?=Knowledge Skills|$)", rest)
             kids = [("skills", {}, sk.group(1).strip())] if sk else []
@@ -435,7 +435,7 @@ def _vehicle(cat, b, band, page):
     """A vehicle printed with its stats in its text (shapes.vehicle_band): a vehicles entry, its tag line the
     category, a lower-case title capitalized."""
     cols = HEADERS["vehicles"]
-    attrs = {"category": slug(b.tags) or "vehicles", **{cols[h]: _value(cols[h], v) for h, v in band.items() if h in cols}}
+    attrs = {"category": slug(b.tags) or "vehicles", **{cols[h]: printed_value(cols[h], v) for h, v in band.items() if h in cols}}
     name = b.name.title() if b.name[:1].islower() else b.name
     keep = [ln for ln in b.text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip())
             and not re.fullmatch(r"[\d/—–\-+*.,()¥A-Z ]+", ln.strip())]
@@ -446,10 +446,10 @@ def _vehicle(cat, b, band, page):
 # --- the book ------------------------------------------------------------------------------------------------------
 
 def extract(regrouped, ctx=None):
-    cat = _Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
+    cat = Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
-    cat.index = search.Index(bs, PAGE_OFFSET, _tables, shapes.RENAME)
+    cat.index = search.Index(bs, PAGE_OFFSET, md_tables, shapes.RENAME)
     kinds, found = sections.Reader(), []
     for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
@@ -458,10 +458,10 @@ def extract(regrouped, ctx=None):
             chapter, group, stack = b.chapter, "", []
         if b.level <= 4:
             group = norm(b.name)
-        text = _text(b)
+        text = block_text(b)
         done = False
         if ch == METAVARIANTS[0]:  # the development tables: a row of its own, a block's band or a table in its text
-            tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])                 + [(list(x), [list(x.values())]) for x in b.stats] + _tables(b.text)
+            tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])                 + [(list(x), [list(x.values())]) for x in b.stats] + md_tables(b.text)
             dev += [(h, r, page) for h, rs in tables if norm(h[0]) == "metavariant" and any("PRIORITY" in x.upper() for x in h)
                     for r in rs]  # (they stay rules too)
         if ch == LIFE[0] and sec == LIFE[1] and b.type == "item":
@@ -476,14 +476,14 @@ def extract(regrouped, ctx=None):
                 _lifemodule(cat, "adult", f"Event: {b.labels['Event']}", b.text, page)
                 done = True
         elif ch == METAVARIANTS[0] and sec.startswith(METAVARIANTS[1]) and "variant attribute ranges" in norm(b.name):
-            ranges.append((page, "\n".join(x for x in (_md(b), text) if x)))
+            ranges.append((page, "\n".join(x for x in (block_md(b), text) if x)))
             done = True
         elif ch in QUALITY_CHAPTERS and b.type == "item" and "new critter powers" in group and b.level == 5:
             done = _critterpower(cat, b.name, text, page)
         elif ch in QUALITY_CHAPTERS and b.type == "item":
             done = _qualities(cat, b.name, text, page, b)
         elif ch == CONTACTS and b.type == "item":
-            done = _contact(cat, b.name, text, page, _md(b))
+            done = _contact(cat, b.name, text, page, block_md(b))
         elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:
             done = _vehicle(cat, b, band, page)
         if done:
@@ -496,7 +496,7 @@ def extract(regrouped, ctx=None):
             stack.pop()
         parent = stack[-1][1] if stack else None
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
-                    "\n\n".join(x for x in (_md(b), text) if x), parent=parent)
+                    "\n\n".join(x for x in (block_md(b), text) if x), parent=parent)
         stack.append((level, e["id"]))
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)

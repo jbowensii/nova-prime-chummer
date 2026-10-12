@@ -3,13 +3,14 @@ the book's metatype-like option, a positive quality from its minimum base cost) 
 (qualities named `<add-on> (Shifter add-on)`), the Animalism powers (metamagics: one a grade of animalism, as
 metamagics are one a grade of initiation), the shifter gear (armor, gear, ammunition, drones) and the rule sections,
 ids unscoped (run scopes them as bn.<slug>), descriptions in the private texts. Reads only regrouped.md
-(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (crb.extract); layout notes
+(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout notes
 in bn.md. A line or value that doesn't read is reported, never guessed."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb, fs
+from importer.sr6 import catalog
+from importer.sr6.recipes import fs
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "BN", "Shadowrun: Bestial Nature", "Catalyst Game Labs", True
@@ -65,7 +66,7 @@ def _drones(bs):
     drones = [b for b in gear if b.type == "item" and re.search(r"\bdrone\b", b.tags, re.I)]
     tables, holders = [], set()
     for b in gear:  # a box merged into its description prints after the description's text
-        for h, rows in crb._tables(b.text):
+        for h, rows in catalog.md_tables(b.text):
             if h and h[0].upper() == "HAND":
                 tables += [dict(zip(h, r)) for r in rows]
         for s in b.stats:
@@ -136,6 +137,6 @@ def kind(chapter, b, parent2):
 
 def extract(regrouped, ctx=None):
     bs, report = _drones(list(blocks(regrouped)))
-    res = crb.extract(bs, ctx, book=sys.modules[__name__])
+    res = catalog.read(bs, ctx, sys.modules[__name__])
     res.report += report
     return res

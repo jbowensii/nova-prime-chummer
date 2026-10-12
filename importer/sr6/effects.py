@@ -1286,7 +1286,7 @@ SKIP_KINDS = {"rules", "actions", "npcs", "contacts", "critters", "spirits", "sp
               "skills", "lifemodules", "grades", "attributes", "samples", "sources", "index", "packs", "contacttypes",
               "licencetypes", "magictypes", "senses", "trueelements", "ruleoptions", "spellfeatures", "qualitysets"}
 _ENTRY = re.compile(r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>\s*$')
-_KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: crb.add_ons)
+_KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: catalog.add_ons)
 _DROP = re.compile(r'<(?:effect|test|link|incompatible|compatible) [^>]*/>')
 
 
@@ -1571,7 +1571,7 @@ def split_rating(name, attrs, kids, siblings=()):
 
 
 def apply(files, texts_xml, regrouped=""):
-    """(files, texts): the catalog files (`{name: xml}`, crb._Catalog.xml's one entry a line) with each entry's effects,
+    """(files, texts): the catalog files (`{name: xml}`, catalog.Catalog.xml's one entry a line) with each entry's effects,
     tests and links as its text and the book's tables state them (read(), table(), links()), in place of the ones read
     before (an add-on's effects on its host, read from the host's text, stay); and the texts with a variant's own run-in
     paragraph added to its description where the book prints it under the parent's heading (`Genotype Enhancement

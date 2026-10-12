@@ -5,8 +5,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import resolve, search, shapes
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog, resolve, search, shapes
 from importer.sr6.regroup import Block
 
 NS = "urn:chummer-sr6:data:1"
@@ -25,38 +24,38 @@ class BookCirclesTest(unittest.TestCase):
             block("Gadgets list", 30, text="| ITEM | AVAIL | COST |\n|---|---|---|\n| Glim mic | 2 | Capacity x 50¥ |"),
             block("Wobble Lock", 40, text="Wobble locks come in ratings 1 to 6 and keep the door shut."),
             block("Gadgets", 41, text="A buyer may fit a Wobble Lock to any door. Twin values: costs 300¥."),
-        ], 1, crb._tables, shapes.RENAME)
+        ], 1, catalog.md_tables, shapes.RENAME)
 
     def test_a_table_elsewhere_in_the_book(self):
         e = {"name": "Zorp Blade", "page": 19, "attrs": {}}
-        self.assertEqual(search.search_book(self.index, crb.HEADERS, "weapons", e, "cost", ""), ("2500", "table", 29))
-        self.assertEqual(search.search_book(self.index, crb.HEADERS, "weapons", e, "avail", ""), ("4(I)", "table", 29))
+        self.assertEqual(search.search_book(self.index, catalog.HEADERS, "weapons", e, "cost", ""), ("2500", "table", 29))
+        self.assertEqual(search.search_book(self.index, catalog.HEADERS, "weapons", e, "avail", ""), ("4(I)", "table", 29))
 
     def test_a_shorter_printing_of_the_name(self):
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
-        self.assertEqual(search.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""), ("Capacity x 50", "table", 29))
+        self.assertEqual(search.search_book(self.index, catalog.HEADERS, "gear", e, "cost", ""), ("Capacity x 50", "table", 29))
 
     def test_an_implant_row_prices_no_gear(self):
         e = {"name": "Blink", "aliases": ["Blink sensor"], "page": 29, "attrs": {}}
-        self.assertIsNone(search.search_book(self.index, crb.HEADERS, "gear", e, "cost", ""))
+        self.assertIsNone(search.search_book(self.index, catalog.HEADERS, "gear", e, "cost", ""))
 
     def test_the_text(self):
         e = {"name": "Wobble Lock", "page": 39, "attrs": {}}
-        self.assertEqual(search.search_book(self.index, crb.HEADERS, "gear", e, "rating", ""), ("1–6", "text", 39))
+        self.assertEqual(search.search_book(self.index, catalog.HEADERS, "gear", e, "rating", ""), ("1–6", "text", 39))
         own = "This lock comes in a maximum rating of 4."
-        self.assertEqual(search.search_book(self.index, crb.HEADERS, "gear", e, "rating", own), ("1–4", "text", 39))
+        self.assertEqual(search.search_book(self.index, catalog.HEADERS, "gear", e, "rating", own), ("1–4", "text", 39))
 
     def test_nothing_or_a_disagreement_is_no_value(self):
         e = {"name": "Nothing Here", "page": 5, "attrs": {}}
-        self.assertIsNone(search.search_book(self.index, crb.HEADERS, "gear", e, "avail", ""))
+        self.assertIsNone(search.search_book(self.index, catalog.HEADERS, "gear", e, "avail", ""))
         self.assertEqual(search.text_values("cost", ["It costs 300¥, or costs 400¥ with a case."]), {"300", "400"})
         self.assertEqual(search.text_values("karma", ["You may buy it off for 9 Karma.", "Buy off your Zorp quality for 8 Karma.", "Gain 4 Karma, to spend."]), {"4"})
 
     def test_the_same_row_fills_the_other_gaps(self):
         table = "| ITEM | CAPACITY | AVAIL | COST |\n|---|---|---|---|\n| Glim mic | 1–6 | 2 | Capacity x 50¥ |"
-        idx = search.Index([block("Glim Lists", 30, text=table)], 1, crb._tables, shapes.RENAME)
+        idx = search.Index([block("Glim Lists", 30, text=table)], 1, catalog.md_tables, shapes.RENAME)
         e = {"name": "Glim microphone", "page": 29, "attrs": {}}
-        self.assertEqual(search.same_row(idx, crb.HEADERS, "gear", e, "cost", "Capacity x 50"), {"capacity": "1–6", "avail": "2"})
+        self.assertEqual(search.same_row(idx, catalog.HEADERS, "gear", e, "cost", "Capacity x 50"), {"capacity": "1–6", "avail": "2"})
 
     def test_names_item(self):
         self.assertTrue(search.names_item("Glim mic", "Glim microphone"))
