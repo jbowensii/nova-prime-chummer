@@ -5,7 +5,9 @@
 //                                   cookie, sealed with AES-256-GCM (library/.config/oidc-key.xml): nothing is kept here
 //                                   per start, so a flood of starts can't push anyone's sign-in out (and needs no limit)
 //   GET  /api/auth/oidc/callback    public: code + state -> the ID token checked, the account matched -> 302 to / with a
-//                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL)
+//                                   session, or to /?signin=<no-account|expired|denied|failed|off> (no details in the URL).
+//                                   Its calls to the issuer (the token exchange) are limited per client network: EXCHANGES
+//                                   a minute, more refused (failed)
 //   POST /api/auth/oidc/link/start  a signed-in password account: -> { url } (the issuer's, for the browser to open); the sealed
 //                                   cookie also holds the account id and its session. The callback then links the account
 //                                   (server/auth.mjs linkExternal): method authelia, no password, other sessions ended ->
@@ -23,6 +25,7 @@ import { createCipheriv, createDecipheriv, createHash, createPublicKey, randomBy
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { chmod, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { netKey } from './auth.mjs'
 import { attr, esc, rootTag, writeAtomic } from './common.mjs'
 
 const NS = 'urn:chummer-anarchy2:config:1'
@@ -30,6 +33,8 @@ const MINUTE = 60e3
 const STATE_TTL = 10 * MINUTE
 const FAIL_TTL = MINUTE // a failed discovery is remembered this long: an issuer that's down isn't asked on every start
 const MAX_USED = 10000 // nonces already used (single use), kept until their cookie would have expired
+const EXCHANGES = 10 // callbacks a client network (auth.mjs netKey) may take to the issuer a minute
+const MAX_NETS = 10000 // client networks counted
 const AAD = Buffer.from('ca2-oidc-state-1')
 const LEEWAY = 60 // seconds, for exp / iat / nbf
 const DISCOVERY_TTL = 60 * MINUTE,
@@ -103,7 +108,7 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
 
 /** `auth`: server/auth.mjs's authApi (json(), signInExternal(), unlinkAll()). Options for tests: fetch timeout, answer size cap,
  *  the shortest gap between two key-set fetches for an unknown kid, how long a failed discovery is remembered, whether plain
- *  http to this machine is allowed. */
+ *  http to this machine is allowed, the token exchanges a client network may start a minute. */
 /** What ties a link to the session that started it: in the sealed cookie, never the session hash itself. */
 const binding = sessionHash => sha256(`link\n${sessionHash}`).toString('base64url')
 
@@ -117,6 +122,7 @@ export function oidcApi({
   jwksGap = MINUTE,
   failTtl = FAIL_TTL,
   insecure = insecureAllowed(),
+  exchangesPerMinute = EXCHANGES,
 }) {
   const config = join(libraryDir, '.config')
   const settingsPath = join(config, 'auth.xml'),
@@ -125,6 +131,7 @@ export function oidcApi({
   const discovered = new Map() // issuer -> { doc, at } or { error, at }
   const keySets = new Map() // jwks_uri -> { keys, at }
   const used = new Map() // nonce -> when its cookie expires: a state is taken once, oldest first
+  const exchanges = new Map() // netKey(ip) -> when its minute began, how many: oldest first
   const opts = what => ({ timeout, max: maxBytes, what, insecure })
   const check = (u, what) => checkUrl(u, what, insecure)
 
@@ -473,6 +480,24 @@ export function oidcApi({
     }
   }
 
+  /** A callback about to call the issuer from `ip`: exchangesPerMinute per client network in a minute, more refused. */
+  function rate(ip) {
+    const now = Date.now(),
+      k = netKey(ip),
+      e = exchanges.get(k)
+    if (e && now - e.since < MINUTE) {
+      if (e.n >= exchangesPerMinute) throw refuse('failed', 'too many sign-ins from this network in a minute')
+      e.n++
+      return
+    }
+    // ponytail: in memory; past MAX_NETS the oldest minute goes even if it isn't over (its count starts again)
+    for (const [key, x] of exchanges)
+      if (now - x.since >= MINUTE || exchanges.size >= MAX_NETS) exchanges.delete(key)
+      else break
+    exchanges.delete(k)
+    exchanges.set(k, { since: now, n: 1 })
+  }
+
   async function callback(req, res, url) {
     const ctx = req.ctx,
       q = url.searchParams
@@ -486,6 +511,7 @@ export function oidcApi({
       if (!code || code.length > 2048) throw refuse('failed', 'the issuer sent no code')
       const s = settings()
       if (!s.on || s.issuer !== entry.issuer || s.clientId !== entry.clientId) throw refuse('failed', 'the sign-in settings changed meanwhile')
+      rate(ctx.ip)
       const d = await discover(s.issuer)
       const tokens = await exchange(d, s, code, entry)
       const id = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
