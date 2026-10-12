@@ -97,6 +97,26 @@ export function restoredCopy(xml, id, tag = CA2) {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..') // where `python -m importer` runs
 const inside = (path, dir) => path === dir || path.startsWith(dir + sep)
+/** A Map that keeps its most recently used entries, `max` in all as counted by `size` (1 each unless given): past it,
+ *  the least recently used go first (one bigger than `max` alone goes at once). */
+export function lru(max, size = () => 1) {
+  const map = new Map()
+  let total = 0
+  const drop = k => { if (map.has(k)) { total -= size(map.get(k)); map.delete(k) } }
+  return {
+    get: k => { const v = map.get(k); if (v !== undefined) { map.delete(k); map.set(k, v) } return v },
+    set: (k, v) => {
+      drop(k)
+      map.set(k, v)
+      total += size(v)
+      for (const old of map.keys()) { if (total <= max) break; drop(old) }
+      return v
+    },
+    delete: drop,
+    get size() { return map.size },
+    get total() { return total },
+  }
+}
 // the app version for backups: VERSION (written by the Dockerfile, which ships no package.json), else package.json
 const VERSION = (() => {
   try { return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim() } catch { /* not in the image */ }
@@ -114,6 +134,11 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   // ponytail: one lock for every account's runners; per-folder locks if saves ever queue up
   let chain = Promise.resolve()
   const lock = fn => { const run = chain.then(fn); chain = run.catch(() => {}); return run }
+  // each folder's files as index() last read them (both games'), kept while a file's size, time and inode stay: every list
+  // and every save read all of an account's files again (a GM with the books' thousand NPCs: half a second a request). A
+  // folder's entry holds only the files it has now; past 64 MB of XML the least recently listed folders go.
+  // ponytail: a fixed cap; make it a setting if a big table's lists ever miss it
+  const indexed = lru(64 * 1024 * 1024, files => [...files.values()].reduce((n, f) => n + f.entry.xml.length, 0))
   async function freeName(dir, base) {
     const taken = new Set((await readdir(dir).catch(() => [])).map(f => f.toLowerCase()))
     for (let i = 1; ; i++) {
@@ -212,20 +237,22 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
     const npcRoot = join(home, '.npcs'), npcFolder = username => join(npcRoot, username)
 
-    // each file as index() read it, kept while its size, time and inode stay: every list and every save read all of an
-    // account's files again (a GM with the books' thousand NPCs: half a second a request)
-    // ponytail: a deleted file's entry stays until restart (a few KB each); evict on delete if that ever matters
-    const indexed = new Map()
+    /** The folder's character files as { file, id, rev, xml }, from `indexed` while unchanged. */
     async function index(dir) {
       const files = (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))
-      return Promise.all(files.map(async file => {
+      const was = indexed.get(dir), now = new Map()
+      const out = await Promise.all(files.map(async file => {
         const path = join(dir, file), s = await stat(path), key = `${s.size}/${s.mtimeMs}/${s.ino}`
-        if (indexed.get(path)?.key === key) return indexed.get(path).entry
+        const hit = was?.get(file)
+        if (hit?.key === key) { now.set(file, hit); return hit.entry }
         const xml = await readFile(path, 'utf8')
         const entry = { file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml }
-        indexed.set(path, { key, entry })
+        now.set(file, { key, entry })
         return entry
       }))
+      if (now.size) indexed.set(dir, now) // (a file deleted or renamed since: its entry is gone)
+      else indexed.delete(dir)
+      return out
     }
 
     const campaigns = campaignsApi({ customDir: g.sub ? join(customDir, g.sub) : customDir, tag, lock, auth, runnersOf: u => index(folder(u)),
@@ -421,8 +448,10 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
     return Buffer.concat(chunks).toString('utf8')
   }
 
-  // a served file's gzip, kept while the file is unchanged (the SR6 books' texts are tens of megabytes of XML)
-  const zipped = new Map()
+  // a served file's gzip, kept while the file is unchanged (the SR6 books' texts are tens of megabytes of XML); a changed
+  // or gone file's goes when it is next asked for, and past 64 MB the least recently served go
+  // ponytail: a fixed cap; make it a setting if the books' texts ever outgrow it
+  const zipped = lru(64 * 1024 * 1024, z => z.body.length)
   /** A file under `base`: a validator (ETag), so the browser's copy is reused while the file is unchanged (304), and
    *  gzip for text the browser takes it for. */
   async function serveFile(res, base, rel, req) {
@@ -436,16 +465,18 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
       const etag = `W/"${s.size.toString(36)}-${Math.floor(s.mtimeMs).toString(36)}"`
       const head = { 'Content-Type': type, 'Cache-Control': rel.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
         ETag: etag, ...text ? { Vary: 'Accept-Encoding' } : {} }
+      let z = zipped.get(path)
+      if (z && z.etag !== etag) { zipped.delete(path); z = undefined } // changed since it was zipped
       if (req?.headers['if-none-match'] === etag) { res.writeHead(304, head).end(); return true }
       let body = await readFile(path)
       if (text && body.length > 1024 && /\bgzip\b/.test(req?.headers['accept-encoding'] ?? '')) {
-        let z = zipped.get(path)
-        if (z?.etag !== etag) zipped.set(path, z = { etag, body: await gzipAsync(body) })
+        if (!z) zipped.set(path, z = { etag, body: await gzipAsync(body) })
         body = z.body
         head['Content-Encoding'] = 'gzip'
       }
       res.writeHead(200, head).end(body)
     } catch {
+      zipped.delete(path) // gone (or unreadable): its gzip too
       return null
     }
     return true
@@ -522,6 +553,7 @@ export function createServer({ staticDir, charDir, customDir, libraryDir, python
   })
   server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
   server.stopJobs = () => { books.stop(); auth.stop() }
+  server.caches = { indexed, zipped } // tests
   server.started = books.started // the start-up checks (interrupted jobs, core data re-import) have queued their jobs
   return server
 }
