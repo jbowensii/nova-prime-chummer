@@ -105,8 +105,10 @@ export function balance(c: Catalog, ch: Character, table?: TableFlags): number {
   return ledgerRunning(settle(c, ch)).at(-1)?.running ?? 0
 }
 
-/** What creation leaves (a reopened runner's carry included) becomes the ledger's first entry; the carry is used up. */
+/** What creation leaves (a reopened runner's carry included) becomes the ledger's first entry; the carry is used up. A
+ *  runner already finalized comes back unchanged (a second entry would reset the balance its earnings built). */
 export function finalize(c: Catalog, ch: Character, table?: TableFlags): Character {
+  if (ch.finalizedAt) return ch
   const remaining = price(c, ch, table).remaining
   const at = new Date().toISOString()
   const { carry: _, ...rest } = ch
