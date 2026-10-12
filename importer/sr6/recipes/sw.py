@@ -2,13 +2,13 @@
 initiate's and the adept's), traditions, preparations and a focus (gear), spirits and the insect spirits, critter
 (spirit) powers, qualities and the rule sections (spell design, free and ally spirits, triggers, magical groups,
 mentor spirits, blood magic, mana ebbs: no catalog kind of their own), ids unscoped (run scopes them as sw.<slug>),
-descriptions in the private texts. Reads only regrouped.md with the core rulebook's reading (crb.extract); its few
-boxes through importer/sr6/recipes/shapes.py. Layout notes in sw.md."""
+descriptions in the private texts. Reads only regrouped.md with the core rulebook's reading (catalog.read); its few
+boxes through importer/sr6/shapes.py. Layout notes in sw.md."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb, shapes
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "SW", "Shadowrun: Street Wyrd", "Catalyst Game Labs", True
@@ -82,7 +82,7 @@ def kind(chapter, b, parent2):
 
 
 def prepare(bs):
-    """The book's shapes as crb.extract reads them: boxes (shapes.boxes); a `Game Information` block's text joins the
+    """The book's shapes as catalog.read reads them: boxes (shapes.boxes); a `Game Information` block's text joins the
     item above it (a metamagic's rules); a spell's category from its tags (`Direct Combat, Blood`) when its section
     names none; a quality's `(Bonus: 3 Karma per level, 5 levels maximum)` tag line as its label and levels; a
     preparation's `Cost:` line as its row; a spirit box named by its title; `New Metamagic: Sacrifice` as
@@ -214,4 +214,4 @@ def _tradition(bs, i, b):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

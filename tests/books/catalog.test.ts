@@ -22,11 +22,22 @@ describeBooks('book catalog XML', () => {
   })
 
   test('book entries used by the samples exist', () => {
-    const amps = ids(BOOKS_DIR, 'amps.xml'), spells = ids(BOOKS_DIR, 'spells.xml')
-    for (const id of ['ares-wired-reflexes', 'sustaining-focus', 'empathic-sense', 'vocal-control', 'flashing-smile',
-      'danger-sense', 'concealment', 'well-stocked-closet', 'cat-mentor-spirit-mystery-secret']) expect(amps, id).toContain(id)
-    for (const id of ['spell-lightning-bolt', 'spell-heal', 'spell-invisibility', 'spell-mask', 'spell-phantasm',
-      'spell-confusion', 'spell-detect-enemies']) expect(spells, id).toContain(id)
+    const amps = ids(BOOKS_DIR, 'amps.xml'),
+      spells = ids(BOOKS_DIR, 'spells.xml')
+    for (const id of [
+      'ares-wired-reflexes',
+      'sustaining-focus',
+      'empathic-sense',
+      'vocal-control',
+      'flashing-smile',
+      'danger-sense',
+      'concealment',
+      'well-stocked-closet',
+      'cat-mentor-spirit-mystery-secret',
+    ])
+      expect(amps, id).toContain(id)
+    for (const id of ['spell-lightning-bolt', 'spell-heal', 'spell-invisibility', 'spell-mask', 'spell-phantasm', 'spell-confusion', 'spell-detect-enemies'])
+      expect(spells, id).toContain(id)
     expect(ids('public/data', 'weapons.xml')).toContain('heavy-pistol')
     expect(ids('public/data', 'armor.xml')).toContain('light-armor')
   })

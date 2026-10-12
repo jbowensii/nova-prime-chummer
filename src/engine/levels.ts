@@ -10,7 +10,7 @@ const families = (c: Catalog) => {
   let m = cache.get(c)
   if (!m) {
     m = new Map()
-    for (const t of c.amps.values()) if (t.family) m.set(t.family, [...m.get(t.family) ?? [], t])
+    for (const t of c.amps.values()) if (t.family) m.set(t.family, [...(m.get(t.family) ?? []), t])
     for (const list of m.values()) list.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
     cache.set(c, m)
   }

@@ -18,13 +18,17 @@ Targets:
 - `item:<field>` the item's own stat, or, on an add-on (an accessory, an ammo type, a vehicle mod), the stat of the
   item it fits: `ar` (one value per range band), `dv`, `concealability`, `handling`, `acceleration`,
   `speed-interval`, `top-speed`, `body`, `armor`, `pilot`, `sensor`, `seats`, `size`, `ammo`;
-- `action:<name>` an Edge action (its Edge cost);
-- `resource:<name>` a creation resource (`contact-points`).
+- `action:<name>` an Edge or Matrix action; `action-max:<name>` the cap on an action's bonus;
+- `complex-form:<name>` a complex form named as what the bonus is on; `lifestyle:<name>` lifestyle points;
+- `resource:<name>` a creation resource (`contact-points`); `skill-max:<id>` a skill's maximum;
+- `sense:<name>` a sense the entry is named for or grants; `pool:chase` the chase pool's Edge; `pricemod:<what>` a
+  price in percent; and the derived `monthly-cost`, `essence-hole`, `unarmed-damage` and `power-points`.
+docs/sr6-data-format.md, "Effects", is the full grammar (every target family, operation and value).
 
 Operations: `add` (+N, or -N), `set` (the value replaces it: an infected type's attribute maximum), `edge` (N bonus
 Edge on those tests), `edge-cost` (Edge boosts and actions on them cost N more, -N less), `edge-cost-set` (an Edge
 action's new cost), `no-edge` (no Edge may be spent on them), `no-edge-gain` (no Edge may be gained on them),
-`wild-die` (a die of the pool is a wild die), `hits` (N extra hits).
+`wild-die` (a die of the pool is a wild die), `hits` (N extra hits), `threshold` (the test's threshold changes by N).
 
 Values: a number; `R` (× the line's rating, level or Force: `adds its rating`, `per level`), `R*N`; or a formula over
 attributes (`edg/2`: half your Edge, rounded down), which is shown, never applied.
@@ -1006,9 +1010,13 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False, prev=()):
         # (`When making jumping tests … subtract the hydraulic jacks rating from the threshold`: the tests named before)
         before = re.search(r"\b(?:when|while) (?:making|rolling|attempting) (?P<t>[^.;(]*?\btests?)\b", low[:m.start()])
         t = m.group("t") or m.group("t2") or (before.group("t") if before else "")
+        # (the tests named are no condition; a condition after them is: `… Stealth tests while sneaking` → `while sneaking`)
+        w = when
+        if before and when and before.group("t") in when:
+            rest = when.split(before.group("t"), 1)[1].strip(" ,")
+            w = rest if _CONDITION.match(rest) else None
         for t, spec in targets(t, kind):
-            out.append(_fx(t, "threshold", "-" + v.lstrip("-"), sw, None if before and when and before.group("t") in when else when,
-                           _spec(t, spec)))
+            out.append(_fx(t, "threshold", "-" + v.lstrip("-"), sw, w, _spec(t, spec)))
     for m in re.finditer(r"\b(?:can|may) (?:be used to )?(?:add|raise|increase) (?:to )?either (?:the )?(?P<t>[a-z]+(?:, [a-z]+)*,? or [a-z]+)\b", low):
         # (`Cyberlimbs can be used to add to either Agility, Armor, or Strength`: no amount, the item's rating; the one
         # the player picks of the attributes named)
@@ -1050,6 +1058,9 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False, prev=()):
     for m in re.finditer(r"\b(?:gain|receive|get|add)s?\s+a number of (?:bonus |additional |extra )?dice equal to (?:the|its|their) (?:level|rating|force)(?: of (?:this|the) [a-z]+)?"
                          r"(?:\s+(?:to|on|for)\s+(?:all |any |your |their |the |its )*(?P<t>[^.;]*))?", low):
         bonus(targets(m.group("t") or "", kind) or targets(low[:m.start()], kind), "R")
+    # (`Increase the close and near attack ratings by 2`: the bands named, not also the plain `increase … by 2`)
+    banded = {b for t, v, _, _ in found if t == "item:ar" and v and "," in v for b in v.split(",")}
+    found = [x for x in found if not (x[0] == "item:ar" and x[1] and "," not in x[1] and x[1] in banded)]
     for t, v, spec, w in found:
         if v is None:
             continue
@@ -1275,7 +1286,7 @@ SKIP_KINDS = {"rules", "actions", "npcs", "contacts", "critters", "spirits", "sp
               "skills", "lifemodules", "grades", "attributes", "samples", "sources", "index", "packs", "contacttypes",
               "licencetypes", "magictypes", "senses", "trueelements", "ruleoptions", "spellfeatures", "qualitysets"}
 _ENTRY = re.compile(r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>\s*$')
-_KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: crb.add_ons)
+_KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: catalog.add_ons)
 _DROP = re.compile(r'<(?:effect|test|link|incompatible|compatible) [^>]*/>')
 
 
@@ -1560,7 +1571,7 @@ def split_rating(name, attrs, kids, siblings=()):
 
 
 def apply(files, texts_xml, regrouped=""):
-    """(files, texts): the catalog files (`{name: xml}`, crb._Catalog.xml's one entry a line) with each entry's effects,
+    """(files, texts): the catalog files (`{name: xml}`, catalog.Catalog.xml's one entry a line) with each entry's effects,
     tests and links as its text and the book's tables state them (read(), table(), links()), in place of the ones read
     before (an add-on's effects on its host, read from the host's text, stay); and the texts with a variant's own run-in
     paragraph added to its description where the book prints it under the parent's heading (`Genotype Enhancement

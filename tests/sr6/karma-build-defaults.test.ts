@@ -3,15 +3,16 @@
 // made up; the catalog is the fixture's.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { applyDeps, flag, levelRules, missingFor, num, parseCreation, runnerRules, type CreationRules } from '../../src/sr6/engine/creation'
+import { applyDeps, flag, levelRules, missingFor, num, parseCreation, rulesFrom, runnerRules, type CreationRules } from '../../src/sr6/engine/creation'
 import { allBudgets, freeSpellSlots } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import type { MagicKind, Sr6Build } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 
 const SHIPPED = parseCreation(readFileSync('public/data/sr6/creation-defaults.xml', 'utf8')).rules
-/** the shipped rules with the Karma build option on (as a table would turn it on), plus what a test adds */
-const rules = (...own: [string, string][]): CreationRules => runnerRules(SHIPPED, [{ key: 'karmaBuildMethod', value: 'true' }, ...own.map(([key, value]) => ({ key, value }))])
+/** the shipped rules with the Karma build option on, plus what a test adds: the table's (a runner can't set most of these) */
+const rules = (...own: [string, string][]): CreationRules =>
+  runnerRules(new Map([...SHIPPED, ...rulesFrom([['karmaBuildMethod', 'true'], ...own].map(([key, value]) => ({ key, value }))).rules]))
 const { data } = made()
 
 /** A Karma-build runner, all made up: attributes 2 ranks of Body (1 to 3), 1 of Edge, a skill with 3 ranks and a
@@ -32,12 +33,19 @@ test('the option ships off, and its numbers ship set: Commlink6’s defaults', (
   expect(flag(SHIPPED, 'karmaBuildMethod')).toBe(false)
   expect(missingFor('karma', SHIPPED, { priorities: {}, metatypes: {}, lifemodules: {} }).includes('karmaBuild.start')).toBe(false)
   const cr = rules()
-  expect([num(cr, 'karmaBuild.start'), num(cr, 'karmaBuild.startRating'), num(cr, 'karmaBuild.freeSpellsPerMagic'), num(cr, 'karmaBuild.freeFormsPerResonance')])
-    .toEqual([1000, 1, 0, 0])
+  expect([
+    num(cr, 'karmaBuild.start'),
+    num(cr, 'karmaBuild.startRating'),
+    num(cr, 'karmaBuild.freeSpellsPerMagic'),
+    num(cr, 'karmaBuild.freeFormsPerResonance'),
+  ]).toEqual([1000, 1, 0, 0])
   expect(['full', 'aspected', 'mystic-adept', 'adept', 'technomancer'].map(k => num(cr, `magicKarma:${k}`))).toEqual([60, 45, 75, 45, 45])
   // the Karma prices (and the nuyen rates) it uses are the printed ones, which are the same numbers
-  expect(['karmaAttrPerRank', 'karmaSkillPerRank', 'karmaSpec', 'karmaKnowledge', 'karmaSpell', 'karmaForm', 'karmaToNuyenRate', 'karmaToNuyenRateInDebt']
-    .map(k => num(cr, k))).toEqual([5, 5, 5, 3, 5, 5, 2000, 5000])
+  expect(
+    ['karmaAttrPerRank', 'karmaSkillPerRank', 'karmaSpec', 'karmaKnowledge', 'karmaSpell', 'karmaForm', 'karmaToNuyenRate', 'karmaToNuyenRateInDebt'].map(k =>
+      num(cr, k),
+    ),
+  ).toEqual([5, 5, 5, 3, 5, 5, 2000, 5000])
 })
 
 test('with the option off its numbers do not apply', () => {
@@ -57,7 +65,8 @@ test('the starting karma is 1000, 800 at the Companion’s street level and 1200
 })
 
 test('a mundane Karma-build runner: every Karma cost at the printed prices, nothing free', () => {
-  const b = runner('mundane'), p = price(b, rules(['metatypeKarma:crb.glimmerkin', '5']))
+  const b = runner('mundane'),
+    p = price(b, rules(['metatypeKarma:crb.glimmerkin', '5']))
   expect(p.karma.max).toBe(1000)
   // Body 1 to 3: 2 × 5 + 3 × 5; Edge 1 to 2: 2 × 5
   expect([line(p, 'attr:bod'), line(p, 'attr:edg')]).toEqual([25, 10])
@@ -75,7 +84,8 @@ test('a mundane Karma-build runner: every Karma cost at the printed prices, noth
 })
 
 test('a full magician pays 60 Karma to be one, starts at Magic 1 and pays 5 for every spell', () => {
-  const b = runner('full'), cr = rules(['metatypeKarma:crb.glimmerkin', '5'])
+  const b = runner('full'),
+    cr = rules(['metatypeKarma:crb.glimmerkin', '5'])
   b.attributes.mag.karma = 1
   for (const id of ['a', 'b', 'c']) b.picks.push({ uid: id, kind: 'spells', id })
   const p = price(b, cr)
@@ -97,7 +107,8 @@ test('each magic kind costs its own Karma; a technomancer’s complex forms cost
 })
 
 test('the Karma build’s free spells are its own setting; the other methods keep theirs', () => {
-  const b = runner('full'), cr = rules(['karmaBuild.freeSpellsPerMagic', '2'])
+  const b = runner('full'),
+    cr = rules(['karmaBuild.freeSpellsPerMagic', '2'])
   expect(freeSpellSlots(b, data, cr, makeProvider('karma', data, cr))).toBe(2)
   const prio = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'full' })
   const p = makeProvider('priority', data, cr)

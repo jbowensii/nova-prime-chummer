@@ -14,7 +14,8 @@ import { pageGlyphs } from './pdf'
 // go to .extract/screenshots/sr6-sheets (not committed).
 const PW = { pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-sheets'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
 const RUNNER = `<?xml version="1.0" encoding="UTF-8"?>
 <sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="neon-moth" streetName="Neon Moth" name="Mara Testwing" metatype="crb.glimmerkin" method="priority" updatedAt="2026-10-05T09:00:00.000Z">
   <background>Made up for the print tests: grew up reading arcade cabinets.</background>
@@ -51,25 +52,36 @@ const RUNNER = `<?xml version="1.0" encoding="UTF-8"?>
     <sin uid="s1" name="Moira Tinwing" kind="fake" rating="3"><licence name="Zap Gun licence" rating="3"/></sin>
   </build>
 </sr6:character>`
-const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-neon" streetName="Ana Plain" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
-let server: ReturnType<typeof createServer>, base = ''
+const CA2 =
+  '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-neon" streetName="Ana Plain" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: DESK })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-sheets-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-sheets-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: 'ada-password-1', name: 'Ada Admin' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: 'ada-password-1', name: 'Ada Admin' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page) {
   await page.goto('/#/sr6')
@@ -82,23 +94,38 @@ const put = async (page: Page, path: string, xml: string) =>
   expect((await page.request.put(path, { data: xml, headers: { 'Content-Type': 'application/xml', Origin: new URL(base).origin } })).status()).toBeLessThan(300)
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** the printable width (px at 96 dpi) inside the sheets' 8 mm page margins */
-const CONTENT = { Letter: Math.floor(8.5 * 96 - 2 * 8 * 96 / 25.4), A4: Math.floor(210 * 96 / 25.4 - 2 * 8 * 96 / 25.4) }
+const CONTENT = { Letter: Math.floor(8.5 * 96 - (2 * 8 * 96) / 25.4), A4: Math.floor((210 * 96) / 25.4 - (2 * 8 * 96) / 25.4) }
 /** in print emulation at the page's content width: every box of the sheet lies inside it (`framed`: its four borders drawn) */
 async function boxesInside(page: Page, sel: string, box: string, format: keyof typeof CONTENT, framed: boolean) {
   await page.setViewportSize({ width: CONTENT[format], height: 1000 })
-  const out = await page.locator(`${sel} ${box}`).evaluateAll((els, [w, framed]) => els.flatMap(e => {
-    const r = e.getBoundingClientRect(), cs = getComputedStyle(e), id = e.querySelector('h2')?.textContent ?? e.className
-    return [r.left < 0 && `${id}: left ${r.left}`, r.right > w && `${id}: right ${r.right} > ${w}`,
-      ...(framed ? ['Top', 'Right', 'Bottom', 'Left'] : []).map(s => parseFloat(cs.getPropertyValue(`border-${s.toLowerCase()}-width`)) > 0 ? '' : `${id}: no ${s} border`)].filter(Boolean)
-  }), [CONTENT[format], framed] as const)
+  const out = await page.locator(`${sel} ${box}`).evaluateAll(
+    (els, [w, framed]) =>
+      els.flatMap(e => {
+        const r = e.getBoundingClientRect(),
+          cs = getComputedStyle(e),
+          id = e.querySelector('h2')?.textContent ?? e.className
+        return [
+          r.left < 0 && `${id}: left ${r.left}`,
+          r.right > w && `${id}: right ${r.right} > ${w}`,
+          ...(framed ? ['Top', 'Right', 'Bottom', 'Left'] : []).map(s =>
+            parseFloat(cs.getPropertyValue(`border-${s.toLowerCase()}-width`)) > 0 ? '' : `${id}: no ${s} border`,
+          ),
+        ].filter(Boolean)
+      }),
+    [CONTENT[format], framed] as const,
+  )
   expect(out, `${format}: ${out.join('; ')}`).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), format).toBeLessThanOrEqual(0)
   await page.setViewportSize(DESK)
 }
 
 /** screen view (desktop and phone, no sideways scroll), print emulation, then Letter and A4 PDFs of at most `pages` pages */
-const BOXES: Record<string, [string, boolean]> = { 'article.sr6-book': ['.k-box', true], 'article.sr6-neon': ['section, .n-top, .n-keys', false],
-  'article.sr6-hex': ['section', false], 'article.sr6-dossier': ['.d-panel', true] }
+const BOXES: Record<string, [string, boolean]> = {
+  'article.sr6-book': ['.k-box', true],
+  'article.sr6-neon': ['section, .n-top, .n-keys', false],
+  'article.sr6-hex': ['section', false],
+  'article.sr6-dossier': ['.d-panel', true],
+}
 async function shootAndPrint(page: Page, sel: string, name: string, pages: number, atMost = false) {
   await fits(page)
   await page.screenshot({ path: `${SHOTS}/${name}-screen.png`, fullPage: true })
@@ -114,7 +141,10 @@ async function shootAndPrint(page: Page, sel: string, name: string, pages: numbe
     const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${name}-${format.toLowerCase()}.pdf` }))
     if (atMost) expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBeLessThanOrEqual(pages)
     else expect(glyphs.length, `${name} ${format}: ${glyphs}`).toBe(pages)
-    expect(glyphs.every(k => k > 400), `${name} ${format}: a near-empty page (${glyphs})`).toBe(true)
+    expect(
+      glyphs.every(k => k > 400),
+      `${name} ${format}: a near-empty page (${glyphs})`,
+    ).toBe(true)
   }
   await page.emulateMedia({ media: 'screen' })
 }
@@ -139,9 +169,26 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   const book = page.locator('article.sr6-book')
   await expect(book).toBeVisible()
   await expect(plain).toHaveCount(0)
-  await expect(book.getByRole('heading', { level: 2 })).toHaveText(['Personal data', 'Attributes', 'Skills', 'IDs / lifestyles / currency',
-    'Core combat info', 'Condition monitor', 'Qualities', 'Contacts', 'Ranged weapons', 'Armor', 'Augmentations', 'Gear', 'Melee weapons',
-    'Matrix stats', 'Vehicle', 'Spells / preparations / rituals / complex forms', 'Adept powers or other abilities', 'Notes'])
+  await expect(book.getByRole('heading', { level: 2 })).toHaveText([
+    'Personal data',
+    'Attributes',
+    'Skills',
+    'IDs / lifestyles / currency',
+    'Core combat info',
+    'Condition monitor',
+    'Qualities',
+    'Contacts',
+    'Ranged weapons',
+    'Armor',
+    'Augmentations',
+    'Gear',
+    'Melee weapons',
+    'Matrix stats',
+    'Vehicle',
+    'Spells / preparations / rituals / complex forms',
+    'Adept powers or other abilities',
+    'Notes',
+  ])
   await expect(book.locator('.k-who').first()).toContainText('Neon Moth')
   await expect(book.getByRole('region', { name: 'Personal data' })).toContainText('Glimmerkin')
   await expect(book.getByRole('region', { name: 'Attributes' }).locator('.k-f', { hasText: 'Defense rating' })).toContainText(defense)
@@ -174,7 +221,20 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   await expect(book).toHaveCount(0)
   await expect(neon.locator('h1')).toHaveText('Neon Moth')
   await expect(neon.locator('.n-role')).toContainText('Glimmerkin')
-  for (const h of ['Attributes', 'Condition', 'Qualities', 'Contacts', 'Dice pools', 'Skills', 'Weapons', 'Armor & augmentations', 'Magic', 'Matrix', 'Gear', 'Vehicles & drones'])
+  for (const h of [
+    'Attributes',
+    'Condition',
+    'Qualities',
+    'Contacts',
+    'Dice pools',
+    'Skills',
+    'Weapons',
+    'Armor & augmentations',
+    'Magic',
+    'Matrix',
+    'Gear',
+    'Vehicles & drones',
+  ])
     await expect(neon.getByRole('heading', { name: h, exact: true })).toBeVisible()
   await expect(neon.getByRole('list', { name: 'Key numbers' }).or(neon.locator('.n-keys'))).toContainText(`Defense${defense}`)
   await expect(neon.getByRole('img', { name: `Physical: ${physical} boxes` }).locator('i')).toHaveCount(physical)
@@ -225,11 +285,31 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   const dos = page.locator('article.sr6-dossier')
   await expect(dos).toBeVisible()
   await expect(hex).toHaveCount(0)
-  for (const h of ['Personal data', 'Edge / Nuyen', 'Portrait', 'Attributes', 'Qualities', 'Condition monitor', 'Skills', 'Weapons', 'Armor',
-    'Augmentations', 'Contacts', 'Gear', 'IDs / lifestyles', 'Magic', 'Vehicles & drones', 'Notes'])
+  for (const h of [
+    'Personal data',
+    'Edge / Nuyen',
+    'Portrait',
+    'Attributes',
+    'Qualities',
+    'Condition monitor',
+    'Skills',
+    'Weapons',
+    'Armor',
+    'Augmentations',
+    'Contacts',
+    'Gear',
+    'IDs / lifestyles',
+    'Magic',
+    'Vehicles & drones',
+    'Notes',
+  ])
     await expect(dos.getByRole('heading', { name: h, exact: true })).toBeVisible()
-  expect(await dos.getByRole('heading', { name: 'Personal data' }).evaluate(e => { const cs = getComputedStyle(e); return [cs.backgroundColor, cs.color, cs.textTransform] }))
-    .toEqual(['rgb(168, 0, 106)', 'rgb(255, 255, 255)', 'uppercase'])
+  expect(
+    await dos.getByRole('heading', { name: 'Personal data' }).evaluate(e => {
+      const cs = getComputedStyle(e)
+      return [cs.backgroundColor, cs.color, cs.textTransform]
+    }),
+  ).toEqual(['rgb(168, 0, 106)', 'rgb(255, 255, 255)', 'uppercase'])
   const personal = dos.getByRole('region', { name: 'Personal data' })
   await expect(personal.locator('.d-pairs > div', { hasText: 'Alias' })).toContainText('Neon Moth')
   await expect(personal.locator('.d-pairs > div').nth(1)).toContainText('Mara Testwing')

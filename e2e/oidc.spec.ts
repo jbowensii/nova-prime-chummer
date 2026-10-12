@@ -10,8 +10,11 @@ import { anarchyState } from './session'
 // Sign in with Authelia end to end, against the made-up issuer (tests/fixtures/fake-issuer.mjs) on a server of its own:
 // the admin sets it up in Settings → Sign-in, then Kim (an Authelia account) signs in through it; someone without an
 // account comes back to the sign-in page with a plain message. Runs in order; every test starts signed out.
-const ADMIN_PW = 'ada-password-1', PAT_PW = 'pat-password-1'
-let server: ReturnType<typeof createServer>, issuer: Awaited<ReturnType<typeof fakeIssuer>>, base = ''
+const ADMIN_PW = 'ada-password-1',
+  PAT_PW = 'pat-password-1'
+let server: ReturnType<typeof createServer>,
+  issuer: Awaited<ReturnType<typeof fakeIssuer>>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
@@ -22,14 +25,29 @@ test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-oidc-e2e-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: ADMIN_PW, name: 'Ada Admin' },
-    { username: 'kim', method: 'authelia', role: 'player', name: 'Kim Player' }, { username: 'pat', password: PAT_PW, role: 'player', name: 'Pat Player' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: ADMIN_PW, name: 'Ada Admin' },
+      { username: 'kim', method: 'authelia', role: 'player', name: 'Kim Player' },
+      { username: 'pat', password: PAT_PW, role: 'player', name: 'Pat Player' },
+    ]),
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close(); issuer.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+  issuer.close()
+})
 
 async function noViolations(page: Page) {
   await page.addInitScript(() => {
@@ -89,7 +107,9 @@ test('no account here: back on the sign-in page with a plain message, nothing in
     await expect(page.getByRole('alert')).toHaveText('Authelia knows you, but this app has no account for you. Ask the admin for an account.')
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
     expect(new URL(page.url()).search).toBe('')
-  } finally { issuer.user = keep }
+  } finally {
+    issuer.user = keep
+  }
 })
 
 test('Users: an Authelia account shows no password actions', async ({ page }) => {
@@ -124,7 +144,9 @@ test('Pat links a password account to Authelia, then signs in with Authelia; the
     await expect(dialog.getByRole('alert')).toHaveText('Your current password is wrong.')
     await dialog.getByLabel('Current password').fill(PAT_PW)
     await dialog.getByRole('button', { name: 'Continue to Authelia' }).click()
-    await expect(page.getByRole('status')).toHaveText('Your account is now linked to Authelia. From now on, sign in with Authelia: your password no longer works, and your other devices are signed out.')
+    await expect(page.getByRole('status')).toHaveText(
+      'Your account is now linked to Authelia. From now on, sign in with Authelia: your password no longer works, and your other devices are signed out.',
+    )
     expect(new URL(page.url()).search).toBe('')
     await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
     await page.getByRole('button', { name: 'Pat Player' }).click()
@@ -140,5 +162,7 @@ test('Pat links a password account to Authelia, then signs in with Authelia; the
     await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
     await page.getByRole('button', { name: 'Pat Player' }).click()
     await expect(page.getByText('Player · pat')).toBeVisible()
-  } finally { issuer.user = keep }
+  } finally {
+    issuer.user = keep
+  }
 })

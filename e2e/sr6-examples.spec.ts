@@ -11,42 +11,61 @@ import { createServer } from '../server/server.mjs'
 // characters on Your runners; Gil (an editor) loads the book NPCs: grunts, the contact, critters, spirits and sprites.
 const PW = { gil: 'gil-password-1', pat: 'pat-password-1' }
 const DESK = { width: 1400, height: 900 }
-const CONTACT = '  <npc id="crb.fixer-fred" source="CRB" page="210" group="Contact" bod="2" agi="2" rea="3" str="2" wil="3" log="4" int="4" cha="5" ess="6"><name>Fixer Fred</name><skills>Gab 5</skills><text/></npc>\n'
+const CONTACT =
+  '  <npc id="crb.fixer-fred" source="CRB" page="210" group="Contact" bod="2" agi="2" rea="3" str="2" wil="3" log="4" int="4" cha="5" ess="6"><name>Fixer Fred</name><skills>Gab 5</skills><text/></npc>\n'
 // how 0.9.0 loaded a sample contact: a grunt of group Contact under its book key
-const OLD_CONTACT = '<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="old-fred" streetName="Fixer Fred" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="CRB|crb.fixer-fred">'
-  + '<npc kind="grunt" group="Contact" fromKind="npcs" fromId="crb.fixer-fred" fromName="Fixer Fred" fromSource="CRB" fromPage="210"><stat key="cha" value="5"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
+const OLD_CONTACT =
+  '<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="old-fred" streetName="Fixer Fred" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="CRB|crb.fixer-fred">' +
+  '<npc kind="grunt" group="Contact" fromKind="npcs" fromId="crb.fixer-fred" fromName="Fixer Fred" fromSource="CRB" fromPage="210"><stat key="cha" value="5"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
 // Wild Life printing the same Fuzzbeast and a tougher Rustmole (made up), and a 0.9.4 copy of its Fuzzbeast
-const WILD_LIFE = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-  '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="critters" version="1">\n'
-  + '  <critter id="wl.fuzzbeast" source="WL" page="40" category="critter" bod="4" agi="3" rea="4" str="5" wil="2" log="1" int="3" cha="1" ess="6" edg="1" dr="6" init="7 + 1D6" actions="1/1" cm="10" move="10/15/+1"><name>Fuzzbeast</name><skills>Sneaking 3, Running 2</skills><powers>Glimmer, Thick Fur</powers><weaknesses>Allergy (soap, mild)</weaknesses><attacks>Bite 4P</attacks><text>Made-up words of its own.</text></critter>\n'
-  + '  <critter id="wl.rustmole" source="WL" page="41" category="critter" bod="6" agi="2" rea="3" str="2" wil="2" log="1" int="4" cha="1" ess="5.3" edg="1" dr="5" init="7 + 1D6" actions="1/1" cm="9" move="5/9/+1"><name>Rustmole</name><skills>Sneaking 4</skills><powers>Glimmer</powers><attacks>Claws 3P</attacks><augmentations>Made-up Iron Teeth</augmentations><text/></critter>\n</sr6:data>\n'
-const WL_FUZZ = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-  '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="wl-fuzz" streetName="Fuzzbeast" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="WL|wl.fuzzbeast">'
-  + '<npc kind="critter" fromKind="critters" fromId="wl.fuzzbeast" fromName="Fuzzbeast" fromSource="WL" fromPage="40"><stat key="bod" value="4"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
-let server: ReturnType<typeof createServer>, base = '', importedDir = ''
+const WILD_LIFE =
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="critters" version="1">\n' +
+  '  <critter id="wl.fuzzbeast" source="WL" page="40" category="critter" bod="4" agi="3" rea="4" str="5" wil="2" log="1" int="3" cha="1" ess="6" edg="1" dr="6" init="7 + 1D6" actions="1/1" cm="10" move="10/15/+1"><name>Fuzzbeast</name><skills>Sneaking 3, Running 2</skills><powers>Glimmer, Thick Fur</powers><weaknesses>Allergy (soap, mild)</weaknesses><attacks>Bite 4P</attacks><text>Made-up words of its own.</text></critter>\n' +
+  '  <critter id="wl.rustmole" source="WL" page="41" category="critter" bod="6" agi="2" rea="3" str="2" wil="2" log="1" int="4" cha="1" ess="5.3" edg="1" dr="5" init="7 + 1D6" actions="1/1" cm="9" move="5/9/+1"><name>Rustmole</name><skills>Sneaking 4</skills><powers>Glimmer</powers><attacks>Claws 3P</attacks><augmentations>Made-up Iron Teeth</augmentations><text/></critter>\n</sr6:data>\n'
+const WL_FUZZ =
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="wl-fuzz" streetName="Fuzzbeast" metatype="" method="priority" updatedAt="2026-10-03T00:00:00.000Z" sampleKey="WL|wl.fuzzbeast">' +
+  '<npc kind="critter" fromKind="critters" fromId="wl.fuzzbeast" fromName="Fuzzbeast" fromSource="WL" fromPage="40"><stat key="bod" value="4"/></npc><build method="priority" magic="mundane"/></sr6:character>\n'
+let server: ReturnType<typeof createServer>,
+  base = '',
+  importedDir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: DESK })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-examples-e2e-')), config = join(dir, 'library', '.config')
-  const imported = importedDir = join(dir, 'custom', 'sr6', 'imported')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-examples-e2e-')),
+    config = join(dir, 'library', '.config')
+  const imported = (importedDir = join(dir, 'custom', 'sr6', 'imported'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   const npcs = join(imported, 'crb', 'npcs.xml')
   writeFileSync(npcs, readFileSync(npcs, 'utf8').replace('</sr6:data>', `${CONTACT}</sr6:data>`))
   mkdirSync(join(imported, 'crb', 'samples'), { recursive: true })
   cpSync('tests/fixtures/sr6/sample-glow-runner.xml', join(imported, 'crb', 'samples', 'crb.glow-runner.xml'))
-  writeFileSync(join(imported, 'samples.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<samples>\n'
-    + '  <sample source="CRB" href="crb/samples/crb.glow-runner.xml" name="Glow Runner" role="Archetype" page="81"/>\n</samples>\n')
+  writeFileSync(
+    join(imported, 'samples.xml'),
+    '<?xml version="1.0" encoding="UTF-8"?>\n<samples>\n' +
+      '  <sample source="CRB" href="crb/samples/crb.glow-runner.xml" name="Glow Runner" role="Archetype" page="81"/>\n</samples>\n',
+  )
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: 'ada-password-1', name: 'Ada Admin' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: 'ada-password-1', name: 'Ada Admin' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -87,7 +106,8 @@ test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, cri
   await page.route('**/api/sr6/npcs/*', async r => {
     if (r.request().method() !== 'PUT') return r.fallback()
     await new Promise(go => setTimeout(go, 250))
-    if (r.request().postData()?.includes('Glitch Sprite')) return r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) })
+    if (r.request().postData()?.includes('Glitch Sprite'))
+      return r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) })
     held++
     return r.fallback()
   })

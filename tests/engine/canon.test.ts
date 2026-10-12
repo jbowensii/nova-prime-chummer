@@ -21,7 +21,7 @@ describe('sources', () => {
     const all = [...cat.amps.values(), ...cat.items.values(), ...cat.skills.values(), ...cat.rules.values()]
     expect(all.filter(e => !cat.sources.has(e.source)).map(e => e.id)).toEqual([])
   })
-  test('canon is determined by the entry\'s own declared source, not by which file it shipped in', () => {
+  test("canon is determined by the entry's own declared source, not by which file it shipped in", () => {
     expect(isCanon(cat, cat.amps.get('testc.rush')!)).toBe(true)
     expect(isCanon(cat, cat.amps.get('test.rush')!)).toBe(false)
   })
@@ -33,10 +33,22 @@ describe('sources', () => {
 })
 
 describe('the table allows non-canon content', () => {
-  const rushAmp = (): AmpEntry => ({ uid: 'a', catalogId: 'test.rush', type: 'equipment', name: 'Rush', narrative: '',
-    effects: cat.amps.get('test.rush')!.effects, linkedItem: 'i' })
+  const rushAmp = (): AmpEntry => ({
+    uid: 'a',
+    catalogId: 'test.rush',
+    type: 'equipment',
+    name: 'Rush',
+    narrative: '',
+    effects: cat.amps.get('test.rush')!.effects,
+    linkedItem: 'i',
+  })
   const rushItem = (): ItemEntry => ({ uid: 'i', kind: 'gear', name: 'Rush' })
-  const nonCanon = (): Character => { const ch = blankCharacter(); ch.build.amps = [rushAmp()]; ch.build.items = [rushItem()]; return ch }
+  const nonCanon = (): Character => {
+    const ch = blankCharacter()
+    ch.build.amps = [rushAmp()]
+    ch.build.items = [rushItem()]
+    return ch
+  }
 
   test('allowed by default: no warning', () => {
     expect(validate(cat, nonCanon()).filter(v => v.code === 'content.nonCanon')).toEqual([])
@@ -72,8 +84,9 @@ describe('private texts and rules', () => {
   })
   test('committed data carries no rule text; a texts file fills it by id', () => {
     expect(cat.rules.get('test.gadget-basics')!.text).toBe('')
-    const texts = `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="test.gadget-basics">Full immersion.</text>`
-      + `<text of="amps" id="test.keen-eye">Sharp senses.</text></ca2:data>`
+    const texts =
+      `<ca2:data ${NS} kind="texts" version="1"><text of="rules" id="test.gadget-basics">Full immersion.</text>` +
+      `<text of="amps" id="test.keen-eye">Sharp senses.</text></ca2:data>`
     const c = buildCatalog([...catFiles, { file: 'custom/texts/qref.xml', xml: texts, overlay: true }])
     expect(c.rules.get('test.gadget-basics')!.text).toBe('Full immersion.')
     expect(c.amps.get('test.keen-eye')!.narrative).toBe('Sharp senses.')
@@ -100,6 +113,8 @@ describe('loadCatalog fetches each source’s private texts file', () => {
       const c = await loadCatalog('./')
       expect(c.rules.get('test.gadget-basics')!.text).toBe('Full immersion.')
       expect(c.files.some(f => f.file === 'custom/texts/qref.xml')).toBe(true)
-    } finally { globalThis.fetch = real }
+    } finally {
+      globalThis.fetch = real
+    }
   })
 })

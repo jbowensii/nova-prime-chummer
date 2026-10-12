@@ -1,12 +1,12 @@
 """Shadowrun: Lofwyr's Legions (LL), a Saeder-Krupp sourcebook -> the SR6 catalog: its NPCs (the corporation's agents,
 one a page), the drake qualities, the drake powers (critter powers), its martial art and the rule sections (drakes,
 the initiatory group), ids unscoped (run scopes them as ll.<slug>), descriptions in the private texts. The book prints
-no priced gear. Reads only regrouped.md with the core rulebook's reading (crb.extract). Layout notes in ll.md."""
+no priced gear. Reads only regrouped.md with the core rulebook's reading (catalog.read). Layout notes in ll.md."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "LL", "Shadowrun: Lofwyr's Legions", "Catalyst Game Labs", True
@@ -60,7 +60,7 @@ def _split_label(b):
 
 
 def prepare(bs):
-    """The book's shapes as crb.extract reads them: a heading's word hyphenated over two lines joined, a bold label's
+    """The book's shapes as catalog.read reads them: a heading's word hyphenated over two lines joined, a bold label's
     too; the running head (`shadow stock`, `PAGE`, the title and page number) out of the text; an NPC's `Professional
     Rating N` line as the core rulebook's section form (its chapter the group); the martial art's `Categories` and its
     signature technique's name (before the first full stop) as labels, and the technique its line defines (the rest
@@ -84,4 +84,4 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

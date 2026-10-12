@@ -99,7 +99,7 @@ test('edit a book add-on from the amp picker; an unsaved runner change survives 
   const saved = page.waitForResponse(r => r.request().method() === 'PUT' && r.url().includes('/api/characters/'))
   await page.getByLabel('Street name').fill('Before')
   await saved
-  await page.route('**/api/characters/**', r => r.request().method() === 'PUT' ? r.abort() : r.continue()) // the next change stays unsaved
+  await page.route('**/api/characters/**', r => (r.request().method() === 'PUT' ? r.abort() : r.continue())) // the next change stays unsaved
   await page.getByLabel('Street name').fill('After, unsaved')
   await expect(page.getByText(/Couldn’t reach the server/)).toBeVisible()
 

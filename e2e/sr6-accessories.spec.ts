@@ -9,7 +9,8 @@ import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 
 const PW = 'pat-password-1'
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
 
@@ -23,7 +24,10 @@ test.beforeAll(async () => {
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page) {
   await page.goto('/#/sr6')
@@ -41,7 +45,8 @@ test('a cyberlimb accessory goes on the arm, and its bonus is the arm’s only',
   await nr.getByRole('button', { name: 'Create runner' }).click()
   await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), dlg = page.getByRole('dialog')
+  const work = page.locator('main.work'),
+    dlg = page.getByRole('dialog')
 
   // Review before: the runner's Strength
   await tabs.filter({ hasText: 'Review' }).click()

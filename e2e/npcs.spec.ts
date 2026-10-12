@@ -10,26 +10,37 @@ import { anarchyState, savedOnServer } from './session'
 // admin, Pat a player. Runs in order. Screenshots go to .extract/ (not committed).
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', gus: 'gus-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/0.7.0'
-let server: ReturnType<typeof createServer>, base = '', origin = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  origin = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
-    { username: 'gus', password: PW.gus, role: 'editor', name: 'Gus Editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'gus', password: PW.gus, role: 'editor', name: 'Gus Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
   base = `${origin}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.context().clearCookies()
@@ -58,9 +69,15 @@ async function newNpc(page: Page, kind: string, tier: string, meta?: string) {
   await expect(page).toHaveURL(/#\/n\/[^/]+\/concept$/)
 }
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
-  await theme('light'); await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
-  await theme('dark'); await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
+  await theme('light')
+  await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
+  await theme('dark')
+  await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${name} scrolls sideways`).toBeLessThanOrEqual(0)
   await page.screenshot({ path: `${SHOTS}/${name}-phone.png`, fullPage: true })
@@ -73,7 +90,10 @@ const NPC_FILE = `<?xml version="1.0" encoding="UTF-8"?>
   <build><attributes str="2" agi="5" wil="4" log="3" cha="3"/></build>
 </ca2:character>
 `
-const RUNNER_FILE = NPC_FILE.replace(/  <npc[^\n]*\n/, '').replace('npc-wisp-1', 'runner-1').replace('Made-up Wisp', 'Plain Runner').replace('metatype=""', 'metatype="human"')
+const RUNNER_FILE = NPC_FILE.replace(/ {2}<npc[^\n]*\n/, '')
+  .replace('npc-wisp-1', 'runner-1')
+  .replace('Made-up Wisp', 'Plain Runner')
+  .replace('metatype=""', 'metatype="human"')
 
 test('an editor makes a regular NPC: NPC mode editor, it saves and lists; the runner list never shows it', async ({ page }) => {
   await signIn(page, 'eve')
@@ -131,7 +151,8 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
 
   await page.locator('input[type=file]').setInputFiles([
     { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE) },
-    { name: 'runner.xml', mimeType: 'application/xml', buffer: Buffer.from(RUNNER_FILE) }])
+    { name: 'runner.xml', mimeType: 'application/xml', buffer: Buffer.from(RUNNER_FILE) },
+  ])
   const msg = page.getByRole('status')
   await expect(msg).toContainText('Imported Made-up Wisp.')
   await expect(msg).toContainText('runner.xml: this is a runner, not an NPC')
@@ -139,7 +160,9 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
   await sections(page).getByRole('link', { name: /^NPCs/ }).click()
   await expect(row(page, 'Made-up Wisp')).toHaveCount(0)
   await expect(row(page, 'Ganger Boss')).toHaveCount(1)
-  await sections(page).getByRole('link', { name: /^Critters/ }).click()
+  await sections(page)
+    .getByRole('link', { name: /^Critters/ })
+    .click()
   // an NPC has no career: the imported file's Finalize doesn't come along
   const wisp = (await (await api(page, 'GET', 'npcs')).json()).find((r: { xml: string }) => r.xml.includes('Made-up Wisp'))
   expect(wisp.xml).not.toContain('finalizedAt')
@@ -163,27 +186,50 @@ test('a critter with no metatype; import an NPC file (a runner file is refused);
 
 test('a failed save on import says why, on NPCs & Critters and on Your runners', async ({ page }) => {
   await signIn(page, 'eve')
-  const full = (r: Route) => r.request().method() === 'PUT'
-    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) }) : r.fallback()
+  const full = (r: Route) =>
+    r.request().method() === 'PUT'
+      ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) })
+      : r.fallback()
   await page.route('**/api/npcs/*', full)
   await page.route('**/api/characters/*', full)
   await page.goto('/#/npcs')
   await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
-  await page.locator('input[type=file]').setInputFiles({ name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-fail-1')) })
+  await page
+    .locator('input[type=file]')
+    .setInputFiles({ name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-fail-1')) })
   await expect(page.getByRole('status')).toHaveText('wisp.xml: the disk is full (test)')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
-  await page.locator('input[type=file]').setInputFiles({ name: 'runner.xml', mimeType: 'application/xml', buffer: Buffer.from(RUNNER_FILE.replace('runner-1', 'runner-fail-1')) })
+  await page
+    .locator('input[type=file]')
+    .setInputFiles({ name: 'runner.xml', mimeType: 'application/xml', buffer: Buffer.from(RUNNER_FILE.replace('runner-1', 'runner-fail-1')) })
   await expect(page.getByRole('status')).toHaveText('runner.xml: the disk is full (test)')
 })
 
 test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
   await signIn(page, 'eve')
-  const file = { name: 'wisp.xml', mimeType: 'application/xml', buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1').replace('Made-up Wisp', 'Made-up Twice')) }
-  expect((await page.request.fetch(`${base}api/npcs/npc-twice-1`, { method: 'PUT', data: file.buffer.toString(), headers: { 'Content-Type': 'application/xml', Origin: origin } })).ok()).toBe(true)
+  const file = {
+    name: 'wisp.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(NPC_FILE.replace('npc-wisp-1', 'npc-twice-1').replace('Made-up Wisp', 'Made-up Twice')),
+  }
+  expect(
+    (
+      await page.request.fetch(`${base}api/npcs/npc-twice-1`, {
+        method: 'PUT',
+        data: file.buffer.toString(),
+        headers: { 'Content-Type': 'application/xml', Origin: origin },
+      })
+    ).ok(),
+  ).toBe(true)
   let release!: () => void
-  const held = new Promise<void>(r => { release = r })
-  const hold = async (r: Route) => { if (r.request().method() === 'GET') await held; await r.fallback() }
+  const held = new Promise<void>(r => {
+    release = r
+  })
+  const hold = async (r: Route) => {
+    if (r.request().method() === 'GET') await held
+    await r.fallback()
+  }
   await page.route(u => u.pathname.endsWith('/api/npcs'), hold)
   await page.goto('/#/npcs')
   await expect(page.getByText('Loading NPCs…')).toBeVisible()
@@ -240,7 +286,9 @@ test('delete an NPC: it waits in the NPC trash and is restored from there', asyn
   await page.getByRole('button', { name: 'Restore Made-up Wisp' }).click()
   await expect(page.getByRole('status')).toHaveText('Restored Made-up Wisp to your NPCs.')
   await page.getByRole('link', { name: 'NPCs & Critters' }).click()
-  await sections(page).getByRole('link', { name: /^Critters/ }).click()
+  await sections(page)
+    .getByRole('link', { name: /^Critters/ })
+    .click()
   await expect(row(page, 'Made-up Wisp').locator('.npckind')).toHaveText('Spirit')
   await expect(page.getByRole('link', { name: 'Trash (0)' })).toBeVisible()
 })
@@ -277,7 +325,10 @@ test('the NPC block on Review and on both printed sheets: average hits, fighting
   await expect(block).toContainText('Fighting spirit: Low. Stops at the first light wound')
   await shots(page, 'npc-sheet-review')
 
-  for (const [label, sel] of [['Printer-friendly', '.sheet'], ['Book style', 'article.book-sheet']] as const) {
+  for (const [label, sel] of [
+    ['Printer-friendly', '.sheet'],
+    ['Book style', 'article.book-sheet'],
+  ] as const) {
     await page.getByRole('button', { name: 'Settings' }).click()
     await page.getByRole('dialog', { name: 'Settings' }).getByRole('radio', { name: label }).check()
     await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Close' }).click()

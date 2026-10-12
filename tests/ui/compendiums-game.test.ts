@@ -8,12 +8,29 @@ import type { Sr6Compendium } from '../../src/sr6/model/types'
 import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiumStore'
 import { deleteCompendium, listCompendiums, listShared, parseRows } from '../../src/ui/compendiumStore'
 
-const kit: Sr6Compendium = { id: 'aaaaaaaaaaaa', name: 'Street Kit', source: 'STREET', sharing: 'private', updatedAt: '', npcs: [],
-  entries: [{ id: 'street.zap-stick', kind: 'weapons', name: 'Zap Stick', source: 'STREET', page: 1, attrs: { dv: '3S' }, parts: [], text: '' }] }
-const ca2Xml = compendiumXml({ id: 'bbbbbbbbbbbb', name: 'Anarchy Kit', source: 'STREET', sharing: 'private', updatedAt: '', amps: [], items: [], vehicles: [], npcs: [] })
+const kit: Sr6Compendium = {
+  id: 'aaaaaaaaaaaa',
+  name: 'Street Kit',
+  source: 'STREET',
+  sharing: 'private',
+  updatedAt: '',
+  npcs: [],
+  entries: [{ id: 'street.zap-stick', kind: 'weapons', name: 'Zap Stick', source: 'STREET', page: 1, attrs: { dv: '3S' }, parts: [], text: '' }],
+}
+const ca2Xml = compendiumXml({
+  id: 'bbbbbbbbbbbb',
+  name: 'Anarchy Kit',
+  source: 'STREET',
+  sharing: 'private',
+  updatedAt: '',
+  amps: [],
+  items: [],
+  vehicles: [],
+  npcs: [],
+})
 const row = (id: string, xml: string) => ({ id, file: `${id}.xml`, rev: 2, xml, owner: 'gil', ownerName: 'Gil' })
-const answer = (status: number, body?: unknown) => vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body),
-  { status, headers: { 'Content-Type': 'application/json' } }))
+const answer = (status: number, body?: unknown) =>
+  vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
 const urls = (f: ReturnType<typeof answer>) => f.mock.calls.map(c => (c as unknown as [string])[0])
 afterEach(() => vi.unstubAllGlobals())
 

@@ -9,7 +9,9 @@ import { anarchyState } from './session'
 // setup makes the first admin, who adds a player and an editor; each role sees what it should. The tests run in order and
 // build on each other; every one starts signed out.
 const PW = { ada: 'ada-password-1', pat: 'pat-password-1', eve: 'eve-password-1', pat2: 'pat-password-2' }
-let server: ReturnType<typeof createServer>, code = '', base = ''
+let server: ReturnType<typeof createServer>,
+  code = '',
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 // a free port on 127.0.0.1 (a dev tool may hold one on ::1, where "localhost" would go), known once beforeAll has run
@@ -19,15 +21,27 @@ test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-accounts-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   const log = console.log
-  console.log = (...a: unknown[]) => { code = String(a[0]).match(/Setup code for the first admin: (\S+)/)?.[1] ?? code } // the "container log"
+  console.log = (...a: unknown[]) => {
+    code = String(a[0]).match(/Setup code for the first admin: (\S+)/)?.[1] ?? code
+  } // the "container log"
   try {
-    server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  } finally { console.log = log }
+    server = createServer({
+      staticDir: 'dist',
+      charDir: join(dir, 'characters'),
+      customDir: join(dir, 'custom'),
+      libraryDir: join(dir, 'library'),
+      python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+    })
+  } finally {
+    console.log = log
+  }
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: string, password: string) {
   await page.goto('/')
@@ -49,8 +63,12 @@ async function newRunner(page: Page, name: string) {
 /** Open one of the list's runners, and wait until the editor's own first requests (the Ask the rules status) are done: a
  *  session ended while one is still going is noticed by that one (the sign-in form comes up before the edit is made). */
 async function openRunner(page: Page, name: string) {
-  const open = new Set<unknown>(), done = (r: unknown) => open.delete(r)
-  page.on('request', r => open.add(r)).on('requestfinished', done).on('requestfailed', done)
+  const open = new Set<unknown>(),
+    done = (r: unknown) => open.delete(r)
+  page
+    .on('request', r => open.add(r))
+    .on('requestfinished', done)
+    .on('requestfailed', done)
   await page.getByRole('link', { name }).click()
   await expect(page.getByLabel('Street name')).toHaveValue(name)
   await expect.poll(() => open.size).toBe(0)
@@ -95,7 +113,10 @@ test('the admin adds a player and an editor; the last admin can’t be disabled'
   await menu(page, 'Ada Admin').click()
   await page.getByRole('link', { name: 'Users' }).click()
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
-  for (const [name, username, role] of [['Pat Player', 'pat', 'player'], ['Eve Editor', 'eve', 'editor']]) {
+  for (const [name, username, role] of [
+    ['Pat Player', 'pat', 'player'],
+    ['Eve Editor', 'eve', 'editor'],
+  ]) {
     await page.getByRole('button', { name: 'Add account' }).click()
     const form = page.getByRole('dialog')
     await form.getByLabel('Name', { exact: true }).fill(name)
@@ -153,10 +174,23 @@ test('a player sees only their own runners and no Books, Users or Edit', async (
 /** A signed-in API call as `username` (the app's own origin), outside the browser. */
 async function api(username: string, password: string) {
   const origin = base.replace(/\/$/, '')
-  const r = await fetch(`${origin}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username, password }), headers: { 'Content-Type': 'application/json', Origin: origin } })
-  const cookie = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
-  return async (method: string, path: string, body?: unknown) => (await fetch(`${origin}${path}`, { method, body: body && JSON.stringify(body),
-    headers: { Origin: origin, Cookie: cookie, ...body ? { 'Content-Type': 'application/json' } : {} } })).json()
+  const r = await fetch(`${origin}/api/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+    headers: { 'Content-Type': 'application/json', Origin: origin },
+  })
+  const cookie = r.headers
+    .getSetCookie()
+    .find(c => /session=/.test(c))!
+    .split(';')[0]
+  return async (method: string, path: string, body?: unknown) =>
+    (
+      await fetch(`${origin}${path}`, {
+        method,
+        body: body && JSON.stringify(body),
+        headers: { Origin: origin, Cookie: cookie, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      })
+    ).json()
 }
 
 test('an editor edits an entry and reads the player’s runner read-only', async ({ page }) => {
@@ -164,7 +198,8 @@ test('an editor edits an entry and reads the player’s runner read-only', async
   await expect(page.getByRole('link', { name: 'Books', exact: true })).toHaveCount(0)
   // an editor reads only the runners in the campaigns they GM: Eve runs one, Pat puts a runner in it
   await expect(page.getByRole('heading', { name: 'Pat Player’s runners' })).toHaveCount(0)
-  const eve = await api('eve', PW.eve), pat = await api('pat', PW.pat)
+  const eve = await api('eve', PW.eve),
+    pat = await api('pat', PW.pat)
   const { id } = await eve('POST', '/api/campaigns', { name: 'Test campaign' })
   await eve('POST', `/api/campaigns/${id}/members`, { user: 'pat' })
   const mine: { xml: string }[] = await pat('GET', '/api/characters')
@@ -174,7 +209,9 @@ test('an editor edits an entry and reads the player’s runner read-only', async
   await expect(page.getByRole('heading', { name: 'My runners' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Ada Admin’s runners' })).toHaveCount(0)
   const puts: string[] = []
-  page.on('request', r => { if (r.method() === 'PUT') puts.push(r.url()) })
+  page.on('request', r => {
+    if (r.method() === 'PUT') puts.push(r.url())
+  })
   await page.getByRole('link', { name: 'Pat Runner' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Read only' })).toContainText('Read only — Pat Player’s runner.')
   await expect(page.getByLabel('Street name')).toBeDisabled()
@@ -243,7 +280,9 @@ test('someone else signing in over the page: the unsaved change is never sent', 
   await openRunner(page, 'Pat Runner Two')
   await context.clearCookies()
   const sent: string[] = []
-  page.on('request', r => { if (r.method() === 'PUT' && r.postData()?.includes('Pat Unsaved')) sent.push(r.url()) })
+  page.on('request', r => {
+    if (r.method() === 'PUT' && r.postData()?.includes('Pat Unsaved')) sent.push(r.url())
+  })
   await page.getByLabel('Street name').fill('Pat Unsaved')
   await expect(page.getByText('Signing in as someone else discards this page’s unsaved changes.')).toBeVisible()
   // at most one attempt reaches the server before the form is up (it gets 401); on a slow machine another request can
@@ -348,7 +387,8 @@ test('the admin renames a username: refusals say why; the runners move with the 
   await expect(form.getByLabel('Username')).toHaveValue('pat')
   for (const [name, why] of [
     ['Pat Player!', 'A username is 2–32 characters: a–z, 0–9, dots, dashes and underscores, starting with a letter or digit.'],
-    ['eve', 'The username eve is taken.']]) {
+    ['eve', 'The username eve is taken.'],
+  ]) {
     await form.getByLabel('Username').fill(name)
     await form.getByRole('button', { name: 'Save changes' }).click()
     await expect(form.getByRole('alert')).toHaveText(why)
@@ -377,7 +417,10 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
   test.setTimeout(60000)
   await signIn(page, 'pat.new', PW.pat2)
   // a slow save from the runner list (Duplicate) still lands before the session ends
-  await page.route('**/api/characters/**', async r => { if (r.request().method() === 'PUT') await new Promise(ok => setTimeout(ok, 1500)); await r.continue() })
+  await page.route('**/api/characters/**', async r => {
+    if (r.request().method() === 'PUT') await new Promise(ok => setTimeout(ok, 1500))
+    await r.continue()
+  })
   await page.getByRole('button', { name: 'Duplicate', exact: true }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
@@ -387,7 +430,9 @@ test('sign-out waits for a save from the runner list; one that hangs is given 10
   await expect(page.getByRole('link', { name: 'Pat Runner Two (copy)' })).toBeVisible()
 
   // a save that never answers: after 10 s the app says so; Keep waiting, then Sign out anyway
-  await page.route('**/api/characters/**', r => { if (r.request().method() !== 'PUT') return r.continue() }) // PUTs hang
+  await page.route('**/api/characters/**', r => {
+    if (r.request().method() !== 'PUT') return r.continue()
+  }) // PUTs hang
   await page.getByRole('button', { name: 'Duplicate', exact: true }).first().click()
   await menu(page, 'Pat Player').click()
   await page.getByRole('button', { name: 'Sign out' }).click()
@@ -425,7 +470,12 @@ test('the admin renames their own username: still signed in, the runners move, t
   await form.getByLabel('Username').fill('ada.b')
   await form.getByRole('button', { name: 'Save changes' }).click()
   // the app reloads under the new name, with the same session
-  await expect(page.getByRole('row', { name: /Ada Admin/ }).getByRole('cell').nth(1)).toHaveText('ada.b')
+  await expect(
+    page
+      .getByRole('row', { name: /Ada Admin/ })
+      .getByRole('cell')
+      .nth(1),
+  ).toHaveText('ada.b')
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Ada Runner' })).toBeVisible()
   await menu(page, 'Ada Admin').click()

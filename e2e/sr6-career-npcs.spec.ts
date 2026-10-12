@@ -12,9 +12,12 @@ import { savedOnServer } from './session'
 // karma, 4,350¥). Runs in order. Screenshots go to .extract/screenshots/sr6-s3 (not committed).
 const PW = { ada: 'ada-password-1', gil: 'gil-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/sr6-s3'
-const PHONE = { width: 390, height: 844 }, DESK = { width: 1400, height: 900 }
+const PHONE = { width: 390, height: 844 },
+  DESK = { width: 1400, height: 900 }
 const RUNNER = 'career-wisp-1'
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: DESK })
@@ -25,14 +28,23 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -44,7 +56,10 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
 const fits = async (page: Page) => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 /** light and dark at desktop width, then both at phone width (which must not scroll sideways) */
 async function shoot(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(v => { document.documentElement.dataset.theme = v }, t)
+  const theme = (t: string) =>
+    page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, t)
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')
   await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
@@ -59,14 +74,23 @@ async function shoot(page: Page, name: string) {
 test('career: the Ledger tab records earnings and spends, voids the newest, and the other tabs show the runner as it stands', async ({ page }) => {
   await signIn(page, '/#/sr6', 'pat')
   // (its Karma and nuyen left carry over: a GM approved it, owner's decision L2)
-  const xml = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8').replace(/(<entry id="l-1"[^>]*\/>)[\s\S]*<\/ledger>/, '$1\n  </ledger>')
-    .replace('</sr6:character>', '  <override code="leftover.karma" path="review">The Karma carries over</override>\n'
-      + '  <override code="leftover.nuyen" path="review">The nuyen carries over</override>\n</sr6:character>')
-  const put = await page.request.put(`/api/sr6/characters/${RUNNER}`, { data: xml, headers: { 'Content-Type': 'application/xml', Origin: base.replace(/\/$/, '') } })
+  const xml = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')
+    .replace(/(<entry id="l-1"[^>]*\/>)[\s\S]*<\/ledger>/, '$1\n  </ledger>')
+    .replace(
+      '</sr6:character>',
+      '  <override code="leftover.karma" path="review">The Karma carries over</override>\n' +
+        '  <override code="leftover.nuyen" path="review">The nuyen carries over</override>\n</sr6:character>',
+    )
+  const put = await page.request.put(`/api/sr6/characters/${RUNNER}`, {
+    data: xml,
+    headers: { 'Content-Type': 'application/xml', Origin: base.replace(/\/$/, '') },
+  })
   expect(put.status()).toBe(201)
   await page.goto(`/#/sr6/c/${RUNNER}/attributes`)
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), dlg = page.getByRole('dialog'), price = page.getByRole('status', { name: 'Price' })
+  const work = page.locator('main.work'),
+    dlg = page.getByRole('dialog'),
+    price = page.getByRole('status', { name: 'Price' })
   await expect(page.locator('.topbar .runstate')).toHaveAttribute('title', 'Finalized: spend karma and nuyen on the Ledger tab')
   await expect(page.getByRole('status').filter({ hasText: 'Finalized: spend karma and nuyen on the Ledger tab.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Raise Agility points' })).toBeDisabled()
@@ -125,9 +149,14 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
 test('career, continued: more spends, an unset price, print, export and import, then void it all and finalize again', async ({ page, browser }) => {
   await signIn(page, '/#/sr6', 'pat')
   await page.goto(`/#/sr6/c/${RUNNER}/ledger`)
-  const work = page.locator('main.work'), dlg = page.getByRole('dialog'), price = page.getByRole('status', { name: 'Price' })
+  const work = page.locator('main.work'),
+    dlg = page.getByRole('dialog'),
+    price = page.getByRole('status', { name: 'Price' })
   const what = (op: string) => work.getByRole('combobox', { name: /^What/ }).selectOption(op)
-  const recordIt = async () => { await work.getByRole('button', { name: 'Record', exact: true }).click(); await dlg.getByRole('button', { name: 'Record it' }).click() }
+  const recordIt = async () => {
+    await work.getByRole('button', { name: 'Record', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Record it' }).click()
+  }
   const voidIt = async (label: string) => {
     await work.getByRole('button', { name: `Void ${label}` }).click()
     await dlg.getByLabel('Why').fill('Made-up undo')
@@ -141,11 +170,14 @@ test('career, continued: more spends, an unset price, print, export and import, 
   // she puts it back
   const gil = await browser.newPage({ baseURL: base, storageState: { cookies: [], origins: [] }, viewport: DESK })
   await signIn(gil, '/#/sr6', 'ada')
-  const settings = await (await gil.request.get('/api/sr6/creation')).json() as { key: string }[]
+  const settings = (await (await gil.request.get('/api/sr6/creation')).json()) as { key: string }[]
   const put = (list: unknown[]) => gil.request.put('/api/sr6/creation', { data: { settings: list }, headers: { Origin: base.replace(/\/$/, '') } })
   expect((await put(settings.filter(x => x.key !== 'karmaSpec'))).status()).toBe(204)
   // and out of the shipped standard settings, which the server's would otherwise fall back to
-  const noSpec = async (r: Route) => { const res = await r.fetch(); await r.fulfill({ response: res, body: (await res.text()).replace(/<setting key="karmaSpec"[^>]*\/>/, '') }) }
+  const noSpec = async (r: Route) => {
+    const res = await r.fetch()
+    await r.fulfill({ response: res, body: (await res.text()).replace(/<setting key="karmaSpec"[^>]*\/>/, '') })
+  }
   await page.route('**/data/sr6/creation-defaults.xml', noSpec)
   await page.reload()
   await what('spec')
@@ -207,7 +239,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await expect(page.getByRole('link', { name: 'Wisp Lantern', exact: true })).toBeVisible() // the list is in: its ids are taken
   await page.locator('input[type=file]').setInputFiles([xmlFile('wisp.xml', file)])
   await expect(page.locator('p.banner[role=status]')).toHaveText('Imported Wisp Lantern.')
-  const rows = await (await page.request.get('/api/sr6/characters')).json() as { xml: string }[]
+  const rows = (await (await page.request.get('/api/sr6/characters')).json()) as { xml: string }[]
   const copy = rows.map(r => r.xml.match(/ id="([^"]+)"/)![1]).find(id => id !== RUNNER)!
   await page.goto(`/#/sr6/c/${copy}/ledger`)
   await expect(balances).toHaveText(/Karma 14\s*Nuyen 7,160¥/)
@@ -216,7 +248,8 @@ test('career, continued: more spends, an unset price, print, export and import, 
 
   // void every spend (newest first) and the earning: Back to draft, then Finalize again
   await page.goto(`/#/sr6/c/${RUNNER}/ledger`)
-  for (const label of ['Spell: Glow Ward', 'Zap Gun', 'Tinkering: Gizmos', 'AGI 3 → 4', `Earned: Made-up run (${new Date().toISOString().slice(0, 10)})`]) await voidIt(label)
+  for (const label of ['Spell: Glow Ward', 'Zap Gun', 'Tinkering: Gizmos', 'AGI 3 → 4', `Earned: Made-up run (${new Date().toISOString().slice(0, 10)})`])
+    await voidIt(label)
   await expect(balances).toHaveText(/Karma 31\s*Nuyen 4,350¥/)
   await page.getByRole('navigation', { name: 'Character sections' }).getByRole('link', { name: 'Review' }).click()
   await page.getByRole('button', { name: 'Back to draft' }).click()
@@ -229,7 +262,8 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await savedOnServer(page, /Back to draft<\/entry>\s*<entry [^>]*type="finalize"[^>]*\/>\s*<\/ledger>/) // finalized again
 })
 
-const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+const CA2 =
+  '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="anarchy-1" metatype="elf" level="runner" updatedAt="2026-10-03T00:00:00.000Z"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
 const xmlFile = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 const npcRow = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
 const CRITTERS = new Set(['Critter', 'Spirit', 'Sprite'])
@@ -241,7 +275,9 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
   await expect(page.getByRole('heading', { name: 'NPCs & Critters' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByText('No NPCs yet.')).toBeVisible()
-  const dlg = page.getByRole('dialog'), from = dlg.getByLabel('From the catalog'), status = page.locator('p.banner[role=status]')
+  const dlg = page.getByRole('dialog'),
+    from = dlg.getByLabel('From the catalog'),
+    status = page.locator('p.banner[role=status]')
   const sections = page.getByRole('navigation', { name: 'NPCs or critters' })
   // New NPC makes grunts and contacts, New critter critters, spirits and sprites; Save and close goes back to its section
   const make = async (kind: string, entry: string, rating?: string) => {
@@ -290,10 +326,17 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
   // Load book NPCs: e2e/sr6-examples.spec.ts (its own server, so the copies don't crowd these rows)
 
   // import: an NPC file joins; a runner and an Anarchy file are refused, each saying where it belongs
-  await page.locator('input[type=file]').setInputFiles([xmlFile('goon.xml', readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')),
-    xmlFile('wisp.xml', readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')), xmlFile('anarchy.xml', CA2)])
-  await expect(status).toHaveText('Imported Corner Goon. wisp.xml: This is a runner, not an NPC. Import it on Your runners. '
-    + 'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.')
+  await page
+    .locator('input[type=file]')
+    .setInputFiles([
+      xmlFile('goon.xml', readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')),
+      xmlFile('wisp.xml', readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')),
+      xmlFile('anarchy.xml', CA2),
+    ])
+  await expect(status).toHaveText(
+    'Imported Corner Goon. wisp.xml: This is a runner, not an NPC. Import it on Your runners. ' +
+      'anarchy.xml: This is a Shadowrun Anarchy runner. Import it on the Anarchy side.',
+  )
   await expect(npcRow(page, 'Corner Goon')).toHaveCount(2)
 
   // the Professional Rating picker beside the search: the ratings the grunts have; grunts are listed first
@@ -350,7 +393,8 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
 test('NPC editor: the Stat block tab reads stats at the rating, and an NPC prints its block', async ({ page }) => {
   await signIn(page, '/#/sr6/npcs', 'gil')
   const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
-  const work = page.locator('main.work'), block = page.getByRole('region', { name: 'NPC block' })
+  const work = page.locator('main.work'),
+    block = page.getByRole('region', { name: 'NPC block' })
   const row = (label: string) => work.locator('table.sr6-npc-edit tr').filter({ has: page.getByRole('cell', { name: label, exact: true }) })
 
   // a grunt: NPC tabs only, its chip, no budgets; its skills with pools
@@ -388,7 +432,9 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
   await expect(block).toContainText('Glimmer, Made-up Drizzle')
   const spirit = page.url().split('/').at(-2)!
   await savedOnServer(page, 'Made-up Drizzle')
-  expect((await (await page.request.get('/api/sr6/npcs')).json() as { xml: string }[]).find(r => r.xml.includes(` id="${spirit}"`))!.xml).toContain('rating="6"')
+  expect(((await (await page.request.get('/api/sr6/npcs')).json()) as { xml: string }[]).find(r => r.xml.includes(` id="${spirit}"`))!.xml).toContain(
+    'rating="6"',
+  )
   await shoot(page, 'stats')
 
   // its print: header, block, background
@@ -413,8 +459,10 @@ test('NPC editor: the Stat block tab reads stats at the rating, and an NPC print
 
 test('NPCs: the admin sees Gil’s under his name, with Print', async ({ page }) => {
   await signIn(page, '/#/sr6/npcs/critters', 'ada')
-  await expect(page.getByRole('region', { name: 'Gil Editor’s Critters' }).getByRole('link', { name: 'Print Fuzzbeast' }))
-    .toHaveAttribute('href', /#\/sr6\/n\/[^/]+\/print$/)
+  await expect(page.getByRole('region', { name: 'Gil Editor’s Critters' }).getByRole('link', { name: 'Print Fuzzbeast' })).toHaveAttribute(
+    'href',
+    /#\/sr6\/n\/[^/]+\/print$/,
+  )
   // opened from there: read only
   await page.getByRole('region', { name: 'Gil Editor’s Critters' }).getByRole('link', { name: 'Fuzzbeast', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: /^Read only — .*’s NPC\./ })).toBeVisible()
@@ -509,7 +557,9 @@ test('campaigns and NPCs stay in their game: Anarchy’s pages and APIs hold non
   expect(await (await page.request.get('/api/sr6/campaigns')).text()).toContain('Made-up Sixth')
   // an SR6 campaign doesn't take an Anarchy runner, nor an Anarchy campaign an SR6 one
   const anarchy = CA2.replace('anarchy-1', 'anarchy-gil-1')
-  expect((await page.request.put('/api/characters/anarchy-gil-1', { data: anarchy, headers: { 'Content-Type': 'application/xml', ...ORIGIN() } })).status()).toBe(201)
+  expect(
+    (await page.request.put('/api/characters/anarchy-gil-1', { data: anarchy, headers: { 'Content-Type': 'application/xml', ...ORIGIN() } })).status(),
+  ).toBe(201)
   expect((await page.request.post(`/api/sr6/campaigns/${camp}/runners`, { data: { id: 'anarchy-gil-1' }, headers: ORIGIN() })).ok()).toBe(false)
   const ca2 = await (await page.request.post('/api/campaigns', { data: { name: 'Made-up Anarchy Table' }, headers: ORIGIN() })).json()
   expect((await page.request.post(`/api/campaigns/${ca2.id}/runners`, { data: { id: RUNNER }, headers: ORIGIN() })).ok()).toBe(false)
@@ -521,12 +571,17 @@ test('campaigns and NPCs stay in their game: Anarchy’s pages and APIs hold non
 
 test('a failed save on import says why, on Your runners and on NPCs & Critters', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
-  const full = (r: Route) => r.request().method() === 'PUT'
-    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) }) : r.fallback()
+  const full = (r: Route) =>
+    r.request().method() === 'PUT'
+      ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'the disk is full (test)' }) })
+      : r.fallback()
   await page.route('**/api/sr6/characters/*', full)
   await page.route('**/api/sr6/npcs/*', full)
-  const file = (name: string, path: string, id: string) =>
-    ({ name, mimeType: 'application/xml', buffer: Buffer.from(readFileSync(path, 'utf8').replace(/ id="[^"]+"/, ` id="${id}"`)) })
+  const file = (name: string, path: string, id: string) => ({
+    name,
+    mimeType: 'application/xml',
+    buffer: Buffer.from(readFileSync(path, 'utf8').replace(/ id="[^"]+"/, ` id="${id}"`)),
+  })
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
   await page.locator('input[type=file]').setInputFiles(file('runner.xml', 'tests/fixtures/sr6/runner-career.xml', 'fail-runner-1'))
   await expect(page.getByRole('status').filter({ hasText: 'runner.xml: the disk is full (test)' })).toBeVisible()
@@ -538,11 +593,18 @@ test('a failed save on import says why, on Your runners and on NPCs & Critters',
 
 test('an NPC imported before the list loads, its id already taken, saves under a new id', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
-  const xml = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8').replace(/ id="[^"]+"/, ' id="npc-twice-1"').replace('Corner Goon', 'Made-up Twice')
+  const xml = readFileSync('tests/fixtures/sr6/npc-grunt.xml', 'utf8')
+    .replace(/ id="[^"]+"/, ' id="npc-twice-1"')
+    .replace('Corner Goon', 'Made-up Twice')
   expect((await page.request.put('/api/sr6/npcs/npc-twice-1', { data: xml, headers: { 'Content-Type': 'application/xml', ...ORIGIN() } })).ok()).toBe(true)
   let release!: () => void
-  const held = new Promise<void>(r => { release = r })
-  const hold = async (r: Route) => { if (r.request().method() === 'GET') await held; await r.fallback() }
+  const held = new Promise<void>(r => {
+    release = r
+  })
+  const hold = async (r: Route) => {
+    if (r.request().method() === 'GET') await held
+    await r.fallback()
+  }
   await page.route(u => u.pathname.endsWith('/api/sr6/npcs'), hold)
   await page.goto('/#/sr6/npcs')
   await expect(page.getByText('Loading NPCs…')).toBeVisible()

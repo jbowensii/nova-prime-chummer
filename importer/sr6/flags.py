@@ -24,7 +24,7 @@ Foundry export use). General readers over the printed name, its section and its 
 - an entry's **options** (owner, 2026-10-09): its text says to choose one of the options it lists when it is learned
   (`against melee or ranged attacks (choose which category when learning this technique)`) and that it may be taken
   as many times as there are options to gain them all (`may be taken up to twice in order to gain both`): one entry per
-  option, `<Name> (<Option>)` (crb._Catalog.add)."""
+  option, `<Name> (<Option>)` (catalog.Catalog.add)."""
 import re
 
 from importer.sr6.regroup import norm

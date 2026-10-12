@@ -11,20 +11,30 @@ export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {
   const pick = (g: Game) => {
     storeGame(g)
     onPick(g)
-    location.hash = homeOf(g)
+    location.assign(homeOf(g))
   }
   return (
     <main className="lib gamepick">
       {/* no game yet: the neutral name, not either game's brand (bits.tsx Brand) */}
-      <div><span className="brand-row"><span className="brand">Chummer</span><span className="ver">v{__APP_VERSION__}</span></span></div>
+      <div>
+        <span className="brand-row">
+          <span className="brand">Chummer</span>
+          <span className="ver">v{__APP_VERSION__}</span>
+        </span>
+      </div>
       <h1>Choose your game</h1>
       <p>Each game keeps its own runners, NPCs and campaigns. You can switch at any time from the icon in the header.</p>
       <div className="games">
-        {GAMES.map(([g, word, name, what]) =>
+        {GAMES.map(([g, word, name, what]) => (
           <button key={g} type="button" className={`game ${g}`} aria-label={name} aria-describedby={`game-${g}`} onClick={() => pick(g)}>
-            <span className="name" aria-hidden="true">Shadowrun <b>{word}</b></span>
-            <span className="what" id={`game-${g}`}>{what}</span>
-          </button>)}
+            <span className="name" aria-hidden="true">
+              Shadowrun <b>{word}</b>
+            </span>
+            <span className="what" id={`game-${g}`}>
+              {what}
+            </span>
+          </button>
+        ))}
       </div>
     </main>
   )

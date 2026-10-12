@@ -3,8 +3,13 @@ import { ampChangeCost, ampEssence, ampRating, effectRating, legalEffects, rawAm
 import type { AmpEntry } from '../../src/model/types'
 import { cat } from '../helpers'
 
-const amp = (type: string, ...effects: [string, string?][]): AmpEntry =>
-  ({ uid: 'a', type, name: 't', narrative: '', effects: effects.map(([ref, param]) => ({ ref, param })) })
+const amp = (type: string, ...effects: [string, string?][]): AmpEntry => ({
+  uid: 'a',
+  type,
+  name: 't',
+  narrative: '',
+  effects: effects.map(([ref, param]) => ({ ref, param })),
+})
 const first = { isFirstQuality: true }
 
 // made-up core data: an amp point costs 6,000; bases: cyberware 2, quality 1 then 2, adept 2, contact 1, awakened 1;
@@ -46,9 +51,10 @@ test('adept, contact and awakened amp ratings', () => {
 test('catalog amps reproduce their printed rating (the made-up books have no discrepancies)', () => {
   // a mod has no base rating of its own: it adds its effects to an existing amp; the rating as the book adds it up (the
   // SINner house rule prices it at 0 after that)
-  const rating = (t: typeof cat.amps extends Map<string, infer V> ? V : never) => t.mod
-    ? t.effects.reduce((n, e) => n + effectRating(cat, e), 0)
-    : rawAmpRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
+  const rating = (t: typeof cat.amps extends Map<string, infer V> ? V : never) =>
+    t.mod
+      ? t.effects.reduce((n, e) => n + effectRating(cat, e), 0)
+      : rawAmpRating(cat, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)
   const bad = [...cat.amps.values()].filter(t => rating(t) !== t.printedRating)
   expect(bad.map(t => t.id)).toEqual([])
 })
@@ -61,4 +67,3 @@ test('legalEffects enforces type, max, excludes; a missing required effect is al
   expect(find(amp('cyberware', ['vr-cold']), 'vr-cold')!.allowed).toBe(false) // max 1
   expect(find(amp('awakened', ['awk-astral-perception']), 'awk-astral-projection')!.allowed).toBe(false)
 })
-

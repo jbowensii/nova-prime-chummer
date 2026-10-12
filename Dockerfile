@@ -13,16 +13,17 @@ FROM node:22-alpine
 # OCR=1 adds Tesseract for scanned books
 ARG OCR=0
 WORKDIR /app
-COPY importer/requirements.txt ./importer/requirements.txt
-RUN apk add --no-cache python3 py3-pip \
+COPY importer/requirements.lock ./importer/requirements.lock
+RUN apk add --no-cache python3 py3-pip su-exec \
  && if [ "$OCR" = "1" ]; then apk add --no-cache tesseract-ocr; fi \
- && pip install --no-cache-dir --break-system-packages -r /app/importer/requirements.txt
+ && pip install --no-cache-dir --break-system-packages --require-hashes -r /app/importer/requirements.lock
 COPY --from=build /app/dist ./dist
 # the app version backups record (package.json isn't in this image)
 COPY --from=build /app/VERSION ./VERSION
 COPY server/*.mjs ./server/
 COPY server/defaults ./server/defaults
 COPY importer ./importer
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm -rf {} +
 # the importer reads sources.xml from the built app's data, and the core files (skills, amp effects …) from
 # CUSTOM_DIR/imported/core, which the core rulebook's import builds: the image ships no core data
@@ -32,4 +33,6 @@ ENV UV_THREADPOOL_SIZE=16 PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters
 VOLUME ["/data/characters", "/data/custom", "/data/library"]
 EXPOSE 80
 HEALTHCHECK CMD wget -qO- http://127.0.0.1/api/health > /dev/null || exit 1
+# starts as root only to match the data mounts to PUID/PGID (default 99:100), then runs the server as that user
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server/server.mjs"]

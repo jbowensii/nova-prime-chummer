@@ -37,7 +37,9 @@ test('download a backup, change a runner, restore, see it back', async ({ page }
 
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByLabel('Restore from backup').setInputFiles({ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') })
-  await expect(page.getByRole('group', { name: 'Backup' }).getByRole('alert')).toHaveText('This file can’t be restored: this file isn’t a backup (not a zip file).')
+  await expect(page.getByRole('group', { name: 'Backup' }).getByRole('alert')).toHaveText(
+    'This file can’t be restored: this file isn’t a backup (not a zip file).',
+  )
   await expect(page.getByLabel('Restore from backup')).toBeFocused()
 
   await page.getByLabel('Restore from backup').setInputFiles(zip)

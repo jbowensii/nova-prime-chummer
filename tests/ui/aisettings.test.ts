@@ -13,7 +13,8 @@ const SAVED = `<?xml version="1.0" encoding="UTF-8"?>
 `
 
 test('saved AnythingLLM settings, read back after a reload, leave Test enabled', () => {
-  const s = parse(SAVED), p = s.providers.anythingllm
+  const s = parse(SAVED),
+    p = s.providers.anythingllm
   expect(testBlocked('anythingllm', p, p, s.keys.anythingllm, false)).toBeNull()
   // what the page would save again, read back: same test fields, whatever it did with the stale model attribute
   const again = parse(toXml(s.use, s.providers)).providers.anythingllm

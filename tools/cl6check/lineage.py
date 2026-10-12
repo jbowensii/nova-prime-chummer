@@ -19,14 +19,14 @@ and `winner()` is the last-published value that is neither context nor another v
 import re
 from dataclasses import dataclass
 
-from importer.sr6 import vocab
+from importer.sr6 import catalog, vocab
 from importer.sr6.recipes import crb, general
 from tools.cl6check import corpus as K
 from tools.cl6check import match
 
 # a table's header cell -> our field name, over every kind (the core recipe's reading; the first kind naming it wins)
 HEADER_FIELD = {}
-for _kind in crb.HEADERS.values():
+for _kind in catalog.HEADERS.values():
     for _h, _f in _kind.items():
         if _f and _f != "dv+":
             HEADER_FIELD.setdefault(_h, _f)

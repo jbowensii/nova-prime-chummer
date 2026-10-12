@@ -3,7 +3,7 @@ books) -> the SR6 catalog, one general reading for all: the NPC, grunt and conta
 Professional Rating where printed; a contact's also as a contacts entry), critters, the gear, weapon, armor,
 augmentation and vehicle tables, spells, qualities, life modules and the rule sections, ids unscoped (run scopes them
 as <id>.<slug>), descriptions in the private texts. Each known book is a recipe of its own in RECIPES (its source id,
-name, and how its title or first page names it); they share the core rulebook's reading (crb.extract). Reads only
+name, and how its title or first page names it); they share the core rulebook's reading (catalog.read). Reads only
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
 import difflib
@@ -11,10 +11,8 @@ import re
 from collections import Counter
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
-from importer.sr6 import regroup, sections
-from importer.sr6.recipes import crb, swc
-from importer.sr6.recipes.fs import _md_table
+from importer.sr6.ids import slug
+from importer.sr6 import catalog, lifemodules, sections
 from importer.sr6.regroup import blocks, keys, norm
 
 # (source id, name, CAT number or "", the PDF title's pattern, phrases the first page holds when the title is missing)
@@ -88,7 +86,7 @@ def _text_bands(b):
     if b.stats or "| B |" not in b.text and "| BOD |" not in b.text:
         return b
     stats, text = [], b.text
-    for h, rows in crb._tables(b.text):
+    for h, rows in catalog.md_tables(b.text):
         k = _band_head(h)
         if not k or k == "B" and stats or k == "D" and not stats or not rows:
             if stats:
@@ -99,7 +97,7 @@ def _text_bands(b):
             for n, (x, v) in enumerate(zip(h, r)):
                 cells.setdefault("RES" if x == "R" and "R" in h[:n] else x, v)  # (a second R: Resonance)
             stats.append(cells)
-        text = text.replace(_md_table(h, rows), "", 1)
+        text = text.replace(catalog.md_table(h, rows), "", 1)
     return replace(b, stats=stats, text=text.strip()) if stats else b
 
 
@@ -163,9 +161,9 @@ def _split_shared(lines):
     out, i = [], 0
     while i < len(lines):
         ln = lines[i]
-        cells = crb._cells(ln) if _BAND_LINE.match(ln) else []
+        cells = catalog.table_cells(ln) if _BAND_LINE.match(ln) else []
         starts = [n for n, c in enumerate(cells) if c == cells[0]]
-        if len(starts) < 2 or i + 2 >= len(lines) or len(crb._cells(lines[i + 2])) != len(cells):
+        if len(starts) < 2 or i + 2 >= len(lines) or len(catalog.table_cells(lines[i + 2])) != len(cells):
             out.append(ln)
             i += 1
             continue
@@ -180,7 +178,7 @@ def _split_shared(lines):
             out.append(ln)
             i += 1
             continue
-        vals, end = crb._cells(lines[i + 2]), i + 3
+        vals, end = catalog.table_cells(lines[i + 2]), i + 3
         while end < len(lines) and not lines[end].startswith("#") and not _BAND_LINE.match(lines[end]):
             end += 1
         if end < len(lines) and _BAND_LINE.match(lines[end]) and (g := _name_group(lines, end)):
@@ -215,7 +213,7 @@ def _spell_box(b):
     | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
     (`Illusion spells`: the catalog's spell category)."""
     s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
-    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in crb.SPELL_CATEGORIES \
+    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in catalog.SPELL_CATEGORIES \
             or s["DV"][1].strip().upper() not in ("P", "M"):
         return b
     box = {h: v for h, v in b.stats[0].items() if h.upper() not in ("TYPE", "DV", "DRAIN")}
@@ -308,94 +306,12 @@ def _slash_names(name):
     return [left, " ".join(head[:k] + [right])]
 
 
-_MODULES = re.compile(r"(?:new\s+)?(?:adult\s+|event\s+)?life\s+modules?", re.I)
-# a grant: a bold label (the companion's), or a bulleted one (an errata's: `• Contact Points: 4`)
-_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):",
-                    re.I | re.M)
-
-
-def _unbold(s):
-    return re.sub(r"\*\*", "", s or "").strip()
-
-
-def _bare(s):
-    """A line without its bold and a trailing colon (`**Adult Life Modules:**`)."""
-    return _unbold(s).rstrip(":").strip()
-
-
-def _title_line(s):
-    # (an `Event:` kicker on the title's own line: `Event: You had Fifteen Minutes of Fame`)
-    words = len(re.sub(r"^Event:\s*", "", s or "").split())
-    return bool(s) and s[0].isupper() and words <= (6 if s.startswith("Event:") else 5) and s[0] not in "•*#|>" \
-        and "," not in s and not re.search(r"[.;!?-]$", s)
-
-
-def _modules(bs):
-    """(name, text, PDF page) of each adult life module a book prints in body type under a `Life Modules` heading or
-    line (the Sixth World Companion's form): a module's title is a run of short lines (`Event:` `Brush With Death`)
-    that prose follows, its grants its labelled lines. The run goes on through the page's running head (a section
-    named like the chapter, a page number) and stops at the next heading. A part with no grant is no module (a
-    quality printed before them). A module set as a heading under the `Life Modules` heading (its title the heading,
-    a kicker `Event:` joined to it: prepare_md) is one with its labelled lines, read the same way."""
-    lines, page, on, level, heads = [], 0, False, None, []
-    for b in bs:
-        head = norm(b.name)
-        if on and (head in (norm(b.chapter), "") or head.isdigit()):
-            lines += _paged(b)
-            continue
-        if level is not None and b.level > level:  # a module under its own heading
-            # (its labelled lines once: the text's own, else regroup's labels)
-            body = b.text if _GRANT.search(b.text) else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
-            if _GRANT.search(body):
-                heads.append((b.name.strip(), body, b.page))
-            continue
-        on, level = False, None
-        if b.level and _MODULES.fullmatch(b.name.strip()):
-            level = b.level
-        text = _paged(b)
-        at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
-            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
-        if at is not None:
-            lines, page, on = lines + [""] + text[at:], page or b.page, True
-    out, cur, name, at = [], [], [], 0
-    pg = lambda: getattr(lines[at], "page", 0) or page  # noqa: E731  (the module's title line's page)
-    i = 0
-    while i < len(lines):
-        s = _unbold(lines[i])
-        if _MODULES.fullmatch(_bare(s)):  # (a second list's line, `New Event Life Modules`: no title)
-            if cur and name and any(_GRANT.search(c) for c in cur):
-                out.append((" ".join(name), "\n".join(cur), pg()))
-            name, cur, i = [], [], i + 1
-            continue
-        # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
-        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)
-                               or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())):
-            j = i
-            while j < len(lines) and _title_line(_unbold(lines[j])) and not _MODULES.fullmatch(_bare(lines[j])):
-                j += 1
-            if j < len(lines) and lines[j].strip() and not lines[j].lstrip().startswith(("•", "**")) and j - i <= 3:
-                if cur and any(_GRANT.search(c) for c in cur):
-                    out.append((" ".join(name), "\n".join(cur), pg()))
-                name, cur, at, i = [_unbold(lines[k]) for k in range(i, j)], [], i, j
-                continue
-        cur.append(lines[i])
-        i += 1
-    if cur and name and any(_GRANT.search(c) for c in cur):
-        out.append((" ".join(name), "\n".join(cur), pg()))
-    return out + heads
-
-
-def _paged(b):
-    """Block b's text lines, each keeping the PDF page it is printed on (regroup's page breaks)."""
-    return [regroup._pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]
-
-
 def _contact(b):
     return any(re.match(r"connection(\s+rating)?$", k, re.I) for k in b.labels)
 
 
 class Book:
-    """One known book: the attributes crb.extract reads (a recipe module's), its match() and extract()."""
+    """One known book: the attributes catalog.read reads (a recipe module's), its match() and extract()."""
     __name__ = "importer.sr6.recipes.general"  # run records the recipe as `general`
     PUBLISHER, CANON = "Catalyst Game Labs", True
     PAGE_OFFSET = 1  # printed page = PDF page - 1 (a cover page first)
@@ -474,7 +390,7 @@ class Book:
         heading (a book printing none) is in the book's."""
         if not b.chapter:
             b = replace(b, chapter=self.BOOK, name=b.name or self.BOOK)
-        b = _spell_box(_box_named(b))  # (an item's own stat line: crb.stat_lines, every book's)
+        b = _spell_box(_box_named(b))  # (an item's own stat line: catalog.stat_lines, every book's)
         if b.type == "item" or b.level >= 2:
             b = _text_bands(b)
             if b.type == "section" and _being(b):
@@ -551,12 +467,12 @@ class Book:
         self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
         sections.Reader.toxins = True  # (the adventure books' toxins have no price table: read from their lines)
         try:
-            res = crb.extract(bs, ctx, book=self)
+            res = catalog.read(bs, ctx, self)
         finally:
             sections.Reader.toxins = False
-        cat = crb._Catalog(self.ID, self.ID.lower(), self.BOOK)
-        for name, text, page in _modules(bs):
-            swc._lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))
+        cat = catalog.Catalog(self.ID, self.ID.lower(), self.BOOK)
+        for name, text, page in lifemodules.modules(bs):
+            lifemodules.lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))
         if cat.entries["lifemodules"]:  # (the blocks stay rules too: the modules print no description of their own)
             res.files["lifemodules.xml"] = cat.xml("lifemodules")
             res.report += cat.report

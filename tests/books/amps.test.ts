@@ -11,13 +11,16 @@ describeBooks('amp ratings (book samples)', () => {
   })
 
   test('catalog amps reproduce their printed rating unless the private discrepancy list has them', () => {
-    const listed = new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8')
-      .matchAll(/^\| ([a-z0-9-]+) \| (?:CRB|DHSA) p\./gm)].map(m => m[1]))
+    const listed = new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8').matchAll(/^\| ([a-z0-9-]+) \| (?:CRB|DHSA) p\./gm)].map(m => m[1]))
     const first = { isFirstQuality: true }
     // a mod has no base rating of its own: it adds its effects to an existing amp
-    const bad = [...books!.amps.values()].filter(t => !listed.has(t.id) && (t.mod
-      ? t.effects.reduce((n, e) => n + effectRating(books!, e), 0)
-      : ampRating(books!, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)) !== t.printedRating)
+    const bad = [...books!.amps.values()].filter(
+      t =>
+        !listed.has(t.id) &&
+        (t.mod
+          ? t.effects.reduce((n, e) => n + effectRating(books!, e), 0)
+          : ampRating(books!, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)) !== t.printedRating,
+    )
     expect(bad.map(t => t.id)).toEqual([])
   })
 })

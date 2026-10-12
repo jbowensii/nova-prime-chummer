@@ -4,7 +4,7 @@ Rating stat blocks), the airships and their weapons, the astral devices (shadow 
 encounter suits, the new spell, ritual, critter power and metamagic, and the rule sections (each chapter's Game
 Information and the techniques of travel: no catalog kind of their own), ids unscoped (run scopes them as aw.<slug>),
 descriptions in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading
-(crb.extract); layout notes in aw.md.
+(catalog.read); layout notes in aw.md.
 
 A being prints as a level-4 heading with a tag line (`(Fire, Force 4)`, `(Professional Rating 5)`), its description,
 then a level-5 box (often titled in lower case) with its stat band: the box takes the heading's tag and text. A being
@@ -13,8 +13,9 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
-from importer.sr6.recipes import crb, ts
+from importer.sr6 import catalog
+from importer.sr6.ids import slug
+from importer.sr6.recipes import ts
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "AW", "Shadowrun: Astral Ways", "Catalyst Game Labs", True
@@ -35,7 +36,7 @@ CATALOG_CHAPTERS = ()
 # where the rules are: a chapter's level-2 sections of these names, and the techniques of travel
 RULE_PARTS = ("game information", "translation of characters to the elemental planes")
 RULE_BOOK_CHAPTERS = ("techniques of travel",)
-# printed header -> the core rulebook's (crb.HEADERS)
+# printed header -> the core rulebook's (catalog.HEADERS)
 RENAME = {"HAND": "HANDLING", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "BOD": "BODY", "ACC": "ACCEL",
           "INT": "SPEED INTERVAL", "SPD": "TOP SPEED", "ARM": "ARMOR", "PIL": "PILOT", "SENS": "SENSOR", "SEAT": "SEATS",
           "FORCE": "RATING", "BONDING COST": "BONDING COST (IN KARMA)", "DEFENSIVE RATING": "DEFENSE RATING"}
@@ -59,14 +60,14 @@ def _words(name):
 
 def _banded(b):
     return any(_BAND & {h.upper() for h in s} for s in b.stats) or \
-        any(_BAND & {h.upper() for h in t[0]} for t in crb._tables(b.text))
+        any(_BAND & {h.upper() for h in t[0]} for t in catalog.md_tables(b.text))
 
 
 def _with_band(b):
     """A box's band printed as a bold header over a value line (`**B A R S W L I C M ESS**`) as its stat band."""
     if b.stats or not (bd := ts.band(b.text)):
         return b
-    b = crb._text_stats(b, crb.HEADERS["npcs"])
+    b = catalog.text_stats(b, catalog.HEADERS["npcs"])
     return replace(b, stats=bd + b.stats)
 
 
@@ -169,7 +170,7 @@ def _vehicles(bs):
     """A vehicle box whose table is in its text (`HAND | ACC | INT | SPD …`, no price) -> a row named by the box."""
     out = []
     for b in bs:
-        t = next((t for t in crb._tables(b.text) if t[0][:1] == ["HAND"] and len(t[1]) == 1), None)
+        t = next((t for t in catalog.md_tables(b.text) if t[0][:1] == ["HAND"] and len(t[1]) == 1), None)
         if b.type == "item" and b.row is None and not b.stats and t is not None:
             row = {"VEHICLE": b.name, **dict(zip(t[0], t[1][0]))}
             b = replace(b, header=list(row), row=row, text="\n".join(ln for ln in b.text.splitlines()
@@ -180,6 +181,6 @@ def _vehicles(bs):
 
 def extract(regrouped, ctx=None):
     report = []
-    res = crb.extract(_vehicles(_prep(list(blocks(regrouped)), report)), ctx, book=sys.modules[__name__])
+    res = catalog.read(_vehicles(_prep(list(blocks(regrouped)), report)), ctx, sys.modules[__name__])
     res.report += report  # a being whose band doesn't read
     return res

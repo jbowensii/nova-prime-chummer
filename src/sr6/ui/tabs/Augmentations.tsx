@@ -3,23 +3,34 @@
 import { num } from '../../engine/creation'
 import { augmentationRoom } from '../../engine/budgets'
 import { MAGIC_KINDS } from '../../engine/data'
-import { n, useSr6Editor } from '../editor'
+import { useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { gradesFor } from '../../engine/grades'
 import { ACCESSORY_KINDS, isAccessory, PurchaseSection } from '../Picker'
 
 export function AugmentationsTab() {
   const { ch, cr, data, budgets } = useSr6Editor()
-  const es = budgets.essence, k = MAGIC_KINDS[ch.build.magic]
+  const es = budgets.essence,
+    k = MAGIC_KINDS[ch.build.magic]
   return (
     <div className="stack">
       <h2>Augmentations</h2>
-      <p className="muted">Essence: <b className={es.left < 0 ? 'err' : ''}>{n(es.left)} left</b> of {n(es.max)}.
+      <p className="muted">
+        Essence: <Left x={es} />.
         {es.magicLoss > 0 && (k.spells || k.powers || k.resonance) && ` It costs ${es.magicLoss} ${k.resonance ? 'Resonance' : 'Magic'}.`}
         {num(cr, 'essence') === undefined && ' Essence isn’t set: Table setup → Creation rules.'}
-        {gradesFor(cr, data).length === 0 && ' No grades are set up yet (Table setup → Creation rules), so ware is bought without one.'}</p>
+        {gradesFor(cr, data).length === 0 && ' No grades are set up yet (Table setup → Creation rules), so ware is bought without one.'}
+      </p>
       {/* (owner's decision 9: an augmentation the runner has isn't offered again; a limb one a side) */}
-      <PurchaseSection kind="augmentations" title="Augmentations" one="an augmentation" grades bonuses offer={e => augmentationRoom(ch.build, data, e) > 0}
-        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }} />
+      <PurchaseSection
+        kind="augmentations"
+        title="Augmentations"
+        one="an augmentation"
+        grades
+        bonuses
+        offer={e => augmentationRoom(ch.build, data, e) > 0}
+        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
+      />
     </div>
   )
 }

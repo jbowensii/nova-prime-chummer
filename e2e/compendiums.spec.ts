@@ -10,25 +10,35 @@ import { anarchyState } from './session'
 // Pat a player. Runs in order. Screenshots go to .extract/ (not committed).
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', gus: 'gus-password-1', pat: 'pat-password-1' }
 const SHOTS = '.extract/screenshots/0.8.0'
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-comp-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-comp-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
-    { username: 'gus', password: PW.gus, role: 'editor', name: 'Gus Editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'gus', password: PW.gus, role: 'editor', name: 'Gus Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.context().clearCookies()
@@ -39,9 +49,15 @@ async function signIn(page: Page, username: keyof typeof PW) {
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
 }
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
-  await theme('light'); await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
-  await theme('dark'); await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
+  await theme('light')
+  await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
+  await theme('dark')
+  await page.screenshot({ path: `${SHOTS}/${name}-dark.png`, fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${name} scrolls sideways`).toBeLessThanOrEqual(0)
   await page.screenshot({ path: `${SHOTS}/${name}-phone.png`, fullPage: true })
@@ -84,8 +100,12 @@ test('an editor makes a compendium and fills it; its entries reach their NPC’s
     await d.getByLabel('Ranges').fill('OK/-/-/-')
     await d.getByLabel('Description', { exact: true }).fill('Heavy and made up.')
   })
-  await addItem(page, 'Armor', 'Rain Coat', async d => { await d.getByLabel('Armor', { exact: true }).fill('2') })
-  await addItem(page, 'Spell', 'Glow Ball', async d => { await d.getByLabel('Category').selectOption('illusion') })
+  await addItem(page, 'Armor', 'Rain Coat', async d => {
+    await d.getByLabel('Armor', { exact: true }).fill('2')
+  })
+  await addItem(page, 'Spell', 'Glow Ball', async d => {
+    await d.getByLabel('Category').selectOption('illusion')
+  })
 
   await page.getByRole('button', { name: 'Add an amp' }).click()
   await dialog(page).getByLabel('Amp type').selectOption('quality')
@@ -134,7 +154,10 @@ test('an editor makes a compendium and fills it; its entries reach their NPC’s
   await page.getByRole('button', { name: 'New NPC' }).click()
   await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Create NPC' }).click()
   await page.getByRole('link', { name: 'Gear' }).click()
-  await page.locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) }).getByRole('button', { name: 'Add from the book' }).click()
+  await page
+    .locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) })
+    .getByRole('button', { name: 'Add from the book' })
+    .click()
   await page.getByLabel('Search').fill('Lead Pipe')
   await expect(page.locator('.picker li', { hasText: 'Lead Pipe' }).locator('.src')).toHaveText('STREET p.1')
   await page.getByRole('button', { name: 'Close', exact: true }).click()
@@ -148,7 +171,10 @@ test('an editor makes a compendium and fills it; its entries reach their NPC’s
 
   // a compendium entry's Edit in a picker opens it in its compendium, not the catalog edits
   await page.getByRole('link', { name: 'Gear' }).click()
-  await page.locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) }).getByRole('button', { name: 'Add from the book' }).click()
+  await page
+    .locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) })
+    .getByRole('button', { name: 'Add from the book' })
+    .click()
   await page.getByLabel('Search').fill('Lead Pipe')
   await page.locator('.picker li', { hasText: 'Lead Pipe' }).getByRole('link', { name: 'Edit Lead Pipe' }).click()
   await expect(page.getByRole('heading', { name: 'Street Gear', level: 1 })).toBeVisible()
@@ -184,7 +210,10 @@ test('sharing with the table: another editor reads it, read only', async ({ page
   await page.getByRole('button', { name: 'New NPC' }).click()
   await page.getByRole('dialog', { name: 'New NPC' }).getByRole('button', { name: 'Create NPC' }).click()
   await page.getByRole('link', { name: 'Gear' }).click()
-  await page.locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) }).getByRole('button', { name: 'Add from the book' }).click()
+  await page
+    .locator('section', { has: page.getByRole('heading', { name: 'Weapons' }) })
+    .getByRole('button', { name: 'Add from the book' })
+    .click()
   await page.getByLabel('Search').fill('Lead Pipe')
   const row = page.locator('.picker li', { hasText: 'Lead Pipe' })
   await expect(row.locator('.src')).toHaveText('STREET p.1')
@@ -201,8 +230,11 @@ test('a book shows as a read-only compendium', async ({ page }) => {
   await expect(page.getByRole('button', { name: /^(Add|Edit|Delete)/ })).toHaveCount(0)
 })
 
-const compXml = (page: Page, source: string) => page.evaluate(async s =>
-  ((await (await fetch('./api/compendiums')).json()) as { xml: string }[]).find(r => r.xml.includes(`source="${s}"`))?.xml ?? '', source)
+const compXml = (page: Page, source: string) =>
+  page.evaluate(
+    async s => ((await (await fetch('./api/compendiums')).json()) as { xml: string }[]).find(r => r.xml.includes(`source="${s}"`))?.xml ?? '',
+    source,
+  )
 
 test('copy a book entry into a compendium: a new id, its source, no description; the book is unchanged', async ({ page }) => {
   await signIn(page, 'eve')
@@ -266,8 +298,11 @@ test('move an NPC into a compendium and back out; a failed save leaves it where 
     await d.getByRole('button', { name: 'Move' }).click()
   }
   // the compendium save fails: the NPC stays
-  await page.route('**/api/compendiums/*', r => r.request().method() === 'PUT'
-    ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'made-up failure' }) }) : r.continue())
+  await page.route('**/api/compendiums/*', r =>
+    r.request().method() === 'PUT'
+      ? r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'made-up failure' }) })
+      : r.continue(),
+  )
   await move()
   await expect(page.getByRole('status')).toContainText('made-up failure')
   await expect(fixer).toBeVisible()

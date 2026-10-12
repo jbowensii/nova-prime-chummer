@@ -10,7 +10,9 @@ import { createServer } from '../server/server.mjs'
 // Runs in order. Screenshots (light and dark) go to ISSUES_SHOTS, else .extract/screenshots/issues (not committed).
 const PW = 'ada-password-1'
 const SHOTS = process.env.ISSUES_SHOTS ?? '.extract/screenshots/issues'
-let server: ReturnType<typeof createServer>, base = '', dir = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] }, viewport: { width: 1400, height: 900 } })
@@ -23,19 +25,30 @@ test.beforeAll(async () => {
   // the made-up entries as one more file of an imported book, in each game
   cpSync('tests/fixtures/issues/ca2-items.xml', join(custom, 'imported', 'test', 'issues.xml'))
   cpSync('tests/fixtures/issues/sr6-gear.xml', join(custom, 'sr6', 'imported', 'crb', 'issues.xml'))
-  for (const [index, href] of [[join(custom, 'imported', 'index.xml'), 'test/issues.xml'], [join(custom, 'sr6', 'imported', 'index.xml'), 'crb/issues.xml']]) {
+  for (const [index, href] of [
+    [join(custom, 'imported', 'index.xml'), 'test/issues.xml'],
+    [join(custom, 'sr6', 'imported', 'index.xml'), 'crb/issues.xml'],
+  ]) {
     const xml = readFileSync(index, 'utf8')
     writeFileSync(index, xml.replace('</overlays>', `  <file href="${href}"/>\n</overlays>`))
   }
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW, name: 'Ada Admin' }]))
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: custom, libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: custom,
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string) {
   await page.goto(path)
@@ -47,10 +60,14 @@ async function signIn(page: Page, path: string) {
 /** the page (or one element of it) in light, then dark */
 async function shoot(page: Page, name: string, el?: ReturnType<Page['locator']>) {
   for (const theme of ['light', 'dark']) {
-    await page.evaluate(v => { document.documentElement.dataset.theme = v }, theme)
-    await (el ?? page).screenshot({ path: `${SHOTS}/${name}-${theme}.png`, ...el ? {} : { fullPage: false } })
+    await page.evaluate(v => {
+      document.documentElement.dataset.theme = v
+    }, theme)
+    await (el ?? page).screenshot({ path: `${SHOTS}/${name}-${theme}.png`, ...(el ? {} : { fullPage: false }) })
   }
-  await page.evaluate(() => { document.documentElement.dataset.theme = 'light' })
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light'
+  })
 }
 const file = (name: string, text: string) => ({ name, mimeType: 'application/xml', buffer: Buffer.from(text) })
 const attention = (page: Page) => page.getByRole('button', { name: /^Needs attention/ })
@@ -109,7 +126,10 @@ test('SR6 override files: export the edits, import a file with a preview, keep m
   await signIn(page, '/#/sr6/data')
   // export: the fixture's Zap Gun edit, in the edits format
   await page.getByRole('button', { name: 'Export my edits…' }).click()
-  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog', { name: 'Export my edits' }).getByRole('button', { name: 'Export' }).click()])
+  const [down] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('dialog', { name: 'Export my edits' }).getByRole('button', { name: 'Export' }).click(),
+  ])
   expect(down.suggestedFilename()).toBe('sr6-edits.xml')
   const exported = readFileSync(await down.path(), 'utf8')
   expect(exported).toMatch(/^<\?xml version="1.0" encoding="UTF-8"\?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="edits" version="1">/)
@@ -184,7 +204,10 @@ test('Anarchy: Needs attention and its badge, a formula price, Review’s note, 
   // override files: the fixture's two edits out; in, the Odd Blade's damage (its issue clears) and a conflicting Signal Jammer
   await page.goto('/#/data')
   await page.getByRole('button', { name: 'Export my edits…' }).click()
-  const [down] = await Promise.all([page.waitForEvent('download'), page.getByRole('dialog', { name: 'Export my edits' }).getByRole('button', { name: 'Export' }).click()])
+  const [down] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('dialog', { name: 'Export my edits' }).getByRole('button', { name: 'Export' }).click(),
+  ])
   const exported = readFileSync(await down.path(), 'utf8')
   expect(down.suggestedFilename()).toBe('chummer-edits.xml')
   expect(exported).toContain('<item id="test.signal-jammer"')

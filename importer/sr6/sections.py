@@ -494,7 +494,7 @@ class Reader:
         if kind == "martialtechniques":  # its closing `Category:` line, inline after its last sentence
             attrs = {"category": flags.technique_category(text)}
         if kind == "metamagics":  # who may take it (`Adept Metamagics`, `(Adepts Only)`); the note leaves the name, so
-            # the recipe's own reading of the heading is this one (crb._Catalog.add reads the rest from its text)
+            # the recipe's own reading of the heading is this one (catalog.Catalog.add reads the rest from its text)
             name, attrs = flags.metamagic(name, "", [*chain, b.tags])
         return Found(kind, name, page, {k: v for k, v in attrs.items() if v}, [], _body(b), b)
 

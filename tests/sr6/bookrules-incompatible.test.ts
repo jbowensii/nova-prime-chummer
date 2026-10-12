@@ -25,21 +25,29 @@ function runner(...ids: string[]): Sr6Character {
   ids.forEach((id, i) => ch.build.purchases.push({ uid: `a${i}`, kind: 'augmentations', id, qty: 1, accessories: [] }))
   return ch
 }
-const found = (ch: Sr6Character, s = setup()) => validateSr6(s.data, s.cr, ch).filter(v => v.code.startsWith('gear.incompatible'))
-  .map(v => [v.code, v.path, v.message])
+const found = (ch: Sr6Character, s = setup()) =>
+  validateSr6(s.data, s.cr, ch)
+    .filter(v => v.code.startsWith('gear.incompatible'))
+    .map(v => [v.code, v.path, v.message])
 
 test('one raising what another names, one another names, two of one family; each pair once, cited to the one that says so', () => {
-  expect(found(runner('crb.zap-reflexes', 'crb.glow-booster'))).toEqual([['gear.incompatible', 'augmentations.a1', 'Zap Reflexes 2 and Glow Booster can’t be combined.']])
+  expect(found(runner('crb.zap-reflexes', 'crb.glow-booster'))).toEqual([
+    ['gear.incompatible', 'augmentations.a1', 'Zap Reflexes 2 and Glow Booster can’t be combined.'],
+  ])
   expect(found(runner('crb.zap-lacing-tin', 'crb.glow-density'))).toHaveLength(1)
   expect(found(runner('crb.zap-lacing-tin', 'crb.zap-lacing-lead'))).toHaveLength(1)
   expect(found(runner('crb.zap-lacing-tin', 'crb.zip-enhancers', 'crb.glow-density'))).toHaveLength(1)
   const s = setup()
-  expect(validateSr6(s.data, s.cr, runner('crb.zap-reflexes', 'crb.glow-booster')).find(v => v.code === 'gear.incompatible')).toMatchObject({ source: 'CRB', page: 287 })
+  expect(validateSr6(s.data, s.cr, runner('crb.zap-reflexes', 'crb.glow-booster')).find(v => v.code === 'gear.incompatible')).toMatchObject({
+    source: 'CRB',
+    page: 287,
+  })
 })
 
 test('a wireless exception is a note, not a problem', () => {
-  expect(found(runner('crb.zap-reflexes', 'crb.zip-enhancers'))).toEqual([['gear.incompatibleWireless', 'augmentations.a1',
-    'Zap Reflexes 2 and Zip Enhancers: compatible only while wireless (the wireless bonus).']])
+  expect(found(runner('crb.zap-reflexes', 'crb.zip-enhancers'))).toEqual([
+    ['gear.incompatibleWireless', 'augmentations.a1', 'Zap Reflexes 2 and Zip Enhancers: compatible only while wireless (the wireless bonus).'],
+  ])
 })
 
 test('the suprathyroid gland clashes with what names its attributes, unless the Companion’s option is on', () => {

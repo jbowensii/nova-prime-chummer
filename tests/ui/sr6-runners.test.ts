@@ -8,7 +8,8 @@ import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../s
 import { samplesToLoad } from '../../src/sr6/ui/Runners'
 import { fixtureCatalog } from '../sr6/fixture'
 
-const CA2 = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
+const CA2 =
+  '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="a" metatype="elf" level="runner" updatedAt="x"><build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build></ca2:character>'
 
 const runner = () => {
   const ch = blankSr6('priority', 'zip-1', '2026-10-03T00:00:00.000Z')
@@ -49,10 +50,14 @@ test('repair lists what it changed; a file it can’t read says why', () => {
 })
 
 test('export snapshots each catalog line and its accessories; a custom item has none', () => {
-  const c = fixtureCatalog(), ch = runner()
-  const gun = [...c.entries.weapons.values()][0], scope = [...c.entries.gear.values()].find(e => e.name === 'Zap Scope')!
-  ch.build.purchases.push({ uid: 'w', kind: 'weapons', id: gun.id, qty: 1, accessories: [{ uid: 'a', kind: 'gear', id: scope.id, qty: 1, accessories: [] }] },
-    { uid: 'c', kind: 'gear', name: 'Lucky Coin', cost: 5, qty: 1, accessories: [] })
+  const c = fixtureCatalog(),
+    ch = runner()
+  const gun = [...c.entries.weapons.values()][0],
+    scope = [...c.entries.gear.values()].find(e => e.name === 'Zap Scope')!
+  ch.build.purchases.push(
+    { uid: 'w', kind: 'weapons', id: gun.id, qty: 1, accessories: [{ uid: 'a', kind: 'gear', id: scope.id, qty: 1, accessories: [] }] },
+    { uid: 'c', kind: 'gear', name: 'Lucky Coin', cost: 5, qty: 1, accessories: [] },
+  )
   const out = snapshotSr6(c, ch)
   expect(out.build.purchases[0].snapshot?.name).toBe(gun.name)
   expect(out.build.purchases[0].accessories[0].snapshot?.name).toBe('Zap Scope')
@@ -76,8 +81,10 @@ test('an NPC imports; a taken id gets a new one; a ledger, finalize stamp and ca
   if (!free.ok) throw new Error(free.reason)
   expect(free.ch.npc?.kind).toBe('grunt')
   const id = free.ch.id
-  const odd = GRUNT.replace(/(<sr6:character [^>]*)>/, '$1 finalizedAt="2026-10-03T00:00:00.000Z" finalKarma="3" finalNuyen="7" campaign="0123456789ab">')
-    .replace('</build>', '</build>\n  <ledger>\n    <entry id="x" at="y" type="note">Odd</entry>\n  </ledger>')
+  const odd = GRUNT.replace(
+    /(<sr6:character [^>]*)>/,
+    '$1 finalizedAt="2026-10-03T00:00:00.000Z" finalKarma="3" finalNuyen="7" campaign="0123456789ab">',
+  ).replace('</build>', '</build>\n  <ledger>\n    <entry id="x" at="y" type="note">Odd</entry>\n  </ledger>')
   const taken = readSr6NpcImport(odd, new Set([id]))
   if (!taken.ok) throw new Error(taken.reason)
   expect(taken.ch.id).not.toBe(id)
@@ -88,7 +95,7 @@ test('an NPC imports; a taken id gets a new one; a ledger, finalize stamp and ca
 test('export snapshots the purchase lines in the ledger too', () => {
   const r = readSr6Import(CAREER.replace(/<snapshot>[\s\S]*?<\/snapshot>/g, ''), new Set())
   if (!r.ok) throw new Error(r.reason)
-  const lines = (ch: Sr6Character) => ch.ledger.flatMap(e => e.type === 'advance' && e.advance.op === 'purchase' ? [e.advance.line] : [])
+  const lines = (ch: Sr6Character) => ch.ledger.flatMap(e => (e.type === 'advance' && e.advance.op === 'purchase' ? [e.advance.line] : []))
   expect(lines(r.ch)[0].snapshot).toBeUndefined()
   expect(lines(snapshotSr6(fixtureCatalog(), r.ch))[0].snapshot?.name).toBe('Zap Gun')
 })
@@ -104,8 +111,10 @@ test('a book sample runner (the importer’s, tests/fixtures/sr6/sample-glow-run
   expect(b.attributes.agi).toEqual({ points: 4, adjust: 0, karma: 0 })
   expect(b.skills).toEqual([{ id: 'crb.tinkering', points: 0, karma: 3, spec: 'Gizmos' }])
   expect(b.priorities).toEqual({ metatype: 'E', attributes: 'A', magic: 'A', skills: 'D', resources: 'D' })
-  expect(r.ch.rules).toEqual([{ key: 'levelPrime', value: 'true', assumed: true, source: 'CRB-HK', page: 63 },
-    { key: 'expandedContacts', value: 'true', assumed: true, source: 'SWC', page: 161 }])
+  expect(r.ch.rules).toEqual([
+    { key: 'levelPrime', value: 'true', assumed: true, source: 'CRB-HK', page: 63 },
+    { key: 'expandedContacts', value: 'true', assumed: true, source: 'SWC', page: 161 },
+  ])
   expect(b.purchases.map(x => x.id)).toEqual(['crb.padded-vest', 'crb.gizmo-kit', 'crb.glow-gland', 'crb.tail-obvious', 'crb.zoom-bike', 'crb.zap-gun'])
   expect(r.ch.printed).toMatchObject({ source: 'CRB', page: 81, values: { agi: '5(6)', init: '8 + 2D6', dr: '5' } })
   expect(b.sins).toHaveLength(2)

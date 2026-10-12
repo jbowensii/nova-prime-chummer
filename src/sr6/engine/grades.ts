@@ -5,13 +5,19 @@
 // prints none, it isn't bought). Grades are for cyberware and bioware; a catalog grade may name fewer types (exoware).
 import { GRADED_TYPES, type Sr6Entry } from '../model/types'
 import { flag, num, type CreationRules } from './creation'
-import { normName, type Sr6Data } from './data'
+import type { Sr6Data } from './data'
+import { normName } from './names'
 
 export const STANDARD_GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 export type GradeFactor = 'essence' | 'cost' | 'avail'
 
 /** A catalog grade's key: its name in lower case without "ware" or "grade" (Omega Grade: omega, Exoware: exo). */
-export const gradeKey = (name: string) => normName(name).replace(/\s+grade$/, '').replace(/ware$/, '').trim().replace(/\s+/g, '-')
+export const gradeKey = (name: string) =>
+  normName(name)
+    .replace(/\s+grade$/, '')
+    .replace(/ware$/, '')
+    .trim()
+    .replace(/\s+/g, '-')
 
 export function gradeFactor(cr: CreationRules, data: Sr6Data, g: string, k: GradeFactor): number | undefined {
   return num(cr, `grade:${g}:${k}`) ?? data.grades[g]?.[k] ?? undefined

@@ -10,18 +10,35 @@ import { createServer } from './_signin'
 vi.setConfig({ testTimeout: 30000 })
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-pack-'))
-const custom = join(dir, 'custom'), core = join(custom, 'imported', 'core'), library = join(dir, 'library'), backups = join(library, '.backups')
+const custom = join(dir, 'custom'),
+  core = join(custom, 'imported', 'core'),
+  library = join(dir, 'library'),
+  backups = join(library, '.backups')
 let base = ''
 let srv: { close: () => void; stopJobs: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  cpSync('tests/fixtures/mini/custom/imported/core', core, { recursive: true })
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
-afterAll(() => { srv.stopJobs(); srv.close() })
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      cpSync('tests/fixtures/mini/custom/imported/core', core, { recursive: true })
+      srv = createServer({
+        staticDir: 'public',
+        charDir: join(dir, 'chars'),
+        customDir: custom,
+        libraryDir: library,
+        python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
+afterAll(() => {
+  srv.stopJobs()
+  srv.close()
+})
 
-const temps = () => existsSync(backups) ? readdirSync(backups).filter(f => /^pack-/.test(f)) : []
+const temps = () => (existsSync(backups) ? readdirSync(backups).filter(f => /^pack-/.test(f)) : [])
 const download = async () => {
   const r0 = await fetch(`${base}/api/datapack`, { method: 'POST' })
   const { token } = await r0.json()
@@ -48,10 +65,19 @@ const restart = async (want?: string) => {
   const log = join(dir, `calls-${++restarts}.log`)
   writeFileSync(log, '')
   vi.stubEnv('STUB_LOG', log)
-  const again = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  const again = createServer({
+    staticDir: 'public',
+    charDir: join(dir, 'chars'),
+    customDir: custom,
+    libraryDir: library,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await again.started
-  const calls = () => readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' '))
+  const calls = () =>
+    readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map(l => l.split(' ').slice(0, 2).join(' '))
   try {
     if (want) await vi.waitFor(() => expect(calls()).toContain(want), { timeout: 20000, interval: 50 })
     else await new Promise(r => setTimeout(r, 500))
@@ -63,7 +89,8 @@ const restart = async (want?: string) => {
   }
   return calls()
 }
-const idle = () => vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
+const idle = () =>
+  vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
 
 test('a pack is made, then downloads once as a dated zip; its folder is gone afterwards', async () => {
   const { r, token, bytes } = await download()
@@ -88,7 +115,10 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   rmSync(join(core, 'lifestyles.xml'))
   const p = await upload(MAGIC + JSON.stringify(pack))
   const { token, pack: summary } = await p.json()
-  expect([p.status, summary]).toEqual([200, { app: JSON.parse(readFileSync('package.json', 'utf8')).version, created: '2026-09-28T12:00:00+00:00', files: ['skills.xml'], replaces: ['skills.xml'] }])
+  expect([p.status, summary]).toEqual([
+    200,
+    { app: JSON.parse(readFileSync('package.json', 'utf8')).version, created: '2026-09-28T12:00:00+00:00', files: ['skills.xml'], replaces: ['skills.xml'] },
+  ])
   expect(readFileSync(join(core, 'skills.xml'), 'utf8')).not.toContain('from the pack') // the preview changes nothing
   expect(temps()).toHaveLength(1) // the checked zip waits for its token
   const r = await load(token)
@@ -111,14 +141,19 @@ test('upload: the pack’s files replace the core files; the start-up re-import 
   writeFileSync(mark, '<rebuild sha256="abc" pack="2026-09-28T00:00:00Z" files="skills.xml"/>\n')
   expect((await fetch(`${base}/api/books/crb-1/reimport`, { method: 'POST' })).status).toBe(202)
   expect(existsSync(mark)).toBe(false)
-  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), {
+    timeout: 10000,
+  })
   cpSync('tests/fixtures/mini/custom/imported/core/lifestyles.xml', join(core, 'lifestyles.xml'))
   rmSync(join(library, 'crb-1'), { recursive: true })
 })
 
 test('the same core rulebook uploaded again: imported again into its entry, its pack marks dropped (the marks follow the file’s sha256)', async () => {
-  const pdf = '%PDF-1.4 the same core rulebook', sha = createHash('sha256').update(pdf).digest('hex')
-  const old = join(library, 'crb-old'), mark = join(old, 'core-rebuild.xml'), other = join(library, 'other-crb', 'core-rebuild.xml')
+  const pdf = '%PDF-1.4 the same core rulebook',
+    sha = createHash('sha256').update(pdf).digest('hex')
+  const old = join(library, 'crb-old'),
+    mark = join(old, 'core-rebuild.xml'),
+    other = join(library, 'other-crb', 'core-rebuild.xml')
   mkdirSync(old, { recursive: true })
   mkdirSync(join(library, 'other-crb'), { recursive: true })
   const isCrb = () => writeFileSync(join(old, 'import.xml'), `<import recipe="crb" source="CRB" file="crb.pdf" sha256="${sha}"><files/><report/></import>\n`)
@@ -150,16 +185,26 @@ test('the same core rulebook uploaded again: imported again into its entry, its 
 })
 
 test('a pack that replaces a table read by AI: the books stop saying so for that table, not for the others', async () => {
-  const ai = join(library, 'crb-ai'), otherBook = join(library, 'other-ai')
-  for (const [d, rows] of [[ai, '    <row kind="core-ai" file="skills.xml" entries="2" problem="read by AI: check it against the book"/>\n'
-    + '    <row kind="core-ai" file="weapons.xml" entries="1" problem="read by AI: check it against the book"/>\n    <row kind="core-unread" file="levels.xml"/>\n'],
-  [otherBook, '    <row kind="core-ai" file="skills.xml" entries="1" problem="read by AI: check it against the book"/>\n']]) {
+  const ai = join(library, 'crb-ai'),
+    otherBook = join(library, 'other-ai')
+  for (const [d, rows] of [
+    [
+      ai,
+      '    <row kind="core-ai" file="skills.xml" entries="2" problem="read by AI: check it against the book"/>\n' +
+        '    <row kind="core-ai" file="weapons.xml" entries="1" problem="read by AI: check it against the book"/>\n    <row kind="core-unread" file="levels.xml"/>\n',
+    ],
+    [otherBook, '    <row kind="core-ai" file="skills.xml" entries="1" problem="read by AI: check it against the book"/>\n'],
+  ]) {
     mkdirSync(d, { recursive: true })
     writeFileSync(join(d, 'import.xml'), `<import recipe="crb" source="CRB" file="crb.pdf" sha256="ai"><files/><report>\n${rows}  </report></import>\n`)
     writeFileSync(join(d, 'status.xml'), '<status state="done" updated="2026-09-28T00:00:00Z"></status>\n')
   }
-  const listed = async () => Object.fromEntries(((await (await fetch(`${base}/api/books`)).json()) as { id: string; coreAi: string[]; coreUnread: string[] }[])
-    .filter(b => ['crb-ai', 'other-ai'].includes(b.id)).map(b => [b.id, [b.coreAi, b.coreUnread]]))
+  const listed = async () =>
+    Object.fromEntries(
+      ((await (await fetch(`${base}/api/books`)).json()) as { id: string; coreAi: string[]; coreUnread: string[] }[])
+        .filter(b => ['crb-ai', 'other-ai'].includes(b.id))
+        .map(b => [b.id, [b.coreAi, b.coreUnread]]),
+    )
   expect(await listed()).toEqual({ 'crb-ai': [['skills.xml', 'weapons.xml'], ['levels.xml']], 'other-ai': [['skills.xml'], []] })
   const { bytes } = await download()
   const pack = JSON.parse(bytes.toString().slice(MAGIC.length))
@@ -177,11 +222,11 @@ test('refused uploads say why and change nothing', async () => {
   r = await upload(MAGIC + JSON.stringify({ files: { 'notes.xml': '<x/>' } }))
   expect(r.status).toBe(400)
   expect((await r.json()).error).toMatch(/a file a data pack can’t hold: notes\.xml/)
-  r = await upload('PK\x03\x04', { 'Content-Length': String(51 * 1024 * 1024) }).catch(() => null) as Response | null
+  r = (await upload('PK\x03\x04', { 'Content-Length': String(51 * 1024 * 1024) }).catch(() => null)) as Response | null
   if (r) expect(r.status).toBe(413) // the server may close the connection before fetch reads the answer
   const big = Buffer.alloc(51 * 1024 * 1024, 'a')
   big.write('PK\x03\x04', 'latin1')
-  r = await upload(big).catch(() => null) as Response | null
+  r = (await upload(big).catch(() => null)) as Response | null
   if (r) expect([r.status, (await r.json()).error]).toEqual([413, 'the file is larger than 50 MB'])
   expect(readFileSync(join(core, 'skills.xml'), 'utf8')).toBe(before)
   await vi.waitFor(() => expect(temps()).toEqual([]))
@@ -199,21 +244,33 @@ test('one pack loads at a time; not while a book imports; a job waits for the pa
   let { done } = await loading()
   expect((await fetch(`${base}/api/datapack`, { method: 'POST' })).status).toBe(409)
   // a book uploaded meanwhile is queued, and starts after the pack
-  const book = await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.4 slow', headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'b.pdf' } })
+  const book = await fetch(`${base}/api/books`, {
+    method: 'POST',
+    body: '%PDF-1.4 slow',
+    headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'b.pdf' },
+  })
   expect(book.status).toBe(202)
   const { id } = await book.json()
   expect((await (await fetch(`${base}/api/books`)).json()).find((b: { id: string }) => b.id === id).state).toBe('queued')
   expect((await done).status).toBe(200)
-  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).find((b: { id: string }) => b.id === id).state).toBe('done'), { timeout: 10000 })
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).find((b: { id: string }) => b.id === id).state).toBe('done'), {
+    timeout: 10000,
+  })
   // while a job runs, a pack can be checked but not loaded; the refused load keeps its token
-  const slow = await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.4 slow', headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'c.pdf' } })
+  const slow = await fetch(`${base}/api/books`, {
+    method: 'POST',
+    body: '%PDF-1.4 slow',
+    headers: { 'Content-Type': 'application/pdf', 'X-Filename': 'c.pdf' },
+  })
   expect(slow.status).toBe(202)
   const { token } = await (await upload(bytes)).json()
   const busy = await load(token)
   expect([busy.status, (await busy.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
   const made = await fetch(`${base}/api/datapack`, { method: 'POST' }) // nor made: it could mix old and new tables
   expect([made.status, (await made.json()).error]).toEqual([409, 'a book is being imported or read by AI; try again when it’s done'])
-  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), { timeout: 10000 })
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).every((b: { busy: boolean }) => !b.busy)).toBe(true), {
+    timeout: 10000,
+  })
   expect((await load(token)).status).toBe(200)
   // a pack load is a counted write: a restore can't start under it
   ;({ done } = await loading())
@@ -233,10 +290,17 @@ test('one pack loads at a time; not while a book imports; a job waits for the pa
 })
 
 test('pending uploads: one at a time, and each expires with its zip', async () => {
-  const d = mkdtempSync(join(tmpdir(), 'ca2-pack-ttl-')), bk = join(d, 'library', '.backups')
+  const d = mkdtempSync(join(tmpdir(), 'ca2-pack-ttl-')),
+    bk = join(d, 'library', '.backups')
   cpSync('tests/fixtures/mini/custom/imported/core', join(d, 'custom', 'imported', 'core'), { recursive: true })
-  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: join(d, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'], restoreTtl: 1500 })
+  const s = createServer({
+    staticDir: 'public',
+    charDir: join(d, 'chars'),
+    customDir: join(d, 'custom'),
+    libraryDir: join(d, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+    restoreTtl: 1500,
+  })
   await new Promise<void>(ok => s.listen(0, ok))
   const url = `http://127.0.0.1:${s.address().port}/api/datapack/import`
   const zips = () => readdirSync(bk).filter(f => /^pack-.*\.zip$/.test(f))
@@ -249,16 +313,27 @@ test('pending uploads: one at a time, and each expires with its zip', async () =
     await vi.waitFor(() => expect(zips()).toEqual([]), { timeout: 5000 })
     expect((await fetch(`${url}/${b}`, { method: 'POST' })).status).toBe(404) // expired
     expect((await fetch(`${url}/${b}`)).status).toBe(405)
-  } finally { s.stopJobs(); s.close() }
+  } finally {
+    s.stopJobs()
+    s.close()
+  }
 })
 
 test('no core data: the pack is refused with the reason', async () => {
   const empty = mkdtempSync(join(tmpdir(), 'ca2-pack-empty-'))
-  const s = createServer({ staticDir: 'public', charDir: join(empty, 'chars'), customDir: join(empty, 'custom'), libraryDir: join(empty, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  const s = createServer({
+    staticDir: 'public',
+    charDir: join(empty, 'chars'),
+    customDir: join(empty, 'custom'),
+    libraryDir: join(empty, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>(ok => s.listen(0, ok))
   try {
     const r = await fetch(`http://127.0.0.1:${s.address().port}/api/datapack`, { method: 'POST' })
     expect([r.status, (await r.json()).error]).toEqual([409, 'there is no core data to put in a pack. Import the core rulebook first'])
-  } finally { s.stopJobs(); s.close() }
+  } finally {
+    s.stopJobs()
+    s.close()
+  }
 })

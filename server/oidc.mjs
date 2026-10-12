@@ -32,15 +32,19 @@ const FAIL_TTL = MINUTE // a failed discovery is remembered this long: an issuer
 const MAX_USED = 10000 // nonces already used (single use), kept until their cookie would have expired
 const AAD = Buffer.from('ca2-oidc-state-1')
 const LEEWAY = 60 // seconds, for exp / iat / nbf
-const DISCOVERY_TTL = 60 * MINUTE, JWKS_TTL = 60 * MINUTE
+const DISCOVERY_TTL = 60 * MINUTE,
+  JWKS_TTL = 60 * MINUTE
 const SCOPE = 'openid profile email'
 const TOKEN_AUTH = ['client_secret_basic', 'client_secret_post']
 // the only ID token algorithms taken; `none` and the HMAC ones (keyed by the client secret) never are
 const ALGS = { RS256: { kty: 'RSA' }, ES256: { kty: 'EC', crv: 'P-256', dsaEncoding: 'ieee-p1363' } }
 const SECRET_MODE = 0o600
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
-// eslint-disable-next-line no-control-regex
-const oneLine = s => String(s ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim()
+const oneLine = s =>
+  String(s ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .trim()
 const sha256 = s => createHash('sha256').update(s).digest()
 const rand = () => randomBytes(32).toString('base64url')
 const fail = (code, message) => Object.assign(new Error(message), { code })
@@ -53,7 +57,11 @@ export const insecureAllowed = () => process.env.NODE_ENV === 'test' || /^(1|tru
 /** https (or, when `insecure`, http to localhost / 127.0.0.1 / [::1]); no user:password@, no fragment. */
 export function checkUrl(u, what = 'the address', insecure = false) {
   let url
-  try { url = new URL(u) } catch { throw refuse('failed', `${what} isn’t a web address`) }
+  try {
+    url = new URL(u)
+  } catch {
+    throw refuse('failed', `${what} isn’t a web address`)
+  }
   if (!(url.protocol === 'https:' || (insecure && url.protocol === 'http:' && LOCAL.includes(url.hostname))))
     throw refuse('failed', `${what} must start with https://`)
   if (url.username || url.password || url.hash) throw refuse('failed', `${what} can’t hold a user name, password or #fragment`)
@@ -63,7 +71,8 @@ export function checkUrl(u, what = 'the address', insecure = false) {
 /** JSON from `url`: `timeout` ms for the whole answer, `max` bytes at most, redirects not followed. -> { status, type, body } */
 export async function fetchJson(url, { method = 'GET', headers = {}, body, timeout = 5000, max = 64 * 1024, what = 'the issuer', insecure = false } = {}) {
   checkUrl(url, `${what}’s address`, insecure)
-  let r, text = ''
+  let r,
+    text = ''
   try {
     r = await fetch(url, { method, headers: { Accept: 'application/json', ...headers }, body, redirect: 'error', signal: AbortSignal.timeout(timeout) })
     if (Number(r.headers.get('content-length')) > max) throw refuse('failed', `${what}’s answer is too large`)
@@ -76,11 +85,19 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
     text = Buffer.concat(chunks).toString('utf8')
   } catch (e) {
     if (e.key) throw e
-    throw refuse('failed', e.name === 'TimeoutError' || e.name === 'AbortError' ? `${what} didn’t answer within ${timeout / 1000} seconds`
-      : `couldn’t reach ${what} (${oneLine(e.cause?.code ?? e.message).slice(0, 80)})`)
+    throw refuse(
+      'failed',
+      e.name === 'TimeoutError' || e.name === 'AbortError'
+        ? `${what} didn’t answer within ${timeout / 1000} seconds`
+        : `couldn’t reach ${what} (${oneLine(e.cause?.code ?? e.message).slice(0, 80)})`,
+    )
   }
   let json = null
-  try { json = JSON.parse(text) } catch { /* below */ }
+  try {
+    json = JSON.parse(text)
+  } catch {
+    /* below */
+  }
   return { status: r.status, type: String(r.headers.get('content-type') ?? ''), body: json && typeof json === 'object' && !Array.isArray(json) ? json : null }
 }
 
@@ -90,10 +107,21 @@ export async function fetchJson(url, { method = 'GET', headers = {}, body, timeo
 /** What ties a link to the session that started it: in the sealed cookie, never the session hash itself. */
 const binding = sessionHash => sha256(`link\n${sessionHash}`).toString('base64url')
 
-export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, timeout = 5000, maxBytes = 64 * 1024, jwksGap = MINUTE, failTtl = FAIL_TTL,
-  insecure = insecureAllowed() }) {
+export function oidcApi({
+  libraryDir,
+  auth,
+  track = fn => fn(),
+  log = console,
+  timeout = 5000,
+  maxBytes = 64 * 1024,
+  jwksGap = MINUTE,
+  failTtl = FAIL_TTL,
+  insecure = insecureAllowed(),
+}) {
   const config = join(libraryDir, '.config')
-  const settingsPath = join(config, 'auth.xml'), secretPath = join(config, 'auth-secret.xml'), keyPath = join(config, 'oidc-key.xml')
+  const settingsPath = join(config, 'auth.xml'),
+    secretPath = join(config, 'auth-secret.xml'),
+    keyPath = join(config, 'oidc-key.xml')
   const discovered = new Map() // issuer -> { doc, at } or { error, at }
   const keySets = new Map() // jwks_uri -> { keys, at }
   const used = new Map() // nonce -> when its cookie expires: a state is taken once, oldest first
@@ -104,7 +132,11 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   let stateKey = null
   function sealKey() {
     if (stateKey) return stateKey
-    try { stateKey = Buffer.from(attr(rootTag(readFileSync(keyPath, 'utf8'), 'ca2:oidckey'), 'key') ?? '', 'base64') } catch { /* below */ }
+    try {
+      stateKey = Buffer.from(attr(rootTag(readFileSync(keyPath, 'utf8'), 'ca2:oidckey'), 'key') ?? '', 'base64')
+    } catch {
+      /* below */
+    }
     if (stateKey?.length !== 32) {
       stateKey = randomBytes(32)
       mkdirSync(config, { recursive: true })
@@ -115,40 +147,68 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     return stateKey
   }
   const seal = obj => {
-    const iv = randomBytes(12), c = createCipheriv('aes-256-gcm', sealKey(), iv).setAAD(AAD)
+    const iv = randomBytes(12),
+      c = createCipheriv('aes-256-gcm', sealKey(), iv).setAAD(AAD)
     const ct = Buffer.concat([c.update(JSON.stringify(obj)), c.final()])
     return Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64url')
   }
   const unseal = text => {
     try {
-      const b = Buffer.from(text, 'base64url'), d = createDecipheriv('aes-256-gcm', sealKey(), b.subarray(0, 12)).setAAD(AAD)
+      const b = Buffer.from(text, 'base64url'),
+        d = createDecipheriv('aes-256-gcm', sealKey(), b.subarray(0, 12)).setAAD(AAD)
       d.setAuthTag(b.subarray(12, 28))
       const v = JSON.parse(Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'))
       return v && typeof v === 'object' ? v : null
-    } catch { return null }
+    } catch {
+      return null
+    }
   }
 
   // ---- settings ----
-  const read = path => { try { return readFileSync(path, 'utf8') } catch { return '' } }
+  const read = path => {
+    try {
+      return readFileSync(path, 'utf8')
+    } catch {
+      return ''
+    }
+  }
   function settings() {
     const tag = rootTag(read(settingsPath), 'oidc')
-    const s = { issuer: attr(tag, 'issuer') ?? '', clientId: attr(tag, 'client') ?? '', tokenAuth: attr(tag, 'tokenAuth') ?? TOKEN_AUTH[0],
-      enabled: attr(tag, 'enabled') === 'true' }
+    const s = {
+      issuer: attr(tag, 'issuer') ?? '',
+      clientId: attr(tag, 'client') ?? '',
+      tokenAuth: attr(tag, 'tokenAuth') ?? TOKEN_AUTH[0],
+      enabled: attr(tag, 'enabled') === 'true',
+    }
     const sec = rootTag(read(secretPath), 'ca2:authsecret')
-    s.secret = sec && attr(sec, 'issuer') === s.issuer ? attr(sec, 'secret') ?? '' : '' // a secret is only for the issuer it was given for
+    s.secret = sec && attr(sec, 'issuer') === s.issuer ? (attr(sec, 'secret') ?? '') : '' // a secret is only for the issuer it was given for
     if (!TOKEN_AUTH.includes(s.tokenAuth)) s.tokenAuth = TOKEN_AUTH[0]
     s.on = s.enabled && !!(s.issuer && s.clientId && s.secret)
     return s
   }
-  const view = (s, ctx) => ({ issuer: s.issuer, clientId: s.clientId, tokenAuth: s.tokenAuth, enabled: s.on, secretSet: !!s.secret,
-    redirectUri: ctx.origin ? `${ctx.origin}/api/auth/oidc/callback` : null })
+  const view = (s, ctx) => ({
+    issuer: s.issuer,
+    clientId: s.clientId,
+    tokenAuth: s.tokenAuth,
+    enabled: s.on,
+    secretSet: !!s.secret,
+    redirectUri: ctx.origin ? `${ctx.origin}/api/auth/oidc/callback` : null,
+  })
 
   async function save(req) {
-    const b = await auth.json(req), old = settings(), s = { ...old }
+    const b = await auth.json(req),
+      old = settings(),
+      s = { ...old }
     if ('issuer' in b) {
       const v = oneLine(b.issuer)
       if (v.length > 300) throw fail(400, 'the issuer address is too long')
-      if (v) try { const u = check(v, 'the issuer address'); if (u.search) throw refuse('failed', 'the issuer address can’t have a ?query') } catch (e) { throw fail(400, e.message) }
+      if (v)
+        try {
+          const u = check(v, 'the issuer address')
+          if (u.search) throw refuse('failed', 'the issuer address can’t have a ?query')
+        } catch (e) {
+          throw fail(400, e.message)
+        }
       s.issuer = v
     }
     if ('clientId' in b) {
@@ -171,8 +231,11 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     if (b.enabled === true && !complete) throw fail(400, 'enter the issuer address, client ID and client secret before turning it on')
     const enabled = ('enabled' in b ? b.enabled : old.enabled) && complete // a new issuer without its secret turns it off
     await mkdir(config, { recursive: true })
-    await writeAtomic(settingsPath, `${HEAD}<!-- Sign-in settings (auth.xsd). The client secret is in auth-secret.xml. -->\n<ca2:auth xmlns:ca2="${NS}" version="1">\n` +
-      `  <oidc enabled="${enabled}" issuer="${esc(s.issuer)}" client="${esc(s.clientId)}" tokenAuth="${s.tokenAuth}"/>\n</ca2:auth>\n`)
+    await writeAtomic(
+      settingsPath,
+      `${HEAD}<!-- Sign-in settings (auth.xsd). The client secret is in auth-secret.xml. -->\n<ca2:auth xmlns:ca2="${NS}" version="1">\n` +
+        `  <oidc enabled="${enabled}" issuer="${esc(s.issuer)}" client="${esc(s.clientId)}" tokenAuth="${s.tokenAuth}"/>\n</ca2:auth>\n`,
+    )
     if (secret) {
       await writeAtomic(secretPath, `${HEAD}<ca2:authsecret xmlns:ca2="${NS}" version="1" issuer="${esc(s.issuer)}" secret="${esc(secret)}"/>\n`, SECRET_MODE)
       await chmod(secretPath, SECRET_MODE).catch(() => {})
@@ -189,7 +252,9 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     const hit = discovered.get(issuer)
     if (!fresh && hit?.doc && Date.now() - hit.at < DISCOVERY_TTL) return hit.doc
     if (!fresh && hit?.error && Date.now() - hit.at < failTtl) throw hit.error
-    try { return await discoverNow(issuer) } catch (e) {
+    try {
+      return await discoverNow(issuer)
+    } catch (e) {
       discovered.set(issuer, { error: e, at: Date.now() })
       throw e
     }
@@ -223,15 +288,18 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   }
   function pick(keys, kid, alg) {
     const a = ALGS[alg]
-    const fit = keys.filter(k => k && typeof k === 'object' && k.kty === a.kty && (!a.crv || k.crv === a.crv) && (k.use ?? 'sig') === 'sig'
-      && (k.alg === undefined || k.alg === alg))
+    const fit = keys.filter(
+      k => k && typeof k === 'object' && k.kty === a.kty && (!a.crv || k.crv === a.crv) && (k.use ?? 'sig') === 'sig' && (k.alg === undefined || k.alg === alg),
+    )
     const k = kid !== undefined ? fit.find(x => x.kid === kid) : fit.length === 1 ? fit[0] : undefined
     if (!k) return null
     try {
       const key = createPublicKey({ key: k, format: 'jwk' })
       if (a.kty === 'RSA' && key.asymmetricKeyDetails?.modulusLength < 2048) return null
       return key
-    } catch { return null }
+    } catch {
+      return null
+    }
   }
   /** The issuer's key for this token; an unknown kid fetches the key set again, at most once per `jwksGap` (rotation). */
   async function keyFor(d, kid, alg) {
@@ -245,7 +313,12 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
 
   const part = s => {
     if (!/^[A-Za-z0-9_-]+$/.test(s)) throw refuse('failed', 'the ID token isn’t a JWT')
-    try { const v = JSON.parse(Buffer.from(s, 'base64url').toString('utf8')); if (v && typeof v === 'object' && !Array.isArray(v)) return v } catch { /* below */ }
+    try {
+      const v = JSON.parse(Buffer.from(s, 'base64url').toString('utf8'))
+      if (v && typeof v === 'object' && !Array.isArray(v)) return v
+    } catch {
+      /* below */
+    }
     throw refuse('failed', 'the ID token isn’t a JWT')
   }
   /** The ID token's claims, once its signature, issuer, audience, times and nonce check out. */
@@ -253,14 +326,19 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     if (typeof token !== 'string' || token.length > 16384) throw refuse('failed', 'the token endpoint sent no ID token')
     const bits = token.split('.')
     if (bits.length !== 3 || !bits[2]) throw refuse('failed', 'the ID token isn’t a signed JWT')
-    const header = part(bits[0]), claims = part(bits[1])
+    const header = part(bits[0]),
+      claims = part(bits[1])
     const a = Object.hasOwn(ALGS, header.alg) ? ALGS[header.alg] : null
     if (!a) throw refuse('failed', `the ID token is signed with ${oneLine(header.alg).slice(0, 20) || 'nothing'}; only RS256 and ES256 are taken`)
     if (header.crit !== undefined) throw refuse('failed', 'the ID token has critical header parameters')
     if (!/^[A-Za-z0-9_-]+$/.test(bits[2])) throw refuse('failed', 'the ID token’s signature isn’t valid')
     const key = await keyFor(d, header.kid, header.alg)
     let good = false
-    try { good = verify('sha256', Buffer.from(`${bits[0]}.${bits[1]}`), { key, dsaEncoding: a.dsaEncoding }, Buffer.from(bits[2], 'base64url')) } catch { /* false */ }
+    try {
+      good = verify('sha256', Buffer.from(`${bits[0]}.${bits[1]}`), { key, dsaEncoding: a.dsaEncoding }, Buffer.from(bits[2], 'base64url'))
+    } catch {
+      /* false */
+    }
     if (!good) throw refuse('failed', 'the ID token’s signature is wrong')
     const now = Date.now() / 1000
     if (claims.iss !== d.issuer) throw refuse('failed', 'the ID token is from another issuer')
@@ -279,11 +357,15 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   async function exchange(d, s, code, entry) {
     const form = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: entry.redirectUri, code_verifier: entry.verifier })
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-    if (s.tokenAuth === 'client_secret_post') { form.set('client_id', s.clientId); form.set('client_secret', s.secret) }
+    if (s.tokenAuth === 'client_secret_post') {
+      form.set('client_id', s.clientId)
+      form.set('client_secret', s.secret)
+    }
     // RFC 6749 §2.3.1: each part form-encoded before base64
     else headers.Authorization = `Basic ${Buffer.from(`${encodeURIComponent(s.clientId)}:${encodeURIComponent(s.secret)}`).toString('base64')}`
     const r = await fetchJson(d.token_endpoint, { ...opts('the token endpoint'), method: 'POST', headers, body: form.toString() })
-    if (r.status !== 200 || !r.body) throw refuse('failed', `the token endpoint answered ${r.status}${r.body?.error ? ` (${oneLine(r.body.error).slice(0, 60)})` : ''}`)
+    if (r.status !== 200 || !r.body)
+      throw refuse('failed', `the token endpoint answered ${r.status}${r.body?.error ? ` (${oneLine(r.body.error).slice(0, 60)})` : ''}`)
     return r.body
   }
 
@@ -297,10 +379,16 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   }
 
   // ---- the flow ----
-  const cookieName = ctx => ctx.https ? '__Host-ca2_oidc' : 'ca2_oidc'
-  const cookie = (res, ctx, value, age) => res.setHeader('Set-Cookie', [...[].concat(res.getHeader('Set-Cookie') ?? []),
-    `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`])
-  const go = (res, where) => { res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' }); res.end() }
+  const cookieName = ctx => (ctx.https ? '__Host-ca2_oidc' : 'ca2_oidc')
+  const cookie = (res, ctx, value, age) =>
+    res.setHeader('Set-Cookie', [
+      ...[].concat(res.getHeader('Set-Cookie') ?? []),
+      `${cookieName(ctx)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.https ? '; Secure' : ''}`,
+    ])
+  const go = (res, where) => {
+    res.writeHead(302, { Location: where, 'Cache-Control': 'no-store' })
+    res.end()
+  }
 
   /** The issuer's authorization URL for a new flow (with `params`), its state sealed into this browser's cookie (with
    *  `extra`); null when it can't start (logged). */
@@ -313,19 +401,36 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
       log.error(`Authelia ${extra.l ? 'link' : 'sign-in'} couldn’t start: ${e.key ? e.message : 'error'} (from ${ctx.ip})`)
       return null
     }
-    const state = rand(), verifier = rand(), nonce = rand()
+    const state = rand(),
+      verifier = rand(),
+      nonce = rand()
     const redirectUri = `${ctx.origin}/api/auth/oidc/callback`
-    cookie(res, ctx, seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL, ...extra }), STATE_TTL / 1000)
+    cookie(
+      res,
+      ctx,
+      seal({ s: state, n: nonce, v: verifier, r: redirectUri, i: s.issuer, c: s.clientId, e: Date.now() + STATE_TTL, ...extra }),
+      STATE_TTL / 1000,
+    )
     const u = new URL(d.authorization_endpoint)
-    for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: redirectUri, scope: SCOPE, state, nonce,
-      code_challenge: sha256(verifier).toString('base64url'), code_challenge_method: 'S256', ...params })) u.searchParams.set(k, v)
+    for (const [k, v] of Object.entries({
+      response_type: 'code',
+      client_id: s.clientId,
+      redirect_uri: redirectUri,
+      scope: SCOPE,
+      state,
+      nonce,
+      code_challenge: sha256(verifier).toString('base64url'),
+      code_challenge_method: 'S256',
+      ...params,
+    }))
+      u.searchParams.set(k, v)
     return u.href
   }
 
   async function start(req, res) {
     const s = settings()
     if (!s.on) return go(res, '/?signin=off')
-    return go(res, await begin(res, req.ctx, s) ?? '/?signin=failed')
+    return go(res, (await begin(res, req.ctx, s)) ?? '/?signin=failed')
   }
 
   /** "Link my Authelia account": a signed-in password account, its current password given ({ current }, checked like
@@ -346,21 +451,31 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
   /** The state this browser's cookie holds, if it's the one the issuer sent back, unexpired and not used yet; then used. */
   function take(req, ctx, state) {
     const raw = String(req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${cookieName(ctx)}=([A-Za-z0-9_-]{40,3000})(?:;|$)`))?.[1]
-    const c = raw && unseal(raw), now = Date.now()
+    const c = raw && unseal(raw),
+      now = Date.now()
     if (!c || typeof c.s !== 'string' || typeof c.n !== 'string' || typeof c.e !== 'number') throw refuse('expired', 'no state cookie from this browser')
     const no = message => Object.assign(refuse('expired', message), { link: typeof c.l === 'string' }) // a link comes back to /?link=
     if (!(c.e > now && c.e <= now + STATE_TTL)) throw no('an expired state')
     if (!timingSafeEqual(sha256(state), sha256(c.s))) throw no('the state doesn’t match this browser’s')
     if (used.has(c.n)) throw no('a state that was already used')
     // ponytail: past MAX_USED the oldest are forgotten; a replay then still fails at the issuer (a code works once)
-    for (const [k, e] of used) if (e <= now || used.size >= MAX_USED) used.delete(k); else break
+    for (const [k, e] of used)
+      if (e <= now || used.size >= MAX_USED) used.delete(k)
+      else break
     used.set(c.n, c.e)
-    return { nonce: c.n, verifier: c.v, redirectUri: c.r, issuer: c.i, clientId: c.c,
-      link: typeof c.l === 'string' ? { user: c.l, binding: String(c.b ?? ''), started: c.e - STATE_TTL } : null }
+    return {
+      nonce: c.n,
+      verifier: c.v,
+      redirectUri: c.r,
+      issuer: c.i,
+      clientId: c.c,
+      link: typeof c.l === 'string' ? { user: c.l, binding: String(c.b ?? ''), started: c.e - STATE_TTL } : null,
+    }
   }
 
   async function callback(req, res, url) {
-    const ctx = req.ctx, q = url.searchParams
+    const ctx = req.ctx,
+      q = url.searchParams
     cookie(res, ctx, '', 0) // single use: the cookie goes whatever happens next
     let link = null
     try {
@@ -376,7 +491,7 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
       const id = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
       let claims = id
       if (claims.preferred_username === undefined && claims.email === undefined && d.userinfo_endpoint && typeof tokens.access_token === 'string')
-        claims = { ...await userinfo(d, tokens.access_token, claims.sub), sub: claims.sub }
+        claims = { ...(await userinfo(d, tokens.access_token, claims.sub)), sub: claims.sub }
       if (link) {
         // this browser's session must still be the very one that started the link (not only the same account)
         const who = auth.session(req, res, ctx)
@@ -387,13 +502,27 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
         const at = id.auth_time
         if (!(typeof at === 'number' && at >= link.started / 1000 - LEEWAY && at <= Date.now() / 1000 + LEEWAY))
           throw refuse('stale', 'Authelia didn’t ask for the password again (auth_time missing or outside the link’s time)')
-        await auth.linkExternal(ctx, who, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
-          emailVerified: claims.email_verified })
+        await auth.linkExternal(ctx, who, {
+          iss: d.issuer,
+          sub: claims.sub,
+          username: claims.preferred_username,
+          email: claims.email,
+          emailVerified: claims.email_verified,
+        })
         return go(res, '/?link=done')
       }
-      const u = await auth.signInExternal(res, ctx, { iss: d.issuer, sub: claims.sub, username: claims.preferred_username, email: claims.email,
-        emailVerified: claims.email_verified })
-      if (!u) throw refuse('no-account', `no Authelia account here for "${oneLine(claims.preferred_username ?? claims.email).slice(0, 80)}" (sub ${oneLine(claims.sub).slice(0, 80)})`)
+      const u = await auth.signInExternal(res, ctx, {
+        iss: d.issuer,
+        sub: claims.sub,
+        username: claims.preferred_username,
+        email: claims.email,
+        emailVerified: claims.email_verified,
+      })
+      if (!u)
+        throw refuse(
+          'no-account',
+          `no Authelia account here for "${oneLine(claims.preferred_username ?? claims.email).slice(0, 80)}" (sub ${oneLine(claims.sub).slice(0, 80)})`,
+        )
       return go(res, '/')
     } catch (e) {
       const linking = !!link || !!e.link
@@ -410,14 +539,19 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
     try {
       const d = await discover(issuer, true)
       const algs = Array.isArray(d.id_token_signing_alg_values_supported) ? d.id_token_signing_alg_values_supported.filter(a => ALGS[a]) : []
-      return { ok: true, message: `found the issuer: it signs ID tokens with ${algs.length ? algs.join(' or ') : 'an algorithm it doesn’t list (RS256 or ES256 is needed)'}` }
+      return {
+        ok: true,
+        message: `found the issuer: it signs ID tokens with ${algs.length ? algs.join(' or ') : 'an algorithm it doesn’t list (RS256 or ES256 is needed)'}`,
+      }
     } catch (e) {
       return { ok: false, message: e.key ? e.message : 'the test failed' }
     }
   }
 
   function counted(res, fn) {
-    try { return track(fn) } catch (e) {
+    try {
+      return track(fn)
+    } catch (e) {
       if (e.code !== 409) throw e
       return go(res, '/?signin=restoring')
     }
@@ -425,7 +559,8 @@ export function oidcApi({ libraryDir, auth, track = fn => fn(), log = console, t
 
   /** The routes here; false for any other path. */
   async function handle(req, res, url, send, who) {
-    const p = url.pathname, method = req.method
+    const p = url.pathname,
+      method = req.method
     // both write to the Library (the state key on first use; the account link, session and device): counted like any write,
     // so a restore waits for them, and while one runs they send the browser back with a plain message
     if (p === '/api/auth/oidc/start' && method === 'GET') return counted(res, () => start(req, res))

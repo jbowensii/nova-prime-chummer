@@ -10,7 +10,10 @@ import { createServer } from '../server/server.mjs'
 // the editor, NPCs & Critters, Game data and a compendium, on a server of its own with the made-up SR6 fixture. Ada the
 // admin, Gil an editor, Pat a player; their runners are tests/fixtures/sr6/runner-career.xml renamed. Runs in order.
 const PW = { ada: 'ada-password-1', gil: 'gil-password-1', pat: 'pat-password-1' }
-let server: ReturnType<typeof createServer>, base = '', dir = '', camp = ''
+let server: ReturnType<typeof createServer>,
+  base = '',
+  dir = '',
+  camp = ''
 const today = () => new Date().toLocaleDateString('en-CA')
 const check = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
 
@@ -23,13 +26,22 @@ test.beforeAll(async () => {
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string, username: keyof typeof PW) {
   await page.goto(path)
@@ -41,12 +53,15 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
 const ORIGIN = () => ({ Origin: base.replace(/\/$/, '') })
 /** the made-up career runner as `id`, called `street` */
 async function putRunner(page: Page, id: string, street: string) {
-  const xml = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8').replace('id="career-wisp-1"', `id="${id}"`).replace('streetName="Wisp Lantern"', `streetName="${street}"`)
+  const xml = readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8')
+    .replace('id="career-wisp-1"', `id="${id}"`)
+    .replace('streetName="Wisp Lantern"', `streetName="${street}"`)
   expect((await page.request.put(`/api/sr6/characters/${id}`, { data: xml, headers: { 'Content-Type': 'application/xml', ...ORIGIN() } })).status()).toBe(201)
 }
 /** the download's file name and its JSON, checked against the schema when it's an SR6 file */
 async function file(dl: Promise<Download>) {
-  const d = await dl, f = JSON.parse(readFileSync((await d.path())!, 'utf8'))
+  const d = await dl,
+    f = JSON.parse(readFileSync((await d.path())!, 'utf8'))
   if (f.format === 'chummer-sr6-export') expect(check(f), JSON.stringify(check.errors)).toBe(true)
   return { name: d.suggestedFilename(), f }
 }
@@ -54,7 +69,12 @@ const streets = (f: { runners: { streetName: string }[] }) => f.runners.map(r =>
 
 test('Gil: a runner’s editor downloads it for Foundry', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
-  for (const [id, street] of [['gil-one', 'Gil One'], ['gil-two', 'Gil Two'], ['gil-three', 'Gil Three']]) await putRunner(page, id, street)
+  for (const [id, street] of [
+    ['gil-one', 'Gil One'],
+    ['gil-two', 'Gil Two'],
+    ['gil-three', 'Gil Three'],
+  ])
+    await putRunner(page, id, street)
   await page.goto('/#/sr6/c/gil-one/concept')
   const dl = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export for Foundry' }).click()
@@ -67,7 +87,7 @@ test('Gil: a runner’s editor downloads it for Foundry', async ({ page }) => {
 
 test('the runner list: ticked runners in one file; Tick a campaign ticks that SR6 campaign’s runners only', async ({ page }) => {
   await signIn(page, '/#/sr6', 'gil')
-  camp = (await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Foundry Table' }, headers: ORIGIN() })).json() as { id: string }).id
+  camp = ((await (await page.request.post('/api/sr6/campaigns', { data: { name: 'Made-up Foundry Table' }, headers: ORIGIN() })).json()) as { id: string }).id
   for (const id of ['gil-one', 'gil-two'])
     expect((await page.request.post(`/api/sr6/campaigns/${camp}/runners`, { data: { id }, headers: ORIGIN() })).ok()).toBe(true)
   await page.reload()
@@ -131,15 +151,17 @@ test('Game data: the GM downloads book data, with or without descriptions', asyn
   await panel.getByRole('checkbox', { name: /^CRB\b(?!-)/ }).check()
   let dl = page.waitForEvent('download')
   await panel.getByRole('button', { name: 'Download book data' }).click()
-  let { name, f } = await file(dl)
+  const got = await file(dl),
+    name = got.name
+  let f = got.f
   expect(name).toBe(`books-${today()}.sr6foundry.json`)
   expect(f).toMatchObject({ kind: 'books', descriptions: true })
   expect(f.books.map((b: { source: { id: string } }) => b.source.id)).toEqual(['CRB'])
   expect(f.books[0].entries.some((e: object) => 'description' in e)).toBe(true)
   await panel.getByRole('checkbox', { name: /Include book descriptions/ }).uncheck()
   dl = page.waitForEvent('download')
-  await panel.getByRole('button', { name: 'Download book data' }).click();
-  ({ f } = await file(dl))
+  await panel.getByRole('button', { name: 'Download book data' }).click()
+  ;({ f } = await file(dl))
   expect(f.descriptions).toBe(false)
   expect(JSON.stringify(f.books)).not.toContain('"description"')
 })

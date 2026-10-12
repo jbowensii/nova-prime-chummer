@@ -11,7 +11,11 @@ const printed = async (page: Page, label: string) => {
   await d.getByRole('radio', { name: label }).check()
   await d.getByRole('button', { name: 'Close' }).click()
 }
-const cells = (row: ReturnType<Page['locator']>) => row.locator('td').allInnerTexts().then(t => t.map(x => x.trim()))
+const cells = (row: ReturnType<Page['locator']>) =>
+  row
+    .locator('td')
+    .allInnerTexts()
+    .then(t => t.map(x => x.trim()))
 
 test('book style sheet: the runner on one page like the rulebook example; Printer-friendly shows the old sheet', async ({ page }) => {
   mkdirSync(SHOTS, { recursive: true })
@@ -60,7 +64,11 @@ test('book style sheet: the runner on one page like the rulebook example; Printe
   await expect(row.locator('.b-rr')).toContainText(`RR ${rr}`)
   const spec = skills.locator('tr.b-spec', { hasText: 'Fibbing' }).first()
   await expect(spec).toContainText('+2')
-  const pad = (l: ReturnType<Page['locator']>) => l.locator('td').first().evaluate(e => parseFloat(getComputedStyle(e).paddingLeft))
+  const pad = (l: ReturnType<Page['locator']>) =>
+    l
+      .locator('td')
+      .first()
+      .evaluate(e => parseFloat(getComputedStyle(e).paddingLeft))
   expect(await pad(spec)).toBeGreaterThan(await pad(row))
 
   const amp = book.getByRole('table', { name: 'Shadow Amps' }).locator('tr', { hasText: 'Toy Eyes' })
@@ -78,10 +86,19 @@ test('book style sheet: the runner on one page like the rulebook example; Printe
   await expect(wounds).toContainText('Padded coat')
   await expect(wounds).toContainText('Mental')
 
-  for (const [h, text] of [['Keywords', 'Made-up face'], ['Dispositions', 'Never early.'], ['Cues', 'Trust me.']]) {
+  for (const [h, text] of [
+    ['Keywords', 'Made-up face'],
+    ['Dispositions', 'Never early.'],
+    ['Cues', 'Trust me.'],
+  ]) {
     const s = book.getByRole('region', { name: h })
     await expect(s).toContainText(text)
-    expect(await s.locator('li').first().evaluate(e => getComputedStyle(e).fontFamily)).toContain('Caveat')
+    expect(
+      await s
+        .locator('li')
+        .first()
+        .evaluate(e => getComputedStyle(e).fontFamily),
+    ).toContain('Caveat')
   }
   expect(await book.locator('h1').evaluate(e => getComputedStyle(e).fontFamily)).toContain('Permanent Marker')
   const risk = book.getByRole('table', { name: 'Risk Level' })
@@ -122,11 +139,23 @@ test('book style sheet: a long runner flows onto page 2', async ({ page }) => {
   const face = all.filter(x => /streetName="Test Face"/.test(x.xml)).at(-1)!
   const id = face.xml.match(/<ca2:character[^>]*\sid="([^"]+)"/)![1]
   const n = (k: number) => Array.from({ length: k }, (_, i) => i + 1)
-  const pad = n(12).map(i => `<amp uid="pad-a${i}" type="quality" name="Filler knack ${i}"><narrative>A made-up knack that takes a line or two of text on the sheet.</narrative><effect ref="rr-skill" param="influence"/></amp>`).join('')
-    + n(8).map(i => `<item uid="pad-w${i}" kind="weapon" name="Filler gun ${i}" catalogId="heavy-pistol"/>`).join('')
-    + n(10).map(i => `<item uid="pad-g${i}" kind="gear" name="Filler gadget ${i}"/>`).join('')
-  const put = await page.request.put(`/api/characters/${id}?force=1`, { data: face.xml.replace('</build>', `${pad}</build>`),
-    headers: { 'Content-Type': 'application/xml', Origin: new URL(page.url()).origin } })
+  const pad =
+    n(12)
+      .map(
+        i =>
+          `<amp uid="pad-a${i}" type="quality" name="Filler knack ${i}"><narrative>A made-up knack that takes a line or two of text on the sheet.</narrative><effect ref="rr-skill" param="influence"/></amp>`,
+      )
+      .join('') +
+    n(8)
+      .map(i => `<item uid="pad-w${i}" kind="weapon" name="Filler gun ${i}" catalogId="heavy-pistol"/>`)
+      .join('') +
+    n(10)
+      .map(i => `<item uid="pad-g${i}" kind="gear" name="Filler gadget ${i}"/>`)
+      .join('')
+  const put = await page.request.put(`/api/characters/${id}?force=1`, {
+    data: face.xml.replace('</build>', `${pad}</build>`),
+    headers: { 'Content-Type': 'application/xml', Origin: new URL(page.url()).origin },
+  })
   expect(put.status()).toBeLessThan(300)
 
   await page.goto(`/#/c/${id}/review`)

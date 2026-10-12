@@ -25,6 +25,8 @@ class FitTest(unittest.TestCase):
     def test_value_reads_as_the_app(self):
         self.assertEqual([fit.value(v, 3) for v in ("Rating x 50", ".5", "(Rating/2)", "7(L)", "—", "40/60", "lots")],
                          [150, 0.5, 2, 7, None, None, None])
+        # values.ts rated(): a unit price's "each" is the price of one; a value past 100 characters isn't read
+        self.assertEqual([fit.value("1500 each"), fit.value("5 " * 60)], [1500, None])
 
     def test_the_letters_that_overspend_least(self):
         """A mundane pixie with 6 attribute ranks, 4 skill ranks and 650 nuyen of things: the karma covers what the rows
@@ -113,3 +115,19 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 30)  # 3 ranks + spec + expertise: 5 points
         rows["skills"] = {**rows["skills"], "skills": 4}
         self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 25)  # no point left for it: 5 Karma
+
+    def test_settings_resolved_as_the_app_does(self):
+        """fit.resolve (creation.ts runnerRules): one level of play (a runner's own first), a nested rule whose parent is
+        off left out, a level's values in place of the ones it replaces, a house rule's number (made-up values)."""
+        cs = {"sumToTenTarget": 10.0, "levelStreet": "true", "levelSwcElite": "true", "swcElite.sumToTen": 12.0,
+              "eliteSumToThirteen": "true", "twentyQuestionsKarma": 5.0, "maxKarmaLeft": 7.0, "blank": ""}
+        got = fit.resolve(cs)
+        self.assertNotIn("levelSwcElite", got)  # levelStreet is listed first
+        self.assertEqual((got["sumToTenTarget"], "eliteSumToThirteen" in got, "twentyQuestionsKarma" in got, "blank" in got),
+                         (10.0, False, False, False))
+        got = fit.resolve(cs, own={"levelSwcElite"})
+        self.assertNotIn("levelStreet", got)
+        self.assertEqual(got["sumToTenTarget"], 13.0)  # Elite's 12, then sum-to-thirteen
+        got = fit.resolve({**cs, "levelStreet": "false", "eliteSumToThirteen": "false", "ownCarryOver": "true",
+                           "carryOver.karma": 2.0})
+        self.assertEqual((got["sumToTenTarget"], got["maxKarmaLeft"]), (12.0, 2.0))

@@ -1,7 +1,10 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { GAME_KEY, gameOf, homeOf, storedGame, storeGame } from '../../src/ui/game'
 
-afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
+afterEach(() => {
+  vi.restoreAllMocks()
+  localStorage.clear()
+})
 
 test('the game comes from the route: #/sr6… is SR6, everything else Anarchy', () => {
   expect(gameOf([])).toBe('ca2')
@@ -25,8 +28,12 @@ test('the stored game round-trips, and junk reads as nothing', () => {
 })
 
 test('storage that throws reads as nothing and never throws', () => {
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('SecurityError') })
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceeded') })
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('SecurityError')
+  })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('QuotaExceeded')
+  })
   expect(storedGame()).toBeNull()
   expect(() => storeGame('sr6')).not.toThrow()
 })

@@ -10,9 +10,13 @@ import { SECTIONS } from '../../src/sr6/ui/creationLayout'
 import { rulesFrom } from '../../src/sr6/engine/creation'
 import { fixtureCatalog, made } from '../sr6/fixture'
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null
-afterEach(() => { act(() => root?.unmount()); root = null; document.body.innerHTML = '' })
+afterEach(() => {
+  act(() => root?.unmount())
+  root = null
+  document.body.innerHTML = ''
+})
 
 type Opts = { std?: boolean; open?: boolean; rules?: Record<string, number | boolean | string>; onSave?: boolean }
 function mount(o: Opts = {}) {
@@ -21,20 +25,43 @@ function mount(o: Opts = {}) {
   const el = document.body.appendChild(document.createElement('div'))
   root = createRoot(el)
   let saved: { key: string; value: string }[] | null = null
-  act(() => root!.render(createElement(CreationForm, { c: fixtureCatalog(), cr: { rules: cr, errors: [] }, std,
-    onSave: o.onSave === false ? undefined : async s => { saved = s } })))
-  const button = (name: RegExp | string) => [...el.querySelectorAll('button')].find(b => typeof name === 'string' ? b.textContent === name || b.getAttribute('aria-label') === name : name.test(b.textContent ?? '') || name.test(b.getAttribute('aria-label') ?? ''))!
+  act(() =>
+    root!.render(
+      createElement(CreationForm, {
+        c: fixtureCatalog(),
+        cr: { rules: cr, errors: [] },
+        std,
+        onSave:
+          o.onSave === false
+            ? undefined
+            : async s => {
+                saved = s
+              },
+      }),
+    ),
+  )
+  const button = (name: RegExp | string) =>
+    [...el.querySelectorAll('button')].find(b =>
+      typeof name === 'string'
+        ? b.textContent === name || b.getAttribute('aria-label') === name
+        : name.test(b.textContent ?? '') || name.test(b.getAttribute('aria-label') ?? ''),
+    )!
   const click = (b: Element) => act(() => (b as HTMLElement).click())
   const openAll = () => click(button('Open all sections'))
   if (o.open !== false) openAll()
-  const control = (label: RegExp) => [...el.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')].find(x => label.test(x.getAttribute('aria-label') ?? ''))!
+  const control = (label: RegExp) =>
+    [...el.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')].find(x => label.test(x.getAttribute('aria-label') ?? ''))!
   const row = (label: RegExp) => control(label).closest('.cr-row')!
-  const toggle = (label: RegExp, on: boolean) => { const c = control(label) as HTMLInputElement; if (c.checked !== on) click(c) }
-  const type = (label: RegExp, value: string) => act(() => {
-    const i = control(label) as HTMLInputElement
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(i, value)
-    i.dispatchEvent(new Event('input', { bubbles: true }))
-  })
+  const toggle = (label: RegExp, on: boolean) => {
+    const c = control(label) as HTMLInputElement
+    if (c.checked !== on) click(c)
+  }
+  const type = (label: RegExp, value: string) =>
+    act(() => {
+      const i = control(label) as HTMLInputElement
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(i, value)
+      i.dispatchEvent(new Event('input', { bubbles: true }))
+    })
   const search = (text: string) => type(/^Search the settings$/, text)
   return { el, control, row, toggle, type, click, button, openAll, search, saved: () => saved }
 }
@@ -46,7 +73,7 @@ test('a nested rule sits under its parent, disabled with what it needs while the
   expect(row(child).className).toMatch(/blocked/)
   expect(row(child).textContent).toMatch(/needs Expanded contacts: karma buys/)
   expect(control(child).disabled).toBe(true)
-  expect(control(child).value).toBe('2')  // its stored value kept
+  expect(control(child).value).toBe('2') // its stored value kept
   expect(row(child).previousElementSibling?.textContent).toMatch(/^Expanded contacts: karma buys/)
   toggle(/^Expanded contacts: karma buys/, true)
   expect(control(child).disabled).toBe(false)
@@ -66,15 +93,28 @@ test('every row has hover text: what it does, and its book and page, house rule 
   const { el, row } = mount()
   const rows = [...el.querySelectorAll('.cr-row')]
   expect(rows.length).toBeGreaterThan(100)
-  expect(rows.filter(r => !/\((.*p\.|house rule|option).*\)\.$/.test(r.querySelector('.cr-name')?.getAttribute('title') ?? '')).map(r => r.textContent)).toEqual([])
-  expect(row(/^Exotic Weapons: the first specialization/).querySelector('.cr-name')!.getAttribute('title')).toBe('On: the first Exotic Weapons specialization costs no skill points or Karma (house rule).')
-  expect(row(/^Highest Magic or Resonance$/).querySelector('.cr-name')!.getAttribute('title')).toMatch(/\(CRB Hong Kong p\. 65\)\.$/)
+  expect(
+    rows.filter(r => !/\((.*p\.|house rule|option).*\)\.$/.test(r.querySelector('.cr-name')?.getAttribute('title') ?? '')).map(r => r.textContent),
+  ).toEqual([])
+  expect(
+    row(/^Exotic Weapons: the first specialization/)
+      .querySelector('.cr-name')!
+      .getAttribute('title'),
+  ).toBe('On: the first Exotic Weapons specialization costs no skill points or Karma (house rule).')
+  expect(
+    row(/^Highest Magic or Resonance$/)
+      .querySelector('.cr-name')!
+      .getAttribute('title'),
+  ).toMatch(/\(CRB Hong Kong p\. 65\)\.$/)
 })
 
 test('a toggle with the GM’s values nested under it: the values wait for it (data structure caps, carry-over, Karma build)', () => {
   const { control, toggle } = mount()
-  for (const [parent, child] of [[/^Caps on a technomancer’s data structures/, /^Data structure caps: most/], [/^Own carry-over limits: the Karma/, /^Own carry-over limits: most Karma/],
-    [/^Karma build: a creation method/, /^Starting karma \(karma build\)/]] as const) {
+  for (const [parent, child] of [
+    [/^Caps on a technomancer’s data structures/, /^Data structure caps: most/],
+    [/^Own carry-over limits: the Karma/, /^Own carry-over limits: most Karma/],
+    [/^Karma build: a creation method/, /^Starting karma \(karma build\)/],
+  ] as const) {
     toggle(parent, false)
     expect(control(child).disabled).toBe(true)
     toggle(parent, true)
@@ -101,7 +141,10 @@ test('nine foldable sections; a folded section draws no rows until it is opened 
   expect(el.querySelectorAll('.cr-row').length).toBe(0)
   expect(el.querySelectorAll('input[type=number]').length).toBe(0)
   const first = el.querySelector('details.fold.sub') as HTMLDetailsElement
-  act(() => { first.open = true; first.dispatchEvent(new Event('toggle')) })
+  act(() => {
+    first.open = true
+    first.dispatchEvent(new Event('toggle'))
+  })
   expect(el.querySelectorAll('.cr-row').length).toBeGreaterThan(5)
   openAll()
   const all = el.querySelectorAll('.cr-row').length
@@ -119,7 +162,8 @@ test('the standard value is grey; a changed one stands out, shows the standard a
   type(cap, '4')
   expect(row(cap).className).toMatch(/changed/)
   expect(row(cap).querySelector('.cr-std')!.textContent).toMatch(/^Standard: 5 \(CRB p\. 61\)/)
-  const badge = (section: string) => [...el.querySelectorAll<HTMLElement>('details.fold.sub')].find(d => d.dataset.section === section)!.querySelector('.cr-changed')
+  const badge = (section: string) =>
+    [...el.querySelectorAll<HTMLElement>('details.fold.sub')].find(d => d.dataset.section === section)!.querySelector('.cr-changed')
   expect(badge('Attributes & skills')!.textContent).toBe('1 changed')
   expect(badge('Budgets & priorities')).toBeNull()
   type(/^Highest skill rank with the aptitude quality$/, '9')
@@ -127,7 +171,7 @@ test('the standard value is grey; a changed one stands out, shows the standard a
   click(button('Reset section Attributes & skills'))
   expect((control(cap) as HTMLInputElement).value).toBe('5')
   expect((control(/^Highest skill rank with the aptitude quality$/) as HTMLInputElement).value).toBe('6')
-  expect((control(/^Most paid qualities$/) as HTMLInputElement).value).toBe('9')  // another section: untouched
+  expect((control(/^Most paid qualities$/) as HTMLInputElement).value).toBe('9') // another section: untouched
   expect(button('Reset section Attributes & skills').disabled).toBe(true)
   click(button('Reset Most paid qualities to standard'))
   expect((control(/^Most paid qualities$/) as HTMLInputElement).value).toBe('5')
@@ -149,11 +193,13 @@ test('the search box filters rows by name and opens the sections that have a mat
 
 test('a switch stores the same values the Not set / Yes / No list did: true, false, or nothing where the standard has none', async () => {
   const { toggle, click, button, saved } = mount({ std: true })
-  toggle(/^Working for the Man/, false)   // the standard has it: stored false
+  toggle(/^Working for the Man/, false) // the standard has it: stored false
   toggle(/^Close Combat rolls STR/, true)
   toggle(/^Karma build: a creation method/, true)
-  toggle(/^Karma build: a creation method/, false)  // no standard row: nothing stored again
-  await act(async () => { click(button('Save creation rules')) })
+  toggle(/^Karma build: a creation method/, false) // no standard row: nothing stored again
+  await act(async () => {
+    click(button('Save creation rules'))
+  })
   const rows = Object.fromEntries(saved()!.map(s => [s.key, s.value]))
   expect(rulesFrom(saved()!).errors).toEqual([])
   expect(rows.strengthInCloseCombat).toBe('true')

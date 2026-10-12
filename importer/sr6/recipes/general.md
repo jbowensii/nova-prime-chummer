@@ -40,7 +40,7 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
   Plays', Shadow Cast's archetype qualities).
 - Life modules: the Sixth World Companion's adult form printed in body type after a `Life Modules` heading or line
   (Dealers of Death, Shadows in Focus: New Orleans): a title run (`Event:` `Brush With Death`), prose, the grants as
-  labelled lines, read with the Companion's reader (`swc._lifemodule`); the run goes on through a page's running head.
+  labelled lines, read with the Companion's reader (`lifemodules.lifemodule`); the run goes on through a page's running head.
   Emerald City prints none (its lifepath-flavoured entries are qualities).
 
 ## Formula styles and issues (importer v2)
@@ -108,7 +108,7 @@ title first), the chapter giving the context. Read with the general reading, not
   spells (their box), gear, weapons and vehicles (their tables), life modules (the Companion's form).
 - **An item's one stat line** (Dealers of Death's bracelets): a heading whose text holds a one-row priced table with no
   name column (`TYPE | MODE | DV | … | AVAIL | COST`, the type its first cell) is that item, named by the heading
-  (`crb.stat_lines`, now every book's: crb.md, Item shapes; a TYPE table of several rows gives `Stakes (Wooden)`,
+  (`catalog.stat_lines`, now every book's: crb.md, Item shapes; a TYPE table of several rows gives `Stakes (Wooden)`,
   `Stakes (Silver)`, New Orleans p. 27).
 - **A single new adept power** (`New Adept Power` over `Improved Mental Attribute`, Collapsing Now p. 62): the kind
   heading's singular counts too.

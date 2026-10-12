@@ -5,18 +5,47 @@ import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
-import { blankCharacter, buildCatalog, characterToXml, compendiumXml, derive, exportRunners, forCampaign, keepHouse, price, snapshotEntries,
-  validate, vehicleStats, xmlToCharacter } from '../../src/engine'
+import {
+  blankCharacter,
+  buildCatalog,
+  characterToXml,
+  compendiumXml,
+  derive,
+  exportRunners,
+  forCampaign,
+  keepHouse,
+  price,
+  snapshotEntries,
+  validate,
+  vehicleStats,
+  xmlToCharacter,
+} from '../../src/engine'
 import type { Character, Compendium } from '../../src/model/types'
 import { catFiles } from '../helpers'
 
 const ref = { source: 'STREET', page: 1 }
-const street: Compendium = { id: '0123456789ab', name: 'Street Gear', source: 'STREET', sharing: 'campaign', campaign: 'abcdef012345',
-  updatedAt: '2026-10-02T00:00:00.000Z', amps: [], npcs: [],
+const street: Compendium = {
+  id: '0123456789ab',
+  name: 'Street Gear',
+  source: 'STREET',
+  sharing: 'campaign',
+  campaign: 'abcdef012345',
+  updatedAt: '2026-10-02T00:00:00.000Z',
+  amps: [],
+  npcs: [],
   items: [{ id: 'street.pipe', kind: 'weapon', name: 'Lead Pipe', dv: 'STR+1', ranges: 'OK/-/-/-', text: 'Heavy.', ...ref }],
-  vehicles: [{ id: 'street.scooter', name: 'Scooter', pilot: 1, body: 4, handling: 3, speed: 2, armor: 0, mount: 'none', ...ref }] }
-const table: Compendium = { ...street, id: '0123456789ac', name: 'Table Kit', source: 'KIT', sharing: 'table', campaign: undefined, vehicles: [],
-  items: [{ id: 'kit.torch', kind: 'gear', name: 'Torch', text: '', source: 'KIT', page: 1 }] }
+  vehicles: [{ id: 'street.scooter', name: 'Scooter', pilot: 1, body: 4, handling: 3, speed: 2, armor: 0, mount: 'none', ...ref }],
+}
+const table: Compendium = {
+  ...street,
+  id: '0123456789ac',
+  name: 'Table Kit',
+  source: 'KIT',
+  sharing: 'table',
+  campaign: undefined,
+  vehicles: [],
+  items: [{ id: 'kit.torch', kind: 'gear', name: 'Torch', text: '', source: 'KIT', page: 1 }],
+}
 const file = (comp: Compendium) => ({ file: `compendiums/gm1/${comp.id}.xml`, xml: compendiumXml(comp), overlay: true, publisher: 'Game Master', owner: 'gm1' })
 const withComps = buildCatalog([...catFiles, file(street), file(table)])
 const without = buildCatalog(catFiles)
@@ -26,9 +55,12 @@ function runner(campaign?: string): Character {
   const ch = blankCharacter()
   ch.identity.streetName = 'Pipe'
   ch.campaign = campaign
-  const pipe = withComps.items.get('street.pipe')!, torch = withComps.items.get('kit.torch')!
-  ch.build.items = [{ uid: 'i1', catalogId: pipe.id, kind: 'weapon', name: pipe.name, snapshot: pipe },
-    { uid: 'i2', catalogId: torch.id, kind: 'gear', name: torch.name, snapshot: torch }]
+  const pipe = withComps.items.get('street.pipe')!,
+    torch = withComps.items.get('kit.torch')!
+  ch.build.items = [
+    { uid: 'i1', catalogId: pipe.id, kind: 'weapon', name: pipe.name, snapshot: pipe },
+    { uid: 'i2', catalogId: torch.id, kind: 'gear', name: torch.name, snapshot: torch },
+  ]
   ch.build.amps = [{ uid: 'v1', type: 'vehicle', name: 'My Scooter', narrative: '', effects: [], vehicle: 'street.scooter' }]
   return keepHouse(withComps, ch)
 }
@@ -36,7 +68,9 @@ function runner(campaign?: string): Character {
 test('a runner sees the compendiums shared with its own campaign and the table’s, not another campaign’s', () => {
   expect(withComps.sources.get('STREET')!.compendium).toEqual({ id: street.id, owner: 'gm1', campaign: 'abcdef012345' })
   expect(withComps.sources.get('KIT')!.compendium).toEqual({ id: table.id, owner: 'gm1' })
-  const mine = forCampaign(withComps, 'abcdef012345'), other = forCampaign(withComps, 'ffffffffffff'), none = forCampaign(withComps, undefined)
+  const mine = forCampaign(withComps, 'abcdef012345'),
+    other = forCampaign(withComps, 'ffffffffffff'),
+    none = forCampaign(withComps, undefined)
   expect(mine).toBe(withComps)
   for (const c of [other, none]) {
     expect(c.items.has('street.pipe')).toBe(false)
@@ -74,7 +108,9 @@ test('once the compendiums are gone the runner prices, derives and exports the s
   const r = f.runners[0]
   expect(r.items.find((i: { uid: string }) => i.uid === 'i1')).toMatchObject({ name: 'Lead Pipe', source: 'STREET', page: 1, description: 'Heavy.' })
   expect(r.vehicles[0]).toMatchObject({ chassisId: 'street.scooter', chassis: 'Scooter', body: 4, handling: 3 })
-  const check = new Ajv2020({ allErrors: true, strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')))
+  const check = new Ajv2020({ allErrors: true, strict: false, validateFormats: false }).compile(
+    JSON.parse(readFileSync('public/data/schema/export.schema.json', 'utf8')),
+  )
   expect(check(f), JSON.stringify(check.errors)).toBe(true)
 })
 

@@ -23,7 +23,12 @@ const MORE: Record<string, string> = {
   <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>`,
 }
 function setup(rules: Record<string, CreationValue> = {}) {
-  const data = sr6Data(fixtureCatalog((f, x) => { const k = Object.keys(MORE).find(m => f.endsWith(m)); return k ? x.replace('</sr6:data>', `${MORE[k]}\n</sr6:data>`) : x }))
+  const data = sr6Data(
+    fixtureCatalog((f, x) => {
+      const k = Object.keys(MORE).find(m => f.endsWith(m))
+      return k ? x.replace('</sr6:data>', `${MORE[k]}\n</sr6:data>`) : x
+    }),
+  )
   const cr = fixtureCreation()
   for (const [key, value] of Object.entries(rules)) cr.set(key, { key, value })
   return { data, cr }
@@ -55,14 +60,18 @@ test('Overflow is Body times overflowPerBody plus what adds to it; unset, Body c
 
 test('an augmented attribute stops at natural + attributeAugmentMax, the bracketed one too, and says what it left out', () => {
   const ch = runner()
-  boost(ch, [{ target: 'agi', value: 5 }, { target: 'agi', value: 2, switch: 'wireless' }, { target: 'str', value: -3 }])
+  boost(ch, [
+    { target: 'agi', value: 5 },
+    { target: 'agi', value: 2, switch: 'wireless' },
+    { target: 'str', value: -3 },
+  ])
   const { data, cr } = setup({ attributeAugmentMax: 3 })
   const d = deriveSr6(data, cr, ch)
   expect(d.attrs.agi).toEqual({ natural: 3, augmented: 6 })
   expect(d.capped.agi).toBe(2)
   expect(d.on.attrs.agi.augmented).toBe(6)
   expect(d.on.capped.agi).toBe(4)
-  expect(d.attrs.str.augmented).toBe(2 - 3)  // (a penalty isn't capped)
+  expect(d.attrs.str.augmented).toBe(2 - 3) // (a penalty isn't capped)
   cr.delete('attributeAugmentMax')
   expect(deriveSr6(data, cr, ch).attrs.agi.augmented).toBe(3 + 5)
 })
@@ -70,11 +79,14 @@ test('an augmented attribute stops at natural + attributeAugmentMax, the bracket
 test('a skill pool’s bonuses stop at skillAugmentMax, the specialization’s bonus within it', () => {
   const ch = runner()
   ch.build.skills.push({ id: 'crb.gab', points: 2, karma: 0, spec: 'Haggling' })
-  boost(ch, [{ target: 'skill', skill: 'crb.gab', value: 3 }, { target: 'skill', skill: 'crb.gab', value: 2, spec: 'Haggling' }])
+  boost(ch, [
+    { target: 'skill', skill: 'crb.gab', value: 3 },
+    { target: 'skill', skill: 'crb.gab', value: 2, spec: 'Haggling' },
+  ])
   const { data, cr } = setup({ skillAugmentMax: 4, specDice: 2 })
   const pool = deriveSr6(data, cr, ch).pools.find(p => p.skill === 'crb.gab')!
   expect(pool.dp).toBe(2 + 2 + 3)
-  expect(pool.specDp).toBe(2 + 2 + 2 + 4)  // 3 + 2 capped at 4
+  expect(pool.specDp).toBe(2 + 2 + 2 + 4) // 3 + 2 capped at 4
   expect(pool.capped).toBeUndefined()
   boost(ch, [{ target: 'skill', skill: 'crb.gab', value: 3 }])
   const capped = deriveSr6(data, cr, ch).pools.find(p => p.skill === 'crb.gab')!
@@ -83,7 +95,10 @@ test('a skill pool’s bonuses stop at skillAugmentMax, the specialization’s b
 
 test('the initiative dice stop at initiativeDiceMax; a lowered monitor stops at monitorMinimum', () => {
   const ch = runner()
-  boost(ch, [{ target: 'initDice', value: 6 }, { target: 'stun', value: -20 }])
+  boost(ch, [
+    { target: 'initDice', value: 6 },
+    { target: 'stun', value: -20 },
+  ])
   const { data, cr } = setup({ initiativeDiceMax: 4, monitorMinimum: 3, monitorBase: 9, monitorDivisor: 3 })
   const d = deriveSr6(data, cr, ch)
   expect(d.initiative.dice).toBe(4)
@@ -127,7 +142,10 @@ test('Matrix initiative: AR the physical one; VR Intuition + the best commlink�
   const d = deriveSr6(data, cr, ch)
   // (initiativeDice 2 in the fixture; a wired booster's dice count only in AR)
   expect(d.matrixInit).toEqual({ ar: { base: 5 + 5, dice: 2 }, cold: { base: 5 + 3, dice: 2 + 2 }, hot: { base: 5 + 3, dice: 5 }, dataProcessing: 3 })
-  boost(ch, [{ target: 'initDice', value: 1 }, { target: 'matrixInitDice', value: -1 }])
+  boost(ch, [
+    { target: 'initDice', value: 1 },
+    { target: 'matrixInitDice', value: -1 },
+  ])
   expect(deriveSr6(data, cr, ch).matrixInit?.ar.dice).toBe(3)
   expect(deriveSr6(data, cr, ch).matrixInit?.cold.dice).toBe(2 + 2 - 1)
   const tm = runner('technomancer')
@@ -146,20 +164,23 @@ test('a spellcaster’s Attack Rating is Magic + the tradition’s attribute; no
 test('a weapon’s skill, its dice pool (the specialization’s when it covers the weapon) and a melee weapon’s Attack Rating with Strength', () => {
   const { data, cr } = setup({ meleeArStrength: true, specDice: 2 })
   const e = (id: string) => data.entry('weapons', id)
-  expect(weaponSkill(data, e('crb.zap-gun'))).toBe('crb.zapping')  // its category names Zappers
-  expect(weaponSkill(data, e('crb.glitter-sword'))).toBe('crb.close-combat')  // Swords
-  expect(weaponSkill(data, e('crb.boomstick'))).toBeUndefined()  // no specialization names it and no Firearms skill
+  expect(weaponSkill(data, e('crb.zap-gun'))).toBe('crb.zapping') // its category names Zappers
+  expect(weaponSkill(data, e('crb.glitter-sword'))).toBe('crb.close-combat') // Swords
+  expect(weaponSkill(data, e('crb.boomstick'))).toBeUndefined() // no specialization names it and no Firearms skill
   expect(specFits('Light Pistols', 'Light pistol')).toBe(true)
   expect(specFits('Pistols', 'Heavy pistol')).toBe(true)
   expect(specFits('Rifles', 'Shotgun')).toBe(false)
   const ch = runner()
   ch.build.skills.push({ id: 'crb.zapping', points: 3, karma: 0, spec: 'Zappers' }, { id: 'crb.close-combat', points: 2, karma: 0 })
-  buy(ch, 'weapons', 'crb.zap-gun'); buy(ch, 'weapons', 'crb.fizz-rifle-70'); buy(ch, 'weapons', 'crb.glitter-sword'); buy(ch, 'weapons', 'crb.noodle-whip')
+  buy(ch, 'weapons', 'crb.zap-gun')
+  buy(ch, 'weapons', 'crb.fizz-rifle-70')
+  buy(ch, 'weapons', 'crb.glitter-sword')
+  buy(ch, 'weapons', 'crb.noodle-whip')
   const w = deriveSr6(data, cr, ch).attackRatings.weapons
   expect(w.map(x => x.pool)).toEqual([3 + 3 + 2, 3 + 3, 2 + 3, 2 + 3])
-  expect(w[0].bands).toEqual([9, 7, null, null, null])  // a gun's as printed
-  expect(w[2].bands[0]).toBe(8 + 2)  // + STR
-  expect(w[3].bands[0]).toBe(9 + 5)  // a whip: + REA
+  expect(w[0].bands).toEqual([9, 7, null, null, null]) // a gun's as printed
+  expect(w[2].bands[0]).toBe(8 + 2) // + STR
+  expect(w[3].bands[0]).toBe(9 + 5) // a whip: + REA
   cr.set('meleeArStrength', { key: 'meleeArStrength', value: false })
   expect(deriveSr6(data, cr, ch).attackRatings.weapons[2].bands[0]).toBe(8)
 })

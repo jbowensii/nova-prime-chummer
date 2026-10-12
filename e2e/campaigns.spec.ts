@@ -14,29 +14,49 @@ const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1'
 const SHOTS = '.extract/screenshots/0.5.0'
 const PHONE = { width: 390, height: 844 }
 const CAMPAIGN = 'Neon Nights'
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)) })
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-campaigns-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-campaigns-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player', dailyQuestions: 2 },
-    { username: 'kim', password: PW.kim, role: 'player', name: 'Kim Player' }]))
-  writeFileSync(join(config, 'ai-providers.xml'), '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"/></ca2:aiproviders>\n')
-  writeFileSync(join(config, 'ai-keys.xml'), // a made-up key: the stub sends nothing anywhere
-    '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-e2e-not-a-real-key</key></ca2:aikeys>\n')
-  server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player', dailyQuestions: 2 },
+      { username: 'kim', password: PW.kim, role: 'player', name: 'Kim Player' },
+    ]),
+  )
+  writeFileSync(
+    join(config, 'ai-providers.xml'),
+    '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"/></ca2:aiproviders>\n',
+  )
+  writeFileSync(
+    join(config, 'ai-keys.xml'), // a made-up key: the stub sends nothing anywhere
+    '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-e2e-not-a-real-key</key></ca2:aikeys>\n',
+  )
+  server = createServer({
+    staticDir: 'dist',
+    charDir: join(dir, 'characters'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
   mkdirSync(SHOTS, { recursive: true })
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, username: keyof typeof PW) {
   await page.context().clearCookies()
@@ -62,11 +82,18 @@ async function join_(page: Page, row: ReturnType<typeof dossier>) {
   await d.getByRole('button', { name: 'Add to campaign' }).click()
   await expect(row.getByRole('link', { name: CAMPAIGN })).toBeVisible()
 }
-const openCampaign = async (page: Page) => { await page.goto('/#/campaigns'); await page.getByRole('link', { name: CAMPAIGN }).click()
-  await expect(page.getByRole('heading', { name: CAMPAIGN, level: 1 })).toBeVisible() }
+const openCampaign = async (page: Page) => {
+  await page.goto('/#/campaigns')
+  await page.getByRole('link', { name: CAMPAIGN }).click()
+  await expect(page.getByRole('heading', { name: CAMPAIGN, level: 1 })).toBeVisible()
+}
 /** Light, dark and phone (dark) screenshots of the page as it is; the phone one must not scroll sideways. */
 async function shots(page: Page, name: string) {
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
   await theme('light')
   await page.screenshot({ path: `${SHOTS}/${name}-light.png`, fullPage: true })
   await theme('dark')
@@ -144,7 +171,7 @@ test('a player sees the roster only: names and archetypes of the others, their o
   await expect(page.getByRole('button', { name: 'Remove Glitch from the campaign' })).toHaveCount(0)
   await shots(page, 'campaign-player')
   expect((await page.request.get(`${base}api/characters`)).status()).toBe(200)
-  const theirs = await (await page.request.get(`${base}api/characters`)).json() as { xml: string }[]
+  const theirs = (await (await page.request.get(`${base}api/characters`)).json()) as { xml: string }[]
   expect(theirs.some(r => r.xml.includes('Glitch'))).toBe(false) // no sheet of anyone else's
 })
 
@@ -212,7 +239,10 @@ test('the admin sees every campaign, adds a co-GM; the GM removes a player, whos
   await page.getByLabel('Show archived campaigns').check()
   await page.getByRole('link', { name: CAMPAIGN }).click()
   await page.getByRole('button', { name: 'Delete campaign' }).click()
-  await page.getByRole('dialog', { name: `Delete ${CAMPAIGN}?` }).getByRole('button', { name: 'Delete campaign' }).click()
+  await page
+    .getByRole('dialog', { name: `Delete ${CAMPAIGN}?` })
+    .getByRole('button', { name: 'Delete campaign' })
+    .click()
   await expect(page.getByRole('heading', { name: 'Campaigns', level: 1 })).toBeVisible()
   await expect(page.getByLabel('Show archived campaigns')).toHaveCount(0)
 })
@@ -237,7 +267,10 @@ test('ask the rules: the bar in the builder, answers with sources, not covered, 
   await expect(page.getByText('No questions left today.')).toBeVisible()
   await bar.getByRole('button', { name: 'Ask' }).click()
   await expect(page.getByRole('alert')).toHaveText('You’ve used all 2 of today’s questions. Ask again tomorrow.')
-  expect(await page.evaluate(() => [Object.keys(localStorage).filter(k => k !== 'ca2.settings.v1' && k !== 'chummer.game'), sessionStorage.length])).toEqual([[], 0])
+  expect(await page.evaluate(() => [Object.keys(localStorage).filter(k => k !== 'ca2.settings.v1' && k !== 'chummer.game'), sessionStorage.length])).toEqual([
+    [],
+    0,
+  ])
 })
 
 test('ask the rules: the header’s drawer keeps focus, closes with Esc and forgets the answer', async ({ page }) => {

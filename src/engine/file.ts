@@ -8,12 +8,16 @@ export const FORMAT_VERSION = 1
 
 export function blankCharacter(level = 'runner', metatype = 'human'): Character {
   const ch: Character = {
-    formatVersion: 1, id: newId(),
+    formatVersion: 1,
+    id: newId(),
     identity: { name: '', streetName: '', metatype, background: '', notes: '' },
     narrative: { keywords: ['', '', '', '', ''], dispositions: ['', '', '', ''], cues: ['', '', '', ''] },
-    level, package: 'free',
+    level,
+    package: 'free',
     build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
-    career: [], overrides: [], updatedAt: new Date().toISOString(),
+    career: [],
+    overrides: [],
+    updatedAt: new Date().toISOString(),
   }
   ensureStartingGear(ch.build)
   return ch
@@ -30,7 +34,8 @@ const SAME: Record<string, string[]> = { commlink: ['commlink', 'commlink (with 
 export function ensureStartingGear(b: Build, finalized = false): void {
   for (const [kind, name] of Object.entries(STARTING_GEAR) as [StartingGear, string][]) {
     if (b.items.some(i => i.starting === kind)) continue
-    const same = finalized ? undefined
+    const same = finalized
+      ? undefined
       : b.items.find(i => i.kind === 'gear' && !i.starting && !i.catalogId && i.price == null && SAME[kind].includes(plain(i.name)))
     if (same) same.starting = kind
     else b.items.unshift({ uid: `start-${kind}`, kind: 'gear', name, starting: kind })
@@ -64,7 +69,8 @@ export function setRealSin(c: Catalog, b: Build, on: boolean): void {
 /** After every edit: a SINner quality brings its free Real SIN entry, and taking the last one off takes the entry with it
  *  (kept when no book has a SINner, so a runner from before stays as it was). */
 export function syncRealSin(c: Catalog, b: Build): void {
-  const has = b.amps.some(a => isSinner(a, c)), entry = b.items.some(i => i.starting === 'real-sin')
+  const has = b.amps.some(a => isSinner(a, c)),
+    entry = b.items.some(i => i.starting === 'real-sin')
   if (has && !entry) b.items.push(realSinItem())
   if (!has && entry && sinnerTemplate(c)) b.items = b.items.filter(i => i.starting !== 'real-sin')
 }
@@ -78,30 +84,41 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
 export function knowledgeEntry(k: string | Partial<KnowledgeEntry>): KnowledgeEntry {
   const e = typeof k === 'string' ? { name: k } : k
   const lang = !e.kind && /^language:\s*/i.exec(e.name ?? '')
-  const out: KnowledgeEntry = { name: lang ? e.name!.slice(lang[0].length) : e.name ?? '', kind: lang ? 'language' : e.kind ?? 'knowledge' }
+  const out: KnowledgeEntry = { name: lang ? e.name!.slice(lang[0].length) : (e.name ?? ''), kind: lang ? 'language' : (e.kind ?? 'knowledge') }
   if (e.from) out.from = e.from
   if (e.native) out.native = true
   if (e.id) out.id = e.id
   return out
 }
 
-const NPC_KINDS: Npc['kind'][] = ['npc', 'critter', 'spirit'], NPC_TIERS: Npc['tier'][] = ['prime', 'regular']
+const NPC_KINDS: Npc['kind'][] = ['npc', 'critter', 'spirit'],
+  NPC_TIERS: Npc['tier'][] = ['prime', 'regular']
 const FIGHTING_SPIRITS: NonNullable<Npc['fightingSpirit']>[] = ['null', 'low', 'high', 'extreme']
 /** Makes an npc block one the app knows, in place: an unknown or missing kind is 'npc', tier 'regular', an unknown
  *  fighting spirit is dropped. Returns what it fixed (charxml's repair notes). */
 export function normalizeNpc(npc: Npc): string[] {
   const fixed: string[] = []
-  if (!NPC_KINDS.includes(npc.kind)) { fixed.push(`Set the NPC kind "${npc.kind ?? ''}" to "npc".`); npc.kind = 'npc' }
-  if (!NPC_TIERS.includes(npc.tier)) { fixed.push(`Set the NPC tier "${npc.tier ?? ''}" to "regular".`); npc.tier = 'regular' }
+  if (!NPC_KINDS.includes(npc.kind)) {
+    fixed.push(`Set the NPC kind "${npc.kind ?? ''}" to "npc".`)
+    npc.kind = 'npc'
+  }
+  if (!NPC_TIERS.includes(npc.tier)) {
+    fixed.push(`Set the NPC tier "${npc.tier ?? ''}" to "regular".`)
+    npc.tier = 'regular'
+  }
   if (npc.fightingSpirit !== undefined && !FIGHTING_SPIRITS.includes(npc.fightingSpirit)) {
-    fixed.push(`Dropped the unknown fighting spirit "${npc.fightingSpirit}".`); delete npc.fightingSpirit
+    fixed.push(`Dropped the unknown fighting spirit "${npc.fightingSpirit}".`)
+    delete npc.fightingSpirit
   }
   return fixed
 }
 
 export function migrate(raw: Record<string, unknown>): Character {
   let v = raw.formatVersion as number
-  while (v < FORMAT_VERSION) { raw = MIGRATIONS[v](raw); v = raw.formatVersion as number }
+  while (v < FORMAT_VERSION) {
+    raw = MIGRATIONS[v](raw)
+    v = raw.formatVersion as number
+  }
   const ch = raw as unknown as Character
   if (Array.isArray(ch.build?.knowledge)) {
     ch.build.knowledge = ch.build.knowledge.map(knowledgeEntry)
@@ -131,7 +148,11 @@ type Parsed = { ok: true; character: Character } | { ok: false; reason: string }
 /** Never throws; a bad file comes back with a human-readable reason. */
 export function parseCharacterFile(text: string): Parsed {
   let raw: Record<string, unknown>
-  try { raw = JSON.parse(text) } catch (e) { return { ok: false, reason: `Not valid JSON: ${(e as Error).message}` } }
+  try {
+    raw = JSON.parse(text)
+  } catch (e) {
+    return { ok: false, reason: `Not valid JSON: ${(e as Error).message}` }
+  }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'Not a character file.' }
   const v = raw.formatVersion
   if (typeof v !== 'number') return { ok: false, reason: 'Missing formatVersion; not a Chummer Anarchy 2.0 character.' }
@@ -172,12 +193,11 @@ export function keepHouse(c: Catalog, ch: Character): Character {
     const chassis = v ? (houseSource(c, v.source) ? v : undefined) : a.chassis
     if (snapshot === a.snapshot && chassis === a.chassis) return a
     const { chassis: _, ...rest } = a
-    return { ...rest, ...snapshot ? { snapshot } : {}, ...chassis ? { chassis } : {} }
+    return { ...rest, ...(snapshot ? { snapshot } : {}), ...(chassis ? { chassis } : {}) }
   })
   const items = ch.build.items.map(i => {
     const snapshot = i.catalogId ? fresh(c.items.get(i.catalogId), i.snapshot) : i.snapshot
     return snapshot === i.snapshot ? i : { ...i, snapshot }
   })
-  return amps.some((a, n) => a !== ch.build.amps[n]) || items.some((i, n) => i !== ch.build.items[n])
-    ? { ...ch, build: { ...ch.build, amps, items } } : ch
+  return amps.some((a, n) => a !== ch.build.amps[n]) || items.some((i, n) => i !== ch.build.items[n]) ? { ...ch, build: { ...ch.build, amps, items } } : ch
 }

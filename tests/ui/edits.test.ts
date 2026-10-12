@@ -17,8 +17,14 @@ test('edit states: changed from the book, added under a house rule, orphaned whe
 })
 
 test('entries go out in the data format with empty text and read back the same', () => {
-  const strip = <T extends { edited?: boolean }>(e: T) => { const { edited, ...rest } = e; void edited; return rest }
-  const rush = cat.amps.get('test.rush')!, jammer = cat.items.get('test.signal-jammer')!, rule = cat.rules.get('test.gadget-basics')!
+  const strip = <T extends { edited?: boolean }>(e: T) => {
+    const { edited, ...rest } = e
+    void edited
+    return rest
+  }
+  const rush = cat.amps.get('test.rush')!,
+    jammer = cat.items.get('test.signal-jammer')!,
+    rule = cat.rules.get('test.gadget-basics')!
   expect(toAmp(el(entryXml('amps', rush)))).toEqual({ ...rush, narrative: '' })
   expect(toItem(el(entryXml('items', { ...jammer, dv: 'STR+1', name: 'A & <b>' })))).toEqual({ ...strip(jammer), dv: 'STR+1', name: 'A & <b>', text: '' })
   expect(toRule(el(entryXml('rules', rule)))).toEqual({ ...rule, text: '' })

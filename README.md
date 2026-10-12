@@ -131,8 +131,9 @@ file in the SR6 store). Only your account and its role (admin, GM, player) are
 shared. SR6 data lives beside Anarchy’s, one level down: `characters/sr6/`,
 `custom/sr6/`, `library/sr6/`, at `/api/sr6/…`. One backup holds both games.
 
-As on the Anarchy side, the app ships the rules engine only: no book text and
-no book numbers.
+As on the Anarchy side, the app ships no book text. It does ship the standard
+creation settings (`public/data/sr6/creation-defaults.xml`: 229 numbers, each
+with the book and page that print it); everything else comes from your books.
 
 - **Books** (admin, SR6 menu). Upload the Shadowrun 6 core rulebook PDF. The
   importer turns it into markdown, regroups each item’s stat-table row with its
@@ -154,9 +155,10 @@ no book numbers.
   rates, karma prices, point-buy prices, augmentation grades, the constants
   of derived values, advancement prices), each with the page you read it on.
   The admin sets the server’s; a GM can give a campaign its own on its page,
-  and that campaign’s runners use them. The app ships none of them; a creation
-  method whose settings aren’t set can’t be picked, and its row says which are
-  missing.
+  and that campaign’s runners use them. The app ships the standard ones
+  (`creation-defaults.xml`), which the admin’s changes go over; a house rule’s
+  number no book prints ships unset with its rule off. A creation method whose
+  settings aren’t set can’t be picked, and its row says which are missing.
 - **Rules.** The rulebook’s rule sections, searchable.
 - **Builder** with all five creation methods: **priority**, **sum to ten**,
   **point buy**, **karma** and **lifepath** (lifepath needs life modules,
@@ -245,6 +247,10 @@ docker run -d --init -p 8480:80 \
   -v /path/to/library:/data/library \
   ghcr.io/jbowensii/chummer-anarchy2:latest
 ```
+
+The container starts as root only to hand the three mounted folders to `PUID`:`PGID` (default `99`:`100`, Unraid's
+`nobody`:`users`), then runs the server as that user; files owned by root from an older image are taken over on the
+first start. Add `-e PUID=1000 -e PGID=1000` to match another host user, or use `--user` to skip the step.
 
 ### Build it yourself
 
@@ -373,8 +379,9 @@ text in the middle of the screen, a little stronger toward the edges, tinted
 indigo in the dark theme and fainter still on phones. The page layer is never
 printed. Anyone can turn them off or fade them in their own browser
 (**Settings → Background**: Plain page, or Strength 0–100%). The character
-sheet has its own switches above it (on screen: on; printed: off; strength:
-the page's until set), with the same readability limit. The images live in `library/backgrounds/`, are in backups (not
+sheet has its own switches in its **Background** dialog (the button above the
+sheet: on screen: on; printed: off; strength: 60% until set), with the same
+readability limit. The images live in `library/backgrounds/`, are in backups (not
 in data packs), and are only sent to signed-in browsers. The only artwork that
 ships with the app is our own circuit board, Shadowrun 6's default background:
 it starts on, and the admin can switch it off or delete it like any upload
@@ -534,8 +541,9 @@ provider and how many parts the book goes in; the proposals then wait on a revie
 edit or drop each one (a core table's rows include a metatype's attribute
 ranges and a skill's specializations).
 
-Imports need the server (Docker or `npm run serve`) and Python 3 with
-`importer/requirements.txt`.
+Imports need the server (Docker or `npm run serve`) and Python 3 with the importer's packages:
+`pip install --require-hashes -r importer/requirements.lock` (every package pinned with its hashes; the direct ones are
+listed in `importer/requirements.txt`, which the lock is compiled from).
 
 ## Core data
 
@@ -622,7 +630,7 @@ without the core rulebook's PDF. The setup screen links to it.
 ```bash
 npm test                 # engine tests on a made-up catalog (Vitest); book tests need your own imports
 npm run validate:data    # XSD + reference checks
-npm run test:py          # importer tests: Python 3.12 with importer/requirements.txt ($PYTHON, py -3.12, python3 or python)
+npm run test:py          # importer tests: Python 3.12 with importer/requirements.lock ($PYTHON, py -3.12, python3 or python)
 npm run build && npm run e2e   # Playwright, with a stub importer: smoke, books, AI review, themes…
 ```
 

@@ -3,13 +3,13 @@ stat blocks as NPCs (group Ingentis Athletes; the book prints no Professional Ra
 athlete carries, and the game information's rule sections (the troll variants, their creation rules and qualities),
 ids unscoped (run scopes them as ia.<slug>), descriptions in the private texts. The stat blocks print as bold text
 lines, not tables: they are read line by line from the blocks' text. Reads only regrouped.md with the core rulebook's
-reading (crb.extract). Layout notes in ia.md."""
+reading (catalog.read). Layout notes in ia.md."""
 import re
 import sys
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6.ids import slug
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import Block, blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "IA", "Shadowrun: Ingentis Athletes", "Catalyst Game Labs", True
@@ -109,7 +109,7 @@ def athletes(b):
 
 
 def prepare(bs):
-    """The book's shapes as crb.extract reads them: the running head (`shadow stock`, `PAGE`, the title and the page
+    """The book's shapes as catalog.read reads them: the running head (`shadow stock`, `PAGE`, the title and the page
     number) out of the text; the athletes' stat blocks out of the commentary as NPCs (the bands and labelled lines read
     as text lines), a priced weapon in one as a weapons row; the blocks from `Troll Variants` on in the chapter Game
     Information (its title isn't a heading), the rest (the Shadow Stock commentary) in a chapter of its own."""
@@ -124,4 +124,4 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
-    return crb.extract(prepare(blocks(regrouped)), ctx, book=sys.modules[__name__])
+    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

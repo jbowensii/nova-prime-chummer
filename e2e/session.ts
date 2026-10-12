@@ -18,8 +18,10 @@ export async function signIn(request: APIRequestContext) {
 
 /** A browser that already picked Anarchy (no picker) and has no session: the specs that run their own server. Playwright
  *  also resolves this for the beforeAll hook that starts that server, while `base` is still '': no origin then. */
-export const anarchyState = (base: string) =>
-  ({ cookies: [], origins: base ? [{ origin: new URL(base).origin, localStorage: [{ name: GAME_KEY, value: 'ca2' }] }] : [] })
+export const anarchyState = (base: string) => ({
+  cookies: [],
+  origins: base ? [{ origin: new URL(base).origin, localStorage: [{ name: GAME_KEY, value: 'ca2' }] }] : [],
+})
 
 /** Save the open editor now (its Save button) and wait until the server's copy of it matches `text`. The save bar says
  *  "All changes saved" before the first autosave too (a change waits 400 ms), so it proves nothing about the server. */
@@ -27,6 +29,12 @@ export async function savedOnServer(page: Page, text: string | RegExp) {
   const [, sr6 = '', kind, id] = page.url().match(/#\/(sr6\/)?(c|n)\/([^/]+)\//) ?? []
   if (!id) throw new Error(`savedOnServer: not in an editor (${page.url()})`)
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect.poll(async () => ((await (await page.request.get(`/api/${sr6}${kind === 'n' ? 'npcs' : 'characters'}`)).json()) as { xml: string }[])
-    .find(r => r.xml.includes(` id="${id}"`))?.xml ?? '').toMatch(text)
+  await expect
+    .poll(
+      async () =>
+        ((await (await page.request.get(`/api/${sr6}${kind === 'n' ? 'npcs' : 'characters'}`)).json()) as { xml: string }[]).find(r =>
+          r.xml.includes(` id="${id}"`),
+        )?.xml ?? '',
+    )
+    .toMatch(text)
 }

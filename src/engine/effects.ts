@@ -39,15 +39,20 @@ export const counts = (e: EffectState, on = false) => applies(e) && e.affects !=
 export const bracketed = (off: number | string, on?: number | string) => (on === undefined || String(on) === String(off) ? `${off}` : `${off} (${on})`)
 
 /** A line's effects: the player's or GM's own entered ones when it has any (they override), else its catalog entry's. */
-export const own = <T>(entered: T[] | undefined, catalog: T[] | undefined): T[] => (entered?.length ? entered : catalog ?? [])
+export const own = <T>(entered: T[] | undefined, catalog: T[] | undefined): T[] => (entered?.length ? entered : (catalog ?? []))
 
 /** An effect's state read from an element's attributes; unknown switch or affects values are dropped. */
 export function readEffectState(get: (name: string) => string | null | undefined): EffectState {
-  const sw = get('switch'), when = get('when'), from = get('from'), affects = get('affects')
+  const sw = get('switch'),
+    when = get('when'),
+    from = get('from'),
+    affects = get('affects')
   return {
-    ...(EFFECT_SWITCHES as string[]).includes(sw ?? '') ? { switch: sw as EffectSwitch } : {},
-    ...when ? { when } : {}, ...get('confidence') === 'low' ? { confidence: 'low' as const } : {}, ...from ? { from } : {},
-    ...affects === 'caster' || affects === 'target' ? { affects } : {},
+    ...((EFFECT_SWITCHES as string[]).includes(sw ?? '') ? { switch: sw as EffectSwitch } : {}),
+    ...(when ? { when } : {}),
+    ...(get('confidence') === 'low' ? { confidence: 'low' as const } : {}),
+    ...(from ? { from } : {}),
+    ...(affects === 'caster' || affects === 'target' ? { affects } : {}),
   }
 }
 
@@ -58,6 +63,12 @@ export const effectStateAttrs = (e: EffectState) => ({ switch: e.switch, when: e
  *  applied` (low confidence; a `when` already says it holds only then). */
 export function effectHow(e: EffectState): string {
   const when = e.when && (/^(?:when|whenever|while|if|unless|as long as|during|at|in|once|against|on)\b/i.test(e.when) ? e.when : `when ${e.when}`)
-  return [e.switch && e.switch !== 'conditional' ? e.switch : e.switch && !when ? 'only sometimes' : '', when ?? '', e.affects === 'target' ? 'affects target(s)' : e.affects === 'caster' ? 'affects the caster' : '',
-    e.confidence === 'low' ? 'not applied' : ''].filter(Boolean).join(', ')
+  return [
+    e.switch && e.switch !== 'conditional' ? e.switch : e.switch && !when ? 'only sometimes' : '',
+    when ?? '',
+    e.affects === 'target' ? 'affects target(s)' : e.affects === 'caster' ? 'affects the caster' : '',
+    e.confidence === 'low' ? 'not applied' : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
 }

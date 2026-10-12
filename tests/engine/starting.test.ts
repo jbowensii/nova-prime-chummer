@@ -12,7 +12,11 @@ import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'
 import { cat, catFiles } from '../helpers'
 
-const starting = (ch: Character) => ch.build.items.filter(i => i.starting).map(i => i.starting).sort()
+const starting = (ch: Character) =>
+  ch.build.items
+    .filter(i => i.starting)
+    .map(i => i.starting)
+    .sort()
 const K = cat.pricing.knowledge
 
 test('a new runner carries a free commlink and fake SIN; adding again adds nothing', () => {
@@ -27,7 +31,10 @@ test('a new runner carries a free commlink and fake SIN; adding again adds nothi
 
 test('an older file gets them on load without changing its price; saving and loading again adds none', () => {
   const ch = blankCharacter()
-  ch.build.items = [{ uid: 'it-1', kind: 'gear', name: 'Rope' }, { uid: 'it-2', kind: 'weapon', name: 'Stick' }]
+  ch.build.items = [
+    { uid: 'it-1', kind: 'gear', name: 'Rope' },
+    { uid: 'it-2', kind: 'weapon', name: 'Stick' },
+  ]
   ch.build.attributes.str = 3
   const before = price(cat, ch).total
   const json = parseCharacterFile(serialize(ch))
@@ -41,36 +48,67 @@ test('an older file gets them on load without changing its price; saving and loa
 
 test('a pregen that lists "Fake SIN, Commlink" as gear ends with exactly one of each, free', () => {
   const ch = blankCharacter()
-  ch.build.items = [{ uid: 'it-4', kind: 'gear', name: 'Fake SIN' }, { uid: 'it-5', kind: 'gear', name: 'Commlink' },
-    { uid: 'it-6', kind: 'gear', name: 'Commlink', price: 9000 }] // a GM-priced one is a purchase, not the free one
+  ch.build.items = [
+    { uid: 'it-4', kind: 'gear', name: 'Fake SIN' },
+    { uid: 'it-5', kind: 'gear', name: 'Commlink' },
+    { uid: 'it-6', kind: 'gear', name: 'Commlink', price: 9000 },
+  ] // a GM-priced one is a purchase, not the free one
   ensureStartingGear(ch.build)
-  expect(ch.build.items.map(i => [i.uid, i.starting])).toEqual([['it-4', 'fake-sin'], ['it-5', 'commlink'], ['it-6', undefined]])
+  expect(ch.build.items.map(i => [i.uid, i.starting])).toEqual([
+    ['it-4', 'fake-sin'],
+    ['it-5', 'commlink'],
+    ['it-6', undefined],
+  ])
   expect(priceBuild(cat, ch.build, 'human').gear).toBe(9000)
 })
 
 test('only exact names become the free entry: "Commlink (Hermes Ikon)" and "Fake SIN (R4 corp)" stay paid', () => {
   const ch = blankCharacter()
-  ch.build.items = [{ uid: 'a', kind: 'gear', name: 'Commlink (Hermes Ikon)' }, { uid: 'b', kind: 'gear', name: 'Fake SIN (R4 corp)' },
-    { uid: 'c', kind: 'gear', name: '  COMMLINK   with trodes ' }, { uid: 'd', kind: 'gear', name: 'fake  sin' }]
+  ch.build.items = [
+    { uid: 'a', kind: 'gear', name: 'Commlink (Hermes Ikon)' },
+    { uid: 'b', kind: 'gear', name: 'Fake SIN (R4 corp)' },
+    { uid: 'c', kind: 'gear', name: '  COMMLINK   with trodes ' },
+    { uid: 'd', kind: 'gear', name: 'fake  sin' },
+  ]
   ensureStartingGear(ch.build)
-  expect(ch.build.items.map(i => [i.uid, i.starting])).toEqual([['a', undefined], ['b', undefined], ['c', 'commlink'], ['d', 'fake-sin']])
+  expect(ch.build.items.map(i => [i.uid, i.starting])).toEqual([
+    ['a', undefined],
+    ['b', undefined],
+    ['c', 'commlink'],
+    ['d', 'fake-sin'],
+  ])
   const other = blankCharacter()
-  other.build.items = [{ uid: 'a', kind: 'gear', name: 'Commlink (Hermes Ikon)' }, { uid: 'b', kind: 'gear', name: 'Commlink (with trodes)' }]
+  other.build.items = [
+    { uid: 'a', kind: 'gear', name: 'Commlink (Hermes Ikon)' },
+    { uid: 'b', kind: 'gear', name: 'Commlink (with trodes)' },
+  ]
   ensureStartingGear(other.build)
-  expect(other.build.items.map(i => [i.uid, i.starting])).toEqual([['start-fake-sin', 'fake-sin'], ['a', undefined], ['b', 'commlink']])
+  expect(other.build.items.map(i => [i.uid, i.starting])).toEqual([
+    ['start-fake-sin', 'fake-sin'],
+    ['a', undefined],
+    ['b', 'commlink'],
+  ])
   expect(priceBuild(cat, other.build, 'human').gear).toBe(cat.pricing.equipment)
 })
 
 test('a finalized runner’s paid items stay paid; it only gains the free entries, and its receipt and balance hold', () => {
   const draft = blankCharacter()
-  draft.build.items = [{ uid: 'it-4', kind: 'gear', name: 'Fake SIN' }, { uid: 'it-5', kind: 'gear', name: 'Commlink' }] // 0.5.2: paid
+  draft.build.items = [
+    { uid: 'it-4', kind: 'gear', name: 'Fake SIN' },
+    { uid: 'it-5', kind: 'gear', name: 'Commlink' },
+  ] // 0.5.2: paid
   draft.build.attributes.str = 3
   const f = finalize(cat, draft)
   const before = { p: price(cat, f), bal: balance(cat, f) }
   const r = xmlToCharacter(characterToXml(f))
   if (!r.ok) throw new Error(r.reason)
   const b = r.character.build
-  expect(b.items.map(i => [i.uid, i.starting])).toEqual([['start-fake-sin', 'fake-sin'], ['start-commlink', 'commlink'], ['it-4', undefined], ['it-5', undefined]])
+  expect(b.items.map(i => [i.uid, i.starting])).toEqual([
+    ['start-fake-sin', 'fake-sin'],
+    ['start-commlink', 'commlink'],
+    ['it-4', undefined],
+    ['it-5', undefined],
+  ])
   const p = price(cat, r.character)
   expect(p).toEqual(before.p) // same breakdown, same total: "Left at creation" matches the recorded baseline
   expect(p.attributes + p.skills + p.amps + p.gear + p.spells).toBe(p.total)
@@ -132,13 +170,29 @@ test('real SIN: only a quality named exactly "SINner" (any case) counts', () => 
 
 test('order and hidden marks belong to each entry: duplicates stay independent; old name keys move to ids', () => {
   const ch = blankCharacter()
-  ch.build.knowledge = [{ id: 'x1', name: 'Twin', kind: 'knowledge' }, { id: 'x2', name: 'Twin', kind: 'knowledge' }]
+  ch.build.knowledge = [
+    { id: 'x1', name: 'Twin', kind: 'knowledge' },
+    { id: 'x2', name: 'Twin', kind: 'knowledge' },
+  ]
   ch.build.knowledgeHidden = ['x2']
-  expect(derive(cat, ch).knowledge.map(r => [r.key, r.hidden])).toEqual([['x1', false], ['x2', true]])
+  expect(derive(cat, ch).knowledge.map(r => [r.key, r.hidden])).toEqual([
+    ['x1', false],
+    ['x2', true],
+  ])
   // a file saved with the earlier "<kind>:<name>" keys
-  const old = { ...blankCharacter(), build: { ...blankCharacter().build,
-    knowledge: [{ name: 'Twin', kind: 'knowledge' }, { name: 'Twin', kind: 'knowledge' }, { name: 'Solo', kind: 'language' }],
-    knowledgeOrder: ['language:Solo', 'knowledge:Twin', 'skill:x'], knowledgeHidden: ['knowledge:Twin'] } }
+  const old = {
+    ...blankCharacter(),
+    build: {
+      ...blankCharacter().build,
+      knowledge: [
+        { name: 'Twin', kind: 'knowledge' },
+        { name: 'Twin', kind: 'knowledge' },
+        { name: 'Solo', kind: 'language' },
+      ],
+      knowledgeOrder: ['language:Solo', 'knowledge:Twin', 'skill:x'],
+      knowledgeHidden: ['knowledge:Twin'],
+    },
+  }
   const r = parseCharacterFile(JSON.stringify(old))
   if (!r.ok) throw new Error(r.reason)
   expect(r.character.build.knowledge.map(k => k.id)).toEqual(['k0', 'k1', 'k2'])
@@ -156,11 +210,16 @@ test('real SIN: without the book, only the entry', () => {
 
 test('native language: one is free; a second native one is paid and noted', () => {
   const ch = blankCharacter()
-  ch.build.knowledge = [{ name: 'Made-up tongue', kind: 'language', native: true }, { name: 'Other tongue', kind: 'language' }]
+  ch.build.knowledge = [
+    { name: 'Made-up tongue', kind: 'language', native: true },
+    { name: 'Other tongue', kind: 'language' },
+  ]
   const cost = () => priceBuild(cat, ch.build, 'human', ch.narrative.keywords).skills
   expect(cost()).toBe(K)
   expect(derive(cat, ch).knowledge.map(r => [r.name, r.paid, r.source])).toEqual([
-    ['Made-up tongue', false, 'Free: native language (house rule)'], ['Other tongue', true, 'Paid']])
+    ['Made-up tongue', false, 'Free: native language (house rule)'],
+    ['Other tongue', true, 'Paid'],
+  ])
   ch.build.knowledge[1].native = true
   expect(cost()).toBe(K)
   expect(derive(cat, ch).knowledge[1].source).toBe('Paid (a second native language)')
@@ -184,7 +243,11 @@ test('two lists, A–Z by default; the player’s order and hidden rows persist 
   const ch = blankCharacter()
   ch.narrative.keywords = ['Zebra lore', '', '', '', '']
   ch.build.skills = [{ id: 'electronics', rating: 4, specs: [] }]
-  ch.build.knowledge = [{ id: 't', name: 'Toy trains', kind: 'knowledge' }, { id: 'b', name: 'B tongue', kind: 'language' }, { id: 'a', name: 'a tongue', kind: 'language' }]
+  ch.build.knowledge = [
+    { id: 't', name: 'Toy trains', kind: 'knowledge' },
+    { id: 'b', name: 'B tongue', kind: 'language' },
+    { id: 'a', name: 'a tongue', kind: 'language' },
+  ]
   const names = (c: Character, kind: 'knowledge' | 'language') => knowledgeList(derive(cat, c).knowledge, kind, c.build.knowledgeOrder).map(r => r.name)
   expect(names(ch, 'knowledge')).toEqual(['Knowledge of Electronics', 'Toy trains', 'Zebra lore'])
   expect(names(ch, 'language')).toEqual(['a tongue', 'B tongue'])
@@ -192,7 +255,11 @@ test('two lists, A–Z by default; the player’s order and hidden rows persist 
   ch.build.knowledgeOrder = ['keyword:Zebra lore', 't']
   ch.build.knowledgeHidden = ['skill:electronics']
   expect(names(ch, 'knowledge')).toEqual(['Zebra lore', 'Toy trains', 'Knowledge of Electronics']) // unordered rows follow
-  expect(derive(cat, ch).knowledge.filter(r => r.hidden).map(r => r.name)).toEqual(['Knowledge of Electronics'])
+  expect(
+    derive(cat, ch)
+      .knowledge.filter(r => r.hidden)
+      .map(r => r.name),
+  ).toEqual(['Knowledge of Electronics'])
   expect(price(cat, ch).total).toBe(cost)
   const back = xmlToCharacter(characterToXml(ch))
   if (!back.ok) throw new Error(back.reason)

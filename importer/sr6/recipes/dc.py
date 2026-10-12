@@ -2,7 +2,7 @@
 vehicle modifications, weapon mounts, drone racks and trailers (gear, the modifications with their slots), the rigger
 headware, the gear-head qualities, the sample contacts and the rule sections (chases, building a vehicle, repairs: no
 catalog kind of their own), ids unscoped (run scopes them as dc.<slug>), descriptions in the private texts. Reads only
-regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in dc.md.
+regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes in dc.md.
 
 A vehicle's stat box prints its headers in pieces (a two-column speed table, a bold header line, headers run together:
 `BODYARMPILOT`) but its values always in one order (handling, acceleration, speed interval, top speed, body, armor,
@@ -11,8 +11,8 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
-from importer.sr6.recipes import crb
+from importer.sr6.ids import slug
+from importer.sr6 import catalog, search, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "DC", "Shadowrun: Double Clutch", "Catalyst Game Labs", True
@@ -34,7 +34,7 @@ RULE_CHAPTERS = ("zen and the art of vehicle maintenance", *VEHICLE_CHAPTERS, MO
                  "grease monkey way", "gearhead anatomy", "rigger advantage")
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
-# a vehicle's values in print order -> the core rulebook's vehicle headers (crb.HEADERS)
+# a vehicle's values in print order -> the core rulebook's vehicle headers (catalog.HEADERS)
 VEHICLE = ("HANDLING", "ACCEL", "SPEED INTERVAL", "TOP SPEED", "BODY", "ARMOR", "PILOT", "SENSOR", "SEATS", "AVAIL", "COST")
 MOD_COLUMNS = {"MOD SLOTS", "RATING", "AVAILABILITY", "AVAIL", "COST"}
 RENAME = {"AVAL": "AVAIL", "AVAILABILITY": "AVAIL", "PRICE": "COST"}
@@ -99,7 +99,7 @@ def vehicle_values(b):
     """The box's eleven values in print order, else None. The speed pair may print in a table of its own, the rest on
     a value line; a table row of capitals continues its header (`INT | SPD`). Only the box's first table and value line
     are its own (a box printed right after it may run into it: extra_boxes)."""
-    tables = [[list(s.values()) for s in b.stats]] if b.stats else [r for h, r in crb._tables(b.text) if not _summary(h)][:1]
+    tables = [[list(s.values()) for s in b.stats]] if b.stats else [r for h, r in catalog.md_tables(b.text) if not _summary(h)][:1]
     vl = _value_lines(b.text)
     return _combine(tables[0] if tables else [], _value_line(b.text.splitlines()[vl[0]]) if vl else [])
 
@@ -111,7 +111,7 @@ def extra_boxes(b):
     for k, i in enumerate(vl[1:], 1):
         seg = lines[vl[k - 1] + 1:i]
         start = next((j for j, ln in enumerate(seg) if ln.startswith("|")), len(seg))
-        tables = [r for h, r in crb._tables("\n".join(seg)) if not _summary(h)]
+        tables = [r for h, r in catalog.md_tables("\n".join(seg)) if not _summary(h)]
         end = vl[k + 1] if k + 1 < len(vl) else len(lines)
         tail = lines[i + 1:end]
         tail = tail[:next((j for j, ln in enumerate(tail) if ln.startswith("|")), len(tail))]
@@ -123,7 +123,7 @@ def _strip(text):
     """The box's text without its stat lines (the header line and the values) and the aircraft table."""
     out, summary = [], False
     for ln in text.splitlines():
-        summary = ln.startswith("|") and (summary or _summary(crb._cells(ln)))
+        summary = ln.startswith("|") and (summary or _summary(catalog.table_cells(ln)))
         if not summary and not _value_line(ln) and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip()):
             out.append(ln)
     return "\n".join(out)
@@ -184,7 +184,7 @@ def _prep(bs, report):
         if MODS in ch and b.type == "item" and b.level == 4:
             mod = b.name
         elif MODS in ch and b.type == "item" and b.level == 5 and b.row is None and not _band_name(b.name) \
-                and not [h for h, _ in crb._tables(b.text) if h and {x.upper() for x in h} <= MOD_COLUMNS]:
+                and not [h for h, _ in catalog.md_tables(b.text) if h and {x.upper() for x in h} <= MOD_COLUMNS]:
             mod = b.name  # an unpriced level-5 heading over its own level boxes
         if b.type == "item" and b.name[:1].islower():  # a box titled in lower case (`chop shop owner`)
             b = replace(b, name=_title(b.name))
@@ -193,13 +193,13 @@ def _prep(bs, report):
                 b = replace(b, name=f"{mod} ({b.name})")  # a level of the modification above
             first, *more = _box_runs(b.text)
             for subject, seg in more:  # (owner, 2026-10-08) a second box after a sentence: an entry of its own
-                tabs2 = [(h, rows) for h, rows in crb._tables(seg) if h and {x.upper() for x in h} <= MOD_COLUMNS]
+                tabs2 = [(h, rows) for h, rows in catalog.md_tables(seg) if h and {x.upper() for x in h} <= MOD_COLUMNS]
                 if subject and tabs2:
                     row = {"GEAR": f"{re.sub(r'\s*\([^()]*\)\s*$', '', b.name)} ({subject})"}
                     for h, rows in tabs2:
                         row.update({k: v for k, v in zip(h, rows[0]) if k not in row})
                     out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[], level=b.level + 1))
-            tabs = [(list(s), [list(s.values())]) for s in b.stats] + crb._tables(first[1])
+            tabs = [(list(s), [list(s.values())]) for s in b.stats] + catalog.md_tables(first[1])
             # (a level's box headed by its name, `STREET RATING | AVAILABILITY | COST` … `LUXURY RATING`: an entry each)
             levels = [(m.group(1), h, rows) for h, rows in tabs if h and rows
                       and (m := re.fullmatch(r"([A-Z][A-Z]+) RATING", h[0].strip()))
@@ -294,7 +294,7 @@ def _summary_rows(bs):
     row (`ROTORCRAFT`), its first in the header (`VEHICLE JETPACK`)."""
     out, group = {}, ""
     for b in bs:
-        tables = [(h, r) for h, r in crb._tables(b.text) if _summary(h)]
+        tables = [(h, r) for h, r in catalog.md_tables(b.text) if _summary(h)]
         if b.row is not None and b.header and _summary(b.header):
             tables.append((b.header, [list(b.row.values())]))
         for h, rows in tables:
@@ -384,12 +384,12 @@ def _autosofts(bs, cat):
 
 def extract(regrouped, ctx=None):
     report, bs = [], list(blocks(regrouped))
-    res = crb.extract(_prep(bs, report), ctx, book=sys.modules[__name__])
+    res = catalog.read(_prep(bs, report), ctx, sys.modules[__name__])
     res.report += report  # a vehicle box whose values don't read
-    cat = crb._Catalog(ID, ID.lower(), BOOK)
-    cat.index = crb.resolve.Index(bs, PAGE_OFFSET, crb._tables, crb.shapes.RENAME)
+    cat = catalog.Catalog(ID, ID.lower(), BOOK)
+    cat.index = search.Index(bs, PAGE_OFFSET, catalog.md_tables, shapes.RENAME)
     _autosofts(bs, cat)
     if cat.entries["programs"]:  # (beside the programs the shared reading found: the e-softs' run-ins)
         new = cat.xml("programs")
-        res.files["programs.xml"] = crb.merge_xml(res.files["programs.xml"], new) if "programs.xml" in res.files else new
+        res.files["programs.xml"] = catalog.merge_xml(res.files["programs.xml"], new) if "programs.xml" in res.files else new
     return res

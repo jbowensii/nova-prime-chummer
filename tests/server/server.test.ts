@@ -8,10 +8,16 @@ import { createServer } from './_signin'
 const dir = mkdtempSync(join(tmpdir(), 'ca2-'))
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom') })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
 const xml = (id: string, street = 'Street Sam', rev?: number) =>
@@ -57,6 +63,7 @@ test('delete moves the file to .trash', async () => {
 
 test('trust boundary: bad ids, mismatched bodies and path traversal are refused', async () => {
   expect((await put('..%2Fetc', xml('x'))).status).toBe(400)
+  expect((await put('%E0%A4%A', xml('x'))).status).toBe(400) // a malformed escape: a bad id, not a 500
   expect((await put('a9', xml('other'))).status).toBe(400)
   expect((await put('a9', '<html/>')).status).toBe(400)
   expect((await fetch(`${base}/custom/..%2F..%2Fpackage.json`)).status).not.toBe(200)

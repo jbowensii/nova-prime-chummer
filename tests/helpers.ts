@@ -4,8 +4,10 @@ import { buildCatalog, collectFiles, CORE_FILES, type SourceFile } from '../src/
 import { migrate } from '../src/engine/file'
 import type { Catalog, Character } from '../src/model/types'
 
-const dir = (d: string, overlay: boolean): SourceFile[] => readdirSync(d).filter(f => f.endsWith('.xml'))
-  .map(f => ({ file: overlay ? `custom/${f}` : f, xml: readFileSync(join(d, f), 'utf8'), overlay }))
+const dir = (d: string, overlay: boolean): SourceFile[] =>
+  readdirSync(d)
+    .filter(f => f.endsWith('.xml'))
+    .map(f => ({ file: overlay ? `custom/${f}` : f, xml: readFileSync(join(d, f), 'utf8'), overlay }))
 
 /** The book catalogs the app no longer ships (imports bring them), as the private oracle lays them out. */
 export const BOOK_CATALOG_FILES = ['amps.xml', 'spells.xml', 'complexforms.xml', 'gear.xml', 'rules.xml']
@@ -18,17 +20,24 @@ export const MINI = 'tests/fixtures/mini/custom'
 export const LOCAL_CORE = CORE_FILES.every(n => existsSync(`public/data/${n}.xml`))
 
 /** The shipped sources.xml and the made-up core files, loaded as the app loads the base data. Never real book data. */
-export const base: SourceFile[] = [{ file: 'sources.xml', xml: readFileSync('public/data/sources.xml', 'utf8'), overlay: false },
-  ...CORE_FILES.map(n => ({ file: `custom/imported/core/${n}.xml`, xml: readFileSync(join(MINI, 'imported', 'core', `${n}.xml`), 'utf8'), overlay: false }))]
+export const base: SourceFile[] = [
+  { file: 'sources.xml', xml: readFileSync('public/data/sources.xml', 'utf8'), overlay: false },
+  ...CORE_FILES.map(n => ({ file: `custom/imported/core/${n}.xml`, xml: readFileSync(join(MINI, 'imported', 'core', `${n}.xml`), 'utf8'), overlay: false })),
+]
 
 /** Every file loadCatalog would load from public/data/sources.xml and a custom root laid out as the app's custom/ folder
  * (imported/core/, imported/index.xml, imported/sources.xml, sources.xml, texts/, index.xml), in the same order. The
  * owner's local core copies in public/data are read only with `localCore` (tests guarded by LOCAL_CORE). A missing
  * core, data or listed file is an error. */
 export async function loadDir(customRoot: string, localCore = false): Promise<SourceFile[]> {
-  const read = (p: string) => existsSync(p) ? readFileSync(p, 'utf8') : null
+  const read = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : null)
   const { files, missing, coreMissing } = await collectFiles(async path =>
-    path.startsWith('data/') ? (localCore || path === 'data/sources.xml' ? read(join('public', path)) : null) : read(join(customRoot, path.replace(/^custom\//, ''))))
+    path.startsWith('data/')
+      ? localCore || path === 'data/sources.xml'
+        ? read(join('public', path))
+        : null
+      : read(join(customRoot, path.replace(/^custom\//, ''))),
+  )
   if (missing.length || coreMissing.length) throw new Error(`${customRoot}: missing: ${[...missing, ...coreMissing].join(', ')}`)
   return files
 }

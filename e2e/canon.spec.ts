@@ -22,14 +22,16 @@ test('non-canon content: badge in the picker, flagged when the table is canon on
   const nonCanon = async (on: boolean) => {
     await page.goto('/#/table')
     const sw = page.getByRole('region', { name: 'Table rules' }).getByRole('switch', { name: 'Non-canon content allowed' })
-    if (await sw.isChecked() !== on) await sw.click() // saved first, then shown
+    if ((await sw.isChecked()) !== on) await sw.click() // saved first, then shown
     await expect(page.getByRole('region', { name: 'Table rules' }).getByRole('status')).toHaveText(`Non-canon content allowed is ${on ? 'on' : 'off'}.`)
   }
   await nonCanon(false)
   try {
     await page.goto(runner)
     await expect(page.getByText(/Hawk Instinct isn’t canon \(.*\); this table is canon only/).first()).toBeVisible()
-  } finally { await nonCanon(true) }
+  } finally {
+    await nonCanon(true)
+  }
 })
 
 test('rules reference: search the quick-reference sheets', async ({ page }) => {

@@ -17,7 +17,15 @@ function sr6Runner() {
   ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'adept' })
   for (const [k, v] of Object.entries({ bod: 3, agi: 2, rea: 4, str: 1, wil: 2, log: 3, int: 4, cha: 1, edg: 2 })) ch.build.attributes[k as Sr6Attr].points = v
   ch.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'crb.quick-step', level: 2, bonuses: [{ target: 'agi', value: 1 }] })
-  ch.build.purchases.push({ uid: 'p1', kind: 'augmentations', id: 'crb.glow-eyes', qty: 1, accessories: [], rating: 2, bonuses: [{ target: 'agi', value: 1, perRating: true }] })
+  ch.build.purchases.push({
+    uid: 'p1',
+    kind: 'augmentations',
+    id: 'crb.glow-eyes',
+    qty: 1,
+    accessories: [],
+    rating: 2,
+    bonuses: [{ target: 'agi', value: 1, perRating: true }],
+  })
   const { data, cr } = made({ rules: { monitorBase: 9, monitorDivisor: 3 } })
   const p = makeProvider(ch.build.method, data, cr)
   return { c: fixtureCatalog(), data, cr, ch, p, d: deriveSr6(data, cr, ch) }
@@ -72,14 +80,28 @@ test('both games: the card lists what the total counts, then the switchable and 
   const ch = blankCharacter()
   ch.build.attributes.agi = 3
   const amp = cat.amps.get('test.hawk-instinct')!
-  ch.build.amps.push({ uid: 'a1', catalogId: amp.id, type: amp.type, name: amp.name, narrative: '',
-    effects: [{ ref: 'rr-attr', param: 'agi' }, { ref: 'rr-attr', param: 'agi', when: 'in darkness' }] } as never)
+  ch.build.amps.push({
+    uid: 'a1',
+    catalogId: amp.id,
+    type: amp.type,
+    name: amp.name,
+    narrative: '',
+    effects: [
+      { ref: 'rr-attr', param: 'agi' },
+      { ref: 'rr-attr', param: 'agi', when: 'in darkness' },
+    ],
+  } as never)
   const r = anarchyAttrRow(cat, ch, 'agi')
   expect(r.details).toContain('RR 1 (2)')
-  expect(r.effects).toEqual([{ text: 'RR +1 on its tests from Hawk Instinct', state: 'applied' },
-    { text: 'RR +1 on its tests from Hawk Instinct (in darkness)', state: 'conditional' }])
+  expect(r.effects).toEqual([
+    { text: 'RR +1 on its tests from Hawk Instinct', state: 'applied' },
+    { text: 'RR +1 on its tests from Hawk Instinct (in darkness)', state: 'conditional' },
+  ])
   const ctx = sr6Runner()
-  ctx.ch.build.picks[0].bonuses = [{ target: 'agi', value: 1 }, { target: 'agi', value: 2, switch: 'wireless' }]
+  ctx.ch.build.picks[0].bonuses = [
+    { target: 'agi', value: 1 },
+    { target: 'agi', value: 2, switch: 'wireless' },
+  ]
   ctx.d = deriveSr6(ctx.data, ctx.cr, ctx.ch)
   const s = sr6AttrRow(ctx, 'agi')
   expect(s.details).toContain(`augmented ${ctx.d.attrs.agi.augmented} (${ctx.d.attrs.agi.augmented + 2})`)

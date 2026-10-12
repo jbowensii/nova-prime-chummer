@@ -62,7 +62,9 @@ test('book data doesn’t go out without the table rules when they can’t be lo
   await page.goto('/#/data/foundry') // (folded on Game data: its address, as its header link, opens it)
   const panel = page.getByRole('region', { name: 'Export book data for Foundry' })
   let downloaded = false
-  page.on('download', () => { downloaded = true })
+  page.on('download', () => {
+    downloaded = true
+  })
   await panel.getByRole('button', { name: 'Download book data' }).click()
   await expect(panel.getByRole('alert')).toContainText('Couldn’t build the book data: the table rules couldn’t be fetched (status 500)')
   expect(downloaded).toBe(false)
@@ -93,8 +95,9 @@ test('a book’s NPCs go out under that book', async ({ page }) => {
   await panel.getByRole('button', { name: 'Download book data' }).click()
   const f = await json(dl)
   const by = (id: string) => f.books.find((b: { source: { id: string } }) => b.source.id === id)
-  expect(by('TESTC').npcs.map((r: { streetName: string; npc: unknown }) => [r.streetName, r.npc]))
-    .toEqual([['Made-Up Goon', { kind: 'npc', tier: 'regular', fightingSpirit: 'low' }]])
+  expect(by('TESTC').npcs.map((r: { streetName: string; npc: unknown }) => [r.streetName, r.npc])).toEqual([
+    ['Made-Up Goon', { kind: 'npc', tier: 'regular', fightingSpirit: 'low' }],
+  ])
   expect(by('PREGENS').npcs).toBeUndefined()
 })
 

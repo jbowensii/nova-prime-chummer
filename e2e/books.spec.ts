@@ -56,7 +56,8 @@ test('upload a book, use its amps, remove it', async ({ page }) => {
 // the stub worker: "slow" takes 1.5 s, "crash" fails with "boom"
 test('a book uploaded again stays one row; while it waits or imports the row says so, not its old error', async ({ page }) => {
   await page.goto('/#/books')
-  const broken = page.locator('.book', { hasText: 'Broken Book.pdf' }), slow = page.locator('.book', { hasText: 'Slow Book.pdf' })
+  const broken = page.locator('.book', { hasText: 'Broken Book.pdf' }),
+    slow = page.locator('.book', { hasText: 'Slow Book.pdf' })
   await page.getByLabel('Choose PDF files').setInputFiles(pdf('Broken Book.pdf', 'crash'))
   await expect(broken.locator('.state')).toHaveText('Failed', { timeout: 10000 })
   await expect(broken.locator('.err')).toContainText('boom')
@@ -160,7 +161,9 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
   await openai.getByLabel('API key').fill('sk-bad-e2e-key')
   await openai.getByRole('button', { name: 'Save key' }).click()
   await openai.getByRole('button', { name: 'Load models' }).click()
-  await expect(openai.getByRole('alert')).toHaveText('Couldn’t load the model list: stub.example answered HTTP 401: invalid key [key]. You can type a model name.')
+  await expect(openai.getByRole('alert')).toHaveText(
+    'Couldn’t load the model list: stub.example answered HTTP 401: invalid key [key]. You can type a model name.',
+  )
   await expect(openai.getByRole('textbox', { name: 'Model' })).toBeEditable()
   await expect(page.locator('body')).not.toContainText('sk-bad-e2e')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
@@ -169,7 +172,8 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
 // the stub worker answers a connection test with a made-up reply for a saved provider, and refuses a key containing "bad"
 test('Test asks the saved provider and says whether it answered', async ({ page }) => {
   await page.goto('/#/books/ai')
-  const gemini = page.locator('fieldset', { hasText: 'Gemini' }), openai = page.locator('fieldset', { hasText: 'OpenAI' })
+  const gemini = page.locator('fieldset', { hasText: 'Gemini' }),
+    openai = page.locator('fieldset', { hasText: 'OpenAI' })
   await gemini.getByRole('button', { name: 'Test Google Gemini' }).click()
   await expect(gemini.getByRole('status')).toContainText('Connected — gemini-2.5-flash replied “OK !!!')
   await expect(gemini.getByRole('status')).toContainText('” in 1.2 s.')
@@ -204,7 +208,13 @@ test('AnythingLLM: pick a workspace by name, its slug is saved, and Test stays e
   await all.getByRole('button', { name: 'Save key' }).click()
   await all.getByRole('button', { name: 'Load workspaces' }).click()
   const ws = all.getByRole('combobox', { name: 'Workspace' })
-  await expect(ws.locator('option')).toHaveText(['Choose a workspace', 'Shadowrun Anarchy 2.0', 'Rules', 'Shadowrun Anarchy 2.0', 'Type a workspace name instead'])
+  await expect(ws.locator('option')).toHaveText([
+    'Choose a workspace',
+    'Shadowrun Anarchy 2.0',
+    'Rules',
+    'Shadowrun Anarchy 2.0',
+    'Type a workspace name instead',
+  ])
   await ws.selectOption({ label: 'Rules' })
   await ws.selectOption('shadowrun-anarchy-20')
   await page.getByRole('button', { name: 'Save settings' }).click()

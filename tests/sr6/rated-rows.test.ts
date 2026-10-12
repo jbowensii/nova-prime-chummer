@@ -22,7 +22,8 @@ const world = () => {
   return { data, cr: fixtureCreation() }
 }
 const bought = (id: string, rating?: number) => {
-  const { data, cr } = world(), b = blankBuild('priority')
+  const { data, cr } = world(),
+    b = blankBuild('priority')
   expect(apply(b, { op: 'purchase', kind: 'augmentations', id, ...(rating ? { rating } : {}) }, data, cr)).toEqual({ ok: true })
   return { b, data }
 }
@@ -54,8 +55,9 @@ const GEAR = `<sr6:data ${NS} kind="gear" version="1">
 </sr6:data>`
 const gearWorld = () => ({ data: sr6Data(fixtureCatalog(undefined, [{ file: 'custom/sr6/imported/zz/gear.xml', xml: GEAR }])), cr: fixtureCreation() })
 
-test("a focus is bought at the Force the player picks, and its effects and price follow it", () => {
-  const { data, cr } = gearWorld(), b = blankBuild('priority')
+test('a focus is bought at the Force the player picks, and its effects and price follow it', () => {
+  const { data, cr } = gearWorld(),
+    b = blankBuild('priority')
   expect(chosenRating(data.entry('gear', 'zz.zap-focus'))).toBe('Force')
   expect(chosenRating(data.entry('gear', 'zz.zap-charm'))).toBeUndefined()
   expect(apply(b, { op: 'purchase', kind: 'gear', id: 'zz.zap-focus', rating: 3 }, data, cr)).toEqual({ ok: true })
@@ -69,7 +71,8 @@ test("a focus is bought at the Force the player picks, and its effects and price
 })
 
 test("a cyberlimb add-on rated by the player raises its host's stat by that rating", () => {
-  const { data, cr } = world(), b = blankBuild('priority')
+  const { data, cr } = world(),
+    b = blankBuild('priority')
   expect(apply(b, { op: 'purchase', kind: 'augmentations', id: 'zz.zap-ranged', rating: 1 }, data, cr)).toEqual({ ok: true })
   expect(apply(b, { op: 'accessory', host: b.purchases[0].uid, kind: 'augmentations', id: 'zz.zap-plate', rating: 3 }, data, cr)).toEqual({ ok: true })
   expect(hostBonus(b.purchases[0], data).defense).toBe(3)

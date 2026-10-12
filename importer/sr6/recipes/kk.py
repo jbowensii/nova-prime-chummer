@@ -1,6 +1,6 @@
 """Krime Katalog (KK), a gear catalog -> the SR6 catalog: its weapons (grenades among them) and weapon accessories,
 ammunition (gear) and vehicles, ids unscoped (run scopes them as kk.<slug>), descriptions in the private texts. Reads
-only regrouped.md (importer/sr6/regroup.py) with the core rulebook's writing (crb.extract); layout notes in kk.md.
+only regrouped.md (importer/sr6/regroup.py) with the core rulebook's writing (catalog.read); layout notes in kk.md.
 
 The book prints each item's Fifth Edition and Sixth Edition stats side by side under a caption (`krime vester: sr5
 stats krime vester: sr6 stats`): only the SR6 half is read (the columns after the first COST, or the second of two
@@ -10,7 +10,7 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.recipes import crb
+from importer.sr6 import catalog
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "KK", "Krime Katalog", "Catalyst Game Labs", True
@@ -31,7 +31,7 @@ ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
 CHAPTER = "krime katalog"  # its running head: the book's one chapter (prepare_md)
 _CAPTION = re.compile(r"([^:]*?)\s*:\s*sr\s*([56])\b(?:\s+stats)?", re.I)
-# printed headers -> the core rulebook's (crb.HEADERS)
+# printed headers -> the core rulebook's (catalog.HEADERS)
 RENAME = {"ATTACK": "ATTACK RATINGS", "SPEED INT": "SPEED INTERVAL", "SENS": "SENSOR", "BOD": "BODY", "ARM": "ARMOR",
           "SEAT": "SEATS", "NAME": "ITEM", "TYPES": "ITEM", "COST MULT": "COST MULTIPLIER"}
 PROSE = {"AR", "DV"}  # an ammunition's modifiers: gear has no attribute for them
@@ -82,11 +82,11 @@ def _sets_by_header(text):
     lines, subjects, sets, cur, i = text.splitlines(), [], [], None, 0
     while i < len(lines):
         ln = lines[i]
-        if ln.startswith("|") and i + 1 < len(lines) and crb._TABLE_SEP.match(lines[i + 1]):
+        if ln.startswith("|") and i + 1 < len(lines) and catalog.TABLE_SEP.match(lines[i + 1]):
             j = i + 2
-            while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and crb._TABLE_SEP.match(lines[j + 1])):
+            while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and catalog.TABLE_SEP.match(lines[j + 1])):
                 j += 1
-            h, rows = crb._cells(ln), [crb._cells(r) for r in lines[i + 2:j]]
+            h, rows = catalog.table_cells(ln), [catalog.table_cells(r) for r in lines[i + 2:j]]
             if sum(x.upper() == "COST" for x in h) > 1:
                 return None
             if not _sr5(h):
@@ -151,13 +151,13 @@ def _stat_sets(text):
             out.append((subj, [], []))  # a caption with no table under it
     while i < len(lines):
         ln = lines[i]
-        if ln.startswith("|") and i + 1 < len(lines) and crb._TABLE_SEP.match(lines[i + 1]):
+        if ln.startswith("|") and i + 1 < len(lines) and catalog.TABLE_SEP.match(lines[i + 1]):
             j = i + 2
-            while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and crb._TABLE_SEP.match(lines[j + 1])):
+            while j < len(lines) and lines[j].startswith("|") and not (j + 1 < len(lines) and catalog.TABLE_SEP.match(lines[j + 1])):
                 j += 1
             seen = True
             if mode:
-                tabs.append((crb._cells(ln), [crb._cells(r) for r in lines[i + 2:j]]))
+                tabs.append((catalog.table_cells(ln), [catalog.table_cells(r) for r in lines[i + 2:j]]))
             i = j
             continue
         if caps := _captions(ln):
@@ -252,7 +252,7 @@ def _prep(bs, report):
     for b in items:
         sets = _sets_by_header(b.text) or _stat_sets(b.text)
         sr6 = re.search(r"SR6 availability is (\d+)\s*\(?([LIF]?)\)?", " ".join((b.text or "").split()))
-        if not sets and sr6 and (t := next((t for t in crb._tables(b.text) if "COST" in {h.upper() for h in t[0]}
+        if not sets and sr6 and (t := next((t for t in catalog.md_tables(b.text) if "COST" in {h.upper() for h in t[0]}
                                              and _sr5(t[0]) and t[1]), None)):
             # (a Fifth Edition box whose note gives the Sixth's availability, `SR6 availability is 5I`: the item, its
             # SR5 damage left out)
@@ -310,6 +310,6 @@ def kind(chapter, b, parent2):
 
 def extract(regrouped, ctx=None):
     report = []
-    res = crb.extract(_prep(list(blocks(regrouped)), report), ctx, book=sys.modules[__name__])
+    res = catalog.read(_prep(list(blocks(regrouped)), report), ctx, sys.modules[__name__])
     res.report += report  # a stat set that doesn't read
     return res

@@ -6,31 +6,56 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { cookieFor, createServer } from './_signin'
+// @ts-expect-error plain JS module
+import { safeName } from '../../server/books.mjs'
 
 // the stub worker runs as a child process: a loaded machine can take seconds per job (waitFor allows 15 s)
 vi.setConfig({ testTimeout: 30000 })
 
 const dir = mkdtempSync(join(tmpdir(), 'ca2-books-'))
-const custom = join(dir, 'custom'), library = join(dir, 'library')
+const custom = join(dir, 'custom'),
+  library = join(dir, 'library')
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
-beforeAll(() => new Promise<void>(ok => {
-  mkdirSync(join(library, 'stale-1'), { recursive: true }) // left mid-import by a restart
-  writeFileSync(join(library, 'stale-1', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
-  // library/sr6/: the Shadowrun 6 area's books (S1), never an Anarchy book, even holding a made-up core import mid-job
-  mkdirSync(join(library, 'sr6'), { recursive: true })
-  writeFileSync(join(library, 'sr6', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
-  writeFileSync(join(library, 'sr6', 'import.xml'), '<import recipe="crb" source="MADEUP" file="made-up.pdf" sha256="00"><files/><report/></import>')
-  srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
-  srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-}))
+beforeAll(
+  () =>
+    new Promise<void>(ok => {
+      mkdirSync(join(library, 'stale-1'), { recursive: true }) // left mid-import by a restart
+      writeFileSync(join(library, 'stale-1', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
+      // library/sr6/: the Shadowrun 6 area's books (S1), never an Anarchy book, even holding a made-up core import mid-job
+      mkdirSync(join(library, 'sr6'), { recursive: true })
+      writeFileSync(join(library, 'sr6', 'status.xml'), '<status state="converting" updated="2026-09-28T00:00:00Z"></status>')
+      writeFileSync(join(library, 'sr6', 'import.xml'), '<import recipe="crb" source="MADEUP" file="made-up.pdf" sha256="00"><files/><report/></import>')
+      srv = createServer({
+        staticDir: 'public',
+        charDir: join(dir, 'chars'),
+        customDir: custom,
+        libraryDir: library,
+        python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+      })
+      srv.listen(0, () => {
+        base = `http://127.0.0.1:${srv.address().port}`
+        ok()
+      })
+    }),
+)
 afterAll(() => srv.close())
 
-type Book = { id: string; file: string; state: string; message: string; source?: string; recipe?: string; counts: Record<string, number>; busy: boolean; review?: string }
+type Book = {
+  id: string
+  file: string
+  state: string
+  message: string
+  source?: string
+  recipe?: string
+  counts: Record<string, number>
+  busy: boolean
+  review?: string
+}
 const list = async (): Promise<Book[]> => (await fetch(`${base}/api/books`)).json()
 async function waitFor(id: string, state: string): Promise<Book | undefined> {
-  for (let i = 0; i < 600; i++) { // 15 s
+  for (let i = 0; i < 600; i++) {
+    // 15 s
     const b = (await list()).find(x => x.id === id)
     if (state === 'gone' ? !b : b?.state === state && !b.busy) return b
     await new Promise(r => setTimeout(r, 25))
@@ -43,7 +68,10 @@ async function upload(body: Buffer, name = 'book.pdf', type = 'application/pdf')
 }
 function raw(method: string, path: string, headers: Record<string, string | number> = {}): Promise<number> {
   return new Promise((ok, fail) => {
-    const req = request(`${base}${path}`, { method, headers: { Origin: base, Cookie: cookieFor(base), ...headers } }, res => { res.resume(); ok(res.statusCode ?? 0) })
+    const req = request(`${base}${path}`, { method, headers: { Origin: base, Cookie: cookieFor(base), ...headers } }, res => {
+      res.resume()
+      ok(res.statusCode ?? 0)
+    })
     req.on('error', fail)
     req.end()
   })
@@ -84,8 +112,13 @@ test('uploads that are not PDFs or are too big are refused', async () => {
 })
 
 test('the Library is not reachable by any URL', async () => {
-  for (const p of [`/custom/../library/${first}/original.pdf`, `/library/${first}/original.pdf`, `/custom/..%2Flibrary/${first}/original.pdf`,
-    `/custom/%2e%2e/library/${first}/original.pdf`, '/library/.config/ai-keys.xml'])
+  for (const p of [
+    `/custom/../library/${first}/original.pdf`,
+    `/library/${first}/original.pdf`,
+    `/custom/..%2Flibrary/${first}/original.pdf`,
+    `/custom/%2e%2e/library/${first}/original.pdf`,
+    '/library/.config/ai-keys.xml',
+  ])
     expect((await fetch(`${base}${p}`)).status, p).toBe(404)
   expect(await raw('GET', `/custom/../library/${first}/original.pdf`)).toBe(404)
   for (const p of ['/api/books/..%2F..%2Fcustom/report', '/api/books/.config/report', '/api/review/..%2Fx'])
@@ -145,10 +178,14 @@ test('a busy book shows Waiting or Importing, never its last state or error', as
 test('AI settings: keys are write-only', async () => {
   let x = await (await fetch(`${base}/api/ai-settings`)).text()
   expect(x).toContain('<key provider="anthropic" set="false"/>')
-  const providers = '<?xml version="1.0"?>\n<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"/></ca2:aiproviders>'
+  const providers =
+    '<?xml version="1.0"?>\n<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"/></ca2:aiproviders>'
   expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers })).status).toBe(200)
-  expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers.replace('</ca2', '<key provider="anthropic">k</key></ca2') })).status).toBe(400)
-  const keys = '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-TOPSECRET999</key><key provider="bogus">x</key></ca2:aikeys>'
+  expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers.replace('</ca2', '<key provider="anthropic">k</key></ca2') })).status).toBe(
+    400,
+  )
+  const keys =
+    '<ca2:aikeys xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><key provider="anthropic">sk-ant-TOPSECRET999</key><key provider="bogus">x</key></ca2:aikeys>'
   expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: keys })).status).toBe(204)
   expect(readFileSync(join(library, '.config', 'ai-keys.xml'), 'utf8')).toContain('sk-ant-TOPSECRET999')
   expect(readFileSync(join(library, '.config', 'ai-providers.xml'), 'utf8')).not.toContain('TOPSECRET')
@@ -160,7 +197,8 @@ test('AI settings: keys are write-only', async () => {
 })
 
 test('changing a provider address clears its key', async () => {
-  const providers = (url: string) => `<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"${url}/></ca2:aiproviders>`
+  const providers = (url: string) =>
+    `<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="anthropic"><provider id="anthropic" enabled="true"${url}/></ca2:aiproviders>`
   expect(await (await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers('') })).json()).toEqual({ cleared: [] })
   expect(await (await fetch(`${base}/api/ai-settings`)).text()).toContain('<key provider="anthropic" set="true"/>')
   const r = await (await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: providers(' baseUrl="http://evil.example"') })).json()
@@ -186,7 +224,15 @@ test('model lists: the provider is checked, errors come back plainly and never w
   r = await models('anthropic') // its key was cleared when its address changed
   expect([r.status, await r.json()]).toEqual([502, { error: 'no API key is set for anthropic' }])
   r = await models('anythingllm') // workspaces: the name to show, the slug to save
-  expect([r.status, await r.json()]).toEqual([200, { workspaces: [{ slug: 'shadowrun-anarchy-20', name: 'Shadowrun Anarchy 2.0' }, { slug: 'rules', name: 'Rules' }] }])
+  expect([r.status, await r.json()]).toEqual([
+    200,
+    {
+      workspaces: [
+        { slug: 'shadowrun-anarchy-20', name: 'Shadowrun Anarchy 2.0' },
+        { slug: 'rules', name: 'Rules' },
+      ],
+    },
+  ])
   expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-bad-LEAKME4242</key>' })).status).toBe(204)
   r = await models('openai')
   const text = await r.text()
@@ -229,9 +275,11 @@ test('AI proposals: dry run, propose, review, apply', async () => {
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: accepted })).status).toBe(204)
   expect((await fetch(`${base}/api/review/${id}`, { method: 'PUT', body: '<!DOCTYPE x [<!ENTITY a "b">]><review/>' })).status).toBe(400)
   expect((await fetch(`${base}/api/review/${id}?apply=1&source=../x&name=A&canon=false`, { method: 'PUT', body: accepted })).status).toBe(400)
-  const r = await fetch(`${base}/api/review/${id}?apply=1&source=MYBOOK&name=My%20Book&canon=false`, { method: 'PUT', body: accepted })
+  // a name that reads like the worker's own flag stays the name: one --name=… argument
+  const r = await fetch(`${base}/api/review/${id}?apply=1&source=MYBOOK&name=--canon&canon=false`, { method: 'PUT', body: accepted })
   expect(r.status).toBe(202)
   expect(await waitFor(id, 'done')).toMatchObject({ source: 'MYBOOK' })
+  expect(readFileSync(join(library, id, 'import.xml'), 'utf8')).toMatch(/name="--canon" canon="false"/)
   expect(existsSync(join(custom, 'imported', 'mybook', 'amps.xml'))).toBe(true)
   expect((await fetch(`${base}/api/books/${id}/reimport`, { method: 'POST' })).status).toBe(409) // would drop the applied review
 })
@@ -256,29 +304,44 @@ test('re-import clears and rebuilds; delete removes outputs, and with files=1 th
 })
 
 test('a stop starts nothing more: the running import is killed and the queued one never starts', async () => {
-  const d = mkdtempSync(join(tmpdir(), 'ca2-books-stop-')), log = join(d, 'calls.log')
+  const d = mkdtempSync(join(tmpdir(), 'ca2-books-stop-')),
+    log = join(d, 'calls.log')
   writeFileSync(log, '')
   vi.stubEnv('STUB_LOG', log)
-  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: join(d, 'library'),
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  const s = createServer({
+    staticDir: 'public',
+    charDir: join(d, 'chars'),
+    customDir: join(d, 'custom'),
+    libraryDir: join(d, 'library'),
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   try {
     await new Promise<void>(ok => s.listen(0, ok))
     const at = `http://127.0.0.1:${s.address().port}`
-    const put = (marker: string) => fetch(`${at}/api/books`, { method: 'POST', body: pdf(marker), headers: { 'Content-Type': 'application/pdf', 'X-Filename': `${marker}.pdf` } })
-    const slow = await (await put('slow')).json(), next = await (await put('next')).json()
+    const put = (marker: string) =>
+      fetch(`${at}/api/books`, { method: 'POST', body: pdf(marker), headers: { 'Content-Type': 'application/pdf', 'X-Filename': `${marker}.pdf` } })
+    const slow = await (await put('slow')).json(),
+      next = await (await put('next')).json()
     await vi.waitFor(() => expect(readFileSync(log, 'utf8')).toContain(`run ${slow.id}`), { timeout: 15000, interval: 25 })
     s.stopJobs()
     await new Promise(r => setTimeout(r, 2500)) // past the slow run's 1.5 s: before the fix the queued book started here
     expect(readFileSync(log, 'utf8')).not.toContain(next.id)
-  } finally { vi.unstubAllEnvs(); s.close() }
+  } finally {
+    vi.unstubAllEnvs()
+    s.close()
+  }
 })
 
 test('on start, the same PDF uploaded more than once (per game) is merged: the newest successful entry stays, the others are removed', async () => {
-  const d = mkdtempSync(join(tmpdir(), 'ca2-books-dupes-')), log = join(d, 'calls.log'), lib = join(d, 'library')
+  const d = mkdtempSync(join(tmpdir(), 'ca2-books-dupes-')),
+    log = join(d, 'calls.log'),
+    lib = join(d, 'library')
   writeFileSync(log, '')
   vi.stubEnv('STUB_LOG', log)
   const said = vi.spyOn(console, 'log').mockImplementation(() => {})
-  const S1 = 'a'.repeat(64), S2 = 'b'.repeat(64), S3 = 'c'.repeat(64)
+  const S1 = 'a'.repeat(64),
+    S2 = 'b'.repeat(64),
+    S3 = 'c'.repeat(64)
   const entry = (at: string, id: string, sha: string, uploaded: string, state: string, extra: Record<string, string> = {}) => {
     mkdirSync(join(lib, at, id), { recursive: true })
     writeFileSync(join(lib, at, id, 'upload.xml'), `<upload file="${id}.pdf" size="1" sha256="${sha}" uploaded="${uploaded}"/>\n`)
@@ -294,16 +357,35 @@ test('on start, the same PDF uploaded more than once (per game) is merged: the n
   entry('sr6', 's-a', S2, '2026-01-01T00:00:00.000Z', 'done')
   entry('sr6', 's-b', S2, '2026-02-01T00:00:00.000Z', 'skipped')
   entry('sr6', 's-c', S1, '2026-01-01T00:00:00.000Z', 'done') // the same file as x-*, but the other game's
-  const s = createServer({ staticDir: 'public', charDir: join(d, 'chars'), customDir: join(d, 'custom'), libraryDir: lib,
-    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'] })
+  const s = createServer({
+    staticDir: 'public',
+    charDir: join(d, 'chars'),
+    customDir: join(d, 'custom'),
+    libraryDir: lib,
+    python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
+  })
   try {
     await (s as unknown as { started: Promise<void> }).started
     const left = () => [...readdirSync(lib).filter(n => /^[a-z]-/.test(n)), ...readdirSync(join(lib, 'sr6')).map(n => `sr6/${n}`)].sort()
     await vi.waitFor(() => expect(left()).toEqual(['sr6/s-b', 'sr6/s-c', 'x-mid', 'y-one', 'z-b']), { timeout: 15000, interval: 25 })
-    expect(readFileSync(log, 'utf8').split('\n').filter(Boolean).map(l => l.split(' ').slice(0, 2).join(' ')).sort())
-      .toEqual(['remove x-new', 'remove x-old', 'remove z-a', 'sr6:remove s-a'])
+    expect(
+      readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map(l => l.split(' ').slice(0, 2).join(' '))
+        .sort(),
+    ).toEqual(['remove x-new', 'remove x-old', 'remove z-a', 'sr6:remove s-a'])
     // the data pack's mark on that file moves to the entry kept (the start-up core rebuild reads it by the file's sha256)
     expect(readFileSync(join(lib, 'x-mid', 'core-rebuild.xml'), 'utf8')).toContain('pack="2026-01-01"')
     expect(said.mock.calls.flat().join('\n')).toContain('x-mid.pdf was uploaded 3 times: kept x-mid, removing x-new, x-old')
-  } finally { said.mockRestore(); vi.unstubAllEnvs(); s.stopJobs(); s.close() }
+  } finally {
+    said.mockRestore()
+    vi.unstubAllEnvs()
+    s.stopJobs()
+    s.close()
+  }
+})
+
+test('an uploaded file name cut to its last 120 characters never starts with a dash', () => {
+  expect(safeName('x'.repeat(200) + '-'.repeat(10) + 'y'.repeat(110) + '.pdf')).toBe('y'.repeat(110) + '.pdf')
 })

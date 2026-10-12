@@ -6,7 +6,8 @@ import { join } from 'node:path'
 // in tests/server/datapack-python.test.ts). The core files are moved away on the server's own folder (playwright.config.ts sets
 // where) and the pack brings them back; the moved copy is put back if the test fails half-way.
 test('download a data pack, lose the core data, upload the pack from the setup screen (check, then load), build a runner', async ({ page }, info) => {
-  const core = join(process.env.CA2_E2E_DIR!, 'custom', 'imported', 'core'), away = `${core}-away`
+  const core = join(process.env.CA2_E2E_DIR!, 'custom', 'imported', 'core'),
+    away = `${core}-away`
   await page.goto('/#/books')
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download data pack' }).click()])
   expect(download.suggestedFilename()).toMatch(/^chummer-anarchy2-datapack-\d{4}-\d{2}-\d{2}\.zip$/)
@@ -35,10 +36,16 @@ test('download a data pack, lose the core data, upload the pack from the setup s
     await expect(page.getByLabel('Upload data pack')).toBeFocused()
 
     await page.getByLabel('Upload data pack').setInputFiles({ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') })
-    await expect(page.getByRole('alert')).toHaveText('This file can’t be loaded: this file isn’t a data pack (not a zip file). Choose a data pack made by this app.')
+    await expect(page.getByRole('alert')).toHaveText(
+      'This file can’t be loaded: this file isn’t a data pack (not a zip file). Choose a data pack made by this app.',
+    )
     // a reason with a colon of its own: two sentences, not two colons
-    await page.getByLabel('Upload data pack').setInputFiles({ name: 'odd.zip', mimeType: 'application/zip', buffer: Buffer.from('PK\x03\x04\n{"files":{"notes.xml":"<x/>"}}', 'latin1') })
-    await expect(page.getByRole('alert')).toHaveText('This file can’t be loaded. The pack has a file a data pack can’t hold: notes.xml (only datapack.xml and the core files in core/). Choose a data pack made by this app.')
+    await page
+      .getByLabel('Upload data pack')
+      .setInputFiles({ name: 'odd.zip', mimeType: 'application/zip', buffer: Buffer.from('PK\x03\x04\n{"files":{"notes.xml":"<x/>"}}', 'latin1') })
+    await expect(page.getByRole('alert')).toHaveText(
+      'This file can’t be loaded. The pack has a file a data pack can’t hold: notes.xml (only datapack.xml and the core files in core/). Choose a data pack made by this app.',
+    )
 
     await page.getByLabel('Upload data pack').setInputFiles(zip)
     await expect(row('Replaces')).toHaveText('Nothing: the server has none of these tables yet')

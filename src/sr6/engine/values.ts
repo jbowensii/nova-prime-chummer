@@ -22,8 +22,13 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
   if (s == null) return { n: null, ok: true }
   if (s.length > MAX_VALUE) return { n: null, ok: false }
   if (NONE.test(s)) return { n: null, ok: true }
-  const src = s.replace(EACH, '').replace(LEGAL, '').replace(/^\s*\+/, '').replace(/[×x*]/g, ' * ')
-    .replace(/\b(?:rating|capacity|force|level)\b/gi, ' R ').trim()
+  const src = s
+    .replace(EACH, '')
+    .replace(LEGAL, '')
+    .replace(/^\s*\+/, '')
+    .replace(/[×x*]/g, ' * ')
+    .replace(/\b(?:rating|capacity|force|level)\b/gi, ' R ')
+    .trim()
   const tokens = src.split(/\s*([*/^+()])\s*|\s+/).filter(Boolean)
   // `300/350` is two prices (two items), not a division: only a formula with the rating divides
   if (tokens.includes('/') && !tokens.includes('R')) return { n: null, ok: false }
@@ -32,16 +37,34 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
   const factor = (): number => {
     const t = tokens[i++]
     if (t === 'R') return rating
-    if (t === '(') { const v = expr(); if (tokens[i++] !== ')') return NaN; return v }
+    if (t === '(') {
+      const v = expr()
+      if (tokens[i++] !== ')') return NaN
+      return v
+    }
     return t !== undefined && /^(\d+(\.\d+)?|\.\d+)$/.test(t) ? Number(t) : NaN
   }
-  const power = (): number => { let v = factor(); while (tokens[i] === '^') { i++; v = v ** factor() } return v }
+  const power = (): number => {
+    let v = factor()
+    while (tokens[i] === '^') {
+      i++
+      v = v ** factor()
+    }
+    return v
+  }
   const term = (): number => {
     let v = power()
     while (tokens[i] === '*' || tokens[i] === '/') v = tokens[i++] === '*' ? v * power() : Math.ceil(v / power())
     return v
   }
-  const expr = (): number => { let v = term(); while (tokens[i] === '+') { i++; v += term() } return v }
+  const expr = (): number => {
+    let v = term()
+    while (tokens[i] === '+') {
+      i++
+      v += term()
+    }
+    return v
+  }
   const n = expr()
   return i === tokens.length && Number.isFinite(n) ? { n, ok: true } : { n: null, ok: false }
 }
@@ -49,7 +72,8 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
 /** An armor's Social modifier as printed (`+2`, `–4`, `Rating`, a dash) at `rating`: a number, else null (none printed, or
  *  a value the app can't read). The book prints minus as an en dash. */
 export function armorSocial(s: string | undefined, rating = 1): number | null {
-  const m = s?.match(/^\s*([-–−]?)\s*(.*)$/), v = m ? rated(m[2], rating).n : null
+  const m = s?.match(/^\s*([-–−]?)\s*(.*)$/),
+    v = m ? rated(m[2], rating).n : null
   return v === null ? null : m![1] ? -v : v
 }
 
@@ -63,14 +87,23 @@ export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'
   if (NONE.test(s)) return { n: null, ok: true }
   const m = s.match(/^(.*?)\s*\+\s*(\d+)D6\s*$/)
   // the book prints minus as an en dash (`F–2`) and nests brackets (`[(F x 2) + 4] + 2D6`)
-  const src = (m ? m[1] : s).replace(/[–−]/g, '-').replace(/\[/g, '(').replace(/\]/g, ')').replace(/[×x*]/g, ' * ')
-    .replace(new RegExp(`\\b(?:Rating|${letter})\\b`, 'g'), ' R ').trim()
+  const src = (m ? m[1] : s)
+    .replace(/[–−]/g, '-')
+    .replace(/\[/g, '(')
+    .replace(/\]/g, ')')
+    .replace(/[×x*]/g, ' * ')
+    .replace(new RegExp(`\\b(?:Rating|${letter})\\b`, 'g'), ' R ')
+    .trim()
   const tokens = src.split(/\s*([*/+\-()])\s*|\s+/).filter(Boolean)
   let i = 0
   const factor = (): number => {
     const t = tokens[i++]
     if (t === 'R') return rating
-    if (t === '(') { const v = expr(); if (tokens[i++] !== ')') return NaN; return v }
+    if (t === '(') {
+      const v = expr()
+      if (tokens[i++] !== ')') return NaN
+      return v
+    }
     return t !== undefined && /^(\d+(\.\d+)?|\.\d+)$/.test(t) ? Number(t) : NaN
   }
   const term = (): number => {
@@ -78,7 +111,11 @@ export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'
     while (tokens[i] === '*' || tokens[i] === '/') v = tokens[i++] === '*' ? v * factor() : Math.ceil(v / factor())
     return v
   }
-  const expr = (): number => { let v = term(); while (tokens[i] === '+' || tokens[i] === '-') v = tokens[i++] === '+' ? v + term() : v - term(); return v }
+  const expr = (): number => {
+    let v = term()
+    while (tokens[i] === '+' || tokens[i] === '-') v = tokens[i++] === '+' ? v + term() : v - term()
+    return v
+  }
   const n = expr()
   if (i !== tokens.length || !Number.isFinite(n)) return { n: null, ok: false }
   return m ? { n, dice: `${m[2]}D6`, ok: true } : { n, ok: true }
@@ -94,7 +131,8 @@ export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
 export function ratingRange(s: string | undefined): number[] {
   const m = s?.trim().match(/^(\d+)(?:\s*[–-]\s*(\d+))?$/)
   if (!m) return []
-  const lo = Number(m[1]), hi = Number(m[2] ?? m[1])
+  const lo = Number(m[1]),
+    hi = Number(m[2] ?? m[1])
   return Array.from({ length: Math.max(0, hi - lo + 1) }, (_, k) => lo + k)
 }
 
@@ -118,7 +156,10 @@ export function attackRatings(s: string | undefined): { bands: (number | null)[]
   const bands = Array.from({ length: 5 }, (_, k) => {
     const p = parts[k]
     if (p === undefined || NONE.test(p)) return null
-    if (!/^\s*\d+\s*$/.test(p)) { ok = false; return null }
+    if (!/^\s*\d+\s*$/.test(p)) {
+      ok = false
+      return null
+    }
     return Number(p)
   })
   return { bands, ok }
@@ -127,11 +168,20 @@ export function attackRatings(s: string | undefined): { bands: (number | null)[]
 /** Finds a catalog entry by kind and id (a formula's ref()); undefined for a kind or id the catalog doesn't have. */
 export type Find = (kind: string, id: string) => Sr6Entry | undefined
 /** As Find, over the engine's catalog view. */
-export const dataFind = (data: { entry(kind: Sr6Kind, id: string): Sr6Entry | undefined }): Find =>
-  (kind, id) => (Object.hasOwn(SR6_KINDS, kind) ? data.entry(kind as Sr6Kind, id) : undefined)
+export const dataFind =
+  (data: { entry(kind: Sr6Kind, id: string): Sr6Entry | undefined }): Find =>
+  (kind, id) =>
+    Object.hasOwn(SR6_KINDS, kind) ? data.entry(kind as Sr6Kind, id) : undefined
 /** A field's value: n null when there is none (ok) or the app can't work it out (not ok, error says why for a formula).
  *  formula: the entry's formula for the field; notes: what it had to assume; perLine: the formula counts the quantity. */
-export interface BookValue { n: number | null; ok: boolean; formula?: Formula; notes: string[]; error?: string; perLine?: boolean }
+export interface BookValue {
+  n: number | null
+  ok: boolean
+  formula?: Formula
+  notes: string[]
+  error?: string
+  perLine?: boolean
+}
 
 /** "1,000¥" → "1000": a printed value as rated() reads it */
 const plain = (s: string | undefined) => s?.replace(/¥/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
@@ -140,13 +190,20 @@ const plain = (s: string | undefined) => s?.replace(/¥/g, '').replace(/(\d),(?=
  *  else the printed value read by rated() (an absent rating reads as 1). A ref() looks up `find`; one that finds nothing
  *  leaves the value unworked (n null, not ok), never 0. */
 export function bookValue(e: Sr6Entry | undefined, field: string, rating?: number, find?: Find, vars: Omit<Vars, 'R' | 'B'> = {}, depth = 0): BookValue {
-  const raw = e?.attrs[field], f = formulaOf(e?.formulas, field)
-  if (!f) { const v = rated(raw, rating ?? 1); return { n: v.n, ok: v.ok, notes: [] } }
+  const raw = e?.attrs[field],
+    f = formulaOf(e?.formulas, field)
+  if (!f) {
+    const v = rated(raw, rating ?? 1)
+    return { n: v.n, ok: v.ok, notes: [] }
+  }
   if (depth > 8) return { n: null, ok: false, formula: f, notes: [], error: 'its refs go round in a circle' }
   const printed = rated(plain(raw), rating ?? 1)
-  const r = evalFormula(f, { ...vars, R: rating, B: printed.ok ? printed.n : null },
-    (kind, id, fld, at) => bookValue(find?.(kind, id), fld, at, find, {}, depth + 1).n)
-  return { n: r.n, ok: r.n !== null, formula: f, notes: r.notes, ...r.error ? { error: r.error } : {}, ...r.usesQ ? { perLine: true } : {} }
+  const r = evalFormula(
+    f,
+    { ...vars, R: rating, B: printed.ok ? printed.n : null },
+    (kind, id, fld, at) => bookValue(find?.(kind, id), fld, at, find, {}, depth + 1).n,
+  )
+  return { n: r.n, ok: r.n !== null, formula: f, notes: r.notes, ...(r.error ? { error: r.error } : {}), ...(r.usesQ ? { perLine: true } : {}) }
 }
 
 /** A formula's values over the ratings the entry comes in (just one without a rating range): [lowest, highest], or null
@@ -155,5 +212,5 @@ export function formulaRange(e: Sr6Entry, field: string, find?: Find): [number, 
   const rs = ratingRange(e.attrs.rating)
   const ns = (rs.length ? rs : [undefined]).map(r => bookValue(e, field, r, find).n)
   if (ns.some(n => n === null)) return null
-  return [Math.min(...ns as number[]), Math.max(...ns as number[])]
+  return [Math.min(...(ns as number[])), Math.max(...(ns as number[]))]
 }

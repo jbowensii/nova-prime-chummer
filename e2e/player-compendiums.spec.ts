@@ -12,48 +12,71 @@ import { anarchyState } from './session'
 // campaign, never Secret Kit's; Eve deletes Table Kit and Pat's runner keeps its entry, noted on Review. Every name and value
 // made up. Runs in order.
 const PW = { eve: 'eve-password-1', pat: 'pat-password-1' }
-let server: ReturnType<typeof createServer>, base = ''
+let server: ReturnType<typeof createServer>,
+  base = ''
 let cookie = '' // Eve's session, for the API
-const CA2 = { table: 'a1a1a1a1a1a1', camp: 'a2a2a2a2a2a2', secret: 'a3a3a3a3a3a3' }, SR6 = { table: 'b1b1b1b1b1b1', secret: 'b3b3b3b3b3b3' }
+const CA2 = { table: 'a1a1a1a1a1a1', camp: 'a2a2a2a2a2a2', secret: 'a3a3a3a3a3a3' },
+  SR6 = { table: 'b1b1b1b1b1b1', secret: 'b3b3b3b3b3b3' }
 let campaign = ''
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: async ({}, use) => use(anarchyState(base)), viewport: { width: 1400, height: 900 } })
 
 const origin = () => base.replace(/\/$/, '')
-const api = (method: string, path: string, body?: string, type = 'application/xml') => fetch(`${origin()}${path}`, { method, body,
-  headers: { Origin: origin(), Cookie: cookie, ...(body ? { 'Content-Type': type } : {}) } })
-const ca2 = (id: string, name: string, source: string, sharing: string, item: string) => '<?xml version="1.0" encoding="UTF-8"?>\n'
-  + `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="compendium" version="1" id="${id}" name="${name}" source="${source}" ${sharing} updatedAt="2026-10-05T00:00:00.000Z">`
-  + `<item id="${source.toLowerCase()}.blade" kind="weapon" dv="STR+2" ranges="OK/-/-/-" source="${source}" page="1"><name>${item}</name><text>Made up.</text></item></ca2:data>\n`
-const sr6 = (id: string, name: string, source: string, sharing: string, item: string) => '<?xml version="1.0" encoding="UTF-8"?>\n'
-  + `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1" id="${id}" name="${name}" source="${source}" ${sharing} updatedAt="2026-10-05T00:00:00.000Z">`
-  + `<gear id="${source.toLowerCase()}.torch" source="${source}" page="1" category="tools" avail="1" cost="25"><name>${item}</name><text>Made up.</text></gear></sr6:data>\n`
+const api = (method: string, path: string, body?: string, type = 'application/xml') =>
+  fetch(`${origin()}${path}`, { method, body, headers: { Origin: origin(), Cookie: cookie, ...(body ? { 'Content-Type': type } : {}) } })
+const ca2 = (id: string, name: string, source: string, sharing: string, item: string) =>
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  `<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="compendium" version="1" id="${id}" name="${name}" source="${source}" ${sharing} updatedAt="2026-10-05T00:00:00.000Z">` +
+  `<item id="${source.toLowerCase()}.blade" kind="weapon" dv="STR+2" ranges="OK/-/-/-" source="${source}" page="1"><name>${item}</name><text>Made up.</text></item></ca2:data>\n`
+const sr6 = (id: string, name: string, source: string, sharing: string, item: string) =>
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1" id="${id}" name="${name}" source="${source}" ${sharing} updatedAt="2026-10-05T00:00:00.000Z">` +
+  `<gear id="${source.toLowerCase()}.torch" source="${source}" page="1" category="tools" avail="1" cost="25"><name>${item}</name><text>Made up.</text></gear></sr6:data>\n`
 
 test.beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-player-comp-e2e-')), config = join(dir, 'library', '.config')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-player-comp-e2e-')),
+    config = join(dir, 'library', '.config')
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
   mkdirSync(config, { recursive: true })
-  writeFileSync(join(config, 'users.xml'), await usersFile([{ username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(config, 'users.xml'),
+    await usersFile([
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>((ok, fail) => server.once('error', fail).listen(0, '127.0.0.1', ok))
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}/`
-  const r = await fetch(`${origin()}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: 'eve', password: PW.eve }),
-    headers: { 'Content-Type': 'application/json', Origin: origin() } })
-  cookie = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+  const r = await fetch(`${origin()}/api/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username: 'eve', password: PW.eve }),
+    headers: { 'Content-Type': 'application/json', Origin: origin() },
+  })
+  cookie = r.headers
+    .getSetCookie()
+    .find(c => /session=/.test(c))!
+    .split(';')[0]
   campaign = (await (await api('POST', '/api/campaigns', JSON.stringify({ name: 'Seattle' }), 'application/json')).json()).id
   expect((await api('POST', `/api/campaigns/${campaign}/members`, JSON.stringify({ user: 'pat' }), 'application/json')).ok).toBe(true)
-  for (const [id, xml] of [[CA2.table, ca2(CA2.table, 'Table Kit', 'KIT', 'sharing="table"', 'Kit Blade')],
+  for (const [id, xml] of [
+    [CA2.table, ca2(CA2.table, 'Table Kit', 'KIT', 'sharing="table"', 'Kit Blade')],
     [CA2.camp, ca2(CA2.camp, 'Camp Kit', 'CAMPKIT', `sharing="campaign" campaign="${campaign}"`, 'Camp Club')],
-    [CA2.secret, ca2(CA2.secret, 'Secret Kit', 'SECRET', 'sharing="private"', 'Secret Knife')]])
+    [CA2.secret, ca2(CA2.secret, 'Secret Kit', 'SECRET', 'sharing="private"', 'Secret Knife')],
+  ])
     expect((await api('PUT', `/api/compendiums/${id}`, xml)).status).toBe(201)
-  for (const [id, xml] of [[SR6.table, sr6(SR6.table, 'Table Kit Six', 'SKIT', 'sharing="table"', 'Kit Torch')],
-    [SR6.secret, sr6(SR6.secret, 'Secret Six', 'SSECRET', 'sharing="private"', 'Secret Torch')]])
+  for (const [id, xml] of [
+    [SR6.table, sr6(SR6.table, 'Table Kit Six', 'SKIT', 'sharing="table"', 'Kit Torch')],
+    [SR6.secret, sr6(SR6.secret, 'Secret Six', 'SSECRET', 'sharing="private"', 'Secret Torch')],
+  ])
     expect((await api('PUT', `/api/sr6/compendiums/${id}`, xml)).status).toBe(201)
 })
-test.afterAll(() => { server.stopJobs(); server.close() })
+test.afterAll(() => {
+  server.stopJobs()
+  server.close()
+})
 
 async function signIn(page: Page, path: string) {
   await page.goto(path)
@@ -62,8 +85,8 @@ async function signIn(page: Page, path: string) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByRole('heading', { name: 'Your runners' })).toBeVisible()
 }
-const saved = (page: Page, text: string) => page.waitForResponse(r => r.request().method() === 'PUT' && /\/api\/(sr6\/)?characters\//.test(r.url())
-  && !!r.request().postData()?.includes(text))
+const saved = (page: Page, text: string) =>
+  page.waitForResponse(r => r.request().method() === 'PUT' && /\/api\/(sr6\/)?characters\//.test(r.url()) && !!r.request().postData()?.includes(text))
 
 test('Anarchy: a player picks a table-shared entry, marked House; a campaign one only in that campaign; a private one never', async ({ page }) => {
   await signIn(page, '/')

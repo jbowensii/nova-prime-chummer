@@ -7,7 +7,8 @@ import { blankSr6 } from '../../src/sr6/model/character'
 import { made } from './fixture'
 
 test('a refusal comes back as a sentence', () => {
-  const { data, cr } = made(), ch = blankSr6()
+  const { data, cr } = made(),
+    ch = blankSr6()
   const r = runAct(ch, { op: 'attribute', target: 'bod', pool: 'points', delta: -1 }, data, cr)
   expect(r).toEqual({ error: 'Can’t go below zero.' })
   expect(reasonText('free-trait')).toBe('A metatype trait can’t be removed.')
@@ -16,14 +17,16 @@ test('a refusal comes back as a sentence', () => {
 })
 
 test('an allowed step changes a copy', () => {
-  const { data, cr } = made(), ch = blankSr6()
+  const { data, cr } = made(),
+    ch = blankSr6()
   const r = runAct(ch, { op: 'attribute', target: 'bod', pool: 'points', delta: 2 }, data, cr)
   expect('ch' in r && r.ch.build.attributes.bod.points).toBe(2)
   expect(ch.build.attributes.bod.points).toBe(0)
 })
 
 test('the picker prices an item at the rating and grade picked', () => {
-  const { data, cr } = made(), box = data.entry('electronics', 'crb.buzz-box')!
+  const { data, cr } = made(),
+    box = data.entry('electronics', 'crb.buzz-box')!
   expect(priceAt(box, 3)).toEqual({ cost: '450¥', avail: '3', essence: '' })
   expect(priceAt({ ...box, attrs: { ...box.attrs, cost: '12x' } }, 3).cost).toBe('?') // a cost the app can't read
   const eyes = data.entry('augmentations', 'crb.glow-eyes')!

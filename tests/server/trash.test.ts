@@ -12,33 +12,48 @@ import { usersFile } from '../../server/auth.mjs'
 
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', pat: 'pat-password-1', kim: 'kim-password-1' }
 type Who = keyof typeof PW
-const dir = mkdtempSync(join(tmpdir(), 'ca2-trash-')), chars = join(dir, 'chars')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-trash-')),
+  chars = join(dir, 'chars')
 const jar = {} as Record<Who, string>
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 
 beforeAll(async () => {
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
-    { username: 'kim', password: PW.kim, role: 'player' }]))
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+      { username: 'kim', password: PW.kim, role: 'player' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW) as Who[]) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
-const call = (who: Who, method: string, path: string, body?: string) =>
-  fetch(`${base}${path}`, { method, body, headers: { Origin: base, Cookie: jar[who] } })
+const call = (who: Who, method: string, path: string, body?: string) => fetch(`${base}${path}`, { method, body, headers: { Origin: base, Cookie: jar[who] } })
 const runner = (id: string, street: string) =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="${id}" streetName="${street}" metatype="ork" level="runner" updatedAt="2026-09-27"><build/></ca2:character>`
 const list = async (who: Who, q = '') => (await call(who, 'GET', `/api/trash${q}`)).json()
-const files = (user: string) => readdirSync(join(chars, user)).filter(f => f.endsWith('.xml')).sort()
+const files = (user: string) =>
+  readdirSync(join(chars, user))
+    .filter(f => f.endsWith('.xml'))
+    .sort()
 
 test('delete → trash → restore, back under its own id', async () => {
   const made = await call('pat', 'PUT', '/api/characters/p1', runner('p1', 'Ratchet &amp; Co'))
@@ -75,8 +90,13 @@ test('restoring a runner whose id is taken makes a copy with a new id and a clea
 })
 
 test('restoredCopy keeps the XML well formed: one id, one street name, escaped', () => {
-  const x = restoredCopy('<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" name="A &amp; B" streetName="" id="old" rev="7"><build/></ca2:character>', 'new')
-  expect(x).toBe('<ca2:character id="new" streetName="A &amp; B (restored copy)" xmlns:ca2="urn:chummer-anarchy2:character:1" name="A &amp; B" rev="1"><build/></ca2:character>')
+  const x = restoredCopy(
+    '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" name="A &amp; B" streetName="" id="old" rev="7"><build/></ca2:character>',
+    'new',
+  )
+  expect(x).toBe(
+    '<ca2:character id="new" streetName="A &amp; B (restored copy)" xmlns:ca2="urn:chummer-anarchy2:character:1" name="A &amp; B" rev="1"><build/></ca2:character>',
+  )
   expect(restoredCopy('<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1"/>', 'n')).toContain('id="n" streetName="Unnamed runner (restored copy)"')
 })
 
@@ -115,9 +135,23 @@ test('file names are checked strictly: no traversal, only *.xml in that account�
   writeFileSync(join(chars, 'kim', 'Kim-secret.xml'), runner('ks', 'Secret'))
   mkdirSync(join(chars, 'pat', '.trash'), { recursive: true })
   writeFileSync(join(chars, 'pat', '.trash', '.hidden.xml'), runner('h1', 'Hidden'))
-  for (const f of ['..%2F..%2Fkim%2FKim-secret.xml', '..%5C..%5Ckim%5CKim-secret.xml', '..', '.hidden.xml', 'a..xml', 'notes.txt',
-    'Kim-secret', '%2E%2E', 'a%00.xml', 'x'.repeat(200) + '.xml', '%E0%A4%A.xml'])
-    for (const [method, path] of [['POST', `/api/trash/${f}/restore`], ['DELETE', `/api/trash/${f}`]])
+  for (const f of [
+    '..%2F..%2Fkim%2FKim-secret.xml',
+    '..%5C..%5Ckim%5CKim-secret.xml',
+    '..',
+    '.hidden.xml',
+    'a..xml',
+    'notes.txt',
+    'Kim-secret',
+    '%2E%2E',
+    'a%00.xml',
+    'x'.repeat(200) + '.xml',
+    '%E0%A4%A.xml',
+  ])
+    for (const [method, path] of [
+      ['POST', `/api/trash/${f}/restore`],
+      ['DELETE', `/api/trash/${f}`],
+    ])
       expect((await call('pat', method, path)).status, `${method} ${f}`).toBeGreaterThanOrEqual(400)
   expect((await call('pat', 'POST', '/api/trash/..%2F..%2Fkim%2FKim-secret.xml/restore')).status).toBe(400)
   expect((await call('pat', 'DELETE', '/api/trash/..%2F..%2Fkim%2FKim-secret.xml')).status).toBe(400)
@@ -135,11 +169,15 @@ test('only regular files count: folders named *.xml and links are never listed, 
   const trash = join(chars, 'pat', '.trash')
   mkdirSync(join(trash, 'folder.xml'), { recursive: true })
   let linked = true
-  try { symlinkSync(join(chars, 'kim', 'Kim-secret.xml'), join(trash, 'link.xml')) } catch { linked = false } // Windows without the privilege
+  try {
+    symlinkSync(join(chars, 'kim', 'Kim-secret.xml'), join(trash, 'link.xml'))
+  } catch {
+    linked = false
+  } // Windows without the privilege
   const shown = (await list('pat')).items.map((i: { file: string }) => i.file)
   expect(shown).not.toContain('folder.xml')
   expect(shown).not.toContain('link.xml')
-  for (const f of ['folder.xml', ...linked ? ['link.xml'] : []]) {
+  for (const f of ['folder.xml', ...(linked ? ['link.xml'] : [])]) {
     expect((await call('pat', 'POST', `/api/trash/${f}/restore`)).status).toBe(404)
     expect((await call('pat', 'DELETE', `/api/trash/${f}`)).status).toBe(404)
   }
@@ -151,7 +189,8 @@ test('only regular files count: folders named *.xml and links are never listed, 
 test('emptying with a list deletes only those; the count is what went', async () => {
   const trash = join(chars, 'pat', '.trash')
   for (const f of ['A-1700000000001.xml', 'B-1700000000002.xml', 'C-1700000000003.xml']) writeFileSync(join(trash, f), runner(f[0], f[0]))
-  const del = (body: string) => fetch(`${base}/api/trash`, { method: 'DELETE', body, headers: { Origin: base, Cookie: jar.pat, 'Content-Type': 'application/json' } })
+  const del = (body: string) =>
+    fetch(`${base}/api/trash`, { method: 'DELETE', body, headers: { Origin: base, Cookie: jar.pat, 'Content-Type': 'application/json' } })
   expect(await (await del(JSON.stringify({ files: ['A-1700000000001.xml', 'B-1700000000002.xml', 'gone.xml', '../x.xml'] }))).json()).toEqual({ deleted: 2 })
   expect(readdirSync(trash)).toContain('C-1700000000003.xml')
   for (const bad of ['nope', '{"files":"x"}', '{"files":[1]}']) expect((await del(bad)).status).toBe(400)

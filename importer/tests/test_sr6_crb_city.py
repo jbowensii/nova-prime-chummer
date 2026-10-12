@@ -92,6 +92,9 @@ class CityChapterTest(unittest.TestCase):
             cls.none = crb_city.extra(CITY_MD, "another printing")
 
     def test_source(self):
+        from importer.sr6.recipes import crb
+        # (the city chapter's page offset and publisher are the core rulebook's, kept in crb_city: no import cycle)
+        self.assertEqual((crb_city.PUBLISHER, crb_city.PAGE_OFFSET), (crb.PUBLISHER, crb.PAGE_OFFSET))
         self.assertEqual(self.none, [])
         self.assertEqual(self.res.source["id"], "CRB-FZ")
         self.assertTrue(all(r["source"] == "CRB-FZ" for r in self.res.report))

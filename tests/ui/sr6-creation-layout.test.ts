@@ -10,7 +10,7 @@ const at = (key: string) => sectionOf(key, keys.find(k => k.key === key)!.group)
 
 test('every setting is in one of the nine sections, and every section has some', () => {
   const by = new Map<string, string[]>()
-  for (const k of keys) by.set(sectionOf(k.key, k.group), [...by.get(sectionOf(k.key, k.group)) ?? [], k.key])
+  for (const k of keys) by.set(sectionOf(k.key, k.group), [...(by.get(sectionOf(k.key, k.group)) ?? []), k.key])
   expect([...by.keys()].sort()).toEqual([...SECTIONS].sort())
   expect([...by.values()].flat().length).toBe(keys.length)
 })
@@ -33,7 +33,8 @@ test('house rules and options are apart from the books’ optional rules', () =>
   expect(ruleKind('karmaBuildMethod')).toBe('option')
   expect(ruleKind('stackingAdvantage')).toBeUndefined()
   for (const k of ['exoticFirstSpecFree', 'metatypeSizePricing', 'availabilitySeven', 'positiveQualityMultiplier']) expect(at(k)).toBe('House rules')
-  for (const k of ['stackingAdvantage', 'twentyQuestions', 'highStrengthDamage', 'expandedContacts', 'workingForTheMan']) expect(at(k)).toBe('Optional rules (book)')
+  for (const k of ['stackingAdvantage', 'twentyQuestions', 'highStrengthDamage', 'expandedContacts', 'workingForTheMan'])
+    expect(at(k)).toBe('Optional rules (book)')
   for (const k of ['levelStreet', 'levelPrime', 'levelSwcElite', 'priorityLetters', 'eliteSumToThirteen']) expect(at(k)).toBe('Levels of play')
   expect(at('skillCap')).toBe('Attributes & skills')
   expect(at('aptitudeQuality')).toBe('Qualities')
@@ -48,8 +49,14 @@ test('every optional rule a runner may choose has a section too', () => {
 })
 
 test('a label splits into a short name and the rest, outside any brackets; the house-rule tag is dropped', () => {
-  expect(splitLabel('Expanded contacts: karma buys contact points past the pool')).toEqual({ title: 'Expanded contacts', hint: 'karma buys contact points past the pool' })
+  expect(splitLabel('Expanded contacts: karma buys contact points past the pool')).toEqual({
+    title: 'Expanded contacts',
+    hint: 'karma buys contact points past the pool',
+  })
   expect(splitLabel('Highest skill rank')).toEqual({ title: 'Highest skill rank', hint: '' })
-  expect(splitLabel('Lowest a quality lowers an attribute’s maximum to (Impaired; unset: no floor)')).toEqual({ title: 'Lowest a quality lowers an attribute’s maximum to (Impaired; unset: no floor)', hint: '' })
+  expect(splitLabel('Lowest a quality lowers an attribute’s maximum to (Impaired; unset: no floor)')).toEqual({
+    title: 'Lowest a quality lowers an attribute’s maximum to (Impaired; unset: no floor)',
+    hint: '',
+  })
   expect(splitLabel('No used (or omega) grade on cultured bioware (house rule)')).toEqual({ title: 'No used (or omega) grade on cultured bioware', hint: '' })
 })

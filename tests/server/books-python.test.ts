@@ -12,20 +12,28 @@ import { findPython } from '../../tools/python.mjs'
 
 const python: string[] | null = findPython()
 const dir = mkdtempSync(join(tmpdir(), 'ca2-books-py-'))
-const custom = join(dir, 'custom'), library = join(dir, 'library')
+const custom = join(dir, 'custom'),
+  library = join(dir, 'library')
 // the made-up core files, as the core rulebook's import leaves them
 cpSync('tests/fixtures/mini/custom/imported/core', join(custom, 'imported', 'core'), { recursive: true })
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 
 describe.skipIf(!python)('with the real importer', () => {
-  beforeAll(() => new Promise<void>(ok => {
-    srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library, python })
-    srv.listen(0, () => { base = `http://127.0.0.1:${srv.address().port}`; ok() })
-  }))
+  beforeAll(
+    () =>
+      new Promise<void>(ok => {
+        srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: custom, libraryDir: library, python })
+        srv.listen(0, () => {
+          base = `http://127.0.0.1:${srv.address().port}`
+          ok()
+        })
+      }),
+  )
   afterAll(() => srv?.close())
 
-  const book = async (id: string) => ((await (await fetch(`${base}/api/books`)).json()) as { id: string; state: string; busy: boolean; file: string; source?: string }[]).find(b => b.id === id)
+  const book = async (id: string) =>
+    ((await (await fetch(`${base}/api/books`)).json()) as { id: string; state: string; busy: boolean; file: string; source?: string }[]).find(b => b.id === id)
   async function settle(id: string) {
     for (let i = 0; i < 600; i++) {
       const b = await book(id)
@@ -59,26 +67,30 @@ describe.skipIf(!python)('with the real importer', () => {
   for (const [name, evil] of [
     ['a single-quoted address', `<provider id="openai" enabled="true" baseUrl='https://evil.example'/>`],
     ['the old address repeated in a comment', `<provider id="openai" enabled="true" baseUrl="https://evil.example"/><!-- ${home} -->`],
-  ]) test(`a new address in ${name} never keeps the key`, async () => {
-    expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings(home) })).status).toBe(200)
-    expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-test-KEEPME1234</key>' })).status).toBe(204)
-    expect(await keySet()).toBe(true)
-    const r = await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings(evil) })
-    if (r.status === 200) {
-      expect(await r.json()).toMatchObject({ cleared: ['openai'] })
-      expect(await keySet()).toBe(false)
-    } else {
-      expect(r.status).toBe(400)
-      expect(saved()).not.toContain('evil')
-    }
-  }, 30000)
+  ])
+    test(`a new address in ${name} never keeps the key`, async () => {
+      expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings(home) })).status).toBe(200)
+      expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-test-KEEPME1234</key>' })).status).toBe(204)
+      expect(await keySet()).toBe(true)
+      const r = await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings(evil) })
+      if (r.status === 200) {
+        expect(await r.json()).toMatchObject({ cleared: ['openai'] })
+        expect(await keySet()).toBe(false)
+      } else {
+        expect(r.status).toBe(400)
+        expect(saved()).not.toContain('evil')
+      }
+    }, 30000)
 
   test('model lists go through the real importer and never show the key', async () => {
     expect((await fetch(`${base}/api/ai-models?provider=evil`)).status).toBe(400)
     let r = await fetch(`${base}/api/ai-models?provider=anythingllm`)
     expect([r.status, await r.json()]).toEqual([502, { error: 'no API key is set for anythingllm' }])
     // a saved address nobody answers at: the reason comes back, the key doesn't
-    expect((await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings('<provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1"/>') })).status).toBe(200)
+    expect(
+      (await fetch(`${base}/api/ai-settings`, { method: 'PUT', body: settings('<provider id="openai" enabled="true" baseUrl="http://127.0.0.1:1/v1"/>') }))
+        .status,
+    ).toBe(200)
     expect((await fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<key provider="openai">sk-test-NEVERSHOWN42</key>' })).status).toBe(204)
     r = await fetch(`${base}/api/ai-models?provider=openai`)
     const text = await r.text()
@@ -88,7 +100,12 @@ describe.skipIf(!python)('with the real importer', () => {
   }, 30000)
 
   test('what the app never writes is refused with the reason', async () => {
-    for (const body of [settings('<key provider="openai">k</key>'), settings(home + home), '<!DOCTYPE x [<!ENTITY a "b">]><x/>', '<aiproviders version="1"/>']) {
+    for (const body of [
+      settings('<key provider="openai">k</key>'),
+      settings(home + home),
+      '<!DOCTYPE x [<!ENTITY a "b">]><x/>',
+      '<aiproviders version="1"/>',
+    ]) {
       const r = await fetch(`${base}/api/ai-settings`, { method: 'PUT', body })
       expect(r.status, body).toBe(400)
       expect((await r.json()).error).toBeTruthy()
@@ -97,7 +114,8 @@ describe.skipIf(!python)('with the real importer', () => {
   test('edits go through the real importer: saved, refused with the reason, removed', async () => {
     const put = (kind: string, id: string, body: string) => fetch(`${base}/api/edits/${kind}/${id}`, { method: 'PUT', body })
     const edits = () => readFileSync(join(custom, 'edits', 'edits.xml'), 'utf8')
-    const knife = (name: string, desc: string) => `<edit><item id="short-weapon" kind="weapon" dv="STR+2" ranges="OK/Dis/-/-" category="Melee" source="CRB" page="70"><name>${name}</name><text></text></item><description>${desc}</description></edit>`
+    const knife = (name: string, desc: string) =>
+      `<edit><item id="short-weapon" kind="weapon" dv="STR+2" ranges="OK/Dis/-/-" category="Melee" source="CRB" page="70"><name>${name}</name><text></text></item><description>${desc}</description></edit>`
     expect((await put('items', 'short-weapon', knife('Shiv', 'Made-up words.'))).status).toBe(204)
     expect(edits()).toContain('<name>Shiv</name>')
     expect(readFileSync(join(custom, 'edits', 'texts.xml'), 'utf8')).toContain('Made-up words.')
@@ -105,11 +123,20 @@ describe.skipIf(!python)('with the real importer', () => {
 
     let r = await put('items', 'short-weapon', knife('Shiv', '').replace('page="70"', 'page="0"'))
     expect([r.status, (await r.json()).error]).toEqual([400, 'page "0" isn’t a whole number above 0'])
-    const amp = (id: string, src: string) => `<edit><amp id="${id}" type="quality" printedRating="2" source="${src}" page="1"><name>Lucky</name><narrative></narrative></amp><description></description></edit>`
+    const amp = (id: string, src: string) =>
+      `<edit><amp id="${id}" type="quality" printedRating="2" source="${src}" page="1"><name>Lucky</name><narrative></narrative></amp><description></description></edit>`
     r = await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))
     expect(r.status).toBe(400)
     expect((await r.json()).error).toContain('needs a house-rule source')
-    expect((await fetch(`${base}/api/edits/sources`, { method: 'POST', body: JSON.stringify({ id: 'OURS', name: '-Our table' }), headers: { 'Content-Type': 'application/json' } })).status).toBe(204)
+    expect(
+      (
+        await fetch(`${base}/api/edits/sources`, {
+          method: 'POST',
+          body: JSON.stringify({ id: 'OURS', name: '-Our table' }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      ).status,
+    ).toBe(204)
     expect((await put('amps', 'ours.lucky', amp('ours.lucky', 'OURS'))).status).toBe(204)
     expect(edits()).toContain('id="ours.lucky"')
     expect(readFileSync(join(custom, 'edits', 'sources.xml'), 'utf8')).toContain('<name>-Our table</name>')

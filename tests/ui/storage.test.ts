@@ -2,7 +2,11 @@ import { test, expect, vi } from 'vitest'
 import { deleteCharacter, getCharacter, listCharacters, needsExportReminder, saveCharacter } from '../../src/ui/storage'
 import { blankCharacter } from '../../src/engine/file'
 
-const testChar = () => { const ch = blankCharacter(); ch.identity.name = 'Fixture Runner'; return ch }
+const testChar = () => {
+  const ch = blankCharacter()
+  ch.identity.name = 'Fixture Runner'
+  return ch
+}
 
 test('save, list, get, delete round-trip', () => {
   localStorage.clear()
@@ -21,7 +25,9 @@ test('export reminder: changed since export and export older than a week', () =>
 })
 
 test('a storage failure is reported, not thrown', () => {
-  const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceeded') })
+  const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('QuotaExceeded')
+  })
   expect(saveCharacter(testChar()).ok).toBe(false)
   spy.mockRestore()
 })

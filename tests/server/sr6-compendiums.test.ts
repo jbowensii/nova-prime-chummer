@@ -15,59 +15,106 @@ import { findPython } from '../../tools/python.mjs'
 import { compendiumXml } from '../../src/engine'
 
 vi.setConfig({ testTimeout: 30000 })
-const PW: Record<string, string> = { ada: 'ada-password-1', eve: 'eve-password-1', gil: 'gil-password-1', ed: 'ed-password-12',
-  pat: 'pat-password-1', sr6: 'old-password-1' }
+const PW: Record<string, string> = {
+  ada: 'ada-password-1',
+  eve: 'eve-password-1',
+  gil: 'gil-password-1',
+  ed: 'ed-password-12',
+  pat: 'pat-password-1',
+  sr6: 'old-password-1',
+}
 const python: string[] | null = findPython()
 type Srv = { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 const servers: Srv[] = []
-afterAll(() => { for (const s of servers) s.close() })
+afterAll(() => {
+  for (const s of servers) s.close()
+})
 
 async function start(dir: string, users: { username: string; role?: string }[]) {
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile(users.map(u => ({ ...u, password: PW[u.username], name: `${u.username} name` }))))
   mkdirSync(join(dir, 'custom', 'sr6', 'imported'), { recursive: true })
   copyFileSync('tests/fixtures/sr6/custom/imported/sources.xml', join(dir, 'custom', 'sr6', 'imported', 'sources.xml'))
-  const srv: Srv = createServer({ staticDir: 'public', charDir: join(dir, 'chars'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'),
-    python: python ?? 'python3' })
+  const srv: Srv = createServer({
+    staticDir: 'public',
+    charDir: join(dir, 'chars'),
+    customDir: join(dir, 'custom'),
+    libraryDir: join(dir, 'library'),
+    python: python ?? 'python3',
+  })
   servers.push(srv)
   await new Promise<void>(ok => srv.listen(0, ok))
-  const base = `http://127.0.0.1:${srv.address().port}`, jar: Record<string, string> = {}
+  const base = `http://127.0.0.1:${srv.address().port}`,
+    jar: Record<string, string> = {}
   for (const u of users) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: u.username, password: PW[u.username] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[u.username] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: u.username, password: PW[u.username] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[u.username] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
-  const call = (who: string, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => fetch(`${base}${path}`, { method,
-    body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-    headers: { Origin: base, Cookie: jar[who] ?? '', ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}), ...headers } })
+  const call = (who: string, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
+    fetch(`${base}${path}`, {
+      method,
+      body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+      headers: {
+        Origin: base,
+        Cookie: jar[who] ?? '',
+        ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}),
+        ...headers,
+      },
+    })
   return { base, call, chars: join(dir, 'chars') }
 }
 
 /** An SR6 compendium file as the app writes its root (Task 2 writes the children). */
-const sr6c = (id: string, source: string, sharing = 'sharing="private"', inner = '') => '<?xml version="1.0" encoding="UTF-8"?>\n'
-  + `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1" id="${id}" name="Kit ${id}" source="${source}" ${sharing} updatedAt="2026-10-02T00:00:00.000Z">${inner}\n</sr6:data>\n`
-const ca2c = (id: string, source: string) => compendiumXml({ id, name: `Book ${id}`, source, sharing: 'private', updatedAt: '2026-10-02T00:00:00.000Z',
-  amps: [], items: [], vehicles: [], npcs: [] })
-const SR6_NPC = '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="npc-1" streetName="Corner Goon" updatedAt="2026-10-02"><npc kind="grunt"/><build/></sr6:character>'
-const CA2_NPC = '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc-2" streetName="Corner Goon" updatedAt="2026-10-02"><npc kind="grunt"/><build/></ca2:character>'
-const E1 = 'e1e1e1e1e1e1', E2 = 'e2e2e2e2e2e2', G1 = 'a1a1a1a1a1a1', D1 = 'd1d1d1d1d1d1', S1 = '5e5e5e5e5e5e'
+const sr6c = (id: string, source: string, sharing = 'sharing="private"', inner = '') =>
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="compendium" version="1" id="${id}" name="Kit ${id}" source="${source}" ${sharing} updatedAt="2026-10-02T00:00:00.000Z">${inner}\n</sr6:data>\n`
+const ca2c = (id: string, source: string) =>
+  compendiumXml({ id, name: `Book ${id}`, source, sharing: 'private', updatedAt: '2026-10-02T00:00:00.000Z', amps: [], items: [], vehicles: [], npcs: [] })
+const SR6_NPC =
+  '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="npc-1" streetName="Corner Goon" updatedAt="2026-10-02"><npc kind="grunt"/><build/></sr6:character>'
+const CA2_NPC =
+  '<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="npc-2" streetName="Corner Goon" updatedAt="2026-10-02"><npc kind="grunt"/><build/></ca2:character>'
+const E1 = 'e1e1e1e1e1e1',
+  E2 = 'e2e2e2e2e2e2',
+  G1 = 'a1a1a1a1a1a1',
+  D1 = 'd1d1d1d1d1d1',
+  S1 = '5e5e5e5e5e5e'
 
-let s: Awaited<ReturnType<typeof start>>, call: Awaited<ReturnType<typeof start>>['call'], comps = ''
+let s: Awaited<ReturnType<typeof start>>,
+  call: Awaited<ReturnType<typeof start>>['call'],
+  comps = ''
 const put = (who: string, id: string, xml: string, rev?: number, game = '/api/sr6') =>
   call(who, 'PUT', `${game}/compendiums/${id}`, xml, rev == null ? {} : { 'If-Match': String(rev) })
-const list = async (who: string, game = '/api/sr6') => ((await (await call(who, 'GET', `${game}/compendiums`)).json()) as { owner: string; id: string }[])
-  .map(c => `${c.owner}/${c.id}`).sort()
-const userId = async (n: string) => ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
+const list = async (who: string, game = '/api/sr6') =>
+  ((await (await call(who, 'GET', `${game}/compendiums`)).json()) as { owner: string; id: string }[]).map(c => `${c.owner}/${c.id}`).sort()
+const userId = async (n: string) =>
+  ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
 
 beforeAll(async () => {
-  s = await start(mkdtempSync(join(tmpdir(), 'ca2-sr6comps-')), [{ username: 'ada' }, { username: 'eve', role: 'editor' },
-    { username: 'gil', role: 'editor' }, { username: 'ed', role: 'editor' }, { username: 'pat', role: 'player' }])
+  s = await start(mkdtempSync(join(tmpdir(), 'ca2-sr6comps-')), [
+    { username: 'ada' },
+    { username: 'eve', role: 'editor' },
+    { username: 'gil', role: 'editor' },
+    { username: 'ed', role: 'editor' },
+    { username: 'pat', role: 'player' },
+  ])
   call = s.call
   comps = join(s.chars, 'sr6', '.compendiums')
 })
 
 test('a player gets 403 on every /api/sr6/compendiums route', async () => {
-  for (const [m, p] of [['GET', '/api/sr6/compendiums'], ['PUT', `/api/sr6/compendiums/${E1}`], ['DELETE', `/api/sr6/compendiums/${E1}`]])
+  for (const [m, p] of [
+    ['GET', '/api/sr6/compendiums'],
+    ['PUT', `/api/sr6/compendiums/${E1}`],
+    ['DELETE', `/api/sr6/compendiums/${E1}`],
+  ])
     expect([m, p, (await call('pat', m, p, m === 'PUT' ? sr6c(E1, 'PAT') : undefined)).status]).toEqual([m, p, 403])
   expect(existsSync(comps)).toBe(false)
 })
@@ -151,11 +198,13 @@ test('sharing: private ones are the owner’s and the admin’s; table: every ed
 
 test('isolation: neither store takes the other game’s file or embedded runner; lists and ids are per game', async () => {
   const bad: [string, string, string][] = [
-    ['/api/sr6', S1, ca2c(S1, 'XA')], ['/api', S1, sr6c(S1, 'XB')],
+    ['/api/sr6', S1, ca2c(S1, 'XA')],
+    ['/api', S1, sr6c(S1, 'XB')],
     ['/api/sr6', S1, sr6c(S1, 'XC', undefined, CA2_NPC)],
     ['/api', S1, ca2c(S1, 'XD').replace('</ca2:data>', `${SR6_NPC}</ca2:data>`)],
     // the other game's namespace hidden behind a character reference
-    ['/api/sr6', S1, sr6c(S1, 'XE', undefined, CA2_NPC.replace('urn:chummer-anarchy2:', 'urn&#58;chummer-anarchy2:'))]]
+    ['/api/sr6', S1, sr6c(S1, 'XE', undefined, CA2_NPC.replace('urn:chummer-anarchy2:', 'urn&#58;chummer-anarchy2:'))],
+  ]
   for (const [i, [game, id, xml]] of bad.entries()) expect([i, (await put('eve', id, xml, undefined, game)).status]).toEqual([i, 400])
   const r = await put('eve', S1, ca2c(S1, 'XA'))
   expect(await r.json()).toEqual({ error: 'this is the other game’s file' })
@@ -173,8 +222,11 @@ test('isolation: neither store takes the other game’s file or embedded runner;
 })
 
 test('never served as a static file', async () => {
-  for (const p of [`/chars/sr6/.compendiums/eve/${E1}.xml`, `/custom/sr6/../../chars/sr6/.compendiums/eve/${E1}.xml`,
-    `/custom/sr6/%2e%2e/%2e%2e/chars/sr6/.compendiums/eve/${E1}.xml`])
+  for (const p of [
+    `/chars/sr6/.compendiums/eve/${E1}.xml`,
+    `/custom/sr6/../../chars/sr6/.compendiums/eve/${E1}.xml`,
+    `/custom/sr6/%2e%2e/%2e%2e/chars/sr6/.compendiums/eve/${E1}.xml`,
+  ])
     expect([p, (await call('eve', 'GET', p)).status]).not.toEqual([p, 200])
 })
 
@@ -203,12 +255,16 @@ test('account hooks: a rename moves the folder; a leftover folder blocks a new n
 })
 
 test('an account called sr6 from before: every /api/sr6/compendiums route 409s and characters/sr6/.compendiums is never touched', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6comps-legacy-')), planted = join(dir, 'chars', 'sr6', '.compendiums', 'eve')
+  const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6comps-legacy-')),
+    planted = join(dir, 'chars', 'sr6', '.compendiums', 'eve')
   mkdirSync(planted, { recursive: true })
   writeFileSync(join(planted, `${E1}.xml`), sr6c(E1, 'STREET'))
   const t = await start(dir, [{ username: 'ada' }, { username: 'sr6', role: 'player' }, { username: 'eve', role: 'editor' }])
-  for (const [m, p, b] of [['GET', '/api/sr6/compendiums'], ['PUT', `/api/sr6/compendiums/${E2}`, sr6c(E2, 'NEW')],
-    ['DELETE', `/api/sr6/compendiums/${E1}`]] as [string, string, string?][]) {
+  for (const [m, p, b] of [
+    ['GET', '/api/sr6/compendiums'],
+    ['PUT', `/api/sr6/compendiums/${E2}`, sr6c(E2, 'NEW')],
+    ['DELETE', `/api/sr6/compendiums/${E1}`],
+  ] as [string, string, string?][]) {
     const r = await t.call('eve', m, p, b)
     expect([m, p, r.status, (await r.json()).error]).toEqual([m, p, 409, 'rename the account sr6 first'])
   }

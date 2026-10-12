@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { STATE } from './session'
 
 async function newRunner(page: Page, name: string) {
@@ -68,20 +68,42 @@ test('portrait: chosen, zoomed and dragged in its dialog, saved square, shown in
 test('phone width: the receipt collapses to a bar and opens on tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await newRunner(page, 'Phone')
-  const receipt = page.locator('.receipt')
-  await expect(receipt.locator('.peek')).toContainText('Left to spend')
+  const receipt = page.locator('.receipt'),
+    peek = receipt.locator('.peek')
+  await expect(peek).toContainText('Left to spend')
+  // a real button: named by what it shows, says whether it's open; closed, what it hides is inert (out of the tab order)
+  await expect(peek).toHaveRole('button')
+  await expect(peek).toHaveAttribute('aria-expanded', 'false')
+  await expect(receipt.locator(`#${await peek.getAttribute('aria-controls')}`)).toHaveAttribute('inert', '')
   const closed = (await receipt.boundingBox())!.height
   expect(closed).toBeLessThan(80)
-  await receipt.locator('.peek').click()
+  await peek.click()
+  await expect(peek).toHaveAttribute('aria-expanded', 'true')
+  await expect(receipt.locator(`#${await peek.getAttribute('aria-controls')}`)).not.toHaveAttribute('inert', '')
   expect((await receipt.boundingBox())!.height).toBeGreaterThan(300)
-  const fits = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth
-    && [...document.querySelectorAll('.work p')].every(p => p.getBoundingClientRect().right <= innerWidth + 1))
+  const fits = () =>
+    page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <= innerWidth &&
+        [...document.querySelectorAll('.work p')].every(p => p.getBoundingClientRect().right <= innerWidth + 1),
+    )
   expect(await fits()).toBe(true) // no sideways page scroll, no clipped text
   await page.locator('.receipt .peek').click()
   for (const tab of ['Attributes', 'Skills', 'Shadow Amps', 'Gear & spells', 'Review']) {
     await page.getByRole('link', { name: tab, exact: true }).click()
     expect(await fits(), tab).toBe(true)
   }
+  // the runner list at 375 px: each row's buttons under its title, nothing past the edge
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/')
+  const row = page.locator('.dossier', { hasText: 'Phone' }).first()
+  await expect(row).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const title = (await row.locator('.title').boundingBox())!,
+    del = (await row.getByRole('button', { name: /^Delete / }).boundingBox())!
+  expect(del.y).toBeGreaterThan(title.y + title.height - 1)
+  mkdirSync('.extract/screenshots/review-0131', { recursive: true })
+  await page.screenshot({ path: '.extract/screenshots/review-0131/anarchy-runners-375.png', fullPage: true })
 })
 
 test('Settings: theme, texture and print style apply and persist', async ({ page }) => {
@@ -151,7 +173,8 @@ test('Amp Builder: apply a book add-on', async ({ page }) => {
 })
 
 test('a runner saved from two browsers: conflict dialog, save mine as a new file', async ({ browser }) => {
-  const a = await browser.newPage({ storageState: STATE }), b = await browser.newPage({ storageState: STATE })
+  const a = await browser.newPage({ storageState: STATE }),
+    b = await browser.newPage({ storageState: STATE })
   await newRunner(a, 'Twice')
   await a.waitForTimeout(700) // autosave
   const url = a.url()
@@ -171,11 +194,25 @@ test('a runner saved from two browsers: conflict dialog, save mine as a new file
 
 test('runners saved in the browser move to the server on first load', async ({ page }) => {
   await page.goto('/')
-  await page.evaluate(() => localStorage.setItem('ca2.library.v1', JSON.stringify([{ formatVersion: 1, id: 'legacy-1',
-    identity: { name: '', streetName: 'Legacy Browser Runner', metatype: 'human', background: '', notes: '' },
-    narrative: { keywords: [], dispositions: [], cues: [] }, level: 'runner', package: 'free',
-    build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
-    career: [], overrides: [], updatedAt: '2026-09-01T00:00:00Z' }])))
+  await page.evaluate(() =>
+    localStorage.setItem(
+      'ca2.library.v1',
+      JSON.stringify([
+        {
+          formatVersion: 1,
+          id: 'legacy-1',
+          identity: { name: '', streetName: 'Legacy Browser Runner', metatype: 'human', background: '', notes: '' },
+          narrative: { keywords: [], dispositions: [], cues: [] },
+          level: 'runner',
+          package: 'free',
+          build: { attributes: { str: 1, agi: 1, wil: 1, log: 1, cha: 1 }, skills: [], knowledge: [], amps: [], items: [] },
+          career: [],
+          overrides: [],
+          updatedAt: '2026-09-01T00:00:00Z',
+        },
+      ]),
+    ),
+  )
   await page.reload()
   await expect(page.getByRole('status').first()).toContainText('Moved 1 runner from this browser to the server')
   await expect(page.getByRole('link', { name: 'Legacy Browser Runner' })).toBeVisible()
@@ -196,7 +233,7 @@ test('a book amp printed with levels: one entry per level in the picker, the Amp
   await expect(page.getByLabel('Name')).toHaveValue('Glide Step 3')
   await expect(page.locator('.ampfoot b').first()).toHaveText('6') // the made-up core: adept 2 + two narrative effects at 2
   await page.getByRole('button', { name: 'Add amp' }).click()
-  await expect(page.getByRole('cell', { name: /Glide Step 3/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /^Glide Step 3/ })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Rating 6' })).toBeVisible()
 })
 

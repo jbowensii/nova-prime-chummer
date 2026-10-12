@@ -19,7 +19,10 @@ vi.setConfig({ testTimeout: 30000 })
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', ed: 'ed-password-12', gil: 'gil-password-1', pat: 'pat-password-1' }
 type Who = keyof typeof PW
 const python: string[] | null = findPython()
-const dir = mkdtempSync(join(tmpdir(), 'ca2-comps-')), chars = join(dir, 'chars'), comps = join(chars, '.compendiums'), custom = join(dir, 'custom')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-comps-')),
+  chars = join(dir, 'chars'),
+  comps = join(chars, '.compendiums'),
+  custom = join(dir, 'custom')
 const jar = {} as Record<Who, string>
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
@@ -28,34 +31,69 @@ beforeAll(async () => {
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   mkdirSync(join(custom, 'edits'), { recursive: true })
   writeFileSync(join(custom, 'edits', 'sources.xml'), '<sources><source id="HOUSE" publisher="Me" canon="false"><name>House</name></source></sources>')
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'ed', password: PW.ed, role: 'editor', name: 'Ed' },
-    { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil' }, { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'ed', password: PW.ed, role: 'editor', name: 'Ed' },
+      { username: 'gil', password: PW.gil, role: 'editor', name: 'Gil' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: chars, customDir: custom, libraryDir: join(dir, 'library'), python: python ?? 'python3' })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW) as Who[]) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
-const call = (who: Who, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => fetch(`${base}${path}`, { method,
-  body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-  headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}), ...headers } })
-const comp = (id: string, source: string, extra: Partial<Compendium> = {}) => compendiumXml({ id, name: `Book ${id}`, source, sharing: 'private',
-  updatedAt: '2026-10-02T00:00:00.000Z', amps: [], items: [], vehicles: [], npcs: [], ...extra })
+const call = (who: Who, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
+  fetch(`${base}${path}`, {
+    method,
+    body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+    headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}), ...headers },
+  })
+const comp = (id: string, source: string, extra: Partial<Compendium> = {}) =>
+  compendiumXml({
+    id,
+    name: `Book ${id}`,
+    source,
+    sharing: 'private',
+    updatedAt: '2026-10-02T00:00:00.000Z',
+    amps: [],
+    items: [],
+    vehicles: [],
+    npcs: [],
+    ...extra,
+  })
 const put = (who: Who, id: string, xml: string, rev?: number) => call(who, 'PUT', `/api/compendiums/${id}`, xml, rev == null ? {} : { 'If-Match': String(rev) })
-const list = async (who: Who) => ((await (await call(who, 'GET', '/api/compendiums')).json()) as { owner: string; id: string }[])
-  .map(c => `${c.owner}/${c.id}`).sort()
-const userId = async (n: string) => ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
-const E1 = 'e1e1e1e1e1e1', E2 = 'e2e2e2e2e2e2', D1 = 'd1d1d1d1d1d1'
+const list = async (who: Who) =>
+  ((await (await call(who, 'GET', '/api/compendiums')).json()) as { owner: string; id: string }[]).map(c => `${c.owner}/${c.id}`).sort()
+const userId = async (n: string) =>
+  ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
+const E1 = 'e1e1e1e1e1e1',
+  E2 = 'e2e2e2e2e2e2',
+  D1 = 'd1d1d1d1d1d1'
 let cid = ''
 
 test('a player gets 403 on every /api/compendiums route', async () => {
-  for (const [m, p] of [['GET', '/api/compendiums'], ['PUT', `/api/compendiums/${E1}`], ['DELETE', `/api/compendiums/${E1}`], ['GET', '/api/compendiums/x']])
+  for (const [m, p] of [
+    ['GET', '/api/compendiums'],
+    ['PUT', `/api/compendiums/${E1}`],
+    ['DELETE', `/api/compendiums/${E1}`],
+    ['GET', '/api/compendiums/x'],
+  ])
     expect([m, p, (await call('pat', m, p, m === 'PUT' ? comp(E1, 'PAT') : undefined)).status]).toEqual([m, p, 403])
   expect(existsSync(comps)).toBe(false)
 })

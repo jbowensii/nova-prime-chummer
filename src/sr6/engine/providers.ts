@@ -6,7 +6,22 @@ import { LETTERS, SR6_ATTRS, type Letter, type MagicKind, type Sr6Attr, type Sr6
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
 
-export interface Pool { max: number; spent: number; left: number }
+export interface Pool {
+  max: number
+  spent: number
+  left: number
+}
+/** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
+export interface BudgetLine {
+  key: string
+  label: string
+  amount: number
+  sign: 'spend' | 'gain'
+  tab: string
+}
+export interface Budget extends Pool {
+  breakdown?: BudgetLine[]
+}
 export interface Provider {
   id: Sr6Method
   lettersValid(p: Sr6Build['priorities']): boolean
@@ -70,31 +85,46 @@ export function uncovered(pools: { types?: string[]; points: number }[], contact
 export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules): Provider {
   const n = (key: string) => num(cr, key) ?? 0
   const everyMetatype = (adjustmentPoints: number) =>
-    Object.values(data.metatypes).map(m => ({ id: m.id, name: m.name, adjustmentPoints })).sort(byName)
+    Object.values(data.metatypes)
+      .map(m => ({ id: m.id, name: m.name, adjustmentPoints }))
+      .sort(byName)
   /** every kind legal, at the rating `rating` gives it */
   const everyKind = (rating: (k: MagicKind) => number) => KINDS.map(kind => ({ kind, rating: rating(kind) }))
   // CRB Hong Kong p. 63: a prime runner has twice the customization Karma (levelPrime)
   // (the Sixth World Companion's Twenty Questions, p. 25: a karma bonus at character generation)
-  const base = { id: method, startingKarma: () => n('startingKarma') * (flag(cr, 'levelPrime') ? 2 : 1) + (flag(cr, 'twentyQuestions') ? n('twentyQuestionsKarma') : 0) }
+  const base = {
+    id: method,
+    startingKarma: () => n('startingKarma') * (flag(cr, 'levelPrime') ? 2 : 1) + (flag(cr, 'twentyQuestions') ? n('twentyQuestionsKarma') : 0),
+  }
 
   if (method === 'priority' || method === 'sumtoten') {
     // CRB Hong Kong p. 63: a street-level runner gets the values of the row below the one chosen, E staying E (levelStreet)
     const at = (l: Letter) => (flag(cr, 'levelStreet') ? LETTERS[Math.min(LETTERS.indexOf(l) + 1, LETTERS.length - 1)] : l)
-    const row = (b: Sr6Build, col: keyof Sr6Build['priorities']) => { const l = b.priorities[col]; return l ? data.priorities[at(l)] : undefined }
-    const letterPoints = (b: Sr6Build, m?: Sr6MetatypeView) => { const l = b.priorities.metatype; return l && m?.priority ? m.priority[at(l)] : undefined }
+    const row = (b: Sr6Build, col: keyof Sr6Build['priorities']) => {
+      const l = b.priorities[col]
+      return l ? data.priorities[at(l)] : undefined
+    }
+    const letterPoints = (b: Sr6Build, m?: Sr6MetatypeView) => {
+      const l = b.priorities.metatype
+      return l && m?.priority ? m.priority[at(l)] : undefined
+    }
     // the letters the runner takes (priorityLetters, a level of play's: the Sixth World Companion's street-level B C C D E)
     const want = (str(cr, 'priorityLetters') ?? LETTERS.join('')).split('').sort().join('')
     const magicRow = (b: Sr6Build) => row(b, 'magic')?.magic ?? {}
     return {
       ...base,
-      lettersValid: method === 'priority'
-        ? p => { const ls = Object.values(p).filter(Boolean); return ls.length === 5 && ls.sort().join('') === want }
-        : p => {
-          // (sum to ten takes any letters the level allows: street-level's no A)
-          const target = num(cr, 'sumToTenTarget')
-          const vals = Object.values(p).map(l => (l && want.includes(l) ? num(cr, `letterValue:${l}`) : undefined))
-          return target !== undefined && !vals.includes(undefined) && vals.reduce<number>((s, v) => s + v!, 0) <= target
-        },
+      lettersValid:
+        method === 'priority'
+          ? p => {
+              const ls = Object.values(p).filter(Boolean)
+              return ls.length === 5 && ls.sort().join('') === want
+            }
+          : p => {
+              // (sum to ten takes any letters the level allows: street-level's no A)
+              const target = num(cr, 'sumToTenTarget')
+              const vals = Object.values(p).map(l => (l && want.includes(l) ? num(cr, `letterValue:${l}`) : undefined))
+              return target !== undefined && !vals.includes(undefined) && vals.reduce<number>((s, v) => s + v!, 0) <= target
+            },
       attributePoints: b => row(b, 'attributes')?.attributes ?? 0,
       skillPoints: b => row(b, 'skills')?.skills ?? 0,
       nuyen: b => row(b, 'resources')?.nuyen ?? 0,
@@ -102,12 +132,19 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       adjustmentPoints: b => (b.metatype && (row(b, 'metatype')?.metatypes[b.metatype] ?? letterPoints(b, data.metatypes[b.metatype]))) || 0,
       legalMetatypes: b => {
         const r = row(b, 'metatype')
-        return r ? Object.values(data.metatypes).filter(m => m.id in r.metatypes || letterPoints(b, m) !== undefined)
-          .map(m => ({ id: m.id, name: m.name, adjustmentPoints: r.metatypes[m.id] ?? letterPoints(b, m)! })).sort(byName) : []
+        return r
+          ? Object.values(data.metatypes)
+              .filter(m => m.id in r.metatypes || letterPoints(b, m) !== undefined)
+              .map(m => ({ id: m.id, name: m.name, adjustmentPoints: r.metatypes[m.id] ?? letterPoints(b, m)! }))
+              .sort(byName)
+          : []
       },
       // a metavariant (one the table's row doesn't list) costs its karma out of the starting karma (SWC p. 91)
       metatypeKarma: b => (b.metatype && row(b, 'metatype')?.metatypes[b.metatype] === undefined ? n(`metatypeKarma:${b.metatype}`) : 0),
-      legalMagic: b => { const by = magicRow(b); return KINDS.filter(k => k in by || k === 'mundane').map(kind => ({ kind, rating: by[kind] ?? 0 })) },
+      legalMagic: b => {
+        const by = magicRow(b)
+        return KINDS.filter(k => k in by || k === 'mundane').map(kind => ({ kind, rating: by[kind] ?? 0 }))
+      },
       magicRating: b => magicRow(b)[b.magic] ?? 0,
     }
   }
@@ -127,11 +164,20 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       magicRating: b => start(b.magic),
       metatypeKarma: b => (b.metatype ? n(`metatypeKarma:${b.metatype}`) : 0),
       characterPoints: b => {
-        const c = b.cp, cost = (k: string) => n(`pointBuy.cost.${k}`)
+        const c = b.cp,
+          cost = (k: string) => n(`pointBuy.cost.${k}`)
         const pp = cost(MAGIC_KINDS[b.magic].paysPowers ? 'mysticPowerPoint' : 'powerPoint')
-        return pool(n('pointBuy.total'), (awakened(b.magic) ? n('pointBuy.awakened') : 0) + c.attribute * cost('attribute')
-          + c.skill * cost('skill') + c.adjustment * cost('adjustment') + c.resources + c.powerPoints * pp
-          + c.spells * cost('spell') + c.complexForms * cost('complexForm'))
+        return pool(
+          n('pointBuy.total'),
+          (awakened(b.magic) ? n('pointBuy.awakened') : 0) +
+            c.attribute * cost('attribute') +
+            c.skill * cost('skill') +
+            c.adjustment * cost('adjustment') +
+            c.resources +
+            c.powerPoints * pp +
+            c.spells * cost('spell') +
+            c.complexForms * cost('complexForm'),
+        )
       },
     }
   }
@@ -142,7 +188,10 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       ...base,
       lettersValid: () => true,
       // everything is bought with karma: no point pools, nuyen only from karma
-      attributePoints: () => 0, skillPoints: () => 0, adjustmentPoints: () => 0, nuyen: () => 0,
+      attributePoints: () => 0,
+      skillPoints: () => 0,
+      adjustmentPoints: () => 0,
+      nuyen: () => 0,
       startingKarma: () => n('karmaBuild.start'),
       legalMetatypes: () => everyMetatype(0),
       legalMagic: () => everyKind(start),
@@ -166,31 +215,40 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       m.choices.forEach((c, i) => {
         const o = pick.choices[i]
         if (!o) return
-        if (o.startsWith('nuyen:')) { if (field === 'nuyen') v += Number(o.slice(6)) || 0 }
-        else if (ATTRS.has(o)) { if (field === 'attributePoints') v += c.points }
-        else if (o.startsWith('skill:') && field === 'skillPoints') v += c.points
+        if (o.startsWith('nuyen:')) {
+          if (field === 'nuyen') v += Number(o.slice(6)) || 0
+        } else if (ATTRS.has(o)) {
+          if (field === 'attributePoints') v += c.points
+        } else if (o.startsWith('skill:') && field === 'skillPoints') v += c.points
       })
     }
     return v
   }
   const start = (k: MagicKind) => (awakened(k) ? n(`lifepath.startRating:${k}`) : 0)
-  const contactPools = (b: Sr6Build) => modules(b).filter(m => m.grants.contactPoints).map(m => ({ types: m.contactTypes, points: m.grants.contactPoints! }))
+  const contactPools = (b: Sr6Build) =>
+    modules(b)
+      .filter(m => m.grants.contactPoints)
+      .map(m => ({ types: m.contactTypes, points: m.grants.contactPoints! }))
   const allows = (k: MagicKind, req?: string) => {
     const f = MAGIC_KINDS[k]
-    return !req || (req === 'awakened' ? f.spells || f.powers : req === 'emerged' ? f.resonance
-      : req === 'adept' ? f.powers : req === 'magician' ? f.spells : true)
+    return (
+      !req || (req === 'awakened' ? f.spells || f.powers : req === 'emerged' ? f.resonance : req === 'adept' ? f.powers : req === 'magician' ? f.spells : true)
+    )
   }
   /** SWC p. 32 (Born This Way): an attribute whose metatype maximum is above attributeBaseMax starts at
    *  lifepath.raisedAttributeStart, the others at 1; a runner neither awakened nor emerged gains lifepath.mundaneEdge */
   const startBonus = (b: Sr6Build, k: Sr6Attr) => {
-    const m = data.metatypes[b.metatype], cap = num(cr, 'attributeBaseMax'), raised = num(cr, 'lifepath.raisedAttributeStart')
+    const m = data.metatypes[b.metatype],
+      cap = num(cr, 'attributeBaseMax'),
+      raised = num(cr, 'lifepath.raisedAttributeStart')
     const max = m && k in m.ranges ? m.ranges[k as keyof Sr6MetatypeView['ranges']][1] : 0
     return (raised !== undefined && cap !== undefined && max > cap ? raised - 1 : 0) + (k === 'edg' && !awakened(b.magic) ? n('lifepath.mundaneEdge') : 0)
   }
   /** the best attribute rises by lifepath.bestAttributeBonus up to its metatype maximum; what that leaves over goes on
    *  bestExtra */
   const best = (b: Sr6Build) => {
-    const bonus = n('lifepath.bestAttributeBonus'), m = data.metatypes[b.metatype]
+    const bonus = n('lifepath.bestAttributeBonus'),
+      m = data.metatypes[b.metatype]
     const max = b.bestAttr && m && b.bestAttr in m.ranges ? m.ranges[b.bestAttr as keyof Sr6MetatypeView['ranges']][1] : Infinity
     const up = b.bestAttr ? Math.max(0, Math.min(bonus, max - 1 - startBonus(b, b.bestAttr))) : 0
     return { up, over: b.bestAttr ? bonus - up : 0 }
@@ -211,9 +269,14 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     contactPools,
     contactPoints: b => {
       const pools = contactPools(b)
-      const max = pools.reduce((s, x) => s + x.points, 0), need = contactSpend(b)
-      const short = uncovered(pools, b.contacts.map(c => ({ types: c.types ?? [], need: c.connection + c.loyalty })))
-      const price = num(cr, 'lifepath.contactKarma'), ratingCap = n('lifepath.contactRatingCap')
+      const max = pools.reduce((s, x) => s + x.points, 0),
+        need = contactSpend(b)
+      const short = uncovered(
+        pools,
+        b.contacts.map(c => ({ types: c.types ?? [], need: c.connection + c.loyalty })),
+      )
+      const price = num(cr, 'lifepath.contactKarma'),
+        ratingCap = n('lifepath.contactRatingCap')
       // unset price: the ratings the points don't cover aren't bought, they overspend the points
       return price === undefined ? { ...pool(max, need), ratingCap } : { ...pool(max, need - short), ratingCap, karma: short * price }
     },
@@ -221,8 +284,10 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     available: b => {
       const times = (id: string) => b.lifepath.filter(m => m.id === id).length
       const twice = new Set(b.lifepath.map(m => m.id).filter(id => times(id) > 1)).size
-      return Object.values(data.lifemodules).filter(m => m.stage === 'adult')
-        .map(m => ({ ...m, taken: times(m.id) > 0, again: times(m.id) === 1 && twice < n('lifepath.repeatModules'), fits: allows(b.magic, m.requires) })).sort(byName)
+      return Object.values(data.lifemodules)
+        .filter(m => m.stage === 'adult')
+        .map(m => ({ ...m, taken: times(m.id) > 0, again: times(m.id) === 1 && twice < n('lifepath.repeatModules'), fits: allows(b.magic, m.requires) }))
+        .sort(byName)
     },
   }
 }

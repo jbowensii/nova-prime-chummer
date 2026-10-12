@@ -12,9 +12,15 @@ import { bonusValue, effectBonuses, effectText, effectValue, testSkills } from '
 import { effectNotes } from '../../src/sr6/print/view'
 import { buildOf, GLIM, made } from './fixture'
 
-const fx = (target: string, op: string, value: string, more: Record<string, string> = {}): Sr6Part => ({ tag: 'effect', attrs: { target, op, value, ...more }, text: '' })
+const fx = (target: string, op: string, value: string, more: Record<string, string> = {}): Sr6Part => ({
+  tag: 'effect',
+  attrs: { target, op, value, ...more },
+  text: '',
+})
 const runner = (): Sr6Build => buildOf('priority', { letters: 'CABDA', metatype: GLIM })
-const give = (d: Sr6Data, id: string, ...parts: Sr6Part[]) => { d.entry('qualities', id)!.parts.push(...parts) }
+const give = (d: Sr6Data, id: string, ...parts: Sr6Part[]) => {
+  d.entry('qualities', id)!.parts.push(...parts)
+}
 
 test('a value: a number, so much per rating, or a formula shown only', () => {
   expect(effectValue('2')).toEqual({ value: 2 })
@@ -36,7 +42,9 @@ test('a value: a number, so much per rating, or a formula shown only', () => {
 })
 
 test('what others get against the entry is never the runner’s: shown, not counted (owner decision 16, 2026-10-11)', () => {
-  const { data } = made({ data: d => give(d, 'crb.knack', fx('skill:perception', 'edge', '1', { affects: 'others' }), fx('attr:agi', 'add', '1', { affects: 'others' })) })
+  const { data } = made({
+    data: d => give(d, 'crb.knack', fx('skill:perception', 'edge', '1', { affects: 'others' }), fx('attr:agi', 'add', '1', { affects: 'others' })),
+  })
   expect(effectBonuses(data, data.entry('qualities', 'crb.knack'))).toEqual([])
   expect(effectText(fx('skill:perception', 'edge', '1', { affects: 'others' }))).toBe('others get: +1 Edge on Perception tests (affects others)')
 })
@@ -56,38 +64,55 @@ test('a test type covers the skills the book lists, or the skills linked to an a
 })
 
 test('an entry’s effects apply: attributes, boxes, a test type’s pools; low-confidence and conditional ones are shown only', () => {
-  const { data, cr } = made({ data: d => give(d, 'crb.knack', fx('attr:bod', 'add', '1'), fx('derived:stun-monitor', 'add', '2'),
-    fx('derived:overflow', 'add', 'R'), fx('test:attr-cha', 'add', '2'), fx('attr:agi', 'add', '1', { confidence: 'low', switch: 'activated' }),
-    fx('test:attr-cha', 'add', '1', { confidence: 'low', switch: 'conditional', when: 'haggling' })) })
+  const { data, cr } = made({
+    data: d =>
+      give(
+        d,
+        'crb.knack',
+        fx('attr:bod', 'add', '1'),
+        fx('derived:stun-monitor', 'add', '2'),
+        fx('derived:overflow', 'add', 'R'),
+        fx('test:attr-cha', 'add', '2'),
+        fx('attr:agi', 'add', '1', { confidence: 'low', switch: 'activated' }),
+        fx('test:attr-cha', 'add', '1', { confidence: 'low', switch: 'conditional', when: 'haggling' }),
+      ),
+  })
   const b = runner()
   const before = deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: structuredClone(b) })
   b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
-  const ch = { ...blankSr6(b.method, 't'), build: b }, d = deriveSr6(data, cr, ch)
+  const ch = { ...blankSr6(b.method, 't'), build: b },
+    d = deriveSr6(data, cr, ch)
   expect(d.attrs.bod.augmented).toBe(before.attrs.bod.augmented + 1)
-  expect(d.attrs.agi.augmented).toBe(before.attrs.agi.augmented)  // (activated: shown, not applied)
+  expect(d.attrs.agi.augmented).toBe(before.attrs.agi.augmented) // (activated: shown, not applied)
   expect(d.monitors.stun).toBe((before.monitors.stun ?? 0) + 2)
-  expect(d.monitors.overflow).toBe(before.monitors.overflow + 1 + 1)  // (+1 Body, +1 a level)
+  expect(d.monitors.overflow).toBe(before.monitors.overflow + 1 + 1) // (+1 Body, +1 a level)
   expect(augmentBonus(b, data, 'skill', 'crb.gab')).toBe(2)
-  expect(conditionalBonuses(b, data, 'crb.gab')).toEqual([])  // (a low-confidence one isn't even shown with the pool)
+  expect(conditionalBonuses(b, data, 'crb.gab')).toEqual([]) // (a low-confidence one isn't even shown with the pool)
 })
 
 test('a link: the entry it grants or works as gives its effects, by id or by its printed name', () => {
-  const { data } = made({ data: d => {
-    give(d, 'crb.stoneskin', fx('derived:defense', 'add', '2'))
-    give(d, 'crb.knack', { tag: 'link', attrs: { rel: 'grants', name: 'Stoneskin', kind: 'qualities' }, text: '' })
-    give(d, 'crb.lucky-streak', { tag: 'link', attrs: { rel: 'as', name: 'Knack', kind: 'qualities', ref: 'crb.knack' }, text: '' })
-  } })
+  const { data } = made({
+    data: d => {
+      give(d, 'crb.stoneskin', fx('derived:defense', 'add', '2'))
+      give(d, 'crb.knack', { tag: 'link', attrs: { rel: 'grants', name: 'Stoneskin', kind: 'qualities' }, text: '' })
+      give(d, 'crb.lucky-streak', { tag: 'link', attrs: { rel: 'as', name: 'Knack', kind: 'qualities', ref: 'crb.knack' }, text: '' })
+    },
+  })
   expect(effectBonuses(data, data.entry('qualities', 'crb.knack'))).toEqual([{ target: 'defense', value: 2 }])
   expect(effectBonuses(data, data.entry('qualities', 'crb.lucky-streak'))).toEqual([{ target: 'defense', value: 2 }])
 })
 
 test('an attribute maximum: a quality’s table sets it, its prose raises it; a chosen attribute’s is the player’s', () => {
-  const { data, cr } = made({ data: d => {
-    give(d, 'crb.knack', fx('attr-max:str', 'set', '9'), fx('attr-max:choice', 'add', '1'))
-    give(d, 'crb.stoneskin', fx('attr-max:bod', 'add', 'R'))
-  } })
-  const b = runner(), base = (k: 'str' | 'bod') => attrMax(data, cr, b, k)!
-  const str = base('str'), bod = base('bod')
+  const { data, cr } = made({
+    data: d => {
+      give(d, 'crb.knack', fx('attr-max:str', 'set', '9'), fx('attr-max:choice', 'add', '1'))
+      give(d, 'crb.stoneskin', fx('attr-max:bod', 'add', 'R'))
+    },
+  })
+  const b = runner(),
+    base = (k: 'str' | 'bod') => attrMax(data, cr, b, k)!
+  const str = base('str'),
+    bod = base('bod')
   b.qualities.push({ uid: 'k', id: 'crb.knack', level: 1 }, { uid: 's', id: 'crb.stoneskin', level: 2 })
   expect(attrMax(data, cr, b, 'str')).toBe(9)
   expect(attrMax(data, cr, b, 'bod')).toBe(bod + 2)
@@ -95,8 +120,12 @@ test('an attribute maximum: a quality’s table sets it, its prose raises it; a 
 })
 
 test('the quality the settings name (Built Tough, Dermal Deposits) counts once, when its own effects add the same', () => {
-  const { data, cr } = made({ rules: { builtToughQuality: 'crb.lucky-streak' }, data: d => give(d, 'crb.lucky-streak', fx('derived:physical-monitor', 'add', 'R')) })
-  const b = runner(), plain = deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: structuredClone(b) }).monitors.physical!
+  const { data, cr } = made({
+    rules: { builtToughQuality: 'crb.lucky-streak' },
+    data: d => give(d, 'crb.lucky-streak', fx('derived:physical-monitor', 'add', 'R')),
+  })
+  const b = runner(),
+    plain = deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: structuredClone(b) }).monitors.physical!
   b.qualities.push({ uid: 'q', id: 'crb.lucky-streak', level: 2 })
   expect(deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: b }).monitors.physical).toBe(plain + 2)
 })
@@ -113,20 +142,39 @@ test('the words an effect shows', () => {
 })
 
 test('the sheet lists what the numbers don’t hold: switched effects, rule kinds and links', () => {
-  const { data } = made({ data: d => give(d, 'crb.knack', fx('attr:bod', 'add', '1'), fx('test:attr-cha', 'edge', '1'),
-    fx('attr:agi', 'add', '1', { confidence: 'low', switch: 'activated' }), { tag: 'link', attrs: { rel: 'grants', name: 'Stoneskin' }, text: '' }) })
+  const { data } = made({
+    data: d =>
+      give(
+        d,
+        'crb.knack',
+        fx('attr:bod', 'add', '1'),
+        fx('test:attr-cha', 'edge', '1'),
+        fx('attr:agi', 'add', '1', { confidence: 'low', switch: 'activated' }),
+        { tag: 'link', attrs: { rel: 'grants', name: 'Stoneskin' }, text: '' },
+      ),
+  })
   const b = runner()
   b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
   expect(effectNotes(b, data).map(x => x.text)).toEqual(['+1 Edge on tests using Charisma', 'activated: +1 Agility', 'grants Stoneskin'])
 })
 
 test('switchable and conditional effects count in the bracketed total; a specialization’s in its pool; a spell’s on its target never', () => {
-  const { data, cr } = made({ data: d => {
-    give(d, 'crb.knack', fx('attr:bod', 'add', '1'), fx('attr:agi', 'add', '2', { switch: 'wireless' }), fx('test:attr-cha', 'add', '3', { when: 'haggling' }),
-      fx('skill:gab', 'add', '2', { spec: 'Haggling' }))
-    d.entry('spells', 'crb.glow-ward')!.parts.push(fx('attr:rea', 'add', '1', { switch: 'sustained', affects: 'caster' }),
-      fx('attr:str', 'add', '4', { switch: 'sustained', affects: 'target' }))
-  } })
+  const { data, cr } = made({
+    data: d => {
+      give(
+        d,
+        'crb.knack',
+        fx('attr:bod', 'add', '1'),
+        fx('attr:agi', 'add', '2', { switch: 'wireless' }),
+        fx('test:attr-cha', 'add', '3', { when: 'haggling' }),
+        fx('skill:gab', 'add', '2', { spec: 'Haggling' }),
+      )
+      d.entry('spells', 'crb.glow-ward')!.parts.push(
+        fx('attr:rea', 'add', '1', { switch: 'sustained', affects: 'caster' }),
+        fx('attr:str', 'add', '4', { switch: 'sustained', affects: 'target' }),
+      )
+    },
+  })
   const b = runner()
   b.skills = [...b.skills.filter(s => s.id !== 'crb.gab'), { id: 'crb.gab', points: 2, karma: 0 }]
   const base = deriveSr6(data, cr, { ...blankSr6(b.method, 't'), build: structuredClone(b) })
@@ -136,28 +184,38 @@ test('switchable and conditional effects count in the bracketed total; a special
   const at = (d: { attrs: typeof base.attrs }, k: 'bod' | 'agi' | 'rea' | 'str') => d.attrs[k].augmented - base.attrs[k].augmented
   let d = deriveSr6(data, cr, ch)
   expect([at(d, 'bod'), at(d, 'agi'), at(d, 'rea'), at(d, 'str')]).toEqual([1, 0, 0, 0])
-  expect([at(d.on, 'bod'), at(d.on, 'agi'), at(d.on, 'rea'), at(d.on, 'str')]).toEqual([1, 2, 1, 0])  // (never the target's +4)
+  expect([at(d.on, 'bod'), at(d.on, 'agi'), at(d.on, 'rea'), at(d.on, 'str')]).toEqual([1, 2, 1, 0]) // (never the target's +4)
   const gab = (x: { pools: typeof base.pools }) => x.pools.find(p => p.skill === 'crb.gab')!
   const plain = gab(base).dp
   expect(gab(d).dp).toBe(plain)
-  expect(gab(d.on).dp).toBe(plain + 3 + 2)  // (haggling, and the specialization the runner hasn't)
-  expect(conditionalBonuses(b, data, 'crb.gab').map(x => x.value).sort()).toEqual([2, 3])
+  expect(gab(d.on).dp).toBe(plain + 3 + 2) // (haggling, and the specialization the runner hasn't)
+  expect(
+    conditionalBonuses(b, data, 'crb.gab')
+      .map(x => x.value)
+      .sort(),
+  ).toEqual([2, 3])
   b.skills = [...b.skills.filter(s => s.id !== 'crb.gab'), { id: 'crb.gab', points: 2, karma: 0, spec: 'haggling' }]
   d = deriveSr6(data, cr, ch)
   const specDice = Number(cr.get('specDice')?.value)
   expect(gab(d).specDp).toBe(gab(d).dp + specDice + 2)
-  expect(gab(d.on).dp).toBe(gab(d).dp + 3)  // (its specialization's bonus is in the specialization's pool, not the skill's)
+  expect(gab(d.on).dp).toBe(gab(d).dp + 3) // (its specialization's bonus is in the specialization's pool, not the skill's)
 })
 
 test('each bracketed bonus is named: its switch or condition, and a spell’s caster', () => {
-  const { data } = made({ data: d => {
-    give(d, 'crb.knack', fx('attr:agi', 'add', '2', { switch: 'wireless' }), fx('attr:agi', 'add', '1', { when: 'in darkness' }), fx('attr:agi', 'add', '1'))
-    d.entry('spells', 'crb.glow-ward')!.parts.push(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))
-  } })
+  const { data } = made({
+    data: d => {
+      give(d, 'crb.knack', fx('attr:agi', 'add', '2', { switch: 'wireless' }), fx('attr:agi', 'add', '1', { when: 'in darkness' }), fx('attr:agi', 'add', '1'))
+      d.entry('spells', 'crb.glow-ward')!.parts.push(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))
+    },
+  })
   const b = runner()
   b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
   b.picks.push({ uid: 'p', kind: 'spells', id: 'crb.glow-ward' })
-  expect(notesText(bracketNotes(b, data, 'agi')).split('\n').sort()).toEqual(['+1 Glow Ward (sustained, affects the caster)', '+1 Knack (in darkness)', '+2 Knack (wireless)'])
+  expect(
+    notesText(bracketNotes(b, data, 'agi'))
+      .split('\n')
+      .sort(),
+  ).toEqual(['+1 Glow Ward (sustained, affects the caster)', '+1 Knack (in darkness)', '+2 Knack (wireless)'])
   expect(effectText(fx('attr:agi', 'add', '1', { switch: 'sustained', affects: 'caster' }))).toBe('sustained: +1 Agility (affects the caster)')
-  expect(effectNotes(b, data).map(x => x.text)).toContain('☐ +1 Agility (in darkness)')  // (a tick box on the sheet, owner 2026-10-11)
+  expect(effectNotes(b, data).map(x => x.text)).toContain('☐ +1 Agility (in darkness)') // (a tick box on the sheet, owner 2026-10-11)
 })

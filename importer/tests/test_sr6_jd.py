@@ -10,7 +10,8 @@ from lxml import etree
 
 from importer import sr6
 from importer.sr6 import regroup
-from importer.sr6.recipes import crb, identify, jd, shapes
+from importer.sr6 import shapes
+from importer.sr6.recipes import crb, identify, jd
 
 BOOK_MD = """<!-- page 1 -->
 <!-- page 2 -->

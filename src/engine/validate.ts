@@ -15,7 +15,13 @@ import { familyName } from './levels'
  *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
  *  every runner. */
 /** freeSinner: the table's SINner house rule switch (amps.ts sinnerFree); undefined: on */
-export interface TableFlags { nonCanon: boolean; realSin: boolean; optional?: string[]; locked?: string[]; freeSinner?: boolean }
+export interface TableFlags {
+  nonCanon: boolean
+  realSin: boolean
+  optional?: string[]
+  locked?: string[]
+  freeSinner?: boolean
+}
 
 export function validate(c: Catalog, ch: Character, table?: TableFlags): Violation[] {
   const out: Violation[] = []
@@ -23,9 +29,15 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     out.push({ code, severity, path, message, source: page ? source : undefined, page })
   /** A compendium entry the runner has a copy of but the catalog no longer holds (unshared or deleted): noted; undefined
    *  for anything else. */
-  const gone = (path: string, name: string, copy?: { source: string }) => copy && houseSource(c, copy.source)
-    ? add('ref.gone', 'warning', path, `${name}: its source ${c.sources.get(copy.source)?.name ?? copy.source} is no longer available; the runner keeps its own copy.`)
-    : undefined
+  const gone = (path: string, name: string, copy?: { source: string }) =>
+    copy && houseSource(c, copy.source)
+      ? add(
+          'ref.gone',
+          'warning',
+          path,
+          `${name}: its source ${c.sources.get(copy.source)?.name ?? copy.source} is no longer available; the runner keeps its own copy.`,
+        )
+      : undefined
   const creation = !ch.finalizedAt
   // an NPC isn't built on a budget at a level of play: no budget, creation caps, basics or narrative picks
   const npc = !!ch.npc
@@ -34,11 +46,14 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   const level = c.levels.get(ch.level)
   const meta = c.metatypes.get(ch.identity.metatype)
   if (!level && !npc) add('ref.unknown', 'warning', 'level', `Unknown level of play "${ch.level}".`)
-  if (!meta && npc && !hasNoMetatype(ch) && !ch.identity.metatype) add('npc.noMetatype', 'warning', 'identity.metatype', 'An NPC (not a critter or spirit) needs a metatype.')
+  if (!meta && npc && !hasNoMetatype(ch) && !ch.identity.metatype)
+    add('npc.noMetatype', 'warning', 'identity.metatype', 'An NPC (not a critter or spirit) needs a metatype.')
   else if (!meta && !(npc && hasNoMetatype(ch))) add('ref.unknown', 'warning', 'identity.metatype', `Unknown metatype "${ch.identity.metatype}".`)
 
   // budget
-  if (npc) { /* no budget */ } else if (creation) {
+  if (npc) {
+    /* no budget */
+  } else if (creation) {
     const p = price(c, ch, table)
     if (p.remaining < 0) add('budget.over', 'error', 'budget', `Over budget by ${(-p.remaining).toLocaleString('en-US')}¥.`, 85)
   } else {
@@ -50,7 +65,8 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   if (meta && !hasNoMetatype(ch)) {
     let atMax = 0
     for (const a of ATTRS) {
-      const [min, max] = meta.ranges[a], v = b.attributes[a] ?? 0
+      const [min, max] = meta.ranges[a],
+        v = b.attributes[a] ?? 0
       if (v < min || v > max) add('attr.range', 'error', `attributes.${a}`, `${a.toUpperCase()} ${v} is outside ${meta.name} range ${min}-${max}.`, 52)
       if (v === max) atMax++
     }
@@ -61,32 +77,47 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   // skills
   for (const s of b.skills) {
     const sk = c.skills.get(s.id)
-    if (!sk) { add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown skill "${s.id}".`); continue }
+    if (!sk) {
+      add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown skill "${s.id}".`)
+      continue
+    }
     const cap = creation && level ? level.skillCap : 8
-    if (!npc && s.rating > cap) add('skill.cap', 'error', `skills.${s.id}`, `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`, creation ? 85 : 52)
+    if (!npc && s.rating > cap)
+      add(
+        'skill.cap',
+        'error',
+        `skills.${s.id}`,
+        `${sk.name} ${s.rating} is above the cap of ${cap}${creation ? ` for ${level?.name}` : ''}.`,
+        creation ? 85 : 52,
+      )
     if (s.specs.length && s.rating < 1) add('spec.noSkill', 'error', `skills.${s.id}`, `${sk.name} specializations need at least rating 1.`, 52)
     for (const sp of s.specs) {
       // a custom specialization is the runner's to learn (CRB p.52; owner, 2026-10-10): no warning
       if (!sp.startsWith('custom:') && !sk.specs.some(x => x.id === sp)) add('ref.unknown', 'warning', `skills.${s.id}`, `Unknown specialization "${sp}".`)
     }
   }
-  if (limited) for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {
-    const r = b.skills.find(s => s.id === id)?.rating ?? 0
-    if (r < 2) add('runner.basics', 'warning', `skills.${id}`, `${c.skills.get(id)?.name ?? id} below 2: every runner needs it, or a conscious reason not to.`, 84)
-  }
+  if (limited)
+    for (const id of ['athletics', 'stealth', 'perception', 'influence', 'network']) {
+      const r = b.skills.find(s => s.id === id)?.rating ?? 0
+      if (r < 2)
+        add('runner.basics', 'warning', `skills.${id}`, `${c.skills.get(id)?.name ?? id} below 2: every runner needs it, or a conscious reason not to.`, 84)
+    }
 
   // amps
   const allRefs = new Set(b.amps.flatMap(a => a.effects.map(e => e.ref)))
   for (const a of b.amps) {
     const path = `amps.${a.uid}`
     if (!c.ampTypes.has(a.type)) add('ref.unknown', 'warning', path, `${a.name}: unknown amp type "${a.type}".`)
-    if (a.catalogId && !c.amps.has(a.catalogId)) gone(path, a.name, a.snapshot) ?? add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
+    if (a.catalogId && !c.amps.has(a.catalogId) && gone(path, a.name, a.snapshot) === undefined)
+      add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
     if (a.vehicle && !c.vehicles.has(a.vehicle)) gone(path, a.name, a.chassis)
-    const template = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
+    const template = a.catalogId ? (c.amps.get(a.catalogId) ?? a.snapshot) : undefined
     // an amp named as one of the books' own catalog amps of its type (a sample runner's Jazz is the core rulebook's drug,
     // p.150): what that entry prints is the book's too
     // (or as one of its levels without the level: engine/levels.ts)
-    const named = !a.catalogId ? [...c.amps.values()].find(t => !t.mod && t.type === a.type && [t.name, familyName(t)].some(n => plain(n) === plain(a.name))) : undefined
+    const named = !a.catalogId
+      ? [...c.amps.values()].find(t => !t.mod && t.type === a.type && [t.name, familyName(t)].some(n => plain(n) === plain(a.name)))
+      : undefined
     // the books' add-ons for this amp type (DHSA's cyberdeck "Response increase" mods print Initiative in VR, p.19): an
     // effect one of them prints is one the books give the type
     const typeMods = [...c.amps.values()].filter(t => t.mod && t.type === a.type)
@@ -96,13 +127,21 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     a.effects.forEach((e, i) => {
       const ep = `${path}.effects.${i}`
       const eff = c.ampEffects.get(e.ref)
-      if (!eff) { add('ref.unknown', 'warning', ep, `${a.name}: unknown effect "${e.ref}".`); return }
+      if (!eff) {
+        add('ref.unknown', 'warning', ep, `${a.name}: unknown effect "${e.ref}".`)
+        return
+      }
       // The book's own catalog amps sometimes break the effect table (combat drugs are
       // Equipment with initiative); an effect exactly as the book printed it is sanctioned.
       // (an add-on applied before it was split into levels notes its name without one)
-      const fromMod = e.note ? [...c.amps.values()].find(t => t.mod && (t.name === e.note || familyName(t) === e.note) && t.effects.some(x => x.ref === e.ref)) : undefined
-      const fromBook = (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) || !!fromMod
-        || !!named?.effects.some(t => t.ref === e.ref) || typeMods.some(t => t.effects.some(x => x.ref === e.ref))
+      const fromMod = e.note
+        ? [...c.amps.values()].find(t => t.mod && (t.name === e.note || familyName(t) === e.note) && t.effects.some(x => x.ref === e.ref))
+        : undefined
+      const fromBook =
+        (template?.type === a.type && template.effects.some(t => t.ref === e.ref)) ||
+        !!fromMod ||
+        !!named?.effects.some(t => t.ref === e.ref) ||
+        typeMods.some(t => t.effects.some(x => x.ref === e.ref))
       if (!eff.types.includes(a.type) && !fromBook) add('amp.typeIllegal', 'error', ep, `${a.name}: "${eff.name}" is not available for ${a.type}.`, eff.page)
       if (eff.requires && !a.effects.some(x => x.ref === eff.requires))
         add('amp.requires', 'error', ep, `${a.name}: "${eff.name}" requires "${c.ampEffects.get(eff.requires)?.name}".`, eff.page)
@@ -111,15 +150,17 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
       if (eff.param && ['skill', 'spec', 'attribute'].includes(eff.param) && !e.param)
         add('amp.param', 'error', ep, `${a.name}: choose the ${eff.param} for "${eff.name}".`, eff.page)
       if (e.param && eff.param === 'skill' && !c.skills.has(e.param)) add('ref.unknown', 'warning', ep, `${a.name}: unknown skill "${e.param}".`)
-      if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId)) add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
+      if (e.param && eff.param === 'attribute' && !ATTRS.includes(e.param as AttrId))
+        add('ref.unknown', 'warning', ep, `${a.name}: unknown attribute "${e.param}".`)
       if (e.ref === 'negative') {
         // a catalog amp's own drawback, as its book prints it (a player's pick); a book sample's amp that rates exactly as
         // its book prints it: the limitation is the book's own (owner, 2026-10-11). Any other negative effect, a player's
         // or one on a sample amp changed since, the GM approves (p.61)
-        const bookSanctioned = template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note)
-          || fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value)
-          || named?.effects.some(t => t.ref === 'negative' && t.value === e.value)
-          || (printed != null && rules === printed)
+        const bookSanctioned =
+          template?.effects.some(t => t.ref === 'negative' && t.value === e.value && t.note === e.note) ||
+          fromMod?.effects.some(t => t.ref === 'negative' && t.value === e.value) ||
+          named?.effects.some(t => t.ref === 'negative' && t.value === e.value) ||
+          (printed != null && rules === printed)
         if (!bookSanctioned) add('amp.negative', 'error', ep, `${a.name}: negative effect -${e.value ?? 1} needs GM approval.`, 61)
       }
     })
@@ -133,8 +174,15 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // spells aren't equipment and can't be made Amps (p.178); complex forms follow the spell rules (CG p.9)
     const linkedKind = a.type === 'equipment' ? b.items.find(i => i.uid === a.linkedItem)?.kind : undefined
     if (linkedKind === 'spell' || linkedKind === 'complex-form')
-      add('amp.spellItem', 'error', path, `${a.name}: a ${linkedKind === 'spell' ? 'spell' : 'complex form'} isn’t equipment and can’t be made an Amp; a stronger one is a new ${linkedKind === 'spell' ? 'spell' : 'complex form'}.`, 178)
-    if (a.type === 'adept' && !allRefs.has('awk-adept')) add('adept.requiresAwakened', 'error', path, `${a.name}: adept powers need the Awakened amp with the Adept option.`, 58)
+      add(
+        'amp.spellItem',
+        'error',
+        path,
+        `${a.name}: a ${linkedKind === 'spell' ? 'spell' : 'complex form'} isn’t equipment and can’t be made an Amp; a stronger one is a new ${linkedKind === 'spell' ? 'spell' : 'complex form'}.`,
+        178,
+      )
+    if (a.type === 'adept' && !allRefs.has('awk-adept'))
+      add('adept.requiresAwakened', 'error', path, `${a.name}: adept powers need the Awakened amp with the Adept option.`, 58)
     if (a.type === 'vehicle' && a.vehicle) {
       const body = (c.vehicles.get(a.vehicle) ?? a.chassis)?.body ?? 0
       const armor = a.effects.filter(e => e.ref === 'vehicle-armor').length
@@ -142,56 +190,102 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     }
     const realms = a.effects.filter(e => e.ref === 'init-realm').length
     if (realms > initLevels(a))
-      add('amp.initRealm', 'error', path, `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`, 61)
+      add(
+        'amp.initRealm',
+        'error',
+        path,
+        `${a.name}: ${realms} “limited to one realm” reductions, but ${initLevels(a)} initiative ${initLevels(a) === 1 ? 'level' : 'levels'}; one per level held.`,
+        61,
+      )
     const fw = 1 + a.effects.filter(e => e.ref === 'firewall-plus').length
-    if (a.type === 'cyberdeck' && fw > FIREWALL_MAX) add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
+    if (a.type === 'cyberdeck' && fw > FIREWALL_MAX)
+      add('amp.firewallMax', 'error', path, `${a.name}: Firewall ${fw}; a cyberdeck’s Firewall is ${FIREWALL_MAX} at most.`, 62)
     // where the rules give a book sample's amp another rating than its book prints, say so. The book's number is never
     // corrected in the file.
     if (printed != null && printed !== rules)
-      add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page,
-        a.snapshot?.source)
+      add('amp.printedRating', 'warning', path, `${a.name}: the book prints rating ${printed}; the rules give ${rules}.`, a.snapshot?.page, a.snapshot?.source)
   }
-  for (const [ref, what] of [['armor-plus', 'Armor'], ['dv-plus', 'damage']] as const) {
+  for (const [ref, what] of [
+    ['armor-plus', 'Armor'],
+    ['dv-plus', 'damage'],
+  ] as const) {
     const n = b.amps.filter(a => a.type !== 'equipment').reduce((s, a) => s + a.effects.filter(e => e.ref === ref).length, 0)
     const def = c.ampEffects.get(ref)
     if (def?.max != null && n > def.max)
-      add('amp.stackMax', 'warning', 'amps', `${def.name} ${n} times across amps: stacked, the ${what} bonus is +${def.max} at most; the sheet counts +${def.max}.`, 61)
+      add(
+        'amp.stackMax',
+        'warning',
+        'amps',
+        `${def.name} ${n} times across amps: stacked, the ${what} bonus is +${def.max} at most; the sheet counts +${def.max}.`,
+        61,
+      )
   }
-  if (!creation) for (const uid of qualitiesAddedAfter(ch)) {
-    const a = b.amps.find(x => x.uid === uid)
-    if (a?.type === 'quality' && !isSinner(a, c))
-      add('amp.qualityAfterCreation', 'error', `amps.${uid}`, `${a.name}: new Qualities after creation need a major event (GM).`, 58)
-  }
+  if (!creation)
+    for (const uid of qualitiesAddedAfter(ch)) {
+      const a = b.amps.find(x => x.uid === uid)
+      if (a?.type === 'quality' && !isSinner(a, c))
+        add('amp.qualityAfterCreation', 'error', `amps.${uid}`, `${a.name}: new Qualities after creation need a major event (GM).`, 58)
+    }
 
   const rating = (id: string) => b.skills.find(s => s.id === id)?.rating ?? 0
-  if (rating('sorcery') > 0 && !allRefs.has('awk-sorcery')) add('skill.requiresAwakened', 'error', 'skills.sorcery', 'Sorcery needs the Awakened amp with Sorcery.', 57)
-  if (rating('conjuring') > 0 && !allRefs.has('awk-conjuring')) add('skill.requiresAwakened', 'error', 'skills.conjuring', 'Conjuring needs the Awakened amp with Conjuring.', 54)
+  if (rating('sorcery') > 0 && !allRefs.has('awk-sorcery'))
+    add('skill.requiresAwakened', 'error', 'skills.sorcery', 'Sorcery needs the Awakened amp with Sorcery.', 57)
+  if (rating('conjuring') > 0 && !allRefs.has('awk-conjuring'))
+    add('skill.requiresAwakened', 'error', 'skills.conjuring', 'Conjuring needs the Awakened amp with Conjuring.', 54)
   const emerged = b.amps.some(a => a.type === 'emerged')
-  if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged) add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
+  if (rating('cracking') > 0 && !b.amps.some(a => a.type === 'cyberdeck') && !emerged)
+    add('skill.requiresDeck', 'error', 'skills.cracking', 'Cracking needs a cyberdeck (or the Emerged amp).', 54)
   // a DNI: VR access from cyberware (a datajack or cyberjack, p.155); the Emerged connect as if they had one (CG p.8)
   const dni = emerged || allRefs.has('vr-cold') || allRefs.has('vr-hot')
-  if (rating('cracking') > 0 && !dni) add('skill.requiresDni', 'error', 'skills.cracking', 'Cracking needs a direct neural interface (cyberware with cold- or hot-sim VR).', 212)
-  for (const [ref, what] of [['rcc', 'A rigger command console'], ['vcr', 'A vehicle control rig']] as const)
+  if (rating('cracking') > 0 && !dni)
+    add('skill.requiresDni', 'error', 'skills.cracking', 'Cracking needs a direct neural interface (cyberware with cold- or hot-sim VR).', 212)
+  for (const [ref, what] of [
+    ['rcc', 'A rigger command console'],
+    ['vcr', 'A vehicle control rig'],
+  ] as const)
     if (allRefs.has(ref) && !dni) add('rig.requiresVr', 'error', 'amps', `${what} needs VR access from cyberware (cold- or hot-sim VR).`, 62)
   if (rating('tasking') > 0 && !emerged) add('skill.requiresEmerged', 'error', 'skills.tasking', 'Tasking needs the Emerged amp.', 8, 'CG')
-  if (emerged && b.amps.some(a => a.type === 'awakened')) add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
-  if (b.items.some(i => i.kind === 'complex-form') && !emerged) add('complexForm.noEmerged', 'error', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
-  if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery')) add('spell.noSorcery', 'error', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
+  if (emerged && b.amps.some(a => a.type === 'awakened'))
+    add('amp.emergedAwakened', 'error', 'amps', 'A character cannot be both Awakened and Emerged.', 8, 'CG')
+  if (b.items.some(i => i.kind === 'complex-form') && !emerged)
+    add('complexForm.noEmerged', 'error', 'items', 'Complex forms without the Emerged amp.', 9, 'CG')
+  if (b.items.some(i => i.kind === 'spell') && !allRefs.has('awk-sorcery'))
+    add('spell.noSorcery', 'error', 'items', 'Spells without the Sorcery option on the Awakened amp.', 58)
 
   const natives = b.knowledge.filter(k => k.native && k.kind === 'language')
-  if (!npc && natives.length > 1) add('knowledge.native', 'warning', 'knowledge', `Only one native language is free (house rule); ${natives.slice(1).map(k => `“${k.name}”`).join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`)
-  if (!npc) b.knowledge.forEach((k, i) => { // knowledge slots are a player rule
-    if (k === natives[0]) return // free whatever its slot does
-    const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
-    if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
-  })
+  if (!npc && natives.length > 1)
+    add(
+      'knowledge.native',
+      'warning',
+      'knowledge',
+      `Only one native language is free (house rule); ${natives
+        .slice(1)
+        .map(k => `“${k.name}”`)
+        .join(', ')} ${natives.length > 2 ? 'cost' : 'costs'} the knowledge price.`,
+    )
+  if (!npc)
+    b.knowledge.forEach((k, i) => {
+      // knowledge slots are a player rule
+      if (k === natives[0]) return // free whatever its slot does
+      const lapse = slotLapse(b, ch.narrative.keywords, k, id => c.skills.get(id)?.name ?? id)
+      if (lapse) add('knowledge.lapsed', 'warning', `knowledge.${i}`, `“${k.name}” was free; with ${lapse} it’s a paid knowledge skill.`)
+    })
 
   // Risk Reduction caps at creation: the total on one Test (Attribute + Skill + specialization RR, stacked) against the
   // level's limit for that kind of Test (owner's reading of CRB p.85 "including from stacking")
   const d = derive(c, { ...ch, build: b, finalizedAt: undefined }, table)
   const cap = (total: number, limit: number, path: string, test: string, parts: [string, number][]) => {
     if (limited && level && total > limit)
-      add('rr.cap', 'error', path, `RR ${total} on ${test} Tests (${parts.filter(([, n]) => n).map(([w, n]) => `${w} ${n}`).join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`, 85)
+      add(
+        'rr.cap',
+        'error',
+        path,
+        `RR ${total} on ${test} Tests (${parts
+          .filter(([, n]) => n)
+          .map(([w, n]) => `${w} ${n}`)
+          .join(' + ')}); ${level.name} allows ${limit} on one Test at creation, stacking included.`,
+        85,
+      )
     // kept for NPCs on purpose: only 3 RR applies to one Test whoever rolls it
     else if (total > 3) add('rr.cap', 'warning', path, `RR ${total} on ${test} Tests: only 3 applies to one Test.`, 61)
   }
@@ -205,27 +299,41 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
     // the attribute this Test adds the most RR from
     const worst = (as: AttrId[]) => as.reduce((m, a) => (d.rrAttr[a] > d.rrAttr[m] ? a : m))
     const sa = worst([sk.attr, ...(sk.alt ? [sk.alt] : [])])
-    if (skillRR) cap(skillRR + d.rrAttr[sa], level.rrSkill, `skills.${s.id}`, `${sk.name} + ${attrName(sa)}`, [[sk.name, skillRR], [attrName(sa), d.rrAttr[sa]]])
+    if (skillRR)
+      cap(skillRR + d.rrAttr[sa], level.rrSkill, `skills.${s.id}`, `${sk.name} + ${attrName(sa)}`, [
+        [sk.name, skillRR],
+        [attrName(sa), d.rrAttr[sa]],
+      ])
     for (const sp of s.specs) {
       const spRR = raw.spec.get(sp) ?? 0
       if (!skillRR && !spRR) continue
       const spec = sk.specs.find(x => x.id === sp)
       const pa = worst([spec?.attr ?? sk.attr, ...(sk.alt ? [sk.alt] : [])])
       const name = spec?.name ?? sp.replace(/^custom:/, '')
-      cap(skillRR + spRR + d.rrAttr[pa], level.rrSpec, `skills.${s.id}`, `${sk.name} (${name}) + ${attrName(pa)}`,
-        [[sk.name, skillRR], [name, spRR], [attrName(pa), d.rrAttr[pa]]])
+      cap(skillRR + spRR + d.rrAttr[pa], level.rrSpec, `skills.${s.id}`, `${sk.name} (${name}) + ${attrName(pa)}`, [
+        [sk.name, skillRR],
+        [name, spRR],
+        [attrName(pa), d.rrAttr[pa]],
+      ])
     }
   }
   if (d.essenceEffects.dead) add('essence.dead', 'error', 'amps', `Essence ${d.essence}: the character dies.`, 60)
 
   for (const i of b.items) {
     const path = `items.${i.uid}`
-    if (i.catalogId && !c.items.has(i.catalogId)) gone(path, i.name, i.snapshot) ?? add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
+    if (i.catalogId && !c.items.has(i.catalogId) && gone(path, i.name, i.snapshot) === undefined)
+      add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && i.price < 0) add('item.negativePrice', 'error', path, `${i.name}: a price below 0 would pay the runner; it counts as 0.`, 83)
     else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 84)
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
     if (i.over && !/\bshield\b/i.test(i.name))
-      add('armor.stack', 'warning', path, `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`, 148)
+      add(
+        'armor.stack',
+        'warning',
+        path,
+        `${i.name} stacks on ${b.items.find(x => x.uid === i.over)?.name ?? 'other armor'}: armor doesn't stack, except a shield.`,
+        148,
+      )
   }
 
   // an entry the runner uses whose book leaves a value out (or prints one the importer couldn't read): a note, cited
@@ -236,13 +344,20 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   for (const i of b.items) {
     noteIssues(`items.${i.uid}`, i.catalogId ? c.items.get(i.catalogId) : undefined)
     const pr = itemPrice(c.pricing, i, catalogItem(c, i))
-    if (pr.error) add('catalog.formula', 'warning', `items.${i.uid}`, `${i.name}: its cost formula can’t be worked out (${pr.error}); the standard price counts.`)
+    if (pr.error)
+      add('catalog.formula', 'warning', `items.${i.uid}`, `${i.name}: its cost formula can’t be worked out (${pr.error}); the standard price counts.`)
   }
 
   const n = ch.narrative
   const filled = (xs: string[]) => xs.filter(x => x.trim()).length
   if (!npc && (filled(n.keywords) !== 5 || filled(n.dispositions) !== 4 || filled(n.cues) !== 4))
-    add('narrative.count', 'warning', 'narrative', `Pick 5 Keywords, 4 Dispositions and 4 Cues (have ${filled(n.keywords)}/${filled(n.dispositions)}/${filled(n.cues)}).`, 84)
+    add(
+      'narrative.count',
+      'warning',
+      'narrative',
+      `Pick 5 Keywords, 4 Dispositions and 4 Cues (have ${filled(n.keywords)}/${filled(n.dispositions)}/${filled(n.cues)}).`,
+      84,
+    )
 
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
   // the GM's table: non-canon content and real SINs, when switched off
@@ -256,13 +371,15 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 }
 
 function rawRR(b: Character['build']) {
-  const skill = new Map<string, number>(), spec = new Map<string, number>()
-  for (const a of b.amps) for (const e of a.effects) {
-    if (!e.param) continue
-    if (e.ref === 'rr-skill') skill.set(e.param, (skill.get(e.param) ?? 0) + 1)
-    if (e.ref === 'rr-spec') spec.set(e.param, (spec.get(e.param) ?? 0) + 1)
-  }
+  const skill = new Map<string, number>(),
+    spec = new Map<string, number>()
+  for (const a of b.amps)
+    for (const e of a.effects) {
+      if (!e.param) continue
+      if (e.ref === 'rr-skill') skill.set(e.param, (skill.get(e.param) ?? 0) + 1)
+      if (e.ref === 'rr-spec') spec.set(e.param, (spec.get(e.param) ?? 0) + 1)
+    }
   return { skill, spec }
 }
 
-export const canFinalize = (v: Violation[]) => !v.some(x => x.severity === 'error' && !x.approved)
+export { canFinalize } from '../shared/rules'

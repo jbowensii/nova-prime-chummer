@@ -15,8 +15,17 @@ const OPTS = { descriptions: true, now: '2026-10-02T09:15:00.000Z', appVersion: 
 const rush = (): Character => {
   const ch = blankCharacter()
   ch.identity.streetName = 'Test Runner'
-  ch.build.amps = [{ uid: 'a', catalogId: 'testc.rush', type: 'equipment', name: 'Rush', narrative: 'Made-up text.',
-    effects: cat.amps.get('testc.rush')!.effects, linkedItem: 'i' }]
+  ch.build.amps = [
+    {
+      uid: 'a',
+      catalogId: 'testc.rush',
+      type: 'equipment',
+      name: 'Rush',
+      narrative: 'Made-up text.',
+      effects: cat.amps.get('testc.rush')!.effects,
+      linkedItem: 'i',
+    },
+  ]
   ch.build.items = [{ uid: 'i', kind: 'gear', name: 'Rush' }]
   return ch
 }
@@ -24,13 +33,21 @@ const rush = (): Character => {
 describe('export: runners', () => {
   test('the envelope', () => {
     const f = exportRunners(cat, [rush()], OPTS)
-    expect(f).toMatchObject({ format: 'chummer-anarchy2-export', version: 1, kind: 'runners', exportedAt: OPTS.now,
-      app: { name: 'Chummer Anarchy 2.0', version: '0.6.0' }, descriptions: true })
+    expect(f).toMatchObject({
+      format: 'chummer-anarchy2-export',
+      version: 1,
+      kind: 'runners',
+      exportedAt: OPTS.now,
+      app: { name: 'Chummer Anarchy 2.0', version: '0.6.0' },
+      descriptions: true,
+    })
     expect(f.runners).toHaveLength(1)
     expect(f.books).toBeUndefined()
   })
   test('numbers are the engine’s own', () => {
-    const ch = rush(), d = derive(cat, ch), r = exportRunners(cat, [ch], OPTS).runners![0]
+    const ch = rush(),
+      d = derive(cat, ch),
+      r = exportRunners(cat, [ch], OPTS).runners![0]
     expect(r.streetName).toBe('Test Runner')
     expect(r.essence).toBe(d.essence)
     expect(r.monitor).toEqual(d.monitor)
@@ -58,17 +75,23 @@ describe('export: runners', () => {
     const ch = rush()
     ch.build.items.push(
       { uid: 'w', kind: 'weapon', name: 'Made-up pistol', dv: '4P', ranges: 'OK/OK/Dis./–', specialist: true },
-      { uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 })
+      { uid: 'v', kind: 'armor', name: 'Made-up vest', armor: 2 },
+    )
     const its = exportRunners(cat, [ch], OPTS).runners![0].items
-    const w = its.find(i => i.uid === 'w')!.weapon!, v = its.find(i => i.uid === 'v')!.armor!
+    const w = its.find(i => i.uid === 'w')!.weapon!,
+      v = its.find(i => i.uid === 'v')!.armor!
     expect(w).toMatchObject({ dvText: '4P', specialist: true, ranges: { melee: 'ok', short: 'ok', medium: 'disadvantage', long: 'none' } })
     expect(w.dv).toBe(derive(cat, ch).weapons.find(x => x.uid === 'w')!.dv)
     expect(v.value).toBe(2)
   })
   test('item descriptions only when asked', () => {
     const ch = rush()
-    ch.build.items.push({ uid: 'n', kind: 'gear', name: 'Made-up kit',
-      snapshot: { id: 'x.kit', source: 'TESTC', page: 1, name: 'Made-up kit', kind: 'gear', text: 'Kit text.' } as never })
+    ch.build.items.push({
+      uid: 'n',
+      kind: 'gear',
+      name: 'Made-up kit',
+      snapshot: { id: 'x.kit', source: 'TESTC', page: 1, name: 'Made-up kit', kind: 'gear', text: 'Kit text.' } as never,
+    })
     const get = (descriptions: boolean) => exportRunners(cat, [ch], { ...OPTS, descriptions }).runners![0].items.find(i => i.uid === 'n')!
     expect(get(true).description).toBe('Kit text.')
     expect(get(false).description).toBeUndefined()
@@ -76,8 +99,12 @@ describe('export: runners', () => {
   test('an item carries its catalog category, as book items do; the token goes out beside the portrait', () => {
     const ch = rush()
     ch.identity.portrait = 'data:image/jpeg;base64,/9j/P'
-    ch.build.items.push({ uid: 's', kind: 'spell', name: 'Made-up bolt',
-      snapshot: { id: 'x.bolt', source: 'TESTC', page: 1, name: 'Made-up bolt', kind: 'spell', category: 'combat' } as never })
+    ch.build.items.push({
+      uid: 's',
+      kind: 'spell',
+      name: 'Made-up bolt',
+      snapshot: { id: 'x.bolt', source: 'TESTC', page: 1, name: 'Made-up bolt', kind: 'spell', category: 'combat' } as never,
+    })
     const r = exportRunners(cat, [ch], OPTS).runners![0]
     expect(r.items.find(i => i.uid === 's')!.category).toBe('combat')
     expect('category' in r.items.find(i => i.uid === 'i')!).toBe(false)
@@ -100,7 +127,8 @@ describe('export: books', () => {
     const f = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS)
     expect(f.kind).toBe('books')
     expect(f.books!.map(b => b.source.id)).toEqual(['TEST', 'TESTC'])
-    const test = f.books![0], testc = f.books![1]
+    const test = f.books![0],
+      testc = f.books![1]
     expect(test.source.canon).toBe(false)
     expect(testc.source.canon).toBe(true)
     expect(test.amps.some(a => a.id === 'test.rush')).toBe(true)
@@ -108,8 +136,9 @@ describe('export: books', () => {
     expect(testc.amps.some(a => a.id === 'test.rush')).toBe(false)
   })
   test('an add-on rates as its effects, below 0 too: no type base, no clamp', () => {
-    const mod = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1"><amp id="test.no-wheel" type="vehicle" '
-      + 'printedRating="-1" mod="true" source="TEST" page="9"><name>No wheel</name><effect ref="negative" value="1"/><narrative></narrative></amp></ca2:data>'
+    const mod =
+      '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1"><amp id="test.no-wheel" type="vehicle" ' +
+      'printedRating="-1" mod="true" source="TEST" page="9"><name>No wheel</name><effect ref="negative" value="1"/><narrative></narrative></amp></ca2:data>'
     const c = buildCatalog([...catFiles, { file: 'custom/imported/test/mods.xml', xml: mod, overlay: true }])
     const amps = exportBooks(c, ['TEST'], [], OPTS).books![0].amps
     expect(amps.find(a => a.id === 'test.no-wheel')?.rating).toBe(-1) // a vehicle's base 1 isn't the add-on's
@@ -140,17 +169,36 @@ describe('export: books', () => {
 
 describe('export: sections, metatypes, skills', () => {
   const rule = (id: string, sheet: string, section: string) => ({ id, source: 'TEST', page: 1, sheet, section, title: id, effects: [], text: '' })
-  const meta = { id: 'test.imp', source: 'TEST', page: 7, name: 'Made-up kin', edge: 3, racialQuality: 'Invented sense',
-    ranges: { str: [1, 4], agi: [1, 5], wil: [1, 5], log: [1, 5], cha: [2, 6] } }
-  const withExtras = { ...cat, metatypes: new Map(cat.metatypes).set(meta.id, meta as never),
-    rules: new Map(cat.rules).set('t.a', rule('t.a', 'base', '')).set('t.b', rule('t.b', 'technomancers', '  ')).set('t.c', rule('t.c', 'x-files', ''))
-      .set('t.d', rule('t.d', 'optional', 'Kept name')) } as typeof cat
+  const meta = {
+    id: 'test.imp',
+    source: 'TEST',
+    page: 7,
+    name: 'Made-up kin',
+    edge: 3,
+    racialQuality: 'Invented sense',
+    ranges: { str: [1, 4], agi: [1, 5], wil: [1, 5], log: [1, 5], cha: [2, 6] },
+  }
+  const withExtras = {
+    ...cat,
+    metatypes: new Map(cat.metatypes).set(meta.id, meta as never),
+    rules: new Map(cat.rules)
+      .set('t.a', rule('t.a', 'base', ''))
+      .set('t.b', rule('t.b', 'technomancers', '  '))
+      .set('t.c', rule('t.c', 'x-files', ''))
+      .set('t.d', rule('t.d', 'optional', 'Kept name')),
+  } as typeof cat
   test('sheet display names', () => {
-    expect(['base', 'technomancers', 'optional', 'vehicles', 'street-gear'].map(sheetDisplayName))
-      .toEqual(['Basics', 'Technomancers', 'Optional rules', 'Vehicles & Drones', 'Street Gear'])
+    expect(['base', 'technomancers', 'optional', 'vehicles', 'street-gear'].map(sheetDisplayName)).toEqual([
+      'Basics',
+      'Technomancers',
+      'Optional rules',
+      'Vehicles & Drones',
+      'Street Gear',
+    ])
   })
   test('an empty section becomes the sheet name; sheetName on every rule', () => {
-    const rules = exportBooks(withExtras, ['TEST'], [], OPTS).books![0].rules, by = (id: string) => rules.find(r => r.id === id)!
+    const rules = exportBooks(withExtras, ['TEST'], [], OPTS).books![0].rules,
+      by = (id: string) => rules.find(r => r.id === id)!
     expect(by('t.a')).toMatchObject({ section: 'Basics', sheetName: 'Basics' })
     expect(by('t.b')).toMatchObject({ section: 'Technomancers', sheetName: 'Technomancers' })
     expect(by('t.c')).toMatchObject({ section: 'X Files', sheetName: 'X Files' })
@@ -159,8 +207,9 @@ describe('export: sections, metatypes, skills', () => {
   })
   test('a book’s metatypes', () => {
     const b = exportBooks(withExtras, ['TEST', 'TESTC'], [], OPTS).books!
-    expect(b[0].metatypes).toEqual([{ id: 'test.imp', source: 'TEST', page: 7, canon: false, name: 'Made-up kin', edge: 3,
-      ranges: meta.ranges, racialQuality: 'Invented sense' }])
+    expect(b[0].metatypes).toEqual([
+      { id: 'test.imp', source: 'TEST', page: 7, canon: false, name: 'Made-up kin', edge: 3, ranges: meta.ranges, racialQuality: 'Invented sense' },
+    ])
     expect(b[1].metatypes).toEqual([])
   })
   test('every skill of the book, with all its specs', () => {
@@ -172,7 +221,8 @@ describe('export: sections, metatypes, skills', () => {
     }
   })
   test('a book’s sample characters go out as runners, under that book only', () => {
-    const ch = rush(), f = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS, { TESTC: [ch] })
+    const ch = rush(),
+      f = exportBooks(cat, ['TEST', 'TESTC'], [], OPTS, { TESTC: [ch] })
     const [test, testc] = f.books!
     expect(test.characters).toBeUndefined()
     expect(testc.characters).toEqual(exportRunners(cat, [ch], OPTS).runners)
@@ -198,13 +248,26 @@ describe('export: sections, metatypes, skills', () => {
 
 // a made-up compendium, loaded as a GM's overlay
 const ref = { source: 'ALLEY', page: 1 }
-const alleyNpc = (() => { const ch = blankNpc('critter', 'regular'); ch.identity.name = 'Alley Rat'; return ch })()
-const alley: Compendium = { id: '00000000beef', name: 'Alley Finds', source: 'ALLEY', sharing: 'private', updatedAt: '2026-10-02T00:00:00.000Z',
+const alleyNpc = (() => {
+  const ch = blankNpc('critter', 'regular')
+  ch.identity.name = 'Alley Rat'
+  return ch
+})()
+const alley: Compendium = {
+  id: '00000000beef',
+  name: 'Alley Finds',
+  source: 'ALLEY',
+  sharing: 'private',
+  updatedAt: '2026-10-02T00:00:00.000Z',
   amps: [{ id: 'alley.grip', type: 'quality', name: 'Grip', effects: [{ ref: 'init-1' }], narrative: 'Our own grip text.', ...ref }],
   items: [{ id: 'alley.brick', kind: 'weapon', name: 'Brick', dv: 'STR+1', ranges: 'OK/OK/-/-', text: 'Our own brick text.', ...ref }],
   vehicles: [{ id: 'alley.cart', name: 'Cart', pilot: 1, body: 3, handling: 2, speed: 1, armor: 0, mount: 'none', ...ref }],
-  npcs: [alleyNpc] }
-const withAlley = buildCatalog([...catFiles, { file: `compendiums/gm1/${alley.id}.xml`, xml: compendiumXml(alley), overlay: true, publisher: 'Game Master', owner: 'gm1' }])
+  npcs: [alleyNpc],
+}
+const withAlley = buildCatalog([
+  ...catFiles,
+  { file: `compendiums/gm1/${alley.id}.xml`, xml: compendiumXml(alley), overlay: true, publisher: 'Game Master', owner: 'gm1' },
+])
 
 describe('export: a compendium', () => {
   test('exports as one book marked compendium, non-canon, with its own text and its NPCs', () => {
@@ -227,9 +290,14 @@ describe('export: bonuses and vehicles', () => {
   const amp = (uid: string, refs: string[], type = 'quality') => ({ uid, type, name: 'Amp ' + uid, effects: refs.map(ref => ({ ref })) })
   test('capped bonuses are counted once, so the amps add up to the sheet', () => {
     const ch = rush()
-    ch.build.amps = [amp('a', ['wound-light', 'init-1']), amp('b', ['wound-light', 'wound-serious', 'init-2']), amp('c', ['wound-serious', 'init-2']),
-      amp('d', ['wound-light', 'init-3'], 'cyberdeck')] as never
-    const r = exportRunners(cat, [ch], OPTS).runners![0], d = derive(cat, ch)
+    ch.build.amps = [
+      amp('a', ['wound-light', 'init-1']),
+      amp('b', ['wound-light', 'wound-serious', 'init-2']),
+      amp('c', ['wound-serious', 'init-2']),
+      amp('d', ['wound-light', 'init-3'], 'cyberdeck'),
+    ] as never
+    const r = exportRunners(cat, [ch], OPTS).runners![0],
+      d = derive(cat, ch)
     const sum = (k: 'light' | 'serious') => r.amps.reduce((s, a) => s + a.bonuses[k], 0)
     expect(r.amps.map(a => a.bonuses.light)).toEqual([1, 0, 0, 0])
     expect(r.amps.map(a => a.bonuses.serious)).toEqual([0, 1, 0, 0])
@@ -243,7 +311,9 @@ describe('export: bonuses and vehicles', () => {
   })
   test('a vehicle amp: its uid, the chassis id, the drone count', () => {
     const ch = rush()
-    ch.build.amps = [{ uid: 'v1', type: 'vehicle', name: 'My kite', vehicle: 'medium-drone', effects: [{ ref: 'extra-drone' }, { ref: 'extra-drone' }] }] as never
+    ch.build.amps = [
+      { uid: 'v1', type: 'vehicle', name: 'My kite', vehicle: 'medium-drone', effects: [{ ref: 'extra-drone' }, { ref: 'extra-drone' }] },
+    ] as never
     const r = exportRunners(cat, [ch], OPTS).runners![0]
     expect(r.vehicles).toHaveLength(1)
     expect(r.vehicles[0]).toMatchObject({ uid: 'v1', chassisId: 'medium-drone', count: 3, chassis: 'Kite' })
@@ -258,7 +328,9 @@ describe('export: bonuses and vehicles', () => {
     const sk = [...cat.skills.values()].find(s => s.specs.length)!
     const rr = ampParts(cat, 'quality', [{ ref: 'rr-spec', param: sk.specs[0].id }]).rr
     expect(rr[0]).toMatchObject({ on: 'spec', skill: sk.id })
-    expect(ampParts(cat, 'quality', [{ ref: 'rr-spec', param: 'custom:x' }], [{ id: 'mine', rating: 1, specs: ['custom:x'] }] as never).rr[0].skill).toBe('mine')
+    expect(ampParts(cat, 'quality', [{ ref: 'rr-spec', param: 'custom:x' }], [{ id: 'mine', rating: 1, specs: ['custom:x'] }] as never).rr[0].skill).toBe(
+      'mine',
+    )
   })
 })
 
@@ -285,7 +357,8 @@ describe('export: the schema', () => {
     expect(check(example), JSON.stringify(check.errors)).toBe(true)
   })
   test('new optional fields are accepted, and absent ones too', () => {
-    const f = books(), b = f.books[0]
+    const f = books(),
+      b = f.books[0]
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
     for (const r of b.rules) delete r.sheetName
     delete b.metatypes
@@ -330,18 +403,26 @@ describe('export: the schema', () => {
     expect(check(rest)).toBe(false)
   })
   test('a bad range value or a mistyped field is not', () => {
-    const f = runners(), ranges = { melee: 'none', short: 'ok', medium: 'ok', long: 'disadvantage' }
-    f.runners[0].items.push({ uid: 'w', kind: 'weapon', name: 'W', canon: false, price: 0,
-      weapon: { dv: '4P', dvText: '4P', ranges, specialist: false, ammo: [] } })
+    const f = runners(),
+      ranges = { melee: 'none', short: 'ok', medium: 'ok', long: 'disadvantage' }
+    f.runners[0].items.push({
+      uid: 'w',
+      kind: 'weapon',
+      name: 'W',
+      canon: false,
+      price: 0,
+      weapon: { dv: '4P', dvText: '4P', ranges, specialist: false, ammo: [] },
+    })
     expect(check(f), JSON.stringify(check.errors)).toBe(true)
     f.runners[0].items.at(-1).weapon.ranges.short = 'far'
     expect(check(f)).toBe(false)
     const g = runners()
     g.runners[0].monitor.light = 'four'
     expect(check(g)).toBe(false)
-    const h = books(), amp = h.books.find((b: { amps: unknown[] }) => b.amps.length)!.amps[0]
+    const h = books(),
+      amp = h.books.find((b: { amps: unknown[] }) => b.amps.length)!.amps[0]
     expect(check(h), JSON.stringify(check.errors)).toBe(true)
-    amp.printedRating = "two"
+    amp.printedRating = 'two'
     expect(check(h)).toBe(false)
     amp.printedRating = 2
     delete amp.mod
@@ -352,13 +433,23 @@ describe('export: the schema', () => {
 // The amps' Armor +1 are capped once (CRB p.61's maximum bonus), the same way for the sheet and the export: each amp
 // gets its share, a worn Equipment amp's only on the main armor, and the shares add up to derive's armor.
 test('export: each amp’s armor share adds up to the sheet’s capped armor', () => {
-  const ch = blankCharacter(), a = (uid: string, type: string, n: number, linkedItem?: string) =>
-    ({ uid, type, name: uid, effects: Array.from({ length: n }, () => ({ ref: 'armor-plus' })), ...linkedItem ? { linkedItem } : {} })
-  ch.build.items = [{ uid: 'coat', kind: 'armor', name: 'Made-up coat', armor: 2 }, { uid: 'vest', kind: 'armor', name: 'Made-up vest', armor: 1 }]
+  const ch = blankCharacter(),
+    a = (uid: string, type: string, n: number, linkedItem?: string) => ({
+      uid,
+      type,
+      name: uid,
+      effects: Array.from({ length: n }, () => ({ ref: 'armor-plus' })),
+      ...(linkedItem ? { linkedItem } : {}),
+    })
+  ch.build.items = [
+    { uid: 'coat', kind: 'armor', name: 'Made-up coat', armor: 2 },
+    { uid: 'vest', kind: 'armor', name: 'Made-up vest', armor: 1 },
+  ]
   ch.build.mainArmor = 'coat'
   ch.build.amps = [a('skin', 'quality', 1), a('weave', 'equipment', 1, 'vest'), a('plates', 'cyberware', 2), a('lining', 'equipment', 1, 'coat')]
-  const d = derive(cat, ch), r = exportRunners(cat, [ch], OPTS).runners![0]
+  const d = derive(cat, ch),
+    r = exportRunners(cat, [ch], OPTS).runners![0]
   const shares = r.amps.map(x => x.bonuses.armor)
-  expect(shares).toEqual([1, 0, 1, 0])  // made-up max 2: the always-on quality, then one of the plates; the vest isn't worn
+  expect(shares).toEqual([1, 0, 1, 0]) // made-up max 2: the always-on quality, then one of the plates; the vest isn't worn
   expect(2 + shares.reduce((t, n) => t + n, 0)).toBe(d.armor.main)
 })

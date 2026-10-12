@@ -1,5 +1,73 @@
 # Release notes
 
+## 0.13.2 — 2026-10-12
+
+**Admins, after updating:**
+- **The container no longer runs as root.** It starts as root only to hand its data folders to `PUID`:`PGID` (default
+  `99`:`100`, Unraid's nobody:users), then runs the server as that user. On tower04 the first start re-owns the
+  characters, custom and library folders to 99:100, which can take a moment on a big library; later starts skip it.
+  Set `PUID` and `PGID` to use another user (docs/deploy-tower04.md).
+- **Re-import all the books in both games** (Books → **Re-import all**, in Shadowrun 6 and in Anarchy), so the data
+  matches this release's importer.
+
+**Both games**
+- **Phones: the receipt and budgets bar is a real button.** Tap it or press Enter or Space on it to open or close the
+  panel; screen readers hear whether it is open, and while it is closed nothing hidden under it takes keyboard focus.
+- **Runner lists on a phone**: every row puts its buttons under the runner's name, and a long name wraps instead of
+  pushing the row off the screen.
+- **Screen readers**: Export, Delete, Edit and Remove buttons say which runner or entry they act on ("Delete Zip
+  Spark"); the Review tab reads "Review, 2 problems"; a stepper's value says which row it belongs to; the catalog picker
+  is a list of options you can move through with the arrow keys and pick with Enter or Space.
+- **A tab that hits an error** shows "This tab hit an error — your saved changes are safe" and a Reload button instead of
+  a blank page.
+- **Names with odd characters**: a compendium, entry or edit whose name or text holds a character XML can't store (one
+  pasted from a PDF) now saves as a readable file; the character is dropped.
+- **Ask the rules**: when the AI provider fails, the person asking sees "the AI provider isn't answering; tell the
+  admin"; the details go to the server log (AI settings' Test still shows them to the admin).
+- **Security**: a hostile shared compendium can no longer stall the server; guesses at a password sent all at once count
+  against the lockout before they are checked; a password change or an Authelia sign-in checks the account again just
+  before it lands; a runner moved to another account leaves its campaign; AI provider addresses must be http or https;
+  a few malformed requests get a clear error instead of a server error.
+
+**Shadowrun 6**
+- **Overspent reads plainly**: a budget past its limit says "over by 2 (of 24)" instead of "−2 left of 24", and the
+  phone's closed budgets bar names the worst overspend (nuyen first, then Karma, then any other pool), not only Karma.
+- **Why nuyen is over**: when the metatype size pricing house rule adds to a runner's spending, Review's nuyen message
+  says how much it adds.
+- **A runner file keeps only the runner's own optional rules**: a hand-edited file can't change a table-only setting
+  (such as the skill cap); Review says the choice was set aside.
+- **Leveled qualities and powers**: a level's effect written as "rating minus one" or as a per-level table now gives the
+  right number at every level (Lucky Streak 1–3 with "R-1": 0, 1, 2).
+- **Older career runners**: level-ups recorded before qualities and powers became one entry per level now open at the
+  level they reached (no doubled power, no quality a level low), and lifestyle and upgrade spends in the ledger follow
+  their entries' new ids. A rating or level the catalog doesn't have stays as it was, so Review still points it out.
+- **Runner files**: a bonus's "minus" and per-rating table are saved, and a specialization may contain a semicolon.
+- **Sample runners' fit** reads a unit price ("1,500 each") the same way the app does.
+- **Sample runners follow the table's settings as the app applies them**: a level of play's priority letters and
+  sum-to-ten target, street level's lower rows, a prime runner's doubled Karma and Twenty Questions' karma; a nested
+  rule only counts while the rule it belongs to is on.
+- **The same book imports the same way every time**: a table holding weapons and gear (Mil-Spec in Bestial Nature,
+  Deadly Arts, Firing Squad, Age of Rust) no longer gives its categories in a different order from one import to the
+  next.
+
+**Under the hood**
+- **Review fixes**: the security, accessibility and runner-file fixes above came from a full review of 0.13.1.
+- **More tests**: new tests cover the importer's corners (effects, formulas, fit, edits, categories), the SR6 budgets,
+  loader, data view and export, the sample fixes, and Anarchy's catalog loader, compendiums and sheet. The importer's
+  sample-runner pricing is checked against the app's budgets.
+- **Lint and formatting**: ESLint 9 (TypeScript and React hooks rules) and Prettier, with `npm run lint` and
+  `npm run format`; the code was formatted once, and CI checks both. The findings were fixed rather than the rules
+  turned off.
+- **Server cleanup**: books.mjs is split into focused modules; the runner index and gzip caches forget deleted and
+  changed files and stay within a size cap; a compendium list reads campaigns.xml once.
+- **Importer cleanup**: the shared SR6 catalog reading, the in-book search and the table shapes have their own modules,
+  and the PDF conversion is split by step; recipes no longer reach into each other's private helpers; sample runners
+  are priced against the app's budgets (a parity test); the Python packages are locked with hashes.
+- **Container cleanup**: the server runs as a non-root user (`PUID`/`PGID`), and every GitHub Action is pinned to a
+  commit.
+- **App cleanup**: the SR6 budgets are split into smaller modules, and there are no import cycles left in the app (a
+  test keeps it that way).
+
 ## 0.13.1 — 2026-10-11
 
 **Admins, after updating:**

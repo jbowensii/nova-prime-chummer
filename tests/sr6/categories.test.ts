@@ -31,15 +31,16 @@ test('a bare part shows its category; the printed name stays the name; search fi
 test('an accessory fits its host category exactly, or its kind by the kind’s word', () => {
   const { data } = setup()
   const e = (k: Parameters<typeof data.entry>[0], id: string) => data.entry(k, id)!
-  const limb = e('augmentations', 'crb.limb-synthetic'), eyes = e('augmentations', 'crb.glow-eyes'), gun = e('weapons', 'crb.zap-gun')
+  const limb = e('augmentations', 'crb.limb-synthetic'),
+    eyes = e('augmentations', 'crb.glow-eyes'),
+    gun = e('weapons', 'crb.zap-gun')
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), limb)).toBe(true)
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), eyes)).toBe(false)
   expect(fitsHost(data.categories, e('augmentations', 'crb.glare-filter'), limb)).toBe(false)
   expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), gun)).toBe(true) // fits "Weapon": every weapon
   expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), limb)).toBe(false)
   expect(fitsHost(data.categories, eyes, limb)).toBeNull() // no accessory: nothing to check
-  expect([capacityOf(limb), capacityUsed(e('augmentations', 'crb.plating'), 3), capacityUsed(e('augmentations', 'crb.glare-filter'))])
-    .toEqual([6, 3, 2])
+  expect([capacityOf(limb), capacityUsed(e('augmentations', 'crb.plating'), 3), capacityUsed(e('augmentations', 'crb.glare-filter'))]).toEqual([6, 3, 2])
 })
 
 test('another host’s accessory is fitted, an error a GM may approve; Review flags a host over capacity', () => {
@@ -54,8 +55,13 @@ test('another host’s accessory is fitted, an error a GM may approve; Review fl
   expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: true })
   const v = codes()
   expect(v.map(x => x.code).sort()).toEqual(['catalog.accessoryHost', 'catalog.capacity'])
-  expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({ severity: 'error', source: 'CRB', page: 283, path: `augmentations.${limb.uid}`,
-    message: 'Eyeware accessory: Glare filter is for Eyeware, not Torqlimb: Limb (synthetic).' })
+  expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({
+    severity: 'error',
+    source: 'CRB',
+    page: 283,
+    path: `augmentations.${limb.uid}`,
+    message: 'Eyeware accessory: Glare filter is for Eyeware, not Torqlimb: Limb (synthetic).',
+  })
   expect(v.find(x => x.code === 'catalog.capacity')!.message).toBe('Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.')
   // fitted into the host's capacity, an accessory costs no Essence of its own (the glare filter's 0.1: the limb's 1 alone)
   expect(priced(limb, data, cr).essence).toBe(1)
@@ -70,19 +76,38 @@ test('an accessory’s bonuses are its host’s: the limb’s own STR and armor 
   act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 2 })
   const plate = limb.accessories[0]
   const before = deriveSr6(data, cr, ch)
-  expect(act({ op: 'bonus', uid: plate.uid, bonuses: [{ target: 'str', value: 2 }, { target: 'defense', value: 1, perRating: true }] })).toEqual({ ok: true })
+  expect(
+    act({
+      op: 'bonus',
+      uid: plate.uid,
+      bonuses: [
+        { target: 'str', value: 2 },
+        { target: 'defense', value: 1, perRating: true },
+      ],
+    }),
+  ).toEqual({ ok: true })
   const d = deriveSr6(data, cr, ch)
   expect(d.attrs.str).toEqual(before.attrs.str) // the runner's Strength: unchanged
   expect(d.defenseRating).toBe(before.defenseRating)
-  expect(d.hosts).toEqual([{ uid: limb.uid, name: 'Torqlimb: Limb (synthetic)',
-    values: [{ target: 'str', value: before.attrs.str.natural + 2 }, { target: 'defense', value: 2 }],
-    text: `STR ${before.attrs.str.natural + 2}, Armor +2` }])
+  expect(d.hosts).toEqual([
+    {
+      uid: limb.uid,
+      name: 'Torqlimb: Limb (synthetic)',
+      values: [
+        { target: 'str', value: before.attrs.str.natural + 2 },
+        { target: 'defense', value: 2 },
+      ],
+      text: `STR ${before.attrs.str.natural + 2}, Armor +2`,
+    },
+  ])
   // a bonus on the line itself is still the runner's
   act({ op: 'bonus', uid: limb.uid, bonuses: [{ target: 'str', value: 1 }] })
   expect(deriveSr6(data, cr, ch).attrs.str.augmented).toBe(before.attrs.str.augmented + 1)
   // over its capacity: a Review error
   act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
   act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
-  expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.capacity')).toMatchObject({ severity: 'error',
-    message: 'Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.' })
+  expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.capacity')).toMatchObject({
+    severity: 'error',
+    message: 'Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.',
+  })
 })

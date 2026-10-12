@@ -11,8 +11,19 @@ import { browseKinds } from './tabs/Data'
 
 /** amps, an item's kind (weapon, armor, gear, spell, complex-form), skills, metatypes, vehicles, packages, lifestyles */
 export type AnarchyKind = 'amps' | 'weapon' | 'armor' | 'gear' | 'spell' | 'complex-form' | 'skills' | 'metatypes' | 'vehicles' | 'packages' | 'lifestyles'
-const LABEL: Record<AnarchyKind, string> = { amps: 'Amp', weapon: 'Weapon', armor: 'Armor', gear: 'Gear', spell: 'Spell', 'complex-form': 'Complex form',
-  skills: 'Skill', metatypes: 'Metatype', vehicles: 'Vehicle', packages: 'Package', lifestyles: 'Lifestyle' }
+const LABEL: Record<AnarchyKind, string> = {
+  amps: 'Amp',
+  weapon: 'Weapon',
+  armor: 'Armor',
+  gear: 'Gear',
+  spell: 'Spell',
+  'complex-form': 'Complex form',
+  skills: 'Skill',
+  metatypes: 'Metatype',
+  vehicles: 'Vehicle',
+  packages: 'Package',
+  lifestyles: 'Lifestyle',
+}
 
 const rows = new WeakMap<Catalog, Map<string, BrowseRow>>()
 /** Game data's row for an entry (every kind's rows made once per catalog, on the first card shown). */
@@ -21,14 +32,29 @@ export function anarchyRow(c: Catalog, kind: AnarchyKind, id: string): BrowseRow
   return rows.get(c)!.get(`${kind}:${id}`)
 }
 const has = (c: Catalog, kind: AnarchyKind, id: string) =>
-  kind === 'amps' ? c.amps.has(id) : kind === 'skills' ? c.skills.has(id) : kind === 'metatypes' ? c.metatypes.has(id) : kind === 'vehicles' ? c.vehicles.has(id)
-    : kind === 'packages' ? c.packages.has(id) : kind === 'lifestyles' ? c.lifestyles.has(id) : c.items.get(id)?.kind === kind
+  kind === 'amps'
+    ? c.amps.has(id)
+    : kind === 'skills'
+      ? c.skills.has(id)
+      : kind === 'metatypes'
+        ? c.metatypes.has(id)
+        : kind === 'vehicles'
+          ? c.vehicles.has(id)
+          : kind === 'packages'
+            ? c.packages.has(id)
+            : kind === 'lifestyles'
+              ? c.lifestyles.has(id)
+              : c.items.get(id)?.kind === kind
 
 /** `children` naming a catalog entry, with its card (none when it isn't in the catalog). */
 export function AnarchyRef({ kind, id, children, tabbable }: { kind: AnarchyKind; id?: string; children: ReactNode; tabbable?: boolean }) {
   const { c } = useEditor()
   const ok = !!id && has(c, kind, id)
-  return <EntryHover row={ok ? () => anarchyRow(c, kind, id!)! : undefined} kind={LABEL[kind]} tabbable={tabbable}>{children}</EntryHover>
+  return (
+    <EntryHover row={ok ? () => anarchyRow(c, kind, id!)! : undefined} kind={LABEL[kind]} tabbable={tabbable}>
+      {children}
+    </EntryHover>
+  )
 }
 
 /** The catalog entry a Review line's path names (`amps.<uid>`, `items.<uid>`, `skills.<id>`), else none. */
@@ -52,19 +78,38 @@ export function anarchyCard(c: Catalog, kind: AnarchyKind, id: string): { card?:
  *  is Risk Reduction on its tests), the metatype's maximum, the amps giving that RR (attrRRSources, as derive counts it)
  *  and the rule's source and page. */
 export function anarchyAttrRow(c: Catalog, ch: Character, a: AttrId): BrowseRow {
-  const at = c.attributes.get(a), b = ch.finalizedAt ? currentBuild(ch) : ch.build
-  const max = (hasNoMetatype(ch) ? [1, 12] : c.metatypes.get(ch.identity.metatype)?.ranges[a] ?? [1, 6])[1]
+  const at = c.attributes.get(a),
+    b = ch.finalizedAt ? currentBuild(ch) : ch.build
+  const max = (hasNoMetatype(ch) ? [1, 12] : (c.metatypes.get(ch.identity.metatype)?.ranges[a] ?? [1, 6]))[1]
   // (the counted ones; the switchable and conditional ones in brackets, each with its note: owner decision 2026-10-10)
-  const rr = attrRRSources(b, a), more = attrRRBracket(b, a)
-  return { key: a, name: at?.name ?? a, source: at?.source ?? '', page: at?.page ?? 0,
-    details: [`natural ${b.attributes[a] ?? 0}`, `augmented ${b.attributes[a] ?? 0}`, `max ${max}`,
-      rr.length || more.length ? `RR ${bracketed(rr.length, rr.length + more.length)}` : ''].filter(Boolean).join(' · '),
-    effects: [...rr.map(name => ({ text: `RR +1 on its tests from ${name}`, state: 'applied' as const })),
-      ...more.map(x => ({ text: `RR +1 on its tests from ${x.name}${x.how ? ` (${x.how})` : ''}`, state: 'conditional' as const }))] }
+  const rr = attrRRSources(b, a),
+    more = attrRRBracket(b, a)
+  return {
+    key: a,
+    name: at?.name ?? a,
+    source: at?.source ?? '',
+    page: at?.page ?? 0,
+    details: [
+      `natural ${b.attributes[a] ?? 0}`,
+      `augmented ${b.attributes[a] ?? 0}`,
+      `max ${max}`,
+      rr.length || more.length ? `RR ${bracketed(rr.length, rr.length + more.length)}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    effects: [
+      ...rr.map(name => ({ text: `RR +1 on its tests from ${name}`, state: 'applied' as const })),
+      ...more.map(x => ({ text: `RR +1 on its tests from ${x.name}${x.how ? ` (${x.how})` : ''}`, state: 'conditional' as const })),
+    ],
+  }
 }
 
 /** `children` naming one of the runner's attributes, with its card on hover, focus or tap. */
 export function AnarchyAttrRef({ attr, children, tabbable }: { attr: AttrId; children: ReactNode; tabbable?: boolean }) {
   const { c, ch } = useEditor()
-  return <EntryHover row={() => anarchyAttrRow(c, ch, attr)} kind="Attribute" tabbable={tabbable}>{children}</EntryHover>
+  return (
+    <EntryHover row={() => anarchyAttrRow(c, ch, attr)} kind="Attribute" tabbable={tabbable}>
+      {children}
+    </EntryHover>
+  )
 }

@@ -428,7 +428,7 @@ def two_values(text):
 
 # --- the children an entry gets ----------------------------------------------------------------------------------
 
-PRICED = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs"}
+PRICED = ("weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs")  # ordered: catalog.derived's first base
 # the fields a formula may stand in, by kind (the rest are words, or ranges: rating)
 FORMULA_FIELDS = {"weapons": ("cost", "avail"), "armor": ("cost", "avail", "capacity", "defense"),
                   "augmentations": ("cost", "avail", "essence", "capacity"),

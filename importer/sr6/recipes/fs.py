@@ -2,7 +2,7 @@
 accessories, as the core rulebook files them), ammunition (gear), armor (and armor modifications), tac-apps, the trauma
 qualities, the security and gang NPCs, the martial art styles and techniques and the rule sections (edge actions,
 maneuvers: no catalog kind of their own), ids unscoped (run scopes them as fs.<slug>), descriptions in the private
-texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (crb.extract); layout notes in
+texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes in
 fs.md.
 
 The book prints an item as a heading, its description and a stat box titled with its name (TYPE, DV, ... AVAIL, COST):
@@ -12,8 +12,8 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.recipes.dhsa import slug
-from importer.sr6.recipes import crb, shapes
+from importer.sr6.ids import slug
+from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "FS", "Shadowrun: Firing Squad", "Catalyst Game Labs", True
@@ -129,7 +129,7 @@ def _boxes(bs):
     for b in bs:
         prev = out[-1] if out else None
         if b.level in (3, 4) and not b.stats and b.row is None and norm(b.chapter) in ("suit up", "weapons rack") and \
-                (t := next(((h, r) for h, r in crb._tables(b.text) if 0 < len(r) <= _OWN_ROWS and h[0].upper() not in _NAME_COLUMNS
+                (t := next(((h, r) for h, r in catalog.md_tables(b.text) if 0 < len(r) <= _OWN_ROWS and h[0].upper() not in _NAME_COLUMNS
                            and {"AVAIL", "COST"} & {x.upper() for x in h}
                            and (norm(b.chapter) == "suit up" or h[0].upper() == "TYPE")), None)):
             b = replace(b, type="item", stats=[dict(zip(t[0], r)) for r in t[1]  # its stat table printed in its text
@@ -165,10 +165,6 @@ def _boxes(bs):
     return out
 
 
-def _md_table(h, rows):
-    return "\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h)] + ["| " + " | ".join(r) + " |" for r in rows])
-
-
 def _strays(bs):
     """A SUIT UP armor table (TYPE, DR …) printed in a later section's text (Vashon Island's lands in `Cumulative`)
     goes back to the section before it whose text names its first row (`Ace of Cups`), as that section's box. Its
@@ -178,11 +174,11 @@ def _strays(bs):
     for i, b in enumerate(bs):
         if norm(b.chapter) != "suit up":
             continue
-        for h, rows in crb._tables(b.text):
+        for h, rows in catalog.md_tables(b.text):
             if h[0].upper() != "TYPE" or "DR" not in {x.upper() for x in h} or not rows:
                 continue
             names = lambda t: re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))  # noqa: E731
-            if names(b.text.replace(_md_table(h, rows), "")):
+            if names(b.text.replace(catalog.md_table(h, rows), "")):
                 continue  # its own text names its rows (`Rapid Transit … comes in Basic, Elite …`): its own table
             j = next((j for j in range(i - 1, -1, -1) if bs[j].chapter == b.chapter and bs[j].level == 3
                       and not bs[j].stats and names(bs[j].text)), None)
@@ -195,7 +191,7 @@ def _strays(bs):
                     stats[-1]["EXTRAS"] = " ".join([re.sub(r"(?i)^extras\s*:\s*", "", cells[0])] + cells[1:]).strip()
                 elif r[0]:
                     stats.append(dict(zip(h, r)))
-            md = _md_table(h, rows)
+            md = catalog.md_table(h, rows)
             if stats and "EXTRAS" not in stats[-1] and (x := next((k for k in labels if k.lower() == "extras"), None)):
                 stats[-1]["EXTRAS"] = labels.pop(x)
                 tail = f"\n**{x}:** {stats[-1]['EXTRAS']}"
@@ -288,7 +284,7 @@ def _pointed(bs):
         for t in bs:
             if t.chapter != b.chapter or not any(abs(t.page - (int(p) + PAGE_OFFSET)) <= 1 for p in pages):
                 continue
-            for h, rs in crb._tables(t.text):
+            for h, rs in catalog.md_tables(t.text):
                 if h[0].upper() == "ITEM" and "DR" in {x.upper() for x in h}:  # (its page: the one pointed to)
                     rows += [(int(pages[0]) + PAGE_OFFSET, h, r) for r in rs if r[0] and norm(r[0]) not in have
                              and r[0][:1].isupper() and re.search(rf"\b{re.escape(_squash(r[0].split()[0]))}\b", said)]
@@ -300,4 +296,4 @@ def _pointed(bs):
 
 def extract(regrouped, ctx=None):
     bs = _lists(_hosted(shapes.configuration_rows(_boxes(_pointed(_strays(blocks(regrouped)))))))
-    return crb.extract([x for b in bs for x in shapes.martial_pair(shapes.martial(b))], ctx, book=sys.modules[__name__])
+    return catalog.read([x for b in bs for x in shapes.martial_pair(shapes.martial(b))], ctx, sys.modules[__name__])

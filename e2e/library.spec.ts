@@ -53,15 +53,24 @@ test('A–Z by default, then Recently edited puts a new runner on top; search; D
 test('a file the app can’t read is listed with why; download it, repair it', async ({ page }) => {
   const dir = join(process.env.CA2_E2E_DIR!, 'characters', 'admin')
   mkdirSync(dir, { recursive: true })
-  writeFileSync(join(dir, 'pasted.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="pasted-1" streetName="Pasted Pete" metatype="human" level="runner" package="free" updatedAt="2026-09-20T00:00:00.000Z">\n  <background>From a PDF${String.fromCharCode(12)}page</background>\n  <build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build>\n</ca2:character>\n`)
+  writeFileSync(
+    join(dir, 'pasted.xml'),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" rev="4" id="pasted-1" streetName="Pasted Pete" metatype="human" level="runner" package="free" updatedAt="2026-09-20T00:00:00.000Z">\n  <background>From a PDF${String.fromCharCode(12)}page</background>\n  <build><attributes str="1" agi="1" wil="1" log="1" cha="1"/></build>\n</ca2:character>\n`,
+  )
   await page.goto('/')
   const row = page.locator('.dossier.unreadable', { hasText: 'Couldn’t open Pasted Pete' })
   await expect(row).toContainText('in <background>: character U+000C isn’t allowed in XML')
   mkdirSync(SHOTS, { recursive: true })
   await row.scrollIntoViewIfNeeded()
-  const theme = (t: string) => page.evaluate(t => { localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t })); document.documentElement.dataset.theme = t }, t)
-  await theme('light'); await page.screenshot({ path: `${SHOTS}/library-light.png` })
-  await theme('dark'); await page.screenshot({ path: `${SHOTS}/library-dark.png` })
+  const theme = (t: string) =>
+    page.evaluate(t => {
+      localStorage.setItem('ca2.settings.v1', JSON.stringify({ theme: t }))
+      document.documentElement.dataset.theme = t
+    }, t)
+  await theme('light')
+  await page.screenshot({ path: `${SHOTS}/library-light.png` })
+  await theme('dark')
+  await page.screenshot({ path: `${SHOTS}/library-dark.png` })
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
   await page.screenshot({ path: `${SHOTS}/library-phone.png` })

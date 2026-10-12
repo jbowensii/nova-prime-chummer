@@ -9,7 +9,11 @@ import { books, BOOKS_DIR, legacy, sample } from '../helpers'
 import { describeBooks } from './_gate'
 
 const xsd = readFileSync('public/data/schema/character.xsd', 'utf8')
-const samples = books ? readdirSync(join(BOOKS_DIR, 'samples')).filter(f => f.endsWith('.ca2.json')).map(f => f.replace('.ca2.json', '')) : []
+const samples = books
+  ? readdirSync(join(BOOKS_DIR, 'samples'))
+      .filter(f => f.endsWith('.ca2.json'))
+      .map(f => f.replace('.ca2.json', ''))
+  : []
 
 describeBooks('character XML (book samples)', () => {
   test.each(samples)('%s: XML round trip is lossless and schema-valid', async id => {

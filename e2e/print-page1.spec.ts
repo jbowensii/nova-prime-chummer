@@ -38,11 +38,15 @@ test('print sheet page 1: knowledge under Skills, bigger portrait, logo on the s
     expect(await logo.evaluate(e => getComputedStyle(e).getPropertyValue('print-color-adjust'))).toBe('exact')
   }
   for (const t of ['light', 'dark']) {
-    await page.evaluate(t => { document.documentElement.dataset.theme = t }, t)
+    await page.evaluate(t => {
+      document.documentElement.dataset.theme = t
+    }, t)
     await check()
     await page.screenshot({ path: `${SHOTS}/print-page1-${t}.png`, fullPage: true })
   }
-  await page.evaluate(() => { document.documentElement.dataset.theme = 'light' })
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light'
+  })
   await page.emulateMedia({ media: 'print' })
   await check()
   await page.screenshot({ path: `${SHOTS}/print-page1-print.png`, fullPage: true })

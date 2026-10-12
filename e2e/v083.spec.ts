@@ -10,8 +10,11 @@ const SHOTS = '.extract/screenshots/0.8.3'
 const TAG = process.env.V083_TAG ?? 'after'
 const PHONE = { width: 390, height: 844 }
 
-const settings = (page: Page, patch: object) => page.evaluate(p => { const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
-  localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, ...p })) }, patch)
+const settings = (page: Page, patch: object) =>
+  page.evaluate(p => {
+    const s = JSON.parse(localStorage.getItem('ca2.settings.v1') ?? '{}')
+    localStorage.setItem('ca2.settings.v1', JSON.stringify({ ...s, ...p }))
+  }, patch)
 
 test('the header: icons from the left, 20% bigger, New runner an icon; the tooltip above the icon, inside the window', async ({ page }) => {
   mkdirSync(SHOTS, { recursive: true })
@@ -34,7 +37,10 @@ test('the header: icons from the left, 20% bigger, New runner an icon; the toolt
   await expect(add).toHaveText('')
   await expect(add).toHaveAttribute('data-tip', 'New runner')
   await expect(add).toHaveClass(/primary/)
-  for (const [where, size] of [['desktop', { width: 1400, height: 900 }], ['phone', PHONE]] as const) {
+  for (const [where, size] of [
+    ['desktop', { width: 1400, height: 900 }],
+    ['phone', PHONE],
+  ] as const) {
     await page.setViewportSize(size)
     // the row starts at the title's left edge, under it; every icon 20% bigger than 0.8.1's (20px in 38.4px)
     const title = (await page.locator('.pagehead .titles').boundingBox())!
@@ -56,13 +62,15 @@ test('the header: icons from the left, 20% bigger, New runner an icon; the toolt
   const tip = page.getByRole('tooltip')
   await npcs.hover()
   await expect(tip).toHaveText('NPCs & Critters')
-  let t = (await tip.boundingBox())!, l = (await npcs.boundingBox())!
+  let t = (await tip.boundingBox())!,
+    l = (await npcs.boundingBox())!
   expect(t.y + t.height).toBeLessThanOrEqual(l.y)
   expect(t.x + t.width / 2).toBeCloseTo(l.x + l.width / 2, 0)
   await page.mouse.move(0, 0)
   await expect(tip).toBeHidden()
   await npcs.focus()
-  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab') // keyboard focus: :focus-visible
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Tab') // keyboard focus: :focus-visible
   await expect(tip).toHaveText('NPCs & Critters')
   expect((await tip.boundingBox())!.y + (await tip.boundingBox())!.height).toBeLessThanOrEqual((await npcs.boundingBox())!.y)
   await page.locator('h1').click()
@@ -97,9 +105,12 @@ test('print: the sheet type on the toolbar again; Letter and A4, both styles, no
   await settings(page, { print: 'plain' })
   // (its own copy of the made-up test book's Test Face: other specs pad the shared copies)
   const id = 'v083-long-skills'
-  const face = { xml: readFileSync('tests/fixtures/mini/custom/imported/testc/samples/testc.test-face.xml', 'utf8').replace('id="testc.test-face"', `id="${id}"`) }
+  const face = {
+    xml: readFileSync('tests/fixtures/mini/custom/imported/testc/samples/testc.test-face.xml', 'utf8').replace('id="testc.test-face"', `id="${id}"`),
+  }
   const specs = (k: number) => Array.from({ length: k }, (_, i) => `<spec>custom:Made-up trick ${i + 1}</spec>`).join('')
-  const xml = face.xml.replace('<skill id="perception" rating="2"/>', `<skill id="perception" rating="2">${specs(16)}</skill>`)
+  const xml = face.xml
+    .replace('<skill id="perception" rating="2"/>', `<skill id="perception" rating="2">${specs(16)}</skill>`)
     .replace('<skill id="close-combat" rating="1"/>', `<skill id="close-combat" rating="1">${specs(16)}</skill>`)
   expect(xml).not.toBe(face.xml)
   const put = await page.request.put(`/api/characters/${id}`, { data: xml, headers: { 'Content-Type': 'application/xml', Origin: new URL(page.url()).origin } })
@@ -134,9 +145,15 @@ test('print: the sheet type on the toolbar again; Letter and A4, both styles, no
     for (const format of ['Letter', 'A4']) {
       const glyphs = pageGlyphs(await page.pdf({ format, printBackground: true, path: `${SHOTS}/${style}-${format.toLowerCase()}.pdf` }))
       expect(glyphs.length, `${style} ${format}`).toBeLessThanOrEqual(style === 'book' ? 2 : 3)
-      expect(glyphs.every(n => n > 0), `${style} ${format}: a blank page (${glyphs})`).toBe(true)
+      expect(
+        glyphs.every(n => n > 0),
+        `${style} ${format}: a blank page (${glyphs})`,
+      ).toBe(true)
       // every page but the last is full: none holds only the header
-      expect(glyphs.slice(0, -1).every(n => n > 400), `${style} ${format}: a near-empty page (${glyphs})`).toBe(true)
+      expect(
+        glyphs.slice(0, -1).every(n => n > 400),
+        `${style} ${format}: a near-empty page (${glyphs})`,
+      ).toBe(true)
     }
   }
   // the same runner, with the old rule (each column kept whole): page 1 held only the header

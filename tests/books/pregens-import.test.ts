@@ -28,7 +28,10 @@ const imported = books && existsSync(join(CUSTOM_DIR, 'imported', 'index.xml')) 
 const doc = (p: string) => new DOMParser().parseFromString(readFileSync(p, 'utf8'), 'text/xml')
 const attrsOf = (e: Element) => Object.fromEntries([...e.attributes].map(a => [a.name, a.value]))
 type Row = Record<string, string>
-type Printed = Record<string, { source?: string; essence: number; thresholds: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }>
+type Printed = Record<
+  string,
+  { source?: string; essence: number; thresholds: Record<string, number>; pools: { skill: string; spec: string | null; attr: string; dp: number }[] }
+>
 
 const oracle: Printed = books && existsSync(bookFile('pregens-printed.json')) ? JSON.parse(readFileSync(bookFile('pregens-printed.json'), 'utf8')) : {}
 
@@ -44,12 +47,17 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
   if (!ready) console.info(`no imported ${dir} (library/${dir}/import.xml, custom/imported/samples.xml); tests skipped`)
   const prefix = `${src.toLowerCase()}.`
   const rows: Row[] = ready ? [...doc(importXml).getElementsByTagName('row')].map(attrsOf) : []
-  const runners = new Map<string, Character>(ready ? [...doc(samplesXml).getElementsByTagName('sample')]
-    .filter(s => s.getAttribute('source') === src).map(s => {
-      const r = xmlToCharacter(readFileSync(join(CUSTOM_DIR, 'imported', s.getAttribute('href')!), 'utf8'))
-      if (!r.ok) throw new Error(`${s.getAttribute('href')}: ${r.reason}`)
-      return [r.character.id.slice(prefix.length), r.character]
-    }) : [])
+  const runners = new Map<string, Character>(
+    ready
+      ? [...doc(samplesXml).getElementsByTagName('sample')]
+          .filter(s => s.getAttribute('source') === src)
+          .map(s => {
+            const r = xmlToCharacter(readFileSync(join(CUSTOM_DIR, 'imported', s.getAttribute('href')!), 'utf8'))
+            if (!r.ok) throw new Error(`${s.getAttribute('href')}: ${r.reason}`)
+            return [r.character.id.slice(prefix.length), r.character]
+          })
+      : [],
+  )
 
   const run = ready ? describe : describe.skip
   run('runners', () => {
@@ -61,8 +69,7 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
       const ch = runners.get(id)!
       const d = ready ? derive(books!, ch) : undefined
       const mine = rows.filter(r => r.sample === `${prefix}${id}`)
-      const dp = (skill: string, spec: string | null, attr: string) =>
-        d!.pools.find(q => q.skill === skill && (q.spec ?? null) === spec && q.attr === attr)?.dp
+      const dp = (skill: string, spec: string | null, attr: string) => d!.pools.find(q => q.skill === skill && (q.spec ?? null) === spec && q.attr === attr)?.dp
 
       test('every catalog reference resolves', () => {
         expect(validate(imported ?? books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
@@ -74,7 +81,8 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
           expect(xml.includes(marker), marker).toBe(false)
         expect(ch.overrides).toEqual([])
         // what the book prints against the rules shows as it would on any runner (the owner's to look into)
-        const c = imported ?? books!, v = validate(c, ch)
+        const c = imported ?? books!,
+          v = validate(c, ch)
         expect(v.some(x => x.approved)).toBe(false)
         const left = price(c, ch).remaining
         expect(v.some(x => x.code === 'budget.over')).toBe(left < 0)
@@ -82,12 +90,19 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
       })
 
       test('pools, thresholds and Essence the recipe marked ok are what the engine gives', () => {
-        const wrong = mine.filter(r => r.status === 'ok' || r.kind === 'essence').flatMap(r => {
-          const got = r.kind === 'pool' ? dp(r.skill, r.spec ?? null, r.attr)
-            : r.kind === 'threshold' ? (d!.thresholds as Record<string, number[] | undefined>)[r.key]?.[0]
-              : r.kind === 'essence' ? d!.essence : Number(r.printed)
-          return got === Number(r.printed) ? [] : [`${r.kind} ${r.key ?? ''}: printed ${r.printed}, engine ${got} (${r.status})`]
-        })
+        const wrong = mine
+          .filter(r => r.status === 'ok' || r.kind === 'essence')
+          .flatMap(r => {
+            const got =
+              r.kind === 'pool'
+                ? dp(r.skill, r.spec ?? null, r.attr)
+                : r.kind === 'threshold'
+                  ? (d!.thresholds as Record<string, number[] | undefined>)[r.key]?.[0]
+                  : r.kind === 'essence'
+                    ? d!.essence
+                    : Number(r.printed)
+            return got === Number(r.printed) ? [] : [`${r.kind} ${r.key ?? ''}: printed ${r.printed}, engine ${got} (${r.status})`]
+          })
         expect(wrong).toEqual([])
       })
 
@@ -101,7 +116,9 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
           return got === Number(r.computed) ? [] : [`${a.name}: recipe computed ${r.computed}, engine ${got}`]
         })
         expect(wrong).toEqual([])
-        const noted = validate(imported ?? books!, ch).filter(v => v.code === 'amp.printedRating').map(v => v.path)
+        const noted = validate(imported ?? books!, ch)
+          .filter(v => v.code === 'amp.printedRating')
+          .map(v => v.path)
         expect(noted).toEqual(amps.filter(r => r.status === 'mismatch').map(r => `amps.${r.key}`))
       })
 
@@ -111,17 +128,31 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const o = derive(books!, r.character)
         const key = (q: { skill: string; spec?: string; attr: string }) => `${q.spec ?? q.skill}@${q.attr}`
         const theirs = new Map(o.pools.map(q => [key(q), q.dp]))
-        const pools = d!.pools.filter(q => theirs.has(key(q)) && theirs.get(key(q)) !== q.dp)
+        const pools = d!.pools
+          .filter(q => theirs.has(key(q)) && theirs.get(key(q)) !== q.dp)
           .map(q => `${key(q)}: generated ${q.dp}, hand ${theirs.get(key(q))}`)
         const t = (x: typeof d) => x!.thresholds
         const worn = (x: typeof d) => [t(x).physicalMain[0], t(x).physicalAlt[0]].sort((a, b) => a - b) // which is "main" is a choice
         // a Matrix threshold the book doesn't print isn't compared: the hand encoding made Ricky Lean's printed Quality a
         // Cyberdeck, the import keeps it a Quality (as printed; Review flags its deck effects)
         const matrix = (x: typeof d) => (!oracle[id] || 'matrix' in oracle[id].thresholds ? t(x).matrix?.[0] : 'not printed')
-        expect({ attributes: ch.build.attributes, pools, none: t(d).physicalNone[0], worn: worn(d), mental: t(d).mental[0],
-          matrix: matrix(d), essence: d!.essence })
-          .toEqual({ attributes: r.character.build.attributes, pools: [], none: t(o).physicalNone[0], worn: worn(o),
-            mental: t(o).mental[0], matrix: matrix(o), essence: o.essence })
+        expect({
+          attributes: ch.build.attributes,
+          pools,
+          none: t(d).physicalNone[0],
+          worn: worn(d),
+          mental: t(d).mental[0],
+          matrix: matrix(d),
+          essence: d!.essence,
+        }).toEqual({
+          attributes: r.character.build.attributes,
+          pools: [],
+          none: t(o).physicalNone[0],
+          worn: worn(o),
+          mental: t(o).mental[0],
+          matrix: matrix(o),
+          essence: o.essence,
+        })
       })
 
       // Items as the hand encoding has them, as a multiset of (kind, catalog id or name). Allowed differences are
@@ -131,7 +162,12 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const r = parseCharacterFile(readFileSync(bookFile(`samples/${id}.ca2.json`), 'utf8'))
         if (!r.ok) throw new Error(r.reason)
         const hand = r.character.build.items
-        const norm = (s: string) => s.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+        const norm = (s: string) =>
+          s
+            .toLowerCase()
+            .replace(/\(.*?\)/g, '')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim()
         const key = (i: { kind: string; name: string; catalogId?: string }) => `${i.kind}:${i.catalogId?.replace(prefix, '') ?? norm(i.name)}`
         const handGear = new Set(hand.filter(i => i.kind === 'gear').map(i => norm(i.name)))
         const ampNames = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => norm(a.name)))
@@ -139,12 +175,21 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const count = (xs: string[]) => xs.reduce((m, k) => m.set(k, (m.get(k) ?? 0) + 1), new Map<string, number>())
         // an Equipment amp's item: the gear the hand listed under the amp's name, or the one the import adds for it
         const ampItems = new Set(ch.build.amps.filter(a => a.type === 'equipment').map(a => a.linkedItem))
-        const mine = count(ch.build.items.filter(i => !i.starting && !(i.kind === 'armor' && handGear.has(norm(i.name)))
-          && !(i.kind === 'gear' && ampItems.has(i.uid))).map(key))
+        const mine = count(
+          ch.build.items
+            .filter(i => !i.starting && !(i.kind === 'armor' && handGear.has(norm(i.name))) && !(i.kind === 'gear' && ampItems.has(i.uid)))
+            .map(key),
+        )
         const theirs = count(hand.filter(i => !i.starting && !(i.kind === 'gear' && (ampNames.has(norm(i.name)) || worn.has(norm(i.name))))).map(key))
         // the printed "Fake SIN, Commlink" became the free starting gear: exactly one of each (0.5.3)
-        expect(ch.build.items.filter(i => i.starting).map(i => i.starting).sort()).toEqual(['commlink', 'fake-sin'])
-        const diff = [...new Set([...mine.keys(), ...theirs.keys()])].filter(k => mine.get(k) !== theirs.get(k))
+        expect(
+          ch.build.items
+            .filter(i => i.starting)
+            .map(i => i.starting)
+            .sort(),
+        ).toEqual(['commlink', 'fake-sin'])
+        const diff = [...new Set([...mine.keys(), ...theirs.keys()])]
+          .filter(k => mine.get(k) !== theirs.get(k))
           .map(k => `${k}: generated ${mine.get(k) ?? 0}, hand ${theirs.get(k) ?? 0}`)
         expect(diff).toEqual([])
       })
@@ -153,9 +198,13 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
         const p = oracle[id]
         const pools = p.pools.filter(x => dp(x.skill, x.spec, x.attr) !== x.dp).map(x => `${x.spec ?? x.skill}@${x.attr}=${x.dp}`)
         const t = d!.thresholds
-        const thresholds = Object.entries(p.thresholds).filter(([k, v]) => (k === 'physicalMain' || k === 'physicalAlt'
-          ? ![t.physicalMain[0], t.physicalAlt[0]].includes(v) // which worn armor is "main" is a choice, not a number
-          : (t as Record<string, number[] | undefined>)[k]?.[0] !== v)).map(([k, v]) => `${k}=${v}`)
+        const thresholds = Object.entries(p.thresholds)
+          .filter(([k, v]) =>
+            k === 'physicalMain' || k === 'physicalAlt'
+              ? ![t.physicalMain[0], t.physicalAlt[0]].includes(v) // which worn armor is "main" is a choice, not a number
+              : (t as Record<string, number[] | undefined>)[k]?.[0] !== v,
+          )
+          .map(([k, v]) => `${k}=${v}`)
         expect({ pools, thresholds, essence: d!.essence }).toEqual({ pools: [], thresholds: [], essence: p.essence })
       })
     })

@@ -14,19 +14,30 @@ const key = (kind: Sr6Kind, id: string) => `${kind}:${id}`
 export function forSr6Campaign(c: Sr6Catalog, campaign: string | undefined): Sr6Catalog {
   const other = new Set([...c.sources.values()].filter(s => s.compendium?.campaign && s.compendium.campaign !== campaign).map(s => s.id))
   if (!other.size) return c
-  const entries = Object.fromEntries(Object.entries(c.entries).map(([k, m]) => [k, [...m.values()].some(e => other.has(e.source))
-    ? new Map([...m].filter(([, e]) => !other.has(e.source))) : m])) as Sr6Catalog['entries']
+  const entries = Object.fromEntries(
+    Object.entries(c.entries).map(([k, m]) => [
+      k,
+      [...m.values()].some(e => other.has(e.source)) ? new Map([...m].filter(([, e]) => !other.has(e.source))) : m,
+    ]),
+  ) as Sr6Catalog['entries']
   return { ...c, entries }
 }
 
 /** Every catalog line the runner has (as it stands, its career spends included): qualities, magic picks, martial arts,
  *  purchases and their accessories, its SINs' lifestyles. */
 function lines(ch: Sr6Character): [Sr6Kind, string][] {
-  const b = currentBuild(ch), out: [Sr6Kind, string][] = []
-  const buy = (x: Sr6Purchase) => { if (x.id) out.push([x.kind, x.id]); x.accessories.forEach(buy) }
+  const b = currentBuild(ch),
+    out: [Sr6Kind, string][] = []
+  const buy = (x: Sr6Purchase) => {
+    if (x.id) out.push([x.kind, x.id])
+    x.accessories.forEach(buy)
+  }
   for (const q of b.qualities) out.push(['qualities', q.id])
   for (const p of b.picks) out.push([p.kind, p.id])
-  for (const m of b.martialArts) { out.push(['martialarts', m.id]); for (const t of m.techniques) out.push(['martialtechniques', t.id]) }
+  for (const m of b.martialArts) {
+    out.push(['martialarts', m.id])
+    for (const t of m.techniques) out.push(['martialtechniques', t.id])
+  }
   b.purchases.forEach(buy)
   for (const s of b.sins) for (const l of s.lifestyles ?? []) out.push(['lifestyles', l.id])
   return out
@@ -37,9 +48,11 @@ const isHouse = (c: Sr6Catalog, e: Sr6Entry) => !!c.sources.get(e.source)?.compe
 /** The runner with `house` holding the compendium entries it uses: the live entry while the catalog has it, else the copy
  *  it had. The same runner when nothing changed. */
 export function keepSr6House(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
-  const had = new Map((ch.house ?? []).map(e => [key(e.kind, e.id), e])), out = new Map<string, Sr6Entry>()
+  const had = new Map((ch.house ?? []).map(e => [key(e.kind, e.id), e])),
+    out = new Map<string, Sr6Entry>()
   for (const [kind, id] of lines(ch)) {
-    const live = c.entries[kind]?.get(id), e = live ? (isHouse(c, live) ? live : undefined) : had.get(key(kind, id))
+    const live = c.entries[kind]?.get(id),
+      e = live ? (isHouse(c, live) ? live : undefined) : had.get(key(kind, id))
     if (e) out.set(key(kind, id), e)
   }
   const house = [...out.values()]
@@ -61,5 +74,10 @@ export function withSr6House(c: Sr6Catalog, house: Sr6Entry[] | undefined): { c:
 }
 
 /** Review's note for each copy standing in for a gone entry. */
-export const houseNotes = (c: Sr6Catalog, gone: Sr6Entry[]): Violation[] => gone.map(e => ({ code: 'catalog.gone', severity: 'warning', path: 'review',
-  message: `${e.name}: its source ${c.sources.get(e.source)?.name ?? e.source} is no longer available; the runner keeps its own copy.` }))
+export const houseNotes = (c: Sr6Catalog, gone: Sr6Entry[]): Violation[] =>
+  gone.map(e => ({
+    code: 'catalog.gone',
+    severity: 'warning',
+    path: 'review',
+    message: `${e.name}: its source ${c.sources.get(e.source)?.name ?? e.source} is no longer available; the runner keeps its own copy.`,
+  }))

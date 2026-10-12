@@ -17,40 +17,65 @@ vi.setConfig({ testTimeout: 30000 })
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', ed: 'ed-password-12', pat: 'pat-password-1' }
 type Who = keyof typeof PW
 const python: string[] | null = findPython()
-const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-')), chars = join(dir, 'chars'), npcs = join(chars, '.npcs')
+const dir = mkdtempSync(join(tmpdir(), 'ca2-npcs-')),
+  chars = join(dir, 'chars'),
+  npcs = join(chars, '.npcs')
 const jar = {} as Record<Who, string>
 let base = ''
 let srv: { close: () => void; listen: (p: number, cb: () => void) => void; address: () => { port: number } }
 
 beforeAll(async () => {
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
-  writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'ada', password: PW.ada, name: 'Ada Admin' },
-    { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' }, { username: 'ed', password: PW.ed, role: 'editor', name: 'Ed' },
-    { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' }]))
+  writeFileSync(
+    join(dir, 'library', '.config', 'users.xml'),
+    await usersFile([
+      { username: 'ada', password: PW.ada, name: 'Ada Admin' },
+      { username: 'eve', password: PW.eve, role: 'editor', name: 'Eve Editor' },
+      { username: 'ed', password: PW.ed, role: 'editor', name: 'Ed' },
+      { username: 'pat', password: PW.pat, role: 'player', name: 'Pat Player' },
+    ]),
+  )
   srv = createServer({ staticDir: 'public', charDir: chars, customDir: join(dir, 'custom'), libraryDir: join(dir, 'library'), python: python ?? 'python3' })
   await new Promise<void>(ok => srv.listen(0, ok))
   base = `http://127.0.0.1:${srv.address().port}`
   for (const who of Object.keys(PW) as Who[]) {
-    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', body: JSON.stringify({ username: who, password: PW[who] }),
-      headers: { 'Content-Type': 'application/json', Origin: base } })
-    jar[who] = r.headers.getSetCookie().find(c => /session=/.test(c))!.split(';')[0]
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username: who, password: PW[who] }),
+      headers: { 'Content-Type': 'application/json', Origin: base },
+    })
+    jar[who] = r.headers
+      .getSetCookie()
+      .find(c => /session=/.test(c))!
+      .split(';')[0]
   }
 })
 afterAll(() => srv.close())
 
-const call = (who: Who, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => fetch(`${base}${path}`, { method,
-  body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-  headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}), ...headers } })
+const call = (who: Who, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
+  fetch(`${base}${path}`, {
+    method,
+    body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+    headers: { Origin: base, Cookie: jar[who], ...(body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}), ...headers },
+  })
 const npc = (id: string, name: string, extra = '') =>
   `<?xml version="1.0"?><ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="${id}" streetName="${name}" metatype="ork" level="runner"${extra} updatedAt="2026-10-02">\n  <npc kind="npc" tier="regular"/><build/></ca2:character>`
-const ids = async (who: Who, path = '/api/npcs') => (await (await call(who, 'GET', path)).json()).map((c: { owner: string; xml: string }) =>
-  `${c.owner}/${c.xml.match(/ id="([^"]+)"/)![1]}`).sort()
-const userId = async (n: string) => ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
+const ids = async (who: Who, path = '/api/npcs') =>
+  (await (await call(who, 'GET', path)).json()).map((c: { owner: string; xml: string }) => `${c.owner}/${c.xml.match(/ id="([^"]+)"/)![1]}`).sort()
+const userId = async (n: string) =>
+  ((await (await call('ada', 'GET', '/api/users')).json()) as { id: string; username: string }[]).find(u => u.username === n)!.id
 let cid = ''
 
 test('a player gets 403 on every /api/npcs route', async () => {
-  for (const [m, p] of [['GET', '/api/npcs'], ['PUT', '/api/npcs/n1'], ['DELETE', '/api/npcs/n1'], ['GET', '/api/npcs/trash'],
-    ['DELETE', '/api/npcs/trash'], ['POST', '/api/npcs/trash/a-1700000000000.xml/restore'], ['DELETE', '/api/npcs/trash/a-1700000000000.xml']])
+  for (const [m, p] of [
+    ['GET', '/api/npcs'],
+    ['PUT', '/api/npcs/n1'],
+    ['DELETE', '/api/npcs/n1'],
+    ['GET', '/api/npcs/trash'],
+    ['DELETE', '/api/npcs/trash'],
+    ['POST', '/api/npcs/trash/a-1700000000000.xml/restore'],
+    ['DELETE', '/api/npcs/trash/a-1700000000000.xml'],
+  ])
     expect([m, p, (await call('pat', m, p, m === 'PUT' ? npc('n1', 'Nope') : undefined)).status]).toEqual([m, p, 403])
   expect(existsSync(npcs)).toBe(false)
 })
@@ -174,7 +199,6 @@ test('an account rename moves its NPC folder; a delete retires it to .npcs/.tras
   expect(readdirSync(join(npcs, '.trash'))).toEqual(['edd-Eds-goon.xml'])
   expect(await ids('ada')).toEqual(['eve/n1'])
 })
-
 
 test('PUT /api/characters refuses an NPC file: an NPC never lands in a runner folder players can list', async () => {
   for (const who of ['eve', 'pat'] as Who[]) {

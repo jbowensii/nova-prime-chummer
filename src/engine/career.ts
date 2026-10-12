@@ -13,7 +13,10 @@ type NewEvent = CareerEvent extends infer E ? (E extends CareerEvent ? Omit<E, '
 const stamp = (e: NewEvent): CareerEvent => ({ id: newId(), at: new Date().toISOString(), ...e }) as CareerEvent
 
 export const voidedIds = (ch: Character) => new Set(ch.career.filter(e => e.type === 'void').map(e => (e as { eventId: string }).eventId))
-export const activeEvents = (ch: Character) => { const v = voidedIds(ch); return ch.career.filter(e => e.type !== 'void' && !v.has(e.id)) }
+export const activeEvents = (ch: Character) => {
+  const v = voidedIds(ch)
+  return ch.career.filter(e => e.type !== 'void' && !v.has(e.id))
+}
 
 /** Applies a pre-0.5.5 event to a build (settle() folds them in once). */
 export function applyEvent(b: Build, e: CareerEvent): void {
@@ -28,10 +31,18 @@ export function applyEvent(b: Build, e: CareerEvent): void {
       }
       break
     }
-    case 'buy': b.items.push(structuredClone(e.item)); break
-    case 'sell': b.items = b.items.filter(i => i.uid !== e.itemUid); break
-    case 'amp-add': b.amps.push(structuredClone(e.amp)); break
-    case 'amp-modify': b.amps = b.amps.map(a => (a.uid === e.ampUid ? structuredClone(e.after) : a)); break
+    case 'buy':
+      b.items.push(structuredClone(e.item))
+      break
+    case 'sell':
+      b.items = b.items.filter(i => i.uid !== e.itemUid)
+      break
+    case 'amp-add':
+      b.amps.push(structuredClone(e.amp))
+      break
+    case 'amp-modify':
+      b.amps = b.amps.map(a => (a.uid === e.ampUid ? structuredClone(e.after) : a))
+      break
     case 'spec-add': {
       const s = b.skills.find(x => x.id === e.skill)
       if (s) s.specs.push(e.spec)
@@ -68,11 +79,13 @@ export function currentBuild(ch: Character): Build {
 export function ledgerRunning(ch: Character): { e: CareerEvent; running: number; voided: boolean }[] {
   const v = voidedIds(ch)
   let running = 0
-  return ch.career.filter(e => e.type !== 'void').map(e => {
-    if (e.type === 'finalize') running = e.remaining
-    else if (!v.has(e.id)) running += e.type === 'earn' ? e.amount : -('cost' in e ? e.cost : 0)
-    return { e, running, voided: v.has(e.id) }
-  })
+  return ch.career
+    .filter(e => e.type !== 'void')
+    .map(e => {
+      if (e.type === 'finalize') running = e.remaining
+      else if (!v.has(e.id)) running += e.type === 'earn' ? e.amount : -('cost' in e ? e.cost : 0)
+      return { e, running, voided: v.has(e.id) }
+    })
 }
 
 /** A legacy runner the 0.5.5 way: its events folded into the build and kept in the ledger as history, after a
@@ -98,16 +111,20 @@ export function finalize(c: Catalog, ch: Character, table?: TableFlags): Charact
   const remaining = price(c, ch, table).remaining
   const at = new Date().toISOString()
   const { carry: _, ...rest } = ch
-  return { ...rest, finalizedAt: at, finalRemaining: remaining,
-    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining, prices: Object.fromEntries(partPrices(c, ch, table)) }] }
+  return {
+    ...rest,
+    finalizedAt: at,
+    finalRemaining: remaining,
+    career: [...ch.career, { id: newId(), at, type: 'finalize', remaining, prices: Object.fromEntries(partPrices(c, ch, table)) }],
+  }
 }
 
 /** What each thing in the build was paid (price.ts priceParts keys): the last Finalize's prices, updated by every
  *  change since. A thing not in it (from a file before these were kept) goes by today's price. */
 export function recordedPrices(ch: Character): Map<string, number> {
   const m = new Map<string, number>()
-  for (const e of sinceFinalize(ch, true)) if ((e.type === 'finalize' || e.type === 'change') && e.prices)
-    for (const [k, v] of Object.entries(e.prices)) m.set(k, v)
+  for (const e of sinceFinalize(ch, true))
+    if ((e.type === 'finalize' || e.type === 'change') && e.prices) for (const [k, v] of Object.entries(e.prices)) m.set(k, v)
   return m
 }
 
@@ -145,31 +162,40 @@ export function diffBuild(c: Catalog, a: Build, b: Build): Change[] {
   const skillName = (id: string) => c.skills.get(id)?.name ?? id
   const specName = (skill: string, sp: string) => c.skills.get(skill)?.specs.find(s => s.id === sp)?.name ?? sp.replace(/^custom:/, '')
   for (const id of new Set([...a.skills, ...b.skills].map(s => s.id))) {
-    const x = a.skills.find(s => s.id === id), y = b.skills.find(s => s.id === id)
+    const x = a.skills.find(s => s.id === id),
+      y = b.skills.find(s => s.id === id)
     put(`skill:${id}`, skillName(id), qty(x?.rating ?? 0), qty(y?.rating ?? 0))
-    for (const sp of new Set([...x?.specs ?? [], ...y?.specs ?? []])) {
-      const had = !!x?.specs.includes(sp), has = !!y?.specs.includes(sp)
+    for (const sp of new Set([...(x?.specs ?? []), ...(y?.specs ?? [])])) {
+      const had = !!x?.specs.includes(sp),
+        has = !!y?.specs.includes(sp)
       if (had !== has) put(`spec:${id}:${sp}`, `${skillName(id)} specialization ${specName(id, sp)}`, had ? '' : undefined, has ? '' : undefined)
     }
   }
   const kn = (k: KnowledgeEntry) => `${k.name}${k.kind === 'language' ? ' (language' + (k.native ? ', native)' : ')') : ''}`
   const key = (k: KnowledgeEntry) => k.from ?? k.id ?? `:` // derive.ts knowledgeKey
-  const ka = new Map(a.knowledge.map(k => [key(k), k])), kb = new Map(b.knowledge.map(k => [key(k), k]))
+  const ka = new Map(a.knowledge.map(k => [key(k), k])),
+    kb = new Map(b.knowledge.map(k => [key(k), k]))
   for (const k of new Set([...ka.keys(), ...kb.keys()])) {
-    const x = ka.get(k), y = kb.get(k)
+    const x = ka.get(k),
+      y = kb.get(k)
     put(`knowledge:${k}`, x && y ? 'Knowledge' : kn((y ?? x)!), x && (y ? kn(x) : ''), y && (x ? kn(y) : ''))
   }
   const rated = (amp: AmpEntry, bb: Build) => `rating ${ampRating(c, amp, ampCtx(bb, amp, c))}`
-  const aa = new Map(a.amps.map(x => [x.uid, x])), ab = new Map(b.amps.map(x => [x.uid, x]))
+  const aa = new Map(a.amps.map(x => [x.uid, x])),
+    ab = new Map(b.amps.map(x => [x.uid, x]))
   for (const uid of new Set([...aa.keys(), ...ab.keys()])) {
-    const x = aa.get(uid), y = ab.get(uid)
+    const x = aa.get(uid),
+      y = ab.get(uid)
     if (x && y && JSON.stringify(x) === JSON.stringify(y)) continue
-    const from = x && rated(x, a), to = y && rated(y, b)
+    const from = x && rated(x, a),
+      to = y && rated(y, b)
     put(`amp:${uid}`, x && y && x.name !== y.name ? `${x.name} (now ${y.name})` : (y ?? x)!.name, from, x && y && from === to ? `${to}, edited` : to)
   }
-  const ia = new Map(a.items.map(x => [x.uid, x])), ib = new Map(b.items.map(x => [x.uid, x]))
+  const ia = new Map(a.items.map(x => [x.uid, x])),
+    ib = new Map(b.items.map(x => [x.uid, x]))
   for (const uid of new Set([...ia.keys(), ...ib.keys()])) {
-    const x = ia.get(uid), y = ib.get(uid)
+    const x = ia.get(uid),
+      y = ib.get(uid)
     if (x && y && JSON.stringify(x) === JSON.stringify(y)) continue
     if (x && y) put(`item:${uid}`, x.name === y.name ? y.name : 'Renamed', x.name === y.name ? '' : x.name, x.name === y.name ? 'edited' : y.name)
     else put(`item:${uid}`, (y ?? x)!.name, x && '', y && '')
@@ -193,25 +219,36 @@ export function logChange(c: Catalog, before: Character, after: Character, table
   const lines = diffBuild(c, before.build, after.build)
   // each thing whose price moved: an addition or a raise costs today's price; a removal gives back what was paid for
   // it, a lowering that share of it (recordedPrices), so a price changed since can't be turned into nuyen
-  const paid = recordedPrices(before), was = partPrices(c, before, table), now = partPrices(c, after, table)
+  const paid = recordedPrices(before),
+    was = partPrices(c, before, table),
+    now = partPrices(c, after, table)
   const prices: Record<string, number> = {}
   let cost = 0
   for (const k of new Set([...was.keys(), ...now.keys()])) {
-    const w = was.get(k), n = now.get(k), r = paid.get(k) ?? w ?? 0
+    const w = was.get(k),
+      n = now.get(k),
+      r = paid.get(k) ?? w ?? 0
     if (w === n) continue
     // below 0 (an amp rated under 0 gives nuyen back): the paid share down to 0, then the credit
-    const next = n === undefined ? 0 : w === undefined ? n : n >= w || w <= 0 ? r + n - w : Math.round(r * Math.max(n, 0) / w) + Math.min(n, 0)
+    const next = n === undefined ? 0 : w === undefined ? n : n >= w || w <= 0 ? r + n - w : Math.round((r * Math.max(n, 0)) / w) + Math.min(n, 0)
     cost += next - (w === undefined ? 0 : r)
     prices[k] = next
   }
   if (!lines.length && !cost && !Object.keys(prices).length) return after
   if (!lines.length) lines.push({ key: 'price', label: 'Build price', from: '', to: '' })
   const last = after.career.at(-1)
-  if (lines.length === 1 && last?.type === 'change' && last.changes.length === 1 && last.changes[0].key === lines[0].key
-      && Date.now() - Date.parse(last.at) < MERGE_MS && !voidedIds(after).has(last.id)) {
+  if (
+    lines.length === 1 &&
+    last?.type === 'change' &&
+    last.changes.length === 1 &&
+    last.changes[0].key === lines[0].key &&
+    Date.now() - Date.parse(last.at) < MERGE_MS &&
+    !voidedIds(after).has(last.id)
+  ) {
     const first = last.changes[0].from
     const merged: Change = { ...lines[0] }
-    if (first === undefined) delete merged.from; else merged.from = first
+    if (first === undefined) delete merged.from
+    else merged.from = first
     const total = last.cost + cost
     const gone = merged.from === merged.to // back where it was, or added and removed again
     const career = after.career.slice(0, -1)
@@ -223,7 +260,8 @@ export function logChange(c: Catalog, before: Character, after: Character, table
 
 /** Qualities added after Finalize (they need a major event and the GM, CRB p.58). */
 export function qualitiesAddedAfter(ch: Character): Set<string> {
-  const v = voidedIds(ch), out = new Set<string>()
+  const v = voidedIds(ch),
+    out = new Set<string>()
   for (const e of sinceFinalize(ch)) {
     if (v.has(e.id)) continue
     if (e.type === 'amp-add' && e.amp.type === 'quality') out.add(e.amp.uid)

@@ -36,7 +36,7 @@ docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path
 | URL | http://10.47.40.44:8480/ |
 | Container | `chummer-anarchy2`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
 | Template | Added via the `jbowensii/unraid-templates` template repository (see Install above); Unraid manages it |
-| Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) on every push to `main` |
+| Image | `ghcr.io/jbowensii/chummer-anarchy2:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) after `ci` passes on a push to `main` |
 | Characters | `/mnt/user/appdata/chummer-anarchy2/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
 | House rules | `/mnt/user/appdata/chummer-anarchy2/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
 | Library | `/mnt/user/appdata/chummer-anarchy2/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600; Shadowrun 6's own in `sr6/.config/`). Never served over HTTP; back it up with the rest of appdata |
@@ -47,6 +47,17 @@ image or recreating the container doesn't touch them. Back up the
 appdata folder as usual. Browsers that saved runners before server storage
 move them to tower04 on first load (done 2026-09-27: 15 runners moved,
 the 2 empty "Unnamed runner" files deleted to `.trash`).
+
+## Running as a non-root user (PUID / PGID)
+
+The image's entrypoint (`docker-entrypoint.sh`) starts as root. When any file under `/data/characters`,
+`/data/custom` or `/data/library` isn't owned by `PUID`:`PGID`, it `chown -R`s that folder (later starts skip the
+walk), then drops to that user with `su-exec` and runs the server. The defaults are `PUID=99`, `PGID=100` (Unraid's
+`nobody`:`users`), so an Unraid install needs no setting; set the two variables to run as another user. Files an
+older, root-running image left behind are handed over on the first start after the upgrade; nothing to fix by hand.
+With `docker run --user UID:GID` (or compose `user:`) the entrypoint skips all of that and just runs the server, so
+those folders must already be writable by that user. Port 80 inside the container works without root because Docker
+lets container processes bind low ports by default.
 
 ## Backup and restore
 
@@ -101,7 +112,7 @@ it, so it kept running on the old image. That no longer applies.)
 
 ## Redeploy after changes
 
-Push (or merge) to `main`; the `publish.yml` workflow builds and pushes
+Push (or merge) to `main`; once `ci` passes, the `publish.yml` workflow builds and pushes
 `ghcr.io/jbowensii/chummer-anarchy2:latest`. On tower04: Docker →
 chummer-anarchy2 → **force update** (or Edit → Apply). No local build, no
 file copy to the tower.

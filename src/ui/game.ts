@@ -11,10 +11,16 @@ export function storedGame(): Game | null {
   try {
     const g = localStorage.getItem(GAME_KEY)
     return g === 'ca2' || g === 'sr6' ? g : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 /** Remember the game; blocked storage just doesn't remember (the page still goes there). */
 export function storeGame(g: Game) {
-  try { localStorage.setItem(GAME_KEY, g) } catch { /* private mode or full: not remembered */ }
+  try {
+    localStorage.setItem(GAME_KEY, g)
+  } catch {
+    /* private mode or full: not remembered */
+  }
 }
