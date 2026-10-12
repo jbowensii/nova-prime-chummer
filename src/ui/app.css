@@ -2385,6 +2385,10 @@ dialog.dupes .dupe-group label.check {
   align-items: baseline;
 }
 @media (max-width: 600px) {
+  .menubar > nav.iconbar {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 2.88rem);
+  }
   .menubar .tools {
     border-left: 0;
     padding-left: 0;
