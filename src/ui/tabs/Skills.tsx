@@ -6,6 +6,7 @@ import { newId } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'
 import { AnarchyRef } from '../AnarchyRef'
+import { NameField } from '../../shared/ui'
 
 /** Lowering a skill below 4 turns its renamed free entry into a paid one: the question to ask first, or null when
  *  nothing gets paid (an entry still named after the skill just goes away with the slot). */
@@ -15,15 +16,6 @@ export function lapseWarning(c: Catalog, b: Build, id: string, to: number): stri
   const k = b.knowledge.find(k => k.from === `skill:${id}`)
   if (from < 4 || to >= 4 || !k || k.name === name) return null
   return `With ${name} below 4, “${k.name}” is no longer free: it becomes a paid knowledge skill (${c.pricing.knowledge.toLocaleString('en-US')}¥). Lower ${name} anyway?`
-}
-
-/** A text field that commits on Enter or leaving it (a finalized runner's changes are ledger lines, not keystrokes). */
-export function NameField({ value, label, onCommit }: { value: string; label: string; onCommit: (v: string) => void }) {
-  const [v, setV] = useState(value)
-  const [was, setWas] = useState(value)
-  if (value !== was) { setWas(value); setV(value) }
-  const commit = () => { const t = v.trim(); if (t && t !== value) onCommit(t); else setV(value) }
-  return <input value={v} aria-label={label} onChange={e => setV(e.target.value)} onBlur={commit} onKeyDown={e => e.key === 'Enter' && commit()} />
 }
 
 export function SkillsTab() {

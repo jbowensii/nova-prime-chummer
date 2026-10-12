@@ -4,7 +4,7 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
-import { canFinalize } from '../../engine/validate'
+import { canFinalize } from '../../shared/rules'
 import type { Severity, Violation } from '../../model/types'
 import { CORE_ATTRS, LETTERS, MAGIC_KIND_LABELS, PICK_KINDS, PURCHASE_KINDS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { allBudgets, aptitudeSkills, augmentationSlot, dataStructureLevels, isFocus, magicCap, manySpecs, attrMax, attrRating, augmentedRating, entryOf, extraMagic, fitted, noteAttr, noteSkill, priced, PURCHASE_TAB, qualityChoice, qualityKarma, ratingOf, skillRank, type Sr6Budgets } from './budgets'

@@ -3,7 +3,7 @@
 // skill.specUntrained); then knowledge skills and languages.
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { NameField } from '../../../ui/tabs/Skills'
+import { NameField } from '../../../shared/ui'
 import { num } from '../../engine/creation'
 import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'

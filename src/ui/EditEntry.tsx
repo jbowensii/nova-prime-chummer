@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml, fieldName, ISSUE_BOOK, type Issue } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
 import { because, canEdit, useMe } from './auth'
+import { STATE_TEXT } from '../shared/ui'
 import { esc } from '../shared/xml'
 import { Modal } from './bits'
 import { api } from './Books'
@@ -38,7 +39,6 @@ export function editState(c: Catalog, kind: EditKind, e: AmpTemplate | Item | Ru
   if (c.original[kind].has(e.id)) return 'changed'
   return c.sources.get(e.source)?.origin === 'user' ? 'added' : 'orphan'
 }
-export const STATE_TEXT = { book: '', changed: 'Changed from the book', added: 'Added by you (house rule)', orphan: 'Orphaned edit (book removed)' }
 
 export const EditedMark = () => <span className="edited" title="Changed in this app (Game data lists your edits)">Edited</span>
 

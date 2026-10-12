@@ -4,7 +4,7 @@
 // finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
-import { NameField } from '../../../ui/tabs/Skills'
+import { NameField } from '../../../shared/ui'
 import { num } from '../../engine/creation'
 import { nuyenPerKarma } from '../../engine/budgets'
 import { bookValue, dataFind } from '../../engine/values'

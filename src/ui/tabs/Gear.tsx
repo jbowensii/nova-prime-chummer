@@ -8,7 +8,7 @@ import { SourceLabel } from '../SourceLabel'
 import { EditButton } from '../EditEntry'
 import { editHref, useEditor } from '../editor'
 import { anarchyCard, AnarchyRef } from '../AnarchyRef'
-import { NameField } from './Skills'
+import { NameField } from '../../shared/ui'
 import { ItemEffects } from '../EffectHow'
 
 // prices from the core data (pricing.xml)

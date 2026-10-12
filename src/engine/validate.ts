@@ -265,4 +265,4 @@ function rawRR(b: Character['build']) {
   return { skill, spec }
 }
 
-export const canFinalize = (v: Violation[]) => !v.some(x => x.severity === 'error' && !x.approved)
+export { canFinalize } from '../shared/rules'
