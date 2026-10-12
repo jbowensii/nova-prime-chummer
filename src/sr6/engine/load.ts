@@ -12,6 +12,7 @@ import { formulaXml, openIssues, readFormulasAndIssues } from '../../engine/form
 import { readSr6Compendium, sr6CompendiumSource } from './compendium'
 import { bookValue, ratingRange, type Find } from './values'
 import { expandLevels } from './levels'
+import { entryKey } from './names'
 
 export const SR6_NS = 'urn:chummer-sr6:data:1'
 const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k as Sr6Kind]))
@@ -22,7 +23,6 @@ const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
 
 /** The key of an entry in Sr6Catalog.original (ids are unique within a kind). */
-export const entryKey = (kind: Sr6Kind, id: string) => `${kind}/${id}`
 
 const attrsOf = (el: Element, skip = new Set<string>()) =>
   Object.fromEntries([...el.attributes].filter(a => !skip.has(a.name)).map(a => [a.name, a.value]))

@@ -9,7 +9,7 @@
 // level; an edit keyed by a child id is kept as that level. docs/sr6-data-format.md, "Levels".
 import type { Sr6Catalog, Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
 import { effectValue } from './effects'
-import { entryKey } from './load'
+import { entryKey } from './names'
 import { rated, ratingRange } from './values'
 
 /** A family of levels: the parent (absent for rows the book prints apart) and each level's entry id. */

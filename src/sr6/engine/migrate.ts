@@ -7,7 +7,7 @@
 // rating, a quality or pick at its level (the line's own rating or level then goes: the entry carries it).
 import { PICK_KINDS, PURCHASE_KINDS, type PickKind, type PurchaseKind, type Sr6Character, type Sr6Lifestyle, type Sr6MartialArt, type Sr6Pick, type Sr6Purchase, type Sr6Quality } from '../model/character'
 import type { Sr6Catalog, Sr6Kind } from '../model/types'
-import { entryKey } from './load'
+import { entryKey } from './names'
 import { atLevel, familyOf } from './levels'
 
 export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 'moved' | 'levels'>, at = new Date().toISOString()): Sr6Character {
