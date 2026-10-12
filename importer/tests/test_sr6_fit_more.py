@@ -42,6 +42,13 @@ class SpendMoreTest(unittest.TestCase):
         self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"], got["karmaLeft"]), (5, 150, 25))
         self.assertEqual(fit.fit({**n, "toNuyen": 0}, ROWS, CS)["karmaToNuyen"], free)  # (never less than the gear needs)
 
+    def test_the_house_rule_limits_the_karma_turned_into_nuyen(self):
+        """karmaToNuyenCap on: no more than karmaToNuyenMax, printed or needed (budgets.ts counts no more); off: no limit."""
+        n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "edg": 1}, nuyen=450)
+        capped = {**CS, "karmaToNuyenCap": "true", "karmaToNuyenMax": 3.0}
+        self.assertEqual([fit.fit(x, ROWS, capped)["karmaToNuyen"] for x in (n, {**n, "toNuyen": 5})], [3, 3])
+        self.assertEqual(fit.fit({**n, "toNuyen": 5}, ROWS, {**capped, "karmaToNuyenCap": "false"})["karmaToNuyen"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()
