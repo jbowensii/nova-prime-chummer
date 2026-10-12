@@ -1,5 +1,5 @@
 // No import cycle in src, type imports included (as `npx madge --circular --extensions ts,tsx src` reports them): every
-// import or re-export of a src module counts, `import type` and `export type` too. Shared types live in leaf modules
+// import or re-export of a src module counts, `import type` and `export type` too. Shared types live in the model and types modules
 // (src/model/types.ts, src/sr6/model/*, src/sr6/engine/types.ts, src/ui/types.ts) so the modules using them don't loop.
 // @vitest-environment node
 import { readdirSync, readFileSync, existsSync } from 'node:fs'

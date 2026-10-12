@@ -1,4 +1,4 @@
-// The SR6 creation engine's typed catalog views (data.ts builds them): a leaf of type declarations, so the modules
+// The SR6 creation engine's typed catalog views (data.ts builds them): type declarations only, so the modules
 // data.ts imports (grades, effects…) can name Sr6Data without importing data.ts back.
 import type { Violation } from '../../model/types'
 import type { Letter, MagicKind, Sr6Attr } from '../model/character'
