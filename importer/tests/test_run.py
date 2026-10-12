@@ -7,7 +7,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
-from importer.__main__ import _same_source, main, remove, run
+from importer.__main__ import main, remove, run
+from importer.library import same_source, update_sources
 from importer.recipes import qref
 from importer.tests.test_qref import MD
 
@@ -198,9 +199,9 @@ class Sr6FolderTest(unittest.TestCase):
             os.makedirs(os.path.join(lib, b))
         xmlio.write_import(os.path.join(lib, "sr6"), source="MADEUP", file="made-up.pdf", sha256="00", name="Made-up book",
                            imported="2026-10-02T00:00:00Z")
-        xmlio.update_sources(custom, lib)
+        update_sources(custom, lib)
         self.assertNotIn("MADEUP", Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
-        self.assertEqual(_same_source(os.path.join(lib, "b1"), "MADEUP"), [])
+        self.assertEqual(same_source(os.path.join(lib, "b1"), "MADEUP"), [])
 
 
 if __name__ == "__main__":

@@ -10,15 +10,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from importer import __main__ as anarchy, reflow, xmlio
+from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import NS, effects, moved, regroup, resolve
+from importer.sr6 import ROOT, effects, moved, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, printing, skipped
-
-
-def sr6_root():
-    return xmlio.root("sr6", NS)
-
 
 def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
     """Returns the recipe's Result, or None when no SR6 recipe matched (status failed). refresh: the books whose sample
@@ -83,41 +78,40 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
                                                        for p, d, _ in sorted(older, key=lambda o: o[0], reverse=True)])
         if any(st == "done" for _, _, st in older):
             _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
-        with sr6_root():
-            if not newer:
-                texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
-                # the texts first: a corrupt texts file fails the import before any overlay is replaced
-                texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
-                samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
-                samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
-                files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
-                for name, xml in files.items():
-                    xmlio.write_file(os.path.join(out_dir, name), xml)
-                if texts:
-                    xmlio.write_file(texts_path, texts)
-                for s in res.samples:  # sr6:character files, their ids already scoped
-                    xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
-                if samples:
-                    xmlio.write_file(samples_path, samples)
-            for x in (old.get("extra") or "").split() if old is not None else ():
-                _drop(custom_dir, x)  # the last import's further sources
-            for x in res.extra:
-                _write_extra(custom_dir, x, prev_extra.get(x.source["id"], {}))
-            xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
-                               extra=" ".join(x.source["id"] for x in res.extra) or None,
-                               extras=[{"id": x.source["id"], "name": x.source["name"], "publisher": x.source["publisher"],
-                                        "canon": str(x.source["canon"]).lower()} for x in res.extra],
-                               files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
-                               recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
-                               name=res.source["name"], publisher=res.source["publisher"],
-                               canon=str(res.source["canon"]).lower(),
-                               imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
-            for _, d, _ in older:
-                xmlio.write_status(d, "superseded", f"Superseded by {mine[1]}")
-            if newer:
-                xmlio.write_status(book_dir, "superseded", f"Superseded by {newer[0][1]}")
-            xmlio.update_index(custom_dir)
-            xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        if not newer:
+            texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
+            # the texts first: a corrupt texts file fails the import before any overlay is replaced
+            texts = _texts(texts_path, res.texts, src, ids) if res.texts else None
+            samples_path = os.path.join(custom_dir, "imported", "samples.xml")  # likewise a corrupt samples list
+            samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
+            files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids, ROOT) for n, x in res.files.items()})
+            for name, xml in files.items():
+                xmlio.write_file(os.path.join(out_dir, name), xml)
+            if texts:
+                xmlio.write_file(texts_path, texts)
+            for s in res.samples:  # sr6:character files, their ids already scoped
+                xmlio.write_file(os.path.join(out_dir, "samples", s["file"]), s["xml"])
+            if samples:
+                xmlio.write_file(samples_path, samples)
+        for x in (old.get("extra") or "").split() if old is not None else ():
+            _drop(custom_dir, x)  # the last import's further sources
+        for x in res.extra:
+            _write_extra(custom_dir, x, prev_extra.get(x.source["id"], {}))
+        xmlio.write_import(book_dir, report=report + res.report + [r for x in res.extra for r in x.report],
+                           extra=" ".join(x.source["id"] for x in res.extra) or None,
+                           extras=[{"id": x.source["id"], "name": x.source["name"], "publisher": x.source["publisher"],
+                                    "canon": str(x.source["canon"]).lower()} for x in res.extra],
+                           files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
+                           recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
+                           name=res.source["name"], publisher=res.source["publisher"],
+                           canon=str(res.source["canon"]).lower(),
+                           imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
+        for _, d, _ in older:
+            xmlio.write_status(d, "superseded", f"Superseded by {mine[1]}")
+        if newer:
+            xmlio.write_status(book_dir, "superseded", f"Superseded by {newer[0][1]}")
+        xmlio.update_index(custom_dir)
+        library.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), ROOT)
         if not newer:
             xmlio.write_status(book_dir, "done")
         elif _fills(out_dir, src, res.files):
@@ -271,9 +265,9 @@ def _same_source(book_dir, src):
 def _texts(path, xml, src, ids):
     """The source's texts file with `xml`'s descriptions merged in: each in paragraphs, words split across the PDF's
     lines rejoined (importer/reflow.py)."""
-    entries = xmlio.texts_entries(xmlio.scope(xml, src, ids))
+    entries = xmlio.texts_entries(xmlio.scope(xml, src, ids, ROOT))
     words = reflow.vocabulary(t for _, _, t in entries)
-    return xmlio.merged_texts(path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries])
+    return xmlio.merged_texts(path, [(of, i, reflow.reflow(t, words)) for of, i, t in entries], root=ROOT)
 
 
 def _write_extra(custom_dir, res, prev=None):
@@ -281,7 +275,7 @@ def _write_extra(custom_dir, res, prev=None):
     of its last import, `prev`, as id aliases), its texts."""
     src = res.source["id"]
     ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-    files, _ = moved.carry(prev or {}, {n: xmlio.scope(x, src, ids) for n, x in res.files.items()})
+    files, _ = moved.carry(prev or {}, {n: xmlio.scope(x, src, ids, ROOT) for n, x in res.files.items()})
     for name, xml in files.items():
         xmlio.write_file(os.path.join(custom_dir, "imported", src.lower(), name), xml)
     if res.texts:
@@ -290,7 +284,7 @@ def _write_extra(custom_dir, res, prev=None):
 
 
 def _drop(custom_dir, src):
-    if not anarchy.SAFE_SOURCE_ID.fullmatch(src or ""):  # an id read from import.xml: never a path
+    if not library.SAFE_SOURCE_ID.fullmatch(src or ""):  # an id read from import.xml: never a path
         return
     shutil.rmtree(os.path.join(custom_dir, "imported", src.lower()), ignore_errors=True)
     texts = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
@@ -299,20 +293,19 @@ def _drop(custom_dir, src):
 
 
 def remove(book_dir, custom_dir, forget=False):
-    """Anarchy's remove (importer/__main__.py) under the sr6:data root: it rewrites the samples list too (SR6 has no npcs
-    list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the newest
+    """The library's remove (importer/library.py) under the sr6:data root: it rewrites the samples list too (SR6 has no
+    npcs list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the newest
     superseded one is imported again (from its book.md) and loaded. A further source another book also holds (the same
     PDF uploaded twice) stays."""
     imp = xmlio.read_import(book_dir)
     src, loaded = (imp.get("source") if imp is not None else None), xmlio.read_state(book_dir) == "done"
-    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
-    held = {x for b in os.listdir(library) if b != me and os.path.isdir(os.path.join(library, b))
-            for i in [xmlio.read_import(os.path.join(library, b))] if i is not None for x in (i.get("extra") or "").split()}
+    shelf, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
+    held = {x for b in os.listdir(shelf) if b != me and os.path.isdir(os.path.join(shelf, b))
+            for i in [xmlio.read_import(os.path.join(shelf, b))] if i is not None for x in (i.get("extra") or "").split()}
     for x in (imp.get("extra") or "").split() if imp is not None else ():
         if x not in held:
             _drop(custom_dir, x)
-    with sr6_root():
-        anarchy.remove(book_dir, custom_dir, forget=forget)
+    library.remove(book_dir, custom_dir, forget=forget, root=ROOT)
     others = _same_source(book_dir, src) if src and loaded else []
     nxt = max(((p, d) for p, d, st in others if p and st == "superseded"), default=None)
     if nxt and not any(st == "done" for _, _, st in others):
