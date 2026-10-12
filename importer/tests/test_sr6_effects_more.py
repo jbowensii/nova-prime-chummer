@@ -53,10 +53,10 @@ class LabelsAndSwitchesTest(unittest.TestCase):
         self.assertEqual(got, [{"target": "attr:agi", "op": "add", "value": "1", "confidence": "low", "switch": "conditional",
                                 "when": "per point of essence lost"}])
 
-    def test_a_condition_lost_to_the_tests_named_leaves_a_low_conditional(self):
-        # (`When making Stealth tests while sneaking`: the tests it names are not the condition, so none is left to show)
+    def test_the_tests_named_are_no_condition_but_a_condition_after_them_is(self):
+        # (`When making Stealth tests while sneaking`: the tests it names are not the condition; `while sneaking` is)
         self.assertEqual(attrs("When making Stealth tests while sneaking, subtract its rating from the threshold."),
-                         [{"target": "skill:stealth", "op": "threshold", "value": "-R", "confidence": "low", "switch": "conditional"}])
+                         [{"target": "skill:stealth", "op": "threshold", "value": "-R", "switch": "conditional", "when": "while sneaking"}])
         self.assertEqual(attrs("When making Stealth tests, subtract its rating from the threshold."),
                          [{"target": "skill:stealth", "op": "threshold", "value": "-R"}])
 
@@ -186,8 +186,10 @@ class AttackRatingTest(unittest.TestCase):
         self.assertEqual(fx("It removes the longest range attack rating.", "weapons"), [("item:ar", "add", "0,0,0,0,x", None, None)])
 
     def test_bands_named_in_a_sentence(self):
-        self.assertIn(("item:ar", "add", "2,2,0,0,0", None, None), fx("Increase the close and near attack ratings by 2.", "weapons"))
-        self.assertIn(("item:ar", "add", "0,0,0,-1,0", None, None), fx("Reduce the far attack rating by 1.", "weapons"))
+        # (the bands only, not also a plain `increase … by 2` on every band)
+        self.assertEqual(fx("Increase the close and near attack ratings by 2.", "weapons"), [("item:ar", "add", "2,2,0,0,0", None, None)])
+        self.assertEqual(fx("Reduce the far attack rating by 1.", "weapons"), [("item:ar", "add", "0,0,0,-1,0", None, None)])
+        self.assertEqual(fx("Its attack rating is increased by 2.", "weapons"), [("item:ar", "add", "2", None, None)])
         self.assertEqual(fx("Attack rating increases to 5.", "weapons"), [("item:ar", "add", "5", None, None)])
 
 
