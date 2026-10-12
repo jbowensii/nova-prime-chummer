@@ -187,6 +187,7 @@ export function createServer({
   trustProxy = '',
   publicUrl = '',
   accountKeys,
+  failKeys,
   oidc: oidcOpts = {},
 }) {
   staticDir = resolve(staticDir)
@@ -578,7 +579,7 @@ export function createServer({
   }
 
   let oidc = null
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
+  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, failKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys, failKeys: tests
   const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
   // each game's book source lists: the shipped one, the imported books', house sources, the catalog edits'
   const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
