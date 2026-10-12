@@ -8,7 +8,10 @@ export const SR6_NS = 'urn:chummer-sr6:data:1'
 const OWN = new Set(['id', 'source', 'page'])
 const OWN_KIDS = new Set(['name', 'text', 'formula', 'issue', 'found', 'alias', 'note']) // (<found>, <alias>, <note>: the importer's notes, not parts)
 
-const attrsOf = (el: Element, skip = new Set<string>()) => Object.fromEntries([...el.attributes].filter(a => !skip.has(a.name)).map(a => [a.name, a.value]))
+/** An element's own attributes; a prefixed or namespaced one (xmlns, xlink:…) is left out: sr6EntryXml writes no
+ *  namespace declarations, so it wouldn't read back. */
+const attrsOf = (el: Element, skip = new Set<string>()) =>
+  Object.fromEntries([...el.attributes].filter(a => !skip.has(a.name) && !a.prefix && !a.namespaceURI).map(a => [a.name, a.value]))
 
 /** One entry element as an Sr6Entry (also a runner file's <snapshot>, src/sr6/engine/charxml.ts). */
 export function toEntry(el: Element, kind: Sr6Kind): Sr6Entry {
@@ -40,12 +43,12 @@ const attrList = (a: Record<string, string>) =>
     .map(([k, v]) => ` ${k}="${escAttr(v)}"`)
     .join('')
 
-/** The entry element: id, source, page, its attributes, <name>, its parts as they are, its formulas (never its issues:
+/** The entry element: id, source, page (none when it has none), its attributes, <name>, its parts as they are, its formulas (never its issues:
  * those are the book's), then <text>. For an edit body (PUT sr6/edits/<kind>/<id>) an empty <text/> (descriptions go in the edit's <description>); `withText`: the entry's own
  * text (a compendium's, src/sr6/engine/compendium.ts). */
 export function sr6EntryXml(e: Sr6Entry, withText = false): string {
   const tag = SR6_KINDS[e.kind].tag
   const parts = e.parts.map(p => (p.text ? `<${p.tag}${attrList(p.attrs)}>${esc(p.text)}</${p.tag}>` : `<${p.tag}${attrList(p.attrs)}/>`)).join('')
   const text = withText && e.text ? `<text>${esc(e.text)}</text>` : '<text/>'
-  return `<${tag}${attrList({ id: e.id, source: e.source, page: String(e.page), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, escAttr)}${text}</${tag}>`
+  return `<${tag}${attrList({ id: e.id, source: e.source, ...(e.page ? { page: String(e.page) } : {}), ...e.attrs })}><name>${esc(e.name)}</name>${parts}${formulaXml(e.formulas, escAttr)}${text}</${tag}>`
 }
