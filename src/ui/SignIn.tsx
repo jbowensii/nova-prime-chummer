@@ -69,7 +69,7 @@ let oidcNote = (() => {
   const key = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('signin')
   if (key === null) return ''
   history.replaceState(null, '', location.pathname + location.hash)
-  return OIDC_ERRORS[key] ?? OIDC_ERRORS.failed
+  return Object.hasOwn(OIDC_ERRORS, key) ? OIDC_ERRORS[key] : OIDC_ERRORS.failed
 })()
 
 /** `over`: shown over a page whose session ended (the default when there is a `note`). */
