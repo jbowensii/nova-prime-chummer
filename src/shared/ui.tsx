@@ -1,5 +1,5 @@
 // UI pieces both games' editors use.
-import { useId, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Component, useId, useState, useSyncExternalStore, type ReactNode } from 'react'
 
 /** A text field that commits on Enter or leaving it (a finalized runner's changes are ledger lines, not keystrokes). */
 export function NameField({ value, label, onCommit }: { value: string; label: string; onCommit: (v: string) => void }) {
@@ -8,6 +8,19 @@ export function NameField({ value, label, onCommit }: { value: string; label: st
   if (value !== was) { setWas(value); setV(value) }
   const commit = () => { const t = v.trim(); if (t && t !== value) onCommit(t); else setV(value) }
   return <input value={v} aria-label={label} onChange={e => setV(e.target.value)} onBlur={commit} onKeyDown={e => e.key === 'Enter' && commit()} />
+}
+
+/** Around an editor's tab: one that throws while drawing shows a message and a reload button, not a blank page. Keyed by
+ *  the tab, so another tab starts afresh. (Each change was saved as it was made.) */
+export class TabBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() {
+    return this.state.failed
+      ? <div className="banner err" role="alert"><p>This tab hit an error — your saved changes are safe.</p>
+        <button type="button" className="btn" onClick={() => location.reload()}>Reload</button></div>
+      : this.props.children
+  }
 }
 
 /** How a catalog entry stands in the edits layer, in words (Game data lists, the edit form). */

@@ -46,6 +46,7 @@ import { SkillsTab } from './tabs/Skills'
 import { StatsTab } from './tabs/Stats'
 import { VehiclesTab } from './tabs/Vehicles'
 import { Sr6Sheet } from '../print/Sheet'
+import { TabBoundary } from '../../shared/ui'
 
 /** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer, and Ledger only in
  *  career (sr6Tabs). */
@@ -164,7 +165,7 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
       {refusal && <p className="banner err" role="alert">{refusal}</p>}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>{tabs.find(([k]) => k === shown)?.[1]}</div>
-        <main className="work"><fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
+        <main className="work"><fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}><TabBoundary key={shown}>
           {shown === 'concept' && <ConceptTab />}
           {shown === 'method' && <MethodTab />}
           {shown === 'attributes' && <AttributesTab />}
@@ -179,7 +180,7 @@ export function Sr6EditorView({ c: all, data: allData, cr: serverRules, id, tab,
           {shown === 'review' && <ReviewTab />}
           {shown === 'ledger' && <LedgerTab />}
           {shown === 'stats' && <StatsTab />}
-        </fieldset></main>
+        </TabBoundary></fieldset></main>
         {!npc && <Budgets />}
       </div>
       <ConflictDialog s={save} name={name} />
