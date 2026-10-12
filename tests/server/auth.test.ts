@@ -584,6 +584,16 @@ test('device cookies belong to the account, not its name; changing a password ho
   s.srv.close()
 })
 
+test('sign-in: guesses sent at once are counted before hashing, so no more than 5 get checked per username and address', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player })
+  const rs = await Promise.all(Array.from({ length: 12 }, () => login(s.base, 'player', 'wrong-password')))
+  expect(rs.filter(x => x.r.status === 401).length).toBe(5)
+  expect(rs.filter(x => x.r.status === 429).length).toBe(7)
+  expect((await login(s.base, 'admin', PW.admin)).r.status).toBe(200) // a success takes its own count back
+  expect((await login(s.base, 'admin', PW.admin)).r.status).toBe(200)
+  s.srv.close()
+})
+
 test('password hashing: a few at a time, a short queue, the rest refused before hashing', async () => {
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1' })
   const rs = await Promise.all(Array.from({ length: 40 }, (_, i) => login(s.base, `nobody${i}`, 'wrong-password', { 'X-Forwarded-For': `198.51.100.${i}` })))

@@ -385,7 +385,7 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
   }
 
   // ---- lockout ----
-  // three counts, all checked before any hashing: `key` (a username, or setup/reset) + address: 5 → 15 min; the client's
+  // three counts, all checked and counted before any hashing: `key` (a username, or setup/reset) + address: 5 → 15 min; the client's
   // network, any key: NET_FAILS in NET_WINDOW; a typed username across all addresses: a growing wait, which a known
   // device of that account (`device`: its nonce) skips while it hasn't failed DEVICE_TRIES times itself
   function locked(key, ip, account, device) {
@@ -428,9 +428,13 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     for (const [k, a] of accountFails) if (!(a.until > now)) { accountFails.delete(k); warnedFull = false; return true }
     return false
   }
+  /** A right password: its attempt, counted by failed() before hashing, is taken back. ponytail: one refused as busy
+   *  (the hash cap) stays counted as a failure */
   function succeeded(key, ip, account) {
     fails.delete(`${key}|${ip}`)
     if (account) accountFails.delete(account)
+    const n = netFails.get(netKey(ip))
+    if (n?.n > 0) n.n--
   }
 
   // ---- checks ----
@@ -521,10 +525,10 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     const name = oneLine(b.username).toLowerCase().slice(0, 64)
     const u = users.find(x => x.username === name), device = deviceOf(req, ctx, u?.id ?? name)
     locked(name, ctx.ip, name, device) // `name`, not u?.username: an unknown name is counted and refused alike
+    failed(name, ctx.ip, name, device) // counted before hashing, so guesses sent at once can't all pass locked(); a success clears it
     const usable = u?.enabled && u.method === 'password' && u.password
     const ok = await checkLimited(String(b.password ?? '').slice(0, MAX_PASSWORD), usable ? u.password : null) && usable
     if (!ok) {
-      failed(name, ctx.ip, name, device)
       // an unknown name isn't logged: it may be a password typed into the wrong field
       log.log(`sign-in failed: ${u ? `"${u.username}"` : 'an unknown username'} from ${ctx.ip}`)
       throw fail(401, 'wrong username or password')
@@ -737,8 +741,8 @@ export function authApi({ libraryDir, trustProxy = '', lock, track, runners, log
     if (u.method !== 'password') throw fail(400, 'this account signs in with Authelia')
     const device = deviceOf(req, req.ctx, u.id) // a known device passes the account's wait here too
     locked(u.username, req.ctx.ip, u.username, device)
+    failed(u.username, req.ctx.ip, u.username, device) // before hashing, as for a sign-in
     if (!await checkLimited(String(b.current ?? '').slice(0, MAX_PASSWORD), u.password)) {
-      failed(u.username, req.ctx.ip, u.username, device)
       throw fail(400, 'your current password is wrong')
     }
     succeeded(u.username, req.ctx.ip, u.username)
