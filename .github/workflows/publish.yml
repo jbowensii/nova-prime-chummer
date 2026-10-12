@@ -40,8 +40,9 @@ jobs:
           runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push"
           for _ in $(seq 80); do
             [ "$(gh api "$runs&status=success" --jq .total_count)" -gt 0 ] && exit 0
-            # none passed and none still to finish: it failed (or never ran)
-            [ "$(gh api "$runs" --jq '[.workflow_runs[] | select(.status != "completed")] | length')" -eq 0 ] && break
+            # a run is listed, none passed and none is still to finish: it failed. No run listed yet (a tag pushed right
+            # after the merge): keep polling until the timeout
+            [ "$(gh api "$runs" --jq '.total_count > 0 and ([.workflow_runs[] | select(.status != "completed")] | length) == 0')" = true ] && break
             sleep 30
           done
           echo "::error::$GITHUB_REF_NAME ($SHA) has no ci run on main that passed"
