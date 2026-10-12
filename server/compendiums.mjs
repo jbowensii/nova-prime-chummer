@@ -17,7 +17,7 @@
 //   GET    /api/compendiums/shared -> the same rows, for anyone signed in (players' runners use their entries; read only):
 //                                    sharing="table" ones, and sharing="campaign" ones whose campaign the caller is a GM or
 //                                    member of while the owner GMs it. Never private ones, and never their NPCs (taken out)
-import { mkdir, readdir, readFile, rename, rmdir } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { attr, writeAtomic } from './books.mjs'
 import { GAMES } from './games.mjs'
@@ -89,19 +89,21 @@ export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth
   }
   async function readable(me) {
     const out = []
+    let camp = null // campaigns.xml, read once and only for a campaign-shared row
     for (const c of await all()) {
       const sharing = attr(c.tag, 'sharing'), cid = attr(c.tag, 'campaign')
       if (c.owner === me.username || me.role === 'admin' || sharing === 'table'
-        || (sharing === 'campaign' && cid && await campaigns.leads(me.username, cid) && await campaigns.leads(c.owner, cid))) out.push(c)
+        || (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).leads(me.username, cid) && camp.leads(c.owner, cid))) out.push(c)
     }
     return out
   }
   /** For anyone: the table ones and those shared with a campaign `me` is in (GM or member) that the owner still GMs. */
   async function shared(me) {
     const out = []
+    let camp = null // campaigns.xml, read once and only for a campaign-shared row
     for (const c of await all()) {
       const sharing = attr(c.tag, 'sharing'), cid = attr(c.tag, 'campaign')
-      if (sharing === 'table' || (sharing === 'campaign' && cid && await campaigns.holds(me.username, cid) && await campaigns.leads(c.owner, cid))) out.push(c)
+      if (sharing === 'table' || (sharing === 'campaign' && cid && (camp ??= await campaigns.snapshot()).holds(me.username, cid) && camp.leads(c.owner, cid))) out.push(c)
     }
     return out
   }
