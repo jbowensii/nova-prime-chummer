@@ -190,6 +190,21 @@ def md_tables(text):
     return out
 
 
+def md_table(h, rows):
+    """A table as markdown (the text md_tables reads it from): header h, rows."""
+    return "\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h)] + ["| " + " | ".join(r) + " |" for r in rows])
+
+
+def squash(s):
+    """A name with its spaces gone (norm): a heading printed with stray spaces (`Mancatc her`) still matches."""
+    return norm(s).replace(" ", "")
+
+
+def describes(desc, name):
+    """True when a heading (a block: desc.name) describes a box: a word of the box's title is in the heading."""
+    return squash(name) in squash(desc.name) or any(w in squash(desc.name) for w in norm(name).split() if len(w) > 3)
+
+
 def table_cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 

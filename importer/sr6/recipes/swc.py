@@ -12,6 +12,7 @@ from importer.recipes import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, search, sections
 from importer.sr6 import shapes
+from importer.sr6.lifemodules import REQUIRES, lifemodule, plain
 from importer.sr6.catalog import BEING, HEADERS, Catalog, block_md, block_text, md_tables, printed_value
 from importer.sr6.regroup import blocks, norm, text_page
 
@@ -23,17 +24,6 @@ END_PAGE = 205  # PDF page: the table index (the book's tables reprinted) starts
 ALIASES = {}
 NAME_HEADERS = frozenset()
 
-# the core rulebook's attributes and skills, by name (game terms): a life module's options name them
-ATTRS = {"body": "bod", "agility": "agi", "reaction": "rea", "strength": "str", "willpower": "wil", "logic": "log",
-         "intuition": "int", "charisma": "cha", "edge": "edg", "magic": "mag", "resonance": "res"}
-SKILLS = ("Astral", "Athletics", "Biotech", "Close Combat", "Con", "Conjuring", "Cracking", "Electronics", "Enchanting",
-          "Engineering", "Exotic Weapons", "Firearms", "Influence", "Outdoors", "Perception", "Piloting", "Sorcery",
-          "Stealth", "Tasking")
-SKILL_IDS = {norm(s): f"skill:crb.{slug(s)}" for s in SKILLS}
-CONTACT_TYPES = ("academic", "corporate", "criminal", "engineering", "government", "magic", "matrix", "media", "medical",
-                 "street")
-NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8}
-REQUIRES = {"awakened": "awakened", "adepts": "adept", "adept": "adept", "emerged": "emerged", "magicians": "magician"}
 
 LIFE = ("building a shadow", "life path")  # chapter, level-2 section
 ADULT_GROUPS = ("choices life modules", "event life modules")
@@ -56,19 +46,11 @@ def match(meta, md_head):
     return 0.75 if re.search(r"event\s+life\s+modules", hay, re.I) and re.search(r"sum-to-ten", hay, re.I) else 0.0
 
 
-def _plain(text):
-    """Text with the bold markers, bullets and line breaks gone, words split at a line end joined."""
-    s = re.sub(r"\*\*|•", " ", text)
-    s = re.sub(r"(?<=[a-z])-\n(?=[a-z])", "", s)
-    return " ".join(s.split())
 
 
 # --- life modules -------------------------------------------------------------------------------------------------
 
 _HIDDEN = re.compile(r"^([A-Z][\w/' -]+?)\s*[\[(]\s*(\w+)\s+only\s*[\])]$")  # `Clairvoyant [ Awakened only ]`
-_ONLY = re.compile(r"\s*[\[(]\s*(\w+)\s+only\s*[\])]", re.I)
-_ITEM = re.compile(r"(?=Choose (?:one|two|three|an? \w+):|(?<!: )\+\d+ to |Resources:|Contact Points:|Contact Types:|"
-                   r"Knowledge [Ss]kills?\b|One rank in|Option:)")
 
 
 def _split_hidden(name, text):
@@ -86,127 +68,6 @@ def _split_hidden(name, text):
     return out + [(name, "\n".join(cur))]
 
 
-def _options(word):
-    """An option word -> its tokens: an attribute, a skill (`Exotic Weapon` too), `+25,000 nuyen`, or a group (`any
-    mental attribute`, `any other skill or attribute`)."""
-    w = re.sub(r"^(?:or|and)\s+", "", norm(re.sub(r"\(.*?\)", "", word)))
-    if m := re.fullmatch(r"(?:or\s+)?\+?\s*([\d,]+)\s*nuyen", word.strip()):
-        return [f"nuyen:{m.group(1).replace(',', '')}"]
-    w = re.sub(r"^\d+\s+(?=[a-z])", "", w)  # (an errata's `+1 Con or +1 Influence`: each option its own bonus)
-    if re.fullmatch(r"(?:your )?(?:other )?drain attribute", w):  # Willpower and the tradition's other one
-        return ["log", "int", "cha"]
-    if w in ATTRS or w in SKILL_IDS or w + "s" in SKILL_IDS:
-        return [ATTRS.get(w) or SKILL_IDS.get(w) or SKILL_IDS[w + "s"]]
-    if m := re.fullmatch(r"(?:any )?(?:other )?(mental |physical )?(skill|attribute)(?: or (skill|attribute))?", w):
-        groups = {"mental ": ["wil", "log", "int", "cha"], "physical ": ["bod", "agi", "rea", "str"],
-                  None: ["bod", "agi", "rea", "str", "wil", "log", "int", "cha"]}
-        return [t for g in (m.group(2), m.group(3)) if g
-                for t in (list(SKILL_IDS.values()) if g == "skill" else groups[m.group(1)])]
-    return None
-
-
-def _choice(body, module, page, report):
-    """`+N to A, B, or C` (or `+N A, or +25,000 nuyen`) -> (points, [options]); words that are no attribute or skill
-    are reported."""
-    m = re.match(r"\+(\d+)\s+(?:to\s+)?(.*)", body)
-    if not m:
-        return None
-    points, rest = int(m.group(1)), re.sub(r"\s*\(\s*\w+ only\s*\)", "", m.group(2)).strip(" .")
-    words = [w.strip() for w in re.split(r",?\s+or\s+|,\s+", rest) if w.strip()]
-    if any(len(w.split()) > 4 for w in words):  # prose (a sidebar run into the list), not options
-        report.append({"kind": "unread-line", "file": "lifemodules.xml", "name": module, "value": body[:80], "page": page})
-        return None
-    opts, bad = [], []
-    for w in words:
-        o = _options(w)
-        (opts if o else bad).extend(o or [w])
-    for w in bad:
-        report.append({"kind": "unread-option", "file": "lifemodules.xml", "name": module, "value": w, "page": page})
-    return (points, list(dict.fromkeys(opts))) if opts else None
-
-
-def _module_grants(name, text, page, report):
-    """attrs, children (choices) from an adult module's labelled lines."""
-    attrs, kids = {}, []
-    s = re.sub(r"\+\s(?=\d)", "+", _plain(text))  # `+ 1 to`
-    items = [x.strip() for x in _ITEM.split(s)[1:]]
-
-    def add(k, v):
-        attrs[k] = attrs.get(k, 0) + v
-    for it in items:
-        if m := re.match(r"Choose (one|two|three):\s*(.*)", it):
-            body = m.group(2)
-            if re.match(r"\+\d+ to (?:any|an) (?:one )?skill", body):
-                add("skillPoints", int(re.match(r"\+(\d+)", body).group(1)) * NUMBERS[m.group(1)])
-                continue
-            c = _choice(body, name, page, report)
-            if c:
-                kids += [("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None)] * NUMBERS[m.group(1)]
-            continue
-        if m := re.match(r"\+(\d+) to (?:any|an) (?:one )?(attribute|skill)", it):
-            add("attributePoints" if m.group(2) == "attribute" else "skillPoints", int(m.group(1)))
-            continue
-        if m := re.match(r"\+(\d+) to (\w+) different skills", it):
-            add("skillPoints", int(m.group(1)) * NUMBERS.get(m.group(2), 1))
-            continue
-        if it.startswith("+"):
-            if c := _choice(it, name, page, report):
-                kids.append(("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None))
-            continue
-        if m := re.match(r"Resources:\s*\+?([\d,]+)(?:\s*(?:nuyen|¥))?", it):  # (an errata's `Resources: +75,000`)
-            add("nuyen", int(m.group(1).replace(",", "")))
-        elif m := re.match(r"Contact Points:\s*(\d+)", it):
-            add("contactPoints", int(m.group(1)))
-        elif m := re.match(r"Contact Types:\s*(.*)", it):
-            types = [norm(t) for t in re.split(r",\s*|\s+or\s+|\s+and\s+", m.group(1).strip(" ."))]
-            types = [t for t in types if t]
-            # (the last type run into the prose after the list: `Media Add a negative quality …`)
-            types = [t if t in CONTACT_TYPES or t.split()[0] not in CONTACT_TYPES else t.split()[0] for t in types]
-            if types and types[0] != "any":
-                bad = [t for t in types if t not in CONTACT_TYPES]
-                for t in bad:
-                    report.append({"kind": "unread-option", "file": "lifemodules.xml", "name": name, "field": "contactTypes",
-                                   "value": t, "page": page})
-                attrs["contactTypes"] = " ".join(t for t in types if t in CONTACT_TYPES) or None
-        elif m := re.match(r"Knowledge skills?\s*(?:\(choose (\w+)\)|:\s*choose (?:any |up to )?(\w+))", it, re.I):
-            add("knowledgeSkills", NUMBERS.get(m.group(1) or m.group(2), 1))
-        elif it.startswith("One rank in"):
-            add("knowledgeSkills", 1)
-        # Choose an Alignment, Option: (karma spends) and qualities are no grants
-    return attrs, kids
-
-
-def _opening_grants(text):
-    """The opening modules print their grants as sentences."""
-    s, attrs = _plain(text), {}
-    if m := re.search(r"Choose (\w+) of the following skills.*?at rank (\d)", s):
-        attrs["skillPoints"] = NUMBERS.get(m.group(1), 0) * int(m.group(2))
-    if m := re.search(r"Gain that skill at rank (\d)", s):
-        attrs["skillPoints"] = attrs.get("skillPoints", 0) + int(m.group(1))
-    if re.search(r"Gain the .{0,40}?Knowledge skill", s):
-        attrs["knowledgeSkills"] = 1
-    if m := re.search(r"Gain ([\d,]+) nuyen", s):
-        attrs["nuyen"] = int(m.group(1).replace(",", ""))
-    if m := re.search(r"Assign (\w+) total points", s):
-        attrs["contactPoints"] = NUMBERS.get(m.group(1), 0)
-    return attrs
-
-
-def _lifemodule(cat, stage, name, text, page):
-    req = None
-    if m := _ONLY.search(name):
-        req, name = REQUIRES.get(m.group(1).lower()), _ONLY.sub("", name).strip()
-    first = text.strip().splitlines()[0] if text.strip() else ""
-    if m := re.fullmatch(r"\s*\(\s*(\w+)\s+only\s*\)\s*", first):  # `( Awakened only )` on the line under the heading
-        req = REQUIRES.get(m.group(1).lower())
-    if stage == "opening":
-        attrs, kids = _opening_grants(text), []
-    else:
-        attrs, kids = _module_grants(name, text, page, cat.report)
-        if not attrs and not kids:
-            cat.report.append({"kind": "missing-value", "file": "lifemodules.xml", "name": name, "field": "grants",
-                               "page": page})
-    cat.add("lifemodules", name, page, {"stage": stage, "requires": req, **attrs}, kids)
 
 
 # --- metavariants ---------------------------------------------------------------------------------------------------
@@ -387,7 +248,7 @@ def _plain_text(text):
 
 def _labels(text, keys):
     """`Key: value` lines (bullets and wrapped values joined) for the given keys."""
-    s = _plain(text)
+    s = plain(text)
     out = {}
     for k in keys:
         if m := re.search(rf"\b{k}\s*:\s*(.*?)(?=\s(?:{'|'.join(keys)})\s*:|$)", s, re.I):
@@ -413,7 +274,7 @@ _BAND = re.compile(r"^(?:(?:B|A|R|S|W|L|I|C|ESS|M|RES|EDG)\s+){4,}(?:B|A|R|S|W|L
 def _contact(cat, name, text, page, band=""):
     """A contact archetype (`Typical Connection Rating: N`) and its stat band (`B A R S …` over its values: text lines, or
     `band`, the block's stat table as markdown) as an NPC."""
-    s = _plain(text)
+    s = plain(text)
     m = re.search(r"Typical Connection Rating\s*:\s*(\d+)", s)
     if not m:
         return False
@@ -466,14 +327,14 @@ def extract(regrouped, ctx=None):
                     for r in rs]  # (they stay rules too)
         if ch == LIFE[0] and sec == LIFE[1] and b.type == "item":
             if any(norm(b.name).startswith(o) for o in OPENING):
-                _lifemodule(cat, "opening", b.name, text, page)
+                lifemodule(cat, "opening", b.name, text, page)
                 done = True
             elif group in ADULT_GROUPS and b.level == 5:
                 for n, t in _split_hidden(b.name, text):
-                    _lifemodule(cat, "adult", n, t, page)
+                    lifemodule(cat, "adult", n, t, page)
                 done = True
             elif norm(b.name) in ADULT_GROUPS and "Event" in b.labels:  # the first event, its heading read as a label
-                _lifemodule(cat, "adult", f"Event: {b.labels['Event']}", b.text, page)
+                lifemodule(cat, "adult", f"Event: {b.labels['Event']}", b.text, page)
                 done = True
         elif ch == METAVARIANTS[0] and sec.startswith(METAVARIANTS[1]) and "variant attribute ranges" in norm(b.name):
             ranges.append((page, "\n".join(x for x in (block_md(b), text) if x)))

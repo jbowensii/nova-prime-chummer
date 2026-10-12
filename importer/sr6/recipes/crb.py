@@ -15,6 +15,7 @@ import re
 import sys
 
 from importer.sr6 import catalog
+from importer.sr6.recipes import crb_city
 from importer.sr6.catalog import NAME_HEADERS  # noqa: F401  (the recipe's own: regroup reads it)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
@@ -126,5 +127,4 @@ def extract(regrouped, ctx=None):
 
 def extra(md, sha):
     """A City Edition's city chapter as a source of its own (crb_city.py; run.py writes Result.extra)."""
-    from importer.sr6.recipes import crb_city
     return crb_city.extra(md, sha)

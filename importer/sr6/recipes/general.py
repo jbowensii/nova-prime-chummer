@@ -12,9 +12,7 @@ from collections import Counter
 from dataclasses import replace
 
 from importer.sr6.ids import slug
-from importer.sr6 import catalog, regroup, sections
-from importer.sr6.recipes import swc
-from importer.sr6.recipes.fs import _md_table
+from importer.sr6 import catalog, lifemodules, sections
 from importer.sr6.regroup import blocks, keys, norm
 
 # (source id, name, CAT number or "", the PDF title's pattern, phrases the first page holds when the title is missing)
@@ -99,7 +97,7 @@ def _text_bands(b):
             for n, (x, v) in enumerate(zip(h, r)):
                 cells.setdefault("RES" if x == "R" and "R" in h[:n] else x, v)  # (a second R: Resonance)
             stats.append(cells)
-        text = text.replace(_md_table(h, rows), "", 1)
+        text = text.replace(catalog.md_table(h, rows), "", 1)
     return replace(b, stats=stats, text=text.strip()) if stats else b
 
 
@@ -308,88 +306,6 @@ def _slash_names(name):
     return [left, " ".join(head[:k] + [right])]
 
 
-_MODULES = re.compile(r"(?:new\s+)?(?:adult\s+|event\s+)?life\s+modules?", re.I)
-# a grant: a bold label (the companion's), or a bulleted one (an errata's: `• Contact Points: 4`)
-_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):",
-                    re.I | re.M)
-
-
-def _unbold(s):
-    return re.sub(r"\*\*", "", s or "").strip()
-
-
-def _bare(s):
-    """A line without its bold and a trailing colon (`**Adult Life Modules:**`)."""
-    return _unbold(s).rstrip(":").strip()
-
-
-def _title_line(s):
-    # (an `Event:` kicker on the title's own line: `Event: You had Fifteen Minutes of Fame`)
-    words = len(re.sub(r"^Event:\s*", "", s or "").split())
-    return bool(s) and s[0].isupper() and words <= (6 if s.startswith("Event:") else 5) and s[0] not in "•*#|>" \
-        and "," not in s and not re.search(r"[.;!?-]$", s)
-
-
-def _modules(bs):
-    """(name, text, PDF page) of each adult life module a book prints in body type under a `Life Modules` heading or
-    line (the Sixth World Companion's form): a module's title is a run of short lines (`Event:` `Brush With Death`)
-    that prose follows, its grants its labelled lines. The run goes on through the page's running head (a section
-    named like the chapter, a page number) and stops at the next heading. A part with no grant is no module (a
-    quality printed before them). A module set as a heading under the `Life Modules` heading (its title the heading,
-    a kicker `Event:` joined to it: prepare_md) is one with its labelled lines, read the same way."""
-    lines, page, on, level, heads = [], 0, False, None, []
-    for b in bs:
-        head = norm(b.name)
-        if on and (head in (norm(b.chapter), "") or head.isdigit()):
-            lines += _paged(b)
-            continue
-        if level is not None and b.level > level:  # a module under its own heading
-            # (its labelled lines once: the text's own, else regroup's labels)
-            body = b.text if _GRANT.search(b.text) else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
-            if _GRANT.search(body):
-                heads.append((b.name.strip(), body, b.page))
-            continue
-        on, level = False, None
-        if b.level and _MODULES.fullmatch(b.name.strip()):
-            level = b.level
-        text = _paged(b)
-        at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
-            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
-        if at is not None:
-            lines, page, on = lines + [""] + text[at:], page or b.page, True
-    out, cur, name, at = [], [], [], 0
-    pg = lambda: getattr(lines[at], "page", 0) or page  # noqa: E731  (the module's title line's page)
-    i = 0
-    while i < len(lines):
-        s = _unbold(lines[i])
-        if _MODULES.fullmatch(_bare(s)):  # (a second list's line, `New Event Life Modules`: no title)
-            if cur and name and any(_GRANT.search(c) for c in cur):
-                out.append((" ".join(name), "\n".join(cur), pg()))
-            name, cur, i = [], [], i + 1
-            continue
-        # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
-        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)
-                               or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())):
-            j = i
-            while j < len(lines) and _title_line(_unbold(lines[j])) and not _MODULES.fullmatch(_bare(lines[j])):
-                j += 1
-            if j < len(lines) and lines[j].strip() and not lines[j].lstrip().startswith(("•", "**")) and j - i <= 3:
-                if cur and any(_GRANT.search(c) for c in cur):
-                    out.append((" ".join(name), "\n".join(cur), pg()))
-                name, cur, at, i = [_unbold(lines[k]) for k in range(i, j)], [], i, j
-                continue
-        cur.append(lines[i])
-        i += 1
-    if cur and name and any(_GRANT.search(c) for c in cur):
-        out.append((" ".join(name), "\n".join(cur), pg()))
-    return out + heads
-
-
-def _paged(b):
-    """Block b's text lines, each keeping the PDF page it is printed on (regroup's page breaks)."""
-    return [regroup._pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]
-
-
 def _contact(b):
     return any(re.match(r"connection(\s+rating)?$", k, re.I) for k in b.labels)
 
@@ -555,8 +471,8 @@ class Book:
         finally:
             sections.Reader.toxins = False
         cat = catalog.Catalog(self.ID, self.ID.lower(), self.BOOK)
-        for name, text, page in _modules(bs):
-            swc._lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))
+        for name, text, page in lifemodules.modules(bs):
+            lifemodules.lifemodule(cat, "adult", name, text, max(1, page - self.PAGE_OFFSET))
         if cat.entries["lifemodules"]:  # (the blocks stay rules too: the modules print no description of their own)
             res.files["lifemodules.xml"] = cat.xml("lifemodules")
             res.report += cat.report

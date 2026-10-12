@@ -10,7 +10,6 @@ from dataclasses import replace
 
 from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.recipes import fs
 from importer.sr6.regroup import blocks, keys, norm
 
 ID, NAME, PUBLISHER, CANON = "ED", "Shadowrun: Explosive Decompression", "Catalyst Game Labs", True
@@ -33,6 +32,7 @@ GEAR, SHIPS, ROSTERS = "opening bay doors", "prepare for launch", "mission roste
 UNRATED_NPCS = "Mission Rosters"  # its named characters print no Professional Rating
 _TITLE_REACH = 80  # lines: an untitled stat table takes the nearest stray title up to this far above it
 _STAT_HEADS = ("HAND", "HANDL", "ACCEL", "ITEM")
+_RATING = re.compile(r"professional rating\s*(\d+)", re.I)
 
 
 def match(meta, md_head):
@@ -150,7 +150,7 @@ def _tagged(bs):
                   and norm(r[0][0]) == norm(b.tags)), None) if norm(b.chapter) == GEAR and b.tags and b.row is None else None
         if t:
             row = {"WEAPON": b.name, **dict(zip(t[0], t[1][0]))}
-            b = replace(b, type="item", row=row, header=list(row), text=b.text.replace(fs._md_table(*t), "").strip())
+            b = replace(b, type="item", row=row, header=list(row), text=b.text.replace(catalog.md_table(*t), "").strip())
         out.append(b)
     return out
 
@@ -165,7 +165,7 @@ def fix(b, parent2):
     if b.stats and _vehicle(b) and b.row is None:
         s = b.stats[0]
         b = replace(b, row={"VEHICLE": b.name, **s}, header=["VEHICLE", *s], stats=b.stats[1:], label="")
-    if norm(b.chapter) == ROSTERS and (m := fs._RATING.search(b.tags)):
+    if norm(b.chapter) == ROSTERS and (m := _RATING.search(b.tags)):
         b = replace(b, section=f"Professional Rating {m.group(1)}: {UNRATED_NPCS}")
     return b
 

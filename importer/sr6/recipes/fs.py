@@ -165,10 +165,6 @@ def _boxes(bs):
     return out
 
 
-def _md_table(h, rows):
-    return "\n".join(["| " + " | ".join(h) + " |", "|" + "---|" * len(h)] + ["| " + " | ".join(r) + " |" for r in rows])
-
-
 def _strays(bs):
     """A SUIT UP armor table (TYPE, DR …) printed in a later section's text (Vashon Island's lands in `Cumulative`)
     goes back to the section before it whose text names its first row (`Ace of Cups`), as that section's box. Its
@@ -182,7 +178,7 @@ def _strays(bs):
             if h[0].upper() != "TYPE" or "DR" not in {x.upper() for x in h} or not rows:
                 continue
             names = lambda t: re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))  # noqa: E731
-            if names(b.text.replace(_md_table(h, rows), "")):
+            if names(b.text.replace(catalog.md_table(h, rows), "")):
                 continue  # its own text names its rows (`Rapid Transit … comes in Basic, Elite …`): its own table
             j = next((j for j in range(i - 1, -1, -1) if bs[j].chapter == b.chapter and bs[j].level == 3
                       and not bs[j].stats and names(bs[j].text)), None)
@@ -195,7 +191,7 @@ def _strays(bs):
                     stats[-1]["EXTRAS"] = " ".join([re.sub(r"(?i)^extras\s*:\s*", "", cells[0])] + cells[1:]).strip()
                 elif r[0]:
                     stats.append(dict(zip(h, r)))
-            md = _md_table(h, rows)
+            md = catalog.md_table(h, rows)
             if stats and "EXTRAS" not in stats[-1] and (x := next((k for k in labels if k.lower() == "extras"), None)):
                 stats[-1]["EXTRAS"] = labels.pop(x)
                 tail = f"\n**{x}:** {stats[-1]['EXTRAS']}"

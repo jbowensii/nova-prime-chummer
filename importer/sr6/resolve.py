@@ -23,8 +23,8 @@ Nothing here names an item: the readers are the books' column headers and value 
 import os
 import re
 
-from importer.sr6 import catalog
-from importer.sr6.recipes import general, printing, swc
+from importer.sr6 import catalog, lifemodules
+from importer.sr6.recipes import printing
 from importer.sr6.search import clean, good, norm
 
 _PDFDATE = re.compile(r"(?:D:)?((?:19|20)\d\d)(\d\d)(\d\d)")
@@ -369,18 +369,18 @@ def _line_page(md, title):
 
 def _errata_modules(bs, files, changed, n):
     """Life modules an errata prints whole for its book (`use these errata'd entries instead of what's printed`: the
-    companion's form, general._modules): each one the book's catalog lacks is added to its lifemodules file, on the
+    companion's form, lifemodules.modules): each one the book's catalog lacks is added to its lifemodules file, on the
     errata's page, with a `found` record (how=errata). Returns the files it created."""
     from lxml import etree
     from importer.sr6 import regroup as rg
     made = []
     for eb, tb in _errata_books(bs):
-        mods = general._modules(list(rg.blocks(rg.regroup(eb.md)[0])))
+        mods = lifemodules.modules(list(rg.blocks(rg.regroup(eb.md)[0])))
         if not mods:
             continue
         cat = catalog.Catalog(tb.src.upper(), tb.src, "an errata")
         for name, text, page in mods:
-            swc._lifemodule(cat, "adult", name, text, _line_page(eb.md, name) or page)
+            lifemodules.lifemodule(cat, "adult", name, text, _line_page(eb.md, name) or page)
         path = os.path.join(tb.custom, "imported", tb.src, "lifemodules.xml")
         have = next((f for f in files + made if f[3] == path), None)
         if have is None:

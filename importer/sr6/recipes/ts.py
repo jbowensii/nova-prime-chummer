@@ -50,15 +50,6 @@ def match(meta, md_head):
     return 0.9 if re.search(r"tarnished\s+star", hay, re.I) else 0.0
 
 
-def _squash(s):
-    return norm(s).replace(" ", "")  # (this PDF's headings print stray spaces: `Mancatc her`)
-
-
-def _describes(desc, name):
-    """True when a heading describes a box: a word of the box's title is in the heading."""
-    return _squash(name) in _squash(desc.name) or any(w in _squash(desc.name) for w in norm(name).split() if len(w) > 3)
-
-
 def weapon_line(text):
     """A weapon box's bold header line and value line -> {header: value}, else None. The type may be several words:
     the values are read from the right."""
@@ -120,8 +111,8 @@ def _prep(bs, report):
         if b.type == "item" and b.name[:1].islower():
             b = replace(b, name=b.name[:1].upper() + b.name[1:])
         if GEAR in ch and b.level == 5 and b.row is None:
-            desc = next((d for d in reversed(descs) if _describes(d, b.name)), None)
-            rows = _gear_box(b, report, _squash(part) == "vehiclesanddrones")
+            desc = next((d for d in reversed(descs) if catalog.describes(d, b.name)), None)
+            rows = _gear_box(b, report, catalog.squash(part) == "vehiclesanddrones")
             if rows and desc is not None:
                 used.add(id(desc))
                 rows = [replace(r, text="\n\n".join(t for t in (desc.text.strip(), r.text.strip()) if t)) for r in rows]
