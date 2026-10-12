@@ -304,3 +304,13 @@ test('23, L1, 0 (verified): metatype traits never count toward the six in any me
   expect([act({ op: 'karmaToNuyen', delta: 2 }), act({ op: 'karmaToNuyen', delta: -2 }), act({ op: 'karmaToNuyen', delta: -1 })]).toEqual([ok, ok, no('below-zero')])
   expect(b.karmaToNuyen).toBe(0)
 })
+
+test('nuyen overspent (no GM can approve it) names the size pricing house rule when it adds to the cost', () => {
+  const message = (on: boolean) => {
+    const s = setup({ metatypeSizePricing: on }, { metatype: 'x.troll' })
+    s.b.purchases.push({ uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 50000, accessories: [] })
+    return s.v().find(x => x.code === 'nuyen.overspent')?.message
+  }
+  expect(message(true)).toMatch(/^Nuyen overspent by [\d,]+¥; the house rule ‘size pricing’ adds [\d,]+¥\.$/)
+  expect(message(false)).toMatch(/^Nuyen overspent by [\d,]+¥\.$/)
+})

@@ -296,7 +296,11 @@ const RULES: Rule[] = [
 
   // owner's decision 19 (2026-10-11): negative Karma or nuyen is fine while building; Finalize waits until neither is
   { code: 'karma.overspent', severity: 'error', tab: 'review', hard: true, check: c => over(c.budgets.karma, 'Karma') },
-  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', hard: true, check: c => over(c.budgets.nuyen, 'Nuyen', '¥') },
+  { code: 'nuyen.overspent', severity: 'error', tab: 'gear', hard: true, check: c => {
+    const hit = over(c.budgets.nuyen, 'Nuyen', '¥'), size = c.budgets.nuyen.breakdown?.find(l => l.key === 'sizePricing')?.amount
+    // a GM can't approve this one: name the table's house rule when it is part of the cost (metatypeSizePricing)
+    return hit && size ? { message: `${hit.message.slice(0, -1)}; the house rule ‘size pricing’ adds ${fmt(size)}¥.` } : hit
+  } },
   { code: 'gear.availCap', severity: 'error', tab: 'gear', setting: ['maxAvailability'], check: c => {
     // the Sixth World Companion's elite level (p. 15, levelSwcElite): no availability restrictions
     if (flag(c.cr, 'levelSwcElite')) return null
