@@ -53,3 +53,8 @@ jobs:
           docker exec ca2 wget -qO- http://127.0.0.1/ | grep -q 'id="root"'
           docker logs ca2 2>&1 | grep -q 'Setup code for the first admin'
           docker rm -f ca2
+      # started as root, the entrypoint hands root-owned data to PUID:PGID (default 99:100) and drops to it
+      - run: |
+          docker volume create ca2-data
+          docker run --rm -v ca2-data:/data/characters --entrypoint sh chummer-anarchy2 -c 'echo x > /data/characters/old.xml'
+          docker run --rm -v ca2-data:/data/characters chummer-anarchy2 sh -c '[ "$(id -u)" = 99 ] && [ "$(stat -c %u /data/characters/old.xml)" = 99 ] && echo new > /data/characters/new.xml'
