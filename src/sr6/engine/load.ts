@@ -5,9 +5,9 @@
 // kind="compendium"). Same id replaces, <remove id> deletes; sources merge by id; an edit replaces the entry (the book's
 // version kept in `original`), and an empty description keeps the book's text. A compendium never replaces anything: one
 // whose source id is already a book's is skipped, and so is an entry whose id another source's entry holds.
-import type { SourceFile } from '../../engine/load'
+import type { SourceFile } from '../../shared/source'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
-import { openIssues } from '../../engine/formula'
+import { openIssues } from '../../shared/formula'
 import { readSr6Compendium, sr6CompendiumSource } from './compendium'
 import { bookValue, ratingRange, type Find } from './values'
 import { expandLevels } from './levels'

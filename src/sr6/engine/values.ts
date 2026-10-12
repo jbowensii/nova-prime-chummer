@@ -1,4 +1,4 @@
-import { evalFormula, formulaOf, type Formula, type Vars } from '../../engine/formula'
+import { evalFormula, formulaOf, type Formula, type Vars } from '../../shared/formula'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 
 // Book values as the SR6 catalog keeps them (strings, as printed: "Rating × 500", "5(L)", "9/7/—/—/—") read as numbers.

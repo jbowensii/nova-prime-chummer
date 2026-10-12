@@ -7,6 +7,7 @@
 // entries by id after the imports and before the house rules; the replaced entries stay in c.original. A GM's compendium
 // (kind="compendium", an extra overlay) adds its entries under its own house source.
 import type { AttrId, Catalog, Pricing, Source } from '../model/types'
+import type { SourceFile } from '../shared/source'
 import {
   parseDataFile,
   toAmp,
@@ -48,14 +49,8 @@ export const DATA_FILES = [
  * development the owner's local copies in public/data load first. Everything but sources.xml. */
 export const CORE_FILES = DATA_FILES.filter(n => n !== 'sources')
 
-/** publisher, owner: a compendium's owner's name and account (its source's publisher, where to edit it) */
-export interface SourceFile {
-  file: string
-  xml: string
-  overlay: boolean
-  publisher?: string
-  owner?: string
-}
+// a data file as the loaders get it: both games' (src/shared/source.ts)
+export type { SourceFile }
 
 const IMPORTED = 'custom/imported/'
 const originOf = (f: SourceFile): Source['origin'] => (!f.overlay ? 'shipped' : f.file.startsWith(IMPORTED) ? 'imported' : 'user')

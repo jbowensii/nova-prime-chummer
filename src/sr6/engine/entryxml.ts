@@ -2,7 +2,7 @@
 // <house> hold (docs/sr6-data-format.md).
 import { esc, escAttr } from '../../shared/xml'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
-import { formulaXml, readFormulasAndIssues } from '../../engine/formula'
+import { formulaXml, readFormulasAndIssues } from '../../shared/formula'
 
 export const SR6_NS = 'urn:chummer-sr6:data:1'
 const OWN = new Set(['id', 'source', 'page'])

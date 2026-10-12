@@ -4,12 +4,13 @@
 import type { AmpTemplate, Catalog, Character, Compendium, EffectPick, Item, Rule, Source, VehicleBase } from '../model/types'
 import { effectStateAttrs } from './effects'
 import { esc, escAttr } from '../shared/xml'
+import { SOURCE_ID } from '../shared/source'
 import { characterToXml, xmlToCharacter } from './charxml'
 import { toAmp, toItem, toVehicle } from './parse'
 
 const DATA_NS = 'urn:chummer-anarchy2:data:1'
-/** A source id (server/books.mjs SOURCE_ID). */
-export const SOURCE_ID = /^[A-Z][A-Z0-9-]{0,19}$/
+// a source id's form: both games' (src/shared/source.ts)
+export { SOURCE_ID }
 const SHARING = ['private', 'campaign', 'table'] as const
 
 const attrs = (o: Record<string, string | number | boolean | undefined>) =>
