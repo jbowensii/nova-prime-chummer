@@ -237,3 +237,15 @@ test('the XSD wants <npc> first: an NPC block anywhere else fails', async () => 
   expect(await valid(GRUNT.replace('kind="grunt"', 'kind="dragon"'))).not.toEqual([])
   expect(await valid(GRUNT.replace(/<stat key="bod"/, '<stat key="BOD"'))).not.toEqual([])
 })
+
+test('a bonus’s minus and per-rating table round-trip, and a specialization may hold a semicolon; an older file’s specs still read', async () => {
+  const ch = blankSr6('priority', 'r-2', '2026-10-03T10:00:00.000Z')
+  ch.build.skills = [{ id: 'crb.gab', points: 2, karma: 0, spec: 'Fast talk', specs: ['Puns; mostly', 'Rhymes'] }]
+  ch.build.purchases = [{ uid: 'x', kind: 'gear', name: 'c', qty: 1, accessories: [],
+    bonuses: [{ target: 'bod', value: 1, perRating: true, minus: 1 }, { target: 'agi', value: 1, byRating: [1, 2, 5] }] }]
+  const xml = sr6ToXml(ch), back = xmlToSr6(xml)
+  expect(back.ok && back.character.build).toEqual(ch.build)
+  expect(await valid(xml)).toEqual([])
+  const old = xmlToSr6(xml.replace(/<skill ([^>]*)><spec>Puns; mostly<\/spec><spec>Rhymes<\/spec><\/skill>/, '<skill $1 specs="Puns; Rhymes"/>'))
+  expect(old.ok && old.character.build.skills[0].specs).toEqual(['Puns', 'Rhymes'])
+})
