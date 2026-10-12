@@ -1,5 +1,41 @@
 # Release notes
 
+## Unreleased
+
+**Both games**
+- **Phones: the receipt and budgets bar is a real button.** Tap it or press Enter or Space on it to open or close the
+  panel; screen readers hear whether it is open, and while it is closed nothing hidden under it takes keyboard focus.
+- **Runner lists on a phone**: every row puts its buttons under the runner's name, and a long name wraps instead of
+  pushing the row off the screen.
+- **Screen readers**: Export, Delete, Edit and Remove buttons say which runner or entry they act on ("Delete Zip
+  Spark"); the Review tab reads "Review, 2 problems"; a stepper's value says which row it belongs to; the catalog picker
+  is a list of options you can move through with the arrow keys and pick with Enter or Space.
+- **A tab that hits an error** shows "This tab hit an error — your saved changes are safe" and a Reload button instead of
+  a blank page.
+- **Names with odd characters**: a compendium, entry or edit whose name or text holds a character XML can't store (one
+  pasted from a PDF) now saves as a readable file; the character is dropped.
+- **Ask the rules**: when the AI provider fails, the person asking sees "the AI provider isn't answering; tell the
+  admin"; the details go to the server log (AI settings' Test still shows them to the admin).
+- **Security**: a hostile shared compendium can no longer stall the server; guesses at a password sent all at once count
+  against the lockout before they are checked; a password change or an Authelia sign-in checks the account again just
+  before it lands; a runner moved to another account leaves its campaign; AI provider addresses must be http or https;
+  a few malformed requests get a clear error instead of a server error.
+
+**Shadowrun 6**
+- **Overspent reads plainly**: a budget past its limit says "over by 2 (of 24)" instead of "−2 left of 24", and the
+  phone's closed budgets bar names the worst overspend (nuyen first, then Karma, then any other pool), not only Karma.
+- **Why nuyen is over**: when the metatype size pricing house rule adds to a runner's spending, Review's nuyen message
+  says how much it adds.
+- **A runner file keeps only the runner's own optional rules**: a hand-edited file can't change a table-only setting
+  (such as the skill cap); Review says the choice was set aside.
+- **Leveled qualities and powers**: a level's effect written as "rating minus one" or as a per-level table now gives the
+  right number at every level (Lucky Streak 1–3 with "R-1": 0, 1, 2).
+- **Older career runners**: level-ups recorded before qualities and powers became one entry per level now open at the
+  level they reached (no doubled power, no quality a level low), and lifestyle and upgrade spends in the ledger follow
+  their entries' new ids. A rating or level the catalog doesn't have stays as it was, so Review still points it out.
+- **Runner files**: a bonus's "minus" and per-rating table are saved, and a specialization may contain a semicolon.
+- **Sample runners' fit** reads a unit price ("1,500 each") the same way the app does.
+
 ## 0.13.1 — 2026-10-11
 
 **Admins, after updating:**
