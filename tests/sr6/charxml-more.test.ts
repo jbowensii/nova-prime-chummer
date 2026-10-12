@@ -34,7 +34,7 @@ test('only one of the final numbers is enough; the other is 0', () => {
   expect(good(doc('id="r" finalNuyen="900"')).final).toEqual({ karma: 0, nuyen: 900 })
 })
 
-test('lines with missing attributes read as empty ones; specs split on semicolons; a SIN and its licences and lifestyles', () => {
+test('lines with missing attributes read as empty ones; an older file’s specs attribute splits on semicolons; a SIN and its licences and lifestyles', () => {
   const ch = good(doc('id="r"', `<build method="priority" magic="mundane">
     <skill/><skill id="crb.gab" specs="Haggling; Bluffing;;"/>
     <knowledge kind="knowledge">Maps</knowledge><quality/><pick kind="spells"/><martialart><technique/></martialart>
