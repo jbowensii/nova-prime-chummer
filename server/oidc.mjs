@@ -469,6 +469,7 @@ export function oidcApi({
     for (const [k, e] of used)
       if (e <= now || used.size >= MAX_USED) used.delete(k)
       else break
+    rate(ctx.ip) // before the state is spent: a limited callback keeps its cookie and state, and can be retried after the minute
     used.set(c.n, c.e)
     return {
       nonce: c.n,
@@ -501,17 +502,18 @@ export function oidcApi({
   async function callback(req, res, url) {
     const ctx = req.ctx,
       q = url.searchParams
-    cookie(res, ctx, '', 0) // single use: the cookie goes whatever happens next
-    let link = null
+    let link = null,
+      spent = false
     try {
       const entry = take(req, ctx, q.get('state') ?? '')
+      spent = true
+      cookie(res, ctx, '', 0) // single use: the cookie goes whatever happens next
       link = entry.link
       if (q.get('error')) throw refuse('denied', `the issuer said ${oneLine(q.get('error')).slice(0, 60)}`)
       const code = q.get('code') ?? ''
       if (!code || code.length > 2048) throw refuse('failed', 'the issuer sent no code')
       const s = settings()
       if (!s.on || s.issuer !== entry.issuer || s.clientId !== entry.clientId) throw refuse('failed', 'the sign-in settings changed meanwhile')
-      rate(ctx.ip)
       const d = await discover(s.issuer)
       const tokens = await exchange(d, s, code, entry)
       const id = await verifyIdToken(tokens.id_token, d, s.clientId, entry.nonce)
@@ -552,6 +554,7 @@ export function oidcApi({
       return go(res, '/')
     } catch (e) {
       const linking = !!link || !!e.link
+      if (!spent && e.key !== 'too-many') cookie(res, ctx, '', 0) // refused before the state was spent; only a limited one keeps its cookie
       log.log(`Authelia ${linking ? 'link' : 'sign-in'} refused from ${ctx.ip}: ${e.key ? e.message : 'an error'}`)
       if (!e.key) log.error(e.stack)
       return go(res, `/?${linking ? 'link' : 'signin'}=${e.key ?? 'failed'}`)

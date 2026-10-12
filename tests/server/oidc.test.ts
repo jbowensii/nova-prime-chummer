@@ -833,6 +833,36 @@ test('the token exchange is limited per client network: past the limit a minute,
   }
 })
 
+test('a callback refused for the network limit keeps its state: the same callback works after the minute', async () => {
+  const s = await boot({ exchangesPerMinute: 1 })
+  try {
+    await on(s)
+    expect((await flow(s)).location).toBe('/') // the one allowed
+    const start = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
+    const bind = start.headers
+      .getSetCookie()
+      .find(c => c.startsWith('ca2_oidc='))!
+      .split(';')[0]
+    const back = (await fetch(start.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
+    const cb = (cookie: string) => fetch(back, { redirect: 'manual', headers: { Cookie: cookie } })
+    const limited = await cb(bind)
+    expect(limited.headers.get('location')).toBe('/?signin=too-many')
+    expect(limited.headers.getSetCookie().some(c => c.startsWith('ca2_oidc='))).toBe(false) // the cookie isn't cleared
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(Date.now() + 61_000)
+      const again = await cb(bind)
+      expect(again.headers.get('location')).toBe('/')
+      expect(session(again.headers.getSetCookie())).not.toBe('')
+      expect((await cb(bind)).headers.get('location')).toBe('/?signin=expired') // and now it's spent
+    } finally {
+      vi.useRealTimers()
+    }
+  } finally {
+    s.close()
+  }
+})
+
 test('a failed discovery is remembered: an issuer that is down isn’t asked on every start', async () => {
   const s = await boot()
   try {
