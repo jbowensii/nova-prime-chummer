@@ -1,244 +1,100 @@
 # Nova Prime Chummer
 
-Version 0.14.0 — see [CHANGELOG.md](CHANGELOG.md) for release notes.
+A self-hosted character generator and career tracker for two games: **Shadowrun: Anarchy 2.0** and **Shadowrun Sixth World (SR6)**.
 
-Nova Prime Chummer (until 0.13 “Chummer Anarchy 2.0”) is a character generator and career tracker for **Shadowrun: Anarchy 2.0**: the
-Commlink6 / Chummer experience, built for Anarchy 2.0’s nuyen-only rules.
-(Not Anarchy 1st edition, which uses different rules.) Since 0.9.0 it is also a
-builder for **Shadowrun 6th World**: see [Shadowrun 6th World](#shadowrun-6th-world).
+You run it on your own network (a home server, a NAS, a PC). Everyone at the table uses it in a browser. It ships the rules engine only. You bring your own books. See [How data comes in](#how-data-comes-in).
 
-**Bring your own books.** The app ships the rules engine only. Amps, spells,
-complex forms, gear, rules text and sample runners come from the PDFs you
-upload on the **Books** page: the core rulebook, the Conversion Guide,
-Daegann’s expanded amp list and pregen booklet and the quick-reference sheets
-are read by recipes; any other book can be read by an AI you set up (your
-own API key), and you review its entries before they’re added.
+- Release history: [CHANGELOG.md](CHANGELOG.md)
+- Example sheets: [Example character sheets](#example-character-sheets)
 
-- **Guided creation.** Pick Ganger, Runner or Prime Runner and optionally a
-  book package. A live nuyen receipt, with every rule checked and cited to its
-  page. A GM can approve any exception.
-- **Shadow Amp builder.** An amp type plus effects from the effect table gives
-  its rating, cost and Essence automatically. Imported books add their prebuilt
-  amps and add-ons (ammo, accessories, vehicle and deck mods, implant grades).
-  Two books defining the same amp are both kept and told apart.
-- **Effects that say what they do.** A narrative effect is machine-readable (an
-  Advantage on a Test, a Disadvantage, wound modifiers ignored, social armor…),
-  and every effect says how it's turned on (always, activated, sustained, only
-  sometimes) and whether it counts. Imported entries (amps, spells, gear, racial
-  qualities) carry them; the sheets mark a pool's Advantages and Disadvantages.
-- **Weapons, vehicles, mental armor.** Weapon damage is worked out from
-  Strength and bonuses. Vehicles and drones show Pilot, Body, Handling, Speed,
-  Armor and damage thresholds. Astral Armor, Mystic Armor and biofeedback
-  filters raise the mental thresholds.
-- **Technomancers** (from the CGL Conversion Guide): the Emerged amp, the
-  Tasking skill, a living persona (Firewall = Willpower, Attack = Charisma),
-  and the complex forms your books bring.
-- **Lifestyles** (CRB p.166) adjust what each run pays.
-- **Knowledge & languages** in two lists on the Skills tab, A–Z unless you
-  drag rows (or use their arrows) into your own order. Each keyword and each
-  skill at 4+ is a free entry (a skill’s starts as “Knowledge of <Skill>” and can
-  be renamed to anything related to it); one language marked **Native** is free
-  too (a house rule); any other costs the knowledge
-  price. **Hide** leaves an entry off the printed sheet.
-- **Starting gear.** Every runner carries a free commlink (with trodes) and a
-  fake SIN (CRB p.85): rename and describe them, but they can’t be removed.
-  A real SIN is the SINner quality (Shadow Amps tab): adding it brings a free
-  Real SIN entry on the Gear tab, removing it takes the entry away. House rule
-  (a Table setup switch, on by default; a runner may set its own on Review unless
-  the GM locks it): a SINner is free and never counts as the first Quality. The GM allows
-  or refuses real SINs, and non-canon content, for the whole table on the
-  Table setup page; Review flags a runner that uses what the table doesn’t allow.
-- **Saving.** Every change saves on its own; the bar says when (“All changes
-  saved · 14:02”), and **Save** / **Save and close** save right away. A save
-  that fails turns red with the server’s reason and a **Retry**, and leaving
-  the page asks first.
-- **Runner list** in A–Z order (or Z–A, or recently edited), with a search
-  box and a **Draft** / **Finalized** badge on each runner. A blue **User
-  defined** chip marks runners you made (copies of examples count) and a red
-  **Error** chip marks a runner that is overspent (“Overspent by N¥”). A file the app
-  can’t read is listed with the reason, to download or repair.
-- **Finalize and the ledger.** Finalize is the last check of creation and
-  starts the ledger with “Creation finished · N¥ left”. Nothing is locked:
-  afterwards you still change the runner on any tab. Adding something charges
-  its price, and removing an item, amp or skill point gives its book price back
-  to spend again. Every change is logged in the ledger by itself, for the GM.
-  The level-of-play creation caps apply only before Finalize. The balance is
-  what creation left, plus earnings, minus each change at the price it had when
-  you made it (a later price change moves nothing). Record
-  earnings on the Ledger tab; a wrong one is undone by voiding it. **Reopen
-  creation** (Review tab) works until earnings are recorded. Runners finalized
-  before 0.5.5 convert when opened: their history and earnings stay, and so
-  does their balance.
-- **Printable sheet** laid out like the official one: weapons (with any DVs by
-  ammunition their book text lists) and spells in sections of their own.
-  Languages and knowledge sit on page 1 under Skills, the portrait is bigger,
-  the logo sits on the yellow paint swish, and there is no forced page break.
-  The sheet’s background image can be chosen per runner (in this browser):
-  “Same as the app” or one of the admin’s images. **Settings → Printed sheet →
-  Book style** prints a one-page sheet laid out like the rulebook’s example
-  (free fonts, no book art); long runners flow onto a second page. Your
-  browser’s “Save as PDF” makes the PDF.
-- **Portrait** (Concept, **Add a portrait…**): a window to choose the picture,
-  zoom and drag it into the square, and pick its backdrop: white, neutral grey,
-  dark, or a built-in grid, halftone, neon or rain pattern, shown through the
-  transparent parts of a PNG or WebP portrait in the builder, the runner list
-  and on the sheet. A dark one prints as white, to save ink.
-- **Example characters** load with one click (**Load example characters**,
-  every role): the rulebook’s pregens and Lightning, Daegann’s pregen
-  booklet, and the server’s example sets in `custom/samples/<set>/` (such as
-  the first release’s built-in runners). Each person gets their own copies:
-  one canon and one non-canon copy of each character, never more, however
-  often they load or the books are re-imported. If a library holds extra
-  copies, the Library offers **Tidy up**: it lists them, moves them to your
-  trash and never touches one you edited. Each import’s
-  report lists any printed number the engine doesn’t reproduce; see
-  [docs/book-discrepancies.md](docs/book-discrepancies.md) for the rules calls.
-- **Trash.** Deleted runners go to your trash (**Trash (N)** in the runner
-  list, or the account menu): restore one, delete one forever, or empty the
-  trash. A runner restored next to one with the same id comes back as a
-  copy, “(restored copy)”. The admin can open anyone’s trash from the Users
-  page. Browser-only storage has no trash: deleting there is for good.
-- **Canon and non-canon.** The core rulebook and Conversion Guide are canon.
-  Published material that isn't official rules (Daegann's expanded amp list
-  and pregens, the quick-reference sheets) carries a **Non-canon** badge, and
-  a runner can be set to canon only, which flags any on the Review tab.
-- **Rules reference** from the Base, Magic, Matrix and Vehicles quick
-  reference sheets: a searchable page plus hover help on matching effects.
-  The **Rules** tab is for the GM (admin and editors) and shows only the
-  books. **Table setup** (`#/table`) holds the table’s switches: the GM turns
-  the book’s optional rules on or off and adds house rules; players see a
-  read-only list of what’s on.
-- **Foundry VTT.** Runners and book data export as one JSON file for the Foundry importer module
-  (sra2 system; install it in Foundry from [jbowensii/chummer-anarchy2-foundry](https://github.com/jbowensii/chummer-anarchy2-foundry) by its manifest URL, https://github.com/jbowensii/chummer-anarchy2-foundry/releases/latest/download/module.json).
-  **Export for Foundry** in the runner editor, or **Export for Foundry…** on the runner list (tick runners, All/None,
-  or tick a campaign), downloads `runners-YYYY-MM-DD.ca2foundry.json`. On **Game data**, the admin and editors open
-  **Export book data for Foundry** (folded under the catalog, or straight from its Foundry icon in the header beside the
-  game switch; its address is `#/data/foundry`), tick books (Canon / Non-canon) and download `books-YYYY-MM-DD.ca2foundry.json` with the table rules that are on; every rule carries a section (its topic name if the book gave none) and its topic, and the books' metatypes and sample characters are included (a sample that can't be read is listed and skipped). The new parts need Foundry importer 0.3.0; older importers ignore them.
-  **Include book descriptions** is on by default: the note says “For your own Foundry only. Don’t share this file.”
-  NPCs export the same way (**Export for Foundry…** on the NPCs page), each carrying its NPC block, and the books' NPCs ride along in the book data file.
-  A compendium exports as its own compendium (**Export for Foundry** on the Compendiums page), with your descriptions; it needs importer module 0.6.0.
-  The format is in [docs/export-format.md](docs/export-format.md), with a JSON Schema.
+## What it is
 
-## Shadowrun 6th World
+Build runners with each book's own creation rules. A **Review** tab checks every rule and cites the book and page. If a runner breaks a rule, Review says which one. A GM can approve an exception.
 
-**Choosing a game.** The first screen asks which game you play: **Shadowrun
-Anarchy 2.0** or **Shadowrun 6th World**. This browser remembers the choice,
-and the game icon in the header switches at any time. The two games are kept
-fully apart: runners, NPCs, campaigns, compendiums, books, imported data,
-catalog edits, trash and settings are each game’s own, and the server refuses
-an object from the other game (an SR6 runner in an Anarchy campaign, an Anarchy
-file in the SR6 store). Only your account and its role (admin, GM, player) are
-shared. SR6 data lives beside Anarchy’s, one level down: `characters/sr6/`,
-`custom/sr6/`, `library/sr6/`, at `/api/sr6/…`. One backup holds both games.
+When a runner is finished, you **Finalize** it. From then on the career ledger tracks every change: Karma and nuyen earned, spent and refunded. A mistake is voided, never silently edited.
 
-As on the Anarchy side, the app ships no book text. It does ship the standard
-creation settings (`public/data/sr6/creation-defaults.xml`: 229 numbers, each
-with the book and page that print it); everything else comes from your books.
+Also in the box:
 
-- **Books** (admin, SR6 menu). Upload the Shadowrun 6 core rulebook PDF. The
-  importer turns it into markdown, regroups each item’s stat-table row with its
-  description, and its recipe writes the SR6 catalog: priorities, metatypes,
-  skills, qualities, weapons, armor, augmentations, electronics, gear, vehicles
-  and drones, spells, rituals, adept powers, complex forms, critters, spirits,
-  sprites, NPCs, lifestyles, contacts and the rule sections. Anything it
-  couldn’t pair or read is listed in the book’s import report, never guessed.
-  Book errors stay as printed; fixes go through **Game data**, survive
-  re-imports and can be undone. Later books come one per release.
-- **Game data** (everyone; changes: admin and GMs). Browse the catalog the
-  same way as in Anarchy: the kinds down the left with their counts, the
-  chosen kind's categories as chips across the top, its entries with their
-  values, Description and Edit; the **Book** list filters it. Edit an entry and
-  export book data for Foundry (its Foundry icon in the header, beside the game
-  switch, opens it: `#/sr6/data/foundry`).
-- **Table setup** (`#/sr6/table`; players read only). The **Creation rules**: the
-  numbers the rulebook prints only in its text (starting karma, caps, exchange
-  rates, karma prices, point-buy prices, augmentation grades, the constants
-  of derived values, advancement prices), each with the page you read it on.
-  The admin sets the server’s; a GM can give a campaign its own on its page,
-  and that campaign’s runners use them. The app ships the standard ones
-  (`creation-defaults.xml`), which the admin’s changes go over; a house rule’s
-  number no book prints ships unset with its rule off. A creation method whose
-  settings aren’t set can’t be picked, and its row says which are missing.
-- **Rules.** The rulebook’s rule sections, searchable.
-- **Builder** with all five creation methods: **priority**, **sum to ten**,
-  **point buy**, **karma** and **lifepath** (lifepath needs life modules,
-  which come with a book that prints them). Itemized budgets (attribute,
-  skill, adjustment, karma, nuyen, essence, power, contact and knowledge
-  points), tabs for Concept, Creation method, Attributes, Skills, Qualities,
-  Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & lifestyle,
-  Review and Ledger. Derived values (dice pools, condition monitors,
-  initiative, Defense Rating, Composure, Judge Intentions, Memory, lift and
-  carry, Essence and its Magic loss) come from the engine; **Review** lists
-  every broken rule with its page. A printable SR6 sheet uses the shared print
-  page (background, portrait).
-- **Career ledger.** **Finalize** starts career play: from then on every change
-  goes through the karma and nuyen ledger: record earnings, spend karma on
-  attributes, skills, specializations, expertise, knowledge, qualities, spells,
-  initiation and more, or nuyen on gear and lifestyle. The ledger is
-  append-only: a mistake is voided (the newest advance, or any earning or
-  note), never edited. **Back to draft** works until something is earned or
-  spent.
-- **NPCs & Critters** (GMs). Grunts by Professional Rating, critters, spirits
-  and sprites with their stat block at their rating; **Load book NPCs** copies
-  the book’s; share an NPC with a campaign’s GMs; their own trash. Players never
-  see NPCs.
-- **Campaigns.** SR6 campaigns of their own, as on the Anarchy side: GMs add
-  players, players add their SR6 runners; the GMs see the runners, players see
-  the roster.
-- **Compendiums** (GMs). Your own collections of SR6 entries (qualities, gear of
-  every kind, spells, rituals, adept powers, complex forms, metamagics, echoes,
-  critter powers, critters, spirits, NPC stat blocks, sprites, lifestyles,
-  contacts) and SR6 NPCs, each under a source id of its own, private, shared
-  with an SR6 campaign’s GMs, or with the whole table. Copy an entry in from a
-  book (its stats, never its description), move NPCs in and out. A GM’s
-  pickers, Game data and New NPC dialog offer the entries of every compendium
-  they can read; a compendium never replaces a book’s source or entries.
-  Players never see compendiums.
-- **Foundry VTT.** The SR6 side has its own file, Chummer SR6 export v1
-  ([docs/sr6-export-format.md](docs/sr6-export-format.md), JSON Schema
-  `public/data/schema/sr6-export.schema.json`), for the Chummer SR6 importer
-  module (shadowrun6-eden system, [jbowensii/chummer-sr6-foundry](https://github.com/jbowensii/chummer-sr6-foundry)).
-  **Export for Foundry** in an SR6 runner’s or NPC’s editor and on each row of
-  NPCs & Critters, **Export for Foundry…** on the SR6 runner list and NPCs &
-  Critters (tick runners or a campaign) download
-  `runners-YYYY-MM-DD.sr6foundry.json`; on SR6 **Game data** (its Foundry icon in
-  the header) the admin and GMs tick books and download `books-YYYY-MM-DD.sr6foundry.json` (descriptions
-  on by default: for your own Foundry only); an SR6 compendium’s page downloads
-  `compendium-<SOURCE>-YYYY-MM-DD.sr6foundry.json`. Each Foundry module refuses
-  the other game’s file.
+- **NPCs and critters** for GMs: grunts, prime NPCs, critters, spirits and sprites with their stat blocks.
+- **Campaigns** with a GM. The GM adds players. Players put their runners in. The GM sees the runners. Players see the roster.
+- **Compendiums**: your own collections of entries, private or shared with a campaign's GMs.
+- **Printable sheets** that follow the official layout. Use your browser's "Save as PDF".
+- **Ask the rules**: an AI answers rules questions from your own imported data, with book and page. You choose the provider and bring the key.
+- **Optional rules and house rules** that the GM switches on or off for the whole table.
+- A **trash** for deleted runners, **example characters** to load, and a **portrait** picker.
 
-Formats: [docs/sr6-data-format.md](docs/sr6-data-format.md) (catalog, creation
-rules, compendiums), [docs/sr6-character-format.md](docs/sr6-character-format.md)
-(runners and NPCs), [docs/sr6-export-format.md](docs/sr6-export-format.md).
+The two games are kept fully apart. Runners, NPCs, campaigns, books, data, edits, trash and AI settings belong to one game. The server refuses an object from the other game. Only your account and its role are shared. The first screen asks which game you want, and an icon in the header switches.
 
-## Run it
+## Both systems
 
-Served by its own small Node server (Docker / Unraid), the app saves every
-runner as an XML file in the `characters` folder, shared by every browser on
-your LAN. Runners already saved in a browser move there on first load. With
-no server (`npm run dev`, a plain static host), runners stay in the browser.
-**Export** writes the same XML file. See
-[docs/character-format.md](docs/character-format.md).
+### Shadowrun: Anarchy 2.0
 
-### Locally
+Anarchy 2.0 uses nuyen only. This is the 2.0 rule set, not Anarchy 1st edition.
 
-```bash
-npm install
-npm run dev        # http://localhost:5173 (runners saved in the browser)
-npm run serve      # build + server on :80 (set PORT, CHAR_DIR, CUSTOM_DIR, LIBRARY_DIR, PYTHON)
-```
+- **Creation**: pick Ganger, Runner or Prime Runner, and optionally a book package. A live nuyen receipt shows every rule.
+- **Shadow Amps**: an amp builder. An amp type plus effects gives its rating, cost and Essence. Imported books add prebuilt amps and add-ons.
+- **Technomancers**: the Emerged amp, the Tasking skill, a living persona and complex forms (from the Conversion Guide).
+- **Also covered**: weapons, vehicles and drones, mental armor, lifestyles, and knowledge and languages.
+- **Optional rules**: Table setup holds the book's optional rules and your house rules. The GM turns them on or off. Players see a read-only list.
+- **Canon**: material that is not official rules carries a **Non-canon** badge. A runner can be set to canon only.
+- **Sheets**: Printer-friendly, Full color and Book style.
+- **Rules reference**: a searchable page built from the quick-reference sheets.
+
+### Shadowrun Sixth World
+
+- **Five creation methods**: priority, sum to ten, point buy, karma and lifepath. Lifepath needs a book that prints life modules.
+- **Budgets**: attribute, skill, adjustment, Karma, nuyen, Essence, power, contact and knowledge points, each itemized.
+- **Tabs**: Concept, Creation method, Attributes, Skills, Qualities, Magic or Resonance, Augmentations, Gear, Vehicles, Contacts and lifestyle, Review and Ledger.
+- **Derived values** come from the engine: dice pools, condition monitors, initiative, Defense Rating, Essence and Magic loss, and more.
+- **Creation rules** (Table setup): the numbers the book prints in its text, each with its page. The admin sets the server's. A GM can give a campaign its own. The standard creation numbers ship as defaults (`public/data/sr6/creation-defaults.xml`).
+- **Optional and house rules**: the Sixth World Companion's optional rules and several house rules, all off until a table turns them on.
+- **Career ledger**: spend Karma on attributes, skills, qualities, spells, initiation and more. Spend nuyen on gear and lifestyle.
+- **Sheets**: six styles (Printer-friendly, Full color, Book style, Neon, Hex, Dossier).
+
+## How data comes in
+
+The app ships **no book content**: no tables, no rules text, no descriptions. A fresh server shows a setup page until you load your core data.
+
+### 1. Upload books you own
+
+Open **Books** (admin) and drop in the PDF of a book you own. The importer converts the PDF, then reads its tables and rules into game data. A report lists anything it could not read or match. Nothing is guessed.
+
+**Only use books you own.** Your PDFs stay in your `library` folder and are never served over the web. Nothing is shared or redistributed. Book descriptions stay private to your server.
+
+- Books with a built-in recipe import at once.
+- Any other book can be read by an AI you set up. You review every proposed entry before it is added.
+- **Re-import** reruns one book. **Re-import all books** reruns every book (after an app update, say). Your edits, runners and NPCs are kept.
+- Each game has its own AI settings, including its own AnythingLLM workspace. Put only that game's books in it.
+- **Data packs**: a small zip of the core tables (no descriptions, PDFs or keys). Download one from a server that has the core book. Upload it to set up another server.
+
+### 2. Enter data yourself
+
+- **Game data** is a catalog editor. The admin and GMs edit any entry or add new ones under a house-rule source you name. **Restore book version** undoes an edit. A re-import never touches your edits.
+- **Export my edits** and **Import edits** save your changes as an edits file. Import previews what a file adds, changes and conflicts with.
+- **Custom XML overlays** in the `custom` folder (listed in `custom/index.xml`) add, replace or remove entries. XSD schemas ship in `public/data/schema/`.
+- **Table setup** holds your house rules and optional-rule switches.
+
+Formats: [Anarchy data](docs/data-format.md), [SR6 data](docs/sr6-data-format.md).
+
+## Install and host
+
+The container needs three folders:
+
+| Folder in the container | What it holds                                                     |
+| ----------------------- | ----------------------------------------------------------------- |
+| `/data/characters`      | Saved runners, one XML file each, a folder per account            |
+| `/data/custom`          | Imported book data, your edits, overlays, campaigns               |
+| `/data/library`         | Uploaded PDFs, their converted text, reports, AI settings, backups |
 
 ### Unraid
 
-1. **Docker** tab → **Template repositories** → add
-   `https://github.com/jbowensii/unraid-templates` → **Save**.
-2. **Add Container** → pick *nova-prime-chummer* from the template list → Apply.
-   The web UI is on port 8480.
+1. **Docker** tab, then **Template repositories**. Add `https://github.com/jbowensii/unraid-templates` and **Save**.
+2. **Add Container** and pick _nova-prime-chummer_. Apply.
+3. Open the web UI on port **8480**.
 
-This pulls the published image `ghcr.io/jbowensii/nova-prime-chummer:latest` —
-no build step on the server.
+The template maps the folders to `/mnt/user/appdata/nova-prime-chummer/characters`, `.../custom` and `.../library`. It sets `PUID` 99 and `PGID` 100, Unraid's `nobody` and `users`. The image is pulled ready-built, so there is no build step on the server.
 
-### Docker / any dashboard (Portainer, Dockge, Yacht, …)
+### Docker
 
 ```bash
 docker run -d --init -p 8480:80 \
@@ -248,405 +104,115 @@ docker run -d --init -p 8480:80 \
   ghcr.io/jbowensii/nova-prime-chummer:latest
 ```
 
-The container starts as root only to hand the three mounted folders to `PUID`:`PGID` (default `99`:`100`, Unraid's
-`nobody`:`users`), then runs the server as that user; files owned by root from an older image are taken over on the
-first start. Add `-e PUID=1000 -e PGID=1000` to match another host user, or use `--user` to skip the step.
+The container starts as root only to hand the three folders to `PUID`:`PGID` (default 99:100), then runs as that user. Add `-e PUID=1000 -e PGID=1000` to match another host user. Or use `--user` to skip this step.
 
-### Build it yourself
+To build the image yourself: `docker build -t nova-prime-chummer:latest .` (add `--build-arg OCR=1` for scanned books).
 
-```bash
-docker build -t nova-prime-chummer:latest .
-docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library nova-prime-chummer:latest
-```
+### From source
 
-### Accounts
-
-Sign-in is required: everyone needs an account on the server. There's no
-self sign-up — the admin creates each one on the **Users** page.
-
-**First start.** With no accounts yet, the app shows a setup page. Read the
-one-time setup code from the container log (`docker logs nova-prime-chummer`)
-and enter it with a name, username and password to create the first admin.
-The code is new on every restart and works once. Upgrading a server from
-0.3 (no accounts yet) does the same thing: on setup, any runners already
-saved at the top of the characters folder move into the new admin's own
-folder.
-
-**Roles.**
-
-| | admin | editor | player |
-|---|---|---|---|
-| Own runners: create, edit, delete | ✓ | ✓ | ✓ |
-| Everyone's runners: view, print | ✓ | – | – |
-| Start and run campaigns; view and print their runners | ✓ | ✓ | – |
-| NPCs & Critters page: make, edit, share NPCs | ✓ | ✓ | – |
-| Compendiums page: make, fill, share your own compendiums | ✓ | ✓ | – |
-| Play in campaigns (put own runners in; see the roster) | ✓ | ✓ | ✓ |
-| Ask the rules (up to the admin's daily limit) | ✓ | ✓ | ✓ |
-| Catalog edits, Add entry, house-rule sources | ✓ | ✓ | – |
-| Catalog, descriptions, Data (read); Table setup (read) | ✓ | ✓ | ✓ |
-| Rules tab, Table setup switches and house rules | ✓ | ✓ | – |
-| Books page, imports, AI settings and keys | ✓ | – | – |
-| Backup and restore | ✓ | – | – |
-| Background art: upload, switch on or off, delete | ✓ | – | – |
-| Users page, Sign-in settings | ✓ | – | – |
-
-The server enforces every rule; a hidden control is only convenience. There
-is always at least one enabled admin.
-
-**Users page** (admin, account menu → Users): add an account (name,
-username, email, role, app password or Authelia); edit name, username, email,
-role or sign-in method (renaming moves the person’s runners with them and
-they sign in with the new name); disable/enable; reset a password (also ends that person's
-other sessions); move a runner to another user; delete (only with no
-runners, or after moving them); set **Questions per day** for Ask the rules
-(blank: no limit).
-
-**Campaigns** (runner list → **Campaigns**). The admin or an editor starts a
-campaign and is its GM; the admin can add other editors as co-GMs. The GM
-adds players by username. A player puts a runner in a campaign with **Add to
-campaign…** on the runner list (one campaign per runner at a time: to play
-it in another one, **Duplicate** it; a copy is in none). Example characters
-work the same: the loaded copy is your own. The runner list shows each
-runner's campaign and can show one campaign's runners only.
-On a campaign's page the GM and the admin open every runner read-only and
-print it; a player sees the roster: who plays, and the names, archetypes and
-levels of the others' runners, never their sheets. An editor sees only the
-runners in the campaigns they run (plus their own). The GM's tools: add or
-remove players (their runners leave the campaign, but stay theirs), rename,
-a note for the table, archive (no runners can join) and delete (once no
-runners are in it). Campaigns live in `custom/campaigns.xml`, are in backups,
-and are never served as a file.
-
-**NPCs & Critters** (runner list → **NPCs & Critters**; admin and editors only, players never see it). A
-GM's own area for the people, critters and spirits of the table, kept apart from the runner list. **New NPC**
-asks for a kind (NPC, critter or spirit) and a tier, and opens the same editor as a runner in **NPC mode**: a GM
-can set attributes outside the metatype's range, and a critter needs no metatype. A **regular** NPC has no Edge
-and its sheet shows **average hits** (the dice pool turned into a flat number, so the GM rolls less); a **prime**
-NPC is managed like a runner, Edge included. A spirit or critter can be a **fighting spirit** (low, high or
-extreme). Review and both printed sheets show the average hits and the fighting spirit. **Share with a campaign…**
-lets the GMs of one campaign (one campaign per NPC) read and print the NPC; it is read-only for them, and the
-campaign's page lists the shared NPCs for its GMs and the admin, never for players. **Unshare** takes it back.
-Deleting an NPC sends it to the **NPC trash**, where it can be restored. **Load book NPCs** copies the NPCs,
-critters and spirits read from the core rulebook import (once each, even after a rename). You can also import an
-NPC file (a runner file is refused) and export NPCs for Foundry. NPCs live apart from runners on the server and in
-backups.
-
-**Compendiums** (runner list → **Compendiums**; admin and editors only, players never see it; server only). Your own
-named collections of amps, weapons, armor, gear, spells, complex forms, vehicles and NPCs. **New compendium** asks
-for a name, its own **source id** (fixed afterwards, and unique across the books and every compendium) and
-who can read it: **private**, the GMs of **one campaign**, or **all GMs**. Add entries from scratch, or **Copy to…**
-one from a book; a copy gets a new id and your source and does not carry the book's description, so you write your
-own. **Move to compendium…** on the NPCs page puts NPCs in (the original waits in the NPC trash), and **Move to my
-NPCs** takes them back out to edit. Only the owner edits; GMs it is shared with read it and can copy from it. Its
-entries appear in the catalogs (pickers, Amp Builder) of every GM who can read it, marked House. **Export for
-Foundry** downloads it as its own compendium (descriptions included; importer module 0.6.0 or later). Compendiums
-live in `characters/.compendiums/` on the server and are in backups.
-
-**Ask the rules.** Once the admin has chosen an AI provider in AI settings,
-enabled it and saved its key, everyone signed in can ask a rules question:
-in the bar at the top of the builder and of a campaign's runners, or with the
-**?** button in the header on any page. The server finds the most relevant
-passages in its own data (imported rules and texts, amps, items, spells,
-table rules) and sends only those and the question to the admin's provider;
-the answer comes back with its sources ("CRB p.61 · QREF Base"). When the
-books don't cover it, it says so without asking the AI. The admin sets a
-limit per person per day on the Users page (the day is UTC). Nothing is
-saved: no questions or answers on the server or in the browser, and the log
-has only who asked and when.
-
-**Each game has its own AI.** Shadowrun 6 has its own **AI settings** (SR6 Books →
-the AI settings icon, `#/sr6/books/ai`): its own provider, model, key and, for
-AnythingLLM, its own workspace (make one that holds only the Shadowrun 6 books).
-On the Shadowrun 6 pages the **?** button and a campaign's bar ask SR6's AI, which
-answers from the Shadowrun 6 data only, citing book and page; the Anarchy pages
-ask Anarchy's, from the Anarchy data only. Neither ever sees the other game's
-books. Until the admin sets SR6's up, the SR6 pages show no Ask. Each account's
-daily limit counts both games' questions together.
-
-**AI search on Rules and Game data.** Once a game's AI is set up, its Rules and
-Game data pages have a search box that takes a plain question ("what stops a
-bullet?", "cyberware that helps a decker"). The answer comes with what it found:
-on Rules each find links to its rule; on Game data each is a button that looks
-it up in the catalog below. Rules searches the rules only; each game searches
-only its own data. A search counts as a question against the daily limit.
-
-**Background art.** The admin uploads their own images in **Settings →
-Background art** (PNG, JPEG or WebP, 10 MB each, up to 50) and switches each
-one on or off, or deletes it. The ones that are on show behind every page for
-everyone signed in, one picked at random on each page load: faint under the
-text in the middle of the screen, a little stronger toward the edges, tinted
-indigo in the dark theme and fainter still on phones. The page layer is never
-printed. Anyone can turn them off or fade them in their own browser
-(**Settings → Background**: Plain page, or Strength 0–100%). The character
-sheet has its own switches in its **Background** dialog (the button above the
-sheet: on screen: on; printed: off; strength: 60% until set), with the same
-readability limit. The images live in `library/backgrounds/`, are in backups (not
-in data packs), and are only sent to signed-in browsers. The only artwork that
-ships with the app is our own circuit board, Shadowrun 6's default background:
-it starts on, and the admin can switch it off or delete it like any upload
-(once deleted it doesn't come back).
-
-**Sign-in settings** (account menu → Sign-in, admin) turns on Authelia —
-see [below](#sign-in-with-authelia-openid-connect). **AI settings** has a link
-in Settings too.
-
-**Locked out?** From the host:
+You need Node 22 and Python 3.12 (the importer).
 
 ```bash
-docker exec nova-prime-chummer node server/users.mjs reset <username>
+npm ci
+pip install --require-hashes -r importer/requirements.lock
+npm run serve      # builds, then serves on :80 (set PORT, CHAR_DIR, CUSTOM_DIR, LIBRARY_DIR, PYTHON)
 ```
 
-prints a one-time code (15 minutes) to use at `<app address>/#/setup/reset`
-to set that account a new password. It also works when Authelia is down —
-it switches the account back to an app password.
+`npm run dev` runs the interface alone on `http://localhost:5173`. It has no server, so no accounts, no Books page and no importer.
 
-### Behind a reverse proxy (TRUST_PROXY)
+### First run
 
-Set `TRUST_PROXY` (template: **Trusted proxy**) to the address of the proxy that talks to the container, e.g.
-`192.168.1.10`. Only requests from these addresses may set `X-Forwarded-For`, `-Proto` and `-Host`, which decide the
-client's address (sign-in limits, logs), whether the request came over https (the secure cookie) and the public address.
+1. Read the one-time **setup code** from the container log: `docker logs nova-prime-chummer`. It is new on every restart and works once.
+2. Open the app. Enter the code with a name, username and password. That creates the first **admin**.
+3. Go to **Books** and import your core rulebook (or upload a data pack).
+4. Create accounts for everyone else on the **Users** page. There is no self sign-up.
 
-- List **every hop** that adds `X-Forwarded-For`: with Cloudflare in front of NGINX Proxy Manager, list NPM's address
-  *and* Cloudflare's published ranges (<https://www.cloudflare.com/ips/>), or have NPM restore the real address
-  (`real_ip_header CF-Connecting-IP`). Otherwise every visitor looks like a few Cloudflare addresses, and one person's
-  failed sign-ins slow down everyone's.
-- Don't list a whole subnet or the Docker gateway (`172.17.0.1`) while the app's port is published: anything that can
-  reach the port from there could claim any client address.
-- Empty (the default): no forwarded header is believed.
+Locked out? Run `docker exec nova-prime-chummer node server/users.mjs reset <username>`. It prints a one-time code for `<app address>/#/setup/reset`.
 
-The app limits sign-in tries itself (per address and network, per account, and a few password checks at a time), but
-a flood from many addresses can still keep the sign-in queue full. Rate-limit `/api/auth/login` at the proxy too. In
-NGINX Proxy Manager: **Advanced** tab of the proxy host (or plain nginx: the `server` block), with the zone in the
-`http` context (NPM: `/data/nginx/custom/http_top.conf`):
+## Options
 
-```nginx
-# http context
-limit_req_zone $binary_remote_addr zone=ca2_login:10m rate=10r/m;
+### Accounts and roles
 
-# server block
-location = /api/auth/login {
-    limit_req zone=ca2_login burst=5 nodelay;
-    limit_req_status 429;
-    proxy_pass $forward_scheme://$server:$port;   # NPM's variables; plain nginx: your upstream
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
+Every account has one role.
 
-Behind Cloudflare, key the zone on the real client address (`$http_cf_connecting_ip`, or `real_ip_header
-CF-Connecting-IP` with Cloudflare's ranges in `set_real_ip_from`), or use a Cloudflare rate-limiting rule instead.
+| Role       | Can do                                                                                                                |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| **admin**  | Everything: Books, imports, AI settings, Users, sign-in, backup and restore, background art, catalog edits            |
+| **editor** | Acts as a GM: runs campaigns, NPCs and compendiums, edits the catalog, sets Table setup and house rules               |
+| **player** | Own runners, plays in campaigns, reads Game data and Table setup, Ask the rules                                       |
 
-### Sign in with Authelia (OpenID Connect)
+The server enforces every rule. A hidden button is only convenience. There is always at least one enabled admin.
 
-Accounts can sign in through [Authelia](https://www.authelia.com/) instead of an app password, with Authelia's
-two-factor. Each person still needs an account on the **Users** page with *Signs in with: Authelia*. Nobody is created
-automatically: anyone else is told to ask the admin for an account. An Authelia account can't use an app password, and a
-password account can't use Authelia.
+### Sign-in
 
-- The first Authelia sign-in matches the Authelia username (`preferred_username`) to the account's username; only when
-  Authelia sends no username, a verified email (`email_verified: true`) to the account's email. Only plain ASCII names
-  match. Keep directory usernames and emails unique.
-- That sign-in **links** the account to the Authelia user's `sub` (a stable, opaque id). From then on only that Authelia
-  user gets in, even if the names change on either side. **Unlink Authelia** on the Users page undoes it (e.g. when the
-  person's directory account was deleted and made again); so does changing the account's username, email or sign-in
-  method, and a new issuer address unlinks every account.
+- **Local accounts** with an app password. This is the default.
+- **Authelia (OpenID Connect)**: admin turns it on under **Settings, Sign-in**. An account is set to sign in with Authelia on the Users page. It needs a public https address (`PUBLIC_URL` or a trusted proxy). Authelia 4.39 or later.
+- **Behind a reverse proxy**: set `TRUST_PROXY` (Unraid template: _Trusted proxy_) to the proxy's address. Set `PUBLIC_URL` (_Public address_) to the one address people use.
 
-1. Register the app as a client in Authelia's `configuration.yml` (Authelia 4.39 and later). The redirect
-   URI is your public address + `/api/auth/oidc/callback`; **Settings → Sign-in** shows it.
+### AI providers
 
-   ```yaml
-   identity_providers:
-     oidc:
-       clients:
-         - client_id: 'nova-prime-chummer'
-           client_name: 'Nova Prime Chummer'
-           # a digest, not the secret itself. This prints both; the app gets the plain "Random Password", Authelia keeps the "Digest":
-           #   authelia crypto hash generate pbkdf2 --variant sha512 --random --random.length 72 --random.charset rfc3986
-           client_secret: '$pbkdf2-sha512$310000$…'
-           public: false
-           authorization_policy: 'two_factor'
-           require_pkce: true
-           pkce_challenge_method: 'S256'
-           redirect_uris:
-             - 'https://chummer.example.com/api/auth/oidc/callback'
-           scopes: ['openid', 'profile', 'email']
-           response_types: ['code']
-           grant_types: ['authorization_code']
-           token_endpoint_auth_method: 'client_secret_basic'  # or client_secret_post (pick the same in the app)
-           id_token_signed_response_alg: 'RS256'              # or ES256 with an ES256 key in identity_providers.oidc.jwks
-           userinfo_signed_response_alg: 'none'               # the app reads the userinfo endpoint as plain JSON
-   ```
+Set up per game (admin, Books, AI settings). Pick one of:
 
-   Authelia (4.39+) keeps `preferred_username` and `email` out of the ID token by default; the app fetches them from the
-   userinfo endpoint, so no `claims_policy` is needed.
-2. In the app: **Settings → Sign-in** (admin): the issuer address exactly as Authelia names itself (e.g.
-   `https://auth.example.com`, no trailing slash), the client ID, the plain client secret, **Test**, then tick *Show
-   “Sign in with Authelia”* and **Save**. The secret is stored in `library/.config/auth-secret.xml` (readable by the
-   server only), is never shown again, and is dropped when the issuer address changes. A backup carries it only with
-   *Include my API keys*.
-3. The app must know its public https address: set `PUBLIC_URL` (template: **Public address**, e.g.
-   `https://chummer.example.com`, no path), or pass the proxy's `X-Forwarded-Proto`/`-Host` from a `TRUST_PROXY` peer.
-   The redirect URI is built from it. With `PUBLIC_URL` set, the app works only at that address (the sign-in and write
-   checks compare against it rather than the Host header).
+- Anthropic
+- An OpenAI-compatible server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio)
+- Google Gemini
+- AnythingLLM (with a workspace)
 
-The app checks the ID token itself (RS256 or ES256 signature against Authelia's published keys, issuer, audience,
-expiry, nonce) and uses PKCE and a one-time state sealed in a 10-minute browser cookie; it logs who signed in, never a
-token. The issuer must be https, and its authorization, token, key-set and userinfo endpoints must be on the issuer's own
-host (Authelia's are). Plain http to `localhost`/`127.0.0.1` is only allowed for development, with `ALLOW_INSECURE_OIDC=1`.
-Signing out of the app doesn't sign you out of Authelia.
+**Load models** lists a provider's models. **Test** checks the saved settings. Keys are stored on the server and never shown again. The admin sets a daily question limit per person on the Users page.
 
-**Link my Authelia account.** With Authelia on, someone who signs in with a password can choose **Link my Authelia
-account** in the account menu. It asks for their current password, then sends them to Authelia to sign in fresh. On
-success the account switches to Authelia only: the password stops working, their other sessions end and they stay signed
-in. It's refused if that Authelia user is already linked to another account or names a different one. Only the admin can
-switch the account back (Users page).
+### Table setup
 
-### Any static host
+The GM's page for the whole table: the book's optional rules, house rules, and (SR6) the creation-rules numbers. Rules can be locked so they bind every runner. Review flags a runner that uses what the table does not allow.
 
-`npm run build` and serve `dist/`. The build ships no core data, so a static copy needs the core files too: unzip
-a data pack (Books → Download data pack on a server) and put its `core/*.xml` in `dist/custom/imported/core/`.
-Without a server there are no accounts, no Books page and no importer; runners stay in the browser.
+### Backup and restore
 
-## Books
+**Settings, Backup** downloads everything as one zip: runners, accounts, edits, imported books, PDFs, background art and AI settings. API keys are included only if you tick **Include my API keys**. **Restore** shows what is in the zip first. It saves a safety copy to `library/.backups` before it replaces anything.
 
-Open **Books** from the library and drop your PDFs there. Each upload is kept,
-with the importer’s Markdown, in the `library` folder (never served over
-HTTP). A known book is imported at once into `custom/imported/<source>/`,
-with a report of anything that didn’t match what the book prints. Re-import
-reruns it; Remove takes its entries out again (and optionally deletes the PDF).
-**Re-import all books** reruns every book from its PDF, one after another (after
-an importer update, say), keeping your edits, runners and NPCs.
+### Backgrounds and art
 
-A book no recipe knows can go to an AI: set up Anthropic, an OpenAI-compatible
-server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio), Google Gemini or
-AnythingLLM under **AI settings**. The key is stored on the server in a file
-of its own and never shown again. Once a key is saved, **Load models** asks
-the provider (with that key, at the saved address) for its model list to pick
-from, and you can always type a model name instead. For AnythingLLM,
-**Load workspaces** lists its workspaces by name and saves the one you pick by
-its slug; a typed workspace name is looked up too (the workspace's name, not
-just its slug, works), and one the server doesn't have is named along with the
-workspaces it does have.
-**Test** (each provider, once its settings and key are saved; beside it the
-page says why it is disabled) sends the provider a tiny
-fixed prompt with the saved settings and key and shows its reply and how long
-it took, or why it failed (key refused, model or workspace not found, address
-unreachable, no answer within 30 seconds).
-If the core rulebook’s recipe can’t read a core table, the same AI can read it
-(any of the core tables, not just weapons and armor); those rows are marked
-for you to check against the book. Before anything is sent the page names the
-provider and how many parts the book goes in; the proposals then wait on a review screen where you accept,
-edit or drop each one (a core table's rows include a metatype's attribute
-ranges and a skill's specializations).
+The admin uploads page backgrounds (PNG, JPEG or WebP) under **Settings, Background art** and switches each on or off. Anyone can fade them or turn them off in their own browser. The character sheet has its own background switches. Each game has its own page background and sheet watermark.
 
-Imports need the server (Docker or `npm run serve`) and Python 3 with the importer's packages:
-`pip install --require-hashes -r importer/requirements.lock` (every package pinned with its hashes; the direct ones are
-listed in `importer/requirements.txt`, which the lock is compiled from).
+## FoundryVTT support
 
-## Core data
+Export runners, NPCs, compendiums and book data as JSON files, then import them into Foundry with a companion module. Each module refuses the other game's file.
 
-The mechanics (levels, metatypes, skills, pricing, amp types and effects,
-packages, lifestyles, generic weapons, armor and vehicles) aren't shipped
-with the app — they come from the core rulebook. A fresh server shows a
-setup page until either:
+| Game        | Module                                                                                                                   | Foundry system                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| SR6         | [Nova Prime Chummer — SR6 Importer](https://github.com/jbowensii/chummer-sr6-foundry)                                    | Shadowrun 6 "Eden" (`shadowrun6-eden`) |
+| Anarchy 2.0 | [Nova Prime Chummer — Anarchy 2 Importer](https://github.com/jbowensii/chummer-anarchy2-foundry)                         | Shadowrun Anarchy 2 (`sra2`)         |
 
-- **Books → import the core rulebook** (the CRB PDF), the same way as any
-  other book, or
-- **Books → Core data → Upload data pack**: a small zip of just the core
-  tables (no descriptions, PDFs or keys) exported from another server with
-  **Download data pack**. Choosing a file shows a preview (when it was made,
-  the app version, which tables it replaces) and nothing changes until you
-  confirm **Load data pack**.
+**Install a module in Foundry**: Add-on Modules, then **Install Module**. Paste the manifest URL and install.
 
-A book can override a core price: the Conversion Guide import sets the
-complex-form price it prints; without it, complex forms cost the
-spell price.
+- SR6: `https://github.com/jbowensii/chummer-sr6-foundry/releases/latest/download/module.json`
+- Anarchy 2: `https://github.com/jbowensii/chummer-anarchy2-foundry/releases/latest/download/module.json`
 
-Upgrading an existing server that already has the core rulebook in its
-Library re-imports it automatically on first start — nothing to do by
-hand. XSD schemas for these files ship in `public/data/schema/`, so other
-tools can read and extend them. Imported books are overlays in
-`custom/imported/`. The format is documented in
-[docs/data-format.md](docs/data-format.md).
+**Export from the app**: use **Export for Foundry** in a runner or NPC editor, **Export for Foundry…** on the runner list or NPCs page (tick the ones you want, or a campaign), or **Export book data for Foundry** on Game data. Book descriptions are included by default. The file is for your own Foundry only, so do not share it.
 
-House rules and extra content go in `custom/` (the mounted appdata folder on
-Unraid), listed in `custom/index.xml`:
-- the same `id` replaces an entry (imported ids look like `crb.jazz`);
-- `<remove id="…"/>` deletes one;
-- a new `id` adds one.
+Formats: [Anarchy export](docs/export-format.md), [SR6 export](docs/sr6-export-format.md).
 
-Descriptions (amp, spell and gear text, rules text) are private: the importer
-writes one file per source in `custom/texts/`, never in this repository.
+## Example character sheets
 
-The app’s **Game data** page is the same in both games: the catalog by kind
-(the kinds down the left with their counts, the chosen kind's categories as
-chips across the top, its entries with their values, Description and Edit),
-with the **Book** list, a search across everything and **Needs attention** as
-filters. It opens on Amps (Anarchy) or Qualities (Shadowrun 6), then on the
-kind you last looked at in that game, remembered by your browser. Under it, folded until opened, each source with whether it's canon
-and the Foundry export (also opened by its Foundry icon in the header, for the
-admin and editors); then the catalog edits, what loaded and any errors.
+Coming soon.
 
-## Editing and adding catalog entries
-
-Any amp, item or rule listed in a picker, on Game data or on the Rules page
-has an **Edit** button. Amps open the Amp Builder in catalog mode; items and
-rules open a form with a Description box. A saved edit shows an **Edited**
-mark next to its source, and **Restore book version** drops it, bringing
-back what the book printed; a re-import never touches your edits. **Add
-entry** creates a new amp, item or rule under a house-rule source you name
-or pick.
-
-## Backup and restore
-
-**Settings → Backup** downloads everything the server keeps — runners,
-house rules and edits, imported books, uploaded PDFs, background art and AI settings — as
-one zip. Tick **Include my API keys** to have them in the file too;
-otherwise the zip has none, and anyone restoring it keeps the keys already
-on their own server (except for a provider whose address the backup
-changes: that key is dropped, so it's never sent somewhere new). Restoring uploads a zip, shows what's in it (when it
-was made, the app version, file counts) so you can check before committing,
-then **Replace everything on the server** applies it. The server saves its
-own current state first, to `library/.backups` (newest 3 kept), so a bad
-restore can be undone. Restores are capped at 20 GB.
-
-The accounts travel with the backup (`users.xml`, the sign-in settings and
-every runner folder); sessions never do. A restore signs everyone out, and
-people sign in with the accounts in the backup. The Authelia client secret
-is in the file only with **Include my API keys**; without it the server keeps
-its own, unless the backup's sign-in settings name another issuer. Authelia
-links to another issuer are cleared. A backup from before accounts puts the
-server back in setup: the first admin gets its runners, as in the upgrade.
-
-**Books → Core data** moves just the core rules tables between servers:
-**Download data pack** saves them as a small zip (no descriptions, PDFs or
-keys), and **Upload data pack** loads one — the way to set up a server
-without the core rulebook's PDF. The setup screen links to it.
-
-## Develop
+## Development
 
 ```bash
-npm test                 # engine tests on a made-up catalog (Vitest); book tests need your own imports
-npm run validate:data    # XSD + reference checks
-npm run test:py          # importer tests: Python 3.12 with importer/requirements.lock ($PYTHON, py -3.12, python3 or python)
-npm run build && npm run e2e   # Playwright, with a stub importer: smoke, books, AI review, themes…
+npm run check          # type check, data validation, unit tests
+npm run test:py        # importer tests (Python 3.12)
+npm run build && npm run e2e   # Playwright end-to-end tests
+npm run lint           # ESLint
+npm run format:check   # Prettier (npm run format fixes)
+npm run coverage       # test coverage
 ```
 
-`importer/` turns book PDFs into catalogs (`python -m importer`; recipe `dhsa` reads Daegann’s amp list, `pregens` his pregen booklet into sample runners, `crb` the core rulebook’s spells, Shadow Amps, gear and its 13 sample runners, `cg` the Conversion Guide, `qref` the quick-reference sheets).
+Docs live in [docs/](docs/): data, character and export formats for each game, the design system, and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)). The importer is in `importer/`.
 
-Book tests (`tests/books/`) run only when your private catalogs are present
-(`BOOKS_DIR`, default `.extract/private/oracle`; imports in
-`.extract/private/custom`); in CI they are skipped with the reason.
+## Thanks
 
-Design: [spec](docs/superpowers/specs/2026-09-27-chummer-anarchy2-design.md),
-[plan](docs/superpowers/plans/2026-09-27-chummer-anarchy2-v1.md),
-[PDF importer](docs/superpowers/specs/2026-09-27-pdf-importer-design.md).
+This project stands on the work of others.
 
----
+- **Commlink6**, the Shadowrun 6 character generator by the RPGFramework / Genesis team.
+- **Chummer5a**, the Shadowrun 5th Edition Chummer application.
+- And various others.
 
-Shadowrun is a registered trademark of The Topps Company, Inc.; Catalyst Game
-Labs publishes it under license. This is a private, unofficial fan tool. No
-book content ships with it; the git history still holds catalogs from before
-the importer and must be purged before the repository is ever made public.
+Shadowrun is a trademark of its owners (The Topps Company, Inc.; Catalyst Game Labs publishes it under license). Nova Prime Chummer is an unofficial fan tool. It is not affiliated with or endorsed by them. No book content ships with it.
