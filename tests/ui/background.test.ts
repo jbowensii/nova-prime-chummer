@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { strength } from '../../src/ui/settings'
 
-const css = readFileSync('src/ui/app.css', 'utf8')
+const css = readFileSync('src/ui/app.css', 'utf8').replace(/\s+/g, ' ')
 const art = css.slice(css.indexOf('/* ---- background art'))
 const block = (sel: string) => css.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
 const token = (b: string, name: string, light?: string): string => {
@@ -48,7 +48,7 @@ test('the strength slider only fades the art: 100% is the clamped strength above
 
 test('the sheet’s own background art keeps the sheet’s ink readable at every strength, and is off in print unless asked', () => {
   // 0.8.1: the art fades in with the strength under a veil that thins as it rises, and the text blocks keep a wash of paper
-  const sheet = readFileSync('src/print/sheet.css', 'utf8'), sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
+  const sheet = readFileSync('src/print/sheet.css', 'utf8').replace(/\s+/g, ' '), sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
   const veils = [...sa.matchAll(/rgb\(255 255 255 \/ calc\(\(([\d.]+) - ([\d.]+) \* var\(--art\)\) \* ([\d.]+)\)\)/g)].map(m => [Number(m[1]) * Number(m[3]), Number(m[2]) * Number(m[3])])
   const wash = Number(sa.match(/--wash: rgb\(255 255 255 \/ calc\(([\d.]+) \* var\(--art\)\)\)/)![1])
   const k = Number(sa.match(/filter: contrast\(([\d.]+)\)/)![1])
@@ -71,7 +71,7 @@ test('the sheet’s own background art keeps the sheet’s ink readable at every
 
 test('the Shadowrun 6 look keeps its text readable too, over the worst art, light and dark, on screen and on the sheet', () => {
   // src/sr6/ui/theme.css: its tokens over app.css's (the art's veil and filter are app.css's, shared)
-  const sr6 = readFileSync('src/sr6/ui/theme.css', 'utf8')
+  const sr6 = readFileSync('src/sr6/ui/theme.css', 'utf8').replace(/\s+/g, ' ')
   const sblock = (sel: string) => sr6.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
   const cover = Math.min(...[...art.matchAll(/var\(--bg\) (\d+)%/g)].map(m => Number(m[1]) / 100))
   const k = Number(art.match(/filter: contrast\(([\d.]+)\)/)![1])
@@ -87,7 +87,7 @@ test('the Shadowrun 6 look keeps its text readable too, over the worst art, ligh
       expect(ratio(t(name), t('panel')), `sr6 ${theme} --${name} on the panel`).toBeGreaterThanOrEqual(4.5)
   }
   // the sheet's SR6 inks on paper under the sheet art's strongest showing (0.31 of a black image, flattened: see above)
-  const sheet = readFileSync('src/print/sheet.css', 'utf8'), sk = Number(sheet.slice(sheet.indexOf('/* ---- sheet art')).match(/filter: contrast\(([\d.]+)\)/)![1])
+  const sheet = readFileSync('src/print/sheet.css', 'utf8').replace(/\s+/g, ' '), sk = Number(sheet.slice(sheet.indexOf('/* ---- sheet art')).match(/filter: contrast\(([\d.]+)\)/)![1])
   const paper = [255, 255, 255].map(v => v * 0.69 + 0.5 * (1 - sk) * 255 * 0.31)
   const s = (n: string) => rgb(sr6.match(new RegExp(`\\.sr6-sheet \\{[^}]*--s-${n}: (#[0-9a-f]{6})`))![1])
   for (const [name, min] of [['ink', 7], ['ink-2', 4.5], ['rust', 4.5], ['indigo', 4.5]] as const)
