@@ -18,19 +18,18 @@ const src = (game: Game, id: string) => `./api/${route(game)}/${id}`
 /** This page load's pick per game, shared by the page layer and the character sheet's (src/print/Sheet.tsx). */
 const picked: Record<Game, string | null> = { ca2: null, sr6: null }
 export function useArtId(game: Game) {
-  const [id, setId] = useState(picked[game])
+  const [got, setGot] = useState({ game, id: picked[game] })
   useEffect(() => {
-    setId(picked[game])
     const load = () => fetch(`./api/${route(game)}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(b => {
       const on: string[] = b?.enabled ?? [], p = picked[game]
       picked[game] = p && on.includes(p) ? p : on.length ? on[Math.floor(Math.random() * on.length)] : null
-      setId(picked[game])
+      setGot({ game, id: picked[game] })
     }, () => {})
     void load()
     addEventListener(CHANGED, load)
     return () => removeEventListener(CHANGED, load)
   }, [game])
-  return id
+  return got.game === game ? got.id : picked[game] // (another game: its pick so far, until its load)
 }
 export const artSrc = (game: Game, id: string) => src(game, id)
 
@@ -60,7 +59,9 @@ export function BackgroundSettings({ game }: { game: Game }) {
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null), [busy, setBusy] = useState(false)
   const [doomed, setDoomed] = useState<Item | null>(null)
   const reload = async () => setItems((await (await send(route(game), undefined, 'GET')).json()).items)
-  useEffect(() => { reload().catch(e => setMsg({ text: (e as Error).message, err: true })) }, [game]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    send(route(game), undefined, 'GET').then(r => r.json()).then(b => setItems(b.items)).catch(e => setMsg({ text: (e as Error).message, err: true }))
+  }, [game])
   const act = async (fn: () => Promise<string>) => {
     setBusy(true); setMsg(null)
     try { setMsg({ text: await fn() }) } catch (e) { setMsg({ text: (e as Error).message, err: true }) }

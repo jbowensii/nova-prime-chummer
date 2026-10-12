@@ -83,18 +83,17 @@ export function UsersScreen({ game = 'ca2' }: { game?: Game }) {
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
   const [err, setErr] = useState(''), [pw, setPw] = useState(''), [moveFile, setMoveFile] = useState(''), [moveTo, setMoveTo] = useState('')
 
-  const refresh = async () => {
-    try {
-      setList(await (await send('users', undefined, 'GET')).json())
-      const rows: { file: string; xml: string; owner: string }[] = await (await send('characters', undefined, 'GET')).json()
-      // SR6's: none while an account called sr6 from before holds its folder (409); names from the root, as the file may not parse
-      const six: { file: string; xml: string; owner: string }[] = await send('sr6/characters', undefined, 'GET').then(r => r.json(), () => [])
-      setRunners([...rows.map(r => { const p = xmlToCharacter(r.xml); return { file: r.file, owner: r.owner, game: 'ca2' as const,
-        name: p.ok ? p.character.identity.streetName || p.character.identity.name || r.file : r.file } }),
-      ...six.map(r => ({ file: r.file, owner: r.owner, game: 'sr6' as const,
-        name: rootAttr(r.xml, 'streetName', 'sr6:character') || rootAttr(r.xml, 'name', 'sr6:character') || r.file }))])
-    } catch (e) { setMsg({ text: (e as Error).message, err: true }); setList(l => l ?? []) }
-  }
+  // (state set in the fetches' callbacks only: the mount effect below calls this)
+  const refresh = () => send('users', undefined, 'GET').then(r => r.json()).then(async (accounts: Account[]) => {
+    setList(accounts)
+    const rows: { file: string; xml: string; owner: string }[] = await (await send('characters', undefined, 'GET')).json()
+    // SR6's: none while an account called sr6 from before holds its folder (409); names from the root, as the file may not parse
+    const six: { file: string; xml: string; owner: string }[] = await send('sr6/characters', undefined, 'GET').then(r => r.json(), () => [])
+    setRunners([...rows.map(r => { const p = xmlToCharacter(r.xml); return { file: r.file, owner: r.owner, game: 'ca2' as const,
+      name: p.ok ? p.character.identity.streetName || p.character.identity.name || r.file : r.file } }),
+    ...six.map(r => ({ file: r.file, owner: r.owner, game: 'sr6' as const,
+      name: rootAttr(r.xml, 'streetName', 'sr6:character') || rootAttr(r.xml, 'name', 'sr6:character') || r.file }))])
+  }).catch((e: unknown) => { setMsg({ text: (e as Error).message, err: true }); setList(l => l ?? []) })
   useEffect(() => { void refresh() }, [])
 
   const open = (d: Dialog) => { setErr(''); setPw(''); setMsg(null); setDialog(d)

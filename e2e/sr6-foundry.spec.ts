@@ -131,7 +131,8 @@ test('Game data: the GM downloads book data, with or without descriptions', asyn
   await panel.getByRole('checkbox', { name: /^CRB\b(?!-)/ }).check()
   let dl = page.waitForEvent('download')
   await panel.getByRole('button', { name: 'Download book data' }).click()
-  let { name, f } = await file(dl)
+  const got = await file(dl), name = got.name
+  let f = got.f
   expect(name).toBe(`books-${today()}.sr6foundry.json`)
   expect(f).toMatchObject({ kind: 'books', descriptions: true })
   expect(f.books.map((b: { source: { id: string } }) => b.source.id)).toEqual(['CRB'])

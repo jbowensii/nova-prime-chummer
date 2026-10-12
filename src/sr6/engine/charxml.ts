@@ -11,7 +11,7 @@ import {
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Codec } from '../../ui/repo'
-import { sr6EntryXml, toEntry } from './load'
+import { sr6EntryXml, toEntry } from './entryxml'
 
 export const SR6_CHAR_NS = 'urn:chummer-sr6:character:1'
 const FORMAT_VERSION = 1

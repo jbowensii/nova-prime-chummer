@@ -7,6 +7,9 @@ import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
 
 export interface Pool { max: number; spent: number; left: number }
+/** One line of a budget: what took (spend) or gave (gain) how much, and the editor tab it's made on. */
+export interface BudgetLine { key: string; label: string; amount: number; sign: 'spend' | 'gain'; tab: string }
+export interface Budget extends Pool { breakdown?: BudgetLine[] }
 export interface Provider {
   id: Sr6Method
   lettersValid(p: Sr6Build['priorities']): boolean

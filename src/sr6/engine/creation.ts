@@ -251,6 +251,8 @@ export function parseCreation(xml: string): { rules: CreationRules; errors: stri
 }
 
 export const num = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'number' ? v : undefined }
+/** num, an unset setting counting 0. */
+export const n0 = (cr: CreationRules, key: string) => num(cr, key) ?? 0
 export const flag = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'boolean' ? v : undefined }
 export const str = (cr: CreationRules, key: string) => { const v = cr.get(key)?.value; return typeof v === 'string' ? v : undefined }
 

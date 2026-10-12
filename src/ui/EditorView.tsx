@@ -46,7 +46,7 @@ export function EditorView({ c: all, id, tab }: { c: Catalog; id: string; tab: s
   const { doc: ch, setDoc: setCh, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   const [pending, setPending] = useState<Pending | null>(null)
-  useEffect(() => setCh(x => x && rescope(all, x)), [all]) // same object when nothing needs remapping
+  useEffect(() => setCh(x => x && rescope(all, x)), [all, setCh]) // same object when nothing needs remapping
   const me = useMe()
   // a player's catalog holds the compendiums shared with every campaign they play in: this runner sees its own campaign's
   const c = useMemo(() => canEdit(me) ? all : forCampaign(all, ch?.campaign), [all, me, ch?.campaign])

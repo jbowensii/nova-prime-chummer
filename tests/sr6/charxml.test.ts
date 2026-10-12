@@ -169,7 +169,7 @@ test('an older file’s one lifestyle loads onto an unnamed placeholder SIN when
     lifestyles: [{ uid: 'career-wisp-1-sin-crb.cozy', id: 'crb.cozy', months: 1 }] }])
   expect('lifestyle' in ch.build).toBe(false)
   const xml = sr6ToXml(ch)
-  expect(xml).not.toMatch(/<build[^>]*>[\s\S]*\n    <lifestyle /)
+  expect(xml).not.toMatch(/<build[^>]*>[\s\S]*\n {4}<lifestyle /)
   expect(xml).toContain('<sin uid="career-wisp-1-sin" name="" kind="real" placeholder="true">')
   expect(await valid(xml)).toEqual([])
   expect(read(xml)).toEqual(ch)

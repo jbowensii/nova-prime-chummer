@@ -45,7 +45,7 @@ function sync(custom, src, add) {
   writeFileSync(join(imp, 'index.xml'), `<overlays>\n${files.map(f => `  <file href="${f}"/>\n`).join('')}</overlays>\n`)
   const path = join(imp, 'sources.xml')
   const old = existsSync(path) ? readFileSync(path, 'utf8') : `<ca2:data ${NS} kind="sources" version="1">\n</ca2:data>\n`
-  const without = old.replace(new RegExp(`  <source id="${src}"[\s\S]*?</source>\n`), '')
+  const without = old.replace(new RegExp(`  <source id="${src}"[\\s\\S]*?</source>\n`), '')
   writeFileSync(path, add ? without.replace('</ca2:data>', `  ${add}\n</ca2:data>`) : without)
 }
 const overlay = (custom, src, name, entries) => {

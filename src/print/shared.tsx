@@ -70,11 +70,11 @@ export function useSheetArt(runner: string, game: Game = 'ca2'): { tools: ReactN
   const strength = (sr6 ? s.sr6SheetArtStrength : s.sheetArtStrength) ?? SHEET_ART_DEFAULT
   const ids = useArtIds(game), key = `${sr6 ? 'sr6' : 'ca2'}.sheetArt.${runner}`
   const read = () => { try { return localStorage.getItem(key) } catch { return null } }
-  const [pick, setPick] = useState(read)
-  useEffect(() => setPick(read()), [key]) // eslint-disable-line react-hooks/exhaustive-deps -- another runner: its own pick
+  const [picked, setPicked] = useState(() => ({ key, id: read() }))
+  const pick = picked.key === key ? picked.id : read() // another runner: its own pick
   const choose = (id: string | null) => {
-    setPick(id)
-    try { id ? localStorage.setItem(key, id) : localStorage.removeItem(key) } catch { /* private mode: this visit only */ }
+    setPicked({ key, id })
+    try { if (id) localStorage.setItem(key, id); else localStorage.removeItem(key) } catch { /* private mode: this visit only */ }
   }
   const mine = pick && ids.includes(pick) ? pick : null
   const shownId = mine ?? artId
