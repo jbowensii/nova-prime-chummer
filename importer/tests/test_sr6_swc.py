@@ -255,5 +255,17 @@ class SwcRecipeTest(unittest.TestCase):
         self.assertEqual(crb.match({"sha256": "x"}, BOOK_MD[:4000]), 0.0)
 
 
+class ModuleGrantsTest(unittest.TestCase):
+    def test_choose_an_attribute_is_one_choice(self):
+        from importer.sr6.lifemodules import _module_grants
+        report = []
+        text = ("• Choose an Attribute: +1 to Agility or Strength\n• Choose an Alignment: Zorp or Blip\n"
+                "• Choose a Skill: +2 to Stealth or Con\n• +1 to Willpower or your other drain attribute\n")
+        attrs, kids = _module_grants("Made-Up Module", text, 5, report)
+        self.assertEqual((attrs, report), ({}, []))
+        self.assertEqual([(k[1]["points"], k[1]["options"]) for k in kids],
+                         [(1, "agi str"), (2, "skill:crb.stealth skill:crb.con"), (1, "wil log int cha")])
+
+
 if __name__ == "__main__":
     unittest.main()

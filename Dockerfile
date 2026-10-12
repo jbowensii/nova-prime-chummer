@@ -9,7 +9,9 @@ COPY . .
 RUN npm run build \
  && node -p "require('./package.json').version" > VERSION
 
-FROM node:22-alpine
+# Alpine pinned: its python3 runs the importer, and ci.yml's importer job tests that same Python (3.14 on Alpine 3.24).
+# A new Alpine moves both: bump the tag here and the version in ci.yml's matrix together.
+FROM node:22-alpine3.24
 # OCR=1 adds Tesseract for scanned books
 ARG OCR=0
 WORKDIR /app

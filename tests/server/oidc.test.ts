@@ -48,7 +48,7 @@ async function boot(opts: Record<string, unknown> = {}, server: Record<string, u
     customDir: join(dir, 'custom'),
     libraryDir: lib,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
-    oidc: { timeout: 500, jwksGap: 300, ...opts },
+    oidc: { timeout: 500, jwksGap: 300, exchangesPerMinute: 1000, ...opts }, // (the suite's sign-ins all come from 127.0.0.1)
     ...server,
   })
   await new Promise<void>(ok => srv.listen(0, '127.0.0.1', ok))
@@ -814,6 +814,20 @@ test('a sign-in never writes under a restore: refused while one runs, and one un
       delete s.f.delay['/token']
     }
     expect(s.account('kim').oidcSub).toBeTruthy()
+  } finally {
+    s.close()
+  }
+})
+
+test('the token exchange is limited per client network: past the limit a minute, refused without calling the issuer', async () => {
+  const s = await boot({ exchangesPerMinute: 2 })
+  try {
+    await on(s)
+    for (let i = 0; i < 2; i++) expect((await flow(s)).location).toBe('/') // signed in
+    const before = s.f.hits['/token'] ?? 0
+    expect((await flow(s)).location).toBe('/?signin=failed')
+    expect(s.f.hits['/token'] ?? 0).toBe(before)
+    expect(logged.some(l => l.includes('too many sign-ins from this network in a minute'))).toBe(true)
   } finally {
     s.close()
   }

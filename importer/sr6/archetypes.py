@@ -493,7 +493,8 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
            f"  <notes>{_x(chr(10).join(notes))}</notes>\n"
            + (f'  <printed source={quoteattr(src)} page="{page}">{shown}</printed>\n' if shown else "")
            + (f"  <rules>{rules}</rules>\n" if rules else "") +
-           f'  <build method="{method}" magic="{magic}"{_a("karmaToNuyen", got and got["karmaToNuyen"])}>\n    '
+           f'  <build method="{method}" magic="{magic}"{_a("powerPointsBought", got and got["powerPointsBought"])}'
+           f'{_a("karmaToNuyen", got and got["karmaToNuyen"])}>\n    '
            + "\n    ".join(head + lines) + "\n  </build>\n</sr6:character>\n")
     return sid, xml, report
 

@@ -28,7 +28,7 @@ import { chmod, mkdir, readFile, rm } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { attr, esc, rootTag, writeAtomic } from './common.mjs'
 import { RESERVED, scoped } from './games.mjs'
 
 const scrypt = promisify(scryptCb)
@@ -63,6 +63,8 @@ const ACCOUNT_FREE = 10,
 // counted for any name typed (existing or not, so a 429 says nothing about which accounts exist); when full, the least
 // recently failed name whose wait is over makes room, and while every one is still waiting new names aren't counted
 const ACCOUNT_KEYS = 10000
+// the per-address and per-network failure maps together: past this, what has run out goes, then the oldest
+const FAIL_KEYS = 10000
 // known devices (OWASP device cookies): a browser that signed in as a user carries an HMAC of that username and a nonce
 // for a year; the account's wait doesn't apply to it, unless the device itself has failed DEVICE_TRIES times meanwhile
 const DEVICE_COOKIE = 'ca2_device',
@@ -310,6 +312,7 @@ export function authApi({
   runners,
   log = console,
   accountKeys = ACCOUNT_KEYS,
+  failKeys = FAIL_KEYS,
   oidcOn = () => false,
   publicUrl = '',
 }) {
@@ -559,9 +562,12 @@ export function authApi({
   function failed(key, ip, account, device) {
     const now = Date.now()
     // ponytail: in memory, pruned when big (O(n) then)
-    if (fails.size + netFails.size > 10000) {
+    if (fails.size + netFails.size > failKeys) {
       for (const [k, f] of fails) if (!(f.until > now)) fails.delete(k)
       for (const [k, f] of netFails) if (now - f.since >= NET_WINDOW) netFails.delete(k)
+      // ponytail: still full of live pauses and windows (failures from more addresses than this at once): the first
+      // counted go, lifting their pauses, so memory stays bounded; per-network caps or a shared store if that's real
+      for (const m of [fails, netFails]) for (const k of m.keys()) if (fails.size + netFails.size > failKeys) m.delete(k)
     }
     const k = `${key}|${ip}`,
       f = fails.get(k)

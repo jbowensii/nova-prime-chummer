@@ -4,6 +4,7 @@ import os
 from importer import DATA_DIR
 
 NS = "urn:chummer-sr6:data:1"
+ROOT = ("sr6", NS)  # its data root (importer/xmlio.py: the texts and sources files, id scoping)
 # public/data/sr6/schema in the repo, $CA2_DATA_DIR/sr6/schema in the image
 SCHEMA_DIR = os.path.join(DATA_DIR, "sr6", "schema")
 # catalog kind (its file, custom/sr6/imported/<source>/<kind>.xml) -> entry tag, in the catalog's order. The same map is

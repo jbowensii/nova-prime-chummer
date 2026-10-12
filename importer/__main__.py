@@ -27,17 +27,14 @@ import contextlib
 import hashlib
 import os
 import re
-import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from xml.sax.saxutils import quoteattr
 
 from importer import DATA_DIR, find_core_file, use_custom, xmlio
-
-# A source id as it may name a folder or file under custom/ (letters, digits, dash, underscore; no dots or slashes).
-SAFE_SOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
 from importer.convert import CONVERTER_VERSION, convert, reusable
+from importer.library import SAFE_SOURCE_ID, remove, same_source, update_sources
 from importer.recipes import RECIPES, identify
 
 USAGE = __doc__.strip()
@@ -113,7 +110,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, reread=True):
                            canon=str(res.source["canon"]).lower(),
                            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
         xmlio.update_index(custom_dir)
-        xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         xmlio.write_status(book_dir, "done")
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
@@ -159,62 +156,6 @@ def _no_core_overrides(files):
     return out, rows
 
 
-def _same_source(book_dir, source):
-    """import.xml of the other books in the library that name `source` (an SR6 book's superseded printing loads nothing)."""
-    library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
-    imps = (xmlio.read_import(os.path.join(library, b)) for b in os.listdir(library)
-            if b != me and b.lower() != "sr6" and os.path.isdir(os.path.join(library, b))  # sr6/: the Shadowrun 6 area's books
-            and xmlio.read_state(os.path.join(library, b)) != "superseded")
-    return [i for i in imps if i is not None and (i.get("source") or "").lower() == source.lower()]
-
-
-def remove(book_dir, custom_dir, forget=False, status=True):
-    """Undo a book's import: its overlay files, and (unless another book imports the same source) the
-    source's folder, texts and samples; then its import record (`forget`: the whole library/<id>) and,
-    unless `status` is False (a caller mid-job), status "removed".
-    Rebuilds custom/imported/index.xml and sources.xml. A re-import runs this first, so nothing an
-    earlier import wrote outlives it."""
-    library = os.path.dirname(os.path.normpath(book_dir))
-    imp = xmlio.read_import(book_dir)
-    src = imp.get("source") if imp is not None else None
-    if src and not SAFE_SOURCE_ID.fullmatch(src):  # a tampered import.xml must not point the deletes outside custom/
-        src = None
-    if src:
-        out_dir = os.path.join(custom_dir, "imported", src.lower())
-        others = _same_source(book_dir, src)
-        shared = {f.get("name") for o in others for f in o.iter("file")}
-        gone = set()
-        for f in imp.iter("file"):
-            name = os.path.basename(f.get("name") or "")
-            path = os.path.join(out_dir, name)
-            if name.endswith(".xml") and name not in shared and os.path.isfile(path):
-                gone |= xmlio.top_ids(Path(path).read_text(encoding="utf8"))
-                os.remove(path)
-        texts = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
-        samples = os.path.join(custom_dir, "imported", "samples.xml")
-        if not others:
-            shutil.rmtree(out_dir, ignore_errors=True)
-            if os.path.exists(texts):
-                os.remove(texts)
-            if os.path.exists(samples):
-                xmlio.write_file(samples, xmlio.merged_samples(custom_dir, src, []))
-            npcs = os.path.join(custom_dir, "imported", "npcs.xml")
-            if os.path.exists(npcs):
-                xmlio.write_file(npcs, xmlio.merged_npcs(custom_dir, src, []))
-        elif gone and os.path.exists(texts):
-            xmlio.write_file(texts, xmlio.merged_texts(texts, [], drop=gone))
-    if forget:
-        shutil.rmtree(book_dir, ignore_errors=True)
-    else:
-        if imp is not None:
-            xmlio.write_import(book_dir, **{k: imp.get(k) for k in ("file", "sha256", "converter", "pages", "score")})
-        if status:
-            xmlio.write_status(book_dir, "removed")
-    if os.path.isdir(os.path.join(custom_dir, "imported")):
-        xmlio.update_index(custom_dir)
-        xmlio.update_sources(custom_dir, library)
-
-
 def _reserved_sources(custom_dir):
     """Source ids a recipe, the shipped data, the user's own custom/sources.xml or a house-rule source of the
     edits layer own; an AI import may not take them."""
@@ -246,7 +187,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
     try:
         if not SOURCE_ID.fullmatch(source or "") or not (name or "").strip() or canon not in ("true", "false"):
             raise ValueError("apply-review needs a source id (A-Z, 0-9, -), a name and canon true|false")
-        if source in _reserved_sources(custom_dir) or _same_source(book_dir, source):
+        if source in _reserved_sources(custom_dir) or same_source(book_dir, source):
             raise ValueError(f"the source id {source} is already used by another book")
         xmlio.write_status(book_dir, "applying")
         from importer.ai import propose  # loads the AI SDK: only for AI work
@@ -278,7 +219,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
                            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
         os.makedirs(os.path.join(custom_dir, "imported"), exist_ok=True)
         xmlio.update_index(custom_dir)
-        xmlio.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
+        update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)))
         skipped = f", {len(report)} skipped (see the report)" if report else ""
         xmlio.write_status(book_dir, "done", f"{sum(map(len, rows.values()))} entries applied{skipped}")
     except Exception as e:

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import pdfplumber
 
 from importer.pdf.columns import find_gutter
-from importer.pdf.lines import LINE_TOLERANCE, cluster_lines
+from importer.pdf.lines import LINE_TOLERANCE
 from importer.pdf.markdown import BOLD_FONT, is_bold
 
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
@@ -211,6 +211,40 @@ def words(chars, **kw):
     return out
 
 
+_TINY = 0.5  # x the page's median word size: a glyph smaller than this (a small raised bullet) joins a row beside it
+_TINY_REACH = 30  # pt; how far beside it
+
+
+def baseline_rows(words):
+    """Rows by baseline, a word joining the row when its baseline is within LINE_TOLERANCE of the previous one (a label
+    set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
+    glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
+    else it is a row of its own. (The SR6 layout's words carry their baseline, `base`; the shared converter groups rows by
+    top: importer/pdf/lines.cluster_lines.)"""
+    if not words:
+        return []
+    med = statistics.median(w["size"] for w in words)
+    tiny = [w for w in words if w["size"] < _TINY * med]
+    rows, cur, last = [], [], None
+    for w in sorted((w for w in words if w["size"] >= _TINY * med), key=lambda w: w["base"]):
+        if last is not None and w["base"] - last > LINE_TOLERANCE:
+            rows.append(cur)
+            cur = []
+        cur.append(w)
+        last = w["base"]
+    if cur:
+        rows.append(cur)
+    for t in tiny:
+        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
+                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
+        if near:
+            rows[min(near)[1]].append(t)
+        else:
+            rows.append([t])
+    rows.sort(key=lambda r: min(w["base"] for w in r))
+    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
+
+
 BOX_START, BOX_END = "<!-- box -->", "<!-- /box -->"
 _BOX_WIDE = 0.62  # x the page width: a sidebar box sits in one text column
 
@@ -287,7 +321,7 @@ def _split_x(words, gap):
 def _text(words):
     """A cell's words in reading order; a line wrapped after `-` or `/` (`Shin-` `hyung`) joins without a space."""
     out = ""
-    for line in cluster_lines(words):
+    for line in baseline_rows(words):
         text = " ".join(w["text"] for w in line)
         out += ("" if not out or out.endswith(("-", "/")) else " ") + text
     return out
@@ -465,8 +499,8 @@ def band_tables(words, fonts, rects=(), width=None):
     other = [w for w in words if not _is_table_word(w, fonts)]
     boxes = [r for r in rects if r.get("fill") and r["bottom"] - r["top"] > _STRIPE_MAX]
     # the page's gutter, from its text (two boxes' rows side by side are split across it)
-    mid = find_gutter(cluster_lines(other), width, tol=GUTTER_TOL) if width and other else None
-    lines = [part for ln in cluster_lines(table) for part in _column_parts(ln, boxes, mid)]
+    mid = find_gutter(baseline_rows(other), width, tol=GUTTER_TOL) if width and other else None
+    lines = [part for ln in baseline_rows(table) for part in _column_parts(ln, boxes, mid)]
     if not lines:
         return []
     rects = [r for r in rects if r.get("fill") and 2 < r["bottom"] - r["top"] <= _STRIPE_MAX]
@@ -625,6 +659,39 @@ def _first_marks(firsts):
     some_bold = any(bold) and not all(b for b, f in zip(bold, firsts) if f)
     return [(INDENT if flush and x is not None and _INDENT_MIN <= x - base <= _INDENT_MAX else "")
             + (BOLD if some_bold and b else "") for x, b in zip(xs, bold)]
+
+
+_BOX_MARGIN = 4  # pt; a line starting this far left of the left column's lines
+
+
+def box_margin(blocks, xs):
+    """A line set at a full-width box's left margin, left of the left column's (the box's title, or its
+    last short line), above or below the right column, is the box's: a band, not the column's (a heading beside the
+    right column stays in its column). blocks: (top, kind, text), xs: each line's x0."""
+    col = sorted(x for (_, k, _), x in zip(blocks, xs) if k == "left")
+    box = [x for (_, k, _), x in zip(blocks, xs) if k == "band"]
+    right = [t for t, k, _ in blocks if k == "right"]
+    if not col or not box or not right:
+        return blocks
+    edge = col[len(col) // 2] - _BOX_MARGIN
+    return [(t, "band" if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box)
+             and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
+
+
+def box_titles(blocks, geo, boxes):
+    """A heading in one text column, below every line of the other, right over a full-width table
+    (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
+    its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
+    out = []
+    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
+        if lv and k in ("left", "right"):
+            other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
+            under = [b for b in boxes if b >= bottom - 1]
+            if other and t > max(other) and under and min(under) - bottom < 2 * size \
+                    and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k):
+                k = "band"
+        out.append((t, k, s))
+    return out
 
 
 def join_headings(blocks, geo):

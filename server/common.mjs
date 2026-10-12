@@ -1,5 +1,7 @@
-// What the Books API's modules (server/books.mjs and the files it wires: jobs, library, resume, ai, edits, backup) share:
-// XML text, request bodies, atomic writes and the error they throw. No state: each booksApi() call has its own.
+// What the server's modules share: XML text, request bodies, atomic writes and the error they throw. The Books API's
+// modules (server/books.mjs and the files it wires: jobs, library, resume, ai, edits, backup) and the others (server.mjs,
+// auth, oidc, backgrounds, compendiums, campaigns) import them from here, so signing in never loads the Books API. No
+// state.
 import { randomBytes } from 'node:crypto'
 import { open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 
