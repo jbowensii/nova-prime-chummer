@@ -22,7 +22,8 @@ export function GearTab() {
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
     [cost, setCost] = useState(''),
-    [avail, setAvail] = useState('')
+    [avail, setAvail] = useState(''),
+    [err, setErr] = useState<string | null>(null)
   // the Attack Rating against a target's Defense Rating: who gains Edge at each range band (CRB Hong Kong p. 45)
   const [dr, setDr] = useState('')
   const target = dr.trim() === '' ? null : Number(dr)
@@ -41,9 +42,12 @@ export function GearTab() {
     setName('')
     setCost('')
     setAvail('')
+    setErr(null)
   }
   const add = () => {
-    if (!act({ op: 'purchase', kind, custom: { name: name.trim(), cost: Number(cost) || 0, avail: Number(avail) || 0, essence: 0 } })) close()
+    const why = act({ op: 'purchase', kind, custom: { name: name.trim(), cost: Number(cost) || 0, avail: Number(avail) || 0, essence: 0 } })
+    if (why) setErr(why)
+    else close()
   }
   return (
     <div className="stack">
@@ -98,6 +102,11 @@ export function GearTab() {
         }
       >
         <p className="muted">Something the catalog doesn’t have, at your own price (the GM checks it).</p>
+        {err && (
+          <p className="err" role="alert">
+            {err}
+          </p>
+        )}
         <div className="grid2">
           <label>
             Name <input value={name} onChange={e => setName(e.target.value)} />

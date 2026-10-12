@@ -367,3 +367,12 @@ test('removing an amp effect after Finalize is replacing it with nothing (p.84):
     one = { ...runner(), build: { ...runner().build, amps: [{ ...amp, effects: amp.effects.slice(0, 1) }] } }
   expect(price(cat, one).remaining - price(cat, both).remaining).toBe(armor)
 })
+
+test('finalizing a finalized runner changes nothing: the ledger keeps one start and the balance its earnings built', () => {
+  const ch = appendEvent(finalize(cat, runner()), makeEarn(1000, 'Made-up job', '2086-01-01'))
+  const again = finalize(cat, ch)
+  expect(again).toBe(ch)
+  expect(again.career.filter(e => e.type === 'finalize')).toHaveLength(1)
+  expect(balance(cat, again)).toBe(price(cat, runner()).remaining + 1000)
+  expect(ledgerRunning(again).at(-1)?.running).toBe(balance(cat, again))
+})

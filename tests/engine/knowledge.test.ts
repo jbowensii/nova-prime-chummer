@@ -126,3 +126,16 @@ test('a keyword entry follows the keyword’s text; removing the keyword makes a
     '“Night owl” was free; with keyword “Night owl” removed it’s a paid knowledge skill.',
   )
 })
+
+test('a row naming a slot that is neither a skill’s nor a keyword’s is paid, on the price and the sheet alike', () => {
+  const ch = runner()
+  const before = skillsCost(ch)
+  ch.build.knowledge.push({ name: 'Odd lore', kind: 'knowledge', from: 'made-up:thing' })
+  expect(skillsCost(ch)).toBe(before + K)
+  expect(derive(cat, ch).knowledge.find(r => r.name === 'Odd lore')).toMatchObject({ paid: true, source: 'Paid (an unknown slot “made-up:thing”)' })
+  expect(
+    validate(cat, ch)
+      .filter(v => v.code === 'knowledge.lapsed')
+      .map(v => v.message),
+  ).toEqual(['“Odd lore” was free; with an unknown slot “made-up:thing” it’s a paid knowledge skill.'])
+})

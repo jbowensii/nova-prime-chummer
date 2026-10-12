@@ -92,6 +92,24 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(n, rows, CS)[1]["extraMagic"], 1)
         self.assertEqual(fit.spend({**n, "spells": 2}, rows, CS)[1]["extraMagic"], 0)
 
+    def test_a_mystic_adepts_free_spells_are_the_magic_its_power_points_leave(self):
+        """Magic 3 (A), powers costing 1.25 points: 2 whole points bought, 1 point of Magic frees 1 spell; 3 printed
+        leave 2 past it (magic.ts freeSpellSlots). The runner says what it bought (powerPointsBought)."""
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CABDE")}
+        rows["magic"] = {**rows["magic"], "magic": {"mystic-adept": 3}}
+        n = need(meta="Gnoll", magic="mystic-adept", attrs={**{k: 1 for k in fit.CORE}, "mag": 3}, spells=3, pp=1.25)
+        got = fit.spend(n, rows, CS)[1]
+        self.assertEqual((got["powerPointsBought"], got["extraMagic"]), (2, 2))
+        self.assertEqual(fit.spend({**n, "magic": "full"}, {**rows, "magic": {**rows["magic"], "magic": {"full": 3}}},
+                                   CS)[1]["extraMagic"], 0)  # a magician's powers buy nothing: 3 free
+
+    def test_no_karma_to_nuyen_rate_turns_none(self):
+        """A karmaToNuyenRate of 0 (a house rule): no karma becomes nuyen, and nuyen past its carry-over limit is no
+        division by zero."""
+        rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "BACDE")}
+        got = fit.spend(need(), rows, {**CS, "karmaToNuyenRate": 0.0, "maxNuyenLeft": 50.0})[1]
+        self.assertEqual(got["karmaToNuyen"], 0)
+
     def test_karma_into_nuyen_past_what_the_gear_needs(self):
         """Karma left over turns into nuyen when that clears the Karma carry-over limit with the nuyen within its own;
         otherwise the count that leaves the printed nuyen; never nuyen below 0 by choice."""

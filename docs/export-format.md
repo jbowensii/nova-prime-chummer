@@ -166,7 +166,7 @@ runner around it, so its `bonuses` are simply its own values.
 
 With `descriptions: true` the file carries description texts: amp narratives, item texts, rule texts and the table rules' text.
 With `false` those are left out (`description` and `text` are absent; each table rule keeps its `name` and an empty `text`).
-A runner amp's `description` is the amp's text as it is on the runner (it may be the player's own); item, rule and table-rule texts are book text. Share a file with descriptions on only with people who own the books.
+A runner amp's `description` is the amp's text as it is on the runner (it may be the player's own); item, rule and table-rule texts are book text. Share a file with descriptions on only with people who own the books. Description and text fields are plain text, not HTML: a program that shows them on a web page must escape them first.
 
 ## What never goes in a file
 

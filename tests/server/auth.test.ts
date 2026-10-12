@@ -709,6 +709,35 @@ test('the account-wait table only drops names whose wait is over; while all are 
   s.srv.close()
 })
 
+test('the address and network failure maps are bounded: past it the oldest entries go, even a live pause', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin }, { trustProxy: '127.0.0.1', failKeys: 4 })
+  const from = (ip: string) => ({ 'X-Forwarded-For': ip })
+  for (let i = 0; i < 5; i++) await login(s.base, 'xx', 'wrong-password', from('203.0.113.1'))
+  expect((await login(s.base, 'xx', 'wrong-password', from('203.0.113.1'))).r.status).toBe(429) // paused 15 minutes
+  // other addresses' failures fill the maps with live network windows: the oldest entry, that pause, makes room
+  for (let i = 2; i < 6; i++) await login(s.base, 'yy', 'wrong-password', from(`203.0.113.${i}`))
+  expect((await login(s.base, 'xx', 'wrong-password', from('203.0.113.1'))).r.status).toBe(401)
+  s.srv.close()
+})
+
+test('known devices: an account counts at most 50 of them while it waits; the oldest failed one is forgotten', async () => {
+  const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { player: PW.player }, { trustProxy: '127.0.0.1' })
+  let ip = 0
+  const from = (extra: Record<string, string> = {}) => ({ 'X-Forwarded-For': `10.1.${++ip}.1`, ...extra }) // each its own network
+  const devices: string[] = []
+  for (let i = 0; i < 51; i++) devices.push((await login(s.base, 'player', PW.player, from())).device)
+  for (let i = 0; i < 13; i++) await login(s.base, 'player', 'wrong-password', from()) // the account waits
+  expect((await login(s.base, 'player', PW.player, from())).r.status).toBe(429)
+  const first = devices[0]
+  for (let i = 0; i < 5; i++) expect((await login(s.base, 'player', 'wrong-password', from({ Cookie: first }))).r.status).toBe(401)
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: first }))).r.status).toBe(429) // its tries are used up
+  for (const d of devices.slice(1, 50)) await login(s.base, 'player', 'wrong-password', from({ Cookie: d })) // 49 others: 50 counted
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: first }))).r.status).toBe(429) // still counted
+  await login(s.base, 'player', 'wrong-password', from({ Cookie: devices[50] })) // the 51st: the oldest goes
+  expect((await login(s.base, 'player', PW.player, from({ Cookie: first }))).r.status).toBe(200) // forgotten: its pass is back
+  s.srv.close()
+})
+
 test('device cookies belong to the account, not its name; changing a password honours them', async () => {
   const s = await start(mkdtempSync(join(tmpdir(), 'ca2-auth-')), { admin: PW.admin, player: PW.player }, { trustProxy: '127.0.0.1' })
   let ip = 0

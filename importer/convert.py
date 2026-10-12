@@ -1,24 +1,28 @@
 """PDF -> Markdown for recipes. pdfplumber (MIT). Output only has to be consistent, not pretty. This module reads the
 PDF page by page; importer/pdf/ holds the steps: lines.py (words into lines, headings by size), columns.py (two text
-columns, boxes, reading order), tables.py (ruled tables' cells) and markdown.py (bold runs, tables as Markdown)."""
+columns, reading order), tables.py (ruled tables' cells) and markdown.py (bold runs, tables as Markdown). The SR6
+layout's own steps (importer/sr6/layout.py: rows by baseline, header-band tables, boxes) run only for sr6=True."""
 import hashlib
 
 import pdfplumber
 
-from importer.pdf.columns import box_margin, box_titles, column_kind, find_gutter, reading_order, split_at
+from importer.pdf.columns import column_kind, find_gutter, reading_order, split_at
 from importer.pdf.lines import cluster_lines, even_sizes, heading_level, line_extent, size_bands
 from importer.pdf.markdown import line_text, table_md
 from importer.pdf.tables import in_table, inside, table_cells
-from importer.sr6 import layout
 
-CONVERTER_VERSION = "6"  # 2: bold runs wrapped in **…**; 3: table cells rebuilt on one column grid;
-# 4: a word outside every grid cell goes to the nearest column (was: the last);
+# The steps both games' conversions run (importer/pdf/: columns, lines, markdown, tables): a change to what they write
+# ends both versions below, so --reuse re-converts every book of both games. On such a change set it to "+pdf2", then
+# "+pdf3", … (empty: the steps as they were when the games' versions were last bumped alone).
+PDF_STEPS_VERSION = ""
+CONVERTER_VERSION = "6" + PDF_STEPS_VERSION  # convert(..., sr6=False); 2: bold runs wrapped in **…**; 3: table cells
+# rebuilt on one column grid; 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-7"  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by baseline, columns
-# split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a page's text layer
-# dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's faces (a table's
-# last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
+SR6_CONVERTER_VERSION = "sr6-7" + PDF_STEPS_VERSION  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by
+# baseline, columns split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a
+# page's text layer dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's
+# faces (a table's last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
 # bold among regular names (an en space): its row groups (layout._first_marks)
 # 6: two stat tables side by side in two columns stay two, running heads dropped by their repetition, a heading under
 # the other column titles the full-width table under it (feat/book-adventures, merged)
@@ -53,6 +57,8 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
     (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped). levels: the SR6 heading
     sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings' font
     family, likewise."""
+    if sr6:  # (imported here: the Anarchy conversion never loads the SR6 layout)
+        from importer.sr6 import layout
     with open(pdf_path, "rb") as f:
         sha = hashlib.sha256(f.read()).hexdigest()
     out = []
@@ -86,7 +92,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             # a band table's own words leave the text (not its box: a long last cell can reach past the text column)
             banded = {id(w) for _, _, used in bands for w in used}
             words = [w for w in all_words if not in_table(w, boxes) and id(w) not in banded]
-            rows = cluster_lines(words)
+            rows = (layout.baseline_rows if sr6 else cluster_lines)(words)
             tol = layout.GUTTER_TOL if sr6 else 0
             mid = find_gutter(rows, page.width, tol=tol)
             lines = [part for row in rows for part in split_at(row, mid, tol)] if mid else rows
@@ -106,7 +112,7 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 marks = layout.sidebar_marks(spans, page.rects, [bbox for bbox, _, _ in bands], page.width,
                                              lambda a, b: column_kind(a, b, mid, tol))
                 boxes = [bbox[1] for bbox, _, _ in bands if column_kind(bbox[0], bbox[2], mid, tol) == "band"]
-                blocks = layout.join_headings(box_titles(box_margin(blocks, xs), geo, boxes), geo)
+                blocks = layout.join_headings(layout.box_titles(layout.box_margin(blocks, xs), geo, boxes), geo)
             for t in tables:
                 md = table_md(table_cells(t, all_words))
                 if md:

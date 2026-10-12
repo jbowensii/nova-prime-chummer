@@ -1,4 +1,4 @@
-// The shared formula parser (src/engine/formula.ts), with made-up formulas.
+// The shared formula parser (src/shared/formula.ts), with made-up formulas.
 import { describe, expect, it } from 'vitest'
 import { evalFormula, formulaText, issueNote, parseFormula, type Formula, type RefLookup } from '../../src/engine/formula'
 

@@ -1,7 +1,7 @@
 // Shadowrun 6 runner <-> XML (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): the file a runner is
 // saved as in /api/sr6/characters and what Export writes. Summary fields sit on the root as Anarchy's
-// (src/engine/charxml.ts, whose writing and reading helpers this reuses).
-import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../engine/charxml'
+// (src/engine/charxml.ts), with the writing and reading helpers both games share (src/shared/xml.ts).
+import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../shared/xml'
 import { BACKDROPS, type Backdrop } from '../../model/types'
 import {
   BONUS_SWITCHES,
@@ -39,7 +39,6 @@ import {
   type Sr6Sin,
 } from '../model/character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
-import type { Codec } from '../../ui/repo'
 import { sr6EntryXml, toEntry } from './entryxml'
 
 export const SR6_CHAR_NS = 'urn:chummer-sr6:character:1'
@@ -727,6 +726,3 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }
   }
 }
-
-/** The repo codec (src/ui/repo.ts serverRepo). */
-export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }

@@ -385,8 +385,9 @@ class AiFallbackTest(unittest.TestCase):
             self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
             # a Re-import starts with remove, which writes the record afresh: no table is still listed as read by AI (the
             # recipe's run then reports only what it couldn't read this time)
+            from importer import xmlio
             from importer.__main__ import remove
-            remove(book, custom, status=False)
+            remove(book, custom, status=False, root=xmlio.CA2)
             self.assertEqual([r.get("kind") for r in xmlio.read_import(book).iter("row")], [])
 
     def test_an_edit_that_breaks_a_row_or_a_second_pricing_row_stays_out(self):

@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 from importer import xmlio
 from importer.edits import MAX_BODY, USERNAME, EditError, parse_edit  # noqa: F401 (MAX_BODY: the CLI's stdin cap)
-from importer.sr6 import KINDS, NS, SCHEMA_DIR
+from importer.sr6 import KINDS, NS, ROOT, SCHEMA_DIR
 
 
 def _path(custom_dir, name):
@@ -82,7 +82,7 @@ def _edits_xml(entries):
     for e in entries:
         e.tail = None
         rows.append("  " + ET.tostring(e, encoding="unicode") + "\n")
-    start, end = xmlio._root("edits")
+    start, end = xmlio._root("edits", ROOT)
     return xmlio.HEAD + "<!-- Catalog entries edited in the app. Written by the importer. -->\n" + start + "".join(rows) + end
 
 
@@ -114,18 +114,18 @@ def set_entry(custom_dir, kind, id, body, by=None):
         raise EditError(why)
     if by:
         entry.set("by", by)
-    with xmlio.root("sr6", NS):
-        entries = _entries(custom_dir)
-        at = next((i for i, e in enumerate(entries) if e.tag == entry.tag and e.get("id") == id), None)
-        if at is None:
-            entries.append(entry)
-        else:
-            entries[at] = entry
-        texts_path = _path(custom_dir, "texts.xml")
-        # both files built before either is written: a corrupt texts file fails the edit, not half of it
-        texts = xmlio.merged_texts(texts_path, [(kind, id, desc)] if desc else [], drop=() if desc else {(kind, id)})
-        xmlio.write_file(_path(custom_dir, "edits.xml"), _edits_xml(entries))
-        xmlio.write_file(texts_path, texts)
+    entries = _entries(custom_dir)
+    at = next((i for i, e in enumerate(entries) if e.tag == entry.tag and e.get("id") == id), None)
+    if at is None:
+        entries.append(entry)
+    else:
+        entries[at] = entry
+    texts_path = _path(custom_dir, "texts.xml")
+    # both files built before either is written: a corrupt texts file fails the edit, not half of it
+    texts = xmlio.merged_texts(texts_path, [(kind, id, desc)] if desc else [], drop=() if desc else {(kind, id)},
+                               root=ROOT)
+    xmlio.write_file(_path(custom_dir, "edits.xml"), _edits_xml(entries))
+    xmlio.write_file(texts_path, texts)
 
 
 def remove_entry(custom_dir, kind, id):
@@ -138,9 +138,8 @@ def remove_entry(custom_dir, kind, id):
     had_text = texts_root is not None and any((t.get("of"), t.get("id")) == (kind, id) for t in texts_root)
     if len(keep) == len(entries) and not had_text:
         return False
-    with xmlio.root("sr6", NS):
-        texts = xmlio.merged_texts(texts_path, [], drop={(kind, id)}) if had_text else None
-        xmlio.write_file(_path(custom_dir, "edits.xml"), _edits_xml(keep))
-        if texts:
-            xmlio.write_file(texts_path, texts)
+    texts = xmlio.merged_texts(texts_path, [], drop={(kind, id)}, root=ROOT) if had_text else None
+    xmlio.write_file(_path(custom_dir, "edits.xml"), _edits_xml(keep))
+    if texts:
+        xmlio.write_file(texts_path, texts)
     return True

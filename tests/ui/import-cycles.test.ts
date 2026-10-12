@@ -63,3 +63,26 @@ test('src has no import cycle, type imports included', () => {
   const graph = new Map(files(SRC).map(f => [f, imports(f)]))
   expect(cycles(graph).map(c => c.map(f => relative(SRC, f).replaceAll('\\', '/')).join(' > '))).toEqual([])
 })
+
+test('the engines and models import nothing from a UI folder', () => {
+  const layer = ['engine', 'model', 'sr6/engine', 'sr6/model'].flatMap(d => files(join(SRC, d)))
+  const ui = (f: string) => /^(ui|sr6\/ui)\//.test(relative(SRC, f).replaceAll('\\', '/'))
+  expect(
+    layer.flatMap(f =>
+      imports(f)
+        .filter(ui)
+        .map(t => `${relative(SRC, f)} > ${relative(SRC, t)}`.replaceAll('\\', '/')),
+    ),
+  ).toEqual([])
+})
+
+test('Shadowrun 6 imports nothing from Anarchy’s engine: what both games use lives in src/shared', () => {
+  const at = (f: string) => relative(SRC, f).replaceAll('\\', '/')
+  expect(
+    files(join(SRC, 'sr6')).flatMap(f =>
+      imports(f)
+        .filter(t => at(t).startsWith('engine/'))
+        .map(t => `${at(f)} > ${at(t)}`),
+    ),
+  ).toEqual([])
+})

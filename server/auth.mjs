@@ -28,7 +28,7 @@ import { chmod, mkdir, readFile, rm } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { attr, esc, rootTag, writeAtomic } from './books.mjs'
+import { attr, esc, rootTag, writeAtomic } from './common.mjs'
 import { RESERVED, scoped } from './games.mjs'
 
 const scrypt = promisify(scryptCb)
@@ -63,12 +63,15 @@ const ACCOUNT_FREE = 10,
 // counted for any name typed (existing or not, so a 429 says nothing about which accounts exist); when full, the least
 // recently failed name whose wait is over makes room, and while every one is still waiting new names aren't counted
 const ACCOUNT_KEYS = 10000
+// the per-address and per-network failure maps together: past this, what has run out goes, then the oldest
+const FAIL_KEYS = 10000
 // known devices (OWASP device cookies): a browser that signed in as a user carries an HMAC of that username and a nonce
 // for a year; the account's wait doesn't apply to it, unless the device itself has failed DEVICE_TRIES times meanwhile
 const DEVICE_COOKIE = 'ca2_device',
   HOST_DEVICE_COOKIE = '__Host-ca2_device',
   DEVICE_TTL = 365 * DAY,
-  DEVICE_TRIES = 5
+  DEVICE_TRIES = 5,
+  MAX_DEVICES = 50 // devices counted per account while it waits
 // scrypt (32 MB, tens of ms each) runs on the libuv threadpool, which file reads share: a few at a time, a short queue,
 // the rest refused (UV_THREADPOOL_SIZE=16 in the image keeps threads for files)
 const MAX_HASHING = 4,
@@ -310,6 +313,7 @@ export function authApi({
   runners,
   log = console,
   accountKeys = ACCOUNT_KEYS,
+  failKeys = FAIL_KEYS,
   oidcOn = () => false,
   publicUrl = '',
 }) {
@@ -559,9 +563,12 @@ export function authApi({
   function failed(key, ip, account, device) {
     const now = Date.now()
     // ponytail: in memory, pruned when big (O(n) then)
-    if (fails.size + netFails.size > 10000) {
+    if (fails.size + netFails.size > failKeys) {
       for (const [k, f] of fails) if (!(f.until > now)) fails.delete(k)
       for (const [k, f] of netFails) if (now - f.since >= NET_WINDOW) netFails.delete(k)
+      // ponytail: still full of live pauses and windows (failures from more addresses than this at once): the first
+      // counted go, lifting their pauses, so memory stays bounded; per-network caps or a shared store if that's real
+      for (const m of [fails, netFails]) for (const k of m.keys()) if (fails.size + netFails.size > failKeys) m.delete(k)
     }
     const k = `${key}|${ip}`,
       f = fails.get(k)
@@ -580,7 +587,13 @@ export function authApi({
         fresh = !a || now - a.last >= ACCOUNT_FORGET,
         c = fresh ? 1 : a.n + 1
       const devices = fresh ? new Map() : a.devices
-      if (device) devices.set(device, (devices.get(device) ?? 0) + 1)
+      if (device) {
+        const n = (devices.get(device) ?? 0) + 1
+        devices.delete(device) // re-inserted last: the oldest failed device is first
+        devices.set(device, n)
+        // ponytail: oldest past MAX_DEVICES forgotten (a device that had used up its tries gets them again); per-device store if that matters
+        if (devices.size > MAX_DEVICES) devices.delete(devices.keys().next().value)
+      }
       accountFails.delete(account) // re-inserted last: the map's order is least recently failed first
       accountFails.set(account, {
         n: c,

@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from importer import __main__ as anarchy, xmlio
+from importer import __main__ as anarchy, library, xmlio
 from importer.sr6 import run as sr6
 
 
@@ -25,13 +25,13 @@ class RemoveSafeIdTest(unittest.TestCase):
 
     def test_safe_id_pattern(self):
         for ok in ("CRB", "crb-hk", "SWC", "ml2083-03", "a_b"):
-            self.assertTrue(anarchy.SAFE_SOURCE_ID.fullmatch(ok), ok)
+            self.assertTrue(library.SAFE_SOURCE_ID.fullmatch(ok), ok)
         for bad in ("..", "../victim", "..\\victim", "a/b", ".hidden", "", "x" * 65):
-            self.assertIsNone(anarchy.SAFE_SOURCE_ID.fullmatch(bad), bad)
+            self.assertIsNone(library.SAFE_SOURCE_ID.fullmatch(bad), bad)
 
     def test_anarchy_remove_ignores_a_path_source(self):
         xmlio.write_import(self.book, source="../../victim", file="book.pdf")
-        anarchy.remove(self.book, self.custom, status=False)
+        anarchy.remove(self.book, self.custom, status=False, root=xmlio.CA2)
         self.assertTrue(os.path.exists(os.path.join(self.victim, "keep.txt")))
 
     def test_sr6_drop_ignores_a_path_extra(self):

@@ -6,23 +6,14 @@ import { ATTRS } from '../model/types'
 import { effectStateAttrs, readEffectState } from './effects'
 import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
-import { BAD_XML_CHAR, esc, escAttr } from '../shared/xml'
+import { BAD_XML_CHAR, attrs, badCharAt, each, el, esc, escAttr, kid, kids, need, readDoc, text, type ReadOpts } from '../shared/xml'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 /** The Shadowrun 6 runner's (src/sr6/engine/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
 const SR6_NS = 'urn:chummer-sr6:character:1'
 
-// what XML 1.0 can't hold, and the escapers (shared by both games: src/shared/xml.ts)
-export { BAD_XML_CHAR, esc, escAttr }
-export const attrs = (o: Record<string, unknown>) =>
-  Object.entries(o)
-    .filter(([, v]) => v !== undefined && v !== null) // an empty value is kept: a draft's blank level or type reads back blank
-    .map(([k, v]) => ` ${k}="${escAttr(String(v))}"`)
-    .join('')
-export const el = (name: string, a: Record<string, unknown>, children = '') =>
-  children ? `<${name}${attrs(a)}>${children}</${name}>` : `<${name}${attrs(a)}/>`
-// an empty element is left out: it reads back empty anyway
-export const text = (name: string, s: string | undefined) => (s ? `<${name}>${esc(s)}</${name}>` : '')
+// what XML 1.0 can't hold, the escapers, the writing and reading helpers (shared by both games: src/shared/xml.ts)
+export { BAD_XML_CHAR, esc, escAttr, attrs, el, text, kids, kid, badCharAt, each, need, readDoc, type ReadOpts }
 
 // ---- catalog snapshots, written in the data files' own format ----
 export const effectXml = (e: EffectPick) =>
@@ -202,8 +193,6 @@ export function characterToXml(ch: Character, rev?: number): string {
 }
 
 // ---- reading ----
-export const kids = (e: Element, name: string) => [...e.children].filter(c => c.localName === name)
-export const kid = (e: Element, name: string) => kids(e, name)[0]
 const s = (e: Element, n: string) => e.getAttribute(n) ?? undefined
 const n = (e: Element, n: string) => {
   const v = e.getAttribute(n)
@@ -299,77 +288,6 @@ function readEvent(e: Element): CareerEvent {
 }
 
 type Parsed = { ok: true; character: Character; rev?: number } | { ok: false; reason: string }
-/** repair: read what can be read, noting here each thing dropped or fixed (the runner list's "Try to repair") */
-export interface ReadOpts {
-  repair?: string[]
-}
-
-const hex = (ch: string) => `U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`
-/** Where the first character XML can't hold sits: line, column and the element it's in. */
-export function badCharAt(xml: string): string | null {
-  const re = new RegExp(BAD_XML_CHAR.source)
-  const m = re.exec(xml)
-  if (!m) return null
-  const before = xml.slice(0, m.index),
-    line = before.split('\n').length,
-    col = m.index - before.lastIndexOf('\n')
-  const open: string[] = []
-  for (const [, close, name, self] of before.matchAll(/<(\/?)([\w:.-]+)[^<>]*?(\/?)>/g))
-    if (close) open.pop()
-    else if (!self) open.push(name)
-  const inEl = open.at(-1)
-  return `Line ${line}, column ${col}${inEl ? `, in <${inEl}>` : ''}: character ${hex(m[0])} isn’t allowed in XML.`
-}
-
-/** Reads one child element; a failure names what couldn't be read. In repair mode that element is dropped instead. */
-export function each<T>(els: Element[], read: (e: Element) => T, label: (e: Element, i: number) => string, fix?: string[]): T[] {
-  return els.flatMap((e, i) => {
-    try {
-      return [read(e)]
-    } catch (err) {
-      const what = `${label(e, i)}: ${(err as Error).message}`
-      if (!fix) throw new Error(what)
-      fix.push(`Dropped ${what}.`)
-      return []
-    }
-  })
-}
-export const need = (e: Element | undefined, name: string, parent: string) => {
-  if (!e) throw new Error(`no <${name}> inside <${parent}>`)
-  return e
-}
-
-/** Parse a runner file: control characters refused saying where (repair: removed, and stray “&” escaped, each noted in
- *  `fix`). Shared by both games' readers. */
-export function readDoc(xml: string, fix?: string[]): { ok: true; root: Element } | { ok: false; reason: string } {
-  if (fix) {
-    const bad = xml.match(BAD_XML_CHAR)
-    if (bad) {
-      xml = xml.replace(BAD_XML_CHAR, '')
-      fix.push(`Removed ${bad.length} ${bad.length === 1 ? 'character' : 'characters'} XML can’t hold (${[...new Set(bad.map(hex))].join(', ')}).`)
-    }
-    const amp = /&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g
-    const stray = xml.match(amp)
-    if (stray) {
-      xml = xml.replace(amp, '&amp;')
-      fix.push(`Escaped ${stray.length} stray “&”.`)
-    }
-  } else {
-    const where = badCharAt(xml)
-    if (where) return { ok: false, reason: `Not valid XML. ${where}` }
-  }
-  const doc = new DOMParser().parseFromString(xml, 'text/xml')
-  const perr = doc.getElementsByTagName('parsererror')[0]
-  if (perr) {
-    const detail = (perr.textContent ?? '')
-      .replace(/^This page contains the following errors:/, '')
-      .split(/\n|Below is a rendering/)[0]
-      .trim()
-    return { ok: false, reason: `Not valid XML${detail ? `: ${detail}` : '.'}` }
-  }
-  return { ok: true, root: doc.documentElement }
-}
-
 /** Never throws; a bad file comes back with a reason saying what and where. */
 export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
   const fix = opts.repair

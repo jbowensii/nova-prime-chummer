@@ -1290,6 +1290,19 @@ dialog .actions {
   display: inline-block;
   margin-top: 0.8rem;
 }
+.creation-tools {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0.8rem 0;
+}
+.creation-tools > div {
+  display: grid;
+  justify-items: start;
+  gap: 0.3rem;
+}
+.sr6-creation .creation-tools .file {
+  margin-top: 0;
+}
 .backup .file input,
 .datapack .file input,
 .sr6-creation .file input,
@@ -2372,6 +2385,14 @@ dialog.dupes .dupe-group label.check {
   align-items: baseline;
 }
 @media (max-width: 600px) {
+  .menubar > nav.iconbar {
+    display: grid;
+    /* 6 icons are 292px, a 320px phone has 288: the columns shrink (45px each, over the 44px target) */
+    grid-template-columns: repeat(var(--cols), minmax(0, 2.88rem));
+  }
+  .menubar > nav.iconbar .btn.ibtn {
+    width: 100%;
+  }
   .menubar .tools {
     border-left: 0;
     padding-left: 0;

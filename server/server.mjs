@@ -55,8 +55,9 @@ import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
 import { authApi } from './auth.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
-import { booksApi, rootTag, unesc, writeAtomic } from './books.mjs'
+import { booksApi } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
+import { rootTag, unesc, writeAtomic } from './common.mjs'
 import { compendiumsApi } from './compendiums.mjs'
 import { GAMES, scoped } from './games.mjs'
 import { oidcApi } from './oidc.mjs'
@@ -186,6 +187,7 @@ export function createServer({
   trustProxy = '',
   publicUrl = '',
   accountKeys,
+  failKeys,
   oidc: oidcOpts = {},
 }) {
   staticDir = resolve(staticDir)
@@ -577,7 +579,7 @@ export function createServer({
   }
 
   let oidc = null
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys: tests
+  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, failKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys, failKeys: tests
   const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
   // each game's book source lists: the shipped one, the imported books', house sources, the catalog edits'
   const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
@@ -607,7 +609,7 @@ export function createServer({
       track: books.track,
     }),
   }
-  oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap)
+  oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap, exchanges a minute)
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
@@ -772,7 +774,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     publicUrl: process.env.PUBLIC_URL ?? '', // the app's one public address (Origin check, Authelia redirect URI)
   })
   server.listen(port, () => console.log(`nova-prime-chummer on :${port}`))
-  // docker stop: end the importer job too (the next start marks its book interrupted); sessions.xml is saved
+  // docker stop: end the importer job too (the next start runs it again from jobs.json: resume.mjs); sessions.xml is saved
   const quit = () => {
     server.stopJobs()
     server.close()

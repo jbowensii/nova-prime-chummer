@@ -7,7 +7,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
-from importer.__main__ import _same_source, main, remove, run
+from importer.__main__ import main, remove, run
+from importer.library import same_source, update_sources
 from importer.recipes import qref
 from importer.tests.test_qref import MD
 
@@ -175,7 +176,7 @@ class RemoveTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         b1, _ = self._run(tmp, "b1"), self._run(tmp, "b2")
         custom = os.path.join(tmp, "custom")
-        remove(b1, custom, forget=True)
+        remove(b1, custom, forget=True, root=xmlio.CA2)
         self.assertFalse(os.path.exists(b1))
         self.assertTrue(os.path.exists(os.path.join(custom, "imported", "qref", "rules-matrix.xml")))
         self.assertIn('file="b2.pdf"', Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
@@ -185,7 +186,7 @@ class RemoveTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         book = os.path.join(tmp, "library", "b3")
         os.makedirs(book)
-        remove(book, os.path.join(tmp, "custom"), forget=True)
+        remove(book, os.path.join(tmp, "custom"), forget=True, root=xmlio.CA2)
         self.assertFalse(os.path.exists(book))
 
 
@@ -198,9 +199,12 @@ class Sr6FolderTest(unittest.TestCase):
             os.makedirs(os.path.join(lib, b))
         xmlio.write_import(os.path.join(lib, "sr6"), source="MADEUP", file="made-up.pdf", sha256="00", name="Made-up book",
                            imported="2026-10-02T00:00:00Z")
-        xmlio.update_sources(custom, lib)
+        update_sources(custom, lib, xmlio.CA2)
+        for call in (lambda: update_sources(custom, lib), lambda: remove(os.path.join(lib, "b1"), custom)):
+            with self.assertRaises(TypeError):  # a game's data root is never defaulted to Anarchy's
+                call()
         self.assertNotIn("MADEUP", Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))
-        self.assertEqual(_same_source(os.path.join(lib, "b1"), "MADEUP"), [])
+        self.assertEqual(same_source(os.path.join(lib, "b1"), "MADEUP"), [])
 
 
 if __name__ == "__main__":

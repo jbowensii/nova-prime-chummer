@@ -1,6 +1,9 @@
-import { evalFormula, formulaOf, type Formula, type Vars } from '../../engine/formula'
+import { evalFormula, formulaOf, type Formula, type Vars } from '../../shared/formula'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 
+// Reads the values the SR6 catalog keeps as printed text (prices, availability, ratings, attack bands) and works them out
+// as numbers at a rating: rated(), formula(), legality(), ratingRange(), attackRatings() and bookValue() (a <formula>, else the
+// printed string).
 // Book values as the SR6 catalog keeps them (strings, as printed: "Rating × 500", "5(L)", "9/7/—/—/—") read as numbers.
 // Never NaN: a value the app can't read is { n: null, ok: false } and the caller counts it 0 and warns.
 
@@ -127,12 +130,17 @@ export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
   return (m?.[1] ?? m?.[2]) as 'L' | 'I' | 'F' | undefined
 }
 
-/** The ratings an item comes in: "1–3" → [1, 2, 3], "6" → [6], a dash, nothing or anything else → []. */
+/** The highest rating or level the app reads. ponytail: no book prints one near it; a file's `1-20000000` would build
+ *  that many ratings (or levels) on every render. Raise it if a book ever prints more. */
+export const MAX_RATING = 100
+/** The ratings an item comes in: "1–3" → [1, 2, 3], "6" → [6], a dash, nothing, one above MAX_RATING or anything else
+ *  → [] (the catalog warns of one past MAX_RATING: data.ts). */
 export function ratingRange(s: string | undefined): number[] {
   const m = s?.trim().match(/^(\d+)(?:\s*[–-]\s*(\d+))?$/)
   if (!m) return []
   const lo = Number(m[1]),
     hi = Number(m[2] ?? m[1])
+  if (hi > MAX_RATING) return []
   return Array.from({ length: Math.max(0, hi - lo + 1) }, (_, k) => lo + k)
 }
 

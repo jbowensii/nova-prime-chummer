@@ -135,3 +135,25 @@ test('every menu as icons with tooltips; the print page background behind one bu
     await printStyle(page, 'plain')
   }
 })
+
+test('six main-menu icons fit a 320px and a 375px phone: no sideways scroll, each icon at least 44px', async ({ page }) => {
+  await page.goto('/')
+  const nav = page.getByRole('navigation', { name: 'Main menu' })
+  await expect(nav).toBeVisible()
+  // the admin has eight; keep six of them, in one row as the bar lays six out
+  await nav.evaluate(n => {
+    while (n.children.length > 6) n.lastElementChild!.remove()
+    ;(n as HTMLElement).style.setProperty('--cols', '6')
+  })
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 700 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${width}px scrolls sideways`).toBeLessThanOrEqual(0)
+    const boxes = await nav.locator('a').evaluateAll(els => els.map(e => e.getBoundingClientRect()))
+    expect(boxes).toHaveLength(6)
+    expect(new Set(boxes.map(b => Math.round(b.top))).size, `${width}px: one row`).toBe(1)
+    for (const b of boxes) expect(b.width, `${width}px icon width`).toBeGreaterThanOrEqual(44)
+    const bar = await page.locator('.menubar').evaluate(e => e.getBoundingClientRect().right)
+    expect(boxes[5].right, `${width}px last icon inside the page's padding`).toBeLessThanOrEqual(bar + 0.5)
+  }
+  await page.setViewportSize({ width: 1400, height: 900 })
+})

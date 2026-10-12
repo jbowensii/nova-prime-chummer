@@ -139,6 +139,7 @@ export function backupApi(ctx) {
    *  so no restore runs under it. -> { token } for sendZip('datapack'). */
   async function makePack(res, send, who) {
     if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    if (lock.zipping) throw fail(409, 'a backup is being made; try again when it’s done') // they exclude each other
     // a book's import rewrites the core files one by one: a pack made meanwhile could mix old and new tables
     if (ctx.running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     lock.packing = true

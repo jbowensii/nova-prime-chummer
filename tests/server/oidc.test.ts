@@ -48,7 +48,7 @@ async function boot(opts: Record<string, unknown> = {}, server: Record<string, u
     customDir: join(dir, 'custom'),
     libraryDir: lib,
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
-    oidc: { timeout: 500, jwksGap: 300, ...opts },
+    oidc: { timeout: 500, jwksGap: 300, exchangesPerMinute: 1000, ...opts }, // (the suite's sign-ins all come from 127.0.0.1)
     ...server,
   })
   await new Promise<void>(ok => srv.listen(0, '127.0.0.1', ok))
@@ -814,6 +814,50 @@ test('a sign-in never writes under a restore: refused while one runs, and one un
       delete s.f.delay['/token']
     }
     expect(s.account('kim').oidcSub).toBeTruthy()
+  } finally {
+    s.close()
+  }
+})
+
+test('the token exchange is limited per client network: past the limit a minute, refused without calling the issuer', async () => {
+  const s = await boot({ exchangesPerMinute: 2 })
+  try {
+    await on(s)
+    for (let i = 0; i < 2; i++) expect((await flow(s)).location).toBe('/') // signed in
+    const before = s.f.hits['/token'] ?? 0
+    expect((await flow(s)).location).toBe('/?signin=too-many')
+    expect(s.f.hits['/token'] ?? 0).toBe(before)
+    expect(logged.some(l => l.includes('too many sign-ins from this network in a minute'))).toBe(true)
+  } finally {
+    s.close()
+  }
+})
+
+test('a callback refused for the network limit keeps its state: the same callback works after the minute', async () => {
+  const s = await boot({ exchangesPerMinute: 1 })
+  try {
+    await on(s)
+    expect((await flow(s)).location).toBe('/') // the one allowed
+    const start = await fetch(`${s.base}/api/auth/oidc/start`, { redirect: 'manual' })
+    const bind = start.headers
+      .getSetCookie()
+      .find(c => c.startsWith('ca2_oidc='))!
+      .split(';')[0]
+    const back = (await fetch(start.headers.get('location')!, { redirect: 'manual' })).headers.get('location')!
+    const cb = (cookie: string) => fetch(back, { redirect: 'manual', headers: { Cookie: cookie } })
+    const limited = await cb(bind)
+    expect(limited.headers.get('location')).toBe('/?signin=too-many')
+    expect(limited.headers.getSetCookie().some(c => c.startsWith('ca2_oidc='))).toBe(false) // the cookie isn't cleared
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(Date.now() + 61_000)
+      const again = await cb(bind)
+      expect(again.headers.get('location')).toBe('/')
+      expect(session(again.headers.getSetCookie())).not.toBe('')
+      expect((await cb(bind)).headers.get('location')).toBe('/?signin=expired') // and now it's spent
+    } finally {
+      vi.useRealTimers()
+    }
   } finally {
     s.close()
   }

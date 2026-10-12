@@ -31,12 +31,17 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
   /** where (kind, id) is now, when it's gone and an alias names it in one of `fits` */
   const isParent = (kind: Sr6Kind, id: string) => !!c.levels?.get(entryKey(kind, id))?.parent
   /** where (kind, id) is now, when it's gone and an alias names it in one of `fits` (an entry, or a family's parent) */
-  const to = <K extends Sr6Kind>(kind: K, id: string | undefined, fits: readonly K[]) => {
+  const where = <K extends Sr6Kind>(kind: K, id: string | undefined, fits: readonly K[]) => {
     if (!id || c.entries[kind]?.has(id)) return undefined
     const m = c.moved.get(entryKey(kind, id))
     if (!m || !(fits as readonly Sr6Kind[]).includes(m.kind) || !(c.entries[m.kind].has(m.id) || isParent(m.kind, m.id))) return undefined
-    if (!isParent(m.kind, m.id)) done.push({ from: entryKey(kind, id), to: entryKey(m.kind, m.id), at })
     return m as { kind: K; id: string }
+  }
+  /** as where, the change recorded */
+  const to = <K extends Sr6Kind>(kind: K, id: string | undefined, fits: readonly K[]) => {
+    const m = where(kind, id, fits)
+    if (m && !isParent(m.kind, m.id)) done.push({ from: entryKey(kind, id!), to: entryKey(m.kind, m.id), at })
+    return m
   }
   /** the level's entry of a family's parent (an id now expanded into levels; `from`: the id the line names), at
    *  `level` (none: its lowest); undefined for a level the family doesn't have */
@@ -96,8 +101,15 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
   const lifestyleId = (id: string) => to('lifestyles', id, ['lifestyles'])?.id ?? id
   const state = structuredClone(b),
     voided = voidedIds(ch) // the build as it stood before each ledger line (old ids)
-  /** a level-up without a target (from before levels were entries): the level it reached, on the line it raised */
+  /** a level-up without a target (from before levels were entries): the level it reached, on the line it raised; what
+   *  it looked up is recorded only when it gives one (else the line is migrated as any other, and recorded there) */
   const relative = (a: Sr6Advance): Sr6Advance | undefined => {
+    const mark = done.length,
+      r = levelUp(a)
+    if (!r) done.length = mark
+    return r
+  }
+  const levelUp = (a: Sr6Advance): Sr6Advance | undefined => {
     if ((a.op === 'pick' || a.op === 'initiate') && a.line && !a.target) {
       const had = state.picks.find(x => x.kind === a.line!.kind && x.id === a.line!.id)
       const lv = a.op === 'pick' ? (had?.level !== undefined ? had.level + 1 : undefined) : had && (had.level ?? 1) + 1
@@ -108,7 +120,7 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
       const had = state.qualities.find(q => q.id === a.line.id && !q.free),
         lv = had && had.level + a.line.level
       const line = lv !== undefined ? quality({ ...a.line, level: lv }) : undefined
-      return line && line.id !== (to('qualities', a.line.id, ['qualities'])?.id ?? a.line.id) ? { ...a, target: had!.uid, line } : undefined
+      return line && line.id !== (where('qualities', a.line.id, ['qualities'])?.id ?? a.line.id) ? { ...a, target: had!.uid, line } : undefined
     }
     return undefined
   }

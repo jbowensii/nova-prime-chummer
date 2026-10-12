@@ -161,7 +161,8 @@ only; compendiums export from their own page.
 
 With `descriptions: true` a book's entries carry their text (`description`); with `false` it is left out. A runners file
 always carries the text of the runner's things (as Anarchy's: the dialog says so), and a compendium its own text. Share
-a file with book descriptions only with people who own the books.
+a file with book descriptions only with people who own the books. Description and text fields are plain text, not HTML:
+a program that shows them on a web page must escape them first.
 
 ## What the importer does with it
 

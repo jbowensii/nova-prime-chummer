@@ -83,6 +83,7 @@ const LINK_RESULTS: Record<string, string> = {
   session: 'Nothing changed: the link was started from a sign-in that has ended or changed. Sign in and try again.',
   expired: 'Nothing changed: the link took too long or was already used. Try again.',
   denied: 'Nothing changed: Authelia didn’t sign you in. Try again.',
+  'too-many': 'Nothing changed: too many sign-in tries from your network just now. Wait a minute, then try again.',
   failed: 'Nothing changed: linking to Authelia didn’t work. Try again, and if it keeps failing ask the admin to check the sign-in settings.',
 }
 /** The ?link= the browser came back with: read once, and taken off the address. */

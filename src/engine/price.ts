@@ -75,7 +75,7 @@ export interface PriceBreakdown extends Breakdown {
 
 export const attrMax = (c: Catalog, metatype: string, a: keyof Build['attributes']) => c.metatypes.get(metatype)?.ranges[a][1] ?? Infinity
 
-/** Why an entry's free slot no longer holds ("Stealth below 4", "keyword “X” removed"), or null (it holds, or it
+/** Why an entry's free slot no longer holds ("Stealth below 4", "keyword “X” removed", an unknown slot), or null (it holds, or it
  *  has none). skillName: the skill's display name. */
 export function slotLapse(b: Build, keywords: string[], k: KnowledgeEntry, skillName = (id: string) => id): string | null {
   if (k.from?.startsWith('skill:')) {
@@ -86,7 +86,8 @@ export function slotLapse(b: Build, keywords: string[], k: KnowledgeEntry, skill
     const kw = k.from.slice(8)
     return keywords.some(x => x.trim() === kw) ? null : `keyword “${kw}” removed`
   }
-  return null
+  // (a slot neither a skill's nor a keyword's, a hand-edited file's: no free slot, so paid)
+  return k.from ? `an unknown slot “${k.from}”` : null
 }
 /** The free native language: the first language entry marked native (one per runner). */
 export const nativeLanguage = (b: Build) => b.knowledge.find(k => k.native && k.kind === 'language')

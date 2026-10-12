@@ -38,7 +38,7 @@
     <xs:attribute name="version" type="xs:positiveInteger" use="required"/>
   </xs:attributeGroup>
 
-  <!-- an amp's or item's <formula>s and <issue>s, just before its description (src/engine/formula.ts, docs/data-format.md):
+  <!-- an amp's or item's <formula>s and <issue>s, just before its description (src/shared/formula.ts, docs/data-format.md):
        how a field is worked out (an item's cost: B is the standard price from pricing.xml), and a field the book prints
        nothing for or the importer couldn't read. The edits layer doesn't store them (an edit keeps the book's). -->
   <xs:simpleType name="Field">
@@ -75,7 +75,7 @@
     <xs:attribute name="param" type="xs:string"/>
     <xs:attribute name="value" type="xs:positiveInteger"/>
     <xs:attribute name="note" type="xs:string"/>
-    <!-- how it is turned on (none: always on) and whether it counts: src/engine/effects.ts. when: only then (shown, not
+    <!-- how it is turned on (none: always on) and whether it counts: src/shared/effects.ts. when: only then (shown, not
          counted); confidence low: shown, not counted; from: the catalog id of the entry it is given by -->
     <xs:attribute name="switch">
       <xs:simpleType><xs:restriction base="xs:string">

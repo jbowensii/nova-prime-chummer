@@ -1,6 +1,6 @@
 // Types the catalog browser, its hover card and their callers share (a leaf: no imports of ui/ modules).
 import type { ReactNode } from 'react'
-import type { Issue } from '../engine/formula'
+import type { Issue } from '../shared/formula'
 
 /** What an entry's effect does on the runner: applied (always on: in the total shown first), conditional (switchable or
  *  on some tests only: in the bracketed total, `6 (9)`), target (a spell's on its target: never on the caster) or low

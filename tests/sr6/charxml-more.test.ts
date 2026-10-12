@@ -1,7 +1,7 @@
 // The SR6 runner file's reader on sparse and broken files (src/sr6/engine/charxml.ts): defaults, each refusal, the repair
 // notes for fixed values, and the optional blocks (printed numbers, rules, migrated ids, NPC stats). Invented data.
 import { expect, test } from 'vitest'
-import { xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 
 const NS = 'xmlns:sr6="urn:chummer-sr6:character:1"'
 const doc = (root = 'id="r"', body = '<build method="priority" magic="mundane"/>') => `<sr6:character ${NS} formatVersion="1" ${root}>${body}</sr6:character>`
@@ -228,4 +228,14 @@ test('house entries of a kind the catalog lacks are refused, or dropped in repai
   const ch = good(doc('id="r"', body), fix)
   expect(ch.house?.map(e => e.id)).toEqual(['crb.g'])
   expect(fix).toHaveLength(1)
+})
+
+test('a house entry’s prefixed and namespaced attributes are dropped, so the runner saved again reads back; no page is invented', () => {
+  const house = `<house><gear xmlns:x="urn:made-up" x:extra="1" id="h.thing" source="HOUSE" cost="5"><name>Thing</name><note2 x:odd="2" kind="a"/></gear></house>`
+  const ch = good(doc('id="r"', `<build method="priority" magic="mundane"/>${house}`))
+  expect(ch.house).toMatchObject([{ id: 'h.thing', page: 0 }])
+  expect([ch.house![0].attrs, ch.house![0].parts[0].attrs]).toEqual([{ cost: '5' }, { kind: 'a' }])
+  const xml = sr6ToXml(ch)
+  expect(xml).not.toContain('page="0"')
+  expect(good(xml).house).toEqual(ch.house)
 })

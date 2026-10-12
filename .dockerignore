@@ -1,6 +1,20 @@
 node_modules
 dist
 .git
+# private local data and tools' state (patterns are from the context's root): never sent to a build
+/custom
+/library
+/characters
+/data
+/VERSION
+.env
+.env.*
+.claude
+.gossip
+coverage
+.coverage
+.cov_py
+htmlcov
 .extract
 test-results
 playwright-report

@@ -136,7 +136,7 @@
     <xs:attribute name="param" type="xs:string"/>
     <xs:attribute name="value" type="xs:integer"/>
     <xs:attribute name="note" type="xs:string"/>
-    <!-- how it is turned on (none: always on) and whether it counts: src/engine/effects.ts. when: only then (shown, not
+    <!-- how it is turned on (none: always on) and whether it counts: src/shared/effects.ts. when: only then (shown, not
          counted); confidence low: shown, not counted; from: the catalog id of the entry it is given by -->
     <xs:attribute name="switch">
       <xs:simpleType><xs:restriction base="xs:string">

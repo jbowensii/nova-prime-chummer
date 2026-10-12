@@ -890,9 +890,9 @@ class Catalog:
                                               len(e["children"])), ("formula", {"field": "ammo", "round": "down"}, x))
 
     def resolve(self, kind, e, kids):
-        """The issues' fields found elsewhere in the book (resolve.py's first two circles), written to the entry's
-        attributes: [("found", {field, how, page}, None)]. A field the row prints but no rule reads (unreadable) is
-        looked for too; two values printed, or a rule pricing it off another item (ambiguous), is the book's."""
+        """The issues' fields found elsewhere in the book (search.py's first two circles), written to the entry's
+        attributes: [("found", {field, how, source, page}, None)]. A field the row prints but no rule reads (unreadable)
+        is looked for too; two values printed, or a rule pricing it off another item (ambiguous), is the book's."""
         out = []
         for t, a, _ in kids:
             if t != "issue" or a["code"] == "ambiguous":
