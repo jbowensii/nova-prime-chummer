@@ -9,6 +9,7 @@ import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data
 import { Stepper } from '../../../ui/bits'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { RunnerRules } from '../RunnerRules'
 import { Sr6Ref } from '../EntryRef'
 import type { Sr6Attr } from '../../model/character'
@@ -41,8 +42,7 @@ export function MethodTab() {
       {letters && <Letters />}
       {b.method === 'pointbuy' && <section className="stack">
         <h3>Character points</h3>
-        {budgets.characterPoints && <p className={budgets.characterPoints.left < 0 ? 'err' : 'muted'}>
-          {n(budgets.characterPoints.left)} left of {n(budgets.characterPoints.max)}. Every point has to be spent.</p>}
+        {budgets.characterPoints && <p className="muted"><Left x={budgets.characterPoints} />. Every point has to be spent.</p>}
         <div className="scroll-x"><table className="data">
           <thead><tr><th>Spent on</th><th>Character points</th></tr></thead>
           <tbody>{CP_POOLS.map(k => <tr key={k}><td>{CP_LABELS[k]}</td>

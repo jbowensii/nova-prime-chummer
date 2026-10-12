@@ -6,7 +6,8 @@ import { br } from '../../print/view'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'
 import { CORE_ATTRS, type Sr6Attr } from '../../model/character'
-import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { ATTR_NAMES, useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { attrRange, Sr6AttrRef } from '../EntryRef'
 
 const POOLS = [['points', 'Points'], ['adjust', 'Adjustment'], ['karma', 'Karma']] as const
@@ -21,8 +22,8 @@ export function AttributesTab() {
     <div className="stack">
       <h2>Attributes</h2>
       <p className="muted">
-        Attribute points: <b className={budgets.attributePoints.left < 0 ? 'err' : ''}>{n(budgets.attributePoints.left)} left</b> of {n(budgets.attributePoints.max)}.
-        {' '}Adjustment points: <b className={budgets.adjustmentPoints.left < 0 ? 'err' : ''}>{n(budgets.adjustmentPoints.left)} left</b> of {n(budgets.adjustmentPoints.max)}.
+        Attribute points: <Left x={budgets.attributePoints} />.
+        {' '}Adjustment points: <Left x={budgets.adjustmentPoints} />.
         {karmaPrice !== undefined && ` A rank bought with karma costs ${karmaPrice} × the new rating.`}
         {!meta && ' Pick a metatype on Creation method to see the ranges.'}
       </p>

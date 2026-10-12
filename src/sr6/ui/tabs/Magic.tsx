@@ -13,6 +13,7 @@ import type { Sr6Entry } from '../../model/types'
 import { pickFlags } from '../../print/view'
 import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../model/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
+import { Left } from '../Budgets'
 import { Bonuses, House } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
@@ -71,7 +72,7 @@ export function MagicTab() {
     <div className="stack">
       <h2>{k.resonance ? 'Resonance' : 'Magic'}</h2>
       {(k.spells || k.resonance) && <p className="muted">
-        Free {word}: <b className={slots.left < 0 && b.method !== 'karma' ? 'err' : ''}>{n(slots.left)} left</b> of {n(slots.max)}.
+        Free {word}: <Left x={slots} fine={b.method === 'karma'} />.
         {karma !== undefined && ` Past the free ones, each costs ${karma} karma.`}</p>}
       {k.spells && <div className="row">
         <label className="inline">Tradition <Suggest label="Tradition" value={b.tradition ?? ''} options={[]}
@@ -81,7 +82,7 @@ export function MagicTab() {
           <option value="">Pick one</option>
           {(['log', 'int', 'cha'] as const).map(a => <option key={a} value={a}>{ATTR_NAMES[a]}</option>)}</select></label>
       </div>}
-      {k.powers && <p className="muted">Power points: <b className={pp.left < 0 ? 'err' : ''}>{n(pp.left)} left</b> of {n(pp.max)}.</p>}
+      {k.powers && <p className="muted">Power points: <Left x={pp} />.</p>}
       {k.paysPowers && b.method !== 'pointbuy' && <p className="row">Power points bought
         <Stepper label="Power points bought" value={b.powerPointsBought} min={0} max={pp.cap} onChange={to => act({ op: 'powerPoints', delta: to - b.powerPointsBought })} />
         <span className="muted">at most {pp.cap}; each one lowers the free spells</span></p>}

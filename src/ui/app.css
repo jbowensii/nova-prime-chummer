@@ -249,12 +249,13 @@ td.hash { font-family: ui-monospace, monospace; font-size: 0.8rem; }
 .receipt .warn { color: var(--yellow); }
 .receipt .err { color: #ff9d8c; }
 @media (max-width: 900px) {
-  .receipt { position: fixed; inset: auto 0 0 0; top: auto; max-height: 3.4rem; overflow: hidden; border-left: 0; border-top: 4px solid var(--yellow); padding: 0.6rem 1rem; z-index: 5; cursor: pointer; clip-path: none !important; }
+  .receipt { position: fixed; inset: auto 0 0 0; top: auto; max-height: 3.4rem; overflow: hidden; border-left: 0; border-top: 4px solid var(--yellow); padding: 0.6rem 1rem; z-index: 5; clip-path: none !important; }
   .receipt.open { max-height: 80vh; overflow-y: auto; }
-  .receipt .peek { display: flex !important; justify-content: space-between; align-items: center; }
+  .receipt .peek { display: flex !important; justify-content: space-between; align-items: center; width: 100%; cursor: pointer; }
   .receipt h2 { margin-inline: -1rem; padding-inline: 1rem; }
 }
-.receipt .peek { display: none; font-weight: 700; margin-bottom: 0.5rem; }
+.receipt .peek { display: none; font: inherit; font-weight: 700; color: inherit; background: none; border: 0; padding: 0; text-align: left; margin-bottom: 0.5rem; }
+.receipt .peek:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .receipt .money-note { font-size: 0.85rem; margin-top: 0.3rem; min-height: 1.2em; }
 
 /* ---- tables: the book's indigo head band and cream zebra rows ---- */
