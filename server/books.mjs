@@ -1,7 +1,8 @@
 // Books API: PDF uploads into the Library, one importer job at a time, AI settings and the review queue.
 // Who may call each route is server/auth.mjs's role table (need()): everything here is admin only, except the
 // edits and the table rules (admin and editors; GET /api/edits and /api/sr6/creation: anyone signed in), SR6's
-// creation rules (the server default: the admin) and the example sets (GET, anyone signed in); `who` is the signed-in user.
+// creation rules (the server default: the admin), the example sets (GET, anyone signed in) and Ask the rules (/api/ask and
+// /api/sr6/ask: anyone signed in); `who` is the signed-in user.
 // The server only moves requests and spawns `python -m importer …` (argument arrays, no shell); every
 // data file is written by the importer, except upload.xml (the uploaded name) and a failed job's status.xml.
 //
@@ -40,7 +41,8 @@
 //                                     the entry is saved with by="<username>"
 //   DELETE /api/edits/:kind/:id       drops the edit (the book's version shows again) -> { removed }
 //   POST   /api/edits/sources         body: { id, name } -> 204, a house-rule source (canon="false"); 400 { error: why }
-//   /api/sr6/books, /api/sr6/books/:id[/report|/reimport], /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
+//   /api/sr6/books, /api/sr6/books/reimport-all, /api/sr6/books/:id[/report|/reimport], DELETE /api/sr6/books/:id[?files=1],
+//   /api/sr6/edits[/:kind/:id]   the same for the Shadowrun 6 area
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS and samplefixes, existing entries only);
 //                                     no AI book import, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
