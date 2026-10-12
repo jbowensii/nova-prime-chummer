@@ -221,7 +221,7 @@ for (const [game, toc, hash, title, text] of [
   ['Anarchy', '#/rules', '#/rules/test.gadget-basics', 'Risk Reduction (spec)', 'Invented quick-reference text for this test.'],
   ['SR6', '#/sr6/rules', '#/sr6/rules/crb.making-trouble', 'Making Trouble', 'A second invented paragraph.'],
 ]) test(`${game} Rules: a table of contents; a title opens its drawer at its own address, a reload keeps it, Esc goes back`, async ({ page }) => {
-  const at = (h: string) => new RegExp(`${h.replace(/[./]/g, '\$&')}$`)
+  const at = (h: string) => new RegExp(`${h.replace(/[./]/g, '\\$&')}$`)
   await signIn(page, `/${toc}`)
   await expect(page.locator('.rule-toc li', { hasText: title })).toBeVisible()
   await expect(page.locator('.prose')).toHaveCount(0) // titles only: no rule text on the page itself

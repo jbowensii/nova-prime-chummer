@@ -115,6 +115,6 @@ export function parseDataFile(xml: string, file: string): ParsedFile {
   const kind = root.getAttribute('kind')
   if (root.localName !== 'data' || !kind) return { kind: '', entries: [], removals: [], error: { file, message: 'root must be <ca2:data kind="...">' } }
   const entries: Element[] = [], removals: string[] = []
-  for (const el of root.children) (el.localName === 'remove' ? removals.push(el.getAttribute('id')!) : entries.push(el))
+  for (const el of root.children) if (el.localName === 'remove') removals.push(el.getAttribute('id')!); else entries.push(el)
   return { kind, entries, removals }
 }

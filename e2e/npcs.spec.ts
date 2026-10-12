@@ -73,7 +73,7 @@ const NPC_FILE = `<?xml version="1.0" encoding="UTF-8"?>
   <build><attributes str="2" agi="5" wil="4" log="3" cha="3"/></build>
 </ca2:character>
 `
-const RUNNER_FILE = NPC_FILE.replace(/  <npc[^\n]*\n/, '').replace('npc-wisp-1', 'runner-1').replace('Made-up Wisp', 'Plain Runner').replace('metatype=""', 'metatype="human"')
+const RUNNER_FILE = NPC_FILE.replace(/ {2}<npc[^\n]*\n/, '').replace('npc-wisp-1', 'runner-1').replace('Made-up Wisp', 'Plain Runner').replace('metatype=""', 'metatype="human"')
 
 test('an editor makes a regular NPC: NPC mode editor, it saves and lists; the runner list never shows it', async ({ page }) => {
   await signIn(page, 'eve')

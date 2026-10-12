@@ -80,7 +80,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
   for (const a of b.amps) {
     const path = `amps.${a.uid}`
     if (!c.ampTypes.has(a.type)) add('ref.unknown', 'warning', path, `${a.name}: unknown amp type "${a.type}".`)
-    if (a.catalogId && !c.amps.has(a.catalogId)) gone(path, a.name, a.snapshot) ?? add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
+    if (a.catalogId && !c.amps.has(a.catalogId) && gone(path, a.name, a.snapshot) === undefined) add('ref.unknown', 'warning', path, `${a.name}: catalog entry "${a.catalogId}" not in the loaded data.`)
     if (a.vehicle && !c.vehicles.has(a.vehicle)) gone(path, a.name, a.chassis)
     const template = a.catalogId ? c.amps.get(a.catalogId) ?? a.snapshot : undefined
     // an amp named as one of the books' own catalog amps of its type (a sample runner's Jazz is the core rulebook's drug,
@@ -220,7 +220,7 @@ export function validate(c: Catalog, ch: Character, table?: TableFlags): Violati
 
   for (const i of b.items) {
     const path = `items.${i.uid}`
-    if (i.catalogId && !c.items.has(i.catalogId)) gone(path, i.name, i.snapshot) ?? add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
+    if (i.catalogId && !c.items.has(i.catalogId) && gone(path, i.name, i.snapshot) === undefined) add('ref.unknown', 'warning', path, `${i.name}: catalog entry "${i.catalogId}" not in the loaded data.`)
     if (i.price != null && i.price < 0) add('item.negativePrice', 'error', path, `${i.name}: a price below 0 would pay the runner; it counts as 0.`, 83)
     else if (i.price != null && !i.starting) add('custom.content', 'warning', path, `${i.name}: GM-set price ${i.price.toLocaleString('en-US')}¥.`, 84)
     // armor doesn't stack (CRB p.148), except a shield: an add-on worn over other armor is a house rule or the book's own
