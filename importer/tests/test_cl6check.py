@@ -515,3 +515,19 @@ class ClassTieBreakTest(unittest.TestCase):
         accept = __import__("tools.cl6check.optional", fromlist=["x"]).load_accept()
         self.assertEqual(accept[("dc", "suncell_electr")], "dc.suncell")
         self.assertIn(("bs", "fangs"), accept)
+
+
+class ExtraClassTest(unittest.TestCase):
+    def test_a_deliberate_extra_class_is_accepted_and_counted_with_the_entries_commlink6_lacks(self):
+        from types import SimpleNamespace
+        a = canon.canonical(rec('<item id="aaa" type="WEAPON_RANGED" subtype="BOWS"/>', name="Zed Laser")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Zed Laser", kind="weapons", **{"class": "WEAPON_LASER/PISTOLS_LIGHT"}),
+                                               entry("Lone", kind="weapons", **{"class": "WEAPON_LASER/RIFLE_ASSAULT"})], book_dir=None)}
+        extra = {"WEAPON_LASER/PISTOLS_LIGHT": "x", "WEAPON_LASER/RIFLE_ASSAULT": "x"}
+        results, extras, _ = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra=extra)
+        self.assertEqual((results[0]["families"]["class"], results[0]["class_via"]), (True, "extra class"))
+        m = report.metrics(results, extras, {}, {"jar": "", "ours": "", "when": ""})
+        self.assertEqual(m["deliberate_extra_classes"], 2)  # (the matched one and the entry with no record)
+        self.assertIn("deliberate extra classes", report.markdown(m))
+        none = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0][0]
+        self.assertFalse(none["families"]["class"])

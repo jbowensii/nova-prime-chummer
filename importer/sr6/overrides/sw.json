@@ -3,5 +3,6 @@
   {"cl6": "Shamanism", "kind": "traditions", "ours": ["Shaman tradition"]},
   {"cl6": "Stone Fist", "kind": "spells", "add": {"page": 53, "attrs": {"category": "manipulation", "range": "Touch", "type": "P", "duration": "S", "dv": "5"}}},
   {"cl6": "Disentangle", "kind": "spells", "add": {"page": 53, "attrs": {"category": "health", "range": "Touch", "type": "P", "duration": "P", "dv": "5"}}},
-  {"cl6": "Free Dive Deep Breath Mask", "kind": "gear", "id": "free-dive-deep-breath-mask", "set": {"class": "SURVIVAL/SURVIVAL_GEAR"}, "gen": "class"}
+  {"cl6": "Free Dive Deep Breath Mask", "kind": "gear", "id": "free-dive-deep-breath-mask", "set": {"class": "SURVIVAL/SURVIVAL_GEAR"}, "gen": "class"},
+  {"cl6": "New Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "set": {"class": "focus"}}
 ]

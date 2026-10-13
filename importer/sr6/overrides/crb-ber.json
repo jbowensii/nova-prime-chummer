@@ -1,0 +1,20 @@
+[
+  {"cl6": "E-Rickshaw", "kind": "vehicles", "id": "e-rickshaw", "set": {"class": "VEHICLES/CARS"}},
+  {"cl6": "Tuk-Tuk", "kind": "vehicles", "id": "tuk-tuk", "set": {"class": "VEHICLES/CARS"}},
+  {"cl6": "Drek Car", "kind": "vehicles", "id": "drek-car", "set": {"class": "VEHICLES/CARS"}},
+  {"cl6": "Better Drek Car", "kind": "vehicles", "id": "better-drek-car", "set": {"class": "VEHICLES/CARS"}},
+  {"cl6": "BÆR Schlachtkreuzer", "kind": "vehicles", "id": "b-r-schlachtkreuzer", "set": {"class": "VEHICLES/GRAV"}},
+  {"cl6": "Kuznechik Airbike", "kind": "vehicles", "id": "kuznechik-airbike", "set": {"class": "VEHICLES/GRAV"}},
+  {"cl6": "Ruhrmetall Selket Crowd Control Walker", "kind": "vehicles", "id": "ruhrmetall-selket-crowd-control-walker", "set": {"class": "VEHICLES/GRAV"}},
+  {"cl6": "Sorokin Predator I", "kind": "weapons", "id": "sorokin-predator-i", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}},
+  {"cl6": "Altmayr White Star", "kind": "weapons", "id": "altmayr-white-star", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}},
+  {"cl6": "HaKa Skorpion", "kind": "weapons", "id": "haka-skorpion", "set": {"class": "WEAPON_FIREARMS/MACHINE_PISTOLS"}},
+  {"cl6": "HaKa MP2", "kind": "weapons", "id": "haka-mp2", "set": {"class": "WEAPON_FIREARMS/SUBMACHINE_GUNS"}},
+  {"cl6": "Barzani AK-47M1", "kind": "weapons", "id": "barzani-ak-47m1", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "Samopal vz/88V", "kind": "weapons", "id": "samopal-vz-88v", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "Sorokin G9", "kind": "weapons", "id": "sorokin-g9", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "BÆR E-Sperber (Scooter)", "kind": "vehicles", "id": "b-r-e-sperber-scooter", "set": {"class": "VEHICLES/BIKES"}},
+  {"cl6": "Rat Bike", "kind": "vehicles", "id": "rat-bike", "set": {"class": "VEHICLES/BIKES"}},
+  {"cl6": "Drek Van", "kind": "vehicles", "id": "drek-van", "set": {"class": "VEHICLES/VANS"}},
+  {"cl6": "Junk Dog", "kind": "vehicles", "id": "junk-dog", "set": {"class": "DRONE_MEDIUM/GROUND"}}
+]

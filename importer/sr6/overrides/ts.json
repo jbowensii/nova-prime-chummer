@@ -19,5 +19,16 @@
   {"cl6": "Foamtek Carbine", "kind": "weapons", "id": "foamtek-carbine", "set": {"class": "WEAPON_SPECIAL/THROWERS"}, "gen": "class"},
   {"cl6": "Rocket Foamtek", "kind": "weapons", "id": "foamtek-rocket", "set": {"class": "AMMUNITION/ROCKETS"}, "gen": "class"},
   {"cl6": "Mancatcher", "kind": "weapons", "id": "mancatcher", "set": {"class": "WEAPON_CLOSE_COMBAT/CLUBS"}, "gen": "class"},
-  {"cl6": "Parashield Zapgun", "kind": "weapons", "id": "parashield-zapgun", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}, "gen": "class"}
+  {"cl6": "Parashield Zapgun", "kind": "weapons", "id": "parashield-zapgun", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}, "gen": "class"},
+  {"cl6": "Mk4 Folding Shield", "kind": "armor", "id": "mk4-folding-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "Mk1 Tactical Shield", "kind": "armor", "id": "mk1-tactical-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "Mk2 Riot Shield", "kind": "armor", "id": "mk2-riot-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "Mk3 Deployable Barrier Shield", "kind": "armor", "id": "mk3-deployable-barrier-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "GAPS Medium", "kind": "armor", "id": "gaps-medium", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "GAPS Heavy", "kind": "armor", "id": "gaps-heavy", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Trauma Response System (Basic) refill", "kind": "gear", "id": "trauma-response-system-basic-refill", "set": {"class": "AMMUNITION/AMMUNITION_SPECIAL"}},
+  {"cl6": "Trauma Response System (Advanced) refill", "kind": "gear", "id": "trauma-response-system-advanced-refill", "set": {"class": "AMMUNITION/AMMUNITION_SPECIAL"}},
+  {"cl6": "Shadowmarket solvent spray", "kind": "gear", "id": "shadowmarket-solvent-spray", "set": {"class": "CHEMICALS/INDUSTRIAL_CHEMICALS"}},
+  {"cl6": "Mk1 Tactical Shield", "kind": "weapons", "id": "mk1-tactical-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "Mk2 Riot Shield", "kind": "weapons", "id": "mk2-riot-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}}
 ]

@@ -8,5 +8,13 @@
   {"cl6": "Ballista, Standard", "kind": "weapons", "id": "ballista-standard", "set": {"class": "WEAPON_RANGED/BALLISTAS"}, "gen": "class"},
   {"cl6": "Cannon, Heavy", "kind": "weapons", "id": "cannon-heavy", "set": {"class": "WEAPON_VEHICLE/CANNON"}, "gen": "class"},
   {"cl6": "Cannon, Light", "kind": "weapons", "id": "cannon-light", "set": {"class": "WEAPON_VEHICLE/CANNON"}, "gen": "class"},
-  {"cl6": "Cannon, Standard", "kind": "weapons", "id": "cannon-standard", "set": {"class": "WEAPON_VEHICLE/CANNON"}, "gen": "class"}
+  {"cl6": "Cannon, Standard", "kind": "weapons", "id": "cannon-standard", "set": {"class": "WEAPON_VEHICLE/CANNON"}, "gen": "class"},
+  {"cl6": "Ares Encounter Suit Mk III", "kind": "armor", "id": "ares-encounter-suit-mk-iii", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Generic Encounter Suit (light milspec)", "kind": "armor", "id": "generic-encounter-suit-light-milspec", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Encounter Suit Helmet", "kind": "armor", "id": "encounter-suit-helmet", "set": {"class": "ARMOR/ARMOR_HELMET"}},
+  {"cl6": "Low-Threat Exploration Suit", "kind": "armor", "id": "low-threat-exploration-suit", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Shadow Cloak", "kind": "gear", "id": "shadow-cloak", "set": {"class": "focus"}},
+  {"cl6": "Sextant of Worlds", "kind": "gear", "id": "sextant-of-worlds", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}},
+  {"cl6": "Shadow Amulet", "kind": "gear", "id": "shadow-amulet", "set": {"class": "focus"}},
+  {"cl6": "Map/Grimoire", "kind": "gear", "id": "map-grimoire", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}}
 ]

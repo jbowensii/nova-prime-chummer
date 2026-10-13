@@ -10,5 +10,8 @@
   {"cl6": "Gaeatronics Kneader", "kind": "vehicles", "id": "gaeatronics-kneader-small-surveillance-anthro-drone", "set": {"class": "DRONE_MEDIUM/ANTHRO"}, "gen": "class"},
   {"cl6": "MCT Fox", "kind": "vehicles", "id": "mct-fox-off-road-truck", "set": {"class": "VEHICLES/TRUCKS"}, "gen": "class"},
   {"cl6": "Mitsubishi Heziba", "kind": "vehicles", "id": "mitsubishi-heziba-hovercraft", "set": {"class": "VEHICLES/HOVERCRAFT"}, "gen": "class"},
-  {"cl6": "Surfstar Marine Seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"}
+  {"cl6": "Surfstar Marine Seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
+  {"cl6": "Ammunition", "kind": "gear", "id": "ammunition", "remove": true},
+  {"cl6": "Hunter’s Alloy (Regular)", "kind": "gear", "id": "hunters-alloy-regular", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Hunter’s Alloy (Orichalcum)", "kind": "gear", "id": "hunters-alloy-orichalcum", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}}
 ]

@@ -116,7 +116,10 @@ def metrics(results, extras, excluded, meta):
 
     cm = [r for r in matched if "class" in r["families"]]  # (matched records of the kinds that carry a class)
     byk = group(cm, "kind")
-    m["class_match"] = {"matched": len(cm), "equal": sum(1 for r in cm if r["families"]["class"]),
+    from importer.sr6 import classes as ours_classes
+    ex = ours_classes.extra()
+    m["deliberate_extra_classes"] = sum(1 for r in cm if r.get("class_via")) + sum(1 for e in extras if e["attrs"].get("class") in ex)
+    m["class_match"] = {"via_section_class": sum(1 for r in cm if r.get("class_via")), "matched": len(cm), "equal": sum(1 for r in cm if r["families"]["class"]),
                         "pct": pct(sum(1 for r in cm if r["families"]["class"]), len(cm)),
                         "by_kind": {k: {"matched": len(rs), "equal": sum(1 for r in rs if r["families"]["class"]),
                                         "pct": pct(sum(1 for r in rs if r["families"]["class"]), len(rs))}
@@ -246,7 +249,8 @@ def markdown(m, dl=None):
          f"{m.get('cl6_only', {}).get('records', 0):,} / {m.get('cl6_only', {}).get('fields', 0):,} |",
          f"| accuracy, verified printed differences (class b) as printed | {a['exact_but_b']:,} = {a['pct_b_as_printed']}%{_d('accuracy.pct_b_as_printed', dl)} |",
          f"| matched via optional package (docs/sr6-cl6-optional-package.md; counted in the matches above) | {m.get('optional_package', 0):,} |",
-         f"| class match (ours `class` = Commlink6's TYPE/SUBTYPE, case-insensitive): matched records of kinds that carry one | {m.get('class_match', {}).get('equal', 0):,} / {m.get('class_match', {}).get('matched', 0):,} = {m.get('class_match', {}).get('pct', 0)}% |",
+         f"| class match (ours `class` = Commlink6's TYPE/SUBTYPE, case-insensitive): matched records of kinds that carry one | {m.get('class_match', {}).get('equal', 0):,} / {m.get('class_match', {}).get('matched', 0):,} = {m.get('class_match', {}).get('pct', 0)}% (of which {m.get('class_match', {}).get('via_section_class', 0):,} entries in a section with a deliberate extra class, CRITTERWARE/AUGMENTATION, accepted whatever Commlink6's class is) |",
+         f"| deliberate extra classes (ours, not Commlink6's; accepted, entries with no Commlink6 match too) | {m.get('deliberate_extra_classes', 0):,} |",
          f"| matched as already in our data (relocated.json; counted in the matches above) | {m.get('already_have', 0):,} |",
          f"| matched records with a class-a (importer) error | {a['with_class_a']:,} |", "",
          "Excluded from the owned denominator: " + (", ".join(f"{k} {v}" for k, v in c["excluded_from_owned"].items())

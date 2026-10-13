@@ -26,7 +26,7 @@ from tools.cl6check import optional as optional_package
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None):
+def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
@@ -85,11 +85,11 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None):
             results.append(r)
         book.close()
         extras += [e for e in entries if id(e) not in matched and id(e) not in moved]
-    _settle_classes(results, optional_package.load_accept() if accept is None else accept)
+    _settle_classes(results, optional_package.load_accept() if accept is None else accept, sections, extra)
     return results, extras, pairs
 
 
-def _settle_classes(results, accept):
+def _settle_classes(results, accept, sections=None, extra=None):
     """Two records matching one entry can class it two ways: the one whose class is a type of the entry's kind is the one
     compared (a rocket launcher is `WEAPON_SPECIAL/LAUNCHERS`, not the `AMMUNITION/ROCKETS` of its rocket); a record the
     owner accepts (class_accept.json) counts equal."""
@@ -103,9 +103,20 @@ def _settle_classes(results, accept):
             for r in rs:
                 if r not in fits:
                     del r["families"]["class"]
+    from importer.sr6 import classes
+    rules = classes.prefixes() if sections is None else sections
+    extra = classes.extra() if extra is None else extra
     for r in results:
         if "class" in r["families"] and accept.get((r["src"], r["id"])) == r["our_id"]:
             r["families"]["class"] = True
+        elif "class" in r["families"] and r.get("our_class") and any(
+                classes.in_section(x, r["src"], r["our_kind"], r["our_page"]) and r["our_class"] == x["class"] for x in rules):
+            # a section's deliberate extra class (CRITTERWARE/AUGMENTATION, not Commlink6's): accepted whatever Commlink6's is
+            r["families"]["class"] = True
+            r["class_via"] = "section class"
+        elif "class" in r["families"] and r.get("our_class") in extra:  # (a deliberate extra class: Commlink6 has no such one)
+            r["families"]["class"] = True
+            r["class_via"] = "extra class"
 
 
 def run_imports(books_file, out, jobs):

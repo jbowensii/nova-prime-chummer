@@ -706,6 +706,29 @@ of another category gets it from an id row of its book's override table (`{"cl6"
 Both are made by `python -m tools.cl6check.classmap <category_class_map.csv> <runs dir>` (re-runnable; it replaces only
 the rows with `"gen": "class"`).
 
+## Structure ops in the per-book tables, and the extra classes
+
+Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries
+by their unscoped id, applied in this order: remove and merge, the class rows, then rename and move_kind. An entry a row
+names that isn't there is reported once on stderr and nothing is guessed; each is idempotent, and none may name a
+description field.
+
+- `{"kind","id","remove":true}`: the entry goes, its aliases with it and its text from the texts file (a heading artifact,
+  a duplicate of an NPC).
+- `{"kind","merge":{"into","from","from_kind"}}`: the attributes `into` lacks (skill, spec, type, dv, ar, ammo, modes …,
+  never id, source, page, class or group) are copied from `from`, the stat table's copy of it, which then goes.
+- `{"kind","id","rename":"<name>"}`: a new name, names only; the old printed name stays as an `<alias>` unless
+  `"alias": false` (a name the import damaged).
+- `{"move_kind":{"id","from":"gear","to":"weapons"}}`: the entry is re-filed in weapons.xml as a close-combat weapon
+  (skill Close Combat, spec from its class subtype: Blades, Clubs, Unarmed), keeping page, avail and cost; attributes the
+  weapons schema lacks (capacity, karma, per, slots, energy) are dropped. An id the target file has already is left.
+
+Classes that are not Commlink6's (`importer/sr6/classes/extra_classes.json`, each with a reason): `CRITTERWARE/*`
+(critter-only; the app keeps any entry of such a class out of the player's pickers and refuses to buy it), the space drones
+and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6's firearms naming). `python -m
+tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
+take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had).
+
 ## Layout and load order
 
 ```

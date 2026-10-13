@@ -22,5 +22,17 @@
   {"cl6": "Fashion Accessory (Specialized)", "kind": "gear", "id": "specialized", "set": {"class": "ACCESSORY/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "Fashion Accessory (Standard)", "kind": "gear", "id": "standard", "set": {"class": "ACCESSORY/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "Swindler Stick (Standard)", "kind": "gear", "id": "swindler-stick", "set": {"class": "ELECTRONICS/ID_CREDIT"}, "gen": "class"},
-  {"cl6": "Transforming Garment", "kind": "gear", "id": "transforming-garment-rating-5-6", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"}
+  {"cl6": "Transforming Garment", "kind": "gear", "id": "transforming-garment-rating-5-6", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"},
+  {"cl6": "Fancy Weapon", "kind": "gear", "id": "fancy-weapon", "set": {"class": "ACCESSORY/ARMOR_BODY"}},
+  {"cl6": "Brutal Weapon", "kind": "gear", "id": "brutal-weapon", "set": {"class": "ACCESSORY/ARMOR_BODY"}},
+  {"cl6": "Transforming Garment (Rating 1–2)", "kind": "gear", "id": "transforming-garment-rating-1-2", "set": {"class": "ARMOR/ARMOR_CLOTHES"}},
+  {"cl6": "Transforming Garment (Rating 3–4)", "kind": "gear", "id": "transforming-garment-rating-3-4", "set": {"class": "ARMOR/ARMOR_CLOTHES"}},
+  {"cl6": "Free!", "kind": "gear", "id": "free", "set": {"class": "ELECTRONICS/COMMUNICATION"}},
+  {"cl6": "Basic", "kind": "gear", "id": "basic", "set": {"class": "ELECTRONICS/COMMUNICATION"}},
+  {"cl6": "Premium", "kind": "gear", "id": "premium", "set": {"class": "ELECTRONICS/COMMUNICATION"}},
+  {"cl6": "VIP", "kind": "gear", "id": "vip", "set": {"class": "ELECTRONICS/COMMUNICATION"}},
+  {"cl6": "Single Use (Basic)", "kind": "gear", "id": "single-use-basic", "set": {"class": "ELECTRONICS/COMMUNICATION"}},
+  {"cl6": "Grooming (1 hour)", "kind": "gear", "id": "grooming-1-hour", "remove": true},
+  {"cl6": "Grooming (2+ hours)", "kind": "gear", "id": "grooming-2-hours", "remove": true},
+  {"cl6": "The Red Box", "kind": "gear", "id": "the-red-box", "set": {"class": "ELECTRONICS/SECURITY"}}
 ]

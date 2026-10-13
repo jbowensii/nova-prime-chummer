@@ -1,6 +1,6 @@
 # SR6 import completeness vs CommLink6, 2026-10-13
 
-Measured on a fresh import of all 68 books (branch `fix/sr6-cl6-parity`), compared with CommLink6 1.14.0 by `tools/cl6check`. Report folder: `.extract/cl6check6` (not committed). English records only; German records, records with no book and page, and CommLink6 pseudo-records are left out.
+Measured on a fresh import of all 68 books (branch `fix/sr6-cl6-parity`), compared with CommLink6 1.14.0 by `tools/cl6check`. Report folder: `.extract/cl6check7` (not committed). English records only; German records, records with no book and page, and CommLink6 pseudo-records are left out.
 
 ## Result
 
@@ -10,6 +10,7 @@ Measured on a fresh import of all 68 books (branch `fix/sr6-cl6-parity`), compar
 | Completeness, pages we own | 4,364 / 4,364 = 100.0% |
 | Class match (our `class` = CommLink6 TYPE/SUBTYPE) | 2,333 / 2,333 = **100.0%** |
 | Accuracy, every compared field equal | 3,922 / 4,287 = 91.49% |
+| Deliberate extra classes in our data (not CommLink6's) | 75 entries (classes listed in `importer/sr6/classes/extra_classes.json`) |
 | Accuracy, with verified printed differences counted as printed | 4,031 = 94.03% |
 | Importer errors (class a) | 5 |
 | Left out: CommLink6 records no book prints as an item | 69 |
@@ -29,7 +30,13 @@ Measured on a fresh import of all 68 books (branch `fix/sr6-cl6-parity`), compar
 
 ## Items we have that CommLink6 does not
 
-999 items. Spreadsheet: `.extract/cl6check4/we-have-commlink6-does-not-2026-10-13.xlsx`. By kind: npcs 265, augmentations 136, lifemodules 92, gear 76, critters 71, contacts 64, spirits 52, weapons 49, qualities 39, qualitypaths 32. These have not been validated against the book text yet; that is the next step.
+994 items. Spreadsheet: `.extract/cl6check4/we-have-commlink6-does-not-2026-10-13.xlsx`. By kind: npcs 265, augmentations 136, lifemodules 92, gear 76, critters 71, contacts 64, spirits 52, weapons 49, qualities 39, qualitypaths 32. These have not been validated against the book text yet; that is the next step.
+
+## Class and category (CommLink6 TYPE/SUBTYPE)
+
+- Every matched item carries CommLink6's own class in a new optional `class` attribute (2,333 of 2,333 = 100.0%): 240 categories mapped once in `importer/sr6/classes/category_class.json`, plus per-item override rows in `importer/sr6/overrides/*.json`.
+- The 207 items CommLink6 cannot classify were decided one by one by the owner against the book page (194 classes, 9 removals, 4 merges). Where CommLink6 has no class, a deliberate extra class was added and registered (CRITTERWARE/AUGMENTATION and /GEAR for critter-only gear, which players cannot select; DRONE_*/SPACE; VEHICLES/SPACE_BIKES and /SPACE_BOARDS; the WEAPON_LASER family).
+- New override operations: remove, merge, move_kind, rename (documented in `docs/sr6-data-format.md`).
 
 ## Open work
 

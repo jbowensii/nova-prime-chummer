@@ -2,6 +2,7 @@
 invented."""
 import json
 import unittest
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import overrides, regroup
@@ -82,7 +83,7 @@ class OverridesTest(unittest.TestCase):
     def test_every_shipped_table_is_well_formed_and_sets_no_text(self):
         for p in overrides.DIR.glob("*.json"):
             for r in json.loads(p.read_text(encoding="utf8")):
-                self.assertTrue({"cl6", "kind"} <= set(r) and (r.get("ours") or r.get("add") or r.get("id")), (p.name, r))
+                self.assertTrue(({"cl6", "kind"} <= set(r) or "move_kind" in r) and (r.get("ours") or r.get("add") or r.get("id") or r.get("merge") or r.get("move_kind")), (p.name, r))
             overrides.table(p.stem)  # (raises on a description field)
 
 
@@ -295,7 +296,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
@@ -325,7 +326,7 @@ class HandClassRowsTest(unittest.TestCase):
     def test_the_owners_class_decisions_are_hand_rows_the_generator_leaves_alone(self):
         from tools.cl6check import classmap
         got = {(p.stem, r["kind"], r["id"]): r["set"]["class"] for p in overrides.DIR.glob("*.json")
-               for r in overrides.table(p.stem) if "id" in r and not r.get("gen")}
+               for r in overrides.table(p.stem) if "id" in r and "set" in r and not r.get("gen")}
         self.assertEqual({k: got.get(k) for k in self.WANT}, self.WANT)
         self.assertLessEqual(set(self.WANT), classmap.hand_ids())
 
@@ -340,3 +341,186 @@ class HandClassRowsTest(unittest.TestCase):
         row = next(r for r in overrides.table("crb") if r["kind"] == "programs" and r["add"].get("id") == "encryption-rcc")
         out = ET.fromstring(overrides.apply("crb", {}, [row])["programs.xml"].encode())[0]
         self.assertEqual((out.get("id"), out.findtext("name"), out.get("class"), out.get("cost")), ("encryption-rcc", "Encryption", "SOFTWARE/RIGGER_PROGRAM", "250"))
+
+
+class ConsensusClassRowsTest(unittest.TestCase):
+    CSV = Path(__file__).resolve().parents[2] / ".extract" / "class-patterns" / "consensus_rows.csv"
+
+    def test_every_consensus_class_is_a_hand_row_in_its_sources_table(self):
+        import csv
+        if not self.CSV.is_file():
+            self.skipTest("the consensus csv is the owner's local study")
+        have = {(p.stem, r["kind"], r["id"]): r["set"]["class"] for p in overrides.DIR.glob("*.json")
+                for r in overrides.table(p.stem) if "id" in r and "set" in r and not r.get("gen")}
+        rows = list(csv.DictReader(open(self.CSV, encoding="utf-8-sig")))
+        self.assertEqual(len(rows), 287)
+        missing = [r["our_id"] for r in rows if have.get((r["src"], r["kind"], r["our_id"][len(r["src"]) + 1:])) != r["class"]]
+        self.assertEqual(missing, [])
+
+    def test_no_class_row_is_listed_twice_in_a_table(self):
+        for p in overrides.DIR.glob("*.json"):
+            keys = [(r["kind"], r["id"], tuple(k for k in ("set", "remove", "rename") if k in r)) for r in overrides.table(p.stem) if "id" in r]
+            self.assertEqual(len(keys), len(set(keys)), p.name)
+
+
+class SectionClassTest(unittest.TestCase):
+    RULES = [{"src": "zz", "kinds": ["gear"], "pages": [10, 20], "class": "CRITTERWARE/AUGMENTATION"}]
+    XML = ('<?xml version="1.0" encoding="UTF-8"?>\n<d kind="gear">'
+           '<gear id="zz.in" source="ZZ" page="10" category="Zorp"><name>In</name></gear>'
+           '<gear id="zz.had" source="ZZ" page="20" category="Zorp" class="BIOWARE/BIOWARE_STANDARD"><name>Had</name></gear>'
+           '<gear id="zz.none" source="ZZ" page="15" category="Other"><name>None</name></gear>'
+           '<gear id="zz.out" source="ZZ" page="21" category="Zorp"><name>Out</name></gear></d>\n')
+
+    def test_a_sections_entries_all_take_its_class_whatever_they_had_and_others_are_left(self):
+        from importer.sr6 import classes
+        out = classes.apply({"gear.xml": self.XML}, {"gear": {"Zorp": "TOOLS/TOOLS"}}, "zz", self.RULES)
+        got = {e.get("id"): e.get("class") for e in ET.fromstring(out["gear.xml"].encode())}
+        self.assertEqual(got, {"zz.in": "CRITTERWARE/AUGMENTATION", "zz.had": "CRITTERWARE/AUGMENTATION",
+                               "zz.none": "CRITTERWARE/AUGMENTATION", "zz.out": "TOOLS/TOOLS"})  # (an unclassed one in range is filled)
+        other = classes.apply({"gear.xml": self.XML}, {}, "yy", self.RULES)  # (another source: not its section)
+        self.assertEqual(other, {"gear.xml": self.XML})
+
+    def test_the_shipped_section_rule_and_its_extra_class_agree(self):
+        import json
+        import re
+        from importer.sr6 import classes
+        extra = json.loads(classes.EXTRA.read_text(encoding="utf8"))
+        for r in classes.prefixes():
+            self.assertIn(r["class"], extra)
+            self.assertTrue(re.fullmatch(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?", r["class"]))
+        self.assertEqual([(r["src"], r["pages"]) for r in classes.prefixes()], [("bs", [134, 166])])
+
+    def test_cl6check_accepts_a_section_class_whatever_commlink6s_is(self):
+        from types import SimpleNamespace
+        from importer.tests.test_cl6check import rec, entry
+        from tools.cl6check import __main__ as cli, canon
+        a = canon.canonical(rec('<item id="aaa" type="BIOWARE" subtype="BIOWARE_STANDARD"/>', name="Beast Eye", book="bs")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Beast Eye", kind="gear", page="15", **{"class": "CRITTERWARE/AUGMENTATION"})], book_dir=None)}
+        rules = [{"src": "gz", "kinds": ["gear"], "pages": [10, 20], "class": "CRITTERWARE/AUGMENTATION"}]
+        r = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=rules)[0][0]
+        self.assertEqual((r["families"]["class"], r.get("class_via")), (True, "section class"))
+        r = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0][0]
+        self.assertFalse(r["families"]["class"])
+
+
+class StructureOpsTest(unittest.TestCase):
+    GEAR = ('<?xml version="1.0" encoding="UTF-8"?>\n<!-- Generated by the importer. -->\n<d kind="gear">'
+            '<gear id="zz.a" source="ZZ" page="1" category="Branded weapon" avail="4" cost="9" capacity="2" class="WEAPON_CLOSE_COMBAT/CLUBS"><name>Alpha</name><alias>Old</alias></gear>'
+            '<gear id="zz.b" source="ZZ" page="1" category="Tool"><name>Beta</name></gear>'
+            '<gear id="zz.dup" source="ZZ" page="1" category="Tool"><name>Dup</name><alias>Dupe</alias></gear></d>\n')
+    WEAPONS = ('<?xml version="1.0" encoding="UTF-8"?>\n<d kind="weapons">'
+               '<weapon id="zz.a" source="ZZ" page="1" category="New powered weapon" type="Chain" dv="4P" ar="9/—/—/—/—" avail="7" class="X/Y"><name>Alpha</name></weapon>'
+               '<weapon id="zz.w" source="ZZ" page="2" category="Blade"><name>W</name></weapon></d>\n')
+    TEXTS = ('<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n  <text of="gear" id="zz.dup">Invented.</text>\n'
+             '  <text of="gear" id="zz.b">Kept.</text>\n</sr6:data>\n')
+
+    def run_ops(self, rows, files=None):
+        return overrides.apply("zz", files or {"gear.xml": self.GEAR, "weapons.xml": self.WEAPONS}, rows)
+
+    @staticmethod
+    def ids(xml):
+        return [(e.get("id"), e.findtext("name")) for e in ET.fromstring(xml.encode())]
+
+    def test_remove_deletes_the_entry_and_its_text_and_is_idempotent_and_logs_a_missing_id(self):
+        rows = [{"cl6": "Dup", "kind": "gear", "id": "zz.dup", "remove": True}, {"cl6": "N", "kind": "gear", "id": "zz.nope", "remove": True}]
+        out = self.run_ops(rows)
+        self.assertEqual(self.ids(out["gear.xml"]), [("zz.a", "Alpha"), ("zz.b", "Beta")])
+        self.assertNotIn("Dupe", out["gear.xml"])  # (its aliases went with it)
+        self.assertIn("Generated by the importer", out["gear.xml"])
+        self.assertEqual(self.run_ops(rows, out), out)  # again: nothing more
+        t = overrides.texts("zz", out, self.TEXTS, rows)
+        self.assertEqual([(x.get("id"), x.text) for x in ET.fromstring(t.encode())], [("zz.b", "Kept.")])
+
+    def test_merge_copies_the_attributes_the_target_lacks_and_removes_the_copy(self):
+        rows = [{"cl6": "Alpha", "kind": "gear", "merge": {"into": "zz.a", "from": "zz.a", "from_kind": "weapons"}}]
+        out = self.run_ops(rows)
+        a = ET.fromstring(out["gear.xml"].encode())[0]
+        self.assertEqual((a.get("type"), a.get("dv"), a.get("avail"), a.get("category"), a.get("class")),
+                         ("Chain", "4P", "4", "Branded weapon", "WEAPON_CLOSE_COMBAT/CLUBS"))  # (what it had stays)
+        self.assertEqual(self.ids(out["weapons.xml"]), [("zz.w", "W")])
+        self.assertEqual(self.run_ops(rows, out), out)  # again: both gone or merged, logged, nothing changed
+
+    def test_rename_sets_the_name_keeps_the_old_one_as_an_alias_and_is_idempotent(self):
+        rows = [{"cl6": "N", "kind": "gear", "id": "zz.b", "rename": "Beta (Big)"}, {"cl6": "N", "kind": "gear", "id": "zz.dup", "rename": "Dup 2", "alias": False}]
+        out = self.run_ops(rows)
+        e = {x.get("id"): x for x in ET.fromstring(out["gear.xml"].encode())}
+        self.assertEqual((e["zz.b"].findtext("name"), [a.text for a in e["zz.b"].findall("alias")]), ("Beta (Big)", ["Beta"]))
+        self.assertEqual([a.text for a in e["zz.dup"].findall("alias")], ["Dupe"])  # (no alias of the old name)
+        self.assertEqual(self.run_ops(rows, out), out)
+        with self.assertRaises(ValueError):
+            self.run_ops([{"cl6": "N", "kind": "gear", "id": "zz.b", "rename": "two\nlines"}])
+
+    def test_move_kind_files_a_gear_entry_as_a_close_combat_weapon_and_leaves_one_the_target_has(self):
+        rows = [{"cl6": "Alpha", "move_kind": {"id": "zz.b", "from": "gear", "to": "weapons"}},
+                {"cl6": "A", "move_kind": {"id": "zz.a", "from": "gear", "to": "weapons"}}]
+        out = self.run_ops(rows)
+        self.assertEqual([i for i, _ in self.ids(out["gear.xml"])], ["zz.a", "zz.dup"])  # (zz.a: the weapons file has it: left)
+        w = {x.get("id"): x for x in ET.fromstring(out["weapons.xml"].encode())}
+        self.assertEqual((w["zz.b"].tag, w["zz.b"].get("skill"), w["zz.b"].get("category")), ("weapon", "Close Combat", "Tool"))
+        solo = self.run_ops([{"cl6": "Alpha", "move_kind": {"id": "zz.a", "from": "gear", "to": "weapons"}}], {"gear.xml": self.GEAR})
+        a = ET.fromstring(solo["weapons.xml"].encode())[0]
+        self.assertEqual((a.get("spec"), a.get("capacity"), a.get("cost"), a.get("class")), ("Clubs", None, "9", "WEAPON_CLOSE_COMBAT/CLUBS"))
+        self.assertEqual(self.run_ops(rows, out), out)
+
+    def test_no_op_names_a_description_field(self):
+        for bad in ({"cl6": "x", "kind": "gear", "merge": {"into": "a", "from": "b", "description": "t"}},
+                    {"cl6": "x", "move_kind": {"id": "a", "from": "gear", "to": "weapons", "text": "t"}}):
+            with self.assertRaises(ValueError):
+                self.run_ops([bad])
+
+    def test_the_decisions_are_in_the_tables_and_every_class_is_known(self):
+        import json as j
+        extra = j.loads((overrides.DIR.parent / "classes" / "extra_classes.json").read_text(encoding="utf8"))
+        for k in ("CRITTERWARE/AUGMENTATION", "CRITTERWARE/GEAR", "DRONE_SMALL/SPACE", "DRONE_LARGE/SPACE", "VEHICLES/SPACE_BIKES",
+                  "VEHICLES/SPACE_BOARDS", "WEAPON_LASER", "WEAPON_LASER/PISTOLS_LIGHT", "WEAPON_LASER/PISTOLS_MEDIUM",
+                  "WEAPON_LASER/PISTOLS_HEAVY", "WEAPON_LASER/SUBMACHINE_GUNS_LIGHT", "WEAPON_LASER/SUBMACHINE_GUNS_MEDIUM",
+                  "WEAPON_LASER/RIFLE_ASSAULT", "WEAPON_LASER/ASSAULT_CANNON"):
+            self.assertIn(k, extra)
+        t = lambda s: overrides.table(s)  # noqa: E731
+        self.assertEqual(sum(1 for r in t("lhv") if "move_kind" in r), 14)
+        self.assertEqual(sum(1 for r in t("lhv") if "merge" in r), 4)
+        self.assertEqual({r["id"] for s in ("thn", "lhv", "so", "tne", "wl", "sif-no") for r in t(s) if r.get("remove")},
+                         {"knight-errant-swat-officers", "toxins-drugs-and-diseases.scourge", "grooming-1-hour", "grooming-2-hours", "special-notes",
+                          "negative-quality", "positive-quality", "trained-command", "ammunition"})
+        self.assertEqual({r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r},
+                         {"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
+                          "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"})
+
+
+class LatestDecisionsTest(unittest.TestCase):
+    def test_the_whole_critter_chapter_is_one_class_and_the_chainblade_duplicate_goes(self):
+        import json as j
+        from importer.sr6 import classes
+        self.assertNotIn("CRITTERWARE/CYBER_BODYWARE", classes.extra())
+        bs = overrides.table("bs")
+        self.assertEqual([r["id"] for r in bs if r.get("id") in {"spikes-module", "turret-mount-small", "turret-mount-large"} and "set" in r], [])
+        xml = ('<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="bs.x" source="BS" page="140" type="cyberware" category="Odd" '
+               'class="CRITTERWARE/CYBER_BODYWARE"><name>X</name></augmentation></d>\n')
+        out = classes.apply({"augmentations.xml": xml}, {}, "bs")["augmentations.xml"]  # (the shipped section rule)
+        self.assertEqual(ET.fromstring(out.encode())[0].get("class"), "CRITTERWARE/AUGMENTATION")
+        sco = overrides.table("sco")
+        self.assertIn({"cl6": "Chainblade", "kind": "gear", "id": "chainblade", "remove": True}, sco)
+        self.assertTrue(any(r.get("kind") == "weapons" and r.get("id") == "chainblade" and r["set"]["class"] == "WEAPON_CLOSE_COMBAT/BLADES" for r in sco if "set" in r))
+        self.assertFalse(any(r.get("move_kind", {}).get("id") == "chainblade" for r in sco))
+
+
+class ArmorToGearMoveTest(unittest.TestCase):
+    def test_move_kind_files_an_armor_entry_as_gear_dropping_the_armor_only_attributes(self):
+        armor = ('<?xml version="1.0"?>\n<d kind="armor"><armor id="zz.suit" source="ZZ" page="78" category="Spacesuit" defense="—" social="+1" '
+                 'capacity="2" avail="3" cost="1000" class="SURVIVAL/SURVIVAL_GEAR"><name>Suit</name></armor></d>\n')
+        rows = [{"cl6": "Suit", "move_kind": {"id": "zz.suit", "from": "armor", "to": "gear"}}]
+        out = overrides.apply("zz", {"armor.xml": armor}, rows)
+        g = ET.fromstring(out["gear.xml"].encode())[0]
+        self.assertEqual((g.tag, g.get("defense"), g.get("social"), g.get("skill"), g.get("capacity"), g.get("cost"), g.get("page"), g.get("class")),
+                         ("gear", None, None, None, "2", "1000", "78", "SURVIVAL/SURVIVAL_GEAR"))
+        self.assertEqual(len(ET.fromstring(out["armor.xml"].encode())), 0)
+        self.assertEqual(overrides.apply("zz", out, rows), out)  # again: nothing to move
+        with self.assertRaises(ValueError):
+            overrides.apply("zz", {}, [{"cl6": "x", "move_kind": {"id": "a", "from": "armor", "to": "gear", "text": "t"}}])
+        self.assertIn({"cl6": "Emergency Rescue System", "move_kind": {"id": "emergency-rescue-system", "from": "armor", "to": "gear"}}, overrides.table("ed"))
+
+    def test_the_gti_drones_are_space_drones_and_the_class_is_registered(self):
+        from importer.sr6 import classes
+        got = {r["id"]: r["set"]["class"] for r in overrides.table("ed") if r.get("id") in ("gti-dagger", "gti-falchion") and "set" in r}
+        self.assertEqual(got, {"gti-dagger": "DRONE_MEDIUM/SPACE", "gti-falchion": "DRONE_LARGE/SPACE"})
+        self.assertIn("DRONE_MEDIUM/SPACE", classes.extra())

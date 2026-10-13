@@ -1,4 +1,11 @@
 [
   {"cl6": "Mortimer of London Belgrade Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-belgrade-sword-cane", "set": {"class": "WEAPON_CLOSE_COMBAT/BLADES"}, "gen": "class"},
-  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}, "gen": "class"}
+  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}, "gen": "class"},
+  {"cl6": "Atropine", "kind": "gear", "id": "plant-derived-toxins.atropine", "set": {"class": "CHEMICALS/TOXINS"}},
+  {"cl6": "Naga Venom", "kind": "gear", "id": "awakened-toxins.naga-venom", "set": {"class": "CHEMICALS/TOXINS"}},
+  {"cl6": "Nova Scorpion Venom", "kind": "gear", "id": "awakened-toxins.nova-scorpion-venom", "set": {"class": "CHEMICALS/TOXINS"}},
+  {"cl6": "Void Wasp Venom", "kind": "gear", "id": "awakened-toxins.void-wasp-venom", "set": {"class": "CHEMICALS/TOXINS"}},
+  {"cl6": "Sword Cane Scabbard", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-sword-cane-scabbard", "set": {"class": "WEAPON_CLOSE_COMBAT/BLADES"}},
+  {"cl6": "Ceramic Components", "kind": "gear", "id": "ceramic-components", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Plasteel Components", "kind": "gear", "id": "plasteel-components", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}}
 ]

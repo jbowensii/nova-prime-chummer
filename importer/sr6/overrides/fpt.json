@@ -1,0 +1,8 @@
+[
+  {"cl6": "Ulysses Evercoat", "kind": "armor", "id": "ulysses-evercoat", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Pocket Secretary ’85", "kind": "electronics", "id": "pocket-secretary-85", "set": {"class": "ELECTRONICS/COMMLINK"}},
+  {"cl6": "Colt Peacekeeper", "kind": "weapons", "id": "colt-peacekeeper", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}},
+  {"cl6": "H&K MPX-Arc7", "kind": "weapons", "id": "h-k-mpx-arc7", "set": {"class": "WEAPON_FIREARMS/SUBMACHINE_GUNS"}},
+  {"cl6": "FN Foxfire X3", "kind": "weapons", "id": "fn-foxfire-x3", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "Pocket Secretary ’85", "kind": "electronics", "id": "pocket-secretary-85", "rename": "Pocket Secretary ’85", "alias": false}
+]

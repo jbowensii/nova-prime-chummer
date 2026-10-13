@@ -1,0 +1,10 @@
+[
+  {"cl6": "Handheld (low)", "kind": "weapons", "id": "handheld-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Handheld (high)", "kind": "weapons", "id": "handheld-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Flash Scope (low)", "kind": "weapons", "id": "flash-scope-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Flash Scope (high)", "kind": "weapons", "id": "flash-scope-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Mob Light (low)", "kind": "weapons", "id": "mob-light-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Mob Light (high)", "kind": "weapons", "id": "mob-light-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Glasses (full wrap)", "kind": "gear", "id": "glasses-full-wrap", "set": {"class": "ELECTRONICS/OPTICAL"}},
+  {"cl6": "Visor (for helmets)", "kind": "gear", "id": "visor-for-helmets", "set": {"class": "ELECTRONICS/OPTICAL"}}
+]

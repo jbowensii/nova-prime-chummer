@@ -3,6 +3,7 @@
 import { expect, test } from 'vitest'
 import { apply, opposite, setMagic, type Op } from '../../src/sr6/engine/actions'
 import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/model/character'
+import { critterOnly } from '../../src/sr6/engine/critterware'
 import { buildOf, GLIM, made } from './fixture'
 
 type Over = Parameters<typeof made>[0]
@@ -503,4 +504,47 @@ test('choosing a magic kind keeps the aspected skill only for aspected, and drop
   expect(r.b.aspectedSkill).toBe('crb.glowcraft')
   setMagic(r.ch, 'full', r.data, r.cr)
   expect(r.b.aspectedSkill).toBeUndefined()
+})
+
+test('critter-only equipment (class CRITTERWARE/…) is refused for a player’s character and its class is read case-blind', () => {
+  const eyes = (d: ReturnType<typeof made>['data']) => d.entry('augmentations', 'crb.glow-eyes')!
+  const r = runner({
+    over: {
+      data: d => {
+        const was = d.entry
+        d.entry = (k, id) =>
+          id === 'zz.beast' ? { ...eyes(d), id, name: 'Beast Eyes', attrs: { ...eyes(d).attrs, class: 'CRITTERWARE/AUGMENTATION' } } : was(k, id)
+      },
+    },
+  })
+  expect(r.act({ op: 'purchase', kind: 'augmentations', id: 'zz.beast', rating: 1 })).toEqual(no('critters-only'))
+  expect(r.b.purchases).toEqual([])
+  expect(r.act({ op: 'purchase', kind: 'augmentations', id: 'crb.glow-eyes', rating: 1 })).toEqual(ok)
+  expect(critterOnly(eyes(r.data))).toBe(false)
+  expect(critterOnly({ attrs: { class: 'critterware/augmentation' } })).toBe(true)
+  expect(critterOnly({ attrs: { class: 'CYBERWARE/CYBER_LIMBS' } })).toBe(false)
+  expect(critterOnly(undefined)).toBe(false)
+  // (any CRITTERWARE/ class: the gear and armor kinds too, not only augmentations)
+  for (const c of ['CRITTERWARE/GEAR', 'CRITTERWARE/AUGMENTATION']) expect(critterOnly({ attrs: { class: c, category: 'Critter armor' } })).toBe(true)
+  expect(critterOnly({ attrs: { class: 'ARMOR/ARMOR_BODY' } })).toBe(false)
+})
+
+test('a critter-only gear or armor entry is refused too, whatever its kind', () => {
+  const was = (d: ReturnType<typeof made>['data']) => d.entry
+  for (const [kind, cls] of [
+    ['gear', 'CRITTERWARE/GEAR'],
+    ['armor', 'CRITTERWARE/GEAR'],
+  ] as const) {
+    const r = runner({
+      over: {
+        data: d => {
+          const orig = was(d)
+          const e = orig(kind, kind === 'gear' ? 'crb.zap-scope' : 'crb.zap-vest') ?? orig('augmentations', 'crb.glow-eyes')!
+          d.entry = (k, id) => (id === 'zz.critter' ? { ...e, id, kind, attrs: { ...e.attrs, class: cls } } : orig(k, id))
+        },
+      },
+    })
+    expect(r.act({ op: 'purchase', kind, id: 'zz.critter', rating: 1 })).toEqual(no('critters-only'))
+    expect(r.b.purchases).toEqual([])
+  }
 })

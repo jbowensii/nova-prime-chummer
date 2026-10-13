@@ -1,0 +1,10 @@
+[
+  {"cl6": "DragonThread Vest", "kind": "armor", "id": "dragonthread-vest", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "DragonThread Jacket", "kind": "armor", "id": "dragonthread-jacket", "set": {"class": "ARMOR/ARMOR_BODY"}},
+  {"cl6": "Dragonsilk Clothing", "kind": "armor", "id": "dragonsilk-clothing", "set": {"class": "ACCESSORY/ARMOR_BODY"}},
+  {"cl6": "DragonThread Duster", "kind": "armor", "id": "dragonthread-duster", "set": {"class": "ACCESSORY/ARMOR_BODY"}},
+  {"cl6": "Biochromatic Tattoos", "kind": "augmentations", "id": "biochromatic-tattoos", "set": {"class": "CYBERWARE/COSMETIC"}},
+  {"cl6": "Cyberette (pack of 8)", "kind": "gear", "id": "cyberette-pack-of-8", "set": {"class": "CHEMICALS/DRUGS"}},
+  {"cl6": "Ballistic Tent", "kind": "gear", "id": "ballistic-tent", "set": {"class": "SURVIVAL/SURVIVAL_GEAR"}},
+  {"cl6": "Ballistic tent (military grade)", "kind": "gear", "id": "ballistic-tent-military-grade", "set": {"class": "SURVIVAL/SURVIVAL_GEAR"}}
+]

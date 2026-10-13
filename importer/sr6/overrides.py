@@ -13,6 +13,11 @@ heading (`texts()`: the owner's PDF text of the catalog entry of that name, copi
 A row with "id" (an entry's unscoped id, the importer's own) and "set" {"class": "<TYPE/SUBTYPE>"} sets Commlink6's
 classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); "class" is the only attribute
 such a row may set, and an id no entry has is reported once on stderr, nothing guessed.
+Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format.md):
+  {"kind","id","remove":true}                     the entry goes (its aliases with it, its text in `texts()`)
+  {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
+  {"kind","id","rename":"<name>"}                 a new name (names only); the old one stays as an alias unless "alias": false
+  {"move_kind":{"id","from","to"}}                the entry re-filed in another kind's file (gear -> weapons: a melee weapon; armor -> gear)
 A description is never an override: "set" and "add" refuse a text field. See docs/sr6-data-format.md."""
 import json
 import re
@@ -26,6 +31,7 @@ from importer.sr6.regroup import norm
 from importer.sr6.resolve import _add_kid
 
 DIR = Path(__file__).with_name("overrides")
+OPS = ("remove", "rename", "merge", "move_kind")
 SETTABLE = {"class"}  # (what an id row may set)
 CLASS_KEY = re.compile(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?")
 NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from the owner's PDF, never from here)
@@ -42,9 +48,13 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r:
+        if "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
+        if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
+            raise ValueError(f"override of {r.get('id')}: rename is a name")
+        if bad := NO_TEXT & {k.lower() for v in (r.get("merge"), r.get("move_kind")) if isinstance(v, dict) for k in v}:
+            raise ValueError(f"override of {r.get('id')}: an op names a description field ({sorted(bad)})")
         if a := r.get("add"):
             names = {k.lower() for k in a} | {k.lower() for k in a.get("attrs", {})} | {k["tag"].lower() for k in a.get("kids", [])}
             if bad := NO_TEXT & names:
@@ -84,11 +94,16 @@ def _add(out, name, r, source):
 
 def texts(recipe_id, files, texts_xml, rows=None):
     """texts_xml (the book's texts file, ids unscoped) with a <text> for each add row that has "text_from": the text the
-    book already has for the catalog entry of that name, under the new entry's kind and id. Nothing is invented: no
-    such heading or no text for it leaves the entry without one (reported on stderr)."""
-    rows = [r for r in (table(recipe_id) if rows is None else check(rows)) if r.get("add", {}).get("text_from")]
-    if not rows or not texts_xml:
+    book already has for the catalog entry of that name, under the new entry's kind and id; and without the text of an
+    entry a remove or merge row took out. Nothing is invented: no such heading or no text for it leaves the entry without
+    one (reported on stderr)."""
+    every = table(recipe_id) if rows is None else check(rows)
+    rows = [r for r in every if r.get("add", {}).get("text_from")]
+    gone = {(r["kind"], r["id"]) for r in every if r.get("remove")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
+    if not texts_xml or not (rows or gone):
         return texts_xml
+    for of, i in gone:
+        texts_xml = re.sub(r"[ \t]*<text of=%s id=%s>.*?</text>\n?" % (re.escape(quoteattr(of)), re.escape(quoteattr(i))), "", texts_xml, flags=re.S)
     have = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
     heads = {}
     for fname, xml in files.items():
@@ -138,6 +153,97 @@ def _set_by_id(out, rows):
         print(f"override: {len(missing)} id rows found no entry ({', '.join(missing[:6])}{' ...' if len(missing) > 6 else ''})", file=sys.stderr)
 
 
+MOVE_DROP = {("gear", "weapons"): {"capacity", "karma", "per", "slots", "energy"},  # (an entry's attributes the target kind's schema lacks)
+             ("armor", "gear"): {"defense", "social"}}
+SPECS = {"BLADES": "Blades", "CLUBS": "Clubs", "UNARMED": "Unarmed", "OTHER_CLOSE": "Other"}
+
+
+def _load(out, name, kind):
+    """(the file's root, its xml as it was): a new file when there is none."""
+    from lxml import etree
+    from importer.sr6 import NS
+    if out.get(name):
+        return etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", out[name]).encode("utf8")), out[name]
+    return etree.fromstring(f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1"/>'.encode()), ""
+
+
+def _find(root, eid):
+    return next((e for e in root if isinstance(e.tag, str) and e.get("id") == eid), None)
+
+
+def _ops(out, rows):
+    """The remove, merge, rename and move_kind rows applied, in that order (a merge before the move that files its target
+    as a weapon). A row whose entry isn't there is reported once, nothing guessed."""
+    from importer.sr6 import KINDS
+    lost = []
+    for r in (x for x in rows if x.get("remove")):
+        name = f"{r['kind']}.xml"
+        root, old = _load(out, name, r["kind"])
+        e = _find(root, r["id"])
+        if e is None:
+            lost.append(f"remove {name}:{r['id']}")
+            continue
+        root.remove(e)
+        out[name] = dump(old, root)
+    for r in (x for x in rows if "merge" in x):
+        m = r["merge"]
+        into, src = f"{r['kind']}.xml", f"{m.get('from_kind', r['kind'])}.xml"
+        ri, oi = _load(out, into, r["kind"])
+        rs, os_ = _load(out, src, m.get("from_kind", r["kind"]))
+        a, b = _find(ri, m["into"]), _find(rs, m["from"])
+        if a is None or b is None:
+            lost.append(f"merge {into}:{m['into']} <- {src}:{m['from']}")
+            continue
+        for k, v in b.attrib.items():
+            if k not in ("id", "source", "page", "class", "group") and not a.get(k) and v:
+                a.set(k, v)
+        rs.remove(b)
+        out[into], out[src] = dump(oi, ri), dump(os_, rs)
+    for r in (x for x in rows if "rename" in x):
+        name = f"{r['kind']}.xml"
+        root, old = _load(out, name, r["kind"])
+        e = _find(root, r["id"])
+        if e is None:
+            lost.append(f"rename {name}:{r['id']}")
+            continue
+        n = e.find("name")
+        was = (n.text or "").strip()
+        if was != r["rename"]:
+            n.text = r["rename"]
+            if r.get("alias", True) and was and norm(was) not in {norm(x.text or "") for x in e.findall("alias")} | {norm(r["rename"])}:
+                _add_kid(e, "alias", {}, was)
+            out[name] = dump(old, root)
+    for r in (x for x in rows if "move_kind" in x):
+        m = r["move_kind"]
+        src, dst = f"{m['from']}.xml", f"{m['to']}.xml"
+        if (m["from"], m["to"]) not in MOVE_DROP:
+            lost.append(f"move_kind {m['from']} to {m['to']} (only gear to weapons, armor to gear)")
+            continue
+        rs, os_ = _load(out, src, m["from"])
+        rd, od = _load(out, dst, m["to"])
+        e = _find(rs, m["id"])
+        if e is None:
+            lost.append(f"move_kind {src}:{m['id']}")
+            continue
+        if _find(rd, m["id"]) is not None:
+            lost.append(f"move_kind {m['id']}: {dst} has it already")
+            continue
+        e.tag = KINDS[m["to"]]
+        for k in MOVE_DROP[m["from"], m["to"]]:
+            e.attrib.pop(k, None)
+        if m["to"] == "weapons":  # (a melee weapon: Close Combat, its specialization from its class)
+            sub = (e.get("class") or "").split("/")[-1]
+            spec = SPECS.get(sub) or SPECS.get((e.get("type") or "").upper())
+            e.set("skill", "Close Combat")
+            if spec:
+                e.set("spec", spec)
+        rs.remove(e)
+        rd.append(e)
+        out[src], out[dst] = dump(os_, rs), dump(od, rd)
+    if lost:
+        print(f"override: {len(lost)} op rows found no entry ({'; '.join(lost[:6])}{' ...' if len(lost) > 6 else ''})", file=sys.stderr)
+
+
 def apply(recipe_id, files, rows=None):
     """files ({<kind>.xml: xml}) with the recipe's override rows applied."""
     rows = table(recipe_id) if rows is None else check(rows)
@@ -146,9 +252,9 @@ def apply(recipe_id, files, rows=None):
     from lxml import etree
     out = dict(files)
     for r in rows:
-        name = f"{r['kind']}.xml"
-        if "id" in r:
+        if "id" in r or any(k in r for k in OPS):
             continue
+        name = f"{r['kind']}.xml"
         if "add" in r:
             _add(out, name, r, recipe_id.upper() if recipe_id else None)
             continue
@@ -167,6 +273,8 @@ def apply(recipe_id, files, rows=None):
                 for k, v in r.get("set", {}).items():
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
-    _set_by_id(out, [r for r in rows if "id" in r])  # (after the adds: a created entry takes its class too)
+    _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])
+    _set_by_id(out, [r for r in rows if "id" in r and "set" in r and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out
 

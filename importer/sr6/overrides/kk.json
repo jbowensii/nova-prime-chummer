@@ -19,5 +19,8 @@
   {"cl6": "Krime T-Shirt Cannon", "kind": "weapons", "id": "krime-t-shirt-cannon", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}, "gen": "class"},
   {"cl6": "Krime Tradition", "kind": "weapons", "id": "krime-tradition", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}, "gen": "class"},
   {"cl6": "Krime Varmint Stocked Pistol", "kind": "weapons", "id": "krime-varmint-stocked-pistol", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}, "gen": "class"},
-  {"cl6": "Krime Vester", "kind": "weapons", "id": "krime-vester", "set": {"class": "WEAPON_FIREARMS/HOLDOUTS"}, "gen": "class"}
+  {"cl6": "Krime Vester", "kind": "weapons", "id": "krime-vester", "set": {"class": "WEAPON_FIREARMS/HOLDOUTS"}, "gen": "class"},
+  {"cl6": "AKM-97 (Assault Rifle)", "kind": "weapons", "id": "akm-97-assault-rifle", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "Krime Ditch Combination Gun (Shotgun)", "kind": "weapons", "id": "krime-ditch-combination-gun-shotgun", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}},
+  {"cl6": "Krime Soldier (GL)", "kind": "weapons", "id": "krime-soldier-gl", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}}
 ]

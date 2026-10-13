@@ -156,5 +156,6 @@
   {"cl6": "Yamaha Nodachi", "kind": "vehicles", "id": "yamaha-nodachi", "set": {"class": "VEHICLES/BIKES"}, "gen": "class"},
   {"cl6": "Yamatetsu Naval Technologies Deep Six", "kind": "vehicles", "id": "yamatetsu-naval-technologies-deep-six", "set": {"class": "DRONE_LARGE/AQUATIC"}, "gen": "class"},
   {"cl6": "Zodiac Whisper", "kind": "vehicles", "id": "zodiac-whisper", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
-  {"cl6": "Zodiac Whisper Military", "kind": "vehicles", "id": "zodiac-whisper-military", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"}
+  {"cl6": "Zodiac Whisper Military", "kind": "vehicles", "id": "zodiac-whisper-military", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
+  {"cl6": "Cyberspace Designs Tamodachi", "kind": "vehicles", "id": "cyberspace-designs-tamodachi", "set": {"class": "DRONE_MEDIUM/GROUND"}}
 ]

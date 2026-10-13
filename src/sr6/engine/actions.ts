@@ -31,6 +31,7 @@ import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
 import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
+import { critterOnly } from './critterware'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -422,6 +423,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       const line = newLine(op, data, cr)
       if ('reason' in line) return line
+      if (critterOnly(entryOf(line, data))) return no('critters-only') // (Body Shop's critter chapter: not for a player's character)
       // owner's decision 9: each augmentation once a runner, a paired body part once a side
       if (op.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
       const same =
