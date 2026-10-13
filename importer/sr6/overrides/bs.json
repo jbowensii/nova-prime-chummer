@@ -7,7 +7,6 @@
   {"cl6": "Biosprayer", "kind": "augmentations", "id": "biosprayer-dazed", "set": {"class": "BIOWARE/BIOWARE_WEAPON"}, "gen": "class"},
   {"cl6": "Built-In Medkit", "kind": "augmentations", "id": "built-in-medkit", "set": {"class": "CYBERWARE/CYBER_BODYWARE"}, "gen": "class"},
   {"cl6": "Built-In Utility Kit", "kind": "augmentations", "id": "built-in-utility-kit", "set": {"class": "CYBERWARE/CYBER_BODYWARE"}, "gen": "class"},
-  {"cl6": "Bulk Modification", "kind": "augmentations", "id": "bulk-modification", "set": {"class": "itemenhancement"}, "gen": "class"},
   {"cl6": "Chameleon Skin", "kind": "augmentations", "id": "chameleon-skin-basic", "set": {"class": "BIOWARE/BIOWARE_STANDARD"}, "gen": "class"},
   {"cl6": "Corrosive Spit", "kind": "augmentations", "id": "corrosive-spit", "set": {"class": "BIOWARE/BIOWARE_WEAPON"}, "gen": "class"},
   {"cl6": "Cyberfinger", "kind": "augmentations", "id": "cyberfinger", "set": {"class": "CYBERWARE/CYBER_BODYWARE"}, "gen": "class"},

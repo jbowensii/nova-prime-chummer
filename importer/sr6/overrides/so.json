@@ -1,7 +1,6 @@
 [
   {"cl6": "NanoMask", "kind": "programs", "add": {"page": 122, "attrs": {"type": "app", "avail": "4(L)", "cost": "700"}}},
   {"cl6": "Blur Mask", "kind": "gear", "id": "blur-mask", "set": {"class": "ELECTRONICS/BREAKING"}, "gen": "class"},
-  {"cl6": "Brutal Weapon", "kind": "gear", "id": "brutal-weapon", "set": {"class": "itemenhancement"}, "gen": "class"},
   {"cl6": "Concealable Surveillance Gear", "kind": "gear", "id": "concealable-surveillance-gear", "set": {"class": "ELECTRONICS/SENSOR"}, "gen": "class"},
   {"cl6": "Drone-Mounted Tag Sprayer", "kind": "gear", "id": "drone-mounted-sprayer", "set": {"class": "ELECTRONICS/OPTICAL"}, "gen": "class"},
   {"cl6": "Wakabayashi Technologies Emotional Analyzer 7000", "kind": "gear", "id": "emotional-analyzer-7000", "set": {"class": "ELECTRONICS/SECURITY"}, "gen": "class"},
@@ -9,7 +8,6 @@
   {"cl6": "Explosive Cosmetics Finishing Powder", "kind": "gear", "id": "explosive-cosmetics-finishing-powder", "set": {"class": "AMMUNITION/EXPLOSIVES"}, "gen": "class"},
   {"cl6": "Explosive Cosmetics Lipstick", "kind": "gear", "id": "explosive-cosmetics-lipstick", "set": {"class": "AMMUNITION/EXPLOSIVES"}, "gen": "class"},
   {"cl6": "Explosive Cosmetics Nail Polish Remover", "kind": "gear", "id": "explosive-cosmetics-nail-polish-remover", "set": {"class": "AMMUNITION/EXPLOSIVES"}, "gen": "class"},
-  {"cl6": "Fancy Weapon", "kind": "gear", "id": "fancy-weapon", "set": {"class": "itemenhancement"}, "gen": "class"},
   {"cl6": "Handheld Pixel Tag Sprayer", "kind": "gear", "id": "handheld-sprayer", "set": {"class": "ELECTRONICS/OPTICAL"}, "gen": "class"},
   {"cl6": "Injector Pen", "kind": "gear", "id": "injector-pen", "set": {"class": "BIOLOGY/BIOTECH"}, "gen": "class"},
   {"cl6": "Lipguard", "kind": "gear", "id": "lipguard", "set": {"class": "BIOLOGY/BIOTECH"}, "gen": "class"},
@@ -24,6 +22,5 @@
   {"cl6": "Fashion Accessory (Specialized)", "kind": "gear", "id": "specialized", "set": {"class": "ACCESSORY/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "Fashion Accessory (Standard)", "kind": "gear", "id": "standard", "set": {"class": "ACCESSORY/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "Swindler Stick (Standard)", "kind": "gear", "id": "swindler-stick", "set": {"class": "ELECTRONICS/ID_CREDIT"}, "gen": "class"},
-  {"cl6": "Transforming Garment", "kind": "gear", "id": "transforming-garment-rating-5-6", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"},
-  {"cl6": "NanoMask", "kind": "programs", "id": "nanomask", "set": {"class": "SOFTWARE/COMMLINK_APP"}, "gen": "class"}
+  {"cl6": "Transforming Garment", "kind": "gear", "id": "transforming-garment-rating-5-6", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"}
 ]

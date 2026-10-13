@@ -305,11 +305,23 @@ def cl6_only(kind, name, a, tag):
 CLASS_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs", "spells", "ammotypes"}
 
 
+# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another item's)
+KIND_TYPES = {"weapons": ("WEAPON_",), "armor": ("ARMOR",), "augmentations": ("CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"),
+              "vehicles": ("VEHICLES", "DRONE"), "programs": ("SOFTWARE",), "electronics": ("ELECTRONICS", "CYBERDECK")}
+
+
+def fits_kind(kind, cls):
+    """Whether Commlink6 class `cls` is one of our `kind`'s types (True for a kind with no such list)."""
+    return not KIND_TYPES.get(kind) or cls.upper().startswith(KIND_TYPES[kind])
+
+
 def cl6_class(tag, attrs):
     """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a spell, an
     ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format.md)."""
     t, s = attrs.get("type") or "", attrs.get("subtype") or ""
-    if tag not in ("item", "itemenhancement", "focus"):
+    if tag == "itemenhancement":
+        return ""  # (an enhancement of an item is no item class: it has no type of its own)
+    if tag not in ("item", "focus"):
         return tag  # (a spell's `type` is its spell type, not a class)
     return f"{t}/{s}" if t and s else t or tag
 
@@ -378,7 +390,7 @@ def canonical(rec):
                      else ("ammotypes", "gear", "weapons") if kind == "ammotypes" else (kind,)) if modelled else (),
             "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
             "families": families(el, a, rec["variants"]) | (
-                {"class": (cl6_class(tag, a).casefold(),)} if kind in CLASS_KINDS and modelled else {}), "el": el,
+                {"class": (cl6_class(tag, a).casefold(),)} if kind in CLASS_KINDS and modelled and cl6_class(tag, a) else {}), "el": el,
             "cl6_class": cl6_class(tag, a),
             "cl6only": cl6_only(kind, rec["name"], a, tag)}
 

@@ -70,7 +70,7 @@ def _add(out, name, r, source):
     else:
         root = etree.fromstring(f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1"/>'.encode())
     ename = a.get("name", r["cl6"])
-    eid = slug(ename)
+    eid = a.get("id") or slug(ename)  # (an id of its own when another entry has the name: a rigger program Encryption)
     if any(e.get("id") == eid for e in root if isinstance(e.tag, str)):
         print(f"override {r['cl6']}: {eid} already in {name}, left as is", file=sys.stderr)
         return

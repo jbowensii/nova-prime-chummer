@@ -244,7 +244,8 @@ def match(cl6, ours):
                        if digits(key) == digits(n1(o["name"]))), key=lambda x: -x[0])
         if best and best[0][0] >= SIMILAR:
             found[i] = ([o for r, o in best if r == best[0][0]], f"similar {best[0][0]:.2f}")
-        elif hits := [o for o in ours if n1(o["name"]) == key]:  # (the same name in another kind: only that exact)
+        elif c["kind"] != "ruleoptions" and (hits := [o for o in ours if n1(o["name"]) == key]):  # (the same name in another kind: only that exact;
+            # not a rule option's: Commlink6's interpretation `Standard` is no credstick)
             found[i] = (hits, "another kind")
     for i, c in enumerate(cl6):
         if found[i] or not pool[i]:

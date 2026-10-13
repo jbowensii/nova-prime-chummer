@@ -297,7 +297,7 @@ class ClassTest(unittest.TestCase):
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
         rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r]
         self.assertGreater(len(rows), 500)
-        self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") == "class" for r in rows))
+        self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
     def test_class_validates_on_an_entry_of_every_kind_that_carries_one(self):
         from pathlib import Path
@@ -314,3 +314,29 @@ class ClassTest(unittest.TestCase):
             xsd = etree.XMLSchema(etree.parse(str(schemas / f"{kind}.xsd")))
             self.assertTrue(xsd.validate(etree.fromstring(xml.encode())), f"{kind}: {xsd.error_log}")
             self.assertFalse(xsd.validate(etree.fromstring(xml.replace("TYPE/SUB_TYPE", "a b").encode())))
+
+
+class HandClassRowsTest(unittest.TestCase):
+    WANT = {("crb", "gear", "standard"): "ELECTRONICS/ID_CREDIT", ("crb", "weapons", "smartgun-system-internal"): "ACCESSORY/WEAPON_ACCESSORY",
+            ("crb-sea", "armor", "ballistic-hood"): "ARMOR/ARMOR_HELMET", ("da", "weapons", "al-assad"): "WEAPON_SPECIAL/LAUNCHERS",
+            ("da", "weapons", "ballista-ii"): "WEAPON_SPECIAL/LAUNCHERS", ("da", "weapons", "carl-gustaf"): "WEAPON_SPECIAL/LAUNCHERS",
+            ("sif-no", "gear", "uv-light-uv-flashlight"): "TOOLS/TOOLS"}
+
+    def test_the_owners_class_decisions_are_hand_rows_the_generator_leaves_alone(self):
+        from tools.cl6check import classmap
+        got = {(p.stem, r["kind"], r["id"]): r["set"]["class"] for p in overrides.DIR.glob("*.json")
+               for r in overrides.table(p.stem) if "id" in r and not r.get("gen")}
+        self.assertEqual({k: got.get(k) for k in self.WANT}, self.WANT)
+        self.assertLessEqual(set(self.WANT), classmap.hand_ids())
+
+    def test_the_generator_skips_a_hand_row_and_a_record_with_no_class(self):
+        from tools.cl6check import classmap
+        o = {"src": "zz", "kind": "gear", "id": "zz.a", "name": "A", "attrs": {"category": "Odd"}}
+        pairs = [({"cl6_class": "X/Y", "name": "A"}, o), ({"cl6_class": "", "name": "B"}, {**o, "id": "zz.b", "name": "B"})]
+        self.assertEqual(classmap.item_rows(pairs, {}, frozenset())[0]["zz"], [{"cl6": "A", "kind": "gear", "id": "a", "set": {"class": "X/Y"}, "gen": "class"}])
+        self.assertEqual(dict(classmap.item_rows(pairs, {}, frozenset({("zz", "gear", "a")}))[0]), {})
+
+    def test_the_rigger_program_encryption_is_its_own_entry_with_its_class(self):
+        row = next(r for r in overrides.table("crb") if r["kind"] == "programs" and r["add"].get("id") == "encryption-rcc")
+        out = ET.fromstring(overrides.apply("crb", {}, [row])["programs.xml"].encode())[0]
+        self.assertEqual((out.get("id"), out.findtext("name"), out.get("class"), out.get("cost")), ("encryption-rcc", "Encryption", "SOFTWARE/RIGGER_PROGRAM", "250"))

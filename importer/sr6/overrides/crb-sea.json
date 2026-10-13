@@ -1,4 +1,5 @@
 [
+  {"cl6": "Ballistic hood", "kind": "armor", "id": "ballistic-hood", "set": {"class": "ARMOR/ARMOR_HELMET"}},
   {"cl6": "Armorweave cloak", "kind": "armor", "id": "armorweave-cloak", "set": {"class": "ARMOR/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "Disposable cloak", "kind": "armor", "id": "disposable-cloak", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"},
   {"cl6": "Trés Chic cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"class": "ARMOR/ARMOR_BODY"}, "gen": "class"},

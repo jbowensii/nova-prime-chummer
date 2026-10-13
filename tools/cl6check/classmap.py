@@ -28,16 +28,27 @@ def category_map(csv_path):
     """{kind: {category: class}} from the study's csv: CLEAR categories with a Commlink6 class."""
     out = defaultdict(dict)
     for r in csv.DictReader(open(csv_path, encoding="utf-8-sig")):
-        if r["status"] == "CLEAR" and r["majority_cl6"] and r["kind"] in canon.CLASS_KINDS:
+        if r["status"] == "CLEAR" and r["majority_cl6"] not in ("", "itemenhancement") and r["kind"] in canon.CLASS_KINDS:
             out[r["kind"]][r["category"]] = r["majority_cl6"]
     return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
 
 
-def item_rows(pairs, cmap):
-    """({src: [row]}, conflicts, no_id): a row for each matched entry whose class the map doesn't give."""
+def hand_ids(root=OVERRIDES):
+    """{(src, kind, id)} of the class rows made by hand (no `gen`): the owner's decisions, which a run leaves as they are."""
+    out = set()
+    for p in Path(root).glob("*.json"):
+        for r in json.loads(p.read_text(encoding="utf8")):
+            if "id" in r and "class" in r.get("set", {}) and not r.get("gen"):
+                out.add((p.stem, r["kind"], r["id"]))
+    return out
+
+
+def item_rows(pairs, cmap, hand=frozenset()):
+    """({src: [row]}, conflicts, no_id): a row for each matched entry whose class the map doesn't give. Records with no
+    class of their own (an item enhancement) and entries with a hand row are left out."""
     got = defaultdict(dict)
     for c, o in pairs:
-        if o["kind"] in canon.CLASS_KINDS:
+        if o["kind"] in canon.CLASS_KINDS and c["cl6_class"]:
             got[(o["src"], o["kind"], o["id"])].setdefault(c["cl6_class"], c["name"])
     rows, conflicts, no_id = defaultdict(list), [], []
     entries = {(o["src"], o["kind"], o["id"]): o for _, o in pairs}
@@ -50,10 +61,12 @@ def item_rows(pairs, cmap):
                 continue
             classes = named
         cls, name = next(iter(classes.items()))
-        if (cmap.get(kind, {}).get(o["attrs"].get("category", "")) or "").casefold() == cls.casefold():
+        if (cmap.get(kind, {}).get(o["attrs"].get("category") or (o["attrs"].get("type") if kind == "programs" else "") or "") or "").casefold() == cls.casefold():
             continue
         if not oid.startswith(src + "."):
             no_id.append((src, oid))
+            continue
+        if (src, kind, oid[len(src) + 1:]) in hand:
             continue
         rows[src].append({"cl6": name, "kind": kind, "id": oid[len(src) + 1:], "set": {"class": cls}, "gen": "class"})
     return rows, conflicts, no_id
@@ -85,7 +98,7 @@ def main(argv):
     cmap = category_map(args[0])
     recs, _ = reader.read(reader.find_jar(jar if jar and not jar.startswith("--") else None))
     pairs = compare([canon.canonical(r) for r in recs], ours.load(args[1]), pdf=False)[2]
-    rows, conflicts, no_id = item_rows(pairs, cmap)
+    rows, conflicts, no_id = item_rows(pairs, cmap, hand_ids())
     print(f"categories mapped: {sum(len(v) for v in cmap.values())}; item rows: {sum(map(len, rows.values()))}; "
           f"conflicts: {len(conflicts)}; ids not of their source: {len(no_id)}")
     for c in conflicts:

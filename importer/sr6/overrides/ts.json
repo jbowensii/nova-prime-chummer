@@ -10,7 +10,6 @@
   {"cl6": "Battery Zapgun", "kind": "gear", "id": "parashield-zapgun-battery-pack-magazine", "set": {"class": "AMMUNITION/AMMUNITION_SPECIAL"}, "gen": "class"},
   {"cl6": "Pyrric Victory", "kind": "gear", "id": "pyrrhic-victory", "set": {"class": "CHEMICALS/DRUGS"}, "gen": "class"},
   {"cl6": "Tango", "kind": "gear", "id": "tango", "set": {"class": "CHEMICALS/DRUGS"}, "gen": "class"},
-  {"cl6": "Autosoft (Knowledge: Law)", "kind": "programs", "id": "autosoft-knowledge-law", "set": {"class": "SOFTWARE/AUTOSOFT"}, "gen": "class"},
   {"cl6": "Ares Riotmaster", "kind": "vehicles", "id": "ares-riotmaster", "set": {"class": "VEHICLES/VANS"}, "gen": "class"},
   {"cl6": "GMC E-83 Urban Assault Vehicle", "kind": "vehicles", "id": "gmc-e-83-urban-assault-vehicle", "set": {"class": "VEHICLES/VANS"}, "gen": "class"},
   {"cl6": "Surfstar Marine Seacop II", "kind": "vehicles", "id": "surfstar-marine-seacop-ii", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},

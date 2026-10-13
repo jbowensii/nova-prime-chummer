@@ -26,7 +26,7 @@ from tools.cl6check import optional as optional_package
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True, trace=None, package=None):
+def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
@@ -56,7 +56,8 @@ def compare(cl6, mine, pdf=True, trace=None, package=None):
                 "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
                 "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
-                             for f, v in c["families"].items() if f != "subtype"},  # (subtype: the class family's now)
+                             for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
+                             and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
                 "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
                 "cause": "", "excluded": None,
                 "cl6only": bool(c.get("cl6only"))}
@@ -84,7 +85,27 @@ def compare(cl6, mine, pdf=True, trace=None, package=None):
             results.append(r)
         book.close()
         extras += [e for e in entries if id(e) not in matched and id(e) not in moved]
+    _settle_classes(results, optional_package.load_accept() if accept is None else accept)
     return results, extras, pairs
+
+
+def _settle_classes(results, accept):
+    """Two records matching one entry can class it two ways: the one whose class is a type of the entry's kind is the one
+    compared (a rocket launcher is `WEAPON_SPECIAL/LAUNCHERS`, not the `AMMUNITION/ROCKETS` of its rocket); a record the
+    owner accepts (class_accept.json) counts equal."""
+    by = defaultdict(list)
+    for r in results:
+        if r["matched"] and "class" in r["families"] and r["our_id"]:
+            by[r["our_id"], r["our_kind"]].append(r)
+    for (_, kind), rs in by.items():
+        fits = [r for r in rs if canon.fits_kind(kind, r["cl6_class"])]
+        if len(rs) > 1 and 0 < len(fits) < len(rs):
+            for r in rs:
+                if r not in fits:
+                    del r["families"]["class"]
+    for r in results:
+        if "class" in r["families"] and accept.get((r["src"], r["id"])) == r["our_id"]:
+            r["families"]["class"] = True
 
 
 def run_imports(books_file, out, jobs):

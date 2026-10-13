@@ -1,6 +1,7 @@
 [
   {"cl6": "Silver Arrow", "kind": "ammotypes", "add": {"page": 27, "attrs": {"category": "Ammo", "avail": "(Rating / 2)", "cost": "10 + (Rating x 2)"}, "kids": [{"tag": "formula", "attrs": {"field": "cost"}, "text": "10 + (R*2)"}, {"tag": "formula", "attrs": {"field": "avail"}, "text": "(R/2)"}]}},
   {"cl6": "Silver Bolt", "kind": "ammotypes", "add": {"page": 27, "attrs": {"category": "Ammo", "avail": "4", "cost": "15"}}},
+  {"cl6": "UV Flashlight", "kind": "gear", "id": "uv-light-uv-flashlight", "set": {"class": "TOOLS/TOOLS"}},
   {"cl6": "Silver Arrow", "kind": "ammotypes", "id": "silver-arrow", "set": {"class": "AMMUNITION/BOWS"}, "gen": "class"},
   {"cl6": "Silver Bolt", "kind": "ammotypes", "id": "silver-bolt", "set": {"class": "AMMUNITION/CROSSBOWS"}, "gen": "class"},
   {"cl6": "Liar's Medium", "kind": "gear", "id": "liars-medium-divination-fetish", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}, "gen": "class"},

@@ -36,7 +36,7 @@ def apply(files, cmap=None):
             if kind == "categories":
                 cls = cmap.get(e.get("of") or "", {}).get(e.findtext("name") or "")
             else:
-                cls = cmap[kind].get(e.get("category") or "")
+                cls = cmap[kind].get(e.get("category") or (e.get("type") if kind == "programs" else "") or "")
             if cls:
                 e.set("class", cls)
                 changed = True

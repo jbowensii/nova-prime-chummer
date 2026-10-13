@@ -479,3 +479,39 @@ class ClassFamilyTest(unittest.TestCase):
     def test_a_spells_class_is_its_tag_not_its_spell_type(self):
         s = canon.canonical(rec('<spell id="sss" cat="COMBAT" type="PHYSICAL"/>', name="Spark"))
         self.assertEqual(s["cl6_class"], "spell")
+
+
+class ClassTieBreakTest(unittest.TestCase):
+    def run_compare(self, records, entries, accept=None):
+        from types import SimpleNamespace
+        recs = [canon.canonical(rec(x, name=n)) | {"src": "gz"} for x, n in records]
+        mine = {"gz": SimpleNamespace(entries=entries, book_dir=None)}
+        res = cli.compare(recs, mine, pdf=False, package=({}, {}, {}), accept=accept or {})[0]
+        return {r["id"]: r for r in res}
+
+    def test_of_two_records_matching_one_weapon_the_one_of_its_kind_is_compared(self):
+        by = self.run_compare([('<item id="launch" type="WEAPON_SPECIAL" subtype="LAUNCHERS"/>', "Zed Tube"),
+                               ('<item id="rocket" type="AMMUNITION" subtype="ROCKETS"/>', "Zed Tube")],
+                              [entry("Zed Tube", kind="weapons", **{"class": "WEAPON_SPECIAL/LAUNCHERS"})])
+        self.assertEqual((by["launch"]["families"].get("class"), "class" in by["rocket"]["families"], by["rocket"]["matched"]),
+                         (True, False, True))
+
+    def test_an_item_enhancement_is_no_class_and_an_accepted_record_counts_equal(self):
+        by = self.run_compare([('<itemenhancement id="enh"/>', "Zed Mod"), ('<item id="alt" type="MOD_ELEC" subtype="MOD_COAT"/>', "Zed Coat"),
+                               ('<item id="main" type="MOD_POWER" subtype="MOD_EFFICIENCY"/>', "Zed Coat")],
+                              [entry("Zed Mod", **{"class": "TOOLS/TOOLS"}), entry("Zed Coat", **{"class": "MOD_POWER/MOD_EFFICIENCY"})],
+                              accept={("gz", "alt"): "gz.zed coat"})
+        self.assertEqual(("class" in by["enh"]["families"], by["enh"]["cl6_class"]), (False, ""))
+        self.assertEqual((by["alt"]["families"]["class"], by["main"]["families"]["class"]), (True, True))
+        without = self.run_compare([('<item id="alt" type="MOD_ELEC" subtype="MOD_COAT"/>', "Zed Coat")],
+                                   [entry("Zed Coat", **{"class": "MOD_POWER/MOD_EFFICIENCY"})])
+        self.assertFalse(without["alt"]["families"]["class"])
+
+    def test_a_rule_option_named_like_an_entry_is_not_matched_to_it(self):
+        by = self.run_compare([('<interpretation id="std"/>', "Standard")], [entry("Standard", kind="gear", **{"class": "ELECTRONICS/ID_CREDIT"})])
+        self.assertFalse(by["std"]["matched"])
+
+    def test_the_shipped_class_accept_file_is_well_formed(self):
+        accept = __import__("tools.cl6check.optional", fromlist=["x"]).load_accept()
+        self.assertEqual(accept[("dc", "suncell_electr")], "dc.suncell")
+        self.assertIn(("bs", "fangs"), accept)
