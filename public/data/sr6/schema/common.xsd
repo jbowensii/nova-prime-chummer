@@ -354,9 +354,10 @@
          runner has it, else to the skill's bracketed total (owner decision 2026-10-10) -->
     <xs:attribute name="spec" type="xs:string"/>
     <!-- a spell's, ritual's or complex form's: whom it affects (owner decision 2026-10-10); caster: counted on the
-         caster while sustained; target: never on the caster -->
+         caster while sustained; target: never on the caster; others: what others get against the entry, never counted
+         on the runner (owner decision #16) -->
     <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
-      <xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="caster"/><xs:enumeration value="target"/><xs:enumeration value="others"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
        `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a

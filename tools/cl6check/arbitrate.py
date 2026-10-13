@@ -110,6 +110,23 @@ def token_in(window, token):
     return re.search(r"(?<![0-9A-Za-z.])" + re.escape(t) + r"(?![0-9])", _tok(window)) is not None
 
 
+def load_trace(path):
+    """{(src, cl6 id, field): 'only' | 'demote'} from a trace run's cl6-trace.csv ({} without one): where the trace shows
+    Commlink6's value is no book's ('Commlink6-only field': left out like the other Commlink6-only fields), or is not
+    confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer error)."""
+    import csv
+    if not path or not os.path.exists(path):
+        return {}
+    out = {}
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        for r in csv.DictReader(fh):
+            if r["field"] and r["family"] == "Commlink6-only field":
+                out[(r["src"], r["id"], r["field"])] = "only"
+            elif r["field"] and (r["family"] == "own row" or r.get("verdict") == "weak link, not confirmed on the page"):
+                out[(r["src"], r["id"], r["field"])] = "demote"
+    return out
+
+
 def settle(book, entry, rec, diff):
     """(class, pdf) for a field difference: pdf is which value the printed line shows (ours/cl6/both/neither/'')."""
     if diff["why"].startswith("ours holds a price"):

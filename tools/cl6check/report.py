@@ -94,7 +94,8 @@ def metrics(results, extras, excluded, meta):
     for r in results:
         if r.get("cl6only"):
             continue
-        gone = {d["field"] for d in r["diffs"] if d["why"].startswith("ours empty") and d.get("pdf") == "neither"}
+        gone = {d["field"] for d in r["diffs"] if d.get("cl6only")
+                or d["why"].startswith("ours empty") and d.get("pdf") == "neither"}
         nf += len(gone)
         kept.append(r | {"compared": [f for f in r["compared"] if f not in gone],
                          "diffs": [d for d in r["diffs"] if d["field"] not in gone]})

@@ -25,7 +25,7 @@ from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, pat
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True):
+def compare(cl6, mine, pdf=True, trace=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
@@ -57,6 +57,9 @@ def compare(cl6, mine, pdf=True):
                 r["compared"], r["diffs"] = fields.compare(c, o)
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
+                    t = (trace or {}).get((c["src"], c["id"], d["field"]))
+                    if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
+                        d["class"], d["cl6only"] = "c", t == "only"
             else:
                 r["cause"] = report.miss_cause(c, s, bt, book)
             results.append(r)
@@ -131,7 +134,7 @@ def main(argv=None):
     recs, excluded = reader.read(jar)
     cl6 = [canon.canonical(r) for r in recs]
     mine = ours.load(a.ours)
-    results, extras, pairs = compare(cl6, mine, pdf=not a.no_pdf)
+    results, extras, pairs = compare(cl6, mine, pdf=not a.no_pdf, trace=arbitrate.load_trace(os.path.join(a.out, "cl6-trace.csv")))
     when = datetime.datetime.now().isoformat(timespec="seconds")
     base_path = a.baseline or os.path.join(a.out, "baseline.json")
     base = json.load(open(base_path, encoding="utf8")) if os.path.exists(base_path) and not a.save_baseline else None

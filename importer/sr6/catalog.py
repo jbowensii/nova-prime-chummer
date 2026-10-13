@@ -925,6 +925,8 @@ class Catalog:
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
             a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
+            if (m := re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", _s(a.get("rating")))):
+                a["rating"] = f"{m.group(1)}–{m.group(2)}"  # one dash (en, as Commlink6 prints it) for every rating range
             kids = "".join(f"<{t}{_attrs(ca)}>{escape(_s(tx))}</{t}>" if tx is not None else f"<{t}{_attrs(ca)}/>"
                            for t, ca, tx in e["children"])
             lines.append(f"  <{tag}{_attrs(a)}><name>{escape(_s(e['name']))}</name>{kids}</{tag}>\n")
