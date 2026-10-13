@@ -600,6 +600,7 @@ _OTHERS = re.compile(r"^\W*(?:(?:additionally|also|however|furthermore|in additi
 _TEST = re.compile(rf"\b({'|'.join(s.title() for s in SKILLS)})\s*\+\s*({'|'.join(a.title() for a in ATTRIBUTES)})"
                    rf"\s*\((\d+)\)\s+test\b")
 _VAL = r"(?P<v>[+-]?\s?\d+(?:\.\d+)?|one|two|three|four|five|six|an?|single)"
+_LOSS = re.compile(r"\b(?:lose[sd]?|losing|suffers?|subtract\w*|minus|penalt\w*|fewer|reduc\w*)\b[^.;]{0,30}$")  # (`loses 2 dice for …`: a penalty, not a bonus; left unread)
 _PER = r"(?:\s+(?:per|for each|each)\s+(?:level|rating(?: point)?|point of (?:rating|force)|hit))?"
 
 
@@ -1058,6 +1059,25 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False, prev=()):
     for m in re.finditer(r"\b(?:gain|receive|get|add)s?\s+a number of (?:bonus |additional |extra )?dice equal to (?:the|its|their) (?:level|rating|force)(?: of (?:this|the) [a-z]+)?"
                          r"(?:\s+(?:to|on|for)\s+(?:all |any |your |their |the |its )*(?P<t>[^.;]*))?", low):
         bonus(targets(m.group("t") or "", kind) or targets(low[:m.start()], kind), "R")
+    # CL6 parity increment: the bare phrasings of the two largest families (character/roll, character/attribute); each needs
+    # its number and a test or attribute from the vocabulary
+    _tw = r"(?:all |any |your |their |the |its )*(?P<t>[^.;]*?\btests?\b)"
+    for m in re.finditer(r"(?<![\w/+-])(?P<v>\d+|one|two|three|four)\s+(?:(?:bonus|extra|additional|situational)\s+)*(?:dice|die)(?: pool)?(?: bonus| modifier)?\s+(?:for|to|on)\s+" + _tw, low):
+        if not _negated(low, m.start()) and not _LOSS.search(low[:m.start()]) and not _PER_LEVEL.search(low) and not re.search(r"\b(?:up to|maximum|max|only|at most)\s*$", low[:m.start()]) and \
+                not (re.search(r"\b(?:roll\w*|with|of)\s+$", low[:m.start()]) and not re.search(r"bonus|extra|additional", m.group(0))):  # (`roll 6 dice for the test`: a pool, no bonus)
+            bonus([x for x in targets(m.group("t"), kind) if x[0].startswith(("skill:", "test:"))][:4], NUMBERS.get(m.group("v"), m.group("v")))
+    for m in re.finditer(r"(?<![\w/+-])(?P<v>\d+|one|two|three)\s+(?:(?:bonus|extra|additional|situational)\s+)*edge(?: points?)?\s+(?:for|to|on)\s+" + _tw, low):
+        if not _negated(low, m.start()) and not _LOSS.search(low[:m.start()]):
+            emit([x for x in targets(m.group("t"), kind) if x[0].startswith(("skill:", "test:"))][:4], "edge", _val(m.group("v"), low))
+    _al = rf"(?P<t>(?:{_ATTR_RX})(?:(?:,\s*|,?\s+(?:and|or)\s+)(?:{_ATTR_RX}))*)"
+    for m in re.finditer(r"\b(?:adds?|gives?|grants?|provides?|gains?|receives?)\s+(?:you |them |the (?:user|character|wearer) )?(?:a |an )?(?:bonus of )?(?P<v>\d+|one|two|three)\s+(?:points? )?to\s+(?:your |their |the (?:user's|character's|wearer's) )?" + _al + r"\b(?! (?:dice|tests?|rolls?)\b)", low):
+        if not _negated(low, m.start()) and not re.search(r"\b(?:maxim|limit)", low[m.start():m.end() + 20]):
+            for t, _ in targets(m.group("t"), kind):
+                found.append((t, _val(m.group("v"), low), None, None))
+    for m in re.finditer(r"(?:^|[.;:,]\s*|\bthe |\byour |\btheir )" + _al + r"(?: attributes?)?\s+by\s+(?P<v>[+]?\d+|one|two|three)\b", low):
+        if not maxed and not re.search(r"\b(?:maxim|limit|decreas|reduc|lower)", low[max(0, m.start() - 40):m.end()]):
+            for t, _ in targets(m.group("t"), kind):
+                found.append((t, _val(m.group("v"), low), None, None))
     # (`Increase the close and near attack ratings by 2`: the bands named, not also the plain `increase … by 2`)
     banded = {b for t, v, _, _ in found if t == "item:ar" and v and "," in v for b in v.split(",")}
     found = [x for x in found if not (x[0] == "item:ar" and x[1] and "," not in x[1] and x[1] in banded)]
