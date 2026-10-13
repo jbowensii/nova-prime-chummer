@@ -1,0 +1,634 @@
+{
+ "records": [
+  {
+   "src": "bn",
+   "cl6_id": "metal_bullets_gold",
+   "our_id": "bn.silver-bullets-gold",
+   "note": "Ammo, Gold: already have under another name (A1)"
+  },
+  {
+   "src": "bs",
+   "cl6_id": "ammo_flametosser",
+   "our_id": "bs.fuel-per-5-shots",
+   "note": "Fuel for Flametosser (5x): already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "running_silent",
+   "our_id": "crb.running-silent",
+   "note": "Toggle Silent Running: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "improved_ability_combat",
+   "our_id": "crb.improved-ability-skill",
+   "note": "Improved Combat Ability: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "attack_upgrade",
+   "our_id": "crb.matrix-attribute-upgrade",
+   "note": "Attack Upgrade: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "data_processing_upgrade",
+   "our_id": "crb.matrix-attribute-upgrade",
+   "note": "Data Processing Upgrade: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "firewall_upgrade",
+   "our_id": "crb.matrix-attribute-upgrade",
+   "note": "Firewall Upgrade: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "sleaze_upgrade",
+   "our_id": "crb.matrix-attribute-upgrade",
+   "note": "Sleaze Upgrade: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "ares_lf_silencer",
+   "our_id": "crb.silencer-suppressor",
+   "note": "Ares Light Fire Series Silencer: already have under another name (A1)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "spare_clip_predator",
+   "our_id": "crb.ares-predator-vi-spare-magazine",
+   "note": "Spare clip for weapons with variable ammunition system.: already have under another name (A1)"
+  },
+  {
+   "src": "da",
+   "cl6_id": "ammo_inferno",
+   "our_id": "da.ares-inferno-when-link-fired",
+   "note": "Fuel for Inferno (10x): already have under another name (A1)"
+  },
+  {
+   "src": "da",
+   "cl6_id": "garotte",
+   "our_id": "da.garrote",
+   "note": "Garotte: already have under another name (A1)"
+  },
+  {
+   "src": "da",
+   "cl6_id": "cougar_polearm_small",
+   "our_id": "da.knife",
+   "note": "Cougar Polearm (Small): already have under another name (A1); also da.one-hand, da.spear, da.pike"
+  },
+  {
+   "src": "da",
+   "cl6_id": "cougar_polearm_large",
+   "our_id": "da.knife",
+   "note": "Cougar Polearm (Large): already have under another name (A1); also da.one-hand, da.spear, da.pike"
+  },
+  {
+   "src": "da",
+   "cl6_id": "ares_shadowstrider",
+   "our_id": "da.ares-model-502-shadow-strider-cvw",
+   "note": "Ares Shadowstrider: already have under another name (A1)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "weapon_turret_small",
+   "our_id": "dc.small-turreted-weapon-mount",
+   "note": "Weapon mount-Turret-Small: already have under another name (A1)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "ammo_battery_laser",
+   "our_id": "fs.pulse-battery",
+   "note": "Battery for laser weapons: already have under another name (A1); also fs.crimson-wasp-battery, fs.red-fox-battery"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "kami",
+   "our_id": "fs.kami-standard",
+   "note": "Kama: already have under another name (A1); also fs.kami-folding"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "horizon_flynn_dcom_garotte",
+   "our_id": "fs.horizon-flynn-defense-com-weapons-garrote",
+   "note": "Defense-Com Garotte: already have under another name (A1)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "steel_falcon_crossbow_bolt",
+   "our_id": "fs.steel-falcon-crossbow-bolt",
+   "note": "rEVO Crowssbow Bolts: already have under another name (A1)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "metahuman_adaption_close",
+   "our_id": "fs.metahuman-adaptation",
+   "note": "Metahuman Adaptation Close Combat Weapon: already have under another name (A1)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "grapple_tapper_cable",
+   "our_id": "hs.50m-cable-spool",
+   "note": "Grapple Tapper Cable (50m): already have under another name (A2); also hs.grapple-tapper"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "malakim_drone",
+   "our_id": "hs.malakim-ophanim-drone-large-rotor-drone",
+   "note": "Dominion Malakim: already have under another name (A2)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "ophanim_drone",
+   "our_id": "hs.malakim-ophanim-drone-large-rotor-drone",
+   "note": "Dominion Ophanim: already have under another name (A2)"
+  },
+  {
+   "src": "nf",
+   "cl6_id": "instrument_death_simple",
+   "our_id": "nf.instruments-of-death",
+   "note": "Instrument of death 1 (simple): already have under another name (A2); also nf.simple"
+  },
+  {
+   "src": "nf",
+   "cl6_id": "instrument_death_professional",
+   "our_id": "nf.instruments-of-death",
+   "note": "Instrument of death 2(professional): already have under another name (A2); also nf.professional"
+  },
+  {
+   "src": "nf",
+   "cl6_id": "instrument_death_rising_star",
+   "our_id": "nf.instruments-of-death",
+   "note": "Instrument of death 3 (rising star): already have under another name (A2); also nf.rising-star"
+  },
+  {
+   "src": "nf",
+   "cl6_id": "procam_with_smart",
+   "our_id": "nf.procam",
+   "note": "ProCam with internal SmartCam: already have under another name (A2); also nf.smartcam-internal"
+  },
+  {
+   "src": "pwp",
+   "cl6_id": "evo-insider",
+   "our_id": "pwp.evo-in",
+   "note": "Evo-Insider: already have under another name (A2)"
+  },
+  {
+   "src": "so",
+   "cl6_id": "fashion_accessory_tres_chic",
+   "our_id": "so.tres-chic",
+   "note": "Fashion Accessory (Très Chic): already have under another name (A2); also so.standard"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_veh_westwind",
+   "our_id": "swc.armed-eurocar-westwind-x80",
+   "note": "Cars-Armed Eurocar Westwind: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_veh_rover",
+   "our_id": "swc.armed-range-rover-model-2080",
+   "note": "Vans-Armed Range Rover: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_veh_nissan_samurai",
+   "our_id": "swc.light-anthro-drone",
+   "note": "Drones, Medium-Anthro: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_veh_nissan_oni",
+   "our_id": "swc.heavy-anthro-drone",
+   "note": "Drones, Large-Anthro: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_upgrade_dirty",
+   "our_id": "swc.dirty-tricks-vehicle",
+   "note": "Upgrades-Dirty Tricks: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_upgrade_gunports",
+   "our_id": "swc.gun-ports-vehicle",
+   "note": "Upgrades-Gunports: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_heavy_predator2",
+   "our_id": "swc.ares-predator-vi-concealable-holster",
+   "note": "Heavy Pistol-Ares Predator VI Silent: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_heavy_manhunter2",
+   "our_id": "swc.colt-manhunter-concealable-holster",
+   "note": "Heavy Pistol-Colt Manhunter Silent: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_shot_defiance2",
+   "our_id": "swc.short-barrel-defiance-t-250-external-smartgun-system",
+   "note": "Shotgun-Defiance T-250 Smart: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_shot_mossberg2",
+   "our_id": "swc.mossberg-cmdt-internal-smartgun-system",
+   "note": "Shotgun-Mossberg CMDT Smart: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_fn_har1",
+   "our_id": "swc.fn-har",
+   "note": "Rifles-FN-HAR Smart: already have under another name (A2); also swc.fn-har-throwback"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_desert2",
+   "our_id": "swc.ares-desert-strike-suppressor",
+   "note": "Rifle-Ares Desert Strike Silent: already have under another name (A2)"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_m202",
+   "our_id": "swc.stoner-ares-m202",
+   "note": "Machine Guns-Stoner-Ares M202Ingram Valiant: already have under another name (A2); also swc.ingram-valiant"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "pack_interceptor",
+   "our_id": "swc.aztechnology-striker",
+   "note": "Launchers-Aztechnology StrikerOnotari Interceptor: already have under another name (A2); also swc.onotari-interceptor"
+  },
+  {
+   "src": "swc",
+   "cl6_id": "cephalopod",
+   "our_id": "swc.cephalopod",
+   "note": "Cephalod Skull: already have under another name (A2)"
+  },
+  {
+   "src": "tkc",
+   "cl6_id": "guizhen_shield_glasses",
+   "our_id": "tkc.glasses-full-wrap",
+   "note": "Guizhen 1 Shield Glasses: already have under another name (A2)"
+  },
+  {
+   "src": "tkc",
+   "cl6_id": "guizhen_shield_visor",
+   "our_id": "tkc.visor-for-helmets",
+   "note": "Guizhen 1 Shield Visor: already have under another name (A2)"
+  },
+  {
+   "src": "ts",
+   "cl6_id": "ares_rampart_mk1",
+   "our_id": "ts.mk1-tactical-shield",
+   "note": "Ares Rampart Shield Mk1: already have under another name (A2)"
+  },
+  {
+   "src": "ts",
+   "cl6_id": "ares_rampart_mk2",
+   "our_id": "ts.mk2-riot-shield",
+   "note": "Ares Rampart Shield Mk2: already have under another name (A2)"
+  },
+  {
+   "src": "ts",
+   "cl6_id": "ares_rampart_mk3",
+   "our_id": "ts.mk3-deployable-barrier-shield",
+   "note": "Ares Rampart Shield Mk3: already have under another name (A2)"
+  },
+  {
+   "src": "ts",
+   "cl6_id": "ares_rampart_mk4",
+   "our_id": "ts.mk4-folding-shield",
+   "note": "Ares Rampart Shield Mk4: already have under another name (A2)"
+  },
+  {
+   "src": "ts",
+   "cl6_id": "foamtek_solvent",
+   "our_id": "ts.shadowmarket-solvent-spray",
+   "note": "Foamtek Solvent Spray: already have under another name (A2)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "securityrigger",
+   "our_id": "crb.minuteman-security-rigger",
+   "note": "Securityrigger: in CRB (B)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "soldato",
+   "our_id": "crb.mafia-soldato",
+   "note": "Soldato: in CRB (B)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "blademaster",
+   "our_id": "crb.yakuza-blademaster-adept",
+   "note": "Blademaster: in CRB (B)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "combat_mage",
+   "our_id": "crb.lone-star-combat-mage",
+   "note": "Combat Mage: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "dodge_scoot",
+   "our_id": "crb.dodge-scoot",
+   "note": "Dodge Scoot: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "harley-davidson_scorpion",
+   "our_id": "crb.harley-davidson-scorpion",
+   "note": "Harley-Davidson Scorpion: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "suzuki_mirage",
+   "our_id": "crb.suzuki-mirage",
+   "note": "Suzuki Mirage: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "eurocar_westwind_x80",
+   "our_id": "crb.eurocar-westwind-x80",
+   "note": "Eurocar Westwind X80: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "hyundai_shin-hyung",
+   "our_id": "crb.hyundai-shin-hyung",
+   "note": "Hyundai Shin-Hyung: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "saeder-krupp-bentley_concordat",
+   "our_id": "crb.saeder-krupp-bentley-concordat",
+   "note": "Saeder-Krupp-Bentley Concordat: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mitsubishi_nightsky",
+   "our_id": "crb.mitsubishi-nightsky",
+   "note": "Mitsubishi Nightsky: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "gmc_bulldog",
+   "our_id": "tkc.gmc-bulldog-stepvan",
+   "note": "GMC Bulldog Step-Van: in TKC (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "artemis_industries_nightwing",
+   "our_id": "crb.artemis-industries-nightwing",
+   "note": "Artemis Industries Nightwing: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct-sikorsky-bell_seahawk",
+   "our_id": "crb.mct-sikorsky-bell-seahawk",
+   "note": "MCT-Sikorsky-Bell Seahawk: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct-sikorsky-bell_wolfhound",
+   "our_id": "crb.mct-sikorsky-bell-wolfhound",
+   "note": "MCT-Sikorsky-Bell Wolfhound: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "federated_boeing_osprey_x",
+   "our_id": "crb.federated-boeing-osprey-x",
+   "note": "Federated Boeing Osprey X: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "ares_venture",
+   "our_id": "crb.ares-venture",
+   "note": "Ares Venture: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "gmc_banshee",
+   "our_id": "crb.gmc-banshee",
+   "note": "GMC Banshee: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "shiawase_kanmushi",
+   "our_id": "crb.shiawase-kanmushi",
+   "note": "Shiawase Kanmushi: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct_gnat",
+   "our_id": "crb.mct-gnat",
+   "note": "MCT Gnat: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "shiawase_inu",
+   "our_id": "crb.shiawase-inu",
+   "note": "Shiawase Inu: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct_hornet",
+   "our_id": "crb.mct-hornet",
+   "note": "MCT Hornet: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "chrysler-nissan_pursuit_v",
+   "our_id": "crb.chrysler-nissan-pursuit-v",
+   "note": "Chrysler-Nissan Pursuit V: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "lockheed_optic_x2",
+   "our_id": "crb.lockheed-optic-x2",
+   "note": "Lockheed Optic-X2: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "nissan_samurai",
+   "our_id": "crb.nissan-samurai",
+   "note": "Nissan Samurai: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct-nissan_roto_drone",
+   "our_id": "ml2083-03.mct-nissan-roto-drone",
+   "note": "MCT-Nissan Roto-Drone: in ML2083-03 (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "federated-boeing_blackhawk",
+   "our_id": "crb.federated-boeing-blackhawk",
+   "note": "Federated Boeing Blackhawk: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "steel_lynx_combat_drone",
+   "our_id": "ml2083-03.steel-lynx-combat-drone",
+   "note": "Steel Lynx Combat Drone: in ML2083-03 (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "ares_packmule",
+   "our_id": "crb.ares-packmule",
+   "note": "Ares Packmule: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "cyberspace_designs_dalmatian",
+   "our_id": "crb.cyberspace-designs-dalmatian",
+   "note": "Cyberspace Designs Dalmatian: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "ares_black_sky",
+   "our_id": "crb.ares-black-sky",
+   "note": "Ares Black Sky: in CRB (B)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "nissan_oni",
+   "our_id": "crb.nissan-oni",
+   "note": "Nissan Oni: in CRB (B)"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "register_sprite",
+   "our_id": "crb.registering-a-sprite",
+   "note": "Register Sprite: already have (C); also crb.registered-sprite-tasks"
+  },
+  {
+   "src": "crb",
+   "cl6_id": "armor_increase",
+   "our_id": "crb.attribute-increase",
+   "note": "Armor increase: variant of other item (C); also crb.armor"
+  },
+  {
+   "src": "da",
+   "cl6_id": "urumi",
+   "our_id": "da.urumi-sword",
+   "note": "Urumi: already have (C)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "long_tooth",
+   "our_id": "fs.cougar-collapsible-staff-spear",
+   "note": "Cougar Weapons 'Long Tooth': already have (C)"
+  },
+  {
+   "src": "kk",
+   "cl6_id": "krime_akm_97",
+   "our_id": "kk.akm-97-carbine",
+   "note": "Krime AKM-97: already have (C); also kk.akm-97-assault-rifle"
+  },
+  {
+   "src": "da",
+   "cl6_id": "pag",
+   "our_id": "da.pag",
+   "note": "Pneumatic Anti-Shock Garments (PAG): catalogued under another name (D)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "av_rapid_transit",
+   "our_id": "fs.rapid-transit-basic",
+   "note": "AV Rapid Transit: catalogued under another name (D); also fs.rapid-transit-elite, fs.rapid-transit-platinum, fs.rapid-transit-diamond"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "mems_basic_harness",
+   "our_id": "fs.modular-equipment-mounting-system-mems-mems-harness",
+   "note": "MEMS Basic Harness: catalogued under another name (D)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "shiawase_arms_tactical_model_71a",
+   "our_id": "fs.shiawase-arms-tactical-model-72",
+   "note": "Shiawase Arms Tactical Model 71A: catalogued under another name (D)"
+  },
+  {
+   "src": "fs",
+   "cl6_id": "franchi_spas-25",
+   "our_id": "fs.franchi-spas-24",
+   "note": "Franchi SPAS-25: catalogued under another name (D)"
+  },
+  {
+   "src": "shc",
+   "cl6_id": "private_investigator",
+   "our_id": "shc.the-bad-beat",
+   "note": "Private Investigator: catalogued under another name (D)"
+  },
+  {
+   "src": "sif-no",
+   "cl6_id": "hunters_alloy_regular",
+   "our_id": "sif-no.hunters-alloy-regular",
+   "note": "Hunter's Alloy: now read as Hunter's Alloy (Regular) from the modifications table (G8)"
+  },
+  {
+   "src": "sif-no",
+   "cl6_id": "hunters_alloy_orichalcum",
+   "our_id": "sif-no.hunters-alloy-orichalcum",
+   "note": "Orichalcum Hunter's Alloy: Hunter's Alloy (Orichalcum) (G8)"
+  },
+  {
+   "src": "kk",
+   "cl6_id": "krime_penetrator",
+   "our_id": "kk.krime-penetrators-buckshot-shells",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "kk",
+   "cl6_id": "krime_heat",
+   "our_id": "kk.krime-crackle-fin-stabilized-heat-slugs",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "courier",
+   "our_id": "crb.courier-sprite",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "crack",
+   "our_id": "crb.crack-sprite",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "data",
+   "our_id": "crb.data-sprite",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "fault",
+   "our_id": "crb.fault-sprite",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "hs",
+   "cl6_id": "machine",
+   "our_id": "crb.machine-sprite",
+   "note": "already in our data (owner decision: counts as complete)"
+  },
+  {
+   "src": "dc",
+   "cl6_id": "mct-nissan_roto_drone",
+   "our_id": "ml2083-03.mct-nissan-roto-drone",
+   "note": "already in our data (owner decision: counts as complete)"
+  }
+ ]
+}

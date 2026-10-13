@@ -1,0 +1,7 @@
+[
+  {"cl6": "Armorweave cloak", "kind": "armor", "id": "armorweave-cloak", "set": {"class": "ARMOR/ARMOR_BODY"}, "gen": "class"},
+  {"cl6": "Disposable cloak", "kind": "armor", "id": "disposable-cloak", "set": {"class": "ARMOR/ARMOR_CLOTHES"}, "gen": "class"},
+  {"cl6": "Trés Chic cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"class": "ARMOR/ARMOR_BODY"}, "gen": "class"},
+  {"cl6": "MapMaster drone", "kind": "gear", "id": "mapmaster-drone", "set": {"class": "DRONE_MINI/AIR"}, "gen": "class"},
+  {"cl6": "MapMaster sensor fob", "kind": "gear", "id": "mapmaster-sensor-fob", "set": {"class": "ELECTRONICS/ELECTRONIC_ACCESSORIES"}, "gen": "class"}
+]

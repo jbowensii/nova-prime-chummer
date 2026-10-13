@@ -5,12 +5,13 @@ import io
 import os
 import tempfile
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from importer import xmlio
 from importer.__main__ import main
-from importer.sr6 import NS
+from importer.sr6 import NS, overrides
 from importer.sr6.__main__ import validate
 from importer.sr6.run import remove, run
 from importer.tests.test_sr6_crb import BOOK_MD
@@ -23,6 +24,9 @@ def _read(*p):
 class Sr6RunTest(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.mkdtemp()
+        patch = unittest.mock.patch.object(overrides, "DIR", Path(tmp, "no-overrides"))  # (the real tables add entries to invented books)
+        patch.start()
+        self.addCleanup(patch.stop)
         self.lib, self.custom = os.path.join(tmp, "library", "sr6"), os.path.join(tmp, "custom", "sr6")
         self.book = self.new_book("book1")
 

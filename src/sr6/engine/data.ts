@@ -193,11 +193,15 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   )
 
   const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })
+  // (Knowledge and Language are free-text entry points, a skill carrying a `knowledgeskill` choice: the creator types the
+  // name on the Skills tab's Knowledge and languages line, so they are not skills to spend skill points on)
   const skills = Object.fromEntries(
-    all('skills').map(e => [
-      e.id,
-      { id: e.id, name: e.name, attr: e.attrs.attr ?? '', untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page },
-    ]),
+    all('skills')
+      .filter(e => !parts(e, 'choice').some(p => p.attrs.kind === 'knowledgeskill'))
+      .map(e => [
+        e.id,
+        { id: e.id, name: e.name, attr: e.attrs.attr ?? '', untrained: e.attrs.untrained === 'true', specs: parts(e, 'spec').map(p => p.text), page: e.page },
+      ]),
   )
   // (a quality path's bare step shows with its path: `Gestalt: Step 2`)
   const qualities = Object.fromEntries(

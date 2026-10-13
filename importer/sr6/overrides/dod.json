@@ -1,0 +1,4 @@
+[
+  {"cl6": "Mortimer of London Belgrade Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-belgrade-sword-cane", "set": {"class": "WEAPON_CLOSE_COMBAT/BLADES"}, "gen": "class"},
+  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}, "gen": "class"}
+]

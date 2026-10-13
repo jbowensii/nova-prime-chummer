@@ -173,3 +173,31 @@ test('MAGIC_KINDS flags; the data satisfies what missingFor reads; made() applie
   expect(missingFor('priority', a.cr, a.data)).toEqual(['skillCap', 'priorities A–E'])
   expect(made().data.priorities.E).toBeDefined()
 })
+
+test('Knowledge and Language (a skill with a knowledgeskill choice) are free-text entry points, not skills to buy', () => {
+  const entry = (id: string, name: string, extra: string) =>
+    `<skill id="zz.${id}" source="ZZ" page="1" attr="log" untrained="false"><name>${name}</name>${extra}</skill>`
+  const zz = {
+    file: 'custom/sr6/imported/zz/skills.xml',
+    xml:
+      '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="skills" version="1">' +
+      entry('knowledge', 'Knowledge', '<choice kind="knowledgeskill" count="1"/>') +
+      entry('language', 'Language', '<choice kind="knowledgeskill" count="1"/>') +
+      entry('lore', 'Lore', '') +
+      '</sr6:data>',
+  }
+  const d = sr6Data(fixtureCatalog(undefined, [zz]))
+  expect(Object.keys(d.skills).filter(k => k.startsWith('zz.'))).toEqual(['zz.lore'])
+})
+
+test('a class attribute (Commlink6’s TYPE/SUBTYPE) on an entry is carried and does no harm', () => {
+  const zz = {
+    file: 'custom/sr6/imported/zz/gear.xml',
+    xml:
+      '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1">' +
+      '<gear id="zz.rope" source="ZZ" page="1" category="Tool" class="TOOLS/TOOLS"><name>Rope</name></gear></sr6:data>',
+  }
+  const d = sr6Data(fixtureCatalog(undefined, [zz]))
+  expect(d.entry('gear', 'zz.rope')?.attrs.class).toBe('TOOLS/TOOLS')
+  expect(d.problems.filter(p => p.message.includes('Rope'))).toEqual([])
+})

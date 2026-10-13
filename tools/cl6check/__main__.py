@@ -21,36 +21,53 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, patterns, reader, report
+from tools.cl6check import optional as optional_package
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True, trace=None):
+def compare(cl6, mine, pdf=True, trace=None, package=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
     for c in cl6:
         by_src[c["src"]].append(c)
     results, extras, pairs = [], [], []
+    optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
+    where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
+    have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
+    moved = {id(where[r["our_id"]]) for r in [*relocated.values(), *have.values()] if r["our_id"] in where}
     for src, recs in sorted(by_src.items()):
         s = mine.get(src)
         entries = s.entries if s else []
         book = arbitrate.Book(s.book_dir if s else None)
         bt = report.BookText(s.book_dir if s else None)
         matched = set()
-        for c, hits, how in match.match(recs, entries):
+        found = match.match([c for c in recs if (src, c["id"]) not in optional and (src, c["id"]) not in relocated
+                              and (src, c["id"]) not in have], entries)
+        found += [(c, [], "optional package") for c in recs if (src, c["id"]) in optional]
+        found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
+                  for c in recs if (src, c["id"]) in relocated]
+        found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        for c, hits, how in found:
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
             o = min(hits, key=lambda h: len(fields.compare(c, h)[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
-                "matched": bool(hits), "how": how, "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
+                "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
                 "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
-                             for f, v in c["families"].items()}, "cause": "", "excluded": None,
+                             for f, v in c["families"].items() if f != "subtype"},  # (subtype: the class family's now)
+                "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
+                "cause": "", "excluded": None,
                 "cl6only": bool(c.get("cl6only"))}
             if not c["page"]:
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
                 r["excluded"] = "page beyond the owned PDF"
+            if o and how == "already have":  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
+                r["families"] = {}
+                results.append(r)
+                continue
             if o:
                 matched.update(id(h) for h in hits)
                 pairs.append((c, o))
@@ -62,11 +79,11 @@ def compare(cl6, mine, pdf=True, trace=None):
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
                     if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
-            else:
+            elif how != "optional package":
                 r["cause"] = report.miss_cause(c, s, bt, book)
             results.append(r)
         book.close()
-        extras += [e for e in entries if id(e) not in matched]
+        extras += [e for e in entries if id(e) not in matched and id(e) not in moved]
     return results, extras, pairs
 
 

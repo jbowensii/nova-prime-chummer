@@ -116,7 +116,7 @@ Skill intro.
 ##### Untrained: Yes
 ##### Linked Attribute: Logic
 Tinkering is made up.
-**Specializations:** Gizmos, Clockwork
+**Specializations:** Gizmos, Clockwork (Wind-up, Spring)
 <!-- page 131 -->
 # MAGIC
 Magic intro.
@@ -430,7 +430,7 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(entries(self.res, "complexforms")["Static Fizz"].get("fade"), "3")
         sk = entries(self.res, "skills")["Tinkering"]
         self.assertEqual((sk.get("attr"), sk.get("untrained"), [x.text for x in sk.iter("spec")]),
-                         ("log", "true", ["Gizmos", "Clockwork"]))
+                         ("log", "true", ["Gizmos", "Clockwork (Wind-up, Spring)"]))  # (a comma inside parentheses is not a split)
         self.assertEqual(entries(self.res, "attributes")["Body"].attrib["abbr"], "BOD")
         self.assertEqual([(n, e.get("cost")) for n, e in entries(self.res, "lifestyles").items()],
                          [("Gutter", "0"), ("Shoebox", "200")])

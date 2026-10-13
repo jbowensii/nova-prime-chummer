@@ -1,9 +1,11 @@
 """The Commlink6 comparison tool (tools/cl6check) on invented data: a made-up jar, invented records and invented
 entries. No Commlink6 data, no book text: every name, id and number here is made up."""
 import io
+import json
 import os
 import tempfile
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 import zipfile
 from contextlib import redirect_stdout
@@ -147,6 +149,17 @@ class OursTest(unittest.TestCase):
         e = ET.Element("weapon", {"mount": "Top or Under"})
         self.assertEqual(ours.families(e)["slots"], frozenset({("fits", "top"), ("fits", "under")}))
 
+    def test_kind_flags_and_social_dashes(self):
+        fl = lambda kind, **a: ours.families(ET.Element("x", a), kind).get("flags")
+        self.assertEqual(fl("augmentations"), frozenset({"augmentation"}))
+        self.assertEqual(fl("electronics"), frozenset({"matrix_device"}))
+        self.assertEqual(fl("gear", category="Attribute codemod"), frozenset({"codemod"}))
+        self.assertIsNone(fl("gear", category="Tools"))
+        soc = lambda kind, **a: ours.families(ET.Element("x", a), kind)["social"]
+        self.assertEqual(soc("armor", social="–2"), soc("armor", social="-2"))  # (the printed en dash)
+        self.assertEqual(soc("armor", social="—"), soc("armor"))  # (a dash, or no column: 0)
+        self.assertEqual(soc("armor"), (str(canon.cl6_value("0")),))
+
     def test_load_reads_runs_once_per_source(self):
         with tempfile.TemporaryDirectory() as d:
             for run in ("a_run", "b_run"):
@@ -197,6 +210,11 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(fields.compare(c, entry("Zorp", kind="weapons", ammo="20(c) + Energy")), (["ammo"], []))
         self.assertEqual(len(fields.compare(c, entry("Zorp", kind="weapons", ammo="30(c) + Energy"))[1]), 1)
 
+    def test_a_drain_per_variant_matches_any_listed(self):
+        c = {"tag": "spell", "fields": {"drain": "6"}}
+        self.assertEqual(fields.compare(c, entry("Zorp", kind="spells", dv="4, 6, 8"))[1], [])
+        self.assertEqual(fields.compare(c, entry("Zorp", kind="spells", dv="4, 8"))[1][0]["field"], "drain")
+
     def test_weapon_bands(self):
         self.assertEqual(fields.bands("10,10,8,,"), fields.bands("10/10/8/—/—"))
 
@@ -220,6 +238,11 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(got["Zorp buoy"], ("loose", ["Zorp Buoys"]))
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))
         self.assertEqual(got["Nothing like it"], ("", []))
+
+    def test_names_apart_by_a_number_never_pair(self):
+        c = {"name": "Zorp Model 9", "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}
+        for stage_page in ("10", "99"):
+            self.assertEqual(match.match([c], [entry("Zorp Model 7", page=stage_page)])[0][1], [])
 
     def test_parentheticals_and_the_records_page(self):
         # a rating's parenthetical is set aside, a variant's word starting with r is not
@@ -304,6 +327,21 @@ class ReportTest(unittest.TestCase):
         self.assertTrue(report.miss_cause(r | {"modelled": False, "kind": "packs"}, src, bt, None).startswith("scope"))
         self.assertTrue(report.miss_cause(r | {"page": ""}, src, bt, None).startswith("Commlink6 gives no page"))
 
+    def test_diffs_csv_marks_what_the_metrics_leave_out(self):
+        import csv
+        base = {"src": "gz", "kind": "gear", "name": "Z", "page": "1", "our_name": "", "our_page": "", "how": "",
+                "id": "z", "our_id": "", "compared": [], "diffs": [], "cause": "x", "modelled": True, "excluded": None}
+        d = {"field": "cost", "class": "c", "pdf": "neither", "why": "ours empty", "cl6": "1", "ours": ""}
+        rs = [base | {"matched": False, "families": {"flags": False}},
+              base | {"matched": False, "cl6only": True, "families": {}},
+              base | {"matched": True, "families": {"slots": False}, "diffs": [d, d | {"field": "avail", "pdf": "ours"}]}]
+        with tempfile.TemporaryDirectory() as out, unittest.mock.patch.object(report, "markdown", return_value=""):
+            report.write(out, {}, rs, [{"src": "gz", "kind": "gear", "name": "E", "page": "2", "id": "e"}])
+            rows = list(csv.DictReader(open(os.path.join(out, "cl6-diffs.csv"), encoding="utf-8-sig")))
+        self.assertEqual([(r["row"], r["status"]) for r in rows],
+                         [("missing", "unmatched"), ("family", "unmatched"), ("missing", "cl6_only"),
+                          ("field", "cl6_only"), ("field", "counted"), ("family", "counted"), ("extra", "extra")])
+
     def test_deltas_against_a_baseline(self):
         base = {"completeness": {"all": {"pct": 50.0}}, "accuracy": {"pct": 80.0, "by_field": {"cost": {"pct": 9.0}}}}
         now = {"completeness": {"all": {"pct": 55.0}}, "accuracy": {"pct": 80.0, "by_field": {"cost": {"pct": 10.0}}}}
@@ -352,3 +390,92 @@ class PerEffectTest(unittest.TestCase):
         c = {"families": {"effects": (("effect", "attribute:strength", "1"), ("test", "skill:stealth", "2"))}}
         o = {"families": {"effects": (("effect", "attribute:strength", "1"),)}}
         self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0})
+
+
+class OptionalPackageTest(unittest.TestCase):
+    def test_optional_and_relocated_records_count_as_matches_in_the_analysis_only(self):
+        from types import SimpleNamespace
+        a = canon.canonical(rec('<item id="aaa"/>', name="Alpha")) | {"src": "gz"}
+        b = canon.canonical(rec('<item id="bbb"/>', name="Beta")) | {"src": "gz"}
+        c = canon.canonical(rec('<item id="ccc"/>', name="Gamma")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Beta"), entry("Other")], book_dir=None),
+                "kz": SimpleNamespace(entries=[entry("Moved") | {"id": "kz.moved"}], book_dir=None)}
+        pkg = ({("gz", "aaa"): {}}, {("gz", "ccc"): {"our_id": "kz.moved"}})
+        results, extras, _ = cli.compare([a, b, c], mine, pdf=False, package=pkg)
+        by = {r["id"]: r for r in results}
+        self.assertEqual([(by[i]["matched"], by[i]["how"]) for i in ("aaa", "bbb", "ccc")],
+                         [(True, "optional package"), (True, "exact"), (True, "relocated")])
+        self.assertEqual(by["ccc"]["our_id"], "kz.moved")
+        self.assertEqual([e["name"] for e in extras], ["Other"])  # (the relocated entry is not an extra)
+        m = report.metrics(results, extras, {}, {"jar": "", "ours": "", "when": ""})
+        self.assertEqual((m["optional_package"], m["accuracy"]["matched"]), (1, 2))  # (no entry to compare for the first)
+
+    def test_the_json_and_the_doc_list_the_same_records(self):
+        import re
+        optional, relocated = __import__("tools.cl6check.optional", fromlist=["x"]).load()
+        self.assertEqual(json.load(open(__import__("tools.cl6check.optional", fromlist=["x"]).FILE, encoding="utf8"))["package"],
+                         "commlink6-sr6-optional")
+        doc = open(os.path.join(os.path.dirname(__file__), "..", "..", "docs", "sr6-cl6-optional-package.md"),
+                   encoding="utf8").read()
+        self.assertEqual({i for _, i in optional}, set(re.findall(r"CL6 id `([a-z0-9_]+)`", doc)))
+        self.assertEqual(relocated, {})  # (nothing is relocated now; the mechanism stays for a record found in another book)
+
+
+class AlreadyHaveTest(unittest.TestCase):
+    def test_a_record_we_have_under_another_name_is_matched_not_compared_and_not_an_extra(self):
+        from types import SimpleNamespace
+        a = canon.canonical(rec('<item id="aaa" avail="9"/>', name="Alpha")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Unlike", avail="1")], book_dir=None)}
+        pkg = ({}, {}, {("gz", "aaa"): {"src": "gz", "cl6_id": "aaa", "our_id": "gz.unlike"}})
+        results, extras, pairs = cli.compare([a], mine, pdf=False, package=pkg)
+        r = results[0]
+        self.assertEqual((r["matched"], r["how"], r["our_id"], r["diffs"], extras, pairs), (True, "already have", "gz.unlike", [], [], []))
+        m = report.metrics(results, extras, {}, {"jar": "", "ours": "", "when": ""})
+        self.assertEqual((m["already_have"], m["accuracy"]["matched"], m["completeness"]["all"]["matched"]), (1, 0, 1))
+        # an entry that isn't a loaded catalog entry (a rules section, say): the owner still counts it complete
+        gone = cli.compare([a], mine, pdf=False, package=({}, {}, {("gz", "aaa"): {"our_id": "gz.nope"}}))[0][0]
+        self.assertEqual((gone["matched"], gone["how"], gone["our_id"]), (True, "already have", "gz.nope"))
+
+    def test_relocated_json_is_well_formed_and_every_id_is_in_a_catalog_when_one_is_given(self):
+        import glob
+        import re
+        have = __import__("tools.cl6check.optional", fromlist=["x"]).load_have()
+        self.assertGreater(len(have), 80)
+        for (src, cid), r in have.items():
+            self.assertTrue(src and cid and r["our_id"].startswith(r["our_id"].split(".")[0] + ".") and r["note"], r)
+        root = os.environ.get("CL6_RUNS")  # (a folder of importer runs, e.g. .extract/cl6check-runs3: the owner's machine)
+        if root:
+            ids = set()
+            for f in glob.glob(os.path.join(root, "*", "custom", "sr6", "imported", "*", "*.xml")):
+                ids.update(re.findall(r'<\w+ id="([^"]+)"', open(f, encoding="utf8").read()))
+            self.assertEqual([r["our_id"] for r in have.values() if r["our_id"] not in ids], [])
+
+
+class ClassFamilyTest(unittest.TestCase):
+    def test_ours_class_is_compared_with_commlink6s_type_and_subtype_case_insensitively(self):
+        from types import SimpleNamespace
+        a = canon.canonical(rec('<item id="aaa" type="ARMOR" subtype="ARMOR_BODY"/>', name="Alpha")) | {"src": "gz"}
+        b = canon.canonical(rec('<item id="bbb" type="TOOLS" subtype="TOOLS"/>', name="Beta")) | {"src": "gz"}
+        c = canon.canonical(rec('<item id="ccc" type="TOOLS"/>', name="Gamma")) | {"src": "gz"}
+        self.assertEqual((a["cl6_class"], c["cl6_class"]), ("ARMOR/ARMOR_BODY", "TOOLS"))
+        mine = {"gz": SimpleNamespace(entries=[entry("Alpha", **{"class": "armor/armor_body"}), entry("Beta", **{"class": "TOOLS/SURVIVAL"}),
+                                               entry("Gamma")], book_dir=None)}
+        results, _, _ = cli.compare([a, b, c], mine, pdf=False, package=({}, {}, {}))
+        by = {r["id"]: r for r in results}
+        self.assertEqual([by[i]["families"].get("class") for i in ("aaa", "bbb", "ccc")], [True, False, False])
+        self.assertTrue(all("subtype" not in r["families"] for r in results))  # (replaced by the class family)
+        self.assertEqual((by["bbb"]["cl6_class"], by["bbb"]["our_class"]), ("TOOLS/TOOLS", "TOOLS/SURVIVAL"))
+        m = report.metrics(results, [], {}, {"jar": "", "ours": "", "when": ""})
+        self.assertEqual((m["class_match"]["equal"], m["class_match"]["matched"]), (1, 3))
+        self.assertIn("class match", report.markdown(m))
+        with tempfile.TemporaryDirectory() as out, unittest.mock.patch.object(report, "markdown", return_value=""):
+            import csv
+            report.write(out, m, results, [])
+            with open(os.path.join(out, "cl6-diffs.csv"), encoding="utf-8-sig") as f:
+                rows = [r for r in csv.DictReader(f) if r["field"] == "class"]
+        self.assertEqual(sorted((r["name_cl6"], r["cl6"], r["ours"]) for r in rows),
+                         [("Beta", "TOOLS/TOOLS", "TOOLS/SURVIVAL"), ("Gamma", "TOOLS", "")])
+
+    def test_a_spells_class_is_its_tag_not_its_spell_type(self):
+        s = canon.canonical(rec('<spell id="sss" cat="COMBAT" type="PHYSICAL"/>', name="Spark"))
+        self.assertEqual(s["cl6_class"], "spell")

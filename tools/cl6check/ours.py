@@ -14,6 +14,7 @@ from tools.cl6check import canon
 
 COUNT = re.compile(r"\*\*[A-Za-z ]+:\*\*\s*(\d+)\s*[–-]\s*(\d+)\s*$", re.M)
 SKIP = {"rules", "attributes", "priorities", "index", "sources", "samples", "categories"}
+DASHES = {0x2013: "-", 0x2212: "-"}  # the printed en dash and minus sign
 NONE = re.compile(r"^\s*[—–-]?\s*$")
 LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 
@@ -104,17 +105,20 @@ def _norm(s):
     return re.sub(r"[^a-z0-9]+", "-", (s or "").casefold()).strip("-")
 
 
-def families(e):
+def families(e, kind=None):
     """The field families of one entry, in canon.families' shape. The elements are the gap plan's model (subtype,
     skill/spec, social, size/ammoClass, <variant>, <slot>/<fits>, <effect>/<test>/<grant>/<allow>, <choice>,
     <requires>, modonly/<flag>/<relevance>); a weapon accessory's printed MOUNT column already gives its fits."""
     a, out = e.attrib, {}
     if a.get("subtype"):
         out["subtype"] = (_norm(a["subtype"]),)
+    if a.get("class"):  # (Commlink6's own TYPE/SUBTYPE, set by the importer: compared as is, case-insensitively)
+        out["class"] = (a["class"].strip().casefold(),)
     if a.get("skill"):
         out["skill/spec"] = (_norm(a["skill"]), _norm(a.get("spec")))
-    if a.get("social") not in (None, ""):
-        out["social"] = (str(canon.cl6_value(a["social"].lstrip("+"))),)
+    if a.get("social") not in (None, "") or kind == "armor":  # (armor with no social column: Commlink6's 0)
+        s = (a.get("social") or "").translate(DASHES)
+        out["social"] = (str(0.0 if NONE.match(s) else canon.cl6_value(s.lstrip("+"))),)
     if a.get("size") or a.get("ammoClass"):
         out["size/ammo"] = (_norm(a.get("size")), _norm(a.get("ammoClass")))
     vs = e.findall("variant")
@@ -138,8 +142,11 @@ def families(e):
                  for rq in e.findall("requires") for r in rq.iter() if r is not rq and r.tag not in ("any",))
     if req:
         out["requires"] = tuple(req)
-    out.update(canon.ui_families([r.get("topic") for r in e.findall("relevance")], [f.text for f in e.findall("flag")],
-                                 a.get("modonly") == "true"))
+    # (Commlink6's kind flags follow from our kind and category: the owned books print no flag)
+    kind_flags = [{"augmentations": "augmentation", "electronics": "matrix_device"}.get(kind)] + [
+        "codemod" if re.search(r"(?i)codemod", a.get("category") or "") else None]
+    out.update(canon.ui_families([r.get("topic") for r in e.findall("relevance")],
+                                 [f.text for f in e.findall("flag")] + kind_flags, a.get("modonly") == "true"))
     return out
 
 
@@ -161,7 +168,7 @@ def _entries(src_dir, src):
                     [expr] + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)] + ([f"opts={opts}"] if opts else []))
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
                         "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias") if x.get("id") is None],
-                        "attrs": attrs, "families": families(e),
+                        "attrs": attrs, "families": families(e, kind),
                         "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
                         # where the importer found a value the row leaves out (resolve.py): field -> how
                         "found": {x.get("field"): x.get("how") for x in e.findall("found")}})

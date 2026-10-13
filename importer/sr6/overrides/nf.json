@@ -1,0 +1,21 @@
+[
+  {"cl6": "You had Fifteen Minutes of Fame", "kind": "lifemodules", "add": {"page": 3, "attrs": {"stage": "adult", "nuyen": "75000", "contactPoints": "4", "contactTypes": "corporate media"}, "kids": [{"tag": "choice", "attrs": {"kind": "mixed", "points": "1", "options": "bod agi rea str cha int"}}]}},
+  {"cl6": "Teen Diva", "kind": "lifemodules", "add": {"page": 163, "attrs": {"stage": "adult", "contactPoints": "4", "contactTypes": "corporate media", "knowledgeSkills": "2"}, "kids": [{"tag": "choice", "attrs": {"kind": "mixed", "points": "1", "options": "agi cha"}}, {"tag": "choice", "attrs": {"kind": "mixed", "points": "1", "options": "skill:crb.influence skill:crb.con"}}]}},
+  {"cl6": "Instrument 4 (big time)", "kind": "gear", "id": "big-time", "set": {"class": "ELECTRONICS/INSTRUMENT"}, "gen": "class"},
+  {"cl6": "External synth link", "kind": "gear", "id": "external-synth", "set": {"class": "ACCESSORY/INSTRUMENT_ACCESSORY"}, "gen": "class"},
+  {"cl6": "Internal synth link", "kind": "gear", "id": "internal-synth", "set": {"class": "ACCESSORY/INSTRUMENT_ACCESSORY"}, "gen": "class"},
+  {"cl6": "Milk (1 liter)", "kind": "gear", "id": "milk-1-liter", "set": {"class": "BIOLOGY/SLAP_PATCHES"}, "gen": "class"},
+  {"cl6": "ProCam", "kind": "gear", "id": "procam", "set": {"class": "ELECTRONICS/IMAGING"}, "gen": "class"},
+  {"cl6": "Instrument 2 (professional)", "kind": "gear", "id": "professional", "set": {"class": "ELECTRONICS/INSTRUMENT"}, "gen": "class"},
+  {"cl6": "Replacement instrument", "kind": "gear", "id": "replacement-instrument", "set": {"class": "ELECTRONICS/INSTRUMENT"}, "gen": "class"},
+  {"cl6": "Instrument 3 (rising star)", "kind": "gear", "id": "rising-star", "set": {"class": "ELECTRONICS/INSTRUMENT"}, "gen": "class"},
+  {"cl6": "Instrument 1 (simple)", "kind": "gear", "id": "simple", "set": {"class": "ELECTRONICS/INSTRUMENT"}, "gen": "class"},
+  {"cl6": "SmartCam external", "kind": "gear", "id": "smartcam-external", "set": {"class": "ACCESSORY/IMAGING"}, "gen": "class"},
+  {"cl6": "SmartCam internal", "kind": "gear", "id": "smartcam-internal", "set": {"class": "ACCESSORY/IMAGING"}, "gen": "class"},
+  {"cl6": "Pitchfork", "kind": "weapons", "id": "pitchfork", "set": {"class": "WEAPON_CLOSE_COMBAT/CLUBS"}, "gen": "class"},
+  {"cl6": "Skateboard (bladed)", "kind": "weapons", "id": "rolling-blades-bladed", "set": {"class": "WEAPON_CLOSE_COMBAT/OTHER_CLOSE"}, "gen": "class"},
+  {"cl6": "Skateboard (hardened)", "kind": "weapons", "id": "rolling-blades-hardened", "set": {"class": "WEAPON_CLOSE_COMBAT/OTHER_CLOSE"}, "gen": "class"},
+  {"cl6": "Yo-Yo (bladed)", "kind": "weapons", "id": "yo-yo-bladed", "set": {"class": "WEAPON_CLOSE_COMBAT/WHIPS"}, "gen": "class"},
+  {"cl6": "Yo-Yo (hardened)", "kind": "weapons", "id": "yo-yo-hardened", "set": {"class": "WEAPON_CLOSE_COMBAT/WHIPS"}, "gen": "class"},
+  {"cl6": "Yo-Yo (monofilament)", "kind": "weapons", "id": "yo-yo-monofilament", "set": {"class": "WEAPON_CLOSE_COMBAT/WHIPS"}, "gen": "class"}
+]

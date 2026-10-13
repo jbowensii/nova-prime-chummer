@@ -681,6 +681,31 @@ and previews it: new entries, changes to a book's entry (the fields that change)
 here, each with Keep mine or Take theirs. Save edits sends the chosen entries one by one as edits made in the app
 (`PUT /api/sr6/edits/<kind>/<id>`); a refused one is listed with why. The file's issues are left out.
 
+## Per-book name tables (`importer/sr6/overrides/<recipe id>.json`)
+
+A last resort for the few names Commlink6 gives an item that no rule derives (`Hermeticsm` for the Street Wyrd tradition
+`Classical Hermeticism`). Each recipe has its own table, empty when its file is absent; the importer applies it after the
+book is read (`importer/sr6/overrides.py`, called from `run._read`), so an older printing's catalog gets it too. A row is
+`{"cl6": "<Commlink6's name>", "kind": "<catalog file>", "ours": ["<our printed name>", ...], "set": {"<attribute>":
+"<value>"}}`: the Commlink6 name becomes an `<alias>` (a name only) of each entry named in `ours`, and `set`, optional,
+sets an attribute to a value taken from Commlink6. A description is never an override: descriptions come from the book's
+own text, and a table that sets one is refused. A name in `ours` that no entry carries is reported on stderr, not
+guessed. A row with `"add": {"page", "attrs", "kids", "name"?}` instead of `ours` creates an entry the book prints only inside other items' text (id `slug(name)`, source the recipe's, rule data from Commlink6 hard-coded in `attrs`/`kids`; an id already there is left as is; never a description: the texts step fills it only if the book has a text for it). Generic cases (a heading naming the brand or category, roman numerals, `hold-out`, `SMG`) are the importer's
+and cl6check's rules, not rows here.
+
+## Commlink6's classification (`class`)
+
+The entries of weapons, armor, augmentations, electronics, gear, vehicles, programs, spells and ammotypes (and
+categories.xml's categories) may carry `class`: Commlink6's own classification, verbatim, in its keys: `TYPE/SUBTYPE`
+(`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`), `TYPE` alone, or the record's tag for a kind with no type (`spell`,
+`ammotype`). The app ignores it; `python -m tools.cl6check` compares it (the "class match" line), and the Foundry module
+translates it to Eden's keys later. Where it comes from: `importer/sr6/classes/category_class.json` ({kind: {category:
+class}}) gives it to every entry of a category whose Commlink6-matched entries share one class (90% or more); an entry
+of another category gets it from an id row of its book's override table (`{"cl6", "kind", "id", "set": {"class"},
+"gen": "class"}`, id unscoped); an entry that already has one keeps it; an entry Commlink6 has no record for gets none.
+Both are made by `python -m tools.cl6check.classmap <category_class_map.csv> <runs dir>` (re-runnable; it replaces only
+the rows with `"gen": "class"`).
+
 ## Layout and load order
 
 ```

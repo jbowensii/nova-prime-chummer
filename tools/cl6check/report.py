@@ -84,6 +84,11 @@ def miss_cause(rec, src, bt, book):
 
 
 # ---------- metrics ----------
+def left_out(d):
+    """True for a field diff the metrics leave out: Commlink6's own value, or one of ours the book never printed."""
+    return bool(d.get("cl6only") or d["why"].startswith("ours empty") and d.get("pdf") == "neither")
+
+
 def metrics(results, extras, excluded, meta):
     """The metrics dict (counts only) from the per-record results."""
     m = {"meta": meta}
@@ -94,20 +99,28 @@ def metrics(results, extras, excluded, meta):
     for r in results:
         if r.get("cl6only"):
             continue
-        gone = {d["field"] for d in r["diffs"] if d.get("cl6only")
-                or d["why"].startswith("ours empty") and d.get("pdf") == "neither"}
+        gone = {d["field"] for d in r["diffs"] if left_out(d)}
         nf += len(gone)
         kept.append(r | {"compared": [f for f in r["compared"] if f not in gone],
                          "diffs": [d for d in r["diffs"] if d["field"] not in gone]})
     results = kept
     m["cl6_only"] = {"records": len(only), "fields": nf}
+    m["already_have"] = sum(1 for r in results if r["how"] == "already have")  # (matched, another item's fields: not compared)
+    m["optional_package"] = sum(1 for r in results if r["how"] == "optional package")  # (matched, not in the shipped data)
     owned = [r for r in results if r.get("excluded") is None]
-    matched = [r for r in results if r["matched"]]
+    matched = [r for r in results if r["matched"] and r["how"] not in ("optional package", "already have")]  # (no entry of ours to compare)
 
     def cov(rows):
         return {"records": len(rows), "matched": sum(r["matched"] for r in rows),
                 "pct": pct(sum(r["matched"] for r in rows), len(rows))}
 
+    cm = [r for r in matched if "class" in r["families"]]  # (matched records of the kinds that carry a class)
+    byk = group(cm, "kind")
+    m["class_match"] = {"matched": len(cm), "equal": sum(1 for r in cm if r["families"]["class"]),
+                        "pct": pct(sum(1 for r in cm if r["families"]["class"]), len(cm)),
+                        "by_kind": {k: {"matched": len(rs), "equal": sum(1 for r in rs if r["families"]["class"]),
+                                        "pct": pct(sum(1 for r in rs if r["families"]["class"]), len(rs))}
+                                    for k, rs in sorted(byk.items())}}
     m["completeness"] = {
         "all": cov(results), "modelled": cov([r for r in results if r["modelled"]]), "owned": cov(owned),
         "excluded_from_owned": dict(Counter(r["excluded"] for r in results if r.get("excluded"))),
@@ -180,7 +193,7 @@ def write(out_dir, m, results, extras, base=None):
     with open(os.path.join(out_dir, "cl6-metrics.json"), "w", encoding="utf8") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
     cols = ["src", "kind", "row", "field", "class", "pdf", "why", "name_cl6", "name_ours", "cl6", "ours", "page_cl6",
-            "page_ours", "how", "cl6_id", "our_id"]
+            "page_ours", "how", "cl6_id", "our_id", "status"]
     with open(os.path.join(out_dir, "cl6-diffs.csv"), "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
@@ -188,17 +201,26 @@ def write(out_dir, m, results, extras, base=None):
             base_row = {"src": r["src"], "kind": r["kind"], "name_cl6": r["name"], "name_ours": r["our_name"],
                         "page_cl6": r["page"], "page_ours": r["our_page"], "how": r["how"], "cl6_id": r["id"],
                         "our_id": r["our_id"]}
+            # status: what the metrics do with the row. counted; cl6_only (a Commlink6-only record or field, left out);
+            # unmatched (the record has no entry of ours: its family rows repeat the `missing` row)
+            st = "cl6_only" if r.get("cl6only") else "counted" if r["matched"] else "unmatched"
+            base_row["status"] = st
             if not r["matched"]:
                 w.writerow(base_row | {"row": "missing", "why": r["cause"], "class": ""})
             for d in r["diffs"]:
                 w.writerow(base_row | {"row": "field", "field": d["field"], "class": d["class"], "pdf": d["pdf"],
-                                       "why": d["why"], "cl6": d["cl6"], "ours": d["ours"]})
+                                       "why": d["why"], "cl6": d["cl6"], "ours": d["ours"],
+                                       "status": "cl6_only" if left_out(d) else st})
             for fam, eq in r["families"].items():
-                if not eq:
+                if fam == "class" and not eq:
+                    w.writerow(base_row | {"row": "field", "field": "class", "class": "", "why": "class differs or ours has none",
+                                           "cl6": r.get("cl6_class", ""), "ours": r.get("our_class", ""), "status": st})
+                elif not eq:
                     w.writerow(base_row | {"row": "family", "field": fam, "why": "ours lacks or differs"})
         for e in extras:
             w.writerow({"src": e["src"], "kind": e["kind"], "row": "extra", "name_ours": e["name"],
-                        "page_ours": e["page"], "our_id": e["id"]})
+                        "page_ours": e["page"], "our_id": e["id"],
+                        "status": "extra"})
     with open(os.path.join(out_dir, "cl6-report.md"), "w", encoding="utf8") as f:
         f.write(markdown(m, deltas(m, base) if base else None))
 
@@ -223,6 +245,9 @@ def markdown(m, dl=None):
          f"| Commlink6-only, left out of both: records no book prints as an item / fields no book prints | "
          f"{m.get('cl6_only', {}).get('records', 0):,} / {m.get('cl6_only', {}).get('fields', 0):,} |",
          f"| accuracy, verified printed differences (class b) as printed | {a['exact_but_b']:,} = {a['pct_b_as_printed']}%{_d('accuracy.pct_b_as_printed', dl)} |",
+         f"| matched via optional package (docs/sr6-cl6-optional-package.md; counted in the matches above) | {m.get('optional_package', 0):,} |",
+         f"| class match (ours `class` = Commlink6's TYPE/SUBTYPE, case-insensitive): matched records of kinds that carry one | {m.get('class_match', {}).get('equal', 0):,} / {m.get('class_match', {}).get('matched', 0):,} = {m.get('class_match', {}).get('pct', 0)}% |",
+         f"| matched as already in our data (relocated.json; counted in the matches above) | {m.get('already_have', 0):,} |",
          f"| matched records with a class-a (importer) error | {a['with_class_a']:,} |", "",
          "Excluded from the owned denominator: " + (", ".join(f"{k} {v}" for k, v in c["excluded_from_owned"].items())
                                                    or "none") + ".", "",
@@ -232,6 +257,10 @@ def markdown(m, dl=None):
     L += ["", "## Completeness by kind", "", "| kind | modelled | records | matched | % |", "|---|---|---:|---:|---:|"]
     L += [f"| {k} | {'yes' if v['modelled'] else '**no**'} | {v['records']} | {v['matched']} | {v['pct']}"
           f"{_d(f'completeness.by_kind.{k}.pct', dl)} |" for k, v in sorted(c["by_kind"].items(), key=lambda x: -x[1]["records"])]
+    cmk = m.get("class_match", {}).get("by_kind", {})
+    if cmk:
+        L += ["", "## Class match by kind", "", "| kind | matched | equal | % |", "|---|---:|---:|---:|"]
+        L += [f"| {k} | {v['matched']} | {v['equal']} | {v['pct']} |" for k, v in cmk.items()]
     L += ["", "## Field families", "", "Records where Commlink6 has the datum, and those where ours is equal.", "",
           "| family | records | equal | % |", "|---|---:|---:|---:|"]
     L += [f"| {k} | {v['records']} | {v['equal']} | {v['pct']}{_d(f'completeness.by_family.{k}.pct', dl)} |"

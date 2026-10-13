@@ -139,12 +139,19 @@
     <xs:attribute name="accessoryOf" type="xs:string"/>
     <xs:attribute name="supplyOf" type="xs:string"/>
   </xs:attributeGroup>
+  <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
+       its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/
+       classes/category_class.json) or per item (importer/sr6/overrides); a category's own class is every entry's of it. -->
+  <xs:simpleType name="ClassKey">
+    <xs:restriction base="xs:string"><xs:pattern value="[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?"/></xs:restriction>
+  </xs:simpleType>
   <!-- one category of a book's table rows (categories.xml): its name (the table's title, singular), the kind its rows
        are (of), the printed table and section titles, and how they link: an accessory category's hosts (fits) and a
        host's accessory categories (accessories), names separated by "; ". confidence="low" with why: the name came
        from the section heading (no title, a title naming no category, a title split across lines). -->
   <xs:complexType name="Category">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="of" type="sr6:Kind" use="required"/>
       <xs:attribute name="table" type="xs:string"/>
       <xs:attribute name="section" type="xs:string"/>
@@ -449,6 +456,7 @@
 
   <xs:complexType name="Weapon">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <!-- the ratings (Size, Level …) a rated weapon or mount comes in, where the book prints them -->
       <xs:attribute name="rating" type="xs:string"/>
@@ -471,6 +479,7 @@
 
   <xs:complexType name="Armor">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="defense" type="xs:string"/>
@@ -485,6 +494,7 @@
 
   <xs:complexType name="Augmentation">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/><xs:enumeration value="nanoware"/><xs:enumeration value="symbionts"/><xs:enumeration value="transgenics"/></xs:restriction></xs:simpleType>
       </xs:attribute>
@@ -522,6 +532,7 @@
 
   <xs:complexType name="Device">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="array" type="xs:string"/>
@@ -537,6 +548,7 @@
        where the book prints them -->
   <xs:complexType name="Program">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
@@ -546,6 +558,7 @@
 
   <xs:complexType name="Gear">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="capacity" type="xs:string"/>
@@ -565,6 +578,7 @@
 
   <xs:complexType name="Vehicle">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="handling" type="xs:string"/>
       <xs:attribute name="accel" type="xs:string"/>
@@ -583,6 +597,7 @@
 
   <xs:complexType name="Spell">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" use="required">
         <xs:simpleType><xs:restriction base="xs:string">
           <xs:enumeration value="combat"/><xs:enumeration value="detection"/><xs:enumeration value="health"/>
@@ -837,6 +852,7 @@
   <!-- an ammunition type: its modifiers and its price (a multiplier, x2, or a price) as printed -->
   <xs:complexType name="AmmoType">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string"/>
       <xs:attribute name="dv" type="xs:string"/>
       <xs:attribute name="ar" type="xs:string"/>

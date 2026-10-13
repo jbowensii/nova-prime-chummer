@@ -13,13 +13,28 @@ def n0(s):
     return re.sub(r"[^a-z0-9]+", "", (s or "").casefold())
 
 
+ROMAN = {"I": "1", "II": "2", "III": "3", "IV": "4", "V": "5", "VI": "6", "VII": "7", "VIII": "8", "IX": "9", "X": "10"}
+
+
 def words(s):
-    s = (s or "").casefold().replace("’", "'").replace("&", " and ")
+    # (a numeral printed in capitals after a first word, `Guizhen I`, `Predator VI`: its digit; `Hold-out` is `Holdout`,
+    # `SMG` the `submachine gun`: Commlink6 and the books spell them either way)
+    s = re.sub(r"(?<=\S )\b(?:I|II|III|IV|V|VI|VII|VIII|IX|X)\b", lambda m: ROMAN[m.group()], s or "")
+    s = re.sub(r"(?i)\bhold[\s-]+out\b", "holdout", s)
+    s = re.sub(r"\bSMGs?\b", "submachine gun", s)
+    s = s.casefold().replace("’", "'").replace("&", " and ")
     # (a rating's parenthetical, `(R 1-6)`, not one whose word starts with r: `(Razorwire)` names a variant)
     s = re.sub(r"\((?:rating|force|level|r\b)[^)]*\)|\brating\s*\d*\b|\[[^\]]*\]", " ", s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
     s = re.sub(r"\bammo\b", "ammunition", s)  # (Commlink6's `Ammo Shotgun Masterkey`: the book's `Masterkey Ammunition`)
     return [w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in s.split()]
+
+
+SIMILAR = 0.90  # names this alike (difflib ratio of n1) are one item (owner, 2026-10-13)
+
+
+def digits(s):
+    return re.findall(r"\d+", s)
 
 
 def n1(s):
@@ -112,6 +127,17 @@ def bundled(name, o):
         and not any(_like(w, u) for w in key for u in own)
 
 
+def unbranded(name, o):
+    """True when our row's name and Commlink6's are the same words once the words of the row's maker and group (attrs)
+    are taken out of both: at least a word of four letters is left, and something was taken out."""
+    a = o.get("attrs", {})
+    brand = toks(a.get("maker", "")) | toks(a.get("group", ""))
+    key = toks(re.sub(r"\([^)]*\)", " ", name)) - brand
+    own = toks(re.sub(r"\([^)]*\)", " ", o["name"])) - brand
+    return bool(brand) and key == own and any(len(w) >= 4 and not w.isdigit() for w in key) \
+        and toks(name) != toks(o["name"])
+
+
 def initials(o):
     """Our entry's names as Commlink6 shortens a maker of two words or more to its initials: `VI Ace of Clubs` for
     `Vashon Island (Ace of Clubs)`, `VI Steampunk` for `Steampunk` grouped under `Vashon Island`."""
@@ -164,13 +190,16 @@ def match(cl6, ours):
         if found[i] or not c["page"]:
             continue
         key = toks(c["name"])
+        # (a record's own aliases too: `Grenade, Party` → `Party`, in `Krime Party (Frag)`)
+        keys_c = [key] + [k for a in c["aliases"] if len(k := toks(a)) >= 1 and k != key]
         # (not a row whose group the record names: `DocWagon Contract` is the group head stage's, its rows the levels')
         hits = [o for o in pool[i] if id(o) not in used and near(o["page"], c["page"], 8)
                 and n1(o.get("attrs", {}).get("group") or "") != n1(c["name"]) and any(
-                contained(key, toks(n)) and (near(o["page"], c["page"], 1) or (min(len(key), len(toks(n))) >= 2 and
-                                                                             near(o["page"], c["page"], 3))
-                                             or (len(key) >= 2 and key <= toks(n))) for n in _names(o))]
-        share = {id(o): max(len(key & toks(n)) for n in _names(o)) for o in hits}  # the rows sharing the most words
+                contained(k, toks(n)) and (near(o["page"], c["page"], 1) or (min(len(k), len(toks(n))) >= 2 and
+                                                                           near(o["page"], c["page"], 3))
+                                           or (len(k) >= 2 and k <= toks(n))) for k in keys_c for n in _names(o))]
+        # (the rows sharing the most words)
+        share = {id(o): max(len(k & toks(n)) for k in keys_c for n in _names(o)) for o in hits}
         hits = [o for o in hits if share[id(o)] == max(share.values())]  # (`Ritual Spellcasting`, not `Spellcasting`)
         # (the rows on the record's own page when some are: `Assault Cannon HEX` is p. 140's row, not p. 147's)
         hits = [o for o in hits if near(o["page"], c["page"])] or hits
@@ -195,6 +224,11 @@ def match(cl6, ours):
                 found[i] = (hits, "contained")
                 found[j] = ([o for o in f[0] if o is not hits[0]], f[1])
                 break
+    for i, c in enumerate(cl6):  # the words of our row's maker or group left out of both names (`Krime Party` = `Party`)
+        if found[i] is None and pool[i]:
+            hits = [o for o in pool[i] if unbranded(c["name"], o)]
+            if hits:
+                found[i] = (hits, "unbranded")
     for i, c in enumerate(cl6):  # our row named within its category (group): `Implanted Shotgun` is `Shotgun` there
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if grouped(c["name"], o)]):
             found[i] = (hits, "group")
@@ -202,12 +236,22 @@ def match(cl6, ours):
         if found[i] is None and pool[i] and (hits := [o for o in pool[i] if o.get("attrs", {}).get("group")
                                                      and n1(o["attrs"]["group"]) == n1(c["name"])]):
             found[i] = (hits, "group head")
+    for i, c in enumerate(cl6):  # the owner's rule: names 90% alike are one (same book; the same numbers in both)
+        if found[i] or not c["pool"]:
+            continue
+        key = n1(c["name"])
+        best = sorted(((difflib.SequenceMatcher(None, key, n1(o["name"])).ratio(), o) for o in pool[i]
+                       if digits(key) == digits(n1(o["name"]))), key=lambda x: -x[0])
+        if best and best[0][0] >= SIMILAR:
+            found[i] = ([o for r, o in best if r == best[0][0]], f"similar {best[0][0]:.2f}")
+        elif hits := [o for o in ours if n1(o["name"]) == key]:  # (the same name in another kind: only that exact)
+            found[i] = (hits, "another kind")
     for i, c in enumerate(cl6):
         if found[i] or not pool[i]:
             continue
         key = n1(c["name"])
         best = sorted(((difflib.SequenceMatcher(None, key, n1(o["name"])).ratio(), o) for o in pool[i]
-                       if id(o) not in used), key=lambda x: -x[0])[:2]
+                       if id(o) not in used and digits(key) == digits(n1(o["name"]))), key=lambda x: -x[0])[:2]
         if not best:
             continue
         r0, o0 = best[0]

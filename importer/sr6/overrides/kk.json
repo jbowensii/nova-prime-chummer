@@ -1,0 +1,23 @@
+[
+  {"cl6": "Krime Tripod Replacement Pitons", "kind": "gear", "id": "krime-explosive-securing-tripod-replacement-piton", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}, "gen": "class"},
+  {"cl6": "Krime Runner", "kind": "vehicles", "id": "krime-runner", "set": {"class": "DRONE_MICRO/GROUND"}, "gen": "class"},
+  {"cl6": "Krime AKM-97 Carbine", "kind": "weapons", "id": "akm-97-carbine", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}, "gen": "class"},
+  {"cl6": "Krime Calliope", "kind": "weapons", "id": "krime-calliope", "set": {"class": "ACCESSORY/VEHICLE_ACCESSORY"}, "gen": "class"},
+  {"cl6": "Krime Carpet", "kind": "weapons", "id": "krime-carpet", "set": {"class": "ACCESSORY/LAUNCHERS"}, "gen": "class"},
+  {"cl6": "Krime Chatter", "kind": "weapons", "id": "krime-chatter", "set": {"class": "WEAPON_FIREARMS/MACHINE_PISTOLS"}, "gen": "class"},
+  {"cl6": "Krime Confederate", "kind": "weapons", "id": "krime-confederate", "set": {"class": "WEAPON_FIREARMS/ASSAULT_CANNON"}, "gen": "class"},
+  {"cl6": "Krime Ditch Combination Gun", "kind": "weapons", "id": "krime-ditch-combination-gun-rifle", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}, "gen": "class"},
+  {"cl6": "Krime Escalation", "kind": "weapons", "id": "krime-escalation", "set": {"class": "WEAPON_SPECIAL/LAUNCHERS"}, "gen": "class"},
+  {"cl6": "Krime Heater", "kind": "weapons", "id": "krime-heater", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}, "gen": "class"},
+  {"cl6": "Krime Junior Carbine", "kind": "weapons", "id": "krime-junior-carbine", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}, "gen": "class"},
+  {"cl6": "Krime KAR-97-H", "kind": "weapons", "id": "krime-kar-97-h", "set": {"class": "WEAPON_FIREARMS/LMG"}, "gen": "class"},
+  {"cl6": "Krime Monster", "kind": "weapons", "id": "krime-monster", "set": {"class": "WEAPON_FIREARMS/ASSAULT_CANNON"}, "gen": "class"},
+  {"cl6": "Krime Ripper", "kind": "weapons", "id": "krime-ripper", "set": {"class": "DRONE_LARGE/GROUND"}, "gen": "class"},
+  {"cl6": "Krime Saint Nicholas Carbine", "kind": "weapons", "id": "krime-saint-nicholas-carbine", "set": {"class": "WEAPON_FIREARMS/SUBMACHINE_GUNS"}, "gen": "class"},
+  {"cl6": "Krime Soldier", "kind": "weapons", "id": "krime-soldier", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}, "gen": "class"},
+  {"cl6": "Krime Stopper II", "kind": "weapons", "id": "krime-stopper-ii", "set": {"class": "WEAPON_FIREARMS/SHOTGUNS"}, "gen": "class"},
+  {"cl6": "Krime T-Shirt Cannon", "kind": "weapons", "id": "krime-t-shirt-cannon", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}, "gen": "class"},
+  {"cl6": "Krime Tradition", "kind": "weapons", "id": "krime-tradition", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}, "gen": "class"},
+  {"cl6": "Krime Varmint Stocked Pistol", "kind": "weapons", "id": "krime-varmint-stocked-pistol", "set": {"class": "WEAPON_FIREARMS/PISTOLS_HEAVY"}, "gen": "class"},
+  {"cl6": "Krime Vester", "kind": "weapons", "id": "krime-vester", "set": {"class": "WEAPON_FIREARMS/HOLDOUTS"}, "gen": "class"}
+]
