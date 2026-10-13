@@ -240,7 +240,8 @@ def compare(c, o):
         add("spell type", _str_field("spell type", a.get("type"), f.get("spell type"), first(1), False))
         add("duration", _str_field("duration", a.get("duration"), f.get("duration"), first(1), False))
         num = lambda s: (re.findall(r"-?\d+", s or "") or [""])[0]
-        add("drain", _str_field("drain", a.get("dv"), f.get("drain"), num, False))
+        mine = re.findall(r"-?\d+", a.get("dv") or "")  # (a row printing a drain per variant: any of them)
+        add("drain", None if num(f.get("drain")) in mine else _str_field("drain", a.get("dv"), f.get("drain"), num, False))
         add("spell category", _str_field("spell category", a.get("category"), f.get("spell category"),
                                          lambda s: (s or "").lower(), False))
     if k == "adeptpowers" and c["tag"] == "power":

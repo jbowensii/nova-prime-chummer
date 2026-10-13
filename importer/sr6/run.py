@@ -12,7 +12,7 @@ from pathlib import Path
 
 from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import ROOT, effects, moved, regroup, resolve
+from importer.sr6 import ROOT, effects, moved, overrides, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, printing, skipped
 
 def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
@@ -138,6 +138,7 @@ def _read(recipe, md, custom_dir):
                                    variants=getattr(recipe, "VARIANT_ROWS", False))
     res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
     res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
+    res.files = overrides.apply(getattr(recipe, "ID", ""), res.files)  # the book's last-resort Commlink6 name table
     return res, md, text, report
 
 

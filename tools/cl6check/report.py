@@ -84,6 +84,11 @@ def miss_cause(rec, src, bt, book):
 
 
 # ---------- metrics ----------
+def left_out(d):
+    """True for a field diff the metrics leave out: Commlink6's own value, or one of ours the book never printed."""
+    return bool(d.get("cl6only") or d["why"].startswith("ours empty") and d.get("pdf") == "neither")
+
+
 def metrics(results, extras, excluded, meta):
     """The metrics dict (counts only) from the per-record results."""
     m = {"meta": meta}
@@ -94,8 +99,7 @@ def metrics(results, extras, excluded, meta):
     for r in results:
         if r.get("cl6only"):
             continue
-        gone = {d["field"] for d in r["diffs"] if d.get("cl6only")
-                or d["why"].startswith("ours empty") and d.get("pdf") == "neither"}
+        gone = {d["field"] for d in r["diffs"] if left_out(d)}
         nf += len(gone)
         kept.append(r | {"compared": [f for f in r["compared"] if f not in gone],
                          "diffs": [d for d in r["diffs"] if d["field"] not in gone]})
@@ -180,7 +184,7 @@ def write(out_dir, m, results, extras, base=None):
     with open(os.path.join(out_dir, "cl6-metrics.json"), "w", encoding="utf8") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
     cols = ["src", "kind", "row", "field", "class", "pdf", "why", "name_cl6", "name_ours", "cl6", "ours", "page_cl6",
-            "page_ours", "how", "cl6_id", "our_id"]
+            "page_ours", "how", "cl6_id", "our_id", "status"]
     with open(os.path.join(out_dir, "cl6-diffs.csv"), "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
@@ -188,17 +192,23 @@ def write(out_dir, m, results, extras, base=None):
             base_row = {"src": r["src"], "kind": r["kind"], "name_cl6": r["name"], "name_ours": r["our_name"],
                         "page_cl6": r["page"], "page_ours": r["our_page"], "how": r["how"], "cl6_id": r["id"],
                         "our_id": r["our_id"]}
+            # status: what the metrics do with the row. counted; cl6_only (a Commlink6-only record or field, left out);
+            # unmatched (the record has no entry of ours: its family rows repeat the `missing` row)
+            st = "cl6_only" if r.get("cl6only") else "counted" if r["matched"] else "unmatched"
+            base_row["status"] = st
             if not r["matched"]:
                 w.writerow(base_row | {"row": "missing", "why": r["cause"], "class": ""})
             for d in r["diffs"]:
                 w.writerow(base_row | {"row": "field", "field": d["field"], "class": d["class"], "pdf": d["pdf"],
-                                       "why": d["why"], "cl6": d["cl6"], "ours": d["ours"]})
+                                       "why": d["why"], "cl6": d["cl6"], "ours": d["ours"],
+                                       "status": "cl6_only" if left_out(d) else st})
             for fam, eq in r["families"].items():
                 if not eq:
                     w.writerow(base_row | {"row": "family", "field": fam, "why": "ours lacks or differs"})
         for e in extras:
             w.writerow({"src": e["src"], "kind": e["kind"], "row": "extra", "name_ours": e["name"],
-                        "page_ours": e["page"], "our_id": e["id"]})
+                        "page_ours": e["page"], "our_id": e["id"],
+                        "status": "extra"})
     with open(os.path.join(out_dir, "cl6-report.md"), "w", encoding="utf8") as f:
         f.write(markdown(m, deltas(m, base) if base else None))
 

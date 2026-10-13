@@ -681,6 +681,18 @@ and previews it: new entries, changes to a book's entry (the fields that change)
 here, each with Keep mine or Take theirs. Save edits sends the chosen entries one by one as edits made in the app
 (`PUT /api/sr6/edits/<kind>/<id>`); a refused one is listed with why. The file's issues are left out.
 
+## Per-book name tables (`importer/sr6/overrides/<recipe id>.json`)
+
+A last resort for the few names Commlink6 gives an item that no rule derives (`Hermeticsm` for the Street Wyrd tradition
+`Classical Hermeticism`). Each recipe has its own table, empty when its file is absent; the importer applies it after the
+book is read (`importer/sr6/overrides.py`, called from `run._read`), so an older printing's catalog gets it too. A row is
+`{"cl6": "<Commlink6's name>", "kind": "<catalog file>", "ours": ["<our printed name>", ...], "set": {"<attribute>":
+"<value>"}}`: the Commlink6 name becomes an `<alias>` (a name only) of each entry named in `ours`, and `set`, optional,
+sets an attribute to a value taken from Commlink6. A description is never an override: descriptions come from the book's
+own text, and a table that sets one is refused. A name in `ours` that no entry carries is reported on stderr, not
+guessed. Generic cases (a heading naming the brand or category, roman numerals, `hold-out`, `SMG`) are the importer's
+and cl6check's rules, not rows here.
+
 ## Layout and load order
 
 ```

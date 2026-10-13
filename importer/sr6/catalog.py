@@ -844,7 +844,7 @@ class Catalog:
         spec = next((v for k, v in b.labels.items() if re.match(r"speciali[sz]ation", k, re.I)), None)
         if spec is None and (s := re.search(r"speciali[sz]ations?\s*:\s*([^;]+)", blob, re.I)):
             spec = s.group(1)
-        specs = [x.strip(" .") for x in re.split(r"\s*,\s*", spec or "") if x.strip(" .")]
+        specs = [x.strip(" .") for x in re.split(r"\s*,\s*(?![^()]*\))", spec or "") if x.strip(" .")]  # (no split at a comma inside parentheses)
         self.add("skills", b.name, page, {"attr": attr, "untrained": "true" if u and u.group(1).lower() == "yes" else "false"},
                  [("spec", {}, s) for s in specs], block_text(b))
         return True

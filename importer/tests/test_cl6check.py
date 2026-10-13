@@ -4,6 +4,7 @@ import io
 import os
 import tempfile
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 import zipfile
 from contextlib import redirect_stdout
@@ -147,6 +148,17 @@ class OursTest(unittest.TestCase):
         e = ET.Element("weapon", {"mount": "Top or Under"})
         self.assertEqual(ours.families(e)["slots"], frozenset({("fits", "top"), ("fits", "under")}))
 
+    def test_kind_flags_and_social_dashes(self):
+        fl = lambda kind, **a: ours.families(ET.Element("x", a), kind).get("flags")
+        self.assertEqual(fl("augmentations"), frozenset({"augmentation"}))
+        self.assertEqual(fl("electronics"), frozenset({"matrix_device"}))
+        self.assertEqual(fl("gear", category="Attribute codemod"), frozenset({"codemod"}))
+        self.assertIsNone(fl("gear", category="Tools"))
+        soc = lambda kind, **a: ours.families(ET.Element("x", a), kind)["social"]
+        self.assertEqual(soc("armor", social="–2"), soc("armor", social="-2"))  # (the printed en dash)
+        self.assertEqual(soc("armor", social="—"), soc("armor"))  # (a dash, or no column: 0)
+        self.assertEqual(soc("armor"), (str(canon.cl6_value("0")),))
+
     def test_load_reads_runs_once_per_source(self):
         with tempfile.TemporaryDirectory() as d:
             for run in ("a_run", "b_run"):
@@ -197,6 +209,11 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(fields.compare(c, entry("Zorp", kind="weapons", ammo="20(c) + Energy")), (["ammo"], []))
         self.assertEqual(len(fields.compare(c, entry("Zorp", kind="weapons", ammo="30(c) + Energy"))[1]), 1)
 
+    def test_a_drain_per_variant_matches_any_listed(self):
+        c = {"tag": "spell", "fields": {"drain": "6"}}
+        self.assertEqual(fields.compare(c, entry("Zorp", kind="spells", dv="4, 6, 8"))[1], [])
+        self.assertEqual(fields.compare(c, entry("Zorp", kind="spells", dv="4, 8"))[1][0]["field"], "drain")
+
     def test_weapon_bands(self):
         self.assertEqual(fields.bands("10,10,8,,"), fields.bands("10/10/8/—/—"))
 
@@ -220,6 +237,11 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(got["Zorp buoy"], ("loose", ["Zorp Buoys"]))
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))
         self.assertEqual(got["Nothing like it"], ("", []))
+
+    def test_names_apart_by_a_number_never_pair(self):
+        c = {"name": "Zorp Model 9", "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}
+        for stage_page in ("10", "99"):
+            self.assertEqual(match.match([c], [entry("Zorp Model 7", page=stage_page)])[0][1], [])
 
     def test_parentheticals_and_the_records_page(self):
         # a rating's parenthetical is set aside, a variant's word starting with r is not
@@ -303,6 +325,21 @@ class ReportTest(unittest.TestCase):
         self.assertTrue(report.miss_cause(r | {"name": "Grenade Party"}, src, bt, None).startswith("printed under"))
         self.assertTrue(report.miss_cause(r | {"modelled": False, "kind": "packs"}, src, bt, None).startswith("scope"))
         self.assertTrue(report.miss_cause(r | {"page": ""}, src, bt, None).startswith("Commlink6 gives no page"))
+
+    def test_diffs_csv_marks_what_the_metrics_leave_out(self):
+        import csv
+        base = {"src": "gz", "kind": "gear", "name": "Z", "page": "1", "our_name": "", "our_page": "", "how": "",
+                "id": "z", "our_id": "", "compared": [], "diffs": [], "cause": "x", "modelled": True, "excluded": None}
+        d = {"field": "cost", "class": "c", "pdf": "neither", "why": "ours empty", "cl6": "1", "ours": ""}
+        rs = [base | {"matched": False, "families": {"flags": False}},
+              base | {"matched": False, "cl6only": True, "families": {}},
+              base | {"matched": True, "families": {"slots": False}, "diffs": [d, d | {"field": "avail", "pdf": "ours"}]}]
+        with tempfile.TemporaryDirectory() as out, unittest.mock.patch.object(report, "markdown", return_value=""):
+            report.write(out, {}, rs, [{"src": "gz", "kind": "gear", "name": "E", "page": "2", "id": "e"}])
+            rows = list(csv.DictReader(open(os.path.join(out, "cl6-diffs.csv"), encoding="utf-8-sig")))
+        self.assertEqual([(r["row"], r["status"]) for r in rows],
+                         [("missing", "unmatched"), ("family", "unmatched"), ("missing", "cl6_only"),
+                          ("field", "cl6_only"), ("field", "counted"), ("family", "counted"), ("extra", "extra")])
 
     def test_deltas_against_a_baseline(self):
         base = {"completeness": {"all": {"pct": 50.0}}, "accuracy": {"pct": 80.0, "by_field": {"cost": {"pct": 9.0}}}}
