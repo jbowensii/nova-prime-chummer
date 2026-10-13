@@ -58,6 +58,8 @@ def compare(cl6, mine, pdf=True, trace=None):
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
+                    if t == "unprinted" and not d["why"].startswith("ours empty"):
+                        t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
                     if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
             else:

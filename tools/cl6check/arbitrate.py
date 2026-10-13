@@ -124,6 +124,8 @@ def load_trace(path):
                 out[(r["src"], r["id"], r["field"])] = "only"
             elif r["field"] and (r["family"] == "own row" or r.get("verdict") == "weak link, not confirmed on the page"):
                 out[(r["src"], r["id"], r["field"])] = "demote"
+            elif r["field"] not in ("", "rating") and r["family"] in ("description sentence", "not found", "another book"):
+                out[(r["src"], r["id"], r["field"])] = "unprinted"  # no row of this book prints it (rating ranges are modelled apart)
     return out
 
 
@@ -140,6 +142,10 @@ def settle(book, entry, rec, diff):
     if w is not None:
         a, b = bool(token_in(w, diff.get("ours_tok"))), bool(token_in(w, diff.get("cl6_tok")))
         pdf = {(True, False): "ours", (False, True): "cl6", (True, True): "both", (False, False): "neither"}[(a, b)]
+    if pdf == "cl6" and diff["why"].startswith("ours empty") and (diff.get("ours") or "").strip() in ("—", "–", "-"):
+        return "b", "ours"  # the row prints a dash; Commlink6's value only matches a stray digit in the window
+    if pdf == "cl6" and w is not None and re.search(r"[A-Za-z]", diff.get("ours") or "") and token_in(w, diff["ours"]):
+        return "b", "ours"  # our formula ('Capacity x 50', 'Rating') is printed on the row; Commlink6 flattens it to one number
     if pdf == "cl6":
         return "a", pdf
     if pdf == "ours":

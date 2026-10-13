@@ -323,3 +323,25 @@ class InlineRefsTest(unittest.TestCase):
               {"kind": "gear", "id": "gz.d", "attrs": {"formula:cost": "ref(gear:gz.b, cost)*0.5|unit=x"}}]
         out = {e["id"]: e["attrs"].get("formula:cost") for e in ours._inline_refs(es)}
         self.assertEqual((out["gz.c"], out["gz.d"]), ("(R*100)*0.7", "(2000)*0.5|unit=x"))
+
+
+class SettleTest(unittest.TestCase):
+    class Book:  # a one-page stand-in for the PDF
+        def __init__(self, text):
+            self.text = text
+
+        def page_text(self, p):
+            return self.text
+
+    def settle(self, text, **diff):
+        from tools.cl6check import arbitrate
+        return arbitrate.settle(self.Book(text), {"page": 1, "name": "Milk"}, {"page": 1}, diff)
+
+    def test_a_printed_dash_or_formula_is_not_an_importer_error(self):
+        # the row prints a dash; the one digit Commlink6 holds sits elsewhere in the window
+        self.assertEqual(self.settle("Milk — 3 1", why="ours empty", ours="—", cl6_tok="1")[0], "b")
+        # the row prints our formula; Commlink6 flattens it to the rating-1 number
+        self.assertEqual(self.settle("Milk 1-3 1 Capacity x 50", why="differs at rating 2", ours="Capacity x 50",
+                                     ours_tok="100", cl6_tok="50")[0], "b")
+        # a genuine miss still counts
+        self.assertEqual(self.settle("Milk 4 20", why="ours empty", ours="", cl6_tok="4")[0], "a")
