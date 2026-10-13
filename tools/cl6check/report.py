@@ -265,6 +265,11 @@ def markdown(m, dl=None):
             L.append(f"| {tag} | {v['positives']} | {' OR '.join(f'`{r}`' for r in s['rules']) or '—'} | "
                      f"{s['precision']:.2f} | {s['recall']:.2f} | {s['f1']:.2f} | {s['tags_extras']} | {singles} |")
         L.append("")
+    pe = m.get("per_effect")
+    if pe:
+        L += ["## Per-effect", "", f"Per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = "
+              f"{pe['pct']}% (matched records; (target, value) level, informational; the whole-entry effects family "
+              "above is unchanged).", ""]
     md = m.get("modifiers")
     if md:
         cv = md["coverage"]

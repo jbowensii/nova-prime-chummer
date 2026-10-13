@@ -146,6 +146,7 @@ def main(argv=None):
     m = report.metrics(results, extras, excluded, meta)
     m["patterns"] = patterns.run(pairs, extras, mine)
     m["modifiers"] = modifiers.run(cl6, pairs, mine)
+    m["per_effect"] = modifiers.per_effect(pairs)
     report.write(a.out, m, results, extras, base)
     if a.save_baseline:
         with open(base_path, "w", encoding="utf8") as f:
@@ -155,6 +156,8 @@ def main(argv=None):
           f"(modelled {c['modelled']['pct']}%, owned {c['owned']['pct']}%); accuracy {acc['pct']}% "
           f"({acc['pct_b_as_printed']}% with class b as printed); report {os.path.join(a.out, 'cl6-report.md')}"
           + ("; baseline saved" if a.save_baseline else ""))
+    pe = m["per_effect"]
+    print(f"per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = {pe['pct']}%")
     gate = dict(x.split("=") for x in a.fail_under.split(",") if "=" in x)
     low = [k for k, v in gate.items() if ({"completeness": c["all"]["pct"], "accuracy": acc["pct"]}.get(k) or 0) < float(v)]
     return 1 if low else 0

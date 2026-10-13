@@ -345,3 +345,10 @@ class SettleTest(unittest.TestCase):
                                      ours_tok="100", cl6_tok="50")[0], "b")
         # a genuine miss still counts
         self.assertEqual(self.settle("Milk 4 20", why="ours empty", ours="", cl6_tok="4")[0], "a")
+
+
+class PerEffectTest(unittest.TestCase):
+    def test_counts_cl6_modifiers_ours_reproduces_by_target_and_value(self):
+        c = {"families": {"effects": (("effect", "attribute:strength", "1"), ("test", "skill:stealth", "2"))}}
+        o = {"families": {"effects": (("effect", "attribute:strength", "1"),)}}
+        self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0})
