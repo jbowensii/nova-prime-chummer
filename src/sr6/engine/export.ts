@@ -537,6 +537,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
       aspectedSkill: b.aspectedSkill,
       initiation: b.initiation,
       submersion: b.submersion,
+      transhuman: b.transhuman || undefined,
     }),
     portrait: id.portrait ?? null,
     token: id.token ?? null,

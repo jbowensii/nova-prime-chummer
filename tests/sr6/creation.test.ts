@@ -48,6 +48,7 @@ const without = (key: string) => XML.replace(new RegExp(`\\s*<setting key="${key
 
 /** the settings the fixture leaves unset (each test sets its own) */
 const UNSET = [
+  'gradeCap.transhuman',
   ...['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath'].map(m => `methodAllowed.${m}`),
   'advance.nuyenToKarmaRate',
   'initiativeDiceMax',

@@ -220,6 +220,7 @@
     <xs:attribute name="powerPointsBought" type="c:Count"/>
     <xs:attribute name="initiation" type="c:Count"/>
     <xs:attribute name="submersion" type="c:Count"/>
+    <xs:attribute name="transhuman" type="c:Count"/>
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
     <!-- lifepath: the best attribute, and the one that takes what its maximum leaves over -->
     <xs:attribute name="bestAttr" type="c:CoreAttr"/>

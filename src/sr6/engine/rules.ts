@@ -93,6 +93,7 @@ const over = (budget: { left: number }, what: string, unit = ''): Hit | null =>
 const entryCite = (e?: { source: string; page: number }) => (e ? { source: e.source, page: e.page } : {})
 const CRB = (page: number) => ({ source: 'CRB', page })
 const CRB_HK = (page: number) => ({ source: 'CRB-HK', page })
+const SWC = (page: number) => ({ source: 'SWC', page })
 const metaName = (c: Ctx) => c.data.metatypes[c.b.metatype]?.name ?? c.b.metatype
 /** every purchase and accessory, with the path of the line it sits on */
 function* lines(b: Sr6Build): Generator<{ x: Sr6Purchase; path: string; host?: Sr6Purchase; own?: Sr6Purchase }> {
@@ -1028,6 +1029,19 @@ const RULES: Rule[] = [
       return hits
     },
   },
+  // the Sixth World Companion's Transhumanism (p. 146): a mundane's grades, with the rule on
+  {
+    code: 'magic.transhuman',
+    severity: 'error',
+    tab: 'magic',
+    setting: () => ['transhumanism'],
+    check: c => {
+      if (c.b.transhuman <= 0) return null
+      const k = MAGIC_KINDS[c.b.magic]
+      if (!flag(c.cr, 'transhumanism')) return { message: `Transhumanist grade ${c.b.transhuman}: the optional rule is off at this table.`, ...SWC(146) }
+      return k.spells || k.powers || k.resonance ? { message: 'Transhumanism is for a mundane runner.', ...SWC(146) } : null
+    },
+  },
   // the house rule gradeCapAtCreation (owner's decision 15, 2026-10-11): the GM's caps on the grades at creation
   {
     code: 'magic.gradeCapCreation',
@@ -1042,6 +1056,18 @@ const RULES: Rule[] = [
       if (c.b.initiation > i) hits.push({ message: `Initiate grade ${c.b.initiation} at creation: the table’s cap is ${i}.` })
       if (c.b.submersion > s) hits.push({ message: `Submersion grade ${c.b.submersion} at creation: the table’s cap is ${s}.` })
       return hits
+    },
+  },
+  // the same house rule for the Sixth World Companion's transhumanist grades (a rule of its own: its cap is set only with Transhumanism)
+  {
+    code: 'magic.gradeCapCreationTranshuman',
+    severity: 'error',
+    tab: 'magic',
+    setting: c => (flag(c.cr, 'gradeCapAtCreation') && flag(c.cr, 'transhumanism') ? ['gradeCap.transhuman'] : []),
+    check: c => {
+      if (!flag(c.cr, 'gradeCapAtCreation') || !flag(c.cr, 'transhumanism')) return null
+      const h = n0(c.cr, 'gradeCap.transhuman')
+      return c.b.transhuman > h ? { message: `Transhumanist grade ${c.b.transhuman} at creation: the table’s cap is ${h}.` } : null
     },
   },
   // the house rule dataStructureCaps (owner's decision 13): the GM's caps on a technomancer's data structures

@@ -23,7 +23,7 @@ import {
   type Sr6Method,
   type Sr6Purchase,
 } from '../model/character'
-import { num, str, type CreationRules } from './creation'
+import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
 import { normName } from './names'
 import { gradeKnown, gradeProblem } from './grades'
@@ -105,6 +105,7 @@ export type Op =
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
   | { op: 'submersion'; delta: number }
+  | { op: 'transhuman'; delta: number }
   /** follow a mentor spirit (a mentorspirits id; null: none): its Mentor Spirit quality comes and goes with it (owner's
    *  decision 5, 2026-10-11); advantage: a mystic adept's pick of its magician or adept advantages (null: none yet) */
   | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
@@ -156,6 +157,7 @@ export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr:
   if (!k.paysPowers) b.powerPointsBought = 0
   if (!k.spells && !k.powers) b.initiation = 0
   if (!k.resonance) b.submersion = 0
+  if (k.spells || k.powers || k.resonance) b.transhuman = 0 // (Transhumanism is for a mundane)
   if (!k.spells && !k.powers) b.attributes.mag = { points: 0, adjust: 0, karma: 0 }
   if (!k.resonance) b.attributes.res = { points: 0, adjust: 0, karma: 0 }
   if (kind !== 'mystic-adept') delete b.mentorAdvantage
@@ -723,6 +725,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.removed > seatsOf(entryOf(x, data))) return no('at-maximum')
       if (op.removed) x.seatsRemoved = op.removed
       else delete x.seatsRemoved
+      return OK
+    }
+    case 'transhuman': {
+      // the Sixth World Companion's Transhumanism (p. 146): only with the rule on, only for a mundane, up to the 20 grades the rule allows
+      const k = MAGIC_KINDS[b.magic],
+        v = b.transhuman + op.delta
+      if (v < 0) return no('below-zero')
+      if (op.delta > 0 && !flag(cr, 'transhumanism')) return no('rule-off')
+      if (k.spells || k.powers || k.resonance) return no('not-mundane')
+      if (v > TRANSHUMAN_MAX) return no('at-maximum')
+      b.transhuman = v
       return OK
     }
     case 'initiation':

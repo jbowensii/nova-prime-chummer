@@ -167,6 +167,7 @@
   <setting key="dataStructureCaps" value="false"/>
   <setting key="noUsedCulturedBioware" value="false"/>
   <setting key="gradeCapAtCreation" value="false"/>
+  <setting key="transhumanism" value="false" source="SWC" page="146"/>
   <setting key="restrictMethods" value="false"/>
   <setting key="adjustOnLoweredMax" value="false"/>
   <setting key="pointBuyErrataNuyen" value="false"/>

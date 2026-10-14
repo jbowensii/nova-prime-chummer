@@ -118,6 +118,8 @@ export const REASONS: Record<string, string> = {
   'conversion-cap': 'That’s more karma than may be turned into nuyen.',
   'not-awakened': 'Only an awakened runner can be initiated.',
   'not-emerged': 'Only an emerged runner can submerge.',
+  'not-mundane': 'Transhumanism is for a mundane runner.',
+  'rule-off': 'That optional rule is off at this table.',
   'not-finalized': 'Finalize the runner first: career spends come after creation.',
   'not-enough-karma': 'Not enough karma.',
   'not-enough-nuyen': 'Not enough nuyen.',

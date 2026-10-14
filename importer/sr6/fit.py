@@ -53,7 +53,7 @@ REQUIRES = {
         ("karmaBuildMethod", ("karmaBuild.start", "karmaBuild.startRating", "karmaBuild.freeSpellsPerMagic",
                               "karmaBuild.freeFormsPerResonance", *(f"magicKarma:{k}" for k in _AWAKENED))),
         ("dataStructureCaps", ("dataStructure.maxCount", "dataStructure.maxRating")),
-        ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion")),
+        ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion", "gradeCap.transhuman")),
         ("restrictMethods", tuple(f"methodAllowed.{m}" for m in ("priority", "sumtoten", "pointbuy", "karma", "lifepath")))) for k in kids},
     "eliteSumToThirteen": ["levelSwcElite"],
 }

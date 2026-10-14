@@ -8,6 +8,8 @@
 import { MAGIC_KIND_LABELS, LETTERS, SR6_METHODS, SR6_METHOD_LABELS, type Letter, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
+/** The most transhumanist grades the Sixth World Companion's Transhumanism allows (p. 146) */
+export const TRANSHUMAN_MAX = 20
 export type CreationValue = number | boolean | string
 /** from: the layer it comes from (runnerRules; unset: the server's); lockedBy: the campaign GM who locked it for its runners;
  *  assumed: a sample runner's, taken from its book's numbers (the book doesn't say). */
@@ -500,7 +502,8 @@ export const CREATION_KEYS: CreationKey[] = [
   ...(
     [
       ['noUsedCulturedBioware', 'No used (or omega) grade on cultured bioware (house rule)'],
-      ['gradeCapAtCreation', 'Caps on the initiation and submersion grade at creation: the grades below (house rule)'],
+      ['gradeCapAtCreation', 'Caps on the initiation, submersion and transhumanist grade at creation: the grades below (house rule)'],
+      ['transhumanism', 'Transhumanism: a mundane buys transhumanist grades, each an Essence hole of 1.0 (option)'],
     ] as [string, string][]
   ).map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
   ...n(
@@ -509,6 +512,7 @@ export const CREATION_KEYS: CreationKey[] = [
     [
       ['gradeCap.initiation', 'Grade caps: highest initiation grade at creation'],
       ['gradeCap.submersion', 'Grade caps: highest submersion grade at creation'],
+      ['gradeCap.transhuman', 'Grade caps: highest transhumanist grade at creation'],
     ],
   ),
   ...(
@@ -746,7 +750,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
         ],
       ],
       ['dataStructureCaps', ['dataStructure.maxCount', 'dataStructure.maxRating']],
-      ['gradeCapAtCreation', ['gradeCap.initiation', 'gradeCap.submersion']],
+      ['gradeCapAtCreation', ['gradeCap.initiation', 'gradeCap.submersion', 'gradeCap.transhuman']],
       ['restrictMethods', SR6_METHODS.map(m => `methodAllowed.${m}`)],
     ].flatMap(([parent, kids]) => (kids as string[]).map(k => [k, { requires: [parent as string] }])),
   ),
@@ -778,6 +782,8 @@ export const RULE_PRESETS: RulePreset[] = [
       availabilitySeven: true,
       gradeCapAtCreation: true,
       'gradeCap.initiation': 1,
+      'gradeCap.transhuman': 1,
+      transhumanism: true,
       'gradeCap.submersion': 2,
       expandedSpecializations: true,
       restrictMethods: true,
@@ -1135,6 +1141,11 @@ const ABOUT: Record<string, [string, string]> = {
   ],
   'gradeCap.initiation': ['The highest initiation grade at creation, with the caps on', HOUSE],
   'gradeCap.submersion': ['The highest submersion grade at creation, with the caps on', HOUSE],
+  'gradeCap.transhuman': ['The highest transhumanist grade at creation, with the caps on', HOUSE],
+  transhumanism: [
+    'On: a mundane runner buys transhumanist grades for 10 + the next grade in Karma (the initiation price), up to 20, and each gives an Essence hole of 1.0 that augmentations’ Essence is paid from first; off: none',
+    SWC(146),
+  ],
   adjustOnLoweredMax: [
     'On: adjustment points may also go on an attribute whose metatype maximum is lowered; off: only on raised maxima, Edge, Magic and Resonance (CRB Hong Kong p. 63)',
     HOUSE,
@@ -1269,6 +1280,8 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'gradeCapAtCreation',
   'gradeCap.initiation',
   'gradeCap.submersion',
+  'gradeCap.transhuman',
+  'transhumanism',
   'adjustOnLoweredMax',
   'pointBuyErrataNuyen',
   'knowledgeLogicIntuition',

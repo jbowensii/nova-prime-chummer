@@ -39,7 +39,7 @@ export function MagicTab() {
     pp = budgets.powerPoints
   const word = k.resonance ? 'complex forms' : 'spells'
   const karma = num(cr, k.resonance ? 'karmaForm' : 'karmaSpell')
-  const grade = (key: 'initiation' | 'submersion', label: string) => (
+  const grade = (key: 'initiation' | 'submersion' | 'transhuman', label: string) => (
     <p className="row">
       {label}
       <Stepper label={label} value={b[key]} min={0} max={99} onChange={to => act({ op: key, delta: to - b[key] })} />
@@ -258,6 +258,8 @@ export function MagicTab() {
       )}
       {(k.spells || k.powers) && grade('initiation', 'Initiation grade')}
       {k.resonance && grade('submersion', 'Submersion grade')}
+      {/* (the Sixth World Companion's optional Transhumanism, p. 146: a mundane's grades, an Essence hole of 1.0 each) */}
+      {!k.spells && !k.powers && !k.resonance && (flag(cr, 'transhumanism') || b.transhuman > 0) && grade('transhuman', 'Transhumanist grade')}
       {/* (data structures, Hack & Slash pp. 70–72: only for a technomancer, or one a runner holds) */}
       {PICKS.filter(([kind]) => kind !== 'datastructures' || allowed.datastructures || b.picks.some(x => x.kind === kind)).map(section)}
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>

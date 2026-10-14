@@ -226,6 +226,8 @@ export interface Sr6Build {
   powerPointsBought: number
   initiation: number
   submersion: number
+  /** the Sixth World Companion's optional Transhumanism (p. 146): a mundane's transhumanist grades, each an Essence hole of 1.0 */
+  transhuman: number
   attributes: Record<Sr6Attr, Sr6AttrSpend>
   skills: Sr6Skill[]
   knowledge: Sr6Knowledge[]
@@ -365,6 +367,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   powerPointsBought: 0,
   initiation: 0,
   submersion: 0,
+  transhuman: 0,
   attributes: Object.fromEntries(SR6_ATTRS.map(a => [a, { points: 0, adjust: 0, karma: 0 }])) as Sr6Build['attributes'],
   skills: [],
   knowledge: [],
