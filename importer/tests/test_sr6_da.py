@@ -244,6 +244,10 @@ class DaRecipeTest(unittest.TestCase):
                          [(k, f"ref(gear:crb.spell-focus, {k}, R)") for k in ("cost", "avail", "karma")])
         # the book's misplaced header (AVAIL over the sensor column): read by the values' shapes
         self.assertEqual((g["Zip Rocket"]["avail"], g["Zop Missile"]["avail"]), ("5(I)", "7(I)"))
+        # the table's range and guidance columns stay on the gear rows (they were dropped)
+        self.assertEqual([(g[n].get("range"), g[n].get("pilot"), g[n].get("sensor")) for n in ("Zip Rocket", "Zop Missile")],
+                         [("1 km", "0", "0"), ("2 km", "3", "2")])
+        self.assertEqual(g["Smart Dart"]["range"], "1 km")
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

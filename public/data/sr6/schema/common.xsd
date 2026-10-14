@@ -572,6 +572,10 @@
       <xs:attribute name="slots" type="xs:string"/>
       <!-- a weapon power supply's Energy (an energy weapon's ammo formula reads it: ref(gear:<id>, energy)) -->
       <xs:attribute name="energy" type="xs:string"/>
+      <!-- a rocket or missile's range as printed ("1.5 km") and the Pilot and Sensor ratings of its guidance -->
+      <xs:attribute name="range" type="xs:string"/>
+      <xs:attribute name="pilot" type="xs:string"/>
+      <xs:attribute name="sensor" type="xs:string"/>
       <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
