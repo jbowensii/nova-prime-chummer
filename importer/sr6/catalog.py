@@ -45,6 +45,7 @@ HEADERS = {
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
+             "RANGE": "range", "PILOT": "pilot", "SENSOR": "sensor",  # a rocket or missile's range and guidance (DA p. 58)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
@@ -214,6 +215,11 @@ _STAT_NAME_COLUMNS = {"ITEM", "WEAPON", "NAME", "GEAR", "DEVICE", "VEHICLE", "AU
 _STAT_RULE_COLUMNS = {"GRADE", "RATING", "LEVEL", "FORCE", "PRIORITY", "METATYPE", "CLASS", "SIZE", "SIZE CLASS", "LIFESTYLE"}
 
 
+def _cap_name(cell):
+    """A name of two or more words, each capitalised (`Silver Bolts`, `Liar's Fetish`)."""
+    return len(cell.split()) > 1 and all(w[:1].isupper() for w in cell.split())
+
+
 def stat_lines(b, names=frozenset()):
     """A heading whose text holds its own stat line(s): one priced table with no name column (`TYPE | DV | … | AVAIL |
     COST`, the type its first cell; a vehicle's `HAND | ACCEL | … | COST` under a title line naming it): the block as
@@ -259,7 +265,7 @@ def stat_lines(b, names=frozenset()):
         return [b]
     if len(rows) > 1 and (h[0].upper() != "TYPE" or len({x.upper() for x in h} & _STAT_PRICE) < 2
                           or any(not re.match(r"[^\W\d_]", r[0]) or len(r[0].split()) > 2 or "(" in r[0]
-                                 or set(norm(r[0]).split()) & hw for r in rows)
+                                 or set(norm(r[0]).split()) & hw and not _cap_name(r[0]) for r in rows)
                           or 2 * sum(norm(r[0]) in names for r in rows) >= len(rows)):
         return [b]
     text = b.text
@@ -272,9 +278,11 @@ def stat_lines(b, names=frozenset()):
         return [replace(b, type="item", row=row, header=list(row), text=text)]
     out = []
     for r in rows:  # (a type that is a name of its own, `Silver Bolts`: the item's; a word, `Wooden`: the heading's variant)
-        name = r[0] if len(r[0].split()) > 1 and all(w[:1].isupper() for w in r[0].split()) else f"{b.name} ({r[0]})"
+        name = r[0] if _cap_name(r[0]) else f"{b.name} ({r[0]})"
         row = {"ITEM": name, **dict(zip(h, r))}
-        out.append(replace(b, type="item", name=name, row=row, header=list(row), text=text))
+        # (a table with a name sharing a word with its heading, `Liar's Fetish` under `Liar's Medium`: its rows grouped under it)
+        out.append(replace(b, type="item", name=name, row=row, header=list(row), text=text,
+                           **({"group": b.name} if any(set(norm(x[0]).split()) & hw for x in rows) else {})))
     return out
 
 
@@ -844,7 +852,7 @@ class Catalog:
         spec = next((v for k, v in b.labels.items() if re.match(r"speciali[sz]ation", k, re.I)), None)
         if spec is None and (s := re.search(r"speciali[sz]ations?\s*:\s*([^;]+)", blob, re.I)):
             spec = s.group(1)
-        specs = [x.strip(" .") for x in re.split(r"\s*,\s*", spec or "") if x.strip(" .")]
+        specs = [x.strip(" .") for x in re.split(r"\s*,\s*(?![^()]*\))", spec or "") if x.strip(" .")]  # (no split at a comma inside parentheses)
         self.add("skills", b.name, page, {"attr": attr, "untrained": "true" if u and u.group(1).lower() == "yes" else "false"},
                  [("spec", {}, s) for s in specs], block_text(b))
         return True
@@ -925,6 +933,8 @@ class Catalog:
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
             a = {"id": e["id"], "source": self.source, "page": e["page"], **e["attrs"]}
+            if (m := re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", _s(a.get("rating")))):
+                a["rating"] = f"{m.group(1)}–{m.group(2)}"  # one dash (en, as Commlink6 prints it) for every rating range
             kids = "".join(f"<{t}{_attrs(ca)}>{escape(_s(tx))}</{t}>" if tx is not None else f"<{t}{_attrs(ca)}/>"
                            for t, ca, tx in e["children"])
             lines.append(f"  <{tag}{_attrs(a)}><name>{escape(_s(e['name']))}</name>{kids}</{tag}>\n")

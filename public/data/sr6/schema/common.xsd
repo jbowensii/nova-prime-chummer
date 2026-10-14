@@ -116,6 +116,22 @@
              name switch="wireless"/> -->
         <xs:element name="incompatible" type="sr6:Incompatible"/>
         <xs:element name="compatible" type="sr6:Compatible"/>
+        <!-- Commlink6's structure for an item (docs/sr6-data-format.md, Item structure): a slot the item offers (id; value:
+             how many, a formula like the cost), a slot it fits, the variants it comes in (by name), the topics it is
+             relevant to (a pick list's filters), and kind flags. Data for the pickers and the Foundry export; no rule reads
+             them yet -->
+        <xs:element name="slot" type="sr6:Slot"/>
+        <xs:element name="fits" type="sr6:Fits"/>
+        <xs:element name="variant" type="sr6:Variant"/>
+        <xs:element name="relevance" type="sr6:Relevance"/>
+        <xs:element name="flag" type="xs:string"/>
+        <!-- Commlink6's own rule data for the item, kept as it gives it and never applied: a modification it makes
+             (kind valmod, checkmod, itemmod or allowmod, with its type, ref, value and conditions), a prerequisite
+             (kind datareq or valuereq) and a pick it offers (type, ref, options). The app reads our <effect>s, <link>s,
+             <requires> and <choice>s; these are the reference those are measured against -->
+        <xs:element name="modifier" type="sr6:Cl6Data"/>
+        <xs:element name="prerequisite" type="sr6:Cl6Data"/>
+        <xs:element name="selection" type="sr6:Cl6Data"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -138,13 +154,25 @@
          spike head for both tactical hammers), or a supply for one (a weapon's batteries) -->
     <xs:attribute name="accessoryOf" type="xs:string"/>
     <xs:attribute name="supplyOf" type="xs:string"/>
+    <!-- bought only as an add-on to another item (Commlink6's modonly), a weapon's size class and the ammunition class it
+         draws on -->
+    <xs:attribute name="modonly" type="xs:boolean"/>
+    <xs:attribute name="size" type="xs:string"/>
+    <xs:attribute name="ammoClass" type="xs:string"/>
   </xs:attributeGroup>
+  <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
+       its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/
+       classes/category_class.json) or per item (importer/sr6/overrides); a category's own class is every entry's of it. -->
+  <xs:simpleType name="ClassKey">
+    <xs:restriction base="xs:string"><xs:pattern value="[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?"/></xs:restriction>
+  </xs:simpleType>
   <!-- one category of a book's table rows (categories.xml): its name (the table's title, singular), the kind its rows
        are (of), the printed table and section titles, and how they link: an accessory category's hosts (fits) and a
        host's accessory categories (accessories), names separated by "; ". confidence="low" with why: the name came
        from the section heading (no title, a title naming no category, a title split across lines). -->
   <xs:complexType name="Category">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="of" type="sr6:Kind" use="required"/>
       <xs:attribute name="table" type="xs:string"/>
       <xs:attribute name="section" type="xs:string"/>
@@ -159,6 +187,22 @@
     <xs:attribute name="targets" type="xs:string"/>
     <xs:attribute name="names" type="xs:string"/>
     <xs:attribute name="family" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Cl6Data">
+    <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+  <xs:complexType name="Slot">
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="value" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Fits">
+    <xs:attribute name="slot" type="xs:string" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Variant">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Relevance">
+    <xs:attribute name="topic" type="xs:string" use="required"/>
   </xs:complexType>
   <xs:complexType name="Compatible">
     <xs:attribute name="name" type="xs:string" use="required"/>
@@ -354,9 +398,10 @@
          runner has it, else to the skill's bracketed total (owner decision 2026-10-10) -->
     <xs:attribute name="spec" type="xs:string"/>
     <!-- a spell's, ritual's or complex form's: whom it affects (owner decision 2026-10-10); caster: counted on the
-         caster while sustained; target: never on the caster -->
+         caster while sustained; target: never on the caster; others: what others get against the entry, never counted
+         on the runner (owner decision #16) -->
     <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
-      <xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="caster"/><xs:enumeration value="target"/><xs:enumeration value="others"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
        `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a
@@ -448,6 +493,7 @@
 
   <xs:complexType name="Weapon">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <!-- the ratings (Size, Level …) a rated weapon or mount comes in, where the book prints them -->
       <xs:attribute name="rating" type="xs:string"/>
@@ -461,6 +507,8 @@
       <xs:attribute name="blast" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- what the cost buys, for ammunition filed with the weapons: "10 rounds" -->
+      <xs:attribute name="per" type="xs:string"/>
       <!-- a close-combat weapon's skill and specialization, from its TYPE (Blade: Close Combat, Blades) -->
       <xs:attribute name="skill" type="xs:string"/>
       <xs:attribute name="spec" type="xs:string"/>
@@ -470,6 +518,7 @@
 
   <xs:complexType name="Armor">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="defense" type="xs:string"/>
@@ -484,6 +533,7 @@
 
   <xs:complexType name="Augmentation">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" use="required">
         <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="cyberware"/><xs:enumeration value="bioware"/><xs:enumeration value="geneware"/><xs:enumeration value="nanoware"/><xs:enumeration value="symbionts"/><xs:enumeration value="transgenics"/></xs:restriction></xs:simpleType>
       </xs:attribute>
@@ -521,6 +571,7 @@
 
   <xs:complexType name="Device">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="array" type="xs:string"/>
@@ -536,7 +587,9 @@
        where the book prints them -->
   <xs:complexType name="Program">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" type="xs:string" use="required"/>
+      <xs:attribute name="modonly" type="xs:boolean"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
@@ -545,6 +598,7 @@
 
   <xs:complexType name="Gear">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="capacity" type="xs:string"/>
@@ -558,12 +612,17 @@
       <xs:attribute name="slots" type="xs:string"/>
       <!-- a weapon power supply's Energy (an energy weapon's ammo formula reads it: ref(gear:<id>, energy)) -->
       <xs:attribute name="energy" type="xs:string"/>
+      <!-- a rocket or missile's range as printed ("1.5 km") and the Pilot and Sensor ratings of its guidance -->
+      <xs:attribute name="range" type="xs:string"/>
+      <xs:attribute name="pilot" type="xs:string"/>
+      <xs:attribute name="sensor" type="xs:string"/>
       <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
   <xs:complexType name="Vehicle">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string" use="required"/>
       <xs:attribute name="handling" type="xs:string"/>
       <xs:attribute name="accel" type="xs:string"/>
@@ -582,6 +641,7 @@
 
   <xs:complexType name="Spell">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" use="required">
         <xs:simpleType><xs:restriction base="xs:string">
           <xs:enumeration value="combat"/><xs:enumeration value="detection"/><xs:enumeration value="health"/>
@@ -836,6 +896,7 @@
   <!-- an ammunition type: its modifiers and its price (a multiplier, x2, or a price) as printed -->
   <xs:complexType name="AmmoType">
     <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="category" type="xs:string"/>
       <xs:attribute name="dv" type="xs:string"/>
       <xs:attribute name="ar" type="xs:string"/>

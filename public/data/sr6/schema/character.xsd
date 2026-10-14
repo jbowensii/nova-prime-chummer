@@ -220,6 +220,7 @@
     <xs:attribute name="powerPointsBought" type="c:Count"/>
     <xs:attribute name="initiation" type="c:Count"/>
     <xs:attribute name="submersion" type="c:Count"/>
+    <xs:attribute name="transhuman" type="c:Count"/>
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
     <!-- lifepath: the best attribute, and the one that takes what its maximum leaves over -->
     <xs:attribute name="bestAttr" type="c:CoreAttr"/>
@@ -446,6 +447,8 @@
     <!-- only on a specialization's tests (Climbing): in that specialization's pool when the runner has it, else in the
          skill's bracketed total -->
     <xs:attribute name="spec" type="xs:string"/>
+    <!-- no `others` here (common.xsd has it) until src/shared/effects.ts, charxml.ts and the Bonus model preserve it: else a
+         player's others-bonus would silently become a self-bonus -->
     <!-- a spell's or complex form's: on its caster (while sustained) or its target(s) (never counted on the caster) -->
     <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="caster"/><xs:enumeration value="target"/></xs:restriction></xs:simpleType></xs:attribute>

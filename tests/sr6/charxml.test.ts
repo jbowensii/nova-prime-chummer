@@ -47,6 +47,7 @@ function full(): Sr6Character {
     powerPointsBought: 1,
     initiation: 1,
     submersion: 0,
+    transhuman: 2, // (the codec only: the rules refuse it on an awakened runner)
     karmaToNuyen: 3,
     bestAttr: 'str',
     bestExtra: 'agi',

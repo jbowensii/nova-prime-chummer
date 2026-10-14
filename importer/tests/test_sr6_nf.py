@@ -107,7 +107,7 @@ class NfRecipeTest(unittest.TestCase):
         a = entries(self.res, "augmentations")
         self.assertEqual((a["Cybereyes (Rating 7)"]["type"], a["Cybereyes (Rating 7)"]["capacity"]), ("cyberware", "18"))
         self.assertEqual((a["Hum Box"]["rating"], a["Hum Box (Hacked)"]["rating"], a["Hum Box (Hacked)"]["cost"]),
-                         ("1-4", "1-4", "Rating x 2000"))
+                         ("1–4", "1–4", "Rating x 2000"))
 
     def test_qualities(self):
         q = entries(self.res, "qualities")

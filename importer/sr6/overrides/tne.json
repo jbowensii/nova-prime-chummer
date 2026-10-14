@@ -1,0 +1,4 @@
+[
+  {"cl6": "MCT Firefly Racing Drone", "kind": "vehicles", "id": "mct-firefly-racing-drone", "set": {"class": "DRONE_MEDIUM/AIR"}},
+  {"cl6": "Special notes", "kind": "vehicles", "id": "special-notes", "remove": true}
+]

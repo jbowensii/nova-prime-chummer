@@ -1,0 +1,17 @@
+{
+ "CRITTERWARE/AUGMENTATION": "deliberate extra, not in CommLink6: critter-only augmentation (Body Shop, Taming the Wild); players cannot select",
+ "CRITTERWARE/GEAR": "deliberate extra, not in CommLink6: critter-only gear (Wild Life); players cannot select",
+ "DRONE_SMALL/SPACE": "deliberate extra, not in CommLink6: small drone for space (no SPACE locomotion in CL6)",
+ "DRONE_MEDIUM/SPACE": "deliberate extra, not in CommLink6: medium drone for space",
+ "DRONE_LARGE/SPACE": "deliberate extra, not in CommLink6: large drone for space",
+ "VEHICLES/SPACE_BIKES": "deliberate extra, not in CommLink6: bike or motorcycle for space",
+ "VEHICLES/SPACE_BOARDS": "deliberate extra, not in CommLink6: sail board or surf board vehicle for space",
+ "WEAPON_LASER": "deliberate extra TYPE, not in CommLink6: laser weapons",
+ "WEAPON_LASER/PISTOLS_LIGHT": "deliberate extra, not in CommLink6: light laser pistol",
+ "WEAPON_LASER/PISTOLS_MEDIUM": "deliberate extra, not in CommLink6: medium laser pistol",
+ "WEAPON_LASER/PISTOLS_HEAVY": "deliberate extra, not in CommLink6: heavy laser pistol",
+ "WEAPON_LASER/SUBMACHINE_GUNS_LIGHT": "deliberate extra, not in CommLink6: light laser SMG",
+ "WEAPON_LASER/SUBMACHINE_GUNS_MEDIUM": "deliberate extra, not in CommLink6: medium laser SMG",
+ "WEAPON_LASER/RIFLE_ASSAULT": "deliberate extra, not in CommLink6: laser rifle",
+ "WEAPON_LASER/ASSAULT_CANNON": "deliberate extra, not in CommLink6: laser assault cannon"
+}

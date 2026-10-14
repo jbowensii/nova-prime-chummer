@@ -43,6 +43,21 @@ Options:
 Errata (decision D1): measure an import made without the errata overlay and one made with it. Class b shows what
 the overlay changes.
 
+## Value and structure overrides (2026-10-14)
+
+- `valuemap` (`python -m tools.cl6check.valuemap <diffs.csv> [<diffs of a run on the result>]`) writes a per-book override row
+  (`importer/sr6/overrides/<src>.json`, `"gen": "value"`) for each counted field difference that `value_keep.json` does not
+  keep. `keep` lists the values the PDF's text layer prints (the owner's check of the 361 reviewed rows, native agents reading
+  the page text, 2026-10-14); the checker settles a difference there as class b. `hold` is what the owner decides (two
+  Commlink6 records disagree about one entry; a per-rating item).
+- `familymap` writes the structured data (`"gen": "family"`): a weapon's `skill`/`spec`, an armor's `social`, the item
+  structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks
+  (docs/sr6-data-format.md, Item structure). Nothing reads the last three: the per-effect metric counts only our own
+  `<effect>`s (`effects_own`).
+- A Commlink6-only record is an entry of ours (importer/sr6/overrides `"gen": "cl6only"` adds), is "already in our data"
+  (`relocated.json`) or is in the optional package; only the rule options are not entries, as the app's rule presets.
+- `RETIRED` ("Depreciated …") records are out of every count, except `wss_explosive` (the latest Firing Squad prints it).
+
 ## What it does
 
 | module | job |

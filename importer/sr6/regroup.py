@@ -5,6 +5,7 @@ pair, or pairs twice, is reported, never guessed.
 Output: a first line `<!-- regrouped v1 -->`, then blocks in reading order, each
 `<!-- item {json} -->` or `<!-- section {json} -->`, its tables (the row first when the json says "row"), its
 labelled lines, a blank line, its text, `<!-- end -->`."""
+import collections
 import difflib
 import json
 import re
@@ -804,6 +805,8 @@ def _is_label(level, text):
         return False  # (`new quality: Pacifist (1-4)`: a heading naming its kind before the new entry's name)
     if re.fullmatch(r"[a-z]+[A-Z]{2}\w*", text.strip()):
         return False  # (a one-word name set with a lower-case lead: `rEVOlutionary`; not `rEVOlution Arms Raven`)
+    if re.match(r"[a-z]\s+[A-Z][a-z]+(?:\s|$)", text.strip()):
+        return False  # (a lone lower-case letter, then a capitalised word: `x Guide Override`, the converter's split of `xGuide`)
     return level > 1 and (not first or first.group().islower())
 
 
@@ -1045,12 +1048,19 @@ def _same(title, name):
     return bool(a and b) and (a <= b or b <= a)
 
 
-_LINE_WORDS = {"line", "series", "collection", "range"}  # a brand's last word naming it a product line
+_LINE_WORDS = {"line", "series", "collection", "range", "weapons"}  # a brand's last word naming it a product line
 # the first headers of a list naming its rows one by one (not TYPE or CLASS: a box's variants, the recipe's to read)
 _ITEM_COLUMNS = {"ITEM", "ITEMS", "NAME", "WEAPON", "WEAPONS", "GEAR", "DEVICE", "ARMOR"}
 
 
-def _own_rows(t, u, lower):
+def _makers(names, lower):
+    """The makers a chapter's names start with: a first word in capitals the book's prose never prints in lower case,
+    starting two names or more (`Ares Rampart Shield`, `Ares Alpha`: Ares; the same rule as categories.makers)."""
+    first = collections.Counter(w[0] for n in names if len(w := n.split()) > 1)
+    return {norm(w) for w, c in first.items() if c > 1 and w[:1].isupper() and w.lower() not in lower}
+
+
+def _own_rows(t, u, lower, makers=frozenset()):
     """The rows of a table printed in a heading's text under the heading's own name (`heritage line` under `Zoé
     Heritage Line`, `bayonet` under `Bayonet`), a name column first (WEAPON, ITEM …) and a price on two rows at least
     (a footnote set as a row is dropped). Rows named by generic words (two at most, no digit, each printed in lower
@@ -1058,14 +1068,20 @@ def _own_rows(t, u, lower):
     otherwise, or sharing a word with the heading (`Bearded Axe`, `Tonfa`; `Inhibitor Collar` under `Inhibitor Bands`)
     are the items of the heading's line, so a row never pairs with another description of its name: a brand's (a
     maker printed before the title's words) named with it (`Zoé Heritage Tonfa`, below), else grouped under the
-    heading. None for any other table (a section's list: a heading above level 3, a title saying `table`)."""
+    heading (the line or category: `Ares Rampart Shield` over `Mk1`; its first word a learned maker, that the row's
+    maker; a TYPE table too, only under such a heading, `Horizon-Flynn Defense-Com Weapons`). None for any other table
+    (a section's list: a heading above level 3, a title saying `table`)."""
     hs = [h.upper() for h in t.header]
     cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
     if re.search(r"(?i)\btables?\b", t.title or "") or u.level < 3:
         return None  # (`hire table` under `Hire`, `gizmos` under a chapter's `## Gizmos`: the section's list)
     title, name = (set(norm(x).split()) for x in (t.title, u.name))
     # (titled with the heading's own words: not `security and restraints` over `Restraints`, a list it is one row of)
-    if not t.titled or not title or not title <= name or not hs or hs[0] not in _ITEM_COLUMNS or cost is None \
+    maker = len(u.name.split()) > 1 and norm(u.name.split()[0]) in makers  # (a learned maker's heading)
+    # (a TYPE table titled `modifications` under the item it modifies, `Hunter's Alloy`: the heading's versions)
+    kinds = hs[:1] == ["TYPE"] and bool(title) and title <= {"modification", "modifications"}
+    if not t.titled or not title or not (title <= name or kinds) or not hs or cost is None \
+            or hs[0] not in (_ITEM_COLUMNS | {"TYPE"} if maker or kinds else _ITEM_COLUMNS) \
             or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs):
         return None
     # (a footnote or note set as a row: a mark or a label in its first cell, or a sentence there)
@@ -1081,6 +1097,7 @@ def _own_rows(t, u, lower):
     # searched also as `Heritage Bearded Axe`, `Zoé Bearded Axe` (not the bare row: the generic `Tonfa` is another
     # item); the brand is their maker
     hw = u.name.split()
+    # (k 0: the title is the whole heading, or sits inside it: the heading is the line itself, the rows' group)
     k = next((i for i in range(len(hw)) if set(norm(" ".join(hw[i:])).split()) == title), 0)
     line = hw[k:-1] if k and len(hw) - k > 1 and hw[-1].lower() in _LINE_WORDS else hw[k:]
     out = []
@@ -1094,6 +1111,7 @@ def _own_rows(t, u, lower):
         else:
             x = _Row(list(r))
             x.group = getattr(r, "group", "") or u.name  # (a name-only row over it stays its group)
+            x.maker = u.name.split()[0] if maker else ""  # (its alias `<heading> <row>`: the catalog's, from the group)
         out.append(x)
     return out
 
@@ -1160,13 +1178,14 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         return out
 
     tables, own = [], set()
+    makers = _makers([d.name for d in descs], lower)
     for u in [u for u in units if not u.merged]:
         for t in [b for b in u.body if isinstance(b, _Table)]:
             # (not a list of the items its own subheadings describe: `security devices` over `Key Lock`, `Maglock`)
             # nor of items described anywhere, half of them (`stun cages` over `Trode Patch`, `Smart Manacles`)
             if not u.stats and 2 * sum(1 for r in t.rows if r and found(r[0])) < len(t.rows) \
                     and not any(id(d) in under(u) for r in t.rows if r for d in found(r[0])) \
-                    and (rows := _own_rows(t, u, lower)):
+                    and (rows := _own_rows(t, u, lower, makers)):
                 t.rows, t.catalog, t.own = rows, True, True  # (its rows are its own: no description takes them)
                 tables.append(t)
                 own.add(id(t))

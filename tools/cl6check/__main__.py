@@ -21,48 +21,105 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, patterns, reader, report
+from tools.cl6check import optional as optional_package
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True):
+def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
     for c in cl6:
         by_src[c["src"]].append(c)
     results, extras, pairs = [], [], []
+    keep = optional_package.load_keep() if keep is None else keep
+    optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
+    where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
+    have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
+    moved = {id(where[r["our_id"]]) for r in [*relocated.values(), *have.values()] if r["our_id"] in where}
     for src, recs in sorted(by_src.items()):
         s = mine.get(src)
         entries = s.entries if s else []
         book = arbitrate.Book(s.book_dir if s else None)
         bt = report.BookText(s.book_dir if s else None)
         matched = set()
-        for c, hits, how in match.match(recs, entries):
+        found = match.match([c for c in recs if (src, c["id"]) not in optional and (src, c["id"]) not in relocated
+                              and (src, c["id"]) not in have], entries)
+        found += [(c, [], "optional package") for c in recs if (src, c["id"]) in optional]
+        found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
+                  for c in recs if (src, c["id"]) in relocated]
+        found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        for c, hits, how in found:
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
             o = min(hits, key=lambda h: len(fields.compare(c, h)[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
-                "matched": bool(hits), "how": how, "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
+                "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
                 "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
-                             for f, v in c["families"].items()}, "cause": "", "excluded": None,
-                "cl6only": bool(c.get("cl6only"))}
+                             for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
+                             and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
+                "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
+                "cause": "", "excluded": None,
+                "cl6only": bool(c.get("cl6only")) and not hits and how not in ("optional package", "relocated", "already have")}  # (one the package or our data holds is matched)
             if not c["page"]:
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
                 r["excluded"] = "page beyond the owned PDF"
+            if o and how == "already have":  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
+                r["families"] = {}
+                results.append(r)
+                continue
             if o:
                 matched.update(id(h) for h in hits)
                 pairs.append((c, o))
                 r["compared"], r["diffs"] = fields.compare(c, o)
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
-            else:
+                    if d["class"] == "c" and (c["src"], o["kind"], o["id"], d["field"]) in keep:
+                        d["class"], d["pdf"] = "b", "ours"  # (the PDF's text layer prints our value: value_keep.json)
+                    t = (trace or {}).get((c["src"], c["id"], d["field"]))
+                    if t == "unprinted" and not d["why"].startswith("ours empty"):
+                        t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
+                    if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
+                        d["class"], d["cl6only"] = "c", t == "only"
+            elif how != "optional package":
                 r["cause"] = report.miss_cause(c, s, bt, book)
             results.append(r)
         book.close()
-        extras += [e for e in entries if id(e) not in matched]
+        extras += [e for e in entries if id(e) not in matched and id(e) not in moved]
+    _settle_classes(results, optional_package.load_accept() if accept is None else accept, sections, extra)
     return results, extras, pairs
+
+
+def _settle_classes(results, accept, sections=None, extra=None):
+    """Two records matching one entry can class it two ways: the one whose class is a type of the entry's kind is the one
+    compared (a rocket launcher is `WEAPON_SPECIAL/LAUNCHERS`, not the `AMMUNITION/ROCKETS` of its rocket); a record the
+    owner accepts (class_accept.json) counts equal."""
+    by = defaultdict(list)
+    for r in results:
+        if r["matched"] and "class" in r["families"] and r["our_id"]:
+            by[r["our_id"], r["our_kind"]].append(r)
+    for (_, kind), rs in by.items():
+        fits = [r for r in rs if canon.fits_kind(kind, r["cl6_class"])]
+        if len(rs) > 1 and 0 < len(fits) < len(rs):
+            for r in rs:
+                if r not in fits:
+                    del r["families"]["class"]
+    from importer.sr6 import classes
+    rules = classes.prefixes() if sections is None else sections
+    extra = classes.extra() if extra is None else extra
+    for r in results:
+        if "class" in r["families"] and accept.get((r["src"], r["id"])) == r["our_id"]:
+            r["families"]["class"] = True
+        elif "class" in r["families"] and r.get("our_class") and any(
+                classes.in_section(x, r["src"], r["our_kind"], r["our_page"]) and r["our_class"] == x["class"] for x in rules):
+            # a section's deliberate extra class (CRITTERWARE/AUGMENTATION, not Commlink6's): accepted whatever Commlink6's is
+            r["families"]["class"] = True
+            r["class_via"] = "section class"
+        elif "class" in r["families"] and r.get("our_class") in extra:  # (a deliberate extra class: Commlink6 has no such one)
+            r["families"]["class"] = True
+            r["class_via"] = "extra class"
 
 
 def run_imports(books_file, out, jobs):
@@ -131,7 +188,7 @@ def main(argv=None):
     recs, excluded = reader.read(jar)
     cl6 = [canon.canonical(r) for r in recs]
     mine = ours.load(a.ours)
-    results, extras, pairs = compare(cl6, mine, pdf=not a.no_pdf)
+    results, extras, pairs = compare(cl6, mine, pdf=not a.no_pdf, trace=arbitrate.load_trace(os.path.join(a.out, "cl6-trace.csv")))
     when = datetime.datetime.now().isoformat(timespec="seconds")
     base_path = a.baseline or os.path.join(a.out, "baseline.json")
     base = json.load(open(base_path, encoding="utf8")) if os.path.exists(base_path) and not a.save_baseline else None
@@ -141,6 +198,7 @@ def main(argv=None):
     m = report.metrics(results, extras, excluded, meta)
     m["patterns"] = patterns.run(pairs, extras, mine)
     m["modifiers"] = modifiers.run(cl6, pairs, mine)
+    m["per_effect"] = modifiers.per_effect(pairs)
     report.write(a.out, m, results, extras, base)
     if a.save_baseline:
         with open(base_path, "w", encoding="utf8") as f:
@@ -150,6 +208,8 @@ def main(argv=None):
           f"(modelled {c['modelled']['pct']}%, owned {c['owned']['pct']}%); accuracy {acc['pct']}% "
           f"({acc['pct_b_as_printed']}% with class b as printed); report {os.path.join(a.out, 'cl6-report.md')}"
           + ("; baseline saved" if a.save_baseline else ""))
+    pe = m["per_effect"]
+    print(f"per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = {pe['pct']}%")
     gate = dict(x.split("=") for x in a.fail_under.split(",") if "=" in x)
     low = [k for k, v in gate.items() if ({"completeness": c["all"]["pct"], "accuracy": acc["pct"]}.get(k) or 0) < float(v)]
     return 1 if low else 0

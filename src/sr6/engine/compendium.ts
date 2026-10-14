@@ -39,12 +39,12 @@ const ITEM = ['avail', 'cost']
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
   qualities: { fields: ['kind', 'karma', 'karmaMax', 'karmaSteps', 'perLevel', 'maxLevel', 'category', 'granted', 'uncounted', 'group'] },
-  weapons: { fields: ['category', 'rating', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM, 'skill', 'spec'] },
+  weapons: { fields: ['category', 'rating', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM, 'per', 'skill', 'spec'] },
   armor: { fields: ['category', 'rating', 'defense', 'social', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
   electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
-  programs: { fields: ['type', 'rating', ...ITEM] },
-  gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots', 'energy'] },
+  programs: { fields: ['type', 'modonly', 'rating', ...ITEM] },
+  gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots', 'energy', 'range', 'pilot', 'sensor'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage', 'opposed', 'essence'] },
   rituals: { fields: ['keywords', 'threshold'] },

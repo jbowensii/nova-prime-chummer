@@ -118,6 +118,8 @@ export const REASONS: Record<string, string> = {
   'conversion-cap': 'That’s more karma than may be turned into nuyen.',
   'not-awakened': 'Only an awakened runner can be initiated.',
   'not-emerged': 'Only an emerged runner can submerge.',
+  'not-mundane': 'Transhumanism is for a mundane runner.',
+  'rule-off': 'That optional rule is off at this table.',
   'not-finalized': 'Finalize the runner first: career spends come after creation.',
   'not-enough-karma': 'Not enough karma.',
   'not-enough-nuyen': 'Not enough nuyen.',
@@ -142,6 +144,7 @@ export const REASONS: Record<string, string> = {
   'aptitude-incompetent': 'Aptitude and Incompetent can’t be on the same skill.',
   'not-for-metatype': 'That quality isn’t for this runner’s metatype.',
   'one-native': 'One native language a runner: clear the other one first.',
+  'critters-only': 'That one is critter equipment (Body Shop, Taming the Wild): not for a player’s character.',
   'once-per-runner': 'The runner already has that augmentation (a limb: one a side).',
   'not-mystic-adept': 'Only a mystic adept picks its mentor spirit’s advantages.',
 }

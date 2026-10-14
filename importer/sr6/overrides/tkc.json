@@ -1,0 +1,17 @@
+[
+  {"cl6": "Handheld (low)", "kind": "weapons", "id": "handheld-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Handheld (high)", "kind": "weapons", "id": "handheld-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Flash Scope (low)", "kind": "weapons", "id": "flash-scope-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Flash Scope (high)", "kind": "weapons", "id": "flash-scope-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Mob Light (low)", "kind": "weapons", "id": "mob-light-low", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Mob Light (high)", "kind": "weapons", "id": "mob-light-high", "set": {"class": "WEAPON_SPECIAL/OTHER_SPECIAL"}},
+  {"cl6": "Glasses (full wrap)", "kind": "gear", "id": "glasses-full-wrap", "set": {"class": "ELECTRONICS/OPTICAL"}},
+  {"cl6": "Visor (for helmets)", "kind": "gear", "id": "visor-for-helmets", "set": {"class": "ELECTRONICS/OPTICAL"}},
+  {"cl6": "Corporate Scapegoat", "kind": "qualities", "id": "corporate-scapegoat", "kids": [{"tag": "selection", "attrs": {"type": "TEXT", "ref": "description"}}], "gen": "family"},
+  {"cl6": "Guizhen 1 Flash Scope", "kind": "weapons", "id": "flash-scope", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Large"}, "gen": "family"},
+  {"cl6": "Guizhen 2 Hall of Tears", "kind": "weapons", "id": "hall-of-tears", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Building"}, "gen": "family"},
+  {"cl6": "Guizhen 1 Handheld", "kind": "weapons", "id": "handheld", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Small"}, "gen": "family"},
+  {"cl6": "Guizhen 1 Mob Light", "kind": "weapons", "id": "mob-light", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Large"}, "gen": "family"},
+  {"cl6": "Guizhen 2 Pulse Hammer", "kind": "weapons", "id": "pulse-hammer", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Big"}, "gen": "family"},
+  {"cl6": "Guizhen 2 Storm Shield", "kind": "weapons", "id": "storm-shield", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Big"}, "gen": "family"}
+]

@@ -456,6 +456,18 @@ class GapsRoundTest(unittest.TestCase):
                          [("test:attr-agi", "no-edge", "1", "conditional", "that directly involves your hands")])
         self.assertEqual(fx("You gain one extra die per level on Composure tests.", "qualities"), [("derived:composure", "add", "R", None, None)])
 
+    def test_bare_roll_and_attribute_phrasings(self):
+        """CL6 parity: `N dice for T tests`, `N edge to all T`, `adds N to your T`, `T and T attributes by N`."""
+        self.assertEqual(fx("Gain 1 die for Stealth tests."), [("skill:stealth", "add", "1", None, None)])
+        self.assertEqual(fx("1 situational edge for all Firearms tests."), [("skill:firearms", "edge", "1", None, None)])
+        self.assertEqual(fx("This adds 1 to your Charisma."), [("attr:cha", "add", "1", None, None)])
+        self.assertEqual(fx("Strength and Body attributes by 1."), [("attr:str", "add", "1", None, None), ("attr:bod", "add", "1", None, None)])
+        # (no bonus: a dice pool to roll, a number-less phrasing, a maximum)
+        self.assertEqual(fx("Roll 6 dice for the Stealth test."), [])
+        self.assertEqual(fx("Gain dice for Stealth tests."), [])
+        self.assertEqual(fx("The user loses 1 die for any Damage Resistance tests."), [])  # (a penalty)
+        self.assertEqual(fx("This adds 1 to your Strength maximum."), [])
+
     def test_tables_rows_and_siblings(self):
         self.assertEqual([(a["target"], a["value"]) for _, a, _ in effects.rating_table(["RATING", "DV", "AR"], [["1", "+1", "+1"], ["2", "+1", "+2"], ["3", "+2", "+2"]], "augmentations")],
                          [("derived:unarmed-dv", "R[1,1,2]"), ("derived:unarmed-ar", "R[1,2,2]")])

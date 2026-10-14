@@ -33,7 +33,7 @@ BOOK_SOURCE = {"core": "crb", "astral_ways": "aw", "bestial_nature": "bn", "body
                "tarnished_star": "ts"}
 CITY = {"_seattle": "crb-sea", "_berlin": "crb-ber"}
 AUGMENT_TYPES = {"CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"}
-FAMILIES = ("subtype", "skill/spec", "social", "size/ammo", "variants", "slots", "effects", "choices", "requires",
+FAMILIES = ("class", "skill/spec", "social", "size/ammo", "variants", "slots", "effects", "choices", "requires",
             "relevance", "flags", "modonly")
 RATING_REFS = {"RATING", "LEVEL", "FORCE"}
 NONE = re.compile(r"^\s*[—–-]?\s*$")
@@ -277,21 +277,46 @@ def aliases(name, variants):
     return sorted(out - {name})
 
 
-# German words in a record's name (the German edition's names Commlink6 kept for a few records: `Pfeile`,
-# `Druckluftkartusche`, `Kalte Munition`): a vocabulary, never an item's name; English look-alikes (die, fur, mit) left out
-GERMAN = re.compile(r"\b(?:pfeile?|druckluft\w*|\w*kartuschen?|kalte|munition|patronen?|granaten?|geschosse?|bolzen|"
-                    r"kugeln?|und|für|ersatz)\b", re.I)
+PSEUDO = re.compile(r"(?i)(?:(?:SS|SA|BF|FA)\s*\(\s*\d+(?:\s*[-–]\s*\d+)?\s*\)|(?:Pilot|Sensor)\s+\d+|[\d.,]+\s*km"
+                    r"|Uses\s+\d+\s+Energy\s+per\s+shot|Crew\s+Served\s*\(\s*\d+\s*\))$")
 
 
 def cl6_only(kind, name, a, tag):
     """A Commlink6 record that is no book's item, left out of both denominators and counted on its own line: its rule
-    settings (rule options), a record it retired ('Depreciated …'), an option row it prices at zero and marks not
-    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)'), and a
-    record named in German (no English book prints it)."""
-    if kind == "ruleoptions" or re.match(r"(?i)depreciat", name) or GERMAN.search(name):
+    settings (rule options), an option row it prices at zero and marks not
+    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)')."""
+    if kind == "ruleoptions":
+        return True
+    # a table cell Commlink6 made a record of (`SS(1-2)`, `Pilot 3`, `12 km`, `Uses 2 Energy per shot`, `Crew Served
+    # (2)`): guarded by being a gear row it prices at nothing (no price, or 0)
+    if tag in ("item", "itemenhancement") and a.get("price") in (None, "", "0") and PSEUDO.match(name.strip()):
         return True
     return tag in ("item", "itemenhancement") and a.get("price") == "0" and (
         (a.get("avail") or "").startswith("99") or "(see " in name)
+
+
+CLASS_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs", "spells", "ammotypes"}
+
+
+# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another item's)
+KIND_TYPES = {"weapons": ("WEAPON_",), "armor": ("ARMOR",), "augmentations": ("CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"),
+              "vehicles": ("VEHICLES", "DRONE"), "programs": ("SOFTWARE",), "electronics": ("ELECTRONICS", "CYBERDECK")}
+
+
+def fits_kind(kind, cls):
+    """Whether Commlink6 class `cls` is one of our `kind`'s types (True for a kind with no such list)."""
+    return not KIND_TYPES.get(kind) or cls.upper().startswith(KIND_TYPES[kind])
+
+
+def cl6_class(tag, attrs):
+    """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a spell, an
+    ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format.md)."""
+    t, s = attrs.get("type") or "", attrs.get("subtype") or ""
+    if tag == "itemenhancement":
+        return ""  # (an enhancement of an item is no item class: it has no type of its own)
+    if tag not in ("item", "focus"):
+        return tag  # (a spell's `type` is its spell type, not a class)
+    return f"{t}/{s}" if t and s else t or tag
 
 
 def canonical(rec):
@@ -357,7 +382,9 @@ def canonical(rec):
                      # or as a row of a weapons table, `Ballista Bolt, High Explosive`)
                      else ("ammotypes", "gear", "weapons") if kind == "ammotypes" else (kind,)) if modelled else (),
             "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
-            "families": families(el, a, rec["variants"]), "el": el,
+            "families": families(el, a, rec["variants"]) | (
+                {"class": (cl6_class(tag, a).casefold(),)} if kind in CLASS_KINDS and modelled and cl6_class(tag, a) else {}), "el": el,
+            "cl6_class": cl6_class(tag, a),
             "cl6only": cl6_only(kind, rec["name"], a, tag)}
 
 

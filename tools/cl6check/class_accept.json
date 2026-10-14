@@ -1,0 +1,22 @@
+{
+  "accept": [
+    {
+      "src": "dc",
+      "cl6_id": "suncell_electr",
+      "our_id": "dc.suncell",
+      "note": "Double Clutch p135-136 prints one Suncell, under Efficiency and Fuel Mods, 'may use either Powertrain or Electronic mod slots'; Commlink6 has two records (suncell_power MOD_POWER/MOD_EFFICIENCY p135, suncell_electr MOD_ELEC/MOD_COAT p138). Ours keeps the power one."
+    },
+    {
+      "src": "bs",
+      "cl6_id": "fangs",
+      "our_id": "bs.fangs",
+      "note": "Body Shop prints the Fangs as a cyberware implant weapon (p48: cyberware, Essence 0.1, capacity [3]); Commlink6 also has a bioware Fangs (p71, BIOWARE/BIOWARE_WEAPON) that we don't catalogue. Ours keeps CYBERWARE/CYBER_IMPLANT_WEAPON (cyberweapon_fangs)."
+    },
+    {
+      "src": "crb-sea",
+      "cl6_id": "ballistic_hood",
+      "our_id": "crb-sea.ballistic-hood",
+      "note": "Commlink6 has two records for the Seattle Ballistic Hood: this one classed ACCESSORY/ARMOR_BODY and ballistic_hood_armor (ARMOR/ARMOR_HELMET, a mod-only part); our one entry is the helmet-class armor (p335)."
+    }
+  ]
+}

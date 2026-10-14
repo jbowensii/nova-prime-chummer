@@ -61,13 +61,13 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
 | qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
-| weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost | — |
+| weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost, per | — |
 | armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy) | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
@@ -681,6 +681,87 @@ and previews it: new entries, changes to a book's entry (the fields that change)
 here, each with Keep mine or Take theirs. Save edits sends the chosen entries one by one as edits made in the app
 (`PUT /api/sr6/edits/<kind>/<id>`); a refused one is listed with why. The file's issues are left out.
 
+## Per-book name tables (`importer/sr6/overrides/<recipe id>.json`)
+
+A last resort for the few names Commlink6 gives an item that no rule derives (`Hermeticsm` for the Street Wyrd tradition
+`Classical Hermeticism`). Each recipe has its own table, empty when its file is absent; the importer applies it after the
+book is read (`importer/sr6/overrides.py`, called from `run._read`), so an older printing's catalog gets it too. A row is
+`{"cl6": "<Commlink6's name>", "kind": "<catalog file>", "ours": ["<our printed name>", ...], "set": {"<attribute>":
+"<value>"}}`: the Commlink6 name becomes an `<alias>` (a name only) of each entry named in `ours`, and `set`, optional,
+sets an attribute to a value taken from Commlink6. A description is never an override: descriptions come from the book's
+own text, and a table that sets one is refused. A name in `ours` that no entry carries is reported on stderr, not
+guessed. A row with `"add": {"page", "attrs", "kids", "name"?}` instead of `ours` creates an entry the book prints only inside other items' text (id `slug(name)`, source the recipe's, rule data from Commlink6 hard-coded in `attrs`/`kids`; an id already there is left as is; never a description: the texts step fills it only if the book has a text for it). Generic cases (a heading naming the brand or category, roman numerals, `hold-out`, `SMG`) are the importer's
+and cl6check's rules, not rows here.
+
+## Commlink6's classification (`class`)
+
+The entries of weapons, armor, augmentations, electronics, gear, vehicles, programs, spells and ammotypes (and
+categories.xml's categories) may carry `class`: Commlink6's own classification, verbatim, in its keys: `TYPE/SUBTYPE`
+(`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`), `TYPE` alone, or the record's tag for a kind with no type (`spell`,
+`ammotype`). The app ignores it; `python -m tools.cl6check` compares it (the "class match" line), and the Foundry module
+translates it to Eden's keys later. Where it comes from: `importer/sr6/classes/category_class.json` ({kind: {category:
+class}}) gives it to every entry of a category whose Commlink6-matched entries share one class (90% or more); an entry
+of another category gets it from an id row of its book's override table (`{"cl6", "kind", "id", "set": {"class"},
+"gen": "class"}`, id unscoped); an entry that already has one keeps it; an entry Commlink6 has no record for gets none.
+Both are made by `python -m tools.cl6check.classmap <category_class_map.csv> <runs dir>` (re-runnable; it replaces only
+the rows with `"gen": "class"`).
+
+## Commlink6's values in the per-book tables (`"gen": "value"` and `"gen": "family"`)
+
+Owner decision 2026-10-13: where a printed value of ours is not confirmed (the PDF page prints Commlink6's value, neither
+value, a formula or several values, or the three gossipcat reviewers did not all answer KEEP_OURS, 100% certain), the
+value is Commlink6's. `python -m tools.cl6check.valuemap <cl6-diffs.csv> [<diffs of a run on the result>]` writes one row
+per entry, `{"cl6", "kind", "id", "set": {"cost": "500", "avail": "3(L)"}, "formula": {"cost": "tier(R; 1: ..)"}?,
+"gen": "value"}`, from the counted field differences; `tools/cl6check/value_keep.json` lists what stays ours (`keep`:
+unanimous) and what is left to the owner (`hold`: a per-rating item, a variant's value, two Commlink6 records that
+disagree about one entry). A per-rating Commlink6 value is `Rating x N` when it is linear, else the value at rating 1 with a
+`tier()` formula; a level's own entry (`wired-reflexes-2`) takes the value at its level. The entry's own `<formula>`,
+`<issue>` and `<found>` for a field set go. Commlink6's enum keys become the books' words (`AUTO` -> `Auto`, `MANA` ->
+`M`). `python -m tools.cl6check.familymap` writes `"gen": "family"` rows for the structured data the schema models: a
+weapon's `skill` and `spec`, an armor's `social`. Slots, variants, relevance, flags, modonly, size and ammunition class
+are not in the data schema, and a Commlink6 modification has no one-to-one `<effect>`; they are not written.
+
+## Item structure (Commlink6's data, kept and not applied)
+
+Owner decision 2026-10-14: the structure Commlink6 gives an item is in our data too, where the books don't print it (the
+importer reads none of it from the text). Children of any entry (`common.xsd` tail), and attributes of the item kinds:
+- `<slot id value?/>` a slot the item offers; `<fits slot/>` a slot it fits; `<variant name/>` a variant it comes in;
+  `<relevance topic/>` a topic it is relevant to; `<flag>text</flag>` a kind flag; attributes `modonly="true"` (bought only as
+  an add-on), `size` (a weapon's size class) and `ammoClass`.
+- `<modifier kind type ref value …/>` (kind `valmod`, `checkmod`, `itemmod` or `allowmod`: a modification), `<prerequisite
+  kind type ref …/>` (kind `datareq` or `valuereq`) and `<selection type ref options …/>` (a pick it offers) are Commlink6's
+  own rule data, every attribute as it gives it (`$RATING` formulas, conditions). **No rule reads them**: the app applies our
+  `<effect>`s, `<link>`s, `<requires>` and `<choice>`s only, so a character's maths is the same with or without them
+  (`tests/sr6/structure.test.ts`). They are the reference the day those are written from the books or checked against it.
+- `src/sr6/engine/structure.ts` `structureOf(entry)` reads them all.
+Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` writes the id rows `{"id", "set", "kids", "gen":
+"family"}` of the per-book tables from the Commlink6 record of each entry with a difference in that family; applied by
+`overrides.py` after the import (a child the entry already has is not added twice). An entry several Commlink6 records match
+(a rated item's levels) gets the union.
+
+## Structure ops in the per-book tables, and the extra classes
+
+Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries
+by their unscoped id, applied in this order: remove and merge, the class rows, then rename and move_kind. An entry a row
+names that isn't there is reported once on stderr and nothing is guessed; each is idempotent, and none may name a
+description field.
+
+- `{"kind","id","remove":true}`: the entry goes, its aliases with it and its text from the texts file (a heading artifact,
+  a duplicate of an NPC).
+- `{"kind","merge":{"into","from","from_kind"}}`: the attributes `into` lacks (skill, spec, type, dv, ar, ammo, modes …,
+  never id, source, page, class or group) are copied from `from`, the stat table's copy of it, which then goes.
+- `{"kind","id","rename":"<name>"}`: a new name, names only; the old printed name stays as an `<alias>` unless
+  `"alias": false` (a name the import damaged).
+- `{"move_kind":{"id","from":"gear","to":"weapons"}}`: the entry is re-filed in weapons.xml as a close-combat weapon
+  (skill Close Combat, spec from its class subtype: Blades, Clubs, Unarmed), keeping page, avail and cost; attributes the
+  weapons schema lacks (capacity, karma, per, slots, energy) are dropped. An id the target file has already is left.
+
+Classes that are not Commlink6's (`importer/sr6/classes/extra_classes.json`, each with a reason): `CRITTERWARE/*`
+(critter-only; the app keeps any entry of such a class out of the player's pickers and refuses to buy it), the space drones
+and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6's firearms naming). `python -m
+tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
+take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had).
+
 ## Layout and load order
 
 ```
@@ -761,6 +842,8 @@ started from the server's settings. Keys, types and
 the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
+
+**Rule presets.** The Table setup page's *Rule preset* menu puts a group of toggles in the form for review (`RULE_PRESETS`, `presetChanges` in `creation.ts`; Save keeps them): **Standard** returns the settings the presets manage to the standard values (the maths is the shipped standard), **Standard (Seattle)** sets `meleeArStrength` (Strength adds to a melee weapon's Attack Rating), **Shadowrun Missions** sets `availabilitySeven`, `gradeCapAtCreation` with `gradeCap.initiation` 1, `gradeCap.submersion` 2 and `gradeCap.transhuman` 1, `transhumanism`, `expandedSpecializations`, and `restrictMethods` allowing priority, sum-to-ten and point buy only, and **Configurable** changes nothing.
 
 **Hover text.** Every setting's row on Table setup, and on a runner's Creation rules, has hover text (`aboutOf` in
 `creation.ts`): what it does in plain words, then where a book prints it (book and page), else `house rule` or
@@ -948,7 +1031,10 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `dataStructure.maxCount`, `dataStructure.maxRating` | number | optional | `dataStructureCaps` |  |  | The GM's caps (unset) |
 | Optional rules | `noUsedCulturedBioware` | true/false | optional |  |  |  | House rule, off: cultured bioware takes no used grade (nor Body Shop's omega, which replaces it); the books print no exclusion (CRB Hong Kong p. 282) |
 | Optional rules | `gradeCapAtCreation` | true/false | optional |  |  |  | House rule, off: an initiation or submersion grade at creation above `gradeCap.initiation` or `gradeCap.submersion` is Review's `magic.gradeCapCreation`, an error a GM can approve (a grade above Magic or Resonance stays `magic.gradeCap`) |
-| Optional rules | `gradeCap.initiation`, `gradeCap.submersion` | number | optional | `gradeCapAtCreation` |  |  | The GM's caps (unset) |
+| Optional rules | `gradeCap.initiation`, `gradeCap.submersion`, `gradeCap.transhuman` | number | optional | `gradeCapAtCreation` |  |  | The GM's caps (unset) |
+| Optional rules | `transhumanism` | true/false | optional |  |  |  | Option, off (Sixth World Companion p. 146): a mundane runner buys transhumanist grades (`transhuman` on the build; 20 at most) for the initiation price, 10 + the next grade in Karma, and each makes an Essence hole of 1.0 that augmentations' Essence is paid from first (`essenceBudget`); Review's `magic.transhuman` flags a grade with the rule off or for an awakened or emerged runner, `magic.gradeCapCreation` the cap |
+| General | `restrictMethods` | true/false | optional |  |  |  | House rule, off: with it on, a runner can only be built with the creation methods ticked under it (`missingFor` lists `restrictMethods` for another; Game data says "the table doesn’t allow it") |
+| General | `methodAllowed.priority`, `.sumtoten`, `.pointbuy`, `.karma`, `.lifepath` | true/false | optional | `restrictMethods` |  |  | Whether that method may be picked while the limit is on (unset: not allowed) |
 | Optional rules | `adjustOnLoweredMax` | true/false | optional |  |  |  | House rule, off: adjustment points also on an attribute whose metatype maximum is below `attributeBaseMax` |
 | Optional rules | `pointBuyErrataNuyen` | true/false | optional |  |  | `pointBuy.max.nuyen` | House rule, off: point buy's most nuyen is 450,000, the errata version (as printed: 440,000, SWC p. 29) |
 | Optional rules | `knowledgeLogicIntuition` | true/false | optional |  |  |  | House rule, off: free knowledge points from Logic + Intuition (as printed: Logic, CRB Hong Kong p. 67) |

@@ -169,7 +169,13 @@ test('COMP_KINDS: every kind but the creation-structure ones, each with common.x
       .getAttribute('type')!
       .replace('sr6:', '')
     const t = types.get(type)!
-    expect([kind, want.fields]).toEqual([kind, own(t, 'attribute').map(a => a.getAttribute('name'))])
+    // (`class` is Commlink6's classification, made by the importer: not a field a compendium's author enters)
+    expect([kind, want.fields]).toEqual([
+      kind,
+      own(t, 'attribute')
+        .map(a => a.getAttribute('name'))
+        .filter(n => n !== 'class'),
+    ])
     const lines = own(t, 'element')
       .filter(e => e.getAttribute('type') === 'xs:string' && e.getAttribute('name') !== 'name')
       .map(e => e.getAttribute('name'))

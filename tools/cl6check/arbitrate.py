@@ -110,6 +110,25 @@ def token_in(window, token):
     return re.search(r"(?<![0-9A-Za-z.])" + re.escape(t) + r"(?![0-9])", _tok(window)) is not None
 
 
+def load_trace(path):
+    """{(src, cl6 id, field): 'only' | 'demote'} from a trace run's cl6-trace.csv ({} without one): where the trace shows
+    Commlink6's value is no book's ('Commlink6-only field': left out like the other Commlink6-only fields), or is not
+    confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer error)."""
+    import csv
+    if not path or not os.path.exists(path):
+        return {}
+    out = {}
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        for r in csv.DictReader(fh):
+            if r["field"] and r["family"] == "Commlink6-only field":
+                out[(r["src"], r["id"], r["field"])] = "only"
+            elif r["field"] and (r["family"] == "own row" or r.get("verdict") == "weak link, not confirmed on the page"):
+                out[(r["src"], r["id"], r["field"])] = "demote"
+            elif r["field"] not in ("", "rating") and r["family"] in ("description sentence", "not found", "another book"):
+                out[(r["src"], r["id"], r["field"])] = "unprinted"  # no row of this book prints it (rating ranges are modelled apart)
+    return out
+
+
 def settle(book, entry, rec, diff):
     """(class, pdf) for a field difference: pdf is which value the printed line shows (ours/cl6/both/neither/'')."""
     if diff["why"].startswith("ours holds a price"):
@@ -123,6 +142,10 @@ def settle(book, entry, rec, diff):
     if w is not None:
         a, b = bool(token_in(w, diff.get("ours_tok"))), bool(token_in(w, diff.get("cl6_tok")))
         pdf = {(True, False): "ours", (False, True): "cl6", (True, True): "both", (False, False): "neither"}[(a, b)]
+    if pdf == "cl6" and diff["why"].startswith("ours empty") and (diff.get("ours") or "").strip() in ("—", "–", "-"):
+        return "b", "ours"  # the row prints a dash; Commlink6's value only matches a stray digit in the window
+    if pdf == "cl6" and w is not None and re.search(r"[A-Za-z]", diff.get("ours") or "") and token_in(w, diff["ours"]):
+        return "b", "ours"  # our formula ('Capacity x 50', 'Rating') is printed on the row; Commlink6 flattens it to one number
     if pdf == "cl6":
         return "a", pdf
     if pdf == "ours":

@@ -25,6 +25,8 @@ BOOL_ATTRS = {"pos", "multi", "hasLevel", "nodouble", "selectable", "modonly", "
 TRUE, FALSE = {"y", "yes", "true", "1"}, {"n", "no", "false", "0"}
 KEY = re.compile(r"^([A-Za-z_]+)\.([A-Za-z0-9_-]+)(?:\.(.+?))?\s*[=:]\s*(.*)$")
 ENV = "CL6_JAR"
+RETIRED = re.compile(r"(?i)depr[ei]ciat")
+KEEP_RETIRED = {"wss_explosive"}  # (the latest Firing Squad still prints the Weapon Security System Explosive: kept, owner 2026-10-14)
 
 
 def find_jar(arg=None):
@@ -125,6 +127,9 @@ def read(jar):
                     name = t.get("name") or next((anywhere[k] for k in keys if k in anywhere), "")
                     if not name:
                         excluded[(book, el.tag, "no English name in the jar")] += 1
+                        continue
+                    if RETIRED.match(name) and iid not in KEEP_RETIRED:  # (Commlink6 kept the record, marked "Depreciated": out of every count, owner 2026-10-13)
+                        excluded[(book, el.tag, "retired by Commlink6 (Depreciated)")] += 1
                         continue
                     variants = {k.split(".", 1)[1]: v for k, v in t.items() if k.startswith("variant.") and "." not in
                                 k.split(".", 1)[1]}

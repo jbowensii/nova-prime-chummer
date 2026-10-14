@@ -1,0 +1,132 @@
+{
+  "package": "commlink6-sr6-optional",
+  "optional": [
+    {
+      "src": "ll",
+      "cl6_id": "western",
+      "name": "Western Drake",
+      "reason": "metatypes; CommLink6 has the drake types, the book (p16) does not print them as items"
+    },
+    {
+      "src": "ll",
+      "cl6_id": "feathered",
+      "name": "Feathered Drake",
+      "reason": "metatypes; as Western Drake"
+    },
+    {
+      "src": "ll",
+      "cl6_id": "seadrake",
+      "name": "Sea Drake",
+      "reason": "metatypes; as Western Drake"
+    },
+    {
+      "src": "so",
+      "cl6_id": "krime_rave_complete",
+      "name": "Krime Rave Clothing Complete",
+      "reason": "armor; the book describes +4 Social Rating for the complete suit in prose (p116), its table lists the pieces"
+    },
+    {
+      "src": "dc",
+      "cl6_id": "reduce_seating",
+      "name": "Reduce Seating",
+      "reason": "gear; not in the book text (p126); the nearest is Increased Seating, which we have"
+    },
+    {
+      "src": "hs",
+      "cl6_id": "machinist_console",
+      "name": "Machinist Command Console",
+      "reason": "electronics; the book (p131) describes an aspect peripheral but names no such item"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "matrix_signal_scanner",
+      "name": "Matrix Signal Scanner",
+      "reason": "electronics (sensor function); CommLink6 cites the core rulebook p18, the name is in the Krime Katalog p18 as a Standard Upgrade of the Krime Escalation, with no stat line of its own"
+    },
+    {
+      "src": "da",
+      "cl6_id": "cougar_polearm_small",
+      "name": "Cougar Polearm (Small)",
+      "reason": "weapons; CommLink6 has the Cougar Polearm as two items, the book (p47) prints the collapsible polearm as four rows (Knife, One-hand, Spear, Pike), which carry the brand as an alias"
+    },
+    {
+      "src": "da",
+      "cl6_id": "cougar_polearm_large",
+      "name": "Cougar Polearm (Large)",
+      "reason": "weapons; CommLink6 has the Cougar Polearm as two items, the book (p47) prints the collapsible polearm as four rows (Knife, One-hand, Spear, Pike), which carry the brand as an alias"
+    },
+    {
+      "src": "bs",
+      "cl6_id": "transgen_hearing_expansion",
+      "name": "Transgenic hearing expansion",
+      "reason": "geneware (transgenic bioware); CommLink6 splits it out, the book (p102) has no such row"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "spurs_samurai_oni",
+      "name": "Nissan Spurs",
+      "reason": "drone weapon; CommLink6 construct, not printed as an item (p300)"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "formula_ritual",
+      "name": "Ritual formula",
+      "reason": "magical supply; CommLink6 construct (p294), not printed as an item"
+    },
+    {
+      "src": "swc",
+      "cl6_id": "nartaki2",
+      "name": "Nartaki 2",
+      "reason": "metatype; CommLink6 splits the single printed Nartaki row in two (p81)"
+    },
+    {
+      "src": "fs",
+      "cl6_id": "ammo_hornet_gas",
+      "name": "Gas for Hornet (10x)",
+      "reason": "ammunition (p34); CommLink6 construct"
+    },
+    {
+      "src": "fs",
+      "cl6_id": "ammo_blazer",
+      "name": "Fuel for Blazer (5x)",
+      "reason": "ammunition (p35); CommLink6 construct"
+    },
+    {
+      "src": "fs",
+      "cl6_id": "ammo_hell_turtle",
+      "name": "Fuel for Hell Turtle (15x)",
+      "reason": "ammunition (p43); CommLink6 construct"
+    },
+    {
+      "src": "kk",
+      "cl6_id": "krime_drum",
+      "name": "Krime Spare Drum",
+      "reason": "weapon accessory (p23); no standalone row or price in the book"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "shiawase_inu_better_suit",
+      "name": "Shiawase Inu w/better suit",
+      "reason": "vehicles (p299); the 500 nuyen better-suit option is prose in the Inu entry, no stat line of its own"
+    },
+    {
+      "src": "fs",
+      "cl6_id": "mems_scabbard",
+      "name": "MEMS Scabbard",
+      "reason": "armor accessory; CommLink6 construct, no page cited"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "aaa_zone",
+      "name": "AAA zone",
+      "reason": "lifestyles (p57); printed in the Sixth World Companion p180"
+    },
+    {
+      "src": "dc",
+      "cl6_id": "shiawase_inu_better_suit",
+      "name": "Shiawase Inu w/better suit",
+      "reason": "CommLink6 also files this variant under Double Clutch with no page; same record as the Core Rulebook p299 entry in this package."
+    }
+  ],
+  "relocated": []
+}

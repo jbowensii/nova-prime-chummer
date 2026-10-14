@@ -1,5 +1,36 @@
 # Release notes
 
+## 0.16.0 — 2026-10-14
+
+Shadowrun 6 data gets closer to Commlink6, the system of record, and three new rule options arrive.
+
+**Admins, after updating:**
+- **Books → Re-import all** to get the new data (item structure, the Deadly Arts rocket and missile table's range, pilot and
+  sensor, and the Commlink6-only entries below). Nothing else needs a re-import.
+- Table setup has a **Rule preset** menu. It fills the form for you to review; nothing changes until you Save.
+
+**Shadowrun 6**
+- **Rule presets**: Standard, Standard (Seattle), Shadowrun Missions and Configurable. Standard puts the preset settings
+  back to the shipped values, so Standard creation is unchanged.
+- **Creation methods can be limited** (a house rule, off by default): tick the methods a table allows. Missions allows
+  priority, sum-to-ten and point buy.
+- **Transhumanism** (Sixth World Companion p. 146, an option, off by default): a mundane runner buys transhumanist grades
+  for the initiation price in Karma (up to 20), each an Essence hole of 1.0 that augmentations' Essence is paid from first.
+  Review flags a grade with the rule off or for an awakened runner; the creation grade caps cover it (Missions: 1).
+- **Item structure** from Commlink6 is in the data: the slots an item offers or fits, its variants, relevance topics, flags,
+  add-on only, a weapon's size and ammunition class. The pickers and the Foundry export can use them; no rule reads them
+  yet, so no character changes. Commlink6's own modifications, prerequisites and picks are kept beside our effects and never applied.
+- **Rockets and missiles** keep their range, pilot and sensor on the gear row (Deadly Arts p. 58).
+- Commlink6's option rows and a few records the books only mention (adapters, M-TOC Fob, AR Interface, Mil-Spec Weapon Mount,
+  firing-mode, range, energy and crew-served rows, three German-named ammunition records) are entries now.
+- Where the PDF's own text prints our value, ours stays; Commlink6's value is used where the book is silent, unreadable or
+  prints neither (about 110 values and the structure above).
+
+**Behind the scenes**
+- `cl6check` counts 100% of Commlink6's 4,476 records, with 98.8% of matched records equal field for field once printed
+  differences are counted as such (93.1% strictly). Retired ("Depreciated") records are left out, except the Weapon Security System Explosive.
+- A weapon entry may carry `per` (ammunition priced per N rounds); a program may be add-on only.
+
 ## 0.15.0 — 2026-10-12
 
 A release of fixes from a full review of the app, plus a few look-and-feel improvements.

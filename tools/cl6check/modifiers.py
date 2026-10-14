@@ -304,3 +304,15 @@ def run(cl6, pairs, sources):
     out = analyse([d for d in data if d[0] and d[1]], [modifiers(c["el"]) for c in cl6])
     out["on_matched"] = sum(len(d[0]) for d in data)  # with or without a description of ours
     return out
+
+
+def per_effect(pairs):
+    """Informational: of the effects CommLink6 states on matched records, how many of ours reproduce (target, value)
+    (element ignored), counted as a multiset per record. The whole-entry 'effects' family stays all-or-nothing."""
+    got = total = 0
+    for c, o in pairs:
+        cl = Counter((t, v) for _, t, v in c["families"].get("effects", ()))
+        mine = Counter((t, v) for _, t, v in o["families"].get("effects_own", o["families"].get("effects", ())))
+        total += sum(cl.values())
+        got += sum((cl & mine).values())
+    return {"reproduced": got, "of": total, "pct": _pct(got, total)}

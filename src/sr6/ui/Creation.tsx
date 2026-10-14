@@ -14,13 +14,16 @@ import {
   expandKeys,
   levelRules,
   mergeRules,
+  presetChanges,
   readSettingsFile,
+  RULE_PRESETS,
   rulesFrom,
   RUNNER_RULE_KEYS,
   runnerRules,
   type CreationKey,
   type CreationRow,
   type CreationRules,
+  type RulePreset,
 } from '../engine/creation'
 import type { Sr6Character } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
@@ -291,6 +294,21 @@ export function CreationForm({
     },
     [stdRows],
   )
+  // a preset puts its toggles in the form (the other settings it manages go back to the standard); Save keeps them
+  const applyPreset = (id: RulePreset['id']) => {
+    const { set: sets, reset: back } = presetChanges(id)
+    if (!sets.length && !back.length) return
+    setDraft(x => {
+      const n = { ...x }
+      for (const key of back) {
+        if (stdRows[key]) n[key] = stdRows[key]
+        else delete n[key]
+      }
+      for (const [key, v] of sets) n[key] = { ...NO_ROW, ...x[key], value: String(v) }
+      return n
+    })
+    setMsg(`${RULE_PRESETS.find(p => p.id === id)!.label}: its settings are in the form; Save creation rules to keep them.`)
+  }
   const resetKeys = (ks: string[]) => {
     setMsg('')
     setDraft(x => {
@@ -350,6 +368,27 @@ export function CreationForm({
       {children}
       {onSave && (
         <div className="creation-tools">
+          <div>
+            <label>
+              Rule preset{' '}
+              <select
+                aria-label="Rule preset"
+                disabled={saving}
+                value=""
+                onChange={e => {
+                  if (e.target.value) applyPreset(e.target.value as RulePreset['id'])
+                }}
+              >
+                <option value="">Choose a preset…</option>
+                {RULE_PRESETS.map(p => (
+                  <option key={p.id} value={p.id} title={p.about}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="muted">Sets a group of the settings below for you to review; Standard puts them back, Configurable leaves them as they are.</span>
+          </div>
           <div>
             <label className="btn file">
               Load settings file…

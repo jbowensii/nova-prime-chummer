@@ -12,7 +12,7 @@ from pathlib import Path
 
 from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import ROOT, effects, moved, regroup, resolve
+from importer.sr6 import ROOT, classes, effects, moved, overrides, regroup, resolve
 from importer.sr6.recipes import RECIPES, identify, printing, skipped
 
 def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
@@ -55,6 +55,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
             res.extra = recipe.extra(md, meta["sha256"])
             for x in res.extra:
                 x.files, x.texts = effects.apply(x.files, x.texts, text)
+                x.files = classes.apply(overrides.apply(x.source["id"], x.files), src=x.source["id"])  # (a City Edition's city: its own table)
         for r in report:  # regroup reports PDF pages; the import report prints the book's
             if isinstance(r.get("page"), int):
                 r["page"] = max(1, r["page"] - recipe.PAGE_OFFSET)
@@ -138,6 +139,9 @@ def _read(recipe, md, custom_dir):
                                    variants=getattr(recipe, "VARIANT_ROWS", False))
     res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
     res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
+    res.files = overrides.apply(getattr(recipe, "ID", ""), res.files)  # the book's last-resort Commlink6 name table
+    res.files = classes.apply(res.files, src=getattr(recipe, "ID", ""))  # Commlink6's class on each entry of a category it classes alike (an override's own stays)
+    res.texts = overrides.texts(getattr(recipe, "ID", ""), res.files, res.texts)  # (an added entry that takes a heading's text)
     return res, md, text, report
 
 

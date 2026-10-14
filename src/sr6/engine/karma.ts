@@ -103,6 +103,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   }
   add('initiation', `Initiation grade ${b.initiation}`, grades(b.initiation), 'magic')
   add('submersion', `Submersion grade ${b.submersion}`, grades(b.submersion), 'magic')
+  // the Sixth World Companion's Transhumanism (p. 146): 10 + the next grade, the initiation price, for a mundane's transhumanist grades
+  if (flag(cr, 'transhumanism') && b.transhuman > 0) add('transhuman', `Transhumanist grade ${b.transhuman}`, grades(b.transhuman), 'gear')
   // Hack & Slash p. 71: a data structure is integrated for Karma equal to its level
   add('dataStructures', 'Data structures integrated', dataStructureLevels(b), 'magic')
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
