@@ -60,7 +60,7 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                              and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
                 "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
                 "cause": "", "excluded": None,
-                "cl6only": bool(c.get("cl6only"))}
+                "cl6only": bool(c.get("cl6only")) and how not in ("optional package", "relocated", "already have")}  # (one the package or our data holds is matched)
             if not c["page"]:
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
