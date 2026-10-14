@@ -30,5 +30,17 @@
   {"cl6": "Trauma Response System (Advanced) refill", "kind": "gear", "id": "trauma-response-system-advanced-refill", "set": {"class": "AMMUNITION/AMMUNITION_SPECIAL"}},
   {"cl6": "Shadowmarket solvent spray", "kind": "gear", "id": "shadowmarket-solvent-spray", "set": {"class": "CHEMICALS/INDUSTRIAL_CHEMICALS"}},
   {"cl6": "Mk1 Tactical Shield", "kind": "weapons", "id": "mk1-tactical-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
-  {"cl6": "Mk2 Riot Shield", "kind": "weapons", "id": "mk2-riot-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}}
+  {"cl6": "Mk2 Riot Shield", "kind": "weapons", "id": "mk2-riot-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
+  {"cl6": "Defiance T-290", "kind": "weapons", "id": "defiance-t-290", "set": {"skill": "Firearms", "spec": "Shotguns"}, "gen": "family"},
+  {"cl6": "Foamtek Cannon", "kind": "weapons", "id": "foamtek-cannon", "set": {"skill": "Exotic Weapons", "spec": "Spray"}, "gen": "family"},
+  {"cl6": "Foamtek Carbine", "kind": "weapons", "id": "foamtek-carbine", "set": {"skill": "Exotic Weapons", "spec": "Spray"}, "gen": "family"},
+  {"cl6": "Mancatcher", "kind": "weapons", "id": "mancatcher", "set": {"skill": "Close Combat", "spec": "Clubs"}, "gen": "family"},
+  {"cl6": "Neo-Nambu P126", "kind": "weapons", "id": "neo-nambu-p126", "set": {"skill": "Firearms", "spec": "Pistols Light"}, "gen": "family"},
+  {"cl6": "Parashield Zapgun", "kind": "weapons", "id": "parashield-zapgun", "set": {"skill": "Exotic Weapons", "spec": "Emitter"}, "gen": "family"},
+  {"cl6": "Ruger Lawbringer", "kind": "weapons", "id": "ruger-lawbringer", "set": {"skill": "Firearms", "spec": "Pistols Heavy"}, "gen": "family"},
+  {"cl6": "Ruger Lawbringer CS", "kind": "weapons", "id": "ruger-lawbringer-cs", "set": {"skill": "Firearms", "spec": "Pistols Heavy"}, "gen": "family"},
+  {"cl6": "External Injector Rig", "kind": "gear", "id": "external-injector-rig", "set": {"cost": "Rating x 1500"}, "gen": "value", "formula": {"cost": "R * 1500"}},
+  {"cl6": "Foamtek Cannon", "kind": "weapons", "id": "foamtek-cannon", "set": {"ammo": "20"}, "gen": "value"},
+  {"cl6": "Foamtek Refill Cannon", "kind": "weapons", "id": "foamtek-cannon-tank-refill", "set": {"avail": "6"}, "gen": "value"},
+  {"cl6": "Foamtek Carbine", "kind": "weapons", "id": "foamtek-carbine", "set": {"ammo": "10"}, "gen": "value"}
 ]

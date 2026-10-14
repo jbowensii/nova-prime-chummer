@@ -22,5 +22,21 @@
   {"cl6": "Krime Vester", "kind": "weapons", "id": "krime-vester", "set": {"class": "WEAPON_FIREARMS/HOLDOUTS"}, "gen": "class"},
   {"cl6": "AKM-97 (Assault Rifle)", "kind": "weapons", "id": "akm-97-assault-rifle", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
   {"cl6": "Krime Ditch Combination Gun (Shotgun)", "kind": "weapons", "id": "krime-ditch-combination-gun-shotgun", "set": {"class": "WEAPON_FIREARMS/RIFLE_HUNTING"}},
-  {"cl6": "Krime Soldier (GL)", "kind": "weapons", "id": "krime-soldier-gl", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}}
+  {"cl6": "Krime Soldier (GL)", "kind": "weapons", "id": "krime-soldier-gl", "set": {"class": "WEAPON_FIREARMS/RIFLE_ASSAULT"}},
+  {"cl6": "Krime AKM-97 Carbine", "kind": "weapons", "id": "akm-97-carbine", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Krime Chatter", "kind": "weapons", "id": "krime-chatter", "set": {"skill": "Firearms", "spec": "Machine Pistols"}, "gen": "family"},
+  {"cl6": "Krime Confederate", "kind": "weapons", "id": "krime-confederate", "set": {"skill": "Firearms", "spec": "Assault Cannons"}, "gen": "family"},
+  {"cl6": "Krime Ditch Combination Gun", "kind": "weapons", "id": "krime-ditch-combination-gun-rifle", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Krime Escalation", "kind": "weapons", "id": "krime-escalation", "set": {"skill": "Exotic Weapons", "spec": "Launchers"}, "gen": "family"},
+  {"cl6": "Krime Heater", "kind": "weapons", "id": "krime-heater", "set": {"skill": "Firearms", "spec": "Pistols Heavy"}, "gen": "family"},
+  {"cl6": "Krime Junior Carbine", "kind": "weapons", "id": "krime-junior-carbine", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Krime KAR-97-H", "kind": "weapons", "id": "krime-kar-97-h", "set": {"skill": "Firearms", "spec": "Machine Guns"}, "gen": "family"},
+  {"cl6": "Krime Monster", "kind": "weapons", "id": "krime-monster", "set": {"skill": "Firearms", "spec": "Assault Cannons"}, "gen": "family"},
+  {"cl6": "Krime Saint Nicholas Carbine", "kind": "weapons", "id": "krime-saint-nicholas-carbine", "set": {"skill": "Firearms", "spec": "Submachine Guns"}, "gen": "family"},
+  {"cl6": "Krime Soldier", "kind": "weapons", "id": "krime-soldier", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Krime Stopper II", "kind": "weapons", "id": "krime-stopper-ii", "set": {"skill": "Firearms", "spec": "Shotguns"}, "gen": "family"},
+  {"cl6": "Krime T-Shirt Cannon", "kind": "weapons", "id": "krime-t-shirt-cannon", "set": {"skill": "Exotic Weapons", "spec": "Launchers"}, "gen": "family"},
+  {"cl6": "Krime Tradition", "kind": "weapons", "id": "krime-tradition", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Krime Varmint Stocked Pistol", "kind": "weapons", "id": "krime-varmint-stocked-pistol", "set": {"skill": "Firearms", "spec": "Pistols Heavy"}, "gen": "family"},
+  {"cl6": "Krime Vester", "kind": "weapons", "id": "krime-vester", "set": {"skill": "Firearms", "spec": "Holdouts"}, "gen": "family"}
 ]

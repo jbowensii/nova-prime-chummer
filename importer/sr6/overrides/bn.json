@@ -11,5 +11,8 @@
   {"cl6": "Trode Patch", "kind": "gear", "id": "trode-patch", "set": {"class": "ELECTRONICS/ELECTRONIC_ACCESSORIES"}, "gen": "class"},
   {"cl6": "Mitsuhama Helping Hand", "kind": "vehicles", "id": "mitsuhama-helping-hand", "set": {"class": "DRONE_SMALL/ANTHRO"}, "gen": "class"},
   {"cl6": "Renraku Pelican 2 Delivery Drone", "kind": "vehicles", "id": "renraku-pelican-2-delivery-drone", "set": {"class": "DRONE_SMALL/AIR"}, "gen": "class"},
-  {"cl6": "Shiawase Aquatic Operations Buoy", "kind": "vehicles", "id": "shiawase-aquatic-operations-buoy", "set": {"class": "DRONE_SMALL/AQUATIC"}, "gen": "class"}
+  {"cl6": "Shiawase Aquatic Operations Buoy", "kind": "vehicles", "id": "shiawase-aquatic-operations-buoy", "set": {"class": "DRONE_SMALL/AQUATIC"}, "gen": "class"},
+  {"cl6": "Myomeric Smart Harness", "kind": "armor", "id": "myomeric-smart-harness", "set": {"social": "0"}, "gen": "family"},
+  {"cl6": "Shifter Might", "kind": "qualities", "id": "shifter-might-shifter-add-on", "set": {"karma": "5"}, "gen": "value"},
+  {"cl6": "Shiawase Aquatic Operations Buoy", "kind": "vehicles", "id": "shiawase-aquatic-operations-buoy", "set": {"cost": "5000"}, "gen": "value", "formula": {"cost": "tier(R; 1: 5000; 2: 5100; 3: 5200; 4: 5300)"}}
 ]

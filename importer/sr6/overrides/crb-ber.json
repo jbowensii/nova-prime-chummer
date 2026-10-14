@@ -16,5 +16,6 @@
   {"cl6": "BÆR E-Sperber (Scooter)", "kind": "vehicles", "id": "b-r-e-sperber-scooter", "set": {"class": "VEHICLES/BIKES"}},
   {"cl6": "Rat Bike", "kind": "vehicles", "id": "rat-bike", "set": {"class": "VEHICLES/BIKES"}},
   {"cl6": "Drek Van", "kind": "vehicles", "id": "drek-van", "set": {"class": "VEHICLES/VANS"}},
-  {"cl6": "Junk Dog", "kind": "vehicles", "id": "junk-dog", "set": {"class": "DRONE_MEDIUM/GROUND"}}
+  {"cl6": "Junk Dog", "kind": "vehicles", "id": "junk-dog", "set": {"class": "DRONE_MEDIUM/GROUND"}},
+  {"cl6": "Off the Grid", "kind": "qualities", "id": "off-the-grid", "set": {"karma": "9"}, "gen": "value"}
 ]

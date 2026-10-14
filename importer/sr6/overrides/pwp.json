@@ -1,0 +1,5 @@
+[
+  {"cl6": "Dog on a Leash", "kind": "qualities", "id": "dog-on-a-leash", "set": {"kind": "negative"}, "gen": "value"},
+  {"cl6": "Shinto Summoner", "kind": "qualities", "id": "shinto-summoner", "set": {"karma": "6"}, "gen": "value"},
+  {"cl6": "Social Outcast", "kind": "qualities", "id": "social-outcast", "set": {"karma": "6"}, "gen": "value"}
+]

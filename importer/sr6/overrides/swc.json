@@ -1,0 +1,10 @@
+[
+  {"cl6": "Submachine Gun-FN P93 Praetor", "kind": "packs", "id": "fn-p93-praetor", "set": {"cost": "1850"}, "gen": "value"},
+  {"cl6": "Consumed", "kind": "qualities", "id": "consumed", "set": {"karma": "0"}, "gen": "value"},
+  {"cl6": "Feathers", "kind": "qualities", "id": "feathers", "set": {"karma": "5"}, "gen": "value"},
+  {"cl6": "Ghoul (Troll)", "kind": "qualities", "id": "ghoul", "set": {"karma": "29"}, "gen": "value"},
+  {"cl6": "Hairless", "kind": "qualities", "id": "hairless", "set": {"karma": "5"}, "gen": "value"},
+  {"cl6": "Into the Shadows", "kind": "qualities", "id": "into-the-shadows", "set": {"kind": "positive"}, "gen": "value"},
+  {"cl6": "Metahuman Traits", "kind": "qualities", "id": "metahuman-traits", "set": {"karma": "6"}, "gen": "value"},
+  {"cl6": "Pachy", "kind": "qualities", "id": "pachy-rhino-elephant-hippo", "set": {"karma": "4"}, "gen": "value"}
+]

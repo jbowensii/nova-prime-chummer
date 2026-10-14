@@ -706,6 +706,21 @@ of another category gets it from an id row of its book's override table (`{"cl6"
 Both are made by `python -m tools.cl6check.classmap <category_class_map.csv> <runs dir>` (re-runnable; it replaces only
 the rows with `"gen": "class"`).
 
+## Commlink6's values in the per-book tables (`"gen": "value"` and `"gen": "family"`)
+
+Owner decision 2026-10-13: where a printed value of ours is not confirmed (the PDF page prints Commlink6's value, neither
+value, a formula or several values, or the three gossipcat reviewers did not all answer KEEP_OURS, 100% certain), the
+value is Commlink6's. `python -m tools.cl6check.valuemap <cl6-diffs.csv> [<diffs of a run on the result>]` writes one row
+per entry, `{"cl6", "kind", "id", "set": {"cost": "500", "avail": "3(L)"}, "formula": {"cost": "tier(R; 1: ..)"}?,
+"gen": "value"}`, from the counted field differences; `tools/cl6check/value_keep.json` lists what stays ours (`keep`:
+unanimous) and what is left to the owner (`hold`: a per-rating item, a variant's value, two Commlink6 records that
+disagree about one entry). A per-rating Commlink6 value is `Rating x N` when it is linear, else the value at rating 1 with a
+`tier()` formula; a level's own entry (`wired-reflexes-2`) takes the value at its level. The entry's own `<formula>`,
+`<issue>` and `<found>` for a field set go. Commlink6's enum keys become the books' words (`AUTO` -> `Auto`, `MANA` ->
+`M`). `python -m tools.cl6check.familymap` writes `"gen": "family"` rows for the structured data the schema models: a
+weapon's `skill` and `spec`, an armor's `social`. Slots, variants, relevance, flags, modonly, size and ammunition class
+are not in the data schema, and a Commlink6 modification has no one-to-one `<effect>`; they are not written.
+
 ## Structure ops in the per-book tables, and the extra classes
 
 Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries

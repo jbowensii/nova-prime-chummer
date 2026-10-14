@@ -33,5 +33,15 @@
   {"cl6": "Psychotropic", "kind": "gear", "id": "psychotropic", "set": {"class": "SOFTWARE/HACKING_PROGRAM"}},
   {"cl6": "Cerebropathic", "kind": "gear", "id": "cerebropathic", "set": {"class": "SOFTWARE/HACKING_PROGRAM"}},
   {"cl6": "Infection", "kind": "gear", "id": "infection", "set": {"class": "SOFTWARE/HACKING_PROGRAM"}},
-  {"cl6": "Eraser", "kind": "gear", "id": "eraser", "set": {"class": "SOFTWARE/HACKING_PROGRAM"}}
+  {"cl6": "Eraser", "kind": "gear", "id": "eraser", "set": {"class": "SOFTWARE/HACKING_PROGRAM"}},
+  {"cl6": "Ascalon Rail Gun Turret", "kind": "weapons", "id": "ascalon-rail-gun", "set": {"skill": "Firearms", "spec": "Assault Cannons"}, "gen": "family"},
+  {"cl6": "Unravel Encryption", "kind": "complexforms", "id": "unravel-encryption", "set": {"fade": "Rating"}, "gen": "value"},
+  {"cl6": "Agent Box Hack", "kind": "electronics", "id": "agent-box", "set": {"cost": "200"}, "gen": "value", "formula": {"cost": "tier(R; 1: 200; 2: 900; 3: 1300; 4: 2900; 5: 5500; 6: 8600)"}},
+  {"cl6": "Attack Module", "kind": "electronics", "id": "attack-module", "set": {"rating": "1–9"}, "gen": "value"},
+  {"cl6": "Dart Launcher", "kind": "electronics", "id": "dart-launcher", "set": {"avail": "2(I)"}, "gen": "value"},
+  {"cl6": "Decoy Pod Hack", "kind": "electronics", "id": "decoy-pod", "set": {"cost": "200"}, "gen": "value", "formula": {"cost": "tier(R; 1: 200; 2: 900; 3: 1300; 4: 2900; 5: 5500; 6: 8600)"}},
+  {"cl6": "Dedicated Program Slot", "kind": "electronics", "id": "dedicated-program-slot", "set": {"cost": "1000"}, "gen": "value"},
+  {"cl6": "Persona Booster Hack", "kind": "electronics", "id": "persona-booster", "set": {"cost": "200"}, "gen": "value", "formula": {"cost": "tier(R; 1: 200; 2: 1200; 3: 5300)"}},
+  {"cl6": "Sleaze Module", "kind": "electronics", "id": "sleaze-module", "set": {"rating": "1–9"}, "gen": "value"},
+  {"cl6": "Nexus Protocol Program", "kind": "programs", "id": "nexus-protocol-program", "set": {"avail": "6"}, "gen": "value"}
 ]

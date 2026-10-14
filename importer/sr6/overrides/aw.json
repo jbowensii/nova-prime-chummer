@@ -16,5 +16,14 @@
   {"cl6": "Shadow Cloak", "kind": "gear", "id": "shadow-cloak", "set": {"class": "focus"}},
   {"cl6": "Sextant of Worlds", "kind": "gear", "id": "sextant-of-worlds", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}},
   {"cl6": "Shadow Amulet", "kind": "gear", "id": "shadow-amulet", "set": {"class": "focus"}},
-  {"cl6": "Map/Grimoire", "kind": "gear", "id": "map-grimoire", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}}
+  {"cl6": "Map/Grimoire", "kind": "gear", "id": "map-grimoire", "set": {"class": "MAGICAL/MAGICAL_SUPPLIES"}},
+  {"cl6": "Ballista, Heavy", "kind": "weapons", "id": "ballista-heavy", "set": {"skill": "Athletics", "spec": "Archery"}, "gen": "family"},
+  {"cl6": "Ballista, Light", "kind": "weapons", "id": "ballista-light", "set": {"skill": "Athletics", "spec": "Archery"}, "gen": "family"},
+  {"cl6": "Ballista, Standard", "kind": "weapons", "id": "ballista-standard", "set": {"skill": "Athletics", "spec": "Archery"}, "gen": "family"},
+  {"cl6": "Cannon, Heavy", "kind": "weapons", "id": "cannon-heavy", "set": {"skill": "Engineering", "spec": "Gunnery"}, "gen": "family"},
+  {"cl6": "Cannon, Light", "kind": "weapons", "id": "cannon-light", "set": {"skill": "Engineering", "spec": "Gunnery"}, "gen": "family"},
+  {"cl6": "Cannon, Standard", "kind": "weapons", "id": "cannon-standard", "set": {"skill": "Engineering", "spec": "Gunnery"}, "gen": "family"},
+  {"cl6": "Raptor Skull", "kind": "gear", "id": "raptor-skull", "set": {"cost": "5000"}, "gen": "value"},
+  {"cl6": "Astral Gateway", "kind": "rituals", "id": "astral-gateway-ritual", "set": {"threshold": "3"}, "gen": "value"},
+  {"cl6": "Huge Airship", "kind": "vehicles", "id": "huge-airship", "set": {"cost": "500000"}, "gen": "value"}
 ]

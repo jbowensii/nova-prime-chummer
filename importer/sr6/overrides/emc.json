@@ -1,0 +1,5 @@
+[
+  {"cl6": "Good Ol’ Folks", "kind": "qualities", "id": "good-ol-folks", "set": {"karma": "7"}, "gen": "value"},
+  {"cl6": "The Briar Patch", "kind": "qualities", "id": "the-briar-patch", "set": {"karma": "5"}, "gen": "value"},
+  {"cl6": "What Doesn’t Kill You", "kind": "qualities", "id": "what-doesnt-kill-you", "set": {"karma": "3", "kind": "positive"}, "gen": "value"}
+]

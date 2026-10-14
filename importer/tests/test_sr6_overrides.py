@@ -296,7 +296,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family")]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
@@ -359,7 +359,7 @@ class ConsensusClassRowsTest(unittest.TestCase):
 
     def test_no_class_row_is_listed_twice_in_a_table(self):
         for p in overrides.DIR.glob("*.json"):
-            keys = [(r["kind"], r["id"], tuple(k for k in ("set", "remove", "rename") if k in r)) for r in overrides.table(p.stem) if "id" in r]
+            keys = [(r["kind"], r["id"], r.get("gen"), tuple(k for k in ("set", "remove", "rename") if k in r)) for r in overrides.table(p.stem) if "id" in r]
             self.assertEqual(len(keys), len(set(keys)), p.name)
 
 
@@ -524,3 +524,36 @@ class ArmorToGearMoveTest(unittest.TestCase):
         got = {r["id"]: r["set"]["class"] for r in overrides.table("ed") if r.get("id") in ("gti-dagger", "gti-falchion") and "set" in r}
         self.assertEqual(got, {"gti-dagger": "DRONE_MEDIUM/SPACE", "gti-falchion": "DRONE_LARGE/SPACE"})
         self.assertIn("DRONE_MEDIUM/SPACE", classes.extra())
+
+
+class ValueRowTest(unittest.TestCase):
+    GEAR = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.lamp" source="ZZ" page="5" avail="2" cost="Rating x 10" rating="1-3">'
+            '<name>Lamp</name><formula field="cost">R * 10</formula><issue field="avail" code="missing">x</issue><text/></gear></d>\n')
+
+    def test_a_value_row_sets_the_value_and_drops_what_described_the_old_one(self):
+        rows = [{"cl6": "Lamp", "kind": "gear", "id": "zz.lamp", "gen": "value", "set": {"cost": "50", "avail": "3(L)"},
+                 "formula": {"avail": "tier(R; 1: 3; 2: 4)"}}]
+        g = ET.fromstring(overrides.apply("zz", {"gear.xml": self.GEAR}, rows)["gear.xml"].encode())[0]
+        self.assertEqual((g.get("cost"), g.get("avail")), ("50", "3(L)"))
+        self.assertEqual([(c.tag, c.get("field")) for c in g], [("name", None), ("formula", "avail"), ("text", None)])
+
+    def test_a_value_row_refuses_what_it_may_not_set(self):
+        for bad in ({"description": "x"}, {"id": "y"}, {}):
+            with self.assertRaises(ValueError):
+                overrides.check([{"cl6": "Lamp", "kind": "gear", "id": "lamp", "gen": "value", "set": bad}])
+
+
+class ValueMapTest(unittest.TestCase):
+    def test_numbers_formulas_and_legality(self):
+        from tools.cl6check import valuemap as V
+        row = lambda f, cl6, ours="", **k: {"field": f, "cl6": cl6, "ours": ours, "our_id": k.get("id", "zz.thing")}
+        self.assertEqual(V.numeric("cost", "R1 500, R2 1000, R3 1500", "")[0:2], ("Rating x 500", "R * 500"))
+        self.assertEqual(V.numeric("cost", "R1 500, R2 900", "")[1], "tier(R; 1: 500; 2: 900)")
+        self.assertEqual(V.numeric("cost", "R1 500, R2 900", "", 2), ("900", None))  # (a level's own entry)
+        self.assertEqual(V.row_values([row("avail", "4", "6(L)"), row("legality", "(legal)", "6(L)")])[0], {"avail": "4"})
+        self.assertEqual(V.row_values([row("legality", "I", "(Force +3) L")])[0], {"avail": "(Force +3)(I)"})
+        self.assertEqual(V.row_values([row("ar", "11,9,7,,", "")])[0], {"ar": "11/9/7/—/—"})
+        self.assertEqual(V.row_values([row("positive", "false", "negative")])[0], {"kind": "negative"})
+        self.assertEqual(V.row_values([row("rating", "1–4", "1")], )[0], {"rating": "1–4"})
+        self.assertEqual(V.row_values([row("rating", "1–4", "1", id="zz.thing-2"), row("cost", "R1 5, R2 9", "", id="zz.thing-2")])[0],
+                         {"cost": "9"})

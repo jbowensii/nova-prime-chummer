@@ -11,8 +11,12 @@ any kind is written: the entry's description, if the book has one, comes from th
 name>" (a name, never text) in an add row gives the entry the description the book's text already has under that
 heading (`texts()`: the owner's PDF text of the catalog entry of that name, copied to the new entry).
 A row with "id" (an entry's unscoped id, the importer's own) and "set" {"class": "<TYPE/SUBTYPE>"} sets Commlink6's
-classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); "class" is the only attribute
-such a row may set, and an id no entry has is reported once on stderr, nothing guessed.
+classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); an id no entry has is
+reported once on stderr, nothing guessed.
+An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
+cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
+"formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
+<issue> and <found> children for each field set go (they described the value being replaced).
 Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format.md):
   {"kind","id","remove":true}                     the entry goes (its aliases with it, its text in `texts()`)
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
@@ -33,6 +37,9 @@ from importer.sr6.resolve import _add_kid
 DIR = Path(__file__).with_name("overrides")
 OPS = ("remove", "rename", "merge", "move_kind")
 SETTABLE = {"class"}  # (what an id row may set)
+VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
+               "seats", "range", "type", "duration", "category", "action", "activation", "fade", "threshold", "kind",
+               "handling", "interval", "power", "attr", "skill", "spec", "social", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
 CLASS_KEY = re.compile(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?")
 NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from the owner's PDF, never from here)
 
@@ -48,7 +55,10 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and not any(k in r for k in OPS):
+        if "id" in r and r.get("gen") in ("value", "family") and not any(k in r for k in OPS):
+            if not r.get("set") or set(r["set"]) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
+                raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
+        elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
@@ -132,9 +142,12 @@ def table(recipe_id):
 def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
-    want = {}
+    want, forms, vals = {}, {}, {}
     for r in rows:
-        want.setdefault(f"{r['kind']}.xml", {})[r["id"]] = r["set"]
+        want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r["set"])
+        if r.get("gen") in ("value", "family"):
+            forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
+            vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r["set"])
     missing = []
     for name, ids in want.items():
         if not out.get(name):
@@ -147,6 +160,15 @@ def _set_by_id(out, rows):
                 seen.add(e.get("id"))
                 for k, v in ids[e.get("id")].items():
                     e.set(k, str(v))
+                for k in vals.get(name, {}).get(e.get("id"), ()):
+                    for c in [c for c in e if c.tag in ("formula", "issue", "found") and c.get("field") == k]:
+                        e.remove(c)  # (the value they described is replaced)
+                    if k == "karma":
+                        e.attrib.pop("karmaMax", None)
+                for k, expr in forms.get(name, {}).get(e.get("id"), {}).items():
+                    f = etree.Element("formula", {"field": k})
+                    f.text = expr
+                    e.insert(sum(1 for c in e if c.tag in ("name", "alias", "formula")), f)
         missing += [f"{name}:{i}" for i in ids if i not in seen]
         out[name] = dump(out[name], root)
     if missing:

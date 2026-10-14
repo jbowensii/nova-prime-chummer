@@ -13,5 +13,7 @@
   {"cl6": "Surfstar Marine Seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
   {"cl6": "Ammunition", "kind": "gear", "id": "ammunition", "remove": true},
   {"cl6": "Hunter’s Alloy (Regular)", "kind": "gear", "id": "hunters-alloy-regular", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
-  {"cl6": "Hunter’s Alloy (Orichalcum)", "kind": "gear", "id": "hunters-alloy-orichalcum", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}}
+  {"cl6": "Hunter’s Alloy (Orichalcum)", "kind": "gear", "id": "hunters-alloy-orichalcum", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Carib League Pipeline", "kind": "qualities", "id": "carib-league-pipeline", "set": {"karma": "3"}, "gen": "value"},
+  {"cl6": "Surfstar Marine Seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"avail": "62"}, "gen": "value"}
 ]

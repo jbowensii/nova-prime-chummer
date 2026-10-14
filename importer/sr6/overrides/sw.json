@@ -4,5 +4,20 @@
   {"cl6": "Stone Fist", "kind": "spells", "add": {"page": 53, "attrs": {"category": "manipulation", "range": "Touch", "type": "P", "duration": "S", "dv": "5"}}},
   {"cl6": "Disentangle", "kind": "spells", "add": {"page": 53, "attrs": {"category": "health", "range": "Touch", "type": "P", "duration": "P", "dv": "5"}}},
   {"cl6": "Free Dive Deep Breath Mask", "kind": "gear", "id": "free-dive-deep-breath-mask", "set": {"class": "SURVIVAL/SURVIVAL_GEAR"}, "gen": "class"},
-  {"cl6": "New Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "set": {"class": "focus"}}
+  {"cl6": "New Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "set": {"class": "focus"}},
+  {"cl6": "Commanding Voice", "kind": "adeptpowers", "id": "commanding-voice", "set": {"activation": "Passive"}, "gen": "value"},
+  {"cl6": "Athame Blood Focus", "kind": "gear", "id": "athame", "set": {"cost": "12500", "avail": "4"}, "gen": "value"},
+  {"cl6": "Boom Stick Extreme!", "kind": "gear", "id": "boomstick-boomstick-extreme", "set": {"avail": "6(L)"}, "gen": "value"},
+  {"cl6": "Don't Piss Off The Kitchen Staff", "kind": "gear", "id": "dont-piss-off-the-kitchen-staff", "set": {"avail": "6(L)"}, "gen": "value"},
+  {"cl6": "Four Eyes Are Better Than Two", "kind": "gear", "id": "four-eyes-are-better-than-two", "set": {"avail": "6(L)"}, "gen": "value"},
+  {"cl6": "Free Dive Deep Breath Mask", "kind": "gear", "id": "free-dive-deep-breath-mask", "set": {"avail": "6(L)"}, "gen": "value"},
+  {"cl6": "MagicZap Marble Plus", "kind": "gear", "id": "magiczap-marble-plus", "set": {"cost": "460"}, "gen": "value"},
+  {"cl6": "Manadyne PB-100", "kind": "gear", "id": "manadyne-xx-100-series", "set": {"cost": "550"}, "gen": "value"},
+  {"cl6": "Disrupt", "kind": "spells", "id": "disrupt", "set": {"type": "P"}, "gen": "value"},
+  {"cl6": "Ectomagic Pulse", "kind": "spells", "id": "ectomagic-pulse", "set": {"type": "P"}, "gen": "value"},
+  {"cl6": "Glue", "kind": "spells", "id": "glue", "set": {"dv": "-2"}, "gen": "value"},
+  {"cl6": "Looking Glass", "kind": "spells", "id": "looking-glass", "set": {"dv": "-2"}, "gen": "value"},
+  {"cl6": "Mob Mind", "kind": "spells", "id": "mob-mind", "set": {"type": "P"}, "gen": "value"},
+  {"cl6": "Mob Mood", "kind": "spells", "id": "mob-mood", "set": {"type": "P"}, "gen": "value"},
+  {"cl6": "Rosebush", "kind": "spells", "id": "rosebush", "set": {"range": "LOS"}, "gen": "value"}
 ]

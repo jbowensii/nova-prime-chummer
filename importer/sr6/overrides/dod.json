@@ -7,5 +7,13 @@
   {"cl6": "Void Wasp Venom", "kind": "gear", "id": "awakened-toxins.void-wasp-venom", "set": {"class": "CHEMICALS/TOXINS"}},
   {"cl6": "Sword Cane Scabbard", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-sword-cane-scabbard", "set": {"class": "WEAPON_CLOSE_COMBAT/BLADES"}},
   {"cl6": "Ceramic Components", "kind": "gear", "id": "ceramic-components", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
-  {"cl6": "Plasteel Components", "kind": "gear", "id": "plasteel-components", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}}
+  {"cl6": "Plasteel Components", "kind": "gear", "id": "plasteel-components", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"skill": "Firearms", "spec": "Rifles"}, "gen": "family"},
+  {"cl6": "Tiffany Elegance Bracelet", "kind": "weapons", "id": "tiffani-elegance-dart-bracelet", "set": {"skill": "Firearms", "spec": "Pistols Light"}, "gen": "family"},
+  {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"skill": "Exotic Weapons", "spec": "Air"}, "gen": "family"},
+  {"cl6": "Naga Venom", "kind": "gear", "id": "naga-venom", "set": {"cost": "Rating x 100"}, "gen": "value", "formula": {"cost": "R * 100"}},
+  {"cl6": "Mortimer of London Belgrade Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-belgrade-sword-cane", "set": {"avail": "5(L)"}, "gen": "value"},
+  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"dv": "5P", "ar": "10/9/—/—/—", "modes": "SS", "ammo": "1(b)", "avail": "5(L)"}, "gen": "value"},
+  {"cl6": "Tiffany Elegance Bracelet", "kind": "weapons", "id": "tiffani-elegance-dart-bracelet", "set": {"ammo": "1(b)"}, "gen": "value"},
+  {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"cost": "400", "ammo": "1(b)"}, "gen": "value"}
 ]
