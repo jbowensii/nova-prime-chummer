@@ -26,3 +26,13 @@ def load_have(path=HAVE):
     (relocated.json: our_id is the catalog id, verified when the file was made). The owner counts them complete."""
     d = json.loads(Path(path).read_text(encoding="utf8"))
     return {(r["src"], r["cl6_id"]): r for r in d.get("records", [])}
+
+
+KEEP = Path(__file__).with_name("value_keep.json")
+
+
+def load_keep(path=KEEP):
+    """{(src, kind, our id, field)} of the field values the PDF's text layer shows as printed (value_keep.json `keep`: the
+    owner's 2026-10-14 check of the 361 reviewed rows): a difference from Commlink6 there is a verified printed one, class b."""
+    d = json.loads(Path(path).read_text(encoding="utf8"))
+    return {tuple(k[:4]) for k in d.get("keep", [])}

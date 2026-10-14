@@ -121,10 +121,10 @@ class EffectsTest(unittest.TestCase):
 
 
 class Cl6GermanNamesTest(unittest.TestCase):
-    def test_a_record_named_in_german_is_commlink6_only(self):
+    def test_a_record_named_in_german_is_an_entry_like_any_other(self):
         from tools.cl6check import canon
-        self.assertTrue(canon.cl6_only("weapons", "Made-Up Stinger Pfeile (10x)", {}, "item"))
-        self.assertTrue(canon.cl6_only("gear", "Made-Up Druckluftkartusche", {}, "item"))
+        self.assertFalse(canon.cl6_only("weapons", "Made-Up Stinger Pfeile (10x)", {}, "item"))  # (owner 2026-10-14: imported, not left out)
+        self.assertFalse(canon.cl6_only("gear", "Made-Up Druckluftkartusche", {}, "item"))
         self.assertFalse(canon.cl6_only("qualities", "Will to Die", {}, "quality"))  # English look-alikes stay
         self.assertFalse(canon.cl6_only("qualities", "Camouflage (Fur)", {}, "quality"))
 

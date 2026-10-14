@@ -26,13 +26,14 @@ from tools.cl6check import optional as optional_package
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None):
+def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
     for c in cl6:
         by_src[c["src"]].append(c)
     results, extras, pairs = [], [], []
+    keep = optional_package.load_keep() if keep is None else keep
     optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
     where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
     have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
@@ -75,6 +76,8 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                 r["compared"], r["diffs"] = fields.compare(c, o)
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
+                    if d["class"] == "c" and (c["src"], o["kind"], o["id"], d["field"]) in keep:
+                        d["class"], d["pdf"] = "b", "ours"  # (the PDF's text layer prints our value: value_keep.json)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
                     if t == "unprinted" and not d["why"].startswith("ours empty"):
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one

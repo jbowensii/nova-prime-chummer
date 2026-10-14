@@ -277,12 +277,6 @@ def aliases(name, variants):
     return sorted(out - {name})
 
 
-# German words in a record's name (the German edition's names Commlink6 kept for a few records: `Pfeile`,
-# `Druckluftkartusche`, `Kalte Munition`): a vocabulary, never an item's name; English look-alikes (die, fur, mit) left out
-GERMAN = re.compile(r"\b(?:pfeile?|druckluft\w*|\w*kartuschen?|kalte|munition|patronen?|granaten?|geschosse?|bolzen|"
-                    r"kugeln?|und|für|ersatz)\b", re.I)
-
-
 PSEUDO = re.compile(r"(?i)(?:(?:SS|SA|BF|FA)\s*\(\s*\d+(?:\s*[-–]\s*\d+)?\s*\)|(?:Pilot|Sensor)\s+\d+|[\d.,]+\s*km"
                     r"|Uses\s+\d+\s+Energy\s+per\s+shot|Crew\s+Served\s*\(\s*\d+\s*\))$")
 
@@ -290,9 +284,8 @@ PSEUDO = re.compile(r"(?i)(?:(?:SS|SA|BF|FA)\s*\(\s*\d+(?:\s*[-–]\s*\d+)?\s*\)
 def cl6_only(kind, name, a, tag):
     """A Commlink6 record that is no book's item, left out of both denominators and counted on its own line: its rule
     settings (rule options), an option row it prices at zero and marks not
-    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)'), and a
-    record named in German (no English book prints it)."""
-    if kind == "ruleoptions" or GERMAN.search(name):
+    for sale (availability 99: a firing mode, a range, a pilot rating) or points elsewhere ('Adapter (see …)')."""
+    if kind == "ruleoptions":
         return True
     # a table cell Commlink6 made a record of (`SS(1-2)`, `Pilot 3`, `12 km`, `Uses 2 Energy per shot`, `Crew Served
     # (2)`): guarded by being a gear row it prices at nothing (no price, or 0)
