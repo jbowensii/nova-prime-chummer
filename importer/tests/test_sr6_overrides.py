@@ -557,3 +557,14 @@ class ValueMapTest(unittest.TestCase):
         self.assertEqual(V.row_values([row("rating", "1–4", "1")], )[0], {"rating": "1–4"})
         self.assertEqual(V.row_values([row("rating", "1–4", "1", id="zz.thing-2"), row("cost", "R1 5, R2 9", "", id="zz.thing-2")])[0],
                          {"cost": "9"})
+
+
+class Cl6OnlyRowsTest(unittest.TestCase):
+    def test_the_option_rows_commlink6_keeps_are_entries_of_ours_with_its_values(self):
+        out = overrides.apply("da", {})
+        gear = {e.findtext("name"): e for e in ET.fromstring(out["gear.xml"].encode())}
+        e = gear["Crew Served (3)"]
+        self.assertEqual((e.get("source"), e.get("page"), e.get("avail"), e.get("cost")), ("DA", "153", "99", "0"))
+        self.assertIn("Uses 0.5 Energy per shot", gear)
+        self.assertEqual(ET.fromstring(out["electronics.xml"].encode())[0].get("avail"), "99(I)")
+        self.assertEqual(ET.fromstring(out["vehicledesign.xml"].encode())[0].findtext("name"), "Mil-Spec Weapon Mount")

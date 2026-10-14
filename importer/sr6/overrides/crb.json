@@ -317,5 +317,6 @@
   {"cl6": "Parashield DART Rifle", "kind": "weapons", "id": "parashield-dart-rifle", "set": {"cost": "1200"}, "gen": "value"},
   {"cl6": "Rocket Thermal Smoke", "kind": "weapons", "id": "smoke-thermal-smoke-rocket", "set": {"cost": "120"}, "gen": "value"},
   {"cl6": "Streetline Special", "kind": "weapons", "id": "streetline-special", "set": {"cost": "325"}, "gen": "value"},
-  {"cl6": "Walther Palm Pistol", "kind": "weapons", "id": "walther-palm-pistol", "set": {"cost": "325"}, "gen": "value"}
+  {"cl6": "Walther Palm Pistol", "kind": "weapons", "id": "walther-palm-pistol", "set": {"cost": "325"}, "gen": "value"},
+  {"cl6": "Adapter (see drones for Smart firing platform)", "kind": "gear", "gen": "cl6only", "add": {"page": 260, "attrs": {"category": "Weapon accessory", "avail": "5", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}}
 ]

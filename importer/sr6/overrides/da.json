@@ -232,5 +232,20 @@
   {"cl6": "VLS Cell", "kind": "weapons", "id": "vls-cells-cold", "set": {"ar": "—/—/—/—/—", "ammo": "0(br)"}, "gen": "value"},
   {"cl6": "VLS Cell Hot", "kind": "weapons", "id": "vls-cells-hot", "set": {"ar": "—/—/—/—/—", "ammo": "0(br)"}, "gen": "value"},
   {"cl6": "YNT Colossus", "kind": "weapons", "id": "ynt-colossus", "set": {"ammo": "10(d)"}, "gen": "value"},
-  {"cl6": "YNT Nashorn", "kind": "weapons", "id": "ynt-nashorn", "set": {"ammo": "40(d)"}, "gen": "value"}
+  {"cl6": "YNT Nashorn", "kind": "weapons", "id": "ynt-nashorn", "set": {"ammo": "40(d)"}, "gen": "value"},
+  {"cl6": "Adapter (see drones for Powered Heavy Tripod)", "kind": "gear", "gen": "cl6only", "add": {"page": 64, "attrs": {"category": "Weapon accessory", "avail": "3(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Adapter (see drones for Reinforced Smart Firing Platform)", "kind": "gear", "gen": "cl6only", "add": {"page": 64, "attrs": {"category": "Weapon accessory", "avail": "6(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Adapter (see drones for Wheeled Heavy Tripod)", "kind": "gear", "gen": "cl6only", "add": {"page": 64, "attrs": {"category": "Weapon accessory", "avail": "5(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "M-TOC Fob", "kind": "electronics", "gen": "cl6only", "add": {"page": 68, "attrs": {"category": "Tactical network", "avail": "99(I)", "cost": "0", "class": "ELECTRONICS/TAC_NET"}, "id": "m-toc-fob-item"}},
+  {"cl6": "AR Interface", "kind": "gear", "gen": "cl6only", "add": {"page": 58, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Mil-Spec Weapon Mount", "kind": "vehicledesign", "gen": "cl6only", "add": {"page": 151, "attrs": {"category": "Mil-spec Design Options", "avail": "99(I)", "cost": "0"}}},
+  {"cl6": "Crew Served (2)", "kind": "gear", "gen": "cl6only", "add": {"page": 153, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Crew Served (3)", "kind": "gear", "gen": "cl6only", "add": {"page": 153, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Crew Served (4)", "kind": "gear", "gen": "cl6only", "add": {"page": 153, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 0.5 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 1 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 2 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 4 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 5 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Uses 10 Energy per shot", "kind": "gear", "gen": "cl6only", "add": {"page": 65, "attrs": {"category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}}
 ]

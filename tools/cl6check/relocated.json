@@ -803,6 +803,96 @@
       "cl6_id": "ballistic_hood_armor",
       "our_id": "crb-sea.ballistic-hood",
       "note": "Ballistic Hood: our Seattle rain-gear row (p335)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_pilot_3",
+      "our_id": "da.standard-missile",
+      "note": "Pilot 3: kept as the pilot, sensor or range of our gear row da.standard-missile (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_pilot_5",
+      "our_id": "da.vespae-sam",
+      "note": "Pilot 5: kept as the pilot, sensor or range of our gear row da.vespae-sam (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_pilot_7",
+      "our_id": "da.loral-vaught-pit-viper",
+      "note": "Pilot 7: kept as the pilot, sensor or range of our gear row da.loral-vaught-pit-viper (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_pilot_8",
+      "our_id": "da.saab-saaker-aim-11v",
+      "note": "Pilot 8: kept as the pilot, sensor or range of our gear row da.saab-saaker-aim-11v (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_sensor_2",
+      "our_id": "da.pilum-atm",
+      "note": "Sensor 2: kept as the pilot, sensor or range of our gear row da.pilum-atm (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_sensor_3",
+      "our_id": "da.standard-missile",
+      "note": "3: kept as the pilot, sensor or range of our gear row da.standard-missile (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_sensor_5",
+      "our_id": "da.loral-vaught-pit-viper",
+      "note": "Sensor 5: kept as the pilot, sensor or range of our gear row da.loral-vaught-pit-viper (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "missile_sensor_7",
+      "our_id": "da.saab-saaker-aim-11v",
+      "note": "Sensor 7: kept as the pilot, sensor or range of our gear row da.saab-saaker-aim-11v (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "range_1_5",
+      "our_id": "da.standard-rocket",
+      "note": "1.5 km: kept as the pilot, sensor or range of our gear row da.standard-rocket (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "range_7",
+      "our_id": "da.m60",
+      "note": "7 km: kept as the pilot, sensor or range of our gear row da.m60 (DA p58)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "range_160",
+      "our_id": "da.krupp-bombard",
+      "note": "160 km: kept as the pilot, sensor or range of our gear row da.krupp-bombard (DA p58)"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "core",
+      "our_id": "creation.preset.core",
+      "note": "Standard: Standard preset: the shipped standard values (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "core_seattle",
+      "our_id": "creation.preset.core_seattle",
+      "note": "Standard (Seattle): Rule preset Standard (Seattle): meleeArStrength (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "srm",
+      "our_id": "creation.preset.srm",
+      "note": "Shadowrun Missions: Rule preset Shadowrun Missions (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+    },
+    {
+      "src": "crb",
+      "cl6_id": "houserules",
+      "our_id": "creation.preset.houserules",
+      "note": "Configurable: Rule preset Configurable (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
     }
   ]
 }
