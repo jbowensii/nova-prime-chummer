@@ -5,7 +5,7 @@
 // give it its own (server/campaigns.mjs), which its runners use instead, and a runner may choose the optional ones in
 // RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
-import { MAGIC_KIND_LABELS, LETTERS, type Letter, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
+import { MAGIC_KIND_LABELS, LETTERS, SR6_METHODS, SR6_METHOD_LABELS, type Letter, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
 export type CreationValue = number | boolean | string
@@ -138,6 +138,14 @@ export const CREATION_KEYS: CreationKey[] = [
     methods: [],
   },
   { key: 'oneSkillAtMax', label: 'Only one skill at the highest rank', type: 'bool', group: 'General', methods: [] },
+  { key: 'restrictMethods', label: 'Only the creation methods ticked below can be picked (house rule)', type: 'bool', group: 'General', methods: [] },
+  ...SR6_METHODS.map((m): CreationKey => ({
+    key: `methodAllowed.${m}`,
+    label: `Creation method allowed: ${SR6_METHOD_LABELS[m]}`,
+    type: 'bool',
+    group: 'General',
+    methods: [],
+  })),
   // (CRB pp. 285–286's tables print an enhancement's Essence and its Capacity; the books' samples print a host's Essence
   // alone: off, the owner to rule)
   {
@@ -739,12 +747,53 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
       ],
       ['dataStructureCaps', ['dataStructure.maxCount', 'dataStructure.maxRating']],
       ['gradeCapAtCreation', ['gradeCap.initiation', 'gradeCap.submersion']],
+      ['restrictMethods', SR6_METHODS.map(m => `methodAllowed.${m}`)],
     ].flatMap(([parent, kids]) => (kids as string[]).map(k => [k, { requires: [parent as string] }])),
   ),
   eliteSumToThirteen: { requires: ['levelSwcElite'] },
 }
 for (const [l, pairs] of LEVELS) RULE_DEPS[l] = { ...RULE_DEPS[l], replaces: [...pairs.map(([k]) => k), ...(RULE_DEPS[l]?.replaces ?? [])] }
 for (const [t, key] of SETS) RULE_DEPS[t] = { ...RULE_DEPS[t], replaces: [key] }
+
+/** The rule presets of the table setup page: a named set of the toggles above, applied to the form for review (choosing one
+ *  sets them; Save keeps them). `settings` are the values the preset sets; every other setting a preset manages
+ *  (PRESET_KEYS) goes back to the standard. Standard changes nothing about the maths: the standard values. Configurable
+ *  is the table's own, nothing preset. Not modelled: Shadowrun Missions' limit of 1 transhuman grade (the app has no
+ *  transhuman grades). */
+export interface RulePreset {
+  id: 'standard' | 'seattle' | 'missions' | 'configurable'
+  label: string
+  about: string
+  settings: Record<string, CreationValue>
+}
+export const RULE_PRESETS: RulePreset[] = [
+  { id: 'standard', label: 'Standard', about: 'The standard values for the settings the presets manage', settings: {} },
+  { id: 'seattle', label: 'Standard (Seattle)', about: 'Standard, with Strength added to a melee weapon’s Attack Rating', settings: { meleeArStrength: true } },
+  {
+    id: 'missions',
+    label: 'Shadowrun Missions',
+    about:
+      'Gear up to Availability 7, initiation grade 1 and submersion grade 2 at most at creation, only priority, sum-to-ten and point buy, expanded specializations',
+    settings: {
+      availabilitySeven: true,
+      gradeCapAtCreation: true,
+      'gradeCap.initiation': 1,
+      'gradeCap.submersion': 2,
+      expandedSpecializations: true,
+      restrictMethods: true,
+      ...Object.fromEntries(SR6_METHODS.map(m => [`methodAllowed.${m}`, ['priority', 'sumtoten', 'pointbuy'].includes(m)])),
+    },
+  },
+  { id: 'configurable', label: 'Configurable', about: 'Nothing preset: every setting is the table’s own', settings: {} },
+]
+/** Every setting a preset sets: choosing a preset puts these to its value, or back to the standard. */
+export const PRESET_KEYS = [...new Set(RULE_PRESETS.flatMap(p => Object.keys(p.settings)))]
+/** What choosing preset `id` does to the form: values to set, keys back to the standard (none for Configurable). */
+export function presetChanges(id: RulePreset['id']): { set: [string, CreationValue][]; reset: string[] } {
+  const p = RULE_PRESETS.find(x => x.id === id)
+  if (!p || p.id === 'configurable') return { set: [], reset: [] }
+  return { set: Object.entries(p.settings), reset: PRESET_KEYS.filter(k => !(k in p.settings)) }
+}
 
 /** The settings that can't be on with `key`, both ways. */
 export const conflictsOf = (key: string) => [...(RULE_DEPS[key]?.conflicts ?? []), ...Object.keys(RULE_DEPS).filter(k => RULE_DEPS[k].conflicts?.includes(key))]
@@ -806,6 +855,7 @@ export function missingFor(method: Sr6Method, cr: CreationRules, data: CreationC
   const out = expandKeys(data)
     .filter(k => (k.methods === 'all' || k.methods.includes(method)) && !cr.has(k.key))
     .map(k => k.key)
+  if (flag(cr, 'restrictMethods') && flag(cr, `methodAllowed.${method}`) !== true) out.unshift('restrictMethods')
   // (U27: the Karma build is an option the table turns on)
   if (method === 'karma' && !flag(cr, 'karmaBuildMethod')) out.unshift('karmaBuildMethod')
   if ((method === 'priority' || method === 'sumtoten') && LETTERS.some(l => !data.priorities[l])) out.push('priorities A–E')
@@ -1077,6 +1127,8 @@ const ABOUT: Record<string, [string, string]> = {
   'dataStructure.maxCount': ['The most data structures a runner has at creation, with the caps on', HOUSE],
   'dataStructure.maxRating': ['The highest data structure level at creation, with the caps on', HOUSE],
   noUsedCulturedBioware: ['On: cultured bioware can’t be used (or omega) grade; off: it can, as the books print no exclusion', HOUSE],
+  restrictMethods: ['On: a runner can only be built with the creation methods allowed below (the table’s own limit, for organised play, say)', HOUSE],
+  ...Object.fromEntries(SR6_METHODS.map(m => [`methodAllowed.${m}`, [`${SR6_METHOD_LABELS[m]} may be picked while the limit on methods is on`, HOUSE]])),
   gradeCapAtCreation: [
     'On: Review flags an initiation or submersion grade at creation above the caps below, a problem a GM can approve (a grade is never above Magic or Resonance anyway)',
     HOUSE,

@@ -825,6 +825,8 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
 
+**Rule presets.** The Table setup page's *Rule preset* menu puts a group of toggles in the form for review (`RULE_PRESETS`, `presetChanges` in `creation.ts`; Save keeps them): **Standard** returns the settings the presets manage to the standard values (the maths is the shipped standard), **Standard (Seattle)** sets `meleeArStrength` (Strength adds to a melee weapon's Attack Rating), **Shadowrun Missions** sets `availabilitySeven`, `gradeCapAtCreation` with `gradeCap.initiation` 1 and `gradeCap.submersion` 2, `expandedSpecializations`, and `restrictMethods` allowing priority, sum-to-ten and point buy only, and **Configurable** changes nothing. Missions also limits transhuman grades to 1; the app has no transhuman grades, so that part is not modelled.
+
 **Hover text.** Every setting's row on Table setup, and on a runner's Creation rules, has hover text (`aboutOf` in
 `creation.ts`): what it does in plain words, then where a book prints it (book and page), else `house rule` or
 `option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`), except the Karma build option's
@@ -1012,6 +1014,8 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `noUsedCulturedBioware` | true/false | optional |  |  |  | House rule, off: cultured bioware takes no used grade (nor Body Shop's omega, which replaces it); the books print no exclusion (CRB Hong Kong p. 282) |
 | Optional rules | `gradeCapAtCreation` | true/false | optional |  |  |  | House rule, off: an initiation or submersion grade at creation above `gradeCap.initiation` or `gradeCap.submersion` is Review's `magic.gradeCapCreation`, an error a GM can approve (a grade above Magic or Resonance stays `magic.gradeCap`) |
 | Optional rules | `gradeCap.initiation`, `gradeCap.submersion` | number | optional | `gradeCapAtCreation` |  |  | The GM's caps (unset) |
+| General | `restrictMethods` | true/false | optional |  |  |  | House rule, off: with it on, a runner can only be built with the creation methods ticked under it (`missingFor` lists `restrictMethods` for another; Game data says "the table doesn’t allow it") |
+| General | `methodAllowed.priority`, `.sumtoten`, `.pointbuy`, `.karma`, `.lifepath` | true/false | optional | `restrictMethods` |  |  | Whether that method may be picked while the limit is on (unset: not allowed) |
 | Optional rules | `adjustOnLoweredMax` | true/false | optional |  |  |  | House rule, off: adjustment points also on an attribute whose metatype maximum is below `attributeBaseMax` |
 | Optional rules | `pointBuyErrataNuyen` | true/false | optional |  |  | `pointBuy.max.nuyen` | House rule, off: point buy's most nuyen is 450,000, the errata version (as printed: 440,000, SWC p. 29) |
 | Optional rules | `knowledgeLogicIntuition` | true/false | optional |  |  |  | House rule, off: free knowledge points from Logic + Intuition (as printed: Logic, CRB Hong Kong p. 67) |

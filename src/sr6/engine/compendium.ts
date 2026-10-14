@@ -44,7 +44,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },
   electronics: { fields: ['category', 'rating', 'array', 'programs', 'capacity', ...ITEM] },
   programs: { fields: ['type', 'rating', ...ITEM] },
-  gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots', 'energy'] },
+  gear: { fields: ['category', 'rating', 'capacity', 'karma', ...ITEM, 'per', 'slots', 'energy', 'range', 'pilot', 'sensor'] },
   vehicles: { fields: ['category', 'handling', 'accel', 'interval', 'topSpeed', 'body', 'armor', 'pilot', 'sensor', 'seats', ...ITEM] },
   spells: { fields: ['category', 'tags', 'range', 'type', 'duration', 'dv', 'damage', 'opposed', 'essence'] },
   rituals: { fields: ['keywords', 'threshold'] },

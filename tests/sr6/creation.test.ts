@@ -16,6 +16,8 @@ import {
   missingFor,
   num,
   parseCreation,
+  PRESET_KEYS,
+  presetChanges,
   readSettingsFile,
   rulesFrom,
   str,
@@ -46,6 +48,7 @@ const without = (key: string) => XML.replace(new RegExp(`\\s*<setting key="${key
 
 /** the settings the fixture leaves unset (each test sets its own) */
 const UNSET = [
+  ...['priority', 'sumtoten', 'pointbuy', 'karma', 'lifepath'].map(m => `methodAllowed.${m}`),
   'advance.nuyenToKarmaRate',
   'initiativeDiceMax',
   'contactKarma',
@@ -293,4 +296,45 @@ test('the server’s settings: the standard ones overlaid by the admin’s chang
   } finally {
     vi.unstubAllGlobals()
   }
+})
+
+test('restrictMethods: a method the table did not allow is listed as missing, nothing changes while it is off', async () => {
+  const data = await shape()
+  const base = parseCreation(XML).rules
+  const on = (extra: Record<string, boolean>) => {
+    const r = new Map(base)
+    for (const [key, value] of Object.entries(extra)) r.set(key, { key, value })
+    return r
+  }
+  for (const m of ['priority', 'karma'] as const) expect(missingFor(m, on({ 'methodAllowed.karma': false }), data), m).toEqual([])
+  const limited = on({ restrictMethods: true, 'methodAllowed.priority': true, 'methodAllowed.karma': false, 'methodAllowed.lifepath': false })
+  expect(missingFor('priority', limited, data)).toEqual([])
+  expect(missingFor('karma', limited, data)).toContain('restrictMethods')
+  expect(missingFor('lifepath', limited, data)).toContain('restrictMethods')
+})
+
+test('the rule presets set the toggles the app has, and Standard puts them back', () => {
+  const missions = presetChanges('missions')
+  expect(Object.fromEntries(missions.set)).toMatchObject({
+    availabilitySeven: true,
+    gradeCapAtCreation: true,
+    'gradeCap.initiation': 1,
+    'gradeCap.submersion': 2,
+    expandedSpecializations: true,
+    restrictMethods: true,
+    'methodAllowed.priority': true,
+    'methodAllowed.sumtoten': true,
+    'methodAllowed.pointbuy': true,
+    'methodAllowed.karma': false,
+    'methodAllowed.lifepath': false,
+  })
+  expect(missions.reset).toContain('meleeArStrength')
+  expect(presetChanges('seattle').set).toEqual([['meleeArStrength', true]])
+  const std = presetChanges('standard')
+  expect(std.set).toEqual([])
+  expect(std.reset.sort()).toEqual([...PRESET_KEYS].sort())
+  expect(presetChanges('configurable')).toEqual({ set: [], reset: [] })
+  // every key a preset sets is a real setting
+  const keys = new Set(expandKeys({ metatypes: {} }).map(k => k.key))
+  for (const k of PRESET_KEYS) expect(keys.has(k), k).toBe(true)
 })

@@ -53,7 +53,8 @@ REQUIRES = {
         ("karmaBuildMethod", ("karmaBuild.start", "karmaBuild.startRating", "karmaBuild.freeSpellsPerMagic",
                               "karmaBuild.freeFormsPerResonance", *(f"magicKarma:{k}" for k in _AWAKENED))),
         ("dataStructureCaps", ("dataStructure.maxCount", "dataStructure.maxRating")),
-        ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion"))) for k in kids},
+        ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion")),
+        ("restrictMethods", tuple(f"methodAllowed.{m}" for m in ("priority", "sumtoten", "pointbuy", "karma", "lifepath")))) for k in kids},
     "eliteSumToThirteen": ["levelSwcElite"],
 }
 LEVEL_KEYS = ("levelStreet", "levelPrime", "levelSwcStreet", "levelSwcElite")  # one at a time: the first listed wins
