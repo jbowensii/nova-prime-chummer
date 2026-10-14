@@ -312,7 +312,7 @@ def per_effect(pairs):
     got = total = 0
     for c, o in pairs:
         cl = Counter((t, v) for _, t, v in c["families"].get("effects", ()))
-        mine = Counter((t, v) for _, t, v in o["families"].get("effects", ()))
+        mine = Counter((t, v) for _, t, v in o["families"].get("effects_own", o["families"].get("effects", ())))
         total += sum(cl.values())
         got += sum((cl & mine).values())
     return {"reproduced": got, "of": total, "pct": _pct(got, total)}

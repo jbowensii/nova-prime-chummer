@@ -507,6 +507,8 @@
       <xs:attribute name="blast" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- what the cost buys, for ammunition filed with the weapons: "10 rounds" -->
+      <xs:attribute name="per" type="xs:string"/>
       <!-- a close-combat weapon's skill and specialization, from its TYPE (Blade: Close Combat, Blades) -->
       <xs:attribute name="skill" type="xs:string"/>
       <xs:attribute name="spec" type="xs:string"/>

@@ -133,6 +133,8 @@ def families(e, kind=None):
     tags = {"effect": "effect", "test": "test", "grant": "grant", "allow": "allow"}
     eff = sorted((tags[x.tag], x.get("target", "").casefold() or f"{_norm(x.get('kind'))}:{_norm(x.get('ref'))}",
                   (x.get("value") or "").replace("+", "").casefold()) for x in e if x.tag in tags)
+    if eff:
+        out["effects_own"] = tuple(eff)  # (our own <effect>s alone: the per-effect metric reads these, not Commlink6's data kept beside)
     # (Commlink6's own rule data kept beside ours, the schema's <modifier>/<prerequisite>/<selection>: never applied)
     mod = {"valmod": "effect", "checkmod": "test", "itemmod": "grant", "allowmod": "allow"}
     eff = sorted(eff + [(mod[x.get("kind")], f"{_norm(x.get('type'))}:{_norm(x.get('ref'))}",
