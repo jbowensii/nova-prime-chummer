@@ -37,9 +37,10 @@ from importer.sr6.resolve import _add_kid
 DIR = Path(__file__).with_name("overrides")
 OPS = ("remove", "rename", "merge", "move_kind")
 SETTABLE = {"class"}  # (what an id row may set)
+KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection"}  # (a "gen": "family" row's "kids": Commlink6's item structure)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
                "seats", "range", "type", "duration", "category", "action", "activation", "fade", "threshold", "kind",
-               "handling", "interval", "power", "attr", "skill", "spec", "social", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
+               "handling", "interval", "power", "attr", "skill", "spec", "social", "modonly", "size", "ammoClass", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
 CLASS_KEY = re.compile(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?")
 NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from the owner's PDF, never from here)
 
@@ -56,8 +57,10 @@ def check(rows):
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
         if "id" in r and r.get("gen") in ("value", "family") and not any(k in r for k in OPS):
-            if not r.get("set") or set(r["set"]) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
+            if not (r.get("set") or r.get("kids")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
+            if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
+                raise ValueError(f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only")
         elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
@@ -142,12 +145,14 @@ def table(recipe_id):
 def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
-    want, forms, vals = {}, {}, {}
+    want, forms, vals, kids = {}, {}, {}, {}
     for r in rows:
-        want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r["set"])
+        want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
+        if r.get("kids"):
+            kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
         if r.get("gen") in ("value", "family"):
             forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
-            vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r["set"])
+            vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r.get("set", {}))
     missing = []
     for name, ids in want.items():
         if not out.get(name):
@@ -165,6 +170,14 @@ def _set_by_id(out, rows):
                         e.remove(c)  # (the value they described is replaced)
                     if k == "karma":
                         e.attrib.pop("karmaMax", None)
+                for k in kids.get(name, {}).get(e.get("id"), []):  # (a structure child the entry lacks, before its <text>)
+                    attrs = {x: str(v) for x, v in k.get("attrs", {}).items()}
+                    if any(c.tag == k["tag"] and dict(c.attrib) == attrs and (c.text or "") == (k.get("text") or "") for c in e):
+                        continue
+                    c = etree.Element(k["tag"], attrs)
+                    c.text = k.get("text")
+                    t = e.find("text")
+                    e.insert(list(e).index(t) if t is not None else len(e), c)
                 for k, expr in forms.get(name, {}).get(e.get("id"), {}).items():
                     f = etree.Element("formula", {"field": k})
                     f.text = expr
@@ -296,7 +309,7 @@ def apply(recipe_id, files, rows=None):
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
     _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])
-    _set_by_id(out, [r for r in rows if "id" in r and "set" in r and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out
 

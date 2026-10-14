@@ -133,13 +133,20 @@ def families(e, kind=None):
     tags = {"effect": "effect", "test": "test", "grant": "grant", "allow": "allow"}
     eff = sorted((tags[x.tag], x.get("target", "").casefold() or f"{_norm(x.get('kind'))}:{_norm(x.get('ref'))}",
                   (x.get("value") or "").replace("+", "").casefold()) for x in e if x.tag in tags)
+    # (Commlink6's own rule data kept beside ours, the schema's <modifier>/<prerequisite>/<selection>: never applied)
+    mod = {"valmod": "effect", "checkmod": "test", "itemmod": "grant", "allowmod": "allow"}
+    eff = sorted(eff + [(mod[x.get("kind")], f"{_norm(x.get('type'))}:{_norm(x.get('ref'))}",
+                         re.sub(r"\$(RATING|LEVEL|FORCE)", "R", x.get("value") or "").replace("+", "").casefold())
+                        for x in e.findall("modifier") if x.get("kind") in mod])
     if eff:
         out["effects"] = tuple(eff)
-    ch = sorted(_norm(c.get("kind")) for c in e.findall("choice") if c.get("kind") != "rating")
+    ch = sorted([_norm(c.get("kind")) for c in e.findall("choice") if c.get("kind") != "rating"]
+                + [_norm(c.get("type")) for c in e.findall("selection")])
     if ch:
         out["choices"] = tuple(ch)
-    req = sorted((_norm(r.get("kind") or r.tag), _norm(r.get("ref") or r.get("target")))
-                 for rq in e.findall("requires") for r in rq.iter() if r is not rq and r.tag not in ("any",))
+    req = sorted([(_norm(r.get("kind") or r.tag), _norm(r.get("ref") or r.get("target")))
+                  for rq in e.findall("requires") for r in rq.iter() if r is not rq and r.tag not in ("any",)]
+                 + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite")])
     if req:
         out["requires"] = tuple(req)
     # (Commlink6's kind flags follow from our kind and category: the owned books print no flag)

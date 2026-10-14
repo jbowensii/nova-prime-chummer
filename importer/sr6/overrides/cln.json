@@ -1,3 +1,6 @@
 [
-  {"cl6": "Acid Thrower \"Mimung\"", "kind": "weapons", "id": "acid-thrower-mimung", "set": {"skill": "Exotic Weapons", "spec": "Spray"}, "gen": "family"}
+  {"cl6": "Improved Mental Attribute", "kind": "adeptpowers", "id": "improved-mental-attribute", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "CHOICE", "choice": "4fbc6994-a69c-4708-9d08-12ff9ffc087e", "value": "1"}}, {"tag": "selection", "attrs": {"type": "ATTRIBUTE", "options": "CHARISMA,LOGIC,INTUITION,WILLPOWER"}}], "gen": "family"},
+  {"cl6": "Acid Thrower \"Mimung\"", "kind": "weapons", "id": "acid-thrower-mimung", "set": {"skill": "Exotic Weapons", "spec": "Spray"}, "gen": "family"},
+  {"cl6": "Grenade, Asphyxia Spores", "kind": "weapons", "id": "asphyxia-spores", "kids": [{"tag": "variant", "attrs": {"name": "Mini"}}], "gen": "family"},
+  {"cl6": "Grenade, Hyperallergenic", "kind": "weapons", "id": "hyperallergenic", "kids": [{"tag": "variant", "attrs": {"name": "Mini"}}], "gen": "family"}
 ]

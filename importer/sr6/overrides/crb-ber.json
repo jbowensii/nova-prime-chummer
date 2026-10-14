@@ -17,5 +17,10 @@
   {"cl6": "Rat Bike", "kind": "vehicles", "id": "rat-bike", "set": {"class": "VEHICLES/BIKES"}},
   {"cl6": "Drek Van", "kind": "vehicles", "id": "drek-van", "set": {"class": "VEHICLES/VANS"}},
   {"cl6": "Junk Dog", "kind": "vehicles", "id": "junk-dog", "set": {"class": "DRONE_MEDIUM/GROUND"}},
-  {"cl6": "Off the Grid", "kind": "qualities", "id": "off-the-grid", "set": {"karma": "9"}, "gen": "value"}
+  {"cl6": "Agent of the Flux State", "kind": "qualities", "id": "agent-of-the-flux-state", "kids": [{"tag": "relevance", "attrs": {"topic": "social"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "con", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER", "cond": "y"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "influence", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER", "cond": "y"}}, {"tag": "modifier", "attrs": {"kind": "valmod", "type": "SKILL", "ref": "language", "value": "4"}}], "gen": "family"},
+  {"cl6": "Crowd Ghost", "kind": "qualities", "id": "crowd-ghost", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "stealth", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER", "cond": "y"}}], "gen": "family"},
+  {"cl6": "Exotic Style", "kind": "qualities", "id": "exotic-style", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "stealth", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER", "cond": "y"}}], "gen": "family"},
+  {"cl6": "Factory Blood", "kind": "qualities", "id": "factory-blood", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "CRITTER_POWER", "ref": "immunity", "value": "2"}}, {"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "CHARISMA", "value": "-1"}}], "gen": "family"},
+  {"cl6": "Sorbian Blood", "kind": "qualities", "id": "sorbian-blood", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "SKILL", "ref": "language", "value": "4"}}], "gen": "family"},
+  {"cl6": "Under the Radar", "kind": "qualities", "id": "under-the-radar", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "perception", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER", "cond": "y"}}], "gen": "family"}
 ]

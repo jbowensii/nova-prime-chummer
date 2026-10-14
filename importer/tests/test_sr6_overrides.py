@@ -133,7 +133,7 @@ class PseudoRecordTest(unittest.TestCase):
             self.assertTrue(canon.cl6_only("gear", name, {"price": "0"}, "item"), name)
         self.assertFalse(canon.cl6_only("gear", "Pilot 3", {"price": "300"}, "item"))  # (guarded by the price)
         self.assertFalse(canon.cl6_only("gear", "Pilot Program", {"price": "0"}, "item"))
-        self.assertTrue(canon.cl6_only("gear", "Kalte Munition", {}, "item"))  # (German)
+        self.assertFalse(canon.cl6_only("gear", "Kalte Munition", {}, "item"))  # (German names are entries now: importer/sr6/overrides/dod.json)
 
 
 if __name__ == "__main__":
@@ -568,3 +568,20 @@ class Cl6OnlyRowsTest(unittest.TestCase):
         self.assertIn("Uses 0.5 Energy per shot", gear)
         self.assertEqual(ET.fromstring(out["electronics.xml"].encode())[0].get("avail"), "99(I)")
         self.assertEqual(ET.fromstring(out["vehicledesign.xml"].encode())[0].findtext("name"), "Mil-Spec Weapon Mount")
+
+
+class StructureKidsTest(unittest.TestCase):
+    GEAR = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.lamp" source="ZZ" page="5" category="Zed"><name>Lamp</name>'
+            '<fits slot="under"/><text/></gear></d>\n')
+
+    def test_kids_are_added_before_the_text_once_and_only_the_known_tags(self):
+        rows = [{"cl6": "Lamp", "kind": "gear", "id": "zz.lamp", "gen": "family", "set": {"modonly": "true"},
+                 "kids": [{"tag": "fits", "attrs": {"slot": "under"}}, {"tag": "slot", "attrs": {"id": "top", "value": "2"}},
+                          {"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "AGILITY", "value": "1"}},
+                          {"tag": "flag", "text": "codemod"}]}]
+        out = overrides.apply("zz", {"gear.xml": self.GEAR}, rows)
+        g = ET.fromstring(out["gear.xml"].encode())[0]
+        self.assertEqual((g.get("modonly"), [c.tag for c in g]), ("true", ["name", "fits", "slot", "modifier", "flag", "text"]))
+        self.assertEqual(overrides.apply("zz", out, rows), out)  # again: nothing is added twice
+        with self.assertRaises(ValueError):
+            overrides.check([{"cl6": "x", "kind": "gear", "id": "a", "gen": "family", "kids": [{"tag": "effect"}]}])

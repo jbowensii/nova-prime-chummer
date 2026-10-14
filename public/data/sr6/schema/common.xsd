@@ -116,6 +116,22 @@
              name switch="wireless"/> -->
         <xs:element name="incompatible" type="sr6:Incompatible"/>
         <xs:element name="compatible" type="sr6:Compatible"/>
+        <!-- Commlink6's structure for an item (docs/sr6-data-format.md, Item structure): a slot the item offers (id; value:
+             how many, a formula like the cost), a slot it fits, the variants it comes in (by name), the topics it is
+             relevant to (a pick list's filters), and kind flags. Data for the pickers and the Foundry export; no rule reads
+             them yet -->
+        <xs:element name="slot" type="sr6:Slot"/>
+        <xs:element name="fits" type="sr6:Fits"/>
+        <xs:element name="variant" type="sr6:Variant"/>
+        <xs:element name="relevance" type="sr6:Relevance"/>
+        <xs:element name="flag" type="xs:string"/>
+        <!-- Commlink6's own rule data for the item, kept as it gives it and never applied: a modification it makes
+             (kind valmod, checkmod, itemmod or allowmod, with its type, ref, value and conditions), a prerequisite
+             (kind datareq or valuereq) and a pick it offers (type, ref, options). The app reads our <effect>s, <link>s,
+             <requires> and <choice>s; these are the reference those are measured against -->
+        <xs:element name="modifier" type="sr6:Cl6Data"/>
+        <xs:element name="prerequisite" type="sr6:Cl6Data"/>
+        <xs:element name="selection" type="sr6:Cl6Data"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -138,6 +154,11 @@
          spike head for both tactical hammers), or a supply for one (a weapon's batteries) -->
     <xs:attribute name="accessoryOf" type="xs:string"/>
     <xs:attribute name="supplyOf" type="xs:string"/>
+    <!-- bought only as an add-on to another item (Commlink6's modonly), a weapon's size class and the ammunition class it
+         draws on -->
+    <xs:attribute name="modonly" type="xs:boolean"/>
+    <xs:attribute name="size" type="xs:string"/>
+    <xs:attribute name="ammoClass" type="xs:string"/>
   </xs:attributeGroup>
   <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
        its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/
@@ -166,6 +187,22 @@
     <xs:attribute name="targets" type="xs:string"/>
     <xs:attribute name="names" type="xs:string"/>
     <xs:attribute name="family" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Cl6Data">
+    <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+  <xs:complexType name="Slot">
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="value" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="Fits">
+    <xs:attribute name="slot" type="xs:string" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Variant">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="Relevance">
+    <xs:attribute name="topic" type="xs:string" use="required"/>
   </xs:complexType>
   <xs:complexType name="Compatible">
     <xs:attribute name="name" type="xs:string" use="required"/>
@@ -550,6 +587,7 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" type="xs:string" use="required"/>
+      <xs:attribute name="modonly" type="xs:boolean"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
