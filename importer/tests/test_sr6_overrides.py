@@ -688,3 +688,29 @@ class SchemaAttrsTest(unittest.TestCase):
             self.assertEqual(classmap.item_rows(pairs, {}, frozenset())[0]["zz"], [])
         finally:
             classmap.canon.CLASS_KINDS.discard("rules")
+
+
+class OwnerNameBugRowsTest(unittest.TestCase):
+    """The 2026-10-15 owner decisions: three values take Commlink6's (a row each), the ones the book prints stay ours (value_keep.json)."""
+    FILES = {"swc": ("qualities", "quality", "ghoul", 'karma="27"', "karma"),
+             "crb": ("weapons", "weapon", "mossberg-cmdt", 'ammo="10(c)"', "ammo"),
+             "da": ("adeptpowers", "adeptpower", "motion-sense", 'activation="See Notes"', "activation")}
+    WANT = {"swc": "29", "crb": "10(c)/24(d)", "da": "Passive / Major Action"}
+
+    def test_the_three_value_rows_land(self):
+        for src, (kind, tag, iid, attr, name) in self.FILES.items():
+            xml = f'<?xml version="1.0"?>\n<d kind="{kind}"><{tag} id="{iid}" source="ZZ" page="1" {attr}><name>X</name></{tag}></d>\n'
+            got = ET.fromstring(overrides.apply(src, {f"{kind}.xml": xml})[f"{kind}.xml"].encode())[0]
+            self.assertEqual(got.get(name), self.WANT[src], src)
+
+    def test_keep_list_holds_the_printed_values_and_not_the_ones_taken_from_commlink6(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("bs", "augmentations", "bs.fangs", "cost"), ("bs", "augmentations", "bs.thermosense-organs", "cost"),
+                  ("crb", "weapons", "crb.colt-cobra-tz-100", "ar"), ("crb", "weapons", "crb.ares-viper-slivergun", "ar"),
+                  ("da", "adeptpowers", "da.motion-sense", "activation")]:
+            self.assertIn(k, keep)
+        self.assertNotIn(("swc", "qualities", "swc.ghoul", "karma"), keep)
+        self.assertNotIn(("crb", "weapons", "crb.mossberg-cmdt", "ammo"), keep)
+        held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
+        self.assertNotIn(("bs", "augmentations", "bs.fangs", "cost"), held)  # (the owner keeps ours: it is no longer left open)
