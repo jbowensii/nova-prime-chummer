@@ -132,7 +132,9 @@ def kind(chapter, b, parent2):
         head = [h.upper() for h in b.header]
         if head[0] == "ARMOR MOD":
             return "armor", "armor-modifications"
-        return "gear", "clothing" if head[0] == "OUTFIT" else slug(p2) or "gear"
+        if head[0] == "OUTFIT":  # clothing is armor with no defense (owner 2026-10-15); its SOCIAL RATING column is `social`
+            return "armor", "clothing"
+        return "gear", slug(p2) or "gear"
     return None, None
 
 

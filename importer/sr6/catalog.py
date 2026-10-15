@@ -37,7 +37,7 @@ HEADERS = {
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
                 "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
     "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "social",
-              "TYPE": "", "EXTRAS": "", **_PRICE},
+              "SOCIAL RATING": "social", "RATING": "rating", "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
