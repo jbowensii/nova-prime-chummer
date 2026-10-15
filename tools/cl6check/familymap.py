@@ -15,7 +15,7 @@ import sys
 from collections import defaultdict
 
 from tools.cl6check import canon, reader
-from tools.cl6check.valuemap import OVERRIDES
+from tools.cl6check.valuemap import OVERRIDES, renamed
 
 
 def words(key):
@@ -103,6 +103,7 @@ def main(argv):
     skipped = defaultdict(int)
     rows_all = [r for path in paths for r in csv.DictReader(open(path, encoding="utf-8-sig", newline=""))]
     for r in rows_all:
+        r["our_id"] = renamed(r["src"], r["our_id"])
         if r["row"] != "family" or r["status"] != "counted" or r["field"] not in ("skill/spec", "social", *STRUCTURE):
             continue
         if not r["our_id"]:

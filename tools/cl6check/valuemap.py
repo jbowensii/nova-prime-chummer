@@ -44,6 +44,12 @@ ENUM = {  # Commlink6's keys -> the books' words (what our files print; vocab.py
 PER_RATING = re.compile(r"R(\d+) ([-\d.,]+)")
 
 
+def renamed(src, oid):
+    """An entry's id as the importer makes it now: Body Shop's nanite rows are `<name> Colony` and `<name> Nanites` (a diffs file
+    of an earlier import still says `-colony-template` and `-pre-built`)."""
+    return re.sub(r"-pre-built$", "-nanites", re.sub(r"-colony-template$", "-colony", oid)) if src == "bs" else oid
+
+
 def per_rating(s):
     """{rating: number string} of a show()n per-rating value, or None for a plain one."""
     got = PER_RATING.findall(s)
@@ -143,6 +149,7 @@ def main(argv):
         for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
             if r["row"] != "field" or r["status"] != "counted" or r["class"] not in ("a", "b", "c") or r["field"] == "class":
                 continue
+            r["our_id"] = renamed(r["src"], r["our_id"])
             key = (r["src"], r["kind"], r["our_id"], r["field"])
             if key in skip:
                 continue
