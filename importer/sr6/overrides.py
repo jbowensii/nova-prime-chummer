@@ -24,10 +24,14 @@ Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
   {"kind","id","rename":"<name>"}                 a new name (names only); the old one stays as an alias unless "alias": false
   {"move_kind":{"id","from","to"}}                the entry re-filed in another kind's file (gear -> weapons: a melee weapon; armor -> gear)
+An attribute the entry's kind schema lacks (class on a rules entry, social on gear) is skipped with one stderr line per row, and
+an id row is never refiled to a kind whose schema lacks its attributes (allowed(), fit()).
 A description is never an override: "set" and "add" refuse a text field. See docs/sr6-data-format.md."""
 import json
+import os
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr, unescape
 
@@ -45,6 +49,52 @@ VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rat
                "handling", "interval", "power", "attr", "skill", "spec", "social", "modonly", "size", "ammoClass", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
 CLASS_KEY = re.compile(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?")
 NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from the owner's PDF, never from here)
+
+
+@lru_cache(maxsize=None)
+def allowed(kind):
+    """The attributes the entry of catalog kind `kind` may carry (its schema's, read from public/data/sr6/schema), or None
+    for a kind with no schema. An override or a generator writes no attribute outside this set."""
+    from lxml import etree
+
+    from importer.sr6 import KINDS, SCHEMA_DIR
+    if kind not in KINDS or not os.path.isfile(os.path.join(SCHEMA_DIR, f"{kind}.xsd")):
+        return None
+    xs = "{http://www.w3.org/2001/XMLSchema}"
+    docs = [etree.parse(os.path.join(SCHEMA_DIR, f"{n}.xsd")).getroot() for n in (kind, "common")]
+    defs = {(n.tag, n.get("name")): n for d in docs for n in d.iter(xs + "complexType", xs + "attributeGroup") if n.get("name")}
+    names = set()
+
+    def walk(node):  # (the attributes of a type: its own, its attribute groups', its base's; not the content model's)
+        for c in node:
+            if c.tag == xs + "attribute":
+                names.add(c.get("name") or c.get("ref"))
+            elif c.tag == xs + "attributeGroup" and c.get("ref"):
+                walk(defs[xs + "attributeGroup", c.get("ref").split(":")[-1]])
+            elif c.tag in (xs + "complexContent", xs + "simpleContent", xs + "extension", xs + "restriction"):
+                base = (c.get("base") or "").split(":")[-1]
+                if (xs + "complexType", base) in defs:
+                    walk(defs[xs + "complexType", base])
+                walk(c)
+    el = next(e for e in docs[0].iter(xs + "element") if e.get("name") == KINDS[kind])
+    walk(defs[xs + "complexType", el.get("type").split(":")[-1]] if el.get("type") else el.find(xs + "complexType"))
+    return frozenset(names)
+
+
+def fit(rows):
+    """The id rows with the attributes their kind's schema lacks taken out (a row left with nothing to set is dropped):
+    one line on stderr for each row that loses some, never invalid xml."""
+    out = []
+    for r in rows:
+        ok = allowed(r["kind"])
+        bad = [k for k in r.get("set", {}) if ok is not None and k not in ok]
+        if bad:
+            print(f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped", file=sys.stderr)
+            r = {**r, "set": {k: v for k, v in r["set"].items() if k not in bad}, **({"formula": {k: v for k, v in r["formula"].items() if k not in bad}} if "formula" in r else {})}
+            if not r["set"] and not r.get("kids"):
+                continue
+        out.append(r)
+    return out
 
 
 def dump(old, root):
@@ -159,7 +209,7 @@ def _refile(out, rows):
     done, ambiguous = [], []
     for r in rows:
         if r["id"] not in of(r["kind"]):
-            other = [k for k in KINDS if k != r["kind"] and r["id"] in of(k)]
+            other = [k for k in KINDS if k != r["kind"] and r["id"] in of(k) and set(r.get("set", {})) <= (allowed(k) or set(r.get("set", {})))]  # (never to a kind whose schema lacks the attribute: a class on a rules entry)
             if len(other) == 1:
                 r = {**r, "kind": other[0]}
             elif other:
@@ -173,7 +223,7 @@ def _refile(out, rows):
 def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
-    rows = _refile(out, rows)
+    rows = fit(_refile(out, rows))
     want, forms, vals, kids = {}, {}, {}, {}
     for r in rows:
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
@@ -326,6 +376,7 @@ def apply(recipe_id, files, rows=None):
             print(f"override {r['cl6']}: no {name}", file=sys.stderr)
             continue
         root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", out[name]).encode("utf8"))
+        sets = (fit([r]) or [{}])[0].get("set", {}) if r.get("set") else {}
         for want in r["ours"]:
             hit = [e for e in root if isinstance(e.tag, str) and norm(e.findtext("name") or "") == norm(want)]
             if not hit:
@@ -334,7 +385,7 @@ def apply(recipe_id, files, rows=None):
                 have = {norm(a.text or "") for a in e.findall("alias")} | {norm(e.findtext("name") or "")}
                 if norm(r["cl6"]) not in have:
                     _add_kid(e, "alias", {}, r["cl6"])  # (before the entry's text, after its other aliases)
-                for k, v in r.get("set", {}).items():
+                for k, v in sets.items():
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
     _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])

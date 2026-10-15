@@ -590,7 +590,7 @@ class FamilyMergeTest(unittest.TestCase):
         old = [{"cl6": "hand", "kind": "gear", "id": "hand"},
                {"cl6": "A", "kind": "gear", "id": "a", "set": {"skill": "Firearms"}, "gen": "family"},
                {"cl6": "S", "kind": "gear", "id": "gone", "set": {"skill": "x"}, "gen": "family"},
-               {"cl6": "T", "kind": "gear", "id": "twin", "set": {"skill": "g"}, "gen": "family"},
+               {"cl6": "T", "kind": "gear", "id": "twin", "set": {"size": "g"}, "gen": "family"},
                {"cl6": "T", "kind": "armor", "id": "twin", "set": {"social": "-1"}, "gen": "family"}]
         new = [{"cl6": "A", "kind": "weapons", "id": "a", "set": {"skill": "Other", "spec": "Rifles"}, "gen": "family"},
                {"cl6": "Setae", "kind": "gear", "id": "setae", "kids": self.V, "gen": "family"},
@@ -601,10 +601,10 @@ class FamilyMergeTest(unittest.TestCase):
         self.assertEqual(set(got), {("gear", "hand"), ("weapons", "a"), ("gear", "c"), ("gear", "twin"), ("armor", "twin")})
         self.assertEqual(got["weapons", "a"]["set"], {"skill": "Firearms", "spec": "Rifles"})
         self.assertNotIn("kids", got["gear", "c"])
-        both = [{"cl6": "E", "kind": "echoes", "id": "dev", "set": {"size": "Tiny"}, "gen": "family"},
+        both = [{"cl6": "E", "kind": "gear", "id": "dev", "set": {"size": "Tiny"}, "gen": "family"},
                 {"cl6": "D", "kind": "electronics", "id": "dev", "set": {"modonly": "true"}, "gen": "family"}]
-        (only,) = familymap.merge(both, [], {("zz", "echoes", "zz.dev"): {"name": "D"}}, "zz")  # (the echo is the entry's; the device row is not refiled onto it)
-        self.assertEqual((only["kind"], only["set"]), ("echoes", {"size": "Tiny"}))
+        (only,) = familymap.merge(both, [], {("zz", "gear", "zz.dev"): {"name": "D"}}, "zz")  # (the gear entry is the entry's; the device row is not refiled onto it)
+        self.assertEqual((only["kind"], only["set"]), ("gear", {"size": "Tiny"}))
         self.assertEqual({r["id"] for r in familymap.merge([], new, idx, "zz", variants=True)}, {"a", "b", "c"})  # (--variants: b keeps its list; setae carries its variants)
         self.assertTrue(ours.carries("Setae (hands or feet)", ["Hands", "Feet"]) and not ours.carries("Setae", ["Hands"]))
 
@@ -651,3 +651,40 @@ class StructureKidsTest(unittest.TestCase):
         self.assertEqual(overrides.apply("zz", out, rows), out)  # again: nothing is added twice
         with self.assertRaises(ValueError):
             overrides.check([{"cl6": "x", "kind": "gear", "id": "a", "gen": "family", "kids": [{"tag": "effect"}]}])
+
+
+class SchemaAttrsTest(unittest.TestCase):
+    """An override writes no attribute the kind's schema lacks: it is skipped (one stderr line per row), never invalid xml."""
+    RULES = '<?xml version="1.0"?>\n<d kind="rules"><rule id="zz.launch" source="ZZ" page="5" chapter="C" level="2"><name>Launch</name></rule></d>\n'
+    GEAR = '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.coat" source="ZZ" page="6" category="Zed"><name>Coat</name></gear></d>\n'
+
+    def test_allowed_is_the_schemas(self):
+        self.assertNotIn("class", overrides.allowed("rules"))
+        self.assertIn("class", overrides.allowed("gear"))
+        self.assertNotIn("social", overrides.allowed("gear"))
+        self.assertIn("social", overrides.allowed("armor"))
+        self.assertNotIn("modonly", overrides.allowed("echoes"))
+        self.assertIsNone(overrides.allowed("nokind"))
+
+    def test_disallowed_attributes_are_skipped_and_the_rest_lands(self):
+        import contextlib
+        import io
+        rows = [{"cl6": "Coat", "kind": "gear", "id": "zz.coat", "gen": "value", "set": {"social": "2", "cost": "99"}},
+                {"cl6": "Launch", "kind": "weapons", "id": "zz.launch", "gen": "class", "set": {"class": "A/B"}},  # (filed wrong; only rules holds it)
+                {"cl6": "Launch", "kind": "rules", "id": "zz.launch", "gen": "class", "set": {"class": "A/B"}}]
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            out = overrides.apply("zz", {"gear.xml": self.GEAR, "rules.xml": self.RULES}, rows)
+        g, r = (ET.fromstring(out[f].encode())[0] for f in ("gear.xml", "rules.xml"))
+        self.assertEqual((g.get("cost"), g.get("social"), r.get("class")), ("99", None, None))
+        self.assertIn("gear.xml has no social", err.getvalue())
+        self.assertEqual(len([x for x in err.getvalue().splitlines() if "rules.xml has no class" in x]), 1)
+
+    def test_generators_drop_the_rows_too(self):
+        from tools.cl6check import classmap
+        pairs = [({"cl6_class": "A/B", "name": "Launch"}, {"src": "zz", "kind": "rules", "id": "zz.launch", "name": "Launch", "attrs": {}})]
+        classmap.canon.CLASS_KINDS.add("rules")
+        try:
+            self.assertEqual(classmap.item_rows(pairs, {}, frozenset())[0]["zz"], [])
+        finally:
+            classmap.canon.CLASS_KINDS.discard("rules")

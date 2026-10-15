@@ -22,6 +22,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from importer.sr6.overrides import fit
 from tools.cl6check import ours
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -189,7 +190,7 @@ def main(argv):
             row = {"cl6": items[0]["name_cl6"], "kind": ours.kind_of(mine, src, oid, kind) or kind, "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
             if forms:
                 row["formula"] = forms
-            new[src].append(row)
+            new[src] += fit([row]) if mine else [row]  # (only our entry's kind says which attributes its schema has)
     print(f"{sum(map(len, new.values()))} entries in {len(new)} tables; unmapped: {unmapped}")
     if dry:
         return

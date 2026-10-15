@@ -17,6 +17,7 @@ import json
 import sys
 from collections import defaultdict
 
+from importer.sr6.overrides import fit
 from tools.cl6check import canon, ours, reader
 from tools.cl6check.valuemap import OVERRIDES
 
@@ -121,7 +122,7 @@ def merge(old, new, idx, src, variants=False):
             rows[i] = {k: v for k, v in {**r, "kids": kids}.items() if v or k != "kids"}
             if not (rows[i].get("set") or kids):
                 del rows[i]
-    return [r for r in old if r.get("gen") != "family"] + list(rows.values())
+    return [r for r in old if r.get("gen") != "family"] + fit(list(rows.values()))
 
 
 def main(argv):
@@ -163,7 +164,8 @@ def main(argv):
     for (src, kind, oid), v in sorted(groups.items()):
         name, kids = v.pop("_cl6"), v.pop("_kids", [])
         if v or kids:
-            new[src].append({"cl6": name, "kind": kind, "id": oid, **({"set": v} if v else {}), **({"kids": kids} if kids else {}), "gen": "family"})
+            row = {"cl6": name, "kind": kind, "id": oid, **({"set": v} if v else {}), **({"kids": kids} if kids else {}), "gen": "family"}
+            new[src] += fit([row]) if runs else [row]  # (only our entry's kind says which attributes its schema has)
     print(f"{sum(map(len, new.values()))} entries in {len(new)} tables; left out: {dict(skipped)}")
     if dry:
         return

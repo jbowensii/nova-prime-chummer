@@ -17,6 +17,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from importer.sr6.overrides import fit
 from tools.cl6check import canon
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -68,7 +69,7 @@ def item_rows(pairs, cmap, hand=frozenset()):
             continue
         if (src, kind, oid[len(src) + 1:]) in hand:
             continue
-        rows[src].append({"cl6": name, "kind": kind, "id": oid[len(src) + 1:], "set": {"class": cls}, "gen": "class"})
+        rows[src] += fit([{"cl6": name, "kind": kind, "id": oid[len(src) + 1:], "set": {"class": cls}, "gen": "class"}])
     return rows, conflicts, no_id
 
 
