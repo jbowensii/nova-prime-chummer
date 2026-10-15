@@ -584,19 +584,23 @@ class FamilyMergeTest(unittest.TestCase):
 
     def test_old_rows_are_refiled_and_widened_stale_ones_go_and_unlanded_variants_wait(self):
         from tools.cl6check import familymap, ours
-        idx = {("zz", "zz.a"): {"kind": "weapons", "name": "A"}, ("zz", "zz.setae"): {"kind": "gear", "name": "Setae (hands or feet)"},
-               ("zz", "zz.b"): {"kind": "gear", "name": "B"}, ("zz", "zz.c"): {"kind": "gear", "name": "C"}}
+        idx = {("zz", "weapons", "zz.a"): {"name": "A"}, ("zz", "gear", "zz.setae"): {"name": "Setae (hands or feet)"},
+               ("zz", "gear", "zz.b"): {"name": "B"}, ("zz", "gear", "zz.c"): {"name": "C"}, ("zz", "gear", "zz.twin"): {"name": "T"},
+               ("zz", "armor", "zz.twin"): {"name": "T"}}
         old = [{"cl6": "hand", "kind": "gear", "id": "hand"},
                {"cl6": "A", "kind": "gear", "id": "a", "set": {"skill": "Firearms"}, "gen": "family"},
-               {"cl6": "S", "kind": "gear", "id": "gone", "set": {"skill": "x"}, "gen": "family"}]
+               {"cl6": "S", "kind": "gear", "id": "gone", "set": {"skill": "x"}, "gen": "family"},
+               {"cl6": "T", "kind": "gear", "id": "twin", "set": {"skill": "g"}, "gen": "family"},
+               {"cl6": "T", "kind": "armor", "id": "twin", "set": {"social": "-1"}, "gen": "family"}]
         new = [{"cl6": "A", "kind": "weapons", "id": "a", "set": {"skill": "Other", "spec": "Rifles"}, "gen": "family"},
                {"cl6": "Setae", "kind": "gear", "id": "setae", "kids": self.V, "gen": "family"},
                {"cl6": "B", "kind": "gear", "id": "b", "kids": self.V, "gen": "family"},
                {"cl6": "C", "kind": "gear", "id": "c", "set": {"size": "Tiny"}, "kids": self.V, "gen": "family"}]
-        got = {r["id"]: r for r in familymap.merge(old, new, idx, "zz")}
-        self.assertEqual(set(got), {"hand", "a", "c"})  # (gone: stale; setae and b: variants only, held)
-        self.assertEqual((got["a"]["kind"], got["a"]["set"]), ("weapons", {"skill": "Firearms", "spec": "Rifles"}))
-        self.assertNotIn("kids", got["c"])
+        got = {(r["kind"], r["id"]): r for r in familymap.merge(old, new, idx, "zz")}
+        # (gone: stale; setae and b: variants only, held; twin: in two files, each row keeps its own)
+        self.assertEqual(set(got), {("gear", "hand"), ("weapons", "a"), ("gear", "c"), ("gear", "twin"), ("armor", "twin")})
+        self.assertEqual(got["weapons", "a"]["set"], {"skill": "Firearms", "spec": "Rifles"})
+        self.assertNotIn("kids", got["gear", "c"])
         self.assertEqual({r["id"] for r in familymap.merge([], new, idx, "zz", variants=True)}, {"a", "b", "c"})  # (--variants: b keeps its list; setae carries its variants)
         self.assertTrue(ours.carries("Setae (hands or feet)", ["Hands", "Feet"]) and not ours.carries("Setae", ["Hands"]))
 

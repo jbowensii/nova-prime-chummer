@@ -100,22 +100,22 @@ def merge(old, new, idx, src, variants=False):
     a row's old values win (they were reviewed). <variant> kids stay where the old row already landed them; elsewhere none
     on an entry whose name carries a variant (one item per variant) and, until the owner decides (variants=True,
     `--variants`), none at all."""
-    rows, landed = {}, set()
+    rows, landed, held = {}, set(), ours.kinds(idx)
     for r in old:
-        e = idx.get((src, f"{src}.{r['id']}")) if r.get("gen") == "family" else None
-        if e:
-            rows[r["id"]] = {**r, "kind": e["kind"]}
-            if r["kind"] == e["kind"]:
-                landed.add(r["id"])
+        k = ours.kind_of(held, src, f"{src}.{r['id']}", r["kind"]) if r.get("gen") == "family" else None
+        if k:
+            rows[k, r["id"]] = {**r, "kind": k}
+            if r["kind"] == k:
+                landed.add((k, r["id"]))
     for r in new:
-        o = rows.get(r["id"])
+        o = rows.get((r["kind"], r["id"]))
         if o:
             r = {**o, **r, "set": {**r.get("set", {}), **o.get("set", {})}, "kids": [*o.get("kids", []), *[k for k in r.get("kids", []) if k not in o.get("kids", [])]]}
             r = {k: v for k, v in r.items() if v or k in ("cl6", "kind", "id", "gen")}
-        rows[r["id"]] = r
+        rows[r["kind"], r["id"]] = r
     for i, r in list(rows.items()):
         names = [k["attrs"]["name"] for k in r.get("kids", []) if k["tag"] == "variant"]
-        if names and i not in landed and (ours.carries(idx.get((src, f"{src}.{i}"), {}).get("name", ""), names) or not variants):
+        if names and i not in landed and (ours.carries(idx.get((src, i[0], f"{src}.{i[1]}"), {}).get("name", ""), names) or not variants):
             kids = [k for k in r["kids"] if k["tag"] != "variant"]
             rows[i] = {k: v for k, v in {**r, "kids": kids}.items() if v or k != "kids"}
             if not (rows[i].get("set") or kids):
@@ -134,7 +134,7 @@ def main(argv):
         c = canon.canonical(r)
         by.setdefault((c["src"], c["kind"], r["id"].lower()), r)
     idx = ours.index(runs) if runs else {}
-    mine = {k: e["kind"] for k, e in idx.items()}
+    mine = ours.kinds(idx)
     groups = defaultdict(dict)
     skipped = defaultdict(int)
     for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
@@ -143,7 +143,7 @@ def main(argv):
         if not r["our_id"]:
             continue  # (a record no entry of ours matches: the missing row)
         rec = by.get((r["src"], r["kind"], r["cl6_id"].lower()))
-        kind = mine.get((r["src"], r["our_id"]), r["kind"])
+        kind = ours.kind_of(mine, r["src"], r["our_id"], r["kind"]) or r["kind"]
         if r["field"] in STRUCTURE:
             if rec:
                 sets, kids = structure(rec)

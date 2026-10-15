@@ -156,7 +156,7 @@
   {"cl6": "Warhead SMOK", "kind": "ammotypes", "id": "smok", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "ITEMSUBTYPE", "ref": "ROCKETS"}}], "gen": "family"},
   {"cl6": "Ares Armored Survivalist", "kind": "armor", "id": "ares-armored-survivalist", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "6"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "ref": "outdoors", "type": "SKILL", "what": "EDGE", "value": "1", "apply": "CHARACTER", "cond": "y"}}, {"tag": "selection", "attrs": {"type": "TEXT", "ref": "environment"}}], "gen": "family"},
   {"cl6": "Armored Backpack", "kind": "armor", "id": "armored-backpack", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "2"}}], "gen": "family"},
-  {"cl6": "Backpack", "kind": "gear", "id": "backpack", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "2"}}], "gen": "family"},
+  {"cl6": "Backpack", "kind": "armor", "id": "backpack", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "2"}}], "gen": "family"},
   {"cl6": "S.O.L.D.I.E.R. Basic", "kind": "armor", "id": "basic", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "0"}}, {"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "STRENGTH", "value": "1"}}], "gen": "family"},
   {"cl6": "Body Armor Bag", "kind": "armor", "id": "body-armor-bag", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "3"}}], "gen": "family"},
   {"cl6": "Ghillie Suit", "kind": "armor", "id": "ghillie-suit", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}, {"tag": "selection", "attrs": {"type": "TEXT", "ref": "environment"}}], "gen": "family"},

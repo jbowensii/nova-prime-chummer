@@ -140,12 +140,15 @@ def row_values(items):
 def refile(runs, root=OVERRIDES):
     """The value rows of every table filed under OUR entry's kind (rows landed by an earlier run are no csv difference any
     more, so a regeneration would lose them): {src: rows changed}."""
-    mine, done = ours.kinds(runs), {}
+    mine, done = ours.kinds(ours.index(runs)), {}
     for p in sorted(Path(root).glob("*.json")):
         rows = json.loads(p.read_text(encoding="utf8"))
-        moved = [r for r in rows if r.get("gen") == "value" and mine.get((p.stem, f"{p.stem}.{r['id']}"), r["kind"]) != r["kind"]]
-        for r in moved:
-            r["kind"] = mine[p.stem, f"{p.stem}.{r['id']}"]
+        moved = []
+        for r in rows:
+            k = ours.kind_of(mine, p.stem, f"{p.stem}.{r['id']}", r["kind"]) if r.get("gen") == "value" else None
+            if k and k != r["kind"]:
+                r["kind"] = k
+                moved.append(r)
         if moved:
             p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in rows) + "\n]\n", encoding="utf8", newline="\n")
             done[p.stem] = len(moved)
@@ -159,7 +162,7 @@ def main(argv):
     dry = "--dry" in argv
     runs = argv[argv.index("--runs") + 1] if "--runs" in argv else None  # (our catalogs: a row names OUR entry's kind, not Commlink6's)
     paths = [a for a in argv if not a.startswith("--") and a != runs]
-    mine = ours.kinds(runs) if runs else {}
+    mine = ours.kinds(ours.index(runs)) if runs else {}
     keep = json.loads(KEEP.read_text(encoding="utf8")) if KEEP.exists() else {}
     skip = {tuple(k[:4]) for k in keep.get("keep", [])} | {tuple(k[:4]) for k in keep.get("hold", [])}
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
@@ -183,7 +186,7 @@ def main(argv):
         sets, forms, bad = row_values(items)
         unmapped += [(src, oid, b) for b in bad]
         if sets:
-            row = {"cl6": items[0]["name_cl6"], "kind": mine.get((src, oid), kind), "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
+            row = {"cl6": items[0]["name_cl6"], "kind": ours.kind_of(mine, src, oid, kind) or kind, "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
             if forms:
                 row["formula"] = forms
             new[src].append(row)

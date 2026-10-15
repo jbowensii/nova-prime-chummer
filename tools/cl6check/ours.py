@@ -255,13 +255,23 @@ def load(path):
 
 
 def index(path):
-    """{(source id, entry id): the entry} of every import under path."""
-    return {(src, e["id"]): e for src, s in load(path).items() for e in s.entries}
+    """{(source id, kind, entry id): the entry} of every import under path (an id can be in two kind files)."""
+    return {(src, e["kind"], e["id"]): e for src, s in load(path).items() for e in s.entries}
 
 
-def kinds(path):
-    """{(source id, entry id): the kind file the entry is in} (the kind an override row names)."""
-    return {k: e["kind"] for k, e in index(path).items()}
+def kinds(idx):
+    """{(source id, entry id): [the kind files holding it]} of an index()."""
+    out = {}
+    for s, k, i in idx:
+        out.setdefault((s, i), []).append(k)
+    return out
+
+
+def kind_of(kinds, src, oid, kind):
+    """The kind an override row for entry `oid` of `src` names: `kind` when that file holds the id, else the one file that
+    does; None when none does (the row is stale); `kind` again when several do (the importer reports it)."""
+    have = kinds.get((src, oid), [])
+    return kind if kind in have or len(have) > 1 else (have[0] if have else None)
 
 
 def carries(name, variants):
