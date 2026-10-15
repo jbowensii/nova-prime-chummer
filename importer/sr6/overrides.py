@@ -13,6 +13,8 @@ heading (`texts()`: the owner's PDF text of the catalog entry of that name, copi
 A row with "id" (an entry's unscoped id, the importer's own) and "set" {"class": "<TYPE/SUBTYPE>"} sets Commlink6's
 classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); an id no entry has is
 reported once on stderr, nothing guessed.
+An id row's "kind" is the file of OUR entry; a row filed under another kind (Commlink6's: gear for a weapon accessory) lands on
+the one other kind file that holds the id, and is reported when none or several do.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
