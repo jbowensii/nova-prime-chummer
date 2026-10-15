@@ -1,2278 +1,382 @@
 {
-"keep": [
-[
-"aw",
-"vehicles",
-"aw.buzzard",
-"seats"
-],
-[
-"bn",
-"armor",
-"bn.heavy-barding",
-"cost"
-],
-[
-"bn",
-"armor",
-"bn.light-barding",
-"cost"
-],
-[
-"bn",
-"armor",
-"bn.smart-clothes",
-"cost"
-],
-[
-"bn",
-"qualities",
-"bn.shifter-might-shifter-add-on",
-"karma"
-],
-[
-"bs",
-"augmentations",
-"bs.age-rejuvenation-physical-vigor",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.augmented-healing-genetic-regeneration-with-implants",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-colony",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-colony",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.biosprayer-dazed",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.cognitive-shield",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.corrosive-spit",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.electrosense-organs",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.fangs",
-"legality"
-],
-[
-"bs",
-"augmentations",
-"bs.foot-anchor",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.foot-anchor",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.foot-anchor",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.genotype-enhancement-hyper-glucagon",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.genotype-enhancement-hyper-glucagon",
-"legality"
-],
-[
-"bs",
-"augmentations",
-"bs.genotype-enhancement-ndi",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.hair-growth",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.hair-growth",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.infrasound-emitter",
-"legality"
-],
-[
-"bs",
-"augmentations",
-"bs.kill-switch",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.kill-switch",
-"legality"
-],
-[
-"bs",
-"augmentations",
-"bs.light-emitters",
-"capacity"
-],
-[
-"bs",
-"augmentations",
-"bs.light-emitters",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.manasense",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.matrix-visualizer",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.nanospy-kit",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.nanospy-refill",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.neuro-retention-amplification",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.perfect-pitch",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.perfect-pitch",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.skin-pigmentation",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.telescoping-modification-level-2",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.thermosense-organs",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.thermosense-organs",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.thorns",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.tough-gut",
-"essence"
-],
-[
-"bs",
-"augmentations",
-"bs.troll-eyes",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.troll-eyes",
-"cost"
-],
-[
-"bs",
-"gear",
-"bs.bulk-modification",
-"cost"
-],
-[
-"bs",
-"gear",
-"bs.soothsayer",
-"avail"
-],
-[
-"bs",
-"qualities",
-"bs.essence-regrowth",
-"karma"
-],
-[
-"crb",
-"armor",
-"crb.armor-vest",
-"avail"
-],
-[
-"crb",
-"armor",
-"crb.lined-coat",
-"avail"
-],
-[
-"crb",
-"augmentations",
-"crb.shotgun",
-"cost"
-],
-[
-"crb",
-"augmentations",
-"crb.spurs",
-"avail"
-],
-[
-"crb",
-"augmentations",
-"crb.wired-reflexes-1",
-"avail"
-],
-[
-"crb",
-"augmentations",
-"crb.wired-reflexes-1",
-"cost"
-],
-[
-"crb",
-"augmentations",
-"crb.wired-reflexes-1",
-"rating"
-],
-[
-"crb",
-"critterpowers",
-"crb.binding",
-"range"
-],
-[
-"crb",
-"critterpowers",
-"crb.concealment",
-"action"
-],
-[
-"crb",
-"critterpowers",
-"crb.confusion",
-"action"
-],
-[
-"crb",
-"critterpowers",
-"crb.elemental-attack",
-"action"
-],
-[
-"crb",
-"critterpowers",
-"crb.energy-aura",
-"range"
-],
-[
-"crb",
-"critterpowers",
-"crb.enhanced-senses",
-"duration"
-],
-[
-"crb",
-"critterpowers",
-"crb.enhanced-senses",
-"range"
-],
-[
-"crb",
-"critterpowers",
-"crb.influence",
-"action"
-],
-[
-"crb",
-"critterpowers",
-"crb.innate-spell",
-"duration"
-],
-[
-"crb",
-"critterpowers",
-"crb.innate-spell",
-"power type"
-],
-[
-"crb",
-"critterpowers",
-"crb.innate-spell",
-"range"
-],
-[
-"crb",
-"electronics",
-"crb.binoculars",
-"cost"
-],
-[
-"crb",
-"electronics",
-"crb.camera",
-"cost"
-],
-[
-"crb",
-"electronics",
-"crb.directional-microphone",
-"cost"
-],
-[
-"crb",
-"electronics",
-"crb.laser-microphone",
-"cost"
-],
-[
-"crb",
-"electronics",
-"crb.lockpick-set",
-"legality"
-],
-[
-"crb",
-"electronics",
-"crb.omnidirectional-microphone",
-"cost"
-],
-[
-"crb",
-"electronics",
-"crb.single-sensor",
-"avail"
-],
-[
-"crb",
-"gear",
-"crb.hydraulic-jacks",
-"cost"
-],
-[
-"crb",
-"gear",
-"crb.hydraulic-jacks",
-"rating"
-],
-[
-"crb",
-"gear",
-"crb.magical-lodge-materials",
-"legality"
-],
-[
-"crb",
-"gear",
-"crb.power-focus",
-"avail"
-],
-[
-"crb",
-"gear",
-"crb.power-focus",
-"legality"
-],
-[
-"crb",
-"gear",
-"crb.smartgun-system-internal",
-"avail"
-],
-[
-"crb",
-"gear",
-"crb.standard-rope",
-"cost"
-],
-[
-"crb",
-"gear",
-"crb.vision-enhancement",
-"capacity"
-],
-[
-"crb",
-"gear",
-"crb.weapon-focus",
-"avail"
-],
-[
-"crb",
-"gear",
-"crb.weapon-focus",
-"legality"
-],
-[
-"crb",
-"programs",
-"crb.datasoft",
-"cost"
-],
-[
-"crb",
-"programs",
-"crb.tutorsoft",
-"avail"
-],
-[
-"crb",
-"spells",
-"crb.chaos",
-"spell type"
-],
-[
-"crb",
-"spells",
-"crb.fling",
-"range"
-],
-[
-"crb",
-"weapons",
-"crb.ares-viper-slivergun",
-"dv"
-],
-[
-"crb",
-"weapons",
-"crb.arrow",
-"avail"
-],
-[
-"crb",
-"weapons",
-"crb.assault-cannon",
-"avail"
-],
-[
-"crb",
-"weapons",
-"crb.assault-cannon",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.assault-cannon",
-"legality"
-],
-[
-"crb",
-"weapons",
-"crb.aztechnology-striker",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.colt-cobra-tz-100",
-"modes"
-],
-[
-"crb",
-"weapons",
-"crb.colt-cobra-tz-110",
-"modes"
-],
-[
-"crb",
-"weapons",
-"crb.colt-cobra-tz-120",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.colt-cobra-tz-120",
-"modes"
-],
-[
-"crb",
-"weapons",
-"crb.colt-government-manhunter",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.colt-m23",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.colt-m23",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.defiance-t-250",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.defiance-t-250",
-"dv"
-],
-[
-"crb",
-"weapons",
-"crb.extendable-baton",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.fichetti-security-600",
-"avail"
-],
-[
-"crb",
-"weapons",
-"crb.knucks",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.mossberg-cmdt",
-"ammo"
-],
-[
-"crb",
-"weapons",
-"crb.parashield-dart-pistol",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.parashield-dart-rifle",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.pjss-model-55",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.streetline-special",
-"cost"
-],
-[
-"crb",
-"weapons",
-"crb.throwing-stars",
-"ar"
-],
-[
-"crb",
-"weapons",
-"crb.walther-palm-pistol",
-"cost"
-],
-[
-"crb-ber",
-"qualities",
-"crb-ber.off-the-grid",
-"karma"
-],
-[
-"crb-sea",
-"armor",
-"crb-sea.tres-chic-cloak",
-"avail"
-],
-[
-"crb-sea",
-"qualities",
-"crb-sea.what-doesnt-kill-you",
-"positive"
-],
-[
-"da",
-"adeptpowers",
-"da.motion-sense",
-"activation"
-],
-[
-"da",
-"adeptpowers",
-"da.multi-targeting",
-"activation"
-],
-[
-"da",
-"augmentations",
-"da.four-thousand-newtons",
-"capacity"
-],
-[
-"da",
-"augmentations",
-"da.four-thousand-newtons",
-"essence"
-],
-[
-"da",
-"augmentations",
-"da.meat-grinder",
-"capacity"
-],
-[
-"da",
-"augmentations",
-"da.meat-grinder",
-"essence"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-1",
-"capacity"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-1",
-"cost"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-1",
-"essence"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-2",
-"capacity"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-2",
-"cost"
-],
-[
-"da",
-"augmentations",
-"da.the-hurt-locker-rating-2",
-"essence"
-],
-[
-"da",
-"gear",
-"da.ergonomic-optimization",
-"cost"
-],
-[
-"da",
-"gear",
-"da.paraplate",
-"cost"
-],
-[
-"da",
-"vehicles",
-"da.powered-heavy-tripod",
-"avail"
-],
-[
-"da",
-"vehicles",
-"da.sukhoi-evo-su-74-sokol",
-"seats"
-],
-[
-"da",
-"weapons",
-"da.al-assad",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.al-assad",
-"cost"
-],
-[
-"da",
-"weapons",
-"da.ares-inferno",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.ares-victory",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.ares-vigilant",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.ballista-ii",
-"cost"
-],
-[
-"da",
-"weapons",
-"da.carl-gustaf",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.carl-gustaf",
-"cost"
-],
-[
-"da",
-"weapons",
-"da.chakram",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.chakri",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.fire-blossom-mb",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.fire-serpent",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.fire-serpent",
-"modes"
-],
-[
-"da",
-"weapons",
-"da.firebird",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.firebolt",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.firebrand",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.firelance-ii",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.firestorm",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.irm-sabretooth",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.krime-gloves",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.krime-gloves",
-"dv"
-],
-[
-"da",
-"weapons",
-"da.launch-drop-rack",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.launch-drop-rack",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.m1330",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.m80",
-"cost"
-],
-[
-"da",
-"weapons",
-"da.m8330",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.mgl-24",
-"legality"
-],
-[
-"da",
-"weapons",
-"da.mgl-48",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.relampago",
-"dv"
-],
-[
-"da",
-"weapons",
-"da.rhipsalis",
-"dv"
-],
-[
-"da",
-"weapons",
-"da.unguided-launcher",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.vls-cells-cold",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.vls-cells-cold",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.vls-cells-hot",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.vls-cells-hot",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.xicohtencatl",
-"ar"
-],
-[
-"da",
-"weapons",
-"da.ynt-colossus",
-"ammo"
-],
-[
-"da",
-"weapons",
-"da.ynt-nashorn",
-"ammo"
-],
-[
-"dc",
-"gear",
-"dc.expanded-ammo-bins",
-"cost"
-],
-[
-"dc",
-"gear",
-"dc.grey-mana-integration",
-"cost"
-],
-[
-"dc",
-"gear",
-"dc.increased-seating-cf-mod",
-"rating"
-],
-[
-"dc",
-"gear",
-"dc.increased-structural-integrity",
-"rating"
-],
-[
-"dc",
-"gear",
-"dc.living-space-cf-mod",
-"avail"
-],
-[
-"dc",
-"gear",
-"dc.network-sharing-enhancement",
-"cost"
-],
-[
-"dc",
-"gear",
-"dc.portable-facility-cf-mod",
-"cost"
-],
-[
-"dc",
-"gear",
-"dc.standard-armor",
-"rating"
-],
-[
-"dc",
-"gear",
-"dc.standard-weapon-mount",
-"avail"
-],
-[
-"dc",
-"gear",
-"dc.standard-weapon-mount",
-"cost"
-],
-[
-"dc",
-"gear",
-"dc.winch",
-"avail"
-],
-[
-"dc",
-"vehicles",
-"dc.dsec",
-"cost"
-],
-[
-"dc",
-"vehicles",
-"dc.factory-ship",
-"cost"
-],
-[
-"dc",
-"vehicles",
-"dc.ford-bison-iii",
-"seats"
-],
-[
-"dc",
-"vehicles",
-"dc.ford-lifeline",
-"seats"
-],
-[
-"dc",
-"vehicles",
-"dc.gti-devotee-mk-1",
-"cost"
-],
-[
-"dc",
-"vehicles",
-"dc.japanese-imperial-navy-shio-class-ssi",
-"cost"
-],
-[
-"dc",
-"vehicles",
-"dc.yamaha-nodachi",
-"interval"
-],
-[
-"dod",
-"weapons",
-"dod.tiffani-elegance-dart-bracelet",
-"ammo"
-],
-[
-"dod",
-"weapons",
-"dod.tiffani-stinger-dart-bracelet",
-"ammo"
-],
-[
-"emc",
-"qualities",
-"emc.good-ol-folks",
-"karma"
-],
-[
-"emc",
-"qualities",
-"emc.the-briar-patch",
-"karma"
-],
-[
-"emc",
-"qualities",
-"emc.what-doesnt-kill-you",
-"karma"
-],
-[
-"emc",
-"qualities",
-"emc.what-doesnt-kill-you",
-"positive"
-],
-[
-"fs",
-"armor",
-"fs.basic-duty-utilities",
-"defense"
-],
-[
-"fs",
-"armor",
-"fs.vashon-island-ace-of-clubs",
-"avail"
-],
-[
-"fs",
-"armor",
-"fs.vashon-island-ace-of-diamonds",
-"avail"
-],
-[
-"fs",
-"armor",
-"fs.vashon-island-ace-of-hearts",
-"avail"
-],
-[
-"fs",
-"armor",
-"fs.vashon-island-actioneeer-business-clothing",
-"avail"
-],
-[
-"fs",
-"armor",
-"fs.wild-hunt",
-"avail"
-],
-[
-"fs",
-"armor",
-"fs.wild-hunt",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.ares-gunfighter-scabbard",
-"avail"
-],
-[
-"fs",
-"gear",
-"fs.concealable-quick-draw-holster",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.directional-mine-modification",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.flashlight-low-light",
-"avail"
-],
-[
-"fs",
-"gear",
-"fs.flashlight-low-light",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.flashlight-low-light",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.foregrip",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.gecko-grip-modification",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.landmine-modification",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.laser-sight-low-power",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.mystic-weave",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.ranger-arms-eagle-eye-targeting-sensor-suite",
-"avail"
-],
-[
-"fs",
-"gear",
-"fs.ranger-arms-eagle-eye-targeting-sensor-suite",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.ranger-arms-eagle-eye-targeting-sensor-suite",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.reactive-armor-plates",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.ruthenium-rifle-sheath",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.smart-materials",
-"avail"
-],
-[
-"fs",
-"gear",
-"fs.smart-materials",
-"cost"
-],
-[
-"fs",
-"gear",
-"fs.trigger-removal",
-"legality"
-],
-[
-"fs",
-"gear",
-"fs.weapon-security-system",
-"avail"
-],
-[
-"fs",
-"weapons",
-"fs.ares-arms-charybdis",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.ares-arms-vigorous",
-"ar"
-],
-[
-"fs",
-"weapons",
-"fs.ares-scylla",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.ares-scylla",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.cavalier-parashield-emergency-responder",
-"modes"
-],
-[
-"fs",
-"weapons",
-"fs.colt-ms-27",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.colt-secret-agent",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.hell-turtle",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.horizon-flynn-defense-com-weapons-taser-stun-gun",
-"legality"
-],
-[
-"fs",
-"weapons",
-"fs.ingram-black-knight",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.ingram-white-knight-mod-2",
-"cost"
-],
-[
-"fs",
-"weapons",
-"fs.iron-bear-combat-axe",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.psg-enforcer-ii",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.pulse",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.ranger-arms-aa-16",
-"ammo"
-],
-[
-"fs",
-"weapons",
-"fs.tactical-hammer-short",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.trench-knife",
-"dv"
-],
-[
-"fs",
-"weapons",
-"fs.ultimax-71",
-"avail"
-],
-[
-"fs",
-"weapons",
-"fs.ultimax-71",
-"cost"
-],
-[
-"fs",
-"weapons",
-"fs.urban-tribe-tomahawk-mk-ii",
-"avail"
-],
-[
-"fs",
-"weapons",
-"fs.urban-tribe-tomahawk-mk-ii",
-"cost"
-],
-[
-"fs",
-"weapons",
-"fs.zoe-heritage-tonfa",
-"avail"
-],
-[
-"fs",
-"weapons",
-"fs.zoe-heritage-tonfa",
-"legality"
-],
-[
-"hs",
-"complexforms",
-"hs.unravel-encryption",
-"fade"
-],
-[
-"hs",
-"electronics",
-"hs.attack-module",
-"rating"
-],
-[
-"hs",
-"electronics",
-"hs.dart-launcher",
-"avail"
-],
-[
-"hs",
-"electronics",
-"hs.fairlight-falchion",
-"cost"
-],
-[
-"hs",
-"electronics",
-"hs.matrix-relay-2",
-"rating"
-],
-[
-"hs",
-"electronics",
-"hs.sleaze-module",
-"rating"
-],
-[
-"hs",
-"electronics",
-"hs.spy-tags",
-"rating"
-],
-[
-"nf",
-"augmentations",
-"nf.audiotune",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.audiotune",
-"cost"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-5",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-5",
-"capacity"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-5",
-"cost"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-5",
-"essence"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-6",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-6",
-"capacity"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-6",
-"cost"
-],
-[
-"nf",
-"augmentations",
-"nf.cyberears-rating-6",
-"essence"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-5",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-5",
-"capacity"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-5",
-"cost"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-5",
-"essence"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-6",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-6",
-"capacity"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-6",
-"cost"
-],
-[
-"nf",
-"augmentations",
-"nf.cybereyes-rating-6",
-"essence"
-],
-[
-"nf",
-"augmentations",
-"nf.vocal-expansion",
-"avail"
-],
-[
-"nf",
-"augmentations",
-"nf.vocal-expansion",
-"cost"
-],
-[
-"nf",
-"electronics",
-"nf.big-time",
-"avail"
-],
-[
-"nf",
-"electronics",
-"nf.press-pass",
-"avail"
-],
-[
-"nf",
-"electronics",
-"nf.press-pass",
-"legality"
-],
-[
-"nf",
-"electronics",
-"nf.procam",
-"avail"
-],
-[
-"nf",
-"electronics",
-"nf.rising-star",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.basic-press",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.external-synth",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.graffiti-kit",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.graffiti-kit",
-"legality"
-],
-[
-"nf",
-"gear",
-"nf.industrial-press",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.small-press",
-"avail"
-],
-[
-"nf",
-"gear",
-"nf.smartcam-external",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.molotov",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.molotov",
-"legality"
-],
-[
-"nf",
-"weapons",
-"nf.pitchfork",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.rolling-blades-hardened",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.yo-yo-hardened",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.yo-yo-monofilament",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.yo-yo-monofilament",
-"legality"
-],
-[
-"pwp",
-"qualities",
-"pwp.dog-on-a-leash",
-"positive"
-],
-[
-"pwp",
-"qualities",
-"pwp.shinto-summoner",
-"karma"
-],
-[
-"pwp",
-"qualities",
-"pwp.social-outcast",
-"karma"
-],
-[
-"shc",
-"qualities",
-"shc.force-recon",
-"positive"
-],
-[
-"sif-no",
-"gear",
-"sif-no.uv-light-uv-floodlight",
-"cost"
-],
-[
-"sif-no",
-"vehicles",
-"sif-no.surfstar-marine-seacop-powerboat",
-"avail"
-],
-[
-"so",
-"armor",
-"so.power-suit",
-"avail"
-],
-[
-"so",
-"armor",
-"so.tres-chic",
-"avail"
-],
-[
-"so",
-"armor",
-"so.tres-chic",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.professional-controller",
-"avail"
-],
-[
-"so",
-"electronics",
-"so.professional-controller",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"avail"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"legality"
-],
-[
-"so",
-"spells",
-"so.area-thought-recognition",
-"range"
-],
-[
-"so",
-"spells",
-"so.clear-thoughts",
-"spell category"
-],
-[
-"so",
-"spells",
-"so.cold-shower",
-"spell category"
-],
-[
-"so",
-"spells",
-"so.thought-recognition",
-"range"
-],
-[
-"so",
-"weapons",
-"so.explosive-cosmetics-nail-polish-remover",
-"avail"
-],
-[
-"so",
-"weapons",
-"so.explosive-cosmetics-nail-polish-remover",
-"legality"
-],
-[
-"sw",
-"adeptpowers",
-"sw.commanding-voice",
-"activation"
-],
-[
-"sw",
-"gear",
-"sw.free-dive-deep-breath-mask",
-"avail"
-],
-[
-"sw",
-"gear",
-"sw.free-dive-deep-breath-mask",
-"legality"
-],
-[
-"sw",
-"gear",
-"sw.magiczap-marble-plus",
-"cost"
-],
-[
-"sw",
-"gear",
-"sw.manadyne-xx-100-series",
-"cost"
-],
-[
-"sw",
-"spells",
-"sw.disrupt",
-"spell type"
-],
-[
-"sw",
-"spells",
-"sw.ectomagic-pulse",
-"spell type"
-],
-[
-"sw",
-"spells",
-"sw.glue",
-"drain"
-],
-[
-"sw",
-"spells",
-"sw.looking-glass",
-"drain"
-],
-[
-"sw",
-"spells",
-"sw.mob-mind",
-"spell type"
-],
-[
-"sw",
-"spells",
-"sw.mob-mood",
-"spell type"
-],
-[
-"sw",
-"spells",
-"sw.rosebush",
-"range"
-],
-[
-"swc",
-"packs",
-"swc.fn-p93-praetor",
-"cost"
-],
-[
-"swc",
-"qualities",
-"swc.consumed",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.feathers",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.ghoul",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.hairless",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.metahuman-traits",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.momentous-misfortune",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.mutaqua",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.nosferatu",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.pachy-rhino-elephant-hippo",
-"karma"
-],
-[
-"swc",
-"qualities",
-"swc.wendigo",
-"karma"
-],
-[
-"tkc",
-"weapons",
-"tkc.flash-scope",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.flash-scope",
-"modes"
-],
-[
-"tkc",
-"weapons",
-"tkc.hall-of-tears",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.hall-of-tears",
-"dv"
-],
-[
-"tkc",
-"weapons",
-"tkc.hall-of-tears",
-"modes"
-],
-[
-"tkc",
-"weapons",
-"tkc.handheld",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.mob-light",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.mob-light",
-"modes"
-],
-[
-"tkc",
-"weapons",
-"tkc.pulse-hammer",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.pulse-hammer",
-"dv"
-],
-[
-"tkc",
-"weapons",
-"tkc.pulse-hammer",
-"modes"
-],
-[
-"tkc",
-"weapons",
-"tkc.storm-shield",
-"ammo"
-],
-[
-"tkc",
-"weapons",
-"tkc.storm-shield",
-"dv"
-],
-[
-"ts",
-"weapons",
-"ts.foamtek-cannon",
-"ammo"
-],
-[
-"ts",
-"weapons",
-"ts.foamtek-carbine",
-"ammo"
-],
-[
-"bs",
-"augmentations",
-"bs.fangs",
-"cost"
-],
-[
-"hs",
-"electronics",
-"hs.agent-box",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost"
-],
-[
-"nf",
-"vehicles",
-"nf.ford-broadcast",
-"avail"
-],
-[
-"nf",
-"vehicles",
-"nf.s-b-condor",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.rolling-blades-bladed",
-"avail"
-],
-[
-"nf",
-"weapons",
-"nf.yo-yo-bladed",
-"avail"
-],
-[
-"bs",
-"gear",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"cost"
-],
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"cost"
-],
-[
-"bs",
-"gear",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"avail"
-],
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"avail"
-],
-[
-"bs",
-"gear",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"legality"
-],
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-nanites",
-"legality"
-]
-],
-"hold": [
-[
-"bs",
-"augmentations",
-"bs.bioamplifier-nanites-neurochemical-regulator-colony",
-"cost",
-"per-rating/variant by design? owner to decide"
-],
-[
-"crb",
-"weapons",
-"crb.arrow",
-"rating",
-"per-rating/variant by design? owner to decide"
-],
-[
-"crb",
-"gear",
-"crb.hydraulic-jacks",
-"rating",
-"per-rating/variant by design? owner to decide"
-],
-[
-"dc",
-"gear",
-"dc.increased-structural-integrity",
-"rating",
-"per-rating/variant by design? owner to decide"
-],
-[
-"bs",
-"augmentations",
-"bs.fangs",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"bs",
-"augmentations",
-"bs.transgenic-chameleon-skin",
-"avail",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"crb",
-"electronics",
-"crb.omnidirectional-microphone",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"da",
-"weapons",
-"da.al-assad",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"da",
-"weapons",
-"da.ballista-ii",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"da",
-"weapons",
-"da.carl-gustaf",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"so",
-"electronics",
-"so.swindler-stick",
-"cost",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"swc",
-"qualities",
-"swc.momentous-misfortune",
-"karma",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"swc",
-"qualities",
-"swc.mutaqua",
-"karma",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"swc",
-"qualities",
-"swc.nosferatu",
-"karma",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"swc",
-"qualities",
-"swc.wendigo",
-"karma",
-"two Commlink6 records match this entry and disagree"
-],
-[
-"crb",
-"gear",
-"crb.sim-module-w-hot-sim",
-"legality",
-"two Commlink6 records match this entry and disagree"
-]
-]
+  "keep": [
+    ["aw", "vehicles", "aw.buzzard", "seats"],
+    ["bn", "armor", "bn.heavy-barding", "cost"],
+    ["bn", "armor", "bn.light-barding", "cost"],
+    ["bn", "armor", "bn.smart-clothes", "cost"],
+    ["bn", "qualities", "bn.shifter-might-shifter-add-on", "karma"],
+    ["bs", "augmentations", "bs.age-rejuvenation-physical-vigor", "essence"],
+    ["bs", "augmentations", "bs.augmented-healing-genetic-regeneration-with-implants", "avail"],
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-colony", "avail"],
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-colony", "cost"],
+    ["bs", "augmentations", "bs.biosprayer-dazed", "avail"],
+    ["bs", "augmentations", "bs.cognitive-shield", "cost"],
+    ["bs", "augmentations", "bs.corrosive-spit", "cost"],
+    ["bs", "augmentations", "bs.electrosense-organs", "essence"],
+    ["bs", "augmentations", "bs.fangs", "legality"],
+    ["bs", "augmentations", "bs.foot-anchor", "avail"],
+    ["bs", "augmentations", "bs.foot-anchor", "cost"],
+    ["bs", "augmentations", "bs.foot-anchor", "essence"],
+    ["bs", "augmentations", "bs.genotype-enhancement-hyper-glucagon", "avail"],
+    ["bs", "augmentations", "bs.genotype-enhancement-hyper-glucagon", "legality"],
+    ["bs", "augmentations", "bs.genotype-enhancement-ndi", "avail"],
+    ["bs", "augmentations", "bs.hair-growth", "avail"],
+    ["bs", "augmentations", "bs.hair-growth", "cost"],
+    ["bs", "augmentations", "bs.infrasound-emitter", "legality"],
+    ["bs", "augmentations", "bs.kill-switch", "cost"],
+    ["bs", "augmentations", "bs.kill-switch", "legality"],
+    ["bs", "augmentations", "bs.light-emitters", "capacity"],
+    ["bs", "augmentations", "bs.light-emitters", "essence"],
+    ["bs", "augmentations", "bs.manasense", "avail"],
+    ["bs", "augmentations", "bs.matrix-visualizer", "cost"],
+    ["bs", "augmentations", "bs.nanospy-kit", "cost"],
+    ["bs", "augmentations", "bs.nanospy-refill", "cost"],
+    ["bs", "augmentations", "bs.neuro-retention-amplification", "avail"],
+    ["bs", "augmentations", "bs.perfect-pitch", "avail"],
+    ["bs", "augmentations", "bs.perfect-pitch", "essence"],
+    ["bs", "augmentations", "bs.skin-pigmentation", "cost"],
+    ["bs", "augmentations", "bs.telescoping-modification-level-2", "cost"],
+    ["bs", "augmentations", "bs.thermosense-organs", "avail"],
+    ["bs", "augmentations", "bs.thermosense-organs", "cost"],
+    ["bs", "augmentations", "bs.thorns", "cost"],
+    ["bs", "augmentations", "bs.tough-gut", "essence"],
+    ["bs", "augmentations", "bs.troll-eyes", "avail"],
+    ["bs", "augmentations", "bs.troll-eyes", "cost"],
+    ["bs", "gear", "bs.bulk-modification", "cost"],
+    ["bs", "gear", "bs.soothsayer", "avail"],
+    ["bs", "qualities", "bs.essence-regrowth", "karma"],
+    ["crb", "armor", "crb.armor-vest", "avail"],
+    ["crb", "armor", "crb.lined-coat", "avail"],
+    ["crb", "augmentations", "crb.shotgun", "cost"],
+    ["crb", "augmentations", "crb.spurs", "avail"],
+    ["crb", "augmentations", "crb.wired-reflexes-1", "avail"],
+    ["crb", "augmentations", "crb.wired-reflexes-1", "cost"],
+    ["crb", "augmentations", "crb.wired-reflexes-1", "rating"],
+    ["crb", "critterpowers", "crb.binding", "range"],
+    ["crb", "critterpowers", "crb.concealment", "action"],
+    ["crb", "critterpowers", "crb.confusion", "action"],
+    ["crb", "critterpowers", "crb.elemental-attack", "action"],
+    ["crb", "critterpowers", "crb.energy-aura", "range"],
+    ["crb", "critterpowers", "crb.enhanced-senses", "duration"],
+    ["crb", "critterpowers", "crb.enhanced-senses", "range"],
+    ["crb", "critterpowers", "crb.influence", "action"],
+    ["crb", "critterpowers", "crb.innate-spell", "duration"],
+    ["crb", "critterpowers", "crb.innate-spell", "power type"],
+    ["crb", "critterpowers", "crb.innate-spell", "range"],
+    ["crb", "electronics", "crb.binoculars", "cost"],
+    ["crb", "electronics", "crb.camera", "cost"],
+    ["crb", "electronics", "crb.directional-microphone", "cost"],
+    ["crb", "electronics", "crb.laser-microphone", "cost"],
+    ["crb", "electronics", "crb.lockpick-set", "legality"],
+    ["crb", "electronics", "crb.omnidirectional-microphone", "cost"],
+    ["crb", "electronics", "crb.single-sensor", "avail"],
+    ["crb", "gear", "crb.hydraulic-jacks", "cost"],
+    ["crb", "gear", "crb.hydraulic-jacks", "rating"],
+    ["crb", "gear", "crb.magical-lodge-materials", "legality"],
+    ["crb", "gear", "crb.power-focus", "avail"],
+    ["crb", "gear", "crb.power-focus", "legality"],
+    ["crb", "gear", "crb.smartgun-system-internal", "avail"],
+    ["crb", "gear", "crb.standard-rope", "cost"],
+    ["crb", "gear", "crb.vision-enhancement", "capacity"],
+    ["crb", "gear", "crb.weapon-focus", "avail"],
+    ["crb", "gear", "crb.weapon-focus", "legality"],
+    ["crb", "programs", "crb.datasoft", "cost"],
+    ["crb", "programs", "crb.tutorsoft", "avail"],
+    ["crb", "spells", "crb.chaos", "spell type"],
+    ["crb", "spells", "crb.fling", "range"],
+    ["crb", "weapons", "crb.ares-viper-slivergun", "dv"],
+    ["crb", "weapons", "crb.arrow", "avail"],
+    ["crb", "weapons", "crb.assault-cannon", "avail"],
+    ["crb", "weapons", "crb.assault-cannon", "cost"],
+    ["crb", "weapons", "crb.assault-cannon", "legality"],
+    ["crb", "weapons", "crb.aztechnology-striker", "ar"],
+    ["crb", "weapons", "crb.colt-cobra-tz-100", "modes"],
+    ["crb", "weapons", "crb.colt-cobra-tz-110", "modes"],
+    ["crb", "weapons", "crb.colt-cobra-tz-120", "ar"],
+    ["crb", "weapons", "crb.colt-cobra-tz-120", "modes"],
+    ["crb", "weapons", "crb.colt-government-manhunter", "ar"],
+    ["crb", "weapons", "crb.colt-m23", "ar"],
+    ["crb", "weapons", "crb.colt-m23", "cost"],
+    ["crb", "weapons", "crb.defiance-t-250", "ar"],
+    ["crb", "weapons", "crb.defiance-t-250", "dv"],
+    ["crb", "weapons", "crb.extendable-baton", "cost"],
+    ["crb", "weapons", "crb.fichetti-security-600", "avail"],
+    ["crb", "weapons", "crb.knucks", "ar"],
+    ["crb", "weapons", "crb.mossberg-cmdt", "ammo"],
+    ["crb", "weapons", "crb.parashield-dart-pistol", "cost"],
+    ["crb", "weapons", "crb.parashield-dart-rifle", "cost"],
+    ["crb", "weapons", "crb.pjss-model-55", "cost"],
+    ["crb", "weapons", "crb.streetline-special", "cost"],
+    ["crb", "weapons", "crb.throwing-stars", "ar"],
+    ["crb", "weapons", "crb.walther-palm-pistol", "cost"],
+    ["crb-ber", "qualities", "crb-ber.off-the-grid", "karma"],
+    ["crb-sea", "armor", "crb-sea.tres-chic-cloak", "avail"],
+    ["crb-sea", "qualities", "crb-sea.what-doesnt-kill-you", "positive"],
+    ["da", "adeptpowers", "da.motion-sense", "activation"],
+    ["da", "adeptpowers", "da.multi-targeting", "activation"],
+    ["da", "augmentations", "da.four-thousand-newtons", "capacity"],
+    ["da", "augmentations", "da.four-thousand-newtons", "essence"],
+    ["da", "augmentations", "da.meat-grinder", "capacity"],
+    ["da", "augmentations", "da.meat-grinder", "essence"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-1", "capacity"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-1", "cost"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-1", "essence"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-2", "capacity"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-2", "cost"],
+    ["da", "augmentations", "da.the-hurt-locker-rating-2", "essence"],
+    ["da", "gear", "da.ergonomic-optimization", "cost"],
+    ["da", "gear", "da.paraplate", "cost"],
+    ["da", "vehicles", "da.powered-heavy-tripod", "avail"],
+    ["da", "vehicles", "da.sukhoi-evo-su-74-sokol", "seats"],
+    ["da", "weapons", "da.al-assad", "ammo"],
+    ["da", "weapons", "da.al-assad", "cost"],
+    ["da", "weapons", "da.ares-inferno", "ammo"],
+    ["da", "weapons", "da.ares-victory", "ammo"],
+    ["da", "weapons", "da.ares-vigilant", "ammo"],
+    ["da", "weapons", "da.ballista-ii", "cost"],
+    ["da", "weapons", "da.carl-gustaf", "ammo"],
+    ["da", "weapons", "da.carl-gustaf", "cost"],
+    ["da", "weapons", "da.chakram", "ar"],
+    ["da", "weapons", "da.chakri", "ar"],
+    ["da", "weapons", "da.fire-blossom-mb", "ammo"],
+    ["da", "weapons", "da.fire-serpent", "ammo"],
+    ["da", "weapons", "da.fire-serpent", "modes"],
+    ["da", "weapons", "da.firebird", "ammo"],
+    ["da", "weapons", "da.firebolt", "ammo"],
+    ["da", "weapons", "da.firebrand", "ammo"],
+    ["da", "weapons", "da.firelance-ii", "ammo"],
+    ["da", "weapons", "da.firestorm", "ammo"],
+    ["da", "weapons", "da.irm-sabretooth", "ammo"],
+    ["da", "weapons", "da.krime-gloves", "ar"],
+    ["da", "weapons", "da.krime-gloves", "dv"],
+    ["da", "weapons", "da.launch-drop-rack", "ammo"],
+    ["da", "weapons", "da.launch-drop-rack", "ar"],
+    ["da", "weapons", "da.m1330", "ammo"],
+    ["da", "weapons", "da.m80", "cost"],
+    ["da", "weapons", "da.m8330", "ammo"],
+    ["da", "weapons", "da.mgl-24", "legality"],
+    ["da", "weapons", "da.mgl-48", "ammo"],
+    ["da", "weapons", "da.relampago", "dv"],
+    ["da", "weapons", "da.rhipsalis", "dv"],
+    ["da", "weapons", "da.unguided-launcher", "ammo"],
+    ["da", "weapons", "da.vls-cells-cold", "ammo"],
+    ["da", "weapons", "da.vls-cells-cold", "ar"],
+    ["da", "weapons", "da.vls-cells-hot", "ammo"],
+    ["da", "weapons", "da.vls-cells-hot", "ar"],
+    ["da", "weapons", "da.xicohtencatl", "ar"],
+    ["da", "weapons", "da.ynt-colossus", "ammo"],
+    ["da", "weapons", "da.ynt-nashorn", "ammo"],
+    ["dc", "gear", "dc.expanded-ammo-bins", "cost"],
+    ["dc", "gear", "dc.grey-mana-integration", "cost"],
+    ["dc", "gear", "dc.increased-seating-cf-mod", "rating"],
+    ["dc", "gear", "dc.increased-structural-integrity", "rating"],
+    ["dc", "gear", "dc.living-space-cf-mod", "avail"],
+    ["dc", "gear", "dc.network-sharing-enhancement", "cost"],
+    ["dc", "gear", "dc.portable-facility-cf-mod", "cost"],
+    ["dc", "gear", "dc.standard-armor", "rating"],
+    ["dc", "gear", "dc.standard-weapon-mount", "avail"],
+    ["dc", "gear", "dc.standard-weapon-mount", "cost"],
+    ["dc", "gear", "dc.winch", "avail"],
+    ["dc", "vehicles", "dc.dsec", "cost"],
+    ["dc", "vehicles", "dc.factory-ship", "cost"],
+    ["dc", "vehicles", "dc.ford-bison-iii", "seats"],
+    ["dc", "vehicles", "dc.ford-lifeline", "seats"],
+    ["dc", "vehicles", "dc.gti-devotee-mk-1", "cost"],
+    ["dc", "vehicles", "dc.japanese-imperial-navy-shio-class-ssi", "cost"],
+    ["dc", "vehicles", "dc.yamaha-nodachi", "interval"],
+    ["dod", "weapons", "dod.tiffani-elegance-dart-bracelet", "ammo"],
+    ["dod", "weapons", "dod.tiffani-stinger-dart-bracelet", "ammo"],
+    ["emc", "qualities", "emc.good-ol-folks", "karma"],
+    ["emc", "qualities", "emc.the-briar-patch", "karma"],
+    ["emc", "qualities", "emc.what-doesnt-kill-you", "karma"],
+    ["emc", "qualities", "emc.what-doesnt-kill-you", "positive"],
+    ["fs", "armor", "fs.basic-duty-utilities", "defense"],
+    ["fs", "armor", "fs.vashon-island-ace-of-clubs", "avail"],
+    ["fs", "armor", "fs.vashon-island-ace-of-diamonds", "avail"],
+    ["fs", "armor", "fs.vashon-island-ace-of-hearts", "avail"],
+    ["fs", "armor", "fs.vashon-island-actioneeer-business-clothing", "avail"],
+    ["fs", "armor", "fs.wild-hunt", "avail"],
+    ["fs", "armor", "fs.wild-hunt", "cost"],
+    ["fs", "gear", "fs.ares-gunfighter-scabbard", "avail"],
+    ["fs", "gear", "fs.concealable-quick-draw-holster", "legality"],
+    ["fs", "gear", "fs.directional-mine-modification", "legality"],
+    ["fs", "gear", "fs.flashlight-low-light", "avail"],
+    ["fs", "gear", "fs.flashlight-low-light", "cost"],
+    ["fs", "gear", "fs.flashlight-low-light", "legality"],
+    ["fs", "gear", "fs.foregrip", "cost"],
+    ["fs", "gear", "fs.gecko-grip-modification", "legality"],
+    ["fs", "gear", "fs.landmine-modification", "legality"],
+    ["fs", "gear", "fs.laser-sight-low-power", "cost"],
+    ["fs", "gear", "fs.mystic-weave", "cost"],
+    ["fs", "gear", "fs.ranger-arms-eagle-eye-targeting-sensor-suite", "avail"],
+    ["fs", "gear", "fs.ranger-arms-eagle-eye-targeting-sensor-suite", "cost"],
+    ["fs", "gear", "fs.ranger-arms-eagle-eye-targeting-sensor-suite", "legality"],
+    ["fs", "gear", "fs.reactive-armor-plates", "cost"],
+    ["fs", "gear", "fs.ruthenium-rifle-sheath", "legality"],
+    ["fs", "gear", "fs.smart-materials", "avail"],
+    ["fs", "gear", "fs.smart-materials", "cost"],
+    ["fs", "gear", "fs.trigger-removal", "legality"],
+    ["fs", "gear", "fs.weapon-security-system", "avail"],
+    ["fs", "weapons", "fs.ares-arms-charybdis", "ammo"],
+    ["fs", "weapons", "fs.ares-arms-vigorous", "ar"],
+    ["fs", "weapons", "fs.ares-scylla", "ammo"],
+    ["fs", "weapons", "fs.ares-scylla", "dv"],
+    ["fs", "weapons", "fs.cavalier-parashield-emergency-responder", "modes"],
+    ["fs", "weapons", "fs.colt-ms-27", "ammo"],
+    ["fs", "weapons", "fs.colt-secret-agent", "ammo"],
+    ["fs", "weapons", "fs.hell-turtle", "dv"],
+    ["fs", "weapons", "fs.horizon-flynn-defense-com-weapons-taser-stun-gun", "legality"],
+    ["fs", "weapons", "fs.ingram-black-knight", "ammo"],
+    ["fs", "weapons", "fs.ingram-white-knight-mod-2", "cost"],
+    ["fs", "weapons", "fs.iron-bear-combat-axe", "dv"],
+    ["fs", "weapons", "fs.psg-enforcer-ii", "ammo"],
+    ["fs", "weapons", "fs.pulse", "dv"],
+    ["fs", "weapons", "fs.ranger-arms-aa-16", "ammo"],
+    ["fs", "weapons", "fs.tactical-hammer-short", "dv"],
+    ["fs", "weapons", "fs.trench-knife", "dv"],
+    ["fs", "weapons", "fs.ultimax-71", "avail"],
+    ["fs", "weapons", "fs.ultimax-71", "cost"],
+    ["fs", "weapons", "fs.urban-tribe-tomahawk-mk-ii", "avail"],
+    ["fs", "weapons", "fs.urban-tribe-tomahawk-mk-ii", "cost"],
+    ["fs", "weapons", "fs.zoe-heritage-tonfa", "avail"],
+    ["fs", "weapons", "fs.zoe-heritage-tonfa", "legality"],
+    ["hs", "complexforms", "hs.unravel-encryption", "fade"],
+    ["hs", "electronics", "hs.attack-module", "rating"],
+    ["hs", "electronics", "hs.dart-launcher", "avail"],
+    ["hs", "electronics", "hs.fairlight-falchion", "cost"],
+    ["hs", "electronics", "hs.matrix-relay-2", "rating"],
+    ["hs", "electronics", "hs.sleaze-module", "rating"],
+    ["hs", "electronics", "hs.spy-tags", "rating"],
+    ["nf", "augmentations", "nf.audiotune", "avail"],
+    ["nf", "augmentations", "nf.audiotune", "cost"],
+    ["nf", "augmentations", "nf.cyberears-rating-5", "avail"],
+    ["nf", "augmentations", "nf.cyberears-rating-5", "capacity"],
+    ["nf", "augmentations", "nf.cyberears-rating-5", "cost"],
+    ["nf", "augmentations", "nf.cyberears-rating-5", "essence"],
+    ["nf", "augmentations", "nf.cyberears-rating-6", "avail"],
+    ["nf", "augmentations", "nf.cyberears-rating-6", "capacity"],
+    ["nf", "augmentations", "nf.cyberears-rating-6", "cost"],
+    ["nf", "augmentations", "nf.cyberears-rating-6", "essence"],
+    ["nf", "augmentations", "nf.cybereyes-rating-5", "avail"],
+    ["nf", "augmentations", "nf.cybereyes-rating-5", "capacity"],
+    ["nf", "augmentations", "nf.cybereyes-rating-5", "cost"],
+    ["nf", "augmentations", "nf.cybereyes-rating-5", "essence"],
+    ["nf", "augmentations", "nf.cybereyes-rating-6", "avail"],
+    ["nf", "augmentations", "nf.cybereyes-rating-6", "capacity"],
+    ["nf", "augmentations", "nf.cybereyes-rating-6", "cost"],
+    ["nf", "augmentations", "nf.cybereyes-rating-6", "essence"],
+    ["nf", "augmentations", "nf.vocal-expansion", "avail"],
+    ["nf", "augmentations", "nf.vocal-expansion", "cost"],
+    ["nf", "electronics", "nf.big-time", "avail"],
+    ["nf", "electronics", "nf.press-pass", "avail"],
+    ["nf", "electronics", "nf.press-pass", "legality"],
+    ["nf", "electronics", "nf.procam", "avail"],
+    ["nf", "electronics", "nf.rising-star", "avail"],
+    ["nf", "gear", "nf.basic-press", "avail"],
+    ["nf", "gear", "nf.external-synth", "avail"],
+    ["nf", "gear", "nf.graffiti-kit", "avail"],
+    ["nf", "gear", "nf.graffiti-kit", "legality"],
+    ["nf", "gear", "nf.industrial-press", "avail"],
+    ["nf", "gear", "nf.small-press", "avail"],
+    ["nf", "gear", "nf.smartcam-external", "avail"],
+    ["nf", "weapons", "nf.molotov", "avail"],
+    ["nf", "weapons", "nf.molotov", "legality"],
+    ["nf", "weapons", "nf.pitchfork", "avail"],
+    ["nf", "weapons", "nf.rolling-blades-hardened", "avail"],
+    ["nf", "weapons", "nf.yo-yo-hardened", "avail"],
+    ["nf", "weapons", "nf.yo-yo-monofilament", "avail"],
+    ["nf", "weapons", "nf.yo-yo-monofilament", "legality"],
+    ["pwp", "qualities", "pwp.dog-on-a-leash", "positive"],
+    ["pwp", "qualities", "pwp.shinto-summoner", "karma"],
+    ["pwp", "qualities", "pwp.social-outcast", "karma"],
+    ["shc", "qualities", "shc.force-recon", "positive"],
+    ["sif-no", "gear", "sif-no.uv-light-uv-floodlight", "cost"],
+    ["sif-no", "vehicles", "sif-no.surfstar-marine-seacop-powerboat", "avail"],
+    ["so", "armor", "so.power-suit", "avail"],
+    ["so", "armor", "so.tres-chic", "avail"],
+    ["so", "armor", "so.tres-chic", "cost"],
+    ["so", "electronics", "so.professional-controller", "avail"],
+    ["so", "electronics", "so.professional-controller", "cost"],
+    ["so", "electronics", "so.swindler-stick", "avail"],
+    ["so", "electronics", "so.swindler-stick", "legality"],
+    ["so", "spells", "so.area-thought-recognition", "range"],
+    ["so", "spells", "so.clear-thoughts", "spell category"],
+    ["so", "spells", "so.cold-shower", "spell category"],
+    ["so", "spells", "so.thought-recognition", "range"],
+    ["so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "avail"],
+    ["so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"],
+    ["sw", "adeptpowers", "sw.commanding-voice", "activation"],
+    ["sw", "gear", "sw.free-dive-deep-breath-mask", "avail"],
+    ["sw", "gear", "sw.free-dive-deep-breath-mask", "legality"],
+    ["sw", "gear", "sw.magiczap-marble-plus", "cost"],
+    ["sw", "gear", "sw.manadyne-xx-100-series", "cost"],
+    ["sw", "spells", "sw.disrupt", "spell type"],
+    ["sw", "spells", "sw.ectomagic-pulse", "spell type"],
+    ["sw", "spells", "sw.glue", "drain"],
+    ["sw", "spells", "sw.looking-glass", "drain"],
+    ["sw", "spells", "sw.mob-mind", "spell type"],
+    ["sw", "spells", "sw.mob-mood", "spell type"],
+    ["sw", "spells", "sw.rosebush", "range"],
+    ["swc", "packs", "swc.fn-p93-praetor", "cost"],
+    ["swc", "qualities", "swc.consumed", "karma"],
+    ["swc", "qualities", "swc.feathers", "karma"],
+    ["swc", "qualities", "swc.ghoul", "karma"],
+    ["swc", "qualities", "swc.hairless", "karma"],
+    ["swc", "qualities", "swc.metahuman-traits", "karma"],
+    ["swc", "qualities", "swc.momentous-misfortune", "karma"],
+    ["swc", "qualities", "swc.mutaqua", "karma"],
+    ["swc", "qualities", "swc.nosferatu", "karma"],
+    ["swc", "qualities", "swc.pachy-rhino-elephant-hippo", "karma"],
+    ["swc", "qualities", "swc.wendigo", "karma"],
+    ["tkc", "weapons", "tkc.flash-scope", "ammo"],
+    ["tkc", "weapons", "tkc.flash-scope", "modes"],
+    ["tkc", "weapons", "tkc.hall-of-tears", "ammo"],
+    ["tkc", "weapons", "tkc.hall-of-tears", "dv"],
+    ["tkc", "weapons", "tkc.hall-of-tears", "modes"],
+    ["tkc", "weapons", "tkc.handheld", "ammo"],
+    ["tkc", "weapons", "tkc.mob-light", "ammo"],
+    ["tkc", "weapons", "tkc.mob-light", "modes"],
+    ["tkc", "weapons", "tkc.pulse-hammer", "ammo"],
+    ["tkc", "weapons", "tkc.pulse-hammer", "dv"],
+    ["tkc", "weapons", "tkc.pulse-hammer", "modes"],
+    ["tkc", "weapons", "tkc.storm-shield", "ammo"],
+    ["tkc", "weapons", "tkc.storm-shield", "dv"],
+    ["ts", "weapons", "ts.foamtek-cannon", "ammo"],
+    ["ts", "weapons", "ts.foamtek-carbine", "ammo"],
+    ["bs", "augmentations", "bs.fangs", "cost"],
+    ["hs", "electronics", "hs.agent-box", "cost"],
+    ["so", "electronics", "so.swindler-stick", "cost"],
+    ["so", "electronics", "so.swindler-stick", "cost"],
+    ["so", "electronics", "so.swindler-stick", "cost"],
+    ["so", "electronics", "so.swindler-stick", "cost"],
+    ["so", "electronics", "so.swindler-stick", "cost"],
+    ["nf", "vehicles", "nf.ford-broadcast", "avail"],
+    ["nf", "vehicles", "nf.s-b-condor", "avail"],
+    ["nf", "weapons", "nf.rolling-blades-bladed", "avail"],
+    ["nf", "weapons", "nf.yo-yo-bladed", "avail"],
+    ["bs", "gear", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "cost"],
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "cost"],
+    ["bs", "gear", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "avail"],
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "avail"],
+    ["bs", "gear", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "legality"],
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-nanites", "legality"]
+  ],
+  "hold": [
+    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-colony", "cost", "per-rating/variant by design? owner to decide"],
+    ["crb", "weapons", "crb.arrow", "rating", "per-rating/variant by design? owner to decide"],
+    ["crb", "gear", "crb.hydraulic-jacks", "rating", "per-rating/variant by design? owner to decide"],
+    ["dc", "gear", "dc.increased-structural-integrity", "rating", "per-rating/variant by design? owner to decide"],
+    ["bs", "augmentations", "bs.fangs", "cost", "two Commlink6 records match this entry and disagree"],
+    ["bs", "augmentations", "bs.transgenic-chameleon-skin", "avail", "two Commlink6 records match this entry and disagree"],
+    ["crb", "electronics", "crb.omnidirectional-microphone", "cost", "two Commlink6 records match this entry and disagree"],
+    ["da", "weapons", "da.al-assad", "cost", "two Commlink6 records match this entry and disagree"],
+    ["da", "weapons", "da.ballista-ii", "cost", "two Commlink6 records match this entry and disagree"],
+    ["da", "weapons", "da.carl-gustaf", "cost", "two Commlink6 records match this entry and disagree"],
+    ["so", "electronics", "so.swindler-stick", "cost", "two Commlink6 records match this entry and disagree"],
+    ["swc", "qualities", "swc.momentous-misfortune", "karma", "two Commlink6 records match this entry and disagree"],
+    ["swc", "qualities", "swc.mutaqua", "karma", "two Commlink6 records match this entry and disagree"],
+    ["swc", "qualities", "swc.nosferatu", "karma", "two Commlink6 records match this entry and disagree"],
+    ["swc", "qualities", "swc.wendigo", "karma", "two Commlink6 records match this entry and disagree"],
+    ["crb", "gear", "crb.sim-module-w-hot-sim", "legality", "two Commlink6 records match this entry and disagree"]
+  ]
 }
