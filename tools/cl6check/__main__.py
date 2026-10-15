@@ -121,8 +121,8 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
                     if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
-                    if d["class"] in ("a", "c") and (c["src"], o["kind"], o["id"], d["field"]) in keep:
-                        d["class"], d["pdf"] = "b", "ours"  # (the owner keeps ours: value_keep.json; after the trace, which can make a row c)
+                    if d["class"] in ("a", "c") and any((c["src"], k, o["id"], d["field"]) in keep for k in (c["kind"], o["kind"])):
+                        d["class"], d["pdf"] = "b", "ours"  # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after the trace, which can make a row c)
                         d.pop("cl6only", None)
             elif how != "optional package":
                 r["cause"] = report.miss_cause(c, s, bt, book)

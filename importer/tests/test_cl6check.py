@@ -577,3 +577,11 @@ class ValueKeepTest(unittest.TestCase):
             return [d["class"] for r in res for d in r["diffs"] if d["field"] == "cost"]
         self.assertEqual(classes(set()), ["c", "c"])  # (no book to arbitrate: class c)
         self.assertEqual(classes({("gz", "gear", "gz.zorp", "cost")}), ["b", "b"])
+
+    def test_a_keep_key_may_name_commlink6s_kind_when_ours_is_filed_elsewhere(self):
+        from types import SimpleNamespace
+        c = canon.canonical(rec('<item id="z0" cost="100"/>', name="Zorp")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Zorp", kind="augmentations", cost="500")], book_dir=None)}
+        for key in (("gz", c["kind"], "gz.zorp", "cost"), ("gz", "augmentations", "gz.zorp", "cost")):
+            res = cli.compare([c], mine, pdf=False, package=({}, {}, {}), accept={}, keep={key})[0]
+            self.assertEqual([d["class"] for d in res[0]["diffs"] if d["field"] == "cost"], ["b"], key)
