@@ -9,6 +9,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.sax.saxutils import escape, quoteattr
 
 from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
@@ -49,7 +50,13 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
             return None
 
         xmlio.write_status(book_dir, "extracting")
-        res, md, text, report = _read(recipe, md, custom_dir)
+        # several printings of the book: the one ranking last (printing(): the book's Current Printing, else the one published last) is loaded, the others listed as superseded
+        mine, src0 = printing(meta["sha256"]), getattr(recipe, "ID", "")  # (ponytail: only the core rulebook has printings, and its source id is its recipe's ID)
+        others = [(p, d, st) for p, d, st in _same_source(book_dir, src0) if p and mine] if src0 else []
+        newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
+        older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
+        olds = [(p[1], *_catalog(recipe, d, custom_dir)) for p, d, _ in sorted(older, key=lambda o: o[0], reverse=True)]  # (label, files, texts), newest first
+        res, md, text, report = _read(recipe, md, custom_dir, olds)
         xmlio.write_file(os.path.join(book_dir, "regrouped.md"), text)
         if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
             res.extra = recipe.extra(md, meta["sha256"])
@@ -66,17 +73,14 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-        # several printings of the book: the one ranking last (printing(): the book's Current Printing, else the one published last) is loaded, the others listed as superseded
-        mine = printing(meta["sha256"])
-        others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
-        newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
-        older = [] if newer else [(p, d, st) for p, d, st in others if st in ("done", "superseded") and p < mine]
         prev = moved.previous(out_dir)  # the ids the last import wrote (read before anything replaces them)
         prev_extra = {x: moved.previous(os.path.join(custom_dir, "imported", x.lower()))
                       for x in (old.get("extra") or "").split()} if old is not None else {}
-        if older:  # field by field: a value this printing leaves out (or prints as no SR6 value) the next older one's
-            res.files, _ = older_printings(res.files, [(p[1], _catalog(recipe, d, custom_dir))
-                                                       for p, d, _ in sorted(older, key=lambda o: o[0], reverse=True)])
+        if olds:  # field by field: a value this printing leaves out (or prints as no SR6 value) the next older one's;
+            # then the entries only the older ones print
+            res.files, _ = older_printings(res.files, [(label, files) for label, files, _ in olds])
+            res.files, res.texts = older_extras(res.files, res.texts, olds, res.report)
+            ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))  # (the extras' too: scoped to the source)
         if any(st == "done" for _, _, st in older):
             _drop(custom_dir, src)  # the older printing's catalog, texts and sample runners (this one's replace them)
         if not newer:
@@ -129,15 +133,18 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         raise
 
 
-def _read(recipe, md, custom_dir):
+def _read(recipe, md, custom_dir, olds=()):
     """A book's book.md as its recipe reads it: (Result with every entry's effects, the md its recipe prepared, the
-    regrouped text, regroup's report)."""
+    regrouped text, regroup's report). olds: the older printings' catalogs, (label, files, texts) newest first; an item
+    this printing files under another id than they do takes theirs (same_ids)."""
     if hasattr(recipe, "prepare_md"):  # a book's own page furniture the converter can't tell (a running head on top)
         md = recipe.prepare_md(md)
     text, report = regroup.regroup(md, recipe.ALIASES, name_headers=recipe.NAME_HEADERS,
                                    end_page=getattr(recipe, "END_PAGE", None),
                                    variants=getattr(recipe, "VARIANT_ROWS", False))
     res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
+    if olds:  # (before the effects and the overrides, which name entries by id)
+        res.files, res.texts = same_ids(res.files, res.texts, olds)
     res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
     res.files = overrides.apply(getattr(recipe, "ID", ""), res.files)  # the book's last-resort Commlink6 name table
     res.files = classes.apply(res.files, src=getattr(recipe, "ID", ""))  # Commlink6's class on each entry of a category it classes alike (an override's own stays)
@@ -146,13 +153,14 @@ def _read(recipe, md, custom_dir):
 
 
 def _catalog(recipe, book_dir, custom_dir):
-    """Another printing's catalog as an import of it reads it now (from its book.md): {file: xml}, ids unscoped; {}
-    when it has no book.md or fails to read."""
+    """Another printing's catalog as an import of it reads it now (from its book.md): ({file: xml}, texts xml), ids
+    unscoped; ({}, "") when it has no book.md or fails to read."""
     path = os.path.join(book_dir, "book.md")
     try:
-        return _read(recipe, Path(path).read_text(encoding="utf8"), custom_dir)[0].files if os.path.exists(path) else {}
+        r = _read(recipe, Path(path).read_text(encoding="utf8"), custom_dir)[0] if os.path.exists(path) else None
+        return (r.files, r.texts or "") if r else ({}, "")
     except Exception:  # noqa: BLE001 (an older printing that no longer reads gives nothing)
-        return {}
+        return {}, ""
 
 
 FALLBACK = ("missing", "unreadable")  # (an issue's codes: no value printed, or one that is no SR6 value: vocab.py)
@@ -198,12 +206,111 @@ def older_printings(files, olds, prefix=""):
     return out, n
 
 
+NOT_EXTRA = ("rules.xml", "categories.xml")  # (the loaded printing's own text and tables make these; an older printing's are not added to them)
+IDENTITY = {"id", "source", "page", "category", "group", "class", "type", "skill", "spec"}  # (where an entry sits and how it is filed; the rest are its printed values)
+
+
+def _parse(xml):
+    from lxml import etree
+    return etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))
+
+
+def _entries(xml):
+    return [e for e in _parse(xml) if isinstance(e.tag, str) and e.get("id")] if xml else []
+
+
+def _key(el):
+    """What names one item in every printing: its name and its category (a name in two categories is two items)."""
+    return regroup.norm(el.findtext("name") or ""), el.get("category") or ""
+
+
+def _dump(root):
+    from lxml import etree
+    return xmlio.HEAD + etree.tostring(root, encoding="unicode").rstrip("\n") + "\n"
+
+
+def same_ids(files, texts, olds):
+    """An item this printing files under another id than an older printing does takes the older one's, so a saved runner,
+    an override row and the app's catalog keep naming it (the id of a name another category of the file has already
+    carries its category: the Current Printing, without the Formula row `Ritual Spellcasting`, files the focus of that
+    name as `ritual-spellcasting`, the later printings as `foci.ritual-spellcasting`). The item is found by name and
+    category in the same file, when both are unique there. Returns (files, texts); the entry's text goes with its id."""
+    older = {}  # (file, key) -> the ids older printings give it, newest first
+    for _, of, _ in olds:
+        for name, xml in of.items():
+            for e in _entries(xml):
+                if e.get("category"):
+                    older.setdefault((name, _key(e)), []).append(e.get("id"))
+    out = dict(files)
+    for name, xml in files.items():
+        root = _parse(xml)
+        els = [e for e in root if isinstance(e.tag, str) and e.get("id")]
+        used = {e.get("id") for e in els}
+        count = {k: sum(_key(e) == k for e in els) for k in {_key(e) for e in els}}
+        changed = False
+        for e in els:
+            ids = older.get((name, _key(e)), ())
+            if not e.get("category") or count[_key(e)] > 1 or not ids or e.get("id") in ids or ids[0] in used:
+                continue
+            old, new = e.get("id"), ids[0]
+            e.set("id", new)
+            used.add(new)
+            texts = re.sub(r'(<text of="%s" id=)"%s"' % (re.escape(name[:-4]), re.escape(old)), r'\1"%s"' % new, texts or "")
+            changed = True
+        if changed:
+            out[name] = _dump(root)
+    return out, texts
+
+
+def older_extras(files, texts, olds, report=None, prefix=""):
+    """The owner's rule, older printings fill what the latest one lacks: an entry an older printing prints that the
+    loaded one does not (the City Editions' Shotgun ammunition, a row the Current Printing leaves out) is added with its
+    text, the newest older printing's first, and listed in the import report (`printing-extra`). Not added: rules and
+    categories (NOT_EXTRA); an entry of an id the loaded printing gives another item; the same item under another id
+    (name and category); an item the loaded printing prints renamed (`Uzi V` for `Uzi IV`: an entry only it has, on the
+    same page of the same file, with all the printed values the older one has). prefix: the source scope of the ids in
+    `files` (a catalog on disk). (files, texts)."""
+    out, added = dict(files), []
+    for name in sorted({n for _, of, _ in olds for n in of if n not in NOT_EXTRA and files.get(n)}):
+        root = _parse(files[name])
+        mine = [e for e in root if isinstance(e.tag, str) and e.get("id")]
+        theirs = [(label, e) for label, of, _ in olds for e in _entries(of.get(name))]
+        uid = lambda e: e.get("id")[len(prefix):] if e.get("id").startswith(prefix) else e.get("id")  # noqa: E731
+        printed = {e.get("id") for _, e in theirs} | {_key(e) for _, e in theirs if e.get("category")}
+        lonely = [e for e in mine if uid(e) not in printed and not (e.get("category") and _key(e) in printed)]  # (only this printing has them)
+        ids, keys = {uid(e) for e in mine}, {_key(e) for e in mine if e.get("category")}
+        value = lambda e: {k: v for k, v in e.attrib.items() if k not in IDENTITY}  # noqa: E731
+        for label, e in theirs:
+            if e.get("id") in ids or e.get("category") and _key(e) in keys or any(
+                    e.get("page") == w.get("page") and value(e) and all(w.get(k) == v for k, v in value(e).items()) for w in lonely):
+                continue
+            e.tail = "\n"
+            root.append(e)
+            ids.add(e.get("id"))
+            keys.add(_key(e))
+            added.append((name, e, label))
+            out[name] = _dump(root)
+    if added:
+        said = {label: {(of, i): t for of, i, t in xmlio.texts_entries(tx)} for label, _, tx in olds if tx}
+        more = "".join(f"  <text of={quoteattr(n[:-4])} id={quoteattr(e.get('id'))}>{escape(said[label][n[:-4], e.get('id')])}</text>\n"
+                       for n, e, label in added if (n[:-4], e.get("id")) in said.get(label, ()))
+        if more and texts:
+            i = texts.rindex("</sr6:data>")
+            texts = texts[:i] + more + texts[i:]
+        for n, e, label in added:
+            if report is not None:
+                report.append({"kind": "printing-extra", "file": n, "id": e.get("id"), "name": e.findtext("name") or "",
+                               "page": e.get("page"), "printing": label})
+    return out, texts
+
+
 def _fills(out_dir, src, files):
     """Whether this printing's catalog (`files`, ids unscoped) prints a valid value of a field the loaded printing's
-    catalog (out_dir, on disk) leaves open or took from a printing (which may be older than this one)."""
+    catalog (out_dir, on disk) leaves open or took from a printing (which may be older than this one), or an entry it lacks."""
     reopen = lambda x: re.sub(r'<found field="([^"]+)" how="printing"[^>]*>[^<]*</found>', r'<issue field="\1" code="missing"/>', x)  # noqa: E731
     disk = {n: reopen(Path(out_dir, n).read_text(encoding="utf8")) for n in files if os.path.isfile(os.path.join(out_dir, n))}
-    return older_printings(disk, [("", files)], prefix=src.lower() + ".")[1] > 0
+    pre = src.lower() + "."
+    return older_printings(disk, [("", files)], prefix=pre)[1] > 0 or older_extras(disk, "", [("", files, "")], prefix=pre)[0] != disk
 
 
 def _corpus(book_dir, custom_dir):

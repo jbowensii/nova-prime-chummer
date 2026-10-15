@@ -128,9 +128,13 @@ Before an issue is written, the same book is searched (every recipe that reads t
 - **The corpus** (other books): the `Cyberprogram, <type>` and `Autosoft` rows price the other books' programs and
   autosofts by their type.
 
-The core rulebook's errata (Aug 2019, Feb 2020) predate the City Editions; their statements apply only to the 2019
-printing. A City Edition PDF carries no date, so a known printing is dated by its `PRINTINGS` month (resolve.py), never
-by its source's first printing: an errata older than the loaded printing is not applied.
+The core rulebook's errata (Aug 2019, Feb 2020) predate the City Editions; their statements apply to no City Edition. A
+City Edition PDF carries no date, so a known printing is dated by its `PRINTINGS` month (resolve.py), never by its
+source's first printing: an errata older than the loaded printing is not applied. The Current Printing (`CURRENT`)
+incorporates its errata (owner, 2026-10-15): an erratum there never replaces a value the printing prints (the Feb 2020
+Colt M23 cost 2,100 stays the printed 5,100), it only fills a field the printing leaves open (resolve.py `_apply_errata`).
+Of the City Editions, an item the Current Printing leaves out (Shotgun ammunition, the Armor cyberlimb accessory, Sim module
+w/ Hot sim, the Ritual Spellcasting formula) is added from them as an extra entry (run.py `older_extras`).
 
 ## Sections read as kinds (importer v3, sections.py)
 

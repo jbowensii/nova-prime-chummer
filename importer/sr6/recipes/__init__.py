@@ -27,6 +27,13 @@ def printing(sha):
     return None
 
 
+def current(sha):
+    """Whether a known printing is its book's Current Printing (a recipe's CURRENT): it incorporates its errata, so an
+    errata only fills what it leaves open (resolve.py)."""
+    p = printing(sha)
+    return bool(p and p[0][0])
+
+
 def published(sha):
     """The month (YYYY-MM) a known printing was published, or None (printing()'s rank leaves it out for a CURRENT one)."""
     p = printing(sha)

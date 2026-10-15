@@ -492,10 +492,19 @@ has the column: a summary table, a gear list in another chapter, the implant tab
 own description first), `corpus` (another source of the library: the same kind and name in another book, a card
 deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
 sources of one date that disagree leave the issue), `errata` (an errata PDF's statement on its own book, applied
-when the errata is newer than the printing; the text keeps the value it replaced), or `printing` (an older printing of
+when the errata is newer than the printing; the text keeps the value it replaced. A book's Current Printing
+(`recipes.crb.CURRENT`) already incorporates its errata, so an erratum never replaces a value it prints: it fills only a
+field the printing leaves open, whatever the dates, and renumbers or unrates nothing), or `printing` (an older printing of
 the same book, `importer/sr6/run.py` `older_printings`: field by field the latest printing wins, which for the core rulebook is its Current Printing (2019) before the Seattle, Berlin and Hong Kong City Editions (`recipes.crb.CURRENT`; another book ranks by publication month), and a field it leaves
 out or prints as no SR6 value takes the newest older printing's valid value; the text names that printing). `source` and `page` say where it is
-printed. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
+printed. Beyond fields, an older printing fills entries (`older_extras`, listed in import.xml as `printing-extra` rows):
+an item only an older printing prints (the Hong Kong City Edition's Shotgun ammunition, Armor cyberlimb accessory and Sim module
+w/ Hot sim, rows the Current Printing leaves out) is added with its text; not rules or table categories, not an item the
+loaded printing prints under another name (`Uzi V` for `Uzi IV`: an entry only it has, on the same page of the same file,
+with the same printed values), not one it has under another id. An item the loaded printing files under another id than
+an older printing (an id carries its category when another category of the file has the name: the focus `Ritual Spellcasting`
+is `foci.ritual-spellcasting` beside the Formula row, `ritual-spellcasting` without it) takes the older printing's id
+(`same_ids`), so a saved runner and the override rows keep naming it. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
 (an errata or card deck uploaded later counts too); a book removed leaves the values it gave other books until those
 are imported again.
 

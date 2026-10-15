@@ -184,6 +184,39 @@ class CorpusTest(unittest.TestCase):
                     self.assertEqual(resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")],
                                                     sources={"ZZA": "2019-08"})["errata"], 1)
 
+    def test_an_errata_never_overrides_the_current_printing_but_fills_what_it_leaves_open(self):
+        # (made up: the printing is its book's Current Printing, which incorporates its errata, so it keeps the value it
+        # prints, though the errata is newer than its PDF; an erratum fills a field it leaves open)
+        from unittest import mock
+
+        from importer.sr6.recipes import crb
+        sha = "e" * 64
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(crb.PRINTINGS, {sha: ("2019-08", "Made-Up Current Printing")}), \
+                mock.patch.object(crb, "CURRENT", (sha,)):
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, sha=sha, entries=[
+                '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>',
+                '<gear id="zza.sleek" source="ZZA" page="20" category="x" cost="50"><name>Spin Top (Sleek)</name>'
+                '<issue field="avail" code="missing" page="20" searched="book">no availability printed</issue></gear>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)",
+                  file="Zorp-Alpha-Errata.pdf",
+                  md="# Z ORP A LPHA E RRATA\nSpin Tops p. 20\n● Hardened: Availability 2\n● Sleek: Availability 3\n")
+            books = [(os.path.join(lib, d), custom) for d in ("a", "e")]
+            with mock.patch.object(resolve, "pdf_date", lambda pdf, md="": "2020-02-22" if os.sep + "e" + os.sep in pdf else "2019-08-25"):
+                n = resolve.corpus(books, sources={"ZZA": "2019-08"})
+                g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
+                self.assertEqual(n["errata"], 1)
+                self.assertEqual(g["zza.wobble"].get("avail"), "8")  # (printed: the erratum yields)
+                self.assertIsNone(g["zza.wobble"].find("found"))
+                self.assertEqual((g["zza.sleek"].get("avail"), g["zza.sleek"].find("found").get("how")), ("3", "errata"))  # (open: filled)
+                with mock.patch.object(crb, "CURRENT", ()):  # (a book with no Current Printing flag: the newer errata overrides)
+                    _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, sha=sha, entries=[
+                        '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'])
+                    resolve.corpus(books, sources={"ZZA": "2019-08"})
+                    g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
+                    self.assertEqual(g["zza.wobble"].get("avail"), "2")
+
     def test_an_errata_renumbering_unrating_and_reprinting_life_modules(self):
         md = "\n".join([
             "# Z ORP A LPHA E RRATA",

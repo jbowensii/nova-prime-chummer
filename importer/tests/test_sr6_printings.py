@@ -11,7 +11,7 @@ from unittest import mock
 
 from importer import xmlio
 from importer.sr6.recipes import crb, crb_city, printing, skipped
-from importer.sr6.run import remove, run
+from importer.sr6.run import older_extras, remove, run, same_ids
 from importer.tests.test_sr6_crb import BOOK_MD
 from importer.tests.test_sr6_crb_city import CITY, CITY_MD, SHA as CITY_SHA
 
@@ -23,6 +23,11 @@ PRINTINGS = {hashlib.sha256(b).hexdigest(): (month, label) for b, month, label i
 
 def _sha(b):
     return hashlib.sha256(b).hexdigest()
+
+
+def _data(kind, *rows):
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="%s">%s</sr6:data>\n'
+            % (kind, "".join(rows)))
 
 
 class PrintingsTest(unittest.TestCase):
@@ -62,6 +67,52 @@ class PrintingsTest(unittest.TestCase):
             self.assertEqual(self.status(new), ("superseded", "Superseded by Old Printing"))
             self.assertIn("crb.zap-gun", self.weapons())
             self.assertNotIn("crb.zip-gun", self.weapons())
+
+    def test_an_entry_only_an_older_printing_prints_is_added_to_the_loaded_one_in_either_order(self):
+        # (made up: the old printing prints a Zap Cannon row and its text the new one leaves out, and a Zip Gun that is
+        # the new one's Zap Gun renamed: the cannon is added, with its text, the renamed gun is not)
+        old_md = BOOK_MD.replace("Zap Gun", "Zip Gun").replace(
+            "| Zapp Rifle |", "| Zap Cannon | 7P | SS | 5/9/—/— | 5(m) | 6 | 6(I) | 5,000¥ |\n| Zapp Rifle |").replace(
+            "#### Zip Gun\n", "#### Zap Cannon\nA cannon that zaps a lot.\n#### Zip Gun\n")
+        for order in (("new", "old"), ("old", "new")):
+            with self.subTest(order=order):
+                self.setUp()
+                ds = {"new": self.book("a-new", NEW), "old": self.book("b-old", OLD, old_md)}
+                for k in order:
+                    run(ds[k], self.custom, convert_pdf=False)
+                w = {e.get("id"): e for e in ET.fromstring(self.weapons().encode("utf8"))}
+                self.assertIn("crb.zap-gun", w)
+                self.assertNotIn("crb.zip-gun", w)  # (renamed, not a gap)
+                self.assertEqual((w["crb.zap-cannon"].get("dv"), w["crb.zap-cannon"].get("cost")), ("7P", "5000"))
+                texts = Path(self.custom, "texts", "crb.xml").read_text(encoding="utf8")
+                self.assertIn('id="crb.zap-cannon"', texts)
+                self.assertIn("A cannon that zaps a lot.", texts)
+                self.assertEqual(self.status(ds["new"]), ("done", ""))
+                rep = [r for r in xmlio.read_import(ds["new"]).findall("report/row") if r.get("kind") == "printing-extra"]
+                self.assertEqual([(r.get("id"), r.get("printing")) for r in rep], [("zap-cannon", "Old Printing")])
+
+    def test_an_older_extra_is_not_added_when_the_loaded_printing_has_the_item_under_another_id(self):
+        files = {"gear.xml": _data("gear", '<gear id="focus" page="5" category="foci" cost="1"><name>Ritual</name></gear>')}
+        old = {"gear.xml": _data("gear", '<gear id="foci.ritual" page="5" category="foci" cost="1"><name>Ritual</name></gear>'
+                                         '<gear id="ritual" page="9" category="Formula" cost="2"><name>Ritual</name></gear>')}
+        olds = [("Old", old, "")]
+        got, _ = same_ids(files, "", olds)  # (the older printing's id for the focus: its Formula row took the bare one)
+        self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["foci.ritual"])
+        got, _ = older_extras(got, "", olds)  # (the Formula is another item: added, under its own id)
+        self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["foci.ritual", "ritual"])
+        again, _ = older_extras(got, "", olds)
+        self.assertEqual(again, got)  # (nothing more to add)
+
+    def test_same_ids_moves_the_text_with_the_id_and_leaves_ambiguous_names_alone(self):
+        files = {"gear.xml": _data("gear", '<gear id="a" page="5" category="x"><name>Twin</name></gear>'
+                                           '<gear id="a-2" page="6" category="x"><name>Twin</name></gear>'
+                                           '<gear id="b" page="7" category="x"><name>Solo</name></gear>')}
+        old = {"gear.xml": _data("gear", '<gear id="x.a" page="5" category="x"><name>Twin</name></gear>'
+                                         '<gear id="x.b" page="7" category="x"><name>Solo</name></gear>')}
+        texts = '<sr6:data><text of="gear" id="a">one</text><text of="gear" id="b">two</text></sr6:data>'
+        got, new_texts = same_ids(files, texts, [("Old", old, "")])
+        self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["a", "a-2", "x.b"])
+        self.assertEqual(new_texts, '<sr6:data><text of="gear" id="a">one</text><text of="gear" id="x.b">two</text></sr6:data>')
 
     def test_an_older_printing_imported_later_is_superseded(self):
         new = self.book("a-new", NEW)
