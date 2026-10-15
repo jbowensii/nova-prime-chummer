@@ -276,7 +276,7 @@ test('newEntryId and blankSr6Entry', () => {
     parts: COMP_KINDS.spirits!.lines!.map(tag => ({ tag, attrs: {}, text: '' })),
     text: '',
   })
-  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({})
+  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({ category: '', modonly: '' })
 })
 
 test('sr6EntryXml is unchanged for the edits layer (empty <text/>); the compendium writes the text and leaves out what is unset', () => {

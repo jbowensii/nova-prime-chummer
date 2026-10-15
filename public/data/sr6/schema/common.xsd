@@ -156,7 +156,7 @@
     <xs:attribute name="supplyOf" type="xs:string"/>
     <!-- bought only as an add-on to another item (Commlink6's modonly), a weapon's size class and the ammunition class it
          draws on -->
-    <xs:attribute name="modonly" type="xs:boolean"/>
+    <xs:attribute name="modonly" type="xs:string"/>
     <xs:attribute name="size" type="xs:string"/>
     <xs:attribute name="ammoClass" type="xs:string"/>
   </xs:attributeGroup>
@@ -589,7 +589,7 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="class" type="sr6:ClassKey"/>
       <xs:attribute name="type" type="xs:string" use="required"/>
-      <xs:attribute name="modonly" type="xs:boolean"/>
+      <xs:attribute name="modonly" type="xs:string"/>
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
@@ -856,7 +856,7 @@
   <xs:complexType name="Tagged">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string"/>
-      <xs:attribute name="modonly" type="xs:boolean"/>
+      <xs:attribute name="modonly" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
   <!-- an action: type (minor, major, edge, boost, as the section heading words it), timing (initiative or anytime: the
