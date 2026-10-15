@@ -319,6 +319,9 @@ def cl6_class(tag, attrs):
     return f"{t}/{s}" if t and s else t or tag
 
 
+NOT_FOR_SALE = (9999999.0, 999999999.0)  # (Commlink6's price for an item the books do not sell)
+
+
 def canonical(rec):
     """The canonical record of a reader record."""
     el, a, tag = rec["el"], rec["attrs"], rec["tag"]
@@ -330,7 +333,7 @@ def canonical(rec):
         pe, pt = attrdef(el, "PRICE")
         if pe is None:
             pe = a.get("price") or a.get("cost")
-        f["cost"] = per_rating(pe, pt, ratings)
+        f["cost"] = {r: (None if v in NOT_FOR_SALE else v) for r, v in per_rating(pe, pt, ratings).items()}  # (a price that says so compares nothing)
         f["cost_raw"] = pe
         f["cost_variants"] = _variant_values(el, "PRICE")
         f["avail_variants"] = [float(v[0]) for v in map(_avail, _variant_values(el, "AVAILABILITY", raw=True)) if v]

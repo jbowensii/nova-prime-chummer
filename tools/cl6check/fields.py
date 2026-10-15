@@ -160,8 +160,29 @@ def first3(s):
     return re.sub(r"[^a-z]", "", (s or "").lower())[:3]
 
 
-def compare(c, o):
-    """(compared fields, [diff]) of record c against our entry o."""
+def ammo_key(s):
+    """An ammo cell as Commlink6 writes it: the printed `32(d-2)`, `20 (power cell)`, `20(tanks)`, `1 barrel`, `12 x2(c)`
+    all read as `32(d)`, `20(c)`, `20(tank)`, `1(b)`, `12(c)/12(c)`, and `20(c) + Energy` as `20(c)`; spaces and a thousands
+    comma dropped. The printed value stays in the data."""
+    t = (s or "").lower()
+    t = re.sub(r"(?<=\))\s*\+\s*[a-z][a-z ]*$", "", t)
+    t = re.sub(r"\(\s*power\s+cell\s*\)", "(c)", t)
+    t = re.sub(r"(\d)\s*barrels?\b", r"\1(b)", t)
+    t = re.sub(r"\(\s*([a-z]+)\s*-\s*\d+\s*\)", r"(\1)", t)
+    t = re.sub(r"\(\s*tanks\s*\)", "(tank)", t)
+    t = re.sub(r"(\d+)\s*x\s*(\d+)\s*(\([a-z]+\))", lambda m: "/".join([f"{m.group(1)}{m.group(3)}"] * int(m.group(2))), t)
+    return re.sub(r"[\s()]|(?<=\d),(?=\d{3})", "", re.sub(r"\s+or\s+", "/", t))
+
+
+def printed_word(ours_s):
+    """Whether our cell prints a word (`Missiles Only`, `By Size / Class`, `Unlimited`, `*`) where Commlink6 has a number."""
+    t = (ours_s or "").strip()
+    return bool(t) and not O.NONE.match(t) and not re.search(r"\d", t)
+
+
+def compare(c, o, sib=()):
+    """(compared fields, [diff]) of record c against our entry o. sib: the entries of our source that are levels of the same
+    item (one entry per level or tier: the rating range is theirs together)."""
     f, a, k = c["fields"], o["attrs"], o["kind"]
     done, diffs = [], []
 
@@ -173,6 +194,9 @@ def compare(c, o):
             diffs.append(d)
 
     rs = ratings(c, a)
+    own = O.rating_range(a.get("rating"))
+    if own and own[0] == own[1] and own[0] in rs:
+        rs = [own[0]]  # (one item per level: compared at its own level, not at Commlink6's others)
     if "cost" in f and k in PRICED:
         cl = {r: f["cost"].get(r if r in f["cost"] else next(iter(f["cost"]))) for r in rs}
         add("cost", _num_field("cost", a.get("cost"), cl, f.get("cost_variants", ()), formula_values(a, "cost", list(cl))))
@@ -196,6 +220,9 @@ def compare(c, o):
     if f.get("rating") and k in PRICED:
         lo, hi = f["rating"]
         mine = O.rating_range(a.get("rating"))
+        for x in sib:  # (the tiers of one item, 1-4, 5-8, 9: Commlink6's range is theirs together)
+            m = O.rating_range(x["attrs"].get("rating"))
+            mine = (min(mine[0], m[0]), max(mine[1], m[1])) if mine and m else mine or m
         q = re.search(r"\|count=(\d+)-(\d+)", a.get("formula:cost") or "")
         if q and int(q.group(2)) == hi:  # a per-unit price's count range: Commlink6 counts it as the rating
             mine = (int(q.group(1)), hi)
@@ -221,15 +248,17 @@ def compare(c, o):
         if f.get("dv") and not f["dv"].startswith("0"):
             add("dv", _str_field("dv", a.get("dv"), f["dv"], nd))
         if f.get("ar"):
-            add("ar", _str_field("ar", a.get("ar"), f["ar"], bands))
+            if not (not re.search(r"\d", f["ar"]) and printed_word(a.get("ar"))):  # (Commlink6 has none where the book prints a word)
+                add("ar", _str_field("ar", a.get("ar"), f["ar"], bands))
         if f.get("modes"):
             nm = lambda s: frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", up_to(s)).upper()) if t)
             add("modes", _str_field("modes", a.get("modes"), f["modes"], nm, tokens=False))
         if f.get("ammo"):
-            # (a cell printing the magazine and what else the weapon draws on, `20(c) + Energy`, prints its ammo)
-            na = lambda s: re.sub(r"[\s()]|(?<=\d),(?=\d{3})", "", re.sub(r"\s+or\s+", "/", re.sub(
-                r"(?<=\))\s*\+\s*[a-z][a-z ]*$", "", (s or "").lower())))
-            add("ammo", _str_field("ammo", a.get("ammo"), f["ammo"], na))
+            cl = f["ammo"]
+            zero = re.fullmatch(r"0\s*(\(\w+\))?", cl.strip()) and printed_word(a.get("ammo"))  # (0 where the book prints `Unlimited`)
+            bare = re.fullmatch(r"\d+", cl.strip()) and re.match(rf"\s*{cl.strip()}\s*\(", a.get("ammo") or "")  # (the count; Commlink6 leaves the unit)
+            if not (zero or bare):
+                add("ammo", _str_field("ammo", a.get("ammo"), cl, ammo_key))
     if f.get("defense") and k == "armor":
         add("defense", _num_field("defense", (a.get("defense") or "").lstrip("+") or None,
                                   {None: float(re.sub(r"[^\d.]", "", f["defense"]) or 0)}))

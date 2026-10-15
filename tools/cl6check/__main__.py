@@ -15,6 +15,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -24,6 +25,34 @@ from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, pat
 from tools.cl6check import optional as optional_package
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+LEVEL = re.compile(r"-(?:level-|rating-)?\d+$")  # (an id's level suffix: one entry per level)
+RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")
+
+
+def _same(fam, cl, h, shared):
+    """Whether our entry h holds family `fam` as Commlink6's record does. variants: equal too when the entry's name carries
+    one of Commlink6's variant names (one item per variant, the owner's rule). slots: when Commlink6 makes two records of
+    the item (`shared`), each record's set is a part of ours."""
+    mine = h["families"].get(fam)
+    if mine == cl:
+        return True
+    if fam == "variants":
+        return ours.carries(h["name"], cl)
+    return fam == "slots" and shared and isinstance(mine, (set, frozenset)) and set(cl) <= set(mine)
+
+
+def _levels(c, hits, entries):
+    """The entries a record is compared with: when it hits one level of an item (`Cybereyes (Rating 6)`), any level of
+    that item, the one it agrees with most (Commlink6 and the book number advanced cyberware's levels differently; ties
+    keep the entry matched by name)."""
+    if not hits or not all(RATED.search(h["name"]) for h in hits):
+        return hits
+    base = {(h["kind"], RATED.sub("", h["name"]).casefold()) for h in hits}
+    sib = [e for e in entries if (e["kind"], RATED.sub("", e["name"]).casefold()) in base and RATED.search(e["name"])]
+    best = min(len(fields.compare(c, e)[1]) for e in sib)
+    return hits if min(len(fields.compare(c, h)[1]) for h in hits) <= best else [min(sib, key=lambda e: len(fields.compare(c, e)[1]))]
 
 
 def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None):
@@ -50,13 +79,22 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
                   for c in recs if (src, c["id"]) in relocated]
         found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        stems = defaultdict(list)  # (the entries that are levels or tiers of one item: wired-reflexes-1, -2 …)
+        for e in entries:
+            stems[e["kind"], LEVEL.sub("", e["id"])].append(e)
+        owners = defaultdict(int)  # (the Commlink6 records an entry answers: an item Commlink6 makes two records of)
+        for _, hits, _ in found:
+            for h in hits:
+                owners[id(h)] += 1
         for c, hits, how in found:
+            first, hits = hits, _levels(c, hits, entries)
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
-            o = min(hits, key=lambda h: len(fields.compare(c, h)[1])) if hits else None
+            sib = lambda h: stems[h["kind"], LEVEL.sub("", h["id"])] if len(stems[h["kind"], LEVEL.sub("", h["id"])]) > 1 else ()  # noqa: E731
+            o = min(hits, key=lambda h: len(fields.compare(c, h, sib(h))[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
                 "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
-                "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
+                "families": {f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1) for h in hits)
                              for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
                              and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
                 "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
@@ -66,14 +104,16 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
                 r["excluded"] = "page beyond the owned PDF"
+            if how == "optional package" and not hits:
+                r["families"] = {}  # (not in the shipped data: no entry of ours to hold a family)
             if o and how == "already have":  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
                 r["families"] = {}
                 results.append(r)
                 continue
             if o:
-                matched.update(id(h) for h in hits)
+                matched.update(id(h) for h in [*first, *hits])
                 pairs.append((c, o))
-                r["compared"], r["diffs"] = fields.compare(c, o)
+                r["compared"], r["diffs"] = fields.compare(c, o, sib(o))
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
                     if d["class"] == "c" and (c["src"], o["kind"], o["id"], d["field"]) in keep:
