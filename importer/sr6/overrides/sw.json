@@ -9,6 +9,7 @@
   {"cl6": "Boom Stick Extreme!", "kind": "gear", "id": "boomstick-boomstick-extreme", "set": {"avail": "6(L)"}, "gen": "value"},
   {"cl6": "Don't Piss Off The Kitchen Staff", "kind": "gear", "id": "dont-piss-off-the-kitchen-staff", "set": {"avail": "6(L)"}, "gen": "value"},
   {"cl6": "Four Eyes Are Better Than Two", "kind": "gear", "id": "four-eyes-are-better-than-two", "set": {"avail": "6(L)"}, "gen": "value"},
+  {"cl6": "Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "rename": "Metamagic Focus: Athame"},
   {"cl6": "Analytics", "kind": "adeptpowers", "id": "analytics", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "ATTRIBUTE", "ref": "LOGIC", "value": "1", "what": "EDGE_ONLY_TEST", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Attribute Boost: Mental", "kind": "adeptpowers", "id": "attribute-boost-mental", "kids": [{"tag": "selection", "attrs": {"type": "ATTRIBUTE", "options": "CHARISMA,LOGIC,INTUITION,WILLPOWER"}}], "gen": "family"},
   {"cl6": "Blind Fighting", "kind": "adeptpowers", "id": "blind-fighting", "kids": [{"tag": "relevance", "attrs": {"topic": "combat"}}], "gen": "family"},
@@ -69,6 +70,5 @@
   {"cl6": "Ram", "kind": "spells", "id": "ram-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Slay", "kind": "spells", "id": "slay-target", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Sludge", "kind": "spells", "id": "sludge-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
-  {"cl6": "Wreck", "kind": "spells", "id": "wreck-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
-  {"cl6": "Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "rename": "Metamagic Focus: Athame"}
+  {"cl6": "Wreck", "kind": "spells", "id": "wreck-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"}
 ]

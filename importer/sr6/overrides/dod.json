@@ -23,5 +23,8 @@
   {"cl6": "For A Higher Purpose", "kind": "qualities", "id": "for-a-higher-purpose", "kids": [{"tag": "modifier", "attrs": {"kind": "itemmod", "type": "RULE", "ref": "PAIN_TOLERANCE_LOWER_MOD"}}], "gen": "family"},
   {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"skill": "Firearms", "spec": "Rifles"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
   {"cl6": "Tiffany Elegance Bracelet", "kind": "weapons", "id": "tiffani-elegance-dart-bracelet", "set": {"skill": "Firearms", "spec": "Pistols Light", "size": "Tiny"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
-  {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"skill": "Exotic Weapons", "spec": "Air", "size": "Tiny"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"}
+  {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"skill": "Exotic Weapons", "spec": "Air", "size": "Tiny"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
+  {"cl6": "H&K Urban Stinger Druckluftkartusche (50x)", "kind": "gear", "id": "h-k-urban-stinger-druckluftkartusche-50x", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "GEAR", "ref": "hk_urban_stinger", "apply": "CHARACTER"}}], "gen": "family"},
+  {"cl6": "H&K Urban Stinger Pfeile (10x)", "kind": "gear", "id": "h-k-urban-stinger-pfeile-10x", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "GEAR", "ref": "hk_urban_stinger", "apply": "CHARACTER"}}], "gen": "family"},
+  {"cl6": "Makarov V22.2 Kalte Munition (10x)", "kind": "gear", "id": "makarov-v22-2-kalte-munition-10x", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "GEAR", "ref": "makarov22", "apply": "CHARACTER"}}], "gen": "family"}
 ]
