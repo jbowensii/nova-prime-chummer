@@ -114,21 +114,6 @@ SLASH_FORMAT = {"handling", "seats"}
 MATERIAL_ADD_ON = "Ammunition accessory"  # (its category: fits the ammunition kind, categories.KIND_WORDS)
 
 
-_MONEY = re.compile(r"(?:rating\s*[x×]\s*)?[\d,.]+\s*¥", re.I)
-
-
-def _no_avail(cols, cells):
-    """A row printed with no Availability (the critter cyberlimb table: `8 | 1 | 15,000¥ | 4,500¥` under CAPACITY ESS AVAIL
-    COST): money under AVAIL and money or nothing under COST -> (the cells with AVAIL empty and the first price under COST,
-    the second price or "")."""
-    av = [h for h in cells if cols.get(h.upper()) == "avail"]
-    co = [h for h in cells if cols.get(h.upper()) == "cost"]
-    if len(av) == len(co) == 1 and _MONEY.fullmatch(cells[av[0]].strip()) and (
-            not cells[co[0]].strip() or _MONEY.fullmatch(cells[co[0]].strip())):
-        return {**cells, av[0]: "", co[0]: cells[av[0]]}, cells[co[0]].strip()
-    return cells, ""
-
-
 def printed_value(attr, v):
     v = " ".join(str(v).split())
     if re.fullmatch(r"[-–—]+|n/a", v, re.I):
@@ -507,10 +492,7 @@ class Catalog:
         A "<VARIANT> COST (CAPACITY)" column gives that variant's price and capacity (`variant:<variant>`), a
         "COST (PER <unit>)" column the cost and its unit (`per`)."""
         cols, out = HEADERS[kind], {}
-        row = dict(list(b.row.items())[1:]) if b.row else {}
-        # (an implant row only: a weapon's or vehicle's money under AVAIL is a misprint the search circles repair)
-        row, second = _no_avail(cols, row) if kind == "augmentations" else (row, "")
-        tables = ([row] if b.row else []) + list(b.stats)
+        tables = ([dict(list(b.row.items())[1:])] if b.row else []) + list(b.stats)
         for t in tables:
             for h, v in t.items():
                 hu = h.upper()
@@ -546,8 +528,6 @@ class Catalog:
                 and m.group(1).count("(") == m.group(1).count(")"):  # (not `2,000¥ (+500¥ per additional dart)`)
             out["cost"] = m.group(1)  # "50 per 100m"; "15 per 10" under a COST (PER 10 ROUNDS) column
             out.setdefault("per", m.group(2))
-        if second:
-            out.setdefault("_notes", []).append(("cost", f"also printed: {second}"))
         for a, v in list(out.items()):  # a footnote mark on a cell (`10/6*/—`): the footnote is the field's note
             if a != "prose" and isinstance(v, str) and (m := _MARK.search(v)) and _MARK.sub("", v).strip() \
                     and (note := footnote(b.text, m.group(1))):

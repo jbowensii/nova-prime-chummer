@@ -32,6 +32,7 @@ Every file has the same root, and one file holds one kind:
   the rating the item is bought at: numbers, `Rating` (also `Capacity`, `Force` or `Level`, any case: the same
   rating), `+`, `×`/`x`/`*`, `/` (rounded up), `^` and parentheses, an optional leading `+` (an add-on's price) and a
   legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
+  A nuyen amount printed under AVAIL (`15,000¥`) is a licence price ("available with licence"): it stays in `avail` as printed (the app shows it, does not evaluate it), never moved to `cost`.
   `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
   `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
