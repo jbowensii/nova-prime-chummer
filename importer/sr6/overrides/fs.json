@@ -158,6 +158,7 @@
   {"cl6": "Zapper Coating", "kind": "weapons", "id": "zapper-coating", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Glowcoat", "kind": "weapons", "id": "glowcoat", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Dynamic Tension System", "kind": "weapons", "id": "dynamic-tension-system", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Weapon Security System", "kind": "gear", "id": "weapon-security-system", "set": {"avail": "2"}, "gen": "owner"},
   {"cl6": "MEMS Basic Harness", "kind": "armor", "id": "modular-equipment-mounting-system-mems-mems-harness", "set": {"capacity": "20"}, "gen": "value"},
   {"cl6": "Colt Arms 24 Arm Brace", "kind": "gear", "id": "colt-arms-m-24-stabilizing-arm-brace", "set": {"cost": "750", "avail": "4"}, "gen": "value"},
   {"cl6": "Depreciated WSS explosive, replace with new modification", "kind": "gear", "id": "explosive", "set": {"dv": "10P"}, "gen": "value"},
