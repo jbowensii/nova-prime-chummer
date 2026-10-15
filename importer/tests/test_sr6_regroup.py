@@ -550,6 +550,12 @@ class RepairRowTest(unittest.TestCase):
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "7,500¥", "17,500¥"]
         self.assertEqual(regroup._repair_row(self.H, row), row)
 
+    def test_the_essence_run_into_the_name_goes_back_to_its_column(self):
+        h = ["AUGMENTATION", "ESS", "AVAIL", "COST"]
+        self.assertEqual(regroup._repair_row(h, ["Glow proof 0.2", "2(L)", "5,000¥", ""]), ["Glow proof", "0.2", "2(L)", "5,000¥"])
+        row = ["Fizz mod 0.2", "0.1", "2(L)", "5,000¥"]  # (every cell where it belongs: the name keeps its number)
+        self.assertEqual(regroup._repair_row(h, row), row)
+
     def test_no_split_that_fits_leaves_the_row_as_printed(self):
         row = ["Quux", "4P", "weird", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertEqual(regroup._repair_row(self.H, row), row)
@@ -711,6 +717,23 @@ class RowGroupsAndSubTablesTest(unittest.TestCase):
         got = {n: (self.items[n].label, self.items[n].table) for n in ("Glow widget", "Zap plan", "Zorp dust")}
         self.assertEqual(got, {"Glow widget": ("widgets", "zorp gear table"), "Zap plan": ("plans", "zorp gear table"),
                                "Zorp dust": ("supplies", "zorp gear table")})
+
+
+class VariantRunTest(unittest.TestCase):
+    """Made-up rows: lower-case variants under a name-only row, and an indented name-only row inside a group."""
+
+    def test_a_run_of_lower_case_variants_hangs_on_the_row_above_not_on_each_other(self):
+        rows = [["Zap shield", "", ""], ["slashing", "2P", "5"], ["bashing", "3S", "5"], ["Plain gun", "4P", "2"]]
+        self.assertEqual([r[0] for r in regroup._rating_groups(rows)],
+                         ["Zap shield", "Zap shield slashing", "Zap shield bashing", "Plain gun"])
+
+    def test_an_indented_name_only_row_heads_the_indented_rows_after_it(self):
+        ind = chr(0xa0) * 2
+        lines = ["| Zorp |  |", f"| {ind}Blade | 3P |", f"| {ind}Fizz |  |", f"| {ind}Hot (rating 1-3) | 2P |",
+                 f"| {ind}Cold | 1P |", "| Lone | 1P |"]
+        got = [(r[0], r.group) for r in regroup._row_groups(lines, [regroup._cells(ln) for ln in lines])]
+        self.assertEqual(got, [("Zorp", ""), ("Blade", "Zorp"), ("Fizz", "Zorp"), ("Hot (rating 1-3)", "Fizz"),
+                               ("Cold", "Fizz"), ("Lone", "")])
 
 
 class SidebarAndNestedGroupsTest(unittest.TestCase):

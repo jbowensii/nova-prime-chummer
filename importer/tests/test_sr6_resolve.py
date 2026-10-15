@@ -61,6 +61,8 @@ class BookCirclesTest(unittest.TestCase):
         self.assertTrue(search.names_item("Glim mic", "Glim microphone"))
         self.assertTrue(search.names_item("ZX-48", "Bloop ZX-48 Thunderer"))
         self.assertFalse(search.names_item("Blade", "Zorp Blade"))  # one word with no digit: too loose
+        self.assertTrue(search.names_item("Z-ICE: Nope!", "Nope!"))  # a row printed with its line's name in front
+        self.assertFalse(search.names_item("Z-ICE: Nope!", "Zing"))
 
 
 class ErrataTest(unittest.TestCase):

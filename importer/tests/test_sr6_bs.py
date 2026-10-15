@@ -83,6 +83,13 @@ Made-up fur.
 | TYPE | ESS | AVAL | COST |
 |---|---|---|---|
 | Fur Pack | 0.3 | 5(L) | 7,000¥ |
+## Made-Up Limbs
+#### critter limbs
+| CYBERLIMB | CAPACITY | ESS | AVAIL | COST |
+|---|---|---|---|---|
+| Zap Limb, Synthetic | 8 | 1 | 15,000¥ |  |
+| Zap Limb, Obvious | 16 | 1 | 10,000¥ | Rating x 5,000¥ |
+| Zap Stump | — | 0.5 | 2 | 1,000¥ |
 ## Made-Up Nanohives
 #### Tiny Hive
 A made-up hive.
@@ -175,6 +182,14 @@ class BsRecipeTest(unittest.TestCase):
         x = effects.apply(self.res.files, self.res.texts, "")[0]["augmentations.xml"]  # (the effects pass, as run.py runs it)
         self.assertIn('<effect target="test:surprise" op="edge" value="1"/>', x.split('<name>Basic</name>')[1].split("</augmentation>")[0])
         self.assertIn('<effect target="test:defense" op="add" value="R"/>', x.split('<name>Tactical</name>')[1].split("</augmentation>")[0])
+
+    def test_a_row_printed_with_no_availability_has_its_price_as_cost(self):
+        # (the critter cyberlimb table: the first price sits under AVAIL, a second one under COST)
+        a = entries(self.res, "augmentations")
+        self.assertEqual((a["Zap Limb, Synthetic"].get("avail"), a["Zap Limb, Synthetic"]["cost"]), (None, "15000"))
+        self.assertEqual((a["Zap Limb, Obvious"].get("avail"), a["Zap Limb, Obvious"]["cost"]), (None, "10000"))
+        self.assertIn('<note field="cost">also printed: Rating x 5,000¥</note>', self.res.files["augmentations.xml"])
+        self.assertEqual((a["Zap Stump"]["avail"], a["Zap Stump"]["cost"]), ("2", "1000"))  # (a row that reads stays)
 
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")

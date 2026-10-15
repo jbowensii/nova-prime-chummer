@@ -198,6 +198,8 @@ def _row_groups(lines, rows):
         if bare and name and j < len(raw) and raw[j][1] and not raw[i][1]:
             while j < len(raw) and raw[j][1]:
                 group[j] = name
+                if raw[j][3] and re.match(r"[^\W_]", raw[j][0]):
+                    name = raw[j][0]  # (an indented name-only row heads the indented rows after it: `Biosprayer` in `Biospike`)
                 j += 1
         elif bare and bold and name and j < len(raw) and not raw[j][1] and not raw[j][2] and not raw[j][3]:
             shape = raw[j][4]
@@ -623,7 +625,12 @@ def _repair_row(header, row):
     """A row the converter set with two cells run into one (`SS(1)—/14/20/22/18(4km)`: the mode and the attack
     ratings), every later cell one column to the left and a stray cell at its end: the run-together cell is split
     where both halves fit their columns' shapes (_COLUMN_SHAPES), the later cells move back into place and the stray
-    one goes. Only when every shaped cell then fits; otherwise the row stays as printed."""
+    one goes. Only when every shaped cell then fits; otherwise the row stays as printed. The converse: the Essence run into
+    the name (`Nonconductive 0.2 | 2(L) | 5,000¥ |`, every later cell one column to the left, the last one empty)."""
+    if len(row) == len(header) > 3 and "ESS" in header[1].upper() and not row[-1].strip() \
+            and (m := re.fullmatch(r"(.*\S)\s+(\d*\.\d+)", row[0].strip())) \
+            and all(_shape(h) and _fits(h, v) for h, v in zip(header[2:], row[1:-1])):
+        return [m.group(1), m.group(2)] + row[1:-1]
     if len(row) not in (len(header), len(header) - 1) or all(_fits(h, v) for h, v in zip(header, row)):
         return row
     for i in range(1, min(len(row), len(header) - 1)):
@@ -1360,12 +1367,15 @@ def _rating_groups(rows, first=None):
     """A row with only its name (`Cyberears basic system`) over `Rating N` rows: those rows are `<name> (Rating N)`,
     and the name-only row goes; `Rating N` rows with no such row are `<first> (Rating N)` (first: the table's first
     header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above; not a model code (`m60`)."""
-    out, group, outer = [], first, None
+    out, group, outer, base = [], first, None, None
     bare = lambda r: bool(r and r[0] and not any(r[1:]) and not _RATING_ROW.match(r[0]))
     for i, r in enumerate(rows):
         if r and r[0][:1].islower() and not re.match(r"[a-z]+-?\d", r[0]) and out and out[-1][0]:
-            out.append([f"{out[-1][0]} {r[0]}"] + list(r[1:]))
-        elif r and r[0] and not any(r[1:]):
+            base = base or out[-1][0]  # (a run of variants hangs on the row above it: `Wrist shield` + `slashing`, `bashing`)
+            out.append([f"{base} {r[0]}"] + list(r[1:]))
+            continue
+        base = None
+        if r and r[0] and not any(r[1:]):
             # a name-only row right over another (`Cyberjack Boosters` over `Data Processing` over its `Rating N`
             # rows): a group of groups, its name before theirs until a priced row of another shape
             if i + 1 < len(rows) and bare(rows[i + 1]) and outer is None:

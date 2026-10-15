@@ -637,5 +637,9 @@
   {"cl6": "Walther Palm Pistol", "kind": "weapons", "id": "walther-palm-pistol", "set": {"skill": "Firearms", "spec": "Holdouts"}, "gen": "family"},
   {"cl6": "Yamaha Pulsar I", "kind": "weapons", "id": "yamaha-pulsar-i", "set": {"skill": "Firearms", "spec": "Tasers"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}], "gen": "family"},
   {"cl6": "Yamaha Pulsar II", "kind": "weapons", "id": "yamaha-pulsar-ii", "set": {"skill": "Firearms", "spec": "Tasers"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}], "gen": "family"},
-  {"cl6": "Yamaha Raiden", "kind": "weapons", "id": "yamaha-raiden", "set": {"skill": "Firearms", "spec": "Rifles"}, "kids": [{"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "under-weapon-mount"}}], "gen": "family"}
+  {"cl6": "Yamaha Raiden", "kind": "weapons", "id": "yamaha-raiden", "set": {"skill": "Firearms", "spec": "Rifles"}, "kids": [{"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "under-weapon-mount"}}], "gen": "family"},
+  {"cl6": "Ares Alpha Grenade Launcher", "kind": "weapons", "id": "grenade-launcher", "rename": "Ares Alpha Grenade Launcher"},
+  {"cl6": "Yamaha Raiden Grenade Launcher", "kind": "weapons", "id": "grenade-launcher-2", "rename": "Yamaha Raiden Grenade Launcher"},
+  {"cl6": "Shock limb", "kind": "weapons", "id": "shock", "rename": "Shock limb"},
+  {"cl6": "Skillsofts", "kind": "gear", "id": "skillsofts", "remove": true}
 ]

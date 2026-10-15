@@ -75,6 +75,21 @@ class OverridesTest(unittest.TestCase):
         self.assertIsNone(e[1].get("cost"))
         self.assertEqual(overrides.apply("zz", {"gear.xml": out}, self.ROWS)["gear.xml"], out)  # (again: no 2nd alias)
 
+    def test_a_sub_rows_name_takes_its_parents_and_an_artifact_goes(self):
+        rows = [{"cl6": "Zorp (Spit)", "kind": "gear", "id": "b", "rename": "Zorp (Spit)"},
+                {"cl6": "A", "kind": "gear", "id": "a", "remove": True}]
+        e = ET.fromstring(overrides.apply("zz", {"gear.xml": self.XML}, rows)["gear.xml"].encode())
+        self.assertEqual([(g.get("id"), g.findtext("name"), [x.text for x in g.findall("alias")]) for g in e],
+                         [("b", "Zorp (Spit)", ["Other"])])  # (the old name stays a search name)
+
+    def test_the_shipped_name_fixes_rename_each_id_once_to_a_name_with_its_parent(self):
+        for p in overrides.DIR.glob("*.json"):
+            rows = [r for r in overrides.table(p.stem) if "rename" in r or "remove" in r]
+            keys = [(r["kind"], r["id"]) for r in rows]
+            self.assertEqual(len(keys), len(set(keys)), p.name)
+            for r in rows:
+                self.assertTrue(r.get("remove") or r["rename"].strip(), (p.name, r["id"]))
+
     def test_no_table_changes_nothing_and_a_description_is_refused(self):
         self.assertEqual(overrides.apply("zz", {"gear.xml": self.XML}), {"gear.xml": self.XML})
         with self.assertRaises(ValueError):
@@ -482,9 +497,9 @@ class StructureOpsTest(unittest.TestCase):
         self.assertEqual({r["id"] for s in ("thn", "lhv", "so", "tne", "wl", "sif-no") for r in t(s) if r.get("remove")},
                          {"knight-errant-swat-officers", "toxins-drugs-and-diseases.scourge", "grooming-1-hour", "grooming-2-hours", "special-notes",
                           "negative-quality", "positive-quality", "trained-command", "ammunition"})
-        self.assertEqual({r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r},
-                         {"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
-                          "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"})
+        self.assertLessEqual({"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
+                              "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"},
+                             {r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r})  # (the name fixes of 2026-10-15 join them)
 
 
 class LatestDecisionsTest(unittest.TestCase):

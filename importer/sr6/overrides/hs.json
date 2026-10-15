@@ -192,5 +192,14 @@
   {"cl6": "Stream: Technoshamans", "kind": "qualities", "id": "technoshamans", "kids": [{"tag": "modifier", "attrs": {"kind": "itemmod", "type": "METAECHO", "apply": "CHARACTER", "ref": "hybrid_sprites"}}, {"tag": "modifier", "attrs": {"kind": "allowmod", "type": "COMPLEX_FORM", "ref": "control_virtual_life"}}], "gen": "family"},
   {"cl6": "Cyberadept", "kind": "qualitypaths", "id": "cyberadept", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "cyberadept", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Ascalon Rail Gun Turret", "kind": "weapons", "id": "ascalon-rail-gun", "set": {"skill": "Firearms", "spec": "Assault Cannons"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "under"}}, {"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "BODY", "value": "16", "apply": "PARENT"}}], "gen": "family"},
-  {"cl6": "Ascalon Sabot", "kind": "weapons", "id": "ascalon-sabot", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "AMMUNITION_CLASS", "value": "ASSAULT_CANNON", "apply": "DATA_ITEM"}}], "gen": "family"}
+  {"cl6": "Ascalon Sabot", "kind": "weapons", "id": "ascalon-sabot", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "AMMUNITION_CLASS", "value": "ASSAULT_CANNON", "apply": "DATA_ITEM"}}], "gen": "family"},
+  {"cl6": "Bricks (Rating 1–3)", "kind": "gear", "id": "bricks", "rename": "Bricks (Rating 1–3)"},
+  {"cl6": "Bricks (Rating 4–6)", "kind": "gear", "id": "bricks-2", "rename": "Bricks (Rating 4–6)"},
+  {"cl6": "Bricks (Rating 7–9)", "kind": "gear", "id": "bricks-3", "rename": "Bricks (Rating 7–9)"},
+  {"cl6": "Bricks (Rating 10–12)", "kind": "gear", "id": "bricks-4", "rename": "Bricks (Rating 10–12)"},
+  {"cl6": "P-ICE: Nope!", "kind": "programs", "id": "nope", "rename": "P-ICE: Nope!"},
+  {"cl6": "P-ICE: Spines", "kind": "programs", "id": "spines", "rename": "P-ICE: Spines"},
+  {"cl6": "P-ICE: Watchdog", "kind": "programs", "id": "watchdog", "rename": "P-ICE: Watchdog"},
+  {"cl6": "P-ICE", "kind": "programs", "id": "p-ice", "remove": true},
+  {"cl6": "Fade Value", "kind": "programs", "id": "fade-value", "remove": true}
 ]

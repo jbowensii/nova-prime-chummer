@@ -48,7 +48,7 @@ def names_item(row, name):
     r, n = norm(row), norm(name)
     if not r or not n:
         return False
-    if r == n:
+    if r == n or ":" in row and norm(row.split(":", 1)[1]) == n:  # (`P-ICE: Nope!` prices the app `Nope!`)
         return True
     rw, nw = r.split(), n.split()
     if len(rw) < len(nw) and (len(rw) > 1 or re.search(r"\d", r)) and re.search(rf"(?:^| ){re.escape(r)}(?: |$)", n):

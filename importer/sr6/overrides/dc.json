@@ -342,5 +342,6 @@
   {"cl6": "Zodiac Whisper", "kind": "vehicles", "id": "zodiac-whisper", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-chassis", "value": "-3"}}, {"tag": "slot", "attrs": {"id": "vehicle-electronics"}}, {"tag": "slot", "attrs": {"id": "vehicle-hardpoint"}}, {"tag": "slot", "attrs": {"id": "vehicle-cf"}}], "gen": "family"},
   {"cl6": "Zodiac Whisper Military", "kind": "vehicles", "id": "zodiac-whisper-military", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-electronics", "value": "-5"}}, {"tag": "slot", "attrs": {"id": "vehicle-chassis", "value": "-3"}}, {"tag": "slot", "attrs": {"id": "vehicle-hardpoint"}}, {"tag": "slot", "attrs": {"id": "vehicle-cf"}}], "gen": "family"},
   {"cl6": "Launcher", "kind": "weapons", "id": "launcher", "set": {"skill": "Exotic Weapons", "spec": "Launchers", "modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
-  {"cl6": "Micro Launcher", "kind": "weapons", "id": "micro-launcher", "set": {"skill": "Exotic Weapons", "spec": "Launchers", "modonly": "true"}, "gen": "family"}
+  {"cl6": "Micro Launcher", "kind": "weapons", "id": "micro-launcher", "set": {"skill": "Exotic Weapons", "spec": "Launchers", "modonly": "true"}, "gen": "family"},
+  {"cl6": "RCC Headware", "kind": "augmentations", "id": "rcc", "rename": "RCC Headware"}
 ]

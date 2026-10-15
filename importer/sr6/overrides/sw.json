@@ -69,5 +69,6 @@
   {"cl6": "Ram", "kind": "spells", "id": "ram-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Slay", "kind": "spells", "id": "slay-target", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Sludge", "kind": "spells", "id": "sludge-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
-  {"cl6": "Wreck", "kind": "spells", "id": "wreck-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"}
+  {"cl6": "Wreck", "kind": "spells", "id": "wreck-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
+  {"cl6": "Metamagic Focus: Athame", "kind": "gear", "id": "new-metamagic-focus-athame", "rename": "Metamagic Focus: Athame"}
 ]

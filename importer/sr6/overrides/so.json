@@ -77,5 +77,10 @@
   {"cl6": "Poker Face", "kind": "qualities", "id": "poker-face", "kids": [{"tag": "relevance", "attrs": {"topic": "social"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "ATTRIBUTE", "ref": "COMPOSURE", "what": "EDGE", "value": "1", "apply": "CHARACTER", "cond": "y"}}], "gen": "family"},
   {"cl6": "Practiced Paranoia", "kind": "qualities", "id": "practiced-paranoia", "kids": [{"tag": "relevance", "attrs": {"topic": "social"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "ATTRIBUTE", "ref": "JUDGE_INTENTIONS", "what": "EDGE", "value": "1", "apply": "CHARACTER", "cond": "y"}}], "gen": "family"},
   {"cl6": "Signature Maneuver Upgrade", "kind": "qualities", "id": "signature-maneuver-upgrade", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "signature_maneuver"}}, {"tag": "selection", "attrs": {"type": "SIGNATURE_MANEUVERS"}}], "gen": "family"},
-  {"cl6": "Supportive Follower", "kind": "qualities", "id": "supportive-follower", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "con", "value": "3"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "influence", "value": "3"}}], "gen": "family"}
+  {"cl6": "Supportive Follower", "kind": "qualities", "id": "supportive-follower", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "con", "value": "3"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "influence", "value": "3"}}], "gen": "family"},
+  {"cl6": "Shadowland BBS (Free!)", "kind": "gear", "id": "free", "rename": "Shadowland BBS (Free!)"},
+  {"cl6": "Shadowland BBS (Basic)", "kind": "gear", "id": "basic", "rename": "Shadowland BBS (Basic)"},
+  {"cl6": "Shadowland BBS (Premium)", "kind": "gear", "id": "premium", "rename": "Shadowland BBS (Premium)"},
+  {"cl6": "Shadowland BBS (VIP)", "kind": "gear", "id": "vip", "rename": "Shadowland BBS (VIP)"},
+  {"cl6": "Shadowland BBS (Single use, Basic)", "kind": "gear", "id": "single-use-basic", "rename": "Shadowland BBS (Single use, Basic)"}
 ]
