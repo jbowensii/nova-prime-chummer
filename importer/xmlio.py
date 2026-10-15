@@ -60,6 +60,8 @@ def scope(xml, source, ids, root=CA2):
         def attr(m):
             if unscoped and (name, m.group(1)) == FAMILY and m.group(2) and not m.group(2).startswith(pre):
                 return f'{m.group(1)}="{pre}{m.group(2)}"'
+            if name == "slot" and m.group(1) == "id":  # (a slot's name, not an entry id: <fits slot="armor"> names it raw)
+                return m.group(0)
             if ("*", m.group(1)) not in SCOPED and (name, m.group(1)) not in SCOPED:
                 return m.group(0)
             return f'{m.group(1)}="{" ".join(pre + v if v in ids else v for v in m.group(2).split(" "))}"'

@@ -1,7 +1,10 @@
 """Makes the field-value rows of importer/sr6/overrides/<src>.json from cl6-diffs.csv (the owner's rule: a value the book
 and the reviewers could not confirm is Commlink6's):
 
-  python -m tools.cl6check.valuemap <cl6-diffs.csv> [<cl6-diffs.csv of a run on the result> ...] [--dry]
+  python -m tools.cl6check.valuemap <cl6-diffs.csv> [<cl6-diffs.csv of a run on the result> ...] [--runs <runs dir>] [--dry]
+  python -m tools.cl6check.valuemap --refile <runs dir>      (only files the existing value rows under our entry's kind)
+
+--runs: our catalogs; a row's "kind" is then the kind file OUR entry is in (the override only looks there first)
 
 Every `counted` field difference (class a, b or c) becomes an id row `{"cl6", "kind", "id", "set": {...}, "formula"?,
 "gen": "value"}` (importer/sr6/overrides.py applies it) unless:
@@ -18,6 +21,8 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+from tools.cl6check import ours
 
 ROOT = Path(__file__).resolve().parents[2]
 OVERRIDES = ROOT / "importer" / "sr6" / "overrides"
@@ -132,9 +137,29 @@ def row_values(items):
     return sets, forms, bad
 
 
+def refile(runs, root=OVERRIDES):
+    """The value rows of every table filed under OUR entry's kind (rows landed by an earlier run are no csv difference any
+    more, so a regeneration would lose them): {src: rows changed}."""
+    mine, done = ours.kinds(runs), {}
+    for p in sorted(Path(root).glob("*.json")):
+        rows = json.loads(p.read_text(encoding="utf8"))
+        moved = [r for r in rows if r.get("gen") == "value" and mine.get((p.stem, f"{p.stem}.{r['id']}"), r["kind"]) != r["kind"]]
+        for r in moved:
+            r["kind"] = mine[p.stem, f"{p.stem}.{r['id']}"]
+        if moved:
+            p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in rows) + "\n]\n", encoding="utf8", newline="\n")
+            done[p.stem] = len(moved)
+    return done
+
+
 def main(argv):
+    if "--refile" in argv:
+        print("value rows refiled:", refile(argv[argv.index("--refile") + 1]))
+        return
     dry = "--dry" in argv
-    paths = [a for a in argv if not a.startswith("--")]
+    runs = argv[argv.index("--runs") + 1] if "--runs" in argv else None  # (our catalogs: a row names OUR entry's kind, not Commlink6's)
+    paths = [a for a in argv if not a.startswith("--") and a != runs]
+    mine = ours.kinds(runs) if runs else {}
     keep = json.loads(KEEP.read_text(encoding="utf8")) if KEEP.exists() else {}
     skip = {tuple(k[:4]) for k in keep.get("keep", [])} | {tuple(k[:4]) for k in keep.get("hold", [])}
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
@@ -158,7 +183,7 @@ def main(argv):
         sets, forms, bad = row_values(items)
         unmapped += [(src, oid, b) for b in bad]
         if sets:
-            row = {"cl6": items[0]["name_cl6"], "kind": kind, "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
+            row = {"cl6": items[0]["name_cl6"], "kind": mine.get((src, oid), kind), "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
             if forms:
                 row["formula"] = forms
             new[src].append(row)

@@ -558,6 +558,49 @@ class ValueRowTest(unittest.TestCase):
                 overrides.check([{"cl6": "Lamp", "kind": "gear", "id": "lamp", "gen": "value", "set": bad}])
 
 
+class RefileTest(unittest.TestCase):
+    GEAR = '<d kind="gear"><gear id="zz.lamp"><name>Lamp</name></gear><gear id="zz.both"><name>B</name></gear></d>'
+    WEAPONS = '<d kind="weapons"><weapon id="zz.gun"><name>Gun</name></weapon><weapon id="zz.both"><name>B</name></weapon></d>'
+
+    def test_a_row_filed_under_the_wrong_kind_lands_on_the_one_file_holding_the_id(self):
+        rows = [{"cl6": "G", "kind": "gear", "id": "zz.gun", "gen": "value", "set": {"cost": "5"}},
+                {"cl6": "B", "kind": "armor", "id": "zz.both", "gen": "value", "set": {"cost": "7"}},  # (two files hold it: left)
+                {"cl6": "N", "kind": "gear", "id": "zz.none", "gen": "value", "set": {"cost": "9"}}]
+        out = overrides.apply("zz", {"gear.xml": self.GEAR, "weapons.xml": self.WEAPONS}, rows)
+        self.assertEqual([e.get("cost") for e in ET.fromstring(out["weapons.xml"].encode())], ["5", None])
+        self.assertEqual([e.get("cost") for e in ET.fromstring(out["gear.xml"].encode())], [None, None])
+
+
+class SlotIdTest(unittest.TestCase):
+    def test_a_slot_id_is_never_source_prefixed_but_an_entry_id_and_a_fits_slot_are_as_before(self):
+        from importer import xmlio
+        xml = '<gear id="armor"><slot id="armor" value="3"/><fits slot="armor"/></gear>'
+        got = xmlio.scope(xml, "CRB", {"armor"}, root=("sr6", "urn:x"))
+        self.assertEqual(got, '<gear id="crb.armor"><slot id="armor" value="3"/><fits slot="armor"/></gear>')
+
+
+class FamilyMergeTest(unittest.TestCase):
+    V = [{"tag": "variant", "attrs": {"name": "Hands"}}]
+
+    def test_old_rows_are_refiled_and_widened_stale_ones_go_and_unlanded_variants_wait(self):
+        from tools.cl6check import familymap, ours
+        idx = {("zz", "zz.a"): {"kind": "weapons", "name": "A"}, ("zz", "zz.setae"): {"kind": "gear", "name": "Setae (hands or feet)"},
+               ("zz", "zz.b"): {"kind": "gear", "name": "B"}, ("zz", "zz.c"): {"kind": "gear", "name": "C"}}
+        old = [{"cl6": "hand", "kind": "gear", "id": "hand"},
+               {"cl6": "A", "kind": "gear", "id": "a", "set": {"skill": "Firearms"}, "gen": "family"},
+               {"cl6": "S", "kind": "gear", "id": "gone", "set": {"skill": "x"}, "gen": "family"}]
+        new = [{"cl6": "A", "kind": "weapons", "id": "a", "set": {"skill": "Other", "spec": "Rifles"}, "gen": "family"},
+               {"cl6": "Setae", "kind": "gear", "id": "setae", "kids": self.V, "gen": "family"},
+               {"cl6": "B", "kind": "gear", "id": "b", "kids": self.V, "gen": "family"},
+               {"cl6": "C", "kind": "gear", "id": "c", "set": {"size": "Tiny"}, "kids": self.V, "gen": "family"}]
+        got = {r["id"]: r for r in familymap.merge(old, new, idx, "zz")}
+        self.assertEqual(set(got), {"hand", "a", "c"})  # (gone: stale; setae and b: variants only, held)
+        self.assertEqual((got["a"]["kind"], got["a"]["set"]), ("weapons", {"skill": "Firearms", "spec": "Rifles"}))
+        self.assertNotIn("kids", got["c"])
+        self.assertEqual({r["id"] for r in familymap.merge([], new, idx, "zz", variants=True)}, {"a", "b", "c"})  # (--variants: b keeps its list; setae carries its variants)
+        self.assertTrue(ours.carries("Setae (hands or feet)", ["Hands", "Feet"]) and not ours.carries("Setae", ["Hands"]))
+
+
 class ValueMapTest(unittest.TestCase):
     def test_numbers_formulas_and_legality(self):
         from tools.cl6check import valuemap as V

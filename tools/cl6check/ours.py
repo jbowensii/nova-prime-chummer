@@ -252,3 +252,20 @@ def load(path):
                 if k.startswith("formula:") and "|unit=" in v and (m := COUNT.search(out[src].texts.get(e["id"], ""))):
                     e["attrs"][k] = f"{v}|count={m.group(1)}-{m.group(2)}"
     return out
+
+
+def index(path):
+    """{(source id, entry id): the entry} of every import under path."""
+    return {(src, e["id"]): e for src, s in load(path).items() for e in s.entries}
+
+
+def kinds(path):
+    """{(source id, entry id): the kind file the entry is in} (the kind an override row names)."""
+    return {k: e["kind"] for k, e in index(path).items()}
+
+
+def carries(name, variants):
+    """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item per
+    variant (the owner's rule), so it has no variant list of its own."""
+    n = f"-{_norm(name)}-"
+    return any(_norm(v) and f"-{_norm(v)}-" in n for v in variants)

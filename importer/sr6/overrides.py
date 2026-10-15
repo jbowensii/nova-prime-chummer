@@ -142,9 +142,36 @@ def table(recipe_id):
     return check(json.loads(p.read_text(encoding="utf8"))) if p.is_file() else []
 
 
+def _refile(out, rows):
+    """The id rows with `kind` the file that holds the id: a row filed under Commlink6's kind (gear for a weapon accessory)
+    goes to the one other kind file with the id; an id in none or in several stays as it is (reported by the caller)."""
+    from lxml import etree
+
+    from importer.sr6 import KINDS
+    ids = {}  # (kind -> its top-level ids), read once for the files a row needs
+    def of(kind):
+        if kind not in ids:
+            xml = out.get(f"{kind}.xml")
+            ids[kind] = {e.get("id") for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8")) if isinstance(e.tag, str)} if xml else set()
+        return ids[kind]
+    done, ambiguous = [], []
+    for r in rows:
+        if r["id"] not in of(r["kind"]):
+            other = [k for k in KINDS if k != r["kind"] and r["id"] in of(k)]
+            if len(other) == 1:
+                r = {**r, "kind": other[0]}
+            elif other:
+                ambiguous.append(f"{r['kind']}.xml:{r['id']} in {', '.join(other)}")
+        done.append(r)
+    if ambiguous:
+        print(f"override: {len(ambiguous)} id rows name an id several kind files hold, left unfiled ({'; '.join(ambiguous[:4])})", file=sys.stderr)
+    return done
+
+
 def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
+    rows = _refile(out, rows)
     want, forms, vals, kids = {}, {}, {}, {}
     for r in rows:
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
