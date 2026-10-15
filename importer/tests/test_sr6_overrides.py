@@ -714,3 +714,39 @@ class OwnerNameBugRowsTest(unittest.TestCase):
         self.assertNotIn(("crb", "weapons", "crb.mossberg-cmdt", "ammo"), keep)
         held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
         self.assertNotIn(("bs", "augmentations", "bs.fangs", "cost"), held)  # (the owner keeps ours: it is no longer left open)
+
+
+class OwnerClassCRowsTest(unittest.TestCase):
+    """The 2026-10-15 class c decisions: three transgenic skins, the Sim module row as two items, the printed values kept."""
+
+    def test_transgenic_chameleon_skin_is_two_items_and_rhino_skin_a_third(self):
+        xml = ('<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="transgenic-chameleon-skin" source="BS" page="101" avail="6" '
+               'essence="0.15" cost="2100"><name>Transgenic chameleon skin</name></augmentation></d>\n')
+        root = ET.fromstring(overrides.apply("bs", {"augmentations.xml": xml})["augmentations.xml"].encode())
+        got = {e.get("id"): e for e in root}
+        self.assertNotIn("transgenic-chameleon-skin", got)
+        want = {"transgenic-chameleon-skin-basic": ("0.2", "6", "2000"), "transgenic-chameleon-skin-dynamic": ("0.3", "7", "4000"),
+                "transgenic-rhino-skin": ("0.15", "4", "2100")}
+        for i, vals in want.items():
+            e = got[i]
+            self.assertEqual((e.get("essence"), e.get("avail"), e.get("cost")), vals, i)
+            self.assertEqual(e.get("class"), "GENEWARE/TRANSGENIC_BIOWARE", i)
+            self.assertEqual(e.findall("variant"), [], i)  # (one catalog item per variant)
+        self.assertEqual(got["transgenic-rhino-skin"].find("effect").get("target"), "derived:defense")
+
+    def test_the_sim_module_row_is_two_items_with_the_hot_sim_one_at_2_i(self):
+        from importer.sr6.catalog import Catalog
+        got = dict(Catalog.variants("Sim module / w Hot sim", {"rating": "– / –", "avail": "– / 2(I)", "cost": "+100¥ / +250¥"}))
+        self.assertEqual(list(got), ["Sim module", "Sim module w/ Hot sim"])
+        self.assertEqual((got["Sim module"]["avail"], got["Sim module"]["cost"]), ("–", "+100¥"))
+        self.assertEqual((got["Sim module w/ Hot sim"]["avail"], got["Sim module w/ Hot sim"]["cost"]), ("2(I)", "+250¥"))
+
+    def test_keep_list_holds_the_printed_values_but_not_the_two_fixed_rows(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("bs", "gear", "bs.bulk-modification", "cost"), ("crb", "programs", "crb.tutorsoft", "avail"),
+                  ("crb", "augmentations", "crb.control-rig", "cost"), ("so", "electronics", "so.swindler-stick", "cost"),
+                  ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"), ("nf", "vehicles", "nf.ford-broadcast", "avail")]:
+            self.assertIn(k, keep)
+        self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
+        self.assertNotIn(("crb", "gear", "crb.sim-module-w-hot-sim", "legality"), keep)

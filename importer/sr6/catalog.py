@@ -111,6 +111,7 @@ def slash_options(name, text):
 
 # fields whose slash is their own format, not two items' values: handling (on/off road), seats (front/back)
 SLASH_FORMAT = {"handling", "seats"}
+VALUE_PART = r"\s*(?:\+?\d+(?:\.\d+)?\s*¥?\s*(\(\w\))?|[-–—])\s*"  # (one of a row's two values: `2(I)`, `+250¥`, a dash)
 MATERIAL_ADD_ON = "Ammunition accessory"  # (its category: fits the ammunition kind, categories.KIND_WORDS)
 
 
@@ -569,17 +570,20 @@ class Catalog:
         for v in (cost, f.get("avail", "")):
             parts = v.split("/")
             names = _names(name)[:len(parts)] if "/" in name else []
-            if len(names) == 2 and len(names[0].split()) > 1 and names[1].split()[0] != names[0].split()[0] \
+            if len(names) == 2 and re.match(r"(?:w|with)\s+\S", names[1]):
+                # (owner, 2026-10-15: `Sim module / w Hot sim`: the second item is `Sim module w/ Hot sim`)
+                names[1] = f"{names[0]} w/ {names[1].split(None, 1)[1]}"
+            elif len(names) == 2 and len(names[0].split()) > 1 and names[1].split()[0] != names[0].split()[0] \
                     and len(names[1].split()) > 1:
                 # (a product row `Maker A/B C`: B shares the maker's words, `Federated Boeing Osprey X`)
                 names[1] = " ".join(names[0].split()[:-1] + names[1].split())
-            if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(r"\s*\d+\s*(\(\w\))?", p) for p in parts):
+            if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(VALUE_PART, p) for p in parts):
                 # (owner, 2026-10-08: A takes each cell's first value, B its second, a cell without a slash is shared;
                 # not a column whose slash is its own format: handling on/off road, seats)
                 def part(k, v, i):
                     ps = v.split("/") if isinstance(v, str) else []
                     own = k in ("cost", "avail") or k not in SLASH_FORMAT and all(
-                        re.fullmatch(r"\s*\d+(?:\.\d+)?\s*(\(\w\))?\s*", p) for p in ps)
+                        re.fullmatch(VALUE_PART, p) for p in ps)
                     return ps[i].strip() if own and len(ps) == len(parts) else v
                 return [(n, {k: part(k, v, i) for k, v in f.items()}) for i, n in enumerate(names)]
         return [(name, f)]
