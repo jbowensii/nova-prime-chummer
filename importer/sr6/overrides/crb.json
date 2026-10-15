@@ -194,6 +194,8 @@
   {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Grenade Launcher", "kind": "weapons", "id": "grenade-launcher", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Adapter (see drones for Smart firing platform)", "kind": "gear", "gen": "cl6only", "add": {"page": 260, "attrs": {"category": "Weapon accessory", "avail": "5", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
+  {"cl6": "Arrow", "kind": "weapons", "id": "arrow", "set": {"rating": "1–14"}, "gen": "owner"},
+  {"cl6": "Hydraulic jacks", "kind": "gear", "id": "hydraulic-jacks", "set": {"rating": "1–8"}, "gen": "owner"},
   {"cl6": "Full body armor helmet", "kind": "armor", "id": "full-body-armor-w-helmet", "set": {"avail": "4(L)"}, "gen": "value"},
   {"cl6": "Commlink", "kind": "augmentations", "id": "commlink", "set": {"cost": "2000"}, "gen": "value"},
   {"cl6": "Cyberdeck", "kind": "augmentations", "id": "cyberdeck", "set": {"cost": "5000"}, "gen": "value"},

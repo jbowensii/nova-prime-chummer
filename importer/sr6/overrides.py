@@ -56,7 +56,7 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family") and not any(k in r for k in OPS):
+        if "id" in r and r.get("gen") in ("value", "family", "owner") and not any(k in r for k in OPS):
             if not (r.get("set") or r.get("kids")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
             if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
@@ -158,7 +158,7 @@ def _set_by_id(out, rows):
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
-        if r.get("gen") in ("value", "family"):
+        if r.get("gen") in ("value", "family", "owner"):
             forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
             vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r.get("set", {}))
     missing = []

@@ -158,6 +158,7 @@
   {"cl6": "Zodiac Whisper", "kind": "vehicles", "id": "zodiac-whisper", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
   {"cl6": "Zodiac Whisper Military", "kind": "vehicles", "id": "zodiac-whisper-military", "set": {"class": "VEHICLES/BOATS"}, "gen": "class"},
   {"cl6": "Cyberspace Designs Tamodachi", "kind": "vehicles", "id": "cyberspace-designs-tamodachi", "set": {"class": "DRONE_MEDIUM/GROUND"}},
+  {"cl6": "Increased Structural Integrity", "kind": "gear", "id": "increased-structural-integrity", "set": {"rating": "1–60"}, "gen": "owner"},
   {"cl6": "Armor (Ceramic)", "kind": "gear", "id": "ceramic-plate", "set": {"avail": "5(I)"}, "gen": "value"},
   {"cl6": "Extreme Interior Security - Gas", "kind": "gear", "id": "extreme-interior-security-version-1-gas-dispersal-security-s", "set": {"cost": "3000"}, "gen": "value"},
   {"cl6": "Gas Dispersal System", "kind": "gear", "id": "gas-dispersal-system", "set": {"cost": "2000"}, "gen": "value"},

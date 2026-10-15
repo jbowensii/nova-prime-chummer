@@ -186,7 +186,7 @@ class BsRecipeTest(unittest.TestCase):
         s = a["Made-Up Shells (Sleek)"]
         self.assertEqual((s["type"], s["cost"], s["avail"]), ("cyberware", "99000", "5"))
         g = entries(self.res, "gear")
-        self.assertEqual((g["Fizz Swarm (colony template)"]["cost"], g["Fizz Swarm (pre-built)"]["avail"]), ("5000", "2(L)"))
+        self.assertEqual((g["Fizz Swarm Colony"]["cost"], g["Fizz Swarm Nanites"]["avail"]), ("5000", "2(L)"))
         self.assertEqual((g["Fizz"]["category"], g["Fizz"]["cost"], g["Fizz"]["avail"]), ("Drugs", "70", "3"))
 
     def test_grades_read_from_their_prose(self):

@@ -296,7 +296,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family")]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "owner")]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
