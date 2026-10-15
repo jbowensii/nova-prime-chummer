@@ -133,7 +133,6 @@
   {"cl6": "Foundation Focus", "kind": "gear", "id": "foundation-focus", "set": {"cost": "4000"}, "gen": "value"},
   {"cl6": "Spotting Focus", "kind": "gear", "id": "spotting-focus", "set": {"cost": "4000"}, "gen": "value"},
   {"cl6": "Ghadab Shadid", "kind": "weapons", "id": "ghadab-shadid", "set": {"ammo": "100(d)/300(d)"}, "gen": "value"},
-  {"cl6": "Armtech MGL-24", "kind": "weapons", "id": "mgl-24", "set": {"avail": "4"}, "gen": "value"},
   {"cl6": "Command Presence", "kind": "adeptpowers", "id": "command-presence", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "SKILL", "ref": "influence", "value": "2", "cond": "y"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "influence", "what": "EDGE", "value": "1", "apply": "CHARACTER"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "charisma", "value": "4", "apply": "CHARACTER"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "influence", "value": "4", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Hip Shooter", "kind": "adeptpowers", "id": "hip-shooter", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "ADEPT_POWER", "ref": "quick_draw"}}], "gen": "family"},
   {"cl6": "Knife Fighter", "kind": "adeptpowers", "id": "knife-fighter", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "ADEPT_POWER", "ref": "quick_draw"}}], "gen": "family"},

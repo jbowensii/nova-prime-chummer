@@ -124,9 +124,23 @@ export function formula(s: string | undefined, rating: number, letter: 'F' | 'L'
   return m ? { n, dice: `${m[2]}D6`, ok: true } : { n, ok: true }
 }
 
-/** The legality letter of an availability ("5(L)" → L), or none. */
+/** A licence fee in an availability: `15,000¥` alone, or after the rating: `2, 15,000¥` (group 1, group 2 the fee). */
+const LICENCE = /^\s*(?:(.+?)\s*,\s+)?(\d{1,3}(?:,\d{3})+|\d+)\s*¥\s*$/
+
+/** An availability as printed: a pure nuyen price (`15,000¥`) is a licence: freely available (n 0) with that fee; `2, 15,000¥`
+ *  is rating 2 plus the fee; anything else reads as rated() does. ok is false for a value the app can't read.
+ *  (SR6 only: Anarchy has no availability.) */
+export function availability(s: string | undefined): { n: number | null; fee?: number; ok: boolean } {
+  const m = s && s.length <= MAX_VALUE ? s.match(LICENCE) : null
+  if (!m) return rated(s)
+  const fee = Number(m[2].replace(/,/g, ''))
+  const base = m[1] === undefined ? { n: 0, ok: true } : rated(m[1])
+  return base.ok ? { n: base.n, fee, ok: true } : { n: null, ok: false }
+}
+
+/** The legality letter of an availability ("5(L)" → L; "2(L), 15,000¥" → L), or none. */
 export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
-  const m = s && s.length <= MAX_VALUE ? s.match(LEGAL) : null
+  const m = s && s.length <= MAX_VALUE ? s.replace(/\s*,\s*\d[\d,]*\s*¥\s*$/, '').match(LEGAL) : null
   return (m?.[1] ?? m?.[2]) as 'L' | 'I' | 'F' | undefined
 }
 

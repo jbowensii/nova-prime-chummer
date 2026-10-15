@@ -188,6 +188,13 @@ class BsRecipeTest(unittest.TestCase):
         self.assertEqual((a["Zap Limb, Synthetic"]["avail"], a["Zap Limb, Synthetic"].get("cost")), ("15,000¥", None))
         self.assertEqual((a["Zap Limb, Obvious"]["avail"], a["Zap Limb, Obvious"]["cost"]), ("10,000¥", "Rating x 5000"))
 
+    def test_a_licence_fee_is_a_readable_availability_so_the_search_never_replaces_it(self):
+        from importer.sr6 import catalog, overrides
+        self.assertTrue(all(catalog.readable(v) for v in ("15,000¥", "7,500¥", "2, 15,000¥", "6(L), 500¥")))
+        self.assertFalse(catalog.readable("x, 500¥"))
+        # (Deadly Arts' MGL-24 prints AVAIL 7,500¥: no Commlink6 value row sets its avail to 4)
+        self.assertFalse([r for r in overrides.table("da") if r.get("id") == "mgl-24" and "avail" in r.get("set", {})])
+
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")
         self.assertEqual((a["Glow Genes"]["type"], a["Glow Genes"]["category"], a["Glow Genes"]["essence"]),

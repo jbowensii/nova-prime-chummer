@@ -140,6 +140,18 @@ def _str_field(field, ours_s, cl_s, norm, tokens=True):
     return d
 
 
+_FEE = r"(?:\d{1,3}(?:,\d{3})+|\d+)\s*¥"
+
+
+def licence(avail):
+    """(the availability without a licence fee, the fee or None): `15,000¥` alone is a licence fee on a freely available
+    item (owner 2026-10-15) -> ("", 15000); `2, 15,000¥` is rating 2 plus the fee -> ("2", 15000); anything else is itself."""
+    m = re.fullmatch(rf"\s*(?:(.+?)\s*,\s+)?({_FEE})\s*", avail or "")
+    if not m:
+        return avail, None
+    return (m.group(1) or ""), float(re.sub(r"[^\d]", "", m.group(2)))
+
+
 def first(n):
     return lambda s: (s or "")[:n].upper()
 
@@ -164,22 +176,23 @@ def compare(c, o):
     if "cost" in f and k in PRICED:
         cl = {r: f["cost"].get(r if r in f["cost"] else next(iter(f["cost"]))) for r in rs}
         add("cost", _num_field("cost", a.get("cost"), cl, f.get("cost_variants", ()), formula_values(a, "cost", list(cl))))
-    if "avail" in f and k in PRICED:
+    av, fee = licence(a.get("avail"))
+    if "avail" in f and k in PRICED and not (fee is not None and not av):  # (a pure licence fee: freely available, nothing to compare)
         cl = {r: f["avail"].get(r if r in f["avail"] else next(iter(f["avail"]))) for r in rs}
-        num = _num_field("avail", None if (a.get("avail") or "").startswith("+") else a.get("avail"),
+        num = _num_field("avail", None if (av or "").startswith("+") else av,
                          {r: float(v[0]) for r, v in cl.items()}, f.get("avail_variants", ()),
-                         formula_values(a, "avail", list(cl)))
-        if num and num != SKIP and re.search(r"¥|\d{3}", a.get("avail") or ""):
+                         formula_values({**a, "avail": av}, "avail", list(cl)))
+        if num and num != SKIP and re.search(r"\d{3}", av or ""):
             num["why"] = "ours holds a price (columns shifted)"
-        add("avail", num if not (a.get("avail") or "").startswith("+") else None)
+        add("avail", num if not (av or "").startswith("+") else None)
         letters = {v[1] for v in cl.values()}
-        m = O.LEGAL.search(a.get("avail") or "")
+        m = O.LEGAL.search(av or "")
         mine = (m.group(1) or m.group(2)) if m else ""
-        if (letters != {""} or mine) and O.value(a.get("avail")) is not None:  # an empty avail is the avail's diff
+        if (letters != {""} or mine) and O.value(av) is not None:  # an empty avail is the avail's diff
             want = sorted(letters)[-1]
             add("legality", None if mine == want else {"field": "legality", "ours": a.get("avail", ""),
                                                        "cl6": want or "(legal)", "why": "differs",
-                                                       "ours_tok": a.get("avail"), "cl6_tok": show(cl)})
+                                                       "ours_tok": av, "cl6_tok": show(cl)})
     if f.get("rating") and k in PRICED:
         lo, hi = f["rating"]
         mine = O.rating_range(a.get("rating"))

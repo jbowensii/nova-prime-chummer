@@ -128,12 +128,17 @@ _LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 _VAR = re.compile(r"\b(?:rating|capacity|force|level)\b", re.I)
 
 
+_LICENCE = re.compile(r"\s*(?:(.+?)\s*,\s+)?(?:\d{1,3}(?:,\d{3})+|\d+)\s*¥\s*")
+
+
 def readable(v):
     """True when the app can read the value (src/sr6/engine/values.ts rated()): a dash, a number or a formula of
     numbers, Rating (or Capacity, Force, Level: the rating the item is bought at), + × x * / ^ and parentheses, with an
     optional leading + (an add-on's price) and a legality suffix."""
     if v.strip() in ("", "—"):
         return True
+    if m := _LICENCE.fullmatch(v):  # (owner 2026-10-15) `15,000¥` under AVAIL: a licence fee on a freely available item;
+        return not m.group(1) or readable(m.group(1))  # `2, 15,000¥`: rating 2 plus the fee
     s = _VAR.sub(" R ", _LEGAL.sub("", re.sub(r"(?i)\s+each\s*$", "", v)).strip().lstrip("+"))  # (`1500 each`)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:

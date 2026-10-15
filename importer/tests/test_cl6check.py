@@ -201,8 +201,16 @@ class FieldsTest(unittest.TestCase):
         x = '<item id="z" type="TOOLS" price="10" avail="4L"/>'
         compared, d = self.cmp(x, cost="10", avail="4(I)")
         self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
-        d = self.cmp(x, cost="10", avail="2,500¥")[1]
+        d = self.cmp(x, cost="10", avail="2500")[1]
         self.assertEqual(d[0]["why"], "ours holds a price (columns shifted)")
+        # (owner 2026-10-15) nuyen alone under AVAIL is a licence fee on a freely available item: no avail or legality diff;
+        # `4(I), 2,500¥` is rating 4 plus the fee, compared on the 4(I)
+        self.assertEqual(self.cmp(x, cost="10", avail="2,500¥")[1], [])
+        self.assertEqual(fields.licence("4(I), 2,500¥"), ("4(I)", 2500.0))
+        self.assertEqual(fields.licence("2,500¥"), ("", 2500.0))
+        self.assertEqual(fields.licence("4(L)"), ("4(L)", None))
+        d = self.cmp(x, cost="10", avail="4(I), 2,500¥")[1]
+        self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
         self.assertNotIn("legality", self.cmp(x, cost="10", avail="—")[0])  # an empty avail is the avail's diff
 
     def test_ammo_with_what_else_it_draws_on(self):
