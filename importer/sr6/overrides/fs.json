@@ -163,7 +163,7 @@
   {"cl6": "Depreciated WSS explosive, replace with new modification", "kind": "gear", "id": "explosive", "set": {"dv": "10P"}, "gen": "value"},
   {"cl6": "Cavalier Arms Marshal", "kind": "weapons", "id": "cavalier-arms-marshal", "set": {"ar": "8/10/6/—/—"}, "gen": "value"},
   {"cl6": "Grenade, Paint", "kind": "weapons", "id": "paint-grenades-standard", "set": {"cost": "50"}, "gen": "value"},
-  {"cl6": "Battery for Pulse", "kind": "weapons", "id": "pulse-battery", "set": {"avail": "7"}, "gen": "value"},
+  {"cl6": "Battery for Pulse", "kind": "weapons", "id": "pulse-battery", "set": {"avail": "7(I)"}, "gen": "value"},
   {"cl6": "Sungard Jewelry", "kind": "weapons", "id": "sungard-jewelry", "set": {"cost": "2000"}, "gen": "value"},
   {"cl6": "Gunstock Warclub (Zoé Heritage)", "kind": "weapons", "id": "zoe-heritage-gunstock-warclub", "set": {"cost": "300"}, "gen": "value"},
   {"cl6": "Ammo Handloaded", "kind": "ammotypes", "id": "handloaded-ammo", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ITEM_ATTRIBUTE", "ref": "ATTACK_RATING", "value": "1,1,1,1,1"}}], "gen": "family"},

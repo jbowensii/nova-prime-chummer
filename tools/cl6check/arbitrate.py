@@ -80,11 +80,15 @@ def name_window(book, page, name, extra_pages=()):
     key = n2(name)
     if not key or not pages:
         return None
-    k = key[: max(6, min(len(key), 14))]
     fallback = None
     for p in pages:
         lines = book.page_text(p).splitlines()
+        # (rows sharing a long prefix, `Bioamplifier Nanites (…)`: the row naming the whole item, else its first 14 letters)
+        k = key[: min(len(key), 40)]
         hits = [i for i, ln in enumerate(lines) if k in n1(ln)]
+        if not hits:
+            k = key[: max(6, min(len(key), 14))]
+            hits = [i for i, ln in enumerate(lines) if k in n1(ln)]
         for i in hits:
             if len(re.findall(r"\d+", lines[i])) >= 2 and n1(lines[i]).find(k) <= 2:
                 return norm_line(lines[i])

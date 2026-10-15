@@ -186,12 +186,14 @@ def compare(c, o):
         q = re.search(r"\|count=(\d+)-(\d+)", a.get("formula:cost") or "")
         if q and int(q.group(2)) == hi:  # a per-unit price's count range: Commlink6 counts it as the rating
             mine = (int(q.group(1)), hi)
-        add("rating", None if mine and mine[1] == hi else {
+        # (a rating range of Commlink6's against ours worked out by the rating, `Rating x 50`, or capped by a formula, `Up to
+        # 1/2 Body`: ours has no range to print, and the entry is equal)
+        capped = re.search(r"[A-Za-z]", a.get("rating") or "")
+        by_rating = re.search(r"(?i)rating", "".join(a.get(x) or "" for x in ("cost", "avail", "essence")))
+        add("rating", None if mine and mine[1] == hi or capped or not mine and by_rating else {
             "field": "rating", "ours": a.get("rating", ""), "cl6": f"{lo}–{hi}", "cl6_tok": f"{lo}-{hi}",
             "ours_tok": a.get("rating") or None,
-            "why": "ours empty" + (" (our cost/avail/essence is per rating)" if re.search(
-                r"(?i)rating", "".join(a.get(x) or "" for x in ("cost", "avail", "essence"))) else "")
-            if not mine else "max differs"})
+            "why": "ours empty" if not mine else "max differs"})
     if "essence" in f and k == "augmentations":
         add("essence", _num_field("essence", a.get("essence"), {r: f["essence"].get(r if r in f["essence"] else
                                                                                        next(iter(f["essence"]))) for r in rs},

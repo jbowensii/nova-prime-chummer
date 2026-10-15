@@ -585,3 +585,11 @@ class StructureKidsTest(unittest.TestCase):
         self.assertEqual(overrides.apply("zz", out, rows), out)  # again: nothing is added twice
         with self.assertRaises(ValueError):
             overrides.check([{"cl6": "x", "kind": "gear", "id": "a", "gen": "family", "kids": [{"tag": "effect"}]}])
+
+
+class ValueRowKindTest(unittest.TestCase):
+    def test_a_value_row_finds_its_entry_in_the_file_the_importer_put_it_in(self):
+        wx = ('<?xml version="1.0"?>\n<d kind="weapons"><weapon id="zz.stick" source="ZZ" page="5" category="Zed" dv="9P*" avail="1"><name>Stick</name><text/></weapon></d>\n')
+        rows = [{"cl6": "Stick", "kind": "gear", "id": "zz.stick", "gen": "value", "set": {"dv": "9P"}}]  # (Commlink6 calls it gear)
+        out = overrides.apply("zz", {"weapons.xml": wx}, rows)
+        self.assertEqual(ET.fromstring(out["weapons.xml"].encode())[0].get("dv"), "9P")

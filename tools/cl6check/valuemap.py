@@ -77,7 +77,8 @@ def ar_value(s):
 def split_avail(s):
     """('4', 'L') of '4(L)'; ('(Force +3)', 'L') of '(Force +3) L'; ('Rating', 'I') of 'Rating(I)'."""
     m = re.match(r"^(.*?)\s*(?:\(([LIFR])\)|(?<![A-Za-z])([LIFR]))?\s*$", s or "")
-    return (m.group(1), m.group(2) or m.group(3) or "") if m else ("", "")
+    letter = (m.group(2) or m.group(3) or "") if m else ""
+    return (m.group(1) if m else "", "" if letter in ("R", "F") else letter)  # (SR5's R and F: no SR6 legality; Commlink6's own letter decides)
 
 
 def row_values(items):

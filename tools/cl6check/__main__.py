@@ -76,7 +76,9 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                 r["compared"], r["diffs"] = fields.compare(c, o)
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
-                    if d["class"] == "c" and (c["src"], o["kind"], o["id"], d["field"]) in keep:
+                    if d["class"] == "a" and d["pdf"] == "cl6" and how == "contained":
+                        d["class"] = "c"  # (a Commlink6 name only contained in ours is another row's: its value in the window proves nothing)
+                    if d["class"] == "c" and {(c["src"], c["kind"], o["id"], d["field"]), (c["src"], o["kind"], o["id"], d["field"])} & keep:
                         d["class"], d["pdf"] = "b", "ours"  # (the PDF's text layer prints our value: value_keep.json)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
                     if t == "unprinted" and not d["why"].startswith("ours empty"):

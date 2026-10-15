@@ -200,7 +200,7 @@
   {"cl6": "Alcohol", "kind": "gear", "id": "alcohol", "set": {"avail": "1"}, "gen": "value"},
   {"cl6": "Pepper Punch", "kind": "gear", "id": "pepper-punch", "set": {"avail": "1"}, "gen": "value"},
   {"cl6": "Psyche", "kind": "gear", "id": "psyche", "set": {"avail": "1"}, "gen": "value"},
-  {"cl6": "SIM module (hot)", "kind": "gear", "id": "sim-module-w-hot-sim", "set": {"avail": "2"}, "gen": "value"},
+  {"cl6": "SIM module (hot)", "kind": "gear", "id": "sim-module-w-hot-sim", "set": {"avail": "2(I)"}, "gen": "value"},
   {"cl6": "Aztechnology Sunrunner", "kind": "vehicles", "id": "aztechnology-sunrunner-nightrunner", "set": {"handling": "4"}, "gen": "value"},
   {"cl6": "Injection Dart (10x)", "kind": "weapons", "id": "injection-darts", "set": {"cost": "5"}, "gen": "value"},
   {"cl6": "Rocket Thermal Smoke", "kind": "weapons", "id": "smoke-thermal-smoke-rocket", "set": {"cost": "120"}, "gen": "value"},

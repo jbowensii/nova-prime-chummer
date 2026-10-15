@@ -146,7 +146,13 @@ def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
     want, forms, vals, kids = {}, {}, {}, {}
+    homes = {}
+    for fname, xml in out.items():  # (an entry's own file: a row's kind is Commlink6's, and the importer may file it under another)
+        for m in re.finditer(r'<\w+ id="([^"]+)"', xml or ""):
+            homes.setdefault(m.group(1), []).append(fname)
     for r in rows:
+        if f"{r['kind']}.xml" not in homes.get(r["id"], []) and len(homes.get(r["id"], [])) == 1:
+            r = {**r, "kind": homes[r["id"]][0][:-4]}
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])

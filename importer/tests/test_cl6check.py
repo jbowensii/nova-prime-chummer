@@ -187,8 +187,8 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual(self.cmp(x, cost="Rating x 250", avail="2", rating="1–3")[1], [])
         d = self.cmp(x, cost="Rating x 300", avail="2", rating="1–3")[1]
         self.assertEqual((d[0]["field"], d[0]["why"]), ("cost", "differs at rating 1"))
-        d = self.cmp(x, cost="Rating x 250", avail="2")[1]
-        self.assertEqual(d[0]["why"], "ours empty (our cost/avail/essence is per rating)")
+        self.assertEqual(self.cmp(x, cost="Rating x 250", avail="2")[1], [])  # (ours is worked out by the rating: no range to print)
+        self.assertEqual(self.cmp(x, cost="Rating x 250", avail="2", rating="Up to 1/2 Body")[1], [])  # (a formula cap)
 
     def test_variants_ranges_and_cells_printing_several_values(self):
         x = '<item id="z" type="TOOLS" price="100"><variant id="v"><attrdef id="PRICE" value="900"/></variant></item>'
