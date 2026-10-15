@@ -34,7 +34,7 @@ Every file has the same root, and one file holds one kind:
   legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
   A nuyen amount printed under AVAIL (`15,000¥`) is a licence price ("available with licence"): it stays in `avail` as printed, never moved to `cost`. Alone it means freely available (availability 0) with that licence fee; `2, 15,000¥` is rating 2 plus the fee (`availability()` in `src/sr6/engine/values.ts` reads both; the stored text is unchanged).
   `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
-  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
+  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), `1,000¥ for cyberdeck/5,000¥ for cyberhack` prices (`<name> (cyberdeck)`, `<name> (cyberhack)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
   (`900 + Gizmo`) stays as printed and is reported.
 - **Formulas and issues** (optional children of any entry, after its kind's own children and before `<text>`; see

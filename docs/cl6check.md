@@ -50,7 +50,7 @@ the overlay changes.
 - `valuemap` (`python -m tools.cl6check.valuemap <diffs.csv> [<diffs of a run on the result>]`) writes a per-book override row
   (`importer/sr6/overrides/<src>.json`, `"gen": "value"`) for each counted field difference that `value_keep.json` does not
   keep. `keep` lists the values the PDF's text layer prints (the owner's check of the 361 reviewed rows, native agents reading
-  the page text, 2026-10-14); the checker settles a difference there as class b. `hold` is what the owner decides (two
+  the page text, 2026-10-14); the checker settles a difference there as class b, whatever class it had (a, or c after the trace). A `variants` entry there (field `variants`) accepts an item that Commlink6 gives variant tags (an install option, a Guided/Rocket Assist warhead option) as one item. `hold` is what the owner decides (two
   Commlink6 records disagree about one entry; a per-rating item).
 - `familymap` writes the structured data (`"gen": "family"`): a weapon's `skill`/`spec`, an armor's `social`, the item
   structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks

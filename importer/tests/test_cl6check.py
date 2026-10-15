@@ -563,3 +563,17 @@ class ExtraClassTest(unittest.TestCase):
         self.assertIn("deliberate extra classes", report.markdown(m))
         none = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0][0]
         self.assertFalse(none["families"]["class"])
+
+
+class ValueKeepTest(unittest.TestCase):
+    def test_a_kept_value_counts_as_printed_for_every_commlink6_record_of_the_entry(self):
+        from types import SimpleNamespace
+        recs = [canon.canonical(rec(f'<item id="z{i}" cost="{c}"/>', name=f"Zorp ({n})")) | {"src": "gz"}
+                for i, (n, c) in enumerate([("Alpha", 100), ("Beta", 200)])]
+        mine = {"gz": SimpleNamespace(entries=[entry("Zorp", cost="500")], book_dir=None)}
+
+        def classes(keep):
+            res = cli.compare(recs, mine, pdf=False, package=({}, {}, {}), accept={}, keep=keep)[0]
+            return [d["class"] for r in res for d in r["diffs"] if d["field"] == "cost"]
+        self.assertEqual(classes(set()), ["c", "c"])  # (no book to arbitrate: class c)
+        self.assertEqual(classes({("gz", "gear", "gz.zorp", "cost")}), ["b", "b"])

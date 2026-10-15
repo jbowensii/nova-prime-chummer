@@ -567,6 +567,10 @@ class Catalog:
         if m := re.fullmatch(r"(.+?)\s*/\s*(\w+)\s+or\s+(.+?)\s*/\s*(\w+)", cost):
             return [(f"{name} ({m.group(2)})", dict(f, cost=m.group(1), per=m.group(2))),
                     (f"{name} ({m.group(4)})", dict(f, cost=m.group(3), per=m.group(4)))]
+        if m := re.fullmatch(r"(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)\s*/\s*(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)", cost, re.I):
+            # (owner, 2026-10-15: `1,000¥ for cyberdeck/5,000¥ for cyberhack`: one item per variant, each with its price)
+            return [(f"{name} ({m.group(2).lower()})", dict(f, cost=m.group(1))),
+                    (f"{name} ({m.group(4).lower()})", dict(f, cost=m.group(3)))]
         for v in (cost, f.get("avail", "")):
             parts = v.split("/")
             names = _names(name)[:len(parts)] if "/" in name else []

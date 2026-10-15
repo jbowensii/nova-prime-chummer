@@ -31,15 +31,15 @@ LEVEL = re.compile(r"-(?:level-|rating-)?\d+$")  # (an id's level suffix: one en
 RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")
 
 
-def _same(fam, cl, h, shared):
+def _same(fam, cl, h, shared, keep=()):
     """Whether our entry h holds family `fam` as Commlink6's record does. variants: equal too when the entry's name carries
     one of Commlink6's variant names (one item per variant, the owner's rule). slots: when Commlink6 makes two records of
     the item (`shared`), each record's set is a part of ours."""
     mine = h["families"].get(fam)
     if mine == cl:
         return True
-    if fam == "variants":
-        return ours.carries(h["name"], cl)
+    if fam == "variants":  # (or the owner accepts it as one item: an install/option tag, value_keep.json field `variants`)
+        return ours.carries(h["name"], cl) or (h["src"], h["kind"], h["id"], "variants") in keep
     return fam == "slots" and shared and isinstance(mine, (set, frozenset)) and set(cl) <= set(mine)
 
 
@@ -94,7 +94,7 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
                 "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
-                "families": {f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1) for h in hits)
+                "families": {f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1, keep) for h in hits)
                              for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
                              and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
                 "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
@@ -116,13 +116,14 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                 r["compared"], r["diffs"] = fields.compare(c, o, sib(o))
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
-                    if d["class"] == "c" and (c["src"], o["kind"], o["id"], d["field"]) in keep:
-                        d["class"], d["pdf"] = "b", "ours"  # (the PDF's text layer prints our value: value_keep.json)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
                     if t == "unprinted" and not d["why"].startswith("ours empty"):
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
                     if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
+                    if d["class"] in ("a", "c") and (c["src"], o["kind"], o["id"], d["field"]) in keep:
+                        d["class"], d["pdf"] = "b", "ours"  # (the owner keeps ours: value_keep.json; after the trace, which can make a row c)
+                        d.pop("cl6only", None)
             elif how != "optional package":
                 r["cause"] = report.miss_cause(c, s, bt, book)
             results.append(r)

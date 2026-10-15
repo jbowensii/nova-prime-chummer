@@ -1,6 +1,7 @@
 [
   {"cl6": "Mossberg CMDT", "kind": "weapons", "id": "mossberg-cmdt", "set": {"ammo": "10(c)/24(d)"}, "gen": "value"},
   {"cl6": "Implanted Launcher", "kind": "augmentations", "ours": ["Grenade launcher"]},
+  {"cl6": "SIM module (hot)", "kind": "gear", "ours": ["Sim module w/ Hot sim"]},
   {"cl6": "First Aid kit", "kind": "gear", "add": {"page": 282, "attrs": {"category": "Biotech", "avail": "1", "cost": "50"}}},
   {"cl6": "Variable ammunition system", "kind": "gear", "add": {"page": 253, "attrs": {"category": "Weapon accessory"}}},
   {"cl6": "Folding Stock", "kind": "gear", "add": {"page": 254, "attrs": {"category": "Weapon accessory", "avail": "2", "cost": "30"}, "kids": [{"tag": "effect", "attrs": {"target": "item:concealability", "op": "add", "value": "1"}}]}},

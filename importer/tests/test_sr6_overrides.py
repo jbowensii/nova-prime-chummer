@@ -750,3 +750,51 @@ class OwnerClassCRowsTest(unittest.TestCase):
             self.assertIn(k, keep)
         self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
         self.assertNotIn(("crb", "gear", "crb.sim-module-w-hot-sim", "legality"), keep)
+
+
+class OwnerVariantSplitsTest(unittest.TestCase):
+    """The 2026-10-15 variant decisions: one catalog item per variant the book prints a value for."""
+
+    def test_gonzo_case_cell_with_a_price_per_variant_is_two_items(self):
+        from importer.sr6.catalog import Catalog
+        got = dict(Catalog.variants("Gonzo Case", {"avail": "5(I)", "cost": "1,000¥ for cyberdeck/5,000¥ for cyberhack"}))
+        self.assertEqual(list(got), ["Gonzo Case (cyberdeck)", "Gonzo Case (cyberhack)"])
+        self.assertEqual([g["cost"] for g in got.values()], ["1,000¥", "5,000¥"])
+        self.assertEqual({g["avail"] for g in got.values()}, {"5(I)"})
+        self.assertEqual(Catalog.variants("Zed Case", {"cost": "500¥"}), [("Zed Case", {"cost": "500¥"})])  # (a plain price is untouched)
+
+    def test_fs_pouch_shield_and_medkit_rows(self):
+        armor = ('<?xml version="1.0"?>\n<d kind="armor">'
+                 '<armor id="concealable-ammo-pouch" source="FS" page="55" capacity="[3]" avail="2(L)" cost="100"><name>Concealable ammo pouch</name></armor>'
+                 '<armor id="modular-equipment-mounting-system-mems-mems-medkit-pouch" source="FS" page="48" capacity="[2-3]" avail="2" cost="200">'
+                 '<name>MEMS Medkit Pouch</name></armor></d>\n')
+        weapons = ('<?xml version="1.0"?>\n<d kind="weapons"><weapon id="machine-gun-blast-shields" source="FS" page="73" avail="4(I)" cost="250">'
+                   '<name>Machine Gun Blast Shields</name><effect target="derived:defense" op="add" value="1"/></weapon></d>\n')
+        out = overrides.apply("fs", {"armor.xml": armor, "weapons.xml": weapons})
+        a = {e.get("id"): e for e in ET.fromstring(out["armor.xml"].encode())}
+        self.assertEqual((a["concealable-ammo-pouch"].get("cost"), a["concealable-ammo-pouch-sealed"].get("cost")), ("100", "200"))
+        self.assertEqual({a[i].get(k) for i in ("concealable-ammo-pouch", "concealable-ammo-pouch-sealed") for k in ("capacity",)}, {"[3]"})
+        self.assertEqual(a["concealable-ammo-pouch-sealed"].get("avail"), "2(L)")
+        m1 = a["modular-equipment-mounting-system-mems-mems-medkit-pouch"]
+        m2 = a["mems-medkit-pouch-rank-4-6"]
+        self.assertEqual((m1.findtext("name"), m1.get("capacity"), m2.get("capacity"), m2.get("cost")), ("MEMS Medkit Pouch (rank 1-3)", "[2]", "[3]", "200"))
+        w = {e.get("id"): e for e in ET.fromstring(out["weapons.xml"].encode())}
+        small, large = w["machine-gun-blast-shields"], w["machine-gun-blast-shield-large"]
+        self.assertEqual((small.findtext("name"), small.get("cost"), large.get("cost"), large.get("avail")), ("Machine Gun Blast Shield (small)", "250", "350", "4(I)"))
+        self.assertEqual((small.find("effect").get("value"), large.find("effect").get("value")), ("1", "2"))
+
+    def test_sim_module_names_of_commlink6_hot_name_is_an_alias_of_the_hot_sim_item(self):
+        gear = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="sim-module" source="CRB" page="268" cost="100"><name>Sim module</name></gear>'
+                '<gear id="sim-module-w-hot-sim" source="CRB" page="268" cost="250"><name>Sim module w/ Hot sim</name></gear></d>\n')
+        got = {e.get("id"): [a.text for a in e.findall("alias")]
+               for e in ET.fromstring(overrides.apply("crb", {"gear.xml": gear})["gear.xml"].encode())}
+        self.assertIn("SIM module (hot)", got["sim-module-w-hot-sim"])
+        self.assertNotIn("SIM module (hot)", got["sim-module"])
+
+    def test_accepted_variant_tags_and_costs_are_in_the_keep_list(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("crb", "gear", "crb.sim-module", "cost"), ("crb", "gear", "crb.sim-module-w-hot-sim", "cost"),
+                  ("crb", "gear", "crb.laser-sight", "variants"), ("da", "weapons", "da.m40", "variants"),
+                  ("ts", "electronics", "ts.full-body-scanner-booth", "variants")]:
+            self.assertIn(k, keep)
