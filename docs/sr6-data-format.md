@@ -397,7 +397,12 @@ name), and used by the builder, the sheets and the Foundry export:
   rolled against Reaction + Willpower). **spell `essence`**: its test counts the target's Essence, in its threshold
   (`Sorcery + Magic (5 – Essence)`, `6 minus the target's Essence`) or its resistance (`Body + Essence`). Shown in the picker, on the Magic tab and on the sheets.
 - **armor `social`**: its SOCIAL column (Firing Squad and later), as printed. The worn armor's add up with Charisma into
-  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number.
+  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number. Clothing is
+  armor (owner 2026-10-15): Smooth Operations' OUTFIT table imports as armor, category Clothing, no `defense` (it adds none),
+  its SOCIAL RATING column as `social` as printed (`–8`, `—`, `Rating`).
+- **gear `capacity`** of a cyberdeck case (Hack & Slash): the CAPACITY (CYBERDECK/CYBERHACK) column as printed (`12/4 (includes
+  cyberhack and deck)`, `4/Not Available`, `Unlimited/Unlimited`); the engine reads only a plain number there, so these show and
+  take part in no capacity check.
 
 ### Levels: one item per level
 

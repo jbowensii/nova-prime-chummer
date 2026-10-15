@@ -39,6 +39,15 @@ A made-up tap that fizzes.
 | MATRIX RELAY | AVAIL | COST |
 |---|---|---|
 | Rating 1–3 | 2 | Rating x 1,000¥ |
+## Cases
+#### Zip Case
+A made-up case.
+#### case capacity
+| CASE TYPE | CAPACITY (CYBERDECK/CYBERHACK) | AVAIL | COST |
+|---|---|---|---|
+| Zip Case | 12/4 (includes cyberhack and deck) | 2(I) | 200¥ |
+| Tiny Case | 4/Not Available | 2(I) | 100¥ |
+| Twin Case | 2/2 | 5(I) | 1,000¥ for cyberdeck/5,000¥ for cyberhack |
 <!-- page 57 -->
 # DIGITAL TOOLBOX
 ## Commlink Apps
@@ -121,6 +130,10 @@ class HsRecipeTest(unittest.TestCase):
         self.assertIn("tap that glows", self.texts[("gear", "glow-tap")])
         self.assertEqual((g["Matrix Relay"]["rating"], g["Matrix Relay"]["cost"]), ("1–3", "Rating x 1000"))
         self.assertEqual(g["Glow Buddy"]["category"], "Commlink app")
+        # (a cyberdeck case's printed capacity, cyberdeck/cyberhack; a case priced per variant: the capacity is each item's)
+        self.assertEqual((g["Zip Case"]["capacity"], g["Tiny Case"]["capacity"]), ("12/4 (includes cyberhack and deck)", "4/Not Available"))
+        self.assertEqual((g["Twin Case (cyberdeck)"]["capacity"], g["Twin Case (cyberhack)"]["capacity"]), ("2/2", "2/2"))
+        self.assertEqual((g["Twin Case (cyberdeck)"]["cost"], g["Twin Case (cyberhack)"]["cost"]), ("1000", "5000"))
         self.assertIn("app that glows", self.texts[("gear", "glow-buddy")])  # its labelled line
 
     def test_forms_echoes_sprites(self):

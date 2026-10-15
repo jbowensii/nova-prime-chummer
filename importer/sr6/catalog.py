@@ -43,6 +43,7 @@ HEADERS = {
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
+             "CAPACITY (CYBERDECK/CYBERHACK)": "capacity",  # a cyberdeck case's room for each (HS p. 36), as printed
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              "RANGE": "range", "PILOT": "pilot", "SENSOR": "sensor",  # a rocket or missile's range and guidance (DA p. 58)

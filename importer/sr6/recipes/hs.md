@@ -7,7 +7,7 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
 ## Item shapes
 
 - Matrix gear: tables under a lower-case title (`gizmos`, `commlink apps`, `tools`, `agents`) whose first header names
-  the kind of item (`DATA TAP`, `TAG ABUSE`, `COMMLINK HACKS`, `CASE TYPE`, `*_CODEMODS`; `NAME_HEADERS`): regroup pairs
+  the kind of item (`DATA TAP`, `TAG ABUSE`, `COMMLINK HACKS`, `CASE TYPE`, `*_CODEMODS`; `NAME_HEADERS`; a case's `CAPACITY (CYBERDECK/CYBERHACK)` is its `capacity` as printed, `12/4 (includes cyberhack and deck)`, the same on each item of a row split per variant): regroup pairs
   each row with the level-4 heading of its name, else the recipe gives it the section's labelled line of its name
   (commlink apps) or a heading whose words hold its name (`Agent Box` under `Agent Box Hack`). The first header is the
   category. A row `Rating 1–6` is its header's item (`Agent (Rating 1–6)`); a `RATING` table under a title (`cyberhacks`,
