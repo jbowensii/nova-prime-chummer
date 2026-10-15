@@ -170,6 +170,9 @@ def match(cl6, ours):
                                             for m in [re.fullmatch(r"(.+?)\s*\(([^()]+)\)", c["name"] or "")] if m],
           lambda o: [n1(n) for n in _names(o)])
     stage("no-parenthetical", lambda c: [n2(c["name"])], lambda o: [n2(n) for n in _names(o)])
+    # (our nanite rows are two items, `<name> Colony` and `<name> Nanites` (owner 2026-10-14): Commlink6's one record is both)
+    nanite = lambda s: re.sub(r"(colony|nanites)$", "", n2(s))  # noqa: E731
+    stage("nanite colony and nanites", lambda c: [n2(c["name"])], lambda o: [nanite(n) for n in _names(o) if n2(n).endswith(("colony", "nanites"))])
     stage("alias", lambda c: [n2(a) for a in c["aliases"]], lambda o: [n2(n) for n in _names(o)])
     # (a one-word name only near its page: `Increasing` is p. 132's `Increasing a Form`, not p. 128's
     # `Increasing/Reducing Cargo Space`)
