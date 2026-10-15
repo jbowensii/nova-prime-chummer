@@ -311,7 +311,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family")]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata")]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
@@ -746,7 +746,7 @@ class OwnerClassCRowsTest(unittest.TestCase):
         keep = optional.load_keep()
         for k in [("bs", "gear", "bs.bulk-modification", "cost"), ("crb", "programs", "crb.tutorsoft", "avail"),
                   ("crb", "augmentations", "crb.control-rig", "cost"), ("so", "electronics", "so.swindler-stick", "cost"),
-                  ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"), ("nf", "vehicles", "nf.ford-broadcast", "avail")]:
+                  ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"), ("nf", "armor", "nf.bowler", "avail")]:
             self.assertIn(k, keep)
         self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
         self.assertNotIn(("crb", "gear", "crb.sim-module-w-hot-sim", "legality"), keep)
@@ -798,3 +798,64 @@ class OwnerVariantSplitsTest(unittest.TestCase):
                   ("crb", "gear", "crb.laser-sight", "variants"), ("da", "weapons", "da.m40", "variants"),
                   ("ts", "electronics", "ts.full-body-scanner-booth", "variants")]:
             self.assertIn(k, keep)
+
+
+class ErrataRowsTest(unittest.TestCase):
+    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides.py): an errata's values win over Commlink6's and the book's."""
+    XML = ('<?xml version="1.0"?>\n<d kind="augmentations">'
+           '<augmentation id="zz-eyes-5" source="ZZ" page="9" rating="5" avail="15" cost="900"><name>Zeyes (Rating 5)</name>'
+           '<formula field="avail">tier(R; 5: 15; 6: 18)</formula><issue field="cost" code="ambiguous"/></augmentation>'
+           '<augmentation id="zz-hum" source="ZZ" page="9" rating="1-3" avail="(Rating x 6)"><name>Hum</name>'
+           '<formula field="avail">(R*6)</formula><effect target="item:concealability" op="add" value="-2"/><slot id="s"/></augmentation>'
+           '<augmentation id="zz-gone" source="ZZ" page="9"><name>Gone</name></augmentation></d>\n')
+
+    def apply(self, rows):
+        out = overrides.apply("zz", {"augmentations.xml": self.XML}, rows)["augmentations.xml"]
+        return {e.get("id"): e for e in ET.fromstring(out.encode())}
+
+    def test_errata_values_win_over_a_commlink6_value_row_whatever_the_order(self):
+        rows = [{"kind": "augmentations", "id": "zz-eyes-5", "set": {"avail": "4"}, "gen": "errata"},
+                {"cl6": "Zeyes", "kind": "augmentations", "id": "zz-eyes-5", "set": {"avail": "9", "cost": "7"}, "gen": "value"}]
+        e = self.apply(rows)["zz-eyes-5"]
+        self.assertEqual((e.get("avail"), e.get("cost")), ("4", "7"))
+        self.assertEqual(e.findall("formula"), [])  # (the value they described is replaced)
+
+    def test_null_drops_an_attribute_effects_replace_the_same_target_and_formulas_are_set(self):
+        rows = [{"kind": "augmentations", "id": "zz-hum", "set": {"rating": None, "avail": "6"},
+                 "formula": {"cost": "tier(R; 6: 1; 7: 2)"}, "effects": [{"target": "item:concealability", "op": "add", "value": "2"}], "gen": "errata"}]
+        e = self.apply(rows)["zz-hum"]
+        self.assertEqual((e.get("rating"), e.get("avail")), (None, "6"))
+        self.assertEqual([(x.get("target"), x.get("value")) for x in e.findall("effect")], [("item:concealability", "2")])
+        self.assertEqual([x.text for x in e.findall("formula")], ["tier(R; 6: 1; 7: 2)"])
+        self.assertIsNotNone(e.find("slot"))
+
+    def test_remove_and_rename_without_an_alias(self):
+        rows = [{"kind": "augmentations", "id": "zz-gone", "remove": True},
+                {"kind": "augmentations", "id": "zz-eyes-5", "rename": "Zeyes (Rating 6)", "alias": False}]
+        got = self.apply(rows)
+        self.assertNotIn("zz-gone", got)
+        self.assertEqual((got["zz-eyes-5"].findtext("name"), got["zz-eyes-5"].findall("alias")), ("Zeyes (Rating 6)", []))
+
+    def test_no_future_errata_rows_cover_the_errata_and_leave_no_text(self):
+        rows = {(r["kind"], r["id"]): r for r in overrides.table("nf") if r.get("gen") == "errata"}
+        want = {("gear", "rising-star"): "2", ("gear", "big-time"): "3", ("gear", "external-synth"): "+1", ("gear", "internal-synth"): "+2",
+                ("weapons", "yo-yo-hardened"): "2", ("weapons", "yo-yo-bladed"): "3(L)", ("weapons", "yo-yo-monofilament"): "6(I)",
+                ("weapons", "rolling-blades-hardened"): "2", ("weapons", "rolling-blades-bladed"): "3(L)", ("weapons", "molotov"): "1(I)",
+                ("weapons", "pitchfork"): "1", ("gear", "graffiti-kit"): "1", ("vehicles", "ford-broadcast"): "2", ("vehicles", "s-b-condor"): "3",
+                ("gear", "press-pass"): "2(L)", ("gear", "procam"): "1", ("gear", "smartcam-external"): "2", ("gear", "smartcam-internal"): "4",
+                ("gear", "basic-press"): "1", ("gear", "small-press"): "4", ("gear", "industrial-press"): "7",
+                ("augmentations", "cybereyes-rating-5"): "4", ("augmentations", "cybereyes-rating-6"): "5",
+                ("augmentations", "cyberears-rating-5"): "4", ("augmentations", "cyberears-rating-6"): "5"}
+        self.assertEqual({k: rows[k]["set"]["avail"] for k in want}, want)
+        self.assertEqual(rows["armor", "trenchcoat"]["effects"][0]["value"], "2")
+        self.assertEqual((rows["augmentations", "cybereyes-rating-5"]["set"]["cost"], rows["augmentations", "cyberears-rating-6"]["set"]["cost"]), ("18000", "21000"))
+        self.assertEqual([rows[("augmentations", i)]["set"]["rating"] for i in ("audiotune", "vocal-expansion")], [None, None])
+        gone = {r["id"] for r in overrides.table("nf") if r.get("remove")}
+        self.assertEqual(gone, {"audiotune-hacked", "vision-enhancement", "audio-enhancement"})
+
+    def test_keep_list_no_longer_keeps_the_book_s_fifth_edition_numbers_for_no_future(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("nf", "vehicles", "nf.ford-broadcast", "avail"), ("nf", "weapons", "nf.molotov", "legality"),
+                  ("nf", "augmentations", "nf.cybereyes-rating-5", "cost"), ("nf", "electronics", "nf.press-pass", "avail")]:
+            self.assertNotIn(k, keep)

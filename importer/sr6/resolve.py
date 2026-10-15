@@ -418,7 +418,10 @@ def _renumber(ents, stmts, tb, changed, n):
     view = [dict(e, name=f.text or "", done=True) if (f := next((f for f in _kids(e["el"], "found") if f.get("field") == "name"
                                                                 and f.get("how") == "errata"), None)) is not None
             else dict(e, done=False) for e in ents]
+    olds = {o for _, _, _, (o, _), _ in stmts}
     for _, subj, _, (old, new), _ in stmts:
+        if new not in olds and errata_targets(view, None, f"{subj} Rating {new}"):
+            continue  # (already renumbered: an override row did it, the chain's last rating is there)
         hit = errata_targets(view, None, f"{subj} Rating {old}")
         if hit and not hit[0]["done"] and re.search(rf"\bRating\s+{old}\b", hit[0]["name"]):
             todo.append((next(e for e in ents if e["el"] is hit[0]["el"]), old, new))

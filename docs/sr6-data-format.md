@@ -731,6 +731,19 @@ disagree about one entry). A per-rating Commlink6 value is `Rating x N` when it 
 weapon's `skill` and `spec`, an armor's `social`. Slots, variants, relevance, flags, modonly, size and ammunition class
 are not in the data schema, and a Commlink6 modification has no one-to-one `<effect>`; they are not written.
 
+### Errata rows (`"gen": "errata"`)
+
+Owner decision 2026-10-15: a book's official errata wins over the printing, and over Commlink6. The corpus pass applies an
+errata PDF only to a library that holds both PDFs, so the importer's per-book runs (and cl6check) cannot see it; where the
+owner wants its numbers the per-book table carries them as hand-written rows that no generator replaces: `{"cl6": "<label>",
+"kind", "id", "set": {...}, "formula"?, "effects"?, "gen": "errata"}`. Game numbers only, never description text. `set` takes a
+`null` to drop an attribute (a rating the errata removes); `effects` is a list of `<effect>` attribute dicts, each replacing
+the entry's effect of the same `target` (the Trenchcoat's Concealability +2). The rows apply after every other id row, so they win
+over `value` rows. A removal and a rename are the ordinary `remove` / `rename` rows (`"alias": false` for a renumbering). The
+corpus pass skips a renumbering the table already made (resolve.py `_renumber`). `nf.json` holds the No Future errata (6E
+availabilities, Cybereyes/Cyberears as ratings 6 and 7 with ids kept, Vocal Expansion and AutoVoice unrated, the hacked
+AutoVoice and the vision/audio enhancement rows removed).
+
 ## Item structure (Commlink6's data, kept and not applied)
 
 Owner decision 2026-10-14: the structure Commlink6 gives an item is in our data too, where the books don't print it (the

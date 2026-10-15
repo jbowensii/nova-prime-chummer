@@ -15,6 +15,10 @@ classification on that entry (rows made by tools/cl6check/classmap.py carry "gen
 reported once on stderr, nothing guessed.
 An id row's "kind" is the file of OUR entry; a row filed under another kind (Commlink6's: gear for a weapon accessory) lands on
 the one other kind file that holds the id, and is reported when none or several do.
+An id row with "gen": "errata" is written by hand, never regenerated (an errata PDF's statements the importer's per-book
+runs cannot see: the No Future errata, nf.json): "set" values (null drops the attribute: a rating the errata removes), "formula"
+and "effects" (a list of effect attribute dicts: the entry's effect of the same target is replaced). It applies after every
+other id row, so it wins over Commlink6's values.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
@@ -108,8 +112,8 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family") and not any(k in r for k in OPS):
-            if not (r.get("set") or r.get("kids")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
+        if "id" in r and r.get("gen") in ("value", "family", "errata") and not any(k in r for k in OPS):
+            if not (r.get("set") or r.get("kids") or r.get("effects")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
             if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
                 raise ValueError(f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only")
@@ -224,12 +228,14 @@ def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
     rows = fit(_refile(out, rows))
-    want, forms, vals, kids = {}, {}, {}, {}
-    for r in rows:
+    want, forms, vals, kids, effs = {}, {}, {}, {}, {}
+    for r in sorted(rows, key=lambda r: r.get("gen") == "errata"):  # (an errata's values last: they win)
+        if r.get("effects"):
+            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["effects"])
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
-        if r.get("gen") in ("value", "family"):
+        if r.get("gen") in ("value", "family", "errata"):
             forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
             vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r.get("set", {}))
     missing = []
@@ -243,7 +249,15 @@ def _set_by_id(out, rows):
             if isinstance(e.tag, str) and e.get("id") in ids:
                 seen.add(e.get("id"))
                 for k, v in ids[e.get("id")].items():
-                    e.set(k, str(v))
+                    if v is None:  # (an errata drops the attribute)
+                        e.attrib.pop(k, None)
+                    else:
+                        e.set(k, str(v))
+                for a in effs.get(name, {}).get(e.get("id"), []):  # (replaces the same target's effect)
+                    for c in [c for c in e if c.tag == "effect" and c.get("target") == a["target"]]:
+                        e.remove(c)
+                    c = etree.Element("effect", {x: str(v) for x, v in a.items()})
+                    e.insert(sum(1 for c in e if c.tag in ("name", "alias", "formula", "issue", "found")), c)
                 for k in vals.get(name, {}).get(e.get("id"), ()):
                     for c in [c for c in e if c.tag in ("formula", "issue", "found") and c.get("field") == k]:
                         e.remove(c)  # (the value they described is replaced)
@@ -389,7 +403,7 @@ def apply(recipe_id, files, rows=None):
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
     _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])
-    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out
 

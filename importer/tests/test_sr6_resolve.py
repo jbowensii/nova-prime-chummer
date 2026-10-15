@@ -279,6 +279,25 @@ class CorpusTest(unittest.TestCase):
             with open(os.path.join(custom, "imported", "index.xml"), encoding="utf8") as f:
                 self.assertIn('href="zza/lifemodules.xml"', f.read())
 
+    def test_a_renumbering_an_override_row_already_made_is_not_made_again(self):
+        md = "\n".join(["W HAT ARE ZIPLENSES ? ( P . 40)",
+                       "Rather than being rating 2 and 3 cyberware as printed in Zorp Alpha, these are instead rating 3 and 4",
+                       "ziplenses and zipears."])
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, kind="augmentations",
+                  entries=['<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" avail="4"><name>Ziplenses (Rating 3)</name></augmentation>',
+                           '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" avail="5"><name>Ziplenses (Rating 4)</name></augmentation>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)", file="Zorp-Alpha-Errata.pdf", md=md)
+            orig = resolve.pdf_date
+            resolve.pdf_date = lambda pdf, md="": "2023-05-05" if os.sep + "e" + os.sep in pdf else ""
+            try:
+                resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")], sources={"ZZA": "2020-01"})
+            finally:
+                resolve.pdf_date = orig
+            a = {e.get("id"): e.findtext("name") for e in ET.parse(os.path.join(custom, "imported", "zza", "augmentations.xml")).getroot()}
+            self.assertEqual(a, {"zza.ziplenses-rating-2": "Ziplenses (Rating 3)", "zza.ziplenses-rating-3": "Ziplenses (Rating 4)"})
+
     def test_a_grouped_row_named_by_its_run_in(self):
         with tempfile.TemporaryDirectory() as tmp:
             lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")

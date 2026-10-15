@@ -35,9 +35,13 @@ errata's value statements to this book's entries when the errata PDF is in the l
 - `Rating N <A> / <B>: Essence …, Capacity …, Availability …, Cost x¥ / y¥` (the cybersenses): one statement per
   name (`Rating N <B>` for the second), a `/` value pairwise, any other value for both.
 
-The replaced value is kept in a `<found how="errata">` child. Not applied (rules, renames or removals): the Molotov's
-Burning status, the trenchcoat's concealability, the re-rating of the cybereyes and cyberears rows themselves, the
-enhancements removed, Stolen Gear's new rules, the Companion versions of the life modules, the page references.
+The replaced value is kept in a `<found how="errata">` child. Owner decision 2026-10-15: the errata wins, also in the
+per-book runs (where the corpus pass cannot see the errata PDF): `overrides/nf.json` carries its numbers as `"gen": "errata"`
+rows (docs/sr6-data-format.md, Errata rows): the 6E availabilities, the Trenchcoat's Concealability +2, the cybereyes and
+cyberears as ratings 6 and 7 (ids kept), AutoVoice and Vocal Expansion unrated at rating 1, the hacked AutoVoice and the
+vision/audio enhancements removed. Not applied (rules): the Molotov's Burning status, Stolen Gear's new rules (its karma is
+0 already; the nuyen-per-karma mechanic needs an engine decision), the Companion versions of the life modules, the page
+references.
 
 ## Formula styles and issues (importer v2)
 
