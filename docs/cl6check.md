@@ -29,7 +29,9 @@ no book text and no report output. The tests (`importer/tests/test_cl6check.py`)
 
 Options:
 - `--ours` takes either a folder of import runs or a single `custom/sr6` folder. A book printed in several runs
-  (the core rulebook in each city edition) is read from the first run, in name order.
+  (the core rulebook in each city edition) is read from the newest printing's run (the Current Printing, else the PDF's
+  date; ties in name order); older runs only add the entries it lacks and fill fields it left open. The PDF arbitration
+  reads that run's PDF.
 - `--jar` names the jar. Without it, the tool uses `$CL6_JAR`, then the default install
   (`~/CommLink6/app/stable/commlink6-*-complete.jar`; a folder means the newest jar in it). When no jar is found,
   the tool prints "skipped" and exits 0, so CI, which has no jar, is unaffected.

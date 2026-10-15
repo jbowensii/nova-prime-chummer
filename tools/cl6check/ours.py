@@ -2,8 +2,8 @@
 
 `load(path)` takes a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs (each with custom/sr6 and
 library/sr6/book1), and returns {source id: Source}. A source printed by several runs (the core rulebook in each city
-edition) is read from the first run in name order. Values stay as printed; `value()` reads them at a rating the way the
-app's engine does (src/sr6/engine/values.ts rated())."""
+edition) is read from the run whose printing is newest (the Current Printing, else the PDF's date; ties: first in name
+order). Values stay as printed; `value()` reads them at a rating the way the app's engine does (src/sr6/engine/values.ts rated())."""
 import math
 import os
 import re
@@ -232,21 +232,55 @@ def _book_dirs(root):
     return out
 
 
+def _printed(base):
+    """Sort key of the printing a source folder came from: (it is the core rulebook's Current Printing, its PDF date).
+    The owner's rule: the Current Printing is the newest whatever its PDF's metadata says (the City Editions' PDFs are
+    dated later); otherwise the PDF date (corpus.resolve_date, '' when unknown)."""
+    from tools.cl6check import corpus
+    lib = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(base)))), "library", "sr6", "book1")
+    md, imp = os.path.join(lib, "book.md"), os.path.join(lib, "import.xml")
+    year = corpus.printed_year(corpus.lines(open(md, encoding="utf8").read())) if os.path.exists(md) else None
+    sha = ET.parse(imp).getroot().get("sha256", "") if os.path.exists(imp) else ""
+    date = corpus.resolve_date(*corpus.pdf_meta(os.path.join(lib, "original.pdf")), year, "")[0]
+    return corpus._printing(sha) == "", date
+
+
+def _fill(new, old):
+    """The owner's rule, the latest printing wins and older ones only fill gaps: an entry (kind, id) `new` lacks is taken
+    from `old`; a field `new` left open (an issue of its own) takes `old`'s printed value when `old` has no issue on it.
+    ponytail: the importer's own merge (importer/sr6/run.py older_printings) also carries formulas and notes; this reads
+    the printed attribute only."""
+    have = {(e["kind"], e["id"]): e for e in new.entries}
+    for o in old.entries:
+        e = have.get((o["kind"], o["id"]))
+        if e is None:
+            new.entries.append(o)
+            new.texts.setdefault(o["id"], old.texts.get(o["id"], ""))
+            continue
+        open_ = {f for f, _ in e["issues"]} - {f for f, _ in o["issues"]}
+        for f in open_ & set(o["attrs"]):
+            e["attrs"][f] = o["attrs"][f]
+
+
 def load(path):
     """{source id (lower): Source} of every import under path."""
-    out, books = {}, {}
+    out, books, found = {}, {}, {}
     for base, dirs, files in sorted(os.walk(path)):
         dirs.sort()
-        if os.path.basename(os.path.dirname(base)) != "imported" or not any(f.endswith(".xml") for f in files):
-            continue
-        src = os.path.basename(base).lower()
-        if src in out:
-            continue
-        sr6 = os.path.dirname(os.path.dirname(base))  # custom/sr6
-        run = os.path.dirname(os.path.dirname(sr6))   # the run (or the repo) holding custom/ and library/
-        if run not in books:
-            books[run] = _book_dirs(os.path.join(run, "library"))
-        out[src] = Source(src, _entries(base, src), books[run].get(src), _texts(os.path.join(sr6, "texts", f"{src}.xml")))
+        if os.path.basename(os.path.dirname(base)) == "imported" and any(f.endswith(".xml") for f in files):
+            found.setdefault(os.path.basename(base).lower(), []).append(base)
+    for src, bases in found.items():  # several printings: the newest, the older ones filling its gaps (_fill)
+        bases = sorted(bases, key=_printed, reverse=True) if len(bases) > 1 else bases  # (stable: name order breaks ties)
+        for i, b in enumerate(bases):
+            sr6 = os.path.dirname(os.path.dirname(b))  # custom/sr6
+            run = os.path.dirname(os.path.dirname(sr6))  # the run (or the repo) holding custom/ and library/
+            if run not in books:
+                books[run] = _book_dirs(os.path.join(run, "library"))
+            s = Source(src, _entries(b, src), books[run].get(src), _texts(os.path.join(sr6, "texts", f"{src}.xml")))
+            if i == 0:
+                out[src] = s
+            else:
+                _fill(out[src], s)
         for e in out[src].entries:  # a per-unit price's count range, as its row printed it (a labelled `1–9` cell)
             for k, v in list(e["attrs"].items()):
                 if k.startswith("formula:") and "|unit=" in v and (m := COUNT.search(out[src].texts.get(e["id"], ""))):

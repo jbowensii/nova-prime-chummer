@@ -176,6 +176,30 @@ class OursTest(unittest.TestCase):
             self.assertTrue(got["gz"].book_dir.endswith(os.path.join("a_run", "library", "sr6", "book1")))
 
 
+    def test_the_newest_printing_wins_whatever_the_run_names(self):
+        from unittest import mock
+        from importer.sr6.recipes import crb
+        from tools.cl6check import corpus
+        with tempfile.TemporaryDirectory() as d:
+            for run, cost in (("a_berlin", "2100"), ("b_current", "5100"), ("c_seattle", "2100")):
+                imp = os.path.join(d, run, "custom", "sr6", "imported", "gz")
+                os.makedirs(imp)
+                with open(os.path.join(imp, "gear.xml"), "w", encoding="utf8") as f:
+                    f.write(f'<data><gear id="gz.q" cost="{cost}"><name>{run}</name></gear></data>')
+                lib = os.path.join(d, run, "library", "sr6", "book1")
+                os.makedirs(lib)
+                with open(os.path.join(lib, "import.xml"), "w", encoding="utf8") as f:
+                    f.write(f'<import source="GZ" sha256="{crb.SHA256[0] if run == "b_current" else "x"}"/>')
+            dates = {"a_berlin": "2025-06-01", "b_current": "2019-08-25", "c_seattle": "2021-09-01"}  # (the Current Printing's PDF is the oldest)
+            meta = lambda p: (dates[p.split(os.sep)[-5]], "")  # noqa: E731
+            with mock.patch.object(corpus, "pdf_meta", meta):
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["b_current"])
+                os.remove(os.path.join(d, "b_current", "library", "sr6", "book1", "import.xml"))  # no Current Printing: the PDF date
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["a_berlin"])
+                dates["a_berlin"] = dates["c_seattle"] = dates["b_current"]  # a tie: the first in name order
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["a_berlin"])
+
+
 class FieldsTest(unittest.TestCase):
     def cmp(self, xml, **attrs):
         c = canon.canonical(rec(xml))
