@@ -1,4 +1,5 @@
 [
+  {"cl6": "Motion Sense", "kind": "adeptpowers", "id": "motion-sense", "set": {"activation": "Passive / Major Action"}, "gen": "value"},
   {"cl6": "Railguns & Linear Kinetic Cannons", "kind": "ammotypes", "ours": ["Small caliber railgun ammo"]},
   {"cl6": "Missle Control Wire (1500m)", "kind": "gear", "ours": ["1,500-meter control wire spools"]},
   {"cl6": "Missle Control Wire (5000m)", "kind": "gear", "ours": ["5,000-meter control wire spools"]},
