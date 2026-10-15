@@ -859,3 +859,34 @@ class ErrataRowsTest(unittest.TestCase):
         for k in [("nf", "vehicles", "nf.ford-broadcast", "avail"), ("nf", "weapons", "nf.molotov", "legality"),
                   ("nf", "augmentations", "nf.cybereyes-rating-5", "cost"), ("nf", "electronics", "nf.press-pass", "avail")]:
             self.assertNotIn(k, keep)
+
+
+class SlotStructureRowsTest(unittest.TestCase):
+    """Owner 2026-10-15: Commlink6's slots/fits for seven entries; a mount column does not add a fit beside an entry's own."""
+
+    def kids(self, src, kind, eid):
+        return [(k["tag"], k["attrs"]) for r in overrides.table(src) if (r["kind"], r.get("id")) == (kind, eid) and r.get("gen") == "family" for k in r.get("kids", [])]
+
+    def test_the_seven_rows(self):
+        hardpoint = ("slot", {"id": "vehicle-hardpoint"})
+        self.assertIn(hardpoint, self.kids("crb", "weapons", "smart-firing-platform"))
+        for i in ("powered-heavy-tripod", "reinforced-smart-firing-platform", "wheeled-heavy-tripod"):
+            self.assertIn(hardpoint, self.kids("da", "weapons", i))
+        scope = self.kids("crb", "weapons", "imaging-scope")  # (the p260 accessory: capacity 3 per its text)
+        self.assertIn(("slot", {"id": "optical", "value": "3"}), scope)
+        self.assertIn(("fits", {"slot": "top"}), scope)
+        stock = self.kids("crb", "gear", "folding-stock")
+        self.assertIn(("fits", {"slot": "stock"}), stock)
+        self.assertNotIn(("slot", {"id": "stock"}), stock)
+        self.assertIn(("fits", {"slot": "electronic-accessory"}), self.kids("crb", "gear", "simrig"))
+
+    def test_a_mount_column_is_a_fit_only_when_the_entry_has_no_slot_of_its_own(self):
+        from tools.cl6check import ours
+        fam = lambda xml: ours.families(ET.fromstring(xml))["slots"]
+        self.assertEqual(fam('<weapon mount="Under"><slot id="vehicle-hardpoint"/></weapon>'), {("slot", "vehicle-hardpoint")})
+        self.assertEqual(fam('<weapon mount="Under"/>'), {("fits", "under")})
+
+    def test_scavenged_rags_keep_the_printed_empty_availability(self):
+        self.assertFalse([r for r in overrides.table("so") if r.get("id") == "scavenged-rags" and "avail" in r.get("set", {})])
+        from tools.cl6check import optional
+        self.assertIn(("so", "armor", "so.scavenged-rags", "avail"), optional.load_keep())

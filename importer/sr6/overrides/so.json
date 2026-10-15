@@ -35,7 +35,6 @@
   {"cl6": "Grooming (1 hour)", "kind": "gear", "id": "grooming-1-hour", "remove": true},
   {"cl6": "Grooming (2+ hours)", "kind": "gear", "id": "grooming-2-hours", "remove": true},
   {"cl6": "The Red Box", "kind": "gear", "id": "the-red-box", "set": {"class": "ELECTRONICS/SECURITY"}},
-  {"cl6": "Scavenged Rags", "kind": "armor", "id": "scavenged-rags", "set": {"avail": "1"}, "gen": "value"},
   {"cl6": "Brutal Weapon", "kind": "gear", "id": "brutal-weapon", "set": {"cost": "250"}, "gen": "value"},
   {"cl6": "Fancy Weapon", "kind": "gear", "id": "fancy-weapon", "set": {"cost": "500"}, "gen": "value"},
   {"cl6": "Shadowland BBS (Free!)", "kind": "gear", "id": "free", "rename": "Shadowland BBS (Free!)"},

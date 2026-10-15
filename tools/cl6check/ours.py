@@ -126,7 +126,7 @@ def families(e, kind=None):
         out["variants"] = frozenset(_norm(v.get("name") or v.findtext("name") or v.get("id")) for v in vs)
     slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {("fits", _norm(f.get("slot")))
                                                                          for f in e.findall("fits")}
-    if a.get("mount") and not NONE.match(a["mount"]):
+    if not slots and a.get("mount") and not NONE.match(a["mount"]):  # (a mount column only when the entry has no slot/fits of its own: a vehicle mount's `Under` is not a fit)
         slots |= {("fits", _norm(m)) for m in re.split(r"\s*(?:/|,|\bor\b)\s*", a["mount"]) if m.strip()}
     if slots:
         out["slots"] = frozenset(slots)

@@ -38,8 +38,10 @@ def _same(fam, cl, h, shared, keep=()):
     mine = h["families"].get(fam)
     if mine == cl:
         return True
-    if fam == "variants":  # (or the owner accepts it as one item: an install/option tag, value_keep.json field `variants`)
-        return ours.carries(h["name"], cl) or (h["src"], h["kind"], h["id"], "variants") in keep
+    if (h["src"], h["kind"], h["id"], fam) in keep:  # (the owner keeps ours: value_keep.json, field `variants` for an install/option tag, `social` for a printed `Rating`)
+        return True
+    if fam == "variants":  # (or the entry's name carries the variant)
+        return ours.carries(h["name"], cl)
     return fam == "slots" and shared and isinstance(mine, (set, frozenset)) and set(cl) <= set(mine)
 
 
@@ -78,7 +80,7 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         found += [(c, [], "optional package") for c in recs if (src, c["id"]) in optional]
         found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
                   for c in recs if (src, c["id"]) in relocated]
-        found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "src": src, "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
         stems = defaultdict(list)  # (the entries that are levels or tiers of one item: wired-reflexes-1, -2 …)
         for e in entries:
             stems[e["kind"], LEVEL.sub("", e["id"])].append(e)

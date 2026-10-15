@@ -231,7 +231,7 @@ The report's sections:
   Ours is read from the elements the gap plan proposes (`subtype`, `skill`/`spec`, `social`, `size`/`ammoClass`,
   `<variant>`, `<slot>`/`<fits>`, `<effect>`/`<test>`/`<grant>`/`<allow>`, `<choice>`, `<requires>`,
   `<relevance topic>`, `<flag>`, `modonly`). They are
-  near 0% until those phases land. A weapon accessory's printed MOUNT column already counts as its fits.
+  near 0% until those phases land. A weapon accessory's printed MOUNT column already counts as its fits, unless the entry has a `<slot>`/`<fits>` of its own (a vehicle mount's `Under`). `value_keep.json` also keeps ours for a `social` family difference.
 
   Effects compare as (element, `type:ref`, value). When phase 6 fixes our effect targets, map them in
   `ours.families`.
