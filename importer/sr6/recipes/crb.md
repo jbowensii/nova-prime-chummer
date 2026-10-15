@@ -12,8 +12,8 @@ printing).
 
 Each City Edition's city chapter is a source of its own (CRB-SEA, CRB-BER, CRB-HK; `crb.extra` -> `Result.extra`, which
 run.py writes to custom/sr6/imported/<source>/ beside the CRB, records in import.xml `extra`, and removes with the
-book), so the CRB source holds only pages 1-321. Of several printings in the library the one published last is loaded
-as the CRB catalog (`PRINTINGS`: 2019, Seattle 2021, Berlin 2023, Hong Kong 2025), the others listed as superseded;
+book), so the CRB source holds only pages 1-321. Of several printings in the library the Current Printing (`CURRENT`: the 2019 printing, whatever a City Edition is dated, owner 2026-10-15) is loaded
+as the CRB catalog, else the one published last (`PRINTINGS`: Seattle 2021, Berlin 2023, Hong Kong 2025), the others listed as superseded;
 field by field, a value it leaves out or prints as no SR6 value takes the newest older printing's valid one
 (`<found how="printing">`, run.py `older_printings`). Only its game pages are read (`CITIES`: PDF pages Seattle 328-341,
 Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back cover are left out. In them:

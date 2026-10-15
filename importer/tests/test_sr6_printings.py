@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from importer import xmlio
-from importer.sr6.recipes import crb, crb_city, skipped
+from importer.sr6.recipes import crb, crb_city, printing, skipped
 from importer.sr6.run import remove, run
 from importer.tests.test_sr6_crb import BOOK_MD
 from importer.tests.test_sr6_crb_city import CITY, CITY_MD, SHA as CITY_SHA
@@ -51,6 +51,17 @@ class PrintingsTest(unittest.TestCase):
     def loaded_files(self):
         src = ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()
         return {s.get("id"): s.get("sha256") for s in src}
+
+    def test_the_current_printing_outranks_a_later_dated_one(self):
+        with mock.patch.object(crb, "CURRENT", (_sha(OLD),)):  # (the oldest by month, but the book's Current Printing)
+            old = self.book("a-old", OLD)
+            new = self.book("b-new", NEW, BOOK_MD.replace("Zap Gun", "Zip Gun"))
+            run(old, self.custom, convert_pdf=False)
+            run(new, self.custom, convert_pdf=False)
+            self.assertEqual(self.status(old), ("done", ""))
+            self.assertEqual(self.status(new), ("superseded", "Superseded by Old Printing"))
+            self.assertIn("crb.zap-gun", self.weapons())
+            self.assertNotIn("crb.zip-gun", self.weapons())
 
     def test_an_older_printing_imported_later_is_superseded(self):
         new = self.book("a-new", NEW)
@@ -216,8 +227,10 @@ class PrintingsTest(unittest.TestCase):
 
 class SkippedTest(unittest.TestCase):
     def test_the_core_rulebook_printings_rank_by_date(self):
-        ranked = [label.split("(")[1].split(",")[0] for _, label in sorted(crb.PRINTINGS.values())]
-        self.assertEqual(ranked, ["CAT28000", "CAT28000S", "CAT28000B", "CAT28000H"])  # 2019, Seattle 2021, Berlin 2023, Hong Kong 2025
+        ranked = [label.split("(")[1].split(",")[0] for _, label in sorted(printing(s) for s in crb.SHA256)]
+        # Seattle 2021, Berlin 2023, Hong Kong 2025, then the Current Printing (2019: the owner's newest, 2026-10-15)
+        self.assertEqual(ranked, ["CAT28000S", "CAT28000B", "CAT28000H", "CAT28000"])
+        self.assertEqual(crb.CURRENT, (crb.SHA256[0],))
         self.assertTrue(all(len(month) == 7 and month[4] == "-" for month, _ in crb.PRINTINGS.values()))
         self.assertEqual(set(crb.PRINTINGS), set(crb.SHA256))
 

@@ -66,7 +66,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         src = res.source["id"]
         out_dir = os.path.join(custom_dir, "imported", src.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
-        # several printings of the book: the one published last is loaded, the others listed as superseded
+        # several printings of the book: the one ranking last (printing(): the book's Current Printing, else the one published last) is loaded, the others listed as superseded
         mine = printing(meta["sha256"])
         others = [(p, d, st) for p, d, st in _same_source(book_dir, src) if p and mine]
         newer = max(((p, d) for p, d, st in others if st == "done" and p > mine), default=None)
