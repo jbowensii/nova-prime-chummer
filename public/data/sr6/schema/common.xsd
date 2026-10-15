@@ -612,6 +612,9 @@
       <xs:attribute name="slots" type="xs:string"/>
       <!-- a weapon power supply's Energy (an energy weapon's ammo formula reads it: ref(gear:<id>, energy)) -->
       <xs:attribute name="energy" type="xs:string"/>
+      <!-- the skill and specialization a weapon-like accessory is used with (an underbarrel carbine, a bayonet) -->
+      <xs:attribute name="skill" type="xs:string"/>
+      <xs:attribute name="spec" type="xs:string"/>
       <!-- a rocket or missile's range as printed ("1.5 km") and the Pilot and Sensor ratings of its guidance -->
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="pilot" type="xs:string"/>

@@ -53,7 +53,7 @@
   {"cl6": "Candle in the dark", "kind": "qualities", "id": "candle-in-the-darkness", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "honorbound", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Stolen gear", "kind": "qualities", "id": "stolen-gear", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "in_debt", "negate": "true", "apply": "CHARACTER"}}, {"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Pitchfork", "kind": "weapons", "id": "pitchfork", "set": {"skill": "Close Combat", "spec": "Blades"}, "gen": "family"},
-  {"cl6": "Rollerskates (bladed)", "kind": "weapons", "id": "rolling-blades-bladed", "set": {"skill": "Close Combat", "spec": "Unarmed"}, "gen": "family"},
+  {"cl6": "Skateboard (bladed)", "kind": "weapons", "id": "rolling-blades-bladed", "set": {"skill": "Close Combat", "spec": "Blades"}, "gen": "family"},
   {"cl6": "Skateboard (hardened)", "kind": "weapons", "id": "rolling-blades-hardened", "set": {"skill": "Close Combat", "spec": "Clubs"}, "gen": "family"},
   {"cl6": "Torch", "kind": "weapons", "id": "torch", "set": {"skill": "Close Combat", "spec": "Clubs"}, "gen": "family"},
   {"cl6": "Yo-Yo (bladed)", "kind": "weapons", "id": "yo-yo-bladed", "set": {"skill": "Exotic Weapons", "spec": "Whips"}, "gen": "family"},

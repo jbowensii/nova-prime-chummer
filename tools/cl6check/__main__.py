@@ -17,13 +17,23 @@ import json
 import os
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, patterns, reader, report
 from tools.cl6check import optional as optional_package
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def covers(mine, want):
+    """Whether ours holds every value of one record's family (a set or a sorted tuple), for an entry several records match:
+    what it holds past that is the other records'."""
+    if isinstance(want, frozenset):
+        return isinstance(mine, frozenset) and want <= mine
+    if isinstance(want, tuple) and isinstance(mine, tuple):
+        return not (Counter(want) - Counter(mine))
+    return False
 
 
 def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None):
@@ -50,13 +60,14 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
                   for c in recs if (src, c["id"]) in relocated]
         found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        shared = Counter(id(h) for _, hits, _ in found for h in hits)  # (records matched to one entry of ours: its levels, variants)
         for c, hits, how in found:
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
             o = min(hits, key=lambda h: len(fields.compare(c, h)[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
                 "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
                 "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
-                "families": {f: bool(o) and any(h["families"].get(f) == v for h in hits)
+                "families": {f: bool(o) and any(h["families"].get(f) == v or (shared[id(h)] > 1 and covers(h["families"].get(f), v)) for h in hits)
                              for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
                              and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
                 "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
@@ -66,6 +77,8 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
                 r["excluded"] = "page beyond the owned PDF"
+            if how == "optional package":  # (no entry of ours: nothing to compare the structure with)
+                r["families"] = {}
             if o and how == "already have":  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
                 r["families"] = {}
                 results.append(r)

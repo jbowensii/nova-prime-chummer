@@ -93,30 +93,34 @@ def structure(rec):
 def main(argv):
     dry = "--dry" in argv
     jar = argv[argv.index("--jar") + 1] if "--jar" in argv else None
-    path = next(a for a in argv if not a.startswith("--") and a != jar)
+    paths = [a for a in argv if not a.startswith("--") and a != jar]  # (a later csv, of a run on the rows so far, adds the entries the first did not list)
     recs, _ = reader.read(reader.find_jar(jar))
-    by = {r["id"].lower(): r for r in recs}
+    by = {}  # ((source, kind), id): records of two types may share an id (the Cyberdeck item, a licence type)
+    for r in recs:
+        c = canon.canonical(r)
+        by.setdefault((c["src"], c["kind"], r["id"].lower()), r)
     groups = defaultdict(dict)
     skipped = defaultdict(int)
-    for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
+    rows_all = [r for path in paths for r in csv.DictReader(open(path, encoding="utf-8-sig", newline=""))]
+    for r in rows_all:
         if r["row"] != "family" or r["status"] != "counted" or r["field"] not in ("skill/spec", "social", *STRUCTURE):
             continue
         if not r["our_id"]:
             continue  # (a record no entry of ours matches: the missing row)
-        rec = by.get(r["cl6_id"].lower())
+        rec = by.get((r["src"], r["kind"], r["cl6_id"].lower()))
         if r["field"] in STRUCTURE:
             if rec:
                 sets, kids = structure(rec)
-                g = groups[r["src"], r["kind"], r["our_id"].split(".", 1)[1]]
+                g = groups[r["src"], r["kind"], (r["our_id"].partition(".")[2] or r["our_id"])]
                 g.update(sets, _cl6=rec["name"])
                 g["_kids"] = [*g.get("_kids", []), *[k for k in kids if k not in g.get("_kids", [])]]
             continue
-        if r["kind"] not in ("weapons", "armor"):
-            skipped[r["kind"], r["field"]] += 1  # (the schema gives a gear entry no skill)
+        if r["kind"] not in (("weapons", "gear") if r["field"] == "skill/spec" else ("armor",)):
+            skipped[r["kind"], r["field"]] += 1
             continue
         v = values(rec["el"], r["field"]) if rec else {}
         if v:
-            groups[r["src"], r["kind"], r["our_id"].split(".", 1)[1]].update(v, _cl6=rec["name"])
+            groups[r["src"], r["kind"], (r["our_id"].partition(".")[2] or r["our_id"])].update(v, _cl6=rec["name"])
     new = defaultdict(list)
     for (src, kind, oid), v in sorted(groups.items()):
         name, kids = v.pop("_cl6"), v.pop("_kids", [])

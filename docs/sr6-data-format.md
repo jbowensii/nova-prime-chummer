@@ -67,7 +67,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance) | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), skill and spec (an underbarrel carbine's, a bayonet's), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
