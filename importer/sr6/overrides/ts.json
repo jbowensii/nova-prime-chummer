@@ -32,7 +32,7 @@
   {"cl6": "Mk1 Tactical Shield", "kind": "weapons", "id": "mk1-tactical-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
   {"cl6": "Mk2 Riot Shield", "kind": "weapons", "id": "mk2-riot-shield", "set": {"class": "ARMOR/ARMOR_SHIELD"}},
   {"cl6": "External Injector Rig", "kind": "gear", "id": "external-injector-rig", "set": {"cost": "Rating x 1500"}, "gen": "value", "formula": {"cost": "R * 1500"}},
-  {"cl6": "Foamtek Refill Cannon", "kind": "gear", "id": "foamtek-cannon-tank-refill", "set": {"avail": "6"}, "gen": "value"},
+  {"cl6": "Foamtek Refill Cannon", "kind": "gear", "id": "foamtek-cannon-tank-refill", "set": {"avail": "6(L)"}, "gen": "value"},
   {"cl6": "Ammo Shotgun Masterkey", "kind": "gear", "id": "masterkey-ammunition", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ITEM_ATTRIBUTE", "ref": "ATTACK_RATING", "value": "2,0,0,0,0"}}, {"tag": "modifier", "attrs": {"kind": "valmod", "type": "ITEM_ATTRIBUTE", "ref": "DAMAGE", "value": "-4"}}, {"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "GEAR", "ref": "ammo_shotgun"}}], "gen": "family"},
   {"cl6": "Silver Shield GAPS", "kind": "armor", "id": "gaps-light", "kids": [{"tag": "variant", "attrs": {"name": "Light"}}, {"tag": "variant", "attrs": {"name": "Medium"}}, {"tag": "variant", "attrs": {"name": "Heavy"}}], "gen": "family"},
   {"cl6": "Silver Shield GAPS Helmet", "kind": "armor", "id": "patrol-helmet", "kids": [{"tag": "variant", "attrs": {"name": "Patrol"}}, {"tag": "variant", "attrs": {"name": "Combat"}}], "gen": "family"},
