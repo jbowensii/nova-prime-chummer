@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
-import { armorSocial, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
+import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../shared/formula'
 import { IssueBadges } from '../../ui/Issues'
 import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
@@ -26,9 +26,10 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
     return !v.ok ? (v.formula ? 'unpriced' : '?') : v.n === null ? '' : f(v.n)
   }
   const legal = legality(e.attrs.avail)
+  const licence = availNote(e.attrs.avail, rating).text // (listed, never enforced: licences are for the GM)
   return {
     cost: show('cost', v => `${n(v * (g('cost') ?? 1))}¥`),
-    avail: show('avail', v => `${v + (g('avail') ?? 0)}${legal ? `(${legal})` : ''}`),
+    avail: licence ?? show('avail', v => `${v + (g('avail') ?? 0)}${legal ? `(${legal})` : ''}`),
     essence: show('essence', v => n(Math.round(v * (g('essence') ?? 1) * 100) / 100)),
   }
 }
@@ -138,6 +139,7 @@ export function CatalogPicker({
   const range = chosen ? ratingRange(chosen.e.attrs.rating) : [],
     free = chosen && chosenRating(chosen.e)
   const price = chosen && priceAt(chosen.e, chosen.rating ?? range[0] ?? 1, cr, chosen.grade, data)
+  const availWarn = chosen && availNote(chosen.e.attrs.avail, chosen.rating ?? range[0] ?? 1).warn // (a heads-up, never a refusal)
   return (
     <Modal
       open={open}
@@ -200,6 +202,12 @@ export function CatalogPicker({
             <p>
               Cost <b title={formulaShown(chosen.e, 'cost', dataFind(data))}>{price.cost || '—'}</b> · Availability{' '}
               <b title={formulaShown(chosen.e, 'avail', dataFind(data))}>{price.avail || '—'}</b>
+              {availWarn && (
+                <span className="warn" title={availWarn}>
+                  {' '}
+                  ⚑ {availWarn}
+                </span>
+              )}
               {price.essence && (
                 <>
                   {' '}
@@ -603,7 +611,9 @@ export function PurchaseSection({
                 const e = entryOf(x, data),
                   name = e ? entryLabel(e) : (x.name ?? 'Custom item'),
                   p = priced(x, data, cr),
-                  cf = formulaOf(e?.formulas, 'cost')
+                  cf = formulaOf(e?.formulas, 'cost'),
+                  note = availNote(e?.attrs.avail, x.rating ?? 1),
+                  licence = note.text
                 return (
                   <tr key={x.uid}>
                     <td>
@@ -643,8 +653,20 @@ export function PurchaseSection({
                     )}
                     {ware && <td className="num">{n(p.essence)}</td>}
                     <td className="num">
-                      {p.avail}
-                      {legality(e?.attrs.avail) ? `(${legality(e?.attrs.avail)})` : ''}
+                      {licence ? (
+                        licence
+                      ) : (
+                        <>
+                          {p.avail}
+                          {legality(e?.attrs.avail) ? `(${legality(e?.attrs.avail)})` : ''}
+                        </>
+                      )}
+                      {note.warn && (
+                        <span className="warn" title={note.warn} aria-label={note.warn}>
+                          {' '}
+                          ⚑
+                        </span>
+                      )}
                     </td>
                     <td className="num">
                       {/* a formula's price shows the formula on hover (and what it had to assume) */}
