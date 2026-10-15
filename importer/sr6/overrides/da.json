@@ -188,7 +188,7 @@
   {"cl6": "ParaPlate", "kind": "gear", "id": "paraplate", "kids": [{"tag": "fits", "attrs": {"slot": "armor"}}, {"tag": "fits", "attrs": {"slot": "armor-reactive"}}], "gen": "family"},
   {"cl6": "Personal Drone Rack", "kind": "gear", "id": "personal-drone-rack", "kids": [{"tag": "fits", "attrs": {"slot": "armor"}}], "gen": "family"},
   {"cl6": "Quick Release", "kind": "gear", "id": "quick-release", "kids": [{"tag": "fits", "attrs": {"slot": "armor"}}], "gen": "family"},
-  {"cl6": "Underbarrel Carbine", "kind": "gear", "id": "underbarrel-carbine", "kids": [{"tag": "fits", "attrs": {"slot": "under-weapon-mount"}}], "gen": "family"},
+  {"cl6": "Underbarrel Carbine", "kind": "gear", "id": "underbarrel-carbine", "set": {"skill": "Firearms", "spec": "Rifles"}, "kids": [{"tag": "fits", "attrs": {"slot": "under-weapon-mount"}}], "gen": "family"},
   {"cl6": "Uses 0.5 Energy per shot", "kind": "gear", "id": "uses-0-5-energy-per-shot", "set": {"modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "internal"}}], "gen": "family"},
   {"cl6": "Uses 1 Energy per shot", "kind": "gear", "id": "uses-1-energy-per-shot", "set": {"modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "internal"}}], "gen": "family"},
   {"cl6": "Uses 10 Energy per shot", "kind": "gear", "id": "uses-10-energy-per-shot", "set": {"modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "internal"}}], "gen": "family"},
