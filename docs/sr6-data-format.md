@@ -725,7 +725,7 @@ are not in the data schema, and a Commlink6 modification has no one-to-one `<eff
 
 Owner decision 2026-10-14: the structure Commlink6 gives an item is in our data too, where the books don't print it (the
 importer reads none of it from the text). Children of any entry (`common.xsd` tail), and attributes of the item kinds:
-- `<slot id value?/>` a slot the item offers; `<fits slot/>` a slot it fits; `<variant name/>` a variant it comes in;
+- `<slot ref value?/>` a slot the item offers; `<fits slot/>` a slot it fits; `<variant name/>` a variant it comes in;
   `<relevance topic/>` a topic it is relevant to; `<flag>text</flag>` a kind flag; attributes `modonly="true"` (bought only as
   an add-on), `size` (a weapon's size class) and `ammoClass`.
 - `<modifier kind type ref value …/>` (kind `valmod`, `checkmod`, `itemmod` or `allowmod`: a modification), `<prerequisite

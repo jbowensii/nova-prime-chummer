@@ -153,6 +153,8 @@ def _set_by_id(out, rows):
     for r in rows:
         if f"{r['kind']}.xml" not in homes.get(r["id"], []) and len(homes.get(r["id"], [])) == 1:
             r = {**r, "kind": homes[r["id"]][0][:-4]}
+        if r["kind"] == "gear" and "social" in r.get("set", {}):  # (an armor the importer filed as gear has no social rating: the schema lacks it)
+            r = {**r, "set": {k: v for k, v in r["set"].items() if k != "social"}}
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])

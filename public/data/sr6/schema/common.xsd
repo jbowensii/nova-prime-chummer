@@ -192,7 +192,7 @@
     <xs:anyAttribute processContents="lax"/>
   </xs:complexType>
   <xs:complexType name="Slot">
-    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="ref" type="xs:string" use="required"/>
     <xs:attribute name="value" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Fits">
@@ -856,6 +856,7 @@
   <xs:complexType name="Tagged">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string"/>
+      <xs:attribute name="modonly" type="xs:boolean"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
   <!-- an action: type (minor, major, edge, boost, as the section heading words it), timing (initiative or anytime: the

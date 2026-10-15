@@ -576,7 +576,7 @@ class StructureKidsTest(unittest.TestCase):
 
     def test_kids_are_added_before_the_text_once_and_only_the_known_tags(self):
         rows = [{"cl6": "Lamp", "kind": "gear", "id": "zz.lamp", "gen": "family", "set": {"modonly": "true"},
-                 "kids": [{"tag": "fits", "attrs": {"slot": "under"}}, {"tag": "slot", "attrs": {"id": "top", "value": "2"}},
+                 "kids": [{"tag": "fits", "attrs": {"slot": "under"}}, {"tag": "slot", "attrs": {"ref": "top", "value": "2"}},
                           {"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "AGILITY", "value": "1"}},
                           {"tag": "flag", "text": "codemod"}]}]
         out = overrides.apply("zz", {"gear.xml": self.GEAR}, rows)

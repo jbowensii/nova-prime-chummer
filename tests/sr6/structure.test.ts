@@ -12,7 +12,7 @@ const NS = 'urn:chummer-sr6:data:1'
 const doc = `<?xml version="1.0" encoding="UTF-8"?>
 <sr6:data xmlns:sr6="${NS}" kind="weapons" version="1">
   <weapon id="zz.widget" source="ZZ" page="3" category="Zed" size="Military" ammoClass="Heavy" modonly="true" avail="2" cost="10">
-    <name>Widget</name><slot id="under" value="2"/><slot id="top"/><fits slot="internal"/><variant name="Long"/><variant name="Short"/>
+    <name>Widget</name><slot ref="under" value="2"/><slot ref="top"/><fits slot="internal"/><variant name="Long"/><variant name="Short"/>
     <relevance topic="combat"/><flag>codemod</flag>
     <modifier kind="valmod" type="ATTRIBUTE" ref="AGILITY" value="1"/><prerequisite kind="datareq" type="QUALITY" ref="zed"/><selection type="SKILL"/><text/>
   </weapon>

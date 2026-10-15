@@ -55,7 +55,7 @@ def structure(rec):
         sets["ammoClass"] = words(ammo.lower())
     for m in canon._mods(el):
         if m.tag in ("valmod", "itemmod") and m.get("type") == "HOOK" and m.get("ref"):
-            kids.append({"tag": "slot", "attrs": {"id": canon._norm(m.get("ref")), **({"value": m.get("value")} if m.get("value") else {})}})
+            kids.append({"tag": "slot", "attrs": {"ref": canon._norm(m.get("ref")), **({"value": m.get("value")} if m.get("value") else {})}})
         if m.tag == "relevancemod" and (m.get("topic") or "").strip():
             kids.append({"tag": "relevance", "attrs": {"topic": m.get("topic").strip().casefold()}})
     for u in canon._own(el, "usage"):

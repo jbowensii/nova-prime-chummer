@@ -51,7 +51,7 @@ export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: str
   adeptpowers: { fields: ['cost', 'costCombat', 'perLevel', 'maxLevel', 'activation'] },
   complexforms: { fields: ['duration', 'fade'] },
   metamagics: { fields: ['user', 'perLevel', 'maxLevel'] },
-  echoes: { fields: [] },
+  echoes: { fields: ['category', 'modonly'] },
   martialarts: { fields: ['categories', 'signature'] },
   martialtechniques: { fields: ['category'] },
   traditions: { fields: [] },

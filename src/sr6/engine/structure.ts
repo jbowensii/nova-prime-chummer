@@ -27,7 +27,7 @@ export interface ItemStructure {
 export function structureOf(e: Sr6Entry): ItemStructure {
   const of = (tag: string) => e.parts.filter(p => p.tag === tag)
   return {
-    slots: of('slot').map(p => ({ id: p.attrs.id ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) })),
+    slots: of('slot').map(p => ({ id: p.attrs.ref ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) })),
     fits: of('fits').map(p => p.attrs.slot ?? ''),
     variants: of('variant').map(p => p.attrs.name ?? ''),
     relevance: of('relevance').map(p => p.attrs.topic ?? ''),

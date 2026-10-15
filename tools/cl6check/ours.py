@@ -124,7 +124,7 @@ def families(e, kind=None):
     vs = e.findall("variant")
     if vs:
         out["variants"] = frozenset(_norm(v.get("name") or v.findtext("name") or v.get("id")) for v in vs)
-    slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {("fits", _norm(f.get("slot")))
+    slots = {("slot", _norm(s.get("ref") or s.get("id"))) for s in e.findall("slot")} | {("fits", _norm(f.get("slot")))
                                                                          for f in e.findall("fits")}
     if a.get("mount") and not NONE.match(a["mount"]):
         slots |= {("fits", _norm(m)) for m in re.split(r"\s*(?:/|,|\bor\b)\s*", a["mount"]) if m.strip()}
