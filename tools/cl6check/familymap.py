@@ -101,9 +101,10 @@ def merge(old, new, idx, src, variants=False):
     on an entry whose name carries a variant (one item per variant) and, until the owner decides (variants=True,
     `--variants`), none at all."""
     rows, landed, held = {}, set(), ours.kinds(idx)
+    filed = {(x["kind"], x["id"]) for x in old if x.get("gen") == "family"}
     for r in old:
         k = ours.kind_of(held, src, f"{src}.{r['id']}", r["kind"]) if r.get("gen") == "family" else None
-        if k:
+        if k and (k == r["kind"] or (k, r["id"]) not in filed):  # (a row refiled onto one the kind file already has: dropped)
             rows[k, r["id"]] = {**r, "kind": k}
             if r["kind"] == k:
                 landed.add((k, r["id"]))
@@ -137,13 +138,14 @@ def main(argv):
     mine = ours.kinds(idx)
     groups = defaultdict(dict)
     skipped = defaultdict(int)
-    for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
-        if r["row"] != "family" or r["status"] != "counted" or r["field"] not in ("skill/spec", "social", *STRUCTURE):
-            continue
-        if not r["our_id"]:
-            continue  # (a record no entry of ours matches: the missing row)
+    rows = [r for r in csv.DictReader(open(path, encoding="utf-8-sig", newline=""))
+            if r["row"] == "family" and r["status"] == "counted" and r["field"] in ("skill/spec", "social", *STRUCTURE) and r["our_id"]]  # (no our_id: a record no entry of ours matches)
+    own = {(r["src"], r["kind"], r["our_id"]) for r in rows}  # (records of the entry's own kind file)
+    for r in rows:
         rec = by.get((r["src"], r["kind"], r["cl6_id"].lower()))
         kind = ours.kind_of(mine, r["src"], r["our_id"], r["kind"]) or r["kind"]
+        if kind != r["kind"] and (r["src"], kind, r["our_id"]) in own:
+            continue  # (another record of the entry's own kind is its record: an echo and a device of one id)
         if r["field"] in STRUCTURE:
             if rec:
                 sets, kids = structure(rec)

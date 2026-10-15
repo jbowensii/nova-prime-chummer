@@ -601,6 +601,10 @@ class FamilyMergeTest(unittest.TestCase):
         self.assertEqual(set(got), {("gear", "hand"), ("weapons", "a"), ("gear", "c"), ("gear", "twin"), ("armor", "twin")})
         self.assertEqual(got["weapons", "a"]["set"], {"skill": "Firearms", "spec": "Rifles"})
         self.assertNotIn("kids", got["gear", "c"])
+        both = [{"cl6": "E", "kind": "echoes", "id": "dev", "set": {"size": "Tiny"}, "gen": "family"},
+                {"cl6": "D", "kind": "electronics", "id": "dev", "set": {"modonly": "true"}, "gen": "family"}]
+        (only,) = familymap.merge(both, [], {("zz", "echoes", "zz.dev"): {"name": "D"}}, "zz")  # (the echo is the entry's; the device row is not refiled onto it)
+        self.assertEqual((only["kind"], only["set"]), ("echoes", {"size": "Tiny"}))
         self.assertEqual({r["id"] for r in familymap.merge([], new, idx, "zz", variants=True)}, {"a", "b", "c"})  # (--variants: b keeps its list; setae carries its variants)
         self.assertTrue(ours.carries("Setae (hands or feet)", ["Hands", "Feet"]) and not ours.carries("Setae", ["Hands"]))
 
