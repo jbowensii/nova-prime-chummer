@@ -1,4 +1,7 @@
 [
+  {"cl6": "Roll Dice", "kind": "actions", "id": "roll-dice", "remove": true},
+  {"cl6": "Determine Effect", "kind": "actions", "id": "determine-effect", "remove": true},
+  {"cl6": "Examples", "kind": "qualities", "id": "examples", "remove": true},
   {"cl6": "Mossberg CMDT", "kind": "weapons", "id": "mossberg-cmdt", "set": {"ammo": "10(c)/24(d)"}, "gen": "value"},
   {"cl6": "Arrow", "kind": "weapons", "id": "arrow", "set": {"rating": "1–14"}, "gen": "value"},
   {"cl6": "Implanted Launcher", "kind": "augmentations", "ours": ["Grenade launcher"]},
