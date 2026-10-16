@@ -67,14 +67,32 @@ export function infectedOf(e: Sr6Entry | undefined): InfectedType | undefined {
   }
 }
 
-/** The metatype's name as the types' `base` and the maxima's `when` print it (Human, Dwarf). ponytail: by name, so a
- *  metavariant (its own name) takes no Infected type; a catalog base metatype would let it. */
+/** The metatype's name as the types' `base` and the maxima's `when` print it (Human, Dwarf). */
 export const metatypeName = (data: Pick<Sr6Data, 'metatypes'>, metatype: string) => data.metatypes[metatype]?.name ?? ''
 
-/** How a metatype takes a type: 'own' its base metatype; 'alt' any other through its <infectedalt base="other"> (the
- *  non-human vampire, p. 109); undefined: it can't. */
+/** Each metavariant's parent metatype (the Sixth World Companion's Metavariants tables, pp. 79–84, grouped by parent).
+ *  ponytail: by name, as the catalog has no parent attribute (metatypeSize does the same); a metasapient has none. */
+const PARENT: Record<string, string> = Object.fromEntries(
+  Object.entries({
+    Dwarf: ['Duende', 'Gnome', 'Hanuman', 'Koborokuru', 'Menehune'],
+    Elf: ['Dalakitnon', 'Dryad', 'Nocturna', 'Wakyambi', 'Xapiri Thepe'],
+    Human: ['Nartaki', 'Valkyrie'],
+    Ork: ['Hobgoblin', 'Ogre', 'Oni', 'Satyr'],
+    Troll: ['Cyclops', 'Fomorian', 'Giant', 'Minotaur'],
+  }).flatMap(([parent, vs]) => vs.map(v => [normName(v), parent])),
+)
+
+/** The metatype Infected reads (owner, 2026-10-16): a metavariant's parent (Hobgoblin: Ork), else the metatype itself.
+ *  '' for no metatype. */
+export const baseMetatype = (data: Pick<Sr6Data, 'metatypes'>, metatype: string) => {
+  const n = metatypeName(data, metatype)
+  return PARENT[normName(n)] ?? n
+}
+
+/** How a metatype takes a type: 'own' its base metatype (a metavariant its parent); 'alt' any other through its
+ *  <infectedalt base="other"> (the non-human vampire, p. 109); undefined: it can't. */
 export function infectedFit(data: Pick<Sr6Data, 'metatypes'>, metatype: string, t: InfectedType): 'own' | 'alt' | undefined {
-  const m = normName(metatypeName(data, metatype))
+  const m = normName(baseMetatype(data, metatype))
   if (!m) return undefined
   return m === normName(t.base) ? 'own' : t.alt ? 'alt' : undefined
 }

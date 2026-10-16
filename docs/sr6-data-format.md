@@ -224,12 +224,12 @@ base>`. The gained powers, weaknesses and attacks stay in the description: the p
 
 **Infected characters in the app** (`src/sr6/engine/infected.ts`, owner decisions 2026-10-16). A runner is Infected while
 it has one Infected type (a quality with `<infected>`): Creation method's Infected yes/no and type selector (shown while
-`infectedAllowed` is on, or the runner has a type) list the types whose `base` is the runner's metatype by name (the
+`infectedAllowed` is on, or the runner has a type) list the types whose `base` is the runner's metatype by name, a metavariant's its parent's (`baseMetatype`, a list by name: Hobgoblin is Ork; a metasapient has none) (the
 Ghoul's one per base), and the non-human vampire for any other metatype through its `<infectedalt base="other">`; the
 editor's `infected` op (and the `quality` op given a type) takes it, replacing the one the runner has, and taking it away
 restores the runner. From the type:
 
-- Attribute maxima: an `attr-max` effect with a `when` holds only when the `when` is the runner's metatype's name
+- Attribute maxima: an `attr-max` effect with a `when` holds only when the `when` is the runner's metatype's name or its parent's
   (`effects.ts` `maxEffects`: the type's own row; any other `when`, a condition, never); the `<infectedalt>` values are
   added to the runner's own metatype maxima. An Infected's core attribute above its maximum drops to it on the derived
   values, the spend not refunded (Review's warning `infected.dropped`, in place of `attr.creationMax`).
