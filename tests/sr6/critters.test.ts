@@ -1,6 +1,7 @@
 // Critters a runner owns (owner 2026-10-16, BUILDER Q9-Q10): Wild Life p. 180's prices by class (the player's pet class;
 // Awakened and Emerged from Magic or Resonance), companion qualities with the purchase, from taming and by the bond,
-// commands and special training, critter powers at 0 Karma, critterware and critter gear on a critter only, its Body in
+// named commands and special training (bought with it: +1 Body in the price; taught later: the OPTIONS row's price),
+// the -N% bonus off the whole price, critter powers at 0 Karma, critterware and critter gear on a critter only, its Body in
 // their prices, its Essence and Magic; the file and the career ledger. Invented entries, invented numbers.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
@@ -58,9 +59,21 @@ const QUALITIES = `<sr6:data ${NS} kind="qualities" version="1">
   <quality id="zz.critter-bond" ${at} kind="positive" karma="10"><name>Critter Bond</name><text/></quality>
 </sr6:data>`
 
+const act = (id: string, name: string, cat: string) => `<action id="zz.${id}" ${at} category="${cat}"><name>${name}</name><text/></action>`
+const ACTIONS = `<sr6:data ${NS} kind="actions" version="1">
+  ${act('fetch-fizz', 'Fetch Fizz', 'Critter Command Actions')}
+  ${act('hum-along', 'Hum Along', 'Critter Command Actions')}
+  ${act('harness-training', 'Harness Training', 'Critter Special Training')}
+  ${act('glow-dodge', 'Glow Dodge', 'Edge Actions')}
+</sr6:data>`
+let n = 0
+const C = (id: string, taught?: true) => ({ uid: `t${++n}`, what: 'command' as const, id: `zz.${id}`, ...(taught ? { taught } : {}) })
+const T = (id: string, taught?: true) => ({ uid: `t${++n}`, what: 'training' as const, id: `zz.${id}`, ...(taught ? { taught } : {}) })
+
 const worldCatalog = () => {
   const files = [
     ['critters', CRITTERS],
+    ['actions', ACTIONS],
     ['gear', GEAR],
     ['augmentations', AUGS],
     ['qualities', QUALITIES],
@@ -102,7 +115,7 @@ test('price by class: the pet class the player picks; Awakened and Emerged from 
   expect(priced(x, data, fixtureCreation())).toMatchObject({ cost: 280, avail: 0, ok: true, body: 4 })
 })
 
-test('qualities with the purchase: ±1 Availability each, only the net Karma moves the price; commands and training', () => {
+test('qualities with the purchase: ±1 Availability each, only the net Karma moves the price', () => {
   const { x, data } = owning('zz.fuzzpup', { pet: 'exotic' })
   x.critterQualities = [
     { uid: 'a', id: 'zz.snuggly', level: 1 },
@@ -123,10 +136,57 @@ test('qualities with the purchase: ±1 Availability each, only the net Karma mov
     { uid: 'g', id: 'zz.untrainable', level: 3 },
   ]
   expect(critterPrice(x, data).cost).toBe(0)
-  // each command +400 / Availability +2, each special training +600 / +1
+})
+
+test('trained with the purchase: +1 Body in the price formula each, +1 Availability each (the OPTIONS row’s); its Body stays', () => {
+  const { x, data, cr } = owning('zz.fuzzpup', { pet: 'exotic' })
+  x.trained = [C('fetch-fizz'), C('hum-along'), T('harness-training')]
+  // Body 4 + 3 trained: 7 × 200; Availability 3 + 2 × 2 (a command's +2) + 1
+  expect(critterPrice(x, data)).toMatchObject({ cost: 1400, avail: 8, ok: true })
+  expect(critterPrice(x, data).parts[0]).toBe('Pet (Exotic) Body x 200 nuyen at Body 4 + 3 trained (p. 183): 1,400¥')
+  // the critter's own Body (its critterware's price, its stat line) is not raised
+  expect(priced(x, data, cr).body).toBe(4)
+  // Awakened: (Body + 1 + Magic) × 1,100; its Availability from its Magic, + the command's 2
+  const cat = owning('zz.glowcat', { trained: [C('fetch-fizz')] })
+  expect(critterPrice(cat.x, cat.data)).toMatchObject({ cost: 6600, avail: 6 })
+})
+
+test('a net Karma bonus comes off the whole price, training included, never below 0; a net cost adds per point', () => {
+  const { x, data } = owning('zz.fuzzpup', { pet: 'exotic', trained: [C('fetch-fizz'), C('hum-along')] })
+  // (4 + 2) × 200 = 1,200; Grumpy's 4 bonus: −40% of all of it
+  x.critterQualities = [{ uid: 'g', id: 'zz.grumpy', level: 1 }]
+  expect(critterPrice(x, data).cost).toBe(720)
+  expect(critterPrice(x, data).parts.at(-1)).toMatch(/4 Karma bonus: −40% of the whole price/)
+  // Snuggly's 2 cost against the 4 bonus: net −2, −20%
+  x.critterQualities.push({ uid: 's', id: 'zz.snuggly', level: 1 })
+  expect(critterPrice(x, data).cost).toBe(960)
+  // Untrainable 3 more: net −8, −80%; Untrainable 6: past 100%, 0, never negative
+  x.critterQualities.push({ uid: 'u', id: 'zz.untrainable', level: 3 })
+  expect(critterPrice(x, data).cost).toBe(240)
+  x.critterQualities[2].level = 6
+  expect(critterPrice(x, data).cost).toBe(0)
+  // a net cost: +300 a point on top
+  x.critterQualities = [{ uid: 'k', id: 'zz.keen', level: 1 }]
+  expect(critterPrice(x, data).cost).toBe(1200 + 900)
+})
+
+test('taught later: the OPTIONS row’s price each (+400, +600), no Availability, never discounted; a tamed critter’s always', () => {
+  const { b, x, data, cr } = owning('zz.fuzzpup', { pet: 'exotic' })
+  x.trained = [C('fetch-fizz', true), T('harness-training', true)]
+  x.critterQualities = [{ uid: 'g', id: 'zz.grumpy', level: 1 }]
+  // 800 − 40%, then 400 + 600 taught; Availability 3 − 1 (the negative)
+  expect(critterPrice(x, data)).toMatchObject({ cost: 480 + 1000, avail: 2 })
+  expect(critterPrice(x, data).parts.slice(-2)).toEqual(['1 command taught later: +400¥', '1 special training taught later: +600¥'])
+  // tamed: no price, no Availability; what it is taught is still paid
   x.critterQualities = []
-  Object.assign(x, { commands: 2, training: 1 })
-  expect(critterPrice(x, data)).toMatchObject({ cost: 800 + 800 + 600, avail: 3 + 4 + 1 })
+  x.trained = [C('hum-along')]
+  expect(apply(b, { op: 'critter', uid: x.uid, tamed: true }, data, cr)).toEqual(ok)
+  expect(x.trained[0].taught).toBe(true)
+  x.critterQualities = []
+  expect(critterPrice(x, data)).toMatchObject({ cost: 400, avail: 0, ok: true })
+  expect(apply(b, { op: 'critterTrained', host: x.uid, id: 'zz.harness-training' }, data, cr)).toEqual(ok)
+  expect(x.trained[1]).toMatchObject({ what: 'training', id: 'zz.harness-training', name: 'Harness Training', taught: true })
+  expect(critterPrice(x, data)).toMatchObject({ cost: 1000, avail: 0 })
 })
 
 test('a tamed critter has no price; taming brings Wild Soul and High Maintenance 1, untaming takes them away', () => {
@@ -151,7 +211,7 @@ test('a tamed critter has no price; taming brings Wild Soul and High Maintenance
   expect(apply(b, { op: 'critterQuality', host: x.uid, id: 'zz.grumpy', how: 'tamed' }, data, cr)).toEqual({ ok: false, reason: 'not-tamed' })
 })
 
-test('critter qualities are a critter’s only; set, levelled, removed; commands and training never below 0', () => {
+test('critter qualities are a critter’s only; set, levelled, removed; commands and training picked by name, set, removed', () => {
   const { b, x, data, cr } = owning('zz.fuzzpup')
   expect(apply(b, { op: 'critterQuality', host: x.uid, id: 'zz.critter-bond' }, data, cr)).toEqual({ ok: false, reason: 'not-a-critter-quality' })
   expect(apply(b, { op: 'critterQuality', host: x.uid, id: 'zz.receptive' }, data, cr)).toEqual(ok)
@@ -159,24 +219,39 @@ test('critter qualities are a critter’s only; set, levelled, removed; commands
   const uid = x.critterQualities![0].uid
   expect(apply(b, { op: 'critterQuality', host: x.uid, uid, level: 2 }, data, cr)).toEqual(ok)
   expect(x.critterQualities![0].level).toBe(2)
-  expect(apply(b, { op: 'critter', uid: x.uid, commands: -1 }, data, cr)).toEqual({ ok: false, reason: 'below-zero' })
-  expect(apply(b, { op: 'critter', uid: x.uid, commands: 3, training: 2, pet: 'exotic' }, data, cr)).toEqual(ok)
-  expect(x).toMatchObject({ commands: 3, training: 2, pet: 'exotic' })
-  expect(apply(b, { op: 'critter', uid: x.uid, commands: 0 }, data, cr)).toEqual(ok)
-  expect(x.commands).toBeUndefined()
   expect(apply(b, { op: 'critterQuality', host: x.uid, remove: uid }, data, cr)).toEqual(ok)
   expect(x.critterQualities).toBeUndefined()
+  // only the book's two lists: an Edge action, or nothing, is refused
+  expect(apply(b, { op: 'critterTrained', host: x.uid, id: 'zz.glow-dodge' }, data, cr)).toEqual({ ok: false, reason: 'not-critter-training' })
+  expect(apply(b, { op: 'critterTrained', host: x.uid, id: 'zz.nothing' }, data, cr)).toEqual({ ok: false, reason: 'unknown-entry' })
+  // the same one twice is two (Teamwork for two skills); one taught later, then back with the purchase; one taken off
+  for (const id of ['zz.fetch-fizz', 'zz.fetch-fizz', 'zz.harness-training']) expect(apply(b, { op: 'critterTrained', host: x.uid, id }, data, cr)).toEqual(ok)
+  expect(x.trained?.map(t => [t.what, t.id, t.taught])).toEqual([
+    ['command', 'zz.fetch-fizz', undefined],
+    ['command', 'zz.fetch-fizz', undefined],
+    ['training', 'zz.harness-training', undefined],
+  ])
+  const [one, , tr] = x.trained!
+  expect(apply(b, { op: 'critterTrained', host: x.uid, uid: tr.uid, taught: true }, data, cr)).toEqual(ok)
+  expect(tr.taught).toBe(true)
+  expect(apply(b, { op: 'critterTrained', host: x.uid, uid: tr.uid, taught: false }, data, cr)).toEqual(ok)
+  expect(tr.taught).toBeUndefined()
+  expect(apply(b, { op: 'critterTrained', host: x.uid, remove: one.uid }, data, cr)).toEqual(ok)
+  expect(x.trained).toHaveLength(2)
+  expect(apply(b, { op: 'critterTrained', host: x.uid, remove: one.uid }, data, cr)).toEqual({ ok: false, reason: 'not-taken' })
 })
 
 test('limits: commands Logic × 2 and training Intuition × 2, moved by Receptive and Untrainable; six qualities; all warnings', () => {
-  const { x, data, cr } = owning('zz.fuzzpup', { commands: 5, training: 7 })
+  const { x, data, cr } = owning('zz.fuzzpup', {
+    trained: [...[...Array(5)].map(() => C('fetch-fizz')), ...[...Array(7)].map(() => T('harness-training', true))],
+  })
   expect(view(x, data, cr)).toMatchObject({ commands: { n: 5, max: 4 }, training: { n: 7, max: 6 } })
   expect(view(x, data, cr).warnings.map(w => w.page)).toEqual([180, 180])
   x.critterQualities = [{ uid: 'r', id: 'zz.receptive', level: 2 }]
   expect(view(x, data, cr)).toMatchObject({ commands: { max: 6 }, training: { max: 8 } })
   x.critterQualities.push({ uid: 'u', id: 'zz.untrainable', level: 3 })
   expect(view(x, data, cr)).toMatchObject({ commands: { max: 3 }, training: { max: 5 } })
-  x.commands = x.training = 0
+  x.trained = []
   x.critterQualities = ['snuggly', 'keen', 'wild-soul', 'grumpy', 'receptive', 'untrainable', 'high-maintenance.2'].map(id => ({
     uid: id,
     id: `zz.${id}`,
@@ -270,10 +345,32 @@ test('career: a critter bought, critter gear fitted, a quality bonded (negative 
     ch = r.ch
     return ch.ledger.at(-1)!
   }
-  expect(step({ op: 'purchase', line: { uid: '', kind: 'critters', id: 'zz.glowcat', qty: 1, accessories: [], commands: 1 } })).toMatchObject({
-    nuyen: 5500 + 400,
-    label: 'Glowcat',
+  // bought trained: (Body 3 + 1 + Magic 2) × 1,100
+  expect(
+    step({
+      op: 'purchase',
+      line: { uid: '', kind: 'critters', id: 'zz.glowcat', qty: 1, accessories: [], trained: [{ uid: '', what: 'command', id: 'zz.hum-along' }] },
+    }),
+  ).toMatchObject({ nuyen: 6600, label: 'Glowcat' })
+  // taught to the Fuzzpup after: +400 a command, +600 a special training (past its limit: recorded, Review warns)
+  expect(step({ op: 'teach', target: 'c1', line: { uid: '', what: 'command', id: 'zz.fetch-fizz' } })).toMatchObject({
+    nuyen: 400,
+    label: 'Taught: Fetch Fizz (command) to Fuzzpup',
   })
+  expect(step({ op: 'teach', target: 'c1', line: { uid: '', what: 'training', id: 'zz.harness-training' } })).toMatchObject({ nuyen: 600 })
+  const taught = ch.ledger.at(-1)!.id
+  expect(preview(ch, { op: 'teach', target: 'c1', line: { uid: '', what: 'command', id: 'zz.harness-training' } }, data, cr)).toEqual({
+    ok: false,
+    reason: 'not-critter-training',
+  })
+  expect(currentBuild(ch).purchases[0].trained?.map(t => [t.name, t.taught])).toEqual([
+    ['Fetch Fizz', true],
+    ['Harness Training', true],
+  ])
+  expect(currentBuild(ch).purchases[1].trained).toEqual([{ uid: expect.any(String), what: 'command', id: 'zz.hum-along', name: 'Hum Along' }])
+  // voided: the special training it was taught goes again
+  const un = voidEntry(ch, taught, 'never learned it')
+  expect(un.ok && currentBuild(un.ch).purchases[0].trained?.map(t => t.name)).toEqual(['Fetch Fizz'])
   expect(step({ op: 'fit', target: 'c1', line: { uid: '', kind: 'gear', id: 'zz.fuzz-harness', qty: 1, accessories: [] } })).toMatchObject({ nuyen: 120 })
   // Keen (3) with Grumpy (4): nothing left to double
   expect(step({ op: 'bond', target: 'c1', line: { uid: '', id: 'zz.keen', level: 1 }, with: { uid: '', id: 'zz.grumpy', level: 1 } })).toMatchObject({
@@ -316,8 +413,10 @@ test('the file: a critter line round-trips and validates; an unknown pet class i
       qty: 1,
       pet: 'wild',
       tamed: true,
-      commands: 2,
-      training: 1,
+      trained: [
+        { uid: 't1', what: 'command', id: 'zz.fetch-fizz', name: 'Fetch Fizz', taught: true },
+        { uid: 't2', what: 'training', id: 'zz.harness-training', taught: true },
+      ],
       critterQualities: [
         { uid: 'a', id: 'zz.wild-soul', level: 1, name: 'Wild Soul', how: 'tamed' },
         { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded' },
@@ -327,7 +426,8 @@ test('the file: a critter line round-trips and validates; an unknown pet class i
     },
   ]
   const xml = sr6ToXml(ch)
-  expect(xml).toContain('<purchase uid="c1" kind="critters" id="zz.fuzzpup" qty="1" pet="wild" tamed="true" commands="2" training="1">')
+  expect(xml).toContain('<purchase uid="c1" kind="critters" id="zz.fuzzpup" qty="1" pet="wild" tamed="true">')
+  expect(xml).toContain('<trained uid="t1" what="command" id="zz.fetch-fizz" name="Fetch Fizz" taught="true"/>')
   expect(await valid(xml)).toEqual([])
   const r = xmlToSr6(xml)
   expect(r.ok && r.character).toEqual(ch)
@@ -338,8 +438,38 @@ test('the file: a critter line round-trips and validates; an unknown pet class i
   expect(fix).toEqual([expect.stringMatching(/pet class “feral”/)])
 })
 
+test('an older file’s counts of commands and training load as that many unnamed ones, noted; written the new way', async () => {
+  const old = (tamed: string) => {
+    const ch = blankSr6('karma', 'r', '2026-10-16T00:00:00.000Z')
+    ch.build.purchases = [{ uid: 'c1', kind: 'critters', id: 'zz.fuzzpup', qty: 1, accessories: [] }]
+    return sr6ToXml(ch).replace('<purchase uid="c1" kind="critters" id="zz.fuzzpup" qty="1"', `$&${tamed} commands="2" training="1"`)
+  }
+  expect(old('')).toMatch(/commands="2" training="1"/)
+  const { data } = world()
+  const fix: string[] = []
+  const r = xmlToSr6(old(''), { repair: fix })
+  if (!r.ok) throw new Error(r.reason)
+  const x = r.character.build.purchases[0]
+  expect(x.trained).toEqual([
+    { uid: 'c1-command-1', what: 'command' },
+    { uid: 'c1-command-2', what: 'command' },
+    { uid: 'c1-training-1', what: 'training' },
+  ])
+  expect(fix).toEqual([expect.stringMatching(/3 trained commands and special training had no names.*Critters tab/)])
+  expect(critterNotes(x, data, fixtureCreation())).toContain('Commands 2 of 4: Unnamed command, Unnamed command')
+  // (bought with it: Body 4 + 3 at the mundane 70)
+  expect(critterPrice(x, data).cost).toBe(490)
+  // a tamed critter's were taught
+  const t = xmlToSr6(old(' tamed="true"'))
+  expect(t.ok && t.character.build.purchases[0].trained?.every(y => y.taught)).toBe(true)
+  const again = sr6ToXml(r.character)
+  expect(again).not.toMatch(/commands="/)
+  expect(await valid(again)).toEqual([])
+  expect(await valid(old(''))).toEqual([]) // (the older attributes still validate)
+})
+
 test('every sheet’s critter lines and the export: class, stats, powers, qualities, training, what it wears', () => {
-  const { b, x, data, cr } = owning('zz.fuzzpup', { pet: 'exotic', commands: 2 })
+  const { b, x, data, cr } = owning('zz.fuzzpup', { pet: 'exotic', trained: [C('fetch-fizz'), C('hum-along', true)] })
   x.critterQualities = [
     { uid: 'a', id: 'zz.snuggly', level: 1 },
     { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded' },
@@ -351,7 +481,8 @@ test('every sheet’s critter lines and the export: class, stats, powers, qualit
     'Powers (innate, 0 Karma): Glow Nose, Thick Fur',
     'Weaknesses: Allergy (soap)',
     'Qualities: Snuggly, Receptive to Training 2 (bonded)',
-    'Commands 2 of 6, special training 0 of 8',
+    'Commands 2 of 6: Fetch Fizz, Hum Along (taught)',
+    'Special training 0 of 8',
     'With: Fuzz Harness',
   ])
   const { c } = worldCatalog()
@@ -362,6 +493,10 @@ test('every sheet’s critter lines and the export: class, stats, powers, qualit
     tamed: false,
     commands: 2,
     training: 0,
+    trained: [
+      { what: 'command', name: 'Fetch Fizz', taught: false },
+      { what: 'command', name: 'Hum Along', taught: true },
+    ],
     qualities: [
       { uid: 'a', id: 'zz.snuggly', level: 1, name: 'Snuggly' },
       { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded', name: 'Receptive to Training' },

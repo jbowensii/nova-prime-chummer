@@ -140,10 +140,17 @@ copy". Book entries are never copied here.
 - An owned critter (the Critters tab, src/sr6/engine/critters.ts) is `<purchase kind="critters" id>` naming a catalog
   critter: `pet` the class the player chose, `mundane`, `exotic` or `wild` (absent: mundane; an unknown one is left out,
   noted; Awakened and Emerged come from the critter's Magic or Resonance, never stored), `tamed="true"` when tamed from
-  the wild instead of bought (no price, Wild Life p. 184), `commands` and `training` its trained commands and special
-  training (p. 180; absent: none), and a `<quality uid id level name? how?>` per companion quality (catalog qualities of
+  the wild instead of bought (no price, Wild Life p. 184), a `<trained uid what id? name? taught?>` per named command
+  (`what="command"`) or special training (`what="training"`): the catalog action of category Critter Command Actions or
+  Critter Special Training it is (Wild Life pp. 181-183; the same one may be there twice, Teamwork for two skills);
+  `taught="true"` taught after the critter was bought (+500¥ a command, +750¥ a special training, p. 180, no
+  Availability; a tamed critter's always are), absent: it came with the purchase (each +1 to the Body in the price
+  formula only and +1 Availability, p. 183). An older file's counts, `commands` and `training` on the `<purchase>`, load
+  as that many unnamed ones (no `id`, `uid` the line's + `-command-1` …; a tamed critter's taught), noted on a repair
+  load; the file is written the new way on its next save. Then a `<quality uid id level name? how?>` per companion quality (catalog qualities of
   class `CRITTERWARE/QUALITY`, pp. 184-186): no `how`, specified with its purchase (each ±1 Availability, its net Karma
-  moving the price, p. 180); `how="tamed"`, the Wild Soul and the negative balancing it that taming gives; `how="bonded"`,
+  moving the price, p. 180: a net Karma bonus takes its percentage off the whole price, training included, never below 0);
+  `how="tamed"`, the Wild Soul and the negative balancing it that taming gives; `how="bonded"`,
   bought with the runner's own Karma through the Critter Bond path's Permanent Improvement (SWC p. 139; at creation its
   positives less its negatives, never below 0, in the karma budget). Its accessories are its critterware and gear,
   priced as usual but at its Body where they print one (`Critter's Body x 50¥`) and, an augmentation, +10% a point of
@@ -219,7 +226,9 @@ the entry its `event` names.
   Improvement, SWC p. 139, and a second `<quality>` is the negative taken with it, Wild Life p. 184: Karma = (the
   positive's Karma less the negative's bonus, never below 0) × `advance.qualityFactor`; a first `<quality>` whose `uid`
   names one of the critter's qualities upgrades that one, its id and level replaced, priced at the difference; a `fit`
-  or `unfit` may name a critter too: its critterware and gear),
+  or `unfit` may name a critter too: its critterware and gear), `teach` (`target`: the uid of an owned critter; the
+  `<trained taught="true">` that follows is taught to it, priced at Wild Life's OPTIONS row, +500¥ a command, +750¥ a
+  special training, p. 180; past the critter's limit it is recorded and Review warns; voiding it takes it back),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),

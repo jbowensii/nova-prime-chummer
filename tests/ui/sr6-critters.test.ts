@@ -1,7 +1,8 @@
-// The Critters tab (owner 2026-10-16, BUILDER Q9-Q10: its own tab): buy a critter, pick its pet class, train it, tame
+// The Critters tab (owner 2026-10-16, BUILDER Q9-Q10: its own tab): buy a critter, pick its pet class, pick its named
+// commands and special training (with the purchase or taught later; past a limit a warning), tame
 // it (and untame it), its companion qualities with the purchase and by the bond, critterware or gear from the
 // critter-only catalog, Undo; its powers at 0 Karma; Review's warning links here; after finalising, a critter bought and
-// a quality bonded on the Ledger. Made-up runner, critters, prices and qualities on the made-up fixture.
+// a quality bonded and a command taught on the Ledger. Made-up runner, critters, prices and qualities on the made-up fixture.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
 import { currentBuild } from '../../src/sr6/engine/career'
@@ -35,8 +36,16 @@ const QUALITIES = `<sr6:data ${NS} kind="qualities" version="1">
   ${q('high-maintenance', 'High Maintenance', 'negative', 1)}
   ${q('grumpy', 'Grumpy', 'negative', 4)}
 </sr6:data>`
+const act = (id: string, name: string, cat: string) => `<action id="zz.${id}" ${at} category="${cat}"><name>${name}</name><text/></action>`
+const ACTIONS = `<sr6:data ${NS} kind="actions" version="1">
+  ${act('fetch-fizz', 'Fetch Fizz', 'Critter Command Actions')}
+  ${act('hum-along', 'Hum Along', 'Critter Command Actions')}
+  ${act('harness-training', 'Harness Training', 'Critter Special Training')}
+  ${act('glow-dodge', 'Glow Dodge', 'Edge Actions')}
+</sr6:data>`
 const catalog = () =>
   fixtureCatalog(undefined, [
+    { file: 'custom/sr6/imported/zz/actions.xml', xml: ACTIONS },
     { file: 'custom/sr6/imported/zz/gear.xml', xml: GEAR },
     { file: 'custom/sr6/imported/zz/qualities.xml', xml: QUALITIES },
   ])
@@ -60,28 +69,56 @@ const runner = () => {
 }
 const main = () => pageText(document.querySelector('main')!) // (the budgets beside it list every line)
 
-test('Critters: buy one, pick its class, train and tame it, its qualities and critter gear; powers at 0 Karma; Undo', async () => {
+test('Critters: buy one, pick its class, its named commands and training, tame it, its qualities and critter gear; Undo', async () => {
   const saved = await open(runner(), 'critters')
   await click(button('Add a critter…'))
   await click(option('Fuzzbeast'))
   expect(main()).toMatch(/Powers \(innate, 0 Karma\): Glimmer, Thick Fur/)
   expect(main()).toMatch(/Pet \(Mundane\) Body x 70 nuyen: 280¥/)
   await change(field('Fuzzbeast class'), 'exotic')
-  await click(button('Raise Fuzzbeast commands'))
-  await click(button('Raise Fuzzbeast commands'))
-  await click(button('Raise Fuzzbeast commands')) // (Logic 1: past its 2, a warning, never refused)
-  expect(main()).toMatch(/Pet \(Exotic\) Body x 200 nuyen: 800¥ · 3 commands: \+1,200¥, Availability \+6/)
-  expect(main()).toMatch(/of 2 \(Logic × 2\)/)
+  // the book's commands only (no Edge action), each picked by name; Logic 1: past its 2, a warning, never refused
+  await click(button('Add a command to Fuzzbeast'))
+  expect(() => option('Glow Dodge')).toThrow()
+  expect(() => option('Harness Training')).toThrow()
+  await click(option('Fetch Fizz'))
+  for (const c of ['Hum Along', 'Fetch Fizz']) {
+    await click(button('Add a command to Fuzzbeast'))
+    await click(option(c))
+  }
+  // bought with it: Body 4 + 3 in the price only, Availability +2 each (the made-up row)
+  expect(main()).toMatch(/Pet \(Exotic\) Body x 200 nuyen at Body 4 \+ 3 trained \(p\. 183\): 1,400¥ · 3 commands with the purchase: Availability \+6/)
+  expect(main()).toMatch(/Commands 3 of 2 \(Logic × 2\)/)
+  expect(document.querySelector('[aria-label="Critter Fuzzbeast"] .warn')?.textContent).toBe('3 of 2 (Logic × 2)')
+  // one taught later instead: off the Body, +400¥
+  await change(field('Hum Along on Fuzzbeast: when'), 'taught')
+  expect(main()).toMatch(/at Body 4 \+ 2 trained \(p\. 183\): 1,200¥ · 2 commands with the purchase: Availability \+4 · 1 command taught later: \+400¥/)
+  // a special training, from its own list
+  await click(button('Add a special training to Fuzzbeast'))
+  expect(() => option('Fetch Fizz')).toThrow()
+  await click(option('Harness Training'))
+  expect(main()).toMatch(/Special training 1 of 6 \(Intuition × 2\)/)
   let after = await saved()
-  expect(after.build.purchases[0]).toMatchObject({ kind: 'critters', id: 'crb.fuzzbeast', pet: 'exotic', commands: 3 })
+  expect(after.build.purchases[0]).toMatchObject({ kind: 'critters', id: 'crb.fuzzbeast', pet: 'exotic' })
+  expect(after.build.purchases[0].trained?.map(t => [t.what, t.name, t.taught])).toEqual([
+    ['command', 'Fetch Fizz', undefined],
+    ['command', 'Hum Along', true],
+    ['command', 'Fetch Fizz', undefined],
+    ['training', 'Harness Training', undefined],
+  ])
+  // taken off, and undone
+  await click(button('Remove Harness Training from Fuzzbeast'))
+  expect(main()).toMatch(/Special training 0 of 6/)
+  await click(button('Undo'))
+  expect(main()).toMatch(/Special training 1 of 6/)
   // a quality specified with the purchase, from the critter-only catalog, and taken off again
   await click(button('Add a quality with the purchase to Fuzzbeast'))
   await click(option('Snuggly'))
   expect(main()).toMatch(/qualities: 1 positive, 0 negative \(Availability \+1\); net 2 Karma cost: \+600¥/)
   await click(button('Remove Snuggly from Fuzzbeast'))
-  // tamed: no price; Wild Soul and High Maintenance come, and go again
+  // tamed: no price; what it knows was taught (+400¥ a command, +600¥ the training); Wild Soul and High Maintenance come, and go again
   await change(field('Fuzzbeast tamed'), true)
-  expect(main()).toMatch(/tamed from the wild: no price/)
+  expect(main()).toMatch(/tamed from the wild: no price \(Wild Life p\. 184\) · 3 commands taught later: \+1,200¥ · 1 special training taught later: \+600¥/)
+  expect(field<HTMLSelectElement>('Fetch Fizz on Fuzzbeast: when').disabled).toBe(true)
   expect(main()).toMatch(/Wild Soul\s*from taming/)
   expect(main()).toMatch(/High Maintenance\s*from taming/)
   await change(field('Fuzzbeast tamed'), false)
@@ -100,7 +137,16 @@ test('Critters: buy one, pick its class, train and tame it, its qualities and cr
 
 test('Review: a critter past its limits is a warning (not an error) linking to Critters', async () => {
   const ch = runner()
-  ch.build.purchases = [{ uid: 'c1', kind: 'critters', id: 'crb.fuzzbeast', qty: 1, accessories: [], commands: 3 }]
+  ch.build.purchases = [
+    {
+      uid: 'c1',
+      kind: 'critters',
+      id: 'crb.fuzzbeast',
+      qty: 1,
+      accessories: [],
+      trained: ['a', 'b', 'c'].map(uid => ({ uid, what: 'command' as const, id: 'zz.fetch-fizz' })),
+    },
+  ]
   await open(ch, 'review')
   const link = [...document.querySelectorAll('a')].find(a => /Fuzzbeast: 3 commands; it can learn 2/.test(a.textContent ?? ''))
   expect(link?.getAttribute('href')).toBe('#/sr6/c/made-up-c/critters')
@@ -118,7 +164,7 @@ test('Critters: a quality bought by the bond costs the runner Karma at creation'
   expect((await saved()).build.purchases[0].critterQualities).toEqual([{ uid: expect.any(String), id: 'zz.keen', level: 1, name: 'Keen', how: 'bonded' }])
 })
 
-test('Ledger: after finalising, a critter is bought at its class and training, and a quality bonded with a negative', async () => {
+test('Ledger: after finalising, a critter is bought at its class and training, a command taught, a quality bonded with a negative', async () => {
   const ch = runner()
   ch.build.purchases = [{ uid: 'c1', kind: 'critters', id: 'crb.fuzzbeast', qty: 1, accessories: [] }]
   Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 30, nuyen: 5000 } })
@@ -128,13 +174,24 @@ test('Ledger: after finalising, a critter is bought at its class and training, a
   await click(button('Pick from the catalog…'))
   await click(option('Rustmole'))
   await change(field('Critter class'), 'wild')
-  await change(field('Special training'), '1')
-  expect(pageText()).toMatch(/Rustmole · 1,200¥/) // (Body 3 × 200 + 600)
+  await change(field('Harness Training'), true)
+  expect(pageText()).toMatch(/Rustmole · 800¥/) // ((Body 3 + 1) × 200)
   await click(button('Record'))
   await click(button('Record it'))
   expect((await saved()).ledger.at(-1)).toMatchObject({
-    advance: { op: 'purchase', line: { kind: 'critters', id: 'crb.rustmole', pet: 'wild', training: 1 } },
-    nuyen: 1200,
+    advance: { op: 'purchase', line: { kind: 'critters', id: 'crb.rustmole', pet: 'wild', trained: [{ what: 'training', id: 'zz.harness-training' }] } },
+    nuyen: 800,
+  })
+  // taught later to the one it had: +400¥ a command
+  await change(field('What'), 'teach')
+  await change(field('Taught critter'), 'c1')
+  await change(field('Taught'), 'zz.hum-along')
+  expect(pageText()).toMatch(/Taught: Hum Along \(command\) to Fuzzbeast · 400¥/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  expect((await saved()).ledger.at(-1)).toMatchObject({
+    advance: { op: 'teach', target: 'c1', line: { what: 'command', id: 'zz.hum-along', name: 'Hum Along', taught: true } },
+    nuyen: 400,
   })
   await change(field('What'), 'bond')
   await change(field('Bonded critter'), 'c1')
@@ -161,6 +218,6 @@ test('Critters after finalising: read only, pointing at the Ledger', async () =>
   ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 0 }]
   await open(ch, 'critters')
   expect(main()).toMatch(/Keen\s*bonded: your Karma/)
-  expect(main()).toMatch(/After finalising: buy a critter, fit critterware or gear, or bond a quality on the Ledger/)
+  expect(main()).toMatch(/After finalising: buy a critter, teach it a command or special training, fit critterware or gear, or bond a quality on the Ledger/)
   expect(field<HTMLInputElement>('Fuzzbeast tamed').closest('fieldset')?.disabled).toBe(true)
 })

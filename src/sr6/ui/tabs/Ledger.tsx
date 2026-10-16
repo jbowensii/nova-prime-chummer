@@ -34,7 +34,7 @@ import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 import { awakenedFlag } from '../../engine/infected'
 import { boughtDesign } from '../../engine/design'
 import { useSr6Designs } from '../Designer'
-import { CRITTER_CLASS_LABELS, isCritterQuality } from '../../engine/critters'
+import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../engine/critters'
 import { critterWearable } from './Critters'
 
 const OPS = [
@@ -60,6 +60,7 @@ const OPS = [
   ['shift', 'Shift mod slots on a vehicle or drone'],
   ['move', 'Move a weapon to another mount'],
   ['bond', 'Bond: a quality for your critter (Critter Bond)'],
+  ['teach', 'Teach your critter a command or special training'],
   ['sin', 'SIN'],
   ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
@@ -103,10 +104,10 @@ export function LedgerTab() {
     to: 'powertrain',
     diy: false,
     pet: 'mundane',
-    commands: '0',
-    training: '0',
     neg: '',
   })
+  // (a critter bought: the commands and special training it comes with, catalog ids)
+  const [trainedIds, setTrainedIds] = useState<string[]>([])
   // (a new SIN's licences by name: each is rated as the SIN, career.ts)
   const [licences, setLicences] = useState<string[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
@@ -125,11 +126,14 @@ export function LedgerTab() {
     host = hosts.find(x => x.uid === f.target)
   // (bond: the critter companion qualities in the catalog)
   const companion = [...c.entries.qualities.values()].filter(isCritterQuality).sort((x, y) => x.name.localeCompare(y.name))
+  // (critter and teach: the book's Critter Command Actions and Critter Special Training in the catalog)
+  const trainable = [...c.entries.actions.values()].filter(e => trainedWhat(e)).sort((x, y) => x.name.localeCompare(y.name))
   const choose = (o: OpKey) => {
     setOp(o)
     setPicked(null)
     setLicences([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, commands: '0', training: '0', neg: '' }))
+    setTrainedIds([])
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -203,9 +207,9 @@ export function LedgerTab() {
               },
             }
           : null
-      // a critter at the pet class picked, with its trained commands and special training (Wild Life p. 180)
+      // a critter at the pet class picked, with the commands and special training it comes with (Wild Life pp. 180-183)
       case 'critter':
-        return e && whole(f.commands) >= 0 && whole(f.training) >= 0
+        return e
           ? {
               op: 'purchase',
               line: {
@@ -215,8 +219,7 @@ export function LedgerTab() {
                 qty: 1,
                 accessories: [],
                 ...(f.pet !== 'mundane' ? { pet: f.pet as PetClass } : {}),
-                ...(whole(f.commands) > 0 ? { commands: whole(f.commands) } : {}),
-                ...(whole(f.training) > 0 ? { training: whole(f.training) } : {}),
+                ...(trainedIds.length ? { trained: trainedIds.map(id => ({ uid: '', what: trainedWhat(data.entry('actions', id))!, id })) } : {}),
               },
             }
           : null
@@ -231,6 +234,11 @@ export function LedgerTab() {
               ...(f.neg ? { with: { uid: '', id: f.neg, level: 1 } } : {}),
             }
           : null
+      }
+      // a command or special training taught to a critter the runner owns (+500¥, +750¥: Wild Life p. 180)
+      case 'teach': {
+        const w = trainedWhat(data.entry('actions', f.name))
+        return f.target && w ? { op, target: f.target, line: { uid: '', what: w, id: f.name, taught: true } } : null
       }
       // one of your designs (the Designer) as it works out now
       case 'design': {
@@ -598,29 +606,54 @@ export function LedgerTab() {
                 ))}
               </select>
             </label>
+            {(['command', 'training'] as const).map(w => (
+              <fieldset key={w} className="row" aria-label={w === 'command' ? 'Commands it comes with' : 'Special training it comes with'}>
+                <legend>{w === 'command' ? 'Commands it comes with' : 'Special training it comes with'}</legend>
+                {trainable
+                  .filter(e => trainedWhat(e) === w)
+                  .map(e => (
+                    <label key={e.id} className="inline">
+                      <input
+                        type="checkbox"
+                        checked={trainedIds.includes(e.id)}
+                        onChange={ev => setTrainedIds(ids => (ev.target.checked ? [...ids, e.id] : ids.filter(i => i !== e.id)))}
+                      />{' '}
+                      {e.name}
+                    </label>
+                  ))}
+              </fieldset>
+            ))}
+          </>
+        )}
+        {op === 'teach' && (
+          <>
             <label>
-              Commands
-              <input
-                type="number"
-                min={0}
-                step={1}
-                aria-label="Commands"
-                value={f.commands}
-                onChange={e => set({ commands: e.target.value })}
-                style={{ width: '5rem' }}
-              />
+              Critter
+              <select aria-label="Taught critter" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {critters.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              Special training
-              <input
-                type="number"
-                min={0}
-                step={1}
-                aria-label="Special training"
-                value={f.training}
-                onChange={e => set({ training: e.target.value })}
-                style={{ width: '5rem' }}
-              />
+              Command or special training
+              <select aria-label="Taught" value={f.name} onChange={e => set({ name: e.target.value })}>
+                <option value="">Pick one</option>
+                {(['command', 'training'] as const).map(w => (
+                  <optgroup key={w} label={w === 'command' ? 'Commands' : 'Special training'}>
+                    {trainable
+                      .filter(e => trainedWhat(e) === w)
+                      .map(e => (
+                        <option key={e.id} value={e.id}>
+                          {e.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
             </label>
           </>
         )}

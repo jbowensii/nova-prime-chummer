@@ -34,6 +34,7 @@ import {
   type Sr6Character,
   type Sr6Contact,
   type Sr6CritterQuality,
+  type Sr6CritterTrained,
   type Sr6Design,
   type Sr6Knowledge,
   type Sr6LedgerEntry,
@@ -90,16 +91,16 @@ function purchaseXml(p: Sr6Purchase): string {
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
       pet: p.pet,
       tamed: p.tamed,
-      commands: p.commands,
-      training: p.training,
     },
     bonusesXml(p.bonuses) +
       (p.critterQualities ?? []).map(critterQualityXml).join('') +
+      (p.trained ?? []).map(trainedXml).join('') +
       p.accessories.map(purchaseXml).join('') +
       (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
 }
 const critterQualityXml = (q: Sr6CritterQuality) => el('quality', { uid: q.uid, id: q.id, level: q.level, name: q.name, how: q.how })
+const trainedXml = (t: Sr6CritterTrained) => el('trained', { uid: t.uid, what: t.what, id: t.id, name: t.name, taught: t.taught })
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) =>
@@ -213,6 +214,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ target: a.target, mount: a.mount }, '']
     case 'bond':
       return [{ target: a.target }, critterQualityXml(a.line) + (a.with ? critterQualityXml(a.with) : '')]
+    case 'teach':
+      return [{ target: a.target }, trainedXml(a.line)]
     case 'contact':
       return [{}, contactXml(a.line)]
     case 'sin':
@@ -418,8 +421,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     slotShifts: readShifts(e, fix),
     pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
     tamed: yes(e, 'tamed'),
-    commands: num(e, 'commands'),
-    training: num(e, 'training'),
+    trained: listOrNone([...each(kids(e, 'trained'), readTrained, label, fix), ...olderTrained(e, fix)]),
     critterQualities: listOrNone(each(kids(e, 'quality'), readCritterQuality, label, fix)),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
@@ -439,6 +441,27 @@ const readCritterQuality = (e: Element): Sr6CritterQuality => {
   const how = str(e, 'how')
   if (how !== undefined && how !== 'tamed' && how !== 'bonded') throw new Error(`critter quality how “${how}” (not tamed or bonded)`)
   return def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1), name: str(e, 'name'), how })
+}
+
+/** An owned critter's named command or special training (`taught`: after it was bought; absent: with the purchase). */
+const readTrained = (e: Element): Sr6CritterTrained => {
+  const what = str(e, 'what')
+  if (what !== 'command' && what !== 'training') throw new Error(`trained what “${what ?? ''}” (not command or training)`)
+  return def({ uid: e.getAttribute('uid') ?? '', what, id: str(e, 'id'), name: str(e, 'name'), taught: yes(e, 'taught') })
+}
+/** An older file's counts (`commands="2" training="1"`, before they were named): as many unnamed ones, with the purchase
+ *  (a tamed critter's taught), noted so the player can pick which they are. */
+function olderTrained(e: Element, fix?: string[]): Sr6CritterTrained[] {
+  const out: Sr6CritterTrained[] = []
+  for (const what of ['command', 'training'] as const) {
+    const n = num(e, what === 'command' ? 'commands' : 'training') ?? 0
+    for (let i = 0; i < n; i++) out.push(def({ uid: `${e.getAttribute('uid') ?? ''}-${what}-${i + 1}`, what, taught: yes(e, 'tamed') }))
+  }
+  if (out.length)
+    fix?.push(
+      `${e.getAttribute('name') || 'A critter'}: its ${out.length} trained commands and special training had no names, so they’re kept unnamed (pick which they are on the Critters tab).`,
+    )
+  return out
 }
 
 /** A vehicle's slotShifts (`chassis>powertrain …`, Double Clutch p. 120); one that names no category pair is left out, noted. */
@@ -701,6 +724,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       }
     case 'move':
       return { op, target: req(e, 'target'), mount: req(e, 'mount') }
+    case 'teach':
+      return { op, target: req(e, 'target'), line: line(e, 'trained', readTrained, true) }
     case 'bond': {
       // (the bought quality, and the negative taken with it)
       const [q, w] = kids(e, 'quality').map(readCritterQuality)

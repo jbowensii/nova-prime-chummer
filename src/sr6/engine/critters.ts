@@ -3,11 +3,13 @@
 // Emerged from the critter's own Magic or Resonance), or tamed from the wild (no price; Wild Soul and a negative quality,
 // p. 184); its companion qualities specified with the purchase (each ±1 Availability, only the net Karma moving the
 // price; six at most, p. 184), from taming, or bought with the runner's own Karma through the Critter Bond path's
-// Permanent Improvement (SWC p. 139: negatives' bonus Karma comes off before the doubling, WL p. 184); its commands (up to
-// Logic × 2) and special training (up to Intuition × 2), p. 180; its critter powers innate, never priced (owner rule);
+// Permanent Improvement (SWC p. 139: negatives' bonus Karma comes off before the doubling, WL p. 184); its named
+// commands (up to Logic × 2) and special training (up to Intuition × 2), pp. 180-183, the book's lists in the catalog
+// (owner 2026-10-16: bought with it, +1 Body in the price each; taught later, the OPTIONS row's +500¥/+750¥); its
+// critter powers innate, never priced (owner rule);
 // critterware on Body 2 or more, +10% a point of natural Body over 8, Essence loss taking Magic or Resonance (Body Shop
 // pp. 135, 140). Past a limit is a Review warning, never refused.
-import type { PetClass, Sr6CritterQuality, Sr6Purchase } from '../model/character'
+import type { PetClass, Sr6CritterQuality, Sr6CritterTrained, Sr6Purchase } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from './data'
 import type { Sr6QualityView } from './types'
@@ -79,77 +81,108 @@ export interface CritterPrice {
   /** how the price was worked out, step by step (shown on the Critters tab) */
   parts: string[]
 }
-/** A critter's price and Availability (Wild Life p. 180): its class's row at its Body, Magic or Resonance; the qualities
- *  specified with it (each ±1 Availability; the net Karma: +N¥ per point of cost, -N% of the critter's price per point of
- *  bonus, never below 0); each command and special training. A tamed critter has none. Powers are never priced. */
+/** A Critter Command Action or Critter Special Training (Wild Life pp. 181-183): a catalog action of that category. */
+export const TRAINED: Record<Sr6CritterTrained['what'], RegExp> = { command: /^critter command actions$/i, training: /^critter special training$/i }
+export const trainedWhat = (e?: Pick<Sr6Entry, 'kind' | 'attrs'>) =>
+  e?.kind === 'actions' ? (Object.keys(TRAINED) as Sr6CritterTrained['what'][]).find(k => TRAINED[k].test(e.attrs.category ?? '')) : undefined
+export const TRAINED_LABELS = { command: 'command', training: 'special training' } as const
+/** A trained command's or special training's name: its catalog entry's, else as saved, else an older file's unnamed one. */
+export const trainedName = (t: Sr6CritterTrained, data: Sr6Data) => (t.id && data.entry('actions', t.id)?.name) || t.name || `Unnamed ${TRAINED_LABELS[t.what]}`
+/** Taught after the critter was bought (a tamed critter's always are, owner 2026-10-16 Q3). */
+export const isTaught = (x: Pick<Sr6Purchase, 'tamed'>, t: Sr6CritterTrained) => !!(x.tamed || t.taught)
+/** A command or special training taught after the critter was bought: the OPTIONS row's price (Wild Life p. 180:
+ *  +500¥, +750¥); null: the row isn't in the catalog. */
+export const taughtPrice = (data: Sr6Data, what: Sr6CritterTrained['what']) => (o => (o ? amount(o.attrs.cost) : null))(row(data, OPTION[what]))
+const plural = (n: number, what: Sr6CritterTrained['what']) => `${n} ${TRAINED_LABELS[what]}${n === 1 || what === 'training' ? '' : 's'}`
+
+/** A critter's price and Availability (Wild Life p. 180): its class's row at its Body, Magic or Resonance, each command
+ *  and special training it is bought with adding 1 to the Body in that price only and 1 to its Availability (p. 183,
+ *  owner 2026-10-16 reading B); the qualities specified with it (each ±1 Availability; the net Karma: +N¥ per point of
+ *  cost, -N% of the whole price per point of bonus, never below 0, owner Q2). A tamed critter has no price or
+ *  Availability. Each command or special training taught after it was bought: the OPTIONS row's price (+500¥, +750¥), no
+ *  Availability. Powers are never priced. */
 export function critterPrice(x: Sr6Purchase, data: Sr6Data): CritterPrice {
   const e = entryOf(x, data),
     cls = critterClass(x, e)
   const out: CritterPrice = { cls, cost: 0, avail: 0, ok: true, notes: [], parts: [] }
-  if (x.tamed) {
-    out.parts.push('tamed from the wild: no price (Wild Life p. 184)')
-    return out
-  }
   const missing = (name: string) => {
     out.ok = false
     out.notes.push(`Wild Life’s Purchasing a Critter row “${name}” (p. 180) isn’t in the catalog`)
   }
-  const r = row(data, ROW[cls])
-  if (!r) {
-    missing(ROW[cls])
-    return out
-  }
-  const base = critterValue(r.attrs.cost, { Body: critterStat(e, 'bod'), Magic: critterStat(e, 'mag'), Resonance: critterStat(e, 'res') })
-  if (base === null) {
-    out.ok = false
-    out.notes.push(`${r.name}’s price “${r.attrs.cost ?? ''}” isn’t a number the app can read`)
-  }
-  out.cost = base ?? 0
-  out.avail = critterValue(r.attrs.avail, { Body: critterStat(e, 'bod'), Magic: critterStat(e, 'mag'), Resonance: critterStat(e, 'res') }) ?? 0
-  out.legal = legality(r.attrs.avail)
-  out.parts.push(`${r.name} ${r.attrs.cost ?? ''}: ${fmt(out.cost)}¥`)
   const option = (k: keyof typeof OPTION) => {
     const o = row(data, OPTION[k])
     if (!o) missing(OPTION[k])
     return { cost: amount(o?.attrs.cost), avail: amount(o?.attrs.avail) }
   }
-  let pos = 0,
-    neg = 0,
-    npos = 0,
-    nneg = 0
-  for (const q of x.critterQualities ?? []) {
-    const v = data.qualities[q.id]
-    if (q.how || !v) continue
-    if (v.positive) {
-      pos += critterQualityKarma(v, q)
-      npos++
-    } else {
-      neg += critterQualityKarma(v, q)
-      nneg++
+  const trained = x.trained ?? [],
+    count = (ts: Sr6CritterTrained[], w: Sr6CritterTrained['what']) => ts.filter(t => t.what === w).length
+  const withIt = trained.filter(t => !isTaught(x, t)),
+    taught = trained.filter(t => isTaught(x, t))
+  if (x.tamed) out.parts.push('tamed from the wild: no price (Wild Life p. 184)')
+  else {
+    const r = row(data, ROW[cls])
+    if (!r) {
+      missing(ROW[cls])
+      return out
+    }
+    const body = critterStat(e, 'bod'),
+      at = { Magic: critterStat(e, 'mag'), Resonance: critterStat(e, 'res') }
+    const base = critterValue(r.attrs.cost, { Body: body + withIt.length, ...at })
+    if (base === null) {
+      out.ok = false
+      out.notes.push(`${r.name}’s price “${r.attrs.cost ?? ''}” isn’t a number the app can read`)
+    }
+    out.cost = base ?? 0
+    out.avail = critterValue(r.attrs.avail, { Body: body, ...at }) ?? 0
+    out.legal = legality(r.attrs.avail)
+    out.parts.push(`${r.name} ${r.attrs.cost ?? ''}${withIt.length ? ` at Body ${body} + ${withIt.length} trained (p. 183)` : ''}: ${fmt(out.cost)}¥`)
+    if (withIt.length) {
+      const nc = count(withIt, 'command'),
+        nt = count(withIt, 'training'),
+        av = nc * option('command').avail + nt * option('training').avail
+      out.avail += av
+      out.parts.push(`${[nc && plural(nc, 'command'), nt && plural(nt, 'training')].filter(Boolean).join(', ')} with the purchase: Availability +${av}`)
+    }
+    let pos = 0,
+      neg = 0,
+      npos = 0,
+      nneg = 0
+    for (const q of x.critterQualities ?? []) {
+      const v = data.qualities[q.id]
+      if (q.how || !v) continue
+      if (v.positive) {
+        pos += critterQualityKarma(v, q)
+        npos++
+      } else {
+        neg += critterQualityKarma(v, q)
+        nneg++
+      }
+    }
+    if (npos || nneg) {
+      const p = option('positive'),
+        n = option('negative'),
+        net = pos - neg
+      out.avail += npos * p.avail - nneg * n.avail
+      // (the bonus off the whole price, training included, owner Q2)
+      if (net > 0) out.cost += net * p.cost
+      else out.cost -= Math.min(out.cost, Math.round((out.cost * n.cost * -net) / 100))
+      out.parts.push(
+        `qualities: ${npos} positive, ${nneg} negative (Availability ${npos * p.avail - nneg * n.avail >= 0 ? '+' : ''}${npos * p.avail - nneg * n.avail}); net ${
+          net > 0
+            ? `${net} Karma cost: +${fmt(net * p.cost)}¥`
+            : net < 0
+              ? `${-net} Karma bonus: −${Math.min(100, n.cost * -net)}% of the whole price`
+              : '0 Karma'
+        }`,
+      )
     }
   }
-  if (npos || nneg) {
-    const p = option('positive'),
-      n = option('negative'),
-      net = pos - neg
-    out.avail += npos * p.avail - nneg * n.avail
-    if (net > 0) out.cost += net * p.cost
-    else out.cost -= Math.min(out.cost, Math.round((out.cost * n.cost * -net) / 100))
-    out.parts.push(
-      `qualities: ${npos} positive, ${nneg} negative (Availability ${npos * p.avail - nneg * n.avail >= 0 ? '+' : ''}${npos * p.avail - nneg * n.avail}); net ${
-        net > 0 ? `${net} Karma cost: +${fmt(net * p.cost)}¥` : net < 0 ? `${-net} Karma bonus: −${Math.min(100, n.cost * -net)}%` : '0 Karma'
-      }`,
-    )
-  }
-  for (const [k, count, what] of [
-    ['command', x.commands ?? 0, 'command'],
-    ['training', x.training ?? 0, 'special training'],
-  ] as const) {
-    if (!count) continue
+  for (const k of ['command', 'training'] as const) {
+    const c = count(taught, k)
+    if (!c) continue
     const o = option(k)
-    out.cost += count * o.cost
-    out.avail += count * o.avail
-    out.parts.push(`${count} ${what}${count === 1 || k === 'training' ? '' : 's'}: +${fmt(count * o.cost)}¥, Availability +${count * o.avail}`)
+    out.cost += c * o.cost
+    out.parts.push(`${plural(c, k)} taught later: +${fmt(c * o.cost)}¥`)
   }
   return out
 }
@@ -200,8 +233,9 @@ export function critterView(x: Sr6Purchase, data: Sr6Data, lost: number): Critte
   // commands up to Logic × 2, special training up to Intuition × 2 (WL p. 180), a level of Receptive to Training one more
   // of each, a level of Untrainable one less (pp. 184, 186)
   const more = levelsNamed(x, data, /^receptive to training/) - levelsNamed(x, data, /^untrainable/)
-  const commands = { n: x.commands ?? 0, max: Math.max(0, critterStat(e, 'log') * 2 + more) },
-    training = { n: x.training ?? 0, max: Math.max(0, critterStat(e, 'int') * 2 + more) }
+  const n = (w: Sr6CritterTrained['what']) => (x.trained ?? []).filter(t => t.what === w).length
+  const commands = { n: n('command'), max: Math.max(0, critterStat(e, 'log') * 2 + more) },
+    training = { n: n('training'), max: Math.max(0, critterStat(e, 'int') * 2 + more) }
   if (commands.n > commands.max) warn(`${name}: ${commands.n} commands; it can learn ${commands.max} (Logic × 2).`, 'WL', 180)
   if (training.n > training.max) warn(`${name}: ${training.n} special training; it can learn ${training.max} (Intuition × 2).`, 'WL', 180)
   const qs = x.critterQualities ?? [],

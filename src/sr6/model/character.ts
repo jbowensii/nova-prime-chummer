@@ -101,6 +101,17 @@ export interface Sr6CritterQuality {
   name?: string
   how?: 'tamed' | 'bonded'
 }
+/** One of an owned critter's trained commands or special trainings (Wild Life pp. 181-183: a catalog action of category
+ *  Critter Command Actions or Critter Special Training; no id: an older file's unnamed one, kept from its count). taught:
+ *  taught after it was bought (+500¥ a command, +750¥ a special training, p. 180; a tamed critter's always are); absent:
+ *  it came with the purchase (+1 Body in the price formula and +1 Availability each, p. 183). */
+export interface Sr6CritterTrained {
+  uid: string
+  what: 'command' | 'training'
+  id?: string
+  name?: string
+  taught?: true
+}
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
@@ -141,11 +152,10 @@ export interface Sr6Purchase {
   /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
   slotShifts?: SlotShift[]
   /** a critter: the pet class the player chose (none: mundane), tamed from the wild instead of bought (no price, Wild
-   *  Life p. 184), its trained commands and special training (p. 180) and companion qualities */
+   *  Life p. 184), its named commands and special training (pp. 181-183) and companion qualities */
   pet?: PetClass
   tamed?: true
-  commands?: number
-  training?: number
+  trained?: Sr6CritterTrained[]
   critterQualities?: Sr6CritterQuality[]
 }
 
@@ -367,6 +377,9 @@ export type Sr6Advance =
    *  path's Permanent Improvement, SWC p. 139), with the negative quality `with` taken alongside (Wild Life p. 184); a
    *  line whose uid names one of the critter's qualities upgrades that one (its id and level replaced) */
   | { op: 'bond'; target: string; line: Sr6CritterQuality; with?: Sr6CritterQuality }
+  /** a command or special training taught to the owned critter whose uid is target (Wild Life p. 180: +500¥ a command,
+   *  +750¥ a special training); past its limit it is recorded (Review warns); voiding it takes it back */
+  | { op: 'teach'; target: string; line: Sr6CritterTrained }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -404,6 +417,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'shift',
   'move',
   'bond',
+  'teach',
   'contact',
   'sin',
   'lifestyle',

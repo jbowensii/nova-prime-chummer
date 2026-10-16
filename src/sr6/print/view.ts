@@ -7,7 +7,7 @@ import { entryOf, priced, settingQuality, statusesOf, toNuyen } from '../engine/
 import { balances, stolenLeft } from '../engine/career'
 import { awakenedFlag, runnerInfected } from '../engine/infected'
 import type { PickKind, PurchaseKind, Sr6Character, Sr6CritterQuality, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
-import { CRITTER_CLASS_LABELS, critterView } from '../engine/critters'
+import { CRITTER_CLASS_LABELS, critterView, isTaught, trainedName } from '../engine/critters'
 import { NPC_STATS } from '../engine/npc'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
@@ -181,9 +181,9 @@ export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
 
 const CRITTER_STATS = new Set(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'ess', 'mag', 'res'])
 /** An owned critter's lines in words, the same on every sheet (critters.ts critterView): its class (tamed), its stat
- *  block's attributes, its powers (innate, 0 Karma) and weaknesses, its companion qualities (how they came), its commands
- *  and special training against its limits, its critterware and other fitted gear, and its Essence and Magic or Resonance
- *  after its augmentations. */
+ *  block's attributes, its powers (innate, 0 Karma) and weaknesses, its companion qualities (how they came), its named
+ *  commands and special training against their limits (those taught after it was bought marked), its critterware and
+ *  other fitted gear, and its Essence and Magic or Resonance after its augmentations. */
 export function critterNotes(x: Sr6Purchase, data: Sr6Data, cr: Sr6Ctx['cr']): string[] {
   const v = critterView(x, data, priced(x, data, cr).essence),
     a = v.e?.attrs ?? {}
@@ -201,7 +201,11 @@ export function critterNotes(x: Sr6Purchase, data: Sr6Data, cr: Sr6Ctx['cr']): s
     ...(v.powers ? [`Powers (innate, 0 Karma): ${v.powers}`] : []),
     ...(v.weaknesses ? [`Weaknesses: ${v.weaknesses}`] : []),
     ...(x.critterQualities?.length ? [`Qualities: ${x.critterQualities.map(quality).join(', ')}`] : []),
-    `Commands ${v.commands.n} of ${v.commands.max}, special training ${v.training.n} of ${v.training.max}`,
+    ...(['command', 'training'] as const).map(w => {
+      const ts = (x.trained ?? []).filter(t => t.what === w),
+        c = w === 'command' ? v.commands : v.training
+      return `${w === 'command' ? 'Commands' : 'Special training'} ${c.n} of ${c.max}${ts.length ? `: ${ts.map(t => `${trainedName(t, data)}${isTaught(x, t) ? ' (taught)' : ''}`).join(', ')}` : ''}`
+    }),
     ...group(
       'Critterware',
       x.accessories.filter(y => y.kind === 'augmentations'),

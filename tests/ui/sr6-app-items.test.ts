@@ -226,7 +226,7 @@ test('Creation method: the Infected type’s gained powers (free) and weaknesses
 
 // every printed sheet style shows the same data (owner 2026-10-16): only the look differs
 test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
-  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods, mounted weapon and shifted mod slots, a critter’s class, powers, qualities, training and gear',
+  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods, mounted weapon and shifted mod slots, a critter’s class, powers, qualities, named commands and training and gear',
   async style => {
     saveSettings({ ...loadSettings(), print: style })
     const gainer =
@@ -268,6 +268,10 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
           file: 'custom/sr6/imported/zz/gear.xml',
           xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1"><gear id="zz.fuzz-harness" source="ZZ" page="1" category="Critter gear" class="CRITTERWARE/GEAR" avail="2" cost="Critter’s Body x 30¥"><name>Fuzz Harness</name><text/></gear></sr6:data>',
         },
+        {
+          file: 'custom/sr6/imported/zz/actions.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="actions" version="1"><action id="zz.fetch-fizz" source="ZZ" page="1" category="Critter Command Actions"><name>Fetch Fizz</name><text/></action><action id="zz.glow-training" source="ZZ" page="1" category="Critter Special Training"><name>Glow Training</name><text/></action></sr6:data>',
+        },
       ],
     )
     const cr = stolenCr()
@@ -302,7 +306,10 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
         id: 'crb.fuzzbeast',
         qty: 1,
         pet: 'exotic',
-        commands: 1,
+        trained: [
+          { uid: 't1', what: 'command', id: 'zz.fetch-fizz' },
+          { uid: 't2', what: 'training', id: 'zz.glow-training', taught: true },
+        ],
         critterQualities: [{ uid: 'cq', id: 'zz.snuggly', level: 1, how: 'bonded' }],
         accessories: [{ uid: 'h1', kind: 'gear', id: 'zz.fuzz-harness', qty: 1, accessories: [] }],
       },
@@ -328,7 +335,8 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     expect(t).toMatch(/BOD 4, AGI 3, REA 4, STR 5/)
     expect(t).toMatch(/Powers \(innate, 0 Karma\): Glimmer, Thick Fur/)
     expect(t).toMatch(/Qualities: Snuggly \(bonded\)/)
-    expect(t).toMatch(/Commands 1 of 2, special training 0 of 6/)
+    expect(t).toMatch(/Commands 1 of 2: Fetch Fizz/)
+    expect(t).toMatch(/Special training 1 of 6: Glow Training \(taught\)/)
     expect(t).toMatch(/With: Fuzz Harness/)
   },
 )

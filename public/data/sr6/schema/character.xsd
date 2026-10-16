@@ -275,6 +275,22 @@
     </xs:attribute>
   </xs:complexType>
 
+  <!-- an owned critter's command or special training (Wild Life pp. 181-183): what (command or training), the catalog
+       action's id and name (no id: an older file's unnamed one); taught, taught after the critter was bought (+500¥ a
+       command, +750¥ a special training, p. 180; a tamed critter's always), absent: it came with the purchase (+1 Body in
+       the price formula and +1 Availability each, p. 183) -->
+  <xs:complexType name="Trained">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="what" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="command"/><xs:enumeration value="training"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="taught" type="xs:boolean"/>
+  </xs:complexType>
+
   <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
   <xs:complexType name="Pick">
     <xs:sequence><xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
@@ -377,6 +393,7 @@
       <xs:element name="purchase" type="c:Purchase"/>
       <xs:element name="contact" type="c:Contact"/>
       <xs:element name="sin" type="c:Sin"/>
+      <xs:element name="trained" type="c:Trained"/>
     </xs:choice>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="at" type="xs:string" use="required"/>
@@ -401,7 +418,9 @@
          category `from` into one of `to` (Double Clutch p. 120; free); move: target the uid of the weapon moved, `mount`
          the uid of the weapon mount (an accessory of the same vehicle) it is moved to (no new charge); bond: target the uid
          of an owned critter, the <quality how="bonded"> bought for it with the runner's Karma (SWC p. 139; its uid naming
-         one of the critter's qualities: that one upgraded) and the negative <quality> taken with it, if any (WL p. 184) -->
+         one of the critter's qualities: that one upgraded) and the negative <quality> taken with it, if any (WL p. 184);
+         teach: target the uid of an owned critter, the <trained taught="true"> taught to it (WL p. 180: +500¥ a command,
+         +750¥ a special training) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -412,6 +431,7 @@
         <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
+        <xs:enumeration value="teach"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
@@ -567,6 +587,7 @@
       <xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="quality" type="c:Quality" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="trained" type="c:Trained" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
@@ -610,15 +631,17 @@
         </xs:restriction></xs:simpleType>
       </xs:list></xs:simpleType>
     </xs:attribute>
-    <!-- an owned critter (kind critters; its <quality>s its companion qualities): the pet class the player chose (absent:
-         mundane; Awakened and Emerged come from its Magic or Resonance), tamed from the wild instead of bought (no price,
-         Wild Life p. 184), its trained commands and special training (p. 180) -->
+    <!-- an owned critter (kind critters; its <quality>s its companion qualities, its <trained> its named commands and
+         special training): the pet class the player chose (absent: mundane; Awakened and Emerged come from its Magic or
+         Resonance), tamed from the wild instead of bought (no price, Wild Life p. 184) -->
     <xs:attribute name="pet">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="mundane"/><xs:enumeration value="exotic"/><xs:enumeration value="wild"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="tamed" type="xs:boolean"/>
+    <!-- read only, an older file's (before they were named): how many commands and special training the critter had;
+         read as that many unnamed <trained> (with the purchase; a tamed critter's taught), noted. Not written -->
     <xs:attribute name="commands" type="c:Count"/>
     <xs:attribute name="training" type="c:Count"/>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item

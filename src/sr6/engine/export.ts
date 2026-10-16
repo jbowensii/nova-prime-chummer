@@ -31,7 +31,7 @@ import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
 import { prerequisites, type Prerequisite } from './martial'
-import { critterClass, type CritterClass } from './critters'
+import { critterClass, isTaught, trainedName, type CritterClass } from './critters'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
   SR6_EXPORT_VERSION = 1
@@ -146,7 +146,15 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   accessories: Sr6ExportPurchase[]
   /** an owned critter: its stat block (exportNpc), how it was priced and trained, and its companion qualities */
   npc?: Sr6ExportNpc
-  critter?: { class: CritterClass; tamed: boolean; commands: number; training: number; qualities: Sr6CritterQuality[] }
+  /** (commands, training: how many; trained: each by name, taught after it was bought or not) */
+  critter?: {
+    class: CritterClass
+    tamed: boolean
+    commands: number
+    training: number
+    trained: { what: 'command' | 'training'; name: string; taught: boolean }[]
+    qualities: Sr6CritterQuality[]
+  }
 }
 export interface Sr6ExportNpc {
   kind: Exclude<Sr6NpcKind, 'contact'>
@@ -501,8 +509,9 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
           critter: {
             class: critterClass(x, e),
             tamed: !!x.tamed,
-            commands: x.commands ?? 0,
-            training: x.training ?? 0,
+            commands: (x.trained ?? []).filter(t => t.what === 'command').length,
+            training: (x.trained ?? []).filter(t => t.what === 'training').length,
+            trained: (x.trained ?? []).map(t => ({ what: t.what, name: trainedName(t, data), taught: isTaught(x, t) })),
             qualities: (x.critterQualities ?? []).map(q => ({ ...q, name: data.qualities[q.id]?.name ?? q.name })),
           },
         }

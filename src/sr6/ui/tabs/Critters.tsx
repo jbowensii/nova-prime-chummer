@@ -1,16 +1,16 @@
 // Critters (owner 2026-10-16, BUILDER Q9-Q10: its own tab beside Vehicles and Drones): each owned critter with its stat
 // block, its powers (innate, 0 Karma), the pet class the player picks (Awakened or Emerged from its own Magic or
-// Resonance), tamed or bought, how its Wild Life p. 180 price works out, its commands and special training against their
-// limits, its companion qualities (with the purchase, from taming, or bonded with the runner's Karma), its critterware and
+// Resonance), tamed or bought, how its Wild Life p. 180 price works out, its named commands and special training (the
+// book's lists, pp. 181-183: with the purchase or taught later) against their limits, its companion qualities (with the purchase, from taming, or bonded with the runner's Karma), its critterware and
 // gear (the critter-only catalog shown here) and its Essence and Magic (src/sr6/engine/critters.ts). Every step undoes;
 // past a limit is a Review warning, never refused. After finalising the tab is read only: the Ledger buys a critter,
 // fits critterware or gear, and bonds a quality.
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { priced } from '../../engine/budgets'
-import { bondKarma, CRITTER_CLASS_LABELS, critterView, isCritterQuality } from '../../engine/critters'
+import { bondKarma, CRITTER_CLASS_LABELS, critterView, isCritterQuality, isTaught, TRAINED_LABELS, trainedName, trainedWhat } from '../../engine/critters'
 import { NPC_STATS } from '../../engine/npc'
-import { PET_CLASSES, type PetClass, type Sr6CritterQuality, type Sr6Purchase } from '../../model/character'
+import { PET_CLASSES, type PetClass, type Sr6CritterQuality, type Sr6CritterTrained, type Sr6Purchase } from '../../model/character'
 import type { Sr6Entry } from '../../model/types'
 import { n, useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'
@@ -39,8 +39,8 @@ export function CrittersTab() {
         one="a critter"
         hint={
           career
-            ? 'After finalising: buy a critter, fit critterware or gear, or bond a quality on the Ledger.'
-            : 'Bought at Wild Life’s prices (p. 180), or tamed from the wild (p. 184). Its critter powers are innate: 0 Karma.'
+            ? 'After finalising: buy a critter, teach it a command or special training, fit critterware or gear, or bond a quality on the Ledger.'
+            : 'Bought at Wild Life’s prices (p. 180), or tamed from the wild (p. 184). Its critter powers are innate: 0 Karma. Commands and special training bought with it add 1 to its Body in the price each (p. 183); taught later, +500¥ or +750¥ (p. 180).'
         }
         accessories={{ kinds: ['augmentations', 'gear', 'electronics'], filter: critterWearable, critter: true }}
         detail={x => <Critter x={x} />}
@@ -53,6 +53,7 @@ export function CrittersTab() {
 function Critter({ x }: { x: Sr6Purchase }) {
   const { data, cr, act } = useSr6Editor()
   const [adding, setAdding] = useState<Adding>('')
+  const [teaching, setTeaching] = useState<'' | Sr6CritterTrained['what']>('')
   const v = critterView(x, data, priced(x, data, cr).essence),
     name = v.name,
     a = v.e?.attrs ?? {}
@@ -105,12 +106,46 @@ function Critter({ x }: { x: Sr6Purchase }) {
         {[...v.price.parts, ...v.price.notes].join(' · ')} · Availability {n(v.price.avail)}
         {v.price.legal ? `(${v.price.legal})` : ''}
       </span>
-      <span className="row">
-        Commands <Stepper label={`${name} commands`} value={v.commands.n} min={0} max={99} onChange={c => act({ op: 'critter', uid: x.uid, commands: c })} />
-        <span className={v.commands.n > v.commands.max ? 'warn' : undefined}>of {v.commands.max} (Logic × 2)</span>· Special training{' '}
-        <Stepper label={`${name} special training`} value={v.training.n} min={0} max={99} onChange={t => act({ op: 'critter', uid: x.uid, training: t })} />
-        <span className={v.training.n > v.training.max ? 'warn' : undefined}>of {v.training.max} (Intuition × 2)</span>
-      </span>
+      {(['command', 'training'] as const).map(w => {
+        const lim = w === 'command' ? v.commands : v.training,
+          label = w === 'command' ? 'Commands' : 'Special training'
+        return (
+          <span key={w} className="row">
+            {label}{' '}
+            <span className={lim.n > lim.max ? 'warn' : undefined}>
+              {lim.n} of {lim.max} ({w === 'command' ? 'Logic' : 'Intuition'} × 2)
+            </span>
+            {(x.trained ?? [])
+              .filter(t => t.what === w)
+              .map(t => (
+                <span key={t.uid} className="chip">
+                  {t.id ? (
+                    <Sr6Ref kind="actions" id={t.id}>
+                      {trainedName(t, data)}
+                    </Sr6Ref>
+                  ) : (
+                    trainedName(t, data)
+                  )}{' '}
+                  <select
+                    aria-label={`${trainedName(t, data)} on ${name}: when`}
+                    value={isTaught(x, t) ? 'taught' : 'purchase'}
+                    disabled={!!x.tamed}
+                    onChange={ev => act({ op: 'critterTrained', host: x.uid, uid: t.uid, taught: ev.target.value === 'taught' })}
+                  >
+                    <option value="purchase">with the purchase</option>
+                    <option value="taught">taught later</option>
+                  </select>
+                  <button aria-label={`Remove ${trainedName(t, data)} from ${name}`} onClick={() => act({ op: 'critterTrained', host: x.uid, remove: t.uid })}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            <button className="btn small quiet" aria-label={`Add a ${TRAINED_LABELS[w]} to ${name}`} onClick={() => setTeaching(w)}>
+              {w === 'command' ? 'Command…' : 'Special training…'}
+            </button>
+          </span>
+        )
+      })}
       <span>
         Companion qualities (Wild Life pp. 184-186; {qs.filter(q => !q.how).length} of 6 with the purchase)
         {bond > 0 && ` · the bond: ${bond} Karma`}
@@ -148,6 +183,16 @@ function Critter({ x }: { x: Sr6Purchase }) {
         {v.magic && ` · Magic ${v.magic.base}${v.magic.now !== v.magic.base ? ` → ${v.magic.now}` : ''}`}
         {v.resonance && ` · Resonance ${v.resonance.base}${v.resonance.now !== v.resonance.base ? ` → ${v.resonance.now}` : ''}`}
       </span>
+      {teaching && (
+        <CatalogPicker
+          title={`Add a ${TRAINED_LABELS[teaching]} to ${name}`}
+          open
+          onClose={() => setTeaching('')}
+          kinds={['actions']}
+          filter={e => trainedWhat(e) === teaching}
+          onAdd={p => act({ op: 'critterTrained', host: x.uid, id: p.e.id })}
+        />
+      )}
       {adding && (
         <CatalogPicker
           critter

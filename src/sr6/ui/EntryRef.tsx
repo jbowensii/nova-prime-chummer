@@ -196,6 +196,8 @@ export function advanceTarget(ch: Sr6Character, a: Sr6Advance): { attr: Sr6Attr 
     }
     case 'lifestyle':
       return of('lifestyles', a.id)
+    case 'teach':
+      return of('actions', a.line.id)
     default:
       return undefined
   }

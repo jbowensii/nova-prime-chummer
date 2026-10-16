@@ -385,6 +385,8 @@ test('every advance op and entry type round-trips and validates', async () => {
       with: { uid: 'lb2', id: 'wl.zap-grumpy', level: 2, how: 'bonded' },
     },
     { op: 'bond', target: 'c1', line: { uid: 'lb', id: 'wl.zap-keen', level: 2 } },
+    // (a command taught to a critter after it was bought)
+    { op: 'teach', target: 'c1', line: { uid: 'lt', what: 'command', id: 'wl.zap-fetch', name: 'Zap Fetch', taught: true } },
   ]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [

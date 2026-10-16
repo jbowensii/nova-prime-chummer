@@ -38,7 +38,7 @@ import { learned } from './martial'
 import { augmentationRoom, diyAllowed, entryOf, isMount, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
 import { shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
-import { critterQualityNamed, isCritterQuality } from './critters'
+import { critterQualityNamed, isCritterQuality, trainedWhat } from './critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -137,9 +137,14 @@ export type Op =
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
   | { op: 'awakened'; value: boolean | null }
-  /** an owned critter's pet class, commands, special training, or tamed from the wild (on: Wild Soul and High
-   *  Maintenance 1 come with it, Wild Life p. 184; off: they go) */
-  | { op: 'critter'; uid: string; pet?: PetClass; commands?: number; training?: number; tamed?: boolean }
+  /** an owned critter's pet class, or tamed from the wild (on: Wild Soul and High Maintenance 1 come with it, Wild Life
+   *  p. 184, and its commands and special training count as taught; off: the two go) */
+  | { op: 'critter'; uid: string; pet?: PetClass; tamed?: boolean }
+  /** a named command or special training (a catalog Critter Command Action or Critter Special Training) for the owned
+   *  critter `host`: with its purchase, or taught later (a tamed critter's always); one's taught set; or one taken off */
+  | { op: 'critterTrained'; host: string; id: string; taught?: boolean }
+  | { op: 'critterTrained'; host: string; uid: string; taught: boolean }
+  | { op: 'critterTrained'; host: string; remove: string }
   /** a companion quality on the owned critter `host` (a catalog quality of class CRITTERWARE/QUALITY): specified with its
    *  purchase (no how), from taming, or bonded (the runner's Karma); or one's level set, or one taken off */
   | { op: 'critterQuality'; host: string; id: string; how?: 'tamed' | 'bonded'; level?: number }
@@ -617,11 +622,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     case 'critter': {
       const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'critters')
       if (!x) return no('unknown-line')
-      if ((op.commands ?? 0) < 0 || (op.training ?? 0) < 0) return no('below-zero') // (over the critter's limit: Review warns)
       if (op.pet) x.pet = op.pet
-      for (const k of ['commands', 'training'] as const)
-        if (op[k] === 0) delete x[k]
-        else if (op[k] !== undefined) x[k] = op[k]
       if (op.tamed === false) {
         delete x.tamed
         x.critterQualities = x.critterQualities?.filter(q => q.how !== 'tamed')
@@ -629,6 +630,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         // Wild Life p. 184: Wild Soul, balanced by a negative quality, High Maintenance 1 by default (changed by taking it
         // off and adding another negative as tamed)
         x.tamed = true
+        for (const t of x.trained ?? []) t.taught = true // (a tamed critter is taught, never bought trained)
         x.critterQualities ??= []
         for (const name of ['Wild Soul', 'High Maintenance']) {
           const e = critterQualityNamed(data, name)
@@ -636,6 +638,31 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         }
       }
       if (!x.critterQualities?.length) delete x.critterQualities
+      return OK
+    }
+    case 'critterTrained': {
+      // (past the critter's limit: Review warns, never refused)
+      const x = b.purchases.find(p => p.uid === op.host && p.kind === 'critters')
+      if (!x) return no('unknown-host')
+      if ('remove' in op) {
+        if (!x.trained?.some(t => t.uid === op.remove)) return no('not-taken')
+        x.trained = x.trained.filter(t => t.uid !== op.remove)
+        if (!x.trained.length) delete x.trained
+        return OK
+      }
+      if ('uid' in op) {
+        const t = x.trained?.find(y => y.uid === op.uid)
+        if (!t) return no('not-taken')
+        if (op.taught || x.tamed) t.taught = true
+        else delete t.taught
+        return OK
+      }
+      const e = data.entry('actions', op.id)
+      if (!e) return no('unknown-entry')
+      const what = trainedWhat(e)
+      if (!what) return no('not-critter-training')
+      // (one taken again is another: Teamwork for another skill, Use Critter Power for another power, WL pp. 182-183)
+      x.trained = [...(x.trained ?? []), { uid: newId(), what, id: e.id, name: e.name, ...(op.taught || x.tamed ? { taught: true as const } : {}) }]
       return OK
     }
     case 'critterQuality': {

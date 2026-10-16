@@ -48,7 +48,7 @@ import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
 import { critterOnly, infectedOff, infectedQuality } from './critterware'
-import { critterQualityKarma, isCritterQuality } from './critters'
+import { critterQualityKarma, isCritterQuality, taughtPrice, TRAINED_LABELS, trainedWhat } from './critters'
 import type { Sr6QualityView } from './types'
 import {
   awakenedFlag,
@@ -200,6 +200,11 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
         if (had) Object.assign(had, { id: q.id, level: q.level, ...(q.name ? { name: q.name } : {}) })
         else qs.push(structuredClone(q))
       }
+      return
+    }
+    case 'teach': {
+      const host = b.purchases.find(x => x.uid === a.target)
+      if (host) host.trained = [...(host.trained ?? []), structuredClone(a.line)]
       return
     }
     case 'contact': {
@@ -656,6 +661,15 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         karma: Math.max(0, up - bonus) * need('advance.qualityFactor'),
       }
     }
+    case 'teach': {
+      // a command or special training taught to a critter the runner owns, at the OPTIONS row's price (Wild Life p.
+      // 180: +500¥, +750¥; owner 2026-10-16), no Availability; past its limit is Review's warning, not a refusal
+      const host = b.purchases.find(y => y.uid === a.target && y.kind === 'critters') ?? no('unknown-host')
+      const e = data.entry('actions', a.line.id ?? '') ?? no('unknown-entry')
+      if (trainedWhat(e) !== a.line.what) no('not-critter-training')
+      const nuyen = taughtPrice(data, a.line.what) ?? no('book-value')
+      return { label: `Taught: ${e.name} (${TRAINED_LABELS[a.line.what]}) to ${lineLabel(host)}`, nuyen }
+    }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
@@ -802,6 +816,11 @@ export function record(
     }
     case 'purchase':
       adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
+      // (a critter's commands and special training bought with it, named as the catalog has them)
+      if (adv.line.trained) adv.line.trained = adv.line.trained.map(t => named(t, t.id ? data.entry('actions', t.id)?.name : undefined))
+      break
+    case 'teach':
+      adv.line = { ...named(adv.line, adv.line.id ? data.entry('actions', adv.line.id)?.name : undefined), taught: true }
       break
     case 'upgrade':
     case 'fit':
