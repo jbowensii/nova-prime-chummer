@@ -2,16 +2,19 @@
 // the catalog prints them, what's fitted to it, and its Modify panel (src/sr6/engine/vehiclemods.ts): with Double
 // Clutch among the table's books its mod slots and hardpoints, else the core rulebook's weapon mounts; mods, weapons in
 // mounts, a drone's autosofts; the mods built in; a do-it-yourself box on each mod. Listed and warned, never refused.
-// After finalising the tabs are read only: mods are fitted and taken off on the Ledger.
+// After finalising the tabs are read only: mods are fitted and taken off on the Ledger. Your designs (the Designer) are
+// bought here too (after finalising: on the Ledger).
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { cargoFactor, diyAllowed, entryOf, isDrone, isMount, modKind, priced, seatsOf } from '../../engine/budgets'
+import { boughtDesign, designOf } from '../../engine/design'
 import { entryLabel } from '../../engine/categories'
 import { flag } from '../../engine/creation'
 import { builtinText, modsOf, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
 import type { Sr6Purchase } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { n, useSr6Editor } from '../editor'
+import { useSr6Designs } from '../Designer'
 import { CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
 
 const STATS: [string, string][] = [
@@ -36,6 +39,7 @@ function Owned({ drones }: { drones: boolean }) {
   return (
     <div className="stack">
       <h2>{drones ? 'Drones' : 'Vehicles'}</h2>
+      <BuyDesign drones={drones} />
       <PurchaseSection
         kind="vehicles"
         title={drones ? 'Drones' : 'Vehicles'}
@@ -70,6 +74,41 @@ function Owned({ drones }: { drones: boolean }) {
           )
         }}
       />
+    </div>
+  )
+}
+
+/** Buy one of your designs (the Designer) as a vehicle or drone: its line holds the design as it works out now. */
+function BuyDesign({ drones }: { drones: boolean }) {
+  const { data, cr, act, career } = useSr6Editor()
+  const designs = useSr6Designs().filter(ch => (ch.design!.kind === 'drone') === drones)
+  const [pick, setPick] = useState('')
+  const doc = designs.find(ch => ch.id === pick) ?? designs[0]
+  if (!designs.length)
+    return (
+      <p className="muted">
+        Your designs: none yet. <a href="#/sr6/designs">Design {drones ? 'a drone' : 'a vehicle'} in the Designer</a>.
+      </p>
+    )
+  return (
+    <div className="row">
+      <label className="inline">
+        Your designs{' '}
+        <select aria-label="Your designs" value={doc.id} onChange={e => setPick(e.target.value)}>
+          {designs.map(ch => (
+            <option key={ch.id} value={ch.id}>
+              {ch.identity.streetName || 'Unnamed design'} · {n(designOf(ch.design!, data, cr).price)}¥
+            </option>
+          ))}
+        </select>
+      </label>
+      {career ? (
+        <span className="muted">After finalising, buy it on the Ledger.</span>
+      ) : (
+        <button className="btn small" onClick={() => act({ op: 'design', line: boughtDesign(doc, data, cr) })}>
+          Buy design
+        </button>
+      )}
     </div>
   )
 }

@@ -1,7 +1,8 @@
 // The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the server's creation rules (loadCreation) load once here, then the page: Books (admin; the
 // Anarchy Books page with game="sr6", and #/sr6/books/ai: SR6's own AI settings, the Anarchy page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
 // list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's
-// editor (#/sr6/n/<id>/<tab>) and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
+// editor (#/sr6/n/<id>/<tab>), the Designer (Designer.tsx, #/sr6/designs[/<id>|/trash[/<user>]]: vehicle and drone designs)
+// and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { AiSettings } from '../../ui/AiSettings'
@@ -20,6 +21,7 @@ import { listSr6Compendiums } from './compendiumStore'
 import { Sr6Compendiums } from './Compendiums'
 import { CampaignCreation, ServerCreation, type Loaded } from './Creation'
 import { Sr6Data } from './Data'
+import { Sr6DesignEditor, Sr6Designs } from './Designer'
 import { Sr6EditorView } from './EditorView'
 import { NPC_TABS, SR6_TABS } from './tabList'
 import { Sr6Npcs } from './Npcs'
@@ -28,6 +30,7 @@ import { Sr6Runners } from './Runners'
 
 const FOLIO: Record<string, string> = {
   '': 'Your runners',
+  designs: 'Designer',
   npcs: 'NPCs & Critters',
   compendiums: 'Compendiums',
   campaigns: 'Campaigns',
@@ -92,6 +95,8 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       <TrashScreen game="sr6" user={route[1]} />
     ) : page === 'npcs' && route[1] === 'trash' ? (
       <TrashScreen game="sr6" npcs user={route[2]} />
+    ) : page === 'designs' && route[1] === 'trash' && repo.mode === 'server' ? (
+      <TrashScreen game="sr6" npcs="designs" user={route[2]} />
     ) : page === 'rules' || page === 'data' || page === 'table' ? (
       c && data ? (
         page === 'rules' ? (
@@ -145,6 +150,10 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     ) : c && data ? (
       page === 'npcs' ? (
         <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} />
+      ) : page === 'designs' && route[1] ? (
+        <Sr6DesignEditor key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} />
+      ) : page === 'designs' ? (
+        <Sr6Designs c={c} data={data} cr={cr.rules} />
       ) : page === 'n' && route[1] ? (
         <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       ) : page === 'c' && route[1] ? (

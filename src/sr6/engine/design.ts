@@ -134,7 +134,7 @@ const LEGAL_ORDER = ['', 'L', 'I', 'F']
 export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignSheet {
   const warnings: DesignSheet['warnings'] = [],
     notes: string[] = []
-  const warn = (message: string, page: number) => warnings.push({ message, source: 'DC', page })
+  const warn = (message: string, page: number, source = 'DC') => warnings.push({ message, source, page })
   const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
   const chassis = part(d.chassis),
     powertrain = part(d.powertrain),
@@ -149,7 +149,8 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const addDp = (e: Sr6Entry | undefined, level = 1) => {
     if (!e) return
     const v = partDp(e, level)
-    if (v === null) warn(`${entryLabel(e)}: its Design Points “${e.attrs.dp ?? e.attrs.bp}” aren’t a number the app can read; counted 0.`, e.page || 151)
+    if (v === null)
+      warn(`${entryLabel(e)}: its Design Points “${e.attrs.dp ?? e.attrs.bp}” aren’t a number the app can read; counted 0.`, e.page || 151, e.source)
     dp += v ?? 0
   }
   for (const [e, what] of [
@@ -305,9 +306,9 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const final = { ...s, cargo: cargo ?? s.cargo }
   for (const { e, level } of picked) {
     const p = designPart(e)
-    if (p === 'option') for (const m of maxProblems(e, level, base, final, baseCargo)) warn(`${entryLabel(e)} ${level}: ${m}`, e.page || 151)
+    if (p === 'option') for (const m of maxProblems(e, level, base, final, baseCargo)) warn(`${entryLabel(e)} ${level}: ${m}`, e.page || 151, e.source)
     if (p === 'quality' && key(e) === 'superstructure' && s.size < 15)
-      warn(`${entryLabel(e)}: the vehicle must be at least Size Class 15 (it is ${s.size}).`, e.page || 154)
+      warn(`${entryLabel(e)}: the vehicle must be at least Size Class 15 (it is ${s.size}).`, e.page || 154, e.source)
   }
   for (const [st, label] of [
     ['body', 'Body'],

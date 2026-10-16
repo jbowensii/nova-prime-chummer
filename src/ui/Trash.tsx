@@ -2,7 +2,8 @@
 // characters/<username>/.trash/ (server.mjs /api/trash). Restore puts one back in its owner's library, as a copy with a
 // new id when that id is taken; Delete forever and Empty trash can't be undone. The admin opens anyone's (#/trash/<username>).
 // The NPC area's trash (`npcs`: /api/npcs/trash, #/npcs/trash[/<username>]) is the same page for NPCs. Shadowrun 6's
-// (`game` 'sr6': /api/sr6/trash, #/sr6/trash[/<username>]) is the same page for SR6 runners.
+// (`game` 'sr6': /api/sr6/trash, #/sr6/trash[/<username>]) is the same page for SR6 runners, and `designs` for SR6's vehicle
+// and drone designs (/api/sr6/designs/trash, #/sr6/designs/trash[/<username>]).
 import { PageHeader } from './nav'
 import type { Game } from './game'
 import { useCallback, useEffect, useState } from 'react'
@@ -23,9 +24,11 @@ interface Trash {
 
 const q = (user?: string) => (user ? `?user=${encodeURIComponent(user)}` : '')
 const pre = (game: Game) => (game === 'sr6' ? 'sr6/' : '')
-/** An account's trash (default: your own); `npcs`: its NPC trash; `game`: whose store (Anarchy's by default). */
-export const loadTrash = async (user?: string, npcs = false, game: Game = 'ca2'): Promise<Trash> =>
-  (await send(`${pre(game)}${npcs ? 'npcs/' : ''}trash${q(user)}`, undefined, 'GET')).json()
+/** An account's trash (default: your own); `npcs`: its NPC trash ('designs': SR6's design trash); `game`: whose store
+ *  (Anarchy's by default). */
+export const loadTrash = async (user?: string, npcs: boolean | 'designs' = false, game: Game = 'ca2'): Promise<Trash> =>
+  (await send(`${pre(game)}${area(npcs)}trash${q(user)}`, undefined, 'GET')).json()
+const area = (npcs: boolean | 'designs') => (npcs === 'designs' ? 'designs/' : npcs ? 'npcs/' : '')
 export const runners = (n: number, noun = 'runner') => `${n} ${noun}${n === 1 ? '' : 's'}`
 /** What a restore says: `r` is the server's answer (copy: the id was taken, so it came back as a copy). */
 export const restored = (was: string, r: { name: string; copy: boolean }, whose: string, noun = 'runner') =>
@@ -34,10 +37,10 @@ export const restored = (was: string, r: { name: string; copy: boolean }, whose:
     : `Restored ${was} to ${whose}.`
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
-export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?: string; npcs?: boolean; game?: Game }) {
-  const noun = npcs ? 'NPC' : 'runner',
-    api = `${pre(game)}${npcs ? 'npcs/trash' : 'trash'}`
-  const home = `#/${pre(game)}${npcs ? 'npcs/trash' : 'trash'}`,
+export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?: string; npcs?: boolean | 'designs'; game?: Game }) {
+  const noun = npcs === 'designs' ? 'design' : npcs ? 'NPC' : 'runner',
+    api = `${pre(game)}${area(npcs)}trash`
+  const home = `#/${api}`,
     kind = game === 'sr6' ? 'Shadowrun 6 ' : ''
   const me = useMe(),
     admin = isAdmin(me)
@@ -73,7 +76,7 @@ export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?
   }, [admin])
 
   const own = !user
-  const whose = npcs ? (own ? 'your NPCs' : `${trash?.name ?? user}’s NPCs`) : own ? 'your library' : `${trash?.name ?? user}’s library`
+  const whose = npcs ? (own ? `your ${noun}s` : `${trash?.name ?? user}’s ${noun}s`) : own ? 'your library' : `${trash?.name ?? user}’s library`
   const act = async (fn: () => Promise<string>, failed: string) => {
     setBusy(true)
     setMsg(null)
@@ -105,7 +108,17 @@ export function TrashScreen({ user: asked, npcs = false, game = 'ca2' }: { user?
   const items = trash?.items ?? []
   return (
     <main className="lib">
-      <PageHeader title={npcs ? (own ? 'NPC trash' : `${trash?.name ?? user}’s NPC trash`) : own ? 'Trash' : `${trash?.name ?? user}’s trash`}>
+      <PageHeader
+        title={
+          npcs
+            ? own
+              ? `${noun === 'NPC' ? noun : 'Design'} trash`
+              : `${trash?.name ?? user}’s ${noun} trash`
+            : own
+              ? 'Trash'
+              : `${trash?.name ?? user}’s trash`
+        }
+      >
         {admin && accounts.length > 1 && (
           <label className="inline">
             Account{' '}

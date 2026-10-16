@@ -1,7 +1,7 @@
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
@@ -14,7 +14,7 @@ import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { critterOnly, infectedOff } from '../engine/critterware'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
-import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from './editor'
+import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -99,6 +99,7 @@ export function CatalogPicker({
   grades,
   note,
   onAdd,
+  from,
 }: {
   title: string
   open: boolean
@@ -108,8 +109,11 @@ export function CatalogPicker({
   grades?: boolean
   note?: (e: Sr6Entry) => string | undefined
   onAdd: (p: PickedItem) => string | null
+  /** the catalog and rules outside a runner's editor (the Designer's) */
+  from?: Pick<Sr6Ctx, 'c' | 'cr' | 'data'>
 }) {
-  const { c, cr, data } = useSr6Editor()
+  const ctx = useContext(Sr6Editor)
+  const { c, cr, data } = from ?? ctx!
   const [chosen, setChosen] = useState<PickedItem | null>(null)
   // grades for cyberware and bioware; geneware, nanoware, symbionts and transgenics are bought as printed (a grade on
   // one is offered marked, Review's gear.grade); the picker's grade step opens for an entry whose type takes one

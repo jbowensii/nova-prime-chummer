@@ -38,14 +38,17 @@ export function MainMenu({ tools }: { tools?: ReactNode } = {}) {
               ? `sr6/${sub}`
               : (sub === 'npcs' || sub === 'n') && canEdit(me)
                 ? 'sr6/npcs'
-                : sub === 'compendiums' && canEdit(me) && server
-                  ? 'sr6/compendiums'
-                  : 'sr6'
+                : sub === 'designs' && server
+                  ? 'sr6/designs'
+                  : sub === 'compendiums' && canEdit(me) && server
+                    ? 'sr6/compendiums'
+                    : 'sr6'
         }
         sr6
         tools={tools}
         items={[
           ['sr6', 'runners', 'Your runners', true],
+          ['sr6/designs', 'designs', 'Designer', server],
           ['sr6/npcs', 'npcs', 'NPCs & Critters', canEdit(me)],
           ['sr6/compendiums', 'compendiums', 'Compendiums', canEdit(me) && server],
           ['sr6/campaigns', 'campaigns', 'Campaigns', server],

@@ -28,6 +28,8 @@ import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 import { awakenedFlag } from '../../engine/infected'
+import { boughtDesign } from '../../engine/design'
+import { useSr6Designs } from '../Designer'
 
 const OPS = [
   ['attribute', 'Raise attribute'],
@@ -43,6 +45,7 @@ const OPS = [
   ['powerpoint', 'Power point (mystic adepts)'],
   ['initiate', 'Initiate or submerge'],
   ['purchase', 'Buy gear'],
+  ['design', 'Buy a vehicle or drone of your design'],
   ['upgrade', 'Upgrade gear to a higher level'],
   ['drop', 'Drop gear'],
   ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone'],
@@ -97,6 +100,7 @@ export function LedgerTab() {
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
   const [why, setWhy] = useState('')
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
+  const designs = useSr6Designs()
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
   // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them)
   const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
@@ -179,6 +183,11 @@ export function LedgerTab() {
               },
             }
           : null
+      // one of your designs (the Designer) as it works out now
+      case 'design': {
+        const doc = designs.find(d => d.id === f.target)
+        return doc ? { op: 'purchase', line: boughtDesign(doc, data, cr, '') } : null
+      }
       case 'drop':
       case 'unfit':
         return f.target ? { op, target: f.target } : null
@@ -506,6 +515,19 @@ export function LedgerTab() {
                     {initKind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user) ? ` (not for ${an(kindName)} ${kindName})` : ''}
                   </option>
                 ))}
+            </select>
+          </label>
+        )}
+        {op === 'design' && (
+          <label>
+            Design
+            <select aria-label="Design" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">{designs.length ? 'Pick one' : 'None yet: make one in the Designer'}</option>
+              {designs.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.identity.streetName || 'Unnamed design'}
+                </option>
+              ))}
             </select>
           </label>
         )}

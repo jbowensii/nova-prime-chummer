@@ -1,0 +1,161 @@
+// The Designer (owner 2026-10-16, BUILDER): a player's design (chassis, powertrain, console; options by level, a
+// modification, a quality factor; a mod built in; do it yourself) with its live totals, a maximum passed warned, Undo, the
+// saved <design> file; the list's New design, Copy and Delete; buying the design on a runner's Vehicles tab (its line,
+// the mod built in), Review's "Custom design: needs GM approval" warning and a GM approving it. Made-up parts and prices.
+import { createElement, type ReactElement } from 'react'
+import { expect, test } from 'vitest'
+import { Me, type User } from '../../src/ui/auth'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6Data } from '../../src/sr6/engine/data'
+import { boughtDesign } from '../../src/sr6/engine/design'
+import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
+import { Sr6DesignEditor, Sr6Designs } from '../../src/sr6/ui/Designer'
+import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
+import { designCatalog } from '../sr6/design-fixture'
+import { fixtureCreation, GLIM } from '../sr6/fixture'
+import { button, change, click, fakeStore, field, mount, option, pageText, stubFetch } from './dom'
+
+const c = designCatalog(),
+  data = sr6Data(c),
+  cr = fixtureCreation()
+const PLAYER = { id: 'u2', username: 'pat', role: 'player', name: 'Pat' } as User
+const asPlayer = (el: ReactElement) => createElement(Me.Provider, { value: PLAYER }, el)
+const read = (xml: string) => {
+  const r = xmlToSr6(xml)
+  if (!r.ok) throw new Error(r.reason)
+  return r.character
+}
+/** Red Zip: Zip Frame, Roller, Brainbox; Body in reverse, Speed Interval 2, Racing; Glitter Paint built in. */
+function redZip(): Sr6Character {
+  const d = blankSr6('priority', 'd1', '2026-10-16T00:00:00.000Z')
+  d.identity.streetName = 'Red Zip'
+  d.design = {
+    kind: 'vehicle',
+    chassis: 'zz.zip-frame',
+    powertrain: 'zz.roller',
+    console: 'zz.brainbox',
+    options: [
+      { id: 'zz.improved-body', level: -1 },
+      { id: 'zz.improved-speed-interval', level: 2 },
+      { id: 'zz.racing', level: 1 },
+    ],
+    mods: [{ uid: 'm1', kind: 'gear', id: 'zz.glitter-paint', qty: 1, accessories: [] }],
+  }
+  return d
+}
+
+test('a player designs a vehicle: the parts, options by level, a modification, a mod built in, a quality factor, do it yourself, live totals; Undo; saved as a <design> file', async () => {
+  const blank = blankSr6('priority', 'd1', '2026-10-16T00:00:00.000Z')
+  blank.identity.streetName = 'Red Zip'
+  blank.design = { kind: 'vehicle', options: [], mods: [] }
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(blank) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  expect(pageText()).toMatch(/No chassis picked yet\./)
+  await change(field<HTMLSelectElement>('Chassis'), 'zz.zip-frame')
+  expect([...field<HTMLSelectElement>('Chassis').options].map(o => o.textContent)).not.toContain('Gnat Drone, Small (8 DP)') // (a drone's)
+  await change(field<HTMLSelectElement>('Powertrain'), 'zz.roller')
+  await change(field<HTMLSelectElement>('Console'), 'zz.brainbox')
+  await click(button('Lower Improved Body level'))
+  await click(button('Raise Improved Speed Interval level'))
+  await click(button('Raise Improved Speed Interval level'))
+  await change(field('Racing'), true)
+  await click(button('Add a mod…'))
+  await click(option('Glitter Paint'))
+  expect(pageText()).toMatch(/Glitter Paint · 0 slots, 0 DP · 4,000¥/)
+  expect(pageText()).toMatch(
+    /Body 9 · Armor 4 · Handling 3 · Seats 4 · Size Class 6 · Acceleration 17 · Speed interval 30 · Top speed 270 · Pilot 2 · Sensor 2 · Cargo 1 CF/,
+  )
+  expect(pageText()).toMatch(/Design Points 53 · Price 53 × 1,000¥ \+ 4,000¥ of mods = 57,000¥ · Availability 6\(L\)/)
+  expect(pageText()).toMatch(/Brainbox: special 12 \(as printed; no rule here reads it\)\./)
+  // a quality factor multiplies the Design Points, not the mods' nuyen; do it yourself halves the price
+  await change(field('One-off Custom'), true)
+  expect(pageText()).toMatch(/Design Points 53 × 2 = 106 · Price 106 × 1,000¥ \+ 4,000¥ of mods = 110,000¥/)
+  await change(field(/^Do it yourself/), true)
+  expect(pageText()).toMatch(/halved \(do it yourself\) = 55,000¥/)
+  // past a maximum: a warning, never refused; Undo takes the level back
+  await click(button('Raise Improved Speed Interval level'))
+  expect(pageText()).not.toMatch(/Improved Speed Interval 3:/) // (3: the most, no warning)
+  await click(button('Raise Improved Speed Interval level'))
+  expect(pageText()).toMatch(/Improved Speed Interval 4: at most 3 levels\. \(ZZ p\. 151\)/)
+  await click(button('Undo'))
+  expect(pageText()).not.toMatch(/at most 3 levels/)
+  // only a GM approves a design
+  expect(field(/^Approved by a GM/).disabled).toBe(true)
+  await click(button('Save'))
+  const d = read(store.rows.get('d1')!.xml).design!
+  expect(d).toMatchObject({ chassis: 'zz.zip-frame', powertrain: 'zz.roller', console: 'zz.brainbox', diy: true })
+  expect(d.approved).toBeUndefined()
+  expect(d.options).toEqual([
+    { id: 'zz.improved-body', level: -1 },
+    { id: 'zz.improved-speed-interval', level: 3 },
+    { id: 'zz.racing', level: 1 },
+    { id: 'zz.one-off', level: 1 },
+  ])
+  expect(d.mods.map(m => m.id)).toEqual(['zz.glitter-paint'])
+})
+
+test('the list: a GM’s new design is approved; Copy and Delete (to the design trash)', async () => {
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  const calls = stubFetch([[/\/api\/sr6\/designs\/trash/, () => ({ user: 'gm', name: 'GM', items: [] })], store.route])
+  await mount(createElement(Sr6Designs, { c, data, cr }))
+  expect(pageText()).toMatch(/Red Zip\s*Vehicle · Zip Frame · 53 Design Points · 57,000¥/)
+  await click(button('Copy Red Zip'))
+  const copy = [...store.rows.values()].map(r => read(r.xml)).find(ch => ch.id !== 'd1')!
+  expect(copy.identity.streetName).toBe('Red Zip (copy)')
+  expect(copy.design!.approved).toBe(true) // (copied by a GM)
+  await click(button('New design'))
+  await change(field('Name'), 'Gnat Mk II')
+  await change(field<HTMLSelectElement>('A vehicle or a drone'), 'drone')
+  await click(button('Create design'))
+  const made = [...store.rows.values()].map(r => read(r.xml)).find(ch => ch.identity.streetName === 'Gnat Mk II')!
+  expect(made.design).toEqual({ kind: 'drone', options: [], mods: [], approved: true })
+  expect(location.hash).toBe(`#/sr6/designs/${made.id}`)
+  await click(button('Delete Red Zip'))
+  await click(button('Delete design'))
+  expect(calls.some(x => x.init?.method === 'DELETE' && /\/api\/sr6\/designs\/d1$/.test(x.url))).toBe(true)
+  expect(store.rows.has('d1')).toBe(false)
+})
+
+test('a runner buys a player’s design on Vehicles: its line and built-in mod; Review warns it needs GM approval (a player can’t approve it)', async () => {
+  const ch = blankSr6('karma', 'r1', '2026-10-16T00:00:00.000Z')
+  ch.build.metatype = GLIM
+  const runners = fakeStore('sr6/characters', { r1: sr6ToXml(ch) }),
+    designs = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  stubFetch([runners.route, designs.route])
+  const view = (tab: string) => asPlayer(createElement(Sr6EditorView, { c, data, cr, id: 'r1', tab }))
+  const m = await mount(view('vehicles'))
+  expect(field<HTMLSelectElement>('Your designs').selectedOptions[0].textContent).toBe('Red Zip · 57,000¥')
+  await click(button('Buy design'))
+  const main = () => pageText(document.querySelector('main')!)
+  expect(main()).toMatch(/Red Zip\s*Custom design\s*DC p\.150/)
+  expect(main()).toMatch(/Built in \(already paid for\): Glitter Paint/)
+  await click(button('Save'))
+  const line = read(runners.rows.get('r1')!.xml).build.purchases[0]
+  expect(line).toMatchObject({ kind: 'vehicles', id: 'design.d1', design: 'd1', name: 'Red Zip' })
+  expect(line.snapshot!.attrs).toMatchObject({ cost: '57000', avail: '6(L)', topSpeed: '270', dp: '53' })
+  await m.rerender(view('review'))
+  const warn = [...document.querySelectorAll('.viol')].find(v => /Custom design: needs GM approval \(Red Zip\)\./.test(v.textContent ?? ''))!
+  expect(warn.querySelector('.sev.warn')).not.toBeNull()
+  expect(warn.querySelector('a')?.getAttribute('href')).toBe('#/sr6/c/r1/vehicles')
+  expect(warn.textContent).not.toMatch(/GM approve/)
+})
+
+test('a GM approves the bought design on Review; one bought from a GM’s (approved) design has nothing to approve', async () => {
+  const ch = blankSr6('karma', 'r2', '2026-10-16T00:00:00.000Z')
+  ch.build.metatype = GLIM
+  ch.build.purchases = [boughtDesign(redZip(), data, cr, 'v1')]
+  const runners = fakeStore('sr6/characters', { r2: sr6ToXml(ch) })
+  stubFetch([runners.route])
+  await mount(createElement(Sr6EditorView, { c, data, cr, id: 'r2', tab: 'review' }))
+  const warn = () => [...document.querySelectorAll('.viol')].find(v => /Custom design: needs GM approval/.test(v.textContent ?? ''))!
+  await click(button('GM approve', warn()))
+  await change(field('Why the GM allows it'), 'Built in the campaign’s garage')
+  await click(button('Approve'))
+  expect(warn().querySelector('.sev.ok')?.textContent).toBe('Approved')
+  await click(button('Save'))
+  expect(read(runners.rows.get('r2')!.xml).overrides).toEqual([{ code: 'vehicle.design', path: 'vehicles.v1', note: 'Built in the campaign’s garage' }])
+  const gm = redZip()
+  gm.design!.approved = true
+  expect(boughtDesign(gm, data, cr).snapshot!.attrs.approved).toBe('true')
+})
