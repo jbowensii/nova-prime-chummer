@@ -449,12 +449,27 @@ const readTrained = (e: Element): Sr6CritterTrained => {
   if (what !== 'command' && what !== 'training') throw new Error(`trained what “${what ?? ''}” (not command or training)`)
   return def({ uid: e.getAttribute('uid') ?? '', what, id: str(e, 'id'), name: str(e, 'name'), taught: yes(e, 'taught') })
 }
+/** The most of each an older file's count is read as: past any critter's Logic or Intuition × 2 (a count of 1e9 froze
+ *  the load). */
+const MAX_OLDER_TRAINED = 99
 /** An older file's counts (`commands="2" training="1"`, before they were named): as many unnamed ones, with the purchase
- *  (a tamed critter's taught), noted so the player can pick which they are. */
+ *  (a tamed critter's taught), noted so the player can pick which they are. A count that isn't a whole number from 0 is
+ *  refused (in repair: none, noted); one past MAX_OLDER_TRAINED is refused (in repair: that many, noted). */
 function olderTrained(e: Element, fix?: string[]): Sr6CritterTrained[] {
-  const out: Sr6CritterTrained[] = []
+  const out: Sr6CritterTrained[] = [],
+    who = e.getAttribute('name') || 'A critter'
   for (const what of ['command', 'training'] as const) {
-    const n = num(e, what === 'command' ? 'commands' : 'training') ?? 0
+    const a = what === 'command' ? 'commands' : 'training'
+    let n = num(e, a) ?? 0
+    if (!Number.isInteger(n) || n < 0) {
+      if (!fix) throw new Error(`${a}="${n}" isn’t a whole number from 0`)
+      fix.push(`${who}: its ${a} count “${n}” isn’t a whole number from 0, so it’s left out.`)
+      n = 0
+    } else if (n > MAX_OLDER_TRAINED) {
+      if (!fix) throw new Error(`${a}="${n}" is more than ${MAX_OLDER_TRAINED}`)
+      fix.push(`${who}: its ${a} count ${n} is more than any critter learns, so it’s read as ${MAX_OLDER_TRAINED}.`)
+      n = MAX_OLDER_TRAINED
+    }
     for (let i = 0; i < n; i++) out.push(def({ uid: `${e.getAttribute('uid') ?? ''}-${what}-${i + 1}`, what, taught: yes(e, 'tamed') }))
   }
   if (out.length)

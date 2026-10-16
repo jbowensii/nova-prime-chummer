@@ -35,7 +35,8 @@
 //   /api/sr6/designs, /api/sr6/designs/:id, /api/sr6/designs/trash*   SR6 only: the same routes for vehicle and drone
 //                                        designs (SR6 characters with a <design> block, which a PUT must have and no other
 //                                        store takes), kept in characters/sr6/.designs/<username>/ (+ .trash/): every account its
-//                                        own; GET: the caller's, the admin everyone's
+//                                        own; GET: the caller's, the admin everyone's; a player's PUT is saved without
+//                                        the <design>'s approved (a GM's mark)
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
 //   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs);
@@ -342,6 +343,16 @@ export function createServer({
       const r = rootTag(xml, tag)
       return /^\s*<design[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
     }
+    /** The design without its `approved` (either quote, any value): a GM's mark, which a player's own save never sets
+     *  (owner 2026-10-16, BUILDER Q8). The <design> tag read attribute by attribute: a value may hold a `>`. null: a tag
+     *  that can't be read so (refused). */
+    const unapproved = xml => {
+      const r = rootTag(xml, tag),
+        at = xml.indexOf(r) + r.length
+      const m = /^\s*<design(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*\/?>/.exec(xml.slice(at))
+      if (!m) return null
+      return xml.slice(0, at) + m[0].replace(/\s+approved\s*=\s*(?:"[^"]*"|'[^']*')/g, '') + xml.slice(at + m[0].length)
+    }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
@@ -448,6 +459,9 @@ export function createServer({
         const me = auth.current(who.id)
         if (!me) return send(res, 401, { error: 'sign in first' })
         if (refused(kind, me)) return send(res, 403, { error: 'your account can’t do this' })
+        // a design a player saves is never approved: a GM (admin or editor) approves (BUILDER Q8)
+        const body = xml != null && kind.design && !['admin', 'editor'].includes(me.role) ? unapproved(xml) : xml
+        if (xml != null && body == null) return send(res, 400, { error: 'the design element’s attributes aren’t well formed' })
         const dir = kind.folder(me.username)
         const existing = (await index(dir)).find(c => c.id === id)
         if (!existing)
@@ -473,7 +487,7 @@ export function createServer({
         await mkdir(dir, { recursive: true })
         const file = existing?.file ?? (await freeName(dir, slug(url.searchParams.get('filename') || attrOf(xml, 'streetName') || attrOf(xml, 'name'))))
         // the campaign is the stored runner's (set by /api/campaigns), never the body's
-        await writeAtomic(join(dir, file), setRev(setCampaign(xml, existing && campaignOf(existing.xml, tag), tag), rev, tag))
+        await writeAtomic(join(dir, file), setRev(setCampaign(body, existing && campaignOf(existing.xml, tag), tag), rev, tag))
         return send(res, existing ? 200 : 201, { rev, file })
       })
     }

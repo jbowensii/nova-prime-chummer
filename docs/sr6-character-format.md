@@ -147,9 +147,11 @@ copy". Book entries are never copied here.
   Availability; a tamed critter's always are), absent: it came with the purchase (each +1 to the Body in the price
   formula only and +1 Availability, p. 183). An older file's counts, `commands` and `training` on the `<purchase>`, load
   as that many unnamed ones (no `id`, `uid` the line's + `-command-1` …; a tamed critter's taught), noted on a repair
-  load; the file is written the new way on its next save. Then a `<quality uid id level name? how?>` per companion quality (catalog qualities of
+  load (a count that isn't a whole number from 0 is refused, in repair none; one past 99 refused, in repair 99); the
+  file is written the new way on its next save. Then a `<quality uid id level name? how?>` per companion quality (catalog qualities of
   class `CRITTERWARE/QUALITY`, pp. 184-186): no `how`, specified with its purchase (each ±1 Availability, its net Karma
-  moving the price, p. 180: a net Karma bonus takes its percentage off the whole price, training included, never below 0);
+  moving the price, p. 180: a net Karma bonus takes its percentage off the whole price, training included, never below 0;
+  one a career bond upgraded is priced at the level it was bought at);
   `how="tamed"`, the Wild Soul and the negative balancing it that taming gives; `how="bonded"`,
   bought with the runner's own Karma through the Critter Bond path's Permanent Improvement (SWC p. 139; at creation its
   positives less its negatives, never below 0, in the karma budget). Its accessories are its critterware and gear,

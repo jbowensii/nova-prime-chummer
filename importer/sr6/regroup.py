@@ -132,6 +132,22 @@ def _cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
 
+def md_tables(text):
+    """The markdown tables in a block's text: (header, rows). The one reader catalog and sections share (sections can't
+    import catalog, which imports it)."""
+    lines, out, i = (text or "").splitlines(), [], 0
+    while i < len(lines):
+        if lines[i].startswith("|") and i + 1 < len(lines) and _SEP.match(lines[i + 1]):
+            header, rows, i = _cells(lines[i]), [], i + 2
+            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
+                rows.append(_cells(lines[i]))
+                i += 1
+            out.append((header, rows))
+        else:
+            i += 1
+    return out
+
+
 class _PLine(str):
     """A text line that keeps the PDF page it is printed on through a unit's body (a block's page breaks: _breaks)."""
     page = 0

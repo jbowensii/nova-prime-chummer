@@ -181,7 +181,7 @@ test('taught later: the OPTIONS row’s price each (+400, +600), no Availability
   x.critterQualities = []
   x.trained = [C('hum-along')]
   expect(apply(b, { op: 'critter', uid: x.uid, tamed: true }, data, cr)).toEqual(ok)
-  expect(x.trained[0].taught).toBe(true)
+  expect(x.trained[0].taught).toBeUndefined() // (isTaught reads a tamed critter's as taught)
   x.critterQualities = []
   expect(critterPrice(x, data)).toMatchObject({ cost: 400, avail: 0, ok: true })
   expect(apply(b, { op: 'critterTrained', host: x.uid, id: 'zz.harness-training' }, data, cr)).toEqual(ok)
@@ -209,6 +209,22 @@ test('a tamed critter has no price; taming brings Wild Soul and High Maintenance
   expect(x.tamed).toBeUndefined()
   expect(x.critterQualities).toBeUndefined()
   expect(apply(b, { op: 'critterQuality', host: x.uid, id: 'zz.grumpy', how: 'tamed' }, data, cr)).toEqual({ ok: false, reason: 'not-tamed' })
+})
+
+test('tamed then untamed: the price and Availability come back exactly; a Wild Soul it had is neither doubled nor taken', () => {
+  const { b, x, data, cr } = owning('zz.fuzzpup', { pet: 'exotic' })
+  x.trained = [C('fetch-fizz'), T('harness-training', true)]
+  x.critterQualities = [{ uid: 'w', id: 'zz.wild-soul', level: 1 }]
+  const before = critterPrice(x, data)
+  expect(apply(b, { op: 'critter', uid: x.uid, tamed: true }, data, cr)).toEqual(ok)
+  expect(x.critterQualities.map(q => [q.id, q.how])).toEqual([
+    ['zz.wild-soul', undefined],
+    ['zz.high-maintenance.1', 'tamed'],
+  ])
+  expect(apply(b, { op: 'critter', uid: x.uid, tamed: false }, data, cr)).toEqual(ok)
+  expect(x.critterQualities).toEqual([{ uid: 'w', id: 'zz.wild-soul', level: 1 }])
+  expect(x.trained.map(t => t.taught)).toEqual([undefined, true])
+  expect(critterPrice(x, data)).toEqual(before)
 })
 
 test('critter qualities are a critter’s only; set, levelled, removed; commands and training picked by name, set, removed', () => {
@@ -377,8 +393,12 @@ test('career: a critter bought, critter gear fitted, a quality bonded (negative 
     karma: 0,
     label: 'Critter bond: Keen with Grumpy on Fuzzpup',
   })
-  // Receptive to Training 1 → 3: two levels, 6 Karma × the career factor (3)
+  // Receptive to Training 1 → 3: two levels, 6 Karma × the career factor (3); bought with the Fuzzpup at 1, its price
+  // and Availability still read level 1 (the bond paid the rest)
+  const pupPrice = () => (x => ({ cost: priced(x, data, cr).cost, avail: priced(x, data, cr).avail }))(currentBuild(ch).purchases[0])
+  const was = pupPrice()
   expect(step({ op: 'bond', target: 'c1', line: { uid: 'r', id: 'zz.receptive', level: 3 } })).toMatchObject({ karma: 18 })
+  expect(pupPrice()).toEqual(was)
   const b = currentBuild(ch),
     pup = b.purchases.find(x => x.uid === 'c1')!
   expect(pup.critterQualities?.map(y => [y.id, y.level, y.how])).toEqual([
@@ -466,6 +486,22 @@ test('an older file’s counts of commands and training load as that many unname
   expect(again).not.toMatch(/commands="/)
   expect(await valid(again)).toEqual([])
   expect(await valid(old(''))).toEqual([]) // (the older attributes still validate)
+})
+
+test('an older file’s counts: past 99 read as 99, not a whole number from 0 left out; noted in repair, refused without', () => {
+  const ch = blankSr6('karma', 'r', '2026-10-16T00:00:00.000Z')
+  ch.build.purchases = [{ uid: 'c1', kind: 'critters', id: 'zz.fuzzpup', qty: 1, accessories: [] }]
+  const old = (attrs: string) => sr6ToXml(ch).replace('<purchase uid="c1" kind="critters" id="zz.fuzzpup" qty="1"', `$& ${attrs}`)
+  const fix: string[] = []
+  const r = xmlToSr6(old('commands="1e9" training="-2"'), { repair: fix })
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character.build.purchases[0].trained).toHaveLength(99)
+  expect(fix).toEqual([
+    expect.stringMatching(/commands count 1000000000 .* read as 99/),
+    expect.stringMatching(/training count “-2” isn’t a whole number/),
+    expect.stringMatching(/99 trained commands/),
+  ])
+  for (const a of ['commands="1e9"', 'training="1.5"']) expect(xmlToSr6(old(a))).toMatchObject({ ok: false })
 })
 
 test('every sheet’s critter lines and the export: class, stats, powers, qualities, training, what it wears', () => {

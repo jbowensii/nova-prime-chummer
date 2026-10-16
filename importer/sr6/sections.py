@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field, replace
 
 from importer.sr6 import effects, flags
-from importer.sr6.regroup import norm, text_page
+from importer.sr6.regroup import md_tables, norm, text_page
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
@@ -577,24 +577,6 @@ def reprint(f, entries):
 
 # --- vehicle design (Double Clutch's design rules) ---------------------------------------------------------------
 
-_SEP = re.compile(r"\|(?:\s*:?-+:?\s*\|)+\s*$")
-
-
-def _md_tables(text):
-    """The markdown tables of a text: [(header, rows)]."""
-    lines, out, i = (text or "").splitlines(), [], 0
-    while i < len(lines):
-        if lines[i].startswith("|") and i + 1 < len(lines) and _SEP.match(lines[i + 1]):
-            header, rows, i = [c.strip() for c in lines[i].strip().strip("|").split("|")], [], i + 2
-            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
-                rows.append([c.strip() for c in lines[i].strip().strip("|").split("|")])
-                i += 1
-            out.append((header, rows))
-        else:
-            i += 1
-    return out
-
-
 # a design table's printed columns -> the part's attributes (Double Clutch p. 150's chassis, powertrain, console and
 # size class tables), each value as printed
 DESIGN_COLUMNS = {"BUILD POINTS": "bp", "BOD": "body", "BODY": "body", "ARM": "armor", "ARMOR": "armor", "HAND": "handling",
@@ -610,7 +592,7 @@ def design_tables(b, page):
     (`chassis type`, `size class`), its printed columns (DESIGN_COLUMNS) as printed. A size class row is named by its
     table and number (`Size Class 6`)."""
     tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else []) \
-        + [(list(x), [list(x.values())]) for x in b.stats] + _md_tables(b.text)
+        + [(list(x), [list(x.values())]) for x in b.stats] + md_tables(b.text)
     out = []
     for header, rows in tables:
         hu = [h.upper().strip() for h in header]
@@ -692,7 +674,7 @@ def quality_sets(b, page):
     """Each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE METAGENIC
     QUALITIES | …`: the Companion's metagenic collectives): a set of qualities bought together."""
     out = []
-    for header, rows in _md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
+    for header, rows in md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
                                                if b.row is not None and b.header else []):
         hu = [h.upper() for h in header]
         qs = [i for i, h in enumerate(hu) if "QUALITIES" in h]

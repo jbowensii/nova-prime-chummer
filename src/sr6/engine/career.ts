@@ -190,13 +190,15 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       return
     }
     case 'bond': {
-      // (a line whose uid names one of the critter's qualities upgrades it, its own how kept)
+      // (a line whose uid names one of the critter's qualities upgrades it, its own how kept; one specified with the
+      // purchase keeps the level it was bought at for the critter's price, paid in nuyen then: the bond paid the rest)
       const host = b.purchases.find(x => x.uid === a.target)
       if (!host) return
       const qs = (host.critterQualities ??= [])
       for (const q of [a.line, a.with]) {
         if (!q) continue
         const had = qs.find(y => y.uid === q.uid)
+        if (had && !had.how) had.bought ??= { id: had.id, level: had.level }
         if (had) Object.assign(had, { id: q.id, level: q.level, ...(q.name ? { name: q.name } : {}) })
         else qs.push(structuredClone(q))
       }

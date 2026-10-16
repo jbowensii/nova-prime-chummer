@@ -93,13 +93,15 @@ export const PET_CLASSES: PetClass[] = ['mundane', 'exotic', 'wild']
 /** One of an owned critter's companion qualities (Wild Life pp. 184-186, catalog qualities of class CRITTERWARE/QUALITY).
  *  how: none, specified when it was bought (its Karma moves the price, p. 180); tamed, the Wild Soul and the negative
  *  balancing it a tamed critter gets (p. 184); bonded, bought with the runner's own Karma through the Critter Bond path's
- *  Permanent Improvement (SWC p. 139). */
+ *  Permanent Improvement (SWC p. 139). bought: (never stored; the career build's) the id and level one specified with
+ *  the purchase had before a bond upgraded it: what its price still reads. */
 export interface Sr6CritterQuality {
   uid: string
   id: string
   level: number
   name?: string
   how?: 'tamed' | 'bonded'
+  bought?: { id: string; level: number }
 }
 /** One of an owned critter's trained commands or special trainings (Wild Life pp. 181-183: a catalog action of category
  *  Critter Command Actions or Critter Special Training; no id: an older file's unnamed one, kept from its count). taught:

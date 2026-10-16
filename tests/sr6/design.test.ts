@@ -134,6 +134,10 @@ test('bought: a vehicles line with the design as its snapshot; a player’s desi
   // a GM's (approved) design: nothing to approve
   const gm = boughtDesign({ ...doc, design: { ...doc.design, approved: true } }, data, cr)
   expect(validateSr6(data, cr, { ...ch, build: { ...b, purchases: [gm] } }).some(x => x.code === 'vehicle.design')).toBe(false)
+  // the design attribute taken out of the file (it still runs from its snapshot): still asks; a snapshot id is enough
+  const asks = (x: typeof line) => validateSr6(data, cr, { ...ch, build: { ...b, purchases: [x] } }).some(y => y.code === 'vehicle.design')
+  expect(asks({ ...line, design: undefined })).toBe(true)
+  expect(asks({ ...line, design: undefined, id: undefined })).toBe(true)
   // the universal slots take what a category goes past (DC's rules: 10 chassis slots, 4 universal)
   const dc = sr6Data(
     fixtureCatalog(undefined, [

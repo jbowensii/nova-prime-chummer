@@ -1637,14 +1637,15 @@ const RULES: Rule[] = [
     check: c => c.b.purchases.filter(x => x.kind === 'vehicles').flatMap(x => modsOf(x, c.data).warnings.map(w => ({ path: `vehicles.${x.uid}`, ...w }))),
   },
   // a vehicle or drone a player designed (the Designer) needs its GM's approval: a warning a GM approves, never blocking;
-  // one a GM made or approved needs nothing (owner 2026-10-16, BUILDER Q8)
+  // one a GM made or approved needs nothing (owner 2026-10-16, BUILDER Q8); a design's line by its `design` or its
+  // `design.<id>` line or snapshot id, so a file with `design` taken out still asks
   {
     code: DESIGN_APPROVAL,
     severity: 'warning',
     tab: 'vehicles',
     check: c =>
       c.b.purchases
-        .filter(x => x.design && x.snapshot?.attrs.approved !== 'true')
+        .filter(x => (x.design || [x.id, x.snapshot?.id].some(i => i?.startsWith('design.'))) && x.snapshot?.attrs.approved !== 'true')
         .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
   },
   // an owned critter past its limits (critters.ts: commands, special training, qualities, taming, bonding, Body for

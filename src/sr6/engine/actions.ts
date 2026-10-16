@@ -628,13 +628,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         x.critterQualities = x.critterQualities?.filter(q => q.how !== 'tamed')
       } else if (op.tamed && !x.tamed) {
         // Wild Life p. 184: Wild Soul, balanced by a negative quality, High Maintenance 1 by default (changed by taking it
-        // off and adding another negative as tamed)
+        // off and adding another negative as tamed); one it already has isn't added again, so untaming keeps it. (Its
+        // trained ones aren't marked taught: critters.ts isTaught reads every one of a tamed critter so, and untaming
+        // restores the price.)
         x.tamed = true
-        for (const t of x.trained ?? []) t.taught = true // (a tamed critter is taught, never bought trained)
         x.critterQualities ??= []
         for (const name of ['Wild Soul', 'High Maintenance']) {
           const e = critterQualityNamed(data, name)
-          if (e) x.critterQualities.push({ uid: newId(), id: e.id, level: 1, name: e.name, how: 'tamed' })
+          if (e && !x.critterQualities.some(q => q.id === e.id)) x.critterQualities.push({ uid: newId(), id: e.id, level: 1, name: e.name, how: 'tamed' })
         }
       }
       if (!x.critterQualities?.length) delete x.critterQualities

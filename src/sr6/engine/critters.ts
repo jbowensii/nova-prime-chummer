@@ -147,9 +147,11 @@ export function critterPrice(x: Sr6Purchase, data: Sr6Data): CritterPrice {
       neg = 0,
       npos = 0,
       nneg = 0
-    for (const q of x.critterQualities ?? []) {
-      const v = data.qualities[q.id]
-      if (q.how || !v) continue
+    for (const q0 of x.critterQualities ?? []) {
+      // (one a bond upgraded since: as it was bought)
+      const q = q0.bought ?? q0,
+        v = data.qualities[q.id]
+      if (q0.how || !v) continue
       if (v.positive) {
         pos += critterQualityKarma(v, q)
         npos++

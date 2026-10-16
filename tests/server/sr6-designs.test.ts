@@ -1,8 +1,9 @@
 // @vitest-environment node
 // SR6 vehicle and drone designs (server.mjs /api/sr6/designs*): every account's own store in characters/sr6/.designs/
 // <owner>/, players too; a body must have a <design> block, which no runner or NPC store takes; rev/If-Match like
-// runners; another account's design can't be overwritten; the design trash restores; Anarchy has no such route.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+// runners; another account's design can't be overwritten; the design trash restores; Anarchy has no such route; a
+// player's save drops the design's approved (a GM's mark).
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -89,4 +90,18 @@ test('deleted, it waits in the design trash and comes back; Anarchy has no desig
   expect(await ids('pat')).toEqual(['pat/d1'])
   expect((await call('pat', 'GET', '/api/designs')).status).toBe(404)
   expect((await call('pat', 'GET', '/api/designs/trash')).status).toBe(404)
+})
+
+test('a player’s design is saved without approved (either quote, a > in a value); a GM’s keeps it', async () => {
+  const stored = (who: Who, name: string) => readFileSync(join(designs, who, name), 'utf8')
+  const tag = `<design kind="vehicle" chassis="a>b" approved="true" diy="true"/>`
+  expect((await call('pat', 'PUT', '/api/sr6/designs/p2', file('p2', 'Self Approved', tag))).status).toBe(201)
+  expect(stored('pat', 'Self-Approved.xml')).toContain('<design kind="vehicle" chassis="a>b" diy="true"/>')
+  expect(
+    (await call('pat', 'PUT', '/api/sr6/designs/p2', file('p2', 'Self Approved', `<design approved = 'true' kind="drone">`), { 'If-Match': '1' })).status,
+  ).toBe(200)
+  expect(stored('pat', 'Self-Approved.xml')).toContain('<design kind="drone">')
+  expect((await call('pat', 'PUT', '/api/sr6/designs/p3', file('p3', 'Odd', '<design kind=drone approved="true"/>'))).status).toBe(400)
+  expect((await call('eve', 'PUT', '/api/sr6/designs/e2', file('e2', 'GM Approved', tag))).status).toBe(201)
+  expect(stored('eve', 'GM-Approved.xml')).toContain(tag)
 })
