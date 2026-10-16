@@ -61,7 +61,7 @@ is closed (no other keys).
 | `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
 | `martialArts` | martial arts styles: items (kind `martialarts`; `attrs.categories`, `attrs.signature` as printed) plus `{ uid, techniques }`; `techniques`: the ones learned under the style (its signature one included), items (kind `martialtechniques`; `attrs.category`) plus `{ uid, requires? }`; `requires`: the technique's printed prerequisites `[{ kind, name, met? }]`, `kind` `adeptpower`, `technique`, `quality`, `augmentation` or `other`, `met` whether the runner has it (absent when it can't be told: `other`, or an augmentation printed as an amount), absent when it prints none (and in older files). Absent in files written before martial arts were added |
-| `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles |
+| `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles and drones, critters |
 | `contacts` | `[{ uid, name, archetype, connection, loyalty, types? }]`; `types`: the Sixth World Companion's contact types, when set |
 | `lifestyle` | **deprecated**, kept for the module's older versions: the first lifestyle of the first SIN that has one, `{ id, name, months, cost? }`, or `null`. Read `sins[].lifestyles` |
 | `sins` | `[{ uid, name, kind, rating?, gender?, placeholder?, licences: [{ name, rating }], lifestyles: [{ uid, id, name, months, cost? }] }]`; `kind` `real` or `fake`; `gender`: that identity's own; `placeholder: true` (left out otherwise): an unnamed stand-in (`name` empty, `kind` real, free) holding an older file's lifestyle when the runner had no SIN, shown as Unnamed SIN; `lifestyles`: the ones paid under this SIN (a lifestyle always belongs to a SIN, a SIN may have none); `cost` is the lifestyle's price per month. For Eden: a `sin` item per SIN and a `lifestyle` item per lifestyle with `system.sin` naming its SIN |
@@ -106,6 +106,17 @@ keying its skills by name, as Eden does, finds it by; `derived.pools` counts it,
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
 them out.
+
+What a vehicle, drone or critter the runner owns adds (the Foundry module makes each its own Eden Vehicle or Critter
+actor, tied to the runner):
+
+| Field | Meaning |
+|---|---|
+| `mount` | on a weapon fitted to a vehicle or drone: the `uid` of the weapon mount (a sibling accessory) it sits in |
+| `diy` | `true` on a vehicle mod the player installed (half its nuyen price, Double Clutch p. 120) |
+| `vehicle` | on a vehicle or drone: `{ drone, builtin, slotShifts?, seatsRemoved?, design? }`. `drone` by its class or category; `builtin` the mods built in as shown (`Zap plating 2`, `3 more chassis mod slots`, a design's own mods), already paid for, with the book's built-in notes; `slotShifts` `[{ from, to }]` in the order made (two `chassis`, `powertrain` or `electronics` slots give one of the other); `seatsRemoved` the seats taken out for cargo (`values.vehicle.seats` is what is left); `design` the Designer design it was bought from (its line's `id` is `design.<id>`, its numbers the design's when bought). Its mods, mounts, weapons and autosofts are its `accessories` |
+| `npc` | on a critter: its stat block (the NPC block, below), absent on a custom critter |
+| `critter` | on a critter: `{ class, tamed, commands, training, qualities }`; `class` `mundane`, `exotic` or `wild` (the pet class bought) or `awakened`/`emerged` (by its Magic or Resonance); `commands` and `training` its trained commands and special training (Wild Life p. 180), a count (a later file: the named ones); `qualities` its companion qualities `[{ uid, id, level, name?, how?, positive? }]`, `how` `tamed` or `bonded` (the Critter Bond path), absent when specified with the purchase. Its critterware and gear are its `accessories`; its critter powers are innate (0 Karma), in the stat block |
 
 ### Values
 
