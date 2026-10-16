@@ -2,7 +2,7 @@
 // starts with the tab id), GM approval as Anarchy's, the derived values, and Finalize. In career: the career checks
 // (validateCareer, already in the context), the derived values of the runner as it stands, the ledger's balances, and Back
 // to draft only while the ledger holds nothing live to undo.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { resolveEntry } from '../../engine/load'
 import type { Violation } from '../../../model/types'
 import { Modal } from '../../../ui/bits'
@@ -26,6 +26,8 @@ export function ReviewTab() {
   const { ch, c, v, d, data, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
   const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
   const [notes, setNotes] = useState<Record<string, string>>({}) // the optional GM note typed beside each approvable line
+  // (the box reads the note from a ref: a tick right after typing can come before the re-render that carries it)
+  const typed = useRef(notes)
   const [asking, setAsking] = useState<'finalize' | 'draft' | null>(null)
   const sorted = [...v].sort((a, b) => Number(!!a.approved) - Number(!!b.approved) || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1))
   const tabs = sr6Tabs(ch.build.magic, career)
@@ -51,7 +53,7 @@ export function ReviewTab() {
     done(
       await approveAll!(
         on
-          ? [...ch.overrides, { code: x.code, path: x.path, note: (notes[`${x.code}|${x.path}`] ?? '').trim() }]
+          ? [...ch.overrides, { code: x.code, path: x.path, note: (typed.current[`${x.code}|${x.path}`] ?? '').trim() }]
           : ch.overrides.filter(o => !(o.code === x.code && o.path === x.path)),
       ),
     )
@@ -132,7 +134,10 @@ export function ReviewTab() {
                           aria-label="GM note (optional)"
                           placeholder="Why the GM allows it (optional)"
                           value={notes[`${x.code}|${x.path}`] ?? ''}
-                          onChange={e => setNotes({ ...notes, [`${x.code}|${x.path}`]: e.target.value })}
+                          onChange={e => {
+                            typed.current = { ...typed.current, [`${x.code}|${x.path}`]: e.target.value }
+                            setNotes(typed.current)
+                          }}
                         />
                       )}
                     </>
