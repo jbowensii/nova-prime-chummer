@@ -140,6 +140,8 @@ class SwRecipeTest(unittest.TestCase):
         p = entries(self.res, "critterpowers")
         self.assertEqual(p["Shine Gate"]["action"], "Major")
         self.assertEqual(p["Energy Sip (Karma)"]["action"], "Minor")  # a heading's tags printed as a heading
+        self.assertEqual((p["Shine Gate"]["tags"], p["Energy Sip (Karma)"]["tags"]), ("Free", "Free"))  # kept as a tag
+        self.assertNotIn("Free", entries(self.res, "spellfeatures") if "spellfeatures.xml" in self.res.files else {})
 
     def test_adepts_metamagic_preparations(self):
         a = entries(self.res, "adeptpowers")["Glow Step"]
