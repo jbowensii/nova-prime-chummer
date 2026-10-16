@@ -126,7 +126,20 @@ function full(): Sr6Character {
       ],
       accessories: [],
     },
-    { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [], bonuses: [{ target: 'defense', value: 1 }] },
+    // (slotShifts: a vehicle's mod slots shifted, Double Clutch p. 120; on any line the file format allows)
+    {
+      uid: 'g4',
+      kind: 'armor',
+      id: 'crb.padded-vest',
+      qty: 1,
+      worn: true,
+      accessories: [],
+      bonuses: [{ target: 'defense', value: 1 }],
+      slotShifts: [
+        { from: 'chassis', to: 'powertrain' },
+        { from: 'electronics', to: 'chassis' },
+      ],
+    },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
   b.contacts = [
@@ -361,6 +374,9 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'fit', target: 'g4', line: { ...gear, uid: 'lf2', diy: true } },
     { op: 'unfit', target: 'lf' },
     { op: 'unfit', target: 'lf2', line: { ...gear, uid: 'lf2', diy: true } },
+    // (two chassis slots into one powertrain slot; a weapon moved to another mount)
+    { op: 'shift', target: 'g4', from: 'chassis', to: 'powertrain' },
+    { op: 'move', target: 'lf', mount: 'lm8' },
   ]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [

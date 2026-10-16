@@ -4,6 +4,7 @@
 // Ledger. Made-up runner, items and prices on the made-up fixture.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
+import { currentBuild } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
@@ -12,6 +13,7 @@ import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
 import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/fixture'
 import { button, change, click, fakeStore, field, mount, option, pageText, stubFetch } from './dom'
 
+const dialog = () => document.querySelector('dialog[open]')!
 const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
 const MODS =
   '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear>' +
@@ -142,4 +144,60 @@ test('Ledger: after finalising, a mod is fitted (done yourself, half price) and 
   await click(button('Record'))
   await click(button('Record it'))
   expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'unfit', target: uid }, nuyen: 0 })
+})
+
+test('with Double Clutch: slots are shifted two for one between categories, shown in the meters, kept in the file, undone with ×', async () => {
+  const ch = runner()
+  ch.build.purchases[0].accessories = [{ uid: 'g1', kind: 'gear', id: 'crb.zap-grip', qty: 1, accessories: [] }]
+  const saved = await open(ch, 'vehicles', catalog(true))
+  const meters = () => pageText().match(/Chassis slots \S+ · Powertrain slots \S+ · Electronics slots \S+/)![0]
+  expect(meters()).toBe('Chassis slots 2/7 · Powertrain slots 0/5 · Electronics slots 0/5')
+  await change(field('Shift to on Putt-Putt'), 'electronics')
+  await click(button('Shift slots on Putt-Putt'))
+  expect(meters()).toBe('Chassis slots 2/5 · Powertrain slots 0/5 · Electronics slots 0/6')
+  expect(pageText()).toMatch(/2 chassis → 1 electronics/)
+  expect((await saved()).build.purchases[0].slotShifts).toEqual([{ from: 'chassis', to: 'electronics' }])
+  // (chassis has 3 slots free, then 1: no second shift of two)
+  await click(button('Shift slots on Putt-Putt'))
+  expect(meters()).toBe('Chassis slots 2/3 · Powertrain slots 0/5 · Electronics slots 0/7')
+  expect(button('Shift slots on Putt-Putt').disabled).toBe(true)
+  await click(button('Undo shift 2 on Putt-Putt'))
+  expect(meters()).toBe('Chassis slots 2/5 · Powertrain slots 0/5 · Electronics slots 0/6')
+  await click(button('Undo shift 1 on Putt-Putt'))
+  expect(meters()).toBe('Chassis slots 2/7 · Powertrain slots 0/5 · Electronics slots 0/5')
+  expect((await saved()).build.purchases[0].slotShifts).toBeUndefined()
+})
+
+test('Ledger: after finalising, slots are shifted and a weapon moved to another mount, free, each voidable', async () => {
+  const ch = runner()
+  ch.build.purchases[0].accessories = [
+    { uid: 'm1', kind: 'gear', id: 'crb.zap-mount', qty: 1, accessories: [] },
+    { uid: 'm2', kind: 'gear', id: 'crb.zap-mount', qty: 1, accessories: [] },
+    { uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, mount: 'm1', accessories: [] },
+  ]
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 5000 } })
+  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 5000 }]
+  const saved = await open(ch, 'ledger', catalog(true))
+  await change(field('What'), 'shift')
+  await change(field('Shift on'), 'v1')
+  await change(field('Shift to'), 'electronics')
+  expect(pageText()).toMatch(/Shift mod slots: 2 chassis → 1 electronics on Putt-Putt/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'shift', target: 'v1', from: 'chassis', to: 'electronics' }, nuyen: 0 })
+  await change(field('What'), 'move')
+  await change(field('Weapon to move'), 'w1')
+  await change(field('Move to mount'), 'm2')
+  expect(pageText()).toMatch(/Moved: Fizz Rifle 70 from Zap Weapon Mount to Zap Weapon Mount on Putt-Putt/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  const after = await saved()
+  expect(after.ledger.at(-1)).toMatchObject({ advance: { op: 'move', target: 'w1', mount: 'm2' }, nuyen: 0 })
+  // the newest voided first: the weapon goes back to its first mount
+  await click(button(/^Void Moved:/))
+  await change(field('Why'), 'wrong mount')
+  await click(button('Void', dialog()))
+  const voided = await saved()
+  expect(voided.ledger.at(-1)).toMatchObject({ type: 'void', eventId: after.ledger.at(-1)!.id })
+  expect(currentBuild(voided).purchases[0].accessories.find(a => a.uid === 'w1')!.mount).toBe('m1')
 })

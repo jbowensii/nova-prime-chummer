@@ -123,7 +123,10 @@ copy". Book entries are never copied here.
   items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
   vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
   `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in (one naming none of them reads as
-  in no mount, noted); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
+  in no mount, noted); a vehicle's or drone's `slotShifts` lists the mod slots shifted between categories, in the order
+  made (`chassis>powertrain electronics>chassis`: Double Clutch p. 120, any available slots shifted at 2:1, so each
+  entry takes two slots from its first category and gives one to its second; read with Double Clutch among the table's
+  books only; an entry naming no two categories reads as left out, noted; absent: none); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
   p. 120; never an accessory's). Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
   older files read as they were. A vehicle or drone bought from a design (the Designer, below) has `design` (the
   design's id), `id="design.<that id>"` and a `<snapshot>` always: the vehicle as the design worked out when bought (its
@@ -196,6 +199,10 @@ the entry its `event` names.
   (`target`: the uid of an owned line, a vehicle or drone; the `<purchase>` that follows is fitted to it, at its price,
   half with `diy`; a weapon's `mount` names one of the line's mounts) and `unfit` (`target`: the uid of the accessory
   taken off, no refund; a weapon in it stays, in no mount; the removed `<purchase>` may follow for the history),
+  `shift` (`target`: the uid of the vehicle or drone, `from` and `to`: the categories `chassis`, `powertrain` or
+  `electronics`; two slots of `from` given for one of `to`, free, out of slots not in use; voiding it shifts them back) and
+  `move` (`target`: the uid of a weapon, `mount`: the uid of another weapon mount of the same vehicle it moves to; no new
+  charge; voiding it puts the weapon back in its old mount),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),

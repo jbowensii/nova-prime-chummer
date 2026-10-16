@@ -144,7 +144,7 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
 }
 
 /** A vehicle's or drone's fitted lines in words: its mods (`Improved Handling 1 (do it yourself)`), each weapon with its
- *  mount, its autosofts and programs, anything else on it, the mods built in (vehiclemods.ts). */
+ *  mount, its autosofts and programs, anything else on it, the mods built in, the mod slots shifted (vehiclemods.ts). */
 export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
   const name = (a: Sr6Purchase) => (e => `${e ? entryLabel(e) : (a.name ?? 'Custom item')}${a.rating ? ` ${a.rating}` : ''}`)(entryOf(a, data))
   const m = modsOf(x, data),
@@ -171,6 +171,7 @@ export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
       x.accessories.filter(a => kind(a) === 'other'),
     ),
     ...(m.builtin.length ? [`Built in: ${m.builtin.map(builtinText).join(', ')}`] : []),
+    ...(m.shifts?.length ? [`Mod slots shifted: ${m.shifts.map(t => `2 ${t.from} → 1 ${t.to}`).join(', ')}`] : []),
   ]
 }
 

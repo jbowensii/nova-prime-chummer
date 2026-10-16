@@ -13,9 +13,11 @@ import {
   CORE_ATTRS,
   MAGIC_KIND_LABELS,
   PURCHASE_KINDS,
+  SLOT_KINDS,
   sinName,
   type PickKind,
   type PurchaseKind,
+  type SlotKind,
   type Sr6Advance,
   type Sr6Attr,
   type Sr6LedgerEntry,
@@ -50,6 +52,8 @@ const OPS = [
   ['drop', 'Drop gear'],
   ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone'],
   ['unfit', 'Take a mod off a vehicle or drone'],
+  ['shift', 'Shift mod slots on a vehicle or drone'],
+  ['move', 'Move a weapon to another mount'],
   ['sin', 'SIN'],
   ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
@@ -89,6 +93,8 @@ export function LedgerTab() {
     gender: '',
     licName: '',
     mount: '',
+    from: 'chassis',
+    to: 'powertrain',
     diy: false,
   })
   // (a new SIN's licences by name: each is rated as the SIN, career.ts)
@@ -191,6 +197,11 @@ export function LedgerTab() {
       case 'drop':
       case 'unfit':
         return f.target ? { op, target: f.target } : null
+      // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
+      case 'shift':
+        return f.target ? { op, target: f.target, from: f.from as SlotKind, to: f.to as SlotKind } : null
+      case 'move':
+        return f.target && f.mount ? { op, target: f.target, mount: f.mount } : null
       // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
       case 'fit':
         return f.target && e
@@ -570,6 +581,73 @@ export function LedgerTab() {
           <label className="inline" style={{ alignSelf: 'end' }}>
             <input type="checkbox" aria-label="Do it yourself" checked={f.diy} onChange={e => set({ diy: e.target.checked })} /> Do it yourself (half price)
           </label>
+        )}
+        {op === 'shift' && (
+          <>
+            <label>
+              Vehicle or drone
+              <select aria-label="Shift on" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {vehicles.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Two slots from
+              <select aria-label="Shift from" value={f.from} onChange={e => set({ from: e.target.value })}>
+                {SLOT_KINDS.map(k => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              One slot to
+              <select aria-label="Shift to" value={f.to} onChange={e => set({ to: e.target.value })}>
+                {SLOT_KINDS.map(k => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'move' && (
+          <>
+            <label>
+              Weapon
+              <select aria-label="Weapon to move" value={f.target} onChange={e => set({ target: e.target.value, mount: '' })}>
+                <option value="">Pick one</option>
+                {vehicles.flatMap(x =>
+                  x.accessories
+                    .filter(a => a.kind === 'weapons')
+                    .map(a => (
+                      <option key={a.uid} value={a.uid}>
+                        {itemName(a)} on {itemName(x)}
+                      </option>
+                    )),
+                )}
+              </select>
+            </label>
+            <label>
+              Into mount
+              <select aria-label="Move to mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
+                <option value="">Pick one</option>
+                {(vehicles.find(x => x.accessories.some(a => a.uid === f.target))?.accessories ?? [])
+                  .filter(a => isMount(entryOf(a, data)))
+                  .map(a => (
+                    <option key={a.uid} value={a.uid}>
+                      {itemName(a)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </>
         )}
         {op === 'unfit' && (
           <label>

@@ -61,6 +61,7 @@ import {
   runnerInfected,
 } from './infected'
 import { infectedTo, unfit } from './actions'
+import { shiftProblem } from './vehiclemods'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -173,6 +174,16 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'unfit': {
       const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
       if (host) unfit(host, a.target)
+      return
+    }
+    case 'shift': {
+      const host = b.purchases.find(x => x.uid === a.target)
+      if (host) host.slotShifts = [...(host.slotShifts ?? []), { from: a.from, to: a.to }]
+      return
+    }
+    case 'move': {
+      const x = b.purchases.flatMap(y => y.accessories).find(y => y.uid === a.target)
+      if (x) x.mount = a.mount
       return
     }
     case 'contact': {
@@ -576,6 +587,24 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // R: no refund, as a drop; an earning records a sale
       const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
       return { label: `Removed: ${lineLabel(host.accessories.find(z => z.uid === a.target)!)} from ${lineLabel(host)}` }
+    }
+    case 'shift': {
+      // free: the book prints no cost (Double Clutch p. 120); a void shifts the slots back
+      const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
+      const why = shiftProblem(host, a.from, a.to, data)
+      if (why) no(why)
+      return { label: `Shift mod slots: 2 ${a.from} → 1 ${a.to} on ${lineLabel(host)}` }
+    }
+    case 'move': {
+      // no new charge; the weapon's size is checked only by Review's warning (vehiclemods.ts); a void puts it back
+      const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
+      const w = host.accessories.find(z => z.uid === a.target)!,
+        to = host.accessories.find(z => z.uid === a.mount),
+        from = host.accessories.find(z => z.uid === w.mount)
+      if (w.kind !== 'weapons') no('not-a-weapon')
+      if (!to || !isMount(entryOf(to, data))) no('not-a-mount')
+      if (to!.uid === w.mount) no('same-mount')
+      return { label: `Moved: ${lineLabel(w)} from ${from ? lineLabel(from) : 'no mount'} to ${lineLabel(to!)} on ${lineLabel(host)}` }
     }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')

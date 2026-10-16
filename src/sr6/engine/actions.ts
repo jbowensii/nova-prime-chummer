@@ -19,6 +19,7 @@ import {
   type PickKind,
   type PriorityColumn,
   type PurchaseKind,
+  type SlotShift,
   type Sr6Attr,
   type Sr6Build,
   type Sr6Character,
@@ -34,6 +35,7 @@ import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
 import { augmentationRoom, diyAllowed, entryOf, isMount, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -84,6 +86,10 @@ export type Op =
   | { op: 'diy'; uid: string; diy: boolean }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
   | { op: 'mount'; uid: string; mount: string | null }
+  /** two mod slots of one category shifted to one of another on a vehicle or drone (Double Clutch p. 120), or the shift at
+   *  `remove` (its place in the vehicle's shifts) undone */
+  | ({ op: 'shift'; uid: string } & SlotShift)
+  | { op: 'shift'; uid: string; remove: number }
   | { op: 'wear'; uid: string; worn: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
@@ -580,6 +586,20 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const m = host.accessories.find(a => a.uid === op.mount)
       if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
       x.mount = m.uid
+      return OK
+    }
+    case 'shift': {
+      const x = b.purchases.find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if ('remove' in op) {
+        if (!x.slotShifts?.[op.remove]) return no('not-shifted')
+        x.slotShifts.splice(op.remove, 1)
+        if (!x.slotShifts.length) delete x.slotShifts
+        return OK
+      }
+      const why = shiftProblem(x, op.from, op.to, data)
+      if (why) return no(why)
+      x.slotShifts = [...(x.slotShifts ?? []), { from: op.from, to: op.to }]
       return OK
     }
     case 'wear': {

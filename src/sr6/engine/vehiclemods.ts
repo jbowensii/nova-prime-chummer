@@ -2,16 +2,16 @@
 // books, its rules (mod slots, p. 120; hardpoints, pp. 123-125; weapon mounts, p. 142); else the core rulebook's (weapon
 // mounts up to the unaugmented Body / 3, a heavy one counting two, CRB p. 295; mods simply bought). A drone's autosofts
 // (CRB p. 201) either way. The mods built in (Double Clutch p. 146: the catalog's <builtin>) are shown, already paid
-// for; extra mod slots they give add to the vehicle's. What goes past a limit is a Review warning, never refused.
-import type { Sr6Purchase } from '../model/character'
+// for; extra mod slots they give add to the vehicle's, and slots shifted between categories at 2:1 (DC p. 120) move them. What goes
+// past a limit is a Review warning, never refused.
+import { SLOT_KINDS, type SlotKind, type SlotShift, type Sr6Purchase } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from './data'
 import { entryLabel } from './categories'
 import { entryOf, hardpointOf, isDrone, isMount, modKind, ratingOf, type Hardpoint, type ModKind } from './purchases'
 import { bookValue, dataFind } from './values'
 
-export type SlotKind = 'chassis' | 'powertrain' | 'electronics'
-export const SLOT_KINDS: SlotKind[] = ['chassis', 'powertrain', 'electronics']
+export { SLOT_KINDS, type SlotKind }
 /** A hardpoint in standard ones: one standard splits into two small, two make a large, three a huge (DC p. 124). */
 export const HARDPOINT_UNITS: Record<Hardpoint, number> = { small: 0.5, standard: 1, large: 2, huge: 3 }
 
@@ -39,8 +39,10 @@ export interface VehicleMods {
   /** Double Clutch's rules (DC among the table's books), else the core rulebook's */
   dc: boolean
   drone: boolean
-  /** DC: mod slots per category, each its unmodified Body plus what built-in mods add */
+  /** DC: mod slots per category, each its unmodified Body plus what built-in mods add, less and plus what was shifted */
   slots?: Record<SlotKind, Meter>
+  /** DC: the shifts between categories counted in `slots` (2 slots of one give 1 of another, p. 120) */
+  shifts?: SlotShift[]
   /** DC: hardpoints, in standard ones */
   hardpoints?: Meter
   /** core rulebook: weapon mounts */
@@ -52,6 +54,17 @@ export interface VehicleMods {
   /** its <note field="builtin">s, as printed */
   notes: string[]
   warnings: { message: string; source: string; page: number }[]
+}
+
+/** Slots a shift takes from one category to give one to another (DC p. 120: a 2:1 ratio). */
+export const SHIFT_COST = 2
+/** Why mod slots can't be shifted from one category to another on this vehicle now, or undefined: only with Double Clutch's
+ *  rules, between two categories, out of slots not in use (p. 120: "any available ... mod slots"). */
+export function shiftProblem(x: Sr6Purchase, from: SlotKind, to: SlotKind, data: Sr6Data): 'no-slots' | 'same-slot' | 'no-free-slots' | undefined {
+  const m = modsOf(x, data)
+  if (!m.slots) return 'no-slots'
+  if (from === to) return 'same-slot'
+  return m.slots[from].max - m.slots[from].used < SHIFT_COST ? 'no-free-slots' : undefined
 }
 
 /** A built-in mod in words: `Ceramic plate armor`, `Realistic features 4`, `4 more chassis mod slots`. */
@@ -137,6 +150,12 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
         },
       ]),
     ) as Record<SlotKind, Meter>
+    // slots shifted to another category: two of one give one of another (p. 120)
+    out.shifts = x.slotShifts ?? []
+    for (const t of out.shifts) {
+      out.slots[t.from].max -= SHIFT_COST
+      out.slots[t.to].max += 1
+    }
     // (a designed vehicle's universal slots take what a category goes past, DC p. 152)
     const universal = builtin.reduce((t, b) => t + (b.category === 'universal' ? (b.slots ?? 0) : 0), 0),
       over = SLOT_KINDS.reduce((t, k) => t + Math.max(0, out.slots![k].used - out.slots![k].max), 0)
@@ -146,10 +165,10 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
         if (m.used > m.max)
           warn(`${vname}: its ${k} mods take ${m.used} mod slots; it has ${m.max}${universal ? ` (and ${universal} universal)` : ''}.`, 'DC', 120)
       }
-    // hardpoints: one standard a full three points of Body; a small drone with Body over 3 one small instead, a micro or
-    // mini drone none (p. 124); hardpoint mods add theirs
+    // hardpoints: one standard a full three points of Body; a small drone with a Body of 3 or more one small instead (the
+    // owner reads "over three" so, 2026-10-16), a micro or mini drone none (p. 124); hardpoint mods add theirs
     const size = droneSize(e)
-    const free = size === 'micro' || size === 'mini' ? 0 : size === 'small' ? (body > 3 ? 0.5 : 0) : Math.floor(body / 3)
+    const free = size === 'micro' || size === 'mini' ? 0 : size === 'small' ? (body >= 3 ? 0.5 : 0) : Math.floor(body / 3)
     let added = 0
     for (const f of x.accessories) {
       const h = addsHardpoint(entryOf(f, data))

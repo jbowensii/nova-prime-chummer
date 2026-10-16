@@ -88,6 +88,15 @@ export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentation
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
+/** A vehicle's or drone's mod slot categories (Double Clutch p. 120). */
+export type SlotKind = 'chassis' | 'powertrain' | 'electronics'
+export const SLOT_KINDS: SlotKind[] = ['chassis', 'powertrain', 'electronics']
+/** One shift of mod slots (Double Clutch p. 120: any available slots can be shifted to another category at 2:1): two
+ *  slots of `from` give one of `to`. */
+export interface SlotShift {
+  from: SlotKind
+  to: SlotKind
+}
 export interface Sr6Purchase {
   uid: string
   kind: PurchaseKind
@@ -113,6 +122,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
    *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
   design?: string
+  /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
+  slotShifts?: SlotShift[]
 }
 
 /** A vehicle or drone design (the Designer, Double Clutch pp. 150-155): the parts picked (catalog vehicledesign ids),
@@ -323,6 +334,12 @@ export type Sr6Advance =
    *  price (do it yourself: half); unfit: the accessory whose uid is target taken off (no refund), kept for the history */
   | { op: 'fit'; target: string; line: Sr6Purchase }
   | { op: 'unfit'; target: string; line?: Sr6Purchase }
+  /** two mod slots of `from` shifted to one of `to` on the owned vehicle or drone whose uid is target (Double Clutch p. 120;
+   *  free); voiding it shifts them back */
+  | ({ op: 'shift'; target: string } & SlotShift)
+  /** a weapon (target: its uid) moved to another weapon mount of the same vehicle or drone (mount: that accessory's uid),
+   *  no new charge; voiding it puts the weapon back in the mount it was in */
+  | { op: 'move'; target: string; mount: string }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -357,6 +374,8 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'upgrade',
   'fit',
   'unfit',
+  'shift',
+  'move',
   'contact',
   'sin',
   'lifestyle',

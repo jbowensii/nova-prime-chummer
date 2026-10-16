@@ -16,6 +16,7 @@ import {
   PRIORITY_COLUMNS,
   PURCHASE_KINDS,
   SR6_ADVANCE_OPS,
+  SLOT_KINDS,
   SR6_ATTRS,
   SR6_LEDGER_TYPES,
   SR6_METHODS,
@@ -26,6 +27,7 @@ import {
   type BonusSwitch,
   type ContactType,
   type MagicKind,
+  type SlotShift,
   type Sr6Advance,
   type Sr6Build,
   type Sr6Character,
@@ -83,6 +85,7 @@ function purchaseXml(p: Sr6Purchase): string {
       mount: p.mount,
       diy: p.diy,
       design: p.design,
+      slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -194,6 +197,10 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ target: a.target }, purchaseXml(a.line)]
     case 'unfit':
       return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
+    case 'shift':
+      return [{ target: a.target, from: a.from, to: a.to }, '']
+    case 'move':
+      return [{ target: a.target, mount: a.mount }, '']
     case 'contact':
       return [{}, contactXml(a.line)]
     case 'sin':
@@ -378,6 +385,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     mount: str(e, 'mount'),
     diy: yes(e, 'diy'),
     design: str(e, 'design'),
+    slotShifts: readShifts(e, fix),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
@@ -389,6 +397,18 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     }
   if (on.length) licensed?.(x, on)
   return x
+}
+
+/** A vehicle's slotShifts (`chassis>powertrain …`, Double Clutch p. 120); one that names no category pair is left out, noted. */
+function readShifts(e: Element, fix?: string[]): SlotShift[] | undefined {
+  const out: SlotShift[] = []
+  for (const w of str(e, 'slotShifts')?.split(/\s+/).filter(Boolean) ?? []) {
+    const [from, to] = w.split('>')
+    if ((SLOT_KINDS as string[]).includes(from) && (SLOT_KINDS as string[]).includes(to) && from !== to) out.push({ from, to } as SlotShift)
+    else if (fix) fix.push(`${e.getAttribute('name') || 'A vehicle'}: the mod slot shift “${w}” isn’t between two categories, so it’s left out.`)
+    else throw new Error(`mod slot shift “${w}” (not category>category)`)
+  }
+  return out.length ? out : undefined
 }
 
 const readKnowledge = (e: Element): Sr6Knowledge =>
@@ -630,6 +650,15 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return { op, target: req(e, 'target'), line: line(e, 'purchase', purchase, true) }
     case 'unfit':
       return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
+    case 'shift':
+      return {
+        op,
+        target: req(e, 'target'),
+        from: oneOf(e.getAttribute('from'), SLOT_KINDS, 'mod slot category')!,
+        to: oneOf(e.getAttribute('to'), SLOT_KINDS, 'mod slot category')!,
+      }
+    case 'move':
+      return { op, target: req(e, 'target'), mount: req(e, 'mount') }
     case 'contact':
       return { op, line: line(e, 'contact', readContact, true) }
     case 'sin':

@@ -10,7 +10,7 @@ import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { modsOf, weaponSize } from '../../src/sr6/engine/vehiclemods'
 import { vehicleNotes } from '../../src/sr6/print/view'
-import { blankBuild, blankSr6, type Sr6Build, type Sr6Purchase } from '../../src/sr6/model/character'
+import { blankBuild, blankSr6, type SlotKind, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation } from './fixture'
 
 const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
@@ -20,6 +20,7 @@ const VEHICLES = `<sr6:data ${NS} kind="vehicles" version="1">
   <vehicle id="zz.zap-drone" ${at} category="Medium drone" class="DRONE_MEDIUM/GROUND" body="6" pilot="3" avail="2" cost="5000"><name>Zap Drone</name></vehicle>
   <vehicle id="zz.zap-mite" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="4" pilot="2" avail="2" cost="3000"><name>Zap Mite</name></vehicle>
   <vehicle id="zz.zap-speck" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="3" pilot="2" avail="2" cost="2000"><name>Zap Speck</name></vehicle>
+  <vehicle id="zz.zap-fleck" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="2" pilot="2" avail="2" cost="1500"><name>Zap Fleck</name></vehicle>
   <vehicle id="zz.zap-dot" ${at} category="Microdrones" body="1" pilot="1" avail="2" cost="500"><name>Zap Dot</name></vehicle>
 </sr6:data>`
 const GEAR = `<sr6:data ${NS} kind="gear" version="1">
@@ -95,7 +96,7 @@ test('DC: slots past the Body, and a slot count the app can’t read, are warnin
   ])
 })
 
-test('DC: free hardpoints are Body / 3 standard ones (a small drone over Body 3 one small, a micro none); hardpoint mods add theirs', () => {
+test('DC: free hardpoints are Body / 3 standard ones (a small drone of Body 3 or more one small, under 3 none, a micro none); hardpoint mods add theirs', () => {
   const van = owning(true, 'zz.zap-van', [
     ['gear', 'zz.zap-mount'],
     ['gear', 'zz.zap-heavy-mount'],
@@ -108,7 +109,8 @@ test('DC: free hardpoints are Body / 3 standard ones (a small drone over Body 3 
   expect(modsOf(van.host, van.data).warnings).toEqual([])
 
   const of = (id: string) => (o => modsOf(o.host, o.data).hardpoints!.max)(owning(true, id))
-  expect([of('zz.zap-drone'), of('zz.zap-mite'), of('zz.zap-speck'), of('zz.zap-dot')]).toEqual([2, 0.5, 0, 0])
+  // (Zap Speck, Body exactly 3: the owner reads DC p. 124 "a Body over three" as 3 and up, 2026-10-16)
+  expect([of('zz.zap-drone'), of('zz.zap-mite'), of('zz.zap-speck'), of('zz.zap-fleck'), of('zz.zap-dot')]).toEqual([2, 0.5, 0.5, 0, 0])
   const mite = owning(true, 'zz.zap-mite', [['gear', 'zz.large-hardpoint']])
   expect(messages(mite.host, mite.data)).toContain('DC 124: Zap Mite: a small drone may only add a small hardpoint (Large hardpoint).')
   const dot = owning(true, 'zz.zap-dot', [['gear', 'zz.small-hardpoint']])
@@ -271,4 +273,117 @@ test('career: fitting a mod (do it yourself), a weapon into a mount, and taking 
   const v = voidEntry(ch, off.id, 'changed my mind')
   expect(v.ok).toBe(true)
   if (v.ok) expect(currentBuild(v.ch).purchases[0].accessories.find(a => a.id === 'zz.zap-rifle')!.mount).toBe(mount)
+})
+
+test('DC p. 120: two slots of one category shift to one of another, both ways; only slots not in use, only with DC; undone by removing the shift', () => {
+  const o = owning(true, 'zz.zap-van', [['gear', 'zz.zap-motor']]) // (Body 7, 3 built-in chassis slots; a motor takes 3 powertrain)
+  const slots = () => modsOf(o.host, o.data).slots!
+  const shift = (from: SlotKind, to: SlotKind) => apply(o.b, { op: 'shift', uid: o.host.uid, from, to }, o.data, o.cr)
+  expect(slots()).toEqual({ chassis: { used: 0, max: 10 }, powertrain: { used: 3, max: 7 }, electronics: { used: 0, max: 7 } })
+  expect(shift('chassis', 'powertrain')).toEqual({ ok: true })
+  expect(slots()).toEqual({ chassis: { used: 0, max: 8 }, powertrain: { used: 3, max: 8 }, electronics: { used: 0, max: 7 } })
+  expect(shift('electronics', 'chassis')).toEqual({ ok: true }) // (and the other way round)
+  expect(slots()).toEqual({ chassis: { used: 0, max: 9 }, powertrain: { used: 3, max: 8 }, electronics: { used: 0, max: 5 } })
+  expect(modsOf(o.host, o.data).shifts).toHaveLength(2)
+  expect(modsOf(o.host, o.data).warnings).toEqual([])
+  // limits: two different categories, and two slots not in use in the one given up
+  expect(shift('chassis', 'chassis')).toEqual({ ok: false, reason: 'same-slot' })
+  expect(shift('powertrain', 'chassis')).toEqual({ ok: true }) // (8 - 3 = 5 free)
+  expect(shift('powertrain', 'chassis')).toEqual({ ok: true }) // (6 - 3 = 3 free)
+  expect(shift('powertrain', 'electronics')).toEqual({ ok: false, reason: 'no-free-slots' }) // (4 - 3 = 1 free)
+  expect(slots().powertrain).toEqual({ used: 3, max: 4 })
+  expect(apply(o.b, { op: 'shift', uid: 'nope', from: 'chassis', to: 'powertrain' }, o.data, o.cr)).toEqual({ ok: false, reason: 'unknown-line' })
+  // a shift removed gives its slots back
+  expect(apply(o.b, { op: 'shift', uid: o.host.uid, remove: 3 }, o.data, o.cr)).toEqual({ ok: true })
+  expect(slots().powertrain).toEqual({ used: 3, max: 6 })
+  expect(apply(o.b, { op: 'shift', uid: o.host.uid, remove: 9 }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-shifted' })
+  for (let i = o.host.slotShifts!.length; i > 0; i--) apply(o.b, { op: 'shift', uid: o.host.uid, remove: 0 }, o.data, o.cr)
+  expect(o.host.slotShifts).toBeUndefined()
+  expect(slots().chassis.max).toBe(10)
+  // without DC: no slots to shift, none shown
+  const core = owning(false, 'zz.zap-van')
+  expect(apply(core.b, { op: 'shift', uid: core.host.uid, from: 'chassis', to: 'powertrain' }, core.data, core.cr)).toEqual({ ok: false, reason: 'no-slots' })
+  core.host.slotShifts = [{ from: 'chassis', to: 'powertrain' }]
+  expect(modsOf(core.host, core.data).shifts).toBeUndefined()
+  // a file that shifted slots in use: counted, warned, not refused; the sheet says what was shifted
+  o.host.slotShifts = Array(3).fill({ from: 'powertrain', to: 'chassis' })
+  expect(messages(o.host, o.data)).toEqual(['DC 120: Zap Van: its powertrain mods take 3 mod slots; it has 1.'])
+  expect(vehicleNotes(o.host, o.data).at(-1)).toBe('Mod slots shifted: 2 powertrain → 1 chassis, 2 powertrain → 1 chassis, 2 powertrain → 1 chassis')
+})
+
+test('the file keeps slot shifts in order, an older file has none, a shift between no two categories is left out, noted', () => {
+  const o = owning(true, 'zz.zap-van')
+  apply(o.b, { op: 'shift', uid: o.host.uid, from: 'chassis', to: 'powertrain' }, o.data, o.cr)
+  apply(o.b, { op: 'shift', uid: o.host.uid, from: 'electronics', to: 'chassis' }, o.data, o.cr)
+  const xml = sr6ToXml({ ...blankSr6('priority', 'made-up-s', '2026-10-16T00:00:00.000Z'), build: o.b })
+  expect(xml).toMatch(/slotShifts="chassis&gt;powertrain electronics&gt;chassis"/)
+  const back = xmlToSr6(xml)
+  expect(back.ok && back.character.build.purchases[0].slotShifts).toEqual([
+    { from: 'chassis', to: 'powertrain' },
+    { from: 'electronics', to: 'chassis' },
+  ])
+  const old = xmlToSr6(xml.replace(/ slotShifts="[^"]*"/, ''))
+  expect(old.ok && old.character.build.purchases[0].slotShifts).toBeUndefined()
+  const notes: string[] = []
+  const bad = xmlToSr6(xml.replace(/slotShifts="[^"]*"/, 'slotShifts="chassis&gt;chassis chassis&gt;powertrain wings&gt;chassis"'), { repair: notes })
+  expect(bad.ok && bad.character.build.purchases[0].slotShifts).toEqual([{ from: 'chassis', to: 'powertrain' }])
+  expect(notes).toHaveLength(2)
+  expect(xmlToSr6(xml.replace(/slotShifts="[^"]*"/, 'slotShifts="wings&gt;chassis"')).ok).toBe(false)
+})
+
+test('career: shifting slots is a free ledger spend and moving a weapon to another mount costs nothing; voiding either puts it back', () => {
+  const o = owning(true, 'zz.zap-van', [
+    ['gear', 'zz.zap-mount'],
+    ['gear', 'zz.zap-small-mount'],
+    ['weapons', 'zz.zap-rifle'],
+  ])
+  const std = o.uid('zz.zap-mount'),
+    small = o.uid('zz.zap-small-mount'),
+    rifle = o.uid('zz.zap-rifle')
+  o.b.purchases[0].accessories.find(a => a.uid === rifle)!.mount = std
+  const at = '2026-10-16T00:00:00.000Z'
+  let ch: Sr6Character = { ...blankSr6('priority', 'made-up-m', at), build: o.b, finalizedAt: at }
+  ch.ledger = [{ id: 'f1', at, type: 'finalize', karma: 0, nuyen: 10000 }]
+  const go = (a: Parameters<typeof record>[1]) => {
+    const r = record(ch, a, o.data, o.cr)
+    if (!r.ok) throw new Error(r.reason)
+    ch = r.ch
+    return ch.ledger.at(-1)!
+  }
+  const why = (a: Parameters<typeof record>[1]) => {
+    const r = record(ch, a, o.data, o.cr)
+    return r.ok ? 'ok' : r.reason
+  }
+  const now = () => currentBuild(ch).purchases[0]
+  const host = o.host.uid
+  const sh = go({ op: 'shift', target: host, from: 'chassis', to: 'electronics' })
+  expect(sh).toMatchObject({ label: 'Shift mod slots: 2 chassis → 1 electronics on Zap Van', karma: 0, nuyen: 0 })
+  expect(modsOf(now(), o.data).slots).toMatchObject({ chassis: { max: 8 }, electronics: { max: 8 } })
+  expect(why({ op: 'shift', target: host, from: 'chassis', to: 'chassis' })).toBe('same-slot')
+  expect(why({ op: 'shift', target: 'nope', from: 'chassis', to: 'electronics' })).toBe('unknown-host')
+  expect(why({ op: 'shift', target: host, from: 'chassis', to: 'electronics' })).toBe('ok')
+  const mv = go({ op: 'move', target: rifle, mount: small })
+  expect(mv).toMatchObject({ label: 'Moved: Zap Rifle from Zap Standard Weapon Mount to Zap Small Weapon Mount on Zap Van', karma: 0, nuyen: 0 })
+  expect(now().accessories.find(a => a.uid === rifle)!.mount).toBe(small)
+  // (too big for the small mount: Review's warning, the move is allowed)
+  expect(modsOf(now(), o.data).warnings.map(w => w.message)).toEqual([
+    'Zap Van: Zap Rifle is too big for its Zap Small Weapon Mount (it holds an SMG or smaller).',
+  ])
+  expect(why({ op: 'move', target: rifle, mount: small })).toBe('same-mount')
+  expect(why({ op: 'move', target: rifle, mount: rifle })).toBe('not-a-mount')
+  expect(why({ op: 'move', target: std, mount: small })).toBe('not-a-weapon')
+  expect(why({ op: 'move', target: 'nope', mount: small })).toBe('not-fitted')
+  // the file keeps both entries
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.ledger.slice(1).map(e => e.type === 'advance' && e.advance.op)).toEqual(['shift', 'move'])
+  // voiding the move puts the rifle back in its old mount; then voiding the shift gives the slots back
+  const v1 = voidEntry(ch, mv.id, 'wrong mount')
+  expect(v1.ok).toBe(true)
+  if (v1.ok) ch = v1.ch
+  expect(now().accessories.find(a => a.uid === rifle)!.mount).toBe(std)
+  const v2 = voidEntry(ch, sh.id, 'oops')
+  expect(v2.ok).toBe(true)
+  if (v2.ok) ch = v2.ch
+  expect(now().slotShifts).toBeUndefined()
+  expect(modsOf(now(), o.data).slots!.chassis.max).toBe(10)
 })

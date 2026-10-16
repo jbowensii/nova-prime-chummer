@@ -10,10 +10,10 @@ import { cargoFactor, diyAllowed, entryOf, isDrone, isMount, modKind, priced, se
 import { boughtDesign, designOf } from '../../engine/design'
 import { entryLabel } from '../../engine/categories'
 import { flag } from '../../engine/creation'
-import { builtinText, modsOf, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
-import type { Sr6Purchase } from '../../model/character'
+import { builtinText, modsOf, shiftProblem, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
+import type { SlotKind, Sr6Purchase } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
-import { n, useSr6Editor } from '../editor'
+import { n, reasonText, useSr6Editor } from '../editor'
 import { useSr6Designs } from '../Designer'
 import { CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
 
@@ -129,7 +129,9 @@ const meter = (label: string, m: Meter) => (
 function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   const { data, cr, act } = useSr6Editor()
   const [adding, setAdding] = useState<keyof typeof ADD | null>(null)
-  const m = modsOf(x, data)
+  const [shift, setShift] = useState<{ from: SlotKind; to: SlotKind }>({ from: 'chassis', to: 'powertrain' })
+  const m = modsOf(x, data),
+    why = shiftProblem(x, shift.from, shift.to, data)
   const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
   const mounts = x.accessories.filter(a => isMount(entryOf(a, data)))
   const rows = x.accessories.filter(a => a.kind === 'weapons' || diyAllowed(entryOf(a, data)))
@@ -154,6 +156,39 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
           ...(m.autosofts ? [meter('Autosofts', m.autosofts)] : []),
         ].flatMap((el, i) => (i ? [' · ', el] : [el]))}
       </span>
+      {m.slots && (
+        <span className="row">
+          Shift slots (p. 120): two
+          <select aria-label={`Shift from on ${name}`} value={shift.from} onChange={ev => setShift({ ...shift, from: ev.target.value as SlotKind })}>
+            {SLOT_KINDS.map(k => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+          into one
+          <select aria-label={`Shift to on ${name}`} value={shift.to} onChange={ev => setShift({ ...shift, to: ev.target.value as SlotKind })}>
+            {SLOT_KINDS.map(k => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+          <button
+            className="btn small quiet"
+            aria-label={`Shift slots on ${name}`}
+            title={why ? reasonText(why) : undefined}
+            disabled={!!why}
+            onClick={() => act({ op: 'shift', uid: x.uid, ...shift })}
+          >
+            Shift
+          </button>
+          {m.shifts!.map((t, i) => (
+            <span key={i} className="chip">
+              2 {t.from} → 1 {t.to}{' '}
+              <button className="btn small quiet" aria-label={`Undo shift ${i + 1} on ${name}`} onClick={() => act({ op: 'shift', uid: x.uid, remove: i })}>
+                ×
+              </button>
+            </span>
+          ))}
+        </span>
+      )}
       {(m.builtin.length > 0 || m.notes.length > 0) && (
         <span>
           Built in (already paid for): {m.builtin.map(builtinText).join(', ')}

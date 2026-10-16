@@ -226,7 +226,7 @@ test('Creation method: the Infected type’s gained powers (free) and weaknesses
 
 // every printed sheet style shows the same data (owner 2026-10-16): only the look differs
 test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
-  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods and mounted weapon',
+  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods, mounted weapon and shifted mod slots',
   async style => {
     saveSettings({ ...loadSettings(), print: style })
     const gainer =
@@ -235,23 +235,31 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
       '<power name="Glimmer (Bright)"/><power name="Knack" rating="2"/><weakness name="Trouble Dice (Noon, Mild)"/><text/></quality>'
     const zapStick =
       '<weapon id="crb.zap-stick" source="CRB" page="250" category="clubs" dv="3S" ar="6/—/—/—/—" avail="2" cost="100"><name>Zap Stick</name><text/></weapon>'
-    const c = fixtureCatalog((f, x) =>
-      f.endsWith('crb/qualities.xml')
-        ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`)
-        : f.endsWith('crb/weapons.xml')
-          ? x
-              .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
-              .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
-          : f.endsWith('crb/gear.xml')
+    const c = fixtureCatalog(
+      (f, x) =>
+        f.endsWith('crb/qualities.xml')
+          ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`)
+          : f.endsWith('crb/weapons.xml')
             ? x
-                .replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
-                .replace(
-                  '</sr6:data>',
-                  '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear></sr6:data>',
-                )
-            : f.endsWith('crb/vehicles.xml')
-              ? x.replace('<name>Putt-Putt</name>', '<name>Putt-Putt</name><builtin name="Zap horn"/>')
-              : x,
+                .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
+                .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
+            : f.endsWith('crb/gear.xml')
+              ? x
+                  .replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
+                  .replace(
+                    '</sr6:data>',
+                    '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear></sr6:data>',
+                  )
+              : f.endsWith('crb/vehicles.xml')
+                ? x.replace('<name>Putt-Putt</name>', '<name>Putt-Putt</name><builtin name="Zap horn"/>')
+                : x,
+      // (Double Clutch among the books: the vehicle's shifted mod slots show)
+      [
+        {
+          file: 'custom/sr6/imported/dc/sources.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1"><source id="DC" publisher="Made up" canon="true"><name>Made-up rigger book</name></source></sr6:data>',
+        },
+      ],
     )
     const cr = stolenCr()
     cr.set('infectedAllowed', { key: 'infectedAllowed', value: true })
@@ -273,6 +281,7 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
         kind: 'vehicles',
         id: 'crb.putt-putt',
         qty: 1,
+        slotShifts: [{ from: 'chassis', to: 'powertrain' }],
         accessories: [
           { uid: 'm1', kind: 'gear', id: 'crb.zap-mount', qty: 1, diy: true, accessories: [] },
           { uid: 'w3', kind: 'weapons', id: 'crb.zap-gun', qty: 1, mount: 'm1', accessories: [] },
@@ -295,5 +304,6 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     expect(t).toMatch(/Putt-Putt[^]*Mods: Zap Weapon Mount \(do it yourself\)/)
     expect(t).toMatch(/Weapons: Zap Gun \(in Zap Weapon Mount\)/)
     expect(t).toMatch(/Built in: Zap horn/)
+    expect(t).toMatch(/Mod slots shifted: 2 chassis → 1 powertrain/)
   },
 )

@@ -115,6 +115,10 @@
     <xs:enumeration value="bod"/><xs:enumeration value="agi"/><xs:enumeration value="rea"/><xs:enumeration value="str"/>
     <xs:enumeration value="wil"/><xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
   </xs:restriction></xs:simpleType>
+  <!-- a vehicle's or drone's mod slot category (Double Clutch p. 120) -->
+  <xs:simpleType name="SlotKind"><xs:restriction base="xs:string">
+    <xs:enumeration value="chassis"/><xs:enumeration value="powertrain"/><xs:enumeration value="electronics"/>
+  </xs:restriction></xs:simpleType>
   <xs:simpleType name="Count"><xs:restriction base="xs:nonNegativeInteger"/></xs:simpleType>
 
   <xs:complexType name="Build">
@@ -384,20 +388,25 @@
          sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
          sin the uid of the SIN the licence is on, name the licence's (rated as the SIN); fit: target the uid of the owned
          line the <purchase> that follows is fitted to; unfit: target the uid of the accessory taken off (the <purchase>
-         removed may follow) -->
+         removed may follow); shift: target the uid of the owned vehicle or drone whose mod slots are shifted, two of the
+         category `from` into one of `to` (Double Clutch p. 120; free); move: target the uid of the weapon moved, `mount`
+         the uid of the weapon mount (an accessory of the same vehicle) it is moved to (no new charge) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
         <xs:enumeration value="expertise"/><xs:enumeration value="knowledge"/><xs:enumeration value="quality"/>
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
-        <xs:enumeration value="fit"/><xs:enumeration value="unfit"/>
+        <xs:enumeration value="fit"/><xs:enumeration value="unfit"/><xs:enumeration value="shift"/><xs:enumeration value="move"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <xs:attribute name="from" type="c:SlotKind"/>
+    <xs:attribute name="to" type="c:SlotKind"/>
+    <xs:attribute name="mount" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
     <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
@@ -561,6 +570,15 @@
          snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
          when a GM made or approved the design) -->
     <xs:attribute name="design" type="xs:string"/>
+    <!-- a vehicle's or drone's mod slots shifted between categories (Double Clutch p. 120), in the order made: `from>to`
+         each, two slots of the first category given for one of the second (`chassis>powertrain`) -->
+    <xs:attribute name="slotShifts">
+      <xs:simpleType><xs:list>
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:pattern value="(chassis|powertrain|electronics)&gt;(chassis|powertrain|electronics)"/>
+        </xs:restriction></xs:simpleType>
+      </xs:list></xs:simpleType>
+    </xs:attribute>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
          whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
          SIN), one naming no SIN of the runner left out. Not written -->
