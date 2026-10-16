@@ -6,7 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
+import { attrRating, diyAllowed, entryOf, isMount, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
@@ -23,7 +23,7 @@ import {
 } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
-import { CatalogPicker, type PickedItem } from '../Picker'
+import { CatalogPicker, isAccessory, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
@@ -45,6 +45,8 @@ const OPS = [
   ['purchase', 'Buy gear'],
   ['upgrade', 'Upgrade gear to a higher level'],
   ['drop', 'Drop gear'],
+  ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone'],
+  ['unfit', 'Take a mod off a vehicle or drone'],
   ['sin', 'SIN'],
   ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
@@ -83,6 +85,8 @@ export function LedgerTab() {
     rating: '1',
     gender: '',
     licName: '',
+    mount: '',
+    diy: false,
   })
   // (a new SIN's licences by name: each is rated as the SIN, career.ts)
   const [licences, setLicences] = useState<string[]>([])
@@ -93,11 +97,15 @@ export function LedgerTab() {
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
   const [why, setWhy] = useState('')
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
+  const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
+  // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them)
+  const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
+    host = vehicles.find(x => x.uid === f.target)
   const choose = (o: OpKey) => {
     setOp(o)
     setPicked(null)
     setLicences([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -172,7 +180,26 @@ export function LedgerTab() {
             }
           : null
       case 'drop':
+      case 'unfit':
         return f.target ? { op, target: f.target } : null
+      // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
+      case 'fit':
+        return f.target && e
+          ? {
+              op,
+              target: f.target,
+              line: {
+                uid: '',
+                kind: e.kind as PurchaseKind,
+                id: e.id,
+                qty: 1,
+                accessories: [],
+                ...(picked!.rating ? { rating: picked!.rating } : {}),
+                ...(f.mount && e.kind === 'weapons' ? { mount: f.mount } : {}),
+                ...(f.diy && diyAllowed(e) ? { diy: true as const } : {}),
+              },
+            }
+          : null
       // the line's higher level (the old line's grade kept; its accessories follow in applyAdvance)
       case 'upgrade':
         return f.target && e
@@ -418,7 +445,8 @@ export function LedgerTab() {
           op === 'purchase' ||
           op === 'martialart' ||
           (op === 'technique' && f.target) ||
-          (op === 'upgrade' && f.target)) && (
+          (op === 'upgrade' && f.target) ||
+          (op === 'fit' && f.target)) && (
           <div style={{ alignSelf: 'end' }}>
             {picked && (
               <span>
@@ -478,6 +506,61 @@ export function LedgerTab() {
                     {initKind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user) ? ` (not for ${an(kindName)} ${kindName})` : ''}
                   </option>
                 ))}
+            </select>
+          </label>
+        )}
+        {op === 'fit' && (
+          <label>
+            Vehicle or drone
+            <select
+              aria-label="Fit to"
+              value={f.target}
+              onChange={e => {
+                set({ target: e.target.value, mount: '' })
+                setPicked(null)
+              }}
+            >
+              <option value="">Pick one</option>
+              {vehicles.map(x => (
+                <option key={x.uid} value={x.uid}>
+                  {itemName(x)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {op === 'fit' && host && picked?.e.kind === 'weapons' && (
+          <label>
+            Weapon mount
+            <select aria-label="In weapon mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
+              <option value="">None</option>
+              {host.accessories
+                .filter(a => isMount(entryOf(a, data)))
+                .map(a => (
+                  <option key={a.uid} value={a.uid}>
+                    {itemName(a)}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        {op === 'fit' && picked && diyAllowed(picked.e) && (
+          <label className="inline" style={{ alignSelf: 'end' }}>
+            <input type="checkbox" aria-label="Do it yourself" checked={f.diy} onChange={e => set({ diy: e.target.checked })} /> Do it yourself (half price)
+          </label>
+        )}
+        {op === 'unfit' && (
+          <label>
+            Fitted item
+            <select aria-label="Fitted item" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">Pick one</option>
+              {vehicles.flatMap(x =>
+                x.accessories.map(a => (
+                  <option key={a.uid} value={a.uid}>
+                    {itemName(a)} on {itemName(x)}
+                  </option>
+                )),
+              )}
             </select>
           </label>
         )}
@@ -791,7 +874,9 @@ export function LedgerTab() {
               ? 'Learn'
               : op === 'upgrade'
                 ? 'Upgrade to'
-                : 'Buy gear'
+                : op === 'fit'
+                  ? 'Fit'
+                  : 'Buy gear'
         }
         kinds={
           op === 'quality'
@@ -804,10 +889,18 @@ export function LedgerTab() {
                   ? ['martialtechniques']
                   : op === 'upgrade'
                     ? [upgradable.find(x => x.uid === f.target)?.kind ?? 'gear']
-                    : (PURCHASE_KINDS as Sr6Kind[])
+                    : op === 'fit'
+                      ? ['gear', 'weapons', 'electronics', 'programs']
+                      : (PURCHASE_KINDS as Sr6Kind[])
         }
         filter={
-          op === 'quality' ? e => data.qualities[e.id]?.positive === true : op === 'upgrade' ? above(upgradable.find(x => x.uid === f.target)) : undefined
+          op === 'quality'
+            ? e => data.qualities[e.id]?.positive === true
+            : op === 'upgrade'
+              ? above(upgradable.find(x => x.uid === f.target))
+              : op === 'fit'
+                ? e => e.kind !== 'weapons' || !isAccessory(e)
+                : undefined
         }
         note={
           op === 'pick'

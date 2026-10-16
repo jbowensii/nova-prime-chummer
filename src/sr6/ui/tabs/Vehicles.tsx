@@ -1,10 +1,18 @@
-// Vehicles: vehicles and drones with their stats as the catalog prints them, and what's fitted to them (any gear or
-// electronics: S1 has no vehicle mods kind).
+// Vehicles and Drones (owner 2026-10-16: two tabs, a drone by its class or category): each owned one with its stats as
+// the catalog prints them, what's fitted to it, and its Modify panel (src/sr6/engine/vehiclemods.ts): with Double
+// Clutch among the table's books its mod slots and hardpoints, else the core rulebook's weapon mounts; mods, weapons in
+// mounts, a drone's autosofts; the mods built in; a do-it-yourself box on each mod. Listed and warned, never refused.
+// After finalising the tabs are read only: mods are fitted and taken off on the Ledger.
+import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { cargoFactor, entryOf, seatsOf } from '../../engine/budgets'
+import { cargoFactor, diyAllowed, entryOf, isDrone, isMount, modKind, priced, seatsOf } from '../../engine/budgets'
+import { entryLabel } from '../../engine/categories'
 import { flag } from '../../engine/creation'
-import { useSr6Editor } from '../editor'
-import { PurchaseSection } from '../Picker'
+import { builtinText, modsOf, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
+import type { Sr6Purchase } from '../../model/character'
+import type { Sr6Entry, Sr6Kind } from '../../model/types'
+import { n, useSr6Editor } from '../editor'
+import { CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
 
 const STATS: [string, string][] = [
   ['handling', 'Handling'],
@@ -18,17 +26,22 @@ const STATS: [string, string][] = [
   ['seats', 'Seats'],
 ]
 
-export function VehiclesTab() {
+export const VehiclesTab = () => <Owned drones={false} />
+export const DronesTab = () => <Owned drones />
+
+function Owned({ drones }: { drones: boolean }) {
   const { data, cr, act } = useSr6Editor()
   // the option cargoWithoutSeats (Double Clutch p. 126): seats taken out add to the Cargo Factor
   const cargo = !!flag(cr, 'cargoWithoutSeats')
   return (
     <div className="stack">
-      <h2>Vehicles</h2>
+      <h2>{drones ? 'Drones' : 'Vehicles'}</h2>
       <PurchaseSection
         kind="vehicles"
-        title="Vehicles and drones"
-        one="a vehicle or drone"
+        title={drones ? 'Drones' : 'Vehicles'}
+        one={drones ? 'a drone' : 'a vehicle'}
+        offer={e => isDrone(e) === drones}
+        show={x => isDrone(entryOf(x, data)) === drones}
         accessories={{ kinds: ['gear', 'electronics', 'programs'] }}
         detail={x => {
           const e = entryOf(x, data),
@@ -52,10 +65,127 @@ export function VehiclesTab() {
                   Seats {cf.seats} · Cargo Factor {cf.cargo}
                 </span>
               )}
+              <Modify x={x} name={e ? entryLabel(e) : (x.name ?? 'Custom item')} />
             </>
           )
         }}
       />
+    </div>
+  )
+}
+
+const ADD: Record<'mod' | 'weapon' | 'autosoft', { title: string; kinds: Sr6Kind[]; filter: (e: Sr6Entry) => boolean }> = {
+  mod: { title: 'a mod', kinds: ['gear'], filter: e => modKind(e) !== null },
+  weapon: { title: 'a weapon', kinds: ['weapons'], filter: e => !isAccessory(e) },
+  autosoft: { title: 'an autosoft', kinds: ['programs'], filter: e => /autosoft/i.test(e.attrs.type ?? '') },
+}
+const meter = (label: string, m: Meter) => (
+  <span key={label} className={m.used > m.max ? 'warn' : undefined}>
+    {label} {n(m.used)}/{n(m.max)}
+  </span>
+)
+
+/** One vehicle's or drone's Modify panel: its meters, the mods built in, a do-it-yourself box on each mod, a mount for
+ *  each weapon, and the pickers for a mod, a weapon or (a drone) an autosoft. Each fitted line comes off by its × above. */
+function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
+  const { data, cr, act } = useSr6Editor()
+  const [adding, setAdding] = useState<keyof typeof ADD | null>(null)
+  const m = modsOf(x, data)
+  const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
+  const mounts = x.accessories.filter(a => isMount(entryOf(a, data)))
+  const rows = x.accessories.filter(a => a.kind === 'weapons' || diyAllowed(entryOf(a, data)))
+  const add = (k: keyof typeof ADD) => (p: { e: Sr6Entry; rating?: number }) => {
+    // a weapon goes into the first mount with none in it (changed below)
+    const free = k === 'weapon' ? mounts.find(mt => !x.accessories.some(a => a.mount === mt.uid)) : undefined
+    return act({ op: 'accessory', host: x.uid, kind: p.e.kind as Sr6Purchase['kind'], id: p.e.id, rating: p.rating, ...(free ? { mount: free.uid } : {}) })
+  }
+  return (
+    <div className="stack" aria-label={`Modify ${name}`} style={{ gap: '0.25rem' }}>
+      <b>Modify</b>
+      <span>
+        {m.dc
+          ? 'Double Clutch: mod slots per category, its Body each (p. 120); hardpoints, one standard per 3 Body (p. 124).'
+          : 'Core rulebook: weapon mounts up to Body / 3, a heavy one counting two (p. 295); mods simply bought.'}
+      </span>
+      <span>
+        {[
+          ...(m.slots ? SLOT_KINDS.map(k => meter(`${k[0].toUpperCase()}${k.slice(1)} slots`, m.slots![k])) : []),
+          ...(m.hardpoints ? [meter('Hardpoints', m.hardpoints)] : []),
+          ...(m.mounts ? [meter('Weapon mounts', m.mounts)] : []),
+          ...(m.autosofts ? [meter('Autosofts', m.autosofts)] : []),
+        ].flatMap((el, i) => (i ? [' · ', el] : [el]))}
+      </span>
+      {(m.builtin.length > 0 || m.notes.length > 0) && (
+        <span>
+          Built in (already paid for): {m.builtin.map(builtinText).join(', ')}
+          {m.notes.map(t => (
+            <span key={t} className="note">
+              {' '}
+              {t}
+            </span>
+          ))}
+        </span>
+      )}
+      {rows.map(a => {
+        const f = m.fitted.find(y => y.uid === a.uid)!
+        return (
+          <span key={a.uid} className="row">
+            {label(a)}
+            {a.kind === 'weapons' ? (
+              <select
+                aria-label={`${label(a)} on ${name}: weapon mount`}
+                value={a.mount ?? ''}
+                onChange={ev => act({ op: 'mount', uid: a.uid, mount: ev.target.value || null })}
+              >
+                <option value="">In no mount</option>
+                {mounts.map(mt => (
+                  <option key={mt.uid} value={mt.uid}>
+                    In {label(mt)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                {' · '}
+                {f.kind === 'hardpoint' ? 'on a hardpoint' : `${f.kind}${m.dc ? `, ${n(f.slots)} slot${f.slots === 1 ? '' : 's'}` : ''}`} ·{' '}
+                {n(priced(a, data, cr).cost)}¥
+                <label className="inline">
+                  <input
+                    type="checkbox"
+                    aria-label={`${label(a)} on ${name}: do it yourself`}
+                    checked={!!a.diy}
+                    onChange={ev => act({ op: 'diy', uid: a.uid, diy: ev.target.checked })}
+                  />{' '}
+                  Do it yourself (half price; the install test is the GM’s)
+                </label>
+              </>
+            )}
+          </span>
+        )
+      })}
+      <span className="row">
+        <button className="btn small quiet" aria-label={`Add a mod to ${name}`} onClick={() => setAdding('mod')}>
+          Mod…
+        </button>
+        <button className="btn small quiet" aria-label={`Add a weapon to ${name}`} onClick={() => setAdding('weapon')}>
+          Weapon…
+        </button>
+        {m.drone && (
+          <button className="btn small quiet" aria-label={`Add an autosoft to ${name}`} onClick={() => setAdding('autosoft')}>
+            Autosoft…
+          </button>
+        )}
+      </span>
+      {adding && (
+        <CatalogPicker
+          title={`Add ${ADD[adding].title} to ${name}`}
+          open
+          onClose={() => setAdding(null)}
+          kinds={ADD[adding].kinds}
+          filter={ADD[adding].filter}
+          onAdd={add(adding)}
+        />
+      )}
     </div>
   )
 }

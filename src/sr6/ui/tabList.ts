@@ -15,6 +15,7 @@ export const SR6_TABS: [string, string][] = [
   ['augmentations', 'Augmentations'],
   ['gear', 'Gear'],
   ['vehicles', 'Vehicles'],
+  ['drones', 'Drones'],
   ['contacts', 'Contacts & lifestyle'],
   ['review', 'Review'],
   ['ledger', 'Ledger'],

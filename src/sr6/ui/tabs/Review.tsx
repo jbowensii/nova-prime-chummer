@@ -7,6 +7,7 @@ import { resolveEntry } from '../../engine/load'
 import type { Violation } from '../../../model/types'
 import { Modal } from '../../../ui/bits'
 import { balances, canDraft } from '../../engine/career'
+import { purchaseTab } from '../../engine/purchases'
 import { draftAgain, finalizeSr6 } from '../../engine/finalize'
 import { canFinalizeSr6 } from '../../engine/rules'
 import { sr6Tabs } from '../tabList'
@@ -32,9 +33,11 @@ export function ReviewTab() {
   const bal = balances(ch),
     drafting = canDraft(ch)
   // a pick left on a runner that's no longer awakened is fixed on Creation method (its Magic tab is gone)
+  // (a drone's line keeps its `vehicles.<uid>` path and links to Drones)
   const tabOf = (path: string) => {
-    const head = path.split('.')[0]
-    return tabs.some(([k]) => k === head) ? head : head === 'magic' ? 'method' : undefined
+    const [head, uid] = path.split('.'),
+      x = head === 'vehicles' ? ch.build.purchases.find(y => y.uid === uid) : undefined
+    return x ? purchaseTab(x, data) : tabs.some(([k]) => k === head) ? head : head === 'magic' ? 'method' : undefined
   }
   const ready = canFinalizeSr6(v)
   const name = ch.identity.streetName || ch.identity.name || 'this runner'

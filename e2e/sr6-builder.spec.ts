@@ -185,6 +185,7 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
     'Augmentations',
     'Gear',
     'Vehicles',
+    'Drones',
     'Contacts & lifestyle',
     /^Review\d*$/,
     'Print',
@@ -370,6 +371,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
     'Augmentations',
     'Gear',
     'Vehicles',
+    'Drones',
     'Contacts & lifestyle',
     /^Review\d*$/,
     'Print',
@@ -521,9 +523,9 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(work.locator('tr', { hasText: 'Lucky Coin' })).toContainText('5¥')
   await shoot(page, 'editor-gear')
 
-  // Vehicles: a drone with its stats
-  await tabs.filter({ hasText: 'Vehicles' }).click()
-  await work.getByRole('button', { name: 'Add a vehicle or drone…' }).click()
+  // Drones (its own tab, owner 2026-10-16): a drone with its stats
+  await tabs.filter({ hasText: 'Drones' }).click()
+  await work.getByRole('button', { name: 'Add a drone…' }).click()
   await dlg.getByLabel('Filter').selectOption('drones')
   await dlg.getByText('Hover Buzzer').click()
   await expect(work.locator('tr', { hasText: 'Hover Buzzer' })).toContainText('Pilot 3')

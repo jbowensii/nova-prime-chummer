@@ -560,6 +560,7 @@ export function PurchaseSection({
   bonuses,
   hint,
   offer,
+  show,
 }: {
   kind: PurchaseKind
   title: string
@@ -568,13 +569,15 @@ export function PurchaseSection({
   detail?: (x: Sr6Purchase) => ReactNode
   /** which catalog entries the picker offers (none: all) */
   offer?: (e: Sr6Entry) => boolean
+  /** which of the kind's lines it lists (none: all) */
+  show?: (x: Sr6Purchase) => boolean
   accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }
   bonuses?: boolean
   hint?: ReactNode
 }) {
   const { ch, data, cr, act, d } = useSr6Editor()
   const [adding, setAdding] = useState(false)
-  const rows = ch.build.purchases.filter(x => x.kind === kind)
+  const rows = ch.build.purchases.filter(x => x.kind === kind && (!show || show(x)))
   const own = (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text
   const ware = kind === 'augmentations'
   return (
