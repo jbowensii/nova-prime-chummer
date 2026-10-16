@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { AiSettings } from '../../ui/AiSettings'
 import { BooksScreen } from '../../ui/Books'
-import { CampaignScreen, CampaignsScreen } from '../../ui/Campaigns'
+import { CampaignsScreen } from '../../ui/Campaigns'
 import { listShared, readable } from '../../ui/compendiumStore'
 import { PageHeader } from '../../ui/nav'
 import { RepoContext, type Repo } from '../../ui/repo'
@@ -29,6 +29,7 @@ import { Sr6DesignEditor, Sr6Designs } from './Designer'
 import { Sr6EditorView } from './EditorView'
 import { NPC_TABS, SR6_TABS } from './tabList'
 import { Sr6Npcs } from './Npcs'
+import { Sr6CampaignScreen } from './problems'
 import { Sr6Rules } from './Rules'
 import { Sr6Runners } from './Runners'
 
@@ -134,11 +135,12 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       )
     ) : page === 'campaigns' && repo.mode === 'server' ? (
       route[1] ? (
-        <CampaignScreen
+        <Sr6CampaignScreen
           key={route[1]}
-          game="sr6"
           id={route[1]}
-          label={() => ''}
+          c={c}
+          data={data}
+          cr={cr.rules}
           extra={(camp, set) => c && <CampaignCreation c={c} cr={cr} camp={camp} onSaved={set} />}
         />
       ) : (

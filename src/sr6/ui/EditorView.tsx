@@ -29,6 +29,7 @@ import { rulesForRunner, tableRulesFor, useRunnerCampaign } from './Creation'
 import { withSampleFixes } from '../engine/samplefix'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
+import { problemParts } from './problems'
 import { downloadSr6Runners } from './Foundry'
 import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
@@ -236,7 +237,8 @@ export function Sr6EditorView({
         <Sr6Sheet />
       </Sr6Editor.Provider>
     )
-  const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length
+  const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length,
+    open = problemParts(calc.v) // a GM reading a player's runner is told what's open on it
   const name = ch.identity.streetName || ch.identity.name || (npc ? 'Unnamed NPC' : 'Unnamed runner')
 
   return (
@@ -283,6 +285,11 @@ export function Sr6EditorView({
       {theirs && (
         <p className="banner readonly" role="status">
           Read only — {owner}’s {noun}. Only they can change it; you can still export a copy.
+        </p>
+      )}
+      {theirs && !npc && open.length > 0 && (
+        <p className="banner" role="status">
+          This runner has {open.join(' and ')} — <a href={href(ch.id, 'review')}>review them</a>.
         </p>
       )}
       {!theirs && locked && (

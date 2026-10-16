@@ -25,8 +25,7 @@ export const capNotes = (d: Sr6Derived) => [
 export function ReviewTab() {
   const { ch, c, v, d, data, budgets, replace, career, ro, approve: approveAll } = useSr6Editor()
   const gm = !!approveAll // GM approval is for GMs (editors) and the admin: on a player's runner, in a campaign they run
-  const [approving, setApproving] = useState<Violation | null>(null)
-  const [note, setNote] = useState('')
+  const [notes, setNotes] = useState<Record<string, string>>({}) // the optional GM note typed beside each approvable line
   const [asking, setAsking] = useState<'finalize' | 'draft' | null>(null)
   const sorted = [...v].sort((a, b) => Number(!!a.approved) - Number(!!b.approved) || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1))
   const tabs = sr6Tabs(ch.build.magic, career)
@@ -47,14 +46,15 @@ export function ReviewTab() {
     setErr(r ?? '')
     return !r
   }
-  const approve = async () => {
-    const x = approving!
-    if (done(await approveAll!([...ch.overrides, { code: x.code, path: x.path, note: note.trim() }]))) {
-      setApproving(null)
-      setNote('')
-    }
-  }
-  const revoke = async (x: Violation) => done(await approveAll!(ch.overrides.filter(o => !(o.code === x.code && o.path === x.path))))
+  // the "Approved by GM" box: ticked approves (with the note typed beside it), unticked revokes
+  const toggle = async (x: Violation, on: boolean) =>
+    done(
+      await approveAll!(
+        on
+          ? [...ch.overrides, { code: x.code, path: x.path, note: (notes[`${x.code}|${x.path}`] ?? '').trim() }]
+          : ch.overrides.filter(o => !(o.code === x.code && o.path === x.path)),
+      ),
+    )
   const finalize = () => {
     const next = finalizeSr6(ch, budgets, v)
     if (next) replace(next)
@@ -122,17 +122,22 @@ export function ReviewTab() {
               {/* (a designed vehicle's approval: a warning, approved in career too, owner Q8) */}
               {(!career || x.code === DESIGN_APPROVAL) && (
                 <span className="row">
-                  {gm && (x.severity === 'error' || x.code === DESIGN_APPROVAL) && !x.approved && !x.hard && (
-                    <button className="btn small" onClick={() => setApproving(x)}>
-                      GM approve
-                    </button>
+                  {(x.severity === 'error' || x.code === DESIGN_APPROVAL) && !x.hard && (
+                    <>
+                      <label className="check inline">
+                        <input type="checkbox" checked={!!x.approved} disabled={!gm} onChange={e => void toggle(x, e.target.checked)} /> Approved by GM
+                      </label>
+                      {gm && !x.approved && (
+                        <input
+                          aria-label="GM note (optional)"
+                          placeholder="Why the GM allows it (optional)"
+                          value={notes[`${x.code}|${x.path}`] ?? ''}
+                          onChange={e => setNotes({ ...notes, [`${x.code}|${x.path}`]: e.target.value })}
+                        />
+                      )}
+                    </>
                   )}
                   {x.hard && <span className="muted small">Fix before finalizing: no GM approval</span>}
-                  {gm && x.approved && (
-                    <button className="btn small quiet" onClick={() => revoke(x)}>
-                      Revoke
-                    </button>
-                  )}
                 </span>
               )}
               {o && <span className="note">GM: {o.note || 'approved'}</span>}
@@ -228,27 +233,6 @@ export function ReviewTab() {
         </>
       )}
 
-      <Modal
-        open={!!approving}
-        onClose={() => setApproving(null)}
-        title="GM approval"
-        actions={
-          <>
-            <button className="btn" onClick={() => setApproving(null)}>
-              Cancel
-            </button>
-            <button className="btn primary" disabled={!note.trim()} onClick={approve}>
-              Approve
-            </button>
-          </>
-        }
-      >
-        <p>{approving?.message}</p>
-        <label>
-          Why the GM allows it
-          <input autoFocus value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Street-legend campaign, agreed at session zero" />
-        </label>
-      </Modal>
       <Modal
         open={asking === 'finalize'}
         onClose={() => setAsking(null)}

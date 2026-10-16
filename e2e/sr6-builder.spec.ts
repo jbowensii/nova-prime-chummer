@@ -186,6 +186,7 @@ test('the editor: Concept, Creation method, Attributes, Skills and Qualities wit
     'Gear',
     'Vehicles',
     'Drones',
+    'Critters',
     'Contacts & lifestyle',
     /^Review\d*$/,
     'Print',
@@ -372,6 +373,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
     'Gear',
     'Vehicles',
     'Drones',
+    'Critters',
     'Contacts & lifestyle',
     /^Review\d*$/,
     'Print',
@@ -606,30 +608,28 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await tabs.filter({ hasText: 'Review' }).click()
   await expect(work.locator('.viol .sev.err')).toHaveCount(2)
 
-  // only a GM approves: Pat, a player, has no button; Gil, the GM of a campaign the runner is in, approves it with a note
-  // on his read-only view, revokes, approves again
-  await expect(eyes.getByRole('button', { name: 'GM approve' })).toHaveCount(0)
+  // only a GM approves: Pat, a player, sees the Approved by GM box read only; Gil, the GM of a campaign the runner is in,
+  // ticks it with a note on his read-only view, unticks it (revokes), ticks again
+  await expect(eyes.getByRole('checkbox', { name: 'Approved by GM' })).toBeDisabled()
   await savedOnServer(page, /name="Fixer Fred"[^>]*connection="1"/) // Pat's latest is on the server before Gil writes
   const zipId = page.url().split('/c/')[1].split('/')[0]
   const gil = await gilWith(browser, page, zipId)
   await gil.goto(`/#/sr6/c/${zipId}/review`)
   const geyes = gil.locator('main.work .viol', { hasText: 'Glow Eyes' }),
-    gdlg = gil.getByRole('dialog')
-  await geyes.getByRole('button', { name: 'GM approve' }).click()
-  await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend, agreed at session zero')
-  await gdlg.getByRole('button', { name: 'Approve' }).click()
+    approved = (viol: typeof geyes) => viol.getByRole('checkbox', { name: 'Approved by GM' })
+  await geyes.getByLabel('GM note (optional)').fill('Street doc friend, agreed at session zero')
+  await approved(geyes).click()
   await expect(geyes).toContainText('Approved')
   await expect(geyes).toContainText('GM: Street doc friend, agreed at session zero')
-  await geyes.getByRole('button', { name: 'Revoke' }).click()
+  await approved(geyes).click()
   await expect(geyes).toContainText('Problem')
-  await geyes.getByRole('button', { name: 'GM approve' }).click()
-  await gdlg.getByLabel('Why the GM allows it').fill('Street doc friend')
-  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  await geyes.getByLabel('GM note (optional)').fill('Street doc friend')
+  await approved(geyes).click()
   await expect(geyes).toContainText('Approved')
   // the Karma left past the limit too (owner's decision L2: a problem a GM can approve)
-  await gil.locator('main.work .viol', { hasText: 'karma left' }).getByRole('button', { name: 'GM approve' }).click()
-  await gdlg.getByLabel('Why the GM allows it').fill('Saving up')
-  await gdlg.getByRole('button', { name: 'Approve' }).click()
+  const gleft = gil.locator('main.work .viol', { hasText: 'karma left' })
+  await gleft.getByLabel('GM note (optional)').fill('Saving up')
+  await approved(gleft).click()
   await expect(gil.locator('main.work .viol', { hasText: 'karma left' })).toContainText('Approved')
   await expect(gil.getByRole('button', { name: 'Finalize runner' })).toHaveCount(0) // still Pat's to finalize
   await gil.close()
@@ -655,7 +655,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await tabs.filter({ hasText: 'Concept' }).click()
   await expect(page.getByLabel('Real name')).toBeEnabled()
   await tabs.filter({ hasText: 'Review' }).click()
-  await expect(work.getByRole('button', { name: 'GM approve' })).toHaveCount(0)
+  await expect(work.getByRole('checkbox', { name: 'Approved by GM' })).toHaveCount(0)
   await shoot(page, 'review-finalized')
   await page.getByRole('button', { name: 'Back to draft' }).click()
   await expect(dlg).toContainText('The ledger keeps its history')
@@ -800,9 +800,9 @@ test('Ada, the admin, lowers the server’s skill cap on Table setup: Pat’s ru
   const zipId = page.url().split('/c/')[1].split('/')[0]
   const gil = await gilWith(browser, page, zipId)
   await gil.goto(`/#/sr6/c/${zipId}/review`)
-  await gil.locator('main.work .viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' }).getByRole('button', { name: 'GM approve' }).click()
-  await gil.getByRole('dialog').getByLabel('Why the GM allows it').fill('Old cap')
-  await gil.getByRole('dialog').getByRole('button', { name: 'Approve' }).click()
+  const gcap = gil.locator('main.work .viol', { hasText: 'Tinkering rank 3 is above the cap of 2.' })
+  await gcap.getByLabel('GM note (optional)').fill('Old cap')
+  await gcap.getByRole('checkbox', { name: 'Approved by GM' }).click()
   await expect(gil.locator('main.work .viol', { hasText: 'Tinkering rank 3' })).toContainText('Approved')
   await gil.close()
   await page.reload()

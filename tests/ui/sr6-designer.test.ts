@@ -181,7 +181,7 @@ test('a runner buys a player’s design on Vehicles: its line and built-in mod; 
   const warn = [...document.querySelectorAll('.viol')].find(v => /Custom design: needs GM approval \(Red Zip\)\./.test(v.textContent ?? ''))!
   expect(warn.querySelector('.sev.warn')).not.toBeNull()
   expect(warn.querySelector('a')?.getAttribute('href')).toBe('#/sr6/c/r1/vehicles')
-  expect(warn.textContent).not.toMatch(/GM approve/)
+  expect(warn.querySelector<HTMLInputElement>('input[type=checkbox]')?.disabled).toBe(true) // a player sees it, read only
 })
 
 test('a GM approves the bought design on Review; one bought from a GM’s (approved) design has nothing to approve', async () => {
@@ -192,9 +192,8 @@ test('a GM approves the bought design on Review; one bought from a GM’s (appro
   stubFetch([runners.route])
   await mount(createElement(Sr6EditorView, { c, data, cr, id: 'r2', tab: 'review' }))
   const warn = () => [...document.querySelectorAll('.viol')].find(v => /Custom design: needs GM approval/.test(v.textContent ?? ''))!
-  await click(button('GM approve', warn()))
-  await change(field('Why the GM allows it'), 'Built in the campaign’s garage')
-  await click(button('Approve'))
+  await change(field('GM note (optional)', warn()), 'Built in the campaign’s garage')
+  await click(field('Approved by GM', warn()))
   expect(warn().querySelector('.sev.ok')?.textContent).toBe('Approved')
   await click(button('Save'))
   expect(read(runners.rows.get('r2')!.xml).overrides).toEqual([{ code: 'vehicle.design', path: 'vehicles.v1', note: 'Built in the campaign’s garage' }])

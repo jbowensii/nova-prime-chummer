@@ -209,7 +209,7 @@ export function CampaignsScreen({ game = 'ca2' }: { game?: Game }) {
 
 type Confirm = { title: string; body: string; label: string; run: () => Promise<unknown> }
 
-/** `label`: a runner row's line under its name (Anarchy: its package and level); `extra`: a game's own section after the
+/** `label`: a runner row's line under its name, given the campaign too (Anarchy: its package and level; SR6: its problems); `extra`: a game's own section after the
  *  runners (SR6: its creation rules), given the campaign and a way to put back the one a change returns. */
 export function CampaignScreen({
   id,
@@ -218,7 +218,7 @@ export function CampaignScreen({
   extra,
 }: {
   id: string
-  label: (r: CampaignRunner) => string
+  label: (r: CampaignRunner, camp: Campaign) => React.ReactNode
   game?: Game
   extra?: (camp: Campaign, set: (c: Campaign) => void) => React.ReactNode
 }) {
@@ -334,7 +334,7 @@ export function CampaignScreen({
                       ) : (
                         <span className="title">{r.streetName}</span>
                       )}
-                      <div className="meta">{label(r)}</div>
+                      <div className="meta">{label(r, camp)}</div>
                     </div>
                     <div className="row">
                       {open && !r.mine && (
