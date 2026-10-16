@@ -278,6 +278,120 @@ class SwcRecipeTest(unittest.TestCase):
         self.assertEqual(crb.match({"sha256": "x"}, BOOK_MD[:4000]), 0.0)
 
 
+INFECTED_MD = """<!-- page 1 -->
+<!-- page 70 -->
+# DARKER ALTERATIONS
+#### Made-Up Strain Rules
+Made-up rules about made-up strains.
+##### Made-Up Optional Powers Table
+| QUALITY | KARMA |
+|---|---|
+| Glow Sense (Smell) | 4 |
+| Glow Sense (Sight) | 5 |
+| Hard Hide (per point) | 3 |
+| Hush | 6 |
+| Mendflesh | 9 |
+##### made-up metatype attributes table
+| TYPE | BASE | BOD | AGI | REA | STR | WIL | LOG | INT | CHA |
+|---|---|---|---|---|---|---|---|---|---|
+| Dusker | Human | 7 | 6 | 8 | 7 | 7 | 6 | 7 | 8 |
+| Grubber | Dwarf | 9 | 5 | 6 | 9 | 8 | 4 | 6 | 3 |
+| Grubber | Troll | 12 | 4 | 6 | 12 | 8 | 4 | 6 | 2 |
+| Marrowkin | Ork | 9 | 6 | 7 | 10 | 7 | 5 | 7 | 4 |
+<!-- box -->
+##### NON-HUMAN DUSKERS
+Made-up dusk folk of other kinds: apply these modifiers to maximums: +1 BOD, WILL, and +2 CHA. The made-up
+template has a total cost of 30, as opposed to 25.
+<!-- /box -->
+<!-- page 71 -->
+#### Made-Up Infected Qualities
+##### Dusker
+**Cost:** 25 Karma (–10 Karma if character is already
+Awakened)
+**Gained Powers:** Dual Natured, Movement (Self Only), +1 initiative die. Gain one of the
+Glow Senses as a free Optional Power.
+**Optional Powers:** Glow Senses (Smell, Sight), Hush (p. 12), Immunity (Age)
+**Gained Weaknesses:** Allergy (Dawn, Mild)
+**Notes:** All duskers Awaken as magicians if they were not already Awakened. Duskers carry HMHVV Strain Ia.
+##### Grubber
+**Cost:** 21 Karma
+**Gained Powers:** Dual Natured, Sapience. Gain one Optional Powers (except Mendflesh) for free.
+**Optional Powers:** Hard Hide +1, Mendflesh
+**Gained Weaknesses:** Allergy (Dusk, Mild)
+**Notes:** Grubbers carry HMHVV Strain III.
+##### Marrowkin
+**Cost:** 18 Karma
+**Gained Powers:** Dual Natured
+**Gained Weaknesses:** Allergy (Noon, Mild)
+**Notes:** Marrowkin carry HMHVV Strain II.
+<!-- page 80 -->
+# EXPRESS YOURSELF
+#### Mana Itch
+**Bonus:** See text
+Made-up itching mana around the made-up bearer.
+For non-Awakened characters, this quality has a
+bonus of 4 Karma. For Awakened individuals, this
+quality has a bonus of 9 Karma.
+"""
+
+
+class InfectedTest(unittest.TestCase):
+    """Infected qualities as data (owner decisions 2026-10-16) on a made-up book: every name and number invented."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.res = run_recipe(INFECTED_MD)
+        cls.q = entries(cls.res, "qualities")
+
+    def kids(self, name, tag):
+        return [k.attrib for k in self.q[name] if k.tag == tag]
+
+    def optional(self, name):
+        return [(k["ref"].split(".")[-1], k.get("free")) for k in self.kids(name, "optionalpower")]
+
+    def test_a_type_of_several_bases_is_a_quality_per_base(self):
+        self.assertNotIn("Grubber", self.q)
+        for base in ("Dwarf", "Troll"):
+            g = self.q[f"Grubber ({base})"]
+            self.assertEqual((g.get("id"), g.get("karma"), g.get("kind")), (f"grubber-{base.lower()}", "21", "positive"))
+            self.assertEqual(self.kids(f"Grubber ({base})", "infected"),
+                             [{"strain": "III", "base": base, "freePhysical": "2", "freeMental": "2", "essence": "5", "magic": "1",
+                               "magicLoss": "1", "magicMax": "5+initiate-grade"}])
+
+    def test_strain_base_awakening_and_the_awakened_price(self):
+        self.assertEqual(self.kids("Dusker", "infected"),
+                         [{"strain": "I", "printed": "Ia", "base": "Human", "awakens": "magician", "freePhysical": "2",
+                           "freeMental": "2", "magicMax": "ess+initiate-grade"}])  # (Ia is Strain I; no starting Essence)
+        self.assertEqual(self.q["Dusker"].get("karma"), "25")  # (the note wrapped onto the next line: still one price)
+        self.assertEqual(self.kids("Dusker", "karmaif"),
+                         [{"flag": "awakened", "value": "15", "note": "less 10 if the character is already Awakened"}])
+        self.assertEqual(self.kids("Marrowkin", "infected")[0]["strain"], "II")
+        self.assertEqual(self.kids("Marrowkin", "karmaif"), [])
+        # (a `See text` price with a non-Awakened and an Awakened price: one item, its Awakened price a karmaif)
+        m = self.q["Mana Itch"]
+        self.assertEqual((m.get("kind"), m.get("karma"), m.get("karmaMax"), m.get("karmaSteps")), ("negative", "4", None, None))
+        self.assertEqual(self.kids("Mana Itch", "karmaif"), [{"flag": "awakened", "value": "9", "note": "9 if the character is Awakened"}])
+
+    def test_optional_powers_and_the_free_pick(self):
+        self.assertEqual(self.optional("Dusker"), [("glow-sense-smell", "true"), ("glow-sense-sight", "true"), ("hush", None)])
+        self.assertEqual(self.optional("Grubber (Troll)"), [("hard-hide-per-point", "true"), ("mendflesh", None)])
+        self.assertEqual(self.optional("Marrowkin"), [])
+        # (an item no row prices is reported, never guessed)
+        self.assertEqual([(r["name"], r["value"]) for r in self.res.report if r["kind"] == "unmatched" and r.get("field") == "optional power"],
+                         [("Dusker", "Immunity (Age)")])
+
+    def test_the_other_base_sidebar(self):
+        self.assertEqual(self.kids("Dusker", "infectedalt"),
+                         [{"base": "other", "karma": "30", "bod": "1", "wil": "1", "cha": "2", "page": "69",
+                           "note": "30 Karma for a non-human dusker"}])
+        self.assertEqual(self.kids("Marrowkin", "infectedalt"), [])
+
+    def test_files_validate(self):
+        doc = etree.fromstring(self.res.files["qualities.xml"].encode("utf8"))
+        schema = etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, "qualities.xsd")))
+        self.assertTrue(schema.validate(doc), schema.error_log.last_error)
+
+
 class ModuleGrantsTest(unittest.TestCase):
     def test_choose_an_attribute_is_one_choice(self):
         from importer.sr6.lifemodules import _module_grants

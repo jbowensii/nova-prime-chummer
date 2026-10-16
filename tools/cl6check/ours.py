@@ -175,6 +175,8 @@ def _entries(src_dir, src):
                 opts = ",".join(sorted({m for m in re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr)}))
                 attrs[f"formula:{f.get('field')}"] = "|".join(
                     [expr] + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)] + ([f"opts={opts}"] if opts else []))
+            if ks := [k.get("value") for k in e.findall("karmaif") if k.get("value")]:
+                attrs["karmaIf"] = " ".join(ks)  # (its Karma when a character flag holds: Commlink6's second record, `mutaqua_awakened`)
             out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
                         "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias") if x.get("id") is None],
                         "attrs": attrs, "families": families(e, kind),

@@ -237,6 +237,20 @@ class FieldsTest(unittest.TestCase):
         self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
         self.assertNotIn("legality", self.cmp(x, cost="10", avail="—")[0])  # an empty avail is the avail's diff
 
+    def test_a_quality_s_awakened_price_matches_the_second_record(self):
+        """(owner 2026-10-16) one quality, its price when Awakened a <karmaif>: both of Commlink6's records (mundane,
+        awakened) agree on karma."""
+        karma = lambda k, **a: [d for d in fields.compare(canon.canonical(rec(f'<quality id="z" karma="{k}" pos="true"/>')),
+                                                          entry("Zorp", kind="qualities", **a))[1] if d["field"] == "karma"]
+        self.assertEqual(karma(54, karma="54", karmaIf="44"), [])
+        self.assertEqual(karma(44, karma="54", karmaIf="44"), [])
+        self.assertEqual(len(karma(44, karma="54")), 1)
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "qualities.xml"), "w", encoding="utf8") as f:
+                f.write('<d kind="qualities"><quality id="gz.zorp" source="GZ" page="1" kind="positive" karma="54"><name>Zorp</name>'
+                        '<karmaif flag="awakened" value="44"/></quality></d>')
+            self.assertEqual(ours._entries(d, "gz")[0]["attrs"]["karmaIf"], "44")
+
     def test_ammo_with_what_else_it_draws_on(self):
         c = {"fields": {"ammo": "20(c)"}, "tag": "item"}  # (a canonical record's ammo field, invented)
         self.assertEqual(fields.compare(c, entry("Zorp", kind="weapons", ammo="20(c) + Energy")), (["ammo"], []))

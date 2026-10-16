@@ -65,6 +65,13 @@ the overlay changes.
   adept powers. Our Infected qualities carry its class `INFECTED`; the 26 optional powers are qualities of ours with no
   Commlink6 record (counted among our extras, their class `INFECTED/OPTIONAL_POWER` a deliberate extra). Qualities are not
   a class-compared kind, so neither class moves the class match.
+- Infected per base and Awakened prices (owner 2026-10-16): the Ghoul is five qualities of ours (`Ghoul (Human)` … `Ghoul
+  (Troll)`, `swc.ghoul-human` …), matched exactly with Commlink6's five records (its human one is named `Ghoul`: an alias of
+  `Ghoul (Human)` in swc.json), each with its own family row. A quality's `<karmaif value>` (its Karma when the character is
+  Awakened) is one of its prices for the karma comparison, as `karmaMax` is (`ours.py` reads it as `karmaIf`): our one
+  Mutaqua, Nosferatu, Wendigo and Astral Hazing match both of Commlink6's records (`*_mundane`/`*_awakened`,
+  `astral_hazing_non_awakened`/`_awakened`), so their "two records disagree" hold rows are gone. Astral Hazing's `requires`
+  (each record its own magic kinds, ours their union) is kept as ours in value_keep.json: an accepted structural difference.
 
 ## What it does
 

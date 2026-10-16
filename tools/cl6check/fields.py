@@ -300,8 +300,10 @@ def compare(c, o, sib=()):
     if k == "qualities" and c["tag"] == "quality":
         if f.get("karma"):
             top = (a.get("karmaMax") or "").lstrip("-")  # the highest of the prices it prints (Commlink6 may split them)
+            alt = {float(top)} if top else set()
+            alt |= {abs(float(x)) for x in (a.get("karmaIf") or "").split()}  # (its price when a flag holds: Awakened)
             add("karma", _num_field("karma", (a.get("karma") or "").lstrip("-") or None,
-                                    {None: abs(float(f["karma"]))}, formula={None: {float(top)}} if top else None))
+                                    {None: abs(float(f["karma"]))}, formula={None: alt} if alt else None))
         if f.get("positive"):
             mine = "true" if a.get("kind") == "positive" else "false"
             add("positive", None if mine == f["positive"] else {"field": "positive", "ours": a.get("kind", ""),

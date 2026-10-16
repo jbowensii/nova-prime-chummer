@@ -61,7 +61,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0), class (`INFECTED`, `INFECTED/OPTIONAL_POWER`: see Infected characters) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0), class (`INFECTED`, `INFECTED/OPTIONAL_POWER`: see Infected characters) | infected, infectedalt×n, optionalpower×n, karmaif×n first (see Infected characters); effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost, per | — |
 | armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -173,7 +173,54 @@ offers and accepts an entry of either only while the table's `infectedAllowed` i
 quality pickers, every catalog picker, the editor's `quality` op, `rule-off`, and the career `quality` spend,
 `optional-rule-off`); a runner keeps one it has. After creation such a quality costs its own Karma, never times
 `advance.qualityFactor` ("Infected qualities do not have their cost doubled when purchased during gameplay", p. 106; the
-optional powers likewise). The printed `54 (see desc.)` notes (less 10 Karma if already Awakened) are not applied yet.
+optional powers likewise).
+
+**Infected rules as data** (owner decisions 2026-10-16, `swc.py` `_infected`; the engine does not read them yet). The
+Companion prints each type as a quality (pp. 110–114: `Cost:`, `Gained Powers:`, `Optional Powers:`, `Gained
+Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infected Metatype Attributes table (p. 109,
+`TYPE | BASE | BOD … CHA`). Each Infected quality's first children, in this order (`common.xsd` Quality):
+
+- `<infected strain base [printed] [awakens] freePhysical freeMental [essence magic magicLoss] magicMax/>`, one:
+  - `strain` `I`, `II` or `III`, from the Notes' `carry HMHVV Strain …`; Strain Ia (Mutaqua, Nosferatu) is `I` with
+    `printed="Ia"` (owner: Ia follows Strain I's rules).
+  - `base` the base metatype as the table's BASE prints it (`Human`, `Sasquatch`, `Centaur`, `Naga`, `Merrow`): the only
+    metatype that may take it (Commlink6's `<prerequisite type="METATYPE">` says the same for the five core ones).
+  - `awakens` what a character not yet Awakened Awakens as, from the Notes' `Awaken as adepts|magicians`: Mutaqua `adept`,
+    Nosferatu and Wendigo `magician`; the rest none (every Infected is Awakened and dual-natured but not a magician or
+    adept, p. 105). One already Awakened as the other kind becomes a mystic adept (the same Notes).
+  - `freePhysical="2" freeMental="2"`: the free attribute points every Infected quality gives (p. 104), applied before
+    its attribute cuts.
+  - Strain II and III: `essence="5"` (Essence becomes 5), `magic="1"` (a character with no Magic gets 1), `magicLoss="1"`
+    (one with Magic loses 1), `magicMax="5+initiate-grade"` (p. 106). Strain I: `magicMax="ess+initiate-grade"` (Magic
+    follows Essence), and no `essence`: the book gives no starting Essence for a Strain I character created as one (only the
+    in-play disease, p. 107, says Essence 1), so the character keeps its own; the app shows that note (owner). The chapter
+    has no Edge rule for creation: none is stored.
+- `<infectedalt base="other" karma bod … cha page note/>`, the non-human vampire only (sidebar `NON-HUMAN VAMPIRES`, p. 109,
+  read from its `+1 BOD, STR, WILL, and +2 REA and CHA` and `total cost of 32`): any base metatype but the type's own takes
+  it at `karma` (32), each attribute value added to that metatype's own maxima (bod 1, rea 2, str 1, wil 1, cha 2), the
+  quality's `when="Human"` maxima not applying; `note` "32 Karma for a non-human vampire". The entry's own `(+10 Karma for
+  non-humans)` and "no changes to their attribute maximums" (p. 113) are not used (owner).
+- `<optionalpower ref [free="true"]/>`, one per optional power the type may buy (its `Optional Powers:` line), `ref` the
+  optional power's quality id (`swc.infected-optional-powers.fear`): an item names the row of its name and of each item in
+  its parenthesis (`Enhanced Senses (Hearing, Smell)`: two), else the one row of its name (`Magical Guard (self only, …)`,
+  `Armor +1`: `Armor (per point)`). `free`: one the type's free pick may take (`Gain one of the Enhanced Senses or Immunities
+  as a free Optional Power`; Goblin's `Gain one Optional Powers (except Regeneration) for free`: every one but
+  Regeneration). One free pick per character. A type with no `Optional Powers:` line (Ghoul, Grendel, Jabbawock, Lamia) has
+  none; an item naming no row is reported (`unmatched`): Chiron's `Immunity (Age)`, which the table does not price.
+- `<karmaif flag="awakened" value note/>`: the quality's Karma when the character is Awakened (a magician, adept, mystic
+  adept or aspected magician; a technomancer is not), from a price note `(–10 Karma if character is already Awakened)`:
+  Mutaqua 54/44, Nosferatu 48/38, Wendigo 47/37, `note` "less 10 if the character is already Awakened" (shown where the
+  table prints `(see desc.)`); and from a `See text` price whose paragraphs give one price for non-Awakened and one for
+  Awakened characters: Astral Hazing (p. 127) `karma="8"` and `value="15"`, `note` "15 if the character is Awakened" (one
+  item; Commlink6's two records, `astral_hazing_non_awakened`/`_awakened`, are an accepted structural difference).
+
+Attribute maxima stay `<effect target="attr-max:<a>" op="set" value when="<base>"/>`, the type's own table row, `when` its
+base metatype (effects.py: a quality's row of a table whose second column is BASE). The Ghoul, the one type the table
+prints for several bases, is one quality per base (owner): `Ghoul (Human)`, `Ghoul (Dwarf)`, `Ghoul (Elf)`, `Ghoul (Ork)`,
+`Ghoul (Troll)` (`swc.ghoul-human` …, the old `swc.ghoul` an alias of the first), each 29 Karma (the table's; the entry's
+`Cost: 27 Karma` is a misprint, the override table sets 29), each with its own row's maxima and its own `<infected
+base>`. The gained powers, weaknesses and attacks stay in the description: the printed lists have typos (a missing comma,
+`Induced Dormancy (Lack of Air, (Essence) Minutes` unbalanced) and name critter powers of other books.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
 named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
@@ -329,7 +376,7 @@ own saying it doesn't). Partial limbs, printed with the accessories, don't get i
 
 Tables: a row naming the entry (or its parenthesised variant: `Cyberjack (Rating 1)` the row `Rating 1`) whose
 header has a target column: an infected type's attribute maxima (six attribute columns or more: `set`, its base
-metatype in `when`), a signed modifier (`AR +2`, `DV –1`: an ammo type's), a bonus column (`MATRIX INIT BONUS`). An
+metatype in `when`; `Ghoul (Dwarf)` reads the `Ghoul` row whose BASE is Dwarf), a signed modifier (`AR +2`, `DV –1`: an ammo type's), a bonus column (`MATRIX INIT BONUS`). An
 armor's Defense Rating column is its defense field, not an effect.
 
 **Links** (`<link rel="grants"|"as" name kind ref level when>`): an entry that grants another (`gain the Built Tough

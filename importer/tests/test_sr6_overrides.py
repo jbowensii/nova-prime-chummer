@@ -694,7 +694,7 @@ class SchemaAttrsTest(unittest.TestCase):
 
 class OwnerNameBugRowsTest(unittest.TestCase):
     """The 2026-10-15 owner decisions: three values take Commlink6's (a row each), the ones the book prints stay ours (value_keep.json)."""
-    FILES = {"swc": ("qualities", "quality", "ghoul", 'karma="27"', "karma"),
+    FILES = {"swc": ("qualities", "quality", "ghoul-dwarf", 'karma="27"', "karma"),
              "crb": ("weapons", "weapon", "mossberg-cmdt", 'ammo="10(c)"', "ammo"),
              "da": ("adeptpowers", "adeptpower", "motion-sense", 'activation="See Notes"', "activation")}
     WANT = {"swc": "29", "crb": "10(c)/24(d)", "da": "Passive / Major Action"}
@@ -716,6 +716,30 @@ class OwnerNameBugRowsTest(unittest.TestCase):
         self.assertNotIn(("crb", "weapons", "crb.mossberg-cmdt", "ammo"), keep)
         held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
         self.assertNotIn(("bs", "augmentations", "bs.fangs", "cost"), held)  # (the owner keeps ours: it is no longer left open)
+
+
+class OwnerInfectedRowsTest(unittest.TestCase):
+    """The 2026-10-16 decisions in the per-book tables: the Ghoul per base metatype, the Companion's Armor optional power with
+    no description, the Silencer's exclusion, and what cl6check keeps for them (value_keep.json)."""
+
+    def test_each_ghoul_takes_29_karma_and_its_own_metatype(self):
+        bases = ("human", "dwarf", "elf", "ork", "troll")
+        xml = '<?xml version="1.0"?>\n<d kind="qualities">' + "".join(
+            f'<quality id="ghoul-{b}" source="ZZ" page="1" kind="positive" karma="27"><name>Ghoul ({b.title()})</name></quality>' for b in bases) + "</d>\n"
+        root = ET.fromstring(overrides.apply("swc", {"qualities.xml": xml})["qualities.xml"].encode())
+        for e, b in zip(root, bases):
+            self.assertEqual(e.get("karma"), "29", b)
+            self.assertEqual([p.get("ref") for p in e.findall("prerequisite")], [b], b)
+            self.assertEqual(len([m for m in e.findall("modifier") if m.get("set") == "MAX"]), 8, b)
+        self.assertEqual([a.text for a in root[0].findall("alias")], ["Ghoul"])  # (Commlink6's name for the human ghoul)
+
+    def test_cl6check_keeps_the_structural_differences(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        self.assertIn(("swc", "qualities", "swc.astral-hazing", "requires"), keep)
+        held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
+        for q in ("mutaqua", "nosferatu", "wendigo"):  # (their Awakened price is a karmaif now: no longer two disagreeing records)
+            self.assertNotIn(("swc", "qualities", f"swc.{q}", "karma"), held)
 
 
 class OwnerClassCRowsTest(unittest.TestCase):

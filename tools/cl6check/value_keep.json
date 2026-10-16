@@ -344,6 +344,7 @@
     ["crb", "gear", "crb.laser-sight", "variants"],
     ["crb", "gear", "crb.periscope", "variants"],
     ["crb", "gear", "crb.silencer-suppressor", "variants"],
+    ["swc", "qualities", "swc.astral-hazing", "requires"],
     ["crb", "programs", "crb.armor", "variants"],
     ["crb", "programs", "crb.blackout", "variants"],
     ["crb", "programs", "crb.overclock", "variants"],
@@ -387,9 +388,6 @@
     ["da", "weapons", "da.ballista-ii", "cost", "two Commlink6 records match this entry and disagree"],
     ["da", "weapons", "da.carl-gustaf", "cost", "two Commlink6 records match this entry and disagree"],
     ["so", "electronics", "so.swindler-stick", "cost", "two Commlink6 records match this entry and disagree"],
-    ["swc", "qualities", "swc.momentous-misfortune", "karma", "two Commlink6 records match this entry and disagree"],
-    ["swc", "qualities", "swc.mutaqua", "karma", "two Commlink6 records match this entry and disagree"],
-    ["swc", "qualities", "swc.nosferatu", "karma", "two Commlink6 records match this entry and disagree"],
-    ["swc", "qualities", "swc.wendigo", "karma", "two Commlink6 records match this entry and disagree"]
+    ["swc", "qualities", "swc.momentous-misfortune", "karma", "two Commlink6 records match this entry and disagree"]
   ]
 }

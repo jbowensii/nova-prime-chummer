@@ -446,7 +446,10 @@ def read(text, kind=None, name=None):
                 s = f"{label} {s}"  # (`**AR:** +2`, `**Body:** +1`: the label names the target)
         role = ROLES.get(label.casefold())
         s = _USE_OR_LOSE.sub("", s)
-        s = re.sub(r"\s*\((?:that is|e\.g\.|i\.e\.|for example|for instance)\b[^)]*\)?", "", s, flags=re.I)  # (an example in parentheses)  # (`a point of Edge that must be spent on that test, or it goes away`: use it or lose it, no condition)
+        s = re.sub(r"\s*\((?:that is|e\.g\.|i\.e\.|for example|for instance)\b[^)]*\)?", "", s, flags=re.I)  # (an example in parentheses)
+        # (a critter power's restriction in its name, `Movement (Self Only)`, `Magical Guard (self only, p. 69 …)`, and a
+        # price's note, `(–10 Karma if character is already Awakened)`: no condition on the sentence's effects)
+        s = re.sub(r"\s*\((?:self only\b|[+–-]\s*\d+\s+Karma\b)[^()]*\)", "", s, flags=re.I)  # (`a point of Edge that must be spent on that test, or it goes away`: use it or lose it, no condition)
         sw, when = _sw(s, label)
         if sw is None and carried and not _CONDITION.search(s.casefold()):
             sw = carried
@@ -1761,6 +1764,10 @@ def apply(files, texts_xml, regrouped=""):
                 if std:
                     found.append(("link", {"rel": "as", "kind": "weapons", "name": std.capitalize()}, None))
             tab = by_name.get(_key(nm), [])
+            based = lambda h: len(h) > 1 and h[1].strip().upper() == "BASE"  # noqa: E731
+            if not tab and kind == "qualities" and (bm := re.fullmatch(r"(.+?) \(([^()]+)\)", nm)):
+                # (`Ghoul (Dwarf)`: the row `Ghoul` whose BASE is Dwarf, the Companion's Infected Metatype Attributes, p. 109)
+                tab = [(h, r) for h, r in by_name.get(_key(bm.group(1)), []) if based(h) and _key(r[1]) == _key(bm.group(2))]
             # (`Cyberjack (Rating 1)`: the row `Rating 1`; `Bone Lacing (Plastic)`, whose own row is its price's: the row
             # `Plastic` of the Bone Lacing table)
             if not any(table(h, r, kind) for h, r in tab) and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
@@ -1769,7 +1776,8 @@ def apply(files, texts_xml, regrouped=""):
                 at = dict(re.findall(r'(\w+)="([^"]*)"', attrs))
                 tab = tab or [(["AR", "DV"], [_unesc(at.get("ar", "")), _unesc(at.get("dv", ""))])]
             for header, row in tab:
-                w = row[1] if len(tab) > 1 and len(header) > 1 and header[1].strip().upper() == "BASE" else None
+                # (a quality's row of a table by base metatype is that base's, `when` naming it: an Infected type's maxima)
+                w = row[1] if based(header) and (len(tab) > 1 or kind == "qualities") else None
                 for t, a, _ in table(header, row, kind):
                     found.append((t, {**a, **({"when": w} if w else {})}, None))
             for header, trows in block_tables.get(_key(nm), ()):  # (a per-rating table under the entry: `R[1,1,2,2]`)

@@ -153,11 +153,28 @@ class ApplyTest(unittest.TestCase):
                      '| Glowghoul | Human | 9 | 6 | 8 | 7 | 7 | 5 | 7 | 4 |\n')
         out, txt = effects.apply(files, texts, regrouped)
         self.assertIn('<effect target="derived:defense" op="add" value="2"/></quality>', out["qualities.xml"])
-        self.assertIn('<effect target="attr-max:bod" op="set" value="9"/>', out["qualities.xml"])
+        self.assertIn('<effect target="attr-max:bod" op="set" value="9" when="Human"/>', out["qualities.xml"])  # (its base's)
         self.assertIn('<effect target="attr:rea" op="add" value="1"/>', out["augmentations.xml"])  # its run-in paragraph
         self.assertIn("This boost provides a +1 increase to Reaction.", txt)
         self.assertIn('<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>', out["ammotypes.xml"])
         self.assertEqual(out["rules.xml"], files["rules.xml"])  # rules hold no effects
+
+    def test_a_quality_per_base_reads_its_base_row_and_a_name_s_restriction_sets_no_condition(self):
+        """(owner 2026-10-16) `Grubber (Troll)`: the `Grubber` row whose BASE is Troll, `when` its base; a critter power's
+        `(Self Only)` and a price note `(-10 Karma if …)` are no condition on the sentence's effects (Harvester, Nosferatu)."""
+        files = {"qualities.xml": '<sr6:data kind="qualities">\n'
+                                  '  <quality id="grubber-dwarf" source="X" page="2"><name>Grubber (Dwarf)</name></quality>\n'
+                                  '  <quality id="grubber-troll" source="X" page="2"><name>Grubber (Troll)</name></quality>\n'
+                                  '  <quality id="dusker" source="X" page="3"><name>Dusker</name></quality>\n</sr6:data>\n'}
+        texts = ('<sr6:data kind="texts">\n  <text of="qualities" id="dusker">Cost: 25 Karma (-10 Karma if character is already '
+                 'Awakened) Gained Powers: Dual Natured, Movement (Self Only), +1 initiative die.</text>\n</sr6:data>\n')
+        regrouped = ('| TYPE | BASE | BOD | AGI | REA | STR | WIL | LOG | INT | CHA |\n|---|---|---|---|---|---|---|---|---|---|\n'
+                     '| Grubber | Dwarf | 9 | 5 | 6 | 9 | 8 | 4 | 6 | 3 |\n| Grubber | Troll | 12 | 4 | 6 | 12 | 8 | 4 | 6 | 2 |\n')
+        out = {m.group(1): m.group(0) for m in re.finditer(r'<quality id="([^"]+)".*', effects.apply(files, texts, regrouped)[0]["qualities.xml"])}
+        self.assertIn('<effect target="attr-max:bod" op="set" value="12" when="Troll"/>', out["grubber-troll"])
+        self.assertNotIn('when="Dwarf"', out["grubber-troll"])
+        self.assertIn('<effect target="attr-max:bod" op="set" value="9" when="Dwarf"/>', out["grubber-dwarf"])
+        self.assertIn('<effect target="derived:initiative-dice" op="add" value="1"/>', out["dusker"])
 
     def test_one_row_a_rating_carries_its_rating_when_it_counts_per_rating(self):
         row = '  <augmentation id="{i}" source="X" page="1"{a}><name>{n}</name></augmentation>\n'
