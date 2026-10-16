@@ -146,7 +146,8 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   note?: string
   bonuses: Sr6ExportBonus[]
   accessories: Sr6ExportPurchase[]
-  /** a weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in */
+  /** a weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in, or
+   *  `builtin:<n>` for a built-in one, its vehicle's `vehicle.builtin[n]` */
   mount?: string
   /** a vehicle mod the player installed: half its nuyen price (Double Clutch p. 120) */
   diy?: true

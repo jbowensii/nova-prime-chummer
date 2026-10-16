@@ -480,9 +480,9 @@ export interface Sr6Printed {
   values: Record<string, string>
 }
 
-/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
- *  npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
- *  example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
+/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at
+ *  Finalize. npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey:
+ *  the catalog entry a book NPC was loaded from, or the book sample an example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
  *  (src/sr6/engine/house.ts), so it keeps them when the compendium is unshared or deleted. */
 export interface Sr6Character {
   formatVersion: 1

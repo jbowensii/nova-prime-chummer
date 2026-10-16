@@ -1,8 +1,9 @@
 // The Designer (#/sr6/designs[/<id>]; owner 2026-10-16, BUILDER): vehicle and drone designs by Double Clutch's "Build
 // Your Dream" (pp. 150-155), every account its own (the server's /api/sr6/designs). The list: New design (a vehicle or a
 // drone), Import, Export, Copy, Delete (to the design trash, restorable). The editor follows the book's steps: chassis,
-// powertrain and console; options by level (negative: in reverse), design modifications and quality factors; the mods
-// built in (2 Design Points a mod slot, their nuyen added to the price); built yourself; and the live totals
+// powertrain and console; options by level (negative: in reverse; Improved Handling for on-road or off-road only), design
+// modifications and quality factors; the mods built in (2 Design Points a mod slot, their nuyen added to the price);
+// built yourself; and the live totals
 // (src/sr6/engine/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
 // design is approved (a GM may tick or untick it); a player's, bought by a runner, is a Review warning a GM approves.
 // A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs.
@@ -355,7 +356,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       else if (level) x.options.push({ id: pid, level })
       else x.options = x.options.filter(y => y.id !== pid)
     })
-  // Improved Handling for on-road or off-road only (DC p. 151, owner Q2): its own price on the option
+  // Improved Handling for on-road or off-road only (DC p. 151, DESIGNER Q2): its own price on the option
   const road = (pid: string) => d.options.find(o => o.id === pid)?.road ?? ''
   const setRoad = (pid: string, v: string) =>
     update(x => {

@@ -1,8 +1,9 @@
-// A vehicle or drone design (Double Clutch "Build Your Dream", pp. 150-155; owner 2026-10-16, BUILDER Q1-Q4, Q6, Q8): the
-// catalog's vehicledesign parts (a chassis, a powertrain and a console from their tables, the size class table, the
-// options, design modifications and quality factors, each with its printed terms: docs/sr6-data-format.md), worked out
-// into the vehicle's stats, its Design Point Value, price and Availability. Where the book's tables and formulas and its
-// worked examples disagree, the tables and formulas (owner Q3). A maximum passed is a warning, never refused.
+// A vehicle or drone design (Double Clutch "Build Your Dream", pp. 150-155; owner 2026-10-16, BUILDER Q1-Q4, Q6, Q8, and
+// the DESIGNER decisions, cited so): the catalog's vehicledesign parts (a chassis, a powertrain and a console from their
+// tables, the size class table, the options, design modifications and quality factors, each with its printed terms:
+// docs/sr6-data-format.md), worked out into the vehicle's stats, its Design Point Value, price and Availability. Where
+// the book's tables and formulas and its worked examples disagree, the tables and formulas (owner Q3). A maximum passed
+// is a warning, never refused.
 //
 // The numbers each option and modification changes are the book's rules (pp. 151-153), by the part's name: the catalog
 // keeps each part's cost and maximum, not its effect. A part the app has no rule for counts its Design Points only.
@@ -77,7 +78,7 @@ const WORD: Record<string, Stat> = {
   'size class': 'size',
   size: 'size',
 }
-/** Improved Handling for on-road or off-road only (DC p. 151, owner Q2): Design Points a level, the most levels. */
+/** Improved Handling for on-road or off-road only (DC p. 151, DESIGNER Q2): Design Points a level, the most levels. */
 const ROAD_DP = 3,
   ROAD_MAX = 3
 const key = (e: Sr6Entry) =>
@@ -196,13 +197,13 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     else if (/no top speed loss/i.test(sp)) walker = true
     else notes.push(`${entryLabel(e)}: special ${sp} (as printed; no rule here reads it).`)
   }
-  // the starting Cargo Factors an option's maximum reads: the size class's and a table's extra (the Truck's +4, owner Q7)
+  // the starting Cargo Factors an option's maximum reads: the size class's and a table's extra (the Truck's +4, DESIGNER Q7)
   const startCargo = baseCargo === null ? null : baseCargo + s.cargo
   // the functional options, per level (p. 151)
   let universal = 0
   for (const { e, level, k, road } of picked) {
     if (designPart(e) !== 'option') continue
-    // Improved Handling on-road or off-road only: 3 Design Points a level, that value only (p. 151, owner Q2)
+    // Improved Handling on-road or off-road only: 3 Design Points a level, that value only (p. 151, DESIGNER Q2)
     if (k === 'improved handling' && road) {
       dp += ROAD_DP * level
       if (road === 'on') s.handling -= level
@@ -219,7 +220,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
       if (st === 'handling') s.offRoad += v * level
       s[st] += v * level
     }
-    // and Seat by 50 percent a level; a vehicle keeps a seat (owner Q5; a drone has none to keep)
+    // and Seat by 50 percent a level; a vehicle keeps a seat (DESIGNER Q5; a drone has none to keep)
     if (k === 'improved size') s.seats += Math.max(Math.floor(base.seats * 0.5 * level), drone ? -Infinity : Math.min(0, 1 - base.seats))
     if (k === 'easily modified') universal += 2 * level
   }
@@ -422,7 +423,8 @@ export function maxProblems(
 
 /** The vehicle or drone line a runner buys from `doc` (a design): the design worked out as its snapshot (its stats, price
  *  as cost, Availability, dp, and approved when a GM made or approved it), the mods built in as its <builtin>s (already
- *  paid for), Easily Modified's universal slots too. Later edits to the design never change it. */
+ *  paid for: fittings of the vehicle, a mount holding a weapon, vehiclemods.ts), Easily Modified's universal slots too.
+ *  Later edits to the design never change it. */
 export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules, uid = newId()): Sr6Purchase {
   const d = doc.design!,
     sheet = designOf(d, data, cr),

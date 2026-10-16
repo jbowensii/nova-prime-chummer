@@ -1,8 +1,9 @@
 // Critters (owner 2026-10-16, BUILDER Q9-Q10: its own tab beside Vehicles and Drones): each owned critter with its stat
 // block, its powers (innate, 0 Karma), the pet class the player picks (Awakened or Emerged from its own Magic or
 // Resonance), tamed or bought, how its Wild Life p. 180 price works out, its named commands and special training (the
-// book's lists, pp. 181-183: with the purchase or taught later) against their limits, its companion qualities (with the purchase, from taming, or bonded with the runner's Karma), its critterware and
-// gear (the critter-only catalog shown here) and its Essence and Magic (src/sr6/engine/critters.ts). Every step undoes;
+// book's lists, pp. 181-183: with the purchase or taught later) against their limits, its companion qualities (with the
+// purchase, from taming, or bonded with the runner's Karma), its critterware and gear (the critter-only catalog shown
+// here) and its Essence and Magic (src/sr6/engine/critters.ts). Every step undoes;
 // past a limit is a Review warning, never refused. After finalising the tab is read only: the Ledger buys a critter,
 // fits critterware or gear, and bonds a quality.
 import { useState } from 'react'

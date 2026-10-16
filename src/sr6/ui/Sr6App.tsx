@@ -1,8 +1,12 @@
-// The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the server's creation rules (loadCreation) load once here, then the page: Books (admin; the
-// Anarchy Books page with game="sr6", and #/sr6/books/ai: SR6's own AI settings, the Anarchy page with game="sr6"), Table setup (#/sr6/table: the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or the runner
-// list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's
-// editor (#/sr6/n/<id>/<tab>), the Designer (Designer.tsx, #/sr6/designs[/<id>|/trash[/<user>]]: vehicle and drone designs)
-// and Compendiums (Compendiums.tsx, #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6 is server only (R): with browser storage the runners page says so.
+// The Shadowrun 6 side (#/sr6/...): the SR6 catalog (loadSr6Catalog, with a GM's readable SR6 compendiums) and the
+// server's creation rules (loadCreation) load once here, then the page: Books (admin; the Anarchy Books page with
+// game="sr6", and #/sr6/books/ai: SR6's own AI settings, the Anarchy page with game="sr6"), Table setup (#/sr6/table:
+// the creation rules, Creation.tsx), Rules, Game data, Users (admin) and Trash (the Anarchy pages with game="sr6"), or
+// the runner list (Runners.tsx), a runner's editor (#/sr6/c/<id>/<tab>, EditorView.tsx) and, for GMs, NPCs & Critters
+// (Npcs.tsx, #/sr6/npcs[/critters|/trash]) and an NPC's editor (#/sr6/n/<id>/<tab>), the Designer (Designer.tsx,
+// #/sr6/designs[/<id>|/trash[/<user>]]: vehicle and drone designs) and Compendiums (Compendiums.tsx,
+// #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6
+// is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../ui/auth'
 import { AiSettings } from '../../ui/AiSettings'
