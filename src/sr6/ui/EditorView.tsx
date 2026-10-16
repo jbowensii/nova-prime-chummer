@@ -3,7 +3,8 @@
 // tabs show the runner as it stands (its build with the ledger's live spends replayed, src/sr6/engine/career.ts) and are
 // read only but Concept, Review and Ledger: spends are recorded on the Ledger tab. A refused step shows its reason under
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
-// opens from the NPC store with tabs Concept, Stat block and Print, and its kind chip where a runner's state badge is.
+// opens from the NPC store with tabs Concept, Stat block (a critter's Design too) and Print, and its kind chip where a
+// runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, useMe } from '../../ui/auth'
 import { Brand, StateBadge } from '../../ui/bits'
@@ -43,11 +44,12 @@ import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { StatsTab } from './tabs/Stats'
+import { DesignTab } from './tabs/Design'
 import { DronesTab, VehiclesTab } from './tabs/Vehicles'
 import { CrittersTab } from './tabs/Critters'
 import { Sr6Sheet } from '../print/Sheet'
 import { TabBoundary } from '../../shared/ui'
-import { NPC_TABS, sr6Tabs } from './tabList'
+import { npcTabs, sr6Tabs } from './tabList'
 
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
 
@@ -145,7 +147,7 @@ export function Sr6EditorView({
   const theirs = owner !== null,
     career = !!ch.finalizedAt
   const { view, ...derived } = calc
-  const tabs = npc ? NPC_TABS : sr6Tabs(view.build.magic, career && !ch.npc)
+  const tabs = npc ? npcTabs(ch.npc?.kind) : sr6Tabs(view.build.magic, career && !ch.npc)
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown),
     ro = theirs || locked
@@ -316,6 +318,7 @@ export function Sr6EditorView({
               {shown === 'review' && <ReviewTab />}
               {shown === 'ledger' && <LedgerTab />}
               {shown === 'stats' && <StatsTab />}
+              {shown === 'design' && <DesignTab />}
             </TabBoundary>
           </fieldset>
         </main>

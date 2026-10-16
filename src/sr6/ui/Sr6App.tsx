@@ -149,7 +149,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       </main>
     ) : c && data ? (
       page === 'npcs' ? (
-        <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} />
+        <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} reload={refresh} />
       ) : page === 'designs' && route[1] ? (
         <Sr6DesignEditor key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} />
       ) : page === 'designs' ? (

@@ -27,8 +27,11 @@ export const sr6Tabs = (magic: MagicKind, career = false): [string, string][] =>
     k,
     k === 'magic' && MAGIC_KINDS[magic].resonance ? 'Resonance' : l,
   ])
+/** An NPC's tabs; Design only for a critter (npcTabs). */
 export const NPC_TABS: [string, string][] = [
   ['concept', 'Concept'],
   ['stats', 'Stat block'],
+  ['design', 'Design'],
   ['print', 'Print'],
 ]
+export const npcTabs = (kind?: string): [string, string][] => NPC_TABS.filter(([k]) => k !== 'design' || kind === 'critter')

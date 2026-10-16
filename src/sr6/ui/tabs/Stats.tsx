@@ -1,6 +1,7 @@
 // Stat block (an NPC's own tab): its kind, rating and group, where it was copied from, one row per stat (the value as
 // printed, editable, and the value at the rating; a mark when it can't be read), an Add stat for a missing standard key,
-// one box per line part the kind uses, and the NPC block as it prints.
+// one box per line part the kind uses (a designed critter's skills, powers and weaknesses read only: the Design tab writes
+// them), and the NPC block as it prints.
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../engine/npc'
@@ -8,6 +9,9 @@ import type { Sr6Npc } from '../../model/character'
 import { NpcBlock } from '../../print/NpcBlock'
 import { useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'
+
+/** a designed critter's lines the Design tab writes */
+const DESIGNED = new Set(['skills', 'powers', 'weaknesses'])
 
 export function StatsTab() {
   const { ch, data, update } = useSr6Editor()
@@ -154,10 +158,11 @@ export function StatsTab() {
         {npcParts(npc.kind).map(([part, label]) => (
           <label key={part}>
             {label}
-            <textarea value={lineOf(part)} maxLength={4000} onChange={e => setLine(part, e.target.value)} />
+            <textarea value={lineOf(part)} maxLength={4000} readOnly={!!npc.design && DESIGNED.has(part)} onChange={e => setLine(part, e.target.value)} />
           </label>
         ))}
       </div>
+      {npc.design && <p className="muted">Skills, powers and weaknesses come from the Design tab.</p>}
       <hr className="sep" />
       <NpcBlock npc={npc} name={name} data={data} />
     </div>

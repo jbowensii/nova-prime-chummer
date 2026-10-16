@@ -7,7 +7,10 @@
 // match, else each version as "<Name> #1", "#2"… in publication order); Tidy book copies (R: a banner with a confirm, as
 // Anarchy's Tidy up) does the same to the copies already loaded; Import file takes SR6 NPC files only; a GM shares one with
 // an SR6 campaign they run; Move to
-// compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn).
+// compendium… puts one into an SR6 compendium of yours (compendiumStore.ts moveNpcsIn); Copy duplicates one. A new
+// critter opens on its Design tab (tabs/Design.tsx, owner 2026-10-16 BUILDER Q11); Copy to compendium as a critter… puts
+// a critter into a compendium of yours as a critters entry (compendium.ts critterAsEntry), which a runner at a table the
+// compendium is shared with can own on their Critters tab: GM-made NPCs themselves are never shown to players.
 // Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
 // Load book NPCs and Tidy book copies save a few at a time (inBatches), counting in the status line, then sum up.
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -26,11 +29,13 @@ import { unedited } from '../../ui/samples'
 import { loadTrash } from '../../ui/Trash'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
+import { critterAsEntry } from '../engine/compendium'
+import { designCritter } from '../engine/critterdesign'
 import { blankSr6Npc, bookNpc, bookNpcKey, bookNpcVersions, NPC_KINDS, npcFromEntry, npcKindOf, type BookNpcVersion } from '../engine/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Entry } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
-import { listSr6Compendiums, moveNpcsIn, parseSr6Rows } from './compendiumStore'
+import { listSr6Compendiums, moveNpcsIn, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
 import { npcSection, sr6NpcHref } from './editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
@@ -125,7 +130,20 @@ export const gruntRatings = (rows: { ch: Sr6Character }[]) =>
 export const atRating = <T extends { ch: Sr6Character }>(rows: T[], pr: string): T[] =>
   pr === '' ? rows : rows.filter(({ ch }) => ch.npc?.rating === Number(pr) && ch.npc.kind === 'grunt')
 
-export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; section?: Section }) {
+export function Sr6Npcs({
+  c,
+  data,
+  cr,
+  section = 'npcs',
+  reload,
+}: {
+  c: Sr6Catalog
+  data: Sr6Data
+  cr: CreationRules
+  section?: Section
+  /** the catalog loaded again (a critter copied into a compendium) */
+  reload?: () => void
+}) {
   const repo = useMemo(() => sr6NpcRepo(), [])
   const me = useMe()
   const [list, setList] = useState<Stored<Sr6Character>[] | null>(null)
@@ -165,6 +183,7 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
   const [trashed, setTrashed] = useState<number | null>(null)
   const [comps, setComps] = useState<StoredComp<Sr6Compendium>[]>([]) // yours, where an NPC can move
   const [moving, setMoving] = useState<Sr6Character | null>(null)
+  const [asCritter, setAsCritter] = useState<Sr6Character | null>(null)
   const [into, setInto] = useState('')
   const [foundry, setFoundry] = useState(false)
   const [tidying, setTidying] = useState(false)
@@ -241,10 +260,29 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
   const create = async () => {
     const e = from ? c.entries[NPC_KINDS[kind].kind].get(from) : undefined
     const ch = e ? npcFromEntry(e, rated ? level : undefined) : blankSr6Npc(kind, rated ? level : undefined)
+    if (kind === 'critter') designCritter(ch.npc!, data, cr)
     if (await store(ch)) {
       setCreating(false)
-      location.hash = sr6NpcHref(ch.id)
+      location.hash = sr6NpcHref(ch.id, kind === 'critter' ? 'design' : undefined)
     }
+  }
+  // a copy is the GM's own: not shared, not a book copy (Tidy book copies never touches it)
+  const copy = async (ch: Sr6Character) => {
+    const { campaign: _c, sampleKey: _k, ...rest } = structuredClone(ch)
+    const x: Sr6Character = { ...rest, id: newId(), identity: { ...ch.identity, streetName: `${nameOf(ch)} (copy)` }, updatedAt: new Date().toISOString() }
+    const err = await saveError(x)
+    setMsg(err ?? `Copied ${nameOf(ch)}.`)
+    void refresh()
+  }
+  const copyAsCritter = async () => {
+    const comp = comps.find(x => x.id === into)!,
+      ch = asCritter!
+    setAsCritter(null)
+    const r = await saveSr6Compendium({ ...comp, entries: [...comp.entries, critterAsEntry(c, ch, comp)] }, comp.rev)
+    if (!r.ok) return setMsg(because('Couldn’t copy it', r.conflict ? `${comp.name} changed elsewhere; reload the page` : (r.error ?? 'the server refused it')))
+    setMsg(`Copied ${nameOf(ch)} to ${comp.name} as a critter: runners at a table it’s shared with can own it on their Critters tab.`)
+    reload?.()
+    void refresh()
   }
 
   const importFiles = async (files: FileList | null) => {
@@ -478,6 +516,23 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
             Move to compendium…
           </button>
         )}
+        {mineToo && comps.length > 0 && ch.npc?.kind === 'critter' && (
+          <button
+            className="btn small quiet"
+            aria-label={`Copy ${nameOf(ch)} to a compendium as a critter…`}
+            onClick={() => {
+              setInto(comps[0].id)
+              setAsCritter(ch)
+            }}
+          >
+            Copy to compendium as a critter…
+          </button>
+        )}
+        {mineToo && (
+          <button className="btn small quiet" aria-label={`Copy ${nameOf(ch)}`} onClick={() => void copy(ch)}>
+            Copy
+          </button>
+        )}
         {mineToo && (
           <button className="btn small quiet" aria-label={`Delete ${nameOf(ch)}`} onClick={() => setToDelete(ch)}>
             Delete
@@ -702,7 +757,9 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
           </p>
         )}
         <p className="muted" style={{ marginTop: '0.8rem' }}>
-          The stat block is a copy: change it on the {sec.noun}’s Stat block tab.
+          {kind === 'critter'
+            ? 'It opens on its Design tab: attributes, powers and weaknesses from the catalog (0 Karma), skills, and the values worked out from them.'
+            : `The stat block is a copy: change it on the ${sec.noun}’s Stat block tab.`}
         </p>
       </Modal>
 
@@ -763,6 +820,37 @@ export function Sr6Npcs({ c, data, cr, section = 'npcs' }: { c: Sr6Catalog; data
         </label>
         <p className="muted" style={{ marginTop: '0.8rem' }}>
           It leaves your NPCs (to the NPC trash) and any campaign it’s shared with. Move it back out on the compendium’s page to edit it.
+        </p>
+      </Modal>
+
+      <Modal
+        open={!!asCritter}
+        onClose={() => setAsCritter(null)}
+        title={`Copy ${asCritter ? nameOf(asCritter) : 'this critter'} to a compendium as a critter`}
+        actions={
+          <>
+            <button className="btn" onClick={() => setAsCritter(null)}>
+              Cancel
+            </button>
+            <button className="btn primary" disabled={!into} onClick={() => void copyAsCritter()}>
+              Copy
+            </button>
+          </>
+        }
+      >
+        <label>
+          Compendium
+          <select value={into} onChange={e => setInto(e.target.value)}>
+            {comps.map(x => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted" style={{ marginTop: '0.8rem' }}>
+          Its stat block becomes one of the compendium’s critters; it stays here too. Share the compendium with a campaign or the table and its runners can own
+          one on their Critters tab, priced by Wild Life’s table (p. 180). Later changes here don’t change the copy.
         </p>
       </Modal>
 
