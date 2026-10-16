@@ -34,8 +34,10 @@ export const critterQualityNamed = (data: Sr6Data, name: string) => {
   const e = data.named?.(name, 'qualities')
   return isCritterQuality(e) ? e : undefined
 }
-/** A stat as the stat block prints it, its first number (`5(7)`: 5); 0 when none. */
-export const critterStat = (e: Sr6Entry | undefined, k: string) => Number(/-?\d+(?:\.\d+)?/.exec(e?.attrs[k] ?? '')?.[0] ?? 0)
+/** A printed value's first number (`5(7)`: 5); 0 when none. */
+export const firstNumber = (s?: string) => Number(/-?\d+(?:\.\d+)?/.exec(s ?? '')?.[0] ?? 0)
+/** A stat as the stat block prints it, its first number; 0 when none. */
+export const critterStat = (e: Sr6Entry | undefined, k: string) => firstNumber(e?.attrs[k])
 /** Awakened or Emerged from its own Magic or Resonance, else the pet class the player chose (none: mundane). */
 export const critterClass = (x: Pick<Sr6Purchase, 'pet'>, e?: Sr6Entry): CritterClass =>
   critterStat(e, 'mag') > 0 ? 'awakened' : critterStat(e, 'res') > 0 ? 'emerged' : (x.pet ?? 'mundane')

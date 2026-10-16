@@ -434,6 +434,25 @@ export interface Sr6Npc {
   from?: { kind: Sr6Kind; id: string; name: string; source: string; page: number }
   stats: Record<string, string>
   lines: { part: string; text: string }[]
+  /** a critter the GM designs (the Design tab, src/sr6/engine/critterdesign.ts): its powers, weaknesses and skills, the
+   *  lines generated from them */
+  design?: Sr6CritterDesign
+}
+/** A designed critter's power or weakness: its catalog critter power (id; none: not in the catalog, by name), its level
+ *  and note (`Enhanced Senses (Hearing, Smell)`: the note Hearing, Smell). Innate: 0 Karma. */
+export interface Sr6CritterPower {
+  id?: string
+  name: string
+  level?: number
+  note?: string
+}
+export interface Sr6CritterDesign {
+  powers: Sr6CritterPower[]
+  weaknesses: Sr6CritterPower[]
+  /** id: the catalog skill (none: by name) */
+  skills: { id?: string; name: string; rank: number; spec?: string }[]
+  /** initiative dice, as the GM enters them */
+  dice: number
 }
 
 /** A book sample's stat block numbers as printed (key: an attribute abbreviation, ess, init, cm or dr; value as printed,

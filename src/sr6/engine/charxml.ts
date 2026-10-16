@@ -252,13 +252,31 @@ const houseXml = (h?: Sr6Entry[]) => (h?.length ? `<house>${h.map(e => sr6EntryX
 
 function npcXml(n?: Sr6Npc): string {
   if (!n) return ''
-  const f = n.from
+  const f = n.from,
+    d = n.design
   return el(
     'npc',
-    { kind: n.kind, rating: n.rating, group: n.group, fromKind: f?.kind, fromId: f?.id, fromName: f?.name, fromSource: f?.source, fromPage: f?.page },
+    {
+      kind: n.kind,
+      rating: n.rating,
+      group: n.group,
+      fromKind: f?.kind,
+      fromId: f?.id,
+      fromName: f?.name,
+      fromSource: f?.source,
+      fromPage: f?.page,
+      designed: d ? true : undefined,
+      dice: d?.dice,
+    },
     Object.entries(n.stats)
       .map(([key, value]) => el('stat', { key, value }))
-      .join('') + n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join(''),
+      .join('') +
+      n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join('') +
+      (d
+        ? d.powers.map(p => el('power', { ...p })).join('') +
+          d.weaknesses.map(p => el('weakness', { ...p })).join('') +
+          d.skills.map(s => el('skill', { ...s })).join('')
+        : ''),
   )
 }
 
@@ -774,8 +792,20 @@ function readNpc(n: Element, fix?: string[]): Sr6Npc {
           },
     stats: Object.fromEntries(stats),
     lines: each(kids(n, 'line'), e => ({ part: oneOf(e.getAttribute('part'), SR6_NPC_PARTS, 'line part')!, text: e.textContent ?? '' }), label, fix),
+    design: yes(n, 'designed') && {
+      powers: each(kids(n, 'power'), readCritterPower, label, fix),
+      weaknesses: each(kids(n, 'weakness'), readCritterPower, label, fix),
+      skills: each(
+        kids(n, 'skill'),
+        e => def({ id: str(e, 'id'), name: e.getAttribute('name') ?? '', rank: num(e, 'rank', 0), spec: str(e, 'spec') }),
+        label,
+        fix,
+      ),
+      dice: num(n, 'dice', 1),
+    },
   })
 }
+const readCritterPower = (e: Element) => def({ id: str(e, 'id'), name: e.getAttribute('name') ?? '', level: num(e, 'level'), note: str(e, 'note') })
 
 function readDesign(d: Element, fix?: string[]): Sr6Design {
   return def({

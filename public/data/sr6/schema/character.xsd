@@ -491,7 +491,21 @@
           </xs:attribute>
         </xs:extension></xs:simpleContent></xs:complexType>
       </xs:element>
+      <!-- a critter the GM designs (designed="true"): its powers and weaknesses (catalog critter powers, id; none: by name)
+           and skills; its lines are generated from them -->
+      <xs:element name="power" type="c:CritterPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="weakness" type="c:CritterPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="skill" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="rank" type="c:Count" use="required"/>
+          <xs:attribute name="spec" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
     </xs:sequence>
+    <xs:attribute name="designed" type="xs:boolean"/>
+    <xs:attribute name="dice" type="c:Count"/>
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="grunt"/><xs:enumeration value="contact"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/><xs:enumeration value="sprite"/>
@@ -504,6 +518,12 @@
     <xs:attribute name="fromName" type="xs:string"/>
     <xs:attribute name="fromSource" type="xs:string"/>
     <xs:attribute name="fromPage" type="xs:positiveInteger"/>
+  </xs:complexType>
+  <xs:complexType name="CritterPower">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="c:Count"/>
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <!-- what a ware, power or item adds (entered by the player): an attribute, initiative dice, Defense Rating or a skill's

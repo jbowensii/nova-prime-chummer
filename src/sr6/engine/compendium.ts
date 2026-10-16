@@ -5,7 +5,7 @@
 import { escAttr } from '../../shared/xml'
 import { SOURCE_ID } from '../../shared/source'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind, Sr6Source } from '../model/types'
-import type { Sr6Compendium } from '../model/character'
+import type { Sr6Character, Sr6Compendium } from '../model/character'
 import { AUG_TYPES, SR6_KINDS } from '../model/types'
 import { sr6ToXml, xmlToSr6 } from './charxml'
 import { SR6_NS, sr6EntryXml, toEntry } from './entryxml'
@@ -258,6 +258,35 @@ export function copySr6Entry(c: Sr6Catalog, e: Sr6Entry, to: Pick<Sr6Compendium,
     page: 1,
     attrs: { ...e.attrs },
     parts: e.parts.map(p => ({ tag: p.tag, attrs: { ...p.attrs }, text: p.text })),
+    text: '',
+  }
+}
+
+/** A GM's critter (an NPC of kind critter: a designed one too) as a critters entry of `to`, so a runner at a table the
+ *  compendium is shared with can own one (the Critters tab): a new id, page 1, the stats and lines a critters entry
+ *  holds, no description. */
+export function critterAsEntry(c: Sr6Catalog, ch: Sr6Character, to: Pick<Sr6Compendium, 'source' | 'entries'>): Sr6Entry {
+  const k = COMP_KINDS.critters!,
+    npc = ch.npc!,
+    name = ch.identity.streetName || ch.identity.name || 'Critter'
+  return {
+    id: newEntryId(c, 'critters', to, name),
+    kind: 'critters',
+    name,
+    source: to.source,
+    page: 1,
+    attrs: Object.fromEntries(Object.entries(npc.stats).filter(([f, v]) => k.fields.includes(f) && f !== 'rating' && v !== '')),
+    // (in common.xsd's order, each part once)
+    parts: k
+      .lines!.map(tag => ({
+        tag,
+        attrs: {},
+        text: npc.lines
+          .filter(l => l.part === tag && l.text)
+          .map(l => l.text)
+          .join('\n'),
+      }))
+      .filter(p => p.text),
     text: '',
   }
 }
