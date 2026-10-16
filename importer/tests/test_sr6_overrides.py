@@ -740,9 +740,18 @@ class OwnerInfectedRowsTest(unittest.TestCase):
         got = [x.get("id") for x in ET.fromstring(overrides.texts("swc", {}, texts).encode())]
         self.assertEqual(got, ["infected-optional-powers.fear"])
 
+    def test_the_silencer_excludes_revolvers_and_shotguns_and_lists_no_allowed_weapon(self):
+        row = next(r for r in overrides.table("crb") if r.get("id") == "silencer-suppressor")
+        self.assertEqual(row["kind"], "weapons")  # (our entry's kind: the id is an implant weapon's too)
+        req = [k["attrs"] for k in row["kids"] if k["tag"] == "prerequisite"]
+        self.assertEqual([(p["type"], p["ref"], p.get("negate")) for p in req],
+                         [("WEAPON_TYPE", "revolvers", "true"), ("WEAPON_TYPE", "shotguns", "true")])
+        self.assertEqual([k["tag"] for k in row["kids"] if k["tag"] != "prerequisite"], ["fits", "variant"])
+
     def test_cl6check_keeps_the_structural_differences(self):
         from tools.cl6check import optional
         keep = optional.load_keep()
+        self.assertIn(("crb", "weapons", "crb.silencer-suppressor", "requires"), keep)
         self.assertIn(("swc", "qualities", "swc.astral-hazing", "requires"), keep)
         held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
         for q in ("mutaqua", "nosferatu", "wendigo"):  # (their Awakened price is a karmaif now: no longer two disagreeing records)

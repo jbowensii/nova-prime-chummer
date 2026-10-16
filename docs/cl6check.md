@@ -71,7 +71,9 @@ the overlay changes.
   Awakened) is one of its prices for the karma comparison, as `karmaMax` is (`ours.py` reads it as `karmaIf`): our one
   Mutaqua, Nosferatu, Wendigo and Astral Hazing match both of Commlink6's records (`*_mundane`/`*_awakened`,
   `astral_hazing_non_awakened`/`_awakened`), so their "two records disagree" hold rows are gone. Astral Hazing's `requires`
-  (each record its own magic kinds, ours their union) is kept as ours in value_keep.json: an accepted structural difference.
+  (each record its own magic kinds, ours their union) and the Silencer/suppressor's (Commlink6's list of the weapon subtypes
+  it fits; ours the book's exclusion, revolvers and shotguns, a `negate="true"` prerequisite) are kept as ours in
+  value_keep.json: accepted structural differences.
 
 ## What it does
 

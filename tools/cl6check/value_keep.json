@@ -344,6 +344,7 @@
     ["crb", "gear", "crb.laser-sight", "variants"],
     ["crb", "gear", "crb.periscope", "variants"],
     ["crb", "gear", "crb.silencer-suppressor", "variants"],
+    ["crb", "weapons", "crb.silencer-suppressor", "requires"],
     ["swc", "qualities", "swc.astral-hazing", "requires"],
     ["crb", "programs", "crb.armor", "variants"],
     ["crb", "programs", "crb.blackout", "variants"],
