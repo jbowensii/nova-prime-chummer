@@ -174,6 +174,7 @@ export function advanceTarget(ch: Sr6Character, a: Sr6Advance): { attr: Sr6Attr 
     case 'expertise':
       return of('skills', a.target)
     case 'quality':
+    case 'bond':
       return of('qualities', a.line.id)
     case 'buyoff':
       return of('qualities', a.line?.id ?? b.qualities.find(q => q.uid === a.target)?.id)

@@ -44,6 +44,7 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { StatsTab } from './tabs/Stats'
 import { DronesTab, VehiclesTab } from './tabs/Vehicles'
+import { CrittersTab } from './tabs/Critters'
 import { Sr6Sheet } from '../print/Sheet'
 import { TabBoundary } from '../../shared/ui'
 import { NPC_TABS, sr6Tabs } from './tabList'
@@ -310,6 +311,7 @@ export function Sr6EditorView({
               {shown === 'gear' && <GearTab />}
               {shown === 'vehicles' && <VehiclesTab />}
               {shown === 'drones' && <DronesTab />}
+              {shown === 'critters' && <CrittersTab />}
               {shown === 'contacts' && <ContactsTab />}
               {shown === 'review' && <ReviewTab />}
               {shown === 'ledger' && <LedgerTab />}
