@@ -13,7 +13,7 @@ import { Sr6DesignEditor, Sr6Designs } from '../../src/sr6/ui/Designer'
 import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
 import { designCatalog } from '../sr6/design-fixture'
 import { fixtureCreation, GLIM } from '../sr6/fixture'
-import { button, change, click, fakeStore, field, mount, option, pageText, stubFetch } from './dom'
+import { button, change, click, fakeStore, field, mount, option, pageText, settle, stubFetch } from './dom'
 
 const c = designCatalog(),
   data = sr6Data(c),
@@ -133,6 +133,31 @@ test('the list: a GM’s new design is approved; Copy and Delete (to the design 
   await click(button('Delete design'))
   expect(calls.some(x => x.init?.method === 'DELETE' && /\/api\/sr6\/designs\/d1$/.test(x.url))).toBe(true)
   expect(store.rows.has('d1')).toBe(false)
+})
+
+test('import: a player’s import is never approved (a copy of a GM’s needs approval again), its id kept or a new one; a runner or junk file says why', async () => {
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  stubFetch([[/\/api\/sr6\/designs\/trash/, () => ({ user: 'pat', name: 'Pat', items: [] })], store.route])
+  await mount(asPlayer(createElement(Sr6Designs, { c, data, cr })))
+  const gms = redZip()
+  gms.design!.approved = true
+  const runner = blankSr6('karma', 'r9', '2026-10-16T00:00:00.000Z')
+  runner.identity.streetName = 'Not A Design'
+  const input = document.querySelector<HTMLInputElement>('input[type=file]')!
+  const file = (xml: string, name: string) => new File([xml], name, { type: 'application/xml' })
+  Object.defineProperty(input, 'files', {
+    value: [file(sr6ToXml(gms), 'zip.xml'), file(sr6ToXml(runner), 'runner.xml'), file('junk', 'junk.xml')],
+    configurable: true,
+  })
+  input.dispatchEvent(new Event('change', { bubbles: true }))
+  await settle(10)
+  expect(pageText()).toMatch(/Imported Red Zip\./)
+  expect(pageText()).toMatch(/runner\.xml: This is a runner or NPC, not a vehicle or drone design\./)
+  expect(pageText()).toMatch(/junk\.xml: /)
+  const mine = [...store.rows.values()].map(r => read(r.xml))
+  expect(mine).toHaveLength(2)
+  const copy = mine.find(ch => ch.id !== 'd1')! // (d1 taken: a new id)
+  expect(copy.design!.approved).toBeUndefined()
 })
 
 test('a runner buys a player’s design on Vehicles: its line and built-in mod; Review warns it needs GM approval (a player can’t approve it)', async () => {

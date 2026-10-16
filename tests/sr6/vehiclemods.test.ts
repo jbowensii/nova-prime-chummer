@@ -439,3 +439,26 @@ test('built-in mods are fittings already paid for (DESIGNER Q3): a built-in moun
   go({ op: 'move', target: 'w1', mount: 'builtin:0' })
   expect(currentBuild(c).purchases[0].accessories.find(a => a.uid === 'w1')!.mount).toBe('builtin:0')
 })
+
+test('career fit refusals: a host, an entry, a rating in range, a mount only for a weapon, critter gear on a critter only', () => {
+  const o = owning(true, 'zz.zap-van', [['gear', 'zz.zap-mount']])
+  const at = '2026-10-16T00:00:00.000Z'
+  const ch: Sr6Character = { ...blankSr6('priority', 'made-up-r', at), build: o.b, finalizedAt: at }
+  ch.ledger = [{ id: 'f1', at, type: 'finalize', karma: 0, nuyen: 10000 }]
+  const line = (kind: Sr6Purchase['kind'], id: string, more: Partial<Sr6Purchase> = {}): Sr6Purchase => ({
+    uid: '',
+    kind,
+    id,
+    qty: 1,
+    accessories: [],
+    ...more,
+  })
+  const why = (a: Parameters<typeof record>[1]) => (r => (r.ok ? 'ok' : r.reason))(record(ch, a, o.data, o.cr))
+  const mount = o.uid('zz.zap-mount')
+  expect(why({ op: 'fit', target: 'nope', line: line('gear', 'zz.zap-motor') })).toBe('unknown-host')
+  expect(why({ op: 'fit', target: o.host.uid, line: line('gear', 'zz.nothing') })).toBe('unknown-entry')
+  expect(why({ op: 'fit', target: o.host.uid, line: line('gear', 'zz.zap-grip', { rating: 9 }) })).toBe('rating-range')
+  expect(why({ op: 'fit', target: o.host.uid, line: line('gear', 'zz.zap-motor', { mount }) })).toBe('not-a-weapon')
+  expect(why({ op: 'fit', target: o.host.uid, line: line('gear', 'zz.zap-motor', { name: 'Zap Motor' }) })).toBe('ok')
+  expect(why({ op: 'unfit', target: 'nope' })).toBe('not-fitted')
+})

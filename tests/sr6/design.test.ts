@@ -12,7 +12,7 @@ import { boughtDesign, designOf, maxProblems } from '../../src/sr6/engine/design
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { modsOf, mountsOf } from '../../src/sr6/engine/vehiclemods'
 import { blankBuild, blankSr6, type Sr6Design } from '../../src/sr6/model/character'
-import { DESIGN_GEAR, designWorld as world, NS } from './design-fixture'
+import { DESIGN_GEAR, DESIGN_PARTS, designWorld as world, NS } from './design-fixture'
 import { fixtureCatalog, GLIM } from './fixture'
 
 const design = (over: Partial<Sr6Design> = {}): Sr6Design => ({
@@ -202,6 +202,7 @@ test('Improved Handling on-road or off-road only: 3 DP a level, only that value,
   const back = xmlToSr6(xml)
   expect(back.ok && back.character).toEqual(doc)
   expect(xmlToSr6(xml.replace('road="off"', 'road="sky"')).ok).toBe(false)
+  expect(xmlToSr6(xml.replace('level="2"', 'level="1.5"')).ok).toBe(false) // (a level is a whole number)
   const fix: string[] = []
   const r = xmlToSr6(xml.replace('road="off"', 'road="sky"'), { repair: fix })
   expect(r.ok && r.character.design!.options).toEqual([opt('improved-handling', 2)])
@@ -231,4 +232,82 @@ test('a mount built into a design is a fitting of the bought vehicle: it holds a
   const fit = () => apply(b, { op: 'accessory', host: b.purchases[0].uid, kind: 'weapons', id: 'crb.zap-gun', mount: 'builtin:0' }, data, cr)
   expect(fit()).toEqual({ ok: true })
   expect(b.purchases[0].accessories[0].mount).toBe('builtin:0')
+})
+
+test('the other modifications and quality factors by name, an option with no rule, parts and mods the app can’t read', () => {
+  const at = 'source="ZZ" page="152"'
+  const more = [
+    `<design id="zz.heavy-duty" ${at} category="Modifications" dp="+10"><name>Heavy Duty</name></design>`,
+    `<design id="zz.lightweight" ${at} category="Modifications" dp="-10"><name>Lightweight</name></design>`,
+    `<design id="zz.mass-transit" ${at} category="Modifications" dp="15"><name>Mass Transit</name></design>`,
+    `<design id="zz.cargo-hauler" ${at} category="Modifications" dp="10"><name>Cargo Hauler</name></design>`,
+    `<design id="zz.off-road" ${at} category="Modifications" dp="5"><name>Off-Road Chassis</name></design>`,
+    `<design id="zz.high-performance" ${at} category="Modifications" dp="15"><name>High Performance</name></design>`,
+    `<design id="zz.economy" ${at} category="Modifications" dp="-5"><name>Economy Engines</name></design>`,
+    `<design id="zz.mystery" ${at} category="Modifications" dp="lots"><name>Mystery Box</name></design>`,
+    `<design id="zz.gizmo" ${at} category="Options" dp="3" perLevel="true"><name>Improved Gizmo</name></design>`,
+    `<design id="zz.security" ${at} category="Quality Factors" multiplier="x2"><name>Security</name></design>`,
+    `<design id="zz.superstructure" ${at} category="Quality Factors" multiplier="x1"><name>Superstructure</name></design>`,
+    `<design id="zz.mud-frame" ${at} category="chassis type" body="10" armor="4" handling="3" seats="4" bp="7" sizeClass="6" special="-1 to off road handling"><name>Mud Frame</name></design>`,
+  ].join('\n')
+  const gear = `<gear id="zz.odd-mod" source="ZZ" page="1" category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="some" avail="1" cost="10"><name>Odd Mod</name></gear>`
+  const data = sr6Data(
+    fixtureCatalog(undefined, [
+      { file: 'custom/sr6/imported/zz/vehicledesign.xml', xml: DESIGN_PARTS.replace('</sr6:data>', `${more}</sr6:data>`) },
+      { file: 'custom/sr6/imported/zz/gear.xml', xml: DESIGN_GEAR.replace('</sr6:data>', `${gear}</sr6:data>`) },
+    ]),
+  )
+  const { cr } = world()
+  const of = (options: Sr6Design['options'], over: Partial<Sr6Design> = {}) => designOf(design({ options, ...over }), data, cr)
+  // (the Zip Frame on the Roller: Body 10, Armor 4, speed modifier 9: Acceleration 10, Top Speed 160)
+  expect(of([opt('heavy-duty')]).stats).toMatchObject({ body: 15, accel: 9, topSpeed: 140 })
+  expect(of([opt('lightweight')]).stats).toMatchObject({ body: 5, accel: 12, topSpeed: 190 })
+  expect(of([opt('mass-transit')]).stats.seats).toBe(12)
+  // a Cargo Hauler: half the seats (2 at least), half the Armor in the speed modifier (7), cargo doubled; half the High
+  // Performance bonus, Multi-Engine × 1.5
+  expect(of([opt('cargo-hauler')]).stats).toMatchObject({ seats: 2, accel: 11, topSpeed: 180, cargo: 2, cargoText: '2 CF' })
+  expect(of([opt('cargo-hauler'), opt('high-performance')]).stats).toMatchObject({ accel: 12, topSpeed: 205 })
+  expect(of([opt('cargo-hauler'), opt('multi-engine')]).stats).toMatchObject({ accel: 16, topSpeed: 270 })
+  expect(of([opt('high-performance')]).stats).toMatchObject({ accel: 13, topSpeed: 210 })
+  expect(of([opt('economy')]).stats).toMatchObject({ accel: 7, topSpeed: 110 })
+  // off-road: Handling 1 worse on-road, 1 better off-road, Top Speed −10; a chassis's printed off-road special
+  expect(of([opt('off-road')]).stats).toMatchObject({ handling: 4, offRoad: 2, topSpeed: 150 })
+  expect(of([], { chassis: 'zz.mud-frame' }).stats).toMatchObject({ handling: 3, offRoad: 2 })
+  // a kilogram cargo: the extra Cargo Factors after it, a hauler's doubled
+  expect(of([opt('cargo-hauler')], { kind: 'drone', chassis: 'zz.gnat' }).stats.cargoText).toBe('5 kg (doubled)')
+  // Security: Availability +1(L); a mod's lower Availability doesn't lower it; Superstructure under Size Class 15
+  expect(of([opt('security'), opt('military')], { mods: [mod('odd-mod')] }).avail).toBe('5(I)')
+  const odd = of([opt('superstructure'), opt('gizmo', 2), opt('mystery'), opt('gone')], { mods: [mod('odd-mod')] })
+  expect(odd.warnings.map(w => w.message)).toEqual([
+    'The design part “zz.gone” is no longer in the catalog; left out.',
+    'Mystery Box: its Design Points “lots” aren’t a number the app can read; counted 0.',
+    'Odd Mod: its mod slots “some” aren’t a number the app can read; counted 0.',
+    'Superstructure: the vehicle must be at least Size Class 15 (it is 6).',
+  ])
+  expect(odd.notes).toContain('Improved Gizmo 2: its Design Points count; the app has no rule for what it changes.')
+  expect(odd.dp).toBe(22 + 6) // (the gizmo's 3 a level; the unreadable ones 0)
+})
+
+test('maxProblems: within each form nothing; a bare Stat in levels; another stat’s final value; reverse as far as the levels', () => {
+  const e = (name: string, max: string, more: Record<string, string> = {}) =>
+    ({ id: 'x', kind: 'vehicledesign', name, source: 'ZZ', page: 1, attrs: { max, ...more }, parts: [], text: '' }) as const
+  expect(maxProblems(e('Improved Size', 'Size Class 20'), 2, { size: 6 }, { size: 8 })).toEqual([])
+  expect(maxProblems(e('Improved Seating', '50% x Seat'), 2, { seats: 4 }, { seats: 6 })).toEqual([])
+  expect(maxProblems(e('Easily Modified', 'min(4, Body)'), 3, { body: 2 }, {})).toEqual(['at most 2 levels.'])
+  expect(maxProblems(e('Odd Thing', '2 x Body'), 5, {}, { body: 2 })).toEqual(['at most 2 × the Body (4; it is 5).'])
+  expect(maxProblems(e('Improved Body', '4'), -5, {}, {})).toEqual(['at most 4 levels in reverse.'])
+  expect(maxProblems(e('Improved Body', '4', { maxReverse: '1' }), -2, {}, {})).toEqual(['at most 1 level in reverse.'])
+  // (a kilogram cargo: Cargo Factors not checked)
+  expect(maxProblems(e('Improved Cargo Space', '2 x CF'), 1, {}, { cargo: 3 })).toEqual([])
+})
+
+test('bought from a design with no chassis, no name, a custom mod at a rating: still a line', () => {
+  const { data, cr } = world()
+  const doc = blankSr6('priority', 'des-5', '2026-10-16T00:00:00.000Z')
+  doc.design = { kind: 'drone', options: [], mods: [{ uid: 'c1', kind: 'gear', name: 'Odd Box', rating: 2, qty: 1, accessories: [] }] }
+  const line = boughtDesign(doc, data, cr, 'v5')
+  expect(line.name).toBe('Custom design')
+  expect(line.snapshot!.attrs.category).toBe('drone')
+  expect(line.snapshot!.parts.map(p => p.attrs)).toEqual([{ name: 'Odd Box', rating: '2' }])
+  expect(boughtDesign({ ...doc, design: { ...doc.design, kind: 'vehicle' } }, data, cr).snapshot!.attrs.category).toBe('Designed vehicle')
 })

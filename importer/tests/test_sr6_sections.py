@@ -249,6 +249,8 @@ Fizz rounds fizz.
 |---|---|---|---|
 | 0 | 0 – 1 cm | ~ 2 kg | 0 |
 | 7 | 6 – 9 m | 3,500 kg | 5 CF |
+|  | 9 m | 4,000 kg | 6 CF |
+| 8 | 9 m |
 ### Powertrain
 | POWERTRAIN TYPE | ACCEL | SPD INT | TOP SPD | BUILD POINTS | SPECIAL |
 |---|---|---|---|---|---|
@@ -257,6 +259,7 @@ Fizz rounds fizz.
 | CONSOLE TYPE | PILOT | SENSOR | BUILD POINTS | SPECIAL |
 |---|---|---|---|---|
 | Plain | 1 | 2 | 4 | 9 |
+| Bare | 1 |  | 3 | |
 | CHASSIS TYPE | BOD | ARM | HAND | SEAT | BUILD POINTS | SIZE CLASS | SPECIAL |
 |---|---|---|---|---|---|---|---|
 | Zoomer | 6 | 3 | 4 | 3 | 5 | 5 | 0 |
@@ -295,6 +298,9 @@ The critter gets soggy, made up.
         self.assertEqual(d["Hopper"], {"category": "powertrain type", "accel": "12", "interval": "18", "topSpeed": "90",
                                        "bp": "11", "special": "-3 handling"})
         self.assertEqual(d["Plain"], {"category": "console type", "pilot": "1", "sensor": "2", "bp": "4", "special": "9"})
+        self.assertEqual(d["Bare"], {"category": "console type", "pilot": "1", "bp": "3"})  # (an empty cell: no attribute)
+        self.assertNotIn("Size Class 8", d)  # (a row with no name or too few cells: none)
+        self.assertEqual(sections.design_terms("Odd Engines", "Cost: Hot +12, Cold –8"), {})  # (a cost list naming none)
         self.assertEqual(d["Zoomer"], {"category": "chassis type", "body": "6", "armor": "3", "handling": "4", "seats": "3",
                                        "bp": "5", "sizeClass": "5", "special": "0"})
         terms = lambda n: {k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)}  # noqa: E731

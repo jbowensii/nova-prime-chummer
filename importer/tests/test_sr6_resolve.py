@@ -362,6 +362,10 @@ class CorpusTest(unittest.TestCase):
             self.assertTrue(schema.validate(etree.parse(os.path.join(custom, "imported", "zzb", "vehicles.xml"))),
                             schema.error_log.last_error)
 
+    def test_a_box_lines_empty_parts_are_dropped(self):
+        self.assertEqual(resolve.builtin_parts("Glow plating, , Zap plate."),
+                         [("builtin", {"name": "Glow plating"}, None), ("builtin", {"name": "Zap plate"}, None)])
+
     def test_an_abbreviation_the_library_spells_out(self):
         with tempfile.TemporaryDirectory() as tmp:
             lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")

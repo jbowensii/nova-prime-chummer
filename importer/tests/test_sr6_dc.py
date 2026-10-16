@@ -111,6 +111,7 @@ Glow)
 | DRONE RACK SIZE | HARDPOINT | # DRONES | AVAIL | COST |
 |---|---|---|---|---|
 | Tiny | Small | 4 | 3 | 700¥ |
+| Wee | (wrapped) | 2 | 3 | 500¥ |
 <!-- page 168 -->
 # GEARHEAD ANATOMY
 ## Positive Qualities
@@ -182,6 +183,7 @@ class DcRecipeTest(unittest.TestCase):
         self.assertEqual(g["Fizz Kit (Level 1)"]["cost"], "500")
         self.assertEqual((g["Drone Rack (Tiny)"]["category"], g["Drone Rack (Tiny)"]["cost"]), ("Drone racks", "700"))
         self.assertEqual(g["Drone Rack (Tiny)"]["hardpoint"], "small")  # its HARDPOINT column, lower case
+        self.assertNotIn("hardpoint", g["Drone Rack (Wee)"])  # (a cell that names no size: none)
 
     def test_autosofts(self):
         """Each skill sold as an autosoft is a program of type autosoft at the ratings the prose gives (unpriced); one

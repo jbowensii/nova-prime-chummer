@@ -20,13 +20,13 @@ const MODS =
   '<gear id="crb.zap-grip" source="CRB" page="295" category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2" avail="4" cost="1000"><name>Zap Grip</name><text/></gear>' +
   '<gear id="crb.zap-bars" source="CRB" page="295" category="Accessory equipment" class="ACCESSORY/VEHICLE_ACCESSORY" avail="2" cost="800"><name>Zap Bars</name><text/></gear>'
 const BUILTIN = '<builtin name="Zap horn"/><builtin name="2 additional Chassis mod slots" slots="2" category="Chassis"/>'
-const catalog = (dc = false) =>
+const catalog = (dc = false, builtin = BUILTIN) =>
   fixtureCatalog(
     (f, x) =>
       f.endsWith('crb/gear.xml')
         ? x.replace('</sr6:data>', `${MODS}\n</sr6:data>`)
         : f.endsWith('crb/vehicles.xml')
-          ? x.replace('<name>Putt-Putt</name>', `<name>Putt-Putt</name>${BUILTIN}`)
+          ? x.replace('<name>Putt-Putt</name>', `<name>Putt-Putt</name>${builtin}`)
           : f.endsWith('crb/programs.xml')
             ? x.replace(
                 '</sr6:data>',
@@ -92,6 +92,16 @@ test('Vehicles lists the vehicle, Drones the drone; Modify fits a mount, a weapo
   // the weapon out of its mount, and back
   await change(field('Fizz Rifle 70 on Putt-Putt: weapon mount'), '')
   expect((await saved()).build.purchases[0].accessories.find(a => a.kind === 'weapons')!.mount).toBeUndefined()
+})
+
+test('a built-in weapon mount: in the mount picker as built in, a new weapon goes into it, counted among the mounts (DESIGNER Q3)', async () => {
+  const saved = await open(runner(), 'vehicles', catalog(false, '<builtin name="Zap Weapon Mount" ref="crb.zap-mount"/>'))
+  expect(pageText()).toMatch(/Weapon mounts 1\/1/)
+  await click(button('Add a weapon to Putt-Putt'))
+  await click(option('Fizz Rifle 70'))
+  const pick = field<HTMLSelectElement>('Fizz Rifle 70 on Putt-Putt: weapon mount')
+  expect([pick.value, [...pick.options].map(o => o.textContent)]).toEqual(['builtin:0', ['In no mount', 'In Zap Weapon Mount (built in)']])
+  expect((await saved()).build.purchases[0].accessories[0].mount).toBe('builtin:0')
 })
 
 test('Drones lists the drone with its autosofts (half its Pilot)', async () => {
