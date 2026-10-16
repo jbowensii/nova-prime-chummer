@@ -785,8 +785,8 @@ Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` write
 
 ## Structure ops in the per-book tables, and the extra classes
 
-Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries
-by their unscoped id, applied in this order: remove and merge, the class rows, then rename and move_kind. An entry a row
+Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes five ops on entries
+by their unscoped id, applied in this order: remove, split and merge, the class rows, then rename and move_kind. An entry a row
 names that isn't there is reported once on stderr and nothing is guessed; each is idempotent, and none may name a
 description field.
 
@@ -794,6 +794,13 @@ description field.
   a duplicate of an NPC).
 - `{"kind","merge":{"into","from","from_kind"}}`: the attributes `into` lacks (skill, spec, type, dv, ar, ammo, modes …,
   never id, source, page, class or group) are copied from `from`, the stat table's copy of it, which then goes.
+- `{"kind","id","split":[{"id","name","set"?,"note"?}]}`: a row the book prints once for several things becomes one entry per
+  part (Swindler Stick: one per certified credstick grade; Manadyne XX-10/XX-100: MB/PB; Rolling Blades: skateboard hardened/bladed,
+  roller skates bladed). Each part is a copy of the entry with its own id and name, its `set` values (cost, avail …; the
+  entry's formula/issue for those fields go) and an optional `note` `{"field","text"}` keeping the printed rule the value comes
+  from (`250 + Certified Credstick Cost`, as a `<note field="cost">`). The entry's other names go; the book's text for it is
+  given to every part (`texts()`), never written by hand. Runs with remove and merge; rows for the new ids (class, family,
+  errata) come after it. The old id reaches the first part through moved.py's name tiers (a re-import).
 - `{"kind","id","rename":"<name>"}`: a new name, names only; the old printed name stays as an `<alias>` unless
   `"alias": false` (a name the import damaged).
 - `{"move_kind":{"id","from":"gear","to":"weapons"}}`: the entry is re-filed in weapons.xml as a close-combat weapon
