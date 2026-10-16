@@ -346,6 +346,21 @@ export function HexSheet({ art }: { art: SheetArt }) {
         </section>
       )}
 
+      {/* (the same critter data as the other styles: view.ts critterNotes) */}
+      {lines('critters').length > 0 && (
+        <section aria-labelledby="x-critters">
+          <Title id="x-critters">Critters</Title>
+          <ul className="x-lines">
+            {lines('critters').map(x => (
+              <li key={x.uid}>
+                {nameOf(x)}
+                <span className="x-small">{v.critterNotes(x).map(t => `; ${t}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="x-band" aria-label="Condition monitor">
         <div>
           <span className="x-bl">Physical</span>

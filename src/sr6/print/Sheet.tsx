@@ -61,6 +61,7 @@ export function Sr6Sheet() {
     host,
     effectNotes,
     vehicleNotes,
+    critterNotes,
   } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
@@ -501,6 +502,22 @@ export function Sr6Sheet() {
                   })}
                 </tbody>
               </table>
+            </section>
+          )}
+          {/* (the same critter data as the other styles: view.ts critterNotes) */}
+          {lines('critters').length > 0 && (
+            <section>
+              <h2>Critters</h2>
+              {lines('critters').map(x => (
+                <div key={x.uid}>
+                  <b>{nameOf(x)}</b>
+                  {critterNotes(x).map(t => (
+                    <div key={t} className="s-small">
+                      {t}
+                    </div>
+                  ))}
+                </div>
+              ))}
             </section>
           )}
           {ch.identity.background && (

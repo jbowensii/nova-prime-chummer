@@ -617,6 +617,13 @@ export function BookSheet({ art }: { art: SheetArt }) {
                 </Box>
               )
             })}
+            {/* (the same critter data as the other styles: view.ts critterNotes) */}
+            {lines('critters').map((x, i) => (
+              <Box key={x.uid} id={`k-critter${i}`} title="Critter" side="r" className="k-vehicle">
+                <F l="Critter" v={nameOf(x)} />
+                <F l="Notes" v={v.critterNotes(x).join('; ')} />
+              </Box>
+            ))}
             <Box id="k-spells" title="Spells / preparations / rituals / complex forms" side="r">
               <table className="k-spells">
                 <thead>

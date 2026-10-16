@@ -624,6 +624,22 @@ export function DossierSheet({ art }: { art: SheetArt }) {
         </Panel>
       )}
 
+      {/* (the same critter data as the other styles: view.ts critterNotes) */}
+      {lines('critters').length > 0 && (
+        <Panel id="d-critters" title="Critters">
+          <ul className="d-small">
+            {lines('critters').map(x => (
+              <li key={x.uid}>
+                {nameOf(x)}
+                {v.critterNotes(x).map(t => (
+                  <span key={t}> {t}.</span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       {(ch.identity.background || ch.identity.notes || v.effectNotes.length > 0) && (
         <Panel id="d-notes" title="Notes">
           {ch.identity.background && <p>{ch.identity.background}</p>}

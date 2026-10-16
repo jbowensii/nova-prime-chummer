@@ -424,6 +424,23 @@ export function NeonSheet({ art }: { art: SheetArt }) {
               </table>
             </section>
           )}
+          {/* (the same critter data as the other styles: view.ts critterNotes) */}
+          {lines('critters').length > 0 && (
+            <section aria-labelledby="n-critters">
+              <H id="n-critters">Critters</H>
+              {lines('critters').map(x => (
+                <p key={x.uid}>
+                  <b>{nameOf(x)}</b>
+                  {v.critterNotes(x).map(t => (
+                    <span key={t} className="n-small">
+                      {' '}
+                      {t}.
+                    </span>
+                  ))}
+                </p>
+              ))}
+            </section>
+          )}
         </main>
       </div>
     </article>
