@@ -125,7 +125,12 @@ copy". Book entries are never copied here.
   `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in (one naming none of them reads as
   in no mount, noted); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
   p. 120; never an accessory's). Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
-  older files read as they were. An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
+  older files read as they were. A vehicle or drone bought from a design (the Designer, below) has `design` (the
+  design's id), `id="design.<that id>"` and a `<snapshot>` always: the vehicle as the design worked out when bought (its
+  stats, `cost` the price, `avail`, `dp` its Design Point Value, `approved="true"` when a GM made or approved the
+  design, and a `<builtin name ref? rating?>` per mod built in, `<builtin name="Easily Modified" slots category=
+  "universal">` for its universal mod slots). Later edits to the design never change it; Review warns "Custom design:
+  needs GM approval" until a GM approves it (`vehicle.design`, never blocking) unless the snapshot is `approved`. An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
@@ -224,6 +229,33 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
 - `sampleKey` (root): the catalog entry a book NPC was loaded from, `<source>|<id>`. An example runner (Load example
   characters on Your runners) has the book sample it was copied from, `<source>|<sample id>`.
 - The runners page refuses an NPC file ("Import it on NPCs & Critters") and the NPC page a runner.
+
+## Vehicle and drone designs
+
+A design (the Designer, `#/sr6/designs`; Double Clutch pp. 150-155; `src/sr6/engine/design.ts`) is the same file with
+`<design>` as the root's **first child** (the server keeps designs in `characters/sr6/.designs/<username>/`, every
+account its own, at `/api/sr6/designs`, with a trash as runners have) and a blank build. The root's `streetName` is
+the design's name. Nothing derived is stored:
+
+```xml
+<sr6:character … id="…" streetName="Red Zip">
+  <design kind="vehicle" chassis="dc.car" powertrain="dc.wheeled" console="dc.intermediate" diy="true" approved="true">
+    <option id="dc.improved-body" level="-1"/><option id="dc.racing" level="1"/><option id="dc.one-off-custom" level="1"/>
+    <purchase uid="m1" kind="gear" id="dc.spoof-kit" qty="1"/>
+  </design>
+  <build …/>
+</sr6:character>
+```
+
+- `kind`: `vehicle` or `drone`; `chassis`, `powertrain`, `console`: the catalog `vehicledesign` parts picked (absent:
+  none yet).
+- `<option id level>`: an option, design modification or quality factor (a `vehicledesign` id) and its level, a whole
+  number: 1 for one taken once, more for an option bought in levels, negative for one taken in reverse (p. 151).
+- `<purchase>`: a mod built in as a design option (a `gear` line as in the build): 2 Design Points per mod slot,
+  multiplied with the rest; its nuyen added to the price after the × 1,000 (owner 2026-10-16).
+- `diy="true"`: built yourself, half the price (p. 155; the tests are the GM's). `approved="true"`: made or approved by
+  a GM (the Designer sets it on a GM's design; a GM may tick or untick it).
+- The runners and NPC pages refuse a design file ("Import it in the Designer"), and the Designer a runner or NPC.
 
 ## Reading bad files
 

@@ -122,6 +122,18 @@ whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxRev
 1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
 on-road or off-road only) stays in its text.
 
+The Designer (`src/sr6/engine/design.ts`, owner 2026-10-16) reads them: a chassis, powertrain or console by its category,
+a quality factor by its `multiplier` (all multiplied together), an option bought in levels by `perLevel` (or a rating, or
+a cost × a word), any other a design modification at its flat `dp`. Price = (the Design Points summed × every multiplier)
+× 1,000¥ + the built-in mods' nuyen (2 Design Points per mod slot); half when built yourself. A table's `special` that
+changes handling, off-road handling or cargo (`-2 handling`, `-2 to off road handling`, `Extra cargo (+4 CF)`) or reads
+`No Top Speed loss` is applied; any other (the console's 10/12, the Bike's 0) is shown as printed. What each option and
+modification changes is the book's rule for it by name (pp. 151-153); an unknown one counts its Design Points only. Each
+`max` form is read against the design: a number (levels; in reverse too unless `maxReverse`), `Size Class N` (the
+resulting size), `k x Stat` (the option's stat at most k × the final Stat, or k × its own starting value), `P% x Stat`
+(the increase at most P% of the starting Stat), a bare `Stat` (levels up to its starting value) and `min(…)` (each);
+passing one is a warning, never refused.
+
 **Built-in modifications** (Double Clutch p. 146, owner 2026-10-16; `resolve._builtin_mods`, in the corpus pass after
 every import). A book's `Core Vehicle Modifications` box lists, as bold run-ins under its group headings, the
 modifications the core rulebook's vehicles already have. Each vehicle it names, in the library's other books (by name,

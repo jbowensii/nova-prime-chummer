@@ -12,6 +12,7 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element name="npc" type="c:Npc" minOccurs="0"/>
+        <xs:element name="design" type="c:Design" minOccurs="0"/>
         <xs:element name="portrait" type="xs:string" minOccurs="0"/>
         <xs:element name="token" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
@@ -420,6 +421,33 @@
 
   <!-- an SR6 NPC's stat block: the printed values (stat) and the parts' text (line), copied from the catalog entry it was
        made from (from*) or entered by the GM; rating: the Professional Rating, Force or Level -->
+  <!-- a vehicle or drone design (the Designer, Double Clutch pp. 150-155; src/sr6/engine/design.ts), first in the file
+       (the server's design check), its build blank: the catalog's vehicledesign parts picked, each option, modification
+       or quality factor with its level (1: taken once; negative: an option taken in reverse), and the mods built in as
+       design options (2 Design Points per mod slot, their nuyen added to the price). diy: built yourself (half the
+       price, p. 155); approved: made or approved by a GM (bought, it needs no GM approval). Nothing derived is stored. -->
+  <xs:complexType name="Design">
+    <xs:sequence>
+      <xs:element name="option" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="level" type="xs:integer" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="vehicle"/><xs:enumeration value="drone"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="chassis" type="xs:string"/>
+    <xs:attribute name="powertrain" type="xs:string"/>
+    <xs:attribute name="console" type="xs:string"/>
+    <xs:attribute name="diy" type="xs:boolean"/>
+    <xs:attribute name="approved" type="xs:boolean"/>
+  </xs:complexType>
+
   <xs:complexType name="Npc">
     <xs:sequence>
       <xs:element name="stat" minOccurs="0" maxOccurs="unbounded">
@@ -529,6 +557,10 @@
     <xs:attribute name="mount" type="xs:string"/>
     <!-- a vehicle mod the player installs: half its nuyen price (Double Clutch p. 120; never an accessory's) -->
     <xs:attribute name="diy" type="xs:boolean"/>
+    <!-- a vehicle or drone bought from a design (the Designer): the design's id; the line's id is design.<that id> and its
+         snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
+         when a GM made or approved the design) -->
+    <xs:attribute name="design" type="xs:string"/>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
          whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
          SIN), one naming no SIN of the runner left out. Not written -->

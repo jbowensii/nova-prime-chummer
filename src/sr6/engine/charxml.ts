@@ -30,6 +30,7 @@ import {
   type Sr6Build,
   type Sr6Character,
   type Sr6Contact,
+  type Sr6Design,
   type Sr6Knowledge,
   type Sr6LedgerEntry,
   type Sr6MartialArt,
@@ -81,6 +82,7 @@ function purchaseXml(p: Sr6Purchase): string {
       seatsRemoved: p.seatsRemoved,
       mount: p.mount,
       diy: p.diy,
+      design: p.design,
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -241,6 +243,16 @@ function npcXml(n?: Sr6Npc): string {
   )
 }
 
+// a vehicle or drone design (the Designer): its parts, options with their levels and the mods built in
+const designXml = (d?: Sr6Design) =>
+  d
+    ? el(
+        'design',
+        { kind: d.kind, chassis: d.chassis, powertrain: d.powertrain, console: d.console, diy: d.diy, approved: d.approved },
+        d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
+      )
+    : ''
+
 const rulesXml = (rs?: Sr6Character['rules']) =>
   rs?.length ? el('rules', {}, rs.map(r => el('setting', { key: r.key, value: r.value, assumed: r.assumed, source: r.source, page: r.page })).join('')) : ''
 const printedXml = (p?: Sr6Printed) =>
@@ -259,6 +271,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [
     npcXml(ch.npc),
+    designXml(ch.design),
     text('portrait', id.portrait) + text('token', id.token),
     text('background', id.background),
     text('notes', id.notes),
@@ -364,6 +377,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     seatsRemoved: num(e, 'seatsRemoved'),
     mount: str(e, 'mount'),
     diy: yes(e, 'diy'),
+    design: str(e, 'design'),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
@@ -704,6 +718,28 @@ function readNpc(n: Element, fix?: string[]): Sr6Npc {
   })
 }
 
+function readDesign(d: Element, fix?: string[]): Sr6Design {
+  return def({
+    kind: oneOf(d.getAttribute('kind'), ['vehicle', 'drone'] as const, 'design kind', 'vehicle', fix)!,
+    chassis: str(d, 'chassis'),
+    powertrain: str(d, 'powertrain'),
+    console: str(d, 'console'),
+    options: each(
+      kids(d, 'option'),
+      o => {
+        const level = num(o, 'level', 1)
+        if (!Number.isInteger(level)) throw new Error(`level="${level}" isn’t a whole number`)
+        return { id: o.getAttribute('id') ?? '', level }
+      },
+      label,
+      fix,
+    ),
+    mods: each(kids(d, 'purchase'), x => readPurchase(x, fix), label, fix),
+    diy: yes(d, 'diy'),
+    approved: yes(d, 'approved'),
+  })
+}
+
 export type Sr6Parsed = { ok: true; character: Sr6Character; rev?: number } | { ok: false; reason: string }
 
 /** Never throws; a bad file comes back with a reason saying what and where. With `opts.repair`, what can be read is
@@ -730,6 +766,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const fk = num(r, 'finalKarma'),
       fn = num(r, 'finalNuyen'),
       npc = kid(r, 'npc'),
+      design = kid(r, 'design'),
       ledger = kid(r, 'ledger'),
       house = kid(r, 'house')
     const printed = kid(r, 'printed'),
@@ -761,6 +798,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
           )
         : [],
       npc: npc ? readNpc(npc, fix) : undefined,
+      design: design ? readDesign(design, fix) : undefined,
       sampleKey: str(r, 'sampleKey'),
       house: house?.children.length ? readHouse(house, fix) : undefined,
       printed: printed

@@ -58,7 +58,8 @@ export function LineName({ x }: { x: Sr6Purchase }) {
       <Sr6Ref kind={x.kind} id={e?.id}>
         <b>{e ? entryLabel(e) : (x.name ?? 'Custom item')}</b>
       </Sr6Ref>
-      {x.id && !data.entry(x.kind, x.id) && <span className="err"> (no longer in the catalog)</span>}
+      {x.id && !x.design && !data.entry(x.kind, x.id) && <span className="err"> (no longer in the catalog)</span>}
+      {x.design && <span className="noncanon">Custom design</span>}
       {e && (
         <span className="muted">
           {' '}

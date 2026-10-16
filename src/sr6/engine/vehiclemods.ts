@@ -30,9 +30,10 @@ export interface Builtin {
   name: string
   ref?: string
   rating?: string
-  /** extra mod slots of a category it gives (`4 additional Chassis mod slots`) */
+  /** extra mod slots of a category it gives (`4 additional Chassis mod slots`); universal: a designed vehicle's Easily
+   *  Modified slots, for any category (DC p. 152) */
   slots?: number
-  category?: SlotKind
+  category?: SlotKind | 'universal'
 }
 export interface VehicleMods {
   /** Double Clutch's rules (DC among the table's books), else the core rulebook's */
@@ -95,7 +96,7 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   const builtin: Builtin[] = (e?.parts ?? [])
     .filter(p => p.tag === 'builtin' && p.attrs.name)
     .map(p => {
-      const cat = SLOT_KINDS.find(k => k === normCat(p.attrs.category))
+      const cat = normCat(p.attrs.category) === 'universal' ? 'universal' : SLOT_KINDS.find(k => k === normCat(p.attrs.category))
       return {
         name: p.attrs.name,
         ...(p.attrs.ref ? { ref: p.attrs.ref } : {}),
@@ -136,10 +137,15 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
         },
       ]),
     ) as Record<SlotKind, Meter>
-    for (const k of SLOT_KINDS) {
-      const m = out.slots[k]
-      if (m.used > m.max) warn(`${vname}: its ${k} mods take ${m.used} mod slots; it has ${m.max}.`, 'DC', 120)
-    }
+    // (a designed vehicle's universal slots take what a category goes past, DC p. 152)
+    const universal = builtin.reduce((t, b) => t + (b.category === 'universal' ? (b.slots ?? 0) : 0), 0),
+      over = SLOT_KINDS.reduce((t, k) => t + Math.max(0, out.slots![k].used - out.slots![k].max), 0)
+    if (over > universal)
+      for (const k of SLOT_KINDS) {
+        const m = out.slots[k]
+        if (m.used > m.max)
+          warn(`${vname}: its ${k} mods take ${m.used} mod slots; it has ${m.max}${universal ? ` (and ${universal} universal)` : ''}.`, 'DC', 120)
+      }
     // hardpoints: one standard a full three points of Body; a small drone with Body over 3 one small instead, a micro or
     // mini drone none (p. 124); hardpoint mods add theirs
     const size = droneSize(e)

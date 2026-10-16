@@ -110,6 +110,25 @@ export interface Sr6Purchase {
   mount?: string
   /** a vehicle mod installed by the player: half its nuyen price (Double Clutch p. 120; never an accessory's: owner Q6) */
   diy?: true
+  /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
+   *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
+  design?: string
+}
+
+/** A vehicle or drone design (the Designer, Double Clutch pp. 150-155): the parts picked (catalog vehicledesign ids),
+ *  each option, modification or quality factor with its level (1 for one taken once; negative: an option taken in
+ *  reverse), the mods built in as design options (gear lines: 2 Design Points per mod slot, their nuyen added to the
+ *  price), built yourself (half the price, p. 155) and approved by a GM (bought designs then need no approval). Nothing
+ *  derived is stored (src/sr6/engine/design.ts works it out). */
+export interface Sr6Design {
+  kind: 'vehicle' | 'drone'
+  chassis?: string
+  powertrain?: string
+  console?: string
+  options: { id: string; level: number }[]
+  mods: Sr6Purchase[]
+  diy?: true
+  approved?: true
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -379,7 +398,7 @@ export interface Sr6Printed {
 }
 
 /** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
- *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
+ *  npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
  *  example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
  *  (src/sr6/engine/house.ts), so it keeps them when the compendium is unshared or deleted. */
 export interface Sr6Character {
@@ -392,6 +411,8 @@ export interface Sr6Character {
   campaign?: string
   ledger: Sr6LedgerEntry[]
   npc?: Sr6Npc
+  /** set on a vehicle or drone design (the Designer's store; its build stays blank) */
+  design?: Sr6Design
   sampleKey?: string
   house?: Sr6Entry[]
   printed?: Sr6Printed

@@ -110,6 +110,7 @@ export const REASONS: Record<string, string> = {
   'own-line': 'Each of these is its own line: add another one instead.',
   'not-fitted': 'That accessory isn’t fitted to it.',
   'not-a-mount': 'That isn’t one of its weapon mounts.',
+  'not-a-design': 'That isn’t a vehicle or drone design.',
   'not-a-weapon': 'Only a weapon goes in a weapon mount.',
   'no-diy': 'Only a vehicle mod can be installed yourself: an accessory can’t (Double Clutch p. 120).',
   native: 'A native language is free: it has no ranks to buy.',

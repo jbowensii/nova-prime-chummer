@@ -519,7 +519,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      const e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : undefined
+      // (a design's line: its snapshot, the vehicle the design worked out to)
+      const e = x.id ? (data.entry(x.kind, x.id) ?? (x.design ? x.snapshot : undefined) ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)
@@ -853,6 +854,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     'catalog.accessoryHost',
     'licence.none',
     'vehicle.mods',
+    'vehicle.design',
   ])
   return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
 }

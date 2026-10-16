@@ -121,6 +121,9 @@ const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => {
   return e ? entryLabel(e) : (x.name ?? x.id)
 }
 
+/** The Review code of a designed vehicle's or drone's GM approval: a warning a GM may approve (Review.tsx). */
+export const DESIGN_APPROVAL = 'vehicle.design'
+
 const RULES: Rule[] = [
   {
     code: 'prio.allAssigned',
@@ -1545,7 +1548,8 @@ const RULES: Rule[] = [
         if (!c.data.entry('martialarts', m.id)) hits.push(gone(`martial.${m.uid}`, m.name ?? m.id))
         for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`martial.${m.uid}`, t.name ?? t.id))
       }
-      for (const { x, path } of lines(c.b)) if (x.id && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
+      // (a design's line is no catalog entry: its snapshot is the vehicle)
+      for (const { x, path } of lines(c.b)) if (x.id && !x.design && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
       for (const s of c.b.sins) for (const l of s.lifestyles ?? []) if (!c.data.entry('lifestyles', l.id)) hits.push(gone(`contacts.lifestyle.${l.uid}`, l.id))
       for (const pk of c.b.lifepath) if (!c.data.lifemodules[pk.id]) hits.push(gone(`method.${pk.id}`, pk.id))
       return hits
@@ -1630,6 +1634,17 @@ const RULES: Rule[] = [
     severity: 'warning',
     tab: 'vehicles',
     check: c => c.b.purchases.filter(x => x.kind === 'vehicles').flatMap(x => modsOf(x, c.data).warnings.map(w => ({ path: `vehicles.${x.uid}`, ...w }))),
+  },
+  // a vehicle or drone a player designed (the Designer) needs its GM's approval: a warning a GM approves, never blocking;
+  // one a GM made or approved needs nothing (owner 2026-10-16, BUILDER Q8)
+  {
+    code: DESIGN_APPROVAL,
+    severity: 'warning',
+    tab: 'vehicles',
+    check: c =>
+      c.b.purchases
+        .filter(x => x.design && x.snapshot?.attrs.approved !== 'true')
+        .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
   },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },

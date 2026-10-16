@@ -73,6 +73,8 @@ export type Op =
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
+  /** a vehicle or drone bought from a design (design.ts boughtDesign); taken away as any line (purchase remove) */
+  | { op: 'design'; line: Sr6Purchase }
   /** a stacking line's quantity */
   | { op: 'quantity'; uid: string; qty: number }
   /** mount: a weapon's mount (the host's accessory it sits in); diy: a vehicle mod installed by the player (half price) */
@@ -515,6 +517,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
       if (same) same.qty += line.qty
       else b.purchases.push(line)
+      return OK
+    }
+    case 'design': {
+      const x = op.line
+      if (x.kind !== 'vehicles' || !x.design || !x.snapshot) return no('not-a-design')
+      b.purchases.push({ ...structuredClone(x), uid: newId(), qty: 1 })
       return OK
     }
     case 'quantity': {

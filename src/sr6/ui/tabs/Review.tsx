@@ -9,7 +9,7 @@ import { Modal } from '../../../ui/bits'
 import { balances, canDraft } from '../../engine/career'
 import { purchaseTab } from '../../engine/purchases'
 import { draftAgain, finalizeSr6 } from '../../engine/finalize'
-import { canFinalizeSr6 } from '../../engine/rules'
+import { canFinalizeSr6, DESIGN_APPROVAL } from '../../engine/rules'
 import { sr6Tabs } from '../tabList'
 import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
@@ -119,9 +119,10 @@ export function ReviewTab() {
                   </>
                 )}
               </span>
-              {!career && (
+              {/* (a designed vehicle's approval: a warning, approved in career too, owner Q8) */}
+              {(!career || x.code === DESIGN_APPROVAL) && (
                 <span className="row">
-                  {gm && x.severity === 'error' && !x.approved && !x.hard && (
+                  {gm && (x.severity === 'error' || x.code === DESIGN_APPROVAL) && !x.approved && !x.hard && (
                     <button className="btn small" onClick={() => setApproving(x)}>
                       GM approve
                     </button>
