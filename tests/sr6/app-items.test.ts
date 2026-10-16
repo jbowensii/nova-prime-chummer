@@ -3,7 +3,7 @@
 import { expect, test } from 'vitest'
 import { currentBuild, preview, record, stolenLeft, validateCareer, voidEntry } from '../../src/sr6/engine/career'
 import { apply } from '../../src/sr6/engine/actions'
-import { allBudgets, nuyenPerKarma, toNuyen } from '../../src/sr6/engine/budgets'
+import { allBudgets, nuyenPerKarma, statusesOf, toNuyen } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
@@ -101,4 +101,19 @@ test('Stolen Gear after creation: bought off a part at a time at stolenGearBuyOf
   // (nothing converted: it goes for nothing)
   ch.build.karmaToNuyen = 0
   expect(preview(ch, { op: 'buyoff', target: 'sg' }, data, cr)).toMatchObject({ ok: true, karma: 0 })
+})
+
+test('an item’s statuses (<status name level?>) as shown', () => {
+  const e = { id: 'x', kind: 'weapons', name: 'X', source: 'CRB', page: 1, attrs: {}, text: '' } as const
+  expect(
+    statusesOf({
+      ...e,
+      parts: [
+        { tag: 'status', attrs: { name: 'Burning', level: '4' }, text: '' },
+        { tag: 'status', attrs: { name: 'Wet' }, text: '' },
+      ],
+    }),
+  ).toEqual(['Burning 4', 'Wet'])
+  expect(statusesOf({ ...e, parts: [] })).toEqual([])
+  expect(statusesOf(undefined)).toEqual([])
 })

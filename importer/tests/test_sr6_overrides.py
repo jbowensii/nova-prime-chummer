@@ -896,6 +896,14 @@ class ErrataRowsTest(unittest.TestCase):
         self.assertEqual([x.text for x in e.findall("formula")], ["tier(R; 6: 1; 7: 2)"])
         self.assertIsNotNone(e.find("slot"))
 
+    def test_a_status_kid_is_added_once_before_the_text_and_other_kids_stay_refused(self):
+        row = {"kind": "augmentations", "id": "zz-hum", "kids": [{"tag": "status", "attrs": {"name": "Zapped", "level": "3"}}], "gen": "errata"}
+        overrides.check([row])
+        e = self.apply([row, dict(row)])["zz-hum"]  # (twice: added once)
+        self.assertEqual([(x.get("name"), x.get("level")) for x in e.findall("status")], [("Zapped", "3")])
+        with self.assertRaisesRegex(ValueError, "kids are"):
+            overrides.check([{**row, "kids": [{"tag": "text", "attrs": {}}]}])
+
     def test_an_effect_naming_no_target_is_refused_before_the_run(self):
         with self.assertRaisesRegex(ValueError, "names its target"):
             overrides.check([{"kind": "augmentations", "id": "zz-hum", "gen": "errata", "effects": [{"op": "add", "value": "2"}]}])
@@ -919,6 +927,7 @@ class ErrataRowsTest(unittest.TestCase):
                 ("augmentations", "cyberears-rating-5"): "4", ("augmentations", "cyberears-rating-6"): "5"}
         self.assertEqual({k: rows[k]["set"]["avail"] for k in want}, want)
         self.assertEqual(rows["armor", "trenchcoat"]["effects"][0]["value"], "2")
+        self.assertEqual(rows["weapons", "molotov"]["kids"], [{"tag": "status", "attrs": {"name": "Burning", "level": "4"}}])  # (also applies Burning 4)
         self.assertEqual((rows["augmentations", "cybereyes-rating-5"]["set"]["cost"], rows["augmentations", "cyberears-rating-6"]["set"]["cost"]), ("18000", "21000"))
         self.assertEqual([rows[("augmentations", i)]["set"]["rating"] for i in ("audiotune", "vocal-expansion")], [None, None])
         gone = {r["id"] for r in overrides.table("nf") if r.get("remove")}

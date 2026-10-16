@@ -158,5 +158,9 @@ export function cargoFactor(x: Sr6Purchase, e?: Sr6Entry): { seats: number; carg
   return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed) + (/truck/i.test(cat) ? 4 : 0) }
 }
 
+/** The statuses an item applies (its <status>s, CRB p. 51: the Molotov's `Burning 4`, No Future errata), as shown. */
+export const statusesOf = (e?: Sr6Entry) =>
+  (e?.parts ?? []).filter(p => p.tag === 'status' && p.attrs.name).map(p => `${p.attrs.name}${p.attrs.level ? ` ${p.attrs.level}` : ''}`)
+
 /** A focus (CRB Hong Kong pp. 154–155, 294: the catalog's Foci category). */
 export const isFocus = (e?: Sr6Entry) => !!e && /\bfoci\b/i.test(e.attrs.category ?? '')

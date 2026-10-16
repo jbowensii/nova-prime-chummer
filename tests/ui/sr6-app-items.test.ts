@@ -101,3 +101,13 @@ test('Stolen Gear: a part of it bought off on the Ledger', async () => {
   await click(button('Record it'))
   expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'buyoff', target: 'sg', part: 2 }, karma: 6 })
 })
+
+test('a weapon that applies a status (the No Future errata’s Molotov: Burning 4) shows it on its Gear line', async () => {
+  const c = fixtureCatalog((f, x) =>
+    f.endsWith('crb/weapons.xml') ? x.replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>') : x,
+  )
+  const ch = runner()
+  ch.build.purchases = [{ uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] }]
+  await open(ch, 'gear', c)
+  expect(pageText()).toMatch(/AR 4\/10\/8\/—\/—.* · applies Burning 4/)
+})

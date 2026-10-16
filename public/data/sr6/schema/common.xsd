@@ -132,6 +132,9 @@
         <xs:element name="modifier" type="sr6:Cl6Data"/>
         <xs:element name="prerequisite" type="sr6:Cl6Data"/>
         <xs:element name="selection" type="sr6:Cl6Data"/>
+        <!-- a status the entry applies (CRB p. 51's statuses: a weapon's `Burning 4`, the No Future errata's Molotov), by
+             the status's name and its level when it has one; shown with the item, never applied to the runner -->
+        <xs:element name="status" type="sr6:Status"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -190,6 +193,10 @@
   </xs:complexType>
   <xs:complexType name="Cl6Data">
     <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+  <xs:complexType name="Status">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="xs:positiveInteger"/>
   </xs:complexType>
   <xs:complexType name="Slot">
     <xs:attribute name="id" type="xs:string" use="required"/>

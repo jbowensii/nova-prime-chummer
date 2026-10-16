@@ -10,7 +10,7 @@ import { IconButton, IconLink } from '../../ui/icons'
 import { SheetType, usePrintStyle, useSheetArt } from '../../print/shared'
 import '../../print/sheet.css'
 import './sheet.css'
-import { entryOf, priced } from '../engine/budgets'
+import { entryOf, priced, statusesOf } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
@@ -286,6 +286,8 @@ export function Sr6Sheet() {
                       <td>
                         {entryOf(x, data)?.attrs.dv ?? ''}
                         {w?.dvBonus ? ` (+${w.dvBonus})` : ''}
+                        {/* (the status it applies: the Molotov's Burning 4, No Future errata) */}
+                        {statusesOf(entryOf(x, data)).map(s => `, ${s}`)}
                       </td>
                       <td>{w ? w.bands.map(band).join('/') : ''}</td>
                       <td>{w?.pool ?? ''}</td>

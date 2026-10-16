@@ -43,8 +43,8 @@ rows (docs/sr6-data-format.md, Errata rows): the 6E availabilities, the Trenchco
 cyberears as ratings 6 and 7 (ids kept), AutoVoice and Vocal Expansion unrated at rating 1, the hacked AutoVoice and the
 vision/audio enhancements removed. Stolen Gear's new rules are the engine's (its karma is 0 already; the creation
 settings `stolenGearQuality`, `karmaToNuyenRateStolenGear`, `karmaToNuyenMaxStolenGear`, `stolenGearBuyOff`, owner
-2026-10-16). Not applied (rules): the Molotov's Burning status, the Companion versions of the life modules, the page
-references.
+2026-10-16). The Molotov's Burning 4 (`Also applies Burning 4 status`) is an errata row's `<status name="Burning"
+level="4">` (owner 2026-10-16). Not applied (rules): the Companion versions of the life modules, the page references.
 
 ## Formula styles and issues (importer v2)
 

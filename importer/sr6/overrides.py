@@ -18,7 +18,8 @@ the one other kind file that holds the id, and is reported when none or several 
 An id row with "gen": "errata" is written by hand, never regenerated (an errata PDF's statements the importer's per-book
 runs cannot see: the No Future errata, nf.json): "set" values (null drops the attribute: a rating the errata removes), "formula"
 and "effects" (a list of effect attribute dicts, each with its "target": the entry's effect of that target is
-replaced). It applies after every other id row, so it wins over Commlink6's values.
+replaced), and "kids" (a <status name level> the item applies). It applies after every other id row, so it wins over
+Commlink6's values.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
@@ -54,7 +55,8 @@ from importer.sr6.resolve import _add_kid
 DIR = Path(__file__).with_name("overrides")
 OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
 SETTABLE = {"class"}  # (what an id row may set)
-KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection"}  # (a "gen": "family" row's "kids": Commlink6's item structure)
+KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection",  # (a "gen": "family" row's "kids": Commlink6's item structure)
+            "status"}  # (an errata row's: a status the item applies, the No Future errata's Molotov Burning 4)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
                "seats", "range", "type", "duration", "category", "action", "activation", "fade", "threshold", "kind",
                "handling", "interval", "power", "attr", "skill", "spec", "social", "modonly", "size", "ammoClass", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)

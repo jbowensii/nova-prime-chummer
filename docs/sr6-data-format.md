@@ -843,7 +843,9 @@ errata PDF only to a library that holds both PDFs, so the importer's per-book ru
 owner wants its numbers the per-book table carries them as hand-written rows that no generator replaces: `{"cl6": "<label>",
 "kind", "id", "set": {...}, "formula"?, "effects"?, "gen": "errata"}`. Game numbers only, never description text. `set` takes a
 `null` to drop an attribute (a rating the errata removes); `effects` is a list of `<effect>` attribute dicts, each replacing
-the entry's effect of the same `target` (the Trenchcoat's Concealability +2). The rows apply after every other id row, so they win
+the entry's effect of the same `target` (the Trenchcoat's Concealability +2); `kids` adds children the entry lacks, among them a
+`<status name level?>` the item applies (the Molotov's Burning 4, CRB p. 51's statuses: shown on the item's line and card,
+never applied to the runner). The rows apply after every other id row, so they win
 over `value` rows. A removal and a rename are the ordinary `remove` / `rename` rows (`"alias": false` for a renumbering). The
 corpus pass skips a renumbering the table already made (resolve.py `_renumber`). `nf.json` holds the No Future errata (6E
 availabilities, Cybereyes/Cyberears as ratings 6 and 7 with ids kept, Vocal Expansion and AutoVoice unrated, the hacked
