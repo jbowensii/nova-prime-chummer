@@ -19,7 +19,9 @@ import {
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
 import { flag, num, str } from '../../engine/creation'
 import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data'
+import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
+import { awakenedFlag, infectedTypes, runnerInfected } from '../../engine/infected'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
@@ -130,18 +132,29 @@ export function MethodTab() {
       {letters && !b.priorities.metatype && <p className="muted">Give Metatype a letter to see which metatypes it allows.</p>}
 
       <h3>Magic or Resonance</h3>
-      <label>
-        Kind
-        <select aria-label="Magic kind" value={b.magic} onChange={e => update(d => setMagic(d, e.target.value as MagicKind, data, cr))}>
-          {magic.map(m => (
-            <option key={m.kind} value={m.kind}>
-              {MAGIC_KIND_LABELS[m.kind]}
-              {m.rating ? ` (rating ${m.rating})` : ''}
-              {m.cp ? `, ${m.cp} character points` : ''}
-            </option>
-          ))}
-        </select>
-      </label>
+      {b.infectedFrom !== undefined ? (
+        // (the Infected type gave this kind: taking the type away gives the bought one back)
+        <p>
+          Kind: <b>{MAGIC_KIND_LABELS[b.magic]}</b>{' '}
+          <span className="muted">
+            (the Infected type made the runner this; bought as {MAGIC_KIND_LABELS[b.infectedFrom].toLowerCase()}: remove the type to change it)
+          </span>
+        </p>
+      ) : (
+        <label>
+          Kind
+          <select aria-label="Magic kind" value={b.magic} onChange={e => update(d => setMagic(d, e.target.value as MagicKind, data, cr))}>
+            {magic.map(m => (
+              <option key={m.kind} value={m.kind}>
+                {MAGIC_KIND_LABELS[m.kind]}
+                {m.rating ? ` (rating ${m.rating})` : ''}
+                {m.cp ? `, ${m.cp} character points` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <AwakenedFlag />
       {b.magic === 'aspected' && (
         <label>
           Aspected skill
@@ -155,8 +168,119 @@ export function MethodTab() {
           </select>
         </label>
       )}
+      <InfectedSection />
       <RunnerRules />
     </div>
+  )
+}
+
+/** The Awakened flag (infected.ts awakenedFlag): derived, or the player's override, shown with what it overrides (and
+ *  Review's awakened.override warning). */
+function AwakenedFlag() {
+  const { ch, data, act } = useSr6Editor()
+  const f = awakenedFlag(ch.build, data),
+    yes = (v: boolean) => (v ? 'Awakened' : 'not Awakened')
+  return (
+    <>
+      <label>
+        Awakened
+        <select
+          aria-label="Awakened"
+          value={f.override === undefined ? 'auto' : f.override ? 'yes' : 'no'}
+          onChange={e => act({ op: 'awakened', value: e.target.value === 'auto' ? null : e.target.value === 'yes' })}
+        >
+          <option value="auto">
+            Derived: {yes(f.derived)} ({f.why})
+          </option>
+          <option value="yes">Awakened (override)</option>
+          <option value="no">Not Awakened (override)</option>
+        </select>
+      </label>
+      {f.override !== undefined && f.override !== f.derived && (
+        <p className="warn">
+          Derived: {yes(f.derived)} ({f.why}) — overridden to {yes(f.value)}.
+        </p>
+      )}
+    </>
+  )
+}
+
+/** The Sixth World Companion's Infected (pp. 104–114), while the table allows it (or the runner has a type): Infected
+ *  yes/no, its type (those of the runner's metatype), and what the type does. */
+function InfectedSection() {
+  const { ch, data, cr, act } = useSr6Editor()
+  const b = ch.build,
+    inf = runnerInfected(b, data)
+  const [picking, setPicking] = useState(false)
+  if (!flag(cr, 'infectedAllowed') && !inf) return null
+  const types = infectedTypes(data, b.metatype),
+    t = inf?.t
+  const power = (id: string) => data.qualities[id]?.name ?? id
+  return (
+    <section className="stack">
+      <h3>Infected</h3>
+      <label>
+        <input
+          type="checkbox"
+          checked={!!inf || picking}
+          disabled={!inf && !flag(cr, 'infectedAllowed')}
+          onChange={e => {
+            setPicking(e.target.checked)
+            if (!e.target.checked && inf) act({ op: 'infected', id: '' })
+          }}
+        />{' '}
+        Infected (HMHVV, Sixth World Companion p. 104)
+      </label>
+      {(inf || picking) && (
+        <label>
+          Type
+          <select aria-label="Infected type" value={t?.id ?? ''} onChange={e => act({ op: 'infected', id: e.target.value })}>
+            <option value="">{types.length ? 'Pick one' : 'None for this metatype'}</option>
+            {t && !types.some(x => x.id === t.id) && <option value={t.id}>{t.name} (not for this metatype)</option>}
+            {types.map(x => (
+              <option key={x.id} value={x.id}>
+                {x.name} (Strain {x.printed ?? x.strain}
+                {x.fit === 'alt' && x.alt ? `; ${x.alt.note ?? `${x.alt.karma} Karma`}` : ''})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {t && (
+        <ul className="muted">
+          <li>
+            Attribute maxima: the type’s{inf?.alt ? ' (added to the metatype’s own)' : ''}; an attribute above one drops to it, the points not refunded
+            (Review).
+          </li>
+          <li>
+            Free points: {t.freePhysical} physical and {t.freeMental} mental, counted with the attribute points on Attributes.
+          </li>
+          <li>
+            {t.essence !== undefined
+              ? `Essence starts at ${t.essence}.`
+              : 'Essence: the book gives no creation Essence for Strain I; the runner keeps its own.'}{' '}
+            {t.magicMax?.startsWith('ess')
+              ? 'Highest Magic: Essence + initiation grade (it follows Essence).'
+              : `Magic ${t.magic ?? 0} for a runner without Magic, ${t.magicLoss ?? 0} less for one with it; highest ${t.magicMax ?? '—'}.`}
+          </li>
+          {b.infectedFrom !== undefined && (
+            <li>
+              {b.infectedFrom === 'technomancer' ? 'The technomancer’s Resonance is lost, with no refund. ' : ''}
+              Magic kind: {MAGIC_KIND_LABELS[b.infectedFrom]} → {MAGIC_KIND_LABELS[b.magic]}.
+            </li>
+          )}
+          <li>Edge: the Infected rules give no change at creation.</li>
+          <li>
+            Optional powers (Qualities tab): {t.powers.length ? t.powers.map(p => `${power(p.ref)}${p.free ? ' (free pick)' : ''}`).join(', ') : 'none'}.{' '}
+            {t.powers.some(p => p.free) && 'One free pick. '}
+            {flag(cr, 'infectedPowersAtCreation')
+              ? 'This table lets them be bought at creation.'
+              : 'At creation only the free pick; the rest after creation, at their own Karma.'}{' '}
+            The book’s pace, one every two in-game months, is not enforced.
+          </li>
+        </ul>
+      )}
+    </section>
   )
 }
 
