@@ -59,6 +59,12 @@ the overlay changes.
 - A Commlink6-only record is an entry of ours (importer/sr6/overrides `"gen": "cl6only"` adds), is "already in our data"
   (`relocated.json`) or is in the optional package; only the rule options are not entries, as the app's rule presets.
 - `RETIRED` ("Depreciated …") records are out of every count, except `wss_explosive` (the latest Firing Squad prints it).
+- Infected (2026-10-16): Commlink6 has the Companion's Infected qualities as `quality type="INFECTED"` (one record per base
+  metatype: `ghoul_human` … `ghoul_troll`, `mutaqua_mundane`/`mutaqua_awakened`) and no record for the Infected Optional
+  Powers Table (p. 109); its same-named entries are critter powers (core rulebook, Street Wyrd), metagenic qualities and
+  adept powers. Our Infected qualities carry its class `INFECTED`; the 26 optional powers are qualities of ours with no
+  Commlink6 record (counted among our extras, their class `INFECTED/OPTIONAL_POWER` a deliberate extra). Qualities are not
+  a class-compared kind, so neither class moves the class match.
 
 ## What it does
 

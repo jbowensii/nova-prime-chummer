@@ -489,6 +489,9 @@
       <!-- the quality path a bare step heading belongs to (`Step 2` under `Quality Path: Gestalt`): the app shows
            "Gestalt: Step 2" -->
       <xs:attribute name="group" type="xs:string"/>
+      <!-- an Infected quality (Commlink6's type INFECTED) or an Infected optional power (INFECTED/OPTIONAL_POWER, ours):
+           offered only while the table's infectedAllowed rule is on (classes/section_prefix.json) -->
+      <xs:attribute name="class" type="sr6:ClassKey"/>
   </xs:complexType>
 
   <xs:complexType name="Weapon">

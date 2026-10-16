@@ -242,6 +242,38 @@ def _qualities(cat, name, text, page, block=None):
     return found
 
 
+_PER = re.compile(r"\(\s*per\s+(?:level|point)\s*\)", re.I)
+
+
+def _priced_list(cat, b, page):
+    """A block that is only a `QUALITY | KARMA` table (its rows no blocks of their own, no prose: the Infected Optional
+    Powers Table) lists qualities bought at the price its row prints: each row a positive quality, its name as printed
+    (`Armor (per point)`: per level), its category the table's title without `Table`. Returns the category, else None."""
+    rows = [list(r.items()) for r in b.stats]  # (regroup's box tables: one header -> cell dict per row)
+    if b.row is not None or not rows or (b.text or "").strip() or b.labels or \
+            any([norm(h) for h, _ in r] != ["quality", "karma"] for r in rows):
+        return None
+    category = re.sub(r"\s+table$", "", b.name.strip(), flags=re.I)
+    for (_, name), (_, karma) in rows:
+        k = re.fullmatch(r"(\d+)", karma.strip())
+        if not k:
+            cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": name, "field": "karma", "value": karma, "page": page})
+        cat.add("qualities", name, page, {"kind": "positive", "karma": k and int(k.group(1)), "category": category,
+                                          "perLevel": "true" if _PER.search(name) else None},
+                cid=f"{slug(category)}.{slug(name)}")  # (its own id: a same-named quality of another table, Biosonar's)
+    return category
+
+
+def _list_texts(cat, categories):
+    """A priced-list row prints no description: the book's critter power of its name (its `(per level)` aside) is its
+    description (`Sharpened Natural Weapon` under New Critter Powers)."""
+    powers = {norm(e["name"]): e for e in cat.entries["critterpowers"] if e["text"].strip()}
+    for e in cat.entries["qualities"]:
+        if e["attrs"].get("category") in categories and not e["text"] and (p := powers.get(norm(_PER.sub("", e["name"])))):
+            e["text"] = p["text"]
+            cat.texts.append(("qualities", e["id"], p["text"].strip()))
+
+
 def _plain_text(text):
     return text.replace("**", "").strip()
 
@@ -311,7 +343,7 @@ def extract(regrouped, ctx=None):
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
     cat.index = search.Index(bs, PAGE_OFFSET, md_tables, shapes.RENAME)
-    kinds, found = sections.Reader(), []
+    kinds, found, lists = sections.Reader(), [], set()
     for b in bs:
         ch, page, sec = norm(b.chapter), max(1, b.page - PAGE_OFFSET), norm(b.section)
         found += kinds.feed(b, page)  # the kinds the book prints as sections (sections.py)
@@ -343,6 +375,9 @@ def extract(regrouped, ctx=None):
             done = _critterpower(cat, b.name, text, page)
         elif ch in QUALITY_CHAPTERS and b.type == "item":
             done = _qualities(cat, b.name, text, page, b)
+            if not done and (listed := _priced_list(cat, b, page)):
+                lists.add(listed)
+                done = True
         elif ch == CONTACTS and b.type == "item":
             done = _contact(cat, b.name, text, page, block_md(b))
         elif b.type == "item" and len(band := shapes.vehicle_band(b.text)) >= 6:
@@ -359,6 +394,7 @@ def extract(regrouped, ctx=None):
         e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
                     "\n\n".join(x for x in (block_md(b), text) if x), parent=parent)
         stack.append((level, e["id"]))
+    _list_texts(cat, lists)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

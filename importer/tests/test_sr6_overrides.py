@@ -401,9 +401,11 @@ class SectionClassTest(unittest.TestCase):
         from importer.sr6 import classes
         extra = json.loads(classes.EXTRA.read_text(encoding="utf8"))
         for r in classes.prefixes():
-            self.assertIn(r["class"], extra)
+            self.assertTrue(r["class"] in extra or r.get("commlink6"), r["class"])
             self.assertTrue(re.fullmatch(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?", r["class"]))
-        self.assertEqual([(r["src"], r["pages"]) for r in classes.prefixes()], [("bs", [134, 166])])
+        self.assertEqual([(r["src"], r["pages"], r["class"]) for r in classes.prefixes()],
+                         [("bs", [134, 166], "CRITTERWARE/AUGMENTATION"), ("swc", [109, 109], "INFECTED/OPTIONAL_POWER"),
+                          ("swc", [110, 114], "INFECTED")])
 
     def test_cl6check_accepts_a_section_class_whatever_commlink6s_is(self):
         from types import SimpleNamespace

@@ -108,6 +108,13 @@ Long Nose
 • Game Effect: You drop made-up things.
 <!-- page 40 -->
 # DARKER ALTERATIONS
+#### Made-Up Strains
+##### Made-Up Optional Powers Table
+| QUALITY | KARMA |
+|---|---|
+| Glow Burst | 7 |
+| Thick Hide (per point) | 3 |
+| Odd Gift | see text |
 #### New Critter Powers
 ##### Glow Burst
 • Type: M
@@ -213,13 +220,29 @@ class SwcRecipeTest(unittest.TestCase):
         q = entries(self.res, "qualities")
         self.assertEqual({n: (e.get("kind"), e.get("karma")) for n, e in q.items()},
                          {"Lucky Charm": ("positive", "5"), "Spiky Hair": ("positive", "3"), "Long Nose": ("positive", "4"),
-                          "Clumsy Oaf": ("negative", "7")})
+                          "Clumsy Oaf": ("negative", "7"), "Glow Burst": ("positive", "7"), "Thick Hide (per point)": ("positive", "3"),
+                          "Odd Gift": ("positive", None)})
         self.assertEqual((q["Long Nose"].get("perLevel"), q["Long Nose"].get("maxLevel")), ("true", "3"))
         # a sub-quality's description is its own lines, not its neighbours' (the block's)
         texts = {t.get("id"): t.text or "" for t in ET.fromstring(self.res.texts) if t.get("of") == "qualities"}
         spiky = next(v for k, v in texts.items() if k.endswith("spiky-hair"))
         self.assertIn("Hair that is made up.", spiky)
         self.assertNotIn("Long Nose", spiky)
+
+    def test_a_priced_quality_table_lists_qualities(self):
+        """A block that is only a `QUALITY | KARMA` table: each row a positive quality at its printed price, the name as
+        printed (`(per point)`: per level), the table's title its category, its own id; a row printing no description reads
+        the book's critter power of its name; a price that isn't a number is reported, never guessed."""
+        q = entries(self.res, "qualities")
+        g, h = q["Glow Burst"], q["Thick Hide (per point)"]
+        self.assertEqual((g.get("id"), g.get("category"), g.get("page"), g.get("perLevel")),
+                         ("made-up-optional-powers.glow-burst", "Made-Up Optional Powers", "39", None))
+        self.assertEqual((h.get("perLevel"), h.get("maxLevel"), h.get("category")), ("true", None, "Made-Up Optional Powers"))
+        texts = {t.get("id"): t.text or "" for t in ET.fromstring(self.res.texts) if t.get("of") == "qualities"}
+        self.assertIn("made-up light", texts["made-up-optional-powers.glow-burst"])
+        self.assertNotIn("made-up-optional-powers.thick-hide-per-point", texts)
+        self.assertEqual([(r["name"], r["value"]) for r in self.rep("book-value") if r["file"] == "qualities.xml"], [("Odd Gift", "see text")])
+        self.assertNotIn("Made-Up Optional Powers Table", entries(self.res, "rules"))
 
     def test_critter_power_contact_and_rules(self):
         cp = entries(self.res, "critterpowers")["Glow Burst"].attrib

@@ -1,4 +1,8 @@
 [
  {"src": "bs", "kinds": ["augmentations"], "pages": [134, 166], "class": "CRITTERWARE/AUGMENTATION",
-  "note": "Body Shop 'Taming the Wild' (printed pages 134-166): critter-only equipment, 76 augmentations that characters cannot select"}
+  "note": "Body Shop 'Taming the Wild' (printed pages 134-166): critter-only equipment, 76 augmentations that characters cannot select"},
+ {"src": "swc", "kinds": ["qualities"], "pages": [109, 109], "class": "INFECTED/OPTIONAL_POWER",
+  "note": "Sixth World Companion Infected Optional Powers Table (printed page 109): the powers an Infected character buys, offered only with the table's infectedAllowed rule on"},
+ {"src": "swc", "kinds": ["qualities"], "pages": [110, 114], "class": "INFECTED", "commlink6": true,
+  "note": "Sixth World Companion Positive and Negative Infected Qualities (printed pages 110-114): Commlink6's own quality type INFECTED, offered only with the table's infectedAllowed rule on"}
 ]
