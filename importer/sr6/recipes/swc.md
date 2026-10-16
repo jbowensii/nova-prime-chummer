@@ -74,6 +74,20 @@ recipe reads both.
   paragraph's wrapped line that opens with a parenthesis (`(rating 3), contacts …`) continues it (`Ultrasound
   Contacts`, `Exquisite Fake ID`).
 
+## Infected gained powers and weaknesses (owner 2026-10-16)
+
+- Each type's `Gained Powers:` and `Gained Weaknesses:` items (pp. 110–114) become `<power name rating? ref?>` and
+  `<weakness name>` children (`_gains`): the name as printed less its page citations, a number its rating (`Armor 1`,
+  `Armor (4)`, Lamia's `Armor (6) (replaces Armor (4))`: rating 6, the note kept), `ref` the critter power this book
+  prints of that name (Adaptive Coloration, Corrosive Secretion, Desire Reflection). The free pick's sentence and the
+  modifiers (`+1 initiative die`, `+2 to base movement rates`, `–1 Logic`) are no items. The book's typos read: the comma
+  left out after a parenthesis (Ghoul's `Enhanced Senses (Hearing, Smell) Natural Weapon`, Loup-garou's `(Metahuman
+  Flesh) –1 Logic`), the unclosed parenthesis of Nosferatu's and the vampire's `Induced Dormancy (Lack of Air, (Essence)
+  Minutes, (p. 228, SR6)` (it runs to the list's end, the last item). Every list reads, so `overrides/swc.json` holds none.
+  The rest resolve by name in the app across the library (data.ts `gainedEntry`: the core rulebook's critter powers and
+  its critter weaknesses, printed as rules); a name nothing has stays as printed and Game data lists it
+  (`data.unresolved`): Goblin's `Dietary Restriction` (the book's word for Requirement), Nibiinaabe's `Darkness`.
+
 ## Real-book check (local, nothing committed)
 
     python -m importer sr6 check "<the Companion PDF>" --out "%TEMP%\swc-check"

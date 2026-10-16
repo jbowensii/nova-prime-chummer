@@ -384,7 +384,7 @@ test('refusals: not a type, the type taken again, a second level of an optional 
 
 test('infectedOf reads an <infected> with nothing set as no strain, base or points; the free pick is one line of the free power', () => {
   const bare = { id: 'x', name: 'X', kind: 'qualities', attrs: {}, parts: [{ tag: 'infected', attrs: {} }] } as unknown as Sr6Entry
-  expect(infectedOf(bare)).toEqual({ id: 'x', name: 'X', strain: '', base: '', freePhysical: 0, freeMental: 0, powers: [] })
+  expect(infectedOf(bare)).toEqual({ id: 'x', name: 'X', strain: '', base: '', freePhysical: 0, freeMental: 0, powers: [], gains: [] })
   expect(infectedOf({ ...bare, parts: [] })).toBeUndefined()
   // the sidebar's page is kept
   const alt = { ...bare, parts: [...bare.parts, { tag: 'infectedalt', attrs: { base: 'other', karma: '32', page: '109' } }] } as unknown as Sr6Entry

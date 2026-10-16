@@ -111,3 +111,20 @@ test('a weapon that applies a status (the No Future errata’s Molotov: Burning 
   await open(ch, 'gear', c)
   expect(pageText()).toMatch(/AR 4\/10\/8\/—\/—.* · applies Burning 4/)
 })
+
+test('Creation method: the Infected type’s gained powers (free) and weaknesses, each with its card or marked when the catalog lacks it', async () => {
+  const gainer =
+    '<quality id="crb.zap-gainer" source="CRB" page="71" kind="positive" karma="20" class="INFECTED"><name>Zap Gainer</name>' +
+    '<infected strain="II" base="Glimmerkin" freePhysical="2" freeMental="2" essence="5" magic="1" magicLoss="1" magicMax="5+initiate-grade"/>' +
+    '<power name="Glimmer (Bright)"/><power name="Ghost Step"/><power name="Knack" rating="2"/><weakness name="Trouble Dice (Noon, Mild)"/><text/></quality>'
+  const c = fixtureCatalog((f, x) => (f.endsWith('crb/qualities.xml') ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`) : x))
+  const cr = fixtureCreation()
+  cr.set('infectedAllowed', { key: 'infectedAllowed', value: true })
+  const ch = runner()
+  ch.build.qualities = [{ uid: 'q0', id: 'crb.zap-gainer', level: 1 }]
+  await open(ch, 'print', c, cr)
+  expect(pageText()).toMatch(/Zap Gainer\s*Powers: Glimmer \(Bright\), Ghost Step, Knack 2\s*Weaknesses: Trouble Dice \(Noon, Mild\)/) // (the printed sheet)
+  await open(ch, 'method', c, cr)
+  expect(pageText()).toMatch(/Gained powers \(free\): Glimmer \(Bright\), Ghost Step \(not in the catalog\), Knack 2Gained weaknesses/)
+  expect(pageText()).toMatch(/Gained weaknesses: Trouble Dice \(Noon, Mild\)/)
+})

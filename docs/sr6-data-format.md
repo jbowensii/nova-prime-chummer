@@ -207,6 +207,14 @@ Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infe
   as a free Optional Power`; Goblin's `Gain one Optional Powers (except Regeneration) for free`: every one but
   Regeneration). One free pick per character. A type with no `Optional Powers:` line (Ghoul, Grendel, Jabbawock, Lamia) has
   none; an item naming no row is reported (`unmatched`): Chiron's `Immunity (Age)`, which the table does not price.
+- `<power name [rating] [ref]/>` and `<weakness name/>`, one per item of the type's `Gained Powers:` and `Gained
+  Weaknesses:` lines (after the optional powers): `name` as printed less page citations (`Natural Weapon (Claws, Bite)`,
+  `Magical Guard (self only)`), `rating` a printed number (`Armor 1`, `Armor (4)`, `Built Tough 2`), `ref` the critter
+  power's id when the same book prints it. The app finds the rest by the name less its parenthesis across the catalog
+  (`data.ts` `gainedEntry`: a power among the critter powers, then the qualities; a weakness among the critter
+  weaknesses, the core rulebook's rules entries, p. 228) and lists a name it can't find as `data.unresolved`, never
+  guessed. Modifiers (`+1 initiative die`, `–1 Logic`) and the free pick's sentence are not items. They cost nothing
+  (owner: critter powers cost 0); the Creation method tab's Infected section and the printed sheet list them.
 - `<karmaif flag="awakened" value note/>`: the quality's Karma when the character is Awakened (a magician, adept, mystic
   adept or aspected magician; a technomancer is not), from a price note `(–10 Karma if character is already Awakened)`:
   Mutaqua 54/44, Nosferatu 48/38, Wendigo 47/37, `note` "less 10 if the character is already Awakened" (shown where the

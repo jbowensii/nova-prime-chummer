@@ -18,10 +18,10 @@ import {
 } from '../../model/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
 import { flag, num, str } from '../../engine/creation'
-import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data'
+import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../engine/data'
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { awakenedFlag, boughtKind, infectedTypes, runnerInfected } from '../../engine/infected'
+import { awakenedFlag, boughtKind, infectedTypes, runnerInfected, type InfectedType } from '../../engine/infected'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
@@ -267,6 +267,11 @@ function InfectedSection() {
             </li>
           )}
           <li>Edge: the Infected rules give no change at creation.</li>
+          {(['power', 'weakness'] as const).map(tag => (
+            <li key={tag}>
+              {tag === 'power' ? 'Gained powers (free)' : 'Gained weaknesses'}: <Gains t={t} tag={tag} />
+            </li>
+          ))}
           <li>
             Optional powers (Qualities tab): {t.powers.length ? t.powers.map(p => `${power(p.ref)}${p.free ? ' (free pick)' : ''}`).join(', ') : 'none'}.{' '}
             {t.powers.some(p => p.free) && 'One free pick. '}
@@ -278,6 +283,36 @@ function InfectedSection() {
         </ul>
       )}
     </section>
+  )
+}
+
+/** An Infected type's gained powers or weaknesses (its <power>s, <weakness>s), each with its card when the catalog has it
+ *  (data.ts gainedEntry), else marked (Game data lists it: data.unresolved). */
+export function Gains({ t, tag }: { t: InfectedType; tag: Gained['tag'] }) {
+  const { data } = useSr6Editor()
+  const gs = t.gains.filter(g => g.tag === tag)
+  if (!gs.length) return <>none listed</>
+  return (
+    <>
+      {gs.map((g, i) => {
+        const e = gainedEntry(data, g),
+          name = `${g.name}${g.rating ? ` ${g.rating}` : ''}`
+        return (
+          <span key={i}>
+            {i > 0 && ', '}
+            {e ? (
+              <Sr6Ref kind={e.kind} id={e.id}>
+                {name}
+              </Sr6Ref>
+            ) : (
+              <>
+                {name} <span className="err">(not in the catalog)</span>
+              </>
+            )}
+          </span>
+        )
+      })}
+    </>
   )
 }
 

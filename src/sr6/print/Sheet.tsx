@@ -12,6 +12,7 @@ import '../../print/sheet.css'
 import './sheet.css'
 import { entryOf, priced, statusesOf } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
+import { runnerInfected } from '../engine/infected'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
@@ -41,7 +42,8 @@ export function Sr6Sheet() {
   const b = ch.build,
     art = useSheetArt(ch.id, 'sr6'),
     k = MAGIC_KINDS[b.magic],
-    style = usePrintStyle()
+    style = usePrintStyle(),
+    inf = runnerInfected(b, data)
   const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host, effectNotes } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
@@ -198,6 +200,16 @@ export function Sr6Sheet() {
                       {v?.name ?? q.name ?? q.id}
                       {v?.perLevel && ` ${q.level}`}
                       {q.free && <span className="s-small"> (metatype)</span>}
+                      {/* (an Infected type's gained powers and weaknesses, SWC pp. 110–114; free) */}
+                      {inf?.line === q &&
+                        (['power', 'weakness'] as const).map(tag => {
+                          const gs = inf.t.gains.filter(g => g.tag === tag)
+                          return gs.length ? (
+                            <div key={tag} className="s-small">
+                              {tag === 'power' ? 'Powers' : 'Weaknesses'}: {gs.map(g => `${g.name}${g.rating ? ` ${g.rating}` : ''}`).join(', ')}
+                            </div>
+                          ) : null
+                        })}
                     </li>
                   )
                 })}

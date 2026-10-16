@@ -1,5 +1,6 @@
 // Owner requests of 2026-10-16 in the SR6 engine, on the made-up fixture: the Awakened override after creation (a free
-// ledger spend); No Future's Stolen Gear as its errata has it. Invented numbers.
+// ledger spend); No Future's Stolen Gear as its errata has it; the Molotov's status; an Infected type's gained powers and
+// weaknesses. Invented numbers.
 import { expect, test } from 'vitest'
 import { currentBuild, preview, record, stolenLeft, validateCareer, voidEntry } from '../../src/sr6/engine/career'
 import { apply } from '../../src/sr6/engine/actions'
@@ -7,7 +8,9 @@ import { allBudgets, nuyenPerKarma, statusesOf, toNuyen } from '../../src/sr6/en
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { gainedEntry, sr6Data } from '../../src/sr6/engine/data'
+import { infectedOf } from '../../src/sr6/engine/infected'
+import { buildOf, fixtureCatalog, GLIM, made } from './fixture'
 
 const NOW = '2026-10-16T10:00:00.000Z'
 /** A finalized karma-build Glimmerkin with 100 karma and 5,000¥. */
@@ -116,4 +119,29 @@ test('an item’s statuses (<status name level?>) as shown', () => {
   ).toEqual(['Burning 4', 'Wet'])
   expect(statusesOf({ ...e, parts: [] })).toEqual([])
   expect(statusesOf(undefined)).toEqual([])
+})
+
+// an Infected type's gained powers and weaknesses (SWC pp. 110–114 as data), all made up
+const GAINER =
+  '<quality id="crb.zap-gainer" source="CRB" page="71" kind="positive" karma="20" class="INFECTED"><name>Zap Gainer</name>' +
+  '<infected strain="II" base="Glimmerkin" freePhysical="2" freeMental="2" essence="5" magic="1" magicLoss="1" magicMax="5+initiate-grade"/>' +
+  '<power name="Glimmer (Bright)"/><power ref="crb.glimmer" name="Glimmers"/><power name="Knack" rating="2"/><power name="Ghost Step"/>' +
+  '<weakness name="Trouble Dice (Noon, Mild)"/><weakness name="Dawn Dread"/><text/></quality>'
+const gainerCatalog = () => fixtureCatalog((f, x) => (f.endsWith('crb/qualities.xml') ? x.replace('</sr6:data>', `${GAINER}\n</sr6:data>`) : x))
+
+test('an Infected type’s gained powers and weaknesses: by ref, by name less its parenthesis, a power as a quality; the rest listed, never guessed', () => {
+  const data = sr6Data(gainerCatalog())
+  const t = infectedOf(data.entry('qualities', 'crb.zap-gainer'))!
+  expect(t.gains.map(g => [g.tag, g.name, g.rating, gainedEntry(data, g)?.id])).toEqual([
+    ['power', 'Glimmer (Bright)', undefined, 'crb.glimmer'],
+    ['power', 'Glimmers', undefined, 'crb.glimmer'],
+    ['power', 'Knack', 2, 'crb.knack'],
+    ['power', 'Ghost Step', undefined, undefined],
+    ['weakness', 'Trouble Dice (Noon, Mild)', undefined, 'crb.making-trouble-dice'],
+    ['weakness', 'Dawn Dread', undefined, undefined],
+  ])
+  expect(data.problems.filter(p => p.code === 'data.unresolved' && p.path === 'qualities.crb.zap-gainer').map(p => p.message)).toEqual([
+    'Zap Gainer’s gained power “Ghost Step” isn’t a critter power or quality in the catalog.',
+    'Zap Gainer’s gained weakness “Dawn Dread” isn’t a critter weakness in the catalog.',
+  ])
 })

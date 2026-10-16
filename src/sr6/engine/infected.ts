@@ -9,7 +9,7 @@
 import { MAGIC_KIND_LABELS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Quality } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { flag, num, type CreationRules } from './creation'
-import { awakenedKind, type Sr6Data } from './data'
+import { awakenedKind, gainsOf, type Gained, type Sr6Data } from './data'
 import { normName } from './names'
 
 export interface InfectedType {
@@ -30,6 +30,8 @@ export interface InfectedType {
   alt?: { karma: number; adds: Partial<Record<Sr6Attr, number>>; note?: string; page?: number }
   /** <optionalpower>: the optional powers (quality ids) it may buy; free: one its free pick may take */
   powers: { ref: string; free: boolean }[]
+  /** <power>, <weakness>: what it gains, free (owner: critter powers cost nothing), its entries by gainedEntry (data.ts) */
+  gains: Gained[]
 }
 
 const int = (s: string | undefined) => (s == null || s === '' || !Number.isFinite(Number(s)) ? undefined : Number(s))
@@ -65,6 +67,7 @@ export function infectedOf(e: Sr6Entry | undefined): InfectedType | undefined {
         }
       : {}),
     powers: e.parts.filter(p => p.tag === 'optionalpower' && p.attrs.ref).map(p => ({ ref: p.attrs.ref, free: p.attrs.free === 'true' })),
+    gains: gainsOf(e),
   }
 }
 
