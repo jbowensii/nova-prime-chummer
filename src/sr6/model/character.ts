@@ -106,9 +106,6 @@ export interface Sr6Purchase {
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
-  /** an item whose Availability prints a licence fee: the uids of the SINs it is licensed on (SR6: a licence belongs to
-   *  one SIN; the fee is paid once for each); none: carried unlicensed (a warning). Never enforced */
-  licensedOn?: string[]
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -190,10 +187,25 @@ export interface Sr6Sin {
   kind: 'real' | 'fake'
   rating?: number
   gender?: string
-  licences: { name: string; rating: number }[]
+  licences: Sr6Licence[]
   lifestyles?: Sr6Lifestyle[]
   placeholder?: true
 }
+/** One of a SIN's licences (every licence is one SIN's: owner 2026-10-16): a fake licence (`Firearm license 3`), or an
+ *  owned item's (item: its line's uid, an accessory's too; named after it). Priced rating × licencePerRating, but an item's
+ *  on a real SIN at the fee its Availability prints (its rating unused). Never enforced. */
+export interface Sr6Licence {
+  name: string
+  rating: number
+  item?: string
+}
+/** An owned item's licence on a SIN, named after it (`name`: its catalog name; absent, the line's own): rated as asked,
+ *  else a fake SIN's own rating (a licence can't out-rate it), else 1. */
+export const itemLicence = (x: Sr6Purchase, s: Sr6Sin, rating?: number, name?: string): Sr6Licence => ({
+  name: name || x.name || x.snapshot?.name || 'Custom item',
+  rating: rating ?? (s.kind === 'fake' ? (s.rating ?? 1) : 1),
+  item: x.uid,
+})
 /** A SIN's name as shown: a placeholder's reads Unnamed SIN. */
 export const sinName = (s: Sr6Sin, fallback = 'SIN') => s.name || (s.placeholder ? 'Unnamed SIN' : fallback)
 /** A SIN's kind as shown: `placeholder`, `real`, or `fake, rating 3`. */
@@ -287,9 +299,10 @@ export type Sr6Advance =
   | { op: 'convert'; karma: number }
   /** the Awakened flag's override set after creation (value absent: derived again; infected.ts awakenedFlag), free */
   | { op: 'awakened'; value?: boolean }
-  /** a licence for an owned line (target, its uid; an accessory's too) on one of the runner's SINs (sin, its uid), at the
-   *  fee its Availability prints */
-  | { op: 'licensed'; target: string; sin: string }
+  /** a licence for an owned line (target, its uid; an accessory's too) on one of the runner's SINs (sin, its uid): on a
+   *  fake SIN one of its fake licences (rating: absent, the SIN's), on a real one at the fee its Availability prints; name:
+   *  the item's as recorded, the licence's */
+  | { op: 'licensed'; target: string; sin: string; rating?: number; name?: string }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [

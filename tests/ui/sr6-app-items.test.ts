@@ -49,12 +49,14 @@ test('Gear: an item printing a licence fee is licensed per SIN, its fee once a S
   await change(field('Tangle Rope 1 licensed on Pat Roe'), true)
   await change(field('Tangle Rope 1 licensed on Pat Doe'), true)
   expect(pageText()).toMatch(/licence fee 500¥ · licensed on: Pat Roe, Pat Doe/)
-  expect(pageText()).toMatch(/incl\. licence 1,000¥/)
   expect(document.querySelector('[aria-label^="Needs a licence"]')).toBeNull()
-  expect((await saved()).build.purchases[0].licensedOn).toEqual(['s1', 's2'])
+  expect((await saved()).build.sins.map(s => s.licences)).toEqual([
+    [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }],
+    [{ name: 'Tangle Rope 1', rating: 1, item: 'g1' }],
+  ])
   await change(field('Tangle Rope 1 licensed on Pat Roe'), false)
   await change(field('Tangle Rope 1 licensed on Pat Doe'), false)
-  expect((await saved()).build.purchases[0].licensedOn).toBeUndefined()
+  expect((await saved()).build.sins.map(s => s.licences)).toEqual([[], []])
 })
 
 test('Gear: with no SIN the licence choice is there, disabled, saying why', async () => {
@@ -71,7 +73,8 @@ test('Ledger: after finalising, a licence on another SIN is a purchase at its fe
     { uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] },
     { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
   ]
-  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, licensedOn: ['s1'], accessories: [] }]
+  ch.build.sins[0].licences = [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }]
+  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
   Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 900 } })
   ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 900 }]
   const saved = await open(ch, 'ledger', feeCatalog())
@@ -191,10 +194,10 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     const ch = stolenRunner(false)
     ch.build.qualities.push({ uid: 'q0', id: 'crb.zap-gainer', level: 1 })
     ch.build.awakened = false
-    ch.build.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] }]
+    ch.build.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Tangle Rope 1', rating: 2, item: 'g1' }] }]
     ch.build.purchases = [
       { uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] },
-      { uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, licensedOn: ['s1'], accessories: [] },
+      { uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] },
       { uid: 'a1', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
     ]
     await open(ch, 'print', c, cr)
@@ -202,7 +205,7 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     const t = pageText()
     expect(t).toMatch(/Powers: Glimmer \(Bright\), Knack 2/)
     expect(t).toMatch(/Weaknesses: Trouble Dice \(Noon, Mild\)/)
-    expect(t).toMatch(/Pat Roe[^]*Tangle Rope 1 \(licence\)/)
+    expect(t).toMatch(/Pat Roe[^]*Tangle Rope 1 \(licence 2\)/)
     expect(t).toMatch(/Burning 4/)
     expect(t).toMatch(/no, overridden \(derived: yes, Infected: Zap Gainer\)/)
     expect(t).toMatch(/Bounty: 3 of 3 karma turned into nuyen not bought off/)

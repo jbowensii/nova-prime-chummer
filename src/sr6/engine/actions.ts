@@ -8,6 +8,7 @@ import { newId } from '../../model/types'
 import {
   CONTACT_TYPES,
   CORE_ATTRS,
+  itemLicence,
   type Bonus,
   type ContactType,
   type CpPool,
@@ -30,7 +31,7 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, licenceFee, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { augmentationRoom, entryOf, licenceFee, noteSkill, purchaseName, qualityChoice, seatsOf, toNuyenMax } from './budgets'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -112,8 +113,9 @@ export type Op =
   | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
   | { op: 'seats'; uid: string; removed: number }
-  /** a line (or accessory) whose Availability prints a licence fee: licensed on that SIN (on), or not */
-  | { op: 'licensed'; uid: string; sin: string; on: boolean }
+  /** a line (or accessory) whose Availability prints a licence fee: licensed on that SIN (on), or not; rating: a fake
+   *  SIN's licence's (absent: the SIN's own) */
+  | { op: 'licensed'; uid: string; sin: string; on: boolean; rating?: number }
   /** the runner's Infected type (an Infected quality's id; '' none): infect */
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
@@ -225,6 +227,10 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 
 /** Every purchase, and every accessory on one. */
 const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
+/** A removed line's licences go with it (the lines: it and its accessories). */
+const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
+  for (const s of b.sins) s.licences = s.licences.filter(l => !gone.some(x => x.uid === l.item))
+}
 
 /** Apply one editor step to the build. */
 export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
@@ -480,8 +486,10 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       )
     case 'purchase': {
       if ('remove' in op) {
-        if (!b.purchases.some(x => x.uid === op.remove)) return no('unknown-line')
-        b.purchases = b.purchases.filter(x => x.uid !== op.remove)
+        const x = b.purchases.find(x => x.uid === op.remove)
+        if (!x) return no('unknown-line')
+        b.purchases = b.purchases.filter(y => y !== x)
+        unlicense(b, [x, ...x.accessories])
         return OK
       }
       const line = newLine(op, data, cr)
@@ -510,6 +518,10 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!host) return no('unknown-host')
       if ('remove' in op) {
         if (!host.accessories.some(a => a.uid === op.remove)) return no('not-fitted')
+        unlicense(
+          b,
+          host.accessories.filter(a => a.uid === op.remove),
+        )
         host.accessories = host.accessories.filter(a => a.uid !== op.remove)
         return OK
       }
@@ -704,10 +716,6 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op)
         return removeBy(b.sins, op.remove, l => {
           b.sins = l
-          // (its items' licences go with it)
-          for (const x of allLines(b).filter(x => x.licensedOn?.includes(op.remove)))
-            if (x.licensedOn!.length > 1) x.licensedOn = x.licensedOn!.filter(s => s !== op.remove)
-            else delete x.licensedOn
         })
       if (op.rating !== undefined && op.rating < 1) return no('below-one')
       if (!op.uid) {
@@ -793,14 +801,21 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'licensed': {
-      // a licence is one SIN's (owner 2026-10-16): the item licensed on each SIN chosen, its fee once a SIN; never enforced
-      const x = allLines(b).find(p => p.uid === op.uid)
-      if (!x || !b.sins.some(s => s.uid === op.sin)) return no('unknown-line')
-      if (op.on && licenceFee(x, data) === undefined) return no('no-licence')
-      const on = (x.licensedOn ?? []).filter(s => s !== op.sin)
-      if (op.on) on.push(op.sin)
-      if (on.length) x.licensedOn = on
-      else delete x.licensedOn
+      // an item's licence is one of its SIN's licences (owner 2026-10-16): on a fake SIN a fake licence named after it,
+      // rated; on a real SIN at its printed fee (budgets.ts sinCost). Never enforced
+      const x = allLines(b).find(p => p.uid === op.uid),
+        s = b.sins.find(s => s.uid === op.sin)
+      if (!x || !s) return no('unknown-line')
+      if (!op.on) {
+        s.licences = s.licences.filter(l => l.item !== x.uid)
+        return OK
+      }
+      if (licenceFee(x, data) === undefined) return no('no-licence')
+      if (s.licences.some(l => l.item === x.uid)) return OK
+      const l = itemLicence(x, s, op.rating, purchaseName(x, data))
+      if (l.rating < 1) return no('below-one')
+      if (s.kind === 'fake' && l.rating > (s.rating ?? 1)) return no('licence-above-sin')
+      s.licences.push(l)
       return OK
     }
     case 'transhuman': {

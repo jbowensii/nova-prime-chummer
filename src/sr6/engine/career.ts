@@ -6,7 +6,16 @@
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
-import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry, type Sr6Quality } from '../model/character'
+import {
+  itemLicence,
+  sinName,
+  type PickKind,
+  type Sr6Advance,
+  type Sr6Build,
+  type Sr6Character,
+  type Sr6LedgerEntry,
+  type Sr6Quality,
+} from '../model/character'
 import {
   aptitudeSkills,
   attrMax,
@@ -15,6 +24,7 @@ import {
   attrRating,
   entryOf,
   licenceFee,
+  purchaseName,
   magicLoss,
   priced,
   qualityCost,
@@ -184,8 +194,9 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       else b.awakened = a.value
       return
     case 'licensed': {
-      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target)
-      if (x && !x.licensedOn?.includes(a.sin)) x.licensedOn = [...(x.licensedOn ?? []), a.sin]
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target),
+        s = b.sins.find(y => y.uid === a.sin)
+      if (x && s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s, a.rating, a.name))
       return
     }
     case 'convert':
@@ -575,13 +586,19 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       }
     }
     case 'licensed': {
-      // a licence on one more of the runner's SINs for a line it owns, at the fee its Availability prints (owner 2026-10-16)
+      // a licence on one more of the runner's SINs for a line it owns (owner 2026-10-16): on a real SIN at the fee its
+      // Availability prints, on a fake one a fake licence priced as creation prices it (budgets.ts sinCost)
       const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target) ?? no('unknown-line')
       const sin = b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')
       const fee = licenceFee(x, data) ?? no('no-licence')
-      if (x.licensedOn?.includes(a.sin)) no('already-known')
-      const e = entryOf(x, data)
-      return { label: `Licence: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} on ${sinName(sin)}`, nuyen: fee }
+      if (sin.licences.some(l => l.item === x.uid)) no('already-known')
+      const e = entryOf(x, data),
+        what = `Licence: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} on ${sinName(sin)}`
+      if (sin.kind === 'real') return { label: what, nuyen: fee }
+      const l = itemLicence(x, sin, a.rating)
+      if (!(l.rating >= 1)) no('below-one')
+      if (l.rating > (sin.rating ?? 1)) no('licence-above-sin')
+      return { label: `${what} (fake licence, rating ${l.rating})`, nuyen: l.rating * need('licencePerRating') }
     }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }
@@ -705,6 +722,12 @@ export function record(
     case 'lifestyle':
       if (adv.sin && !adv.uid) adv.uid = newId()
       break
+    case 'licensed': {
+      // (the licence named after the item as the catalog has it: replay needs no catalog)
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === adv.target)
+      if (x) adv.name = purchaseName(x, data)
+      break
+    }
   }
   const entry: Sr6LedgerEntry = { id: newId(), at: now, type: 'advance', advance: adv, label: pv.label, karma: pv.karma, nuyen: pv.nuyen }
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, entry] } }

@@ -9,6 +9,7 @@ import {
   CONTACT_TYPES,
   CORE_ATTRS,
   CP_POOLS,
+  itemLicence,
   MAGIC_KIND_LABELS,
   PICK_KINDS,
   PRIORITY_COLUMNS,
@@ -77,7 +78,6 @@ function purchaseXml(p: Sr6Purchase): string {
       worn: p.worn,
       note: p.note,
       seatsRemoved: p.seatsRemoved,
-      licensedOn: p.licensedOn?.join(' '),
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -104,7 +104,7 @@ const sinXml = (s: Sr6Sin) =>
   el(
     'sin',
     { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder },
-    s.licences.map(l => el('licence', l)).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''),
+    s.licences.map(l => el('licence', { ...l })).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''),
   )
 
 function buildXml(b: Sr6Build): string {
@@ -195,7 +195,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'awakened':
       return [{ awakened: a.value }, '']
     case 'licensed':
-      return [{ target: a.target, sin: a.sin }, '']
+      return [{ target: a.target, sin: a.sin, rating: a.rating, name: a.name }, '']
     case 'powerpoint':
     case 'convert':
     case 'other':
@@ -335,12 +335,13 @@ const readBonuses = (e: Element) => {
   return xs.length ? xs : undefined
 }
 
-/** sin: the runner's first SIN, where an older line's licence (licence="bought", before licences were per SIN) goes. */
-function readPurchase(e: Element, fix?: string[], sin?: string): Sr6Purchase {
+/** licensed: told an older line's licences (licensedOn: the SINs' uids; before it, licence="bought": the first SIN's, ''
+ *  when the runner has none), which readBuild moves onto those SINs. */
+function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, sins: string[]) => void): Sr6Purchase {
   const kind = oneOf(e.getAttribute('kind'), PURCHASE_KINDS, 'purchase kind')!
   const snap = kid(e, 'snapshot')?.firstElementChild,
-    on = str(e, 'licensedOn')?.split(/\s+/).filter(Boolean) ?? (e.getAttribute('licence') === 'bought' && sin ? [sin] : [])
-  return def({
+    on = str(e, 'licensedOn')?.split(/\s+/).filter(Boolean) ?? (e.getAttribute('licence') === 'bought' ? [''] : [])
+  const x: Sr6Purchase = def({
     uid: e.getAttribute('uid') ?? '',
     kind,
     id: str(e, 'id'),
@@ -355,10 +356,11 @@ function readPurchase(e: Element, fix?: string[], sin?: string): Sr6Purchase {
     bonuses: readBonuses(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
-    licensedOn: listOrNone(on),
-    accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, sin), label, fix),
+    accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
+  if (on.length) licensed?.(x, on)
+  return x
 }
 
 const readKnowledge = (e: Element): Sr6Knowledge =>
@@ -495,7 +497,21 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.picks = each(kids(b, 'pick'), readPick, label, fix)
   out.martialArts = each(kids(b, 'martialart'), e => readMartial(e, fix), label, fix)
   out.sins = each(kids(b, 'sin'), readSin, label, fix)
-  out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix, out.sins[0]?.uid), label, fix)
+  // an older file's item licences (on the line, before every licence was one of a SIN's: owner 2026-10-16) move onto the
+  // SINs they name, a fake SIN's rated as its SIN; one naming no SIN of the runner is left out, noted
+  out.purchases = each(
+    kids(b, 'purchase'),
+    e =>
+      readPurchase(e, fix, (x, on) => {
+        for (const uid of on) {
+          const s = out.sins.find(s => s.uid === (uid || out.sins[0]?.uid))
+          if (s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s))
+          else if (!s) fix?.push(`${x.name || 'A custom item'}: its licence names no SIN of the runner, so it’s left out (licence it on a SIN on Contacts).`)
+        }
+      }),
+    label,
+    fix,
+  )
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   return out
 }
@@ -507,7 +523,7 @@ function readSin(e: Element): Sr6Sin {
     kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!,
     rating: num(e, 'rating'),
     gender: str(e, 'gender'),
-    licences: kids(e, 'licence').map(l => ({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0) })),
+    licences: kids(e, 'licence').map(l => def({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0), item: str(l, 'item') })),
     lifestyles: lifestyles.length ? lifestyles : undefined,
     placeholder: yes(e, 'placeholder'),
   })
@@ -593,7 +609,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return v == null ? { op } : { op, value: oneOf(v, ['true', 'false', '1', '0'] as const, 'Awakened override')! === 'true' || v === '1' }
     }
     case 'licensed':
-      return { op, target: req(e, 'target'), sin: req(e, 'sin') }
+      return def({ op, target: req(e, 'target'), sin: req(e, 'sin'), rating: num(e, 'rating'), name: str(e, 'name') })
     case 'powerpoint':
     case 'other':
       return { op }

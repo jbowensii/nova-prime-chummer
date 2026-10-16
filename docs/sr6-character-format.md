@@ -120,7 +120,7 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126), `licensedOn` for an item whose Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥): the uids of the runner's SINs it is licensed on, space-separated (a licence is one SIN's: one gun carried under three SINs needs three), the fee added to the line's cost once for each; absent, carried unlicensed (one warning that it needs a licence). An older file's `licence="bought"` reads as licensed on the first SIN, `licence="unlicensed"` as none; the next save writes `licensedOn`. Licences are never enforced. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
@@ -137,6 +137,11 @@ copy". Book entries are never copied here.
   that identity's own (optional; the runner's is the root's `gender`). `placeholder="true"`: an unnamed stand-in
   (`name=""`, `kind="real"`, no rating, free) holding an older file's lifestyle; Review warns until the player names it
   or sets its kind or rating (which makes it a normal SIN), or moves the lifestyle to another SIN.
+- `<licence name rating item?>`: one of a SIN's licences (every licence is one SIN's). A fake licence, priced rating ×
+  `licencePerRating` (a fake SIN's can't out-rate it); `item`: the uid of an owned line (an accessory's too) whose
+  Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥), the licence named after it: on a fake SIN one of its
+  fake licences, rated (the SIN's rating unless the player picks), on a real SIN priced at that fee (its rating unused).
+  One gun carried under three SINs needs three. An item licensed on no SIN is a warning; licences are never enforced.
 - An older file's one `<lifestyle id months>` directly in `<build>` (before lifestyles belonged to SINs) loads onto the
   first `<sin>`; a runner with no SIN gets a placeholder SIN (`uid` the runner's id + `-sin`) to hold it. The same
   happens for a runner whose ledger has an older `lifestyle` spend and no SIN. The file is written the new way on its
@@ -177,7 +182,8 @@ the entry its `event` names.
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
   `licensed` (`target`: the uid of an owned line, an accessory's too, whose Availability prints a licence fee; `sin`: the
-  uid of the SIN it is licensed on; priced at the fee),
+  uid of the SIN it is licensed on; `name`: the item's, the licence's; on a real SIN priced at the fee, on a fake one a
+  fake licence, `rating` (absent: the SIN's) × `licencePerRating`),
   `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`

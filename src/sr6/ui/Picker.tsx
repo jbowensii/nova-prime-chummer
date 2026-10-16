@@ -616,7 +616,7 @@ export function PurchaseSection({
                   note = availNote(
                     e?.attrs.avail,
                     x.rating ?? 1,
-                    sins.filter(s => x.licensedOn?.includes(s.uid)).map(s => sinName(s)),
+                    sins.filter(s => s.licences.some(l => l.item === x.uid)).map(s => sinName(s)),
                   ),
                   licence = note.text
                 return (
@@ -681,7 +681,7 @@ export function PurchaseSection({
                                 <input
                                   type="checkbox"
                                   aria-label={`${name} licensed on ${sinName(s)}`}
-                                  checked={!!x.licensedOn?.includes(s.uid)}
+                                  checked={s.licences.some(l => l.item === x.uid)}
                                   onChange={ev => act({ op: 'licensed', uid: x.uid, sin: s.uid, on: ev.target.checked })}
                                 />{' '}
                                 Licence on {sinName(s)}
@@ -700,7 +700,6 @@ export function PurchaseSection({
                       <span className={cf ? 'has-formula' : undefined} title={cf ? [formulaText(cf), ...p.notes].join('\n') : undefined}>
                         {p.unpriced ? <span className="warn">unpriced</span> : `${n(p.cost)}¥`}
                       </span>
-                      {p.licence && <div className="muted">incl. licence {n(p.licence)}¥</div>}
                       {!p.ok && !p.unpriced && (
                         <span className="warn" title="A value the app can’t read counts 0">
                           {' '}

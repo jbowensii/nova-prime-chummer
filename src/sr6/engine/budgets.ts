@@ -12,7 +12,7 @@ import { normName } from './names'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
 import { bookValue, dataFind } from './values'
 import { entryLabel } from './categories'
-import { entryOf, priced, PURCHASE_TAB } from './purchases'
+import { entryOf, licenceFee, priced, PURCHASE_TAB } from './purchases'
 import { essenceBudget } from './essence'
 import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints } from './magic'
 import { skillSpend, knowledgePoints } from './skills'
@@ -52,13 +52,16 @@ export interface Sr6Budgets {
 const s = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** A SIN's nuyen, at creation and in career alike: a fake one's rating × fakeSinPerRating (a real one comes with its
- *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating. `price` reads a setting. */
-export function sinCost(sin: Sr6Sin, price: (key: string) => number): number {
-  const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
-  return own + (sin.licences.length ? sin.licences.reduce((t, l) => t + l.rating, 0) * price('licencePerRating') : 0)
+ *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating, but an owned item's licence
+ *  on a real SIN at `fee` (its printed fee, by the item's uid; owner 2026-10-16). `price` reads a setting. */
+export function sinCost(sin: Sr6Sin, price: (key: string) => number, fee?: (item: string) => number | undefined): number {
+  let t = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
+  for (const l of sin.licences) t += (sin.kind === 'real' && l.item !== undefined ? fee?.(l.item) : undefined) ?? l.rating * price('licencePerRating')
+  return t
 }
 
-const purchaseName = (x: Sr6Purchase, data: Sr6Data) => {
+/** An owned line's name as shown: its catalog entry's, else the name it carries. */
+export const purchaseName = (x: Sr6Purchase, data: Sr6Data) => {
   const e = entryOf(x, data)
   return e ? entryLabel(e) : (x.name ?? x.id ?? 'Custom item')
 }
@@ -68,14 +71,17 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   const add = (key: string, label: string, amount: number, tab: string) => {
     if (amount) breakdown.push({ key, label, amount: Math.round(amount), sign: 'spend', tab })
   }
-  for (const x of b.purchases) {
-    const pr = priced(x, data, cr)
+  for (const x of b.purchases)
     add(
       `purchase:${x.uid}`,
-      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}${x.licensedOn?.length && pr.licence ? ` with ${s(x.licensedOn.length, 'licence')}` : ''}`,
-      pr.cost,
+      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
+      priced(x, data, cr).cost,
       PURCHASE_TAB[x.kind],
     )
+  // (an item's licence on a real SIN is its printed fee: sinCost)
+  const fee = (uid: string) => {
+    const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === uid)
+    return x && licenceFee(x, data)
   }
   for (const sin of b.sins)
     for (const l of sin.lifestyles ?? []) {
@@ -92,7 +98,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     add(
       `sin:${sin.uid}`,
       `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`,
-      sinCost(sin, k => n0(cr, k)),
+      sinCost(sin, k => n0(cr, k), fee),
       'contacts',
     )
   }
@@ -103,9 +109,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     add(
       'sizePricing',
       `${size === 'troll' ? 'Troll' : 'Dwarf'}-sized: 10% more on ${size === 'troll' ? 'everything bought' : 'armor'}`,
-      // (a licence's fee is no item: not sized)
-      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost - (priced(x, data, cr).licence ?? 0), 0) *
-        0.1,
+      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
       'gear',
     )
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen

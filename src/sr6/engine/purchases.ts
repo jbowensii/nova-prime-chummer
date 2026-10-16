@@ -53,13 +53,12 @@ export function priced(
   data: Sr6Data,
   cr: CreationRules,
   host?: { cost: number; avail: number; essence: number },
-): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[]; licence?: number } {
+): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
   let cost: number,
     avail: number,
     essence: number,
     ok = true,
-    unpriced = false,
-    licence: number | undefined
+    unpriced = false
   const notes: string[] = [],
     perLine = new Set<string>()
   if (!x.id) {
@@ -91,9 +90,6 @@ export function priced(
     } else cost = read('cost')
     avail = read('avail')
     essence = read('essence')
-    // its licences: the fee its Availability prints (`2, 500¥`) once for each SIN it is licensed on (owner 2026-10-16)
-    const fee = x.licensedOn?.length ? licenceFee(x, data) : undefined
-    if (fee !== undefined) licence = fee * x.licensedOn!.length
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)
@@ -105,7 +101,6 @@ export function priced(
   if (!perLine.has('cost')) cost *= x.qty
   if (!perLine.has('essence')) essence *= x.qty
   const own = { cost, avail, essence }
-  if (licence) cost += licence
   for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own),
       ae = entryOf(a, data)
@@ -117,11 +112,11 @@ export function priced(
     essence += ess
     ok &&= pa.ok
   }
-  return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(licence ? { licence } : {}) }
+  return { cost, avail, essence: round2(essence), ok, unpriced, notes }
 }
 
-/** The licence fee an owned line's Availability prints (`2, 500¥`), paid once for each SIN it is licensed on; undefined:
- *  none printed (a custom item prints none). */
+/** The licence fee an owned line's Availability prints (`2, 500¥`): what its licence on a real SIN costs (on a fake SIN
+ *  it is a fake licence, priced by rating: budgets.ts sinCost); undefined: none printed (a custom item prints none). */
 export function licenceFee(x: Sr6Purchase, data: Sr6Data): number | undefined {
   const e = entryOf(x, data)
   return e && availability(e.attrs.avail, x.rating ?? ratingRange(e.attrs.rating)[0] ?? 1).fee

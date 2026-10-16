@@ -6,7 +6,7 @@
 import { entryOf, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
 import { balances, stolenLeft } from '../engine/career'
 import { awakenedFlag, runnerInfected } from '../engine/infected'
-import type { PickKind, PurchaseKind, Sr6Character, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
+import type { PickKind, PurchaseKind, Sr6Character, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
@@ -55,6 +55,15 @@ export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & 
       .map(s => ({ skill: s.id, label: s.name, rank: 0, attr: s.attr })),
   ].sort((x, y) => x.label.localeCompare(y.label))
 
+/** One of a SIN's licences in words (the sheets, the Contacts tab): a fake licence `Zap Gun 2`; an item's, named as the
+ *  item now is, `Tangle Rope 1 (licence 2)`, on a real SIN (at its fee) `Tangle Rope 1 (licence)`. */
+export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, l: Sr6Licence): string {
+  if (l.item === undefined) return `${l.name} ${l.rating}`
+  const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === l.item),
+    e = x && entryOf(x, data)
+  return `${e ? entryLabel(e) : l.name} (licence${s.kind === 'fake' ? ` ${l.rating}` : ''})`
+}
+
 export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'cr' | 'd' | 'career'>) {
   const b = ch.build
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
@@ -93,11 +102,9 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     lifeOf: (s: Sr6Sin) => (s.lifestyles ?? []).map(life).join(', '),
     /** the primary lifestyle: the first SIN's first one (of the SINs that have any) */
     lifestyle: first && life(first),
-    /** a SIN's licences: its fake licences (`Zap Gun 2`) and the items licensed on it (`Tangle Rope 1 (licence)`) */
-    licencesOf: (s: Sr6Sin) => [
-      ...s.licences.map(l => `${l.name} ${l.rating}`),
-      ...b.purchases.flatMap(x => [x, ...x.accessories]).flatMap(x => (x.licensedOn?.includes(s.uid) ? [`${nameOf(x)} (licence)`] : [])),
-    ],
+    /** a SIN's licences: its fake licences (`Zap Gun 2`) and the items licensed on it (`Tangle Rope 1 (licence 2)`; on a
+     *  real SIN, at its fee, `Tangle Rope 1 (licence)`) */
+    licencesOf: (s: Sr6Sin) => s.licences.map(l => licenceText(b, data, s, l)),
     /** a weapon's DV and the statuses it applies (`4P, Burning 4`: the No Future errata's Molotov) */
     dv: (x: Sr6Purchase) => [attrsOf(x).dv, ...statusesOf(entryOf(x, data))].filter(Boolean).join(', '),
     /** an armor line's Social Rating as printed (clothing, Smooth Operations), '' when none */
