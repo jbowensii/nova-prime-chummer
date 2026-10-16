@@ -17,8 +17,8 @@ An id row's "kind" is the file of OUR entry; a row filed under another kind (Com
 the one other kind file that holds the id, and is reported when none or several do.
 An id row with "gen": "errata" is written by hand, never regenerated (an errata PDF's statements the importer's per-book
 runs cannot see: the No Future errata, nf.json): "set" values (null drops the attribute: a rating the errata removes), "formula"
-and "effects" (a list of effect attribute dicts: the entry's effect of the same target is replaced). It applies after every
-other id row, so it wins over Commlink6's values.
+and "effects" (a list of effect attribute dicts, each with its "target": the entry's effect of that target is
+replaced). It applies after every other id row, so it wins over Commlink6's values.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
@@ -31,7 +31,8 @@ Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format
   {"kind","id","notext":true}                     no description: the book prints none for it, and a text the import gave
                                                   it from elsewhere (effects.py: a rule whose name holds its words) goes
   {"kind","id","split":[{"id","name","set"?,"note"?}]}  the entry becomes one entry per part (a row the book prints once for several
-                                                  things): a copy with the part's id and name, "set" values (VALUE_ATTRS; their formula/issue go),
+                                                  things): a copy with the part's id and name, "set" values (VALUE_ATTRS, null drops
+                                                  one; their formula/issue go),
                                                   "note" {"field","text"} (the printed rule the value comes from); the book's text goes to each
 An attribute the entry's kind schema lacks (class on a rules entry, social on gear) is skipped with one stderr line per row, and
 an id row is never refiled to a kind whose schema lacks its attributes (allowed(), fit()).

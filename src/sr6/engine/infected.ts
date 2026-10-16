@@ -1,10 +1,11 @@
 // The Sixth World Companion's playable Infected (pp. 104–114) and the Awakened flag. An Infected type is a quality whose
 // catalog entry carries <infected> (docs/sr6-data-format.md "Infected rules as data"); the runner is Infected while it has
-// one (actions.ts infect takes, swaps and removes it). From the type: its attribute maxima (its `when="<base>"` attr-max
-// effects, attributes.ts; the non-human vampire's <infectedalt> added to the runner's own), the free physical and mental
-// points (budgets.ts), Essence (essence.ts), Magic and its highest (providers.ts, magic.ts), and which optional powers may
-// be bought (<optionalpower>, one free pick). Awakened: a magician, adept, mystic adept or aspected magician, or Infected;
-// a technomancer is Emerged, not Awakened (owner, 2026-10-16); the player may override it (a Review warning).
+// one (actions.ts infect takes, swaps and removes it; career.ts records one bought after creation). From the type: its
+// attribute maxima (its `when="<base>"` attr-max effects, attributes.ts; the non-human vampire's <infectedalt> added to
+// the runner's own), the free physical and mental points (budgets.ts), Essence (essence.ts), Magic and its highest
+// (providers.ts, magic.ts), and which optional powers may be bought (<optionalpower>, one free pick). Awakened: a
+// magician, adept, mystic adept or aspected magician, or Infected; a technomancer is Emerged, not Awakened (owner,
+// 2026-10-16); the player may override it (a Review warning).
 import { MAGIC_KIND_LABELS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Quality } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import { flag, num, type CreationRules } from './creation'
