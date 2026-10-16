@@ -1,5 +1,8 @@
 {
   "keep": [
+    ["hs", "gear", "hs.breadbox-case", "capacity"],
+    ["hs", "gear", "hs.gonzo-case-cyberdeck", "capacity"],
+    ["hs", "gear", "hs.gonzo-case-cyberhack", "capacity"],
     ["aw", "vehicles", "aw.buzzard", "seats"],
     ["bn", "armor", "bn.heavy-barding", "cost"],
     ["bn", "armor", "bn.light-barding", "cost"],
