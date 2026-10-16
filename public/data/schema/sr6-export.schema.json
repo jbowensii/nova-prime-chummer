@@ -605,7 +605,7 @@
           }
         },
         "mount": {
-          "description": "A weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in.",
+          "description": "A weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in, or builtin:<n> for the vehicle's built-in mount vehicle.builtin[n].",
           "type": "string"
         },
         "diy": {

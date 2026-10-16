@@ -28,7 +28,6 @@ import {
   attrRating,
   diyAllowed,
   entryOf,
-  isMount,
   licenceFee,
   licenceName,
   magicLoss,
@@ -64,7 +63,7 @@ import {
   runnerInfected,
 } from './infected'
 import { infectedTo, unfit } from './actions'
-import { shiftProblem } from './vehiclemods'
+import { mountsOf, shiftProblem, type Mount } from './vehiclemods'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -598,8 +597,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       if (x.mount !== undefined) {
         if (x.kind !== 'weapons') no('not-a-weapon')
-        const m = host.accessories.find(y => y.uid === x.mount)
-        if (!m || !isMount(entryOf(m, data))) no('not-a-mount')
+        if (!mountsOf(host, data).some(m => m.uid === x.mount)) no('not-a-mount')
       }
       if (x.diy && !diyAllowed(e)) no('no-diy')
       // (critter equipment on an owned critter only; on a critter what is printed in its Body reads at it: priced)
@@ -623,13 +621,15 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'move': {
       // no new charge; the weapon's size is checked only by Review's warning (vehiclemods.ts); a void puts it back
       const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
-      const w = host.accessories.find(z => z.uid === a.target)!,
-        to = host.accessories.find(z => z.uid === a.mount),
-        from = host.accessories.find(z => z.uid === w.mount)
+      const mounts = mountsOf(host, data),
+        w = host.accessories.find(z => z.uid === a.target)!,
+        to = mounts.find(z => z.uid === a.mount),
+        from = mounts.find(z => z.uid === w.mount)
       if (w.kind !== 'weapons') no('not-a-weapon')
-      if (!to || !isMount(entryOf(to, data))) no('not-a-mount')
+      if (!to) no('not-a-mount')
       if (to!.uid === w.mount) no('same-mount')
-      return { label: `Moved: ${lineLabel(w)} from ${from ? lineLabel(from) : 'no mount'} to ${lineLabel(to!)} on ${lineLabel(host)}` }
+      const said = (m: Mount) => `${m.name}${m.builtin ? ' (built in)' : ''}`
+      return { label: `Moved: ${lineLabel(w)} from ${from ? said(from) : 'no mount'} to ${said(to!)} on ${lineLabel(host)}` }
     }
     case 'bond': {
       // the Critter Bond path's Permanent Improvement (SWC p. 139: a new or upgraded quality at 2 × its Karma, the

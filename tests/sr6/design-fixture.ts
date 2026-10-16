@@ -18,6 +18,7 @@ export const DESIGN_PARTS = `<sr6:data ${NS} kind="vehicledesign" version="1">
   <design id="zz.size-7" ${at} category="size class" cargo="4 CF"><name>Size Class 7</name></design>
   <design id="zz.improved-body" source="ZZ" page="151" category="Options" dp="4" perLevel="true" max="4"><name>Improved Body</name></design>
   <design id="zz.improved-armor" source="ZZ" page="151" category="Options" dp="2" perLevel="true" max="2 x Body"><name>Improved Armor</name></design>
+  <design id="zz.improved-handling" source="ZZ" page="151" category="Options" dp="5" perLevel="true" max="3"><name>Improved Handling</name></design>
   <design id="zz.improved-seating" source="ZZ" page="151" category="Options" dp="2" perLevel="true" max="50% x Seat"><name>Improved Seating</name></design>
   <design id="zz.improved-size" source="ZZ" page="151" category="Options" dp="4" perLevel="true" max="Size Class 20" maxReverse="2"><name>Improved Size</name></design>
   <design id="zz.improved-speed-interval" source="ZZ" page="151" category="Options" dp="5" perLevel="true" max="3"><name>Improved Speed Interval</name></design>
@@ -34,6 +35,7 @@ export const DESIGN_PARTS = `<sr6:data ${NS} kind="vehicledesign" version="1">
 </sr6:data>`
 export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-grip" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2" avail="4" cost="1000"><name>Zap Grip</name></gear>
+  <gear id="zz.zip-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" slots="1" avail="4(I)" cost="1500"><name>Zip Weapon Mount</name></gear>
   <gear id="zz.glitter-paint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_SKIN" slots="0" avail="6(L)" cost="4000"><name>Glitter Paint</name></gear>
 </sr6:data>`
 /** The fixture catalog with the made-up design parts and mods. */

@@ -6,7 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating, diyAllowed, entryOf, isMount, licenceFee, settingQuality } from '../../engine/budgets'
+import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
@@ -36,6 +36,7 @@ import { boughtDesign } from '../../engine/design'
 import { useSr6Designs } from '../Designer'
 import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../engine/critters'
 import { critterWearable } from './Critters'
+import { mountsOf } from '../../engine/vehiclemods'
 
 const OPS = [
   ['attribute', 'Raise attribute'],
@@ -723,13 +724,12 @@ export function LedgerTab() {
             Weapon mount
             <select aria-label="In weapon mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
               <option value="">None</option>
-              {host.accessories
-                .filter(a => isMount(entryOf(a, data)))
-                .map(a => (
-                  <option key={a.uid} value={a.uid}>
-                    {itemName(a)}
-                  </option>
-                ))}
+              {mountsOf(host, data).map(m => (
+                <option key={m.uid} value={m.uid}>
+                  {m.name}
+                  {m.builtin ? ' (built in)' : ''}
+                </option>
+              ))}
             </select>
           </label>
         )}
@@ -794,13 +794,12 @@ export function LedgerTab() {
               Into mount
               <select aria-label="Move to mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
                 <option value="">Pick one</option>
-                {(vehicles.find(x => x.accessories.some(a => a.uid === f.target))?.accessories ?? [])
-                  .filter(a => isMount(entryOf(a, data)))
-                  .map(a => (
-                    <option key={a.uid} value={a.uid}>
-                      {itemName(a)}
-                    </option>
-                  ))}
+                {(v => (v ? mountsOf(v, data) : []))(vehicles.find(x => x.accessories.some(a => a.uid === f.target))).map(m => (
+                  <option key={m.uid} value={m.uid}>
+                    {m.name}
+                    {m.builtin ? ' (built in)' : ''}
+                  </option>
+                ))}
               </select>
             </label>
           </>

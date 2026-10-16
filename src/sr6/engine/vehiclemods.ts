@@ -1,9 +1,11 @@
 // An owned vehicle's or drone's modifications (owner 2026-10-16, BUILDER Q5-Q7): with Double Clutch among the table's
 // books, its rules (mod slots, p. 120; hardpoints, pp. 123-125; weapon mounts, p. 142); else the core rulebook's (weapon
 // mounts up to the unaugmented Body / 3, a heavy one counting two, CRB p. 295; mods simply bought). A drone's autosofts
-// (CRB p. 201) either way. The mods built in (Double Clutch p. 146: the catalog's <builtin>) are shown, already paid
-// for; extra mod slots they give add to the vehicle's, and slots shifted between categories at 2:1 (DC p. 120) move them. What goes
-// past a limit is a Review warning, never refused.
+// (CRB p. 201) either way. The mods built in (Double Clutch p. 146: the catalog's <builtin>; a design's, its snapshot's)
+// are fittings already paid for, never taken off (owner 2026-10-16, DESIGNER Q3): a built-in weapon mount holds a
+// weapon and counts toward the hardpoints or mounts as a bought one; extra mod slots they give add to the vehicle's, and
+// slots shifted between categories at 2:1 (DC p. 120) move them. What goes past a limit is a Review warning, never
+// refused.
 import { SLOT_KINDS, type SlotKind, type SlotShift, type Sr6Purchase } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from './data'
@@ -27,6 +29,9 @@ export interface Fitted {
   units: number
 }
 export interface Builtin {
+  /** its uid on the vehicle, `builtin:<n>` by its place among the vehicle's <builtin>s (from 0): a weapon in a built-in
+   *  mount names it */
+  uid: string
   name: string
   ref?: string
   rating?: string
@@ -95,6 +100,45 @@ export function weaponSize(e?: Sr6Entry): 0 | 1 | 2 | undefined {
 const mountHolds = (e: Sr6Entry) => (/\bsmall\b/i.test(e.name) ? 0 : /\b(heavy|large|huge)\b/i.test(e.name) ? 2 : 1)
 const HOLDS = ['an SMG or smaller', 'an assault rifle or smaller', 'any weapon']
 
+/** The mods built into a vehicle: its entry's (or design snapshot's) <builtin>s, each with its uid. */
+function builtinsOf(e?: Sr6Entry): Builtin[] {
+  return (e?.parts ?? [])
+    .filter(p => p.tag === 'builtin' && p.attrs.name)
+    .map((p, i) => {
+      const cat = normCat(p.attrs.category) === 'universal' ? 'universal' : SLOT_KINDS.find(k => k === normCat(p.attrs.category))
+      return {
+        uid: `builtin:${i}`,
+        name: p.attrs.name,
+        ...(p.attrs.ref ? { ref: p.attrs.ref } : {}),
+        ...(p.attrs.rating ? { rating: p.attrs.rating } : {}),
+        ...(p.attrs.slots && cat ? { slots: first(p.attrs.slots), category: cat } : {}),
+      }
+    })
+}
+/** A built-in mod's catalog gear entry (its ref); none: a name only. */
+const builtinEntry = (b: Builtin, data: Sr6Data) => (b.ref ? data.entry('gear', b.ref) : undefined)
+
+export interface Mount {
+  uid: string
+  e: Sr6Entry
+  name: string
+  /** built in: already paid for, never taken off */
+  builtin?: true
+}
+/** The weapon mounts on the vehicle a weapon can sit in: those fitted, then those built in (DESIGNER Q3). */
+export function mountsOf(x: Sr6Purchase, data: Sr6Data): Mount[] {
+  const out: Mount[] = []
+  for (const a of x.accessories) {
+    const e = entryOf(a, data)
+    if (e && isMount(e)) out.push({ uid: a.uid, e, name: entryLabel(e) })
+  }
+  for (const b of builtinsOf(entryOf(x, data))) {
+    const e = builtinEntry(b, data)
+    if (e && isMount(e)) out.push({ uid: b.uid, e, name: builtinText(b), builtin: true })
+  }
+  return out
+}
+
 /** The vehicle's or drone's mod slots, hardpoints or weapon mounts, autosofts, built-in mods and what goes past them. */
 export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   const e = entryOf(x, data),
@@ -106,17 +150,7 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
     find = dataFind(data)
   const warnings: VehicleMods['warnings'] = []
   const warn = (message: string, source: string, page: number) => warnings.push({ message, source, page })
-  const builtin: Builtin[] = (e?.parts ?? [])
-    .filter(p => p.tag === 'builtin' && p.attrs.name)
-    .map(p => {
-      const cat = normCat(p.attrs.category) === 'universal' ? 'universal' : SLOT_KINDS.find(k => k === normCat(p.attrs.category))
-      return {
-        name: p.attrs.name,
-        ...(p.attrs.ref ? { ref: p.attrs.ref } : {}),
-        ...(p.attrs.rating ? { rating: p.attrs.rating } : {}),
-        ...(p.attrs.slots && cat ? { slots: first(p.attrs.slots), category: cat } : {}),
-      }
-    })
+  const builtin = builtinsOf(e)
   const notes = (e?.notes ?? []).filter(n => n.field === 'builtin').map(n => n.text)
 
   const fitted: Fitted[] = x.accessories.map(f => {
@@ -166,10 +200,19 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
           warn(`${vname}: its ${k} mods take ${m.used} mod slots; it has ${m.max}${universal ? ` (and ${universal} universal)` : ''}.`, 'DC', 120)
       }
     // hardpoints: one standard a full three points of Body; a small drone with a Body of 3 or more one small instead (the
-    // owner reads "over three" so, 2026-10-16), a micro or mini drone none (p. 124); hardpoint mods add theirs
+    // owner reads "over three" so, 2026-10-16), a micro or mini drone none (p. 124); hardpoint mods add theirs, built-in
+    // ones too, and a built-in device (a weapon mount) takes its share as a bought one
     const size = droneSize(e)
     const free = size === 'micro' || size === 'mini' ? 0 : size === 'small' ? (body >= 3 ? 0.5 : 0) : Math.floor(body / 3)
-    let added = 0
+    let added = 0,
+      builtUsed = 0
+    for (const b of builtin) {
+      const be = builtinEntry(b, data),
+        h = addsHardpoint(be),
+        on = hardpointOf(be)
+      if (h) added += HARDPOINT_UNITS[h]
+      if (on) builtUsed += HARDPOINT_UNITS[on]
+    }
     for (const f of x.accessories) {
       const h = addsHardpoint(entryOf(f, data))
       if (!h) continue
@@ -177,15 +220,13 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
       if (size === 'micro' || ((size === 'small' || size === 'mini') && h !== 'small'))
         warn(`${vname}: a ${size} drone ${size === 'micro' ? 'can’t add a hardpoint' : 'may only add a small hardpoint'} (${lineName(f.uid)}).`, 'DC', 124)
     }
-    out.hardpoints = { used: fitted.reduce((t, f) => t + f.units, 0), max: free + added }
+    out.hardpoints = { used: fitted.reduce((t, f) => t + f.units, builtUsed), max: free + added }
     if (out.hardpoints.used > out.hardpoints.max)
       warn(`${vname}: what is on its hardpoints takes ${out.hardpoints.used} standard hardpoints; it has ${out.hardpoints.max}.`, 'DC', 124)
   } else {
-    // the core rulebook: up to Body / 3 weapon mounts (rounded down, p. 201), a heavy one counting two (p. 295)
-    const used = x.accessories.reduce((t, f) => {
-      const fe = entryOf(f, data)
-      return t + (isMount(fe) ? (mountHolds(fe!) === 2 ? 2 : 1) : 0)
-    }, 0)
+    // the core rulebook: up to Body / 3 weapon mounts (rounded down, p. 201), a heavy one counting two (p. 295); built-in
+    // ones too
+    const used = mountsOf(x, data).reduce((t, m) => t + (mountHolds(m.e) === 2 ? 2 : 1), 0)
     out.mounts = { used, max: Math.floor(body / 3) }
     if (used > out.mounts.max) warn(`${vname}: ${used} weapon mounts (a heavy one counts two); its Body allows ${out.mounts.max}.`, 'CRB', 295)
   }
@@ -201,20 +242,20 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   }
   // every vehicle weapon sits in a weapon mount, one a mount, no bigger than it holds (DC p. 142; CRB p. 295)
   const cite: [string, number] = dc ? ['DC', 142] : ['CRB', 295]
-  const inMount = new Map<string, number>()
+  const mounts = mountsOf(x, data),
+    inMount = new Map<Mount, number>()
   for (const f of x.accessories.filter(f => f.kind === 'weapons')) {
-    const m = f.mount ? x.accessories.find(y => y.uid === f.mount) : undefined,
-      me = m && entryOf(m, data)
-    if (!me || !isMount(me)) {
+    const m = f.mount ? mounts.find(y => y.uid === f.mount) : undefined
+    if (!m) {
       warn(`${vname}: ${lineName(f.uid)} isn’t in a weapon mount.`, ...cite)
       continue
     }
-    inMount.set(m.uid, (inMount.get(m.uid) ?? 0) + 1)
+    inMount.set(m, (inMount.get(m) ?? 0) + 1)
     const size = weaponSize(entryOf(f, data))
-    if (size !== undefined && size > mountHolds(me))
-      warn(`${vname}: ${lineName(f.uid)} is too big for its ${entryLabel(me)} (it holds ${HOLDS[mountHolds(me)]}).`, ...cite)
+    if (size !== undefined && size > mountHolds(m.e))
+      warn(`${vname}: ${lineName(f.uid)} is too big for its ${m.name} (it holds ${HOLDS[mountHolds(m.e)]}).`, ...cite)
   }
-  for (const [uid, n] of inMount) if (n > 1) warn(`${vname}: ${n} weapons in one ${lineName(uid)}.`, ...cite)
+  for (const [m, n] of inMount) if (n > 1) warn(`${vname}: ${n} weapons in one ${m.name}.`, ...cite)
   return out
 }
 const normCat = (s?: string) => (s ?? '').toLowerCase().replace(/ mod.*$/, '')

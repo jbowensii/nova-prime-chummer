@@ -122,8 +122,9 @@ copy". Book entries are never copied here.
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
   vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
-  `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in (one naming none of them reads as
-  in no mount, noted); a vehicle's or drone's `slotShifts` lists the mod slots shifted between categories, in the order
+  `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in, or `builtin:<n>` for a weapon
+  mount built into the vehicle (its entry's or snapshot's n-th `<builtin>`, from 0: already paid for, never taken off;
+  owner 2026-10-16) (one naming none of them reads as in no mount, noted); a vehicle's or drone's `slotShifts` lists the mod slots shifted between categories, in the order
   made (`chassis>powertrain electronics>chassis`: Double Clutch p. 120, any available slots shifted at 2:1, so each
   entry takes two slots from its first category and gives one to its second; read with Double Clutch among the table's
   books only; an entry naming no two categories reads as left out, noted; absent: none); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
@@ -291,6 +292,8 @@ the design's name. Nothing derived is stored:
   none yet).
 - `<option id level>`: an option, design modification or quality factor (a `vehicledesign` id) and its level, a whole
   number: 1 for one taken once, more for an option bought in levels, negative for one taken in reverse (p. 151).
+  Improved Handling's `road="on"` or `road="off"`: for on-road or off-road only, 3 Design Points a level (at most 3
+  levels), lowering only that Handling (absent: both, at its catalog price; owner 2026-10-16).
 - `<purchase>`: a mod built in as a design option (a `gear` line as in the build): 2 Design Points per mod slot,
   multiplied with the rest; its nuyen added to the price after the × 1,000 (owner 2026-10-16).
 - `diy="true"`: built yourself, half the price (p. 155; the tests are the GM's). `approved="true"`: made or approved by

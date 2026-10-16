@@ -6,11 +6,11 @@
 // bought here too (after finalising: on the Ledger).
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { cargoFactor, diyAllowed, entryOf, isDrone, isMount, modKind, priced, seatsOf } from '../../engine/budgets'
+import { cargoFactor, diyAllowed, entryOf, isDrone, modKind, priced, seatsOf } from '../../engine/budgets'
 import { boughtDesign, designOf } from '../../engine/design'
 import { entryLabel } from '../../engine/categories'
 import { flag } from '../../engine/creation'
-import { builtinText, modsOf, shiftProblem, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
+import { builtinText, modsOf, mountsOf, shiftProblem, SLOT_KINDS, type Meter } from '../../engine/vehiclemods'
 import type { SlotKind, Sr6Purchase } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { n, reasonText, useSr6Editor } from '../editor'
@@ -133,7 +133,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   const m = modsOf(x, data),
     why = shiftProblem(x, shift.from, shift.to, data)
   const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
-  const mounts = x.accessories.filter(a => isMount(entryOf(a, data)))
+  const mounts = mountsOf(x, data) // (fitted, then built in)
   const rows = x.accessories.filter(a => a.kind === 'weapons' || diyAllowed(entryOf(a, data)))
   const add = (k: keyof typeof ADD) => (p: { e: Sr6Entry; rating?: number }) => {
     // a weapon goes into the first mount with none in it (changed below)
@@ -214,7 +214,8 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
                 <option value="">In no mount</option>
                 {mounts.map(mt => (
                   <option key={mt.uid} value={mt.uid}>
-                    In {label(mt)}
+                    In {mt.name}
+                    {mt.builtin ? ' (built in)' : ''}
                   </option>
                 ))}
               </select>

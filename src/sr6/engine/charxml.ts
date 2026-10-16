@@ -426,9 +426,10 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
-  // a weapon naming a mount its host doesn't have (a file edited by hand) sits in none: noted
+  // a weapon naming a mount its host doesn't have (a file edited by hand) sits in none: noted (a built-in one,
+  // `builtin:<n>`, is the catalog's: vehiclemods.ts warns when it isn't there)
   for (const a of x.accessories)
-    if (a.mount && !x.accessories.some(m => m.uid === a.mount)) {
+    if (a.mount && !a.mount.startsWith('builtin:') && !x.accessories.some(m => m.uid === a.mount)) {
       fix?.push(`${a.name || 'A weapon'}: its weapon mount isn’t on ${x.name || 'its vehicle'}, so it’s in none (put it in one on the Vehicles or Drones tab).`)
       delete a.mount
     }
@@ -858,7 +859,8 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
       o => {
         const level = num(o, 'level', 1)
         if (!Number.isInteger(level)) throw new Error(`level="${level}" isn’t a whole number`)
-        return { id: o.getAttribute('id') ?? '', level }
+        const road = str(o, 'road') === undefined ? undefined : oneOf(o.getAttribute('road'), ['on', 'off'] as const, 'Improved Handling road', undefined, fix)
+        return def({ id: o.getAttribute('id') ?? '', level, road })
       },
       label,
       fix,

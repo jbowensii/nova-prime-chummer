@@ -472,6 +472,12 @@
         <xs:complexType>
           <xs:attribute name="id" type="xs:string" use="required"/>
           <xs:attribute name="level" type="xs:integer" use="required"/>
+          <!-- Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both -->
+          <xs:attribute name="road">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="on"/><xs:enumeration value="off"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
         </xs:complexType>
       </xs:element>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>

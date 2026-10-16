@@ -355,6 +355,14 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       else if (level) x.options.push({ id: pid, level })
       else x.options = x.options.filter(y => y.id !== pid)
     })
+  // Improved Handling for on-road or off-road only (DC p. 151, owner Q2): its own price on the option
+  const road = (pid: string) => d.options.find(o => o.id === pid)?.road ?? ''
+  const setRoad = (pid: string, v: string) =>
+    update(x => {
+      const o = x.options.find(y => y.id === pid)
+      if (o && (v === 'on' || v === 'off')) o.road = v
+      else if (o) delete o.road
+    })
   const name = designName(doc)
   const chassisList = partsOf(c, 'chassis').filter(e => droneChassis(e) === (d.kind === 'drone'))
   const pick = (what: 'chassis' | 'powertrain' | 'console', list: Sr6Entry[], label: string) => (
@@ -470,6 +478,13 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
               <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
               {dpText(e)}
               {e.attrs.max ? `; at most ${e.attrs.max}` : ''}){' '}
+              {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
+                <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
+                  <option value="">On-road and off-road</option>
+                  <option value="on">On-road only (3 DP a level; at most 3)</option>
+                  <option value="off">Off-road only (3 DP a level; at most 3)</option>
+                </select>
+              )}{' '}
               <span className="muted">
                 {e.source} p.{e.page}
               </span>

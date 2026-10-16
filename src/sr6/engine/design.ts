@@ -77,6 +77,9 @@ const WORD: Record<string, Stat> = {
   'size class': 'size',
   size: 'size',
 }
+/** Improved Handling for on-road or off-road only (DC p. 151, owner Q2): Design Points a level, the most levels. */
+const ROAD_DP = 3,
+  ROAD_MAX = 3
 const key = (e: Sr6Entry) =>
   normName(e.name)
     .replace(/[^a-z]+/g, ' ')
@@ -142,7 +145,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const picked = d.options.flatMap(o => {
     const e = part(o.id)
     if (!e) warn(`The design part “${o.id}” is no longer in the catalog; left out.`, 151)
-    return e && o.level ? [{ e, level: o.level, k: key(e) }] : []
+    return e && o.level ? [{ e, level: o.level, k: key(e), road: o.road }] : []
   })
   const has = (k: string) => picked.some(p => p.k === k)
   let dp = 0
@@ -177,6 +180,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const sizeCargo = (size: number) => data.named?.(`Size Class ${size}`, 'vehicledesign')
   const baseCargo = cargoCf(sizeCargo(base.size)?.attrs.cargo)
   const s = { ...base, offRoad: base.handling, cargo: 0 }
+  const drone = d.kind === 'drone' || /drone/i.test(chassis?.name ?? '')
   // each table's SPECIAL column: a handling change, an off-road one, extra cargo and the walker's "No Top Speed loss" are
   // rules; anything else (the console's 10/12, the Bike's 0) is shown as printed (owner Q4)
   let walker = false
@@ -192,10 +196,19 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     else if (/no top speed loss/i.test(sp)) walker = true
     else notes.push(`${entryLabel(e)}: special ${sp} (as printed; no rule here reads it).`)
   }
+  // the starting Cargo Factors an option's maximum reads: the size class's and a table's extra (the Truck's +4, owner Q7)
+  const startCargo = baseCargo === null ? null : baseCargo + s.cargo
   // the functional options, per level (p. 151)
   let universal = 0
-  for (const { e, level, k } of picked) {
+  for (const { e, level, k, road } of picked) {
     if (designPart(e) !== 'option') continue
+    // Improved Handling on-road or off-road only: 3 Design Points a level, that value only (p. 151, owner Q2)
+    if (k === 'improved handling' && road) {
+      dp += ROAD_DP * level
+      if (road === 'on') s.handling -= level
+      else s.offRoad -= level
+      continue
+    }
     addDp(e, level)
     const per = PER_LEVEL[k]
     if (!per) {
@@ -206,7 +219,8 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
       if (st === 'handling') s.offRoad += v * level
       s[st] += v * level
     }
-    if (k === 'improved size') s.seats += Math.floor(base.seats * 0.5 * level) // and Seat by 50 percent a level
+    // and Seat by 50 percent a level; a vehicle keeps a seat (owner Q5; a drone has none to keep)
+    if (k === 'improved size') s.seats += Math.max(Math.floor(base.seats * 0.5 * level), drone ? -Infinity : Math.min(0, 1 - base.seats))
     if (k === 'easily modified') universal += 2 * level
   }
   // the design modifications (pp. 152-153) and quality factors (pp. 153-154)
@@ -245,7 +259,6 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   if (has('off road chassis')) s.topSpeed -= 10
   // drones by size: small × 0.75, mini × 0.5, micro × 0.25 Acceleration
   const size = /\b(micro|mini|small)\b/i.exec(chassis?.name ?? '')?.[1].toLowerCase()
-  const drone = d.kind === 'drone' || /drone/i.test(chassis?.name ?? '')
   if (drone && size) s.accel = Math.floor(s.accel * { small: 0.75, mini: 0.5, micro: 0.25 }[size as 'small'])
   // Multi-Engine doubles the final Acceleration and Top Speed (a Cargo Hauler half the bonus); Underpowered halves the
   // final speed (read as Top Speed)
@@ -304,9 +317,15 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
 
   // maximums (pp. 151-154), each a warning
   const final = { ...s, cargo: cargo ?? s.cargo }
-  for (const { e, level } of picked) {
+  for (const { e, level, k, road } of picked) {
     const p = designPart(e)
-    if (p === 'option') for (const m of maxProblems(e, level, base, final, baseCargo)) warn(`${entryLabel(e)} ${level}: ${m}`, e.page || 151, e.source)
+    const problems =
+      k === 'improved handling' && road
+        ? Math.abs(level) > ROAD_MAX
+          ? [`at most ${ROAD_MAX} levels ${road}-road only.`]
+          : []
+        : maxProblems(e, level, base, final, startCargo)
+    if (p === 'option') for (const m of problems) warn(`${entryLabel(e)} ${level}: ${m}`, e.page || 151, e.source)
     if (p === 'quality' && key(e) === 'superstructure' && s.size < 15)
       warn(`${entryLabel(e)}: the vehicle must be at least Size Class 15 (it is ${s.size}).`, e.page || 154, e.source)
   }

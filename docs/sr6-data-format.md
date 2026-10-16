@@ -125,7 +125,7 @@ Each option, modification and quality factor heading's text gives its terms: `Co
 levels`, `cannot be higher than twice the vehicle's Body` (`2 x Body`), `4 or the vehicle's original Body value,
 whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxReverse), `can only be purchased once` (max
 1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
-on-road or off-road only) stays in its text.
+on-road or off-road only) stays in its text; the Designer applies it as a design option's `road`.
 
 The Designer (`src/sr6/engine/design.ts`, owner 2026-10-16) reads them: a chassis, powertrain or console by its category,
 a quality factor by its `multiplier` (all multiplied together), an option bought in levels by `perLevel` (or a rating, or
@@ -137,7 +137,8 @@ modification changes is the book's rule for it by name (pp. 151-153); an unknown
 `max` form is read against the design: a number (levels; in reverse too unless `maxReverse`), `Size Class N` (the
 resulting size), `k x Stat` (the option's stat at most k × the final Stat, or k × its own starting value), `P% x Stat`
 (the increase at most P% of the starting Stat), a bare `Stat` (levels up to its starting value) and `min(…)` (each);
-passing one is a warning, never refused.
+passing one is a warning, never refused. The starting Cargo Factors include a table's extra cargo (the Truck's +4);
+Improved Size's seats never take a vehicle below 1 seat (owner 2026-10-16).
 
 **Built-in modifications** (Double Clutch p. 146, owner 2026-10-16; `resolve._builtin_mods`, in the corpus pass after
 every import). A book's `Core Vehicle Modifications` box lists, as bold run-ins under its group headings, the
@@ -147,7 +148,7 @@ alias, or either part of a slash name: `Federated-Boeing Commuter/Osprey X`), ge
 when exactly one matches by its words (`Ceramic plate armor` is `Ceramic Plate`; of several levels the rating's), or
 `slots` and `category` for `4 additional Chassis mod slots`; `source` and `page` are the box's. A line or part that is a
 sentence (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) is a `<note field="builtin">` as printed.
-They are already paid for (shown as built in); each pass replaces the ones the last gave.
+They are already paid for (shown as built in, never taken off); each pass replaces the ones the last gave.
 
 **Owned vehicles and drones** (the app: `src/sr6/engine/vehiclemods.ts`, the Vehicles and Drones tabs' Modify panel,
 owner 2026-10-16). A `vehicles` entry is a drone by its class (`DRONE_…`) or category (`drone`). A gear entry is a vehicle
@@ -157,7 +158,9 @@ mod by its class (`MOD_CHASSIS`, `MOD_SKIN`, `MOD_HARD`: chassis slots; `MOD_POW
 table's books: each category has the unmodified Body in mod slots (p. 120) plus a `<builtin slots category>`'s; a mod
 takes its `slots` at its rating; the free hardpoints are Body / 3 standard ones (a small drone with Body over 3: one small;
 a micro or mini drone: none; p. 124), plus a `Small|Standard|Large|Huge hardpoint` mod's (0.5, 1, 2, 3 standard ones),
-and a device takes its `hardpoint`'s. Without it, the core rulebook's: up to Body / 3 weapon mounts, a heavy one counting
+and a device takes its `hardpoint`'s. A built-in mod with a `ref` counts as fitted there (owner 2026-10-16): a built-in
+weapon mount holds a weapon and takes its hardpoints (or counts among the core rulebook's mounts), a built-in hardpoint
+mod adds its; its mod slots aren't counted. Without it, the core rulebook's: up to Body / 3 weapon mounts, a heavy one counting
 two (CRB p. 295). A drone runs half its Pilot (rounded up) in autosofts and programs (CRB p. 201). A weapon sits in one
 mount (small: an SMG or smaller; standard: an assault rifle or smaller; large: any; DC p. 142, by its class or category).
 What goes past these is Review's `vehicle.mods` warning, never refused. A mod (not an accessory) may be installed by the

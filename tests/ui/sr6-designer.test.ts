@@ -95,6 +95,24 @@ test('a player designs a vehicle: the parts, options by level, a modification, a
   expect(d.mods.map(m => m.id)).toEqual(['zz.glitter-paint'])
 })
 
+test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a level), saved on its option (owner Q2)', async () => {
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  const which = /^Improved Handling: on-road, off-road or both/
+  expect(() => field(which)).toThrow()
+  await click(button('Raise Improved Handling level'))
+  expect(pageText()).toMatch(/Handling 2 ·/)
+  await change(field<HTMLSelectElement>(which), 'off')
+  expect(pageText()).toMatch(/Handling 3\/2 ·/)
+  expect(pageText()).toMatch(/Design Points 56 ·/) // (Red Zip's 53 + 3; both would be + 5)
+  await change(field<HTMLSelectElement>(which), '')
+  expect(pageText()).toMatch(/Handling 2 ·/)
+  await change(field<HTMLSelectElement>(which), 'on')
+  await click(button('Save'))
+  expect(read(store.rows.get('d1')!.xml).design!.options.at(-1)).toEqual({ id: 'zz.improved-handling', level: 1, road: 'on' })
+})
+
 test('the list: a GM’s new design is approved; Copy and Delete (to the design trash)', async () => {
   const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
   const calls = stubFetch([[/\/api\/sr6\/designs\/trash/, () => ({ user: 'gm', name: 'GM', items: [] })], store.route])

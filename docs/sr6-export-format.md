@@ -112,7 +112,7 @@ actor, tied to the runner):
 
 | Field | Meaning |
 |---|---|
-| `mount` | on a weapon fitted to a vehicle or drone: the `uid` of the weapon mount (a sibling accessory) it sits in |
+| `mount` | on a weapon fitted to a vehicle or drone: the `uid` of the weapon mount (a sibling accessory) it sits in, or `builtin:<n>` for a mount built in, the vehicle's `vehicle.builtin[n]` |
 | `diy` | `true` on a vehicle mod the player installed (half its nuyen price, Double Clutch p. 120) |
 | `vehicle` | on a vehicle or drone: `{ drone, builtin, slotShifts?, seatsRemoved?, design? }`. `drone` by its class or category; `builtin` the mods built in as shown (`Zap plating 2`, `3 more chassis mod slots`, a design's own mods), already paid for, with the book's built-in notes; `slotShifts` `[{ from, to }]` in the order made (two `chassis`, `powertrain` or `electronics` slots give one of the other); `seatsRemoved` the seats taken out for cargo (`values.vehicle.seats` is what is left); `design` the Designer design it was bought from (its line's `id` is `design.<id>`, its numbers the design's when bought). Its mods, mounts, weapons and autosofts are its `accessories` |
 | `npc` | on a critter: its stat block (the NPC block, below), absent on a custom critter |

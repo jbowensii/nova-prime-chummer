@@ -171,7 +171,8 @@ export interface Sr6Design {
   chassis?: string
   powertrain?: string
   console?: string
-  options: { id: string; level: number }[]
+  /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
+  options: { id: string; level: number; road?: 'on' | 'off' }[]
   mods: Sr6Purchase[]
   diy?: true
   approved?: true

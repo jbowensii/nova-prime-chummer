@@ -35,8 +35,8 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, diyAllowed, entryOf, isMount, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
-import { shiftProblem } from './vehiclemods'
+import { augmentationRoom, diyAllowed, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { mountsOf, shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from './critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -572,8 +572,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // critter equipment goes on an owned critter only (Body Shop's critterware, Wild Life's critter gear)
       if (critterOnly(entryOf(line, data)) && host.kind !== 'critters') return no('critters-only')
       if (op.mount !== undefined) {
-        const m = host.accessories.find(a => a.uid === op.mount)
-        if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
+        if (!mountsOf(host, data).some(m => m.uid === op.mount)) return no('not-a-mount')
         line.mount = op.mount
       }
       if (op.diy) {
@@ -600,9 +599,9 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         delete x.mount
         return OK
       }
-      const m = host.accessories.find(a => a.uid === op.mount)
-      if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
-      x.mount = m.uid
+      // (a fitted mount or a built-in one, vehiclemods.ts mountsOf)
+      if (!mountsOf(host, data).some(m => m.uid === op.mount)) return no('not-a-mount')
+      x.mount = op.mount
       return OK
     }
     case 'shift': {

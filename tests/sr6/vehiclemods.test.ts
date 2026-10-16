@@ -8,7 +8,7 @@ import { priced } from '../../src/sr6/engine/budgets'
 import { currentBuild, record, voidEntry } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
-import { modsOf, weaponSize } from '../../src/sr6/engine/vehiclemods'
+import { modsOf, mountsOf, weaponSize } from '../../src/sr6/engine/vehiclemods'
 import { vehicleNotes } from '../../src/sr6/print/view'
 import { blankBuild, blankSr6, type SlotKind, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation } from './fixture'
@@ -21,6 +21,7 @@ const VEHICLES = `<sr6:data ${NS} kind="vehicles" version="1">
   <vehicle id="zz.zap-mite" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="4" pilot="2" avail="2" cost="3000"><name>Zap Mite</name></vehicle>
   <vehicle id="zz.zap-speck" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="3" pilot="2" avail="2" cost="2000"><name>Zap Speck</name></vehicle>
   <vehicle id="zz.zap-fleck" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="2" pilot="2" avail="2" cost="1500"><name>Zap Fleck</name></vehicle>
+  <vehicle id="zz.zap-tank" ${at} category="Zap tank" body="9" pilot="2" avail="2" cost="30000"><name>Zap Tank</name><builtin name="Zap Standard Weapon Mount" ref="zz.zap-mount"/><builtin name="Large hardpoint" ref="zz.large-hardpoint"/></vehicle>
   <vehicle id="zz.zap-dot" ${at} category="Microdrones" body="1" pilot="1" avail="2" cost="500"><name>Zap Dot</name></vehicle>
 </sr6:data>`
 const GEAR = `<sr6:data ${NS} kind="gear" version="1">
@@ -75,8 +76,8 @@ test('DC: mod slots per category are the Body, a built-in mod adds its own; a mo
   expect(m.slots).toEqual({ chassis: { used: 4, max: 10 }, powertrain: { used: 3, max: 7 }, electronics: { used: 1, max: 7 } })
   expect(m.mounts).toBeUndefined()
   expect(m.builtin).toEqual([
-    { name: 'Zap plating', rating: '2' },
-    { name: '3 additional Chassis mod slots', slots: 3, category: 'chassis' },
+    { uid: 'builtin:0', name: 'Zap plating', rating: '2' },
+    { uid: 'builtin:1', name: '3 additional Chassis mod slots', slots: 3, category: 'chassis' },
   ])
   expect(m.notes).toEqual(['As the Zap Car, with a zap horn.'])
   expect(m.warnings).toEqual([])
@@ -386,4 +387,55 @@ test('career: shifting slots is a free ledger spend and moving a weapon to anoth
   if (v2.ok) ch = v2.ch
   expect(now().slotShifts).toBeUndefined()
   expect(modsOf(now(), o.data).slots!.chassis.max).toBe(10)
+})
+
+test('built-in mods are fittings already paid for (DESIGNER Q3): a built-in mount holds a weapon and takes its hardpoints, a built-in hardpoint adds; never charged; the file and the ledger keep the mount', () => {
+  const o = owning(true, 'zz.zap-tank', [
+    ['weapons', 'zz.zap-rifle'],
+    ['weapons', 'zz.zap-cannon'],
+  ])
+  const rifle = o.uid('zz.zap-rifle'),
+    cannon = o.uid('zz.zap-cannon')
+  expect(mountsOf(o.host, o.data).map(m => [m.uid, m.name, m.builtin])).toEqual([['builtin:0', 'Zap Standard Weapon Mount', true]])
+  expect(apply(o.b, { op: 'mount', uid: rifle, mount: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(apply(o.b, { op: 'mount', uid: cannon, mount: 'builtin:1' }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-a-mount' }) // (a hardpoint, no mount)
+  // Body 9: 3 free standard hardpoints, + 2 the built-in large one; the built-in mount takes 1
+  expect(modsOf(o.host, o.data).hardpoints).toEqual({ used: 1, max: 5 })
+  expect(messages(o.host, o.data)).toEqual(['DC 142: Zap Tank: Zap Cannon isn’t in a weapon mount.'])
+  expect(apply(o.b, { op: 'mount', uid: cannon, mount: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(messages(o.host, o.data)).toEqual([
+    'DC 142: Zap Tank: Zap Cannon is too big for its Zap Standard Weapon Mount (it holds an assault rifle or smaller).',
+    'DC 142: Zap Tank: 2 weapons in one Zap Standard Weapon Mount.',
+  ])
+  expect(vehicleNotes(o.host, o.data)[0]).toBe(
+    'Weapons: Zap Rifle (in Zap Standard Weapon Mount (built in)), Zap Cannon (in Zap Standard Weapon Mount (built in))',
+  )
+  expect(priced(o.host, o.data, o.cr).cost).toBe(30000 + 200 + 900) // (the built-in ones cost nothing)
+  // core rulebook: the built-in mount counts among the Body / 3
+  expect(modsOf(o.host, world(false).data).mounts).toEqual({ used: 1, max: 3 })
+  // the file keeps it (no repair note); one naming a built-in mount the vehicle hasn't: in none, warned
+  const ch = { ...blankSr6('priority', 'made-up-t', '2026-10-16T00:00:00.000Z'), build: o.b }
+  const notes: string[] = []
+  const back = xmlToSr6(sr6ToXml(ch), { repair: notes })
+  expect(back.ok && back.character.build.purchases).toEqual(o.b.purchases)
+  expect(notes).toEqual([])
+  o.host.accessories[0].mount = 'builtin:7'
+  expect(messages(o.host, o.data)[0]).toBe('DC 142: Zap Tank: Zap Rifle isn’t in a weapon mount.')
+  // the ledger: fitted straight into it, moved out of and back into it
+  o.host.accessories = [{ uid: 'm1', kind: 'gear', id: 'zz.zap-mount', qty: 1, accessories: [] }]
+  const at = '2026-10-16T00:00:00.000Z'
+  let c: Sr6Character = { ...blankSr6('priority', 'made-up-l', at), build: o.b, finalizedAt: at }
+  c.ledger = [{ id: 'f1', at, type: 'finalize', karma: 0, nuyen: 10000 }]
+  const go = (a: Parameters<typeof record>[1]) => {
+    const r = record(c, a, o.data, o.cr)
+    if (!r.ok) throw new Error(r.reason)
+    c = r.ch
+    return c.ledger.at(-1)!
+  }
+  go({ op: 'fit', target: o.host.uid, line: { uid: 'w1', kind: 'weapons', id: 'zz.zap-rifle', qty: 1, accessories: [], mount: 'builtin:0' } })
+  expect(go({ op: 'move', target: 'w1', mount: 'm1' })).toMatchObject({
+    label: 'Moved: Zap Rifle from Zap Standard Weapon Mount (built in) to Zap Standard Weapon Mount on Zap Tank',
+  })
+  go({ op: 'move', target: 'w1', mount: 'builtin:0' })
+  expect(currentBuild(c).purchases[0].accessories.find(a => a.uid === 'w1')!.mount).toBe('builtin:0')
 })

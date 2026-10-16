@@ -15,7 +15,7 @@ import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
 import { entryLabel } from '../engine/categories'
 import { effectState, effectText } from '../engine/effects'
-import { builtinText, modsOf } from '../engine/vehiclemods'
+import { builtinText, modsOf, mountsOf } from '../engine/vehiclemods'
 
 export const PICKS: [PickKind, string][] = [
   ['spells', 'Spells'],
@@ -154,7 +154,8 @@ export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
   const m = modsOf(x, data),
     kind = (a: Sr6Purchase) => m.fitted.find(f => f.uid === a.uid)?.kind
   const group = (label: string, xs: Sr6Purchase[], each: (a: Sr6Purchase) => string = name) => (xs.length ? [`${label}: ${xs.map(each).join(', ')}`] : [])
-  const mount = (a: Sr6Purchase) => x.accessories.find(y => y.uid === a.mount)
+  const mounts = mountsOf(x, data),
+    mount = (a: Sr6Purchase) => mounts.find(y => y.uid === a.mount)
   return [
     ...group(
       'Mods',
@@ -164,7 +165,7 @@ export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
     ...group(
       'Weapons',
       x.accessories.filter(a => kind(a) === 'weapon'),
-      a => `${name(a)} (${mount(a) ? `in ${name(mount(a)!)}` : 'in no mount'})`,
+      a => `${name(a)} (${mount(a) ? `in ${mount(a)!.name}${mount(a)!.builtin ? ' (built in)' : ''}` : 'in no mount'})`,
     ),
     ...group(
       'Autosofts and programs',
