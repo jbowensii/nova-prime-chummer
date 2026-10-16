@@ -14,7 +14,8 @@ import { flag, num } from '../../src/sr6/engine/creation'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { maxEffects } from '../../src/sr6/engine/effects'
-import { awakenedFlag, infectedTypes, runnerInfected } from '../../src/sr6/engine/infected'
+import { awakenedFlag, freePick, infectedOf, infectedTypes, runnerInfected } from '../../src/sr6/engine/infected'
+import type { Sr6Entry } from '../../src/sr6/model/types'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { blankSr6, MAGIC_KIND_LABELS, type MagicKind, type Sr6Build } from '../../src/sr6/model/character'
@@ -328,6 +329,7 @@ test('the kind select routes through the Infected type: a mundane pick keeps the
 
 test('awakened.override: an override as derived that changes a price is still a warning, saying the price', () => {
   const b = infected('crb.zap-lurker')
+  b.qualities.push({ uid: 'gone', id: 'crb.gone', level: 1 }) // (one the catalog lacks: no price to compare)
   apply(b, { op: 'awakened', value: true }, data, ON)
   expect(awakenedFlag(b, data)).toMatchObject({ derived: true, value: true })
   const w = validateSr6(data, ON, runner(b)).filter(v => v.code === 'awakened.override')
@@ -368,4 +370,31 @@ test('a file’s awakened that isn’t a boolean is refused; repair leaves it ou
   expect(fix).toEqual(['The Awakened override “maybe” isn’t known: left out.'])
   const one = xmlToSr6(xml.replace('awakened="maybe"', 'awakened="1"'))
   expect(one.ok && one.character.build.awakened).toBe(true)
+})
+
+test('refusals: not a type, the type taken again, a second level of an optional power at creation, a type for another metatype after creation', () => {
+  const b = infected('crb.zap-lurker')
+  expect(apply(b, { op: 'infected', id: 'crb.butterfingers' }, data, ON)).toEqual({ ok: false, reason: 'unknown-entry' })
+  expect(apply(b, { op: 'infected', id: 'crb.zap-lurker' }, data, ON)).toEqual({ ok: false, reason: 'already-taken' })
+  expect(apply(b, { op: 'quality', id: 'crb.zap-power.glow', level: 2 }, data, ON)).toEqual({ ok: false, reason: 'infected-after-creation' })
+  expect(preview(career(buildOf('karma', { metatype: STONE })), q('crb.zap-lurker'), data, ON)).toEqual({ ok: false, reason: 'not-for-metatype' })
+  // no metatype: no type fits
+  expect(infectedTypes(data, '')).toEqual([])
+})
+
+test('infectedOf reads an <infected> with nothing set as no strain, base or points; the free pick is one line of the free power', () => {
+  const bare = { id: 'x', name: 'X', kind: 'qualities', attrs: {}, parts: [{ tag: 'infected', attrs: {} }] } as unknown as Sr6Entry
+  expect(infectedOf(bare)).toEqual({ id: 'x', name: 'X', strain: '', base: '', freePhysical: 0, freeMental: 0, powers: [] })
+  expect(infectedOf({ ...bare, parts: [] })).toBeUndefined()
+  // the sidebar's page is kept
+  const alt = { ...bare, parts: [...bare.parts, { tag: 'infectedalt', attrs: { base: 'other', karma: '32', page: '109' } }] } as unknown as Sr6Entry
+  expect(infectedOf(alt)?.alt).toEqual({ karma: 32, adds: {}, page: 109 })
+  // two lines of the free power: one is the free pick, the other paid
+  const b = infected('crb.zap-lurker')
+  b.qualities.push({ uid: 'g1', id: 'crb.zap-power.glow', level: 1 }, { uid: 'g2', id: 'crb.zap-power.glow', level: 1 })
+  expect(['g1', 'g2']).toContain(freePick(b, data)?.uid)
+  expect(qualityKarma(b, data, ON).pos).toBe(30 + 6)
+  // a runner with a type and no metatype: no maxima to drop to
+  b.metatype = ''
+  expect(deriveSr6(data, ON, runner(b)).attrs.bod.natural).toBe(attrRating(b, 'bod', makeProvider('karma', data, ON)))
 })

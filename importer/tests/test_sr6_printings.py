@@ -315,5 +315,21 @@ class SkippedTest(unittest.TestCase):
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "removed")
 
 
+class OlderCatalogTest(unittest.TestCase):
+    def test_an_older_printing_with_no_book_md_or_that_no_longer_reads_gives_nothing(self):
+        from importer.sr6.run import _catalog
+
+        class Broken:
+            ID = "zz"
+
+            def extract(self, text, opts):
+                raise ValueError("made-up reader failure")
+
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_catalog(Broken(), d, d), ({}, ""))
+            Path(d, "book.md").write_text("<!-- page 1 -->\n# MADE-UP\n", encoding="utf8")
+            self.assertEqual(_catalog(Broken(), d, d), ({}, ""))
+
+
 if __name__ == "__main__":
     unittest.main()

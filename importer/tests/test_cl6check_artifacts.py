@@ -1,5 +1,6 @@
 """cl6check comparer artifacts (2026-10-15 triage): differences that were the comparer's, not the data's. Invented names and
 numbers only."""
+import os
 import unittest
 from types import SimpleNamespace
 
@@ -112,6 +113,21 @@ class StatBoxTest(unittest.TestCase):
                           self.w("AVAIL", 347, 530), self.w("COST", 453, 530), self.w("2", 354, 539), self.w("140¥", 453, 539)])
         self.assertEqual(arbitrate.stat_box(book, 5, "Foregrip"), "2 140")
         self.assertIsNone(arbitrate.stat_box(book, 5, "Missing Thing"))
+        # (a name of no words, a page that isn't a number, and a page with no words settle nothing)
+        self.assertIsNone(arbitrate.stat_box(book, 5, "--"))
+        self.assertIsNone(arbitrate.stat_box(book, "x", "Foregrip"))
+        self.assertIsNone(arbitrate.stat_box(book, 40, "Foregrip"))
+        # (a heading of several words: each next word beside the one before on its line)
+        two = self.Book([self.w("Big", 295, 310, 15.0), self.w("Grip", 317, 310, 15.0), self.w("Big", 295, 400), self.w("Gap", 400, 400),
+                         self.w("AVAIL", 347, 530), self.w("COST", 453, 530), self.w("3", 354, 539), self.w("90¥", 453, 539)])
+        self.assertEqual(arbitrate.stat_box(two, 5, "Big Grip"), "3 90")
+
+    def test_a_page_that_will_not_read_has_no_words(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "original.pdf"), "wb") as f:
+                f.write(b"not a pdf")
+            self.assertEqual(arbitrate.Book(d).words(3), [])
 
     def test_settle_turns_a_neighbours_value_into_the_pdf_printing_ours(self):
         class B(self.Book):
@@ -121,6 +137,21 @@ class StatBoxTest(unittest.TestCase):
                   self.w("2", 354, 539), self.w("140¥", 453, 539)])
         diff = {"field": "cost", "why": "differs", "ours": "140", "ours_tok": "140", "cl6_tok": "250"}
         self.assertEqual(arbitrate.settle(book, {"page": 5, "name": "Foregrip"}, {"page": 5}, diff), ("b", "ours"))
+
+
+class KeepAndFillTest(unittest.TestCase):
+    def test_a_family_the_owner_keeps_is_the_same_whatever_commlink6_has(self):
+        h = {"src": "gz", "kind": "gear", "id": "gz.a", "name": "A", "families": {}}
+        self.assertFalse(cli._same("variants", frozenset({"b"}), h, False))
+        self.assertTrue(cli._same("variants", frozenset({"b"}), h, False, keep={("gz", "gear", "gz.a", "variants")}))
+
+    def test_an_older_printing_fills_the_newer_ones_gaps_only(self):
+        e = lambda i, issues=(), **a: {"kind": "gear", "id": i, "attrs": a, "issues": list(issues)}  # noqa: E731
+        new = SimpleNamespace(entries=[e("gz.a", [("cost", "unread")], cost="", avail="2")], texts={})
+        old = SimpleNamespace(entries=[e("gz.a", cost="100", avail="9"), e("gz.b", cost="5")], texts={"gz.b": "Old text."})
+        ours._fill(new, old)
+        self.assertEqual([(x["id"], x["attrs"]) for x in new.entries], [("gz.a", {"cost": "100", "avail": "2"}), ("gz.b", {"cost": "5"})])
+        self.assertEqual(new.texts, {"gz.b": "Old text."})
 
 
 if __name__ == "__main__":

@@ -626,6 +626,21 @@ class ValueMapTest(unittest.TestCase):
         self.assertEqual(V.row_values([row("rating", "1–4", "1", id="zz.thing-2"), row("cost", "R1 5, R2 9", "", id="zz.thing-2")])[0],
                          {"cost": "9"})
 
+    def test_refile_moves_a_value_row_to_the_kind_file_holding_its_entry(self):
+        import tempfile
+        from unittest import mock
+        from tools.cl6check import valuemap as V
+        rows = [{"kind": "gear", "id": "a", "set": {"cost": "5"}, "gen": "value"},  # (our entry is a weapon)
+                {"kind": "gear", "id": "b", "set": {"cost": "6"}, "gen": "value"},  # (already gear)
+                {"kind": "gear", "id": "a", "set": {"class": "X/Y"}, "gen": "class"}]  # (not a value row: left)
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "zz.json")
+            p.write_text(json.dumps(rows), encoding="utf8")
+            Path(d, "yy.json").write_text("[]", encoding="utf8")
+            with mock.patch.object(V.ours, "index", return_value={("zz", "weapons", "zz.a"): {}, ("zz", "gear", "zz.b"): {}}):
+                self.assertEqual(V.refile("runs", root=d), {"zz": 1})
+            self.assertEqual([r["kind"] for r in json.loads(p.read_text(encoding="utf8"))], ["weapons", "gear", "gear"])
+
 
 class Cl6OnlyRowsTest(unittest.TestCase):
     def test_the_option_rows_commlink6_keeps_are_entries_of_ours_with_its_values(self):

@@ -298,6 +298,12 @@ Made-up rules about made-up strains.
 | Grubber | Dwarf | 9 | 5 | 6 | 9 | 8 | 4 | 6 | 3 |
 | Grubber | Troll | 12 | 4 | 6 | 12 | 8 | 4 | 6 | 2 |
 | Marrowkin | Ork | 9 | 6 | 7 | 10 | 7 | 5 | 7 | 4 |
+| Gloamer | Elf | 6 | 8 | 7 | 6 | 6 | 6 | 7 | 9 |
+| Murkling | Human | 7 | 6 | 7 | 7 | 6 | 6 | 6 | 5 |
+<!-- box -->
+##### NON-HUMAN GLOAMERS
+Made-up gloamers of other kinds exist, but this sidebar prices nothing.
+<!-- /box -->
 <!-- box -->
 ##### NON-HUMAN DUSKERS
 Made-up dusk folk of other kinds: apply these modifiers to maximums: +1 BOD, WILL, and +2 CHA. The made-up
@@ -324,6 +330,15 @@ Glow Senses as a free Optional Power.
 **Gained Powers:** Dual Natured
 **Gained Weaknesses:** Allergy (Noon, Mild)
 **Notes:** Marrowkin carry HMHVV Strain II.
+##### Gloamer
+**Cost:** 16 Karma
+**Gained Powers:** Dual Natured. Gain either Hush or Ghost Step for free.
+**Optional Powers:** Hush
+**Notes:** Gloamers carry HMHVV Strain II.
+##### Murkling
+**Cost:** 15 Karma
+**Gained Powers:** Dual Natured
+**Notes:** Murklings carry a made-up strain.
 <!-- page 80 -->
 # EXPRESS YOURSELF
 #### Mana Itch
@@ -379,6 +394,13 @@ class InfectedTest(unittest.TestCase):
         # (an item no row prices is reported, never guessed)
         self.assertEqual([(r["name"], r["value"]) for r in self.res.report if r["kind"] == "unmatched" and r.get("field") == "optional power"],
                          [("Dusker", "Immunity (Age)")])
+
+    def test_a_free_pick_naming_no_optional_power_and_a_type_naming_no_strain_are_reported(self):
+        self.assertEqual(self.optional("Gloamer"), [("hush", "true")])
+        self.assertEqual([(r["name"], r["value"]) for r in self.res.report if r.get("field") == "free optional power"], [("Gloamer", "Ghost Step")])
+        self.assertEqual([r["name"] for r in self.res.report if r["kind"] == "missing-value" and r.get("field") == "strain"], ["Murkling"])
+        self.assertEqual(self.kids("Murkling", "infected"), [])
+        self.assertEqual(self.kids("Gloamer", "infectedalt"), [])  # (its sidebar gives no total cost: nothing)
 
     def test_the_other_base_sidebar(self):
         self.assertEqual(self.kids("Dusker", "infectedalt"),
