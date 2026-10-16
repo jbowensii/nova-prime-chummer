@@ -15,6 +15,7 @@ import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
+import { infectedOff, infectedQuality } from './critterware'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -288,6 +289,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!a.line.name.trim()) no('needs-name')
       return { label: `${a.line.kind === 'language' ? 'Language' : 'Knowledge'}: ${a.line.name}`, karma: need('karmaKnowledge') }
     case 'quality': {
+      // an Infected quality or optional power only while the table allows Infected characters, at its own Karma: Infected
+      // qualities "do not have their cost doubled when purchased during gameplay" (SWC p. 106; the optional powers, bought
+      // after creation, at the table's price too)
+      const e0 = data.entry('qualities', a.line.id)
+      if (infectedOff(e0, cr)) no('optional-rule-off')
+      const factor = () => (infectedQuality(e0) ? 1 : need('advance.qualityFactor'))
       // a family of levels (levels.ts): the level named (or the lower one the runner has plus the levels asked), replacing
       // the lower level, at the difference in Karma
       const fam = data.family('qualities', a.line.id)
@@ -301,7 +308,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         if (v.karma === null || (was && was.karma === null)) no('book-value')
         if (cur && (data.levelOf(e) ?? 1) <= curLevel) no('already-known')
         const karma = qualityCost({ ...a.line, level: 1 }, v) - (cur && was ? qualityCost(cur, was) : 0)
-        return { label: `Quality: ${v.name}`, karma: karma * need('advance.qualityFactor') }
+        return { label: `Quality: ${v.name}`, karma: karma * factor() }
       }
       const v = data.qualities[a.line.id] ?? no('unknown-entry')
       if (!v.positive) no('not-positive')
@@ -311,7 +318,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? v.maxLevel : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
-      return { label, karma: qualityCost(a.line, v) * need('advance.qualityFactor') }
+      return { label, karma: qualityCost(a.line, v) * factor() }
     }
     case 'buyoff': {
       const q = b.qualities.find(x => x.uid === a.target) ?? no('not-taken')

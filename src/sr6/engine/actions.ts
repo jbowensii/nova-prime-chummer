@@ -31,7 +31,7 @@ import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
 import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
-import { critterOnly } from './critterware'
+import { critterOnly, infectedOff } from './critterware'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -258,6 +258,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         }
         return OK
       }
+      // an Infected quality or optional power, new to the runner, only while the table allows Infected characters (SWC p. 104)
+      if (infectedOff(data.entry('qualities', op.id), cr) && !b.qualities.some(x => x.id === op.id)) return no('rule-off')
       // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
       const fam = data.family('qualities', op.id)
       if (fam) {

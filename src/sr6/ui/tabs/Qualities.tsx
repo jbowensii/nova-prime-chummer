@@ -6,6 +6,7 @@ import { Modal, Picker, Stepper } from '../../../ui/bits'
 import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma } from '../../engine/budgets'
 import { num } from '../../engine/creation'
 import { qualityFitsMetatype } from '../../engine/data'
+import { infectedOff } from '../../engine/critterware'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
@@ -175,7 +176,9 @@ export function QualitiesTab() {
             placeholder="Search qualities"
             onPick={pick}
             items={all
-              .filter(q => q.positive === (picking === 'positive') && qualityFitsMetatype(data, b.metatype, q.id))
+              .filter(
+                q => q.positive === (picking === 'positive') && qualityFitsMetatype(data, b.metatype, q.id) && !infectedOff(data.entry('qualities', q.id), cr),
+              )
               .map(q => ({
                 id: q.id,
                 name: q.name,

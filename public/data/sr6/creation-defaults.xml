@@ -150,6 +150,7 @@
   <setting key="strengthInCloseCombat" value="false" source="SWC" page="150"/>
   <setting key="highStrengthDamage" value="false" source="SWC" page="150"/>
   <setting key="suprathyroidStacks" value="false" source="SWC" page="149"/>
+  <setting key="infectedAllowed" value="false" source="SWC" page="104"/>
   <setting key="expandedSpecializations" value="false" source="SWC" page="153"/>
   <setting key="alternateMysticAdept" value="false" source="SWC" page="148"/>
   <setting key="twentyQuestions" value="false" source="SWC" page="25"/>

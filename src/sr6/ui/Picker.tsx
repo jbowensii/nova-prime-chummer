@@ -12,7 +12,7 @@ import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
-import { critterOnly } from '../engine/critterware'
+import { critterOnly, infectedOff } from '../engine/critterware'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
 import { ATTR_NAMES, n, useSr6Editor } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
@@ -118,7 +118,7 @@ export function CatalogPicker({
     ? []
     : kinds
         .flatMap(k => [...c.entries[k].values()])
-        .filter(e => !critterOnly(e) && (!filter || filter(e))) // (critter-only equipment stays in the data browser, not here)
+        .filter(e => !critterOnly(e) && !infectedOff(e, cr) && (!filter || filter(e))) // (critter-only equipment, and Infected entries while the table's rule is off, stay in the data browser, not here)
         .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
   const close = () => {
     setChosen(null)

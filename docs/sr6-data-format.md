@@ -61,7 +61,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0), class (`INFECTED`, `INFECTED/OPTIONAL_POWER`: see Infected characters) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost, per | — |
 | armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -158,6 +158,22 @@ quality at that price, and the choices its text offers from those lists ("Select
 builder lists a granted quality with "granted only". Review's `quality.granted` is an error when the runner has no
 quality offering its list (a prerequisite it lacks; 0.11.1: a warning before), and `quality.grantedCount` warns when it
 has more of the list than its choices allow; choosing from a list is not automated yet.
+
+**Infected characters** (owner decision 2026-10-16; Sixth World Companion pp. 104–114). A block that is only a `QUALITY |
+KARMA` table, its rows no blocks of their own and no prose (the Companion's Infected Optional Powers Table, p. 109), lists
+qualities bought at the price its row prints (`swc.py` `_priced_list`): each row a positive quality, named as printed
+(`Armor (per point)`, `Corrosive Spit (per level)`: `perLevel`, no maximum, so one entry with its level on the runner's
+line), its category the table's title less `Table` (`Infected Optional Powers`), its id the category's and the name's
+(`swc.infected-optional-powers.biosonar`: the metagenic Biosonar, p. 122, keeps `swc.biosonar`). A row prints no
+description; one the book also prints as a critter power has that power's (`Sharpened Natural Weapon`, p. 114), the rest
+none (their critter powers are the core rulebook's and Street Wyrd's). Critter powers stay innate, Karma 0.
+The Infected qualities (pp. 110–114, Bandersnatch … Wendigo, Carrier) and the optional powers carry a class
+(`classes/section_prefix.json`): `INFECTED`, Commlink6's own quality type, and `INFECTED/OPTIONAL_POWER`, ours. The app
+offers and accepts an entry of either only while the table's `infectedAllowed` is on (`critterware.ts` `infectedOff`: the
+quality pickers, every catalog picker, the editor's `quality` op, `rule-off`, and the career `quality` spend,
+`optional-rule-off`); a runner keeps one it has. After creation such a quality costs its own Karma, never times
+`advance.qualityFactor` ("Infected qualities do not have their cost doubled when purchased during gameplay", p. 106; the
+optional powers likewise). The printed `54 (see desc.)` notes (less 10 Karma if already Awakened) are not applied yet.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
 named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
@@ -788,7 +804,9 @@ Classes that are not Commlink6's (`importer/sr6/classes/extra_classes.json`, eac
 (critter-only; the app keeps any entry of such a class out of the player's pickers and refuses to buy it), the space drones
 and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6's firearms naming). `python -m
 tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
-take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had).
+take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had;
+the Companion's Infected optional powers, `INFECTED/OPTIONAL_POWER`, an extra; its Infected qualities, `INFECTED`, a rule
+marked `"commlink6": true` since Commlink6 has that type).
 
 ## Layout and load order
 
@@ -1052,6 +1070,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `expandedSpecializations` | true/false | optional |  |  |  | Expanded Specializations (SWC p. 153, off): any number of specializations a skill (`<skill specs>`), still one expertise; off, only Exotic Weapons takes several (CRB Hong Kong p. 95), and Review's `skill.oneSpec` flags the others |
 | Optional rules | `unrestrictedSkillRanks` | true/false | optional |  |  | `advance.skillMax` | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
 | Optional rules | `suprathyroidStacks` | true/false | optional |  |  |  | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
+| Optional rules | `infectedAllowed` | true/false | optional |  |  |  | Infected Player Characters Allowed (SWC p. 104, off): the Infected qualities and optional powers (classes `INFECTED`, `INFECTED/OPTIONAL_POWER`) are offered in the pickers and may be taken at creation and bought after, at their own Karma; off, they are hidden and refused |
 | Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | `highStrengthDamage` |  |  | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
 | Optional rules | `exoticFirstSpecFree` | true/false | optional |  |  |  | House rule, off: the first Exotic Weapons specialization costs no skill points or Karma |
 | Optional rules | `mentorBothAdvantages` | true/false | optional |  |  |  | House rule, off: a mystic adept gets both its mentor spirit's magician and adept advantages; off, it picks one for good (CRB Hong Kong pp. 162–163; Review's `magic.mentorAdvantage` until picked) |
