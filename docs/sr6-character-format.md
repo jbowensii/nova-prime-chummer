@@ -175,7 +175,9 @@ the entry its `event` names.
   `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`
-  (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma) and `other`.
+  (the entry's `karma`: positive turns karma into nuyen, negative nuyen into karma), `awakened` (free: the Awakened
+  flag's override set after creation, `awakened="true|false"`; absent, derived again; the Ledger tab's Awakened override,
+  Review's warning while it differs) and `other`.
 
 ## NPCs
 

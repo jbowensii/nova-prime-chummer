@@ -282,6 +282,8 @@ export type Sr6Advance =
    *  SINs has neither: it goes to the first SIN's first lifestyle (more months of it, or another lifestyle replacing it). */
   | { op: 'lifestyle'; id: string; months: number; sin?: string; uid?: string }
   | { op: 'convert'; karma: number }
+  /** the Awakened flag's override set after creation (value absent: derived again; infected.ts awakenedFlag), free */
+  | { op: 'awakened'; value?: boolean }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
@@ -304,6 +306,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'sin',
   'lifestyle',
   'convert',
+  'awakened',
   'other',
 ]
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */

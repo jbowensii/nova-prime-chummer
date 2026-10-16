@@ -17,6 +17,7 @@ import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
 import { infectedOff, infectedQuality } from './critterware'
 import {
+  awakenedFlag,
   boughtKind,
   freeEligible,
   freePick,
@@ -158,6 +159,10 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       else ls.push({ uid: a.uid ?? `${sin.uid}-${a.id}`, id: a.id, months: a.months })
       return
     }
+    case 'awakened':
+      if (a.value === undefined) delete b.awakened
+      else b.awakened = a.value
+      return
     case 'convert':
     case 'other':
       return
@@ -519,6 +524,16 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         n = -a.karma * rate
       return { label: `${fmt(n)}¥ to ${-a.karma} karma`, karma: a.karma, nuyen: n }
     }
+    case 'awakened': {
+      // (owner 2026-10-16: overridable after creation too, free; Review warns while it differs: awakened.override)
+      if (a.value === b.awakened) no('already-known')
+      const f = awakenedFlag({ ...b, awakened: a.value }, data),
+        yes = (v: boolean) => (v ? 'Awakened' : 'not Awakened')
+      return {
+        label:
+          a.value === undefined ? `Awakened: derived again (${yes(f.derived)}, ${f.why})` : `Awakened override: ${yes(a.value)} (derived: ${yes(f.derived)})`,
+      }
+    }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }
   }
@@ -691,6 +706,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
   const keep = new Set([
+    'awakened.override',
     'catalog.missing',
     'essence.positive',
     'sin.placeholder',

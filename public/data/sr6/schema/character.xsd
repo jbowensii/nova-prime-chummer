@@ -382,10 +382,12 @@
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
-        <xs:enumeration value="sin"/>
+        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <!-- awakened: the Awakened flag's override set after creation (absent: derived again) -->
+    <xs:attribute name="awakened" type="xs:boolean"/>
     <!-- quality: the magic kind an Infected type bought after creation leaves the runner (absent: unchanged) -->
     <xs:attribute name="magic">
       <xs:simpleType><xs:restriction base="xs:string">

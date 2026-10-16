@@ -191,6 +191,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{}, sinXml(a.line)]
     case 'lifestyle':
       return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
+    case 'awakened':
+      return [{ awakened: a.value }, '']
     case 'powerpoint':
     case 'convert':
     case 'other':
@@ -581,6 +583,10 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return def({ op, id: req(e, 'lifestyle'), months: num(e, 'months', 0), sin: str(e, 'sin'), uid: str(e, 'uid') })
     case 'convert':
       return { op, karma }
+    case 'awakened': {
+      const v = e.getAttribute('awakened') // (xs:boolean; absent: derived again)
+      return v == null ? { op } : { op, value: oneOf(v, ['true', 'false', '1', '0'] as const, 'Awakened override')! === 'true' || v === '1' }
+    }
     case 'powerpoint':
     case 'other':
       return { op }

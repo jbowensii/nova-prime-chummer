@@ -173,7 +173,7 @@ export function MethodTab() {
 /** The Awakened flag (infected.ts awakenedFlag): derived, or the player's override, shown with what it overrides (and
  *  Review's awakened.override warning). */
 function AwakenedFlag() {
-  const { ch, data, act } = useSr6Editor()
+  const { ch, data, act, career } = useSr6Editor()
   const f = awakenedFlag(ch.build, data),
     yes = (v: boolean) => (v ? 'Awakened' : 'not Awakened')
   return (
@@ -197,6 +197,7 @@ function AwakenedFlag() {
           Derived: {yes(f.derived)} ({f.why}) — overridden to {yes(f.value)}.
         </p>
       )}
+      {career && <p className="muted">After finalising, the override is set on the Ledger tab (Spend → Awakened override).</p>}
     </>
   )
 }

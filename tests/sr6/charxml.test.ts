@@ -345,6 +345,8 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'convert', karma: 2 },
     { op: 'convert', karma: -1 },
     { op: 'other' },
+    { op: 'awakened', value: false },
+    { op: 'awakened' },
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
     { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
     { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } },

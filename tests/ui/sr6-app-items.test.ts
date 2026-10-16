@@ -48,3 +48,18 @@ test('Gear: an item printing a licence fee gets a licence choice; bought puts th
   await change(field('Tangle Rope 1 licence'), '')
   expect((await saved()).build.purchases[0].licence).toBeUndefined()
 })
+
+test('Ledger: the Awakened override after finalising is a free spend; Method says where it went', async () => {
+  const ch = runner()
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 10, nuyen: 0 } })
+  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 10, nuyen: 0 }]
+  const saved = await open(ch, 'ledger')
+  await change(field('What'), 'awakened')
+  await change(field('Awakened override'), 'yes')
+  expect(pageText()).toMatch(/Awakened override: Awakened \(derived: not Awakened\)/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  const after = await saved()
+  expect(after.ledger.at(-1)).toMatchObject({ type: 'advance', advance: { op: 'awakened', value: true }, karma: 0 })
+  expect(pageText()).toMatch(/Karma 10/)
+})

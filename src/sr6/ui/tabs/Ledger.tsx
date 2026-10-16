@@ -27,6 +27,7 @@ import { CatalogPicker, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
+import { awakenedFlag } from '../../engine/infected'
 
 const OPS = [
   ['attribute', 'Raise attribute'],
@@ -49,6 +50,7 @@ const OPS = [
   ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'],
   ['n2k', 'Nuyen to karma'],
+  ['awakened', 'Awakened override'],
   ['other', 'Other'],
 ] as const
 type OpKey = (typeof OPS)[number][0]
@@ -107,6 +109,7 @@ export function LedgerTab() {
     an = (w: string) => (/^[aeiou]/.test(w) ? 'an' : 'a')
   const styleOf = (uid: string) => data.entry('martialarts', b.martialArts.find(m => m.uid === uid)?.id ?? '')
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
+  const awake = awakenedFlag(b, data)
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
   // a bought item with a higher level in its family (levels.ts) can be upgraded to one
@@ -206,6 +209,8 @@ export function LedgerTab() {
         return whole(f.karma) > 0 ? { op: 'convert', karma: whole(f.karma) } : null
       case 'n2k':
         return whole(f.karma) > 0 ? { op: 'convert', karma: -whole(f.karma) } : null
+      case 'awakened':
+        return f.target ? { op, ...(f.target === 'auto' ? {} : { value: f.target === 'yes' }) } : null
       case 'other':
         return { op }
     }
@@ -613,6 +618,20 @@ export function LedgerTab() {
           <label>
             Karma
             <input type="number" min={1} step={1} value={f.karma} onChange={e => set({ karma: e.target.value })} style={{ width: '6rem' }} />
+          </label>
+        )}
+        {/* (the Awakened flag's override after creation, free; Review warns while it differs: owner 2026-10-16) */}
+        {op === 'awakened' && (
+          <label>
+            Awakened
+            <select aria-label="Awakened override" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">Pick one</option>
+              <option value="auto">
+                Derived: {awake.derived ? 'Awakened' : 'not Awakened'} ({awake.why})
+              </option>
+              <option value="yes">Awakened (override)</option>
+              <option value="no">Not Awakened (override)</option>
+            </select>
           </label>
         )}
         {op === 'other' && (
