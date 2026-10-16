@@ -813,6 +813,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     'martial.augmentation',
     'gear.grade',
     'catalog.accessoryHost',
+    'licence.none',
   ])
   return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
 }

@@ -1,4 +1,5 @@
-// Owner requests of 2026-10-16 in the SR6 editor, on the made-up fixture: an owned item's licences, one per SIN (Gear, Ledger). Made-up
+// Owner requests of 2026-10-16 in the SR6 editor, on the made-up fixture: an owned item's licences, each one of a SIN's
+// (managed on Contacts, read on Gear, warned on Review, bought on the Ledger once finalized). Made-up
 // runner, items and prices.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
@@ -36,45 +37,75 @@ const feeCatalog = () =>
       : x,
   )
 
-test('Gear: an item printing a licence fee is licensed per SIN, its fee once a SIN; on none, one warning', async () => {
-  const ch = runner()
+const twoSins = (ch: Sr6Character) => {
   ch.build.sins = [
     { uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] },
     { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
   ]
   ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
-  const saved = await open(ch, 'gear', feeCatalog())
+  return ch
+}
+
+test('Gear: an item printing a licence fee only reads its licences (assigned on Contacts); on none, one warning', async () => {
+  const ch = twoSins(runner())
+  await open(ch, 'gear', feeCatalog())
   expect(pageText()).toMatch(/licence fee 500¥/)
   expect(document.querySelectorAll('[aria-label^="Needs a licence (fee 500¥) on each SIN"]')).toHaveLength(1)
-  await change(field('Tangle Rope 1 licensed on Pat Roe'), true)
-  await change(field('Tangle Rope 1 licensed on Pat Doe'), true)
-  expect(pageText()).toMatch(/licence fee 500¥ · licensed on: Pat Roe, Pat Doe/)
+  expect(pageText()).toMatch(/Licence needed — assign it on Contacts/)
+  expect(document.querySelector('input[type="checkbox"][aria-label*="licen"]')).toBeNull() // (no SIN boxes here any more)
+})
+
+test('Gear: an item licensed on a SIN lists it, with no warning', async () => {
+  const ch = twoSins(runner())
+  ch.build.sins[0].licences = [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }]
+  await open(ch, 'gear', feeCatalog())
+  expect(pageText()).toMatch(/licence fee 500¥ · licensed on: Pat Roe/)
   expect(document.querySelector('[aria-label^="Needs a licence"]')).toBeNull()
+  expect(pageText()).not.toMatch(/Licence needed/)
+})
+
+test('Contacts: each SIN lists its licences and licenses an owned item: a fake SIN’s a rated fake licence, a real SIN’s at its fee; removable', async () => {
+  const saved = await open(twoSins(runner()), 'contacts', feeCatalog())
+  // (the rating box starts at the fake SIN's rating)
+  expect(field('SIN 1 licence rating').value).toBe('3')
+  await change(field('SIN 1 licence rating'), '2')
+  await change(field('License an item on SIN 1'), 'g1')
+  expect(pageText()).toMatch(/Tangle Rope 1 \(licence 2\)/)
+  expect(pageText()).toMatch(/Tangle Rope 1 \(fee 500¥\)/) // (SIN 2, real: offered at its fee)
+  await change(field('License an item on SIN 2'), 'g1')
+  expect(pageText()).toMatch(/Tangle Rope 1 \(licence\)/)
+  expect(document.querySelector('[aria-label="License an item on SIN 1"]')).toBeNull() // (licensed there: none left to offer)
   expect((await saved()).build.sins.map(s => s.licences)).toEqual([
-    [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }],
+    [{ name: 'Tangle Rope 1', rating: 2, item: 'g1' }],
     [{ name: 'Tangle Rope 1', rating: 1, item: 'g1' }],
   ])
-  await change(field('Tangle Rope 1 licensed on Pat Roe'), false)
-  await change(field('Tangle Rope 1 licensed on Pat Doe'), false)
+  await click(button('Remove licence Tangle Rope 1'))
+  await click(button('Remove licence Tangle Rope 1'))
   expect((await saved()).build.sins.map(s => s.licences)).toEqual([[], []])
 })
 
-test('Gear: with no SIN the licence choice is there, disabled, saying why', async () => {
-  const ch = runner()
-  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
-  await open(ch, 'gear', feeCatalog())
-  expect(field('Tangle Rope 1 licence').disabled).toBe(true)
-  expect(pageText()).toMatch(/No SIN to license it on \(add one on Contacts\)/)
+test('Review: an owned item needing a licence with none on any SIN is one warning line', async () => {
+  const ch = twoSins(runner())
+  ch.build.purchases.push({ uid: 'g2', kind: 'gear', id: 'crb.tangle-rope.1', rating: 2, qty: 1, accessories: [] })
+  await open(ch, 'review', feeCatalog())
+  expect(
+    pageText().match(/Needs a licence on a SIN \(none yet; or carried unlicensed, settle it with your GM\): Tangle Rope 1, Tangle Rope 1\./g),
+  ).toHaveLength(1)
 })
 
-test('Ledger: after finalising, a licence on another SIN is a purchase at its fee', async () => {
-  const ch = runner()
-  ch.build.sins = [
-    { uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] },
-    { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
-  ]
+test('Review: no licence warning once each such item is licensed on a SIN', async () => {
+  const ch = twoSins(runner())
+  ch.build.purchases.push({ uid: 'g2', kind: 'gear', id: 'crb.tangle-rope.1', rating: 2, qty: 1, accessories: [] })
+  ch.build.sins[1].licences = [{ name: 'Tangle Rope 1', rating: 1, item: 'g1' }]
+  ch.build.sins[0].licences = [{ name: 'Tangle Rope 1', rating: 3, item: 'g2' }]
+  await open(ch, 'review', feeCatalog())
+  expect(pageText()).not.toMatch(/Needs a licence on a SIN/)
+})
+
+test('Ledger: after finalising, a licence on another SIN is a spend: a real SIN’s at its fee, a fake SIN’s by the rating typed', async () => {
+  const ch = twoSins(runner())
+  ch.build.purchases.push({ uid: 'g2', kind: 'gear', id: 'crb.tangle-rope.1', rating: 2, qty: 1, accessories: [] })
   ch.build.sins[0].licences = [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }]
-  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
   Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 900 } })
   ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 900 }]
   const saved = await open(ch, 'ledger', feeCatalog())
@@ -85,6 +116,14 @@ test('Ledger: after finalising, a licence on another SIN is a purchase at its fe
   await click(button('Record'))
   await click(button('Record it'))
   expect((await saved()).ledger.at(-1)).toMatchObject({ type: 'advance', advance: { op: 'licensed', target: 'g1', sin: 's2' }, nuyen: 500 })
+  await change(field('What'), 'licensed')
+  await change(field('Licensed item'), 'g2')
+  await change(field('Licensed on'), 's1')
+  await change(field('Licence rating'), '1')
+  expect(pageText()).toMatch(/Licence: Tangle Rope 1 on Pat Roe \(fake licence, rating 1\)/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'licensed', target: 'g2', sin: 's1', rating: 1 }, nuyen: 300 })
 })
 
 test('Ledger: the Awakened override after finalising is a free spend; Method says where it went', async () => {

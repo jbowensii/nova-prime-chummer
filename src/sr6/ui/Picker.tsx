@@ -14,7 +14,7 @@ import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { critterOnly, infectedOff } from '../engine/critterware'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
-import { ATTR_NAMES, n, useSr6Editor } from './editor'
+import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -672,26 +672,10 @@ export function PurchaseSection({
                           ⚑
                         </span>
                       )}
-                      {/* (a licence fee printed: licensed on any of the runner's SINs, its fee once a SIN; owner 2026-10-16) */}
-                      {licence && (
+                      {/* (licences are managed where SINs are, Contacts: owner 2026-10-16; here only read) */}
+                      {licence && note.warn && (
                         <div className="muted">
-                          {sins.length ? (
-                            sins.map(s => (
-                              <label key={s.uid} style={{ display: 'block' }}>
-                                <input
-                                  type="checkbox"
-                                  aria-label={`${name} licensed on ${sinName(s)}`}
-                                  checked={s.licences.some(l => l.item === x.uid)}
-                                  onChange={ev => act({ op: 'licensed', uid: x.uid, sin: s.uid, on: ev.target.checked })}
-                                />{' '}
-                                Licence on {sinName(s)}
-                              </label>
-                            ))
-                          ) : (
-                            <label>
-                              <input type="checkbox" disabled aria-label={`${name} licence`} /> No SIN to license it on (add one on Contacts)
-                            </label>
-                          )}
+                          Licence needed — assign it on <a href={sr6EditHref(ch.id, 'contacts')}>Contacts</a>
                         </div>
                       )}
                     </td>

@@ -84,6 +84,7 @@ export function LedgerTab() {
     gender: '',
     licName: '',
     licRating: '1',
+    itemRating: '',
   })
   const [licences, setLicences] = useState<{ name: string; rating: number }[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
@@ -97,7 +98,7 @@ export function LedgerTab() {
     setOp(o)
     setPicked(null)
     setLicences([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', itemRating: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -207,7 +208,8 @@ export function LedgerTab() {
       case 'lifestyle':
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'licensed':
-        return f.target && sin ? { op, target: f.target, sin } : null
+        // (on a fake SIN one of its fake licences: the rating typed, else the SIN's)
+        return f.target && sin ? { op, target: f.target, sin, ...(f.itemRating ? { rating: whole(f.itemRating) } : {}) } : null
       case 'contact':
         return f.name.trim() || f.target
           ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(), connection: whole(f.connection), loyalty: whole(f.loyalty) } }
@@ -565,7 +567,7 @@ export function LedgerTab() {
             </div>
           </>
         )}
-        {/* (a licence is one SIN's: one more SIN for an item, at its fee; owner 2026-10-16) */}
+        {/* (a licence is one SIN's: one more SIN for an item, at its fee on a real SIN, a rated fake licence on a fake one; owner 2026-10-16) */}
         {op === 'licensed' && (
           <>
             <label>
@@ -590,6 +592,20 @@ export function LedgerTab() {
                 ))}
               </select>
             </label>
+            {b.sins.find(s => s.uid === sin)?.kind === 'fake' && (
+              <label>
+                Licence rating
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={f.itemRating}
+                  placeholder={String(b.sins.find(s => s.uid === sin)?.rating ?? 1)}
+                  onChange={e => set({ itemRating: e.target.value })}
+                  style={{ width: '5rem' }}
+                />
+              </label>
+            )}
           </>
         )}
         {op === 'lifestyle' && (

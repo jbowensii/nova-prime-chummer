@@ -1,11 +1,14 @@
 // Contacts & lifestyle: contacts (name, archetype, connection, loyalty) against the contact points; SINs, real or fake
 // with a rating and an optional gender, each with its licences and its lifestyles (and their months); karma turned into nuyen.
+// Every licence is one of a SIN's and is managed only here (owner 2026-10-16): a fake licence typed in, or an owned item's
+// (one whose Availability prints a fee), picked: on a fake SIN one of its rated fake licences, on a real one at its fee.
 // A placeholder SIN (an older file's lifestyle with no SIN) shows as Unnamed SIN until named or given a kind. Once
 // finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
 import { NameField } from '../../../shared/ui'
-import { nuyenPerKarma, settingQuality, toNuyenMax } from '../../engine/budgets'
+import { licenceFee, nuyenPerKarma, purchaseName, settingQuality, toNuyenMax } from '../../engine/budgets'
+import { licenceText } from '../../print/view'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
@@ -131,7 +134,7 @@ export function ContactsTab() {
       <h2>SINs, licences and lifestyles</h2>
       {career ? (
         <p className="muted">
-          Finalized: buy a SIN, a lifestyle or more months of one on the <a href={sr6EditHref(ch.id, 'ledger')}>Ledger tab</a>.
+          Finalized: buy a SIN, a licence on one, a lifestyle or more months of one on the <a href={sr6EditHref(ch.id, 'ledger')}>Ledger tab</a>.
         </p>
       ) : (
         !b.sins.length && <p className="muted">A lifestyle is paid under a SIN: add one first.</p>
@@ -174,14 +177,21 @@ export function ContactsTab() {
 }
 
 function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: ReactNode[] }) {
-  const { act, data } = useSr6Editor()
+  const { act, data, ch } = useSr6Editor()
+  // (a new licence's rating: a fake SIN's own, the highest it allows, unless the player picks)
+  const first = String(s.rating ?? 1)
   const [name, setName] = useState(''),
-    [rating, setRating] = useState('1')
+    [rating, setRating] = useState(first)
   const add = () => {
     if (name.trim() && !act({ op: 'licence', sin: s.uid, name: name.trim(), rating: Number(rating) || 1 })) {
       setName('')
-      setRating('1')
+      setRating(first)
     }
+  }
+  // the owned items (accessories too) whose Availability prints a licence fee, not yet licensed on this SIN
+  const items = ch.build.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined && !s.licences.some(l => l.item === x.uid))
+  const license = (uid: string) => {
+    if (uid && !act({ op: 'licensed', uid, sin: s.uid, on: true, ...(s.kind === 'fake' ? { rating: Number(rating) || 1 } : {}) })) setRating(first)
   }
   return (
     <section className="stack">
@@ -227,7 +237,7 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
       <div className="row">
         {s.licences.map((l, i) => (
           <span key={i} className="chip">
-            {l.name} ({l.rating})
+            {l.item === undefined ? `${l.name} (${l.rating})` : licenceText(ch.build, data, s, l)}
             <button aria-label={`Remove licence ${l.name}`} onClick={() => act({ op: 'licence', sin: s.uid, remove: i })}>
               ×
             </button>
@@ -251,6 +261,17 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
         <button className="btn small" aria-label={`Add licence to ${who}`} disabled={!name.trim()} onClick={add}>
           Add licence
         </button>
+        {items.length > 0 && (
+          <select aria-label={`License an item on ${who}`} value="" onChange={e => license(e.target.value)}>
+            <option value="">License an item…</option>
+            {items.map(x => (
+              <option key={x.uid} value={x.uid}>
+                {purchaseName(x, data)}
+                {s.kind === 'real' ? ` (fee ${n(licenceFee(x, data)!)}¥)` : ''}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {(s.lifestyles ?? []).map((l, i) => (
         <div key={l.uid} className="row">

@@ -34,6 +34,7 @@ import {
   entryOf,
   extraMagic,
   fitted,
+  licenceFee,
   noteAttr,
   noteSkill,
   priced,
@@ -1516,6 +1517,18 @@ const RULES: Rule[] = [
             'An unnamed SIN holds the lifestyle from an older file: give it a name, kind and rating ' +
             '(once finalized: Ledger → Add or name a SIN), or move the lifestyle to a real or fake SIN and remove it.',
         })),
+  },
+  // an owned item whose Availability prints a licence fee, licensed on none of the runner's SINs: one note for them all
+  // (owner 2026-10-16: licences are listed and warned, never enforced; assigned on Contacts, or on the Ledger once finalized)
+  {
+    code: 'licence.none',
+    severity: 'warning',
+    tab: 'contacts',
+    check: c => {
+      const on = new Set(c.b.sins.flatMap(s => s.licences.map(l => l.item)))
+      const need = [...lines(c.b)].filter(({ x }) => !on.has(x.uid) && licenceFee(x, c.data) !== undefined).map(({ x }) => nameOf(c, x))
+      return need.length ? { message: `Needs a licence on a SIN (none yet; or carried unlicensed, settle it with your GM): ${need.join(', ')}.` } : null
+    },
   },
   {
     code: 'catalog.missing',
