@@ -5,7 +5,7 @@
 // warns that it isn't set). Never NaN.
 // The figures live in the modules re-exported here; this one holds the nuyen budget (purchases, lifestyles, SINs and
 // licences, data structures, the karma turned into nuyen) and adds every budget at once.
-import { SR6_ATTRS, sinName, type Sr6Build, type Sr6Purchase, type Sr6Sin } from '../model/character'
+import { SR6_ATTRS, sinName, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Sin } from '../model/character'
 import { flag, n0, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { normName } from './names'
@@ -18,6 +18,7 @@ import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints }
 import { skillSpend, knowledgePoints } from './skills'
 import { contactPoints } from './contacts'
 import { karmaBudget, nuyenPerKarma, toNuyen } from './karma'
+import { runnerInfected } from './infected'
 
 export type { Budget, BudgetLine } from './providers'
 export * from './choices'
@@ -127,8 +128,13 @@ export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
   const k = MAGIC_KINDS[b.magic],
     slots = freeSpellSlots(b, data, cr, p)
   const cp = p.characterPoints?.(b)
+  // the Sixth World Companion p. 104: an Infected type's free points, 2 physical and 2 mental, count as far as points are
+  // spent on attributes of that group (never Edge, Magic or Resonance)
+  const t = runnerInfected(b, data)?.t,
+    group = (ks: Sr6Attr[]) => ks.reduce((n, k) => n + b.attributes[k].points, 0)
+  const free = t ? Math.min(t.freePhysical, group(['bod', 'agi', 'rea', 'str'])) + Math.min(t.freeMental, group(['wil', 'log', 'int', 'cha'])) : 0
   return {
-    attributePoints: pool(p.attributePoints(b), spend('points')),
+    attributePoints: pool(p.attributePoints(b) + free, spend('points')),
     adjustmentPoints: pool(p.adjustmentPoints(b), spend('adjust')),
     skillPoints: pool(p.skillPoints(b), skillSpend(b, cr, p.skillPoints(b), data).points),
     karma: karmaBudget(b, data, cr, p),

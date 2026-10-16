@@ -29,7 +29,9 @@ no book text and no report output. The tests (`importer/tests/test_cl6check.py`)
 
 Options:
 - `--ours` takes either a folder of import runs or a single `custom/sr6` folder. A book printed in several runs
-  (the core rulebook in each city edition) is read from the first run, in name order.
+  (the core rulebook in each city edition) is read from the newest printing's run (the Current Printing, else the PDF's
+  date; ties in name order); older runs only add the entries it lacks and fill fields it left open. The PDF arbitration
+  reads that run's PDF.
 - `--jar` names the jar. Without it, the tool uses `$CL6_JAR`, then the default install
   (`~/CommLink6/app/stable/commlink6-*-complete.jar`; a folder means the newest jar in it). When no jar is found,
   the tool prints "skipped" and exits 0, so CI, which has no jar, is unaffected.
@@ -48,7 +50,7 @@ the overlay changes.
 - `valuemap` (`python -m tools.cl6check.valuemap <diffs.csv> [<diffs of a run on the result>]`) writes a per-book override row
   (`importer/sr6/overrides/<src>.json`, `"gen": "value"`) for each counted field difference that `value_keep.json` does not
   keep. `keep` lists the values the PDF's text layer prints (the owner's check of the 361 reviewed rows, native agents reading
-  the page text, 2026-10-14); the checker settles a difference there as class b. `hold` is what the owner decides (two
+  the page text, 2026-10-14); the checker settles a difference there as class b, whatever class it had (a, or c after the trace). A `variants` entry there (field `variants`) accepts an item that Commlink6 gives variant tags (an install option, a Guided/Rocket Assist warhead option) as one item. `hold` is what the owner decides (two
   Commlink6 records disagree about one entry; a per-rating item).
 - `familymap` writes the structured data (`"gen": "family"`): a weapon's `skill`/`spec`, an armor's `social`, the item
   structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks
@@ -57,6 +59,21 @@ the overlay changes.
 - A Commlink6-only record is an entry of ours (importer/sr6/overrides `"gen": "cl6only"` adds), is "already in our data"
   (`relocated.json`) or is in the optional package; only the rule options are not entries, as the app's rule presets.
 - `RETIRED` ("Depreciated …") records are out of every count, except `wss_explosive` (the latest Firing Squad prints it).
+- Infected (2026-10-16): Commlink6 has the Companion's Infected qualities as `quality type="INFECTED"` (one record per base
+  metatype: `ghoul_human` … `ghoul_troll`, `mutaqua_mundane`/`mutaqua_awakened`) and no record for the Infected Optional
+  Powers Table (p. 109); its same-named entries are critter powers (core rulebook, Street Wyrd), metagenic qualities and
+  adept powers. Our Infected qualities carry its class `INFECTED`; the 26 optional powers are qualities of ours with no
+  Commlink6 record (counted among our extras, their class `INFECTED/OPTIONAL_POWER` a deliberate extra). Qualities are not
+  a class-compared kind, so neither class moves the class match.
+- Infected per base and Awakened prices (owner 2026-10-16): the Ghoul is five qualities of ours (`Ghoul (Human)` … `Ghoul
+  (Troll)`, `swc.ghoul-human` …), matched exactly with Commlink6's five records (its human one is named `Ghoul`: an alias of
+  `Ghoul (Human)` in swc.json), each with its own family row. A quality's `<karmaif value>` (its Karma when the character is
+  Awakened) is one of its prices for the karma comparison, as `karmaMax` is (`ours.py` reads it as `karmaIf`): our one
+  Mutaqua, Nosferatu, Wendigo and Astral Hazing match both of Commlink6's records (`*_mundane`/`*_awakened`,
+  `astral_hazing_non_awakened`/`_awakened`), so their "two records disagree" hold rows are gone. Astral Hazing's `requires`
+  (each record its own magic kinds, ours their union) and the Silencer/suppressor's (Commlink6's list of the weapon subtypes
+  it fits; ours the book's exclusion, revolvers and shotguns, a `negate="true"` prerequisite) are kept as ours in
+  value_keep.json: accepted structural differences.
 
 ## What it does
 
@@ -229,7 +246,7 @@ The report's sections:
   Ours is read from the elements the gap plan proposes (`subtype`, `skill`/`spec`, `social`, `size`/`ammoClass`,
   `<variant>`, `<slot>`/`<fits>`, `<effect>`/`<test>`/`<grant>`/`<allow>`, `<choice>`, `<requires>`,
   `<relevance topic>`, `<flag>`, `modonly`). They are
-  near 0% until those phases land. A weapon accessory's printed MOUNT column already counts as its fits.
+  near 0% until those phases land. A weapon accessory's printed MOUNT column already counts as its fits, unless the entry has a `<slot>`/`<fits>` of its own (a vehicle mount's `Under`). `value_keep.json` also keeps ours for a `social` family difference.
 
   Effects compare as (element, `type:ref`, value). When phase 6 fixes our effect targets, map them in
   `ours.families`.

@@ -13,6 +13,12 @@ heading (`texts()`: the owner's PDF text of the catalog entry of that name, copi
 A row with "id" (an entry's unscoped id, the importer's own) and "set" {"class": "<TYPE/SUBTYPE>"} sets Commlink6's
 classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); an id no entry has is
 reported once on stderr, nothing guessed.
+An id row's "kind" is the file of OUR entry; a row filed under another kind (Commlink6's: gear for a weapon accessory) lands on
+the one other kind file that holds the id, and is reported when none or several do.
+An id row with "gen": "errata" is written by hand, never regenerated (an errata PDF's statements the importer's per-book
+runs cannot see: the No Future errata, nf.json): "set" values (null drops the attribute: a rating the errata removes), "formula"
+and "effects" (a list of effect attribute dicts, each with its "target": the entry's effect of that target is
+replaced). It applies after every other id row, so it wins over Commlink6's values.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
@@ -22,10 +28,21 @@ Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
   {"kind","id","rename":"<name>"}                 a new name (names only); the old one stays as an alias unless "alias": false
   {"move_kind":{"id","from","to"}}                the entry re-filed in another kind's file (gear -> weapons: a melee weapon; armor -> gear)
+  {"kind","id","notext":true}                     no description: the book prints none for it, and a text the import gave
+                                                  it from elsewhere (effects.py: a rule whose name holds its words) goes
+  {"kind","id","split":[{"id","name","set"?,"note"?}]}  the entry becomes one entry per part (a row the book prints once for several
+                                                  things): a copy with the part's id and name, "set" values (VALUE_ATTRS, null drops
+                                                  one; their formula/issue go),
+                                                  "note" {"field","text"} (the printed rule the value comes from); the book's text goes to each
+An attribute the entry's kind schema lacks (class on a rules entry, social on gear) is skipped with one stderr line per row, and
+an id row is never refiled to a kind whose schema lacks its attributes (allowed(), fit()).
 A description is never an override: "set" and "add" refuse a text field. See docs/sr6-data-format.md."""
+import copy
 import json
+import os
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr, unescape
 
@@ -35,7 +52,7 @@ from importer.sr6.regroup import norm
 from importer.sr6.resolve import _add_kid
 
 DIR = Path(__file__).with_name("overrides")
-OPS = ("remove", "rename", "merge", "move_kind")
+OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
 SETTABLE = {"class"}  # (what an id row may set)
 KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection"}  # (a "gen": "family" row's "kids": Commlink6's item structure)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
@@ -43,6 +60,52 @@ VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rat
                "handling", "interval", "power", "attr", "skill", "spec", "social", "modonly", "size", "ammoClass", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
 CLASS_KEY = re.compile(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?")
 NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from the owner's PDF, never from here)
+
+
+@lru_cache(maxsize=None)
+def allowed(kind):
+    """The attributes the entry of catalog kind `kind` may carry (its schema's, read from public/data/sr6/schema), or None
+    for a kind with no schema. An override or a generator writes no attribute outside this set."""
+    from lxml import etree
+
+    from importer.sr6 import KINDS, SCHEMA_DIR
+    if kind not in KINDS or not os.path.isfile(os.path.join(SCHEMA_DIR, f"{kind}.xsd")):
+        return None
+    xs = "{http://www.w3.org/2001/XMLSchema}"
+    docs = [etree.parse(os.path.join(SCHEMA_DIR, f"{n}.xsd")).getroot() for n in (kind, "common")]
+    defs = {(n.tag, n.get("name")): n for d in docs for n in d.iter(xs + "complexType", xs + "attributeGroup") if n.get("name")}
+    names = set()
+
+    def walk(node):  # (the attributes of a type: its own, its attribute groups', its base's; not the content model's)
+        for c in node:
+            if c.tag == xs + "attribute":
+                names.add(c.get("name") or c.get("ref"))
+            elif c.tag == xs + "attributeGroup" and c.get("ref"):
+                walk(defs[xs + "attributeGroup", c.get("ref").split(":")[-1]])
+            elif c.tag in (xs + "complexContent", xs + "simpleContent", xs + "extension", xs + "restriction"):
+                base = (c.get("base") or "").split(":")[-1]
+                if (xs + "complexType", base) in defs:
+                    walk(defs[xs + "complexType", base])
+                walk(c)
+    el = next(e for e in docs[0].iter(xs + "element") if e.get("name") == KINDS[kind])
+    walk(defs[xs + "complexType", el.get("type").split(":")[-1]] if el.get("type") else el.find(xs + "complexType"))
+    return frozenset(names)
+
+
+def fit(rows):
+    """The id rows with the attributes their kind's schema lacks taken out (a row left with nothing to set, add or
+    replace is dropped): one line on stderr for each row that loses some, never invalid xml."""
+    out = []
+    for r in rows:
+        ok = allowed(r["kind"])
+        bad = [k for k in r.get("set", {}) if ok is not None and k not in ok]
+        if bad:
+            print(f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped", file=sys.stderr)
+            r = {**r, "set": {k: v for k, v in r["set"].items() if k not in bad}, **({"formula": {k: v for k, v in r["formula"].items() if k not in bad}} if "formula" in r else {})}
+            if not (r["set"] or r.get("kids") or r.get("effects") or r.get("formula")):
+                continue
+        out.append(r)
+    return out
 
 
 def dump(old, root):
@@ -56,16 +119,21 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family") and not any(k in r for k in OPS):
-            if not (r.get("set") or r.get("kids")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
+        if "id" in r and r.get("gen") in ("value", "family", "errata") and not any(k in r for k in OPS):
+            if not (r.get("set") or r.get("kids") or r.get("effects")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
             if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
                 raise ValueError(f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only")
         elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
+        if not all(isinstance(a, dict) and a.get("target") for a in r.get("effects", [])):
+            raise ValueError(f"override of {r.get('id')}: each effect names its target (it replaces the entry's effect of that target)")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
             raise ValueError(f"override of {r.get('id')}: rename is a name")
+        for part in r.get("split", []):
+            if not (part.get("id") and part.get("name")) or set(part.get("set", {})) - VALUE_ATTRS or NO_TEXT & {k.lower() for k in part}:
+                raise ValueError(f"override of {r.get('id')}: a split part has an id, a name and {sorted(VALUE_ATTRS)} values only")
         if bad := NO_TEXT & {k.lower() for v in (r.get("merge"), r.get("move_kind")) if isinstance(v, dict) for k in v}:
             raise ValueError(f"override of {r.get('id')}: an op names a description field ({sorted(bad)})")
         if a := r.get("add"):
@@ -108,13 +176,17 @@ def _add(out, name, r, source):
 def texts(recipe_id, files, texts_xml, rows=None):
     """texts_xml (the book's texts file, ids unscoped) with a <text> for each add row that has "text_from": the text the
     book already has for the catalog entry of that name, under the new entry's kind and id; and without the text of an
-    entry a remove or merge row took out. Nothing is invented: no such heading or no text for it leaves the entry without
+    entry a remove or merge row took out, or a notext row says the book prints none for. Nothing is invented: no such heading or no text for it leaves the entry without
     one (reported on stderr)."""
     every = table(recipe_id) if rows is None else check(rows)
     rows = [r for r in every if r.get("add", {}).get("text_from")]
-    gone = {(r["kind"], r["id"]) for r in every if r.get("remove")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
+    splits = [r for r in every if r.get("split")]
+    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext") or r.get("split")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
     if not texts_xml or not (rows or gone):
         return texts_xml
+    own = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
+    copies = "".join(f"  <text of={quoteattr(r['kind'])} id={quoteattr(p['id'])}>{escape(own[r['kind'], r['id']])}</text>{chr(10)}"
+                     for r in splits if (r["kind"], r["id"]) in own for p in r["split"] if (r["kind"], p["id"]) not in own)  # (a split's parts: the source's text each)
     for of, i in gone:
         texts_xml = re.sub(r"[ \t]*<text of=%s id=%s>.*?</text>\n?" % (re.escape(quoteattr(of)), re.escape(quoteattr(i))), "", texts_xml, flags=re.S)
     have = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
@@ -122,7 +194,7 @@ def texts(recipe_id, files, texts_xml, rows=None):
     for fname, xml in files.items():
         for m in re.finditer(r'<\w+ id="([^"]+)"[^>]*><name>([^<]*)</name>', xml or ""):
             heads.setdefault(norm(unescape(m.group(2))), (fname[:-4], m.group(1)))
-    add = ""
+    add = copies
     for r in rows:
         a = r["add"]
         new = (r["kind"], slug(a.get("name", r["cl6"])))
@@ -142,15 +214,44 @@ def table(recipe_id):
     return check(json.loads(p.read_text(encoding="utf8"))) if p.is_file() else []
 
 
+def _refile(out, rows):
+    """The id rows with `kind` the file that holds the id: a row filed under Commlink6's kind (gear for a weapon accessory)
+    goes to the one other kind file with the id; an id in none or in several stays as it is (reported by the caller)."""
+    from lxml import etree
+
+    from importer.sr6 import KINDS
+    ids = {}  # (kind -> its top-level ids), read once for the files a row needs
+    def of(kind):
+        if kind not in ids:
+            xml = out.get(f"{kind}.xml")
+            ids[kind] = {e.get("id") for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8")) if isinstance(e.tag, str)} if xml else set()
+        return ids[kind]
+    done, ambiguous = [], []
+    for r in rows:
+        if r["id"] not in of(r["kind"]):
+            other = [k for k in KINDS if k != r["kind"] and r["id"] in of(k) and set(r.get("set", {})) <= (allowed(k) or set(r.get("set", {})))]  # (never to a kind whose schema lacks the attribute: a class on a rules entry)
+            if len(other) == 1:
+                r = {**r, "kind": other[0]}
+            elif other:
+                ambiguous.append(f"{r['kind']}.xml:{r['id']} in {', '.join(other)}")
+        done.append(r)
+    if ambiguous:
+        print(f"override: {len(ambiguous)} id rows name an id several kind files hold, left unfiled ({'; '.join(ambiguous[:4])})", file=sys.stderr)
+    return done
+
+
 def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
-    want, forms, vals, kids = {}, {}, {}, {}
-    for r in rows:
+    rows = fit(_refile(out, rows))
+    want, forms, vals, kids, effs = {}, {}, {}, {}, {}
+    for r in sorted(rows, key=lambda r: r.get("gen") == "errata"):  # (an errata's values last: they win)
+        if r.get("effects"):
+            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["effects"])
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
-        if r.get("gen") in ("value", "family"):
+        if r.get("gen") in ("value", "family", "errata"):
             forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
             vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r.get("set", {}))
     missing = []
@@ -164,7 +265,15 @@ def _set_by_id(out, rows):
             if isinstance(e.tag, str) and e.get("id") in ids:
                 seen.add(e.get("id"))
                 for k, v in ids[e.get("id")].items():
-                    e.set(k, str(v))
+                    if v is None:  # (an errata drops the attribute)
+                        e.attrib.pop(k, None)
+                    else:
+                        e.set(k, str(v))
+                for a in effs.get(name, {}).get(e.get("id"), []):  # (replaces the same target's effect)
+                    for c in [c for c in e if c.tag == "effect" and c.get("target") == a["target"]]:
+                        e.remove(c)
+                    c = etree.Element("effect", {x: str(v) for x, v in a.items()})
+                    e.insert(sum(1 for c in e if c.tag in ("name", "alias", "formula", "issue", "found")), c)
                 for k in vals.get(name, {}).get(e.get("id"), ()):
                     for c in [c for c in e if c.tag in ("formula", "issue", "found") and c.get("field") == k]:
                         e.remove(c)  # (the value they described is replaced)
@@ -209,6 +318,8 @@ def _find(root, eid):
 def _ops(out, rows):
     """The remove, merge, rename and move_kind rows applied, in that order (a merge before the move that files its target
     as a weapon). A row whose entry isn't there is reported once, nothing guessed."""
+    from lxml import etree
+
     from importer.sr6 import KINDS
     lost = []
     for r in (x for x in rows if x.get("remove")):
@@ -218,6 +329,34 @@ def _ops(out, rows):
         if e is None:
             lost.append(f"remove {name}:{r['id']}")
             continue
+        root.remove(e)
+        out[name] = dump(old, root)
+    for r in (x for x in rows if x.get("split")):
+        name = f"{r['kind']}.xml"
+        root, old = _load(out, name, r["kind"])
+        e = _find(root, r["id"])
+        if e is None:
+            lost.append(f"split {name}:{r['id']}")
+            continue
+        at = list(root).index(e)
+        for n, part in enumerate(r["split"]):
+            c = copy.deepcopy(e)
+            c.set("id", part["id"])
+            c.find("name").text = part["name"]
+            for a in [a for a in c.findall("alias") if not a.get("id")]:
+                c.remove(a)  # (the whole row's other names)
+            for k, v in part.get("set", {}).items():
+                if v is None:  # (null drops the attribute, as an errata's)
+                    c.attrib.pop(k, None)
+                else:
+                    c.set(k, str(v))
+                for x in [x for x in c if x.tag in ("formula", "issue", "found") and x.get("field") == k]:
+                    c.remove(x)
+            if note := part.get("note"):
+                x = etree.Element("note", {"field": note["field"]})
+                x.text = note["text"]
+                c.insert(sum(1 for x in c if x.tag in ("name", "alias", "formula", "issue", "found")), x)
+            root.insert(at + n, c)
         root.remove(e)
         out[name] = dump(old, root)
     for r in (x for x in rows if "merge" in x):
@@ -297,6 +436,7 @@ def apply(recipe_id, files, rows=None):
             print(f"override {r['cl6']}: no {name}", file=sys.stderr)
             continue
         root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", out[name]).encode("utf8"))
+        sets = (fit([r]) or [{}])[0].get("set", {}) if r.get("set") else {}
         for want in r["ours"]:
             hit = [e for e in root if isinstance(e.tag, str) and norm(e.findtext("name") or "") == norm(want)]
             if not hit:
@@ -305,11 +445,11 @@ def apply(recipe_id, files, rows=None):
                 have = {norm(a.text or "") for a in e.findall("alias")} | {norm(e.findtext("name") or "")}
                 if norm(r["cl6"]) not in have:
                     _add_kid(e, "alias", {}, r["cl6"])  # (before the entry's text, after its other aliases)
-                for k, v in r.get("set", {}).items():
+                for k, v in sets.items():
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
-    _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])
-    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge", "split"))])
+    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out
 

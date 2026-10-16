@@ -13,7 +13,7 @@ leaves the 9 pt tag lines (`(Health)`, a face's box title) as text.
 - Adept powers (`Cost: N PP …`, `Activation:`; `(max N levels)` in the cost gives the levels), metamagics (level-4
   items under Metamagics), mentor spirits (rules: no catalog kind), alchemical preparations (`Formula:`, `Drain Value:`,
   `Cost: N¥/charge`: gear, category alchemical-preps, priced per charge).
-- Social gear (SOCIAL SHOPPING): titled tables whose first header names the item (OUTFIT: clothing; ARMOR MOD: armor
+- Social gear (SOCIAL SHOPPING): titled tables whose first header names the item (OUTFIT: clothing, owner 2026-10-15: armor entries with no Defense, the SOCIAL RATING column as `social`; ARMOR MOD: armor
   modifications; NAME, FASHION ACCESSORIES, PROFESSIONAL GROOMING SERVICES, ESPIONAGE GEAR: gear by level-2 section),
   the descriptions under level-3 headings (`Uniform (Rating 1-6)`) with a `Game Information` item under each: a row
   takes its section's text and Game Information. A row with no name under a named one is another rating of it

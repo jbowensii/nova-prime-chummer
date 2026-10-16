@@ -2,14 +2,28 @@
 // Intentions, Memory, lift/carry, drain/fading, essence and its magic loss): formulas in code, every constant they use a
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
-import { SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../model/character'
-import { allBudgets, attrRating, augmentBonus, magicCap, conditionalBonuses, entryBonuses, entryOf, hostBonus, ratingOf, skillRank, specBonus } from './budgets'
+import { CORE_ATTRS, SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../model/character'
+import {
+  allBudgets,
+  attrMax,
+  attrRating,
+  augmentBonus,
+  magicCap,
+  conditionalBonuses,
+  entryBonuses,
+  entryOf,
+  hostBonus,
+  ratingOf,
+  skillRank,
+  specBonus,
+} from './budgets'
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { normName } from './names'
 import { linkedEntries } from './effects'
 import type { Sr6Entry, Sr6Part } from '../model/types'
 import { makeProvider } from './providers'
+import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from './values'
 import { categoryOf, entryLabel } from './categories'
 
@@ -53,6 +67,8 @@ export interface Sr6WeaponValues {
 }
 export interface Sr6Derived {
   attrs: Record<Sr6Attr, { natural: number; augmented: number }>
+  /** the Awakened flag (infected.ts awakenedFlag: the magic kind or an Infected type, or the player's override) */
+  awakened: boolean
   essence: number
   /** Magic or Resonance lost to Essence spent */
   magicLoss: number
@@ -139,18 +155,25 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
   const loss = budgets.essence.magicLoss,
     special: Sr6Attr = kind.resonance ? 'res' : 'mag'
   // (with the option magicAboveSixByGrade, plus the grade: budgets.ts magicCap)
-  const capSetting = need('magicMax') === undefined ? undefined : magicCap(b, cr, special),
-    magicMax = capSetting === undefined ? null : Math.max(0, capSetting - loss)
+  // (an Infected's Magic: its type's highest, infected.ts)
+  const capSetting = magicCap(b, cr, special, data)
+  if (capSetting === undefined) need('magicMax')
+  const magicMax = capSetting === undefined ? null : Math.max(0, capSetting - loss)
   // CRB Hong Kong p. 37: an adjusted attribute is never above its rank + 4; p. 39: a skill's augmented increase is never
   // above +4 (attributeAugmentMax, skillAugmentMax; unset: no cap). Only an increase is capped.
   const capA = num(cr, 'attributeAugmentMax'),
     capS = num(cr, 'skillAugmentMax'),
     capped: Sr6Derived['capped'] = {}
   const upTo = (bonus: number, most: number | undefined) => (most === undefined || bonus <= most ? bonus : most)
+  // the Sixth World Companion p. 104: an Infected's attribute above its type's maximum drops to it, the spend not refunded
+  // (Review's infected.dropped)
+  const infected = !!runnerInfected(b, data)
   const attrs = Object.fromEntries(
     SR6_ATTRS.map(k => {
       let natural = attrRating(b, k, p)
-      if (k === special && b.magic !== 'mundane') natural = Math.max(0, natural - loss)
+      if (infected && (CORE_ATTRS as string[]).includes(k)) natural = Math.min(natural, attrMax(data, cr, b, k) ?? natural)
+      // (a mundane has no Magic to lose, unless an Infected type gave it some)
+      if (k === special) natural = Math.max(0, natural - loss)
       const bonus = augmentBonus(b, data, k, undefined, on),
         counted = upTo(bonus, capA)
       if (counted < bonus) capped[k] = bonus - counted
@@ -332,6 +355,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
 
   return {
     attrs,
+    awakened: awakenedFlag(b, data).value,
     essence: budgets.essence.left,
     magicLoss: loss,
     magicMax,

@@ -9,6 +9,7 @@ import { round2 } from './purchases'
 import { noteSkill } from './choices'
 import { attrRating } from './attributes'
 import { magicLoss } from './essence'
+import { infectedMagicMax } from './infected'
 
 /** How many picks of these kinds the runner has. */
 export const countPicks = (b: Sr6Build, ...kinds: Sr6Build['picks'][number]['kind'][]) => b.picks.filter(x => kinds.includes(x.kind)).length
@@ -63,8 +64,11 @@ export function powerCost(data: Sr6Data, x: Pick<Sr6Build['picks'][number], 'id'
 export const dataStructureLevels = (b: Sr6Build) => b.picks.filter(x => x.kind === 'datastructures').reduce((t, x) => t + (x.level ?? 1), 0)
 
 /** The highest Magic or Resonance at creation: magicMax (CRB Hong Kong p. 65), plus the initiation or submersion grade
- *  with the option magicAboveSixByGrade (p. 167). undefined: magicMax unset. */
-export function magicCap(b: Sr6Build, cr: CreationRules, attr: 'mag' | 'res'): number | undefined {
+ *  with the option magicAboveSixByGrade (p. 167); an Infected's Magic its type's (infected.ts infectedMagicMax, with
+ *  `data`). undefined: magicMax unset. */
+export function magicCap(b: Sr6Build, cr: CreationRules, attr: 'mag' | 'res', data?: Sr6Data): number | undefined {
+  const infected = attr === 'mag' && data ? infectedMagicMax(b, data, cr) : undefined
+  if (infected !== undefined) return infected
   const max = num(cr, 'magicMax')
   return max === undefined ? undefined : max + (flag(cr, 'magicAboveSixByGrade') ? (attr === 'mag' ? b.initiation : b.submersion) : 0)
 }

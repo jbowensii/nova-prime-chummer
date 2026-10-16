@@ -5,6 +5,7 @@
 import { LETTERS, SR6_ATTRS, type Letter, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../model/character'
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
+import { boughtKind, infectedMagic } from './infected'
 
 export interface Pool {
   max: number
@@ -64,7 +65,10 @@ const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompar
 export const pool = (max: number, spent: number): Pool => ({ max, spent, left: max - spent })
 export const contactSpend = (b: Sr6Build) => b.contacts.reduce((n, c) => n + c.connection + c.loyalty, 0)
 export const knowledgeSpend = (b: Sr6Build) => b.knowledge.filter(k => !k.native).reduce((n, k) => n + k.points, 0)
-const awakened = (k: MagicKind) => k !== 'mundane'
+/** awakened or emerged (any kind but mundane): the method's Magic or Resonance, its price and the mundane's Edge are
+ *  for either; Awakened alone (a technomancer is not) is data.ts awakenedKind. Each reads the kind the method bought,
+ *  never the one an Infected type gave (infected.ts boughtKind). */
+const gifted = (k: MagicKind) => k !== 'mundane'
 
 /** The contact points no pool can cover: contacts take from the pools of a type they have (a pool with no types: any),
  *  so the most the pools cover is a max flow; by Hall's condition its shortfall is the largest, over every set U of the
@@ -83,6 +87,12 @@ export function uncovered(pools: { types?: string[]; points: number }[], contact
 }
 
 export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules): Provider {
+  const p = methodProvider(method, data, cr)
+  // the Sixth World Companion's Infected (p. 106): a Strain II or III type's Magic, 1 or 1 less, on top of the method's
+  return { ...p, startBonus: (b, k) => (p.startBonus?.(b, k) ?? 0) + (k === 'mag' ? infectedMagic(b, data) : 0) }
+}
+
+function methodProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules): Provider {
   const n = (key: string) => num(cr, key) ?? 0
   const everyMetatype = (adjustmentPoints: number) =>
     Object.values(data.metatypes)
@@ -145,12 +155,12 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
         const by = magicRow(b)
         return KINDS.filter(k => k in by || k === 'mundane').map(kind => ({ kind, rating: by[kind] ?? 0 }))
       },
-      magicRating: b => magicRow(b)[b.magic] ?? 0,
+      magicRating: b => magicRow(b)[boughtKind(b)] ?? 0,
     }
   }
 
   if (method === 'pointbuy') {
-    const start = (k: MagicKind) => (awakened(k) ? n(`pointBuy.startRating:${k}`) : 0)
+    const start = (k: MagicKind) => (gifted(k) ? n(`pointBuy.startRating:${k}`) : 0)
     return {
       ...base,
       lettersValid: () => true,
@@ -160,8 +170,8 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       nuyen: b => n('pointBuy.free.nuyen') + b.cp.resources * n('pointBuy.nuyenPerCp'),
       // the metatype costs no character points; its karma comes out of the starting karma
       legalMetatypes: () => everyMetatype(n('pointBuy.free.adjustment')),
-      legalMagic: () => KINDS.map(kind => ({ kind, rating: start(kind), cp: awakened(kind) ? n('pointBuy.awakened') : 0 })),
-      magicRating: b => start(b.magic),
+      legalMagic: () => KINDS.map(kind => ({ kind, rating: start(kind), cp: gifted(kind) ? n('pointBuy.awakened') : 0 })),
+      magicRating: b => start(boughtKind(b)),
       metatypeKarma: b => (b.metatype ? n(`metatypeKarma:${b.metatype}`) : 0),
       characterPoints: b => {
         const c = b.cp,
@@ -169,7 +179,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
         const pp = cost(MAGIC_KINDS[b.magic].paysPowers ? 'mysticPowerPoint' : 'powerPoint')
         return pool(
           n('pointBuy.total'),
-          (awakened(b.magic) ? n('pointBuy.awakened') : 0) +
+          (gifted(boughtKind(b)) ? n('pointBuy.awakened') : 0) +
             c.attribute * cost('attribute') +
             c.skill * cost('skill') +
             c.adjustment * cost('adjustment') +
@@ -183,7 +193,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
   }
 
   if (method === 'karma') {
-    const start = (k: MagicKind) => (awakened(k) ? n('karmaBuild.startRating') : 0)
+    const start = (k: MagicKind) => (gifted(k) ? n('karmaBuild.startRating') : 0)
     return {
       ...base,
       lettersValid: () => true,
@@ -195,9 +205,9 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       startingKarma: () => n('karmaBuild.start'),
       legalMetatypes: () => everyMetatype(0),
       legalMagic: () => everyKind(start),
-      magicRating: b => start(b.magic),
+      magicRating: b => start(boughtKind(b)),
       metatypeKarma: b => (b.metatype ? n(`metatypeKarma:${b.metatype}`) : 0),
-      magicKarma: b => (awakened(b.magic) ? n(`magicKarma:${b.magic}`) : 0),
+      magicKarma: b => (gifted(boughtKind(b)) ? n(`magicKarma:${boughtKind(b)}`) : 0),
     }
   }
 
@@ -224,7 +234,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     }
     return v
   }
-  const start = (k: MagicKind) => (awakened(k) ? n(`lifepath.startRating:${k}`) : 0)
+  const start = (k: MagicKind) => (gifted(k) ? n(`lifepath.startRating:${k}`) : 0)
   const contactPools = (b: Sr6Build) =>
     modules(b)
       .filter(m => m.grants.contactPoints)
@@ -242,7 +252,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
       cap = num(cr, 'attributeBaseMax'),
       raised = num(cr, 'lifepath.raisedAttributeStart')
     const max = m && k in m.ranges ? m.ranges[k as keyof Sr6MetatypeView['ranges']][1] : 0
-    return (raised !== undefined && cap !== undefined && max > cap ? raised - 1 : 0) + (k === 'edg' && !awakened(b.magic) ? n('lifepath.mundaneEdge') : 0)
+    return (raised !== undefined && cap !== undefined && max > cap ? raised - 1 : 0) + (k === 'edg' && !gifted(boughtKind(b)) ? n('lifepath.mundaneEdge') : 0)
   }
   /** the best attribute rises by lifepath.bestAttributeBonus up to its metatype maximum; what that leaves over goes on
    *  bestExtra */
@@ -265,7 +275,7 @@ export function makeProvider(method: Sr6Method, data: Sr6Data, cr: CreationRules
     nuyen: b => sum(b, 'nuyen'),
     legalMetatypes: () => everyMetatype(0),
     legalMagic: () => everyKind(start),
-    magicRating: b => start(b.magic),
+    magicRating: b => start(boughtKind(b)),
     contactPools,
     contactPoints: b => {
       const pools = contactPools(b)

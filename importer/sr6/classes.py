@@ -3,9 +3,11 @@ verbatim. classes/category_class.json ({kind: {category: class}}, made by tools/
 whose entries Commlink6 classes alike, 90% or more) gives every entry of such a category its class; one the table doesn't
 reach gets none (we invent no class for what Commlink6 doesn't have), and an entry that has a class already, one the
 per-book override table set, keeps it. The Foundry module translates the keys to Eden's later.
-classes/section_prefix.json then gives every entry of a source's section, by kind and printed page, one deliberate extra
-class (classes/extra_classes.json: not Commlink6's), whatever it had: Body Shop's critter-only chapter is all
-`CRITTERWARE/AUGMENTATION`, which the app keeps out of the player's pickers."""
+classes/section_prefix.json then gives every entry of a source's section, by kind and printed page, one class, whatever
+it had: a deliberate extra (classes/extra_classes.json: not Commlink6's), or Commlink6's own where the rule says so
+(`"commlink6": true`). Body Shop's critter-only chapter is all `CRITTERWARE/AUGMENTATION`, which the app keeps out of the
+player's pickers; the Companion's Infected qualities are `INFECTED` and its Infected optional powers
+`INFECTED/OPTIONAL_POWER`, which the app offers only with the table's infectedAllowed rule on."""
 import json
 import re
 from pathlib import Path

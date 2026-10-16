@@ -10,6 +10,7 @@ import { attrRating } from './attributes'
 import { skillRank, skillSpend } from './skills'
 import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
+import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
@@ -27,7 +28,18 @@ export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
   return each * (v.perLevel ? q.level : 1)
 }
 
-/** Karma from qualities: positive ones cost qualityCost (× positiveQualityFactor), negative ones give it; free traits and
+/** One quality line's karma on this runner: qualityCost, or its Awakened price (<karmaif>: infected.ts priceAwakened),
+ *  or the non-human vampire's (<infectedalt> karma, p. 109) a level; less one level for the Infected free pick (p. 105). */
+export function qualityPrice(b: Sr6Build, data: Sr6Data, q: Sr6Quality, v: Sr6QualityView): number {
+  const t = infectedOf(data.entry('qualities', q.id)),
+    per = v.perLevel ? q.level : 1
+  const unit =
+    t?.alt && infectedFit(data, b.metatype, t) === 'alt' ? t.alt.karma : v.karmaIf && priceAwakened(b, data, q.id) ? Math.abs(v.karmaIf.value) : undefined
+  const total = unit === undefined ? qualityCost(q, v) : unit * per
+  return freePick(b, data) === q ? total - (unit ?? qualityCost({ ...q, level: 1 }, v)) : total
+}
+
+/** Karma from qualities: positive ones cost qualityPrice (× positiveQualityFactor), negative ones give it; free traits and
  *  qualities gone from the catalog count nothing. */
 export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { pos: number; neg: number } {
   let pos = 0,
@@ -35,7 +47,7 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
   for (const q of b.qualities) {
     const v = data.qualities[q.id]
     if (q.free || !v) continue
-    const total = qualityCost(q, v)
+    const total = qualityPrice(b, data, q, v)
     if (v.positive) pos += total * (num(cr, 'positiveQualityFactor') ?? 1)
     else neg += total
   }
@@ -108,7 +120,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   // Hack & Slash p. 71: a data structure is integrated for Karma equal to its level
   add('dataStructures', 'Data structures integrated', dataStructureLevels(b), 'magic')
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
-  add('magic', MAGIC_KIND_LABELS[b.magic], p.magicKarma?.(b) ?? 0, 'method')
+  add('magic', MAGIC_KIND_LABELS[boughtKind(b)], p.magicKarma?.(b) ?? 0, 'method')
   add('toNuyen', 'Turned into nuyen', toNuyen(b, cr), 'contacts')
   add('contacts', 'Contact ratings past the contact points', contactPoints(b, data, cr, p).karma ?? 0, 'contacts')
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)

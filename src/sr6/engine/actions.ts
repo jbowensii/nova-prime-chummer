@@ -31,7 +31,8 @@ import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
 import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
-import { critterOnly } from './critterware'
+import { critterOnly, infectedOff } from './critterware'
+import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
   | { op: 'attribute'; target: Sr6Attr; pool: 'points' | 'adjust' | 'karma'; delta: number }
@@ -111,6 +112,10 @@ export type Op =
   | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
   | { op: 'seats'; uid: string; removed: number }
+  /** the runner's Infected type (an Infected quality's id; '' none): infect */
+  | { op: 'infected'; id: string }
+  /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
+  | { op: 'awakened'; value: boolean | null }
 export type Result = { ok: true } | { ok: false; reason: string }
 
 /** R: weapons, armor, augmentations and vehicles always get their own line (each can carry its own accessories). */
@@ -143,12 +148,24 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
 }
 
-/** Pick the magic kind: picks it can't have go, as do bought power points (unless it buys them), an initiation or
- *  submersion it can't have, the aspected skill unless it's aspected, and the spends on Magic or Resonance when the
- *  kind has no such attribute (the Attributes tab no longer shows it, so they couldn't be taken back). */
-export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
-  const b = ch.build,
-    k = MAGIC_KINDS[kind],
+/** Pick the magic kind the method buys: picks it can't have go, as do bought power points (unless it buys them), an
+ *  initiation or submersion it can't have, the aspected skill unless it's aspected, and the spends on Magic or Resonance
+ *  when the kind has no such attribute (the Attributes tab no longer shows it, so they couldn't be taken back). An
+ *  Infected runner becomes the kind its type leaves the bought one (infectedKind: technomancer leaves it without
+ *  Resonance, as taking the type would). */
+export function setMagic(ch: Sr6Character, kind: MagicKind, data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
+  const t = runnerInfected(ch.build, data)?.t
+  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill)
+}
+/** The runner's kind becomes `next`, the method having bought `bought`: infectedFrom keeps the bought kind while an
+ *  Infected type made it another (SWC p. 105), and goes when they agree. Shared with career.ts applyAdvance. */
+export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string): void {
+  if (next !== bought) b.infectedFrom = bought
+  else delete b.infectedFrom
+  magicKind(b, next, aspectedSkill)
+}
+function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string): void {
+  const k = MAGIC_KINDS[kind],
     allowed = picksFor(kind)
   b.magic = kind
   if (kind === 'aspected' && aspectedSkill) b.aspectedSkill = aspectedSkill
@@ -163,12 +180,35 @@ export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr:
   if (kind !== 'mystic-adept') delete b.mentorAdvantage
 }
 
-/** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). */
+/** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). The kind checked is the
+ *  one the method bought (boughtKind); an Infected runner cleared to mundane becomes the kind its type gives a mundane
+ *  (setMagic). */
 export function reconcile(ch: Sr6Character, data: Sr6Data, cr: CreationRules): void {
   const b = ch.build,
     p = makeProvider(b.method, data, cr)
   if (b.metatype && !p.legalMetatypes(b).some(m => m.id === b.metatype)) setMetatype(ch, '', data)
-  if (!p.legalMagic(b).some(m => m.kind === b.magic)) setMagic(ch, 'mundane', data, cr)
+  if (!p.legalMagic(b).some(m => m.kind === boughtKind(b))) setMagic(ch, 'mundane', data, cr)
+}
+
+/** Take the runner's Infected type (the Sixth World Companion pp. 104–106; '' none), replacing the one it has. The type
+ *  Awakens a runner who isn't (Mutaqua as an adept, Nosferatu and Wendigo as magicians), makes one Awakened as the other
+ *  kind a mystic adept, and takes a technomancer's Resonance (no refund): the kind before is kept in infectedFrom, and
+ *  taking the type away gives it back. Its other rules are read from it where they apply (infected.ts). */
+function infect(b: Sr6Build, id: string, data: Sr6Data, cr: CreationRules): Result {
+  const cur = runnerInfected(b, data),
+    e = id ? data.entry('qualities', id) : undefined,
+    t = infectedOf(e)
+  if (id) {
+    if (!t) return no('unknown-entry')
+    if (cur?.line.id === id) return no('already-taken')
+    if (infectedOff(e, cr)) return no('rule-off')
+    if (!infectedFit(data, b.metatype, t)) return no('not-for-metatype')
+  }
+  const bought = boughtKind(b)
+  if (cur) b.qualities = b.qualities.filter(q => q !== cur.line)
+  if (t) b.qualities.push({ uid: newId(), id, level: 1, name: data.qualities[id]?.name ?? t.name })
+  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought)
+  return OK
 }
 
 const OK: Result = { ok: true }
@@ -244,11 +284,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!s.points && !s.karma && !s.spec && !s.expertise && !s.specs) b.skills = b.skills.filter(x => x !== s)
       return OK
     }
+    case 'infected':
+      return infect(b, op.id, data, cr)
+    case 'awakened':
+      if (op.value === null) delete b.awakened
+      else b.awakened = op.value
+      return OK
     case 'quality': {
       if ('remove' in op) {
         const q = b.qualities.find(x => x.uid === op.remove)
         if (!q) return no('not-taken')
         if (q.free) return no('free-trait')
+        if (runnerInfected(b, data)?.line === q) return infect(b, '', data, cr)
         b.qualities = b.qualities.filter(x => x !== q)
         // (owner's decision 5: the mentor spirit goes with its quality)
         const mentor = str(cr, 'mentorSpiritQuality')
@@ -257,6 +304,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
           delete b.mentorAdvantage
         }
         return OK
+      }
+      // an Infected quality or optional power, new to the runner, only while the table allows Infected characters (SWC p. 104)
+      const e0 = data.entry('qualities', op.id),
+        had = b.qualities.some(x => x.id === op.id)
+      if (infectedOff(e0, cr) && !had) return no('rule-off')
+      // (an Infected type is the runner's one type: infect; an optional power only from its list, and at creation only
+      // the free pick unless the table's infectedPowersAtCreation says otherwise: infected.ts powerRefusal)
+      if (infectedOf(e0) && !had) return infect(b, op.id, data, cr)
+      if (optionalPower(e0)) {
+        const why = had ? undefined : powerRefusal(b, data, cr, op.id, true)
+        if (why) return no(why)
+        if ((op.level ?? 1) > 1 && !flag(cr, 'infectedPowersAtCreation')) return no('infected-after-creation')
       }
       // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
       const fam = data.family('qualities', op.id)

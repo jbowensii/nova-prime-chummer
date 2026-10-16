@@ -61,6 +61,8 @@ class BookCirclesTest(unittest.TestCase):
         self.assertTrue(search.names_item("Glim mic", "Glim microphone"))
         self.assertTrue(search.names_item("ZX-48", "Bloop ZX-48 Thunderer"))
         self.assertFalse(search.names_item("Blade", "Zorp Blade"))  # one word with no digit: too loose
+        self.assertTrue(search.names_item("Z-ICE: Nope!", "Nope!"))  # a row printed with its line's name in front
+        self.assertFalse(search.names_item("Z-ICE: Nope!", "Zing"))
 
 
 class ErrataTest(unittest.TestCase):
@@ -182,6 +184,39 @@ class CorpusTest(unittest.TestCase):
                     self.assertEqual(resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")],
                                                     sources={"ZZA": "2019-08"})["errata"], 1)
 
+    def test_an_errata_never_overrides_the_current_printing_but_fills_what_it_leaves_open(self):
+        # (made up: the printing is its book's Current Printing, which incorporates its errata, so it keeps the value it
+        # prints, though the errata is newer than its PDF; an erratum fills a field it leaves open)
+        from unittest import mock
+
+        from importer.sr6.recipes import crb
+        sha = "e" * 64
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(crb.PRINTINGS, {sha: ("2019-08", "Made-Up Current Printing")}), \
+                mock.patch.object(crb, "CURRENT", (sha,)):
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, sha=sha, entries=[
+                '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>',
+                '<gear id="zza.sleek" source="ZZA" page="20" category="x" cost="50"><name>Spin Top (Sleek)</name>'
+                '<issue field="avail" code="missing" page="20" searched="book">no availability printed</issue></gear>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)",
+                  file="Zorp-Alpha-Errata.pdf",
+                  md="# Z ORP A LPHA E RRATA\nSpin Tops p. 20\n● Hardened: Availability 2\n● Sleek: Availability 3\n")
+            books = [(os.path.join(lib, d), custom) for d in ("a", "e")]
+            with mock.patch.object(resolve, "pdf_date", lambda pdf, md="": "2020-02-22" if os.sep + "e" + os.sep in pdf else "2019-08-25"):
+                n = resolve.corpus(books, sources={"ZZA": "2019-08"})
+                g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
+                self.assertEqual(n["errata"], 1)
+                self.assertEqual(g["zza.wobble"].get("avail"), "8")  # (printed: the erratum yields)
+                self.assertIsNone(g["zza.wobble"].find("found"))
+                self.assertEqual((g["zza.sleek"].get("avail"), g["zza.sleek"].find("found").get("how")), ("3", "errata"))  # (open: filled)
+                with mock.patch.object(crb, "CURRENT", ()):  # (a book with no Current Printing flag: the newer errata overrides)
+                    _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, sha=sha, entries=[
+                        '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'])
+                    resolve.corpus(books, sources={"ZZA": "2019-08"})
+                    g = {e.get("id"): e for e in ET.parse(os.path.join(custom, "imported", "zza", "gear.xml")).getroot()}
+                    self.assertEqual(g["zza.wobble"].get("avail"), "2")
+
     def test_an_errata_renumbering_unrating_and_reprinting_life_modules(self):
         md = "\n".join([
             "# Z ORP A LPHA E RRATA",
@@ -243,6 +278,25 @@ class CorpusTest(unittest.TestCase):
             self.assertEqual(m["Event: A Glowing Week of Fame"].get("nuyen"), "5000")
             with open(os.path.join(custom, "imported", "index.xml"), encoding="utf8") as f:
                 self.assertIn('href="zza/lifemodules.xml"', f.read())
+
+    def test_a_renumbering_an_override_row_already_made_is_not_made_again(self):
+        md = "\n".join(["W HAT ARE ZIPLENSES ? ( P . 40)",
+                       "Rather than being rating 2 and 3 cyberware as printed in Zorp Alpha, these are instead rating 3 and 4",
+                       "ziplenses and zipears."])
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, kind="augmentations",
+                  entries=['<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" avail="4"><name>Ziplenses (Rating 3)</name></augmentation>',
+                           '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" avail="5"><name>Ziplenses (Rating 4)</name></augmentation>'])
+            _book(lib, "e", "skipped", why="Nothing to import: errata (applied with its book)", file="Zorp-Alpha-Errata.pdf", md=md)
+            orig = resolve.pdf_date
+            resolve.pdf_date = lambda pdf, md="": "2023-05-05" if os.sep + "e" + os.sep in pdf else ""
+            try:
+                resolve.corpus([(os.path.join(lib, d), custom) for d in ("a", "e")], sources={"ZZA": "2020-01"})
+            finally:
+                resolve.pdf_date = orig
+            a = {e.get("id"): e.findtext("name") for e in ET.parse(os.path.join(custom, "imported", "zza", "augmentations.xml")).getroot()}
+            self.assertEqual(a, {"zza.ziplenses-rating-2": "Ziplenses (Rating 3)", "zza.ziplenses-rating-3": "Ziplenses (Rating 4)"})
 
     def test_a_grouped_row_named_by_its_run_in(self):
         with tempfile.TemporaryDirectory() as tmp:

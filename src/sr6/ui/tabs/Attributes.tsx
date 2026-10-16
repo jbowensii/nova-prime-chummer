@@ -22,7 +22,13 @@ export function AttributesTab() {
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     meta = data.metatypes[b.metatype]
-  const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
+  // (Magic too for a mundane an Infected type gave some: infected.ts)
+  const attrs: Sr6Attr[] = [
+    ...CORE_ATTRS,
+    'edg',
+    ...(kind.spells || kind.powers || d.attrs.mag.natural > 0 ? ['mag' as const] : []),
+    ...(kind.resonance ? ['res' as const] : []),
+  ]
   const range = (a: Sr6Attr) => attrRange(ctx, a)
   const karmaPrice = num(cr, 'karmaAttrPerRank')
   return (

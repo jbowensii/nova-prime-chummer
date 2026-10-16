@@ -212,6 +212,11 @@ export interface Sr6Build {
   /** a metatype id, '' while none is picked */
   metatype: string
   magic: MagicKind
+  /** the player's override of the Awakened flag (src/sr6/engine/infected.ts awakenedFlag); none: derived */
+  awakened?: boolean
+  /** the magic kind before the Infected type changed it (Awakened it, or took a technomancer's Resonance: SWC p. 105);
+   *  the kind the method bought, and what taking the type away restores */
+  infectedFrom?: MagicKind
   aspectedSkill?: string
   tradition?: string
   drainAttr?: 'log' | 'int' | 'cha'
@@ -250,8 +255,9 @@ export type Sr6Advance =
   | { op: 'spec'; target: string; name: string }
   | { op: 'expertise'; target: string; name: string }
   | { op: 'knowledge'; line: Sr6Knowledge }
-  /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference */
-  | { op: 'quality'; line: Sr6Quality; target?: string }
+  /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference;
+   *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it */
+  | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind }
   | { op: 'buyoff'; target: string; line?: Sr6Quality }
   /** target: as a quality's, the lower level replaced */
   | { op: 'pick'; line: Sr6Pick; target?: string }

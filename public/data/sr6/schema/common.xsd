@@ -466,6 +466,14 @@
   <xs:complexType name="Quality">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
+      <!-- an Infected quality's rules (Sixth World Companion pp. 104-114, docs/sr6-data-format.md, Infected characters):
+           <infected> its strain and base metatype; <infectedalt> its terms for another base metatype (the non-human
+           vampire); <optionalpower> an optional power it may buy (ref: the optional power's quality id; free: one its free
+           pick may take); <karmaif> its Karma when a character flag holds (flag awakened: Mutaqua, Astral Hazing) -->
+      <xs:element name="infected" type="sr6:Infected" minOccurs="0"/>
+      <xs:element name="infectedalt" type="sr6:InfectedAlt" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="optionalpower" type="sr6:OptionalPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="karmaif" type="sr6:KarmaIf" minOccurs="0" maxOccurs="unbounded"/>
       <xs:group ref="sr6:tail"/>  <!-- (its choices, effects and tests: the tail's) -->
     </xs:sequence>
     <xs:attributeGroup ref="sr6:ref"/>
@@ -489,6 +497,62 @@
       <!-- the quality path a bare step heading belongs to (`Step 2` under `Quality Path: Gestalt`): the app shows
            "Gestalt: Step 2" -->
       <xs:attribute name="group" type="xs:string"/>
+      <!-- an Infected quality (Commlink6's type INFECTED) or an Infected optional power (INFECTED/OPTIONAL_POWER, ours):
+           offered only while the table's infectedAllowed rule is on (classes/section_prefix.json) -->
+      <xs:attribute name="class" type="sr6:ClassKey"/>
+  </xs:complexType>
+  <!-- strain: I, II or III (Ia is I: printed="Ia"); base: the base metatype as the attributes table prints it (Human,
+       Sasquatch); awakens: what a character not yet Awakened Awakens as (adept, magician); freePhysical, freeMental: the
+       free attribute points; essence, magic, magicLoss: Strain II/III's Essence, the Magic a mundane gains, the Magic one
+       already Awakened loses; magicMax: a formula over ess and initiate-grade -->
+  <xs:complexType name="Infected">
+    <xs:attribute name="strain" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="I"/><xs:enumeration value="II"/><xs:enumeration value="III"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="printed" type="xs:string"/>
+    <xs:attribute name="base" type="xs:string" use="required"/>
+    <xs:attribute name="awakens">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="adept"/><xs:enumeration value="magician"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="freePhysical" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="freeMental" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="essence" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="magic" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="magicLoss" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="magicMax" type="xs:string"/>
+  </xs:complexType>
+  <!-- base other: any base metatype but the type's own; karma: its price there; bod … cha: added to that metatype's
+       own maxima; page: the sidebar's; note: shown with the price -->
+  <xs:complexType name="InfectedAlt">
+    <xs:attribute name="base" type="xs:string" use="required"/>
+    <xs:attribute name="karma" type="xs:integer" use="required"/>
+    <xs:attribute name="bod" type="xs:integer"/>
+    <xs:attribute name="agi" type="xs:integer"/>
+    <xs:attribute name="rea" type="xs:integer"/>
+    <xs:attribute name="str" type="xs:integer"/>
+    <xs:attribute name="wil" type="xs:integer"/>
+    <xs:attribute name="log" type="xs:integer"/>
+    <xs:attribute name="int" type="xs:integer"/>
+    <xs:attribute name="cha" type="xs:integer"/>
+    <xs:attribute name="page" type="xs:positiveInteger"/>
+    <xs:attribute name="note" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="OptionalPower">
+    <xs:attribute name="ref" type="sr6:Id" use="required"/>
+    <xs:attribute name="free" type="sr6:True"/>
+  </xs:complexType>
+  <!-- the quality's Karma (value) when the character flag holds (awakened: a magician, adept, mystic adept or aspected
+       magician, not a technomancer); note: the printed price's note, shown with it -->
+  <xs:complexType name="KarmaIf">
+    <xs:attribute name="flag" use="required">
+      <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="awakened"/></xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="value" type="xs:integer" use="required"/>
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <xs:complexType name="Weapon">
@@ -717,6 +781,8 @@
       <xs:attribute name="action" type="xs:string"/>
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="duration" type="xs:string"/>
+      <!-- the tags printed over the power (Street Wyrd: Free, Great) -->
+      <xs:attribute name="tags" type="xs:string"/>
       <!-- a weakness (Fragile, Carrier): the book's stat blocks list it under Weaknesses -->
       <xs:attribute name="weakness" type="sr6:True"/>
     </xs:extension></xs:complexContent>

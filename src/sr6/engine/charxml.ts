@@ -136,6 +136,8 @@ function buildXml(b: Sr6Build): string {
     {
       method: b.method,
       magic: b.magic,
+      awakened: b.awakened,
+      infectedFrom: b.infectedFrom,
       aspectedSkill: b.aspectedSkill,
       tradition: b.tradition,
       drainAttr: b.drainAttr,
@@ -165,7 +167,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'knowledge':
       return [{}, knowledgeXml(a.line)]
     case 'quality':
-      return [{ target: a.target }, qualityXml(a.line)]
+      return [{ target: a.target, magic: a.magic }, qualityXml(a.line)]
     case 'buyoff':
       return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
     case 'pick':
@@ -402,6 +404,12 @@ const readContact = (e: Element): Sr6Contact => {
 function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
+  // (the Awakened override: absent, derived; the kind before an Infected type changed it)
+  const awake = b.getAttribute('awakened'),
+    from = b.getAttribute('infectedFrom')
+  const yesNo = awake == null ? undefined : oneOf(awake, ['true', 'false', '1', '0'] as const, 'Awakened override', undefined, fix) // (xs:boolean)
+  if (yesNo) out.awakened = yesNo === 'true' || yesNo === '1'
+  if (from != null) out.infectedFrom = oneOf(from, MAGIC_KINDS, 'magic kind before the Infected type', undefined, fix)
   const drain = b.getAttribute('drainAttr')
   const adv = b.getAttribute('mentorAdvantage')
   Object.assign(
@@ -537,8 +545,15 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return { op, target: req(e, 'target'), name: req(e, 'name') }
     case 'knowledge':
       return { op, line: line(e, 'knowledge', readKnowledge, true) }
-    case 'quality':
-      return def({ op, line: line(e, 'quality', readQuality, true), target: str(e, 'target') })
+    case 'quality': {
+      const m = e.getAttribute('magic')
+      return def({
+        op,
+        line: line(e, 'quality', readQuality, true),
+        target: str(e, 'target'),
+        magic: m == null ? undefined : oneOf(m, MAGIC_KINDS, 'magic kind an Infected type gives', undefined, fix),
+      })
+    }
     case 'buyoff':
       return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
     case 'pick':

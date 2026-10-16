@@ -18,7 +18,7 @@ class Book:
     def __init__(self, book_dir):
         self.pdf_path = os.path.join(book_dir, "original.pdf") if book_dir else None
         self.offset, self.pages = 1, None
-        self._text, self._plumber, self._pdfium = {}, None, None
+        self._text, self._plumber, self._pdfium, self._words = {}, None, None, {}
         if book_dir and os.path.exists(os.path.join(book_dir, "import.xml")):
             imp = ET.parse(os.path.join(book_dir, "import.xml")).getroot()
             self.pages = int(imp.get("pages") or 0) or None
@@ -52,6 +52,20 @@ class Book:
                 t = t or ""
         self._text[idx] = t
         return t
+
+    def words(self, printed):
+        """pdfplumber's words of a printed page, each with its font size ([] when unreadable)."""
+        try:
+            idx = int(printed) + self.offset - 1
+            if idx not in self._words:
+                import pdfplumber
+                self._plumber = self._plumber or pdfplumber.open(self.pdf_path)
+                pg = self._plumber.pages[idx]
+                self._words[idx] = pg.extract_words(extra_attrs=["size"]) + [{"text": "|width", "x0": pg.width, "x1": pg.width, "top": 0, "size": 0}]
+                pg.flush_cache()
+            return self._words[idx]
+        except Exception:  # noqa: BLE001  (a page that won't read settles nothing)
+            return []
 
     def close(self):
         for d in (self._plumber, self._pdfium):
@@ -91,6 +105,51 @@ def name_window(book, page, name, extra_pages=()):
         if hits and fallback is None and p == pages[0]:
             fallback = norm_line(" ".join(lines[hits[0]:hits[0] + 7]))
     return fallback
+
+
+def stat_box(book, page, name, extra_pages=()):
+    """The text of the AVAIL / COST stat box that floats below an item's heading, in the heading's column (Firing Squad's
+    accessories: the box can sit a long way under the heading, and the box above it in the column is the previous item's):
+    "2 140" for a box printing 2 and 140¥; None when the heading or a box below it is not found. The heading is the
+    largest print of the item's name on its page, the next or the one before."""
+    toks = [t for t in (re.sub(r"[^a-z0-9]", "", x) for x in name.lower().split()) if t][:3]  # (`Low-Light` is one word of the page; a long heading wraps: its first words)
+    if not toks:
+        return None
+    for q in (page, *extra_pages):
+        try:
+            q = int(q)
+        except (TypeError, ValueError):
+            continue
+        for pg in (q, q + 1, q - 1):
+            ws = book.words(pg)
+            if not ws:
+                continue
+            heads = []
+            for i, w in enumerate(ws):
+                at, ok = w, re.sub(r"[^a-z0-9]", "", w["text"].lower()) == toks[0]
+                for t in toks[1:] if ok else ():
+                    nxt = [x for x in ws if abs(x["top"] - w["top"]) < 3 and 0 <= x["x0"] - at["x1"] < 12]
+                    at = next((x for x in nxt if re.sub(r"[^a-z0-9]", "", x["text"].lower()) == t), None)
+                    if at is None:
+                        ok = False
+                        break
+                if ok:
+                    heads.append(w)
+            if not heads:
+                continue
+            h = max(heads, key=lambda x: x["size"])
+            width = next(x["x0"] for x in ws if x["text"] == "|width")
+            right = h["x0"] > width * 0.45
+            col = lambda x: (x["x0"] > width * 0.45) == right  # noqa: E731 (two columns)
+            labels = sorted((x for x in ws if x["text"] == "AVAIL" and x["top"] > h["top"] and col(x)), key=lambda x: x["top"])
+            for a in labels:
+                c = next((x for x in ws if x["text"] == "COST" and abs(x["top"] - a["top"]) < 3 and x["x0"] > a["x0"]), None)
+                if c:
+                    vals = [x for x in ws if a["top"] + 3 < x["top"] < a["top"] + 25 and a["x0"] - 15 <= x["x0"] < c["x0"] + 90]
+                    left = " ".join(x["text"] for x in sorted(vals, key=lambda x: x["x0"]) if x["x0"] < c["x0"] - 5)
+                    rest = " ".join(x["text"] for x in sorted(vals, key=lambda x: x["x0"]) if x["x0"] >= c["x0"] - 5)
+                    return norm_line(f"{left} {rest}")
+    return None
 
 
 def name_on_page(book, page, name):
@@ -142,6 +201,11 @@ def settle(book, entry, rec, diff):
     if w is not None:
         a, b = bool(token_in(w, diff.get("ours_tok"))), bool(token_in(w, diff.get("cl6_tok")))
         pdf = {(True, False): "ours", (False, True): "cl6", (True, True): "both", (False, False): "neither"}[(a, b)]
+    if pdf != "ours" and diff.get("field") in ("avail", "legality", "cost") and hasattr(book, "words"):
+        # a stat box floating under the item's heading is the item's own; the row's window above may be a neighbour's
+        box = stat_box(book, entry["page"], entry["name"], (rec["page"],))
+        if box is not None and token_in(box, diff.get("ours_tok")) and not token_in(box, diff.get("cl6_tok")):
+            return "b", "ours"
     if pdf == "cl6" and diff["why"].startswith("ours empty") and (diff.get("ours") or "").strip() in ("—", "–", "-"):
         return "b", "ours"  # the row prints a dash; Commlink6's value only matches a stray digit in the window
     if pdf == "cl6" and w is not None and re.search(r"[A-Za-z]", diff.get("ours") or "") and token_in(w, diff["ours"]):

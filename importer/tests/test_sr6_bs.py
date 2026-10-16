@@ -83,6 +83,12 @@ Made-up fur.
 | TYPE | ESS | AVAL | COST |
 |---|---|---|---|
 | Fur Pack | 0.3 | 5(L) | 7,000¥ |
+## Made-Up Limbs
+#### critter limbs
+| CYBERLIMB | CAPACITY | ESS | AVAIL | COST |
+|---|---|---|---|---|
+| Zap Limb, Synthetic | 8 | 1 | 15,000¥ |  |
+| Zap Limb, Obvious | 16 | 1 | 10,000¥ | Rating x 5,000¥ |
 ## Made-Up Nanohives
 #### Tiny Hive
 A made-up hive.
@@ -175,6 +181,19 @@ class BsRecipeTest(unittest.TestCase):
         x = effects.apply(self.res.files, self.res.texts, "")[0]["augmentations.xml"]  # (the effects pass, as run.py runs it)
         self.assertIn('<effect target="test:surprise" op="edge" value="1"/>', x.split('<name>Basic</name>')[1].split("</augmentation>")[0])
         self.assertIn('<effect target="test:defense" op="add" value="R"/>', x.split('<name>Tactical</name>')[1].split("</augmentation>")[0])
+
+    def test_nuyen_under_avail_is_a_licence_price_and_stays_in_avail(self):
+        # (owner 2026-10-15, every table: `15,000¥` under AVAIL is "available with licence", never a misplaced cost)
+        a = entries(self.res, "augmentations")
+        self.assertEqual((a["Zap Limb, Synthetic"]["avail"], a["Zap Limb, Synthetic"].get("cost")), ("15,000¥", None))
+        self.assertEqual((a["Zap Limb, Obvious"]["avail"], a["Zap Limb, Obvious"]["cost"]), ("10,000¥", "Rating x 5000"))
+
+    def test_a_licence_fee_is_a_readable_availability_so_the_search_never_replaces_it(self):
+        from importer.sr6 import catalog, overrides
+        self.assertTrue(all(catalog.readable(v) for v in ("15,000¥", "7,500¥", "2, 15,000¥", "6(L), 500¥")))
+        self.assertFalse(catalog.readable("x, 500¥"))
+        # (Deadly Arts' MGL-24 prints AVAIL 7,500¥: no Commlink6 value row sets its avail to 4)
+        self.assertFalse([r for r in overrides.table("da") if r.get("id") == "mgl-24" and "avail" in r.get("set", {})])
 
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")

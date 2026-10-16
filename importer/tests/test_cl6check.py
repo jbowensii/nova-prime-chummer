@@ -176,6 +176,30 @@ class OursTest(unittest.TestCase):
             self.assertTrue(got["gz"].book_dir.endswith(os.path.join("a_run", "library", "sr6", "book1")))
 
 
+    def test_the_newest_printing_wins_whatever_the_run_names(self):
+        from unittest import mock
+        from importer.sr6.recipes import crb
+        from tools.cl6check import corpus
+        with tempfile.TemporaryDirectory() as d:
+            for run, cost in (("a_berlin", "2100"), ("b_current", "5100"), ("c_seattle", "2100")):
+                imp = os.path.join(d, run, "custom", "sr6", "imported", "gz")
+                os.makedirs(imp)
+                with open(os.path.join(imp, "gear.xml"), "w", encoding="utf8") as f:
+                    f.write(f'<data><gear id="gz.q" cost="{cost}"><name>{run}</name></gear></data>')
+                lib = os.path.join(d, run, "library", "sr6", "book1")
+                os.makedirs(lib)
+                with open(os.path.join(lib, "import.xml"), "w", encoding="utf8") as f:
+                    f.write(f'<import source="GZ" sha256="{crb.SHA256[0] if run == "b_current" else "x"}"/>')
+            dates = {"a_berlin": "2025-06-01", "b_current": "2019-08-25", "c_seattle": "2021-09-01"}  # (the Current Printing's PDF is the oldest)
+            meta = lambda p: (dates[p.split(os.sep)[-5]], "")  # noqa: E731
+            with mock.patch.object(corpus, "pdf_meta", meta):
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["b_current"])
+                os.remove(os.path.join(d, "b_current", "library", "sr6", "book1", "import.xml"))  # no Current Printing: the PDF date
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["a_berlin"])
+                dates["a_berlin"] = dates["c_seattle"] = dates["b_current"]  # a tie: the first in name order
+                self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["a_berlin"])
+
+
 class FieldsTest(unittest.TestCase):
     def cmp(self, xml, **attrs):
         c = canon.canonical(rec(xml))
@@ -201,9 +225,31 @@ class FieldsTest(unittest.TestCase):
         x = '<item id="z" type="TOOLS" price="10" avail="4L"/>'
         compared, d = self.cmp(x, cost="10", avail="4(I)")
         self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
-        d = self.cmp(x, cost="10", avail="2,500¥")[1]
+        d = self.cmp(x, cost="10", avail="2500")[1]
         self.assertEqual(d[0]["why"], "ours holds a price (columns shifted)")
+        # (owner 2026-10-15) nuyen alone under AVAIL is a licence fee on a freely available item: no avail or legality diff;
+        # `4(I), 2,500¥` is rating 4 plus the fee, compared on the 4(I)
+        self.assertEqual(self.cmp(x, cost="10", avail="2,500¥")[1], [])
+        self.assertEqual(fields.licence("4(I), 2,500¥"), ("4(I)", 2500.0))
+        self.assertEqual(fields.licence("2,500¥"), ("", 2500.0))
+        self.assertEqual(fields.licence("4(L)"), ("4(L)", None))
+        d = self.cmp(x, cost="10", avail="4(I), 2,500¥")[1]
+        self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
         self.assertNotIn("legality", self.cmp(x, cost="10", avail="—")[0])  # an empty avail is the avail's diff
+
+    def test_a_quality_s_awakened_price_matches_the_second_record(self):
+        """(owner 2026-10-16) one quality, its price when Awakened a <karmaif>: both of Commlink6's records (mundane,
+        awakened) agree on karma."""
+        karma = lambda k, **a: [d for d in fields.compare(canon.canonical(rec(f'<quality id="z" karma="{k}" pos="true"/>')),
+                                                          entry("Zorp", kind="qualities", **a))[1] if d["field"] == "karma"]
+        self.assertEqual(karma(54, karma="54", karmaIf="44"), [])
+        self.assertEqual(karma(44, karma="54", karmaIf="44"), [])
+        self.assertEqual(len(karma(44, karma="54")), 1)
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "qualities.xml"), "w", encoding="utf8") as f:
+                f.write('<d kind="qualities"><quality id="gz.zorp" source="GZ" page="1" kind="positive" karma="54"><name>Zorp</name>'
+                        '<karmaif flag="awakened" value="44"/></quality></d>')
+            self.assertEqual(ours._entries(d, "gz")[0]["attrs"]["karmaIf"], "44")
 
     def test_ammo_with_what_else_it_draws_on(self):
         c = {"fields": {"ammo": "20(c)"}, "tag": "item"}  # (a canonical record's ammo field, invented)
@@ -531,3 +577,25 @@ class ExtraClassTest(unittest.TestCase):
         self.assertIn("deliberate extra classes", report.markdown(m))
         none = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0][0]
         self.assertFalse(none["families"]["class"])
+
+
+class ValueKeepTest(unittest.TestCase):
+    def test_a_kept_value_counts_as_printed_for_every_commlink6_record_of_the_entry(self):
+        from types import SimpleNamespace
+        recs = [canon.canonical(rec(f'<item id="z{i}" cost="{c}"/>', name=f"Zorp ({n})")) | {"src": "gz"}
+                for i, (n, c) in enumerate([("Alpha", 100), ("Beta", 200)])]
+        mine = {"gz": SimpleNamespace(entries=[entry("Zorp", cost="500")], book_dir=None)}
+
+        def classes(keep):
+            res = cli.compare(recs, mine, pdf=False, package=({}, {}, {}), accept={}, keep=keep)[0]
+            return [d["class"] for r in res for d in r["diffs"] if d["field"] == "cost"]
+        self.assertEqual(classes(set()), ["c", "c"])  # (no book to arbitrate: class c)
+        self.assertEqual(classes({("gz", "gear", "gz.zorp", "cost")}), ["b", "b"])
+
+    def test_a_keep_key_may_name_commlink6s_kind_when_ours_is_filed_elsewhere(self):
+        from types import SimpleNamespace
+        c = canon.canonical(rec('<item id="z0" cost="100"/>', name="Zorp")) | {"src": "gz"}
+        mine = {"gz": SimpleNamespace(entries=[entry("Zorp", kind="augmentations", cost="500")], book_dir=None)}
+        for key in (("gz", c["kind"], "gz.zorp", "cost"), ("gz", "augmentations", "gz.zorp", "cost")):
+            res = cli.compare([c], mine, pdf=False, package=({}, {}, {}), accept={}, keep={key})[0]
+            self.assertEqual([d["class"] for d in res[0]["diffs"] if d["field"] == "cost"], ["b"], key)

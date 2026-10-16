@@ -37,12 +37,13 @@ HEADERS = {
                 "AMMO": "ammo", "TYPE": "type", "MOUNT": "mount", "BLAST": "blast", "DV GZ": "dv+", "DV CLOSE": "dv+",
                 "DV NEAR": "dv+", "NOTES": "", "STATS": "", **_PRICE},
     "armor": {"DEFENSE RATING": "defense", "DEFENSE": "defense", "DR": "defense", "CAPACITY": "capacity", "SOCIAL": "social",
-              "TYPE": "", "EXTRAS": "", **_PRICE},
+              "SOCIAL RATING": "social", "RATING": "rating", "TYPE": "", "EXTRAS": "", **_PRICE},
     "augmentations": {"RATING": "rating", "ESSENCE": "essence", "ESS": "essence", "CAPACITY": "capacity", **_PRICE},
     "electronics": {"RATING": "rating", "DEVICE RATING": "rating", "ATTRIBUTE ARRAY": "array", "ARRAY": "array",
                     "ATTRIBUTES (D/F)": "array", "ATTRIBUTES (A/S)": "array", "PROGRAMS": "programs",
                     "ACTIVE PROGRAM SLOTS": "programs", "CAPACITY": "capacity", **_PRICE},
     "gear": {"RATING": "rating", "DEVICE RATING": "rating", "CAPACITY": "capacity", "BONDING COST (IN KARMA)": "karma",
+             "CAPACITY (CYBERDECK/CYBERHACK)": "capacity",  # a cyberdeck case's room for each (HS p. 36), as printed
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              "RANGE": "range", "PILOT": "pilot", "SENSOR": "sensor",  # a rocket or missile's range and guidance (DA p. 58)
@@ -111,6 +112,7 @@ def slash_options(name, text):
 
 # fields whose slash is their own format, not two items' values: handling (on/off road), seats (front/back)
 SLASH_FORMAT = {"handling", "seats"}
+VALUE_PART = r"\s*(?:\+?\d+(?:\.\d+)?\s*¥?\s*(\(\w\))?|[-–—])\s*"  # (one of a row's two values: `2(I)`, `+250¥`, a dash)
 MATERIAL_ADD_ON = "Ammunition accessory"  # (its category: fits the ammunition kind, categories.KIND_WORDS)
 
 
@@ -128,12 +130,17 @@ _LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 _VAR = re.compile(r"\b(?:rating|capacity|force|level)\b", re.I)
 
 
+_LICENCE = re.compile(r"\s*(?:(.+?)\s*,\s+)?(?:\d{1,3}(?:,\d{3})+|\d+)\s*¥\s*")
+
+
 def readable(v):
     """True when the app can read the value (src/sr6/engine/values.ts rated()): a dash, a number or a formula of
     numbers, Rating (or Capacity, Force, Level: the rating the item is bought at), + × x * / ^ and parentheses, with an
     optional leading + (an add-on's price) and a legality suffix."""
     if v.strip() in ("", "—"):
         return True
+    if m := _LICENCE.fullmatch(v):  # (owner 2026-10-15) `15,000¥` under AVAIL: a licence fee on a freely available item;
+        return not m.group(1) or readable(m.group(1))  # `2, 15,000¥`: rating 2 plus the fee
     s = _VAR.sub(" R ", _LEGAL.sub("", re.sub(r"(?i)\s+each\s*$", "", v)).strip().lstrip("+"))  # (`1500 each`)
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", re.sub(r"[×x*]", " * ", s))
     if "/" in toks and "R" not in toks:
@@ -561,20 +568,27 @@ class Catalog:
         if m := re.fullmatch(r"(.+?)\s*/\s*(\w+)\s+or\s+(.+?)\s*/\s*(\w+)", cost):
             return [(f"{name} ({m.group(2)})", dict(f, cost=m.group(1), per=m.group(2))),
                     (f"{name} ({m.group(4)})", dict(f, cost=m.group(3), per=m.group(4)))]
+        if m := re.fullmatch(r"(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)\s*/\s*(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)", cost, re.I):
+            # (owner, 2026-10-15: `1,000¥ for cyberdeck/5,000¥ for cyberhack`: one item per variant, each with its price)
+            return [(f"{name} ({m.group(2).lower()})", dict(f, cost=m.group(1))),
+                    (f"{name} ({m.group(4).lower()})", dict(f, cost=m.group(3)))]
         for v in (cost, f.get("avail", "")):
             parts = v.split("/")
             names = _names(name)[:len(parts)] if "/" in name else []
-            if len(names) == 2 and len(names[0].split()) > 1 and names[1].split()[0] != names[0].split()[0] \
+            if len(names) == 2 and re.match(r"(?:w|with)\s+\S", names[1]):
+                # (owner, 2026-10-15: `Sim module / w Hot sim`: the second item is `Sim module w/ Hot sim`)
+                names[1] = f"{names[0]} w/ {names[1].split(None, 1)[1]}"
+            elif len(names) == 2 and len(names[0].split()) > 1 and names[1].split()[0] != names[0].split()[0] \
                     and len(names[1].split()) > 1:
                 # (a product row `Maker A/B C`: B shares the maker's words, `Federated Boeing Osprey X`)
                 names[1] = " ".join(names[0].split()[:-1] + names[1].split())
-            if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(r"\s*\d+\s*(\(\w\))?", p) for p in parts):
+            if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(VALUE_PART, p) for p in parts):
                 # (owner, 2026-10-08: A takes each cell's first value, B its second, a cell without a slash is shared;
                 # not a column whose slash is its own format: handling on/off road, seats)
                 def part(k, v, i):
                     ps = v.split("/") if isinstance(v, str) else []
                     own = k in ("cost", "avail") or k not in SLASH_FORMAT and all(
-                        re.fullmatch(r"\s*\d+(?:\.\d+)?\s*(\(\w\))?\s*", p) for p in ps)
+                        re.fullmatch(VALUE_PART, p) for p in ps)
                     return ps[i].strip() if own and len(ps) == len(parts) else v
                 return [(n, {k: part(k, v, i) for k, v in f.items()}) for i, n in enumerate(names)]
         return [(name, f)]
@@ -754,6 +768,8 @@ class Catalog:
             if not cat:
                 return False  # a rule about spells
             attrs = {"category": cat, "tags": b.tags or None}
+        elif kind == "critterpowers":
+            attrs = {"tags": b.tags or None}  # Street Wyrd's `(Free)`, `(Great)` over a spirit power (p. 66)
         elif kind == "qualities":
             karma = _karma_line(f.pop("karma", ""), b.text)
             # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
@@ -1773,7 +1789,8 @@ def spell_features(bs, cat, offset):
     """The features the book's spells are tagged with (`Direct Combat`, `Indirect Combat, Area`, `Single Sense`,
     Street Wyrd's `Focus`): each a spell feature of the book (CRB pp. 132, 137), described by the heading naming it
     (`Direct Combat Spells`, `Multi-Sense`) where the book prints one; left out where the recipe already read it."""
-    spells = [b for b in bs if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]} and b.tags]
+    spells = [b for b in bs if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]} and b.tags
+              and "ACTION" not in {h.upper() for h in b.stats[0]}]  # (a critter power's tags are its own)
     if not spells:
         return
     have = {norm(e["name"]) for e in cat.entries["spellfeatures"]}

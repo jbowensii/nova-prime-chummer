@@ -24,7 +24,7 @@ import os
 import re
 
 from importer.sr6 import catalog, lifemodules
-from importer.sr6.recipes import printing
+from importer.sr6.recipes import current, published
 from importer.sr6.search import clean, good, norm
 
 _PDFDATE = re.compile(r"(?:D:)?((?:19|20)\d\d)(\d\d)(\d\d)")
@@ -244,8 +244,9 @@ class _Book:
         self.name, self.file = get("name"), get("file")
         self._md, self._md_path = None, os.path.join(book_dir, "book.md")
         # (a known printing whose PDF has no date: the month that printing was published, not its source's first)
-        known = printing(get("sha256"))
-        self.date = pdf_date(os.path.join(book_dir, "original.pdf"), self.md[:20000]) or (known[0] if known else "")             or sources.get(self.src.upper(), "")
+        known = published(get("sha256"))
+        self.current = current(get("sha256"))  # the book's Current Printing: it already incorporates its errata
+        self.date = pdf_date(os.path.join(book_dir, "original.pdf"), self.md[:20000]) or (known or "")             or sources.get(self.src.upper(), "")
 
     @property
     def md(self):
@@ -309,7 +310,8 @@ def _formula_of(el, f):
 
 def _errata_books(bs):
     """(errata, the book it corrects) for each errata newer than its book's printing (a printing newer than the
-    errata carries its own values)."""
+    errata carries its own values). A Current Printing (_Book.current) counts as newer than every errata whatever the
+    dates: the errata is yielded for it all the same, and _apply_errata lets it fill only what the printing leaves open."""
     for eb in bs:
         if eb.state != "skipped" or "errata" not in eb.why.lower():
             continue
@@ -319,28 +321,31 @@ def _errata_books(bs):
             continue
         best = max(len(_tail(b.name)) for b in targets)
         for tb in [b for b in targets if len(_tail(b.name)) == best]:
-            if eb.date and tb.date and eb.date > tb.date:
+            if tb.current or eb.date and tb.date and eb.date > tb.date:
                 yield eb, tb
 
 
 def _apply_errata(bs, entries, changed, n):
-    """Each errata statement on its own book's entries, when the errata is newer than the printing."""
+    """Each errata statement on its own book's entries, when the errata is newer than the printing. On a Current Printing
+    an erratum never replaces a printed value: it fills a field the printing leaves open (an issue of its own) and
+    nothing else (no renumbering, no dropped rating)."""
     for eb, tb in _errata_books(bs):
         stmts = errata(eb.md)
         ents = [{"name": el.findtext("name") or "", "page": int(el.get("page") or 0), "el": el, "path": path,
                  "aliases": [a.text for a in _kids(el, "alias") if a.text]}
                 for b, src, kind, el, path in entries if b is tb and src == tb.src and kind != "rules"]
-        _renumber(ents, [s for s in stmts if s[2] == "_renumber"], tb, changed, n)
+        if not tb.current:
+            _renumber(ents, [s for s in stmts if s[2] == "_renumber"], tb, changed, n)
         for page, subj, field, value, band in stmts:
-            if field == "_unrated":
+            if field == "_unrated" and not tb.current:
                 from importer.sr6.categories import singular
                 for e in errata_targets(ents, page, subj) or errata_targets(ents, page, singular(subj)):
                     _unrate(e, value, tb, changed, n)
                 continue
             if field.startswith("_"):
                 continue
-            hit = errata_targets([e for e in ents if e["el"].get(field) is not None
-                                  or any(i.get("field") == field for i in _kids(e["el"], "issue"))], page, subj)
+            open_ = lambda e: any(i.get("field") == field for i in _kids(e["el"], "issue"))  # noqa: E731
+            hit = errata_targets([e for e in ents if open_(e) or e["el"].get(field) is not None and not tb.current], page, subj)
             if not hit:
                 continue
             el, path = hit[0]["el"], hit[0]["path"]
@@ -413,7 +418,10 @@ def _renumber(ents, stmts, tb, changed, n):
     view = [dict(e, name=f.text or "", done=True) if (f := next((f for f in _kids(e["el"], "found") if f.get("field") == "name"
                                                                 and f.get("how") == "errata"), None)) is not None
             else dict(e, done=False) for e in ents]
+    olds = {o for _, _, _, (o, _), _ in stmts}
     for _, subj, _, (old, new), _ in stmts:
+        if new not in olds and errata_targets(view, None, f"{subj} Rating {new}"):
+            continue  # (already renumbered: an override row did it, the chain's last rating is there)
         hit = errata_targets(view, None, f"{subj} Rating {old}")
         if hit and not hit[0]["done"] and re.search(rf"\bRating\s+{old}\b", hit[0]["name"]):
             todo.append((next(e for e in ents if e["el"] is hit[0]["el"]), old, new))

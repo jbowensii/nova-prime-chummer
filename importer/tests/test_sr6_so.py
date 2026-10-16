@@ -74,6 +74,8 @@ Made-up suit rules.
 | OUTFIT | RATING | SOCIAL RATING | AVAIL | COST |
 |---|---|---|---|---|
 | Fuzzy Suit | 1–6 | Rating | 4 | Rating x 70¥ |
+| Rag Wrap | — | –8 | — | — |
+| Plain Tee | — | — | 1 | 50¥ |
 ## Disguises and Espionage Gear
 ### Blink Cape
 A made-up cape that blinks.
@@ -132,14 +134,21 @@ class SoRecipeTest(unittest.TestCase):
 
     def test_gear_with_its_section_text(self):
         g = entries(self.res, "gear")
-        self.assertEqual((g["Fuzzy Suit"]["category"], g["Fuzzy Suit"]["rating"]), ("Clothing", "1–6"))
-        self.assertIn("fuzzy suit", self.texts[("gear", "fuzzy-suit")])
-        self.assertIn("suit rules", self.texts[("gear", "fuzzy-suit")])  # its Game Information
+        self.assertIn("fuzzy suit", self.texts[("armor", "fuzzy-suit")])
+        self.assertIn("suit rules", self.texts[("armor", "fuzzy-suit")])  # its Game Information
         self.assertEqual((g["Blink Cape (Rating 3–4)"]["cost"], g["Blink Cape (Rating 1–2)"]["avail"]), ("Rating x 1900", "5"))
         self.assertEqual(g["Glim Tape"]["cost"], "Rating x 40")  # a row wrapped onto the next
         r = entries(self.res, "rules")
         self.assertNotIn("Fuzzy Suit (Rating 1-6)", r)
         self.assertNotIn("Game Information", r)
+
+    def test_clothing_is_armor_with_its_printed_social_rating(self):
+        # (owner 2026-10-15: the clothing table's rows are armor entries, the SOCIAL RATING column their `social` as printed)
+        a, g = entries(self.res, "armor"), entries(self.res, "gear")
+        self.assertEqual([k for k in ("Fuzzy Suit", "Rag Wrap", "Plain Tee") if k in g], [])
+        self.assertEqual((a["Fuzzy Suit"]["category"], a["Fuzzy Suit"]["rating"], a["Fuzzy Suit"]["social"]), ("Clothing", "1–6", "Rating"))
+        self.assertEqual((a["Rag Wrap"]["social"], a["Plain Tee"]["social"]), ("–8", "—"))
+        self.assertNotIn("defense", a["Rag Wrap"])  # (no armor value: worn, it adds no Defense)
 
     def test_qualities_and_faces(self):
         q = entries(self.res, "qualities")

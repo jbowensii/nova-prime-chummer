@@ -147,6 +147,12 @@ export const REASONS: Record<string, string> = {
   'critters-only': 'That one is critter equipment (Body Shop, Taming the Wild): not for a player’s character.',
   'once-per-runner': 'The runner already has that augmentation (a limb: one a side).',
   'not-mystic-adept': 'Only a mystic adept picks its mentor spirit’s advantages.',
+  // the Sixth World Companion's Infected (owner, 2026-10-16)
+  'infected-no-type': 'Only an Infected runner buys optional powers: choose its Infected type first (Creation method).',
+  'already-infected': 'The runner already has an Infected type.',
+  'infected-not-listed': 'That optional power isn’t on the runner’s Infected type’s list.',
+  'infected-after-creation':
+    'At creation an Infected runner takes only its free optional power; the rest are bought after creation (or turn on “Infected optional powers at creation”).',
 }
 const LABELS = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
 /** A refusal code as a sentence; `unset:<key>` names the setting and where it's set. */

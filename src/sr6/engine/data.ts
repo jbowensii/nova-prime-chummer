@@ -38,6 +38,16 @@ export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; 
   mundane: { spells: false, powers: false, paysPowers: false, resonance: false },
 }
 
+/** Awakened (CRB pp. 127–128): a magician, aspected magician, mystic adept or adept; a technomancer is Emerged, not
+ *  Awakened. (Awakened or emerged, any kind but mundane, is the providers' own test.) */
+export const awakenedKind = (kind: MagicKind) => MAGIC_KINDS[kind].spells || MAGIC_KINDS[kind].powers
+
+/** A quality's <karmaif flag="awakened" value note> (its price while the runner is Awakened), as the view's karmaIf. */
+const karmaIf = (e: Sr6Entry) => {
+  const k = e.parts.find(p => p.tag === 'karmaif' && p.attrs.flag === 'awakened')
+  return k && /^-?\d+$/.test(k.attrs.value ?? '') ? { karmaIf: { value: Number(k.attrs.value), ...(k.attrs.note ? { note: k.attrs.note } : {}) } } : {}
+}
+
 /** Who may take a metamagic (its catalog `user`): an adept's only an adept or mystic adept, a magician's only a magician
  *  (full or aspected) or mystic adept; none set: any initiate. */
 export const metamagicFits = (kind: MagicKind, user?: string) =>
@@ -221,6 +231,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         ...(e.attrs.granted === 'true' ? { granted: true } : {}),
         ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
         ...(qualityMetatypes(e.name, e.text) ? { metatypes: qualityMetatypes(e.name, e.text) } : {}),
+        ...karmaIf(e),
         ...(parts(e, 'choice').length
           ? {
               choices: parts(e, 'choice').map(p => ({

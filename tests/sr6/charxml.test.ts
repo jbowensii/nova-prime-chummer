@@ -41,6 +41,8 @@ function full(): Sr6Character {
   Object.assign(b, {
     metatype: 'crb.glimmerkin',
     magic: 'aspected',
+    awakened: false, // (the player's override of the Awakened flag)
+    infectedFrom: 'technomancer', // (the kind before an Infected type changed it)
     aspectedSkill: 'crb.hexing',
     tradition: 'Street hoodoo',
     drainAttr: 'cha',

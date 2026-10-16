@@ -14,7 +14,7 @@ ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE0
 # and vehicles (chassis): never scoped, even when a book entry has the same id (DHSA's "Small drone" amp).
 # rule parent: SR6's rule tree; configOf, accessoryOf, supplyOf: an SR6 entry's links to other entries
 SCOPED = {("*", "id"), ("*", "linkedItem"), ("*", "configOf"), ("*", "accessoryOf"), ("*", "supplyOf"), ("package", "level"), ("link", "ref"),
-          ("rule", "parent")}
+          ("rule", "parent"), ("optionalpower", "ref")}  # (an SR6 Infected quality's optional powers: entries of its book)
 # a book's <skill> names the base skill its specs are added to (the loader appends them), and the amp types and
 # effects a book adds (the CG's Emerged, DHSA's grades) are named by amps and the engine as they are: never scoped
 UNSCOPED_TAGS = {"skill", "amptype", "effect"}
@@ -60,6 +60,8 @@ def scope(xml, source, ids, root=CA2):
         def attr(m):
             if unscoped and (name, m.group(1)) == FAMILY and m.group(2) and not m.group(2).startswith(pre):
                 return f'{m.group(1)}="{pre}{m.group(2)}"'
+            if name == "slot" and m.group(1) == "id":  # (a slot's name, not an entry id: <fits slot="armor"> names it raw)
+                return m.group(0)
             if ("*", m.group(1)) not in SCOPED and (name, m.group(1)) not in SCOPED:
                 return m.group(0)
             return f'{m.group(1)}="{" ".join(pre + v if v in ids else v for v in m.group(2).split(" "))}"'

@@ -1,6 +1,6 @@
 // Book values as the catalog keeps them (strings as printed) read as numbers (src/sr6/engine/values.ts). Made-up strings.
 import { expect, test } from 'vitest'
-import { attackRatings, formula, legality, rated, ratingRange } from '../../src/sr6/engine/values'
+import { attackRatings, availability, formula, legality, rated, ratingRange } from '../../src/sr6/engine/values'
 
 test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are ignored', () => {
   expect(rated('350')).toEqual({ n: 350, ok: true })
@@ -93,4 +93,15 @@ test('formula: an en dash is a minus, square brackets are parentheses', () => {
 test('formula: a dash or nothing is no value; anything else unreadable, never NaN', () => {
   for (const s of ['—', '', undefined]) expect(formula(s, 4, 'F'), String(s)).toEqual({ n: null, ok: true })
   for (const s of ['F+?', 'L + 1', 'F +', '(F × 2', '2D6', 'lots', ' '.repeat(200) + 'F']) expect(formula(s, 4, 'F'), s).toEqual({ n: null, ok: false })
+})
+
+test('availability: a pure nuyen price is a licence (freely available, with a fee); rating plus a fee is both', () => {
+  expect(availability('15,000¥')).toEqual({ n: 0, fee: 15000, ok: true })
+  expect(availability('2, 15,000¥')).toEqual({ n: 2, fee: 15000, ok: true })
+  expect(availability('6(L), 500¥')).toEqual({ n: 6, fee: 500, ok: true })
+  expect(legality('6(L), 500¥')).toBe('L')
+  expect(availability('5(L)')).toEqual(rated('5(L)'))
+  expect(availability('Rating')).toEqual(rated('Rating'))
+  expect(availability('x, 500¥').ok).toBe(false)
+  expect(rated('15,000¥').ok).toBe(false) // (rated() itself is unchanged)
 })

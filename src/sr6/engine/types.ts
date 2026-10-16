@@ -61,6 +61,8 @@ export interface Sr6QualityView {
   uncounted?: boolean
   /** the metatypes it is for (qualityMetatypes): offered only to them */
   metatypes?: string[]
+  /** its Karma while the runner is Awakened (<karmaif flag="awakened">: Mutaqua 44, Astral Hazing 15), with the price's note */
+  karmaIf?: { value: number; note?: string }
   /** the rated or leveled entry a family of levels was expanded from (levels.ts): read by a runner line still
    *  naming it, never offered by a picker */
   parent?: true

@@ -32,8 +32,9 @@ Every file has the same root, and one file holds one kind:
   the rating the item is bought at: numbers, `Rating` (also `Capacity`, `Force` or `Level`, any case: the same
   rating), `+`, `×`/`x`/`*`, `/` (rounded up), `^` and parentheses, an optional leading `+` (an add-on's price) and a
   legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
+  A nuyen amount printed under AVAIL (`15,000¥`) is a licence price ("available with licence"): it stays in `avail` as printed, never moved to `cost`. Alone it means freely available (availability 0) with that licence fee; `2, 15,000¥` is rating 2 plus the fee (`availability()` in `src/sr6/engine/values.ts` reads both; the stored text is unchanged).
   `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
-  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), and the cyberlimb
+  `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), `1,000¥ for cyberdeck/5,000¥ for cyberhack` prices (`<name> (cyberdeck)`, `<name> (cyberhack)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
   (`900 + Gizmo`) stays as printed and is reported.
 - **Formulas and issues** (optional children of any entry, after its kind's own children and before `<text>`; see
@@ -60,7 +61,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | metatypes | metatype | — | range (attr* bod\|agi\|rea\|str\|wil\|log\|int\|cha\|edg, min* int, max* int)×9, trait (text)×n, priority (letter* A–E, points* int)×n: a metavariant's adjustment points at each metatype priority it can be taken at |
 | attributes | attribute | abbr* (BOD AGI REA STR WIL LOG INT CHA EDG MAG RES ESS), group* physical\|mental\|special | — |
 | skills | skill | attr* (bod … edg, mag, res), untrained* true\|false | spec (text)×n |
-| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0) | effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
+| qualities | quality | kind* positive\|negative, karma int (the lowest printed), karmaMax int (the highest, when it prints several), karmaSteps (the prices a line lists as its choices, `7 or 12 Karma`: `7 12`, bought at one of them and never between; a range, `2 to 20 Karma`, has none), perLevel true, maxLevel int, category (the list it is printed in: `Returned Soldier power`; a quality path's bare step: the path), group (a bare step's path: shown `Gestalt: Step 2`), granted true (never bought on its own: granted by another quality's choice, Karma 0), class (`INFECTED`, `INFECTED/OPTIONAL_POWER`: see Infected characters) | infected, infectedalt×n, optionalpower×n, karmaif×n first (see Infected characters); effect (target*, op*, value*, switch, confidence `low`, when, spec, affects: see Effects)×n, link (rel* grants\|as, name*, kind, ref, level, when)×n, test (skill*, attr*, threshold int)×n, choice (see Choices; kind quality: category*, count* int, max int)×n: see Qualities granted and chosen |
 | weapons | weapon | category*, rating (a rated weapon or mount's range: its SIZE or LEVEL column), dv, modes, ar, ammo, type, mount, blast, avail, cost, per | — |
 | armor | armor | category*, rating, defense, social (its SOCIAL column as printed: `+2`, `–4`, `—`; what it adds to the wearer's Social Rating), capacity, avail, cost | — |
 | augmentations | augmentation | type* cyberware\|bioware\|geneware\|nanoware\|symbionts\|transgenics (only cyberware and bioware take a grade), category*, rating, essence, capacity, avail, cost | — |
@@ -78,7 +79,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, augmentation, other: its prerequisites, below) |
 | traditions | tradition | — | — |
-| critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
+| critterpowers | critterpower | type, action, range, duration, tags (Street Wyrd: `Free`, `Great`), weakness true (the book lists it as a weakness) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
@@ -157,6 +158,106 @@ quality at that price, and the choices its text offers from those lists ("Select
 builder lists a granted quality with "granted only". Review's `quality.granted` is an error when the runner has no
 quality offering its list (a prerequisite it lacks; 0.11.1: a warning before), and `quality.grantedCount` warns when it
 has more of the list than its choices allow; choosing from a list is not automated yet.
+
+**Infected characters** (owner decision 2026-10-16; Sixth World Companion pp. 104–114). A block that is only a `QUALITY |
+KARMA` table, its rows no blocks of their own and no prose (the Companion's Infected Optional Powers Table, p. 109), lists
+qualities bought at the price its row prints (`swc.py` `_priced_list`): each row a positive quality, named as printed
+(`Armor (per point)`, `Corrosive Spit (per level)`: `perLevel`, no maximum, so one entry with its level on the runner's
+line), its category the table's title less `Table` (`Infected Optional Powers`), its id the category's and the name's
+(`swc.infected-optional-powers.biosonar`: the metagenic Biosonar, p. 122, keeps `swc.biosonar`). A row prints no
+description; one the book also prints as a critter power has that power's (`Sharpened Natural Weapon`, p. 114), the rest
+none (their critter powers are the core rulebook's and Street Wyrd's). Critter powers stay innate, Karma 0.
+The Infected qualities (pp. 110–114, Bandersnatch … Wendigo, Carrier) and the optional powers carry a class
+(`classes/section_prefix.json`): `INFECTED`, Commlink6's own quality type, and `INFECTED/OPTIONAL_POWER`, ours. The app
+offers and accepts an entry of either only while the table's `infectedAllowed` is on (`critterware.ts` `infectedOff`: the
+quality pickers, every catalog picker, the editor's `quality` op, `rule-off`, and the career `quality` spend,
+`optional-rule-off`); a runner keeps one it has. After creation such a quality costs its own Karma, never times
+`advance.qualityFactor` ("Infected qualities do not have their cost doubled when purchased during gameplay", p. 106; the
+optional powers likewise).
+
+**Infected rules as data** (owner decisions 2026-10-16, `swc.py` `_infected`; the app plays them: see below). The
+Companion prints each type as a quality (pp. 110–114: `Cost:`, `Gained Powers:`, `Optional Powers:`, `Gained
+Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infected Metatype Attributes table (p. 109,
+`TYPE | BASE | BOD … CHA`). Each Infected quality's first children, in this order (`common.xsd` Quality):
+
+- `<infected strain base [printed] [awakens] freePhysical freeMental [essence magic magicLoss] magicMax/>`, one:
+  - `strain` `I`, `II` or `III`, from the Notes' `carry HMHVV Strain …`; Strain Ia (Mutaqua, Nosferatu) is `I` with
+    `printed="Ia"` (owner: Ia follows Strain I's rules).
+  - `base` the base metatype as the table's BASE prints it (`Human`, `Sasquatch`, `Centaur`, `Naga`, `Merrow`): the only
+    metatype that may take it (Commlink6's `<prerequisite type="METATYPE">` says the same for the five core ones).
+  - `awakens` what a character not yet Awakened Awakens as, from the Notes' `Awaken as adepts|magicians`: Mutaqua `adept`,
+    Nosferatu and Wendigo `magician`; the rest none (every Infected is Awakened and dual-natured but not a magician or
+    adept, p. 105). One already Awakened as the other kind becomes a mystic adept (the same Notes).
+  - `freePhysical="2" freeMental="2"`: the free attribute points every Infected quality gives (p. 104), applied before
+    its attribute cuts.
+  - Strain II and III: `essence="5"` (Essence becomes 5), `magic="1"` (a character with no Magic gets 1), `magicLoss="1"`
+    (one with Magic loses 1), `magicMax="5+initiate-grade"` (p. 106). Strain I: `magicMax="ess+initiate-grade"` (Magic
+    follows Essence), and no `essence`: the book gives no starting Essence for a Strain I character created as one (only the
+    in-play disease, p. 107, says Essence 1), so the character keeps its own; the app shows that note (owner). The chapter
+    has no Edge rule for creation: none is stored.
+- `<infectedalt base="other" karma bod … cha page note/>`, the non-human vampire only (sidebar `NON-HUMAN VAMPIRES`, p. 109,
+  read from its `+1 BOD, STR, WILL, and +2 REA and CHA` and `total cost of 32`): any base metatype but the type's own takes
+  it at `karma` (32), each attribute value added to that metatype's own maxima (bod 1, rea 2, str 1, wil 1, cha 2), the
+  quality's `when="Human"` maxima not applying; `note` "32 Karma for a non-human vampire". The entry's own `(+10 Karma for
+  non-humans)` and "no changes to their attribute maximums" (p. 113) are not used (owner).
+- `<optionalpower ref [free="true"]/>`, one per optional power the type may buy (its `Optional Powers:` line), `ref` the
+  optional power's quality id (`swc.infected-optional-powers.fear`): an item names the row of its name and of each item in
+  its parenthesis (`Enhanced Senses (Hearing, Smell)`: two), else the one row of its name (`Magical Guard (self only, …)`,
+  `Armor +1`: `Armor (per point)`). `free`: one the type's free pick may take (`Gain one of the Enhanced Senses or Immunities
+  as a free Optional Power`; Goblin's `Gain one Optional Powers (except Regeneration) for free`: every one but
+  Regeneration). One free pick per character. A type with no `Optional Powers:` line (Ghoul, Grendel, Jabbawock, Lamia) has
+  none; an item naming no row is reported (`unmatched`): Chiron's `Immunity (Age)`, which the table does not price.
+- `<karmaif flag="awakened" value note/>`: the quality's Karma when the character is Awakened (a magician, adept, mystic
+  adept or aspected magician; a technomancer is not), from a price note `(–10 Karma if character is already Awakened)`:
+  Mutaqua 54/44, Nosferatu 48/38, Wendigo 47/37, `note` "less 10 if the character is already Awakened" (shown where the
+  table prints `(see desc.)`); and from a `See text` price whose paragraphs give one price for non-Awakened and one for
+  Awakened characters: Astral Hazing (p. 127) `karma="8"` and `value="15"`, `note` "15 if the character is Awakened" (one
+  item; Commlink6's two records, `astral_hazing_non_awakened`/`_awakened`, are an accepted structural difference).
+
+Attribute maxima stay `<effect target="attr-max:<a>" op="set" value when="<base>"/>`, the type's own table row, `when` its
+base metatype (effects.py: a quality's row of a table whose second column is BASE). The Ghoul, the one type the table
+prints for several bases, is one quality per base (owner): `Ghoul (Human)`, `Ghoul (Dwarf)`, `Ghoul (Elf)`, `Ghoul (Ork)`,
+`Ghoul (Troll)` (`swc.ghoul-human` …, the old `swc.ghoul` an alias of the first), each 29 Karma (the table's; the entry's
+`Cost: 27 Karma` is a misprint, the override table sets 29), each with its own row's maxima and its own `<infected
+base>`. The gained powers, weaknesses and attacks stay in the description: the printed lists have typos (a missing comma,
+`Induced Dormancy (Lack of Air, (Essence) Minutes` unbalanced) and name critter powers of other books.
+
+**Infected characters in the app** (`src/sr6/engine/infected.ts`, owner decisions 2026-10-16). A runner is Infected while
+it has one Infected type (a quality with `<infected>`): Creation method's Infected yes/no and type selector (shown while
+`infectedAllowed` is on, or the runner has a type) list the types whose `base` is the runner's metatype by name, a metavariant's its parent's (`baseMetatype`, a list by name: Hobgoblin is Ork; a metasapient has none) (the
+Ghoul's one per base), and the non-human vampire for any other metatype through its `<infectedalt base="other">`; the
+editor's `infected` op (and the `quality` op given a type) takes it, replacing the one the runner has, and taking it away
+restores the runner. From the type:
+
+- Attribute maxima: an `attr-max` effect with a `when` holds only when the `when` is the runner's metatype's name or its parent's
+  (`effects.ts` `maxEffects`: the type's own row; any other `when`, a condition, never); the `<infectedalt>` values are
+  added to the runner's own metatype maxima. An Infected's core attribute above its maximum drops to it on the derived
+  values, the spend not refunded (Review's warning `infected.dropped`, in place of `attr.creationMax`).
+- `freePhysical`, `freeMental`: added to the attribute points as far as points are spent on attributes of that group.
+- `essence`: the Essence the runner starts at (else the `essence` setting; Strain I's note: the book gives none).
+  `magic`/`magicLoss`: Magic 1 for a runner whose bought kind has none, 1 less for one with it (`providers.ts`).
+  `magicMax`: the highest Magic in place of `magicMax` (`5+initiate-grade`; `ess+initiate-grade`: the starting Essence's
+  whole points plus the grade, Essence's loss then taken off as everyone's).
+- `awakens`: a runner not Awakened becomes an adept or full magician, one Awakened as the other kind a mystic adept, and a
+  technomancer loses Resonance (no refund); the kind before is the build's `infectedFrom` (docs/sr6-character-format.md):
+  the method rates and prices that bought kind (the priority row's Magic, point buy's and the Karma build's price), and
+  `prio.magicAllowed`/`reconcile` read it.
+- `<optionalpower>`: an optional power (class `INFECTED/OPTIONAL_POWER`) is refused (`infected-no-type`,
+  `infected-not-listed`) unless the runner's type lists it; at creation only one the free pick may take, free (one level),
+  unless the table's `infectedPowersAtCreation` is on (`infected-after-creation`); after creation at its own Karma, the
+  free pick free while unused. The free pick is the dearest `free` line the runner has. Review's `infected.power` flags a
+  line that no longer fits. The book's pace (one every two in-game months) is shown, not enforced.
+- Edge: no rule; Creation method says so. Review's `infected.off` warns when a runner has Infected entries while the
+  table's `infectedAllowed` is off (kept), `infected.metatype` when the type isn't for its metatype.
+
+The **Awakened flag** (`infected.ts` `awakenedFlag`, `Sr6Derived.awakened`): Awakened is a magician, aspected magician,
+mystic adept or adept (`data.ts` `awakenedKind`), or an Infected; a technomancer is Emerged, not Awakened (CRB pp.
+127–128); `providers.ts` keeps its own "awakened or emerged" for what is either (a method's Magic or Resonance and its
+price, the lifepath mundane's Edge). The player may override it (Creation method's Awakened: derived, yes or no; the
+build's `awakened`): shown with the derived value and why, and a Review warning (`awakened.override`) while it differs.
+A `<karmaif flag="awakened">` price holds while the flag is on (an Infected type's own: Awakened before it, the bought
+kind or the override), at creation, after it and in the Qualities picker (`54 (less 10 if the character is already
+Awakened; this runner: 44)`); the non-human vampire costs its `<infectedalt>` karma.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
 named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
@@ -312,7 +413,7 @@ own saying it doesn't). Partial limbs, printed with the accessories, don't get i
 
 Tables: a row naming the entry (or its parenthesised variant: `Cyberjack (Rating 1)` the row `Rating 1`) whose
 header has a target column: an infected type's attribute maxima (six attribute columns or more: `set`, its base
-metatype in `when`), a signed modifier (`AR +2`, `DV –1`: an ammo type's), a bonus column (`MATRIX INIT BONUS`). An
+metatype in `when`; `Ghoul (Dwarf)` reads the `Ghoul` row whose BASE is Dwarf), a signed modifier (`AR +2`, `DV –1`: an ammo type's), a bonus column (`MATRIX INIT BONUS`). An
 armor's Defense Rating column is its defense field, not an effect.
 
 **Links** (`<link rel="grants"|"as" name kind ref level when>`): an entry that grants another (`gain the Built Tough
@@ -396,7 +497,12 @@ name), and used by the builder, the sheets and the Foundry export:
   rolled against Reaction + Willpower). **spell `essence`**: its test counts the target's Essence, in its threshold
   (`Sorcery + Magic (5 – Essence)`, `6 minus the target's Essence`) or its resistance (`Body + Essence`). Shown in the picker, on the Magic tab and on the sheets.
 - **armor `social`**: its SOCIAL column (Firing Squad and later), as printed. The worn armor's add up with Charisma into
-  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number.
+  the runner's Social Rating (derived values, Review, the sheet); the export's `values.social` is the number. Clothing is
+  armor (owner 2026-10-15): Smooth Operations' OUTFIT table imports as armor, category Clothing, no `defense` (it adds none),
+  its SOCIAL RATING column as `social` as printed (`–8`, `—`, `Rating`).
+- **gear `capacity`** of a cyberdeck case (Hack & Slash): the CAPACITY (CYBERDECK/CYBERHACK) column as printed (`12/4 (includes
+  cyberhack and deck)`, `4/Not Available`, `Unlimited/Unlimited`); the engine reads only a plain number there, so these show and
+  take part in no capacity check.
 
 ### Levels: one item per level
 
@@ -491,10 +597,19 @@ has the column: a summary table, a gear list in another chapter, the implant tab
 own description first), `corpus` (another source of the library: the same kind and name in another book, a card
 deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
 sources of one date that disagree leave the issue), `errata` (an errata PDF's statement on its own book, applied
-when the errata is newer than the printing; the text keeps the value it replaced), or `printing` (an older printing of
-the same book, `importer/sr6/run.py` `older_printings`: field by field the latest printing wins, and a field it leaves
+when the errata is newer than the printing; the text keeps the value it replaced. A book's Current Printing
+(`recipes.crb.CURRENT`) already incorporates its errata, so an erratum never replaces a value it prints: it fills only a
+field the printing leaves open, whatever the dates, and renumbers or unrates nothing), or `printing` (an older printing of
+the same book, `importer/sr6/run.py` `older_printings`: field by field the latest printing wins, which for the core rulebook is its Current Printing (2019) before the Seattle, Berlin and Hong Kong City Editions (`recipes.crb.CURRENT`; another book ranks by publication month), and a field it leaves
 out or prints as no SR6 value takes the newest older printing's valid value; the text names that printing). `source` and `page` say where it is
-printed. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
+printed. Beyond fields, an older printing fills entries (`older_extras`, listed in import.xml as `printing-extra` rows):
+an item only an older printing prints (the Hong Kong City Edition's Shotgun ammunition, Armor cyberlimb accessory and Sim module
+w/ Hot sim, rows the Current Printing leaves out) is added with its text; not rules or table categories, not an item the
+loaded printing prints under another name (`Uzi V` for `Uzi IV`: an entry only it has, on the same page of the same file,
+with the same printed values), not one it has under another id. An item the loaded printing files under another id than
+an older printing (an id carries its category when another category of the file has the name: the focus `Ritual Spellcasting`
+is `foci.ritual-spellcasting` beside the Formula row, `ritual-spellcasting` without it) takes the older printing's id
+(`same_ids`), so a saved runner and the override rows keep naming it. It is provenance for the owner: the app leaves it out of the entry. The corpus pass runs after every import
 (an errata or card deck uploaded later counts too); a book removed leaves the values it gave other books until those
 are imported again.
 
@@ -721,6 +836,19 @@ disagree about one entry). A per-rating Commlink6 value is `Rating x N` when it 
 weapon's `skill` and `spec`, an armor's `social`. Slots, variants, relevance, flags, modonly, size and ammunition class
 are not in the data schema, and a Commlink6 modification has no one-to-one `<effect>`; they are not written.
 
+### Errata rows (`"gen": "errata"`)
+
+Owner decision 2026-10-15: a book's official errata wins over the printing, and over Commlink6. The corpus pass applies an
+errata PDF only to a library that holds both PDFs, so the importer's per-book runs (and cl6check) cannot see it; where the
+owner wants its numbers the per-book table carries them as hand-written rows that no generator replaces: `{"cl6": "<label>",
+"kind", "id", "set": {...}, "formula"?, "effects"?, "gen": "errata"}`. Game numbers only, never description text. `set` takes a
+`null` to drop an attribute (a rating the errata removes); `effects` is a list of `<effect>` attribute dicts, each replacing
+the entry's effect of the same `target` (the Trenchcoat's Concealability +2). The rows apply after every other id row, so they win
+over `value` rows. A removal and a rename are the ordinary `remove` / `rename` rows (`"alias": false` for a renumbering). The
+corpus pass skips a renumbering the table already made (resolve.py `_renumber`). `nf.json` holds the No Future errata (6E
+availabilities, Cybereyes/Cyberears as ratings 6 and 7 with ids kept, Vocal Expansion and AutoVoice unrated, the hacked
+AutoVoice and the vision/audio enhancement rows removed).
+
 ## Item structure (Commlink6's data, kept and not applied)
 
 Owner decision 2026-10-14: the structure Commlink6 gives an item is in our data too, where the books don't print it (the
@@ -733,6 +861,11 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
   own rule data, every attribute as it gives it (`$RATING` formulas, conditions). **No rule reads them**: the app applies our
   `<effect>`s, `<link>`s, `<requires>` and `<choice>`s only, so a character's maths is the same with or without them
   (`tests/sr6/structure.test.ts`). They are the reference the day those are written from the books or checked against it.
+- A `<prerequisite … negate="true"/>` is the owner's, not Commlink6's: an exclusion the book prints, a warning only, never
+  enforced (every prerequisite is a warning, 0.11.1). The Silencer/suppressor (CRB p. 261, "not compatible with revolvers or
+  shotguns"; owner 2026-10-16) has `type="WEAPON_TYPE"` `ref="revolvers"` and `ref="shotguns"` in place of Commlink6's list
+  of the weapon subtypes it fits: a weapon it is fitted to is a revolver when its ammunition prints `(cy)` (a cylinder), a
+  shotgun when its category is Shotgun. The row is filed under weapons, the kind of our entry (the id is an implant weapon's too). cl6check keeps ours for its `requires` family (value_keep.json).
 - `src/sr6/engine/structure.ts` `structureOf(entry)` reads them all.
 Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` writes the id rows `{"id", "set", "kids", "gen":
 "family"}` of the per-book tables from the Commlink6 record of each entry with a difference in that family; applied by
@@ -741,8 +874,8 @@ Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` write
 
 ## Structure ops in the per-book tables, and the extra classes
 
-Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries
-by their unscoped id, applied in this order: remove and merge, the class rows, then rename and move_kind. An entry a row
+Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes six ops on entries
+by their unscoped id, applied in this order: remove, split and merge, the class rows, then rename and move_kind. An entry a row
 names that isn't there is reported once on stderr and nothing is guessed; each is idempotent, and none may name a
 description field.
 
@@ -750,8 +883,18 @@ description field.
   a duplicate of an NPC).
 - `{"kind","merge":{"into","from","from_kind"}}`: the attributes `into` lacks (skill, spec, type, dv, ar, ammo, modes …,
   never id, source, page, class or group) are copied from `from`, the stat table's copy of it, which then goes.
+- `{"kind","id","split":[{"id","name","set"?,"note"?}]}`: a row the book prints once for several things becomes one entry per
+  part (Swindler Stick: one per certified credstick grade; Manadyne XX-10/XX-100: MB/PB; Rolling Blades: skateboard hardened/bladed,
+  roller skates bladed). Each part is a copy of the entry with its own id and name, its `set` values (cost, avail …; the
+  entry's formula/issue for those fields go) and an optional `note` `{"field","text"}` keeping the printed rule the value comes
+  from (`250 + Certified Credstick Cost`, as a `<note field="cost">`). The entry's other names go; the book's text for it is
+  given to every part (`texts()`), never written by hand. Runs with remove and merge; rows for the new ids (class, family,
+  errata) come after it. The old id reaches the first part through moved.py's name tiers (a re-import).
 - `{"kind","id","rename":"<name>"}`: a new name, names only; the old printed name stays as an `<alias>` unless
   `"alias": false` (a name the import damaged).
+- `{"kind","id","notext":true}`: no description, the book printing none for the entry: a text the import gave it from
+  elsewhere goes (the Companion's `Armor (per point)` optional power, which effects.py's rule-text fallback gave the
+  `Armor PACKs` section's text).
 - `{"move_kind":{"id","from":"gear","to":"weapons"}}`: the entry is re-filed in weapons.xml as a close-combat weapon
   (skill Close Combat, spec from its class subtype: Blades, Clubs, Unarmed), keeping page, avail and cost; attributes the
   weapons schema lacks (capacity, karma, per, slots, energy) are dropped. An id the target file has already is left.
@@ -760,7 +903,9 @@ Classes that are not Commlink6's (`importer/sr6/classes/extra_classes.json`, eac
 (critter-only; the app keeps any entry of such a class out of the player's pickers and refuses to buy it), the space drones
 and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6's firearms naming). `python -m
 tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
-take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had).
+take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had;
+the Companion's Infected optional powers, `INFECTED/OPTIONAL_POWER`, an extra; its Infected qualities, `INFECTED`, a rule
+marked `"commlink6": true` since Commlink6 has that type).
 
 ## Layout and load order
 
@@ -1024,6 +1169,8 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `expandedSpecializations` | true/false | optional |  |  |  | Expanded Specializations (SWC p. 153, off): any number of specializations a skill (`<skill specs>`), still one expertise; off, only Exotic Weapons takes several (CRB Hong Kong p. 95), and Review's `skill.oneSpec` flags the others |
 | Optional rules | `unrestrictedSkillRanks` | true/false | optional |  |  | `advance.skillMax` | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
 | Optional rules | `suprathyroidStacks` | true/false | optional |  |  |  | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
+| Optional rules | `infectedAllowed` | true/false | optional |  |  |  | Infected Player Characters Allowed (SWC p. 104, off): the Infected qualities and optional powers (classes `INFECTED`, `INFECTED/OPTIONAL_POWER`) are offered in the pickers and may be taken at creation and bought after, at their own Karma; off, they are hidden and refused |
+| Optional rules | `infectedPowersAtCreation` | true/false | optional | `infectedAllowed` |  |  | Infected Optional Powers at Creation (GM override, off; SWC p. 105: "in general" bought after creation): an Infected runner buys its type's optional powers at creation; off, only its one free pick at creation |
 | Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | `highStrengthDamage` |  |  | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
 | Optional rules | `exoticFirstSpecFree` | true/false | optional |  |  |  | House rule, off: the first Exotic Weapons specialization costs no skill points or Karma |
 | Optional rules | `mentorBothAdvantages` | true/false | optional |  |  |  | House rule, off: a mystic adept gets both its mentor spirit's magician and adept advantages; off, it picks one for good (CRB Hong Kong pp. 162–163; Review's `magic.mentorAdvantage` until picked) |

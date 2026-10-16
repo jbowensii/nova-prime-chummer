@@ -75,6 +75,21 @@ class OverridesTest(unittest.TestCase):
         self.assertIsNone(e[1].get("cost"))
         self.assertEqual(overrides.apply("zz", {"gear.xml": out}, self.ROWS)["gear.xml"], out)  # (again: no 2nd alias)
 
+    def test_a_sub_rows_name_takes_its_parents_and_an_artifact_goes(self):
+        rows = [{"cl6": "Zorp (Spit)", "kind": "gear", "id": "b", "rename": "Zorp (Spit)"},
+                {"cl6": "A", "kind": "gear", "id": "a", "remove": True}]
+        e = ET.fromstring(overrides.apply("zz", {"gear.xml": self.XML}, rows)["gear.xml"].encode())
+        self.assertEqual([(g.get("id"), g.findtext("name"), [x.text for x in g.findall("alias")]) for g in e],
+                         [("b", "Zorp (Spit)", ["Other"])])  # (the old name stays a search name)
+
+    def test_the_shipped_name_fixes_rename_each_id_once_to_a_name_with_its_parent(self):
+        for p in overrides.DIR.glob("*.json"):
+            rows = [r for r in overrides.table(p.stem) if "rename" in r or "remove" in r]
+            keys = [(r["kind"], r["id"]) for r in rows]
+            self.assertEqual(len(keys), len(set(keys)), p.name)
+            for r in rows:
+                self.assertTrue(r.get("remove") or r["rename"].strip(), (p.name, r["id"]))
+
     def test_no_table_changes_nothing_and_a_description_is_refused(self):
         self.assertEqual(overrides.apply("zz", {"gear.xml": self.XML}), {"gear.xml": self.XML})
         with self.assertRaises(ValueError):
@@ -296,7 +311,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family")]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata")]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
@@ -386,9 +401,11 @@ class SectionClassTest(unittest.TestCase):
         from importer.sr6 import classes
         extra = json.loads(classes.EXTRA.read_text(encoding="utf8"))
         for r in classes.prefixes():
-            self.assertIn(r["class"], extra)
+            self.assertTrue(r["class"] in extra or r.get("commlink6"), r["class"])
             self.assertTrue(re.fullmatch(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?", r["class"]))
-        self.assertEqual([(r["src"], r["pages"]) for r in classes.prefixes()], [("bs", [134, 166])])
+        self.assertEqual([(r["src"], r["pages"], r["class"]) for r in classes.prefixes()],
+                         [("bs", [134, 166], "CRITTERWARE/AUGMENTATION"), ("swc", [109, 109], "INFECTED/OPTIONAL_POWER"),
+                          ("swc", [110, 114], "INFECTED")])
 
     def test_cl6check_accepts_a_section_class_whatever_commlink6s_is(self):
         from types import SimpleNamespace
@@ -482,9 +499,9 @@ class StructureOpsTest(unittest.TestCase):
         self.assertEqual({r["id"] for s in ("thn", "lhv", "so", "tne", "wl", "sif-no") for r in t(s) if r.get("remove")},
                          {"knight-errant-swat-officers", "toxins-drugs-and-diseases.scourge", "grooming-1-hour", "grooming-2-hours", "special-notes",
                           "negative-quality", "positive-quality", "trained-command", "ammunition"})
-        self.assertEqual({r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r},
-                         {"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
-                          "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"})
+        self.assertLessEqual({"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
+                              "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"},
+                             {r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r})  # (the name fixes of 2026-10-15 join them)
 
 
 class LatestDecisionsTest(unittest.TestCase):
@@ -543,6 +560,57 @@ class ValueRowTest(unittest.TestCase):
                 overrides.check([{"cl6": "Lamp", "kind": "gear", "id": "lamp", "gen": "value", "set": bad}])
 
 
+class RefileTest(unittest.TestCase):
+    GEAR = '<d kind="gear"><gear id="zz.lamp"><name>Lamp</name></gear><gear id="zz.both"><name>B</name></gear></d>'
+    WEAPONS = '<d kind="weapons"><weapon id="zz.gun"><name>Gun</name></weapon><weapon id="zz.both"><name>B</name></weapon></d>'
+
+    def test_a_row_filed_under_the_wrong_kind_lands_on_the_one_file_holding_the_id(self):
+        rows = [{"cl6": "G", "kind": "gear", "id": "zz.gun", "gen": "value", "set": {"cost": "5"}},
+                {"cl6": "B", "kind": "armor", "id": "zz.both", "gen": "value", "set": {"cost": "7"}},  # (two files hold it: left)
+                {"cl6": "N", "kind": "gear", "id": "zz.none", "gen": "value", "set": {"cost": "9"}}]
+        out = overrides.apply("zz", {"gear.xml": self.GEAR, "weapons.xml": self.WEAPONS}, rows)
+        self.assertEqual([e.get("cost") for e in ET.fromstring(out["weapons.xml"].encode())], ["5", None])
+        self.assertEqual([e.get("cost") for e in ET.fromstring(out["gear.xml"].encode())], [None, None])
+
+
+class SlotIdTest(unittest.TestCase):
+    def test_a_slot_id_is_never_source_prefixed_but_an_entry_id_and_a_fits_slot_are_as_before(self):
+        from importer import xmlio
+        xml = '<gear id="armor"><slot id="armor" value="3"/><fits slot="armor"/></gear>'
+        got = xmlio.scope(xml, "CRB", {"armor"}, root=("sr6", "urn:x"))
+        self.assertEqual(got, '<gear id="crb.armor"><slot id="armor" value="3"/><fits slot="armor"/></gear>')
+
+
+class FamilyMergeTest(unittest.TestCase):
+    V = [{"tag": "variant", "attrs": {"name": "Hands"}}]
+
+    def test_old_rows_are_refiled_and_widened_stale_ones_go_and_unlanded_variants_wait(self):
+        from tools.cl6check import familymap, ours
+        idx = {("zz", "weapons", "zz.a"): {"name": "A"}, ("zz", "gear", "zz.setae"): {"name": "Setae (hands or feet)"},
+               ("zz", "gear", "zz.b"): {"name": "B"}, ("zz", "gear", "zz.c"): {"name": "C"}, ("zz", "gear", "zz.twin"): {"name": "T"},
+               ("zz", "armor", "zz.twin"): {"name": "T"}}
+        old = [{"cl6": "hand", "kind": "gear", "id": "hand"},
+               {"cl6": "A", "kind": "gear", "id": "a", "set": {"skill": "Firearms"}, "gen": "family"},
+               {"cl6": "S", "kind": "gear", "id": "gone", "set": {"skill": "x"}, "gen": "family"},
+               {"cl6": "T", "kind": "gear", "id": "twin", "set": {"size": "g"}, "gen": "family"},
+               {"cl6": "T", "kind": "armor", "id": "twin", "set": {"social": "-1"}, "gen": "family"}]
+        new = [{"cl6": "A", "kind": "weapons", "id": "a", "set": {"skill": "Other", "spec": "Rifles"}, "gen": "family"},
+               {"cl6": "Setae", "kind": "gear", "id": "setae", "kids": self.V, "gen": "family"},
+               {"cl6": "B", "kind": "gear", "id": "b", "kids": self.V, "gen": "family"},
+               {"cl6": "C", "kind": "gear", "id": "c", "set": {"size": "Tiny"}, "kids": self.V, "gen": "family"}]
+        got = {(r["kind"], r["id"]): r for r in familymap.merge(old, new, idx, "zz")}
+        # (gone: stale; setae and b: variants only, held; twin: in two files, each row keeps its own)
+        self.assertEqual(set(got), {("gear", "hand"), ("weapons", "a"), ("gear", "c"), ("gear", "twin"), ("armor", "twin")})
+        self.assertEqual(got["weapons", "a"]["set"], {"skill": "Firearms", "spec": "Rifles"})
+        self.assertNotIn("kids", got["gear", "c"])
+        both = [{"cl6": "E", "kind": "gear", "id": "dev", "set": {"size": "Tiny"}, "gen": "family"},
+                {"cl6": "D", "kind": "electronics", "id": "dev", "set": {"modonly": "true"}, "gen": "family"}]
+        (only,) = familymap.merge(both, [], {("zz", "gear", "zz.dev"): {"name": "D"}}, "zz")  # (the gear entry is the entry's; the device row is not refiled onto it)
+        self.assertEqual((only["kind"], only["set"]), ("gear", {"size": "Tiny"}))
+        self.assertEqual({r["id"] for r in familymap.merge([], new, idx, "zz", variants=True)}, {"a", "b", "c"})  # (--variants: b keeps its list; setae carries its variants)
+        self.assertTrue(ours.carries("Setae (hands or feet)", ["Hands", "Feet"]) and not ours.carries("Setae", ["Hands"]))
+
+
 class ValueMapTest(unittest.TestCase):
     def test_numbers_formulas_and_legality(self):
         from tools.cl6check import valuemap as V
@@ -557,6 +625,21 @@ class ValueMapTest(unittest.TestCase):
         self.assertEqual(V.row_values([row("rating", "1–4", "1")], )[0], {"rating": "1–4"})
         self.assertEqual(V.row_values([row("rating", "1–4", "1", id="zz.thing-2"), row("cost", "R1 5, R2 9", "", id="zz.thing-2")])[0],
                          {"cost": "9"})
+
+    def test_refile_moves_a_value_row_to_the_kind_file_holding_its_entry(self):
+        import tempfile
+        from unittest import mock
+        from tools.cl6check import valuemap as V
+        rows = [{"kind": "gear", "id": "a", "set": {"cost": "5"}, "gen": "value"},  # (our entry is a weapon)
+                {"kind": "gear", "id": "b", "set": {"cost": "6"}, "gen": "value"},  # (already gear)
+                {"kind": "gear", "id": "a", "set": {"class": "X/Y"}, "gen": "class"}]  # (not a value row: left)
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d, "zz.json")
+            p.write_text(json.dumps(rows), encoding="utf8")
+            Path(d, "yy.json").write_text("[]", encoding="utf8")
+            with mock.patch.object(V.ours, "index", return_value={("zz", "weapons", "zz.a"): {}, ("zz", "gear", "zz.b"): {}}):
+                self.assertEqual(V.refile("runs", root=d), {"zz": 1})
+            self.assertEqual([r["kind"] for r in json.loads(p.read_text(encoding="utf8"))], ["weapons", "gear", "gear"])
 
 
 class Cl6OnlyRowsTest(unittest.TestCase):
@@ -585,3 +668,359 @@ class StructureKidsTest(unittest.TestCase):
         self.assertEqual(overrides.apply("zz", out, rows), out)  # again: nothing is added twice
         with self.assertRaises(ValueError):
             overrides.check([{"cl6": "x", "kind": "gear", "id": "a", "gen": "family", "kids": [{"tag": "effect"}]}])
+
+
+class SchemaAttrsTest(unittest.TestCase):
+    """An override writes no attribute the kind's schema lacks: it is skipped (one stderr line per row), never invalid xml."""
+    RULES = '<?xml version="1.0"?>\n<d kind="rules"><rule id="zz.launch" source="ZZ" page="5" chapter="C" level="2"><name>Launch</name></rule></d>\n'
+    GEAR = '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.coat" source="ZZ" page="6" category="Zed"><name>Coat</name></gear></d>\n'
+
+    def test_allowed_is_the_schemas(self):
+        self.assertNotIn("class", overrides.allowed("rules"))
+        self.assertIn("class", overrides.allowed("gear"))
+        self.assertNotIn("social", overrides.allowed("gear"))
+        self.assertIn("social", overrides.allowed("armor"))
+        self.assertNotIn("modonly", overrides.allowed("echoes"))
+        self.assertIsNone(overrides.allowed("nokind"))
+
+    def test_disallowed_attributes_are_skipped_and_the_rest_lands(self):
+        import contextlib
+        import io
+        rows = [{"cl6": "Coat", "kind": "gear", "id": "zz.coat", "gen": "value", "set": {"social": "2", "cost": "99"}},
+                {"cl6": "Launch", "kind": "weapons", "id": "zz.launch", "gen": "class", "set": {"class": "A/B"}},  # (filed wrong; only rules holds it)
+                {"cl6": "Launch", "kind": "rules", "id": "zz.launch", "gen": "class", "set": {"class": "A/B"}}]
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            out = overrides.apply("zz", {"gear.xml": self.GEAR, "rules.xml": self.RULES}, rows)
+        g, r = (ET.fromstring(out[f].encode())[0] for f in ("gear.xml", "rules.xml"))
+        self.assertEqual((g.get("cost"), g.get("social"), r.get("class")), ("99", None, None))
+        self.assertIn("gear.xml has no social", err.getvalue())
+        self.assertEqual(len([x for x in err.getvalue().splitlines() if "rules.xml has no class" in x]), 1)
+
+    def test_a_row_left_with_no_value_but_an_effect_still_lands(self):
+        import contextlib
+        import io
+        row = {"kind": "gear", "id": "zz.coat", "gen": "errata", "set": {"social": "2"}, "effects": [{"target": "item:zz", "op": "add", "value": "1"}]}
+        with contextlib.redirect_stderr(io.StringIO()):
+            g = ET.fromstring(overrides.apply("zz", {"gear.xml": self.GEAR}, [row])["gear.xml"].encode())[0]
+        self.assertEqual((g.get("social"), [x.get("target") for x in g.findall("effect")]), (None, ["item:zz"]))
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(overrides.fit([{**row, "effects": []}]), [])  # (nothing left to set: dropped)
+
+    def test_generators_drop_the_rows_too(self):
+        from tools.cl6check import classmap
+        pairs = [({"cl6_class": "A/B", "name": "Launch"}, {"src": "zz", "kind": "rules", "id": "zz.launch", "name": "Launch", "attrs": {}})]
+        classmap.canon.CLASS_KINDS.add("rules")
+        try:
+            self.assertEqual(classmap.item_rows(pairs, {}, frozenset())[0]["zz"], [])
+        finally:
+            classmap.canon.CLASS_KINDS.discard("rules")
+
+
+class OwnerNameBugRowsTest(unittest.TestCase):
+    """The 2026-10-15 owner decisions: three values take Commlink6's (a row each), the ones the book prints stay ours (value_keep.json)."""
+    FILES = {"swc": ("qualities", "quality", "ghoul-dwarf", 'karma="27"', "karma"),
+             "crb": ("weapons", "weapon", "mossberg-cmdt", 'ammo="10(c)"', "ammo"),
+             "da": ("adeptpowers", "adeptpower", "motion-sense", 'activation="See Notes"', "activation")}
+    WANT = {"swc": "29", "crb": "10(c)/24(d)", "da": "Passive / Major Action"}
+
+    def test_the_three_value_rows_land(self):
+        for src, (kind, tag, iid, attr, name) in self.FILES.items():
+            xml = f'<?xml version="1.0"?>\n<d kind="{kind}"><{tag} id="{iid}" source="ZZ" page="1" {attr}><name>X</name></{tag}></d>\n'
+            got = ET.fromstring(overrides.apply(src, {f"{kind}.xml": xml})[f"{kind}.xml"].encode())[0]
+            self.assertEqual(got.get(name), self.WANT[src], src)
+
+    def test_keep_list_holds_the_printed_values_and_not_the_ones_taken_from_commlink6(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("bs", "augmentations", "bs.fangs", "cost"), ("bs", "augmentations", "bs.thermosense-organs", "cost"),
+                  ("crb", "weapons", "crb.colt-cobra-tz-100", "ar"), ("crb", "weapons", "crb.ares-viper-slivergun", "ar"),
+                  ("da", "adeptpowers", "da.motion-sense", "activation")]:
+            self.assertIn(k, keep)
+        self.assertNotIn(("swc", "qualities", "swc.ghoul", "karma"), keep)
+        self.assertNotIn(("crb", "weapons", "crb.mossberg-cmdt", "ammo"), keep)
+        held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
+        self.assertNotIn(("bs", "augmentations", "bs.fangs", "cost"), held)  # (the owner keeps ours: it is no longer left open)
+
+
+class OwnerInfectedRowsTest(unittest.TestCase):
+    """The 2026-10-16 decisions in the per-book tables: the Ghoul per base metatype, the Companion's Armor optional power with
+    no description, the Silencer's exclusion, and what cl6check keeps for them (value_keep.json)."""
+
+    def test_each_ghoul_takes_29_karma_and_its_own_metatype(self):
+        bases = ("human", "dwarf", "elf", "ork", "troll")
+        xml = '<?xml version="1.0"?>\n<d kind="qualities">' + "".join(
+            f'<quality id="ghoul-{b}" source="ZZ" page="1" kind="positive" karma="27"><name>Ghoul ({b.title()})</name></quality>' for b in bases) + "</d>\n"
+        root = ET.fromstring(overrides.apply("swc", {"qualities.xml": xml})["qualities.xml"].encode())
+        for e, b in zip(root, bases):
+            self.assertEqual(e.get("karma"), "29", b)
+            self.assertEqual([p.get("ref") for p in e.findall("prerequisite")], [b], b)
+            self.assertEqual(len([m for m in e.findall("modifier") if m.get("set") == "MAX"]), 8, b)
+        self.assertEqual([a.text for a in root[0].findall("alias")], ["Ghoul"])  # (Commlink6's name for the human ghoul)
+
+    def test_the_armor_optional_power_has_no_description(self):
+        texts = ('<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n'
+                 '  <text of="qualities" id="infected-optional-powers.armor-per-point">A made-up section text.</text>\n'
+                 '  <text of="qualities" id="infected-optional-powers.fear">Kept.</text>\n</sr6:data>\n')
+        got = [x.get("id") for x in ET.fromstring(overrides.texts("swc", {}, texts).encode())]
+        self.assertEqual(got, ["infected-optional-powers.fear"])
+
+    def test_the_silencer_excludes_revolvers_and_shotguns_and_lists_no_allowed_weapon(self):
+        row = next(r for r in overrides.table("crb") if r.get("id") == "silencer-suppressor")
+        self.assertEqual(row["kind"], "weapons")  # (our entry's kind: the id is an implant weapon's too)
+        req = [k["attrs"] for k in row["kids"] if k["tag"] == "prerequisite"]
+        self.assertEqual([(p["type"], p["ref"], p.get("negate")) for p in req],
+                         [("WEAPON_TYPE", "revolvers", "true"), ("WEAPON_TYPE", "shotguns", "true")])
+        self.assertEqual([k["tag"] for k in row["kids"] if k["tag"] != "prerequisite"], ["fits", "variant"])
+
+    def test_cl6check_keeps_the_structural_differences(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        self.assertIn(("crb", "weapons", "crb.silencer-suppressor", "requires"), keep)
+        self.assertIn(("swc", "qualities", "swc.astral-hazing", "requires"), keep)
+        held = {tuple(h[:4]) for h in json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"]}
+        for q in ("mutaqua", "nosferatu", "wendigo"):  # (their Awakened price is a karmaif now: no longer two disagreeing records)
+            self.assertNotIn(("swc", "qualities", f"swc.{q}", "karma"), held)
+
+
+class OwnerClassCRowsTest(unittest.TestCase):
+    """The 2026-10-15 class c decisions: three transgenic skins, the Sim module row as two items, the printed values kept."""
+
+    def test_transgenic_chameleon_skin_is_two_items_and_rhino_skin_a_third(self):
+        xml = ('<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="transgenic-chameleon-skin" source="BS" page="101" avail="6" '
+               'essence="0.15" cost="2100"><name>Transgenic chameleon skin</name></augmentation></d>\n')
+        root = ET.fromstring(overrides.apply("bs", {"augmentations.xml": xml})["augmentations.xml"].encode())
+        got = {e.get("id"): e for e in root}
+        self.assertNotIn("transgenic-chameleon-skin", got)
+        want = {"transgenic-chameleon-skin-basic": ("0.3", "6", "1400"), "transgenic-chameleon-skin-dynamic": ("0.45", "7", "2800"),
+                "transgenic-rhino-skin": ("0.15", "4", "2100")}
+        for i, vals in want.items():
+            e = got[i]
+            self.assertEqual((e.get("essence"), e.get("avail"), e.get("cost")), vals, i)
+            self.assertEqual(e.get("class"), "GENEWARE/TRANSGENIC_BIOWARE", i)
+            self.assertEqual(e.findall("variant"), [], i)  # (one catalog item per variant)
+        self.assertEqual(got["transgenic-rhino-skin"].find("effect").get("target"), "derived:defense")
+
+    def test_the_sim_module_row_is_two_items_with_the_hot_sim_one_at_2_i(self):
+        from importer.sr6.catalog import Catalog
+        got = dict(Catalog.variants("Sim module / w Hot sim", {"rating": "– / –", "avail": "– / 2(I)", "cost": "+100¥ / +250¥"}))
+        self.assertEqual(list(got), ["Sim module", "Sim module w/ Hot sim"])
+        self.assertEqual((got["Sim module"]["avail"], got["Sim module"]["cost"]), ("–", "+100¥"))
+        self.assertEqual((got["Sim module w/ Hot sim"]["avail"], got["Sim module w/ Hot sim"]["cost"]), ("2(I)", "+250¥"))
+
+    def test_keep_list_holds_the_printed_values_but_not_the_two_fixed_rows(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("bs", "gear", "bs.bulk-modification", "cost"), ("crb", "programs", "crb.tutorsoft", "avail"),
+                  ("crb", "augmentations", "crb.control-rig", "cost"), ("so", "electronics", "so.swindler-stick-gold", "legality"),
+                  ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"), ("nf", "armor", "nf.bowler", "avail")]:
+            self.assertIn(k, keep)
+        self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
+        self.assertNotIn(("crb", "gear", "crb.sim-module-w-hot-sim", "legality"), keep)
+
+
+class OwnerVariantSplitsTest(unittest.TestCase):
+    """The 2026-10-15 variant decisions: one catalog item per variant the book prints a value for."""
+
+    def test_gonzo_case_cell_with_a_price_per_variant_is_two_items(self):
+        from importer.sr6.catalog import Catalog
+        got = dict(Catalog.variants("Gonzo Case", {"avail": "5(I)", "cost": "1,000¥ for cyberdeck/5,000¥ for cyberhack"}))
+        self.assertEqual(list(got), ["Gonzo Case (cyberdeck)", "Gonzo Case (cyberhack)"])
+        self.assertEqual([g["cost"] for g in got.values()], ["1,000¥", "5,000¥"])
+        self.assertEqual({g["avail"] for g in got.values()}, {"5(I)"})
+        self.assertEqual(Catalog.variants("Zed Case", {"cost": "500¥"}), [("Zed Case", {"cost": "500¥"})])  # (a plain price is untouched)
+
+    def test_fs_pouch_shield_and_medkit_rows(self):
+        armor = ('<?xml version="1.0"?>\n<d kind="armor">'
+                 '<armor id="concealable-ammo-pouch" source="FS" page="55" capacity="[3]" avail="2(L)" cost="100"><name>Concealable ammo pouch</name></armor>'
+                 '<armor id="modular-equipment-mounting-system-mems-mems-medkit-pouch" source="FS" page="48" capacity="[2-3]" avail="2" cost="200">'
+                 '<name>MEMS Medkit Pouch</name></armor></d>\n')
+        weapons = ('<?xml version="1.0"?>\n<d kind="weapons"><weapon id="machine-gun-blast-shields" source="FS" page="73" avail="4(I)" cost="250">'
+                   '<name>Machine Gun Blast Shields</name><effect target="derived:defense" op="add" value="1"/></weapon></d>\n')
+        out = overrides.apply("fs", {"armor.xml": armor, "weapons.xml": weapons})
+        a = {e.get("id"): e for e in ET.fromstring(out["armor.xml"].encode())}
+        self.assertEqual((a["concealable-ammo-pouch"].get("cost"), a["concealable-ammo-pouch-sealed"].get("cost")), ("100", "200"))
+        self.assertEqual({a[i].get(k) for i in ("concealable-ammo-pouch", "concealable-ammo-pouch-sealed") for k in ("capacity",)}, {"[3]"})
+        self.assertEqual(a["concealable-ammo-pouch-sealed"].get("avail"), "2(L)")
+        m1 = a["modular-equipment-mounting-system-mems-mems-medkit-pouch"]
+        m2 = a["mems-medkit-pouch-rank-4-6"]
+        self.assertEqual((m1.findtext("name"), m1.get("capacity"), m2.get("capacity"), m2.get("cost")), ("MEMS Medkit Pouch (rank 1-3)", "[2]", "[3]", "200"))
+        w = {e.get("id"): e for e in ET.fromstring(out["weapons.xml"].encode())}
+        small, large = w["machine-gun-blast-shields"], w["machine-gun-blast-shield-large"]
+        self.assertEqual((small.findtext("name"), small.get("cost"), large.get("cost"), large.get("avail")), ("Machine Gun Blast Shield (small)", "250", "350", "4(I)"))
+        self.assertEqual((small.find("effect").get("value"), large.find("effect").get("value")), ("1", "2"))
+
+    def test_sim_module_names_of_commlink6_hot_name_is_an_alias_of_the_hot_sim_item(self):
+        gear = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="sim-module" source="CRB" page="268" cost="100"><name>Sim module</name></gear>'
+                '<gear id="sim-module-w-hot-sim" source="CRB" page="268" cost="250"><name>Sim module w/ Hot sim</name></gear></d>\n')
+        got = {e.get("id"): [a.text for a in e.findall("alias")]
+               for e in ET.fromstring(overrides.apply("crb", {"gear.xml": gear})["gear.xml"].encode())}
+        self.assertIn("SIM module (hot)", got["sim-module-w-hot-sim"])
+        self.assertNotIn("SIM module (hot)", got["sim-module"])
+
+    def test_accepted_variant_tags_and_costs_are_in_the_keep_list(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("crb", "gear", "crb.sim-module", "cost"), ("crb", "gear", "crb.sim-module-w-hot-sim", "cost"),
+                  ("crb", "gear", "crb.laser-sight", "variants"), ("da", "weapons", "da.m40", "variants"),
+                  ("ts", "electronics", "ts.full-body-scanner-booth", "variants")]:
+            self.assertIn(k, keep)
+
+
+class ErrataRowsTest(unittest.TestCase):
+    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides.py): an errata's values win over Commlink6's and the book's."""
+    XML = ('<?xml version="1.0"?>\n<d kind="augmentations">'
+           '<augmentation id="zz-eyes-5" source="ZZ" page="9" rating="5" avail="15" cost="900"><name>Zeyes (Rating 5)</name>'
+           '<formula field="avail">tier(R; 5: 15; 6: 18)</formula><issue field="cost" code="ambiguous"/></augmentation>'
+           '<augmentation id="zz-hum" source="ZZ" page="9" rating="1-3" avail="(Rating x 6)"><name>Hum</name>'
+           '<formula field="avail">(R*6)</formula><effect target="item:concealability" op="add" value="-2"/><slot id="s"/></augmentation>'
+           '<augmentation id="zz-gone" source="ZZ" page="9"><name>Gone</name></augmentation></d>\n')
+
+    def apply(self, rows):
+        out = overrides.apply("zz", {"augmentations.xml": self.XML}, rows)["augmentations.xml"]
+        return {e.get("id"): e for e in ET.fromstring(out.encode())}
+
+    def test_errata_values_win_over_a_commlink6_value_row_whatever_the_order(self):
+        rows = [{"kind": "augmentations", "id": "zz-eyes-5", "set": {"avail": "4"}, "gen": "errata"},
+                {"cl6": "Zeyes", "kind": "augmentations", "id": "zz-eyes-5", "set": {"avail": "9", "cost": "7"}, "gen": "value"}]
+        e = self.apply(rows)["zz-eyes-5"]
+        self.assertEqual((e.get("avail"), e.get("cost")), ("4", "7"))
+        self.assertEqual(e.findall("formula"), [])  # (the value they described is replaced)
+
+    def test_null_drops_an_attribute_effects_replace_the_same_target_and_formulas_are_set(self):
+        rows = [{"kind": "augmentations", "id": "zz-hum", "set": {"rating": None, "avail": "6"},
+                 "formula": {"cost": "tier(R; 6: 1; 7: 2)"}, "effects": [{"target": "item:concealability", "op": "add", "value": "2"}], "gen": "errata"}]
+        e = self.apply(rows)["zz-hum"]
+        self.assertEqual((e.get("rating"), e.get("avail")), (None, "6"))
+        self.assertEqual([(x.get("target"), x.get("value")) for x in e.findall("effect")], [("item:concealability", "2")])
+        self.assertEqual([x.text for x in e.findall("formula")], ["tier(R; 6: 1; 7: 2)"])
+        self.assertIsNotNone(e.find("slot"))
+
+    def test_an_effect_naming_no_target_is_refused_before_the_run(self):
+        with self.assertRaisesRegex(ValueError, "names its target"):
+            overrides.check([{"kind": "augmentations", "id": "zz-hum", "gen": "errata", "effects": [{"op": "add", "value": "2"}]}])
+
+    def test_remove_and_rename_without_an_alias(self):
+        rows = [{"kind": "augmentations", "id": "zz-gone", "remove": True},
+                {"kind": "augmentations", "id": "zz-eyes-5", "rename": "Zeyes (Rating 6)", "alias": False}]
+        got = self.apply(rows)
+        self.assertNotIn("zz-gone", got)
+        self.assertEqual((got["zz-eyes-5"].findtext("name"), got["zz-eyes-5"].findall("alias")), ("Zeyes (Rating 6)", []))
+
+    def test_no_future_errata_rows_cover_the_errata_and_leave_no_text(self):
+        rows = {(r["kind"], r["id"]): r for r in overrides.table("nf") if r.get("gen") == "errata"}
+        want = {("gear", "rising-star"): "2", ("gear", "big-time"): "3", ("gear", "external-synth"): "+1", ("gear", "internal-synth"): "+2",
+                ("weapons", "yo-yo-hardened"): "2", ("weapons", "yo-yo-bladed"): "3(L)", ("weapons", "yo-yo-monofilament"): "6(I)",
+                ("weapons", "skateboard-hardened"): "2", ("weapons", "skateboard-bladed"): "3(L)", ("weapons", "roller-skates-bladed"): "3(L)", ("weapons", "molotov"): "1(I)",
+                ("weapons", "pitchfork"): "1", ("gear", "graffiti-kit"): "1", ("vehicles", "ford-broadcast"): "2", ("vehicles", "s-b-condor"): "3",
+                ("gear", "press-pass"): "2(L)", ("gear", "procam"): "1", ("gear", "smartcam-external"): "2", ("gear", "smartcam-internal"): "4",
+                ("gear", "basic-press"): "1", ("gear", "small-press"): "4", ("gear", "industrial-press"): "7",
+                ("augmentations", "cybereyes-rating-5"): "4", ("augmentations", "cybereyes-rating-6"): "5",
+                ("augmentations", "cyberears-rating-5"): "4", ("augmentations", "cyberears-rating-6"): "5"}
+        self.assertEqual({k: rows[k]["set"]["avail"] for k in want}, want)
+        self.assertEqual(rows["armor", "trenchcoat"]["effects"][0]["value"], "2")
+        self.assertEqual((rows["augmentations", "cybereyes-rating-5"]["set"]["cost"], rows["augmentations", "cyberears-rating-6"]["set"]["cost"]), ("18000", "21000"))
+        self.assertEqual([rows[("augmentations", i)]["set"]["rating"] for i in ("audiotune", "vocal-expansion")], [None, None])
+        gone = {r["id"] for r in overrides.table("nf") if r.get("remove")}
+        self.assertEqual(gone, {"audiotune-hacked", "vision-enhancement", "audio-enhancement"})
+
+    def test_keep_list_no_longer_keeps_the_book_s_fifth_edition_numbers_for_no_future(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for k in [("nf", "vehicles", "nf.ford-broadcast", "avail"), ("nf", "weapons", "nf.molotov", "legality"),
+                  ("nf", "augmentations", "nf.cybereyes-rating-5", "cost"), ("nf", "electronics", "nf.press-pass", "avail")]:
+            self.assertNotIn(k, keep)
+
+
+class SplitRowsTest(unittest.TestCase):
+    """`"split"` rows (owner 2026-10-16, multi-record): a row the book prints once for several things becomes one item each."""
+    XML = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz-kit" source="ZZ" page="9" avail="4(I)" cost="250 + Base Cost">'
+           '<name>Zz Kit</name><alias>Old name</alias><alias id="zz.older" kind="gear"/><issue field="cost" code="ambiguous">priced off</issue>'
+           '<effect target="item:concealability" op="add" value="-2"/></gear></d>\n')
+    ROW = {"cl6": "Zz Kit", "kind": "gear", "id": "zz-kit", "split": [
+        {"id": "zz-kit-a", "name": "Zz Kit (A)", "set": {"cost": "255"}, "note": {"field": "cost", "text": "250 + Base Cost"}},
+        {"id": "zz-kit-b", "name": "Zz Kit (B)", "set": {"cost": "270"}}]}
+    TEXTS = '<sr6:data xmlns:sr6="urn:zz" kind="texts">\n  <text of="gear" id="zz-kit">One printed block.</text>\n</sr6:data>\n'
+
+    def test_one_copy_per_part_with_its_own_value_and_the_printed_rule_as_a_note(self):
+        out = overrides.apply("zz", {"gear.xml": self.XML}, [self.ROW])["gear.xml"]
+        got = {e.get("id"): e for e in ET.fromstring(out.encode())}
+        self.assertEqual(list(got), ["zz-kit-a", "zz-kit-b"])
+        a, b = got["zz-kit-a"], got["zz-kit-b"]
+        self.assertEqual((a.findtext("name"), a.get("cost"), a.get("avail"), b.get("cost"), b.get("avail")), ("Zz Kit (A)", "255", "4(I)", "270", "4(I)"))
+        self.assertEqual([(n.get("field"), n.text) for n in a.findall("note")], [("cost", "250 + Base Cost")])
+        self.assertEqual(b.findall("note"), [])
+        for e in (a, b):  # (the effect is kept; the name aliases and the cost issue go, an old id alias stays)
+            self.assertEqual(e.find("effect").get("value"), "-2")
+            self.assertEqual(e.findall("issue"), [])
+            self.assertEqual([x.get("id") for x in e.findall("alias")], ["zz.older"])
+
+    def test_the_books_text_goes_to_each_part_and_the_source_text_goes(self):
+        got = overrides.texts("zz", {"gear.xml": self.XML}, self.TEXTS, [self.ROW])
+        self.assertEqual(sorted(i for _, i, _ in __import__("importer.xmlio", fromlist=["x"]).texts_entries(got)), ["zz-kit-a", "zz-kit-b"])
+        self.assertEqual(got.count("One printed block."), 2)
+
+    def test_a_split_refuses_a_text_field_and_a_missing_entry_is_reported_only(self):
+        with self.assertRaises(ValueError):
+            overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "split": [{"id": "x", "name": "X", "set": {"description": "t"}}]}])
+        self.assertEqual(overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "id": "nope"}])["gear.xml"], self.XML)
+
+    def test_a_parts_null_drops_the_attribute(self):
+        row = {**self.ROW, "split": [{"id": "zz-kit-a", "name": "Zz Kit (A)", "set": {"avail": None, "cost": "255"}}]}
+        e = ET.fromstring(overrides.apply("zz", {"gear.xml": self.XML}, [row])["gear.xml"].encode())[0]
+        self.assertEqual((e.get("avail"), e.get("cost")), (None, "255"))
+
+    def test_shipped_swindler_manadyne_and_skate_splits(self):
+        sw = {p["id"]: p for r in overrides.table("so") for p in r.get("split", [])}
+        self.assertEqual({i: (p["name"], p["set"]["cost"]) for i, p in sw.items()}, {
+            "swindler-stick-standard": ("Swindler Stick (Standard)", "255"), "swindler-stick-silver": ("Swindler Stick (Silver)", "270"),
+            "swindler-stick-gold": ("Swindler Stick (Gold)", "350"), "swindler-stick-platinum": ("Swindler Stick (Platinum)", "750"),
+            "swindler-stick-ebony": ("Swindler Stick (Ebony)", "1250")})
+        self.assertTrue(all(p["note"]["text"] == "250 + Certified Credstick Cost" for p in sw.values()))
+        self.assertEqual({p["id"]: p["name"] for r in overrides.table("sw") for p in r.get("split", [])}, {
+            "manadyne-mb-10": "Manadyne MB-10", "manadyne-pb-10": "Manadyne PB-10", "manadyne-mb-100": "Manadyne MB-100", "manadyne-pb-100": "Manadyne PB-100"})
+        self.assertEqual({p["id"]: p["name"] for r in overrides.table("nf") for p in r.get("split", [])}, {
+            "skateboard-hardened": "Skateboard (Hardened)", "skateboard-bladed": "Skateboard (Bladed)", "roller-skates-bladed": "Roller skates (Bladed)"})
+        errata = {r["id"]: r["set"]["avail"] for r in overrides.table("nf") if r.get("gen") == "errata" and "skate" in r["id"]}
+        self.assertEqual(errata, {"skateboard-hardened": "2", "skateboard-bladed": "3(L)", "roller-skates-bladed": "3(L)"})
+
+    def test_keep_list_holds_the_printed_availability_of_the_five_sticks_and_the_four_manadynes(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for g in ("standard", "silver", "gold", "platinum", "ebony"):
+            self.assertIn(("so", "electronics", f"so.swindler-stick-{g}", "avail"), keep)
+            self.assertNotIn(("so", "electronics", f"so.swindler-stick-{g}", "cost"), keep)
+        for m in ("mb-10", "pb-10", "mb-100", "pb-100"):
+            self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "cost"), keep)
+            self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "avail"), keep)
+
+
+class SlotStructureRowsTest(unittest.TestCase):
+    """Owner 2026-10-15: Commlink6's slots/fits for seven entries; a mount column does not add a fit beside an entry's own."""
+
+    def kids(self, src, kind, eid):
+        return [(k["tag"], k["attrs"]) for r in overrides.table(src) if (r["kind"], r.get("id")) == (kind, eid) and r.get("gen") == "family" for k in r.get("kids", [])]
+
+    def test_the_seven_rows(self):
+        hardpoint = ("slot", {"id": "vehicle-hardpoint"})
+        self.assertIn(hardpoint, self.kids("crb", "weapons", "smart-firing-platform"))
+        for i in ("powered-heavy-tripod", "reinforced-smart-firing-platform", "wheeled-heavy-tripod"):
+            self.assertIn(hardpoint, self.kids("da", "weapons", i))
+        scope = self.kids("crb", "weapons", "imaging-scope")  # (the p260 accessory: capacity 3 per its text)
+        self.assertIn(("slot", {"id": "optical", "value": "3"}), scope)
+        self.assertIn(("fits", {"slot": "top"}), scope)
+        stock = self.kids("crb", "gear", "folding-stock")
+        self.assertIn(("fits", {"slot": "stock"}), stock)
+        self.assertNotIn(("slot", {"id": "stock"}), stock)
+        self.assertIn(("fits", {"slot": "electronic-accessory"}), self.kids("crb", "gear", "simrig"))
+
+    def test_a_mount_column_is_a_fit_only_when_the_entry_has_no_slot_of_its_own(self):
+        from tools.cl6check import ours
+        fam = lambda xml: ours.families(ET.fromstring(xml))["slots"]
+        self.assertEqual(fam('<weapon mount="Under"><slot id="vehicle-hardpoint"/></weapon>'), {("slot", "vehicle-hardpoint")})
+        self.assertEqual(fam('<weapon mount="Under"/>'), {("fits", "under")})
+
+    def test_scavenged_rags_keep_the_printed_empty_availability(self):
+        self.assertFalse([r for r in overrides.table("so") if r.get("id") == "scavenged-rags" and "avail" in r.get("set", {})])
+        from tools.cl6check import optional
+        self.assertIn(("so", "armor", "so.scavenged-rags", "avail"), optional.load_keep())

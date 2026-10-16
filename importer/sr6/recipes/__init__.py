@@ -17,9 +17,27 @@ def identify(meta, md_head):
 
 
 def printing(sha):
-    """(published, label) of a known printing of a book (a recipe's PRINTINGS: published is YYYY-MM, so the later
-    printing compares greater), or None."""
-    return next((r.PRINTINGS[sha] for r in RECIPES if sha in getattr(r, "PRINTINGS", {})), None)
+    """(rank, label) of a known printing of a book, or None: the later rank is the printing that wins. The rank is
+    (1 if the recipe's CURRENT printing else 0, published YYYY-MM): the owner's rule, the book's Current Printing is the
+    newest whatever a later City Edition or reprint is dated; the others rank by month."""
+    for r in RECIPES:
+        if sha in getattr(r, "PRINTINGS", {}):
+            month, label = r.PRINTINGS[sha]
+            return (int(sha in getattr(r, "CURRENT", ())), month), label
+    return None
+
+
+def current(sha):
+    """Whether a known printing is its book's Current Printing (a recipe's CURRENT): it incorporates its errata, so an
+    errata only fills what it leaves open (resolve.py)."""
+    p = printing(sha)
+    return bool(p and p[0][0])
+
+
+def published(sha):
+    """The month (YYYY-MM) a known printing was published, or None (printing()'s rank leaves it out for a CURRENT one)."""
+    p = printing(sha)
+    return p[0][1] if p else None
 
 
 # the SR6 PDFs with nothing to import: (why, their fingerprints, a pattern their PDF title or file name matches)

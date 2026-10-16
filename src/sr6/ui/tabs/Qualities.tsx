@@ -3,9 +3,11 @@
 // its choice may be taken again, for another), and the net karma line against the cap.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma } from '../../engine/budgets'
-import { num } from '../../engine/creation'
-import { qualityFitsMetatype } from '../../engine/data'
+import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma, qualityPrice } from '../../engine/budgets'
+import { flag, num } from '../../engine/creation'
+import { qualityFitsMetatype, type Sr6QualityView } from '../../engine/data'
+import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../engine/infected'
+import { infectedOff } from '../../engine/critterware'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
@@ -23,6 +25,11 @@ export function QualitiesTab() {
   // a quality of a family of levels (levels.ts): its stepper moves the line to the sibling level's entry
   const levels = (id: string) => data.siblings('qualities', id).map(e => data.levelOf(e)!)
   const side = (positive: boolean) => b.qualities.filter(q => (data.qualities[q.id]?.positive ?? true) === positive)
+  // (a price by the Awakened flag, <karmaif>: `54 (less 10 if the character is already Awakened; this runner: 44)`)
+  const awakenedPrice = (q: Sr6QualityView) =>
+    q.karmaIf
+      ? ` (${q.karmaIf.note ?? `${q.karmaIf.value} if Awakened`}; this runner: ${priceAwakened(b, data, q.id) ? Math.abs(q.karmaIf.value) : q.karma})`
+      : ''
   const pick = (id: string) => {
     if (!act({ op: 'quality', id })) setPicking(null)
   }
@@ -123,7 +130,8 @@ export function QualitiesTab() {
                         onChange={karma => act({ op: 'quality', id: q.id, uid: q.uid, karma })}
                       />
                     ) : (
-                      `${positive ? '−' : '+'}${n(qualityCost(q, v))}`
+                      // (its Awakened price, the non-human vampire's, the Infected free pick: karma.ts qualityPrice)
+                      `${positive ? '−' : '+'}${n(qualityPrice(b, data, q, v))}`
                     )}
                   </td>
                   <td>
@@ -149,6 +157,7 @@ export function QualitiesTab() {
         Positive qualities cost karma; negative ones give karma back.
         {cap !== undefined && ` Qualities may give at most ${cap} karma net.`}
         {most !== undefined && ` At most ${most} paid qualities.`}
+        {flag(cr, 'infectedAllowed') && ' An Infected type is taken on Creation method; its optional powers here.'}
       </p>
       <p>
         Positive: <b>−{n(pos)}</b> karma · Negative: <b>+{n(neg)}</b> karma · Net:{' '}
@@ -175,7 +184,18 @@ export function QualitiesTab() {
             placeholder="Search qualities"
             onPick={pick}
             items={all
-              .filter(q => q.positive === (picking === 'positive') && qualityFitsMetatype(data, b.metatype, q.id))
+              .filter(
+                q =>
+                  q.positive === (picking === 'positive') &&
+                  qualityFitsMetatype(data, b.metatype, q.id) &&
+                  !infectedOff(data.entry('qualities', q.id), cr) &&
+                  // (an Infected type is taken on Creation method; an optional power only from the runner's type's list)
+                  !infectedOf(data.entry('qualities', q.id)) &&
+                  !(
+                    optionalPower(data.entry('qualities', q.id)) &&
+                    ['infected-no-type', 'infected-not-listed'].includes(powerRefusal(b, data, cr, q.id, false) ?? '')
+                  ),
+              )
               .map(q => ({
                 id: q.id,
                 name: q.name,
@@ -185,7 +205,7 @@ export function QualitiesTab() {
                   data.levelOf(data.entry('qualities', q.id)) !== undefined
                     ? `level ${data.levelOf(data.entry('qualities', q.id))} of ${data.siblings('qualities', q.id).length}`
                     : undefined,
-                meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
+                meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''}${awakenedPrice(q)} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
                 price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(),
                 label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
               }))}
