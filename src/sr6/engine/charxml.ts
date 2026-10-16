@@ -77,6 +77,7 @@ function purchaseXml(p: Sr6Purchase): string {
       worn: p.worn,
       note: p.note,
       seatsRemoved: p.seatsRemoved,
+      licence: p.licence,
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -331,7 +332,8 @@ const readBonuses = (e: Element) => {
 
 function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
   const kind = oneOf(e.getAttribute('kind'), PURCHASE_KINDS, 'purchase kind')!
-  const snap = kid(e, 'snapshot')?.firstElementChild
+  const snap = kid(e, 'snapshot')?.firstElementChild,
+    lic = e.getAttribute('licence')
   return def({
     uid: e.getAttribute('uid') ?? '',
     kind,
@@ -347,6 +349,7 @@ function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
     bonuses: readBonuses(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
+    licence: lic == null ? undefined : oneOf(lic, ['bought', 'unlicensed'] as const, 'licence choice', undefined, fix),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })

@@ -28,9 +28,9 @@ import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data 
 import { normName } from './names'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
-import { chosenRating, ratingRange } from './values'
+import { availability, chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, noteSkill, qualityChoice, seatsOf } from './budgets'
+import { augmentationRoom, entryOf, noteSkill, qualityChoice, ratingOf, seatsOf } from './budgets'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -112,6 +112,8 @@ export type Op =
   | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
   | { op: 'seats'; uid: string; removed: number }
+  /** a line (or accessory) whose Availability prints a licence fee: licence bought, carried unlicensed, or null: not chosen */
+  | { op: 'licensed'; uid: string; licence: 'bought' | 'unlicensed' | null }
   /** the runner's Infected type (an Infected quality's id; '' none): infect */
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
@@ -784,6 +786,15 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.removed > seatsOf(entryOf(x, data))) return no('at-maximum')
       if (op.removed) x.seatsRemoved = op.removed
       else delete x.seatsRemoved
+      return OK
+    }
+    case 'licensed': {
+      const x = allLines(b).find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      // (only an item whose Availability prints a fee; never enforced either way: owner 2026-10-16)
+      if (op.licence && availability(entryOf(x, data)?.attrs.avail, ratingOf(x, entryOf(x, data))).fee === undefined) return no('no-licence')
+      if (op.licence) x.licence = op.licence
+      else delete x.licence
       return OK
     }
     case 'transhuman': {

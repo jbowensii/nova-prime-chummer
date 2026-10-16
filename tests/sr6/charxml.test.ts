@@ -101,7 +101,8 @@ function full(): Sr6Character {
       kind: 'weapons',
       id: 'crb.zap-gun',
       qty: 1,
-      accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
+      licence: 'bought', // (its licence's fee on its cost)
+      accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, licence: 'unlicensed', accessories: [] }],
       snapshot: {
         id: 'crb.zap-gun',
         kind: 'weapons',

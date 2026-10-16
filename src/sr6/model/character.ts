@@ -106,6 +106,9 @@ export interface Sr6Purchase {
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
+  /** an item whose Availability prints a licence fee: the licence bought (its fee added to the line's cost) or the item
+   *  carried unlicensed (a warning); none: not chosen (the warning that it needs one) */
+  licence?: 'bought' | 'unlicensed'
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */

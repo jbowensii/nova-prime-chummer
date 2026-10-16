@@ -508,5 +508,12 @@
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
+    <!-- an item whose Availability prints a licence fee (`2, 500¥`): bought, the fee is added to the line's cost;
+         unlicensed, carried without one (a warning). Absent: not chosen (the warning that it needs one). Never enforced -->
+    <xs:attribute name="licence">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="bought"/><xs:enumeration value="unlicensed"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
   </xs:complexType>
 </xs:schema>

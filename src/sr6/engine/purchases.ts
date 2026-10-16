@@ -7,7 +7,7 @@ import type { Sr6Data } from './data'
 import { normName } from './names'
 import { gradeFactor, type GradeFactor } from './grades'
 import { fieldName } from '../../shared/formula'
-import { bookValue, dataFind, ratingRange } from './values'
+import { availability, bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed } from './categories'
 import { qualityChoice } from './choices'
 
@@ -53,12 +53,13 @@ export function priced(
   data: Sr6Data,
   cr: CreationRules,
   host?: { cost: number; avail: number; essence: number },
-): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
+): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[]; licence?: number } {
   let cost: number,
     avail: number,
     essence: number,
     ok = true,
-    unpriced = false
+    unpriced = false,
+    licence: number | undefined
   const notes: string[] = [],
     perLine = new Set<string>()
   if (!x.id) {
@@ -90,6 +91,8 @@ export function priced(
     } else cost = read('cost')
     avail = read('avail')
     essence = read('essence')
+    // a licence bought for it: the fee its Availability prints (`2, 500¥`), once for the line (owner 2026-10-16)
+    if (x.licence === 'bought') licence = availability(e?.attrs.avail, r ?? 1).fee
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)
@@ -101,6 +104,7 @@ export function priced(
   if (!perLine.has('cost')) cost *= x.qty
   if (!perLine.has('essence')) essence *= x.qty
   const own = { cost, avail, essence }
+  if (licence) cost += licence
   for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own),
       ae = entryOf(a, data)
@@ -112,7 +116,7 @@ export function priced(
     essence += ess
     ok &&= pa.ok
   }
-  return { cost, avail, essence: round2(essence), ok, unpriced, notes }
+  return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(licence ? { licence } : {}) }
 }
 
 /** An augmentation's family and how many a runner may have (owner's decision 9, 2026-10-11: implied by biology): each

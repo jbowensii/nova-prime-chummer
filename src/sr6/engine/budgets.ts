@@ -68,13 +68,15 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   const add = (key: string, label: string, amount: number, tab: string) => {
     if (amount) breakdown.push({ key, label, amount: Math.round(amount), sign: 'spend', tab })
   }
-  for (const x of b.purchases)
+  for (const x of b.purchases) {
+    const pr = priced(x, data, cr)
     add(
       `purchase:${x.uid}`,
-      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
-      priced(x, data, cr).cost,
+      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}${pr.licence ? ' with its licence' : ''}`,
+      pr.cost,
       PURCHASE_TAB[x.kind],
     )
+  }
   for (const sin of b.sins)
     for (const l of sin.lifestyles ?? []) {
       const e = data.entry('lifestyles', l.id)
@@ -101,7 +103,9 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     add(
       'sizePricing',
       `${size === 'troll' ? 'Troll' : 'Dwarf'}-sized: 10% more on ${size === 'troll' ? 'everything bought' : 'armor'}`,
-      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
+      // (a licence's fee is no item: not sized)
+      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost - (priced(x, data, cr).licence ?? 0), 0) *
+        0.1,
       'gear',
     )
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen

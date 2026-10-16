@@ -612,7 +612,7 @@ export function PurchaseSection({
                   name = e ? entryLabel(e) : (x.name ?? 'Custom item'),
                   p = priced(x, data, cr),
                   cf = formulaOf(e?.formulas, 'cost'),
-                  note = availNote(e?.attrs.avail, x.rating ?? 1),
+                  note = availNote(e?.attrs.avail, x.rating ?? 1, x.licence),
                   licence = note.text
                 return (
                   <tr key={x.uid}>
@@ -667,12 +667,27 @@ export function PurchaseSection({
                           ⚑
                         </span>
                       )}
+                      {/* (a licence fee printed: bought, its fee on the cost; or carried unlicensed, a warning; owner 2026-10-16) */}
+                      {licence && (
+                        <div>
+                          <select
+                            aria-label={`${name} licence`}
+                            value={x.licence ?? ''}
+                            onChange={ev => act({ op: 'licensed', uid: x.uid, licence: (ev.target.value || null) as 'bought' | 'unlicensed' | null })}
+                          >
+                            <option value="">Licence: not chosen</option>
+                            <option value="bought">Licence bought</option>
+                            <option value="unlicensed">Unlicensed</option>
+                          </select>
+                        </div>
+                      )}
                     </td>
                     <td className="num">
                       {/* a formula's price shows the formula on hover (and what it had to assume) */}
                       <span className={cf ? 'has-formula' : undefined} title={cf ? [formulaText(cf), ...p.notes].join('\n') : undefined}>
                         {p.unpriced ? <span className="warn">unpriced</span> : `${n(p.cost)}¥`}
                       </span>
+                      {p.licence && <div className="muted">incl. licence {n(p.licence)}¥</div>}
                       {!p.ok && !p.unpriced && (
                         <span className="warn" title="A value the app can’t read counts 0">
                           {' '}

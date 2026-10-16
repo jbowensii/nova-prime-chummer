@@ -118,7 +118,7 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126), `licence` for an item whose Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥): `bought` adds the fee to the line's cost (once a line), `unlicensed` carries it without one (a warning); absent, not chosen (the warning that it needs one; an older file has none). Licences are never enforced. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
