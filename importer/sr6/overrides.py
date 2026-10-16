@@ -20,6 +20,10 @@ runs cannot see: the No Future errata, nf.json): "set" values (null drops the at
 and "effects" (a list of effect attribute dicts, each with its "target": the entry's effect of that target is
 replaced), and "kids" (a <status name level> the item applies). It applies after every other id row, so it wins over
 Commlink6's values.
+An id row with "gen": "owner" is the owner's correction of a book's misprint, by hand, never regenerated: its "kids" may
+carry "replaces" {"<attribute>": "<value>"}, the entry's child of the kid's tag with those attributes replaced in place
+(a name the book prints that is no entry: Nibiinaabe's gained power `Darkness`, a spell, is the critter power
+`Innate Spell (Darkness)`, swc.json); a child it doesn't find is reported, nothing added.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
@@ -56,7 +60,8 @@ DIR = Path(__file__).with_name("overrides")
 OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
 SETTABLE = {"class"}  # (what an id row may set)
 KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection",  # (a "gen": "family" row's "kids": Commlink6's item structure)
-            "status"}  # (an errata row's: a status the item applies, the No Future errata's Molotov Burning 4)
+            "status",  # (an errata row's: a status the item applies, the No Future errata's Molotov Burning 4)
+            "power"}  # (an owner row's: an Infected type's gained power, corrected)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
                "seats", "range", "type", "duration", "category", "action", "activation", "fade", "threshold", "kind",
                "handling", "interval", "power", "attr", "skill", "spec", "social", "modonly", "size", "ammoClass", "accel", "speed", "body", "armor", "pilot", "sensor"}  # (a "gen": "value" row)
@@ -121,7 +126,7 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family", "errata") and not any(k in r for k in OPS):
+        if "id" in r and r.get("gen") in ("value", "family", "errata", "owner") and not any(k in r for k in OPS):
             if not (r.get("set") or r.get("kids") or r.get("effects")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
             if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
@@ -287,6 +292,13 @@ def _set_by_id(out, rows):
                         continue
                     c = etree.Element(k["tag"], attrs)
                     c.text = k.get("text")
+                    if "replaces" in k:  # (an owner row's correction: that child, in its place)
+                        old = next((x for x in e if x.tag == k["tag"] and all(x.get(a) == str(v) for a, v in k["replaces"].items())), None)
+                        if old is None:
+                            print(f"override {e.get('id')}: no <{k['tag']}> {k['replaces']} to replace", file=sys.stderr)
+                        else:
+                            e.replace(old, c)
+                        continue
                     t = e.find("text")
                     e.insert(list(e).index(t) if t is not None else len(e), c)
                 for k, expr in forms.get(name, {}).get(e.get("id"), {}).items():

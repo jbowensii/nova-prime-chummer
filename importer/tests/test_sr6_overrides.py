@@ -941,6 +941,33 @@ class ErrataRowsTest(unittest.TestCase):
             self.assertNotIn(k, keep)
 
 
+class OwnerRowsTest(unittest.TestCase):
+    """`"gen": "owner"` id rows (owner 2026-10-16): a kid with "replaces" takes the place of the entry's child it names."""
+    XML = ('<?xml version="1.0"?>\n<d kind="qualities"><quality id="zz-glower" source="ZZ" page="9" karma="20"><name>Glower</name>'
+           '<power name="Glow"/><power name="Dusk" rating="2"/><weakness name="Dusk"/><text/></quality></d>\n')
+    ROW = {"cl6": "Glower", "kind": "qualities", "id": "zz-glower", "gen": "owner",
+           "kids": [{"tag": "power", "attrs": {"name": "Innate Knack (Dusk)"}, "replaces": {"name": "Dusk"}}]}
+
+    def apply(self, rows):
+        out = overrides.apply("zz", {"qualities.xml": self.XML}, overrides.check(rows))["qualities.xml"]
+        return ET.fromstring(out.encode()).find("quality")
+
+    def test_the_named_child_is_replaced_in_place_and_the_rest_stay(self):
+        e = self.apply([self.ROW, dict(self.ROW)])  # (twice: once)
+        self.assertEqual([(x.tag, x.get("name"), x.get("rating")) for x in e if x.tag in ("power", "weakness")],
+                         [("power", "Glow", None), ("power", "Innate Knack (Dusk)", None), ("weakness", "Dusk", None)])
+
+    def test_a_child_it_does_not_find_adds_nothing(self):
+        row = {**self.ROW, "kids": [{**self.ROW["kids"][0], "replaces": {"name": "Dawn"}}]}
+        e = self.apply([row])
+        self.assertEqual([x.get("name") for x in e.findall("power")], ["Glow", "Dusk"])
+
+    def test_nibiinaabe_s_darkness_is_the_critter_power_innate_spell(self):
+        rows = [r for r in overrides.table("swc") if r.get("gen") == "owner"]
+        self.assertEqual(rows, [{"cl6": "Nibiinaabe", "kind": "qualities", "id": "nibiinaabe", "gen": "owner",
+                                 "kids": [{"tag": "power", "attrs": {"name": "Innate Spell (Darkness)"}, "replaces": {"name": "Darkness"}}]}])
+
+
 class SplitRowsTest(unittest.TestCase):
     """`"split"` rows (owner 2026-10-16, multi-record): a row the book prints once for several things becomes one item each."""
     XML = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz-kit" source="ZZ" page="9" avail="4(I)" cost="250 + Base Cost">'

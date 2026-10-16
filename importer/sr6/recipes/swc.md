@@ -83,10 +83,12 @@ recipe reads both.
   modifiers (`+1 initiative die`, `+2 to base movement rates`, `–1 Logic`) are no items. The book's typos read: the comma
   left out after a parenthesis (Ghoul's `Enhanced Senses (Hearing, Smell) Natural Weapon`, Loup-garou's `(Metahuman
   Flesh) –1 Logic`), the unclosed parenthesis of Nosferatu's and the vampire's `Induced Dormancy (Lack of Air, (Essence)
-  Minutes, (p. 228, SR6)` (it runs to the list's end, the last item). Every list reads, so `overrides/swc.json` holds none.
+  Minutes, (p. 228, SR6)` (it runs to the list's end, the last item). Every list reads.
   The rest resolve by name in the app across the library (data.ts `gainedEntry`: the core rulebook's critter powers and
-  its critter weaknesses, printed as rules); a name nothing has stays as printed and Game data lists it
-  (`data.unresolved`): Goblin's `Dietary Restriction` (the book's word for Requirement), Nibiinaabe's `Darkness`.
+  its critter weaknesses, printed as rules). Nibiinaabe's `Darkness` names a spell, not a power: `overrides/swc.json`'s
+  owner row (`"gen": "owner"`, `replaces`) makes it `Innate Spell (Darkness)`, the core rulebook's critter power with the
+  spell it casts in its parenthesis. A name nothing has stays as printed (owner 2026-10-16: Goblin's `Dietary
+  Restriction`, the book's word for Requirement), shown quietly and noted once in the runner's Review (`data.unresolved`).
 
 ## Real-book check (local, nothing committed)
 

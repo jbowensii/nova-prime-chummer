@@ -287,7 +287,8 @@ function InfectedSection() {
 }
 
 /** An Infected type's gained powers or weaknesses (its <power>s, <weakness>s), each with its card when the catalog has it
- *  (data.ts gainedEntry), else marked (Game data lists it: data.unresolved). */
+ *  (data.ts gainedEntry), else as printed, quietly (no error of the player's: Review notes it once, data.unresolved;
+ *  Goblin's Dietary Restriction stays as printed, owner 2026-10-16). */
 export function Gains({ t, tag }: { t: InfectedType; tag: Gained['tag'] }) {
   const { data } = useSr6Editor()
   const gs = t.gains.filter(g => g.tag === tag)
@@ -306,7 +307,7 @@ export function Gains({ t, tag }: { t: InfectedType; tag: Gained['tag'] }) {
               </Sr6Ref>
             ) : (
               <>
-                {name} <span className="err">(not in the catalog)</span>
+                {name} <span className="muted">(as printed; not in the catalog)</span>
               </>
             )}
           </span>

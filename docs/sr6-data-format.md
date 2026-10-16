@@ -212,8 +212,10 @@ Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infe
   `Magical Guard (self only)`), `rating` a printed number (`Armor 1`, `Armor (4)`, `Built Tough 2`), `ref` the critter
   power's id when the same book prints it. The app finds the rest by the name less its parenthesis across the catalog
   (`data.ts` `gainedEntry`: a power among the critter powers, then the qualities; a weakness among the critter
-  weaknesses, the core rulebook's rules entries, p. 228) and lists a name it can't find as `data.unresolved`, never
-  guessed. Modifiers (`+1 initiative die`, `–1 Logic`) and the free pick's sentence are not items. They cost nothing
+  weaknesses, the core rulebook's rules entries, p. 228) and lists a name it can't find as `data.unresolved` (noted once
+  in the runner's Review, shown as printed), never guessed. A name the book misprints is the owner's override row
+  (`"gen": "owner"`, a kid that `replaces` the printed one): Nibiinaabe's `Darkness`, a spell, is `Innate Spell
+  (Darkness)`. Modifiers (`+1 initiative die`, `–1 Logic`) and the free pick's sentence are not items. They cost nothing
   (owner: critter powers cost 0); the Creation method tab's Infected section and the printed sheet list them.
 - `<karmaif flag="awakened" value note/>`: the quality's Karma when the character is Awakened (a magician, adept, mystic
   adept or aspected magician; a technomancer is not), from a price note `(–10 Karma if character is already Awakened)`:
