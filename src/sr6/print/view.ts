@@ -105,8 +105,12 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     /** a SIN's licences: its fake licences (`Zap Gun 2`) and the items licensed on it (`Tangle Rope 1 (licence 2)`; on a
      *  real SIN, at its fee, `Tangle Rope 1 (licence)`) */
     licencesOf: (s: Sr6Sin) => s.licences.map(l => licenceText(b, data, s, l)),
-    /** a weapon's DV and the statuses it applies (`4P, Burning 4`: the No Future errata's Molotov) */
-    dv: (x: Sr6Purchase) => [attrsOf(x).dv, ...statusesOf(entryOf(x, data))].filter(Boolean).join(', '),
+    /** a weapon's DV, its bonus damage when it has one (high Strength on a melee weapon: `3P (+1)`), and the statuses it
+     *  applies (`4P, Burning 4`: the No Future errata's Molotov) */
+    dv: (x: Sr6Purchase) => {
+      const plus = d.attackRatings.weapons.find(a => a.uid === x.uid)?.dvBonus
+      return [`${attrsOf(x).dv ?? ''}${plus ? ` (+${plus})` : ''}`, ...statusesOf(entryOf(x, data))].filter(Boolean).join(', ')
+    },
     /** an armor line's Social Rating as printed (clothing, Smooth Operations), '' when none */
     social: (x: Sr6Purchase) => attrsOf(x).social ?? '',
     /** the Awakened flag (infected.ts awakenedFlag): `yes (adept)`, `no (mundane)`; an override names what it overrides */

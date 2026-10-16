@@ -10,7 +10,7 @@ import { IconButton, IconLink } from '../../ui/icons'
 import { SheetType, usePrintStyle, useSheetArt } from '../../print/shared'
 import '../../print/sheet.css'
 import './sheet.css'
-import { entryOf, priced, statusesOf } from '../engine/budgets'
+import { entryOf, priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
@@ -42,7 +42,7 @@ export function Sr6Sheet() {
     art = useSheetArt(ch.id, 'sr6'),
     k = MAGIC_KINDS[b.magic],
     style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, licencesOf, awakened, qualityNotes, karma, nuyen, host, effectNotes } =
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, licencesOf, dv, awakened, qualityNotes, karma, nuyen, host, effectNotes } =
     runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
@@ -291,12 +291,7 @@ export function Sr6Sheet() {
                         <b>{nameOf(x)}</b>
                         {acc(x)}
                       </td>
-                      <td>
-                        {entryOf(x, data)?.attrs.dv ?? ''}
-                        {w?.dvBonus ? ` (+${w.dvBonus})` : ''}
-                        {/* (the status it applies: the Molotov's Burning 4, No Future errata) */}
-                        {statusesOf(entryOf(x, data)).map(s => `, ${s}`)}
-                      </td>
+                      <td>{dv(x)}</td>
                       <td>{w ? w.bands.map(band).join('/') : ''}</td>
                       <td>{w?.pool ?? ''}</td>
                     </tr>

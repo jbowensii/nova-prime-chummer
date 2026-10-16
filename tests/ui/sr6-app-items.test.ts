@@ -212,30 +212,38 @@ test('Creation method: the Infected type’s gained powers (free) and weaknesses
 
 // every printed sheet style shows the same data (owner 2026-10-16): only the look differs
 test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
-  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, the Awakened override, Stolen Gear’s bounty',
+  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty',
   async style => {
     saveSettings({ ...loadSettings(), print: style })
     const gainer =
       '<quality id="crb.zap-gainer" source="CRB" page="71" kind="positive" karma="20" class="INFECTED"><name>Zap Gainer</name>' +
       '<infected strain="II" base="Glimmerkin" freePhysical="2" freeMental="2" essence="5" magic="1" magicLoss="1" magicMax="5+initiate-grade"/>' +
       '<power name="Glimmer (Bright)"/><power name="Knack" rating="2"/><weakness name="Trouble Dice (Noon, Mild)"/><text/></quality>'
+    const zapStick =
+      '<weapon id="crb.zap-stick" source="CRB" page="250" category="clubs" dv="3S" ar="6/—/—/—/—" avail="2" cost="100"><name>Zap Stick</name><text/></weapon>'
     const c = fixtureCatalog((f, x) =>
       f.endsWith('crb/qualities.xml')
         ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`)
         : f.endsWith('crb/weapons.xml')
-          ? x.replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
+          ? x
+              .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
+              .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
           : f.endsWith('crb/gear.xml')
             ? x.replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
             : x,
     )
     const cr = stolenCr()
     cr.set('infectedAllowed', { key: 'infectedAllowed', value: true })
+    // (high Strength's bonus damage on a melee weapon: the option on, its first step at Strength 1, so +1)
+    cr.set('highStrengthDamage', { key: 'highStrengthDamage', value: true })
+    cr.set('strengthDamageStep1', { key: 'strengthDamageStep1', value: 1 })
     const ch = stolenRunner(false)
     ch.build.qualities.push({ uid: 'q0', id: 'crb.zap-gainer', level: 1 })
     ch.build.awakened = false
     ch.build.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Tangle Rope 1', rating: 2, item: 'g1' }] }]
     ch.build.purchases = [
       { uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] },
+      { uid: 'w2', kind: 'weapons', id: 'crb.zap-stick', qty: 1, accessories: [] },
       { uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] },
       { uid: 'a1', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
     ]
@@ -246,6 +254,8 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     expect(t).toMatch(/Weaknesses: Trouble Dice \(Noon, Mild\)/)
     expect(t).toMatch(/Pat Roe[^]*Tangle Rope 1 \(licence 2\)/)
     expect(t).toMatch(/Burning 4/)
+    expect(t).toMatch(/3S \(\+1\)/)
+    expect(t).not.toMatch(/5P \(\+/) // (a ranged weapon takes no Strength bonus)
     expect(t).toMatch(/no, overridden \(derived: yes, Infected: Zap Gainer\)/)
     expect(t).toMatch(/Bounty: 3 of 3 karma turned into nuyen not bought off/)
     expect(t).toMatch(/Social/)
