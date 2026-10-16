@@ -101,6 +101,20 @@ Made-up words on buying a critter.
 | OPTIONS | AVAIL | COST |
 |---|---|---|
 | Trained: Fetch | +2 | +300 nuyen |
+## Critter Commands
+Made-up words on commands.
+### Critter Command Actions
+Made-up examples of commands.
+#### Fizz On Cue
+The critter fizzes when told to.
+#### Hum Along (Specify a Tune)
+The critter hums a made-up tune.
+## Critter Special Training
+Made-up words on training.
+**Harness Training:** The critter wears a made-up
+harness.
+**Glow Training:** The critter glows on a
+made-up signal.
 ## Critter Companion Qualities
 ### Snuggly
 A made-up cuddly critter.
@@ -175,6 +189,17 @@ class WlRecipeTest(unittest.TestCase):
         self.assertIn("Critter Corner: Hum Goat", r)
         self.assertNotIn("Fizz Mole", r)  # its text went to its critters
         self.assertNotIn("qualities.xml", self.res.files)
+
+    def test_critter_commands_and_special_training(self):
+        # the book's two lists of what a critter learns: actions by their section, with their text
+        a = entries(self.res, "actions")
+        self.assertEqual({n: (e.get("category"), e.get("type")) for n, e in a.items()},
+                         {"Fizz On Cue": ("Critter Command Actions", None),
+                          "Hum Along (Specify a Tune)": ("Critter Command Actions", None),
+                          "Harness Training": ("Critter Special Training", None),
+                          "Glow Training": ("Critter Special Training", None)})
+        self.assertIn("hums a made-up tune", self.texts[("actions", "hum-along-specify-a-tune")])
+        self.assertIn("glows on a", self.texts[("actions", "glow-training")])
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

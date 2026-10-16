@@ -105,11 +105,16 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
   naming its kind before a colon (`Quality Path: Critter Bond`, `New Edge Action: …`, `New Contact Type: …`). A
   lower-case box title, a heading naming the kind itself and an example are not;
 - a bold run-in (`• **Reroll one die:** …`) under a heading naming a run-in kind (Edge boosts and actions, data
-  structures, contact types) is an entry;
+  structures, contact types, a critter's special training) is an entry;
 - an action's type comes from its section's words (or a Matrix action's `(Major)` tag), its timing from `(I)`/`(A)`,
   its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
 
 The rule sections stay as they were (the rules contents still list them).
+
+Wild Life's two lists of what a critter learns are actions by their section (`category`): each `#### Name` under `###
+Critter Command Actions` (pp. 181-182) and each bold run-in under `## Critter Special Training` (pp. 182-183), with
+their description, no other printed field. Never a runner's: the app offers them only for an owned critter (the
+Critters tab and the Ledger's Teach, `src/sr6/engine/critters.ts` `trainedWhat`, owner 2026-10-16).
 
 **Vehicle design** (Double Clutch pp. 150-154; `sections.design_tables`, `design_terms`). Each row of a table with a
 BUILD POINTS column (chassis, powertrain and console types) and of the size class table (first header SIZE CLASS, a

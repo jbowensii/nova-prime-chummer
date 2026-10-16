@@ -55,7 +55,9 @@ RUNIN_KINDS = [
     ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
-    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b", re.I)),
+    # (`Critter Special Training`, Wild Life p. 182: what a critter can be trained in, beside its Critter Command Actions)
+    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b"
+                           r"|\bcritter\s+special\s+training\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
 ]
