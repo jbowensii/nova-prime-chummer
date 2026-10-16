@@ -1097,7 +1097,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Nuyen | `inDebtQuality` | quality id | all |  |  |  | In-debt quality |
 | Nuyen | `stolenGearQuality` | quality id | optional |  |  |  | No Future's Stolen Gear (`nf.stolen-gear`), as its errata has it (NF p. 162): 0 Karma; with it the Karma turned into nuyen at creation is `karmaToNuyenRateStolenGear` a Karma, at most `karmaToNuyenMaxStolenGear` at any rate; never with In Debt (Review's `quality.stolenGearInDebt`); after creation bought off a part at a time, `stolenGearBuyOff` Karma per converted Karma (docs/sr6-character-format.md, `buyoff` `part`) |
 | Nuyen | `karmaToNuyenRateStolenGear` | number | optional |  |  |  | Nuyen per karma with Stolen Gear (10,000) |
-| Nuyen | `karmaToNuyenMaxStolenGear` | number | optional |  |  |  | Most karma turned into nuyen with Stolen Gear (20; `karmaToNuyenMax` too when lower) |
+| Nuyen | `karmaToNuyenMaxStolenGear` | number | optional |  |  |  | Most karma turned into nuyen with Stolen Gear (20; `karmaToNuyenMax` too when lower): refused at creation; after it, the karma converted at creation and since past it is a career Review warning (`quality.stolenGearCap`), never refused |
 | Nuyen | `stolenGearBuyOff` | number | optional |  |  |  | Karma to buy off one Karma of Stolen Gear's conversion (2) |
 | Nuyen | `karmaToNuyenCap` | true/false | optional |  |  |  | House rule, off (no limit: CRB Hong Kong p. 66 prints none): the Karma turned into nuyen at creation up to `karmaToNuyenMax` |
 | Nuyen | `karmaToNuyenMax` | number | optional | `karmaToNuyenCap` |  |  | Most karma turned into nuyen (unset: no limit) |

@@ -106,6 +106,27 @@ test('Stolen Gear after creation: bought off a part at a time at stolenGearBuyOf
   expect(preview(ch, { op: 'buyoff', target: 'sg' }, data, cr)).toMatchObject({ ok: true, karma: 0 })
 })
 
+test('Stolen Gear after creation: karma turned into nuyen past its limit is a career Review warning, never refused', () => {
+  const { data, cr } = made({ rules: { ...STOLEN, workingForTheMan: true, 'advance.karmaToNuyenRate': 1000 }, unset: ['karmaToNuyenCap', 'karmaToNuyenMax'] }),
+    ch = runner()
+  ch.build.karmaToNuyen = 3
+  ch.build.qualities = [{ uid: 'sg', id: 'crb.butterfingers', level: 1 }]
+  const one = ok(record(ch, { op: 'convert', karma: 1 }, data, cr, undefined, NOW)) // (4: at the limit)
+  expect(validateCareer(data, cr, one).some(v => v.code === 'quality.stolenGearCap')).toBe(false)
+  const two = ok(record(one, { op: 'convert', karma: 2 }, data, cr, undefined, NOW)) // (6: past it, recorded anyway)
+  expect(validateCareer(data, cr, two).filter(v => v.code === 'quality.stolenGearCap')).toEqual([
+    expect.objectContaining({
+      severity: 'warning',
+      path: 'qualities.sg',
+      message: 'Butterfingers: 6 karma turned into nuyen, more than the 4 it allows; not enforced, settle it with your GM.',
+    }),
+  ])
+  // (voided, or Stolen Gear bought off: no warning)
+  expect(validateCareer(data, cr, ok(voidEntry(two, two.ledger.at(-1)!.id, 'Oops', NOW))).some(v => v.code === 'quality.stolenGearCap')).toBe(false)
+  const off = ok(record(two, { op: 'buyoff', target: 'sg' }, data, cr, undefined, NOW))
+  expect(validateCareer(data, cr, off).some(v => v.code === 'quality.stolenGearCap')).toBe(false)
+})
+
 test('an item’s statuses (<status name level?>) as shown', () => {
   const e = { id: 'x', kind: 'weapons', name: 'X', source: 'CRB', page: 1, attrs: {}, text: '' } as const
   expect(

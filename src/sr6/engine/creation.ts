@@ -1060,7 +1060,7 @@ const ABOUT: Record<string, [string, string]> = {
   inDebtQuality: ['The catalog’s In Debt quality, which changes the Karma-to-nuyen rate', HK(77)],
   stolenGearQuality: ['The catalog’s Stolen Gear quality (0 Karma), which changes the Karma-to-nuyen rate and limit; never with In Debt', NF_ERRATA],
   karmaToNuyenRateStolenGear: ['Nuyen a Karma turns into at creation with Stolen Gear', NF_ERRATA],
-  karmaToNuyenMaxStolenGear: ['The most Karma turned into nuyen at creation with Stolen Gear, at any rate', NF_ERRATA],
+  karmaToNuyenMaxStolenGear: ['The most Karma turned into nuyen with Stolen Gear, at any rate (refused at creation; after it, a Review warning)', NF_ERRATA],
   stolenGearBuyOff: ['Karma to buy off one Karma of Stolen Gear’s conversion after creation (bought off a part at a time)', NF_ERRATA],
   karmaToNuyenCap: [
     'On: the Karma turned into nuyen at creation is limited to the number below; off: no limit, as the book prints none (CRB Hong Kong p. 66)',

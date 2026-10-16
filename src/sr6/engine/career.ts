@@ -24,7 +24,7 @@ import {
   skillRank,
   toNuyen,
 } from './budgets'
-import { flag, num, type CreationRules } from './creation'
+import { cite, flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
@@ -758,6 +758,22 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     out: Violation[] = []
   if (bal.karma < 0) out.push({ code: 'career.karma', severity: 'warning', path: 'ledger', message: `The karma balance is below zero (${fmt(bal.karma)}).` })
   if (bal.nuyen < 0) out.push({ code: 'career.nuyen', severity: 'warning', path: 'ledger', message: `The nuyen balance is below zero (${fmt(bal.nuyen)}¥).` })
+  // Stolen Gear's limit after creation (No Future errata, NF p. 162): the karma turned into nuyen at creation and since,
+  // past karmaToNuyenMaxStolenGear, is a warning, never refused (owner 2026-10-16; creation still refuses it)
+  const b = currentBuild(ch),
+    sg = settingQuality(b, cr, 'stolenGearQuality', data),
+    cap = num(cr, 'karmaToNuyenMaxStolenGear')
+  if (sg && cap !== undefined) {
+    const total = toNuyen(ch.build, cr, data) + liveAdvances(ch).reduce((t, e) => t + (e.advance.op === 'convert' ? Math.max(0, e.advance.karma) : 0), 0)
+    if (total > cap)
+      out.push({
+        code: 'quality.stolenGearCap',
+        severity: 'warning',
+        path: `qualities.${sg.uid}`,
+        message: `${data.qualities[sg.id]?.name ?? sg.name ?? sg.id}: ${total} karma turned into nuyen, more than the ${cap} it allows; not enforced, settle it with your GM.`,
+        ...cite(cr, 'stolenGearQuality'),
+      })
+  }
   const keep = new Set([
     'awakened.override',
     'catalog.missing',
@@ -775,5 +791,5 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     'gear.grade',
     'catalog.accessoryHost',
   ])
-  return [...out, ...validateSr6(data, cr, { ...ch, build: currentBuild(ch) }).filter(v => keep.has(v.code))]
+  return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
 }
