@@ -65,11 +65,13 @@ const menuLabels = (page: Page) =>
     .evaluateAll(as => as.map(a => a.getAttribute('aria-label')))
 const actions = (page: Page) => page.getByRole('group', { name: 'Page actions' })
 const MENU = ['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup']
+// SR6 adds the Designer after Your runners (Sr6App.tsx)
+const SR6_MENU = ['Your runners', 'Designer', ...MENU.slice(1)]
 
 /** Row 1 then (when `acts`) row 2 under it, from the left; the game switch, Settings and the account in row 1. */
 async function rows(page: Page, what: string, sr6: boolean, acts: string[] | null) {
   await expect(mainMenu(page)).toBeVisible()
-  expect(await menuLabels(page), what).toEqual(MENU)
+  expect(await menuLabels(page), what).toEqual(sr6 ? SR6_MENU : MENU)
   const row1 = page.locator('.menubar')
   await expect(row1.getByRole('link', { name: sr6 ? 'Switch to Shadowrun Anarchy' : 'Switch to Shadowrun 6' })).toBeVisible()
   if (sr6) await expect(row1.getByRole('button', { name: 'Ask the rules' })).toHaveCount(0) // (Anarchy's: once the admin sets it up)
