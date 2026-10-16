@@ -482,6 +482,13 @@ export const CREATION_KEYS: CreationKey[] = [
     group: 'Optional rules',
     methods: [],
   },
+  {
+    key: 'infectedPowersAtCreation',
+    label: 'Infected optional powers at creation (GM override): bought at creation, not only after',
+    type: 'bool',
+    group: 'Optional rules',
+    methods: [],
+  },
   ...n(
     'Optional rules',
     [],
@@ -731,6 +738,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   twentyQuestionsKarma: { requires: ['twentyQuestions'] }, // SWC p. 25
   // SWC p. 144: 2 Edge for twice the core rulebook's lead (HK p. 45)
   stackingAdvantage: { requires: ['arDrEdgeGap'] },
+  infectedPowersAtCreation: { requires: ['infectedAllowed'] },
   // SWC p. 150: "add Agility to Attack Rating in place of Strength"
   strengthInCloseCombat: { replaces: ['meleeArStrength'] },
   strengthDamageStep1: { requires: ['highStrengthDamage'] },
@@ -1135,6 +1143,10 @@ const ABOUT: Record<string, [string, string]> = {
     'On: a runner may take the Infected qualities and buy the Infected optional powers with Karma, at creation and after; off: they are hidden from the pickers and refused',
     SWC(104),
   ],
+  infectedPowersAtCreation: [
+    'On: an Infected runner may buy its type’s optional powers at creation; off: only its one free pick at creation, the rest after (“in general”, p. 105)',
+    SWC(105),
+  ],
   exoticFirstSpecFree: ['On: the first Exotic Weapons specialization costs no skill points or Karma', HOUSE],
   mentorBothAdvantages: [
     'On: a mystic adept gets both the magician’s and the adept’s advantages of its mentor spirit; off: it picks one, for good (CRB Hong Kong pp. 162–163)',
@@ -1275,6 +1287,7 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'fociBondKarma',
   'suprathyroidStacks',
   'infectedAllowed',
+  'infectedPowersAtCreation',
   'strengthDamageStep1',
   'strengthDamageStep2',
   // the owner's house rules and options (2026-10-11)

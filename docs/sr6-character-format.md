@@ -83,6 +83,10 @@ copy". Book entries are never copied here.
   the mentor spirit followed (a catalog `mentorspirits` id; the Mentor Spirit quality comes and goes with it), and a
   mystic adept's `mentorAdvantage`, `magician` or `adept` (CRB Hong Kong pp. 162–163). `tradition` is
   free text; `drainAttr` is `log`, `int` or `cha`.
+- `awakened` (`true`/`false`): the player's override of the Awakened flag; absent, derived (a magician, aspected
+  magician, mystic adept or adept, or an Infected; a technomancer is not). `infectedFrom`: a magic kind, the one the
+  runner had before its Infected type changed it (Awakened it, made it a mystic adept or took a technomancer's
+  Resonance); taking the type away gives it back, and the creation method rates and prices it. Both absent in older files.
 - Spends are counts: attribute `points` (from the attribute pool), `adjust` (adjustment points) and `karma` (ranks bought
   with karma); a skill's `points` and `karma` likewise. A missing number reads as 0.
 - `<lifemodule>`: an adult life module taken (lifepath; the same one twice when the table allows it, each copy with its

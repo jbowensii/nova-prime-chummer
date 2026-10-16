@@ -53,6 +53,8 @@ import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
+import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from './infected'
+import { infectedQuality } from './critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'
 
 interface Ctx {
@@ -160,10 +162,11 @@ const RULES: Rule[] = [
     code: 'prio.magicAllowed',
     severity: 'error',
     tab: 'method',
+    // (the kind the method bought: one an Infected type gave isn't the method's, infected.ts boughtKind)
     check: c =>
-      c.p.legalMagic(c.b).some(m => m.kind === c.b.magic)
+      c.p.legalMagic(c.b).some(m => m.kind === boughtKind(c.b))
         ? null
-        : { message: `${MAGIC_KIND_LABELS[c.b.magic]} isn’t available at magic priority ${c.b.priorities.magic ?? '(none)'}.` },
+        : { message: `${MAGIC_KIND_LABELS[boughtKind(c.b)]} isn’t available at magic priority ${c.b.priorities.magic ?? '(none)'}.` },
   },
 
   { code: 'attr.overspent', severity: 'error', tab: 'attributes', check: c => over(c.budgets.attributePoints, 'Attribute points') },
@@ -175,7 +178,8 @@ const RULES: Rule[] = [
     check: c => {
       const m = c.data.metatypes[c.b.metatype]
       if (!m) return null
-      return [...CORE_ATTRS, 'edg' as const].flatMap(k => {
+      // (an Infected's core attributes drop to its type's maxima instead: infected.dropped)
+      return [...(runnerInfected(c.b, c.data) ? [] : CORE_ATTRS), 'edg' as const].flatMap(k => {
         const r = attrRating(c.b, k, c.p),
           max = attrMax(c.data, c.cr, c.b, k)!
         return r > max
@@ -200,7 +204,7 @@ const RULES: Rule[] = [
     check: c =>
       (['mag', 'res'] as const).flatMap(k => {
         const r = attrRating(c.b, k, c.p),
-          max = magicCap(c.b, c.cr, k) ?? 0
+          max = magicCap(c.b, c.cr, k, c.data) ?? 0
         return r > max
           ? [
               {
@@ -623,6 +627,93 @@ const RULES: Rule[] = [
   // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list (a
   // prerequisite: an error), and no more of the list than that quality's choices allow (the list's max, else the
   // choice's count: a warning)
+  // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides)
+  {
+    code: 'awakened.override',
+    severity: 'warning',
+    tab: 'method',
+    check: c => {
+      const f = awakenedFlag(c.b, c.data)
+      return f.override === undefined || f.override === f.derived
+        ? null
+        : { message: `Derived: ${f.derived ? 'Awakened' : 'not Awakened'} (${f.why}); overridden to ${f.value ? 'Awakened' : 'not Awakened'}.` }
+    },
+  },
+  // the Sixth World Companion's Infected (pp. 104–106; infected.ts)
+  {
+    code: 'infected.off',
+    severity: 'warning',
+    tab: 'qualities',
+    check: c =>
+      flag(c.cr, 'infectedAllowed')
+        ? null
+        : c.b.qualities
+            .filter(q => infectedQuality(c.data.entry('qualities', q.id)))
+            .map(q => ({
+              path: `qualities.${q.uid}`,
+              message: `${c.data.qualities[q.id]?.name ?? q.id} is an Infected entry, but Infected player characters aren’t allowed at this table (kept).`,
+              ...SWC(104),
+            })),
+  },
+  {
+    code: 'infected.metatype',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const inf = runnerInfected(c.b, c.data)
+      return inf && c.b.metatype && !infectedFit(c.data, c.b.metatype, inf.t)
+        ? {
+            path: `qualities.${inf.line.uid}`,
+            message: `${inf.t.name} is for ${inf.t.base} runners, not ${metaName(c).toLowerCase()}.`,
+            ...entryCite(c.data.entry('qualities', inf.t.id)),
+          }
+        : null
+    },
+  },
+  {
+    code: 'infected.power',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const free = freePick(c.b, c.data),
+        creation = !c.ch.finalizedAt && !flag(c.cr, 'infectedPowersAtCreation')
+      return c.b.qualities.flatMap(q => {
+        if (!optionalPower(c.data.entry('qualities', q.id))) return []
+        const why = powerRefusal(c.b, c.data, c.cr, q.id, false),
+          name = c.data.qualities[q.id]?.name ?? q.id
+        const message =
+          why === 'infected-no-type'
+            ? `${name}: only an Infected runner buys optional powers.`
+            : why === 'infected-not-listed'
+              ? `${name} isn’t on ${runnerInfected(c.b, c.data)!.t.name}’s optional powers.`
+              : creation && (q !== free || q.level > 1)
+                ? `${name}: at creation only the free optional power (one level); the rest are bought after creation.`
+                : ''
+        return message ? [{ path: `qualities.${q.uid}`, message, ...SWC(105) }] : []
+      })
+    },
+  },
+  {
+    code: 'infected.dropped',
+    severity: 'warning',
+    tab: 'attributes',
+    check: c =>
+      runnerInfected(c.b, c.data)
+        ? CORE_ATTRS.flatMap(k => {
+            const r = attrRating(c.b, k, c.p),
+              max = attrMax(c.data, c.cr, c.b, k)!
+            return r > max
+              ? [
+                  {
+                    path: `attributes.${k}`,
+                    message: `${A(k)} ${r} is above the Infected maximum of ${max}: it drops to ${max}, the spend not refunded.`,
+                    ...SWC(104),
+                  },
+                ]
+              : []
+          })
+        : [],
+  },
   { code: 'quality.granted', severity: 'error', tab: 'qualities', check: c => granted(c).filter(h => h.none) },
   { code: 'quality.grantedCount', severity: 'warning', tab: 'qualities', check: c => granted(c).filter(h => !h.none) },
 

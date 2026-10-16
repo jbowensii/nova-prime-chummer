@@ -137,13 +137,15 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
 
 /** The attribute maxima an entry's effects set or raise (an infected type's table, `maximum Body and Strength by one
  *  point`): attribute -> { set?, add }; `choice`: a chosen attribute's (`attr-max:choice`: Exceptional, Impaired), which
- *  the attribute the quality's note names takes (budgets.ts attrMax). */
-export function maxEffects(e: Sr6Entry | undefined): Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> {
+ *  the attribute the quality's note names takes (budgets.ts attrMax). One with a `when` holds only when it names the
+ *  runner's metatype (`metatype`: an Infected type's table row, `when="Human"`); any other `when` never. */
+export function maxEffects(e: Sr6Entry | undefined, metatype = ''): Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> {
   const out: Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> = {}
   for (const x of e?.parts ?? []) {
     const t = x.attrs.target ?? '',
       v = effectValue(x.attrs.value)
-    if (x.tag !== 'effect' || !t.startsWith('attr-max:') || x.attrs.confidence === 'low' || !v || x.attrs.when) continue
+    if (x.tag !== 'effect' || !t.startsWith('attr-max:') || x.attrs.confidence === 'low' || !v) continue
+    if (x.attrs.when && (!metatype || normName(x.attrs.when) !== normName(metatype))) continue
     const k = t.slice(9) as Sr6Attr | 'choice'
     if (!(SR6_ATTRS as string[]).includes(k) && k !== 'choice') continue
     const cur = out[k] ?? { add: 0 }

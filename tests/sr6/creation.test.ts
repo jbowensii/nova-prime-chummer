@@ -94,6 +94,7 @@ const UNSET = [
   'improvedAbilityFactor',
   'suprathyroidStacks',
   'infectedAllowed',
+  'infectedPowersAtCreation',
   'expandedSpecializations',
   'unrestrictedSkillRanks',
   'languageMax',

@@ -136,6 +136,8 @@ function buildXml(b: Sr6Build): string {
     {
       method: b.method,
       magic: b.magic,
+      awakened: b.awakened,
+      infectedFrom: b.infectedFrom,
       aspectedSkill: b.aspectedSkill,
       tradition: b.tradition,
       drainAttr: b.drainAttr,
@@ -402,6 +404,11 @@ const readContact = (e: Element): Sr6Contact => {
 function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
   out.magic = oneOf(b.getAttribute('magic'), MAGIC_KINDS, 'magic kind', 'mundane', fix)!
+  // (the Awakened override: absent, derived; the kind before an Infected type changed it)
+  const awake = b.getAttribute('awakened'),
+    from = b.getAttribute('infectedFrom')
+  if (awake === 'true' || awake === 'false') out.awakened = awake === 'true'
+  if (from != null) out.infectedFrom = oneOf(from, MAGIC_KINDS, 'magic kind before the Infected type', undefined, fix)
   const drain = b.getAttribute('drainAttr')
   const adv = b.getAttribute('mentorAdvantage')
   Object.assign(

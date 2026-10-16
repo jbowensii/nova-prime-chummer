@@ -6,6 +6,7 @@ import type { Provider } from './providers'
 import { maxEffects } from './effects'
 import { augmentBonus } from './bonuses'
 import { noteAttr } from './choices'
+import { runnerInfected } from './infected'
 
 /** Natural rating: 1 (lifepath: what it starts at) + points + adjustment + karma; Magic or Resonance (whichever the magic kind uses) starts at the
  *  method's rating instead, the other at 0. */
@@ -30,8 +31,12 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
   // a quality's own maxima (an infected type's table, Shiva Arms' `maximum Body and Strength by one point`, effects.ts)
   let max = m.ranges[k as keyof typeof m.ranges][1],
     lowered = false
+  // (an Infected type's row holds for its base metatype only, `when="Human"`; the non-human vampire adds its
+  // <infectedalt> to the runner's own, infected.ts)
+  const inf = runnerInfected(b, data)
+  if (inf?.alt) max += inf.t.alt?.adds[k] ?? 0
   for (const q of b.qualities) {
-    const fx = maxEffects(data.entry('qualities', q.id)),
+    const fx = maxEffects(data.entry('qualities', q.id), m.name),
       x = fx[k],
       c = noteAttr(q.note) === k ? fx.choice : undefined
     if (x?.set !== undefined) max = x.set
@@ -41,7 +46,7 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
         lowered ||= y.add < 0
       }
   }
-  const own = (q: Sr6Quality) => maxEffects(data.entry('qualities', q.id)).choice !== undefined
+  const own = (q: Sr6Quality) => maxEffects(data.entry('qualities', q.id), m.name).choice !== undefined
   max += id ? b.qualities.filter(q => data.sameFamily('qualities', q.id, id) && !own(q) && noteAttr(q.note) === k).length : 0
   const floor = num(cr, 'attributeMaxFloor')
   return lowered && floor !== undefined ? Math.max(floor, max) : max

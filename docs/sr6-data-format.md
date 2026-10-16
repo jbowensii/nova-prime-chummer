@@ -175,7 +175,7 @@ quality pickers, every catalog picker, the editor's `quality` op, `rule-off`, an
 `advance.qualityFactor` ("Infected qualities do not have their cost doubled when purchased during gameplay", p. 106; the
 optional powers likewise).
 
-**Infected rules as data** (owner decisions 2026-10-16, `swc.py` `_infected`; the engine does not read them yet). The
+**Infected rules as data** (owner decisions 2026-10-16, `swc.py` `_infected`; the app plays them: see below). The
 Companion prints each type as a quality (pp. 110–114: `Cost:`, `Gained Powers:`, `Optional Powers:`, `Gained
 Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infected Metatype Attributes table (p. 109,
 `TYPE | BASE | BOD … CHA`). Each Infected quality's first children, in this order (`common.xsd` Quality):
@@ -221,6 +221,43 @@ prints for several bases, is one quality per base (owner): `Ghoul (Human)`, `Gho
 `Cost: 27 Karma` is a misprint, the override table sets 29), each with its own row's maxima and its own `<infected
 base>`. The gained powers, weaknesses and attacks stay in the description: the printed lists have typos (a missing comma,
 `Induced Dormancy (Lack of Air, (Essence) Minutes` unbalanced) and name critter powers of other books.
+
+**Infected characters in the app** (`src/sr6/engine/infected.ts`, owner decisions 2026-10-16). A runner is Infected while
+it has one Infected type (a quality with `<infected>`): Creation method's Infected yes/no and type selector (shown while
+`infectedAllowed` is on, or the runner has a type) list the types whose `base` is the runner's metatype by name (the
+Ghoul's one per base), and the non-human vampire for any other metatype through its `<infectedalt base="other">`; the
+editor's `infected` op (and the `quality` op given a type) takes it, replacing the one the runner has, and taking it away
+restores the runner. From the type:
+
+- Attribute maxima: an `attr-max` effect with a `when` holds only when the `when` is the runner's metatype's name
+  (`effects.ts` `maxEffects`: the type's own row; any other `when`, a condition, never); the `<infectedalt>` values are
+  added to the runner's own metatype maxima. An Infected's core attribute above its maximum drops to it on the derived
+  values, the spend not refunded (Review's warning `infected.dropped`, in place of `attr.creationMax`).
+- `freePhysical`, `freeMental`: added to the attribute points as far as points are spent on attributes of that group.
+- `essence`: the Essence the runner starts at (else the `essence` setting; Strain I's note: the book gives none).
+  `magic`/`magicLoss`: Magic 1 for a runner whose bought kind has none, 1 less for one with it (`providers.ts`).
+  `magicMax`: the highest Magic in place of `magicMax` (`5+initiate-grade`; `ess+initiate-grade`: the starting Essence's
+  whole points plus the grade, Essence's loss then taken off as everyone's).
+- `awakens`: a runner not Awakened becomes an adept or full magician, one Awakened as the other kind a mystic adept, and a
+  technomancer loses Resonance (no refund); the kind before is the build's `infectedFrom` (docs/sr6-character-format.md):
+  the method rates and prices that bought kind (the priority row's Magic, point buy's and the Karma build's price), and
+  `prio.magicAllowed`/`reconcile` read it.
+- `<optionalpower>`: an optional power (class `INFECTED/OPTIONAL_POWER`) is refused (`infected-no-type`,
+  `infected-not-listed`) unless the runner's type lists it; at creation only one the free pick may take, free (one level),
+  unless the table's `infectedPowersAtCreation` is on (`infected-after-creation`); after creation at its own Karma, the
+  free pick free while unused. The free pick is the dearest `free` line the runner has. Review's `infected.power` flags a
+  line that no longer fits. The book's pace (one every two in-game months) is shown, not enforced.
+- Edge: no rule; Creation method says so. Review's `infected.off` warns when a runner has Infected entries while the
+  table's `infectedAllowed` is off (kept), `infected.metatype` when the type isn't for its metatype.
+
+The **Awakened flag** (`infected.ts` `awakenedFlag`, `Sr6Derived.awakened`): Awakened is a magician, aspected magician,
+mystic adept or adept (`data.ts` `awakenedKind`), or an Infected; a technomancer is Emerged, not Awakened (CRB pp.
+127–128); `providers.ts` keeps its own "awakened or emerged" for what is either (a method's Magic or Resonance and its
+price, the lifepath mundane's Edge). The player may override it (Creation method's Awakened: derived, yes or no; the
+build's `awakened`): shown with the derived value and why, and a Review warning (`awakened.override`) while it differs.
+A `<karmaif flag="awakened">` price holds while the flag is on (an Infected type's own: Awakened before it, the bought
+kind or the override), at creation, after it and in the Qualities picker (`54 (less 10 if the character is already
+Awakened; this runner: 44)`); the non-human vampire costs its `<infectedalt>` karma.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
 named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
@@ -1133,6 +1170,7 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Optional rules | `unrestrictedSkillRanks` | true/false | optional |  |  | `advance.skillMax` | Unrestricted Skill Ranks (SWC p. 153, off): no `advance.skillMax` after creation |
 | Optional rules | `suprathyroidStacks` | true/false | optional |  |  |  | Suprathyroid Bonuses Stack (SWC p. 149, off): the suprathyroid gland is exempt from the other augmentations' attribute and initiative incompatibilities (`gear.incompatible`); the +4 cap still holds |
 | Optional rules | `infectedAllowed` | true/false | optional |  |  |  | Infected Player Characters Allowed (SWC p. 104, off): the Infected qualities and optional powers (classes `INFECTED`, `INFECTED/OPTIONAL_POWER`) are offered in the pickers and may be taken at creation and bought after, at their own Karma; off, they are hidden and refused |
+| Optional rules | `infectedPowersAtCreation` | true/false | optional | `infectedAllowed` |  |  | Infected Optional Powers at Creation (GM override, off; SWC p. 105: "in general" bought after creation): an Infected runner buys its type's optional powers at creation; off, only its one free pick at creation |
 | Optional rules | `strengthDamageStep1`, `strengthDamageStep2` | number | optional | `highStrengthDamage` |  |  | The Strength for each step of High Strength Adds to Damage (SWC p. 150: 7 and 10) |
 | Optional rules | `exoticFirstSpecFree` | true/false | optional |  |  |  | House rule, off: the first Exotic Weapons specialization costs no skill points or Karma |
 | Optional rules | `mentorBothAdvantages` | true/false | optional |  |  |  | House rule, off: a mystic adept gets both its mentor spirit's magician and adept advantages; off, it picks one for good (CRB Hong Kong pp. 162–163; Review's `magic.mentorAdvantage` until picked) |

@@ -7,7 +7,7 @@
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
 import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { aptitudeSkills, attrMax, manySpecs, powerCost, attrRating, magicLoss, priced, qualityCost, sinCost, skillRank } from './budgets'
+import { aptitudeSkills, attrMax, manySpecs, powerCost, attrRating, magicLoss, priced, qualityCost, qualityPrice, sinCost, skillRank } from './budgets'
 import { flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -16,6 +16,7 @@ import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
 import { infectedOff, infectedQuality } from './critterware'
+import { freeEligible, freePick, infectedFit, infectedMagicMax, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -254,7 +255,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if ((t === 'mag' && !k.spells && !k.powers) || (t === 'res' && !k.resonance)) no('unknown-attribute')
       const cur = attrRating(b, t, p)
       // CRB pp. 167, 195: Magic or Resonance tops out at magicMax plus the initiation (submersion) grade
-      const cap = t === 'mag' ? need('magicMax') + b.initiation : t === 'res' ? need('magicMax') + b.submersion : attrMax(data, cr, b, t)
+      const cap =
+        t === 'mag'
+          ? (infectedMagicMax(b, data, cr) ?? need('magicMax') + b.initiation)
+          : t === 'res'
+            ? need('magicMax') + b.submersion
+            : attrMax(data, cr, b, t)
       if (cap !== undefined && cur >= cap) no('at-maximum')
       return { label: `${t.toUpperCase()} ${cur} → ${cur + 1}`, karma: (cur + 1) * need('karmaAttrPerRank') }
     }
@@ -294,6 +300,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // after creation, at the table's price too)
       const e0 = data.entry('qualities', a.line.id)
       if (infectedOff(e0, cr)) no('optional-rule-off')
+      // (an optional power only from the runner's Infected type's list: infected.ts powerRefusal)
+      const why = optionalPower(e0) ? powerRefusal(b, data, cr, a.line.id, false) : undefined
+      if (why) no(why)
+      const t0 = infectedOf(e0)
+      if (t0 && !infectedFit(data, b.metatype, t0)) no('not-for-metatype')
+      if (t0 && runnerInfected(b, data)) no('already-infected')
       const factor = () => (infectedQuality(e0) ? 1 : need('advance.qualityFactor'))
       // a family of levels (levels.ts): the level named (or the lower one the runner has plus the levels asked), replacing
       // the lower level, at the difference in Karma
@@ -318,7 +330,9 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? v.maxLevel : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
-      return { label, karma: qualityCost(a.line, v) * factor() }
+      // (its Awakened price, <karmaif>; the Infected free pick, p. 105, when the runner has not used it: one level free)
+      const free = !freePick(b, data) && freeEligible(b, data, a.line.id) ? qualityCost({ ...a.line, level: 1 }, v) : 0
+      return { label, karma: (qualityPrice(b, data, a.line, v) - free) * factor() }
     }
     case 'buyoff': {
       const q = b.qualities.find(x => x.uid === a.target) ?? no('not-taken')

@@ -45,6 +45,7 @@ REQUIRES = {
     "swcStreet.karmaBuild": ["levelSwcStreet", "karmaBuildMethod"], "swcElite.karmaBuild": ["levelSwcElite", "karmaBuildMethod"],
     **{k: ["expandedContacts"] for k in ("contactKarma", "contactPairPerCha", "contactRatingMax")},
     "twentyQuestionsKarma": ["twentyQuestions"], "stackingAdvantage": ["arDrEdgeGap"],
+    "infectedPowersAtCreation": ["infectedAllowed"],
     "strengthDamageStep1": ["highStrengthDamage"], "strengthDamageStep2": ["highStrengthDamage"],
     "advance.karmaToNuyenRate": ["workingForTheMan"], "advance.nuyenToKarmaRate": ["workingForThePeople"],
     **{k: [parent] for parent, kids in (

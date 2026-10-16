@@ -212,6 +212,11 @@ export interface Sr6Build {
   /** a metatype id, '' while none is picked */
   metatype: string
   magic: MagicKind
+  /** the player's override of the Awakened flag (src/sr6/engine/infected.ts awakenedFlag); none: derived */
+  awakened?: boolean
+  /** the magic kind before the Infected type changed it (Awakened it, or took a technomancer's Resonance: SWC p. 105);
+   *  the kind the method bought, and what taking the type away restores */
+  infectedFrom?: MagicKind
   aspectedSkill?: string
   tradition?: string
   drainAttr?: 'log' | 'int' | 'cha'

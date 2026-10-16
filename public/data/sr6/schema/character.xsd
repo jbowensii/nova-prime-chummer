@@ -204,6 +204,15 @@
         <xs:enumeration value="adept"/><xs:enumeration value="technomancer"/><xs:enumeration value="mundane"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
+    <!-- the player's override of the Awakened flag (absent: derived from the magic kind or an Infected type) -->
+    <xs:attribute name="awakened" type="xs:boolean"/>
+    <!-- the magic kind before the runner's Infected type changed it (what taking the type away restores) -->
+    <xs:attribute name="infectedFrom">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="full"/><xs:enumeration value="aspected"/><xs:enumeration value="mystic-adept"/>
+        <xs:enumeration value="adept"/><xs:enumeration value="technomancer"/><xs:enumeration value="mundane"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
     <xs:attribute name="aspectedSkill" type="xs:string"/>
     <xs:attribute name="tradition" type="xs:string"/>
     <xs:attribute name="drainAttr">
