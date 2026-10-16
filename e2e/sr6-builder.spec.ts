@@ -546,12 +546,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await work.getByRole('button', { name: 'Raise SIN 1 lifestyle 1 months' }).click()
   await work.getByRole('button', { name: 'Raise SIN 1 rating' }).click()
   await work.getByLabel('SIN 1 new licence').fill('Zap Gun licence')
-  await work.getByLabel('SIN 1 licence rating').fill('3')
+  // (a licence takes its SIN's rating: no rating of its own; its name stays editable)
   await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
-  await expect(page.getByRole('alert')).toHaveText('A licence can’t be rated above its fake SIN.')
-  await work.getByLabel('SIN 1 licence rating').fill('2')
-  await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
-  await expect(work.getByText('Zap Gun licence (2)')).toBeVisible()
+  await expect(work.getByLabel('SIN 1 licence 1 name')).toHaveValue('Zap Gun licence')
+  await expect(work.getByLabel('SIN 1 licence 1 name').locator('xpath=ancestor::span[contains(@class,"chip")]')).toContainText('2')
   // karma to nuyen both ways (one missed click undone with one more): back is refused at none, then 2 there, 1 back
   const toNuyen = work.getByRole('button', { name: '1 Karma → 1,500¥' }),
     toKarma = work.getByRole('button', { name: '1,500¥ → 1 Karma' })
