@@ -47,6 +47,7 @@ HEADERS = {
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              "RANGE": "range", "PILOT": "pilot", "SENSOR": "sensor",  # a rocket or missile's range and guidance (DA p. 58)
+             "HARDPOINT": "hardpoint",  # the hardpoint a vehicle weapon mount or drone rack takes (DC pp. 142-145)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",

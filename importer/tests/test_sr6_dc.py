@@ -181,6 +181,7 @@ class DcRecipeTest(unittest.TestCase):
                           "cost": "Rating x 900"})
         self.assertEqual(g["Fizz Kit (Level 1)"]["cost"], "500")
         self.assertEqual((g["Drone Rack (Tiny)"]["category"], g["Drone Rack (Tiny)"]["cost"]), ("Drone racks", "700"))
+        self.assertEqual(g["Drone Rack (Tiny)"]["hardpoint"], "small")  # its HARDPOINT column, lower case
 
     def test_autosofts(self):
         """Each skill sold as an autosoft is a program of type autosoft at the ratings the prose gives (unpriced); one

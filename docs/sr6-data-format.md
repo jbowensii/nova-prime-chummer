@@ -68,7 +68,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance) | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance), hardpoint small\|standard\|large\|huge (the hardpoint a vehicle weapon mount, drone rack or mechanical arm attaches to: its HARDPOINT column, Double Clutch pp. 142-145) | — |
 | vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
@@ -79,7 +79,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, augmentation, other: its prerequisites, below) |
 | traditions | tradition | — | — |
-| critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness) | — |
+| critterpowers | critterpower | type, action, range, duration, weakness true (the book lists it as a weakness: a stat block's `Weaknesses:`, or a heading under a `Weaknesses` section, the core rulebook's pp. 228-229) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
@@ -88,7 +88,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
 | actions | action | type (minor, major, edge, boost: the section's words), timing initiative\|anytime, edge int (an Edge action or boost's cost), with (the action it goes with), category (its section) | — |
 | packs | pack | category, cost, essence (as printed) | item (text)×n: the contents as printed |
-| vehicledesign | design | category (chassis, powertrain, console, …: its table), bp, dp (its cost in Design Points as printed, `2 x Armor Rating`: a cost, not an effect), rating, slots, avail, cost (as printed) | — |
+| vehicledesign | design | category (chassis type, powertrain type, console type, size class, …: its table or section), bp (its BUILD POINTS column), dp (its cost in Design Points as printed, `2 x Armor Rating`, `4`, `-10`: a cost, not an effect), perLevel true (dp is per level), max (the most it may be taken, as printed: `4`, `2 x Body`, `min(4, Body)`, `50% x Seat`, `Size Class 20`), maxReverse (the most it may be taken in reverse, when the book says; absent: max), multiplier (a quality factor's `Cost Multiplier`, `x2`, `x0.5`), rating, slots, avail, cost; a chassis's body, armor, handling, seats, sizeClass, a powertrain's accel, interval, topSpeed, a console's pilot, sensor, each table's special, a size class's length, weight, cargo (all as printed: see Vehicle design) | — |
 | ammotypes | ammotype | category, dv, ar (the modifiers as printed), avail, cost (a multiplier `x2` or a price) | — |
 | qualitypaths | qualitypath | — | step (text)×n: the headings under it |
 | qualitysets | qualityset | karma, metatypes (as printed) | quality (text)×n |
@@ -110,6 +110,17 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
   its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
 
 The rule sections stay as they were (the rules contents still list them).
+
+**Vehicle design** (Double Clutch pp. 150-154; `sections.design_tables`, `design_terms`). Each row of a table with a
+BUILD POINTS column (chassis, powertrain and console types) and of the size class table (first header SIZE CLASS, a
+CARGO column; its rows named `Size Class 0` … `Size Class 20`) is a `design`, its columns its attributes as printed
+(`special` too: the console's `10`/`12` and the Bike's `0` are stored and shown, no rule reads them, owner 2026-10-16).
+Each option, modification and quality factor heading's text gives its terms: `Cost: 4 per level` (dp 4, perLevel), `Cost:
+20`, `Cost: Heavy Duty +10, Lightweight –10` (a heading over several: each its own), `Maximum level is 4`, `a maximum of 3
+levels`, `cannot be higher than twice the vehicle's Body` (`2 x Body`), `4 or the vehicle's original Body value,
+whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxReverse), `can only be purchased once` (max
+1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
+on-road or off-road only) stays in its text.
 
 **Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
 technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique

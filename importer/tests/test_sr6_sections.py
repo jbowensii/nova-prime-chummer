@@ -232,10 +232,81 @@ Fizz rounds fizz.
         d = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["vehicledesign.xml"])}
         self.assertEqual((d["Zoom Frame"]["category"], d["Zoom Frame"]["bp"]), ("frame type", "3"))
         self.assertTrue({"Heavy Hull", "Light Hull", "Glow Comms I", "Glow Comms II"} <= set(d))
-        self.assertEqual(d["Scrap Frame"]["bp"], "x0.5")
+        self.assertEqual(d["Scrap Frame"]["multiplier"], "x0.5")
         self.assertEqual(d["Glow Plate"]["dp"], "2 x Armor Rating")  # its Design Point cost: a cost field, no effect
         a = {e.findtext("name"): e.attrib for e in ET.fromstring(res.files["ammotypes.xml"])}
         self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
+
+    def test_vehicle_design_tables_and_terms(self):
+        """The design tables' printed columns (chassis, powertrain, console, size class) and each option's, modification's
+        and quality factor's terms (cost per level, maximum, multiplier), as printed; a weakness heading's entries are
+        critter powers marked as weaknesses."""
+        md = """<!-- page 150 -->
+# BUILD IT
+## General Design
+### Chassis
+| SIZE CLASS | LENGTH | WEIGHT | CARGO |
+|---|---|---|---|
+| 0 | 0 – 1 cm | ~ 2 kg | 0 |
+| 7 | 6 – 9 m | 3,500 kg | 5 CF |
+### Powertrain
+| POWERTRAIN TYPE | ACCEL | SPD INT | TOP SPD | BUILD POINTS | SPECIAL |
+|---|---|---|---|---|---|
+| Hopper | 12 | 18 | 90 | 11 | –3 handling |
+### Console
+| CONSOLE TYPE | PILOT | SENSOR | BUILD POINTS | SPECIAL |
+|---|---|---|---|---|
+| Plain | 1 | 2 | 4 | 9 |
+| CHASSIS TYPE | BOD | ARM | HAND | SEAT | BUILD POINTS | SIZE CLASS | SPECIAL |
+|---|---|---|---|---|---|---|---|
+| Zoomer | 6 | 3 | 4 | 3 | 5 | 5 | 0 |
+### Design Options and Quality Factors
+#### Improved Fizz
+Each level adds fizz. Maximum level is 3. Cost: 6 per level.
+#### Improved Glow
+Adds glow. Maximum level is new Glow value cannot be higher than twice the vehicle’s Body. Cost: 1 per level.
+#### Improved Hum
+Hums. Maximum level is 2 or the vehicle’s original Body value, whichev-
+er is lower. Cost: 3 per level.
+#### Improved Bulk
+No maximum increase other than vehicles cannot go beyond Size Class 20; the maximum decrease is 3 levels. Cost: 2 per level.
+### Design Modifications
+#### Hot/Cold Engines
+Hot or cold. Cost: Hot +12, Cold –8
+#### Slow Drive
+Final speed halved. Cost: -15
+### Quality Factors
+#### Sparkly
+Made-up sparkle. This enhancement can only be purchased once. Cost Mul-
+tiplier: x4
+<!-- page 229 -->
+# WILD LIFE
+## Critter Powers
+### WEAKNESSES
+Made-up weaknesses.
+#### Soggy
+The critter gets soggy, made up.
+"""
+        text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        res = crb.extract(text)
+        d = {e.findtext("name"): {k: v for k, v in e.attrib.items() if k not in ("id", "source", "page")}
+             for e in ET.fromstring(res.files["vehicledesign.xml"])}
+        self.assertEqual(d["Size Class 7"], {"category": "size class", "length": "6 – 9 m", "weight": "3,500 kg", "cargo": "5 CF"})
+        self.assertEqual(d["Hopper"], {"category": "powertrain type", "accel": "12", "interval": "18", "topSpeed": "90",
+                                       "bp": "11", "special": "-3 handling"})
+        self.assertEqual(d["Plain"], {"category": "console type", "pilot": "1", "sensor": "2", "bp": "4", "special": "9"})
+        self.assertEqual(d["Zoomer"], {"category": "chassis type", "body": "6", "armor": "3", "handling": "4", "seats": "3",
+                                       "bp": "5", "sizeClass": "5", "special": "0"})
+        terms = lambda n: {k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)}  # noqa: E731
+        self.assertEqual(terms("Improved Fizz"), {"dp": "6", "perLevel": "true", "max": "3"})
+        self.assertEqual(terms("Improved Glow"), {"dp": "1", "perLevel": "true", "max": "2 x Body"})
+        self.assertEqual(terms("Improved Hum"), {"dp": "3", "perLevel": "true", "max": "min(2, Body)"})
+        self.assertEqual(terms("Improved Bulk"), {"dp": "2", "perLevel": "true", "max": "Size Class 20", "maxReverse": "3"})
+        self.assertEqual((terms("Hot"), terms("Cold Engines")), ({"dp": "+12"}, {"dp": "-8"}))  # (`Hot/Cold Engines`: as split_names names them)
+        self.assertEqual(terms("Slow Drive"), {"dp": "-15"})
+        self.assertEqual(terms("Sparkly"), {"multiplier": "x4", "max": "1"})
+        p = {e.findtext("name"): e.get("weakness") for e in ET.fromstring(res.files["critterpowers.xml"])}
+        self.assertEqual(p["Soggy"], "true")
 
     def test_sets_keywords_and_matrix_test_lines(self):
         md = """<!-- page 117 -->

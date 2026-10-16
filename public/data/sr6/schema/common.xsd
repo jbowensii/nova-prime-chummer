@@ -699,6 +699,12 @@
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="pilot" type="xs:string"/>
       <xs:attribute name="sensor" type="xs:string"/>
+      <!-- the hardpoint a vehicle weapon mount, drone rack or mechanical arm attaches to (Double Clutch pp. 142-145) -->
+      <xs:attribute name="hardpoint">
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:enumeration value="small"/><xs:enumeration value="standard"/><xs:enumeration value="large"/><xs:enumeration value="huge"/>
+        </xs:restriction></xs:simpleType>
+      </xs:attribute>
       <xs:attributeGroup ref="sr6:grouped"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
@@ -962,12 +968,36 @@
     <xs:attribute name="cost" type="xs:string"/>
     <xs:attribute name="essence" type="xs:string"/>
   </xs:complexType>
-  <!-- a vehicle design part (a chassis, powertrain, console, design modification or option, a quality factor): its
-       printed columns -->
+  <!-- a vehicle design part (a chassis, powertrain, console, size class, design modification or option, a quality
+       factor): its printed columns and terms, each as printed (Double Clutch pp. 150-154) -->
   <xs:complexType name="Design">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="category" type="xs:string"/>
+      <!-- its BUILD POINTS column -->
       <xs:attribute name="bp" type="xs:string"/>
+      <!-- a chassis's starting values (BOD ARM HAND SEAT SIZE CLASS), a powertrain's (ACCEL SPD INT TOP SPD), a console's
+           (PILOT SENSOR), each table's SPECIAL column; a size class's length, weight and cargo -->
+      <xs:attribute name="body" type="xs:string"/>
+      <xs:attribute name="armor" type="xs:string"/>
+      <xs:attribute name="handling" type="xs:string"/>
+      <xs:attribute name="seats" type="xs:string"/>
+      <xs:attribute name="sizeClass" type="xs:string"/>
+      <xs:attribute name="accel" type="xs:string"/>
+      <xs:attribute name="interval" type="xs:string"/>
+      <xs:attribute name="topSpeed" type="xs:string"/>
+      <xs:attribute name="pilot" type="xs:string"/>
+      <xs:attribute name="sensor" type="xs:string"/>
+      <xs:attribute name="special" type="xs:string"/>
+      <xs:attribute name="length" type="xs:string"/>
+      <xs:attribute name="weight" type="xs:string"/>
+      <xs:attribute name="cargo" type="xs:string"/>
+      <!-- an option's cost is dp per level; max: the most it may be taken as printed (`4`, `2 x Body`, `min(4, Body)`);
+           maxReverse: the most it may be taken in reverse when the book says (absent: max) -->
+      <xs:attribute name="perLevel" type="sr6:True"/>
+      <xs:attribute name="max" type="xs:string"/>
+      <xs:attribute name="maxReverse" type="xs:string"/>
+      <!-- a quality factor's cost multiplier as printed (`x2`, `x0.5`) -->
+      <xs:attribute name="multiplier" type="xs:string"/>
       <!-- its cost in Design Points as printed (`2 x Armor Rating`, `+5 x Grade`): a cost field, not an effect -->
       <xs:attribute name="dp" type="xs:string"/>
       <xs:attribute name="rating" type="xs:string"/>
