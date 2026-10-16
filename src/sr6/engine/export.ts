@@ -548,7 +548,8 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
             class: critterClass(x, e),
             tamed: !!x.tamed,
             ...critterTraining(x, data),
-            qualities: (x.critterQualities ?? []).map(q => {
+            // (`bought`, the career build's priced level, stays in the app)
+            qualities: (x.critterQualities ?? []).map(({ bought: _, ...q }) => {
               const v = data.qualities[q.id]
               return { ...q, name: v?.name ?? q.name, ...(v ? { positive: v.positive } : {}) }
             }),

@@ -8,7 +8,7 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { apply } from '../../src/sr6/engine/actions'
 import { essenceBudget, priced } from '../../src/sr6/engine/budgets'
-import { currentBuild, preview, record, voidEntry } from '../../src/sr6/engine/career'
+import { applyAdvance, currentBuild, preview, record, voidEntry } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { bondKarma, critterPrice, critterValue, critterView } from '../../src/sr6/engine/critters'
 import { sr6Data } from '../../src/sr6/engine/data'
@@ -419,6 +419,121 @@ test('career: a critter bought, critter gear fitted, a quality bonded (negative 
   expect(back.ok && back.character).toEqual(ch)
 })
 
+test('career refusals: bond and teach name a critter, a critter quality, a level that adds, a negative not taken; a book row to price it', () => {
+  const { ch, data, cr } = career()
+  ch.build.purchases[0].critterQualities!.push({ uid: 'g', id: 'zz.grumpy', level: 1 })
+  const why = (a: Parameters<typeof preview>[1], d = data) => (r => (r.ok ? 'ok' : r.reason))(preview(ch, a, d, cr))
+  const keen = { uid: '', id: 'zz.keen', level: 1 }
+  expect(why({ op: 'bond', target: 'nope', line: keen })).toBe('unknown-host')
+  expect(why({ op: 'bond', target: 'c1', line: { ...keen, id: 'zz.nothing' } })).toBe('unknown-entry')
+  expect(why({ op: 'bond', target: 'c1', line: { ...keen, id: 'zz.critter-bond' } })).toBe('not-a-critter-quality')
+  expect(why({ op: 'bond', target: 'c1', line: { ...keen, level: 0 } })).toBe('below-one')
+  expect(why({ op: 'bond', target: 'c1', line: { uid: 'r', id: 'zz.receptive', level: 1 } })).toBe('already-known')
+  expect(why({ op: 'bond', target: 'c1', line: keen, with: { uid: '', id: 'zz.snuggly', level: 1 } })).toBe('not-negative')
+  expect(why({ op: 'bond', target: 'c1', line: keen, with: { uid: '', id: 'zz.grumpy', level: 1 } })).toBe('already-taken')
+  const fetch = { uid: '', what: 'command' as const, id: 'zz.fetch-fizz' }
+  expect(why({ op: 'teach', target: 'nope', line: fetch })).toBe('unknown-host')
+  expect(why({ op: 'teach', target: 'c1', line: { ...fetch, id: 'zz.nothing' } })).toBe('unknown-entry')
+  // without Wild Life's OPTIONS rows there is no price to teach at
+  const bare = sr6Data(
+    fixtureCatalog(
+      undefined,
+      [
+        ['critters', CRITTERS],
+        ['actions', ACTIONS],
+        ['qualities', QUALITIES],
+      ].map(([k, xml]) => ({ file: `custom/sr6/imported/zz/${k}.xml`, xml })),
+    ),
+  )
+  expect(why({ op: 'teach', target: 'c1', line: fetch }, bare)).toBe('book-value')
+})
+
+test('applying a ledger entry whose line is gone does nothing (a voided purchase under a later fit, move, bond or teach)', () => {
+  const b = blankBuild('karma')
+  const before = structuredClone(b)
+  for (const a of [
+    { op: 'unfit', target: 'gone' },
+    { op: 'shift', target: 'gone', from: 'chassis', to: 'powertrain' },
+    { op: 'move', target: 'gone', mount: 'm' },
+    { op: 'bond', target: 'gone', line: { uid: 'q', id: 'zz.keen', level: 1 } },
+    { op: 'teach', target: 'gone', line: { uid: 't', what: 'command' } },
+  ] as Parameters<typeof applyAdvance>[1][])
+    applyAdvance(b, a)
+  expect(b).toEqual(before)
+  // a bond without a negative alongside, on a critter with no qualities yet
+  b.purchases.push({ uid: 'c', kind: 'critters', id: 'zz.fuzzpup', qty: 1, accessories: [] })
+  applyAdvance(b, { op: 'bond', target: 'c', line: { uid: 'q', id: 'zz.keen', level: 1, how: 'bonded' } })
+  expect(b.purchases[0].critterQualities).toEqual([{ uid: 'q', id: 'zz.keen', level: 1, how: 'bonded' }])
+})
+
+test('refusals on the Critters tab: a critter line, a quality or training it has, a level from 1, a catalog entry', () => {
+  const { b, x, data, cr } = owning('zz.fuzzpup')
+  const why = (op: Parameters<typeof apply>[1]) => (r => (r.ok ? 'ok' : r.reason))(apply(b, op, data, cr))
+  expect(why({ op: 'critter', uid: 'nope', tamed: true })).toBe('unknown-line')
+  expect(why({ op: 'critterTrained', host: 'nope', id: 'zz.fetch-fizz' })).toBe('unknown-host')
+  expect(why({ op: 'critterTrained', host: x.uid, uid: 'nope', taught: true })).toBe('not-taken')
+  expect(why({ op: 'critterTrained', host: x.uid, id: 'zz.fetch-fizz' })).toBe('ok')
+  expect(why({ op: 'critterTrained', host: x.uid, remove: x.trained![0].uid })).toBe('ok')
+  expect(x.trained).toBeUndefined() // (the last one gone: none)
+  expect(why({ op: 'critterQuality', host: 'nope', id: 'zz.keen' })).toBe('unknown-host')
+  expect(why({ op: 'critterQuality', host: x.uid, remove: 'nope' })).toBe('not-taken')
+  expect(why({ op: 'critterQuality', host: x.uid, uid: 'nope', level: 2 })).toBe('not-taken')
+  expect(why({ op: 'critterQuality', host: x.uid, id: 'zz.nothing' })).toBe('unknown-entry')
+  expect(why({ op: 'critterQuality', host: x.uid, id: 'zz.keen' })).toBe('ok')
+  expect(why({ op: 'critterQuality', host: x.uid, uid: x.critterQualities![0].uid, level: 0 })).toBe('below-one')
+})
+
+test('a price the app can’t read, an option row missing, a custom critter, Essence past what it has: noted and warned', () => {
+  const files = (gear: string) =>
+    sr6Data(
+      fixtureCatalog(
+        undefined,
+        [
+          ['critters', CRITTERS],
+          ['gear', gear],
+          ['qualities', QUALITIES],
+          ['augmentations', AUGS],
+        ].map(([k, xml]) => ({ file: `custom/sr6/imported/zz/${k}.xml`, xml })),
+      ),
+    )
+  const odd = files(GEAR.replace('Body x 70 nuyen', 'ask the fixer').replace(/<gear id="zz.trained-command"[^\n]*/, ''))
+  const x: Sr6Purchase = { uid: 'c', kind: 'critters', id: 'zz.fuzzpup', qty: 1, accessories: [], trained: [C('fetch-fizz')] }
+  expect(critterPrice(x, odd)).toMatchObject({ cost: 0, ok: false })
+  expect(critterPrice(x, odd).notes).toEqual([
+    'Pet (Mundane)’s price “ask the fixer” isn’t a number the app can read',
+    'Wild Life’s Purchasing a Critter row “Trained: Command” (p. 180) isn’t in the catalog',
+  ])
+  // a custom critter (no id): by its name, Essence 6; five Zap Claws take 6
+  const custom: Sr6Purchase = { uid: 'k', kind: 'critters', name: 'Gutter Dog', qty: 1, accessories: [] }
+  const v = critterView(custom, odd, 6.5)
+  expect(v.name).toBe('Gutter Dog')
+  expect(v.essence).toEqual({ base: 6, left: -0.5 })
+  expect(v.warnings.map(w => w.message)).toContain('Gutter Dog: its augmentations take 6.5 Essence; it has 6.')
+})
+
+test('a file’s critter quality how and trained what are one of the known; a tamed Awakened critter’s sheet notes', () => {
+  const ch = blankSr6('karma', 'r', '2026-10-16T00:00:00.000Z')
+  ch.build.purchases = [
+    {
+      uid: 'c1',
+      kind: 'critters',
+      id: 'zz.glowcat',
+      qty: 1,
+      tamed: true,
+      trained: [{ uid: 't', what: 'command', id: 'zz.fetch-fizz' }],
+      critterQualities: [{ uid: 'q', id: 'zz.wild-soul', level: 1, how: 'tamed' }],
+      accessories: [{ uid: 'z', kind: 'augmentations', id: 'zz.zap-claws', qty: 1, accessories: [] }],
+    },
+  ]
+  const xml = sr6ToXml(ch)
+  expect(xmlToSr6(xml.replace('how="tamed"', 'how="stolen"'))).toMatchObject({ ok: false, reason: expect.stringMatching(/how “stolen”/) })
+  expect(xmlToSr6(xml.replace('what="command"', 'what="trick"'))).toMatchObject({ ok: false, reason: expect.stringMatching(/what “trick”/) })
+  const { data, cr } = world()
+  const notes = critterNotes(ch.build.purchases[0], data, cr)
+  expect(notes[0]).toBe('Awakened, tamed')
+  expect(notes).toContain('Essence 4.8 after its augmentations, Magic 0')
+})
+
 const XSD = readFileSync('public/data/sr6/schema/character.xsd', 'utf8')
 const valid = async (xml: string) =>
   (await validateXML({ xml: { fileName: 'r.xml', contents: xml }, schema: { fileName: 'character.xsd', contents: XSD } })).errors.map(e => e.message)
@@ -510,6 +625,7 @@ test('every sheet’s critter lines and the export: class, stats, powers, qualit
     { uid: 'a', id: 'zz.snuggly', level: 1 },
     { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded' },
   ]
+  x.critterQualities[0].bought = { id: 'zz.snuggly', level: 1 } // (a career bond's: never exported)
   expect(apply(b, { op: 'accessory', host: x.uid, kind: 'gear', id: 'zz.fuzz-harness' }, data, cr)).toEqual(ok)
   expect(critterNotes(x, data, cr)).toEqual([
     'Exotic pet',
