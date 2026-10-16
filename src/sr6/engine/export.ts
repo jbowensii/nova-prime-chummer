@@ -14,6 +14,7 @@ import type {
   Sr6Npc,
   Sr6NpcKind,
   Sr6Purchase,
+  SlotShift,
 } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
@@ -32,6 +33,7 @@ import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, ty
 import { entryLabel } from './categories'
 import { prerequisites, type Prerequisite } from './martial'
 import { critterClass, type CritterClass } from './critters'
+import { builtinText, modsOf } from './vehiclemods'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
   SR6_EXPORT_VERSION = 1
@@ -144,9 +146,39 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   note?: string
   bonuses: Sr6ExportBonus[]
   accessories: Sr6ExportPurchase[]
+  /** a weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in */
+  mount?: string
+  /** a vehicle mod the player installed: half its nuyen price (Double Clutch p. 120) */
+  diy?: true
+  /** a vehicle or drone: what the Foundry module needs past its numbers (values.vehicle) */
+  vehicle?: Sr6ExportVehicle
   /** an owned critter: its stat block (exportNpc), how it was priced and trained, and its companion qualities */
   npc?: Sr6ExportNpc
-  critter?: { class: CritterClass; tamed: boolean; commands: number; training: number; qualities: Sr6CritterQuality[] }
+  critter?: { class: CritterClass; tamed: boolean; qualities: (Sr6CritterQuality & { positive?: boolean })[] } & ReturnType<typeof critterTraining>
+}
+/** An owned vehicle or drone: a drone (its class or category), the mods built in (already paid for: Double Clutch p. 146,
+ *  a design's own mods), its mod slot shifts (2 of `from` give 1 of `to`, p. 120), the seats taken out for cargo
+ *  (values.vehicle.seats is what is left) and the Designer design it was bought from. */
+export interface Sr6ExportVehicle {
+  drone: boolean
+  builtin: string[]
+  slotShifts?: SlotShift[]
+  seatsRemoved?: number
+  design?: string
+}
+/** An owned critter's trained commands and special training as the file carries them: the one place the export reads
+ *  them (the builder's named lists replace the counts here). */
+export const critterTraining = (x: Pick<Sr6Purchase, 'commands' | 'training'>) => ({ commands: x.commands ?? 0, training: x.training ?? 0 })
+/** A vehicle's or drone's own build (vehiclemods.ts modsOf). */
+function vehicleOf(x: Sr6Purchase, data: Sr6Data): Sr6ExportVehicle {
+  const m = modsOf(x, data)
+  return defined({
+    drone: m.drone,
+    builtin: [...m.builtin.map(builtinText), ...m.notes],
+    slotShifts: x.slotShifts?.length ? x.slotShifts.map(s => ({ ...s })) : undefined,
+    seatsRemoved: x.seatsRemoved || undefined,
+    design: x.design,
+  })
 }
 export interface Sr6ExportNpc {
   kind: Exclude<Sr6NpcKind, 'contact'>
@@ -485,6 +517,8 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     values = { ...base.values }
   for (const k of ['cost', 'avail', 'essence'] as const) if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
+  // the seats left after some went to cargo (Double Clutch p. 126)
+  if (x.seatsRemoved && values.vehicle?.seats !== undefined) values.vehicle = { ...values.vehicle, seats: Math.max(0, values.vehicle.seats - x.seatsRemoved) }
   return defined({
     ...base,
     uid: x.uid,
@@ -495,15 +529,20 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     note: x.note,
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1),
     accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)),
+    mount: x.mount,
+    diy: x.diy,
+    ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),
     ...(x.kind === 'critters'
       ? {
           ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}),
           critter: {
             class: critterClass(x, e),
             tamed: !!x.tamed,
-            commands: x.commands ?? 0,
-            training: x.training ?? 0,
-            qualities: (x.critterQualities ?? []).map(q => ({ ...q, name: data.qualities[q.id]?.name ?? q.name })),
+            ...critterTraining(x),
+            qualities: (x.critterQualities ?? []).map(q => {
+              const v = data.qualities[q.id]
+              return { ...q, name: v?.name ?? q.name, ...(v ? { positive: v.positive } : {}) }
+            }),
           },
         }
       : {}),

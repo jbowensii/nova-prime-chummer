@@ -139,6 +139,34 @@ const ENTRIES: Sr6Entry[] = [
     seats: '1',
     cost: '5000',
   }),
+  // Mara's drone (a built-in mod, a mod changing its handling and top speed, a weapon in a mount, an autosoft) and critter
+  withParts(
+    mur('vehicles', 'test-rotor', 'Test Rotor', {
+      category: 'Medium drones (air)',
+      class: 'DRONE_MEDIUM/AIR',
+      handling: '3',
+      accel: '8',
+      interval: '10',
+      topSpeed: '80',
+      body: '6',
+      armor: '3',
+      pilot: '3',
+      sensor: '3',
+      seats: '0',
+      cost: '9000',
+    }),
+    { tag: 'builtin', attrs: { name: 'Made-up plating', rating: '2' }, text: '' },
+  ),
+  withParts(
+    mur('gear', 'zippy-rotors', 'Zippy Rotors', { category: 'Powertrain mod', class: 'MOD_POWER/MOD_SPEED', slots: '2', cost: '1500' }),
+    fx('item:handling', '-1'),
+    fx('item:top-speed', '10'),
+  ),
+  mur('gear', 'test-mount', 'Test Standard Weapon Mount', { category: 'Weapon mount', class: 'MOD_HARD/MOD_MOUNT', hardpoint: 'standard', cost: '2000' }),
+  mur('weapons', 'test-smg', 'Test SMG', { category: 'Submachine guns', dv: '3P', ar: '8/8/6/—/—', modes: 'SA/BF', ammo: '30(c)', cost: '300' }),
+  mur('programs', 'test-targeting', 'Made-up Targeting Autosoft', { type: 'autosoft', rating: '1-6', cost: '500' }),
+  mur('qualities', 'test-loyal', 'Made-up Loyal', { kind: 'positive', karma: '2', class: 'CRITTERWARE/QUALITY' }),
+  mur('gear', 'test-collar', 'Made-up Collar', { category: 'Critter gear', class: 'CRITTERWARE/GEAR', cost: '100' }),
 ]
 
 /** The samples' catalog, data and creation rules (the fixture's, with a used grade and the dice the samples show). */
@@ -237,6 +265,29 @@ export function mara(w: ReturnType<typeof sampleWorld>): Sr6Character {
     { uid: 'g2', kind: 'gear', id: 'mus.rope', qty: 3, accessories: [] },
     { uid: 'v1', kind: 'vehicles', id: 'mur.test-bike', qty: 1, accessories: [] },
     { uid: 'x1', kind: 'gear', name: 'Lucky Coin', cost: 5, qty: 1, accessories: [] },
+    {
+      uid: 'v2',
+      kind: 'vehicles',
+      id: 'mur.test-rotor',
+      qty: 1,
+      accessories: [
+        { uid: 'v2m', kind: 'gear', id: 'mur.zippy-rotors', qty: 1, diy: true, accessories: [] },
+        { uid: 'v2h', kind: 'gear', id: 'mur.test-mount', qty: 1, accessories: [] },
+        { uid: 'v2w', kind: 'weapons', id: 'mur.test-smg', qty: 1, mount: 'v2h', accessories: [] },
+        { uid: 'v2a', kind: 'programs', id: 'mur.test-targeting', rating: 3, qty: 1, accessories: [] },
+      ],
+    },
+    {
+      uid: 'k2',
+      kind: 'critters',
+      id: 'mus.fake-hound',
+      qty: 1,
+      pet: 'exotic',
+      commands: 2,
+      training: 1,
+      critterQualities: [{ uid: 'k2q', id: 'mur.test-loyal', level: 1 }],
+      accessories: [{ uid: 'k2c', kind: 'gear', id: 'mur.test-collar', qty: 1, accessories: [] }],
+    },
   ]
   b.contacts = [{ uid: 'k1', name: 'Fake Fixer', archetype: 'Fixer', connection: 4, loyalty: 2, types: ['street'] }]
   // two SINs: the fake one with her lifestyle and its own gender, the real one with none

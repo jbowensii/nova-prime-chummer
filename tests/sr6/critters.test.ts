@@ -363,8 +363,8 @@ test('every sheet’s critter lines and the export: class, stats, powers, qualit
     commands: 2,
     training: 0,
     qualities: [
-      { uid: 'a', id: 'zz.snuggly', level: 1, name: 'Snuggly' },
-      { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded', name: 'Receptive to Training' },
+      { uid: 'a', id: 'zz.snuggly', level: 1, name: 'Snuggly', positive: true },
+      { uid: 'b', id: 'zz.receptive', level: 2, how: 'bonded', name: 'Receptive to Training', positive: true },
     ],
   })
   expect(out.npc?.stats.find(s => s.key === 'bod')?.value).toBe('4')
