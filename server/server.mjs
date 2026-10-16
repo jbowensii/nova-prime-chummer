@@ -32,6 +32,10 @@
 //                                        have), kept in characters/.npcs/<username>/ (+ .trash/): admin and editors only (403 for
 //                                        players). GET: the caller's; the admin: everyone's; an editor: also those shared with the
 //                                        campaigns they GM (read only). /api/campaigns/:id/npcs shares one
+//   /api/sr6/designs, /api/sr6/designs/:id, /api/sr6/designs/trash*   SR6 only: the same routes for vehicle and drone
+//                                        designs (SR6 characters with a <design> block, which a PUT must have and no other
+//                                        store takes), kept in characters/sr6/.designs/<username>/ (+ .trash/): every account its
+//                                        own; GET: the caller's, the admin everyone's
 //   /api/auth/*, /api/setup*, /api/users* accounts (server/auth.mjs)
 //   /api/campaigns*                      campaigns (server/campaigns.mjs)
 //   /api/compendiums*                    GMs' compendiums in characters/.compendiums/<username>/ (server/compendiums.mjs);
@@ -333,11 +337,19 @@ export function createServer({
       const r = rootTag(xml, tag)
       return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
     }
+    /** A <design> block first in the root: an SR6 vehicle or drone design (the Designer's store). */
+    const isDesign = xml => {
+      const r = rootTag(xml, tag)
+      return /^\s*<design[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+    }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
     const npcRoot = join(home, '.npcs'),
       npcFolder = username => join(npcRoot, username)
+    // SR6's vehicle and drone designs (the Designer): <home>/.designs/<username>/, each account its own, players too
+    const designRoot = join(home, '.designs'),
+      designFolder = username => join(designRoot, username)
 
     /** The folder's character files as { file, id, rev, xml }, from `indexed` while unchanged. */
     async function index(dir) {
@@ -381,14 +393,27 @@ export function createServer({
     // request that waited for the lock checks the role again)
     const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
     const NPCS = { folder: npcFolder, noun: 'NPC', npc: true, holds: (u, c) => campaigns.leads(u, c), readable: me => campaigns.readableNpcs(me) }
+    const DESIGNS = g.id === 'sr6' ? { folder: designFolder, noun: 'design', design: true, holds: async () => false, readable: async () => [] } : null
     const refused = (kind, me) => kind.npc && !['admin', 'editor'].includes(me.role)
 
     /** The character, NPC and trash routes (see the top of this file). */
     async function handle(req, res, url, who) {
-      const t = url.pathname.match(/^\/api\/(npcs\/)?trash(\/|$)/)
-      if (t) return trash(req, res, url, who, t[1] ? NPCS : RUNNERS)
-      const kind = /^\/api\/npcs(\/|$)/.test(url.pathname) ? NPCS : RUNNERS
-      if (url.pathname === (kind.npc ? '/api/npcs' : '/api/characters') && req.method === 'GET') {
+      const t = url.pathname.match(/^\/api\/(npcs\/|designs\/)?trash(\/|$)/)
+      const kind = t
+        ? t[1] === 'npcs/'
+          ? NPCS
+          : t[1]
+            ? DESIGNS
+            : RUNNERS
+        : /^\/api\/npcs(\/|$)/.test(url.pathname)
+          ? NPCS
+          : /^\/api\/designs(\/|$)/.test(url.pathname)
+            ? DESIGNS
+            : RUNNERS
+      if (!kind) return send(res, 404, { error: 'not found' }) // (designs: SR6's only)
+      if (t) return trash(req, res, url, who, kind)
+      const list = kind.npc ? '/api/npcs' : kind.design ? '/api/designs' : '/api/characters'
+      if (url.pathname === list && req.method === 'GET') {
         const owners = [who.username, ...(who.role === 'admin' ? auth.usernames().filter(u => u !== who.username) : [])]
         const out = []
         for (const owner of owners)
@@ -397,7 +422,7 @@ export function createServer({
           for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
         return send(res, 200, out)
       }
-      const m = url.pathname.match(kind.npc ? /^\/api\/npcs\/([^/]+)$/ : /^\/api\/characters\/([^/]+)$/)
+      const m = url.pathname.startsWith(`${list}/`) ? url.pathname.slice(list.length).match(/^\/([^/]+)$/) : null
       if (!m) return send(res, 404, { error: 'not found' })
       let id
       try {
@@ -415,6 +440,9 @@ export function createServer({
       if (xml != null && kind.npc && !isNpc(xml)) return send(res, 400, { error: 'an NPC file has an <npc> block' })
       // and the other way: an NPC never lands in a runner folder, which players' paths list
       if (xml != null && !kind.npc && isNpc(xml)) return send(res, 400, { error: 'this is an NPC, not a runner: NPCs are saved in the NPC area' })
+      // a design only in the design store, and nothing else there
+      if (xml != null && DESIGNS && !!kind.design !== isDesign(xml))
+        return send(res, 400, { error: kind.design ? 'a design file has a <design> block' : 'this is a vehicle design: designs are saved in the Designer' })
       return lock(async () => {
         // the account as it is now: a rename while this request waited moved the folder, a disable or delete ends it
         const me = auth.current(who.id)
@@ -453,7 +481,7 @@ export function createServer({
     /** The Trash page's routes (see the top of this file), for runners or NPCs (`kind`). Players and editors: their own trash
      *  only; the admin: ?user=. */
     async function trash(req, res, url, who, kind) {
-      const m = url.pathname.match(/^\/api\/(?:npcs\/)?trash(?:\/([^/]+)(\/restore)?)?$/)
+      const m = url.pathname.match(/^\/api\/(?:npcs\/|designs\/)?trash(?:\/([^/]+)(\/restore)?)?$/)
       if (!m) return send(res, 404, { error: 'not found' })
       let file = null
       if (m[1] != null) {
@@ -560,6 +588,12 @@ export function createServer({
         [folder(u), null],
         [join(npcFolder(u), '.trash'), join(npcRoot, '.trash')],
         [npcFolder(u), join(npcRoot, '.trash')],
+        ...(DESIGNS
+          ? [
+              [join(designFolder(u), '.trash'), join(designRoot, '.trash')],
+              [designFolder(u), join(designRoot, '.trash')],
+            ]
+          : []),
       ]) {
         if (to) await moveAll(d, to, `${u}-`)
         await rmdir(d).catch(() => {})
@@ -571,10 +605,7 @@ export function createServer({
       campaigns,
       retire,
       folder,
-      stores: [
-        [folder, label],
-        [npcFolder, `${label}.npcs/`],
-      ],
+      stores: [[folder, label], [npcFolder, `${label}.npcs/`], ...(DESIGNS ? [[designFolder, `${label}.designs/`]] : [])],
     }
   }
 
@@ -691,7 +722,7 @@ export function createServer({
       const u = new URL(url)
       u.pathname = s.path
       if (/^\/api\/campaigns(\/|$)/.test(s.path)) return games.sr6.campaigns.handle(req, res, u, send, who)
-      if (/^\/api\/(characters|npcs|trash)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
+      if (/^\/api\/(characters|npcs|trash|designs)(\/|$)/.test(s.path)) return games.sr6.handle(req, res, u, who)
       if ((await compendiums.sr6.handle(req, res, u, send, who)) !== false) return
       if ((await backgrounds.sr6.handle(req, res, u, send, who)) !== false) return
       if (
