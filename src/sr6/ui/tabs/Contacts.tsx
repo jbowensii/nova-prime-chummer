@@ -1,14 +1,15 @@
 // Contacts & lifestyle: contacts (name, archetype, connection, loyalty) against the contact points; SINs, real or fake
 // with a rating and an optional gender, each with its licences and its lifestyles (and their months); karma turned into nuyen.
 // Every licence is one of a SIN's and is managed only here (owner 2026-10-16): a fake licence typed in, or an owned item's
-// (one whose Availability prints a fee), picked: on a fake SIN one of its rated fake licences, on a real one at its fee.
+// (one whose Availability prints a fee), picked and named after the licence type covering it: on a fake SIN one of its
+// fake licences, on a real one at its fee. Each is rated as its SIN (its rating changed, they re-price) and renamable.
 // A placeholder SIN (an older file's lifestyle with no SIN) shows as Unnamed SIN until named or given a kind. Once
 // finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
 import { NameField } from '../../../shared/ui'
 import { licenceFee, nuyenPerKarma, purchaseName, settingQuality, toNuyenMax } from '../../engine/budgets'
-import { licenceText } from '../../print/view'
+import { licenceItem, licenceRatingText } from '../../print/view'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
@@ -178,21 +179,12 @@ export function ContactsTab() {
 
 function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: ReactNode[] }) {
   const { act, data, ch } = useSr6Editor()
-  // (a new licence's rating: a fake SIN's own, the highest it allows, unless the player picks)
-  const first = String(s.rating ?? 1)
-  const [name, setName] = useState(''),
-    [rating, setRating] = useState(first)
+  const [name, setName] = useState('')
   const add = () => {
-    if (name.trim() && !act({ op: 'licence', sin: s.uid, name: name.trim(), rating: Number(rating) || 1 })) {
-      setName('')
-      setRating(first)
-    }
+    if (name.trim() && !act({ op: 'licence', sin: s.uid, name: name.trim() })) setName('')
   }
   // the owned items (accessories too) whose Availability prints a licence fee, not yet licensed on this SIN
   const items = ch.build.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined && !s.licences.some(l => l.item === x.uid))
-  const license = (uid: string) => {
-    if (uid && !act({ op: 'licensed', uid, sin: s.uid, on: true, ...(s.kind === 'fake' ? { rating: Number(rating) || 1 } : {}) })) setRating(first)
-  }
   return (
     <section className="stack">
       <div className="row">
@@ -237,7 +229,9 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
       <div className="row">
         {s.licences.map((l, i) => (
           <span key={i} className="chip">
-            {l.item === undefined ? `${l.name} (${l.rating})` : licenceText(ch.build, data, s, l)}
+            <NameField label={`${who} licence ${i + 1} name`} value={l.name} onCommit={v => act({ op: 'licence', sin: s.uid, name: v, at: i })} />
+            {licenceRatingText(s, l)}
+            {(item => item && ` (${item})`)(licenceItem(ch.build, data, l))}
             <button aria-label={`Remove licence ${l.name}`} onClick={() => act({ op: 'licence', sin: s.uid, remove: i })}>
               ×
             </button>
@@ -250,19 +244,15 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
           aria-label={`${who} new licence`}
           onKeyDown={e => e.key === 'Enter' && add()}
         />
-        <input
-          type="number"
-          min={1}
-          value={rating}
-          onChange={e => setRating(e.target.value)}
-          aria-label={`${who} licence rating`}
-          style={{ width: '4.5rem' }}
-        />
         <button className="btn small" aria-label={`Add licence to ${who}`} disabled={!name.trim()} onClick={add}>
           Add licence
         </button>
         {items.length > 0 && (
-          <select aria-label={`License an item on ${who}`} value="" onChange={e => license(e.target.value)}>
+          <select
+            aria-label={`License an item on ${who}`}
+            value=""
+            onChange={e => e.target.value && act({ op: 'licensed', uid: e.target.value, sin: s.uid, on: true })}
+          >
             <option value="">License an item…</option>
             {items.map(x => (
               <option key={x.uid} value={x.uid}>

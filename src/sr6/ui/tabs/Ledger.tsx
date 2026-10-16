@@ -83,10 +83,9 @@ export function LedgerTab() {
     rating: '1',
     gender: '',
     licName: '',
-    licRating: '1',
-    itemRating: '',
   })
-  const [licences, setLicences] = useState<{ name: string; rating: number }[]>([])
+  // (a new SIN's licences by name: each is rated as the SIN, career.ts)
+  const [licences, setLicences] = useState<string[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -98,7 +97,7 @@ export function LedgerTab() {
     setOp(o)
     setPicked(null)
     setLicences([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', itemRating: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -201,15 +200,14 @@ export function LedgerTab() {
                 kind: f.sinKind === 'real' ? 'real' : 'fake',
                 ...(f.sinKind === 'real' ? {} : { rating: whole(f.rating) }),
                 ...(f.gender.trim() ? { gender: f.gender.trim() } : {}),
-                licences,
+                licences: licences.map(name => ({ name, rating: 1 })),
               },
             }
           : null
       case 'lifestyle':
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'licensed':
-        // (on a fake SIN one of its fake licences: the rating typed, else the SIN's)
-        return f.target && sin ? { op, target: f.target, sin, ...(f.itemRating ? { rating: whole(f.itemRating) } : {}) } : null
+        return f.target && sin ? { op, target: f.target, sin } : null
       case 'contact':
         return f.name.trim() || f.target
           ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(), connection: whole(f.connection), loyalty: whole(f.loyalty) } }
@@ -538,28 +536,19 @@ export function LedgerTab() {
             <div className="row" style={{ alignSelf: 'end' }}>
               {licences.map((l, i) => (
                 <span key={i} className="chip">
-                  {l.name} ({l.rating})
-                  <button aria-label={`Remove licence ${l.name}`} onClick={() => setLicences(licences.filter((_, j) => j !== i))}>
+                  {l}
+                  <button aria-label={`Remove licence ${l}`} onClick={() => setLicences(licences.filter((_, j) => j !== i))}>
                     ×
                   </button>
                 </span>
               ))}
               <input value={f.licName} onChange={e => set({ licName: e.target.value })} placeholder="Licence" aria-label="New licence" />
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={f.licRating}
-                onChange={e => set({ licRating: e.target.value })}
-                aria-label="Licence rating"
-                style={{ width: '4.5rem' }}
-              />
               <button
                 className="btn small"
                 disabled={!f.licName.trim()}
                 onClick={() => {
-                  setLicences([...licences, { name: f.licName.trim(), rating: whole(f.licRating) }])
-                  set({ licName: '', licRating: '1' })
+                  setLicences([...licences, f.licName.trim()])
+                  set({ licName: '' })
                 }}
               >
                 Add licence
@@ -567,7 +556,7 @@ export function LedgerTab() {
             </div>
           </>
         )}
-        {/* (a licence is one SIN's: one more SIN for an item, at its fee on a real SIN, a rated fake licence on a fake one; owner 2026-10-16) */}
+        {/* (a licence is one SIN's: one more SIN for an item, at its fee on a real SIN, a fake licence rated as a fake one; owner 2026-10-16) */}
         {op === 'licensed' && (
           <>
             <label>
@@ -592,20 +581,6 @@ export function LedgerTab() {
                 ))}
               </select>
             </label>
-            {b.sins.find(s => s.uid === sin)?.kind === 'fake' && (
-              <label>
-                Licence rating
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={f.itemRating}
-                  placeholder={String(b.sins.find(s => s.uid === sin)?.rating ?? 1)}
-                  onChange={e => set({ itemRating: e.target.value })}
-                  style={{ width: '5rem' }}
-                />
-              </label>
-            )}
           </>
         )}
         {op === 'lifestyle' && (

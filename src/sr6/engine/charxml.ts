@@ -10,6 +10,7 @@ import {
   CORE_ATTRS,
   CP_POOLS,
   itemLicence,
+  rateLicences,
   MAGIC_KIND_LABELS,
   PICK_KINDS,
   PRIORITY_COLUMNS,
@@ -195,7 +196,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'awakened':
       return [{ awakened: a.value }, '']
     case 'licensed':
-      return [{ target: a.target, sin: a.sin, rating: a.rating, name: a.name }, '']
+      return [{ target: a.target, sin: a.sin, name: a.name }, '']
     case 'powerpoint':
     case 'convert':
     case 'other':
@@ -515,18 +516,21 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   return out
 }
+/** (every licence rated as its SIN, an older file's another rating too: owner 2026-10-16) */
 function readSin(e: Element): Sr6Sin {
   const lifestyles = kids(e, 'lifestyle').map(readLifestyle)
-  return def({
-    uid: e.getAttribute('uid') ?? '',
-    name: e.getAttribute('name') ?? '',
-    kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!,
-    rating: num(e, 'rating'),
-    gender: str(e, 'gender'),
-    licences: kids(e, 'licence').map(l => def({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0), item: str(l, 'item') })),
-    lifestyles: lifestyles.length ? lifestyles : undefined,
-    placeholder: yes(e, 'placeholder'),
-  })
+  return rateLicences(
+    def({
+      uid: e.getAttribute('uid') ?? '',
+      name: e.getAttribute('name') ?? '',
+      kind: oneOf(e.getAttribute('kind'), ['real', 'fake'] as const, 'SIN kind')!,
+      rating: num(e, 'rating'),
+      gender: str(e, 'gender'),
+      licences: kids(e, 'licence').map(l => def({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0), item: str(l, 'item') })),
+      lifestyles: lifestyles.length ? lifestyles : undefined,
+      placeholder: yes(e, 'placeholder'),
+    }),
+  )
 }
 const readLifestyle = (e: Element) => ({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0) })
 
@@ -609,7 +613,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return v == null ? { op } : { op, value: oneOf(v, ['true', 'false', '1', '0'] as const, 'Awakened override')! === 'true' || v === '1' }
     }
     case 'licensed':
-      return def({ op, target: req(e, 'target'), sin: req(e, 'sin'), rating: num(e, 'rating'), name: str(e, 'name') })
+      // (an older entry's rating is not read: the licence is rated as its SIN)
+      return def({ op, target: req(e, 'target'), sin: req(e, 'sin'), name: str(e, 'name') })
     case 'powerpoint':
     case 'other':
       return { op }

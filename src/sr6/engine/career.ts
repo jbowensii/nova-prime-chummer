@@ -8,6 +8,8 @@
 import { newId, type Violation } from '../../model/types'
 import {
   itemLicence,
+  licenceRating,
+  rateLicences,
   sinName,
   type PickKind,
   type Sr6Advance,
@@ -24,7 +26,7 @@ import {
   attrRating,
   entryOf,
   licenceFee,
-  purchaseName,
+  licenceName,
   magicLoss,
   priced,
   qualityCost,
@@ -196,7 +198,7 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'licensed': {
       const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target),
         s = b.sins.find(y => y.uid === a.sin)
-      if (x && s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s, a.rating, a.name))
+      if (x && s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s, a.name))
       return
     }
     case 'convert':
@@ -543,14 +545,12 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
     case 'sin': {
-      // priced as creation prices it (budgets.ts sinCost), with the settings it needs set
-      const x = a.line
+      // priced as creation prices it (budgets.ts sinCost), with the settings it needs set; its licences rated as it
+      const x = rateLicences(structuredClone(a.line))
       if (x.uid && !b.sins.find(s => s.uid === x.uid)?.placeholder) no('unknown-line')
       if (!x.name.trim()) no('needs-name')
       if (x.kind === 'fake' && !((x.rating ?? 1) >= 1)) no('below-one')
       if (x.licences.some(l => !l.name.trim())) no('needs-name')
-      if (x.licences.some(l => !(l.rating >= 1))) no('below-one')
-      if (x.kind === 'fake' && x.licences.some(l => l.rating > (x.rating ?? 1))) no('licence-above-sin')
       const what = [x.kind === 'real' ? 'real' : `fake, rating ${x.rating ?? 1}`, ...x.licences.map(l => `${l.name} ${l.rating}`)].join(', ')
       return { label: `SIN: ${x.name.trim()} (${what})${x.uid ? ', was the unnamed SIN' : ''}`, nuyen: sinCost(x, need) }
     }
@@ -587,7 +587,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'licensed': {
       // a licence on one more of the runner's SINs for a line it owns (owner 2026-10-16): on a real SIN at the fee its
-      // Availability prints, on a fake one a fake licence priced as creation prices it (budgets.ts sinCost)
+      // Availability prints, on a fake one a fake licence rated as the SIN, priced as creation prices it (budgets.ts sinCost)
       const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target) ?? no('unknown-line')
       const sin = b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')
       const fee = licenceFee(x, data) ?? no('no-licence')
@@ -595,10 +595,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const e = entryOf(x, data),
         what = `Licence: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} on ${sinName(sin)}`
       if (sin.kind === 'real') return { label: what, nuyen: fee }
-      const l = itemLicence(x, sin, a.rating)
-      if (!(l.rating >= 1)) no('below-one')
-      if (l.rating > (sin.rating ?? 1)) no('licence-above-sin')
-      return { label: `${what} (fake licence, rating ${l.rating})`, nuyen: l.rating * need('licencePerRating') }
+      const r = licenceRating(sin)
+      return { label: `${what} (fake licence, rating ${r})`, nuyen: r * need('licencePerRating') }
     }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }
@@ -717,15 +715,16 @@ export function record(
         ...(gender?.trim() ? { gender } : {}),
         licences,
       }
+      rateLicences(adv.line)
       break
     }
     case 'lifestyle':
       if (adv.sin && !adv.uid) adv.uid = newId()
       break
     case 'licensed': {
-      // (the licence named after the item as the catalog has it: replay needs no catalog)
+      // (the licence named after the licence type covering the item, as the catalog has it: replay needs no catalog)
       const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === adv.target)
-      if (x) adv.name = purchaseName(x, data)
+      if (x) adv.name = licenceName(x, data)
       break
     }
   }

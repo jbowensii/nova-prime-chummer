@@ -35,7 +35,7 @@ Rating, dice pools) are computed from the build, the catalog and the table's cre
     </purchase>
     <purchase uid="g5" kind="gear" name="Lucky coin" cost="7.5" avail="1" essence="0.1" qty="3" note="…"/>
     <contact uid="c1" name="Gil" archetype="Fixer" connection="3" loyalty="2"/>
-    <sin uid="s1" name="Pat Roe" kind="fake" rating="3" gender="…"><licence name="Zap Gun" rating="2"/>
+    <sin uid="s1" name="Pat Roe" kind="fake" rating="3" gender="…"><licence name="Zap Gun" rating="3"/>
       <lifestyle uid="l1" id="crb.cozy" months="2"/></sin>
     <sin uid="s2" name="Pat Doe" kind="real"/>
   </build>
@@ -137,11 +137,16 @@ copy". Book entries are never copied here.
   that identity's own (optional; the runner's is the root's `gender`). `placeholder="true"`: an unnamed stand-in
   (`name=""`, `kind="real"`, no rating, free) holding an older file's lifestyle; Review warns until the player names it
   or sets its kind or rating (which makes it a normal SIN), or moves the lifestyle to another SIN.
-- `<licence name rating item?>`: one of a SIN's licences (every licence is one SIN's). A fake licence, priced rating ×
-  `licencePerRating` (a fake SIN's can't out-rate it); `item`: the uid of an owned line (an accessory's too) whose
-  Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥), the licence named after it: on a fake SIN one of its
-  fake licences, rated (the SIN's rating unless the player picks), on a real SIN priced at that fee (its rating unused).
-  One gun carried under three SINs needs three. An item licensed on no SIN is a warning; licences are never enforced.
+- `<licence name rating item?>`: one of a SIN's licences (every licence is one SIN's). `rating`: always its SIN's (a
+  fake SIN's rating, a real SIN's 1; owner 2026-10-16): the SIN's rating changed, its licences follow and are re-priced,
+  and a file's licence at another rating reads at the SIN's (a finalized runner's ledger amounts stay as recorded). A fake
+  licence, priced rating × `licencePerRating`; `item`: the uid of an owned line (an accessory's too) whose Availability
+  prints a licence fee (`2, 500¥`: rating 2, fee 500¥), the licence `name`d after the Core Rulebook licence type covering
+  it (p. 273, the catalog's `licencetypes`: a weapon's Firearm license, a hunting rifle's Hunting license, an
+  augmentation's Cyberware license, a cyberdeck's Cyberdeck license, a rigger console's Rigger remote console license, a
+  vehicle's Driver's license; any other `Licence (<its category>)`) until the player renames it: on a fake SIN one of its
+  fake licences, on a real SIN priced at that fee. One gun carried under three SINs needs three. An item licensed on no
+  SIN is a warning; licences are never enforced. An item dropped after finalizing keeps its licences.
 - An older file's one `<lifestyle id months>` directly in `<build>` (before lifestyles belonged to SINs) loads onto the
   first `<sin>`; a runner with no SIN gets a placeholder SIN (`uid` the runner's id + `-sin`) to hold it. The same
   happens for a runner whose ledger has an older `lifestyle` spend and no SIN. The file is written the new way on its
@@ -178,12 +183,12 @@ the entry its `event` names.
   Future's errata (NF p. 162), buys off that much of the karma converted at creation, `stolenGearBuyOff` Karma each, and
   the line stays with the total so far in its `<quality boughtOff>`; without `part`, the rest, and it goes), `upgrade` (`target`: the uid of the bought
   item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
-  `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
+  `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
   `licensed` (`target`: the uid of an owned line, an accessory's too, whose Availability prints a licence fee; `sin`: the
-  uid of the SIN it is licensed on; `name`: the item's, the licence's; on a real SIN priced at the fee, on a fake one a
-  fake licence, `rating` (absent: the SIN's) × `licencePerRating`),
+  uid of the SIN it is licensed on; `name`: the licence's, the licence type covering the item; on a real SIN priced at
+  the fee, on a fake one a fake licence, the SIN's rating × `licencePerRating`; an older entry's `rating` is not read),
   `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`

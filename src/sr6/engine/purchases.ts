@@ -122,6 +122,25 @@ export function licenceFee(x: Sr6Purchase, data: Sr6Data): number | undefined {
   return e && availability(e.attrs.avail, x.rating ?? ratingRange(e.attrs.rating)[0] ?? 1).fee
 }
 
+/** The Core Rulebook's licence types (CRB p. 273, the catalog's licencetypes) by the item they cover: `<purchase kind>
+ *  <entry class>`, the first match (owner 2026-10-16). */
+const LICENCE_TYPES: [RegExp, string][] = [
+  [/^augmentations /, 'crb.cyberware-license'],
+  [/^weapons WEAPON_FIREARMS\/RIFLE_HUNTING$/, 'crb.hunting-license'],
+  [/^weapons /, 'crb.firearm-license'],
+  [/ (ELECTRONICS\/CYBERDECK|CYBERDECK\/)/, 'crb.cyberdeck-license'],
+  [/ ELECTRONICS\/RIGGER_CONSOLE$/, 'crb.rigger-remote-console-license'],
+  [/^vehicles /, 'crb.drivers-license'],
+]
+/** An item's licence's name until the player renames it: the licence type covering it (LICENCE_TYPES, named as the
+ *  catalog has it), else `Licence (<its category>)`. */
+export function licenceName(x: Sr6Purchase, data: Sr6Data): string {
+  const e = entryOf(x, data),
+    id = LICENCE_TYPES.find(([re]) => re.test(`${x.kind} ${e?.attrs.class ?? ''}`))?.[1],
+    t = id && data.entry('licencetypes', id)
+  return t ? t.name : `Licence (${e?.attrs.category ?? x.kind})`
+}
+
 /** An augmentation's family and how many a runner may have (owner's decision 9, 2026-10-11: implied by biology): each
  *  augmentation once, its ratings one family (`Wired Reflexes 2` is Wired Reflexes); a cyberlimb once per body part, any
  *  variant, a paired part (arm, forearm, hand, leg, lower leg, foot) once per side, so twice. null: no limit (not an

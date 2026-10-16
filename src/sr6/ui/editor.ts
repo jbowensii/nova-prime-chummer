@@ -114,7 +114,6 @@ export const REASONS: Record<string, string> = {
   'not-lifepath': 'Life modules are for lifepath only.',
   'not-available': 'That isn’t an adult life module.',
   'module-count': 'Every adult life module is already picked.',
-  'licence-above-sin': 'A licence can’t be rated above its fake SIN.',
   'no-licence': 'Its Availability prints no licence fee.',
   'more-than-left': 'That’s more than is left to buy off.',
   'not-a-part': 'Only Stolen Gear is bought off a part at a time.',

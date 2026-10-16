@@ -315,8 +315,9 @@
   <xs:complexType name="Sin">
     <xs:sequence>
       <!-- every licence is one SIN's: a fake licence, or an owned item's (item: the uid of its line, an accessory's too;
-           named after it). Priced rating × licencePerRating, but an item's on a real SIN at the fee its Availability
-           prints (its rating unused). Never enforced -->
+           named after the licence type covering it until renamed). rating: the SIN's (a real SIN's 1); one read at another
+           rating takes the SIN's. Priced rating × licencePerRating, but an item's on a real SIN at the fee its
+           Availability prints. Never enforced -->
       <xs:element name="licence" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType>
           <xs:attribute name="name" type="xs:string" use="required"/>
@@ -380,7 +381,7 @@
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
          sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
-         sin the uid of the SIN the licence is on, rating a fake SIN's licence's (absent: the SIN's own) -->
+         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -395,7 +396,7 @@
     <xs:attribute name="target" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
-    <!-- licensed: on a fake SIN, the licence's rating (absent: the SIN's) -->
+    <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
     <xs:attribute name="rating" type="c:Count"/>
     <!-- awakened: the Awakened flag's override set after creation (absent: derived again) -->
     <xs:attribute name="awakened" type="xs:boolean"/>

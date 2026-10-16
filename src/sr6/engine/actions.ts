@@ -9,6 +9,8 @@ import {
   CONTACT_TYPES,
   CORE_ATTRS,
   itemLicence,
+  licenceRating,
+  rateLicences,
   type Bonus,
   type ContactType,
   type CpPool,
@@ -31,7 +33,7 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, licenceFee, noteSkill, purchaseName, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { augmentationRoom, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -102,7 +104,8 @@ export type Op =
    *  rating makes it a normal SIN. */
   | { op: 'sin'; uid?: string; name?: string; kind?: 'real' | 'fake'; rating?: number; gender?: string }
   | { op: 'sin'; remove: string }
-  | { op: 'licence'; sin: string; name: string; rating: number }
+  /** a licence on a SIN, rated as the SIN (owner 2026-10-16); at: the licence (its index) renamed instead */
+  | { op: 'licence'; sin: string; name: string; at?: number }
   | { op: 'licence'; sin: string; remove: number }
   | { op: 'karmaToNuyen'; delta: number }
   | { op: 'initiation'; delta: number }
@@ -113,9 +116,8 @@ export type Op =
   | { op: 'mentor'; id?: string | null; advantage?: 'magician' | 'adept' | null }
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats, Double Clutch p. 126) */
   | { op: 'seats'; uid: string; removed: number }
-  /** a line (or accessory) whose Availability prints a licence fee: licensed on that SIN (on), or not; rating: a fake
-   *  SIN's licence's (absent: the SIN's own) */
-  | { op: 'licensed'; uid: string; sin: string; on: boolean; rating?: number }
+  /** a line (or accessory) whose Availability prints a licence fee: licensed on that SIN (on), or not */
+  | { op: 'licensed'; uid: string; sin: string; on: boolean }
   /** the runner's Infected type (an Infected quality's id; '' none): infect */
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
@@ -735,10 +737,11 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // a kind change: a fake SIN gets a rating (1 unless given), a real one has none
       const kind = op.kind ?? s.kind,
         rating = kind === 'fake' ? (op.rating ?? (s.kind === 'fake' ? s.rating : undefined) ?? 1) : undefined
-      if (rating !== undefined && s.licences.some(l => l.rating > rating)) return no('licence-above-sin')
       s.kind = kind
       if (rating === undefined) delete s.rating
       else s.rating = rating
+      // (its licences take its rating: re-priced with it; owner 2026-10-16)
+      rateLicences(s)
       if (op.name !== undefined) s.name = op.name
       // named, or its kind or rating set: a placeholder is a normal SIN now
       if (op.name !== undefined || op.kind !== undefined || op.rating !== undefined) delete s.placeholder
@@ -756,10 +759,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         s.licences.splice(op.remove, 1)
         return OK
       }
-      if (op.rating < 1) return no('below-one')
-      // a licence can't out-rate the fake SIN it's on
-      if (s.kind === 'fake' && op.rating > (s.rating ?? 1)) return no('licence-above-sin')
-      s.licences.push({ name: op.name, rating: op.rating })
+      // (a licence is rated as its SIN; renaming one is reversible, a blank name refused)
+      const name = op.name.trim()
+      if (!name) return no('needs-name')
+      if (op.at === undefined) s.licences.push({ name, rating: licenceRating(s) })
+      else if (s.licences[op.at]) s.licences[op.at].name = name
+      else return no('unknown-line')
       return OK
     }
     case 'karmaToNuyen': {
@@ -801,8 +806,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'licensed': {
-      // an item's licence is one of its SIN's licences (owner 2026-10-16): on a fake SIN a fake licence named after it,
-      // rated; on a real SIN at its printed fee (budgets.ts sinCost). Never enforced
+      // an item's licence is one of its SIN's licences (owner 2026-10-16), named after the licence type covering it and
+      // rated as the SIN: on a fake SIN a fake licence, on a real SIN at its printed fee (budgets.ts sinCost). Never enforced
       const x = allLines(b).find(p => p.uid === op.uid),
         s = b.sins.find(s => s.uid === op.sin)
       if (!x || !s) return no('unknown-line')
@@ -812,10 +817,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       if (licenceFee(x, data) === undefined) return no('no-licence')
       if (s.licences.some(l => l.item === x.uid)) return OK
-      const l = itemLicence(x, s, op.rating, purchaseName(x, data))
-      if (l.rating < 1) return no('below-one')
-      if (s.kind === 'fake' && l.rating > (s.rating ?? 1)) return no('licence-above-sin')
-      s.licences.push(l)
+      s.licences.push(itemLicence(x, s, licenceName(x, data)))
       return OK
     }
     case 'transhuman': {

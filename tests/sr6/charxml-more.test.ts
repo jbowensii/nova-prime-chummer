@@ -68,7 +68,7 @@ test('lines with missing attributes read as empty ones; an older file’s specs 
   expect(b.picks).toEqual([{ uid: '', kind: 'spells', id: '' }])
   expect(b.martialArts).toEqual([{ uid: '', id: '', techniques: [{ uid: '', id: '' }] }])
   expect(b.contacts).toEqual([{ uid: '', name: '', archetype: '', connection: 0, loyalty: 0 }])
-  expect(b.sins).toEqual([{ uid: '', name: '', kind: 'real', licences: [{ name: '', rating: 0 }], lifestyles: [{ uid: '', id: '', months: 0 }] }])
+  expect(b.sins).toEqual([{ uid: '', name: '', kind: 'real', licences: [{ name: '', rating: 1 }], lifestyles: [{ uid: '', id: '', months: 0 }] }])
   expect(b.purchases).toEqual([{ uid: '', kind: 'gear', qty: 1, accessories: [] }])
   expect(b.lifepath).toEqual([{ id: '', choices: { 0: 'edg', 2: 'agi' } }])
 })

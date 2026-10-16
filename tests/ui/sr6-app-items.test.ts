@@ -1,7 +1,7 @@
 // Owner requests of 2026-10-16 in the SR6 editor, on the made-up fixture: an owned item's licences, each one of a SIN's
 // (managed on Contacts, read on Gear, warned on Review, bought on the Ledger once finalized). Made-up
 // runner, items and prices.
-import { createElement } from 'react'
+import { act, createElement } from 'react'
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
@@ -64,23 +64,36 @@ test('Gear: an item licensed on a SIN lists it, with no warning', async () => {
   expect(pageText()).not.toMatch(/Licence needed/)
 })
 
-test('Contacts: each SIN lists its licences and licenses an owned item: a fake SIN’s a rated fake licence, a real SIN’s at its fee; removable', async () => {
+test('Contacts: each SIN licenses an owned item, named after its licence type and rated as the SIN (no rating box); renamable; re-priced with the SIN; removable', async () => {
   const saved = await open(twoSins(runner()), 'contacts', feeCatalog())
-  // (the rating box starts at the fake SIN's rating)
-  expect(field('SIN 1 licence rating').value).toBe('3')
-  await change(field('SIN 1 licence rating'), '2')
+  expect(document.querySelector('[aria-label="SIN 1 licence rating"]')).toBeNull()
   await change(field('License an item on SIN 1'), 'g1')
-  expect(pageText()).toMatch(/Tangle Rope 1 \(licence 2\)/)
+  expect(field('SIN 1 licence 1 name').value).toBe('Licence (tools)')
+  expect(pageText()).toMatch(/ 3 \(Tangle Rope 1\)/)
   expect(pageText()).toMatch(/Tangle Rope 1 \(fee 500¥\)/) // (SIN 2, real: offered at its fee)
   await change(field('License an item on SIN 2'), 'g1')
-  expect(pageText()).toMatch(/Tangle Rope 1 \(licence\)/)
+  expect(field('SIN 2 licence 1 name').value).toBe('Licence (tools)')
   expect(document.querySelector('[aria-label="License an item on SIN 1"]')).toBeNull() // (licensed there: none left to offer)
+  // a typed fake licence, rated as the SIN too
+  await change(field('SIN 1 new licence'), 'Zap License')
+  await click(button('Add licence to SIN 1'))
+  // renamed
+  const name = field('SIN 1 licence 1 name')
+  await change(name, 'Rope permit')
+  await act(async () => name.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
   expect((await saved()).build.sins.map(s => s.licences)).toEqual([
-    [{ name: 'Tangle Rope 1', rating: 2, item: 'g1' }],
-    [{ name: 'Tangle Rope 1', rating: 1, item: 'g1' }],
+    [
+      { name: 'Rope permit', rating: 3, item: 'g1' },
+      { name: 'Zap License', rating: 3 },
+    ],
+    [{ name: 'Licence (tools)', rating: 1, item: 'g1' }],
   ])
-  await click(button('Remove licence Tangle Rope 1'))
-  await click(button('Remove licence Tangle Rope 1'))
+  // the SIN's rating lowered: its licences follow
+  await click(button('Lower SIN 1 rating'))
+  expect((await saved()).build.sins[0].licences.map(l => l.rating)).toEqual([2, 2])
+  await click(button('Remove licence Rope permit'))
+  await click(button('Remove licence Zap License'))
+  await click(button('Remove licence Licence (tools)'))
   expect((await saved()).build.sins.map(s => s.licences)).toEqual([[], []])
 })
 
@@ -102,12 +115,12 @@ test('Review: no licence warning once each such item is licensed on a SIN', asyn
   expect(pageText()).not.toMatch(/Needs a licence on a SIN/)
 })
 
-test('Ledger: after finalising, a licence on another SIN is a spend: a real SIN’s at its fee, a fake SIN’s by the rating typed', async () => {
+test('Ledger: after finalising, a licence on another SIN is a spend: a real SIN’s at its fee, a fake SIN’s by its rating (no rating box)', async () => {
   const ch = twoSins(runner())
   ch.build.purchases.push({ uid: 'g2', kind: 'gear', id: 'crb.tangle-rope.1', rating: 2, qty: 1, accessories: [] })
   ch.build.sins[0].licences = [{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }]
-  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 900 } })
-  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 900 }]
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 1400 } })
+  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 1400 }]
   const saved = await open(ch, 'ledger', feeCatalog())
   await change(field('What'), 'licensed')
   await change(field('Licensed item'), 'g1')
@@ -119,11 +132,12 @@ test('Ledger: after finalising, a licence on another SIN is a spend: a real SIN�
   await change(field('What'), 'licensed')
   await change(field('Licensed item'), 'g2')
   await change(field('Licensed on'), 's1')
-  await change(field('Licence rating'), '1')
-  expect(pageText()).toMatch(/Licence: Tangle Rope 1 on Pat Roe \(fake licence, rating 1\)/)
+  expect(document.querySelector('[aria-label="Licence rating"]')).toBeNull()
+  expect(pageText()).toMatch(/Licence: Tangle Rope 1 on Pat Roe \(fake licence, rating 3\)/)
   await click(button('Record'))
   await click(button('Record it'))
-  expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'licensed', target: 'g2', sin: 's1', rating: 1 }, nuyen: 300 })
+  const after = await saved()
+  expect(after.ledger.at(-1)).toMatchObject({ advance: { op: 'licensed', target: 'g2', sin: 's1', name: 'Licence (tools)' }, nuyen: 900 })
 })
 
 test('Ledger: the Awakened override after finalising is a free spend; Method says where it went', async () => {
@@ -240,7 +254,8 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     const ch = stolenRunner(false)
     ch.build.qualities.push({ uid: 'q0', id: 'crb.zap-gainer', level: 1 })
     ch.build.awakened = false
-    ch.build.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Tangle Rope 1', rating: 2, item: 'g1' }] }]
+    // (an older rating than its SIN's: read at the SIN's)
+    ch.build.sins = [{ uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [{ name: 'Licence (tools)', rating: 2, item: 'g1' }] }]
     ch.build.purchases = [
       { uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] },
       { uid: 'w2', kind: 'weapons', id: 'crb.zap-stick', qty: 1, accessories: [] },
@@ -252,7 +267,7 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     const t = pageText()
     expect(t).toMatch(/Powers: Glimmer \(Bright\), Knack 2/)
     expect(t).toMatch(/Weaknesses: Trouble Dice \(Noon, Mild\)/)
-    expect(t).toMatch(/Pat Roe[^]*Tangle Rope 1 \(licence 2\)/)
+    expect(t).toMatch(/Pat Roe[^]*Licence \(tools\) 3 \(Tangle Rope 1\)/)
     expect(t).toMatch(/Burning 4/)
     expect(t).toMatch(/3S \(\+1\)/)
     expect(t).not.toMatch(/5P \(\+/) // (a ranged weapon takes no Strength bonus)

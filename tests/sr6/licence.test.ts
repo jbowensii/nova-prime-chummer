@@ -1,17 +1,18 @@
 // Licensed availability (owner 2026-10-15): a nuyen price under AVAIL is a licence fee, listed and flagged with a heads-up,
 // never enforced: the item is bought, priced and counted like any other (licences are for the GM). Every licence is one of
-// a SIN's (owner 2026-10-16): an item's on a fake SIN is one of its rated fake licences, on a real SIN at the printed fee.
+// a SIN's (owner 2026-10-16), rated as the SIN and named after the licence type covering the item: on a fake SIN one of
+// its fake licences, on a real SIN at the printed fee.
 // All names made up.
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
-import { priced } from '../../src/sr6/engine/purchases'
+import { licenceName, priced } from '../../src/sr6/engine/purchases'
 import { allBudgets } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { availNote } from '../../src/sr6/engine/values'
 import { balances, currentBuild, preview, record, voidEntry } from '../../src/sr6/engine/career'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { priceAt } from '../../src/sr6/ui/Picker'
-import { blankSr6, type Sr6Build } from '../../src/sr6/model/character'
+import { blankSr6, type Sr6Build, type Sr6Purchase } from '../../src/sr6/model/character'
 import { buildOf, GLIM, made } from './fixture'
 
 test('a pure licence fee is listed in words and earns a warning; a rating plus a fee shows both', () => {
@@ -66,7 +67,7 @@ function licensable() {
 const sinLine = (b: Sr6Build, { data, cr }: ReturnType<typeof licensable>, uid: string) =>
   allBudgets(b, data, cr, makeProvider(b.method, data, cr)).nuyen.breakdown?.find(l => l.key === `sin:${uid}`)
 
-test('an item licence on a fake SIN is one of its fake licences, rated (the SIN’s rating unless chosen), priced by rating; on a real SIN, its fee; never on the item', () => {
+test('an item licence is named after the licence type covering it and rated as its SIN: on a fake SIN priced by rating, on a real SIN its fee; never on the item', () => {
   const t = licensable(),
     { data, cr, b } = t
   expect(apply(b, { op: 'purchase', kind: 'gear', id: 'crb.tangle-rope.1', qty: 2 }, data, cr)).toEqual({ ok: true })
@@ -74,20 +75,25 @@ test('an item licence on a fake SIN is one of its fake licences, rated (the SIN�
     base = priced(x, data, cr).cost
   const fake0 = sinLine(b, t, 's1')!.amount // (rating 3 × fakeSinPerRating)
   expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's1', on: true }, data, cr)).toEqual({ ok: true })
-  expect(b.sins[0].licences).toEqual([{ name: 'Tangle Rope 1', rating: 3, item: x.uid }])
+  // (gear the table names no licence type for: Licence (<its category>))
+  expect(b.sins[0].licences).toEqual([{ name: 'Licence (tools)', rating: 3, item: x.uid }])
   expect(sinLine(b, t, 's1')).toMatchObject({ amount: fake0 + 3 * 300, label: 'Pat Roe (fake SIN, rating 3) · 1 licence' })
   expect(priced(x, data, cr).cost).toBe(base) // (no double charge: the fee isn't on the item)
   expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's1', on: true }, data, cr)).toEqual({ ok: true }) // (once a SIN)
   expect(b.sins[0].licences).toHaveLength(1)
-  // a real SIN: the printed fee
+  // a real SIN: the printed fee, rated 1
   expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's2', on: true }, data, cr)).toEqual({ ok: true })
+  expect(b.sins[1].licences).toEqual([{ name: 'Licence (tools)', rating: 1, item: x.uid }])
   expect(sinLine(b, t, 's2')?.amount).toBe(500)
-  // taken back, chosen again at another rating; one above its fake SIN's is refused
-  expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's1', on: false }, data, cr)).toEqual({ ok: true })
-  expect(b.sins[0].licences).toEqual([])
-  expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's1', on: true, rating: 4 }, data, cr)).toEqual({ ok: false, reason: 'licence-above-sin' })
-  expect(apply(b, { op: 'licensed', uid: x.uid, sin: 's1', on: true, rating: 1 }, data, cr)).toEqual({ ok: true })
-  expect(sinLine(b, t, 's1')?.amount).toBe(fake0 + 300)
+  // renamed, and back
+  expect(apply(b, { op: 'licence', sin: 's1', name: 'Rope permit', at: 0 }, data, cr)).toEqual({ ok: true })
+  expect(b.sins[0].licences[0].name).toBe('Rope permit')
+  expect(apply(b, { op: 'licence', sin: 's1', name: 'Licence (tools)', at: 0 }, data, cr)).toEqual({ ok: true })
+  // the fake SIN's rating changed: its licence follows, re-priced; the real SIN's fee stays
+  expect(apply(b, { op: 'sin', uid: 's1', rating: 1 }, data, cr)).toEqual({ ok: true })
+  expect(b.sins[0].licences[0].rating).toBe(1)
+  expect(sinLine(b, t, 's1')?.amount).toBe(fake0 / 3 + 300)
+  expect(sinLine(b, t, 's2')?.amount).toBe(500)
   // a removed SIN takes its licences; a removed item its licences on every SIN
   expect(apply(b, { op: 'sin', remove: 's2' }, data, cr)).toEqual({ ok: true })
   expect(apply(b, { op: 'purchase', remove: x.uid }, data, cr)).toEqual({ ok: true })
@@ -100,10 +106,22 @@ test('an item licence on a fake SIN is one of its fake licences, rated (the SIN�
   expect(apply(b, { op: 'licensed', uid: b.purchases[0].uid, sin: 's1', on: true }, data, cr)).toEqual({ ok: false, reason: 'no-licence' })
 })
 
-test('after creation a licence on a SIN is a ledger spend, voidable: a real SIN’s at the fee, a fake one’s by rating', () => {
+test('the licence type covering an item: by its kind and class, named as the catalog has it; else Licence (<category>)', () => {
+  const { data } = made()
+  const line = (kind: Sr6Purchase['kind'], id: string): Sr6Purchase => ({ uid: 'x', kind, id, qty: 1, accessories: [] })
+  // (the fixture's made-up name for crb.firearm-license: read from the data, not the table)
+  expect(licenceName(line('weapons', 'crb.zap-gun'), data)).toBe('Made-up Gun Permit')
+  expect(licenceName(line('gear', 'crb.tangle-rope.1'), data)).toBe('Licence (tools)')
+  // (a type the catalog lacks: the fallback, never a guess)
+  data.entry('gear', 'crb.tangle-rope.1')!.attrs.class = 'ELECTRONICS/CYBERDECK'
+  expect(licenceName(line('gear', 'crb.tangle-rope.1'), data)).toBe('Licence (tools)')
+  expect(licenceName({ uid: 'c', kind: 'gear', name: 'Mine', qty: 1, accessories: [] }, data)).toBe('Licence (gear)')
+})
+
+test('after creation a licence on a SIN is a ledger spend, voidable: a real SIN’s at the fee, a fake one’s by the SIN’s rating', () => {
   const { data, cr, ch } = licensable()
   ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', name: 'Tangle Rope', qty: 1, accessories: [] }]
-  ch.build.sins[0].licences = [{ name: 'Tangle Rope', rating: 3, item: 'g1' }]
+  ch.build.sins[0].licences = [{ name: 'Licence (tools)', rating: 3, item: 'g1' }]
   Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00Z', final: { karma: 0, nuyen: 1000 } })
   ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00Z', type: 'finalize', karma: 0, nuyen: 1000 }]
   expect(preview(ch, { op: 'licensed', target: 'g1', sin: 's1' }, data, cr)).toEqual({ ok: false, reason: 'already-known' })
@@ -115,22 +133,50 @@ test('after creation a licence on a SIN is a ledger spend, voidable: a real SIN�
   })
   const r = record(ch, { op: 'licensed', target: 'g1', sin: 's2' }, data, cr)
   if (!r.ok) throw new Error(r.reason)
-  expect(currentBuild(r.ch).sins[1].licences).toEqual([{ name: 'Tangle Rope 1', rating: 1, item: 'g1' }])
+  expect(r.ch.ledger.at(-1)).toMatchObject({ advance: { op: 'licensed', target: 'g1', sin: 's2', name: 'Licence (tools)' } })
+  expect(currentBuild(r.ch).sins[1].licences).toEqual([{ name: 'Licence (tools)', rating: 1, item: 'g1' }])
   expect(balances(r.ch).nuyen).toBe(500)
   const v = voidEntry(r.ch, r.ch.ledger.at(-1)!.id, 'Oops')
   expect(v.ok && currentBuild(v.ch).sins[1].licences).toEqual([])
   expect(preview(ch, { op: 'licensed', target: 'g1', sin: 'gone' }, data, cr)).toEqual({ ok: false, reason: 'unknown-line' })
-  // a fake SIN: one of its fake licences, its rating chosen (absent: the SIN's), rating × licencePerRating
+  // a fake SIN: one of its fake licences, rated as the SIN, rating × licencePerRating
   ch.build.sins[0].licences = []
-  expect(preview(ch, { op: 'licensed', target: 'g1', sin: 's1', rating: 2 }, data, cr)).toMatchObject({
-    label: 'Licence: Tangle Rope 1 on Pat Roe (fake licence, rating 2)',
-    nuyen: 600,
+  expect(preview(ch, { op: 'licensed', target: 'g1', sin: 's1' }, data, cr)).toMatchObject({
+    label: 'Licence: Tangle Rope 1 on Pat Roe (fake licence, rating 3)',
+    nuyen: 900,
   })
-  expect(preview(ch, { op: 'licensed', target: 'g1', sin: 's1', rating: 4 }, data, cr)).toEqual({ ok: false, reason: 'licence-above-sin' })
   const f = record(ch, { op: 'licensed', target: 'g1', sin: 's1' }, data, cr)
   if (!f.ok) throw new Error(f.reason)
-  expect(currentBuild(f.ch).sins[0].licences).toEqual([{ name: 'Tangle Rope 1', rating: 3, item: 'g1' }])
+  expect(currentBuild(f.ch).sins[0].licences).toEqual([{ name: 'Licence (tools)', rating: 3, item: 'g1' }])
   expect(balances(f.ch).nuyen).toBe(1000 - 900)
+  // an item dropped after finalising keeps its licence on the SIN
+  const d = record(f.ch, { op: 'drop', target: 'g1' }, data, cr)
+  if (!d.ok) throw new Error(d.reason)
+  expect(currentBuild(d.ch).sins[0].licences).toEqual([{ name: 'Licence (tools)', rating: 3, item: 'g1' }])
+})
+
+test('a file’s licence rated other than its SIN reads at the SIN’s rating (a real SIN’s at 1); ledger amounts stay as recorded', () => {
+  const { ch } = licensable()
+  ch.build.sins[0].licences = [{ name: 'Zap License', rating: 1 }]
+  ch.build.sins[1].licences = [{ name: 'Hunting', rating: 4 }]
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00Z', final: { karma: 0, nuyen: 1000 } })
+  ch.ledger = [
+    { id: 'f1', at: '2026-10-16T00:00:00Z', type: 'finalize', karma: 0, nuyen: 1000 },
+    {
+      id: 'a1',
+      at: '2026-10-16T00:00:00Z',
+      type: 'advance',
+      advance: { op: 'sin', line: { uid: 's3', name: 'Pat Poe', kind: 'fake', rating: 2, licences: [{ name: 'Zap License', rating: 1 }] } },
+      label: 'SIN',
+      karma: 0,
+      nuyen: 300,
+    },
+  ]
+  const r = xmlToSr6(sr6ToXml(ch))
+  if (!r.ok) throw new Error(r.reason)
+  expect(r.character.build.sins.map(s => s.licences[0].rating)).toEqual([3, 1])
+  expect(currentBuild(r.character).sins[2].licences).toEqual([{ name: 'Zap License', rating: 2 }])
+  expect(balances(r.character).nuyen).toBe(700)
 })
 
 test('an older file’s item licences move onto the SINs they name; one naming none is left out with a note', () => {

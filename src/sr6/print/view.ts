@@ -55,13 +55,20 @@ export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & 
       .map(s => ({ skill: s.id, label: s.name, rank: 0, attr: s.attr })),
   ].sort((x, y) => x.label.localeCompare(y.label))
 
-/** One of a SIN's licences in words (the sheets, the Contacts tab): a fake licence `Zap Gun 2`; an item's, named as the
- *  item now is, `Tangle Rope 1 (licence 2)`, on a real SIN (at its fee) `Tangle Rope 1 (licence)`. */
-export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, l: Sr6Licence): string {
-  if (l.item === undefined) return `${l.name} ${l.rating}`
-  const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === l.item),
+/** The item a licence is for, named as it now is; undefined: a fake licence typed in, or the item is gone (dropped after
+ *  finalising, its licence kept). */
+export function licenceItem(b: Sr6Character['build'], data: Sr6Data, l: Sr6Licence): string | undefined {
+  const x = l.item === undefined ? undefined : b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === l.item),
     e = x && entryOf(x, data)
-  return `${e ? entryLabel(e) : l.name} (licence${s.kind === 'fake' ? ` ${l.rating}` : ''})`
+  return x && (e ? entryLabel(e) : (x.name ?? 'Custom item'))
+}
+/** A licence's rating as shown: none for an item's on a real SIN (priced at its fee), else ` 3`. */
+export const licenceRatingText = (s: Sr6Sin, l: Sr6Licence) => (l.item !== undefined && s.kind === 'real' ? '' : ` ${l.rating}`)
+/** One of a SIN's licences in words (the sheets): a fake licence `Zap License 2`; an item's, `Firearm license 2 (Zap Gun)`,
+ *  on a real SIN (at its fee) `Firearm license (Zap Gun)`. */
+export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, l: Sr6Licence): string {
+  const item = licenceItem(b, data, l)
+  return `${l.name}${licenceRatingText(s, l)}${item ? ` (${item})` : ''}`
 }
 
 export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'cr' | 'd' | 'career'>) {
@@ -102,8 +109,7 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     lifeOf: (s: Sr6Sin) => (s.lifestyles ?? []).map(life).join(', '),
     /** the primary lifestyle: the first SIN's first one (of the SINs that have any) */
     lifestyle: first && life(first),
-    /** a SIN's licences: its fake licences (`Zap Gun 2`) and the items licensed on it (`Tangle Rope 1 (licence 2)`; on a
-     *  real SIN, at its fee, `Tangle Rope 1 (licence)`) */
+    /** a SIN's licences in words (licenceText) */
     licencesOf: (s: Sr6Sin) => s.licences.map(l => licenceText(b, data, s, l)),
     /** a weapon's DV, its bonus damage when it has one (high Strength on a melee weapon: `3P (+1)`), and the statuses it
      *  applies (`4P, Burning 4`: the No Future errata's Molotov) */

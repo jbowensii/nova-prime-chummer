@@ -192,18 +192,25 @@ export interface Sr6Sin {
   placeholder?: true
 }
 /** One of a SIN's licences (every licence is one SIN's: owner 2026-10-16): a fake licence (`Firearm license 3`), or an
- *  owned item's (item: its line's uid, an accessory's too; named after it). Priced rating × licencePerRating, but an item's
- *  on a real SIN at the fee its Availability prints (its rating unused). Never enforced. */
+ *  owned item's (item: its line's uid, an accessory's too; named after the licence type covering it, purchases.ts
+ *  licenceName, renamable). Rated as its SIN (licenceRating). Priced rating × licencePerRating, but an item's on a real
+ *  SIN at the fee its Availability prints. Never enforced. */
 export interface Sr6Licence {
   name: string
   rating: number
   item?: string
 }
-/** An owned item's licence on a SIN, named after it (`name`: its catalog name; absent, the line's own): rated as asked,
- *  else a fake SIN's own rating (a licence can't out-rate it), else 1. */
-export const itemLicence = (x: Sr6Purchase, s: Sr6Sin, rating?: number, name?: string): Sr6Licence => ({
+/** A licence's rating: its SIN's (owner 2026-10-16), at least 1; a real SIN has none, so 1. */
+export const licenceRating = (s: Pick<Sr6Sin, 'kind' | 'rating'>) => Math.max(1, s.kind === 'fake' ? (s.rating ?? 1) : 1)
+/** Every licence of a SIN rated as the SIN (after its rating or kind changes, and on load); the SIN, for chaining. */
+export function rateLicences<S extends Pick<Sr6Sin, 'kind' | 'rating' | 'licences'>>(s: S): S {
+  for (const l of s.licences) l.rating = licenceRating(s)
+  return s
+}
+/** An owned item's licence on a SIN, rated as the SIN; `name`: the licence type covering it (absent, the line's own). */
+export const itemLicence = (x: Sr6Purchase, s: Sr6Sin, name?: string): Sr6Licence => ({
   name: name || x.name || x.snapshot?.name || 'Custom item',
-  rating: rating ?? (s.kind === 'fake' ? (s.rating ?? 1) : 1),
+  rating: licenceRating(s),
   item: x.uid,
 })
 /** A SIN's name as shown: a placeholder's reads Unnamed SIN. */
@@ -300,9 +307,9 @@ export type Sr6Advance =
   /** the Awakened flag's override set after creation (value absent: derived again; infected.ts awakenedFlag), free */
   | { op: 'awakened'; value?: boolean }
   /** a licence for an owned line (target, its uid; an accessory's too) on one of the runner's SINs (sin, its uid): on a
-   *  fake SIN one of its fake licences (rating: absent, the SIN's), on a real one at the fee its Availability prints; name:
-   *  the item's as recorded, the licence's */
-  | { op: 'licensed'; target: string; sin: string; rating?: number; name?: string }
+   *  fake SIN one of its fake licences (rated as the SIN), on a real one at the fee its Availability prints; name: the
+   *  licence's as recorded (the licence type covering the item) */
+  | { op: 'licensed'; target: string; sin: string; name?: string }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
