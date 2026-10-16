@@ -28,6 +28,8 @@ Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
   {"kind","id","rename":"<name>"}                 a new name (names only); the old one stays as an alias unless "alias": false
   {"move_kind":{"id","from","to"}}                the entry re-filed in another kind's file (gear -> weapons: a melee weapon; armor -> gear)
+  {"kind","id","notext":true}                     no description: the book prints none for it, and a text the import gave
+                                                  it from elsewhere (effects.py: a rule whose name holds its words) goes
 An attribute the entry's kind schema lacks (class on a rules entry, social on gear) is skipped with one stderr line per row, and
 an id row is never refiled to a kind whose schema lacks its attributes (allowed(), fit()).
 A description is never an override: "set" and "add" refuse a text field. See docs/sr6-data-format.md."""
@@ -45,7 +47,7 @@ from importer.sr6.regroup import norm
 from importer.sr6.resolve import _add_kid
 
 DIR = Path(__file__).with_name("overrides")
-OPS = ("remove", "rename", "merge", "move_kind")
+OPS = ("remove", "rename", "merge", "move_kind", "notext")
 SETTABLE = {"class"}  # (what an id row may set)
 KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection"}  # (a "gen": "family" row's "kids": Commlink6's item structure)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
@@ -164,11 +166,11 @@ def _add(out, name, r, source):
 def texts(recipe_id, files, texts_xml, rows=None):
     """texts_xml (the book's texts file, ids unscoped) with a <text> for each add row that has "text_from": the text the
     book already has for the catalog entry of that name, under the new entry's kind and id; and without the text of an
-    entry a remove or merge row took out. Nothing is invented: no such heading or no text for it leaves the entry without
+    entry a remove or merge row took out, or a notext row says the book prints none for. Nothing is invented: no such heading or no text for it leaves the entry without
     one (reported on stderr)."""
     every = table(recipe_id) if rows is None else check(rows)
     rows = [r for r in every if r.get("add", {}).get("text_from")]
-    gone = {(r["kind"], r["id"]) for r in every if r.get("remove")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
+    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
     if not texts_xml or not (rows or gone):
         return texts_xml
     for of, i in gone:

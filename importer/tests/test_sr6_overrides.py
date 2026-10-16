@@ -733,6 +733,13 @@ class OwnerInfectedRowsTest(unittest.TestCase):
             self.assertEqual(len([m for m in e.findall("modifier") if m.get("set") == "MAX"]), 8, b)
         self.assertEqual([a.text for a in root[0].findall("alias")], ["Ghoul"])  # (Commlink6's name for the human ghoul)
 
+    def test_the_armor_optional_power_has_no_description(self):
+        texts = ('<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n'
+                 '  <text of="qualities" id="infected-optional-powers.armor-per-point">A made-up section text.</text>\n'
+                 '  <text of="qualities" id="infected-optional-powers.fear">Kept.</text>\n</sr6:data>\n')
+        got = [x.get("id") for x in ET.fromstring(overrides.texts("swc", {}, texts).encode())]
+        self.assertEqual(got, ["infected-optional-powers.fear"])
+
     def test_cl6check_keeps_the_structural_differences(self):
         from tools.cl6check import optional
         keep = optional.load_keep()

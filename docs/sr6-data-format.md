@@ -832,7 +832,7 @@ Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` write
 
 ## Structure ops in the per-book tables, and the extra classes
 
-Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes four ops on entries
+Beside `ours`, `add` and the `class` id rows, a table (`importer/sr6/overrides/<recipe id>.json`) takes five ops on entries
 by their unscoped id, applied in this order: remove and merge, the class rows, then rename and move_kind. An entry a row
 names that isn't there is reported once on stderr and nothing is guessed; each is idempotent, and none may name a
 description field.
@@ -843,6 +843,9 @@ description field.
   never id, source, page, class or group) are copied from `from`, the stat table's copy of it, which then goes.
 - `{"kind","id","rename":"<name>"}`: a new name, names only; the old printed name stays as an `<alias>` unless
   `"alias": false` (a name the import damaged).
+- `{"kind","id","notext":true}`: no description, the book printing none for the entry: a text the import gave it from
+  elsewhere goes (the Companion's `Armor (per point)` optional power, which effects.py's rule-text fallback gave the
+  `Armor PACKs` section's text).
 - `{"move_kind":{"id","from":"gear","to":"weapons"}}`: the entry is re-filed in weapons.xml as a close-combat weapon
   (skill Close Combat, spec from its class subtype: Blades, Clubs, Unarmed), keeping page, avail and cost; attributes the
   weapons schema lacks (capacity, karma, per, slots, energy) are dropped. An id the target file has already is left.
