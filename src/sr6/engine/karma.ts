@@ -54,15 +54,28 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
   return { pos, neg }
 }
 
-/** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality), both ways: turning
- *  nuyen back into karma only undoes a conversion, at the same rate. Unset: undefined. */
-export function nuyenPerKarma(b: Sr6Build, cr: CreationRules, data?: Sr6Data): number | undefined {
-  const debt = str(cr, 'inDebtQuality'),
-    inDebt = !!debt && b.qualities.some(q => (data ? data.sameFamily('qualities', q.id, debt) : q.id === debt))
-  return num(cr, inDebt ? 'karmaToNuyenRateInDebt' : 'karmaToNuyenRate')
+/** The runner's line of the quality a setting names (inDebtQuality, stolenGearQuality), any level of its family. */
+export const settingQuality = (b: Sr6Build, cr: CreationRules, key: string, data?: Sr6Data): Sr6Quality | undefined => {
+  const id = str(cr, key)
+  return id ? b.qualities.find(q => (data ? data.sameFamily('qualities', q.id, id) : q.id === id)) : undefined
 }
-/** Karma turned into nuyen, up to karmaToNuyenMax when it's set. */
-export const toNuyen = (b: Sr6Build, cr: CreationRules) => Math.max(0, Math.min(b.karmaToNuyen, num(cr, 'karmaToNuyenMax') ?? Infinity))
+/** Nuyen a karma turns into at creation (CRB Hong Kong p. 66: In Debt's own rate with that quality; No Future's Stolen
+ *  Gear, its errata: 10,000¥), both ways: turning nuyen back into karma only undoes a conversion, at the same rate.
+ *  Unset: undefined. */
+export function nuyenPerKarma(b: Sr6Build, cr: CreationRules, data?: Sr6Data): number | undefined {
+  if (settingQuality(b, cr, 'inDebtQuality', data)) return num(cr, 'karmaToNuyenRateInDebt')
+  if (settingQuality(b, cr, 'stolenGearQuality', data) && num(cr, 'karmaToNuyenRateStolenGear') !== undefined) return num(cr, 'karmaToNuyenRateStolenGear')
+  return num(cr, 'karmaToNuyenRate')
+}
+/** The most karma turned into nuyen: karmaToNuyenMax when it's set, and with Stolen Gear its errata's 20 (no more at any
+ *  rate); undefined: no limit. */
+export function toNuyenMax(b: Sr6Build, cr: CreationRules, data?: Sr6Data): number | undefined {
+  const stolen = settingQuality(b, cr, 'stolenGearQuality', data) ? num(cr, 'karmaToNuyenMaxStolenGear') : undefined,
+    max = num(cr, 'karmaToNuyenMax')
+  return stolen === undefined ? max : Math.min(stolen, max ?? Infinity)
+}
+/** Karma turned into nuyen, up to toNuyenMax. */
+export const toNuyen = (b: Sr6Build, cr: CreationRules, data?: Sr6Data) => Math.max(0, Math.min(b.karmaToNuyen, toNuyenMax(b, cr, data) ?? Infinity))
 const s = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
@@ -121,7 +134,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('dataStructures', 'Data structures integrated', dataStructureLevels(b), 'magic')
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
   add('magic', MAGIC_KIND_LABELS[boughtKind(b)], p.magicKarma?.(b) ?? 0, 'method')
-  add('toNuyen', 'Turned into nuyen', toNuyen(b, cr), 'contacts')
+  add('toNuyen', 'Turned into nuyen', toNuyen(b, cr, data), 'contacts')
   add('contacts', 'Contact ratings past the contact points', contactPoints(b, data, cr, p).karma ?? 0, 'contacts')
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }

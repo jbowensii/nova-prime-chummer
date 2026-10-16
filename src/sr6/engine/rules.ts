@@ -18,6 +18,7 @@ import {
   type Sr6Build,
   type Sr6Character,
   type Sr6Purchase,
+  type Sr6Quality,
 } from '../model/character'
 import {
   allBudgets,
@@ -41,6 +42,7 @@ import {
   qualityKarma,
   qualityPrice,
   ratingOf,
+  settingQuality,
   skillRank,
   type Sr6Budgets,
 } from './budgets'
@@ -578,6 +580,18 @@ const RULES: Rule[] = [
             ...cite(c.cr, 'sensitiveSystemQuality'),
           }
         : null
+    },
+  },
+  // No Future's errata (NF p. 162): never both In Debt and Stolen Gear (taken anyway: a GM may approve it)
+  {
+    code: 'quality.stolenGearInDebt',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const q = settingQuality(c.b, c.cr, 'stolenGearQuality', c.data),
+        d = settingQuality(c.b, c.cr, 'inDebtQuality', c.data)
+      const name = (x: Sr6Quality) => c.data.qualities[x.id]?.name ?? x.name ?? x.id
+      return q && d ? { path: `qualities.${q.uid}`, message: `${name(q)} and ${name(d)}: a runner can’t have both.`, ...cite(c.cr, 'stolenGearQuality') } : null
     },
   },
   // owner's decision 2 (2026-10-11): Aptitude and Incompetent never on the same skill; the editor refuses it, a file

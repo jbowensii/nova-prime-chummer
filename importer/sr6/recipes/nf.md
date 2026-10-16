@@ -41,8 +41,9 @@ The replaced value is kept in a `<found how="errata">` child. Owner decision 202
 per-book runs (where the corpus pass cannot see the errata PDF): `overrides/nf.json` carries its numbers as `"gen": "errata"`
 rows (docs/sr6-data-format.md, Errata rows): the 6E availabilities, the Trenchcoat's Concealability +2, the cybereyes and
 cyberears as ratings 6 and 7 (ids kept), AutoVoice and Vocal Expansion unrated at rating 1, the hacked AutoVoice and the
-vision/audio enhancements removed. Not applied (rules): the Molotov's Burning status, Stolen Gear's new rules (its karma is
-0 already; the nuyen-per-karma mechanic needs an engine decision), the Companion versions of the life modules, the page
+vision/audio enhancements removed. Stolen Gear's new rules are the engine's (its karma is 0 already; the creation
+settings `stolenGearQuality`, `karmaToNuyenRateStolenGear`, `karmaToNuyenMaxStolenGear`, `stolenGearBuyOff`, owner
+2026-10-16). Not applied (rules): the Molotov's Burning status, the Companion versions of the life modules, the page
 references.
 
 ## Formula styles and issues (importer v2)

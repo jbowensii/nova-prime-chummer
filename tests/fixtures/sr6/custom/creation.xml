@@ -46,6 +46,10 @@
   <setting key="karmaToNuyenRate" value="1500" source="CRB" page="64"/>
   <setting key="karmaToNuyenRateInDebt" value="3500" source="CRB" page="64"/>
   <setting key="inDebtQuality" value="crb.deep-pockets-debt" source="CRB" page="64"/>
+  <setting key="stolenGearQuality" value="crb.hot-goods" source="CRB" page="64"/>
+  <setting key="karmaToNuyenRateStolenGear" value="9000" source="CRB" page="64"/>
+  <setting key="karmaToNuyenMaxStolenGear" value="4" source="CRB" page="64"/>
+  <setting key="stolenGearBuyOff" value="3" source="CRB" page="74"/>
   <setting key="karmaToNuyenCap" value="true"/>
   <setting key="karmaToNuyenMax" value="7" source="CRB" page="64"/>
   <setting key="fakeSinPerRating" value="1500" source="CRB" page="66"/>

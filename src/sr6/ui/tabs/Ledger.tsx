@@ -6,8 +6,8 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating } from '../../engine/budgets'
-import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
+import { attrRating, settingQuality } from '../../engine/budgets'
+import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
   CORE_ATTRS,
@@ -59,7 +59,7 @@ const whole = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN)
 const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x)}${unit}`)
 
 export function LedgerTab() {
-  const { ch, c, data, p, preview, record, ledger } = useSr6Editor()
+  const { ch, c, data, cr, p, preview, record, ledger } = useSr6Editor()
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
@@ -109,7 +109,8 @@ export function LedgerTab() {
     an = (w: string) => (/^[aeiou]/.test(w) ? 'an' : 'a')
   const styleOf = (uid: string) => data.entry('martialarts', b.martialArts.find(m => m.uid === uid)?.id ?? '')
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
-  const awake = awakenedFlag(b, data)
+  const awake = awakenedFlag(b, data),
+    stolen = settingQuality(b, cr, 'stolenGearQuality', data)
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
   // a bought item with a higher level in its family (levels.ts) can be upgraded to one
@@ -138,7 +139,8 @@ export function LedgerTab() {
       case 'quality':
         return e ? { op, line: { uid: '', id: e.id, level: 1 } } : null
       case 'buyoff':
-        return f.target ? { op, target: f.target } : null
+        // (Stolen Gear: the part of its converted karma bought off; none, all of it)
+        return f.target ? { op, target: f.target, ...(stolen?.uid === f.target && f.karma.trim() ? { part: whole(f.karma) } : {}) } : null
       case 'pick':
         return e ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id } } : null
       case 'martialart': {
@@ -440,6 +442,21 @@ export function LedgerTab() {
                   </option>
                 ))}
             </select>
+          </label>
+        )}
+        {op === 'buyoff' && stolen && f.target === stolen.uid && (
+          <label>
+            Converted karma (of {stolenLeft(b, cr, data, stolen)})
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={f.karma}
+              onChange={e => set({ karma: e.target.value })}
+              placeholder="all"
+              aria-label="Converted karma to buy off"
+              style={{ width: '6rem' }}
+            />
           </label>
         )}
         {op === 'initiate' && (

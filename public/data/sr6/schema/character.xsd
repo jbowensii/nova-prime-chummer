@@ -258,6 +258,8 @@
     <xs:attribute name="free" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="name" type="xs:string"/>
+    <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
+    <xs:attribute name="boughtOff" type="c:Count"/>
   </xs:complexType>
 
   <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
@@ -386,6 +388,8 @@
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
+    <xs:attribute name="part" type="xs:positiveInteger"/>
     <!-- awakened: the Awakened flag's override set after creation (absent: derived again) -->
     <xs:attribute name="awakened" type="xs:boolean"/>
     <!-- quality: the magic kind an Infected type bought after creation leaves the runner (absent: unchanged) -->

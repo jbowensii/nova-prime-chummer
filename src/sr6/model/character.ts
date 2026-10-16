@@ -138,6 +138,8 @@ export interface Sr6Quality {
   note?: string
   name?: string
   karma?: number
+  /** Stolen Gear (No Future errata, NF p. 162): the converted karma bought off so far after creation, a part at a time */
+  boughtOff?: number
 }
 /** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
 export interface Sr6Pick {
@@ -261,7 +263,8 @@ export type Sr6Advance =
   /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference;
    *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it */
   | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind }
-  | { op: 'buyoff'; target: string; line?: Sr6Quality }
+  /** part: Stolen Gear's converted karma bought off by this spend, a part of what is left (the line stays); none: all */
+  | { op: 'buyoff'; target: string; line?: Sr6Quality; part?: number }
   /** target: as a quality's, the lower level replaced */
   | { op: 'pick'; line: Sr6Pick; target?: string }
   /** a style (with its signature technique), or a technique learned under the style whose uid is target */

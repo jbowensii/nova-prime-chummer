@@ -30,7 +30,7 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { availability, chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, noteSkill, qualityChoice, ratingOf, seatsOf } from './budgets'
+import { augmentationRoom, entryOf, noteSkill, qualityChoice, ratingOf, seatsOf, toNuyenMax } from './budgets'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -752,7 +752,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     }
     case 'karmaToNuyen': {
       const v = b.karmaToNuyen + op.delta,
-        max = num(cr, 'karmaToNuyenMax')
+        max = toNuyenMax(b, cr, data)
       if (v < 0) return no('below-zero')
       if (max !== undefined && v > max) return no('conversion-cap')
       b.karmaToNuyen = v

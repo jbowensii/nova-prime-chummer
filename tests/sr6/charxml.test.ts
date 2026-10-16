@@ -75,7 +75,7 @@ function full(): Sr6Character {
   b.qualities = [
     { uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' },
     { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' },
-    { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11 },
+    { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11, boughtOff: 2 }, // (Stolen Gear's bought off so far)
   ]
   b.picks = [
     { uid: 'p1', kind: 'spells', id: 'crb.glow-ward' },
@@ -327,6 +327,7 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'knowledge', line: { uid: 'lk', name: 'Arcade lore', kind: 'knowledge', points: 0, karma: 1 } },
     { op: 'quality', line: q },
     { op: 'buyoff', target: 'q9' },
+    { op: 'buyoff', target: 'q3', part: 2 },
     { op: 'buyoff', target: 'q8', line: { uid: 'q8', id: 'crb.butterfingers', level: 1 } },
     { op: 'pick', line: { uid: 'lp', kind: 'spells', id: 'crb.glow-ward', name: 'Glow Ward' } },
     { op: 'powerpoint' },

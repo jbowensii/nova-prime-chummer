@@ -101,6 +101,8 @@ copy". Book entries are never copied here.
 - `<quality free="true">`: a metatype trait, free and not removable. `name` (on a quality, pick or purchase): the
   catalog name when it was added, shown if the entry later leaves the catalog. `<quality karma>`: for a quality priced
   in a range (`karma`–`karmaMax`, as Allergy's severity sets it), the karma it was taken for; unset, the lowest.
+  `<quality boughtOff>`: Stolen Gear's converted karma bought off after creation so far (No Future errata, NF p. 162:
+  its bounty is the build's `karmaToNuyen` less this).
 - `<skill><spec>…</spec></skill>`: the specializations past the first, one element each (Exotic Weapons, CRB Hong Kong
   p. 95; any skill with the Sixth World Companion's Expanded Specializations, p. 153); each priced as a specialization.
   A file from before 0.13.2 holds them in a `specs` attribute, `; `-separated: still read.
@@ -167,7 +169,9 @@ the entry its `event` names.
   "Levels", names the lower level's uid in `target`: that line moves to the new level; a `quality` that is an Infected
   type changing the magic kind names the kind it leaves in `magic`, the one before kept as the build's `infectedFrom`),
   `buyoff` and `drop` (`target`:
-  the uid of the line removed; the removed line may follow for the history), `upgrade` (`target`: the uid of the bought
+  the uid of the line removed; the removed line may follow for the history; a `buyoff` of Stolen Gear with `part`, No
+  Future's errata (NF p. 162), buys off that much of the karma converted at creation, `stolenGearBuyOff` Karma each, and
+  the line stays with the total so far in its `<quality boughtOff>`; without `part`, the rest, and it goes), `upgrade` (`target`: the uid of the bought
   item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×

@@ -3,7 +3,8 @@
 // its choice may be taken again, for another), and the net karma line against the cap.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../ui/bits'
-import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma, qualityPrice } from '../../engine/budgets'
+import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma, qualityPrice, settingQuality, toNuyen } from '../../engine/budgets'
+import { stolenLeft } from '../../engine/career'
 import { flag, num } from '../../engine/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../engine/data'
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../engine/infected'
@@ -68,6 +69,12 @@ export function QualitiesTab() {
                         {' '}
                         <span className="noncanon">Metatype trait</span>
                       </>
+                    )}
+                    {/* (No Future errata, NF p. 162: its bounty is the karma converted at creation not yet bought off) */}
+                    {settingQuality(b, cr, 'stolenGearQuality', data) === q && (
+                      <div className="muted small">
+                        Bounty: {stolenLeft(b, cr, data, q)} of {toNuyen(b, cr, data)} karma turned into nuyen not bought off (No Future errata)
+                      </div>
                     )}
                   </td>
                   <td>

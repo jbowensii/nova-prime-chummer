@@ -5,8 +5,7 @@
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
 import { NameField } from '../../../shared/ui'
-import { num } from '../../engine/creation'
-import { nuyenPerKarma } from '../../engine/budgets'
+import { nuyenPerKarma, settingQuality, toNuyenMax } from '../../engine/budgets'
 import { bookValue, dataFind } from '../../engine/values'
 import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../model/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
@@ -30,7 +29,8 @@ export function ContactsTab() {
       )
     })
   const rate = nuyenPerKarma(b, cr, data),
-    most = num(cr, 'karmaToNuyenMax')
+    most = toNuyenMax(b, cr, data),
+    stolen = settingQuality(b, cr, 'stolenGearQuality', data)
   // lifepath's contact points go by contact type (the Sixth World Companion)
   const typed = b.method === 'lifepath'
   const setType = (uid: string, types: (ContactType | '')[], i: number, v: string) => {
@@ -166,6 +166,7 @@ export function ContactsTab() {
         <span className="muted">
           {rate !== undefined ? `${n(rate)}¥ a karma` : 'The rate isn’t set: Table setup → Creation rules.'}
           {most !== undefined && `, at most ${most}`}
+          {stolen && ' (Stolen Gear, No Future errata: its own rate and limit)'}
         </span>
       </p>
     </div>

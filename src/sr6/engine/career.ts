@@ -6,8 +6,22 @@
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
 import { newId, type Violation } from '../../model/types'
-import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry } from '../model/character'
-import { aptitudeSkills, attrMax, manySpecs, powerCost, attrRating, magicLoss, priced, qualityCost, qualityPrice, sinCost, skillRank } from './budgets'
+import { sinName, type PickKind, type Sr6Advance, type Sr6Build, type Sr6Character, type Sr6LedgerEntry, type Sr6Quality } from '../model/character'
+import {
+  aptitudeSkills,
+  attrMax,
+  manySpecs,
+  powerCost,
+  attrRating,
+  magicLoss,
+  priced,
+  qualityCost,
+  qualityPrice,
+  settingQuality,
+  sinCost,
+  skillRank,
+  toNuyen,
+} from './budgets'
 import { flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
@@ -91,9 +105,13 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (a.magic) infectedTo(b, boughtKind(b), a.magic)
       return
     }
-    case 'buyoff':
-      b.qualities = b.qualities.filter(q => q.uid !== a.target)
+    case 'buyoff': {
+      // (a part of Stolen Gear's conversion: the line stays, with what is bought off so far)
+      const q = a.part ? b.qualities.find(x => x.uid === a.target) : undefined
+      if (q) q.boughtOff = (q.boughtOff ?? 0) + a.part!
+      else b.qualities = b.qualities.filter(x => x.uid !== a.target)
       return
+    }
     case 'pick': {
       // a leveled power taken again goes up a level (a family of levels: the lower level, target, moves to the new one)
       const had = b.picks.find(x => x.kind === a.line.kind && (a.target ? x.uid === a.target : x.id === a.line.id))
@@ -216,6 +234,10 @@ export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
   const last = ledgerRows(ch).at(-1)
   return last ? { karma: last.karma, nuyen: last.nuyen } : (ch.final ?? { karma: 0, nuyen: 0 })
 }
+
+/** Stolen Gear's converted karma not yet bought off (No Future errata, NF p. 162): the karma turned into nuyen at
+ *  creation (karma.ts toNuyen) less what was bought off since (Sr6Quality.boughtOff). */
+export const stolenLeft = (b: Sr6Build, cr: CreationRules, data: Sr6Data, q: Sr6Quality) => Math.max(0, toNuyen(b, cr, data) - (q.boughtOff ?? 0))
 
 /** Adept power points after creation: an adept's are its Magic (a point per point of Magic, CRB p. 156), a mystic
  *  adept's the ones bought (the core rulebook prints no price after creation: advance.powerPoint); less the powers taken. */
@@ -358,6 +380,17 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (q.free) no('free-trait')
       const v = data.qualities[q.id] ?? no('unknown-entry')
       if (v.positive) no('not-negative')
+      // No Future's errata (NF p. 162): Stolen Gear is bought off by the converted karma left, stolenGearBuyOff a karma,
+      // all or a part at a time
+      if (settingQuality(b, cr, 'stolenGearQuality', data) === q) {
+        const left = stolenLeft(b, cr, data, q),
+          part = a.part ?? left
+        if (!left && a.part === undefined) return { label: `Buy off: ${v.name}, nothing converted`, karma: 0 }
+        if (!Number.isInteger(part) || part < 1) no('below-one')
+        if (part > left) no('more-than-left')
+        return { label: `Buy off: ${v.name}, ${part} of ${left} converted karma`, karma: part * need('stolenGearBuyOff') }
+      }
+      if (a.part !== undefined) no('not-a-part')
       if (v.karma === null) no('book-value')
       return { label: `Buy off: ${v.name}`, karma: qualityCost(q, v) * need('advance.buyOffFactor') }
     }
@@ -630,9 +663,13 @@ export function record(
     case 'contact':
       adv.line = named(adv.line)
       break
-    case 'buyoff':
-      adv.line = b.qualities.find(q => q.uid === adv.target)
+    case 'buyoff': {
+      const q = b.qualities.find(x => x.uid === adv.target)
+      // (Stolen Gear's last part bought off is all of it: the line goes)
+      if (adv.part !== undefined && q && adv.part >= stolenLeft(b, cr, data, q)) delete adv.part
+      adv.line = q
       break
+    }
     case 'drop':
       adv.line = b.purchases.find(x => x.uid === adv.target)
       break

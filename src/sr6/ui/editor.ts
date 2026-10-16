@@ -116,6 +116,8 @@ export const REASONS: Record<string, string> = {
   'module-count': 'Every adult life module is already picked.',
   'licence-above-sin': 'A licence can’t be rated above its fake SIN.',
   'no-licence': 'Its Availability prints no licence fee.',
+  'more-than-left': 'That’s more than is left to buy off.',
+  'not-a-part': 'Only Stolen Gear is bought off a part at a time.',
   'conversion-cap': 'That’s more karma than may be turned into nuyen.',
   'not-awakened': 'Only an awakened runner can be initiated.',
   'not-emerged': 'Only an emerged runner can submerge.',

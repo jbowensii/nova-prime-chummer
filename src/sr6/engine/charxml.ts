@@ -86,7 +86,8 @@ function purchaseXml(p: Sr6Purchase): string {
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) =>
   `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
-const qualityXml = (q: Sr6Quality) => el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name })
+const qualityXml = (q: Sr6Quality) =>
+  el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name, boughtOff: q.boughtOff })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note }, bonusesXml(p.bonuses))
 const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
 const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
@@ -170,7 +171,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'quality':
       return [{ target: a.target, magic: a.magic }, qualityXml(a.line)]
     case 'buyoff':
-      return [{ target: a.target }, a.line ? qualityXml(a.line) : '']
+      return [{ target: a.target, part: a.part }, a.line ? qualityXml(a.line) : '']
     case 'pick':
       return [{ target: a.target }, pickXml(a.line)]
     case 'martialart':
@@ -375,6 +376,7 @@ const readQuality = (e: Element): Sr6Quality =>
     free: yes(e, 'free'),
     note: str(e, 'note'),
     name: str(e, 'name'),
+    boughtOff: num(e, 'boughtOff'),
   })
 const readPick = (e: Element): Sr6Pick =>
   def({
@@ -560,7 +562,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       })
     }
     case 'buyoff':
-      return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality) })
+      return def({ op, target: req(e, 'target'), line: line(e, 'quality', readQuality), part: num(e, 'part') })
     case 'pick':
       return def({ op, line: line(e, 'pick', readPick, true), target: str(e, 'target') })
     case 'martialart':

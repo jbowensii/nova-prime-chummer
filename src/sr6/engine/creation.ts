@@ -262,6 +262,17 @@ export const CREATION_KEYS: CreationKey[] = [
     ['karmaToNuyenRateInDebt', 'Nuyen per karma with the in-debt quality'],
   ]),
   { key: 'inDebtQuality', label: 'In-debt quality', type: 'quality', group: 'Nuyen', methods: 'all' },
+  // No Future's Stolen Gear as its errata has it: optional (unset, a runner with the quality converts as any other)
+  { key: 'stolenGearQuality', label: 'Stolen Gear quality (unset: none)', type: 'quality', group: 'Nuyen', methods: [] },
+  ...n(
+    'Nuyen',
+    [],
+    [
+      ['karmaToNuyenRateStolenGear', 'Nuyen per karma with Stolen Gear'],
+      ['karmaToNuyenMaxStolenGear', 'Most karma turned into nuyen with Stolen Gear'],
+      ['stolenGearBuyOff', 'Karma to buy off one karma of Stolen Gear’s conversion'],
+    ],
+  ),
   { key: 'karmaToNuyenCap', label: 'A limit on the Karma turned into nuyen at creation (house rule)', type: 'bool', group: 'Nuyen', methods: [] },
   ...n('Nuyen', [], [['karmaToNuyenMax', 'Most karma turned into nuyen (unset: no limit)']]), // optional, as maxKarmaLeft
   ...n('Nuyen', [], [['dataStructureNuyen', 'Data structure: nuyen per level']]),
@@ -955,7 +966,8 @@ export interface RuleLock {
 const HK = (p: number | string) => `CRB Hong Kong p. ${p}`,
   SWC = (p: number | string) => `Sixth World Companion p. ${p}`
 const HOUSE = 'house rule',
-  OPTION = 'option'
+  OPTION = 'option',
+  NF_ERRATA = 'No Future errata, NF p. 162'
 // (owner, one-off exception, 2026-10-11: the one place another app is named) the Karma build option's numbers are the ones
 // that app starts a Karma build from, since no SR6 book prints one
 const KARMA_BUILD = 'option (Commlink6 defaults)',
@@ -1046,6 +1058,10 @@ const ABOUT: Record<string, [string, string]> = {
   karmaToNuyenRate: ['Nuyen a Karma turns into at creation', HK(66)],
   karmaToNuyenRateInDebt: ['Nuyen a Karma turns into at creation with the In Debt quality', HK(66)],
   inDebtQuality: ['The catalog’s In Debt quality, which changes the Karma-to-nuyen rate', HK(77)],
+  stolenGearQuality: ['The catalog’s Stolen Gear quality (0 Karma), which changes the Karma-to-nuyen rate and limit; never with In Debt', NF_ERRATA],
+  karmaToNuyenRateStolenGear: ['Nuyen a Karma turns into at creation with Stolen Gear', NF_ERRATA],
+  karmaToNuyenMaxStolenGear: ['The most Karma turned into nuyen at creation with Stolen Gear, at any rate', NF_ERRATA],
+  stolenGearBuyOff: ['Karma to buy off one Karma of Stolen Gear’s conversion after creation (bought off a part at a time)', NF_ERRATA],
   karmaToNuyenCap: [
     'On: the Karma turned into nuyen at creation is limited to the number below; off: no limit, as the book prints none (CRB Hong Kong p. 66)',
     HOUSE,

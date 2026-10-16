@@ -63,3 +63,41 @@ test('Ledger: the Awakened override after finalising is a free spend; Method say
   expect(after.ledger.at(-1)).toMatchObject({ type: 'advance', advance: { op: 'awakened', value: true }, karma: 0 })
   expect(pageText()).toMatch(/Karma 10/)
 })
+
+const stolenCr = () => {
+  const cr = fixtureCreation()
+  cr.set('stolenGearQuality', { key: 'stolenGearQuality', value: 'crb.butterfingers' }) // (a made-up stand-in)
+  return cr
+}
+/** A runner with Stolen Gear and 3 karma turned into nuyen; career: finalized with 10 karma. */
+const stolenRunner = (career: boolean) => {
+  const ch = runner()
+  ch.build.karmaToNuyen = 3
+  ch.build.qualities = [{ uid: 'sg', id: 'crb.butterfingers', level: 1 }]
+  if (career) {
+    Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 10, nuyen: 0 } })
+    ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 10, nuyen: 0 }]
+  }
+  return ch
+}
+
+test('Stolen Gear: its rate and limit on Contacts', async () => {
+  await open(stolenRunner(false), 'contacts', undefined, stolenCr())
+  expect(pageText()).toMatch(/9,000¥ a karma, at most 4 \(Stolen Gear, No Future errata: its own rate and limit\)/)
+})
+
+test('Stolen Gear: its bounty on Qualities', async () => {
+  await open(stolenRunner(true), 'qualities', undefined, stolenCr())
+  expect(pageText()).toMatch(/Bounty: 3 of 3 karma turned into nuyen not bought off/)
+})
+
+test('Stolen Gear: a part of it bought off on the Ledger', async () => {
+  const saved = await open(stolenRunner(true), 'ledger', undefined, stolenCr())
+  await change(field('What'), 'buyoff')
+  await change(field('Quality'), 'sg')
+  await change(field('Converted karma to buy off'), '2')
+  expect(pageText()).toMatch(/Buy off: Butterfingers, 2 of 3 converted karma · 6 karma/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  expect((await saved()).ledger.at(-1)).toMatchObject({ advance: { op: 'buyoff', target: 'sg', part: 2 }, karma: 6 })
+})
