@@ -12,7 +12,6 @@ import '../../print/sheet.css'
 import './sheet.css'
 import { entryOf, priced, statusesOf } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
-import { runnerInfected } from '../engine/infected'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
 import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
@@ -42,9 +41,9 @@ export function Sr6Sheet() {
   const b = ch.build,
     art = useSheetArt(ch.id, 'sr6'),
     k = MAGIC_KINDS[b.magic],
-    style = usePrintStyle(),
-    inf = runnerInfected(b, data)
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host, effectNotes } = runnerView(ctx)
+    style = usePrintStyle()
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, licencesOf, awakened, qualityNotes, karma, nuyen, host, effectNotes } =
+    runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
       <div className="s-small">
@@ -200,16 +199,12 @@ export function Sr6Sheet() {
                       {v?.name ?? q.name ?? q.id}
                       {v?.perLevel && ` ${q.level}`}
                       {q.free && <span className="s-small"> (metatype)</span>}
-                      {/* (an Infected type's gained powers and weaknesses, SWC pp. 110–114; free) */}
-                      {inf?.line === q &&
-                        (['power', 'weakness'] as const).map(tag => {
-                          const gs = inf.t.gains.filter(g => g.tag === tag)
-                          return gs.length ? (
-                            <div key={tag} className="s-small">
-                              {tag === 'power' ? 'Powers' : 'Weaknesses'}: {gs.map(g => `${g.name}${g.rating ? ` ${g.rating}` : ''}`).join(', ')}
-                            </div>
-                          ) : null
-                        })}
+                      {/* (an Infected type's gained powers and weaknesses, Stolen Gear's bounty: view.ts qualityNotes) */}
+                      {qualityNotes(q).map(t => (
+                        <div key={t} className="s-small">
+                          {t}
+                        </div>
+                      ))}
                     </li>
                   )
                 })}
@@ -238,6 +233,7 @@ export function Sr6Sheet() {
                       ['Astral initiative', init(d.astralInit, d.on.astralInit)],
                       ['Defense Rating', br(d.defenseRating, d.on.defenseRating)],
                       ['Social Rating', br(d.socialRating, d.on.socialRating)],
+                      ['Awakened', awakened],
                       ['Composure', br(d.composure, d.on.composure)],
                       ['Judge Intentions', br(d.judgeIntentions, d.on.judgeIntentions)],
                       ['Memory', br(d.memory, d.on.memory)],
@@ -437,7 +433,7 @@ export function Sr6Sheet() {
                       {s.gender && `, ${s.gender}`})
                     </span>
                     {lifeOf(s) && <div>{lifeOf(s)}</div>}
-                    {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}
+                    {licencesOf(s).length > 0 && <div className="s-small">Licences: {licencesOf(s).join(', ')}</div>}
                   </li>
                 ))}
               </ul>

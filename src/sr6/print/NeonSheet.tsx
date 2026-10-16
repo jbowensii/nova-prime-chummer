@@ -67,6 +67,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
       ['Initiative', init(d.initiative, d.on.initiative)],
       ['Astral init.', init(d.astralInit, d.on.astralInit)],
       ['Defense', br(d.defenseRating, d.on.defenseRating)],
+      ['Social', br(d.socialRating, d.on.socialRating)],
       ['Unarmed AR', d.attackRatings.unarmed],
       ['Essence', n(d.essence)],
       ['Composure', br(d.composure, d.on.composure)],
@@ -75,6 +76,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
       ['Lift/carry', br(d.liftCarry, d.on.liftCarry)],
       ['Drain', d.drain],
       ['Fading', d.fading],
+      ['Awakened', v.awakened],
     ] as [string, ReactNode][]
   ).filter(([, x]) => x !== undefined)
   const acc = (x: (typeof b.purchases)[number]) =>
@@ -144,6 +146,12 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                   <li key={q.uid} className={x && !x.positive ? 'neg' : undefined}>
                     {x?.name ?? q.name ?? q.id}
                     {x?.perLevel && ` ${q.level}`}
+                    {v.qualityNotes(q).map(t => (
+                      <span key={t} className="n-small">
+                        {' '}
+                        {t}
+                      </span>
+                    ))}
                   </li>
                 )
               })}
@@ -177,7 +185,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                   <span className="n-small">
                     {s.placeholder ? 'placeholder' : s.kind === 'real' ? 'real' : `fake ${s.rating ?? 1}`}
                     {s.gender && `, ${s.gender}`}
-                    {s.licences.length > 0 && `; ${s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}`}
+                    {v.licencesOf(s).length > 0 && `; ${v.licencesOf(s).join(', ')}`}
                     {v.lifeOf(s) && `; ${v.lifeOf(s)}`}
                   </span>
                 </li>
@@ -276,7 +284,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                         <b>{nameOf(x)}</b>
                         {acc(x)}
                       </td>
-                      <td>{a.dv}</td>
+                      <td>{v.dv(x)}</td>
                       <td>{a.modes}</td>
                       <td>{v.bands(x).map(band).join('/')}</td>
                       <td>{a.ammo}</td>
@@ -293,6 +301,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                 {lines('armor').map(x => (
                   <li key={x.uid}>
                     <b>{nameOf(x)}</b> {attrsOf(x).defense}
+                    {v.social(x) && ` Social ${v.social(x)}`}
                     {x.worn && <span className="n-tag">worn</span>}
                     {acc(x)}
                   </li>
