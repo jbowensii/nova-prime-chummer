@@ -67,6 +67,11 @@ export function DossierSheet({ art }: { art: SheetArt }) {
         {x?.name ?? q.name ?? q.id}
         {x?.perLevel && ` ${q.level}`}
         {(q.free || q.note) && <span className="d-small"> {[q.free && 'metatype', q.note].filter(Boolean).join(', ')}</span>}
+        {v.qualityNotes(q).map(t => (
+          <div key={t} className="d-small">
+            {t}
+          </div>
+        ))}
       </td>
     </tr>
   )
@@ -95,6 +100,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
     ['Judge Intentions', d.judgeIntentions, <b>{d.judgeIntentions}</b>],
     ['Memory', d.memory, <b>{d.memory}</b>],
     ['Lift/Carry', d.liftCarry, <b>{d.liftCarry}</b>],
+    ['Social Rating', d.socialRating, <b>{br(d.socialRating, d.on.socialRating)}</b>],
   ]
   const skillTable = (rows: typeof skills, key: string) => (
     <table key={key} className="d-skills">
@@ -163,6 +169,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                   ['Karma', n(v.karma)],
                   ['Total Karma', ''],
                   ['Essence', n(d.essence)],
+                  ['Awakened', v.awakened],
                 ] as [string, ReactNode][]
               ).map(([l, x]) => (
                 <div key={l}>
@@ -320,7 +327,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                         {acc(x)}
                       </td>
                       <td />
-                      <td>{a.dv}</td>
+                      <td>{v.dv(x)}</td>
                       <td>{v.bands(x).map(band).join('/')}</td>
                       <td>{a.modes}</td>
                       <td>{a.ammo}</td>
@@ -356,7 +363,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                       {acc(x)}
                     </td>
                     <td />
-                    <td>{attrsOf(x).dv}</td>
+                    <td>{v.dv(x)}</td>
                     <td>{band(v.bands(x)[0])}</td>
                   </tr>
                 )),
@@ -389,7 +396,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                       {acc(x)}
                     </td>
                     <td>{attrsOf(x).defense}</td>
-                    <td>{[x.worn ? 'Worn' : 'Not worn', x.note].filter(Boolean).join(', ')}</td>
+                    <td>{[x.worn ? 'Worn' : 'Not worn', v.social(x) && `Social ${v.social(x)}`, x.note].filter(Boolean).join(', ')}</td>
                   </tr>
                 )),
                 4,
@@ -512,7 +519,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                       {s.gender && <span className="d-small"> {s.gender}</span>}
                     </td>
                     <td>{s.kind === 'real' ? 'real' : (s.rating ?? 1)}</td>
-                    <td>{s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</td>
+                    <td>{v.licencesOf(s).join(', ')}</td>
                     <td>{v.lifeOf(s)}</td>
                   </tr>
                 )),

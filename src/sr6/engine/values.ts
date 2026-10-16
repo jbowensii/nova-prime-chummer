@@ -146,17 +146,17 @@ export function legality(s: string | undefined): 'L' | 'I' | 'F' | undefined {
 
 /** How an availability is listed, and the heads-up it earns (never a refusal: licences and legality are a conversation with
  *  the GM, and a player may carry the item unlicensed and take what comes). `text`: the licence in words, when it prints one;
- *  `warn`: a note for an item needing a licence or of restricted legality (L, I, F). */
-export function availNote(avail: string | undefined, rating = 1): { text?: string; warn?: string } {
+ *  `warn`: a note for an item needing a licence or of restricted legality (L, I, F). `on`: the names of the SINs an owned
+ *  line is licensed on (Sr6Purchase.licensedOn): listed, no warning; none, the one warning that it needs one. */
+export function availNote(avail: string | undefined, rating = 1, on?: string[]): { text?: string; warn?: string } {
   const a = availability(avail, rating)
   const letter = legality(avail)
   if (!a.ok || a.fee === undefined) return { warn: letter ? `Legality ${letter}: licences and legality are for your GM; not enforced here.` : undefined }
   const money = `${a.fee.toLocaleString('en-US')}¥`
-  const pure = !/[^\d,¥\s]/.test(avail ?? '') // (nothing but the fee: freely available)
-  return {
-    text: pure ? `available with licence (fee ${money})` : `${a.n}${letter ? `(${letter})` : ''}, licence fee ${money}`,
-    warn: `Needs a licence (fee ${money}) — or carry it unlicensed; settle it with your GM.`,
-  }
+  const pure = avail!.match(LICENCE)?.[1] === undefined // (nothing but the fee: freely available; `2, 500¥` is rating 2 and a fee)
+  const text = pure ? `available with licence (fee ${money})` : `${a.n}${letter ? `(${letter})` : ''}, licence fee ${money}`
+  if (on?.length) return { text: `${text} · licensed on: ${on.join(', ')}` }
+  return { text, warn: `Needs a licence (fee ${money}) on each SIN it’s carried under — or carry it unlicensed; settle it with your GM.` }
 }
 
 /** The highest rating or level the app reads. ponytail: no book prints one near it; a file's `1-20000000` would build

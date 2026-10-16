@@ -207,6 +207,16 @@ Weaknesses:`, `Attack:`, `Notes:`) and its attribute maxima as a row of the Infe
   as a free Optional Power`; Goblin's `Gain one Optional Powers (except Regeneration) for free`: every one but
   Regeneration). One free pick per character. A type with no `Optional Powers:` line (Ghoul, Grendel, Jabbawock, Lamia) has
   none; an item naming no row is reported (`unmatched`): Chiron's `Immunity (Age)`, which the table does not price.
+- `<power name [rating] [ref]/>` and `<weakness name/>`, one per item of the type's `Gained Powers:` and `Gained
+  Weaknesses:` lines (after the optional powers): `name` as printed less page citations (`Natural Weapon (Claws, Bite)`,
+  `Magical Guard (self only)`), `rating` a printed number (`Armor 1`, `Armor (4)`, `Built Tough 2`), `ref` the critter
+  power's id when the same book prints it. The app finds the rest by the name less its parenthesis across the catalog
+  (`data.ts` `gainedEntry`: a power among the critter powers, then the qualities; a weakness among the critter
+  weaknesses, the core rulebook's rules entries, p. 228) and lists a name it can't find as `data.unresolved` (noted once
+  in the runner's Review, shown as printed), never guessed. A name the book misprints is the owner's override row
+  (`"gen": "owner"`, a kid that `replaces` the printed one): Nibiinaabe's `Darkness`, a spell, is `Innate Spell
+  (Darkness)`. Modifiers (`+1 initiative die`, `–1 Logic`) and the free pick's sentence are not items. They cost nothing
+  (owner: critter powers cost 0); the Creation method tab's Infected section and the printed sheet list them.
 - `<karmaif flag="awakened" value note/>`: the quality's Karma when the character is Awakened (a magician, adept, mystic
   adept or aspected magician; a technomancer is not), from a price note `(–10 Karma if character is already Awakened)`:
   Mutaqua 54/44, Nosferatu 48/38, Wendigo 47/37, `note` "less 10 if the character is already Awakened" (shown where the
@@ -843,7 +853,9 @@ errata PDF only to a library that holds both PDFs, so the importer's per-book ru
 owner wants its numbers the per-book table carries them as hand-written rows that no generator replaces: `{"cl6": "<label>",
 "kind", "id", "set": {...}, "formula"?, "effects"?, "gen": "errata"}`. Game numbers only, never description text. `set` takes a
 `null` to drop an attribute (a rating the errata removes); `effects` is a list of `<effect>` attribute dicts, each replacing
-the entry's effect of the same `target` (the Trenchcoat's Concealability +2). The rows apply after every other id row, so they win
+the entry's effect of the same `target` (the Trenchcoat's Concealability +2); `kids` adds children the entry lacks, among them a
+`<status name level?>` the item applies (the Molotov's Burning 4, CRB p. 51's statuses: shown on the item's line and card,
+never applied to the runner). The rows apply after every other id row, so they win
 over `value` rows. A removal and a rename are the ordinary `remove` / `rename` rows (`"alias": false` for a renumbering). The
 corpus pass skips a renumbering the table already made (resolve.py `_renumber`). `nf.json` holds the No Future errata (6E
 availabilities, Cybereyes/Cyberears as ratings 6 and 7 with ids kept, Vocal Expansion and AutoVoice unrated, the hacked
@@ -1085,6 +1097,10 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Nuyen | `karmaToNuyenRate` | number | all |  |  |  | Nuyen per karma |
 | Nuyen | `karmaToNuyenRateInDebt` | number | all |  |  |  | Nuyen per karma with the in-debt quality |
 | Nuyen | `inDebtQuality` | quality id | all |  |  |  | In-debt quality |
+| Nuyen | `stolenGearQuality` | quality id | optional |  |  |  | No Future's Stolen Gear (`nf.stolen-gear`), as its errata has it (NF p. 162): 0 Karma; with it the Karma turned into nuyen at creation is `karmaToNuyenRateStolenGear` a Karma, at most `karmaToNuyenMaxStolenGear` at any rate; never with In Debt (Review's `quality.stolenGearInDebt`); after creation bought off a part at a time, `stolenGearBuyOff` Karma per converted Karma (docs/sr6-character-format.md, `buyoff` `part`) |
+| Nuyen | `karmaToNuyenRateStolenGear` | number | optional |  |  |  | Nuyen per karma with Stolen Gear (10,000) |
+| Nuyen | `karmaToNuyenMaxStolenGear` | number | optional |  |  |  | Most karma turned into nuyen with Stolen Gear (20; `karmaToNuyenMax` too when lower): refused at creation; after it, the karma converted at creation and since past it is a career Review warning (`quality.stolenGearCap`), never refused |
+| Nuyen | `stolenGearBuyOff` | number | optional |  |  |  | Karma to buy off one Karma of Stolen Gear's conversion (2) |
 | Nuyen | `karmaToNuyenCap` | true/false | optional |  |  |  | House rule, off (no limit: CRB Hong Kong p. 66 prints none): the Karma turned into nuyen at creation up to `karmaToNuyenMax` |
 | Nuyen | `karmaToNuyenMax` | number | optional | `karmaToNuyenCap` |  |  | Most karma turned into nuyen (unset: no limit) |
 | Nuyen | `dataStructureNuyen` | number | optional |  |  |  | Nuyen per level of a data structure bought (Hack & Slash p. 72: 5,000); its Karma, the level, is paid to integrate it (p. 71) |

@@ -377,6 +377,72 @@ def _free(cat, e, powers, page, rows):
     return out
 
 
+_MOD = re.compile(r"[+–−-]\s*\d")  # (`+1 initiative die`, `–1 Logic`: a modifier, no power or weakness)
+_CITE = re.compile(r"\(?\s*(?:p\.|pp\.|SR6\b|Street Wyrd|Core)", re.I)
+
+
+def _items(s):
+    """A Gained list's items: at commas outside parentheses, and after a closing parenthesis a capital or a sign follows
+    (`Enhanced Senses (Hearing, Smell) Natural Weapon`: the comma the book left out). An unclosed parenthesis runs to
+    the end of the list (`Induced Dormancy (Lack of Air, (Essence) Minutes, (p. 228, SR6)`)."""
+    out, depth, cur = [], 0, ""
+    for i, ch in enumerate(s):
+        depth = max(0, depth + (ch == "(") - (ch == ")"))
+        if ch == "," and not depth:
+            out.append(cur)
+            cur = ""
+            continue
+        cur += ch
+        if ch == ")" and not depth and re.match(r"\s+[A-Z+–−-]", s[i + 1:]):
+            out.append(cur)
+            cur = ""
+    return [x.strip(" .") for x in out + [cur] if x.strip(" .")]
+
+
+def _groups(s):
+    """`(6) (replaces Armor (4))` -> ["6", "replaces Armor (4)"]: the outer parentheses' contents (one left open: to the end)."""
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch == ")" and depth:
+            depth -= 1
+            if not depth:
+                out.append(cur)
+                cur = ""
+                continue
+        if depth:
+            cur += ch
+        if ch == "(":
+            depth += 1
+    return out + ([cur] if depth and cur.strip() else [])
+
+
+def _gains(label, tag, own):
+    """The type's `Gained Powers:` or `Gained Weaknesses:` items as <power> or <weakness> children: name as printed less
+    its page citations (`Magical Guard (self only, p. 69, Street Wyrd)`: `Magical Guard (self only)`), rating its number
+    (`Armor 1`, `Armor (4)`, `Built Tough 2`), ref the critter power of its name this book prints (`own`: words -> id);
+    the app finds the rest by name across the catalog (data.ts gainedEntry). The free pick's sentence (`Gain one of
+    ...`) and the modifiers (`+1 initiative die`, `–1 Logic`) are no items."""
+    out = []
+    for item in _items(re.split(r"\.\s*Gain\b", label)[0]):
+        if _MOD.match(item):
+            continue
+        head, _, rest = item.partition("(")
+        head, rating = head.strip(), None
+        if m := re.fullmatch(r"(.+?)\s+\+?(\d+)", head):
+            head, rating = m.group(1), m.group(2)
+        quals = []
+        for g in _groups("(" + rest) if rest else []:
+            parts = [a for a in _split_top(g) if not _CITE.match(a)]
+            if len(parts) == 1 and parts[0].isdigit() and rating is None:
+                rating = parts[0]
+            elif parts:
+                quals.append(", ".join(parts))
+        ref = own.get(_words(head)) if tag == "power" else None
+        out.append((tag, {**({"ref": ref} if ref else {}), "name": head + "".join(f" ({q})" for q in quals),
+                          **({"rating": rating} if rating else {})}, None))
+    return out
+
+
 def _other_base(bs):
     """A sidebar giving a type for other base metatypes (`NON-HUMAN VAMPIRES`, p. 109: `apply the same attribute modifiers
     to maximums as per a vampire to a human: +1 BOD, STR, WILL, and +2 REA and CHA … a total cost of 32`): {type words:
@@ -401,10 +467,12 @@ def _infected(cat, found, lists, bs):
     """Each Infected quality's rules as data (docs/sr6-data-format.md, Infected characters): <infected> (its strain from
     its Notes, `carry HMHVV Strain Ia`: Ia is Strain I, owner; its base metatype, the attributes table's BASE; whom it
     Awakens as, `Awaken as adepts`; the chapter's free points and its strain's Essence and Magic), an <infectedalt> for
-    another base metatype a sidebar gives it (the non-human vampire), and an <optionalpower> per optional power it may
-    buy, `free` on those its free pick may take. Placed first among the entry's children (the Quality schema's order)."""
+    another base metatype a sidebar gives it (the non-human vampire), an <optionalpower> per optional power it may
+    buy, `free` on those its free pick may take, and a <power> or <weakness> per item it gains (_gains). Placed first
+    among the entry's children (the Quality schema's order)."""
     rows = [(_words(e["name"].partition("(")[0]), norm(e["name"].partition("(")[2].rstrip(")")), e["id"])
             for e in cat.entries["qualities"] if e["attrs"].get("category") in lists]
+    own = {_words(e["name"]): e["id"] for e in cat.entries["critterpowers"]}  # (this book's critter powers, for a gained one)
     others = _other_base(bs)
     for b, entries in found:
         page = max(1, b.page - PAGE_OFFSET)
@@ -429,6 +497,7 @@ def _infected(cat, found, lists, bs):
             opt = _optional(cat, e, lab.get("optional powers", ""), page, rows)
             free = _free(cat, e, lab.get("gained powers", ""), page, opt)
             kids += [("optionalpower", {"ref": r[2], **({"free": "true"} if r in free else {})}, None) for r in opt]
+            kids += _gains(lab.get("gained powers", ""), "power", own) + _gains(lab.get("gained weaknesses", ""), "weakness", own)
             e["children"][:0] = kids
 
 

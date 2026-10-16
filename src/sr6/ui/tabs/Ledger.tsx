@@ -6,8 +6,8 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating } from '../../engine/budgets'
-import { balances, earn, ledgerLabel, ledgerRows, note, voidableIds, voidEntry, type Typed } from '../../engine/career'
+import { attrRating, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
+import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
   CORE_ATTRS,
@@ -27,6 +27,7 @@ import { CatalogPicker, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
+import { awakenedFlag } from '../../engine/infected'
 
 const OPS = [
   ['attribute', 'Raise attribute'],
@@ -45,10 +46,12 @@ const OPS = [
   ['upgrade', 'Upgrade gear to a higher level'],
   ['drop', 'Drop gear'],
   ['sin', 'SIN'],
+  ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
   ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'],
   ['n2k', 'Nuyen to karma'],
+  ['awakened', 'Awakened override'],
   ['other', 'Other'],
 ] as const
 type OpKey = (typeof OPS)[number][0]
@@ -57,7 +60,7 @@ const whole = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN)
 const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x)}${unit}`)
 
 export function LedgerTab() {
-  const { ch, c, data, p, preview, record, ledger } = useSr6Editor()
+  const { ch, c, data, cr, p, preview, record, ledger } = useSr6Editor()
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
@@ -80,9 +83,9 @@ export function LedgerTab() {
     rating: '1',
     gender: '',
     licName: '',
-    licRating: '1',
   })
-  const [licences, setLicences] = useState<{ name: string; rating: number }[]>([])
+  // (a new SIN's licences by name: each is rated as the SIN, career.ts)
+  const [licences, setLicences] = useState<string[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -107,6 +110,8 @@ export function LedgerTab() {
     an = (w: string) => (/^[aeiou]/.test(w) ? 'an' : 'a')
   const styleOf = (uid: string) => data.entry('martialarts', b.martialArts.find(m => m.uid === uid)?.id ?? '')
   const initKind: Sr6Kind = kind.resonance ? 'echoes' : 'metamagics'
+  const awake = awakenedFlag(b, data),
+    stolen = settingQuality(b, cr, 'stolenGearQuality', data)
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
   // a bought item with a higher level in its family (levels.ts) can be upgraded to one
@@ -115,6 +120,8 @@ export function LedgerTab() {
   )
   const above = (x: Sr6Purchase | undefined) => (e: Sr6Entry) =>
     !!x?.id && data.family(e.kind, e.id) === data.family(x.kind, x.id) && (data.levelOf(e) ?? 0) > (data.levelOf(data.entry(x.kind, x.id)) ?? 0)
+  // the owned lines (accessories too) whose Availability prints a licence fee: licensed on a SIN after creation
+  const licensable = b.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined)
   // a lifestyle is paid under a SIN: the first unless another is picked
   const sin = b.sins.some(s => s.uid === f.sin) ? f.sin : (b.sins[0]?.uid ?? '')
   /** what the form says to buy, or null while it's incomplete */
@@ -135,7 +142,8 @@ export function LedgerTab() {
       case 'quality':
         return e ? { op, line: { uid: '', id: e.id, level: 1 } } : null
       case 'buyoff':
-        return f.target ? { op, target: f.target } : null
+        // (Stolen Gear: the part of its converted karma bought off; none, all of it)
+        return f.target ? { op, target: f.target, ...(stolen?.uid === f.target && f.karma.trim() ? { part: whole(f.karma) } : {}) } : null
       case 'pick':
         return e ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id } } : null
       case 'martialart': {
@@ -192,12 +200,14 @@ export function LedgerTab() {
                 kind: f.sinKind === 'real' ? 'real' : 'fake',
                 ...(f.sinKind === 'real' ? {} : { rating: whole(f.rating) }),
                 ...(f.gender.trim() ? { gender: f.gender.trim() } : {}),
-                licences,
+                licences: licences.map(name => ({ name, rating: 1 })),
               },
             }
           : null
       case 'lifestyle':
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
+      case 'licensed':
+        return f.target && sin ? { op, target: f.target, sin } : null
       case 'contact':
         return f.name.trim() || f.target
           ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(), connection: whole(f.connection), loyalty: whole(f.loyalty) } }
@@ -206,6 +216,8 @@ export function LedgerTab() {
         return whole(f.karma) > 0 ? { op: 'convert', karma: whole(f.karma) } : null
       case 'n2k':
         return whole(f.karma) > 0 ? { op: 'convert', karma: -whole(f.karma) } : null
+      case 'awakened':
+        return f.target ? { op, ...(f.target === 'auto' ? {} : { value: f.target === 'yes' }) } : null
       case 'other':
         return { op }
     }
@@ -437,6 +449,21 @@ export function LedgerTab() {
             </select>
           </label>
         )}
+        {op === 'buyoff' && stolen && f.target === stolen.uid && (
+          <label>
+            Converted karma (of {stolenLeft(b, cr, data, stolen)})
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={f.karma}
+              onChange={e => set({ karma: e.target.value })}
+              placeholder="all"
+              aria-label="Converted karma to buy off"
+              style={{ width: '6rem' }}
+            />
+          </label>
+        )}
         {op === 'initiate' && (
           <label>
             {kind.resonance ? 'Echo' : 'Metamagic'} (optional)
@@ -509,33 +536,51 @@ export function LedgerTab() {
             <div className="row" style={{ alignSelf: 'end' }}>
               {licences.map((l, i) => (
                 <span key={i} className="chip">
-                  {l.name} ({l.rating})
-                  <button aria-label={`Remove licence ${l.name}`} onClick={() => setLicences(licences.filter((_, j) => j !== i))}>
+                  {l}
+                  <button aria-label={`Remove licence ${l}`} onClick={() => setLicences(licences.filter((_, j) => j !== i))}>
                     ×
                   </button>
                 </span>
               ))}
               <input value={f.licName} onChange={e => set({ licName: e.target.value })} placeholder="Licence" aria-label="New licence" />
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={f.licRating}
-                onChange={e => set({ licRating: e.target.value })}
-                aria-label="Licence rating"
-                style={{ width: '4.5rem' }}
-              />
               <button
                 className="btn small"
                 disabled={!f.licName.trim()}
                 onClick={() => {
-                  setLicences([...licences, { name: f.licName.trim(), rating: whole(f.licRating) }])
-                  set({ licName: '', licRating: '1' })
+                  setLicences([...licences, f.licName.trim()])
+                  set({ licName: '' })
                 }}
               >
                 Add licence
               </button>
             </div>
+          </>
+        )}
+        {/* (a licence is one SIN's: one more SIN for an item, at its fee on a real SIN, a fake licence rated as a fake one; owner 2026-10-16) */}
+        {op === 'licensed' && (
+          <>
+            <label>
+              Item
+              <select aria-label="Licensed item" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {licensable.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              SIN
+              <select aria-label="Licensed on" value={sin} onChange={e => set({ sin: e.target.value })}>
+                {!b.sins.length && <option value="">The runner has no SIN</option>}
+                {b.sins.map((s, i) => (
+                  <option key={s.uid} value={s.uid}>
+                    {sinName(s, `SIN ${i + 1}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </>
         )}
         {op === 'lifestyle' && (
@@ -613,6 +658,20 @@ export function LedgerTab() {
           <label>
             Karma
             <input type="number" min={1} step={1} value={f.karma} onChange={e => set({ karma: e.target.value })} style={{ width: '6rem' }} />
+          </label>
+        )}
+        {/* (the Awakened flag's override after creation, free; Review warns while it differs: owner 2026-10-16) */}
+        {op === 'awakened' && (
+          <label>
+            Awakened
+            <select aria-label="Awakened override" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">Pick one</option>
+              <option value="auto">
+                Derived: {awake.derived ? 'Awakened' : 'not Awakened'} ({awake.why})
+              </option>
+              <option value="yes">Awakened (override)</option>
+              <option value="no">Not Awakened (override)</option>
+            </select>
           </label>
         )}
         {op === 'other' && (

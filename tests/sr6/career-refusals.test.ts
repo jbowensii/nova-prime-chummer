@@ -409,7 +409,7 @@ test('a contact needs connection and loyalty of at least one; a typed label, els
   expect(currentBuild(two).contacts).toMatchObject([{ uid: 'k1', connection: 3, loyalty: 4 }])
 })
 
-test('a SIN: needs a name, a rating of at least one, licences with names and ratings that stay at or under the SIN’s', () => {
+test('a SIN: needs a name, a rating of at least one, licences with names, each rated as the SIN whatever it was given', () => {
   const ch = runner()
   ch.build.sins.push({ uid: 'ph', name: '', kind: 'real', licences: [], placeholder: true }, { uid: 'named', name: 'Old', kind: 'real', licences: [] })
   const sin = (over: Record<string, unknown>): Sr6Advance => ({ op: 'sin', line: { uid: '', name: 'Ann', kind: 'fake', rating: 2, licences: [], ...over } })
@@ -418,10 +418,9 @@ test('a SIN: needs a name, a rating of at least one, licences with names and rat
   expect(why(ch, sin({ name: ' ' }))).toBe('needs-name')
   expect(why(ch, sin({ rating: 0 }))).toBe('below-one')
   expect(why(ch, sin({ licences: [{ name: ' ', rating: 1 }] }))).toBe('needs-name')
-  expect(why(ch, sin({ licences: [{ name: 'Gun', rating: 0 }] }))).toBe('below-one')
-  expect(why(ch, sin({ licences: [{ name: 'Gun', rating: 3 }] }))).toBe('licence-above-sin')
-  expect(why(ch, sin({ licences: [{ name: 'Gun', rating: 2 }] }))).toBe('ok:SIN: Ann (fake, rating 2, Gun 2)')
-  expect(why(ch, sin({ kind: 'real', rating: undefined, licences: [{ name: 'Gun', rating: 5 }] }))).toBe('ok:SIN: Ann (real, Gun 5)')
+  expect(why(ch, sin({ licences: [{ name: 'Gun', rating: 0 }] }))).toBe('ok:SIN: Ann (fake, rating 2, Gun 2)')
+  expect(why(ch, sin({ licences: [{ name: 'Gun', rating: 3 }] }))).toBe('ok:SIN: Ann (fake, rating 2, Gun 2)')
+  expect(why(ch, sin({ kind: 'real', rating: undefined, licences: [{ name: 'Gun', rating: 5 }] }))).toBe('ok:SIN: Ann (real, Gun 1)')
   expect(why(ch, sin({ uid: 'ph', rating: undefined, kind: 'real' }))).toBe('ok:SIN: Ann (real), was the unnamed SIN')
   // recorded without lifestyles; a fake SIN's rating is set
   const r = ok(ch, sin({ rating: undefined, gender: ' ', lifestyles: [{ uid: 'l', id: 'crb.cozy', months: 1 }] }))

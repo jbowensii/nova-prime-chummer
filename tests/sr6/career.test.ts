@@ -469,13 +469,17 @@ test('a SIN bought in career costs what creation charges: a fake one rating × i
     op: 'sin',
     line: { uid: '', name: 'Jo Fake', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }], ...o },
   })
-  expect(preview(ch, sin(), data, cr)).toEqual({ ok: true, label: 'SIN: Jo Fake (fake, rating 2, Zapper 1)', karma: 0, nuyen: 3300 })
+  expect(preview(ch, sin(), data, cr)).toEqual({ ok: true, label: 'SIN: Jo Fake (fake, rating 2, Zapper 2)', karma: 0, nuyen: 3600 })
   expect(preview(ch, sin({ kind: 'real', rating: undefined, licences: [] }), data, cr)).toEqual({ ok: true, label: 'SIN: Jo Fake (real)', karma: 0, nuyen: 0 })
   expect(preview(ch, sin({ kind: 'real', rating: undefined }), data, cr)).toMatchObject({ ok: true, nuyen: 300 })
-  // refusals: no name, a rating below one, a licence above the SIN, short of nuyen, an unset price, a uid that isn't a placeholder
+  // its licences rated as it, whatever they were given (2 × 1,500 + 2 × 300)
+  expect(preview(ch, sin({ licences: [{ name: 'Zapper', rating: 3 }] }), data, cr)).toMatchObject({
+    label: 'SIN: Jo Fake (fake, rating 2, Zapper 2)',
+    nuyen: 3600,
+  })
+  // refusals: no name, a rating below one, short of nuyen, an unset price, a uid that isn't a placeholder
   expect(preview(ch, sin({ name: ' ' }), data, cr)).toEqual({ ok: false, reason: 'needs-name' })
   expect(preview(ch, sin({ rating: 0 }), data, cr)).toEqual({ ok: false, reason: 'below-one' })
-  expect(preview(ch, sin({ licences: [{ name: 'Zapper', rating: 3 }] }), data, cr)).toEqual({ ok: false, reason: 'licence-above-sin' })
   expect(preview(ch, sin({ rating: 4 }), data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })
   const unset = made({ unset: ['fakeSinPerRating'] })
   expect(preview(ch, sin(), unset.data, unset.cr)).toEqual({ ok: false, reason: 'unset:fakeSinPerRating' })
@@ -483,9 +487,9 @@ test('a SIN bought in career costs what creation charges: a fake one rating × i
   expect(preview(ch, sin({ uid: 'nope' }), data, cr)).toEqual({ ok: false, reason: 'unknown-line' })
   // recorded: a new uid, then a lifestyle bought under it
   const r = ok(record(ch, sin(), data, cr))
-  expect(balances(r).nuyen).toBe(1700)
+  expect(balances(r).nuyen).toBe(1400)
   const s = currentBuild(r).sins[0]
-  expect(s).toEqual({ uid: expect.any(String), name: 'Jo Fake', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 1 }] })
+  expect(s).toEqual({ uid: expect.any(String), name: 'Jo Fake', kind: 'fake', rating: 2, licences: [{ name: 'Zapper', rating: 2 }] })
   expect(s.uid).not.toBe('')
   expect(ch.build.sins).toEqual([]) // the finalized build is untouched
   expect(preview(r, { op: 'lifestyle', id: 'crb.cozy', months: 1, sin: s.uid }, data, cr)).toEqual({ ok: false, reason: 'not-enough-nuyen' })

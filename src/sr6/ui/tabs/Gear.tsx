@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import type { PurchaseKind } from '../../model/character'
-import { entryOf } from '../../engine/budgets'
+import { entryOf, statusesOf } from '../../engine/budgets'
 import { ratingEdge } from '../../engine/derive'
 import { useSr6Editor } from '../editor'
 import { ACCESSORY_KINDS, isAccessory, PurchaseSection, social } from '../Picker'
@@ -62,7 +62,7 @@ export function GearTab() {
         kind="weapons"
         title="Weapons"
         one="a weapon"
-        detail={x => ar(x.uid)}
+        detail={x => [ar(x.uid), ...statusesOf(entryOf(x, data)).map(s => `applies ${s}`)].filter(Boolean).join(' · ')}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`}
       />

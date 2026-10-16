@@ -5,7 +5,7 @@
 // a dark band with the Physical and Stun tracks as hexagons. Our own drawing, dark ink with pink rules (sheet.css .sr6-hex).
 import type { ReactNode } from 'react'
 import { MAGIC_KINDS } from '../engine/data'
-import { MAGIC_KIND_LABELS } from '../model/character'
+import { MAGIC_KIND_LABELS, sinKind, sinName } from '../model/character'
 import { useSr6Editor } from '../ui/editor'
 import type { SheetArt } from './BookSheet'
 import { allSkills, band, br, poolOn, runnerView } from './view'
@@ -104,6 +104,9 @@ export function HexSheet({ art }: { art: SheetArt }) {
           <F l="Metatype" v={[data.metatypes[b.metatype]?.name, ch.identity.gender].filter(Boolean).join(', ') || undefined} />
           <F l="Description" v={ch.identity.background.split('\n')[0]} />
           <F l="Archetype" v={b.magic !== 'mundane' ? [MAGIC_KIND_LABELS[b.magic], k.spells && b.tradition].filter(Boolean).join(', ') : undefined} />
+          <F l="Awakened" v={v.awakened} />
+          {/* (each SIN with its licences: the same data as the other styles, owner 2026-10-16) */}
+          <F l="SINs & licences" v={b.sins.map(s => [`${sinName(s)} (${sinKind(s)})`, ...v.licencesOf(s)].join(': ')).join('; ') || undefined} />
         </div>
       </section>
 
@@ -132,6 +135,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
             <F l="Lift/Carry" v={br(d.liftCarry, d.on.liftCarry)} />
             <F l="Movement" />
             <F l="Defense Rating" v={br(d.defenseRating, d.on.defenseRating)} />
+            <F l="Social Rating" v={br(d.socialRating, d.on.socialRating)} />
           </div>
         </div>
       </section>
@@ -211,7 +215,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
                         </span>
                       )}
                     </td>
-                    <td>{a.dv}</td>
+                    <td>{v.dv(x)}</td>
                     <td>{a.modes}</td>
                     {v.bands(x).map((y, i) => (
                       <td key={i}>{band(y)}</td>
@@ -243,7 +247,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
                   <tr key={x.uid}>
                     <td>{nameOf(x)}</td>
                     <td>{attrsOf(x).defense}</td>
-                    <td>{[x.worn && 'Worn', x.note].filter(Boolean).join(', ')}</td>
+                    <td>{[x.worn && 'Worn', v.social(x) && `Social ${v.social(x)}`, x.note].filter(Boolean).join(', ')}</td>
                   </tr>
                 ))}
                 {blanks(armor.length, 2, i => (
@@ -285,6 +289,7 @@ export function HexSheet({ art }: { art: SheetArt }) {
                   <span className="x-small">
                     {q.free ? ' metatype' : x ? (x.positive ? ' positive' : ' negative') : ''}
                     {q.note && `, ${q.note}`}
+                    {v.qualityNotes(q).map(t => `; ${t}`)}
                   </span>
                 </li>
               )

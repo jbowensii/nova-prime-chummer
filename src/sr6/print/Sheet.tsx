@@ -42,7 +42,8 @@ export function Sr6Sheet() {
     art = useSheetArt(ch.id, 'sr6'),
     k = MAGIC_KINDS[b.magic],
     style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, karma, nuyen, host, effectNotes } = runnerView(ctx)
+  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, licencesOf, dv, awakened, qualityNotes, karma, nuyen, host, effectNotes } =
+    runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
       <div className="s-small">
@@ -198,6 +199,12 @@ export function Sr6Sheet() {
                       {v?.name ?? q.name ?? q.id}
                       {v?.perLevel && ` ${q.level}`}
                       {q.free && <span className="s-small"> (metatype)</span>}
+                      {/* (an Infected type's gained powers and weaknesses, Stolen Gear's bounty: view.ts qualityNotes) */}
+                      {qualityNotes(q).map(t => (
+                        <div key={t} className="s-small">
+                          {t}
+                        </div>
+                      ))}
                     </li>
                   )
                 })}
@@ -226,6 +233,7 @@ export function Sr6Sheet() {
                       ['Astral initiative', init(d.astralInit, d.on.astralInit)],
                       ['Defense Rating', br(d.defenseRating, d.on.defenseRating)],
                       ['Social Rating', br(d.socialRating, d.on.socialRating)],
+                      ['Awakened', awakened],
                       ['Composure', br(d.composure, d.on.composure)],
                       ['Judge Intentions', br(d.judgeIntentions, d.on.judgeIntentions)],
                       ['Memory', br(d.memory, d.on.memory)],
@@ -283,10 +291,7 @@ export function Sr6Sheet() {
                         <b>{nameOf(x)}</b>
                         {acc(x)}
                       </td>
-                      <td>
-                        {entryOf(x, data)?.attrs.dv ?? ''}
-                        {w?.dvBonus ? ` (+${w.dvBonus})` : ''}
-                      </td>
+                      <td>{dv(x)}</td>
                       <td>{w ? w.bands.map(band).join('/') : ''}</td>
                       <td>{w?.pool ?? ''}</td>
                     </tr>
@@ -423,7 +428,7 @@ export function Sr6Sheet() {
                       {s.gender && `, ${s.gender}`})
                     </span>
                     {lifeOf(s) && <div>{lifeOf(s)}</div>}
-                    {s.licences.length > 0 && <div className="s-small">{s.licences.map(l => `${l.name} (${l.rating})`).join(', ')}</div>}
+                    {licencesOf(s).length > 0 && <div className="s-small">Licences: {licencesOf(s).join(', ')}</div>}
                   </li>
                 ))}
               </ul>

@@ -529,7 +529,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(work.locator('tr', { hasText: 'Hover Buzzer' })).toContainText('Pilot 3')
   await shoot(page, 'editor-vehicles')
 
-  // Contacts & lifestyle: a contact, a lifestyle, a fake SIN with a licence (one rated above it refused), karma to nuyen
+  // Contacts & lifestyle: a contact, a lifestyle, a fake SIN with a licence, karma to nuyen
   await tabs.filter({ hasText: 'Contacts & lifestyle' }).click()
   await work.getByRole('button', { name: 'Add a contact' }).click()
   await work.getByLabel('Contact 1 name').fill('Fixer Fred')
@@ -546,12 +546,10 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await work.getByRole('button', { name: 'Raise SIN 1 lifestyle 1 months' }).click()
   await work.getByRole('button', { name: 'Raise SIN 1 rating' }).click()
   await work.getByLabel('SIN 1 new licence').fill('Zap Gun licence')
-  await work.getByLabel('SIN 1 licence rating').fill('3')
+  // (a licence takes its SIN's rating: no rating of its own; its name stays editable)
   await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
-  await expect(page.getByRole('alert')).toHaveText('A licence can’t be rated above its fake SIN.')
-  await work.getByLabel('SIN 1 licence rating').fill('2')
-  await work.getByRole('button', { name: 'Add licence to SIN 1' }).click()
-  await expect(work.getByText('Zap Gun licence (2)')).toBeVisible()
+  await expect(work.getByLabel('SIN 1 licence 1 name')).toHaveValue('Zap Gun licence')
+  await expect(work.getByLabel('SIN 1 licence 1 name').locator('xpath=ancestor::span[contains(@class,"chip")]')).toContainText('2')
   // karma to nuyen both ways (one missed click undone with one more): back is refused at none, then 2 there, 1 back
   const toNuyen = work.getByRole('button', { name: '1 Karma → 1,500¥' }),
     toKarma = work.getByRole('button', { name: '1,500¥ → 1 Karma' })
@@ -686,7 +684,7 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
   await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('with Zap Scope')
   await expect(sheet.locator('tr', { hasText: 'Glow Eyes' })).toContainText('Alpha')
   await expect(sheet).toContainText('Cozy × 1 month')
-  await expect(sheet).toContainText('Zap Gun licence (2)')
+  await expect(sheet).toContainText('Licences: Zap Gun licence 2')
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText([
     'Printer-friendly',

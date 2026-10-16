@@ -8,13 +8,13 @@ import { num, type CreationRules } from '../engine/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../shared/formula'
 import { IssueBadges } from '../../ui/Issues'
-import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
+import { BONUS_TARGETS, sinName, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { critterOnly, infectedOff } from '../engine/critterware'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
-import { ATTR_NAMES, n, useSr6Editor } from './editor'
+import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -612,7 +612,12 @@ export function PurchaseSection({
                   name = e ? entryLabel(e) : (x.name ?? 'Custom item'),
                   p = priced(x, data, cr),
                   cf = formulaOf(e?.formulas, 'cost'),
-                  note = availNote(e?.attrs.avail, x.rating ?? 1),
+                  sins = ch.build.sins,
+                  note = availNote(
+                    e?.attrs.avail,
+                    x.rating ?? 1,
+                    sins.filter(s => s.licences.some(l => l.item === x.uid)).map(s => sinName(s)),
+                  ),
                   licence = note.text
                 return (
                   <tr key={x.uid}>
@@ -666,6 +671,12 @@ export function PurchaseSection({
                           {' '}
                           ⚑
                         </span>
+                      )}
+                      {/* (licences are managed where SINs are, Contacts: owner 2026-10-16; here only read) */}
+                      {licence && note.warn && (
+                        <div className="muted">
+                          Licence needed — assign it on <a href={sr6EditHref(ch.id, 'contacts')}>Contacts</a>
+                        </div>
                       )}
                     </td>
                     <td className="num">

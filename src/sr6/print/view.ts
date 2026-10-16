@@ -1,9 +1,12 @@
 // What every SR6 printed sheet (Sheet.tsx: Printer-friendly and Full color; BookSheet.tsx; NeonSheet.tsx; HexSheet.tsx;
-// DossierSheet.tsx) reads off the runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee,
-// every skill, languages and knowledge, gear, each SIN's lifestyles and the karma and nuyen left (career: the ledger's balances).
-import { entryOf } from '../engine/budgets'
-import { balances } from '../engine/career'
-import type { PickKind, PurchaseKind, Sr6Character, Sr6Lifestyle, Sr6Purchase, Sr6Sin } from '../model/character'
+// DossierSheet.tsx) reads off the runner: its name, purchase lines by kind, names and ratings, weapons split ranged/melee
+// (their DV with the statuses they apply), every skill, languages and knowledge, gear, each SIN's lifestyles and licences,
+// the Awakened flag, the Social Rating, a quality's notes (an Infected type's gains, Stolen Gear's bounty) and the karma and
+// nuyen left (career: the ledger's balances). The styles differ in look only: each shows all of these (owner 2026-10-16).
+import { entryOf, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
+import { balances, stolenLeft } from '../engine/career'
+import { awakenedFlag, runnerInfected } from '../engine/infected'
+import type { PickKind, PurchaseKind, Sr6Character, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
@@ -52,7 +55,23 @@ export const allSkills = (d: Sr6Derived, data: Sr6Data): (Omit<Sr6Pool, 'dp'> & 
       .map(s => ({ skill: s.id, label: s.name, rank: 0, attr: s.attr })),
   ].sort((x, y) => x.label.localeCompare(y.label))
 
-export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'd' | 'career'>) {
+/** The item a licence is for, named as it now is; undefined: a fake licence typed in, or the item is gone (dropped after
+ *  finalising, its licence kept). */
+export function licenceItem(b: Sr6Character['build'], data: Sr6Data, l: Sr6Licence): string | undefined {
+  const x = l.item === undefined ? undefined : b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === l.item),
+    e = x && entryOf(x, data)
+  return x && (e ? entryLabel(e) : (x.name ?? 'Custom item'))
+}
+/** A licence's rating as shown: none for an item's on a real SIN (priced at its fee), else ` 3`. */
+export const licenceRatingText = (s: Sr6Sin, l: Sr6Licence) => (l.item !== undefined && s.kind === 'real' ? '' : ` ${l.rating}`)
+/** One of a SIN's licences in words (the sheets): a fake licence `Zap License 2`; an item's, `Firearm license 2 (Zap Gun)`,
+ *  on a real SIN (at its fee) `Firearm license (Zap Gun)`. */
+export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, l: Sr6Licence): string {
+  const item = licenceItem(b, data, l)
+  return `${l.name}${licenceRatingText(s, l)}${item ? ` (${item})` : ''}`
+}
+
+export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'cr' | 'd' | 'career'>) {
   const b = ch.build
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
   const nameOf = (x: Sr6Purchase) => {
@@ -68,6 +87,10 @@ export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' |
   const { karma, nuyen } = career ? balances(ch) : { karma: d.karmaLeft, nuyen: d.nuyenLeft }
   const life = (l: Sr6Lifestyle) => `${data.entry('lifestyles', l.id)?.name ?? l.id} × ${l.months} month${l.months === 1 ? '' : 's'}`
   const first = b.sins.flatMap(s => s.lifestyles ?? [])[0]
+  const aw = awakenedFlag(b, data),
+    yes = (x: boolean) => (x ? 'yes' : 'no'),
+    inf = runnerInfected(b, data),
+    stolen = settingQuality(b, cr, 'stolenGearQuality', data)
   return {
     name: ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner'),
     lines,
@@ -86,6 +109,28 @@ export function runnerView({ ch, data, d, career }: Pick<Sr6Ctx, 'ch' | 'data' |
     lifeOf: (s: Sr6Sin) => (s.lifestyles ?? []).map(life).join(', '),
     /** the primary lifestyle: the first SIN's first one (of the SINs that have any) */
     lifestyle: first && life(first),
+    /** a SIN's licences in words (licenceText) */
+    licencesOf: (s: Sr6Sin) => s.licences.map(l => licenceText(b, data, s, l)),
+    /** a weapon's DV, its bonus damage when it has one (high Strength on a melee weapon: `3P (+1)`), and the statuses it
+     *  applies (`4P, Burning 4`: the No Future errata's Molotov) */
+    dv: (x: Sr6Purchase) => {
+      const plus = d.attackRatings.weapons.find(a => a.uid === x.uid)?.dvBonus
+      return [`${attrsOf(x).dv ?? ''}${plus ? ` (+${plus})` : ''}`, ...statusesOf(entryOf(x, data))].filter(Boolean).join(', ')
+    },
+    /** an armor line's Social Rating as printed (clothing, Smooth Operations), '' when none */
+    social: (x: Sr6Purchase) => attrsOf(x).social ?? '',
+    /** the Awakened flag (infected.ts awakenedFlag): `yes (adept)`, `no (mundane)`; an override names what it overrides */
+    awakened: aw.override === undefined ? `${yes(aw.value)} (${aw.why})` : `${yes(aw.value)}, overridden (derived: ${yes(aw.derived)}, ${aw.why})`,
+    /** a quality's lines below it: an Infected type's gained powers and weaknesses (SWC pp. 110–114), Stolen Gear's bounty */
+    qualityNotes: (q: Sr6Quality): string[] => [
+      ...(inf?.line === q
+        ? (['power', 'weakness'] as const).flatMap(tag => {
+            const gs = inf.t.gains.filter(g => g.tag === tag)
+            return gs.length ? [`${tag === 'power' ? 'Powers' : 'Weaknesses'}: ${gs.map(g => `${g.name}${g.rating ? ` ${g.rating}` : ''}`).join(', ')}`] : []
+          })
+        : []),
+      ...(stolen === q ? [`Bounty: ${stolenLeft(b, cr, data, q)} of ${toNuyen(b, cr, data)} karma turned into nuyen not bought off`] : []),
+    ],
     karma,
     nuyen,
     /** what the runner's things do that the numbers above don't hold: switchable, conditional and low-confidence effects,

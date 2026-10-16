@@ -77,7 +77,7 @@
   {"cl6": "No Future errata", "kind": "weapons", "id": "skateboard-hardened", "set": {"avail": "2"}, "gen": "errata"},
   {"cl6": "No Future errata", "kind": "weapons", "id": "skateboard-bladed", "set": {"avail": "3(L)"}, "gen": "errata"},
   {"cl6": "No Future errata", "kind": "weapons", "id": "roller-skates-bladed", "set": {"avail": "3(L)"}, "gen": "errata"},
-  {"cl6": "No Future errata", "kind": "weapons", "id": "molotov", "set": {"avail": "1(I)"}, "gen": "errata"},
+  {"cl6": "No Future errata", "kind": "weapons", "id": "molotov", "set": {"avail": "1(I)"}, "kids": [{"tag": "status", "attrs": {"name": "Burning", "level": "4"}}], "gen": "errata"},
   {"cl6": "No Future errata", "kind": "weapons", "id": "pitchfork", "set": {"avail": "1"}, "gen": "errata"},
   {"cl6": "No Future errata", "kind": "vehicles", "id": "ford-broadcast", "set": {"avail": "2"}, "gen": "errata"},
   {"cl6": "No Future errata", "kind": "vehicles", "id": "s-b-condor", "set": {"avail": "3"}, "gen": "errata"},

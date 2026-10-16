@@ -258,6 +258,8 @@
     <xs:attribute name="free" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="name" type="xs:string"/>
+    <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
+    <xs:attribute name="boughtOff" type="c:Count"/>
   </xs:complexType>
 
   <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
@@ -312,10 +314,15 @@
        gender: the identity's own, optional. A ledger entry's (op sin) has no lifestyles. -->
   <xs:complexType name="Sin">
     <xs:sequence>
+      <!-- every licence is one SIN's: a fake licence, or an owned item's (item: the uid of its line, an accessory's too;
+           named after the licence type covering it until renamed). rating: the SIN's (a real SIN's 1); one read at another
+           rating takes the SIN's. Priced rating × licencePerRating, but an item's on a real SIN at the fee its
+           Availability prints. Never enforced -->
       <xs:element name="licence" minOccurs="0" maxOccurs="unbounded">
         <xs:complexType>
           <xs:attribute name="name" type="xs:string" use="required"/>
           <xs:attribute name="rating" type="c:Count" use="required"/>
+          <xs:attribute name="item" type="xs:string"/>
         </xs:complexType>
       </xs:element>
       <xs:element name="lifestyle" minOccurs="0" maxOccurs="unbounded">
@@ -373,7 +380,8 @@
     <!-- advance: the op, its target (an attribute, a skill id, the uid of the line bought off or dropped, or a technique's
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
-         sin: the <sin> bought (its uid a placeholder's: that one named) -->
+         sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
+         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -382,10 +390,16 @@
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
-        <xs:enumeration value="sin"/>
+        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
+    <xs:attribute name="part" type="xs:positiveInteger"/>
+    <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
+    <xs:attribute name="rating" type="c:Count"/>
+    <!-- awakened: the Awakened flag's override set after creation (absent: derived again) -->
+    <xs:attribute name="awakened" type="xs:boolean"/>
     <!-- quality: the magic kind an Infected type bought after creation leaves the runner (absent: unchanged) -->
     <xs:attribute name="magic">
       <xs:simpleType><xs:restriction base="xs:string">
@@ -508,5 +522,17 @@
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
+    <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
+         whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
+         SIN), one naming no SIN of the runner left out. Not written -->
+    <xs:attribute name="licensedOn">
+      <xs:simpleType><xs:list itemType="xs:string"/></xs:simpleType>
+    </xs:attribute>
+    <!-- read only, older still: bought, licensed on the runner's first SIN (none: left out); unlicensed, none -->
+    <xs:attribute name="licence">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="bought"/><xs:enumeration value="unlicensed"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
   </xs:complexType>
 </xs:schema>

@@ -896,6 +896,14 @@ class ErrataRowsTest(unittest.TestCase):
         self.assertEqual([x.text for x in e.findall("formula")], ["tier(R; 6: 1; 7: 2)"])
         self.assertIsNotNone(e.find("slot"))
 
+    def test_a_status_kid_is_added_once_before_the_text_and_other_kids_stay_refused(self):
+        row = {"kind": "augmentations", "id": "zz-hum", "kids": [{"tag": "status", "attrs": {"name": "Zapped", "level": "3"}}], "gen": "errata"}
+        overrides.check([row])
+        e = self.apply([row, dict(row)])["zz-hum"]  # (twice: added once)
+        self.assertEqual([(x.get("name"), x.get("level")) for x in e.findall("status")], [("Zapped", "3")])
+        with self.assertRaisesRegex(ValueError, "kids are"):
+            overrides.check([{**row, "kids": [{"tag": "text", "attrs": {}}]}])
+
     def test_an_effect_naming_no_target_is_refused_before_the_run(self):
         with self.assertRaisesRegex(ValueError, "names its target"):
             overrides.check([{"kind": "augmentations", "id": "zz-hum", "gen": "errata", "effects": [{"op": "add", "value": "2"}]}])
@@ -919,6 +927,7 @@ class ErrataRowsTest(unittest.TestCase):
                 ("augmentations", "cyberears-rating-5"): "4", ("augmentations", "cyberears-rating-6"): "5"}
         self.assertEqual({k: rows[k]["set"]["avail"] for k in want}, want)
         self.assertEqual(rows["armor", "trenchcoat"]["effects"][0]["value"], "2")
+        self.assertEqual(rows["weapons", "molotov"]["kids"], [{"tag": "status", "attrs": {"name": "Burning", "level": "4"}}])  # (also applies Burning 4)
         self.assertEqual((rows["augmentations", "cybereyes-rating-5"]["set"]["cost"], rows["augmentations", "cyberears-rating-6"]["set"]["cost"]), ("18000", "21000"))
         self.assertEqual([rows[("augmentations", i)]["set"]["rating"] for i in ("audiotune", "vocal-expansion")], [None, None])
         gone = {r["id"] for r in overrides.table("nf") if r.get("remove")}
@@ -930,6 +939,33 @@ class ErrataRowsTest(unittest.TestCase):
         for k in [("nf", "vehicles", "nf.ford-broadcast", "avail"), ("nf", "weapons", "nf.molotov", "legality"),
                   ("nf", "augmentations", "nf.cybereyes-rating-5", "cost"), ("nf", "electronics", "nf.press-pass", "avail")]:
             self.assertNotIn(k, keep)
+
+
+class OwnerRowsTest(unittest.TestCase):
+    """`"gen": "owner"` id rows (owner 2026-10-16): a kid with "replaces" takes the place of the entry's child it names."""
+    XML = ('<?xml version="1.0"?>\n<d kind="qualities"><quality id="zz-glower" source="ZZ" page="9" karma="20"><name>Glower</name>'
+           '<power name="Glow"/><power name="Dusk" rating="2"/><weakness name="Dusk"/><text/></quality></d>\n')
+    ROW = {"cl6": "Glower", "kind": "qualities", "id": "zz-glower", "gen": "owner",
+           "kids": [{"tag": "power", "attrs": {"name": "Innate Knack (Dusk)"}, "replaces": {"name": "Dusk"}}]}
+
+    def apply(self, rows):
+        out = overrides.apply("zz", {"qualities.xml": self.XML}, overrides.check(rows))["qualities.xml"]
+        return ET.fromstring(out.encode()).find("quality")
+
+    def test_the_named_child_is_replaced_in_place_and_the_rest_stay(self):
+        e = self.apply([self.ROW, dict(self.ROW)])  # (twice: once)
+        self.assertEqual([(x.tag, x.get("name"), x.get("rating")) for x in e if x.tag in ("power", "weakness")],
+                         [("power", "Glow", None), ("power", "Innate Knack (Dusk)", None), ("weakness", "Dusk", None)])
+
+    def test_a_child_it_does_not_find_adds_nothing(self):
+        row = {**self.ROW, "kids": [{**self.ROW["kids"][0], "replaces": {"name": "Dawn"}}]}
+        e = self.apply([row])
+        self.assertEqual([x.get("name") for x in e.findall("power")], ["Glow", "Dusk"])
+
+    def test_nibiinaabe_s_darkness_is_the_critter_power_innate_spell(self):
+        rows = [r for r in overrides.table("swc") if r.get("gen") == "owner"]
+        self.assertEqual(rows, [{"cl6": "Nibiinaabe", "kind": "qualities", "id": "nibiinaabe", "gen": "owner",
+                                 "kids": [{"tag": "power", "attrs": {"name": "Innate Spell (Darkness)"}, "replaces": {"name": "Darkness"}}]}])
 
 
 class SplitRowsTest(unittest.TestCase):

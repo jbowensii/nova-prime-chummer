@@ -75,7 +75,7 @@ function full(): Sr6Character {
   b.qualities = [
     { uid: 'q1', id: 'crb.moonsight', level: 1, free: true, name: 'Moonsight' },
     { uid: 'q2', id: 'crb.lucky-streak', level: 2, note: 'twice' },
-    { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11 },
+    { uid: 'q3', id: 'crb.butterfingers', level: 1, karma: 11, boughtOff: 2 }, // (Stolen Gear's bought off so far)
   ]
   b.picks = [
     { uid: 'p1', kind: 'spells', id: 'crb.glow-ward' },
@@ -140,13 +140,17 @@ function full(): Sr6Character {
       kind: 'fake',
       rating: 3,
       gender: 'Other',
-      licences: [{ name: 'Zap Gun', rating: 2 }],
+      // (a fake licence, and the Zap Gun's own: one of the SIN's, rated as it; on the real SIN the scope's, at its fee)
+      licences: [
+        { name: 'Zap Gun', rating: 3 },
+        { name: 'Zap Gun', rating: 3, item: 'g1' },
+      ],
       lifestyles: [
         { uid: 'l1', id: 'crb.cozy', months: 2 },
         { uid: 'l2', id: 'crb.squat', months: 1 },
       ],
     },
-    { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
+    { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [{ name: 'Zap Scope', rating: 1, item: 'g2' }] },
   ]
   return ch
 }
@@ -326,6 +330,7 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'knowledge', line: { uid: 'lk', name: 'Arcade lore', kind: 'knowledge', points: 0, karma: 1 } },
     { op: 'quality', line: q },
     { op: 'buyoff', target: 'q9' },
+    { op: 'buyoff', target: 'q3', part: 2 },
     { op: 'buyoff', target: 'q8', line: { uid: 'q8', id: 'crb.butterfingers', level: 1 } },
     { op: 'pick', line: { uid: 'lp', kind: 'spells', id: 'crb.glow-ward', name: 'Glow Ward' } },
     { op: 'powerpoint' },
@@ -344,6 +349,10 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'convert', karma: 2 },
     { op: 'convert', karma: -1 },
     { op: 'other' },
+    { op: 'awakened', value: false },
+    { op: 'awakened' },
+    { op: 'licensed', target: 'g4', sin: 's2' },
+    { op: 'licensed', target: 'g4', sin: 's1', name: 'Made-up Gun Permit' },
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
     { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
     { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } },

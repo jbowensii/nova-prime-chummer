@@ -446,14 +446,14 @@ test('a placeholder SIN is free; naming it or setting its kind makes it a normal
   expect(b.sins[0]).toMatchObject({ kind: 'fake', rating: 1 })
   expect(b.sins[0].placeholder).toBeUndefined()
   expect(lines().find(l => l.key === 'sin:ph')).toMatchObject({ label: 'SIN (fake SIN, rating 1)', amount: 1500 })
-  expect(act({ op: 'licence', sin: 'ph', name: 'Zapper', rating: 1 })).toEqual(ok)
+  expect(act({ op: 'licence', sin: 'ph', name: 'Zapper' })).toEqual(ok)
   expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
   expect('rating' in b.sins[0]).toBe(false)
   expect(act({ op: 'sin', uid: 'ph', kind: 'fake', rating: 2 })).toEqual(ok)
   expect(b.sins[0].rating).toBe(2)
-  b.sins[0].licences = [{ name: 'Zapper', rating: 3 }]
+  expect(b.sins[0].licences).toEqual([{ name: 'Zapper', rating: 2 }])
   expect(act({ op: 'sin', uid: 'ph', kind: 'real' })).toEqual(ok)
-  expect(act({ op: 'sin', uid: 'ph', kind: 'fake' })).toEqual(no('licence-above-sin'))
+  expect(b.sins[0].licences).toEqual([{ name: 'Zapper', rating: 1 }])
 })
 
 // life modules
@@ -525,20 +525,24 @@ test('no more adult modules than the setting asks for', () => {
 })
 
 // SINs and licences
-test('a licence can’t out-rate its fake SIN; ratings up to 6 are accepted; the alias typed is kept', () => {
-  const { b, act } = runner()
+test('a licence is rated as its fake SIN and re-priced with it; ratings up to 6 are accepted; the alias typed is kept', () => {
+  const { b, act, data, cr } = runner()
   expect(act({ op: 'sin', name: 'Jo Blue', kind: 'fake', rating: 6 })).toEqual(ok)
   const sin = b.sins[0]
   expect(sin).toMatchObject({ name: 'Jo Blue', kind: 'fake', rating: 6, licences: [] })
-  expect(act({ op: 'licence', sin: sin.uid, name: 'Zap Gun licence', rating: 6 })).toEqual(ok)
-  expect(act({ op: 'sin', uid: sin.uid, rating: 3 })).toEqual(no('licence-above-sin'))
-  expect(act({ op: 'licence', sin: sin.uid, remove: 0 })).toEqual(ok)
+  expect(act({ op: 'licence', sin: sin.uid, name: 'Zap Gun licence' })).toEqual(ok)
+  expect(sin.licences).toEqual([{ name: 'Zap Gun licence', rating: 6 }])
+  const cost = () => nuyenBudget(b, data, cr, makeProvider(b.method, data, cr)).breakdown.find(l => l.key === `sin:${sin.uid}`)?.amount
+  const at6 = cost()!
   expect(act({ op: 'sin', uid: sin.uid, rating: 3 })).toEqual(ok)
-  expect(act({ op: 'licence', sin: sin.uid, name: 'Driver', rating: 4 })).toEqual(no('licence-above-sin'))
-  expect(act({ op: 'licence', sin: sin.uid, name: 'Driver', rating: 3 })).toEqual(ok)
+  expect(sin.licences).toEqual([{ name: 'Zap Gun licence', rating: 3 }])
+  expect(cost()).toBe(at6 / 2) // (the SIN and its licence, both by rating)
+  expect(act({ op: 'licence', sin: sin.uid, name: 'Driver' })).toEqual(ok)
+  expect(sin.licences[1]).toEqual({ name: 'Driver', rating: 3 })
   expect(act({ op: 'sin', name: 'Real Me', kind: 'real' })).toEqual(ok)
   expect(b.sins[1].rating).toBeUndefined()
-  expect(act({ op: 'licence', sin: b.sins[1].uid, name: 'Hunting', rating: 5 })).toEqual(ok)
+  expect(act({ op: 'licence', sin: b.sins[1].uid, name: 'Hunting' })).toEqual(ok)
+  expect(b.sins[1].licences).toEqual([{ name: 'Hunting', rating: 1 }])
   expect(act({ op: 'sin', name: 'Bad', kind: 'fake', rating: 0 })).toEqual(no('below-one'))
   expect(act({ op: 'sin', remove: sin.uid })).toEqual(ok)
   expect(b.sins.map(s => s.name)).toEqual(['Real Me'])

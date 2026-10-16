@@ -402,6 +402,27 @@ class InfectedTest(unittest.TestCase):
         self.assertEqual(self.kids("Murkling", "infected"), [])
         self.assertEqual(self.kids("Gloamer", "infectedalt"), [])  # (its sidebar gives no total cost: nothing)
 
+    def test_gained_powers_and_weaknesses(self):
+        self.assertEqual(self.kids("Dusker", "power"), [{"name": "Dual Natured"}, {"name": "Movement (Self Only)"}])  # (no modifier, no free pick)
+        self.assertEqual(self.kids("Dusker", "weakness"), [{"name": "Allergy (Dawn, Mild)"}])
+        self.assertEqual(self.kids("Murkling", "power"), [])  # (no strain: no rules as data)
+        tags = [k.tag for k in self.q["Dusker"]]
+        self.assertLess(tags.index("optionalpower"), tags.index("power"))  # (the Quality schema's order)
+        self.assertLess(tags.index("weakness"), tags.index("karmaif"))
+
+    def test_gained_items_tolerate_the_book_s_typos(self):
+        own = {"glowhide": "glowhide"}
+        got = swc._gains("Hard Hide 1, Glow Ward (2), Grip Tough 2, Glow Sense (Smell, Sight) Glowhides, Hush (self only, p. 12, Street Wyrd), "
+                         "Shell (6) (replaces Shell (4)), +1 initiative die. Gain one of the Glow Senses as a free Optional Power.", "power", own)
+        self.assertEqual([a for _, a, _ in got], [
+            {"name": "Hard Hide", "rating": "1"}, {"name": "Glow Ward", "rating": "2"}, {"name": "Grip Tough", "rating": "2"},
+            {"name": "Glow Sense (Smell, Sight)"}, {"ref": "glowhide", "name": "Glowhides"},  # (a comma left out; a plural is its power)
+            {"name": "Hush (self only)"}, {"name": "Shell (replaces Shell (4))", "rating": "6"}])
+        # (an unclosed parenthesis runs to the end; a weakness has no ref, a modifier is no item)
+        got = swc._gains("Allergy (Dusk, Mild) –1 Logic, Glowhide, Dozing (Lack of Light, (Essence) Minutes, (p. 9, SR6)", "weakness", own)
+        self.assertEqual([a for _, a, _ in got], [{"name": "Allergy (Dusk, Mild)"}, {"name": "Glowhide"}, {"name": "Dozing (Lack of Light, (Essence) Minutes)"}])
+        self.assertEqual(swc._gains("", "power", own), [])
+
     def test_the_other_base_sidebar(self):
         self.assertEqual(self.kids("Dusker", "infectedalt"),
                          [{"base": "other", "karma": "30", "bod": "1", "wil": "1", "cha": "2", "page": "69",

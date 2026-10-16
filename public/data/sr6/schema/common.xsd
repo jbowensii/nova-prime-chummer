@@ -132,6 +132,9 @@
         <xs:element name="modifier" type="sr6:Cl6Data"/>
         <xs:element name="prerequisite" type="sr6:Cl6Data"/>
         <xs:element name="selection" type="sr6:Cl6Data"/>
+        <!-- a status the entry applies (CRB p. 51's statuses: a weapon's `Burning 4`, the No Future errata's Molotov), by
+             the status's name and its level when it has one; shown with the item, never applied to the runner -->
+        <xs:element name="status" type="sr6:Status"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
@@ -190,6 +193,10 @@
   </xs:complexType>
   <xs:complexType name="Cl6Data">
     <xs:anyAttribute processContents="lax"/>
+  </xs:complexType>
+  <xs:complexType name="Status">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="xs:positiveInteger"/>
   </xs:complexType>
   <xs:complexType name="Slot">
     <xs:attribute name="id" type="xs:string" use="required"/>
@@ -469,10 +476,13 @@
       <!-- an Infected quality's rules (Sixth World Companion pp. 104-114, docs/sr6-data-format.md, Infected characters):
            <infected> its strain and base metatype; <infectedalt> its terms for another base metatype (the non-human
            vampire); <optionalpower> an optional power it may buy (ref: the optional power's quality id; free: one its free
-           pick may take); <karmaif> its Karma when a character flag holds (flag awakened: Mutaqua, Astral Hazing) -->
+           pick may take); <power> and <weakness> what it gains (sr6:Gained); <karmaif> its Karma when a character flag holds
+           (flag awakened: Mutaqua, Astral Hazing) -->
       <xs:element name="infected" type="sr6:Infected" minOccurs="0"/>
       <xs:element name="infectedalt" type="sr6:InfectedAlt" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="optionalpower" type="sr6:OptionalPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="power" type="sr6:Gained" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="weakness" type="sr6:Gained" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="karmaif" type="sr6:KarmaIf" minOccurs="0" maxOccurs="unbounded"/>
       <xs:group ref="sr6:tail"/>  <!-- (its choices, effects and tests: the tail's) -->
     </xs:sequence>
@@ -540,6 +550,15 @@
     <xs:attribute name="cha" type="xs:integer"/>
     <xs:attribute name="page" type="xs:positiveInteger"/>
     <xs:attribute name="note" type="xs:string"/>
+  </xs:complexType>
+  <!-- a power or weakness an Infected type gains (its `Gained Powers:` and `Gained Weaknesses:` items): name as printed
+       less page citations (`Natural Weapon (Claws, Bite)`), rating (`Armor 1`, `Armor (4)`), ref the critter power's id
+       when the same book prints it; else the app finds it by name across the catalog (a power: critter powers, then
+       qualities; a weakness: the critter weaknesses, rules entries) and lists one it can't find, never guessed. Free -->
+  <xs:complexType name="Gained">
+    <xs:attribute name="ref" type="sr6:Id"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="rating" type="xs:positiveInteger"/>
   </xs:complexType>
   <xs:complexType name="OptionalPower">
     <xs:attribute name="ref" type="sr6:Id" use="required"/>

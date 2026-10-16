@@ -18,10 +18,10 @@ import {
 } from '../../model/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
 import { flag, num, str } from '../../engine/creation'
-import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data'
+import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../engine/data'
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { awakenedFlag, boughtKind, infectedTypes, runnerInfected } from '../../engine/infected'
+import { awakenedFlag, boughtKind, infectedTypes, runnerInfected, type InfectedType } from '../../engine/infected'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
@@ -173,7 +173,7 @@ export function MethodTab() {
 /** The Awakened flag (infected.ts awakenedFlag): derived, or the player's override, shown with what it overrides (and
  *  Review's awakened.override warning). */
 function AwakenedFlag() {
-  const { ch, data, act } = useSr6Editor()
+  const { ch, data, act, career } = useSr6Editor()
   const f = awakenedFlag(ch.build, data),
     yes = (v: boolean) => (v ? 'Awakened' : 'not Awakened')
   return (
@@ -197,6 +197,7 @@ function AwakenedFlag() {
           Derived: {yes(f.derived)} ({f.why}) — overridden to {yes(f.value)}.
         </p>
       )}
+      {career && <p className="muted">After finalising, the override is set on the Ledger tab (Spend → Awakened override).</p>}
     </>
   )
 }
@@ -266,6 +267,11 @@ function InfectedSection() {
             </li>
           )}
           <li>Edge: the Infected rules give no change at creation.</li>
+          {(['power', 'weakness'] as const).map(tag => (
+            <li key={tag}>
+              {tag === 'power' ? 'Gained powers (free)' : 'Gained weaknesses'}: <Gains t={t} tag={tag} />
+            </li>
+          ))}
           <li>
             Optional powers (Qualities tab): {t.powers.length ? t.powers.map(p => `${power(p.ref)}${p.free ? ' (free pick)' : ''}`).join(', ') : 'none'}.{' '}
             {t.powers.some(p => p.free) && 'One free pick. '}
@@ -277,6 +283,37 @@ function InfectedSection() {
         </ul>
       )}
     </section>
+  )
+}
+
+/** An Infected type's gained powers or weaknesses (its <power>s, <weakness>s), each with its card when the catalog has it
+ *  (data.ts gainedEntry), else as printed, quietly (no error of the player's: Review notes it once, data.unresolved;
+ *  Goblin's Dietary Restriction stays as printed, owner 2026-10-16). */
+export function Gains({ t, tag }: { t: InfectedType; tag: Gained['tag'] }) {
+  const { data } = useSr6Editor()
+  const gs = t.gains.filter(g => g.tag === tag)
+  if (!gs.length) return <>none listed</>
+  return (
+    <>
+      {gs.map((g, i) => {
+        const e = gainedEntry(data, g),
+          name = `${g.name}${g.rating ? ` ${g.rating}` : ''}`
+        return (
+          <span key={i}>
+            {i > 0 && ', '}
+            {e ? (
+              <Sr6Ref kind={e.kind} id={e.id}>
+                {name}
+              </Sr6Ref>
+            ) : (
+              <>
+                {name} <span className="muted">(as printed; not in the catalog)</span>
+              </>
+            )}
+          </span>
+        )
+      })}
+    </>
   )
 }
 

@@ -13,7 +13,7 @@ import { type Sr6Advance, type Sr6Attr, type Sr6Character, type Sr6Purchase } fr
 import { effectState, effectText } from '../engine/effects'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import { ATTR_NAMES, n, useSr6Editor, type Sr6Ctx } from './editor'
-import { attrMax, bonusSources, bracketNotes } from '../engine/budgets'
+import { attrMax, bonusSources, bracketNotes, statusesOf } from '../engine/budgets'
 import { br } from '../print/view'
 
 /** A field's formula and its values over the ratings the entry comes in: "Rating × 200¥ (200–1,200¥)", "(unpriced)"
@@ -39,6 +39,7 @@ const details = (e: Sr6Entry, find: Find) =>
     ...(e.formulas ?? []).map(f => `${f.field} = ${formulaShown(e, f.field, find)}`),
     ...(e.notes ?? []).map(x => `${x.field} note: ${x.text}`),
     ...(e.aliases?.length ? [`also ${e.aliases.join(', ')}`] : []),
+    ...(statusesOf(e).length ? [`applies ${statusesOf(e).join(', ')} (status)`] : []),
     ...(e.parts.some(p => p.tag === 'spec')
       ? [
           `specializations ${e.parts

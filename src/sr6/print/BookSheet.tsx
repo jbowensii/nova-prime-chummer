@@ -91,7 +91,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
     worn = armor.find(x => x.worn) ?? armor[0]
   const ranged = v.rangedWeapons[0],
     melee = v.meleeWeapons[0]
-  const licences = b.sins.flatMap(s => s.licences.map(l => `${l.name} ${l.rating}`))
+  const licences = b.sins.flatMap(v.licencesOf)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
       <div className="k-small">
@@ -191,6 +191,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                 <F l="Total karma" />
                 <F l="Misc" v={b.magic !== 'mundane' ? MAGIC_KIND_LABELS[b.magic] : undefined} />
               </div>
+              <F l="Awakened" v={v.awakened} />
             </Box>
             <Box id="k-attrs" title="Attributes" side="l" className="k-attrs">
               <div>
@@ -216,6 +217,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                 <F l="Lift/carry" v={d.liftCarry} />
                 <F l="Movement" />
                 <F l="Defense rating" v={br(d.defenseRating, d.on.defenseRating)} />
+                <F l="Social rating" v={br(d.socialRating, d.on.socialRating)} />
               </div>
             </Box>
             <Box id="k-skills" title="Skills" side="l" className="k-long">
@@ -253,7 +255,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                             {s.gender && `, ${s.gender}`})
                           </span>
                           {v.lifeOf(s) && <span className="k-small"> · {v.lifeOf(s)}</span>}
-                          {s.licences.length > 0 && <span className="k-small"> · {s.licences.map(l => `${l.name} ${l.rating}`).join(', ')}</span>}
+                          {v.licencesOf(s).length > 0 && <span className="k-small"> · {v.licencesOf(s).join(', ')}</span>}
                         </td>
                       </tr>
                     )),
@@ -284,7 +286,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                 </thead>
                 <tbody>
                   <tr>
-                    <td>{ranged && attrsOf(ranged).dv}</td>
+                    <td>{ranged && v.dv(ranged)}</td>
                     <td>{ranged && attrsOf(ranged).modes}</td>
                     {(ranged ? v.bands(ranged) : AR_BANDS.map(() => null)).map((x, i) => (
                       <td key={i}>{ranged ? band(x) : ''}</td>
@@ -303,7 +305,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                 </thead>
                 <tbody>
                   <tr>
-                    <td>{melee && attrsOf(melee).dv}</td>
+                    <td>{melee && v.dv(melee)}</td>
                     <td>{melee ? band(v.bands(melee)[0]) : d.attackRatings.unarmed}</td>
                   </tr>
                 </tbody>
@@ -344,7 +346,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                             {x?.name ?? q.name ?? q.id}
                             {x?.perLevel && ` ${q.level}`}
                           </td>
-                          <td className="k-small">{q.note}</td>
+                          <td className="k-small">{[q.note, ...v.qualityNotes(q)].filter(Boolean).join('; ')}</td>
                           <td>{q.free ? 'Metatype' : x ? (x.positive ? 'Positive' : 'Negative') : ''}</td>
                         </tr>
                       )
@@ -415,7 +417,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                             {nameOf(x)}
                             {acc(x)}
                           </td>
-                          <td>{a.dv}</td>
+                          <td>{v.dv(x)}</td>
                           <td>{a.modes}</td>
                           {v.bands(x).map((y, i) => (
                             <td key={i}>{band(y)}</td>
@@ -448,10 +450,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                           {acc(x)}
                         </td>
                         <td>{attrsOf(x).defense}</td>
-                        <td>
-                          {x.worn ? 'Worn' : ''}
-                          {x.note && ` ${x.note}`}
-                        </td>
+                        <td>{[x.worn && 'Worn', v.social(x) && `Social ${v.social(x)}`, x.note].filter(Boolean).join(', ')}</td>
                       </tr>
                     )),
                     3,
@@ -539,7 +538,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                           {nameOf(x)}
                           {acc(x)}
                         </td>
-                        <td>{attrsOf(x).dv}</td>
+                        <td>{v.dv(x)}</td>
                         <td>{band(v.bands(x)[0])}</td>
                       </tr>
                     )),

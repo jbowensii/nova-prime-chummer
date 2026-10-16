@@ -114,6 +114,37 @@ export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes
   return !m || m.includes(normName(data.metatypes[metatype]?.name ?? ''))
 }
 
+/** An Infected type's gained power or weakness (<power>, <weakness>: docs/sr6-data-format.md, Infected rules as data). */
+export interface Gained {
+  tag: 'power' | 'weakness'
+  name: string
+  ref?: string
+  rating?: number
+}
+/** An entry's gained powers and weaknesses, in the book's order. */
+export const gainsOf = (e: Sr6Entry | undefined): Gained[] =>
+  (e?.parts ?? [])
+    .filter(p => (p.tag === 'power' || p.tag === 'weakness') && p.attrs.name)
+    .map(p => ({
+      tag: p.tag as Gained['tag'],
+      name: p.attrs.name,
+      ...(p.attrs.ref ? { ref: p.attrs.ref } : {}),
+      ...(Number(p.attrs.rating) > 0 ? { rating: Number(p.attrs.rating) } : {}),
+    }))
+/** A gained power's or weakness's catalog entry: its ref, else its name less its parenthesis (`Natural Weapon (Claws,
+ *  Bite)`: Natural Weapon) across the catalog, a power among the critter powers, then the qualities (`Built Tough 2`), a
+ *  weakness among the critter weaknesses (the core rulebook prints them as rules, p. 228), then the critter powers.
+ *  undefined: not in the catalog (sr6Data warns). Owner: critter powers cost nothing. */
+export function gainedEntry(data: Pick<Sr6Data, 'entry' | 'named'>, g: Gained): Sr6Entry | undefined {
+  const kinds: Sr6Kind[] = g.tag === 'power' ? ['critterpowers', 'qualities'] : ['rules', 'critterpowers']
+  const head = g.name.split('(')[0].trim()
+  for (const k of kinds) {
+    const e = (g.ref ? data.entry(k, g.ref) : undefined) ?? data.named?.(head, k)
+    if (e) return e
+  }
+  return undefined
+}
+
 export function sr6Data(c: Sr6Catalog): Sr6Data {
   const problems: Violation[] = []
   const all = (k: Sr6Kind) => [...c.entries[k].values()]
@@ -363,6 +394,18 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     }
     return nameIndex.get(`${kind ?? ''}/${normName(name)}`) ?? (kind ? undefined : nameIndex.get(`/${normName(name)}`))
   }
+  // an Infected type's gained power or weakness its catalog lacks (gainedEntry): reported, never guessed
+  const view = { entry: (kind: Sr6Kind, id: string) => resolveEntry(c, kind, id), named }
+  for (const e of all('qualities'))
+    if (e.parts.some(p => p.tag === 'infected'))
+      for (const g of gainsOf(e))
+        if (!gainedEntry(view, g))
+          warn(
+            'data.unresolved',
+            e,
+            `${e.name}’s gained ${g.tag} “${g.name}” isn’t a ${g.tag === 'power' ? 'critter power or quality' : 'critter weakness'} in the catalog.`,
+          )
+
   return {
     priorities,
     metatypes,

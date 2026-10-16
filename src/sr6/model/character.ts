@@ -135,6 +135,8 @@ export interface Sr6Quality {
   note?: string
   name?: string
   karma?: number
+  /** Stolen Gear (No Future errata, NF p. 162): the converted karma bought off so far after creation, a part at a time */
+  boughtOff?: number
 }
 /** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
 export interface Sr6Pick {
@@ -185,10 +187,32 @@ export interface Sr6Sin {
   kind: 'real' | 'fake'
   rating?: number
   gender?: string
-  licences: { name: string; rating: number }[]
+  licences: Sr6Licence[]
   lifestyles?: Sr6Lifestyle[]
   placeholder?: true
 }
+/** One of a SIN's licences (every licence is one SIN's: owner 2026-10-16): a fake licence (`Firearm license 3`), or an
+ *  owned item's (item: its line's uid, an accessory's too; named after the licence type covering it, purchases.ts
+ *  licenceName, renamable). Rated as its SIN (licenceRating). Priced rating × licencePerRating, but an item's on a real
+ *  SIN at the fee its Availability prints. Never enforced. */
+export interface Sr6Licence {
+  name: string
+  rating: number
+  item?: string
+}
+/** A licence's rating: its SIN's (owner 2026-10-16), at least 1; a real SIN has none, so 1. */
+export const licenceRating = (s: Pick<Sr6Sin, 'kind' | 'rating'>) => Math.max(1, s.kind === 'fake' ? (s.rating ?? 1) : 1)
+/** Every licence of a SIN rated as the SIN (after its rating or kind changes, and on load); the SIN, for chaining. */
+export function rateLicences<S extends Pick<Sr6Sin, 'kind' | 'rating' | 'licences'>>(s: S): S {
+  for (const l of s.licences) l.rating = licenceRating(s)
+  return s
+}
+/** An owned item's licence on a SIN, rated as the SIN; `name`: the licence type covering it (absent, the line's own). */
+export const itemLicence = (x: Sr6Purchase, s: Sr6Sin, name?: string): Sr6Licence => ({
+  name: name || x.name || x.snapshot?.name || 'Custom item',
+  rating: licenceRating(s),
+  item: x.uid,
+})
 /** A SIN's name as shown: a placeholder's reads Unnamed SIN. */
 export const sinName = (s: Sr6Sin, fallback = 'SIN') => s.name || (s.placeholder ? 'Unnamed SIN' : fallback)
 /** A SIN's kind as shown: `placeholder`, `real`, or `fake, rating 3`. */
@@ -258,7 +282,8 @@ export type Sr6Advance =
   /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference;
    *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it */
   | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind }
-  | { op: 'buyoff'; target: string; line?: Sr6Quality }
+  /** part: Stolen Gear's converted karma bought off by this spend, a part of what is left (the line stays); none: all */
+  | { op: 'buyoff'; target: string; line?: Sr6Quality; part?: number }
   /** target: as a quality's, the lower level replaced */
   | { op: 'pick'; line: Sr6Pick; target?: string }
   /** a style (with its signature technique), or a technique learned under the style whose uid is target */
@@ -279,6 +304,12 @@ export type Sr6Advance =
    *  SINs has neither: it goes to the first SIN's first lifestyle (more months of it, or another lifestyle replacing it). */
   | { op: 'lifestyle'; id: string; months: number; sin?: string; uid?: string }
   | { op: 'convert'; karma: number }
+  /** the Awakened flag's override set after creation (value absent: derived again; infected.ts awakenedFlag), free */
+  | { op: 'awakened'; value?: boolean }
+  /** a licence for an owned line (target, its uid; an accessory's too) on one of the runner's SINs (sin, its uid): on a
+   *  fake SIN one of its fake licences (rated as the SIN), on a real one at the fee its Availability prints; name: the
+   *  licence's as recorded (the licence type covering the item) */
+  | { op: 'licensed'; target: string; sin: string; name?: string }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
@@ -301,6 +332,8 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'sin',
   'lifestyle',
   'convert',
+  'awakened',
+  'licensed',
   'other',
 ]
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */

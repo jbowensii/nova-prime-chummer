@@ -12,7 +12,7 @@ import { normName } from './names'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
 import { bookValue, dataFind } from './values'
 import { entryLabel } from './categories'
-import { entryOf, priced, PURCHASE_TAB } from './purchases'
+import { entryOf, licenceFee, priced, PURCHASE_TAB } from './purchases'
 import { essenceBudget } from './essence'
 import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints } from './magic'
 import { skillSpend, knowledgePoints } from './skills'
@@ -52,13 +52,16 @@ export interface Sr6Budgets {
 const s = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** A SIN's nuyen, at creation and in career alike: a fake one's rating × fakeSinPerRating (a real one comes with its
- *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating. `price` reads a setting. */
-export function sinCost(sin: Sr6Sin, price: (key: string) => number): number {
-  const own = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
-  return own + (sin.licences.length ? sin.licences.reduce((t, l) => t + l.rating, 0) * price('licencePerRating') : 0)
+ *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating, but an owned item's licence
+ *  on a real SIN at `fee` (its printed fee, by the item's uid; owner 2026-10-16). `price` reads a setting. */
+export function sinCost(sin: Sr6Sin, price: (key: string) => number, fee?: (item: string) => number | undefined): number {
+  let t = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
+  for (const l of sin.licences) t += (sin.kind === 'real' && l.item !== undefined ? fee?.(l.item) : undefined) ?? l.rating * price('licencePerRating')
+  return t
 }
 
-const purchaseName = (x: Sr6Purchase, data: Sr6Data) => {
+/** An owned line's name as shown: its catalog entry's, else the name it carries. */
+export const purchaseName = (x: Sr6Purchase, data: Sr6Data) => {
   const e = entryOf(x, data)
   return e ? entryLabel(e) : (x.name ?? x.id ?? 'Custom item')
 }
@@ -75,6 +78,11 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       priced(x, data, cr).cost,
       PURCHASE_TAB[x.kind],
     )
+  // (an item's licence on a real SIN is its printed fee: sinCost)
+  const fee = (uid: string) => {
+    const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === uid)
+    return x && licenceFee(x, data)
+  }
   for (const sin of b.sins)
     for (const l of sin.lifestyles ?? []) {
       const e = data.entry('lifestyles', l.id)
@@ -90,7 +98,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     add(
       `sin:${sin.uid}`,
       `${sinName(sin)} (${what})${sin.licences.length ? ` · ${s(sin.licences.length, 'licence')}` : ''}`,
-      sinCost(sin, k => n0(cr, k)),
+      sinCost(sin, k => n0(cr, k), fee),
       'contacts',
     )
   }
@@ -106,7 +114,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     )
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
   add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
-  const karma = toNuyen(b, cr),
+  const karma = toNuyen(b, cr, data),
     converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)

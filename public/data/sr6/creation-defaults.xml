@@ -81,6 +81,11 @@
   <setting key="karmaToNuyenRate" value="2000" source="CRB-HK" page="66"/>
   <setting key="karmaToNuyenRateInDebt" value="5000" source="CRB-HK" page="66"/>
   <setting key="inDebtQuality" value="crb.in-debt" source="CRB-HK" page="77"/>
+  <!-- No Future's Stolen Gear (p. 162) as its errata has it: 10,000¥ a Karma, at most 20 Karma, bought off 2 Karma a Karma -->
+  <setting key="stolenGearQuality" value="nf.stolen-gear" source="NF" page="162"/>
+  <setting key="karmaToNuyenRateStolenGear" value="10000" source="NF" page="162"/>
+  <setting key="karmaToNuyenMaxStolenGear" value="20" source="NF" page="162"/>
+  <setting key="stolenGearBuyOff" value="2" source="NF" page="162"/>
   <setting key="fakeSinPerRating" value="2500" source="CRB-HK" page="273"/>
   <setting key="licencePerRating" value="200" source="CRB-HK" page="273"/>
   <setting key="dataStructureNuyen" value="5000" source="HS" page="72"/>
