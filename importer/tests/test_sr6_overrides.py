@@ -794,7 +794,7 @@ class OwnerClassCRowsTest(unittest.TestCase):
         root = ET.fromstring(overrides.apply("bs", {"augmentations.xml": xml})["augmentations.xml"].encode())
         got = {e.get("id"): e for e in root}
         self.assertNotIn("transgenic-chameleon-skin", got)
-        want = {"transgenic-chameleon-skin-basic": ("0.2", "6", "2000"), "transgenic-chameleon-skin-dynamic": ("0.3", "7", "4000"),
+        want = {"transgenic-chameleon-skin-basic": ("0.3", "6", "1400"), "transgenic-chameleon-skin-dynamic": ("0.45", "7", "2800"),
                 "transgenic-rhino-skin": ("0.15", "4", "2100")}
         for i, vals in want.items():
             e = got[i]

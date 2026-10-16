@@ -820,6 +820,8 @@
       <xs:attribute name="action" type="xs:string"/>
       <xs:attribute name="range" type="xs:string"/>
       <xs:attribute name="duration" type="xs:string"/>
+      <!-- the tags printed over the power (Street Wyrd: Free, Great) -->
+      <xs:attribute name="tags" type="xs:string"/>
       <!-- a weakness (Fragile, Carrier): the book's stat blocks list it under Weaknesses -->
       <xs:attribute name="weakness" type="sr6:True"/>
     </xs:extension></xs:complexContent>

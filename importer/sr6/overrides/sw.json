@@ -1,4 +1,5 @@
 [
+  {"cl6": "Realistic Multi-sense", "kind": "spellfeatures", "id": "realistic-multi-sense", "remove": true},
   {"cl6": "Manadyne XX-10 Series", "kind": "gear", "id": "manadyne-xx-10-series", "split": [{"id": "manadyne-mb-10", "name": "Manadyne MB-10"}, {"id": "manadyne-pb-10", "name": "Manadyne PB-10"}]},
   {"cl6": "Manadyne XX-100 Series", "kind": "gear", "id": "manadyne-xx-100-series", "split": [{"id": "manadyne-mb-100", "name": "Manadyne MB-100"}, {"id": "manadyne-pb-100", "name": "Manadyne PB-100"}]},
   {"cl6": "Hermeticsm", "kind": "traditions", "ours": ["Classical Hermeticism"]},

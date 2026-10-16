@@ -754,6 +754,8 @@ class Catalog:
             if not cat:
                 return False  # a rule about spells
             attrs = {"category": cat, "tags": b.tags or None}
+        elif kind == "critterpowers":
+            attrs = {"tags": b.tags or None}  # Street Wyrd's `(Free)`, `(Great)` over a spirit power (p. 66)
         elif kind == "qualities":
             karma = _karma_line(f.pop("karma", ""), b.text)
             # every price it prints (`4 to 12 Karma`, `Common: 12 Karma; … Very Rare: 3 Karma`): the lowest, the highest
@@ -1773,7 +1775,8 @@ def spell_features(bs, cat, offset):
     """The features the book's spells are tagged with (`Direct Combat`, `Indirect Combat, Area`, `Single Sense`,
     Street Wyrd's `Focus`): each a spell feature of the book (CRB pp. 132, 137), described by the heading naming it
     (`Direct Combat Spells`, `Multi-Sense`) where the book prints one; left out where the recipe already read it."""
-    spells = [b for b in bs if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]} and b.tags]
+    spells = [b for b in bs if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]} and b.tags
+              and "ACTION" not in {h.upper() for h in b.stats[0]}]  # (a critter power's tags are its own)
     if not spells:
         return
     have = {norm(e["name"]) for e in cat.entries["spellfeatures"]}
