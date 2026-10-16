@@ -30,9 +30,13 @@ Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format
   {"move_kind":{"id","from","to"}}                the entry re-filed in another kind's file (gear -> weapons: a melee weapon; armor -> gear)
   {"kind","id","notext":true}                     no description: the book prints none for it, and a text the import gave
                                                   it from elsewhere (effects.py: a rule whose name holds its words) goes
+  {"kind","id","split":[{"id","name","set"?,"note"?}]}  the entry becomes one entry per part (a row the book prints once for several
+                                                  things): a copy with the part's id and name, "set" values (VALUE_ATTRS; their formula/issue go),
+                                                  "note" {"field","text"} (the printed rule the value comes from); the book's text goes to each
 An attribute the entry's kind schema lacks (class on a rules entry, social on gear) is skipped with one stderr line per row, and
 an id row is never refiled to a kind whose schema lacks its attributes (allowed(), fit()).
 A description is never an override: "set" and "add" refuse a text field. See docs/sr6-data-format.md."""
+import copy
 import json
 import os
 import re
@@ -47,7 +51,7 @@ from importer.sr6.regroup import norm
 from importer.sr6.resolve import _add_kid
 
 DIR = Path(__file__).with_name("overrides")
-OPS = ("remove", "rename", "merge", "move_kind", "notext")
+OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
 SETTABLE = {"class"}  # (what an id row may set)
 KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection"}  # (a "gen": "family" row's "kids": Commlink6's item structure)
 VALUE_ATTRS = {"cost", "avail", "karma", "karmaMax", "essence", "capacity", "rating", "dv", "ar", "modes", "ammo", "defense",
@@ -124,6 +128,9 @@ def check(rows):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
             raise ValueError(f"override of {r.get('id')}: rename is a name")
+        for part in r.get("split", []):
+            if not (part.get("id") and part.get("name")) or set(part.get("set", {})) - VALUE_ATTRS or NO_TEXT & {k.lower() for k in part}:
+                raise ValueError(f"override of {r.get('id')}: a split part has an id, a name and {sorted(VALUE_ATTRS)} values only")
         if bad := NO_TEXT & {k.lower() for v in (r.get("merge"), r.get("move_kind")) if isinstance(v, dict) for k in v}:
             raise ValueError(f"override of {r.get('id')}: an op names a description field ({sorted(bad)})")
         if a := r.get("add"):
@@ -170,9 +177,13 @@ def texts(recipe_id, files, texts_xml, rows=None):
     one (reported on stderr)."""
     every = table(recipe_id) if rows is None else check(rows)
     rows = [r for r in every if r.get("add", {}).get("text_from")]
-    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
+    splits = [r for r in every if r.get("split")]
+    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext") or r.get("split")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
     if not texts_xml or not (rows or gone):
         return texts_xml
+    own = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
+    copies = "".join(f"  <text of={quoteattr(r['kind'])} id={quoteattr(p['id'])}>{escape(own[r['kind'], r['id']])}</text>{chr(10)}"
+                     for r in splits if (r["kind"], r["id"]) in own for p in r["split"] if (r["kind"], p["id"]) not in own)  # (a split's parts: the source's text each)
     for of, i in gone:
         texts_xml = re.sub(r"[ \t]*<text of=%s id=%s>.*?</text>\n?" % (re.escape(quoteattr(of)), re.escape(quoteattr(i))), "", texts_xml, flags=re.S)
     have = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
@@ -180,7 +191,7 @@ def texts(recipe_id, files, texts_xml, rows=None):
     for fname, xml in files.items():
         for m in re.finditer(r'<\w+ id="([^"]+)"[^>]*><name>([^<]*)</name>', xml or ""):
             heads.setdefault(norm(unescape(m.group(2))), (fname[:-4], m.group(1)))
-    add = ""
+    add = copies
     for r in rows:
         a = r["add"]
         new = (r["kind"], slug(a.get("name", r["cl6"])))
@@ -304,6 +315,8 @@ def _find(root, eid):
 def _ops(out, rows):
     """The remove, merge, rename and move_kind rows applied, in that order (a merge before the move that files its target
     as a weapon). A row whose entry isn't there is reported once, nothing guessed."""
+    from lxml import etree
+
     from importer.sr6 import KINDS
     lost = []
     for r in (x for x in rows if x.get("remove")):
@@ -313,6 +326,31 @@ def _ops(out, rows):
         if e is None:
             lost.append(f"remove {name}:{r['id']}")
             continue
+        root.remove(e)
+        out[name] = dump(old, root)
+    for r in (x for x in rows if x.get("split")):
+        name = f"{r['kind']}.xml"
+        root, old = _load(out, name, r["kind"])
+        e = _find(root, r["id"])
+        if e is None:
+            lost.append(f"split {name}:{r['id']}")
+            continue
+        at = list(root).index(e)
+        for n, part in enumerate(r["split"]):
+            c = copy.deepcopy(e)
+            c.set("id", part["id"])
+            c.find("name").text = part["name"]
+            for a in [a for a in c.findall("alias") if not a.get("id")]:
+                c.remove(a)  # (the whole row's other names)
+            for k, v in part.get("set", {}).items():
+                c.set(k, str(v))
+                for x in [x for x in c if x.tag in ("formula", "issue", "found") and x.get("field") == k]:
+                    c.remove(x)
+            if note := part.get("note"):
+                x = etree.Element("note", {"field": note["field"]})
+                x.text = note["text"]
+                c.insert(sum(1 for x in c if x.tag in ("name", "alias", "formula", "issue", "found")), x)
+            root.insert(at + n, c)
         root.remove(e)
         out[name] = dump(old, root)
     for r in (x for x in rows if "merge" in x):
@@ -404,7 +442,7 @@ def apply(recipe_id, files, rows=None):
                 for k, v in sets.items():
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
-    _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge"))])
+    _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge", "split"))])
     _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out

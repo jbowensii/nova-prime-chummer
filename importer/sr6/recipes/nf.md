@@ -15,6 +15,8 @@ out). A setting book: its catalog is the GAME INFORMATION chapter; the book prin
   and a clothing's ARMOR take the core rulebook's headers.
 - Variant rows (`Hardened`, `Bladed`, `Monofilament`) are named with their item: the table's title (Rolling Blades),
   else the yo-yo (its table prints untitled, after the torch's text: `UNTITLED`), and take that item's description.
+  The Rolling Blades rows are then split (owner 2026-10-16, nf.json `split`): `Skateboard (Hardened)`, `Skateboard (Bladed)`, `Roller skates (Bladed)`,
+  the errata's availabilities on each.
   Rows named by a rating (`Rating 5`) are named with their table (`Cybereyes (Rating 5)`); `Hacked (as above)` with the
   row above in its table and its rating range. The augmentation tables share one title (`bioware`): each is labelled
   by its first header, so only basic bioware is bioware.

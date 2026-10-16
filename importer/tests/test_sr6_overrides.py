@@ -787,7 +787,7 @@ class OwnerClassCRowsTest(unittest.TestCase):
         from tools.cl6check import optional
         keep = optional.load_keep()
         for k in [("bs", "gear", "bs.bulk-modification", "cost"), ("crb", "programs", "crb.tutorsoft", "avail"),
-                  ("crb", "augmentations", "crb.control-rig", "cost"), ("so", "electronics", "so.swindler-stick", "cost"),
+                  ("crb", "augmentations", "crb.control-rig", "cost"), ("so", "electronics", "so.swindler-stick-gold", "legality"),
                   ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"), ("nf", "armor", "nf.bowler", "avail")]:
             self.assertIn(k, keep)
         self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
@@ -882,7 +882,7 @@ class ErrataRowsTest(unittest.TestCase):
         rows = {(r["kind"], r["id"]): r for r in overrides.table("nf") if r.get("gen") == "errata"}
         want = {("gear", "rising-star"): "2", ("gear", "big-time"): "3", ("gear", "external-synth"): "+1", ("gear", "internal-synth"): "+2",
                 ("weapons", "yo-yo-hardened"): "2", ("weapons", "yo-yo-bladed"): "3(L)", ("weapons", "yo-yo-monofilament"): "6(I)",
-                ("weapons", "rolling-blades-hardened"): "2", ("weapons", "rolling-blades-bladed"): "3(L)", ("weapons", "molotov"): "1(I)",
+                ("weapons", "skateboard-hardened"): "2", ("weapons", "skateboard-bladed"): "3(L)", ("weapons", "roller-skates-bladed"): "3(L)", ("weapons", "molotov"): "1(I)",
                 ("weapons", "pitchfork"): "1", ("gear", "graffiti-kit"): "1", ("vehicles", "ford-broadcast"): "2", ("vehicles", "s-b-condor"): "3",
                 ("gear", "press-pass"): "2(L)", ("gear", "procam"): "1", ("gear", "smartcam-external"): "2", ("gear", "smartcam-internal"): "4",
                 ("gear", "basic-press"): "1", ("gear", "small-press"): "4", ("gear", "industrial-press"): "7",
@@ -901,6 +901,64 @@ class ErrataRowsTest(unittest.TestCase):
         for k in [("nf", "vehicles", "nf.ford-broadcast", "avail"), ("nf", "weapons", "nf.molotov", "legality"),
                   ("nf", "augmentations", "nf.cybereyes-rating-5", "cost"), ("nf", "electronics", "nf.press-pass", "avail")]:
             self.assertNotIn(k, keep)
+
+
+class SplitRowsTest(unittest.TestCase):
+    """`"split"` rows (owner 2026-10-16, multi-record): a row the book prints once for several things becomes one item each."""
+    XML = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz-kit" source="ZZ" page="9" avail="4(I)" cost="250 + Base Cost">'
+           '<name>Zz Kit</name><alias>Old name</alias><alias id="zz.older" kind="gear"/><issue field="cost" code="ambiguous">priced off</issue>'
+           '<effect target="item:concealability" op="add" value="-2"/></gear></d>\n')
+    ROW = {"cl6": "Zz Kit", "kind": "gear", "id": "zz-kit", "split": [
+        {"id": "zz-kit-a", "name": "Zz Kit (A)", "set": {"cost": "255"}, "note": {"field": "cost", "text": "250 + Base Cost"}},
+        {"id": "zz-kit-b", "name": "Zz Kit (B)", "set": {"cost": "270"}}]}
+    TEXTS = '<sr6:data xmlns:sr6="urn:zz" kind="texts">\n  <text of="gear" id="zz-kit">One printed block.</text>\n</sr6:data>\n'
+
+    def test_one_copy_per_part_with_its_own_value_and_the_printed_rule_as_a_note(self):
+        out = overrides.apply("zz", {"gear.xml": self.XML}, [self.ROW])["gear.xml"]
+        got = {e.get("id"): e for e in ET.fromstring(out.encode())}
+        self.assertEqual(list(got), ["zz-kit-a", "zz-kit-b"])
+        a, b = got["zz-kit-a"], got["zz-kit-b"]
+        self.assertEqual((a.findtext("name"), a.get("cost"), a.get("avail"), b.get("cost"), b.get("avail")), ("Zz Kit (A)", "255", "4(I)", "270", "4(I)"))
+        self.assertEqual([(n.get("field"), n.text) for n in a.findall("note")], [("cost", "250 + Base Cost")])
+        self.assertEqual(b.findall("note"), [])
+        for e in (a, b):  # (the effect is kept; the name aliases and the cost issue go, an old id alias stays)
+            self.assertEqual(e.find("effect").get("value"), "-2")
+            self.assertEqual(e.findall("issue"), [])
+            self.assertEqual([x.get("id") for x in e.findall("alias")], ["zz.older"])
+
+    def test_the_books_text_goes_to_each_part_and_the_source_text_goes(self):
+        got = overrides.texts("zz", {"gear.xml": self.XML}, self.TEXTS, [self.ROW])
+        self.assertEqual(sorted(i for _, i, _ in __import__("importer.xmlio", fromlist=["x"]).texts_entries(got)), ["zz-kit-a", "zz-kit-b"])
+        self.assertEqual(got.count("One printed block."), 2)
+
+    def test_a_split_refuses_a_text_field_and_a_missing_entry_is_reported_only(self):
+        with self.assertRaises(ValueError):
+            overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "split": [{"id": "x", "name": "X", "set": {"description": "t"}}]}])
+        self.assertEqual(overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "id": "nope"}])["gear.xml"], self.XML)
+
+    def test_shipped_swindler_manadyne_and_skate_splits(self):
+        sw = {p["id"]: p for r in overrides.table("so") for p in r.get("split", [])}
+        self.assertEqual({i: (p["name"], p["set"]["cost"]) for i, p in sw.items()}, {
+            "swindler-stick-standard": ("Swindler Stick (Standard)", "255"), "swindler-stick-silver": ("Swindler Stick (Silver)", "270"),
+            "swindler-stick-gold": ("Swindler Stick (Gold)", "350"), "swindler-stick-platinum": ("Swindler Stick (Platinum)", "750"),
+            "swindler-stick-ebony": ("Swindler Stick (Ebony)", "1250")})
+        self.assertTrue(all(p["note"]["text"] == "250 + Certified Credstick Cost" for p in sw.values()))
+        self.assertEqual({p["id"]: p["name"] for r in overrides.table("sw") for p in r.get("split", [])}, {
+            "manadyne-mb-10": "Manadyne MB-10", "manadyne-pb-10": "Manadyne PB-10", "manadyne-mb-100": "Manadyne MB-100", "manadyne-pb-100": "Manadyne PB-100"})
+        self.assertEqual({p["id"]: p["name"] for r in overrides.table("nf") for p in r.get("split", [])}, {
+            "skateboard-hardened": "Skateboard (Hardened)", "skateboard-bladed": "Skateboard (Bladed)", "roller-skates-bladed": "Roller skates (Bladed)"})
+        errata = {r["id"]: r["set"]["avail"] for r in overrides.table("nf") if r.get("gen") == "errata" and "skate" in r["id"]}
+        self.assertEqual(errata, {"skateboard-hardened": "2", "skateboard-bladed": "3(L)", "roller-skates-bladed": "3(L)"})
+
+    def test_keep_list_holds_the_printed_availability_of_the_five_sticks_and_the_four_manadynes(self):
+        from tools.cl6check import optional
+        keep = optional.load_keep()
+        for g in ("standard", "silver", "gold", "platinum", "ebony"):
+            self.assertIn(("so", "electronics", f"so.swindler-stick-{g}", "avail"), keep)
+            self.assertNotIn(("so", "electronics", f"so.swindler-stick-{g}", "cost"), keep)
+        for m in ("mb-10", "pb-10", "mb-100", "pb-100"):
+            self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "cost"), keep)
+            self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "avail"), keep)
 
 
 class SlotStructureRowsTest(unittest.TestCase):
