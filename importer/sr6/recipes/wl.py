@@ -16,7 +16,9 @@ BOOK = "Wild Life"
 SHA256 = ("0c585f15c80c978d496e73b4ab91e25fcd7968704b631fd3aaba80de80be4905",)  # the owner's copy (latest)
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 ALIASES = {}
-NAME_HEADERS = frozenset({"GEAR"})  # the critter gear table: its rows are items (their text is a labelled line each)
+NAME_HEADERS = frozenset({"GEAR", "CRITTER", "OPTIONS"})  # the critter gear table: its rows are items (their text is a
+# labelled line each); the Purchasing a Critter tables (p. 180): a critter's price by its kind, and what an option adds
+PURCHASE = {"CRITTER": "critter purchase", "OPTIONS": "critter purchase option"}  # first header -> the rows' category
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"critterpowers"}
@@ -122,6 +124,8 @@ def kind(chapter, b, parent2):
         return "critters", slug(b.chapter) or "critter"
     if b.row is not None and b.header and b.header[0].upper() == "GEAR" and chapter == POWERS:
         return "gear", "critter-gear"
+    if b.row is not None and b.header and b.header[0].upper() in PURCHASE and chapter == POWERS:
+        return "gear", PURCHASE[b.header[0].upper()]
     return None, None
 
 

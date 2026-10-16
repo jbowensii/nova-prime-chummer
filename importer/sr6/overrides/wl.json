@@ -1,8 +1,4 @@
 [
-  {"cl6": "Trained: Special Training", "kind": "gear", "id": "trained-special-training", "set": {"class": "MAGICAL/ALCHEMICAL"}},
-  {"cl6": "Negative Quality", "kind": "gear", "id": "negative-quality", "remove": true},
-  {"cl6": "Positive Quality", "kind": "gear", "id": "positive-quality", "remove": true},
-  {"cl6": "Trained: Command", "kind": "gear", "id": "trained-command", "remove": true},
   {"cl6": "Gear Harness", "kind": "gear", "id": "gear-harness", "set": {"class": "CRITTERWARE/GEAR"}},
   {"cl6": "Light Combat Armor", "kind": "gear", "id": "light-combat-armor", "set": {"class": "CRITTERWARE/GEAR"}},
   {"cl6": "Heavy Combat Armor", "kind": "gear", "id": "heavy-combat-armor", "set": {"class": "CRITTERWARE/GEAR"}},

@@ -2,6 +2,8 @@
  "CRITTERWARE/AUGMENTATION": "deliberate extra, not in CommLink6: critter-only augmentation (Body Shop, Taming the Wild); players cannot select",
  "INFECTED/OPTIONAL_POWER": "deliberate extra, not in CommLink6: an Infected optional power (Sixth World Companion p. 109) bought with Karma; offered only with infectedAllowed",
  "CRITTERWARE/GEAR": "deliberate extra, not in CommLink6: critter-only gear (Wild Life); players cannot select",
+ "CRITTERWARE/PURCHASE": "deliberate extra, not in CommLink6: a row of Wild Life's Purchasing a Critter tables (p. 180); players cannot select it as gear",
+ "CRITTERWARE/QUALITY": "deliberate extra, not in CommLink6: a Wild Life critter companion quality (pp. 184-186); players cannot select it",
  "DRONE_SMALL/SPACE": "deliberate extra, not in CommLink6: small drone for space (no SPACE locomotion in CL6)",
  "DRONE_MEDIUM/SPACE": "deliberate extra, not in CommLink6: medium drone for space",
  "DRONE_LARGE/SPACE": "deliberate extra, not in CommLink6: large drone for space",

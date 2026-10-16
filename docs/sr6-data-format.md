@@ -938,7 +938,11 @@ and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6
 tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
 take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had;
 the Companion's Infected optional powers, `INFECTED/OPTIONAL_POWER`, an extra; its Infected qualities, `INFECTED`, a rule
-marked `"commlink6": true` since Commlink6 has that type).
+marked `"commlink6": true` since Commlink6 has that type; Wild Life's Purchasing a Critter rows, p. 180,
+`CRITTERWARE/PURCHASE`: gear of category `Critter purchase` (Pet (Mundane), Pet (Exotic), Pet (Wild), Awakened, Emerged:
+avail and cost as printed, `Body x 100 nuyen`) and `Critter purchase option` (the qualities' and training's effects, `+1`,
+`+500 nuyen`), and its Critter Companion Qualities, pp. 184-186, `CRITTERWARE/QUALITY`: a critter's, never a runner's.
+The book's limit of six qualities on a purchased critter, p. 184, is a game rule, not data).
 
 ## Layout and load order
 

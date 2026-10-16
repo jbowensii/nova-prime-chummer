@@ -4,5 +4,9 @@
  {"src": "swc", "kinds": ["qualities"], "pages": [109, 109], "class": "INFECTED/OPTIONAL_POWER",
   "note": "Sixth World Companion Infected Optional Powers Table (printed page 109): the powers an Infected character buys, offered only with the table's infectedAllowed rule on"},
  {"src": "swc", "kinds": ["qualities"], "pages": [110, 114], "class": "INFECTED", "commlink6": true,
-  "note": "Sixth World Companion Positive and Negative Infected Qualities (printed pages 110-114): Commlink6's own quality type INFECTED, offered only with the table's infectedAllowed rule on"}
+  "note": "Sixth World Companion Positive and Negative Infected Qualities (printed pages 110-114): Commlink6's own quality type INFECTED, offered only with the table's infectedAllowed rule on"},
+ {"src": "wl", "kinds": ["gear"], "pages": [180, 180], "class": "CRITTERWARE/PURCHASE",
+  "note": "Wild Life Purchasing a Critter tables (printed page 180): a critter's price by its kind and the options bought with it, never a runner's gear"},
+ {"src": "wl", "kinds": ["qualities"], "pages": [184, 186], "class": "CRITTERWARE/QUALITY",
+  "note": "Wild Life Critter Companion Qualities (printed pages 184-186): for tamed and trained critters only, unavailable to metahuman characters"}
 ]

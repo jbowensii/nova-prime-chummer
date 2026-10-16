@@ -21,6 +21,10 @@ converter's guessed heading sizes are right (60, 21, 15, 13, 9). No index or rep
   a power the stat blocks list under `Weakness(es):` (Fragile, Carrier) is marked `weakness="true"`.
 - Critter gear: a `GEAR DEFENSE RATING CAPACITY AVAIL COST` table (its items described by labelled lines above it),
   gear category critter-gear; prices are formulas of the critter's Body (book-value).
+- Purchasing a Critter (p. 180): the `CRITTER AVAIL COST` rows (gear category `critter purchase`) and the `OPTIONS`
+  rows (`critter purchase option`), as printed, class `CRITTERWARE/PURCHASE` (classes/section_prefix.json); the Critter
+  Companion Qualities (pp. 184-186) are class `CRITTERWARE/QUALITY`. The PDF's text layer draws every page twice; the
+  converter keeps one layer (layout.one_layer), so no table here reads doubled.
 - Critter companion qualities (positive and negative, `Cost:`/`Bonus: N Karma`) are for critters, not characters:
   rules, with the edge actions, commands, training and statuses.
 

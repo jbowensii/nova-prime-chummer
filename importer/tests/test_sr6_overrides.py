@@ -405,7 +405,9 @@ class SectionClassTest(unittest.TestCase):
             self.assertTrue(re.fullmatch(r"[A-Za-z0-9_]+(/[A-Za-z0-9_]+)?", r["class"]))
         self.assertEqual([(r["src"], r["pages"], r["class"]) for r in classes.prefixes()],
                          [("bs", [134, 166], "CRITTERWARE/AUGMENTATION"), ("swc", [109, 109], "INFECTED/OPTIONAL_POWER"),
-                          ("swc", [110, 114], "INFECTED")])
+                          ("swc", [110, 114], "INFECTED"),
+                          # (owner 2026-10-16: Wild Life's critter purchase rows and companion qualities are a critter's)
+                          ("wl", [180, 180], "CRITTERWARE/PURCHASE"), ("wl", [184, 186], "CRITTERWARE/QUALITY")])
 
     def test_cl6check_accepts_a_section_class_whatever_commlink6s_is(self):
         from types import SimpleNamespace
@@ -498,7 +500,7 @@ class StructureOpsTest(unittest.TestCase):
         self.assertEqual(sum(1 for r in t("lhv") if "merge" in r), 4)
         self.assertEqual({r["id"] for s in ("thn", "lhv", "so", "tne", "wl", "sif-no") for r in t(s) if r.get("remove")},
                          {"knight-errant-swat-officers", "toxins-drugs-and-diseases.scourge", "grooming-1-hour", "grooming-2-hours", "special-notes",
-                          "negative-quality", "positive-quality", "trained-command", "ammunition"})
+                          "ammunition"})  # (Wild Life's purchase options stay since 2026-10-16: the owner's builder decisions)
         self.assertLessEqual({"Biosprayer (Blind)", "Biosprayer (Confused)", "Biosprayer (Nauseated)", "Biosprayer (Dazed)",
                               "Power hammer (Double-sided)", "Power maul (Double-sided)", "Pocket Secretary ’85"},
                              {r["rename"] for s in ("bs", "sco", "fpt") for r in t(s) if "rename" in r})  # (the name fixes of 2026-10-15 join them)

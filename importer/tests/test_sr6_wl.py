@@ -91,6 +91,16 @@ past the box.
 Made-up advice on goats.
 <!-- page 180 -->
 # ON THE CARE AND FEEDING OF CRITTERS
+### Purchasing a Critter
+Made-up words on buying a critter.
+| CRITTER | AVAIL | COST |
+|---|---|---|
+| Pet (Fuzzy) | 3 | Body x 70 nuyen |
+| Glowing | (Magic + 2)(L) | (Body + Magic) x 900 nuyen |
+#### options
+| OPTIONS | AVAIL | COST |
+|---|---|---|
+| Trained: Fetch | +2 | +300 nuyen |
 ## Critter Companion Qualities
 ### Snuggly
 A made-up cuddly critter.
@@ -154,6 +164,12 @@ class WlRecipeTest(unittest.TestCase):
         self.assertEqual(p["Brittle"].get("weakness"), "true")  # a stat block lists it as a weakness
         g = entries(self.res, "gear")["Fizz Harness"]
         self.assertEqual((g.get("category"), g.get("cost")), ("Critter gear", "300"))
+        # the Purchasing a Critter tables: a critter's price by its kind, and an option's (as printed)
+        g = entries(self.res, "gear")
+        self.assertEqual({n: (g[n].get("category"), g[n].get("avail"), g[n].get("cost")) for n in ("Pet (Fuzzy)", "Glowing", "Trained: Fetch")},
+                         {"Pet (Fuzzy)": ("Critter purchase", "3", "Body x 70 nuyen"),
+                          "Glowing": ("Critter purchase", "(Magic + 2)(L)", "(Body + Magic) x 900 nuyen"),
+                          "Trained: Fetch": ("Critter purchase option", "+2", "+300 nuyen")})
         r = entries(self.res, "rules")
         self.assertIn("Snuggly", r)  # critter qualities are for critters: rules
         self.assertIn("Critter Corner: Hum Goat", r)
