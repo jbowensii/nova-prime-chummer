@@ -6,7 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating, settingQuality } from '../../engine/budgets'
+import { attrRating, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
@@ -46,6 +46,7 @@ const OPS = [
   ['upgrade', 'Upgrade gear to a higher level'],
   ['drop', 'Drop gear'],
   ['sin', 'SIN'],
+  ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
   ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'],
@@ -119,6 +120,8 @@ export function LedgerTab() {
   )
   const above = (x: Sr6Purchase | undefined) => (e: Sr6Entry) =>
     !!x?.id && data.family(e.kind, e.id) === data.family(x.kind, x.id) && (data.levelOf(e) ?? 0) > (data.levelOf(data.entry(x.kind, x.id)) ?? 0)
+  // the owned lines (accessories too) whose Availability prints a licence fee: licensed on a SIN after creation
+  const licensable = b.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined)
   // a lifestyle is paid under a SIN: the first unless another is picked
   const sin = b.sins.some(s => s.uid === f.sin) ? f.sin : (b.sins[0]?.uid ?? '')
   /** what the form says to buy, or null while it's incomplete */
@@ -203,6 +206,8 @@ export function LedgerTab() {
           : null
       case 'lifestyle':
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
+      case 'licensed':
+        return f.target && sin ? { op, target: f.target, sin } : null
       case 'contact':
         return f.name.trim() || f.target
           ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(), connection: whole(f.connection), loyalty: whole(f.loyalty) } }
@@ -558,6 +563,33 @@ export function LedgerTab() {
                 Add licence
               </button>
             </div>
+          </>
+        )}
+        {/* (a licence is one SIN's: one more SIN for an item, at its fee; owner 2026-10-16) */}
+        {op === 'licensed' && (
+          <>
+            <label>
+              Item
+              <select aria-label="Licensed item" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {licensable.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              SIN
+              <select aria-label="Licensed on" value={sin} onChange={e => set({ sin: e.target.value })}>
+                {!b.sins.length && <option value="">The runner has no SIN</option>}
+                {b.sins.map((s, i) => (
+                  <option key={s.uid} value={s.uid}>
+                    {sinName(s, `SIN ${i + 1}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
           </>
         )}
         {op === 'lifestyle' && (

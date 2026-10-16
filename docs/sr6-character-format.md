@@ -120,7 +120,7 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126), `licence` for an item whose Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥): `bought` adds the fee to the line's cost (once a line), `unlicensed` carries it without one (a warning); absent, not chosen (the warning that it needs one; an older file has none). Licences are never enforced. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126), `licensedOn` for an item whose Availability prints a licence fee (`2, 500¥`: rating 2, fee 500¥): the uids of the runner's SINs it is licensed on, space-separated (a licence is one SIN's: one gun carried under three SINs needs three), the fee added to the line's cost once for each; absent, carried unlicensed (one warning that it needs a licence). An older file's `licence="bought"` reads as licensed on the first SIN, `licence="unlicensed"` as none; the next save writes `licensedOn`. Licences are never enforced. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
@@ -176,6 +176,8 @@ the entry its `event` names.
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
+  `licensed` (`target`: the uid of an owned line, an accessory's too, whose Availability prints a licence fee; `sin`: the
+  uid of the SIN it is licensed on; priced at the fee),
   `martialart` (the style with its signature `<technique>`), `technique` (`target`: the uid of the style it is learned under; the `<technique>`), `powerpoint`, `lifestyle` (`lifestyle` id, `months`, `sin`: the
   uid of the SIN it's paid under, `uid`: the new lifestyle's; more months of a lifestyle that SIN has add to it; an older
   entry has no `sin` and goes to the first SIN's lifestyle, more months of it or another replacing it), `convert`

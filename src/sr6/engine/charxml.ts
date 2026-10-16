@@ -77,7 +77,7 @@ function purchaseXml(p: Sr6Purchase): string {
       worn: p.worn,
       note: p.note,
       seatsRemoved: p.seatsRemoved,
-      licence: p.licence,
+      licensedOn: p.licensedOn?.join(' '),
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -194,6 +194,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ lifestyle: a.id, months: a.months, sin: a.sin, uid: a.uid }, '']
     case 'awakened':
       return [{ awakened: a.value }, '']
+    case 'licensed':
+      return [{ target: a.target, sin: a.sin }, '']
     case 'powerpoint':
     case 'convert':
     case 'other':
@@ -333,10 +335,11 @@ const readBonuses = (e: Element) => {
   return xs.length ? xs : undefined
 }
 
-function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
+/** sin: the runner's first SIN, where an older line's licence (licence="bought", before licences were per SIN) goes. */
+function readPurchase(e: Element, fix?: string[], sin?: string): Sr6Purchase {
   const kind = oneOf(e.getAttribute('kind'), PURCHASE_KINDS, 'purchase kind')!
   const snap = kid(e, 'snapshot')?.firstElementChild,
-    lic = e.getAttribute('licence')
+    on = str(e, 'licensedOn')?.split(/\s+/).filter(Boolean) ?? (e.getAttribute('licence') === 'bought' && sin ? [sin] : [])
   return def({
     uid: e.getAttribute('uid') ?? '',
     kind,
@@ -352,8 +355,8 @@ function readPurchase(e: Element, fix?: string[]): Sr6Purchase {
     bonuses: readBonuses(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
-    licence: lic == null ? undefined : oneOf(lic, ['bought', 'unlicensed'] as const, 'licence choice', undefined, fix),
-    accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix), label, fix),
+    licensedOn: listOrNone(on),
+    accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, sin), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
 }
@@ -491,9 +494,9 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
   out.qualities = each(kids(b, 'quality'), readQuality, label, fix)
   out.picks = each(kids(b, 'pick'), readPick, label, fix)
   out.martialArts = each(kids(b, 'martialart'), e => readMartial(e, fix), label, fix)
-  out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix), label, fix)
-  out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   out.sins = each(kids(b, 'sin'), readSin, label, fix)
+  out.purchases = each(kids(b, 'purchase'), e => readPurchase(e, fix, out.sins[0]?.uid), label, fix)
+  out.contacts = each(kids(b, 'contact'), readContact, label, fix)
   return out
 }
 function readSin(e: Element): Sr6Sin {
@@ -589,6 +592,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       const v = e.getAttribute('awakened') // (xs:boolean; absent: derived again)
       return v == null ? { op } : { op, value: oneOf(v, ['true', 'false', '1', '0'] as const, 'Awakened override')! === 'true' || v === '1' }
     }
+    case 'licensed':
+      return { op, target: req(e, 'target'), sin: req(e, 'sin') }
     case 'powerpoint':
     case 'other':
       return { op }

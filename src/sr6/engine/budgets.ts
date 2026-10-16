@@ -72,7 +72,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     const pr = priced(x, data, cr)
     add(
       `purchase:${x.uid}`,
-      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}${pr.licence ? ' with its licence' : ''}`,
+      `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}${x.licensedOn?.length && pr.licence ? ` with ${s(x.licensedOn.length, 'licence')}` : ''}`,
       pr.cost,
       PURCHASE_TAB[x.kind],
     )

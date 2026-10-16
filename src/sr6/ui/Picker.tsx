@@ -8,7 +8,7 @@ import { num, type CreationRules } from '../engine/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../shared/formula'
 import { IssueBadges } from '../../ui/Issues'
-import { BONUS_TARGETS, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
+import { BONUS_TARGETS, sinName, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
@@ -612,7 +612,12 @@ export function PurchaseSection({
                   name = e ? entryLabel(e) : (x.name ?? 'Custom item'),
                   p = priced(x, data, cr),
                   cf = formulaOf(e?.formulas, 'cost'),
-                  note = availNote(e?.attrs.avail, x.rating ?? 1, x.licence),
+                  sins = ch.build.sins,
+                  note = availNote(
+                    e?.attrs.avail,
+                    x.rating ?? 1,
+                    sins.filter(s => x.licensedOn?.includes(s.uid)).map(s => sinName(s)),
+                  ),
                   licence = note.text
                 return (
                   <tr key={x.uid}>
@@ -667,18 +672,26 @@ export function PurchaseSection({
                           ⚑
                         </span>
                       )}
-                      {/* (a licence fee printed: bought, its fee on the cost; or carried unlicensed, a warning; owner 2026-10-16) */}
+                      {/* (a licence fee printed: licensed on any of the runner's SINs, its fee once a SIN; owner 2026-10-16) */}
                       {licence && (
-                        <div>
-                          <select
-                            aria-label={`${name} licence`}
-                            value={x.licence ?? ''}
-                            onChange={ev => act({ op: 'licensed', uid: x.uid, licence: (ev.target.value || null) as 'bought' | 'unlicensed' | null })}
-                          >
-                            <option value="">Licence: not chosen</option>
-                            <option value="bought">Licence bought</option>
-                            <option value="unlicensed">Unlicensed</option>
-                          </select>
+                        <div className="muted">
+                          {sins.length ? (
+                            sins.map(s => (
+                              <label key={s.uid} style={{ display: 'block' }}>
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${name} licensed on ${sinName(s)}`}
+                                  checked={!!x.licensedOn?.includes(s.uid)}
+                                  onChange={ev => act({ op: 'licensed', uid: x.uid, sin: s.uid, on: ev.target.checked })}
+                                />{' '}
+                                Licence on {sinName(s)}
+                              </label>
+                            ))
+                          ) : (
+                            <label>
+                              <input type="checkbox" disabled aria-label={`${name} licence`} /> No SIN to license it on (add one on Contacts)
+                            </label>
+                          )}
                         </div>
                       )}
                     </td>

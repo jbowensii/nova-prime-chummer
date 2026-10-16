@@ -375,7 +375,8 @@
     <!-- advance: the op, its target (an attribute, a skill id, the uid of the line bought off or dropped, or a technique's
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
-         sin: the <sin> bought (its uid a placeholder's: that one named) -->
+         sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
+         sin the uid of the SIN the licence is on -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -384,7 +385,7 @@
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
-        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/>
+        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
@@ -514,8 +515,14 @@
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
-    <!-- an item whose Availability prints a licence fee (`2, 500¥`): bought, the fee is added to the line's cost;
-         unlicensed, carried without one (a warning). Absent: not chosen (the warning that it needs one). Never enforced -->
+    <!-- an item whose Availability prints a licence fee (`2, 500¥`): the uids of the runner's SINs it is licensed on (a
+         licence is one SIN's), the fee added to the line's cost once for each. Absent: carried unlicensed (a warning).
+         Never enforced -->
+    <xs:attribute name="licensedOn">
+      <xs:simpleType><xs:list itemType="xs:string"/></xs:simpleType>
+    </xs:attribute>
+    <!-- read only, an older file's (before licences were per SIN): bought, licensed on the runner's first SIN;
+         unlicensed, none. Written as licensedOn -->
     <xs:attribute name="licence">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="bought"/><xs:enumeration value="unlicensed"/>

@@ -91,8 +91,9 @@ export function priced(
     } else cost = read('cost')
     avail = read('avail')
     essence = read('essence')
-    // a licence bought for it: the fee its Availability prints (`2, 500¥`), once for the line (owner 2026-10-16)
-    if (x.licence === 'bought') licence = availability(e?.attrs.avail, r ?? 1).fee
+    // its licences: the fee its Availability prints (`2, 500¥`) once for each SIN it is licensed on (owner 2026-10-16)
+    const fee = x.licensedOn?.length ? licenceFee(x, data) : undefined
+    if (fee !== undefined) licence = fee * x.licensedOn!.length
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)
@@ -117,6 +118,13 @@ export function priced(
     ok &&= pa.ok
   }
   return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(licence ? { licence } : {}) }
+}
+
+/** The licence fee an owned line's Availability prints (`2, 500¥`), paid once for each SIN it is licensed on; undefined:
+ *  none printed (a custom item prints none). */
+export function licenceFee(x: Sr6Purchase, data: Sr6Data): number | undefined {
+  const e = entryOf(x, data)
+  return e && availability(e.attrs.avail, x.rating ?? ratingRange(e.attrs.rating)[0] ?? 1).fee
 }
 
 /** An augmentation's family and how many a runner may have (owner's decision 9, 2026-10-11: implied by biology): each

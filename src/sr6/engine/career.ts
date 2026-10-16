@@ -13,6 +13,8 @@ import {
   manySpecs,
   powerCost,
   attrRating,
+  entryOf,
+  licenceFee,
   magicLoss,
   priced,
   qualityCost,
@@ -181,6 +183,11 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (a.value === undefined) delete b.awakened
       else b.awakened = a.value
       return
+    case 'licensed': {
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target)
+      if (x && !x.licensedOn?.includes(a.sin)) x.licensedOn = [...(x.licensedOn ?? []), a.sin]
+      return
+    }
     case 'convert':
     case 'other':
       return
@@ -566,6 +573,15 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         label:
           a.value === undefined ? `Awakened: derived again (${yes(f.derived)}, ${f.why})` : `Awakened override: ${yes(a.value)} (derived: ${yes(f.derived)})`,
       }
+    }
+    case 'licensed': {
+      // a licence on one more of the runner's SINs for a line it owns, at the fee its Availability prints (owner 2026-10-16)
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target) ?? no('unknown-line')
+      const sin = b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')
+      const fee = licenceFee(x, data) ?? no('no-licence')
+      if (x.licensedOn?.includes(a.sin)) no('already-known')
+      const e = entryOf(x, data)
+      return { label: `Licence: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} on ${sinName(sin)}`, nuyen: fee }
     }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }

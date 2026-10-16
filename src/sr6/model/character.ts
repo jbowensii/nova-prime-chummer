@@ -106,9 +106,9 @@ export interface Sr6Purchase {
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
-  /** an item whose Availability prints a licence fee: the licence bought (its fee added to the line's cost) or the item
-   *  carried unlicensed (a warning); none: not chosen (the warning that it needs one) */
-  licence?: 'bought' | 'unlicensed'
+  /** an item whose Availability prints a licence fee: the uids of the SINs it is licensed on (SR6: a licence belongs to
+   *  one SIN; the fee is paid once for each); none: carried unlicensed (a warning). Never enforced */
+  licensedOn?: string[]
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -287,6 +287,9 @@ export type Sr6Advance =
   | { op: 'convert'; karma: number }
   /** the Awakened flag's override set after creation (value absent: derived again; infected.ts awakenedFlag), free */
   | { op: 'awakened'; value?: boolean }
+  /** a licence for an owned line (target, its uid; an accessory's too) on one of the runner's SINs (sin, its uid), at the
+   *  fee its Availability prints */
+  | { op: 'licensed'; target: string; sin: string }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
@@ -310,6 +313,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'lifestyle',
   'convert',
   'awakened',
+  'licensed',
   'other',
 ]
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */

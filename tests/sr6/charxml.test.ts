@@ -101,8 +101,8 @@ function full(): Sr6Character {
       kind: 'weapons',
       id: 'crb.zap-gun',
       qty: 1,
-      licence: 'bought', // (its licence's fee on its cost)
-      accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, licence: 'unlicensed', accessories: [] }],
+      licensedOn: ['s1', 's2'], // (a licence on each SIN, its fee on its cost twice)
+      accessories: [{ uid: 'g2', kind: 'gear', id: 'crb.zap-scope', qty: 1, licensedOn: ['s2'], accessories: [] }],
       snapshot: {
         id: 'crb.zap-gun',
         kind: 'weapons',
@@ -348,6 +348,7 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'other' },
     { op: 'awakened', value: false },
     { op: 'awakened' },
+    { op: 'licensed', target: 'g4', sin: 's2' },
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
     { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
     { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } },

@@ -1,4 +1,4 @@
-// Owner requests of 2026-10-16 in the SR6 editor, on the made-up fixture: an owned item's licence toggle (Gear). Made-up
+// Owner requests of 2026-10-16 in the SR6 editor, on the made-up fixture: an owned item's licences, one per SIN (Gear, Ledger). Made-up
 // runner, items and prices.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
@@ -28,25 +28,59 @@ const runner = () => {
   return ch
 }
 
-test('Gear: an item printing a licence fee gets a licence choice; bought puts the fee on its cost, unlicensed warns', async () => {
-  const c = fixtureCatalog((f, x) =>
+const feeCatalog = () =>
+  fixtureCatalog((f, x) =>
     f.endsWith('crb/gear.xml')
       ? x.replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
       : x,
   )
+
+test('Gear: an item printing a licence fee is licensed per SIN, its fee once a SIN; on none, one warning', async () => {
+  const ch = runner()
+  ch.build.sins = [
+    { uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] },
+    { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
+  ]
+  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
+  const saved = await open(ch, 'gear', feeCatalog())
+  expect(pageText()).toMatch(/licence fee 500¥/)
+  expect(document.querySelectorAll('[aria-label^="Needs a licence (fee 500¥) on each SIN"]')).toHaveLength(1)
+  await change(field('Tangle Rope 1 licensed on Pat Roe'), true)
+  await change(field('Tangle Rope 1 licensed on Pat Doe'), true)
+  expect(pageText()).toMatch(/licence fee 500¥ · licensed on: Pat Roe, Pat Doe/)
+  expect(pageText()).toMatch(/incl\. licence 1,000¥/)
+  expect(document.querySelector('[aria-label^="Needs a licence"]')).toBeNull()
+  expect((await saved()).build.purchases[0].licensedOn).toEqual(['s1', 's2'])
+  await change(field('Tangle Rope 1 licensed on Pat Roe'), false)
+  await change(field('Tangle Rope 1 licensed on Pat Doe'), false)
+  expect((await saved()).build.purchases[0].licensedOn).toBeUndefined()
+})
+
+test('Gear: with no SIN the licence choice is there, disabled, saying why', async () => {
   const ch = runner()
   ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] }]
-  const saved = await open(ch, 'gear', c)
-  expect(pageText()).toMatch(/licence fee 500¥/)
-  expect(document.querySelector('[aria-label^="Needs a licence (fee 500¥)"]')).not.toBeNull()
-  await change(field('Tangle Rope 1 licence'), 'bought')
-  expect(pageText()).toMatch(/licence fee 500¥ · licensed/)
-  expect(pageText()).toMatch(/incl\. licence 500¥/)
-  expect((await saved()).build.purchases[0].licence).toBe('bought')
-  await change(field('Tangle Rope 1 licence'), 'unlicensed')
-  expect(document.querySelector('[aria-label^="Carried without a licence (fee 500¥ not paid)"]')).not.toBeNull()
-  await change(field('Tangle Rope 1 licence'), '')
-  expect((await saved()).build.purchases[0].licence).toBeUndefined()
+  await open(ch, 'gear', feeCatalog())
+  expect(field('Tangle Rope 1 licence').disabled).toBe(true)
+  expect(pageText()).toMatch(/No SIN to license it on \(add one on Contacts\)/)
+})
+
+test('Ledger: after finalising, a licence on another SIN is a purchase at its fee', async () => {
+  const ch = runner()
+  ch.build.sins = [
+    { uid: 's1', name: 'Pat Roe', kind: 'fake', rating: 3, licences: [] },
+    { uid: 's2', name: 'Pat Doe', kind: 'real', licences: [] },
+  ]
+  ch.build.purchases = [{ uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, licensedOn: ['s1'], accessories: [] }]
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 900 } })
+  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 900 }]
+  const saved = await open(ch, 'ledger', feeCatalog())
+  await change(field('What'), 'licensed')
+  await change(field('Licensed item'), 'g1')
+  await change(field('Licensed on'), 's2')
+  expect(pageText()).toMatch(/Licence: Tangle Rope 1 on Pat Doe/)
+  await click(button('Record'))
+  await click(button('Record it'))
+  expect((await saved()).ledger.at(-1)).toMatchObject({ type: 'advance', advance: { op: 'licensed', target: 'g1', sin: 's2' }, nuyen: 500 })
 })
 
 test('Ledger: the Awakened override after finalising is a free spend; Method says where it went', async () => {
