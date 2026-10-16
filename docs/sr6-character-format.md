@@ -118,7 +118,7 @@ copy". Book entries are never copied here.
   Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format.md), never stored
   here. An `<override>` of a martial arts check has the path `martial.<style uid>` (a missing augmentation's:
   `martial.<style uid>.<technique uid>`).
-- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
+- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles`, `critters` (an owned critter, below) or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
   vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
@@ -137,6 +137,18 @@ copy". Book entries are never copied here.
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
+- An owned critter (the Critters tab, src/sr6/engine/critters.ts) is `<purchase kind="critters" id>` naming a catalog
+  critter: `pet` the class the player chose, `mundane`, `exotic` or `wild` (absent: mundane; an unknown one is left out,
+  noted; Awakened and Emerged come from the critter's Magic or Resonance, never stored), `tamed="true"` when tamed from
+  the wild instead of bought (no price, Wild Life p. 184), `commands` and `training` its trained commands and special
+  training (p. 180; absent: none), and a `<quality uid id level name? how?>` per companion quality (catalog qualities of
+  class `CRITTERWARE/QUALITY`, pp. 184-186): no `how`, specified with its purchase (each ±1 Availability, its net Karma
+  moving the price, p. 180); `how="tamed"`, the Wild Soul and the negative balancing it that taming gives; `how="bonded"`,
+  bought with the runner's own Karma through the Critter Bond path's Permanent Improvement (SWC p. 139; at creation its
+  positives less its negatives, never below 0, in the karma budget). Its accessories are its critterware and gear,
+  priced as usual but at its Body where they print one (`Critter's Body x 50¥`) and, an augmentation, +10% a point of
+  natural Body over 8 (Body Shop p. 135); their Essence is the critter's, never the runner's. Its price and Availability,
+  its powers (innate, 0 Karma), limits and Essence are worked out, never stored. Older files have no critters.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
   data; a line with none counts its catalog entry's `add` effects instead, the low-confidence ones never). `target` is an
   attribute abbreviation, `initDice`, `defense` (Defense Rating), `physical` (Physical condition monitor boxes: a full
@@ -202,7 +214,12 @@ the entry its `event` names.
   `shift` (`target`: the uid of the vehicle or drone, `from` and `to`: the categories `chassis`, `powertrain` or
   `electronics`; two slots of `from` given for one of `to`, free, out of slots not in use; voiding it shifts them back) and
   `move` (`target`: the uid of a weapon, `mount`: the uid of another weapon mount of the same vehicle it moves to; no new
-  charge; voiding it puts the weapon back in its old mount),
+  charge; voiding it puts the weapon back in its old mount), `bond` (`target`: the uid of an owned critter; the
+  `<quality how="bonded">` that follows is bought for it with the runner's Karma, the Critter Bond path's Permanent
+  Improvement, SWC p. 139, and a second `<quality>` is the negative taken with it, Wild Life p. 184: Karma = (the
+  positive's Karma less the negative's bonus, never below 0) × `advance.qualityFactor`; a first `<quality>` whose `uid`
+  names one of the critter's qualities upgrades that one, its id and level replaced, priced at the difference; a `fit`
+  or `unfit` may name a critter too: its critterware and gear),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),

@@ -3,10 +3,12 @@
 // (their DV with the statuses they apply), every skill, languages and knowledge, gear, each SIN's lifestyles and licences,
 // the Awakened flag, the Social Rating, a quality's notes (an Infected type's gains, Stolen Gear's bounty) and the karma and
 // nuyen left (career: the ledger's balances). The styles differ in look only: each shows all of these (owner 2026-10-16).
-import { entryOf, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
+import { entryOf, priced, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
 import { balances, stolenLeft } from '../engine/career'
 import { awakenedFlag, runnerInfected } from '../engine/infected'
-import type { PickKind, PurchaseKind, Sr6Character, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
+import type { PickKind, PurchaseKind, Sr6Character, Sr6CritterQuality, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
+import { CRITTER_CLASS_LABELS, critterView } from '../engine/critters'
+import { NPC_STATS } from '../engine/npc'
 import type { Sr6Entry } from '../model/types'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
@@ -99,6 +101,8 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     attrsOf,
     /** a vehicle's or drone's lines under it, the same on every sheet (vehicleNotes) */
     vehicleNotes: (x: Sr6Purchase) => vehicleNotes(x, data),
+    /** an owned critter's lines under it, the same on every sheet (critterNotes) */
+    critterNotes: (x: Sr6Purchase) => critterNotes(x, data, cr),
     /** a host's own values from its accessories (`STR 5, Armor +2`), for its line on the sheet */
     host: (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text,
     rated: (x: Sr6Purchase) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', '),
@@ -175,6 +179,41 @@ export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
   ]
 }
 
+const CRITTER_STATS = new Set(['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'ess', 'mag', 'res'])
+/** An owned critter's lines in words, the same on every sheet (critters.ts critterView): its class (tamed), its stat
+ *  block's attributes, its powers (innate, 0 Karma) and weaknesses, its companion qualities (how they came), its commands
+ *  and special training against its limits, its critterware and other fitted gear, and its Essence and Magic or Resonance
+ *  after its augmentations. */
+export function critterNotes(x: Sr6Purchase, data: Sr6Data, cr: Sr6Ctx['cr']): string[] {
+  const v = critterView(x, data, priced(x, data, cr).essence),
+    a = v.e?.attrs ?? {}
+  const name = (y: Sr6Purchase) => (e => `${e ? entryLabel(e) : (y.name ?? 'Custom item')}${y.rating ? ` ${y.rating}` : ''}`)(entryOf(y, data))
+  const quality = (q: Sr6CritterQuality) => {
+    const w = data.qualities[q.id]
+    return `${w?.name ?? q.name ?? q.id}${w?.perLevel ? ` ${q.level}` : ''}${q.how ? ` (${q.how})` : ''}`
+  }
+  const group = (label: string, xs: Sr6Purchase[]) => (xs.length ? [`${label}: ${xs.map(name).join(', ')}`] : [])
+  const stats = NPC_STATS.filter(([k]) => CRITTER_STATS.has(k) && a[k]).map(([k, l]) => `${l} ${a[k]}`)
+  const after = [v.magic && `Magic ${v.magic.now}`, v.resonance && `Resonance ${v.resonance.now}`].filter(Boolean)
+  return [
+    `${CRITTER_CLASS_LABELS[v.price.cls]}${x.tamed ? ', tamed' : ''}`,
+    ...(stats.length ? [stats.join(', ')] : []),
+    ...(v.powers ? [`Powers (innate, 0 Karma): ${v.powers}`] : []),
+    ...(v.weaknesses ? [`Weaknesses: ${v.weaknesses}`] : []),
+    ...(x.critterQualities?.length ? [`Qualities: ${x.critterQualities.map(quality).join(', ')}`] : []),
+    `Commands ${v.commands.n} of ${v.commands.max}, special training ${v.training.n} of ${v.training.max}`,
+    ...group(
+      'Critterware',
+      x.accessories.filter(y => y.kind === 'augmentations'),
+    ),
+    ...group(
+      'With',
+      x.accessories.filter(y => y.kind !== 'augmentations'),
+    ),
+    ...(v.essence.left !== v.essence.base ? [[`Essence ${v.essence.left} after its augmentations`, ...after].join(', ')] : []),
+  ]
+}
+
 const COUNTED = /^(attr:|derived:(defense|initiative-dice|physical-monitor|stun-monitor|overflow)$|skill:|test:)/
 /** The effect lines the sheet lists (runnerView.effectNotes): every effect of the runner's qualities, picks and lines but
  *  an always-on `add` the derived numbers already count. */
@@ -190,7 +229,8 @@ export function effectNotes(b: Sr6Character['build'], data: Sr6Data): { from: st
   }
   for (const q of b.qualities) take(data.entry('qualities', q.id))
   for (const x of b.picks) take(data.entry(x.kind, x.id))
-  for (const x of b.purchases) {
+  // (an owned critter's and its augmentations' effects are its own, not the runner's)
+  for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     take(entryOf(x, data))
     for (const a of x.accessories) take(entryOf(a, data))
   }

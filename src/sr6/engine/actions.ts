@@ -16,6 +16,7 @@ import {
   type CpPool,
   type Letter,
   type MagicKind,
+  type PetClass,
   type PickKind,
   type PriorityColumn,
   type PurchaseKind,
@@ -37,6 +38,7 @@ import { learned } from './martial'
 import { augmentationRoom, diyAllowed, entryOf, isMount, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
 import { shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
+import { critterQualityNamed, isCritterQuality } from './critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -135,10 +137,18 @@ export type Op =
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
   | { op: 'awakened'; value: boolean | null }
+  /** an owned critter's pet class, commands, special training, or tamed from the wild (on: Wild Soul and High
+   *  Maintenance 1 come with it, Wild Life p. 184; off: they go) */
+  | { op: 'critter'; uid: string; pet?: PetClass; commands?: number; training?: number; tamed?: boolean }
+  /** a companion quality on the owned critter `host` (a catalog quality of class CRITTERWARE/QUALITY): specified with its
+   *  purchase (no how), from taming, or bonded (the runner's Karma); or one's level set, or one taken off */
+  | { op: 'critterQuality'; host: string; id: string; how?: 'tamed' | 'bonded'; level?: number }
+  | { op: 'critterQuality'; host: string; uid: string; level: number }
+  | { op: 'critterQuality'; host: string; remove: string }
 export type Result = { ok: true } | { ok: false; reason: string }
 
 /** R: weapons, armor, augmentations and vehicles always get their own line (each can carry its own accessories). */
-const OWN_LINE = new Set<PurchaseKind>(['weapons', 'armor', 'augmentations', 'vehicles'])
+const OWN_LINE = new Set<PurchaseKind>(['weapons', 'armor', 'augmentations', 'vehicles', 'critters'])
 const LETTER_METHODS = new Set<Sr6Method>(['priority', 'sumtoten'])
 
 /** Switch method. Spends that still mean something stay; point buy's character points, lifepath's modules and the
@@ -554,6 +564,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // an accessory whose category names other hosts goes on anyway (Review's catalog.accessoryHost)
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
+      // critter equipment goes on an owned critter only (Body Shop's critterware, Wild Life's critter gear)
+      if (critterOnly(entryOf(line, data)) && host.kind !== 'critters') return no('critters-only')
       if (op.mount !== undefined) {
         const m = host.accessories.find(a => a.uid === op.mount)
         if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
@@ -600,6 +612,54 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const why = shiftProblem(x, op.from, op.to, data)
       if (why) return no(why)
       x.slotShifts = [...(x.slotShifts ?? []), { from: op.from, to: op.to }]
+      return OK
+    }
+    case 'critter': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'critters')
+      if (!x) return no('unknown-line')
+      if ((op.commands ?? 0) < 0 || (op.training ?? 0) < 0) return no('below-zero') // (over the critter's limit: Review warns)
+      if (op.pet) x.pet = op.pet
+      for (const k of ['commands', 'training'] as const)
+        if (op[k] === 0) delete x[k]
+        else if (op[k] !== undefined) x[k] = op[k]
+      if (op.tamed === false) {
+        delete x.tamed
+        x.critterQualities = x.critterQualities?.filter(q => q.how !== 'tamed')
+      } else if (op.tamed && !x.tamed) {
+        // Wild Life p. 184: Wild Soul, balanced by a negative quality, High Maintenance 1 by default (changed by taking it
+        // off and adding another negative as tamed)
+        x.tamed = true
+        x.critterQualities ??= []
+        for (const name of ['Wild Soul', 'High Maintenance']) {
+          const e = critterQualityNamed(data, name)
+          if (e) x.critterQualities.push({ uid: newId(), id: e.id, level: 1, name: e.name, how: 'tamed' })
+        }
+      }
+      if (!x.critterQualities?.length) delete x.critterQualities
+      return OK
+    }
+    case 'critterQuality': {
+      const x = b.purchases.find(p => p.uid === op.host && p.kind === 'critters')
+      if (!x) return no('unknown-host')
+      if ('remove' in op) {
+        if (!x.critterQualities?.some(q => q.uid === op.remove)) return no('not-taken')
+        x.critterQualities = x.critterQualities.filter(q => q.uid !== op.remove)
+        if (!x.critterQualities.length) delete x.critterQualities
+        return OK
+      }
+      if ('uid' in op) {
+        const q = x.critterQualities?.find(y => y.uid === op.uid)
+        if (!q) return no('not-taken')
+        if (!(op.level >= 1)) return no('below-one')
+        q.level = op.level
+        return OK
+      }
+      const e = data.entry('qualities', op.id)
+      if (!e) return no('unknown-entry')
+      if (!isCritterQuality(e)) return no('not-a-critter-quality')
+      if (op.how === 'tamed' && !x.tamed) return no('not-tamed')
+      if (x.critterQualities?.some(q => q.id === op.id)) return no('already-taken')
+      x.critterQualities = [...(x.critterQualities ?? []), { uid: newId(), id: e.id, level: op.level ?? 1, name: e.name, ...(op.how ? { how: op.how } : {}) }]
       return OK
     }
     case 'wear': {

@@ -14,6 +14,7 @@ import {
   MAGIC_KIND_LABELS,
   PICK_KINDS,
   PRIORITY_COLUMNS,
+  PET_CLASSES,
   PURCHASE_KINDS,
   SR6_ADVANCE_OPS,
   SLOT_KINDS,
@@ -32,6 +33,7 @@ import {
   type Sr6Build,
   type Sr6Character,
   type Sr6Contact,
+  type Sr6CritterQuality,
   type Sr6Design,
   type Sr6Knowledge,
   type Sr6LedgerEntry,
@@ -86,10 +88,18 @@ function purchaseXml(p: Sr6Purchase): string {
       diy: p.diy,
       design: p.design,
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
+      pet: p.pet,
+      tamed: p.tamed,
+      commands: p.commands,
+      training: p.training,
     },
-    bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
+    bonusesXml(p.bonuses) +
+      (p.critterQualities ?? []).map(critterQualityXml).join('') +
+      p.accessories.map(purchaseXml).join('') +
+      (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
 }
+const critterQualityXml = (q: Sr6CritterQuality) => el('quality', { uid: q.uid, id: q.id, level: q.level, name: q.name, how: q.how })
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) =>
@@ -201,6 +211,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ target: a.target, from: a.from, to: a.to }, '']
     case 'move':
       return [{ target: a.target, mount: a.mount }, '']
+    case 'bond':
+      return [{ target: a.target }, critterQualityXml(a.line) + (a.with ? critterQualityXml(a.with) : '')]
     case 'contact':
       return [{}, contactXml(a.line)]
     case 'sin':
@@ -386,6 +398,11 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     diy: yes(e, 'diy'),
     design: str(e, 'design'),
     slotShifts: readShifts(e, fix),
+    pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
+    tamed: yes(e, 'tamed'),
+    commands: num(e, 'commands'),
+    training: num(e, 'training'),
+    critterQualities: listOrNone(each(kids(e, 'quality'), readCritterQuality, label, fix)),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
@@ -397,6 +414,13 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     }
   if (on.length) licensed?.(x, on)
   return x
+}
+
+/** An owned critter's companion quality (`how`: tamed or bonded; none, specified with the purchase). */
+const readCritterQuality = (e: Element): Sr6CritterQuality => {
+  const how = str(e, 'how')
+  if (how !== undefined && how !== 'tamed' && how !== 'bonded') throw new Error(`critter quality how “${how}” (not tamed or bonded)`)
+  return def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1), name: str(e, 'name'), how })
 }
 
 /** A vehicle's slotShifts (`chassis>powertrain …`, Double Clutch p. 120); one that names no category pair is left out, noted. */
@@ -659,6 +683,12 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       }
     case 'move':
       return { op, target: req(e, 'target'), mount: req(e, 'mount') }
+    case 'bond': {
+      // (the bought quality, and the negative taken with it)
+      const [q, w] = kids(e, 'quality').map(readCritterQuality)
+      if (!q) throw new Error('no <quality> inside the entry')
+      return def({ op, target: req(e, 'target'), line: q, with: w })
+    }
     case 'contact':
       return { op, line: line(e, 'contact', readContact, true) }
     case 'sin':

@@ -265,6 +265,14 @@
     <xs:attribute name="name" type="xs:string"/>
     <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
     <xs:attribute name="boughtOff" type="c:Count"/>
+    <!-- an owned critter's companion quality only (Wild Life pp. 184-186): tamed, the Wild Soul and the negative balancing
+         it a tamed critter gets (p. 184); bonded, bought with the runner's Karma through the Critter Bond path's Permanent
+         Improvement (SWC p. 139); absent: specified with the critter's purchase (its Karma moves the price, p. 180) -->
+    <xs:attribute name="how">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="tamed"/><xs:enumeration value="bonded"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
   </xs:complexType>
 
   <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
@@ -359,7 +367,8 @@
     <xs:sequence><xs:element name="entry" type="c:Entry" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
   </xs:complexType>
   <xs:complexType name="Entry" mixed="true">
-    <xs:choice minOccurs="0">
+    <!-- (two: a bond's quality and the negative taken with it) -->
+    <xs:choice minOccurs="0" maxOccurs="2">
       <xs:element name="knowledge" type="c:Knowledge"/>
       <xs:element name="quality" type="c:Quality"/>
       <xs:element name="pick" type="c:Pick"/>
@@ -390,7 +399,9 @@
          line the <purchase> that follows is fitted to; unfit: target the uid of the accessory taken off (the <purchase>
          removed may follow); shift: target the uid of the owned vehicle or drone whose mod slots are shifted, two of the
          category `from` into one of `to` (Double Clutch p. 120; free); move: target the uid of the weapon moved, `mount`
-         the uid of the weapon mount (an accessory of the same vehicle) it is moved to (no new charge) -->
+         the uid of the weapon mount (an accessory of the same vehicle) it is moved to (no new charge); bond: target the uid
+         of an owned critter, the <quality how="bonded"> bought for it with the runner's Karma (SWC p. 139; its uid naming
+         one of the critter's qualities: that one upgraded) and the negative <quality> taken with it, if any (WL p. 184) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
@@ -398,7 +409,7 @@
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
         <xs:enumeration value="fit"/><xs:enumeration value="unfit"/><xs:enumeration value="shift"/><xs:enumeration value="move"/>
-        <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
+        <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
       </xs:restriction></xs:simpleType>
@@ -548,7 +559,7 @@
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="weapons"/><xs:enumeration value="armor"/><xs:enumeration value="augmentations"/>
         <xs:enumeration value="electronics"/><xs:enumeration value="programs"/><xs:enumeration value="gear"/>
-        <xs:enumeration value="vehicles"/><xs:enumeration value="ammotypes"/>
+        <xs:enumeration value="vehicles"/><xs:enumeration value="ammotypes"/><xs:enumeration value="critters"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string"/>
@@ -579,6 +590,17 @@
         </xs:restriction></xs:simpleType>
       </xs:list></xs:simpleType>
     </xs:attribute>
+    <!-- an owned critter (kind critters; its <quality>s its companion qualities): the pet class the player chose (absent:
+         mundane; Awakened and Emerged come from its Magic or Resonance), tamed from the wild instead of bought (no price,
+         Wild Life p. 184), its trained commands and special training (p. 180) -->
+    <xs:attribute name="pet">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="mundane"/><xs:enumeration value="exotic"/><xs:enumeration value="wild"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="tamed" type="xs:boolean"/>
+    <xs:attribute name="commands" type="c:Count"/>
+    <xs:attribute name="training" type="c:Count"/>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
          whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
          SIN), one naming no SIN of the runner left out. Not written -->

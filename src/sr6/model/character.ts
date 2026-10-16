@@ -83,8 +83,24 @@ export const BONUS_TARGETS: Bonus['target'][] = [
 /** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
-export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes'
-export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes']
+/** critters: a critter the runner owns (catalog critters; the Critters tab, src/sr6/engine/critters.ts) */
+export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes' | 'critters'
+export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes', 'critters']
+/** The pet classes a player picks for a critter bought (Wild Life p. 180); Awakened and Emerged come from its Magic or
+ *  Resonance. */
+export type PetClass = 'mundane' | 'exotic' | 'wild'
+export const PET_CLASSES: PetClass[] = ['mundane', 'exotic', 'wild']
+/** One of an owned critter's companion qualities (Wild Life pp. 184-186, catalog qualities of class CRITTERWARE/QUALITY).
+ *  how: none, specified when it was bought (its Karma moves the price, p. 180); tamed, the Wild Soul and the negative
+ *  balancing it a tamed critter gets (p. 184); bonded, bought with the runner's own Karma through the Critter Bond path's
+ *  Permanent Improvement (SWC p. 139). */
+export interface Sr6CritterQuality {
+  uid: string
+  id: string
+  level: number
+  name?: string
+  how?: 'tamed' | 'bonded'
+}
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
@@ -124,6 +140,13 @@ export interface Sr6Purchase {
   design?: string
   /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
   slotShifts?: SlotShift[]
+  /** a critter: the pet class the player chose (none: mundane), tamed from the wild instead of bought (no price, Wild
+   *  Life p. 184), its trained commands and special training (p. 180) and companion qualities */
+  pet?: PetClass
+  tamed?: true
+  commands?: number
+  training?: number
+  critterQualities?: Sr6CritterQuality[]
 }
 
 /** A vehicle or drone design (the Designer, Double Clutch pp. 150-155): the parts picked (catalog vehicledesign ids),
@@ -340,6 +363,10 @@ export type Sr6Advance =
   /** a weapon (target: its uid) moved to another weapon mount of the same vehicle or drone (mount: that accessory's uid),
    *  no new charge; voiding it puts the weapon back in the mount it was in */
   | { op: 'move'; target: string; mount: string }
+  /** a companion quality for the owned critter whose uid is target, bought with the runner's Karma (the Critter Bond
+   *  path's Permanent Improvement, SWC p. 139), with the negative quality `with` taken alongside (Wild Life p. 184); a
+   *  line whose uid names one of the critter's qualities upgrades that one (its id and level replaced) */
+  | { op: 'bond'; target: string; line: Sr6CritterQuality; with?: Sr6CritterQuality }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -376,6 +403,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'unfit',
   'shift',
   'move',
+  'bond',
   'contact',
   'sin',
   'lifestyle',

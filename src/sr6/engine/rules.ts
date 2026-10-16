@@ -56,6 +56,7 @@ import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
 import { modsOf } from './vehiclemods'
+import { critterView } from './critters'
 import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -1645,6 +1646,27 @@ const RULES: Rule[] = [
       c.b.purchases
         .filter(x => x.design && x.snapshot?.attrs.approved !== 'true')
         .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
+  },
+  // an owned critter past its limits (critters.ts: commands, special training, qualities, taming, bonding, Body for
+  // critterware, Essence), and bonded qualities without the runner's Critter Bond path (SWC p. 139): warned, never refused
+  {
+    code: 'critter.rules',
+    severity: 'warning',
+    tab: 'critters',
+    check: c =>
+      c.b.purchases
+        .filter(x => x.kind === 'critters')
+        .flatMap(x => {
+          const v = critterView(x, c.data, priced(x, c.data, c.cr).essence),
+            bond =
+              x.critterQualities?.some(q => q.how === 'bonded') && !c.b.qualities.some(q => /critter bond/i.test(c.data.qualities[q.id]?.name ?? q.name ?? ''))
+          return [
+            ...v.warnings,
+            ...(bond
+              ? [{ message: `${v.name}: qualities bought by the bond need the runner’s Critter Bond path (Permanent Improvement).`, source: 'SWC', page: 139 }]
+              : []),
+          ].map(w => ({ path: `critters.${x.uid}`, ...w }))
+        }),
   },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },

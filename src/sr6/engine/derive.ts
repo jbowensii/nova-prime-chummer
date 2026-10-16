@@ -400,7 +400,9 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     nuyenLeft: budgets.nuyen.left,
     edge: A('edg'),
     unset: [...unset],
+    // (a critter's augmentations add to its own stat block: critters.ts, never the runner's attributes)
     hosts: b.purchases.flatMap(x => {
+      if (x.kind === 'critters') return []
       const add = hostBonus(x, data, on),
         targets = Object.keys(add) as (keyof typeof add)[]
       if (!targets.length) return []
@@ -417,7 +419,7 @@ function partsOf(b: Sr6Character['build'], data: Sr6Data, target: string, on: bo
   const entries = [
     ...b.qualities.map(q => data.entry('qualities', q.id)),
     ...b.picks.map(x => data.entry(x.kind, x.id)),
-    ...b.purchases.map(x => entryOf(x, data)),
+    ...b.purchases.filter(x => x.kind !== 'critters').map(x => entryOf(x, data)),
   ].filter((e): e is Sr6Entry => !!e)
   return entries
     .flatMap(e => [e, ...linkedEntries(data, e).map(l => l.entry)])

@@ -157,6 +157,8 @@ export const REASONS: Record<string, string> = {
   'one-native': 'One native language a runner: clear the other one first.',
   'critters-only': 'That one is critter equipment (Body Shop, Taming the Wild): not for a player’s character.',
   'once-per-runner': 'The runner already has that augmentation (a limb: one a side).',
+  'not-a-critter-quality': 'That isn’t a critter companion quality (Wild Life pp. 184-186).',
+  'not-tamed': 'Only a tamed critter has qualities from taming: tick Tamed first.',
   'not-mystic-adept': 'Only a mystic adept picks its mentor spirit’s advantages.',
   // the Sixth World Companion's Infected (owner, 2026-10-16)
   'infected-no-type': 'Only an Infected runner buys optional powers: choose its Infected type first (Creation method).',

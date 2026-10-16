@@ -23,7 +23,8 @@ const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:o
 function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
   for (const x of b.picks)
     f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
-  for (const x of b.purchases) {
+  // (an owned critter's stat block and powers are its own, never the runner's)
+  for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     const e = entryOf(x, data)
     f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item')
   }
@@ -103,7 +104,7 @@ export function bonusSources(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
     const e = data.entry(x.kind, x.id)
     add(bonusOf(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), k, x.level ?? 1, skill), e, x.kind, x.id, x.name)
   }
-  for (const x of b.purchases) {
+  for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     const e = entryOf(x, data)
     add(bonusOf(lineBonuses(data, x.bonuses, e), k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name)
   }

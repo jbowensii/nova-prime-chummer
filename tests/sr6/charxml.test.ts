@@ -377,6 +377,14 @@ test('every advance op and entry type round-trips and validates', async () => {
     // (two chassis slots into one powertrain slot; a weapon moved to another mount)
     { op: 'shift', target: 'g4', from: 'chassis', to: 'powertrain' },
     { op: 'move', target: 'lf', mount: 'lm8' },
+    // (a critter's quality bought by the bond, with the negative taken alongside; one upgraded)
+    {
+      op: 'bond',
+      target: 'c1',
+      line: { uid: 'lb', id: 'wl.zap-keen', level: 1, name: 'Zap Keen', how: 'bonded' },
+      with: { uid: 'lb2', id: 'wl.zap-grumpy', level: 2, how: 'bonded' },
+    },
+    { op: 'bond', target: 'c1', line: { uid: 'lb', id: 'wl.zap-keen', level: 2 } },
   ]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [

@@ -2,7 +2,19 @@
 // runners, NPCs, books and GM compendiums as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
-import type { Bonus, ContactType, MagicKind, PickKind, Sr6Attr, Sr6Character, Sr6LedgerType, Sr6Npc, Sr6NpcKind, Sr6Purchase } from '../model/character'
+import type {
+  Bonus,
+  ContactType,
+  MagicKind,
+  PickKind,
+  Sr6Attr,
+  Sr6Character,
+  Sr6CritterQuality,
+  Sr6LedgerType,
+  Sr6Npc,
+  Sr6NpcKind,
+  Sr6Purchase,
+} from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
 import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
@@ -19,6 +31,7 @@ import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
 import { prerequisites, type Prerequisite } from './martial'
+import { critterClass, type CritterClass } from './critters'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
   SR6_EXPORT_VERSION = 1
@@ -131,6 +144,9 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   note?: string
   bonuses: Sr6ExportBonus[]
   accessories: Sr6ExportPurchase[]
+  /** an owned critter: its stat block (exportNpc), how it was priced and trained, and its companion qualities */
+  npc?: Sr6ExportNpc
+  critter?: { class: CritterClass; tamed: boolean; commands: number; training: number; qualities: Sr6CritterQuality[] }
 }
 export interface Sr6ExportNpc {
   kind: Exclude<Sr6NpcKind, 'contact'>
@@ -479,6 +495,18 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     note: x.note,
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1),
     accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)),
+    ...(x.kind === 'critters'
+      ? {
+          ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}),
+          critter: {
+            class: critterClass(x, e),
+            tamed: !!x.tamed,
+            commands: x.commands ?? 0,
+            training: x.training ?? 0,
+            qualities: (x.critterQualities ?? []).map(q => ({ ...q, name: data.qualities[q.id]?.name ?? q.name })),
+          },
+        }
+      : {}),
   })
 }
 

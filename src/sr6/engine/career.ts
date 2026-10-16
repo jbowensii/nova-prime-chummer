@@ -15,6 +15,7 @@ import {
   type Sr6Advance,
   type Sr6Build,
   type Sr6Character,
+  type Sr6CritterQuality,
   type Sr6LedgerEntry,
   type Sr6Purchase,
   type Sr6Quality,
@@ -46,7 +47,9 @@ import { makeProvider, type Provider } from './providers'
 import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
-import { infectedOff, infectedQuality } from './critterware'
+import { critterOnly, infectedOff, infectedQuality } from './critterware'
+import { critterQualityKarma, isCritterQuality } from './critters'
+import type { Sr6QualityView } from './types'
 import {
   awakenedFlag,
   boughtKind,
@@ -184,6 +187,19 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'move': {
       const x = b.purchases.flatMap(y => y.accessories).find(y => y.uid === a.target)
       if (x) x.mount = a.mount
+      return
+    }
+    case 'bond': {
+      // (a line whose uid names one of the critter's qualities upgrades it, its own how kept)
+      const host = b.purchases.find(x => x.uid === a.target)
+      if (!host) return
+      const qs = (host.critterQualities ??= [])
+      for (const q of [a.line, a.with]) {
+        if (!q) continue
+        const had = qs.find(y => y.uid === q.uid)
+        if (had) Object.assign(had, { id: q.id, level: q.level, ...(q.name ? { name: q.name } : {}) })
+        else qs.push(structuredClone(q))
+      }
       return
     }
     case 'contact': {
@@ -579,6 +595,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         if (!m || !isMount(entryOf(m, data))) no('not-a-mount')
       }
       if (x.diy && !diyAllowed(e)) no('no-diy')
+      // (critter equipment on an owned critter only; on a critter what is printed in its Body reads at it: priced)
+      if (critterOnly(e) && host.kind !== 'critters') no('critters-only')
       const pr = priced(x, data, cr, priced({ ...host, accessories: [] }, data, cr))
       if (!pr.ok) no('book-value')
       return { label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`, nuyen: pr.cost }
@@ -605,6 +623,38 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!to || !isMount(entryOf(to, data))) no('not-a-mount')
       if (to!.uid === w.mount) no('same-mount')
       return { label: `Moved: ${lineLabel(w)} from ${from ? lineLabel(from) : 'no mount'} to ${lineLabel(to!)} on ${lineLabel(host)}` }
+    }
+    case 'bond': {
+      // the Critter Bond path's Permanent Improvement (SWC p. 139: a new or upgraded quality at 2 × its Karma, the
+      // career quality factor), with a negative taken alongside whose bonus comes off first (Wild Life p. 184); the
+      // runner's Critter Bond itself is Review's warning (critter.rules), not a refusal
+      const host = b.purchases.find(y => y.uid === a.target && y.kind === 'critters') ?? no('unknown-host')
+      const qs = host.critterQualities ?? []
+      const view = (q: Sr6CritterQuality) => {
+        const e = data.entry('qualities', q.id) ?? no('unknown-entry')
+        if (!isCritterQuality(e)) no('not-a-critter-quality')
+        return data.qualities[q.id] ?? no('unknown-entry')
+      }
+      const v = view(a.line)
+      if (!v.positive) no('not-positive')
+      if (!(a.line.level >= 1)) no('below-one')
+      const had = qs.find(q => q.uid === a.line.uid),
+        was = had && data.qualities[had.id]
+      if (!had && qs.some(q => q.id === a.line.id)) no('already-taken')
+      const up = critterQualityKarma(v, a.line) - (had && was ? critterQualityKarma(was, had) : 0)
+      if (up <= 0) no('already-known')
+      let bonus = 0
+      if (a.with) {
+        const n = view(a.with)
+        if (n.positive) no('not-negative')
+        if (qs.some(q => q.id === a.with!.id)) no('already-taken')
+        bonus = critterQualityKarma(n, a.with)
+      }
+      const nm = (q: Sr6CritterQuality, w: Sr6QualityView) => `${w.name}${w.perLevel ? ` ${q.level}` : ''}`
+      return {
+        label: `Critter bond: ${nm(a.line, v)}${a.with ? ` with ${nm(a.with, data.qualities[a.with.id])}` : ''} on ${lineLabel(host)}`,
+        karma: Math.max(0, up - bonus) * need('advance.qualityFactor'),
+      }
     }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
@@ -760,6 +810,11 @@ export function record(
     case 'unfit':
       adv.line = b.purchases.flatMap(x => x.accessories).find(x => x.uid === adv.target)
       break
+    case 'bond':
+      // (bonded qualities; the upgraded one keeps how it came, applyAdvance)
+      adv.line = { ...named(adv.line, data.qualities[adv.line.id]?.name), how: 'bonded' }
+      if (adv.with) adv.with = { ...named(adv.with, data.qualities[adv.with.id]?.name), how: 'bonded' }
+      break
     case 'contact':
       adv.line = named(adv.line)
       break
@@ -884,6 +939,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     'licence.none',
     'vehicle.mods',
     'vehicle.design',
+    'critter.rules',
   ])
   return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
 }

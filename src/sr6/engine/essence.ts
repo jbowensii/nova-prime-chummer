@@ -19,7 +19,8 @@ export function sensitiveFactor(b: Sr6Build, data: Sr6Data, cr: CreationRules, x
 export const essenceHole = (b: Sr6Build, cr: CreationRules) => (flag(cr, 'transhumanism') ? b.transhuman : 0)
 
 export function essenceBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules): Budget & { magicLoss: number } {
-  const all = round2(b.purchases.reduce((t, x) => t + priced(x, data, cr).essence * sensitiveFactor(b, data, cr, x), 0))
+  // (an owned critter's augmentations take its Essence, never the runner's: critters.ts)
+  const all = round2(b.purchases.reduce((t, x) => t + (x.kind === 'critters' ? 0 : priced(x, data, cr).essence * sensitiveFactor(b, data, cr, x)), 0))
   // the Sixth World Companion's Transhumanism (p. 146): each transhumanist grade is an Essence hole of 1.0, and an
   // augmentation's Essence is paid from the hole first
   const spent = round2(Math.max(0, all - essenceHole(b, cr)))
