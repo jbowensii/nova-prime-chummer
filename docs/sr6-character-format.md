@@ -87,6 +87,9 @@ copy". Book entries are never copied here.
   magician, mystic adept or adept, or an Infected; a technomancer is not). `infectedFrom`: a magic kind, the one the
   runner had before its Infected type changed it (Awakened it, made it a mystic adept or took a technomancer's
   Resonance); taking the type away gives it back, and the creation method rates and prices it. Both absent in older files.
+  An `infectedFrom` on a runner with no Infected type (each of its qualities in the catalog) is dropped when the runner
+  is opened, recorded as `<migrated from="infectedFrom:<kind>" to="none (no Infected type)">`. An `awakened` value
+  other than a boolean is refused; repair leaves it out.
 - Spends are counts: attribute `points` (from the attribute pool), `adjust` (adjustment points) and `karma` (ranks bought
   with karma); a skill's `points` and `karma` likewise. A missing number reads as 0.
 - `<lifemodule>`: an adult life module taken (lifepath; the same one twice when the table allows it, each copy with its
@@ -161,7 +164,9 @@ the entry its `event` names.
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
   element; a `quality`, `pick` or `initiate` whose line is a higher level of a family the runner has, docs/sr6-data-format.md
-  "Levels", names the lower level's uid in `target`: that line moves to the new level), `buyoff` and `drop` (`target`:
+  "Levels", names the lower level's uid in `target`: that line moves to the new level; a `quality` that is an Infected
+  type changing the magic kind names the kind it leaves in `magic`, the one before kept as the build's `infectedFrom`),
+  `buyoff` and `drop` (`target`:
   the uid of the line removed; the removed line may follow for the history), `upgrade` (`target`: the uid of the bought
   item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences and no lifestyles:

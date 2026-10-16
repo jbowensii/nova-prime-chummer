@@ -148,11 +148,21 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
 }
 
-/** Pick the magic kind: picks it can't have go, as do bought power points (unless it buys them), an initiation or
- *  submersion it can't have, the aspected skill unless it's aspected, and the spends on Magic or Resonance when the
- *  kind has no such attribute (the Attributes tab no longer shows it, so they couldn't be taken back). */
-export function setMagic(ch: Sr6Character, kind: MagicKind, _data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
-  magicKind(ch.build, kind, aspectedSkill)
+/** Pick the magic kind the method buys: picks it can't have go, as do bought power points (unless it buys them), an
+ *  initiation or submersion it can't have, the aspected skill unless it's aspected, and the spends on Magic or Resonance
+ *  when the kind has no such attribute (the Attributes tab no longer shows it, so they couldn't be taken back). An
+ *  Infected runner becomes the kind its type leaves the bought one (infectedKind: technomancer leaves it without
+ *  Resonance, as taking the type would). */
+export function setMagic(ch: Sr6Character, kind: MagicKind, data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
+  const t = runnerInfected(ch.build, data)?.t
+  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill)
+}
+/** The runner's kind becomes `next`, the method having bought `bought`: infectedFrom keeps the bought kind while an
+ *  Infected type made it another (SWC p. 105), and goes when they agree. Shared with career.ts applyAdvance. */
+export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string): void {
+  if (next !== bought) b.infectedFrom = bought
+  else delete b.infectedFrom
+  magicKind(b, next, aspectedSkill)
 }
 function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string): void {
   const k = MAGIC_KINDS[kind],
@@ -170,17 +180,14 @@ function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string): void {
   if (kind !== 'mystic-adept') delete b.mentorAdvantage
 }
 
-/** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). */
+/** A metatype or magic kind the method (and letters) no longer allow is cleared ('' / mundane). The kind checked is the
+ *  one the method bought (boughtKind); an Infected runner cleared to mundane becomes the kind its type gives a mundane
+ *  (setMagic). */
 export function reconcile(ch: Sr6Character, data: Sr6Data, cr: CreationRules): void {
   const b = ch.build,
     p = makeProvider(b.method, data, cr)
   if (b.metatype && !p.legalMetatypes(b).some(m => m.id === b.metatype)) setMetatype(ch, '', data)
-  // (the kind the method bought: an Infected type's is then the one it gives a mundane)
-  if (p.legalMagic(b).some(m => m.kind === boughtKind(b))) return
-  if (b.infectedFrom === undefined) return setMagic(ch, 'mundane', data, cr)
-  b.infectedFrom = 'mundane'
-  magicKind(b, infectedKind('mundane', runnerInfected(b, data)?.t.awakens))
-  if (b.magic === 'mundane') delete b.infectedFrom
+  if (!p.legalMagic(b).some(m => m.kind === boughtKind(b))) setMagic(ch, 'mundane', data, cr)
 }
 
 /** Take the runner's Infected type (the Sixth World Companion pp. 104–106; '' none), replacing the one it has. The type
@@ -197,18 +204,10 @@ function infect(b: Sr6Build, id: string, data: Sr6Data, cr: CreationRules): Resu
     if (infectedOff(e, cr)) return no('rule-off')
     if (!infectedFit(data, b.metatype, t)) return no('not-for-metatype')
   }
+  const bought = boughtKind(b)
   if (cur) b.qualities = b.qualities.filter(q => q !== cur.line)
-  if (b.infectedFrom !== undefined) {
-    magicKind(b, b.infectedFrom)
-    delete b.infectedFrom
-  }
-  if (!t) return OK
-  b.qualities.push({ uid: newId(), id, level: 1, name: data.qualities[id]?.name ?? t.name })
-  const next = infectedKind(b.magic, t.awakens)
-  if (next !== b.magic) {
-    b.infectedFrom = b.magic
-    magicKind(b, next)
-  }
+  if (t) b.qualities.push({ uid: newId(), id, level: 1, name: data.qualities[id]?.name ?? t.name })
+  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought)
   return OK
 }
 

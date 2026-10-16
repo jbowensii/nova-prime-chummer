@@ -386,6 +386,13 @@
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <!-- quality: the magic kind an Infected type bought after creation leaves the runner (absent: unchanged) -->
+    <xs:attribute name="magic">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="full"/><xs:enumeration value="aspected"/><xs:enumeration value="mystic-adept"/>
+        <xs:enumeration value="adept"/><xs:enumeration value="technomancer"/><xs:enumeration value="mundane"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
     <xs:attribute name="name" type="xs:string"/>
     <xs:attribute name="months" type="c:Count"/>
     <xs:attribute name="lifestyle" type="xs:string"/>

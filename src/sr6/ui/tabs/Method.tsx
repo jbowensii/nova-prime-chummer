@@ -21,7 +21,7 @@ import { flag, num, str } from '../../engine/creation'
 import type { Grant, Sr6LifeModuleView, Sr6PriorityRow } from '../../engine/data'
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
-import { awakenedFlag, infectedTypes, runnerInfected } from '../../engine/infected'
+import { awakenedFlag, boughtKind, infectedTypes, runnerInfected } from '../../engine/infected'
 import { missingLabels, MissingList } from '../Runners'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
@@ -132,27 +132,23 @@ export function MethodTab() {
       {letters && !b.priorities.metatype && <p className="muted">Give Metatype a letter to see which metatypes it allows.</p>}
 
       <h3>Magic or Resonance</h3>
-      {b.infectedFrom !== undefined ? (
-        // (the Infected type gave this kind: taking the type away gives the bought one back)
-        <p>
-          Kind: <b>{MAGIC_KIND_LABELS[b.magic]}</b>{' '}
-          <span className="muted">
-            (the Infected type made the runner this; bought as {MAGIC_KIND_LABELS[b.infectedFrom].toLowerCase()}: remove the type to change it)
-          </span>
+      {/* (the kind the method buys; an Infected runner's is then the one its type leaves it: actions.ts setMagic) */}
+      <label>
+        Kind
+        <select aria-label="Magic kind" value={boughtKind(b)} onChange={e => update(d => setMagic(d, e.target.value as MagicKind, data, cr))}>
+          {magic.map(m => (
+            <option key={m.kind} value={m.kind}>
+              {MAGIC_KIND_LABELS[m.kind]}
+              {m.rating ? ` (rating ${m.rating})` : ''}
+              {m.cp ? `, ${m.cp} character points` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      {b.infectedFrom !== undefined && (
+        <p className="muted">
+          The Infected type makes the runner <b>{MAGIC_KIND_LABELS[b.magic]}</b> (bought as {MAGIC_KIND_LABELS[b.infectedFrom].toLowerCase()}).
         </p>
-      ) : (
-        <label>
-          Kind
-          <select aria-label="Magic kind" value={b.magic} onChange={e => update(d => setMagic(d, e.target.value as MagicKind, data, cr))}>
-            {magic.map(m => (
-              <option key={m.kind} value={m.kind}>
-                {MAGIC_KIND_LABELS[m.kind]}
-                {m.rating ? ` (rating ${m.rating})` : ''}
-                {m.cp ? `, ${m.cp} character points` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
       )}
       <AwakenedFlag />
       {b.magic === 'aspected' && (

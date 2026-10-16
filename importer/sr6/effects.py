@@ -445,11 +445,11 @@ def read(text, kind=None, name=None):
             if targets(label, kind) and re.match(r"[+-]\s?\d", s):
                 s = f"{label} {s}"  # (`**AR:** +2`, `**Body:** +1`: the label names the target)
         role = ROLES.get(label.casefold())
-        s = _USE_OR_LOSE.sub("", s)
+        s = _USE_OR_LOSE.sub("", s)  # (`a point of Edge that must be spent on that test, or it goes away`: use it or lose it, no condition)
         s = re.sub(r"\s*\((?:that is|e\.g\.|i\.e\.|for example|for instance)\b[^)]*\)?", "", s, flags=re.I)  # (an example in parentheses)
         # (a critter power's restriction in its name, `Movement (Self Only)`, `Magical Guard (self only, p. 69 …)`, and a
         # price's note, `(–10 Karma if character is already Awakened)`: no condition on the sentence's effects)
-        s = re.sub(r"\s*\((?:self only\b|[+–-]\s*\d+\s+Karma\b)[^()]*\)", "", s, flags=re.I)  # (`a point of Edge that must be spent on that test, or it goes away`: use it or lose it, no condition)
+        s = re.sub(r"\s*\((?:self only\b|[+–-]\s*\d+\s+Karma\b)[^()]*\)", "", s, flags=re.I)
         sw, when = _sw(s, label)
         if sw is None and carried and not _CONDITION.search(s.casefold()):
             sw = carried

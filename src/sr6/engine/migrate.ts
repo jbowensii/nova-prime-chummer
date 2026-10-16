@@ -25,6 +25,7 @@ import type { Sr6Catalog, Sr6Kind } from '../model/types'
 import { entryKey } from './names'
 import { applyAdvance, voidedIds } from './career'
 import { atLevel, familyOf } from './levels'
+import { infectedOf } from './infected'
 
 export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 'moved' | 'levels'>, at = new Date().toISOString()): Sr6Character {
   const done: NonNullable<Sr6Character['migrated']> = []
@@ -97,6 +98,13 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
     martialArts: b.martialArts.map(martial),
     sins,
     ...(meta ? { metatype: meta.id } : {}),
+  }
+  // a saved infectedFrom with no Infected type left (each of the runner's qualities in the catalog, none a type): the
+  // kind it names was the one bought, but nothing changes it now, so it goes (recorded, as a move is)
+  const q = (id: string) => c.entries.qualities?.get(id)
+  if (build.infectedFrom !== undefined && build.qualities.every(x => q(x.id)) && !build.qualities.some(x => infectedOf(q(x.id)))) {
+    done.push({ from: `infectedFrom:${build.infectedFrom}`, to: 'none (no Infected type)', at })
+    delete build.infectedFrom
   }
   const lifestyleId = (id: string) => to('lifestyles', id, ['lifestyles'])?.id ?? id
   const state = structuredClone(b),

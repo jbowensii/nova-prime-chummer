@@ -92,8 +92,8 @@ def allowed(kind):
 
 
 def fit(rows):
-    """The id rows with the attributes their kind's schema lacks taken out (a row left with nothing to set is dropped):
-    one line on stderr for each row that loses some, never invalid xml."""
+    """The id rows with the attributes their kind's schema lacks taken out (a row left with nothing to set, add or
+    replace is dropped): one line on stderr for each row that loses some, never invalid xml."""
     out = []
     for r in rows:
         ok = allowed(r["kind"])
@@ -101,7 +101,7 @@ def fit(rows):
         if bad:
             print(f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped", file=sys.stderr)
             r = {**r, "set": {k: v for k, v in r["set"].items() if k not in bad}, **({"formula": {k: v for k, v in r["formula"].items() if k not in bad}} if "formula" in r else {})}
-            if not r["set"] and not r.get("kids"):
+            if not (r["set"] or r.get("kids") or r.get("effects") or r.get("formula")):
                 continue
         out.append(r)
     return out
@@ -126,6 +126,8 @@ def check(rows):
         elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
+        if not all(isinstance(a, dict) and a.get("target") for a in r.get("effects", [])):
+            raise ValueError(f"override of {r.get('id')}: each effect names its target (it replaces the entry's effect of that target)")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
             raise ValueError(f"override of {r.get('id')}: rename is a name")
         for part in r.get("split", []):
@@ -343,7 +345,10 @@ def _ops(out, rows):
             for a in [a for a in c.findall("alias") if not a.get("id")]:
                 c.remove(a)  # (the whole row's other names)
             for k, v in part.get("set", {}).items():
-                c.set(k, str(v))
+                if v is None:  # (null drops the attribute, as an errata's)
+                    c.attrib.pop(k, None)
+                else:
+                    c.set(k, str(v))
                 for x in [x for x in c if x.tag in ("formula", "issue", "found") and x.get("field") == k]:
                     c.remove(x)
             if note := part.get("note"):

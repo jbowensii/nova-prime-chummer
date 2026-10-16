@@ -39,6 +39,7 @@ import {
   PURCHASE_TAB,
   qualityChoice,
   qualityKarma,
+  qualityPrice,
   ratingOf,
   skillRank,
   type Sr6Budgets,
@@ -624,19 +625,33 @@ const RULES: Rule[] = [
       }),
   },
 
-  // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list (a
-  // prerequisite: an error), and no more of the list than that quality's choices allow (the list's max, else the
-  // choice's count: a warning)
-  // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides)
+  // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides): also
+  // when it agrees with the derived flag but changes a quality's <karmaif> price (an Infected type's own goes by
+  // Awakened before it, infected.ts priceAwakened)
   {
     code: 'awakened.override',
     severity: 'warning',
     tab: 'method',
     check: c => {
       const f = awakenedFlag(c.b, c.data)
-      return f.override === undefined || f.override === f.derived
-        ? null
-        : { message: `Derived: ${f.derived ? 'Awakened' : 'not Awakened'} (${f.why}); overridden to ${f.value ? 'Awakened' : 'not Awakened'}.` }
+      if (f.override === undefined) return null
+      const { awakened: _, ...derived } = c.b
+      const prices = c.b.qualities.flatMap(q => {
+        const v = c.data.qualities[q.id]
+        if (q.free || !v) return []
+        const now = qualityPrice(c.b, c.data, q, v),
+          was = qualityPrice(derived, c.data, q, v)
+        return now === was ? [] : [`${v.name} ${was} → ${now} Karma`]
+      })
+      const yes = (v: boolean) => (v ? 'Awakened' : 'not Awakened')
+      if (f.override === f.derived && !prices.length) return null
+      return {
+        message:
+          (f.override === f.derived
+            ? `Overridden to ${yes(f.value)}, as derived (${f.why})`
+            : `Derived: ${yes(f.derived)} (${f.why}); overridden to ${yes(f.value)}`) +
+          (prices.length ? `; the override changes the price of ${prices.join(', ')}.` : '.'),
+      }
     },
   },
   // the Sixth World Companion's Infected (pp. 104–106; infected.ts)
@@ -714,6 +729,9 @@ const RULES: Rule[] = [
           })
         : [],
   },
+  // a quality granted only (a Returned Soldier power): taken, a quality the runner has must offer its list (a
+  // prerequisite: an error), and no more of the list than that quality's choices allow (the list's max, else the
+  // choice's count: a warning)
   { code: 'quality.granted', severity: 'error', tab: 'qualities', check: c => granted(c).filter(h => h.none) },
   { code: 'quality.grantedCount', severity: 'warning', tab: 'qualities', check: c => granted(c).filter(h => !h.none) },
 

@@ -4,9 +4,11 @@
 // from it; the Awakened flag is derived from the magic kind (a technomancer is not Awakened) with a player override (a
 // Review warning); <karmaif> prices a quality by it. Invented names, metatypes and prices.
 import { expect, test } from 'vitest'
-import { apply, reconcile, setPriority } from '../../src/sr6/engine/actions'
+import { apply, reconcile, setMagic, setPriority } from '../../src/sr6/engine/actions'
 import { allBudgets, attrMax, attrRating, magicCap, qualityKarma } from '../../src/sr6/engine/budgets'
-import { preview } from '../../src/sr6/engine/career'
+import { currentBuild, preview, record, voidEntry } from '../../src/sr6/engine/career'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { migrateSr6Ids } from '../../src/sr6/engine/migrate'
 import { infectedOff } from '../../src/sr6/engine/critterware'
 import { flag, num } from '../../src/sr6/engine/creation'
 import { sr6Data } from '../../src/sr6/engine/data'
@@ -41,7 +43,8 @@ const MORE = [
   // an Astral Hazing: 8 Karma, 15 for an Awakened runner
   '<quality id="crb.zap-hazing" source="CRB" page="73" kind="negative" karma="8"><name>Zap Hazing</name><karmaif flag="awakened" value="15" note="15 if the character is Awakened"/><text/></quality>',
 ].join('\n')
-const data = sr6Data(fixtureCatalog((f, x) => (f.endsWith('crb/qualities.xml') ? x.replace('</sr6:data>', `${MORE}\n</sr6:data>`) : x)))
+const cat = fixtureCatalog((f, x) => (f.endsWith('crb/qualities.xml') ? x.replace('</sr6:data>', `${MORE}\n</sr6:data>`) : x))
+const data = sr6Data(cat)
 const rules = (on?: boolean, atCreation?: boolean) => {
   const cr = fixtureCreation()
   if (on !== undefined) cr.set('infectedAllowed', { key: 'infectedAllowed', value: on })
@@ -264,4 +267,105 @@ test('optional powers: only the type’s, at creation only its free pick (free),
   expect(preview(career(b), q('crb.zap-power.shell'), data, ON)).toEqual({ ok: false, reason: 'infected-not-listed' })
   expect(preview(career(), q('crb.zap-power.glow'), data, ON)).toEqual({ ok: false, reason: 'infected-no-type' })
   expect(preview(career(b), q('crb.zap-ghoul-glimmerkin'), data, ON)).toEqual({ ok: false, reason: 'already-infected' })
+})
+
+test('after creation: an Infected type changes the kind as at creation (stored on the advance), voiding it gives it back', () => {
+  const buy = (magic: MagicKind, id: string) => {
+    const b = buildOf('karma', { metatype: GLIM, magic })
+    if (magic === 'technomancer') b.attributes.res.karma = 2
+    const r = record(career(b), q(id), data, ON)
+    if (!r.ok) throw new Error(r.reason)
+    return r.ch
+  }
+  const kind = (ch: ReturnType<typeof buy>) => [currentBuild(ch).magic, currentBuild(ch).infectedFrom]
+  // a mundane Awakens as the type's adept or magician, at no extra cost (Magic from Karma); the other kind a mystic adept
+  const m = buy('mundane', 'crb.zap-lurker')
+  expect(kind(m)).toEqual(['adept', 'mundane'])
+  expect(m.ledger.at(-1)).toMatchObject({ karma: 30, advance: { op: 'quality', magic: 'adept' } })
+  expect(kind(buy('mundane', 'crb.zap-vampire'))).toEqual(['full', 'mundane'])
+  expect(kind(buy('adept', 'crb.zap-vampire'))).toEqual(['mystic-adept', 'adept'])
+  expect(kind(buy('adept', 'crb.zap-lurker'))).toEqual(['adept', undefined])
+  expect(buy('adept', 'crb.zap-lurker').ledger.at(-1)).not.toHaveProperty('advance.magic')
+  // a technomancer's Resonance goes, no refund
+  const t = buy('technomancer', 'crb.zap-ghoul-glimmerkin')
+  expect(kind(t)).toEqual(['mundane', 'technomancer'])
+  expect(currentBuild(t).attributes.res.karma).toBe(0)
+  expect(t.ledger.at(-1)).toMatchObject({ karma: 20 })
+  // the file keeps it; the build as finalized never changes; voiding the advance gives the kind (and Resonance) back
+  const read = xmlToSr6(sr6ToXml(t))
+  expect(read.ok && currentBuild(read.character).magic).toBe('mundane')
+  expect(t.build.magic).toBe('technomancer')
+  const v = voidEntry(t, t.ledger.at(-1)!.id, 'wrong type')
+  expect(v.ok && [currentBuild(v.ch).magic, currentBuild(v.ch).infectedFrom, currentBuild(v.ch).attributes.res.karma]).toEqual(['technomancer', undefined, 2])
+})
+
+test('the kind select routes through the Infected type: a mundane pick keeps the type’s adept, the other kind a mystic adept, technomancer no Resonance', () => {
+  const ch = runner(buildOf('karma', { metatype: GLIM, magic: 'adept' }))
+  apply(ch.build, { op: 'infected', id: 'crb.zap-lurker' }, data, ON)
+  expect([ch.build.magic, ch.build.infectedFrom]).toEqual(['adept', undefined])
+  setMagic(ch, 'full', data, ON)
+  expect([ch.build.magic, ch.build.infectedFrom]).toEqual(['mystic-adept', 'full'])
+  setMagic(ch, 'mundane', data, ON)
+  expect([ch.build.magic, ch.build.infectedFrom]).toEqual(['adept', 'mundane'])
+  setMagic(ch, 'adept', data, ON)
+  expect([ch.build.magic, ch.build.infectedFrom]).toEqual(['adept', undefined])
+  // a type that Awakens no one: technomancer is bought, the runner never Emerged (as a technomancer taking the type)
+  const g = runner(buildOf('karma', { metatype: GLIM }))
+  apply(g.build, { op: 'infected', id: 'crb.zap-ghoul-glimmerkin' }, data, ON)
+  setMagic(g, 'technomancer', data, ON)
+  expect([g.build.magic, g.build.infectedFrom]).toEqual(['mundane', 'technomancer'])
+  // the priority drops the adept the runner bought: still the type's adept
+  const p = runner(buildOf('priority', { letters: 'CABDE', metatype: GLIM }))
+  setMagic(p, 'adept', data, ON)
+  apply(p.build, { op: 'infected', id: 'crb.zap-lurker' }, data, ON)
+  expect([p.build.magic, p.build.infectedFrom]).toEqual(['adept', undefined])
+  setPriority(p, 'magic', 'E', data, ON)
+  expect([p.build.magic, p.build.infectedFrom, awakenedFlag(p.build, data).value]).toEqual(['adept', 'mundane', true])
+  // and the type taken away: the bought mundane
+  apply(p.build, { op: 'infected', id: '' }, data, ON)
+  expect([p.build.magic, p.build.infectedFrom]).toEqual(['mundane', undefined])
+})
+
+test('awakened.override: an override as derived that changes a price is still a warning, saying the price', () => {
+  const b = infected('crb.zap-lurker')
+  apply(b, { op: 'awakened', value: true }, data, ON)
+  expect(awakenedFlag(b, data)).toMatchObject({ derived: true, value: true })
+  const w = validateSr6(data, ON, runner(b)).filter(v => v.code === 'awakened.override')
+  expect(w).toEqual([
+    expect.objectContaining({
+      severity: 'warning',
+      message: 'Overridden to Awakened, as derived (adept); the override changes the price of Zap Lurker 30 → 20 Karma.',
+    }),
+  ])
+  // differing from derived, with a price: both said
+  const h = buildOf('karma', { metatype: GLIM })
+  apply(h, { op: 'quality', id: 'crb.zap-hazing' }, data, ON)
+  apply(h, { op: 'awakened', value: true }, data, ON)
+  expect(validateSr6(data, ON, runner(h)).find(v => v.code === 'awakened.override')?.message).toBe(
+    'Derived: not Awakened (mundane); overridden to Awakened; the override changes the price of Zap Hazing 8 → 15 Karma.',
+  )
+})
+
+test('a saved infectedFrom with no Infected type goes on open (recorded); one with its type stays', () => {
+  const ch = runner(buildOf('karma', { metatype: GLIM, magic: 'adept' }))
+  ch.build.infectedFrom = 'mundane'
+  const m = migrateSr6Ids(ch, cat, 'now')
+  expect(m.build).not.toHaveProperty('infectedFrom')
+  expect(m.migrated).toEqual([{ from: 'infectedFrom:mundane', to: 'none (no Infected type)', at: 'now' }])
+  const ok = runner(infected('crb.zap-lurker'))
+  expect(migrateSr6Ids(ok, cat)).toBe(ok)
+  // a quality the catalog doesn't have might be the type: kept
+  ch.build.qualities.push({ uid: 'x', id: 'crb.gone', level: 1 })
+  expect(migrateSr6Ids(ch, cat).build.infectedFrom).toBe('mundane')
+})
+
+test('a file’s awakened that isn’t a boolean is refused; repair leaves it out and says so', () => {
+  const xml = sr6ToXml(runner(buildOf('karma', { metatype: GLIM }))).replace('<build ', '<build awakened="maybe" ')
+  expect(xmlToSr6(xml)).toMatchObject({ ok: false, reason: expect.stringMatching(/Awakened override “maybe”/) })
+  const fix: string[] = []
+  const r = xmlToSr6(xml, { repair: fix })
+  expect(r.ok && r.character.build).not.toHaveProperty('awakened')
+  expect(fix).toEqual(['The Awakened override “maybe” isn’t known: left out.'])
+  const one = xmlToSr6(xml.replace('awakened="maybe"', 'awakened="1"'))
+  expect(one.ok && one.character.build.awakened).toBe(true)
 })

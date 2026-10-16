@@ -682,6 +682,16 @@ class SchemaAttrsTest(unittest.TestCase):
         self.assertIn("gear.xml has no social", err.getvalue())
         self.assertEqual(len([x for x in err.getvalue().splitlines() if "rules.xml has no class" in x]), 1)
 
+    def test_a_row_left_with_no_value_but_an_effect_still_lands(self):
+        import contextlib
+        import io
+        row = {"kind": "gear", "id": "zz.coat", "gen": "errata", "set": {"social": "2"}, "effects": [{"target": "item:zz", "op": "add", "value": "1"}]}
+        with contextlib.redirect_stderr(io.StringIO()):
+            g = ET.fromstring(overrides.apply("zz", {"gear.xml": self.GEAR}, [row])["gear.xml"].encode())[0]
+        self.assertEqual((g.get("social"), [x.get("target") for x in g.findall("effect")]), (None, ["item:zz"]))
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(overrides.fit([{**row, "effects": []}]), [])  # (nothing left to set: dropped)
+
     def test_generators_drop_the_rows_too(self):
         from tools.cl6check import classmap
         pairs = [({"cl6_class": "A/B", "name": "Launch"}, {"src": "zz", "kind": "rules", "id": "zz.launch", "name": "Launch", "attrs": {}})]
@@ -871,6 +881,10 @@ class ErrataRowsTest(unittest.TestCase):
         self.assertEqual([x.text for x in e.findall("formula")], ["tier(R; 6: 1; 7: 2)"])
         self.assertIsNotNone(e.find("slot"))
 
+    def test_an_effect_naming_no_target_is_refused_before_the_run(self):
+        with self.assertRaisesRegex(ValueError, "names its target"):
+            overrides.check([{"kind": "augmentations", "id": "zz-hum", "gen": "errata", "effects": [{"op": "add", "value": "2"}]}])
+
     def test_remove_and_rename_without_an_alias(self):
         rows = [{"kind": "augmentations", "id": "zz-gone", "remove": True},
                 {"kind": "augmentations", "id": "zz-eyes-5", "rename": "Zeyes (Rating 6)", "alias": False}]
@@ -935,6 +949,11 @@ class SplitRowsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "split": [{"id": "x", "name": "X", "set": {"description": "t"}}]}])
         self.assertEqual(overrides.apply("zz", {"gear.xml": self.XML}, [{**self.ROW, "id": "nope"}])["gear.xml"], self.XML)
+
+    def test_a_parts_null_drops_the_attribute(self):
+        row = {**self.ROW, "split": [{"id": "zz-kit-a", "name": "Zz Kit (A)", "set": {"avail": None, "cost": "255"}}]}
+        e = ET.fromstring(overrides.apply("zz", {"gear.xml": self.XML}, [row])["gear.xml"].encode())[0]
+        self.assertEqual((e.get("avail"), e.get("cost")), (None, "255"))
 
     def test_shipped_swindler_manadyne_and_skate_splits(self):
         sw = {p["id"]: p for r in overrides.table("so") for p in r.get("split", [])}

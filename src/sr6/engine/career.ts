@@ -16,7 +16,19 @@ import { validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
 import { infectedOff, infectedQuality } from './critterware'
-import { freeEligible, freePick, infectedFit, infectedMagicMax, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
+import {
+  boughtKind,
+  freeEligible,
+  freePick,
+  infectedFit,
+  infectedKind,
+  infectedMagicMax,
+  infectedOf,
+  optionalPower,
+  powerRefusal,
+  runnerInfected,
+} from './infected'
+import { infectedTo } from './actions'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -74,6 +86,8 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       if (had && a.target) Object.assign(had, { id: a.line.id, level: a.line.level, ...(a.line.name ? { name: a.line.name } : {}) })
       else if (had) had.level += a.line.level
       else b.qualities.push(structuredClone(a.line))
+      // (an Infected type changing the kind, as at creation: actions.ts infect; voiding the advance gives the kind back)
+      if (a.magic) infectedTo(b, boughtKind(b), a.magic)
       return
     }
     case 'buyoff':
@@ -550,6 +564,10 @@ export function record(
         if (lv.target) adv.target = lv.target
       }
       adv.line = named(adv.line, data.qualities[adv.line.id]?.name)
+      // (stored on the advance, so replay needs no catalog: applyAdvance)
+      const t = infectedOf(data.entry('qualities', adv.line.id)),
+        next = t && infectedKind(boughtKind(b), t.awakens)
+      if (next && next !== b.magic) adv.magic = next
       break
     }
     case 'pick': {
