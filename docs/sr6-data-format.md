@@ -69,7 +69,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
 | gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance), hardpoint small\|standard\|large\|huge (the hardpoint a vehicle weapon mount, drone rack or mechanical arm attaches to: its HARDPOINT column, Double Clutch pp. 142-145) | — |
-| vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
+| vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | builtin (name*, ref, rating, slots, category, source, page)×n and note (field `builtin`)×n: see Built-in modifications |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
 | adeptpowers | adeptpower | cost, costCombat (the price for a combat skill, the power's `Combat skill: 1.0 PP per level; other skills 0.5 PP per level`: cost then the other skills'), perLevel true, maxLevel int, activation | — |
@@ -121,6 +121,16 @@ levels`, `cannot be higher than twice the vehicle's Body` (`2 x Body`), `4 or th
 whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxReverse), `can only be purchased once` (max
 1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
 on-road or off-road only) stays in its text.
+
+**Built-in modifications** (Double Clutch p. 146, owner 2026-10-16; `resolve._builtin_mods`, in the corpus pass after
+every import). A book's `Core Vehicle Modifications` box lists, as bold run-ins under its group headings, the
+modifications the core rulebook's vehicles already have. Each vehicle it names, in the library's other books (by name,
+alias, or either part of a slash name: `Federated-Boeing Commuter/Osprey X`), gets one `<builtin>` per modification:
+`name` as printed, its trailing number the `rating` (`Realistic features 4`), `ref` the box book's gear entry of that name
+when exactly one matches by its words (`Ceramic plate armor` is `Ceramic Plate`; of several levels the rating's), or
+`slots` and `category` for `4 additional Chassis mod slots`; `source` and `page` are the box's. A line or part that is a
+sentence (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) is a `<note field="builtin">` as printed.
+They are already paid for (shown as built in); each pass replaces the ones the last gave.
 
 **Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
 technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique

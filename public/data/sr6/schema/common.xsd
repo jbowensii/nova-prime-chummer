@@ -135,10 +135,24 @@
         <!-- a status the entry applies (CRB p. 51's statuses: a weapon's `Burning 4`, the No Future errata's Molotov), by
              the status's name and its level when it has one; shown with the item, never applied to the runner -->
         <xs:element name="status" type="sr6:Status"/>
+        <!-- a modification a vehicle comes with, already paid for (Double Clutch p. 146's box on the core rulebook's
+             vehicles: importer/sr6/resolve.py _builtin_mods): its name as printed, the modification's id (ref) when it
+             resolves, its rating, or extra mod slots of a category; source and page: the box's. A part of the box that is
+             a sentence is a <note field="builtin"> -->
+        <xs:element name="builtin" type="sr6:Builtin"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
   </xs:group>
+  <xs:complexType name="Builtin">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="ref" type="sr6:Id"/>
+    <xs:attribute name="rating" type="xs:string"/>
+    <xs:attribute name="slots" type="xs:string"/>
+    <xs:attribute name="category" type="xs:string"/>
+    <xs:attribute name="source" type="sr6:SourceId"/>
+    <xs:attribute name="page" type="xs:positiveInteger"/>
+  </xs:complexType>
   <xs:complexType name="Note">
     <xs:simpleContent><xs:extension base="xs:string">
       <xs:attribute name="field" type="sr6:Field" use="required"/>

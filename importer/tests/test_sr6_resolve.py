@@ -313,6 +313,55 @@ class CorpusTest(unittest.TestCase):
             self.assertEqual(n["run-ins"], 2)
             self.assertEqual(a, {"zza.glowsymbionts-mender": ["Glo-Mender"], "zza.zorp-zqi": ["ZQE"], "zza.zorp-alpha-zap": []})
 
+    def test_a_box_of_built_in_modifications_on_another_books_vehicles(self):
+        from importer.sr6 import regroup
+        md = "\n".join(["<!-- page 78 -->", "# MAKING IT", "#### Core Vehicle Modifications",
+                        "**Glimmer Soft:** A made-up e-soft run into the box.",
+                        "Vehicles from the made-up core book already incorporate the following modifications.",
+                        "##### Cars", "**Zorp Racer:** Glow plating 3, 2 additional Chassis mod slots, Zap plate armor",
+                        "**Fizz Van/Hauler:** Hush skin 2, upgradable to rating 3 for 500¥",
+                        "##### Drones", "**Buzz Drone:** As Zorp Racer, except it buzzes. It is made up.",
+                        "**Ghost Drone:** Wobble wheels", "# NEXT THING", "Made-up words."])
+        with tempfile.TemporaryDirectory() as tmp:
+            lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
+            a = _book(lib, "a", "done", source="ZZA", bname="Shadowrun: Zorp Alpha", custom=custom, md=md, entries=[
+                '<gear id="zza.glow-plating" source="ZZA" page="70" category="x" rating="1–6"><name>Glow Plating</name></gear>',
+                '<gear id="zza.hush-skin-level-1" source="ZZA" page="71" category="x"><name>Hush Skin (Level 1)</name></gear>',
+                '<gear id="zza.hush-skin-level-2" source="ZZA" page="71" category="x"><name>Hush Skin (Level 2)</name></gear>',
+                '<gear id="zza.zap-plate" source="ZZA" page="72" category="x"><name>Zap Plate</name></gear>'])
+            _write(os.path.join(a, "regrouped.md"), regroup.regroup(md, {}, name_headers=frozenset())[0])
+            _write(os.path.join(custom, "imported", "zza", "rules.xml"),
+                   f'<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="{NS}" kind="rules" version="1">\n'
+                   '  <rule id="zza.core-vehicle-modifications" source="ZZA" page="77" chapter="x" level="4">'
+                   '<name>Core Vehicle Modifications</name></rule>\n</sr6:data>\n')
+            _book(lib, "b", "done", source="ZZB", bname="Shadowrun: Zorp Beta", custom=custom, kind="vehicles", entries=[
+                f'<vehicle id="zzb.{i}" source="ZZB" page="5" category="x"><name>{n}</name></vehicle>'
+                for i, n in (("racer", "Zorp-Racer"), ("van", "Fizz Van"), ("hauler", "Fizz Hauler"), ("buzz", "Buzz Drone"),
+                             ("other", "Plain Car"))])
+            books = [(os.path.join(lib, d), custom) for d in ("a", "b")]
+            resolve.corpus(books, sources={"ZZA": "2020-01", "ZZB": "2021-01"})
+            n = resolve.corpus(books, sources={"ZZA": "2020-01", "ZZB": "2021-01"})  # (again: the same children, once)
+            self.assertEqual(n["builtin"], 4)
+            v = {e.get("id"): [(k.tag, {x: y for x, y in k.attrib.items() if x not in ("source", "page")} or None, k.text) for k in e
+                               if k.tag in ("builtin", "note")]
+                 for e in ET.parse(os.path.join(custom, "imported", "zzb", "vehicles.xml")).getroot()}
+            self.assertEqual(v["zzb.racer"], [
+                ("builtin", {"name": "Glow plating", "rating": "3", "ref": "zza.glow-plating"}, None),
+                ("builtin", {"name": "2 additional Chassis mod slots", "slots": "2", "category": "chassis"}, None),
+                ("builtin", {"name": "Zap plate armor", "ref": "zza.zap-plate"}, None)])  # (its words hold the mod's)
+            for i in ("van", "hauler"):  # (a slash name's each part; a level by its rating; a clause a note)
+                self.assertEqual(v[f"zzb.{i}"], [("builtin", {"name": "Hush skin", "rating": "2", "ref": "zza.hush-skin-level-2"}, None),
+                                                 ("note", {"field": "builtin"}, "upgradable to rating 3 for 500¥")])
+            self.assertEqual(v["zzb.buzz"], [("note", {"field": "builtin"}, "As Zorp Racer, except it buzzes. It is made up.")])
+            self.assertEqual(v["zzb.other"], [])
+            e = ET.parse(os.path.join(custom, "imported", "zzb", "vehicles.xml")).getroot()[0].find("builtin")
+            self.assertEqual((e.get("source"), e.get("page")), ("ZZA", "77"))
+            from lxml import etree
+            from importer import sr6
+            schema = etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, "vehicles.xsd")))
+            self.assertTrue(schema.validate(etree.parse(os.path.join(custom, "imported", "zzb", "vehicles.xml"))),
+                            schema.error_log.last_error)
+
     def test_an_abbreviation_the_library_spells_out(self):
         with tempfile.TemporaryDirectory() as tmp:
             lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
