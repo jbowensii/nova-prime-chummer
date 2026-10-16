@@ -16,6 +16,7 @@ import {
   type Sr6Build,
   type Sr6Character,
   type Sr6LedgerEntry,
+  type Sr6Purchase,
   type Sr6Quality,
 } from '../model/character'
 import {
@@ -24,7 +25,9 @@ import {
   manySpecs,
   powerCost,
   attrRating,
+  diyAllowed,
   entryOf,
+  isMount,
   licenceFee,
   licenceName,
   magicLoss,
@@ -57,7 +60,7 @@ import {
   powerRefusal,
   runnerInfected,
 } from './infected'
-import { infectedTo } from './actions'
+import { infectedTo, unfit } from './actions'
 import { isSignature, learned } from './martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -162,6 +165,14 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'upgrade': {
       const i = b.purchases.findIndex(x => x.uid === a.target)
       if (i >= 0) b.purchases[i] = { ...structuredClone(a.line), uid: a.target, accessories: b.purchases[i].accessories }
+      return
+    }
+    case 'fit':
+      b.purchases.find(x => x.uid === a.target)?.accessories.push(structuredClone(a.line))
+      return
+    case 'unfit': {
+      const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
+      if (host) unfit(host, a.target)
       return
     }
     case 'contact': {
@@ -310,6 +321,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     k = MAGIC_KINDS[b.magic]
   const need = (key: string) => num(cr, key) ?? no(`unset:${key}`)
   const skillName = (id: string) => data.skills[id]?.name ?? id
+  const lineLabel = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(x.id ? data.entry(x.kind, x.id) : undefined)
   switch (a.op) {
     case 'attribute': {
       const t = a.target
@@ -541,6 +553,29 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!pr.ok) no('book-value')
       return { label: `Upgrade: ${entryLabel(data.entry(old.kind, old.id!)!)} → ${entryLabel(e)}`, nuyen: pr.cost }
     }
+    case 'fit': {
+      // an accessory (a vehicle mod, a weapon in one of its mounts, an autosoft) on an owned line, at its price (do it
+      // yourself: half, a mod only, Double Clutch p. 120); what goes past the vehicle's limits is recorded (Review warns)
+      const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
+      const x = a.line,
+        e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : undefined
+      const range = ratingRange(e?.attrs.rating)
+      if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
+      if (x.mount !== undefined) {
+        if (x.kind !== 'weapons') no('not-a-weapon')
+        const m = host.accessories.find(y => y.uid === x.mount)
+        if (!m || !isMount(entryOf(m, data))) no('not-a-mount')
+      }
+      if (x.diy && !diyAllowed(e)) no('no-diy')
+      const pr = priced(x, data, cr, priced({ ...host, accessories: [] }, data, cr))
+      if (!pr.ok) no('book-value')
+      return { label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`, nuyen: pr.cost }
+    }
+    case 'unfit': {
+      // R: no refund, as a drop; an earning records a sale
+      const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
+      return { label: `Removed: ${lineLabel(host.accessories.find(z => z.uid === a.target)!)} from ${lineLabel(host)}` }
+    }
     case 'contact':
       if (!(a.line.connection >= 1 && a.line.loyalty >= 1)) no('below-one')
       return { label: typed.label?.trim() || `Contact: ${a.line.name || 'unnamed'}`, karma: typed.karma, nuyen: typed.nuyen }
@@ -689,7 +724,11 @@ export function record(
       adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
       break
     case 'upgrade':
+    case 'fit':
       adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
+      break
+    case 'unfit':
+      adv.line = b.purchases.flatMap(x => x.accessories).find(x => x.uid === adv.target)
       break
     case 'contact':
       adv.line = named(adv.line)
@@ -813,6 +852,7 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
     'gear.grade',
     'catalog.accessoryHost',
     'licence.none',
+    'vehicle.mods',
   ])
   return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
 }

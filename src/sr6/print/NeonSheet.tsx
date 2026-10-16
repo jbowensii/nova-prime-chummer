@@ -403,7 +403,12 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                       <tr key={x.uid}>
                         <td>
                           <b>{nameOf(x)}</b>
-                          {acc(x)}
+                          {v.vehicleNotes(x).map(t => (
+                            <span key={t} className="n-small">
+                              {' '}
+                              {t}.
+                            </span>
+                          ))}
                         </td>
                         <td>{a.handling}</td>
                         <td>{a.accel}</td>

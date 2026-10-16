@@ -42,8 +42,26 @@ export function Sr6Sheet() {
     art = useSheetArt(ch.id, 'sr6'),
     k = MAGIC_KINDS[b.magic],
     style = usePrintStyle()
-  const { name, lines, nameOf, rated, know, langs, gear, lifestyle, lifeOf, licencesOf, dv, awakened, qualityNotes, karma, nuyen, host, effectNotes } =
-    runnerView(ctx)
+  const {
+    name,
+    lines,
+    nameOf,
+    rated,
+    know,
+    langs,
+    gear,
+    lifestyle,
+    lifeOf,
+    licencesOf,
+    dv,
+    awakened,
+    qualityNotes,
+    karma,
+    nuyen,
+    host,
+    effectNotes,
+    vehicleNotes,
+  } = runnerView(ctx)
   const acc = (x: (typeof b.purchases)[number]) =>
     x.accessories.length > 0 && (
       <div className="s-small">
@@ -467,7 +485,11 @@ export function Sr6Sheet() {
                       <tr key={x.uid}>
                         <td>
                           <b>{nameOf(x)}</b>
-                          {acc(x)}
+                          {vehicleNotes(x).map(t => (
+                            <div key={t} className="s-small">
+                              {t}
+                            </div>
+                          ))}
                         </td>
                         <td>{a.handling}</td>
                         <td>{a.body}</td>

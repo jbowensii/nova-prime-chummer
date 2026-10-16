@@ -132,6 +132,20 @@ when exactly one matches by its words (`Ceramic plate armor` is `Ceramic Plate`;
 sentence (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) is a `<note field="builtin">` as printed.
 They are already paid for (shown as built in); each pass replaces the ones the last gave.
 
+**Owned vehicles and drones** (the app: `src/sr6/engine/vehiclemods.ts`, the Vehicles and Drones tabs' Modify panel,
+owner 2026-10-16). A `vehicles` entry is a drone by its class (`DRONE_…`) or category (`drone`). A gear entry is a vehicle
+mod by its class (`MOD_CHASSIS`, `MOD_SKIN`, `MOD_HARD`: chassis slots; `MOD_POWER`: powertrain; `MOD_ELEC`: electronics;
+`ACCESSORY/VEHICLE…`, `ACCESSORY/TIRES`: an accessory, no slots) or else its category's words; one with a `hardpoint`
+(or a `… weapon mount`, by its name: a heavy one large) sits on a hardpoint. With Double Clutch (source `DC`) among the
+table's books: each category has the unmodified Body in mod slots (p. 120) plus a `<builtin slots category>`'s; a mod
+takes its `slots` at its rating; the free hardpoints are Body / 3 standard ones (a small drone with Body over 3: one small;
+a micro or mini drone: none; p. 124), plus a `Small|Standard|Large|Huge hardpoint` mod's (0.5, 1, 2, 3 standard ones),
+and a device takes its `hardpoint`'s. Without it, the core rulebook's: up to Body / 3 weapon mounts, a heavy one counting
+two (CRB p. 295). A drone runs half its Pilot (rounded up) in autosofts and programs (CRB p. 201). A weapon sits in one
+mount (small: an SMG or smaller; standard: an assault rifle or smaller; large: any; DC p. 142, by its class or category).
+What goes past these is Review's `vehicle.mods` warning, never refused. A mod (not an accessory) may be installed by the
+player, half its nuyen (`diy`, p. 120; the install test is the GM's).
+
 **Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
 technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique
 (`karmaTechnique`) is learned under a style, of one of its `categories` (compared without case) or `General`; career

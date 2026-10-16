@@ -33,7 +33,7 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { augmentationRoom, diyAllowed, entryOf, isMount, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
 import { critterOnly, infectedOff } from './critterware'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -75,8 +75,13 @@ export type Op =
   | { op: 'purchase'; remove: string }
   /** a stacking line's quantity */
   | { op: 'quantity'; uid: string; qty: number }
-  | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number }
+  /** mount: a weapon's mount (the host's accessory it sits in); diy: a vehicle mod installed by the player (half price) */
+  | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number; mount?: string; diy?: boolean }
   | { op: 'accessory'; host: string; remove: string }
+  /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
+  | { op: 'diy'; uid: string; diy: boolean }
+  /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
+  | { op: 'mount'; uid: string; mount: string | null }
   | { op: 'wear'; uid: string; worn: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
@@ -229,6 +234,11 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 
 /** Every purchase, and every accessory on one. */
 const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
+/** An accessory taken off its host; a weapon in it (a weapon mount) stays, in no mount. Shared with career.ts. */
+export function unfit(host: Sr6Purchase, uid: string): void {
+  host.accessories = host.accessories.filter(a => a.uid !== uid)
+  for (const a of host.accessories) if (a.mount === uid) delete a.mount
+}
 /** A removed line's licences go with it (the lines: it and its accessories). */
 const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
   for (const s of b.sins) s.licences = s.licences.filter(l => !gone.some(x => x.uid === l.item))
@@ -524,13 +534,44 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
           b,
           host.accessories.filter(a => a.uid === op.remove),
         )
-        host.accessories = host.accessories.filter(a => a.uid !== op.remove)
+        unfit(host, op.remove)
         return OK
       }
       // an accessory whose category names other hosts goes on anyway (Review's catalog.accessoryHost)
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
+      if (op.mount !== undefined) {
+        const m = host.accessories.find(a => a.uid === op.mount)
+        if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
+        line.mount = op.mount
+      }
+      if (op.diy) {
+        if (!diyAllowed(entryOf(line, data))) return no('no-diy')
+        line.diy = true
+      }
       host.accessories.push(line) // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
+      return OK
+    }
+    case 'diy': {
+      const x = b.purchases.flatMap(p => p.accessories).find(a => a.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (op.diy && !diyAllowed(entryOf(x, data))) return no('no-diy')
+      if (op.diy) x.diy = true
+      else delete x.diy
+      return OK
+    }
+    case 'mount': {
+      const host = b.purchases.find(p => p.accessories.some(a => a.uid === op.uid)),
+        x = host?.accessories.find(a => a.uid === op.uid)
+      if (!host || !x) return no('unknown-line')
+      if (x.kind !== 'weapons') return no('not-a-weapon')
+      if (op.mount === null) {
+        delete x.mount
+        return OK
+      }
+      const m = host.accessories.find(a => a.uid === op.mount)
+      if (!m || !isMount(entryOf(m, data))) return no('not-a-mount')
+      x.mount = m.uid
       return OK
     }
     case 'wear': {

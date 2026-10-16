@@ -352,13 +352,13 @@ test('nuyen: gear per line, lifestyle times months, a fake SIN and licences by r
   expect(nuyen.left).toBe(8200 - nuyen.spent)
 })
 
-test('nuyen: augmentations and vehicles link to their own tabs', () => {
+test('nuyen: augmentations and vehicles link to their own tabs (a drone to Drones)', () => {
   const b = runner()
   buy(b, 'augmentations', 'crb.glow-eyes', { rating: 1 })
   buy(b, 'vehicles', 'crb.hover-buzzer')
   expect(budgets(b).nuyen.breakdown?.map(l => [l.label, l.tab])).toEqual([
     ['Glow Eyes (rating 1)', 'augmentations'],
-    ['Hover Buzzer', 'vehicles'],
+    ['Hover Buzzer', 'drones'],
   ])
 })
 

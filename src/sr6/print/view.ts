@@ -13,6 +13,7 @@ import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
 import { entryLabel } from '../engine/categories'
 import { effectState, effectText } from '../engine/effects'
+import { builtinText, modsOf } from '../engine/vehiclemods'
 
 export const PICKS: [PickKind, string][] = [
   ['spells', 'Spells'],
@@ -96,6 +97,8 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     lines,
     nameOf,
     attrsOf,
+    /** a vehicle's or drone's lines under it, the same on every sheet (vehicleNotes) */
+    vehicleNotes: (x: Sr6Purchase) => vehicleNotes(x, data),
     /** a host's own values from its accessories (`STR 5, Armor +2`), for its line on the sheet */
     host: (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text,
     rated: (x: Sr6Purchase) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', '),
@@ -138,6 +141,37 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
      *  `Name: text` each (owner decision 2026-10-10: the sheet shows them) */
     effectNotes: effectNotes(ch.build, data),
   }
+}
+
+/** A vehicle's or drone's fitted lines in words: its mods (`Improved Handling 1 (do it yourself)`), each weapon with its
+ *  mount, its autosofts and programs, anything else on it, the mods built in (vehiclemods.ts). */
+export function vehicleNotes(x: Sr6Purchase, data: Sr6Data): string[] {
+  const name = (a: Sr6Purchase) => (e => `${e ? entryLabel(e) : (a.name ?? 'Custom item')}${a.rating ? ` ${a.rating}` : ''}`)(entryOf(a, data))
+  const m = modsOf(x, data),
+    kind = (a: Sr6Purchase) => m.fitted.find(f => f.uid === a.uid)?.kind
+  const group = (label: string, xs: Sr6Purchase[], each: (a: Sr6Purchase) => string = name) => (xs.length ? [`${label}: ${xs.map(each).join(', ')}`] : [])
+  const mount = (a: Sr6Purchase) => x.accessories.find(y => y.uid === a.mount)
+  return [
+    ...group(
+      'Mods',
+      x.accessories.filter(a => !['weapon', 'program', 'other'].includes(kind(a) ?? 'other')),
+      a => `${name(a)}${a.diy ? ' (do it yourself)' : ''}`,
+    ),
+    ...group(
+      'Weapons',
+      x.accessories.filter(a => kind(a) === 'weapon'),
+      a => `${name(a)} (${mount(a) ? `in ${name(mount(a)!)}` : 'in no mount'})`,
+    ),
+    ...group(
+      'Autosofts and programs',
+      x.accessories.filter(a => kind(a) === 'program'),
+    ),
+    ...group(
+      'With',
+      x.accessories.filter(a => kind(a) === 'other'),
+    ),
+    ...(m.builtin.length ? [`Built in: ${m.builtin.map(builtinText).join(', ')}`] : []),
+  ]
 }
 
 const COUNTED = /^(attr:|derived:(defense|initiative-dice|physical-monitor|stun-monitor|overflow)$|skill:|test:)/

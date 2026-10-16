@@ -381,13 +381,16 @@
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
          sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
-         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN) -->
+         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN); fit: target the uid of the owned
+         line the <purchase> that follows is fitted to; unfit: target the uid of the accessory taken off (the <purchase>
+         removed may follow) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
         <xs:enumeration value="expertise"/><xs:enumeration value="knowledge"/><xs:enumeration value="quality"/>
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
+        <xs:enumeration value="fit"/><xs:enumeration value="unfit"/>
         <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
@@ -522,6 +525,10 @@
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
+    <!-- a weapon fitted to a vehicle or drone: the uid of the weapon mount (an accessory of the same vehicle) it is in -->
+    <xs:attribute name="mount" type="xs:string"/>
+    <!-- a vehicle mod the player installs: half its nuyen price (Double Clutch p. 120; never an accessory's) -->
+    <xs:attribute name="diy" type="xs:boolean"/>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
          whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
          SIN), one naming no SIN of the runner left out. Not written -->

@@ -79,6 +79,8 @@ function purchaseXml(p: Sr6Purchase): string {
       worn: p.worn,
       note: p.note,
       seatsRemoved: p.seatsRemoved,
+      mount: p.mount,
+      diy: p.diy,
     },
     bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
@@ -186,7 +188,10 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'drop':
       return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'upgrade':
+    case 'fit':
       return [{ target: a.target }, purchaseXml(a.line)]
+    case 'unfit':
+      return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'contact':
       return [{}, contactXml(a.line)]
     case 'sin':
@@ -357,9 +362,17 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     bonuses: readBonuses(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
+    mount: str(e, 'mount'),
+    diy: yes(e, 'diy'),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
+  // a weapon naming a mount its host doesn't have (a file edited by hand) sits in none: noted
+  for (const a of x.accessories)
+    if (a.mount && !x.accessories.some(m => m.uid === a.mount)) {
+      fix?.push(`${a.name || 'A weapon'}: its weapon mount isn’t on ${x.name || 'its vehicle'}, so it’s in none (put it in one on the Vehicles or Drones tab).`)
+      delete a.mount
+    }
   if (on.length) licensed?.(x, on)
   return x
 }
@@ -599,7 +612,10 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'drop':
       return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'upgrade':
+    case 'fit':
       return { op, target: req(e, 'target'), line: line(e, 'purchase', purchase, true) }
+    case 'unfit':
+      return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'contact':
       return { op, line: line(e, 'contact', readContact, true) }
     case 'sin':

@@ -254,7 +254,15 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   const hex = page.locator('article.sr6-hex')
   await expect(hex).toBeVisible()
   await expect(neon).toHaveCount(0)
-  await expect(hex.getByRole('heading', { level: 2 })).toHaveText(['Personal data', 'Attributes', 'Skills', 'Core combat', 'Qualities', 'Edge'])
+  await expect(hex.getByRole('heading', { level: 2 })).toHaveText([
+    'Personal data',
+    'Attributes',
+    'Skills',
+    'Core combat',
+    'Qualities',
+    'Edge',
+    'Vehicles & drones',
+  ])
   await expect(hex.getByRole('region', { name: 'Personal data' })).toContainText('Neon Moth')
   await expect(hex.getByRole('region', { name: 'Personal data' })).toContainText('Glimmerkin')
   await expect(hex.locator('.x-attrs > div > span')).toHaveText(['BOD', 'AGI', 'REA', 'STR', 'WIL', 'LOG', 'INT', 'CHA', 'M/R'])

@@ -106,6 +106,10 @@ export interface Sr6Purchase {
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
+  /** a weapon fitted to a vehicle or drone: the uid of the weapon mount (its sibling accessory) it sits in */
+  mount?: string
+  /** a vehicle mod installed by the player: half its nuyen price (Double Clutch p. 120; never an accessory's: owner Q6) */
+  diy?: true
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -296,6 +300,10 @@ export type Sr6Advance =
   /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
    *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
   | { op: 'upgrade'; target: string; line: Sr6Purchase }
+  /** an accessory (a vehicle mod, a weapon in a mount, an autosoft) fitted to the owned line whose uid is target, at its
+   *  price (do it yourself: half); unfit: the accessory whose uid is target taken off (no refund), kept for the history */
+  | { op: 'fit'; target: string; line: Sr6Purchase }
+  | { op: 'unfit'; target: string; line?: Sr6Purchase }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -328,6 +336,8 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'purchase',
   'drop',
   'upgrade',
+  'fit',
+  'unfit',
   'contact',
   'sin',
   'lifestyle',

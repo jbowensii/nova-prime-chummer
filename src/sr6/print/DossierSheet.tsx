@@ -602,7 +602,12 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                   <tr key={x.uid}>
                     <td>
                       {nameOf(x)}
-                      {acc(x)}
+                      {v.vehicleNotes(x).map(t => (
+                        <span key={t} className="d-small">
+                          {' '}
+                          {t}.
+                        </span>
+                      ))}
                     </td>
                     <td>{a.handling}</td>
                     <td>{a.accel}</td>

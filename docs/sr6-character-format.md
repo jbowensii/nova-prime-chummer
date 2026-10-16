@@ -120,7 +120,12 @@ copy". Book entries are never copied here.
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
+  vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
+  `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in (one naming none of them reads as
+  in no mount, noted); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
+  p. 120; never an accessory's). Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
+  older files read as they were. An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
@@ -182,7 +187,10 @@ the entry its `event` names.
   the uid of the line removed; the removed line may follow for the history; a `buyoff` of Stolen Gear with `part`, No
   Future's errata (NF p. 162), buys off that much of the karma converted at creation, `stolenGearBuyOff` Karma each, and
   the line stays with the total so far in its `<quality boughtOff>`; without `part`, the rest, and it goes), `upgrade` (`target`: the uid of the bought
-  item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
+  item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay), `fit`
+  (`target`: the uid of an owned line, a vehicle or drone; the `<purchase>` that follows is fitted to it, at its price,
+  half with `diy`; a weapon's `mount` names one of the line's mounts) and `unfit` (`target`: the uid of the accessory
+  taken off, no refund; a weapon in it stays, in no mount; the removed `<purchase>` may follow for the history),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),

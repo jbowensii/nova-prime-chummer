@@ -613,7 +613,7 @@ export function BookSheet({ art }: { art: SheetArt }) {
                     <F l="Sensor" v={a.sensor} />
                     <F l="Seats" v={a.seats} />
                   </div>
-                  <F l="Notes" v={x && x.accessories.map(nameOf).join(', ')} />
+                  <F l="Notes" v={x && v.vehicleNotes(x).join('; ')} />
                 </Box>
               )
             })}

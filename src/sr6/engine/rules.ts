@@ -55,6 +55,7 @@ import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
+import { modsOf } from './vehiclemods'
 import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -1621,6 +1622,14 @@ const RULES: Rule[] = [
           ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, x)}: its accessories take ${used} capacity; it has ${cap}.`, ...entryCite(he) }]
           : []
       }),
+  },
+  // an owned vehicle's or drone's mods past its slots, hardpoints or mounts, a weapon in no mount or too big for it,
+  // autosofts past its Pilot (vehiclemods.ts): listed, never enforced (owner 2026-10-16)
+  {
+    code: 'vehicle.mods',
+    severity: 'warning',
+    tab: 'vehicles',
+    check: c => c.b.purchases.filter(x => x.kind === 'vehicles').flatMap(x => modsOf(x, c.data).warnings.map(w => ({ path: `vehicles.${x.uid}`, ...w }))),
   },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },

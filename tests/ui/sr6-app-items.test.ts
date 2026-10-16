@@ -226,7 +226,7 @@ test('Creation method: the Infected type’s gained powers (free) and weaknesses
 
 // every printed sheet style shows the same data (owner 2026-10-16): only the look differs
 test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
-  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty',
+  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods and mounted weapon',
   async style => {
     saveSettings({ ...loadSettings(), print: style })
     const gainer =
@@ -243,8 +243,15 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
               .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
               .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
           : f.endsWith('crb/gear.xml')
-            ? x.replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
-            : x,
+            ? x
+                .replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
+                .replace(
+                  '</sr6:data>',
+                  '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear></sr6:data>',
+                )
+            : f.endsWith('crb/vehicles.xml')
+              ? x.replace('<name>Putt-Putt</name>', '<name>Putt-Putt</name><builtin name="Zap horn"/>')
+              : x,
     )
     const cr = stolenCr()
     cr.set('infectedAllowed', { key: 'infectedAllowed', value: true })
@@ -261,6 +268,16 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
       { uid: 'w2', kind: 'weapons', id: 'crb.zap-stick', qty: 1, accessories: [] },
       { uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] },
       { uid: 'a1', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
+      {
+        uid: 'v1',
+        kind: 'vehicles',
+        id: 'crb.putt-putt',
+        qty: 1,
+        accessories: [
+          { uid: 'm1', kind: 'gear', id: 'crb.zap-mount', qty: 1, diy: true, accessories: [] },
+          { uid: 'w3', kind: 'weapons', id: 'crb.zap-gun', qty: 1, mount: 'm1', accessories: [] },
+        ],
+      },
     ]
     await open(ch, 'print', c, cr)
     expect(document.querySelector(style === 'plain' ? '.sr6-sheet' : `.sr6-${style}`)).not.toBeNull() // (that style, not another)
@@ -275,5 +292,8 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     expect(t).toMatch(/Bounty: 3 of 3 karma turned into nuyen not bought off/)
     expect(t).toMatch(/Social/)
     expect(t).toMatch(/–1/) // (the vest's printed Social Rating)
+    expect(t).toMatch(/Putt-Putt[^]*Mods: Zap Weapon Mount \(do it yourself\)/)
+    expect(t).toMatch(/Weapons: Zap Gun \(in Zap Weapon Mount\)/)
+    expect(t).toMatch(/Built in: Zap horn/)
   },
 )
