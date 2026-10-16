@@ -529,7 +529,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await expect(work.locator('tr', { hasText: 'Hover Buzzer' })).toContainText('Pilot 3')
   await shoot(page, 'editor-vehicles')
 
-  // Contacts & lifestyle: a contact, a lifestyle, a fake SIN with a licence (one rated above it refused), karma to nuyen
+  // Contacts & lifestyle: a contact, a lifestyle, a fake SIN with a licence, karma to nuyen
   await tabs.filter({ hasText: 'Contacts & lifestyle' }).click()
   await work.getByRole('button', { name: 'Add a contact' }).click()
   await work.getByLabel('Contact 1 name').fill('Fixer Fred')
@@ -684,7 +684,7 @@ test('print: the SR6 sheet on the shared print page; Letter and A4 PDFs with no 
   await expect(sheet.locator('tr', { hasText: 'Zap Gun' })).toContainText('with Zap Scope')
   await expect(sheet.locator('tr', { hasText: 'Glow Eyes' })).toContainText('Alpha')
   await expect(sheet).toContainText('Cozy × 1 month')
-  await expect(sheet).toContainText('Zap Gun licence (2)')
+  await expect(sheet).toContainText('Licences: Zap Gun licence 2')
   await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText([
     'Printer-friendly',
