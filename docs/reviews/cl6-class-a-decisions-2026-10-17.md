@@ -51,6 +51,21 @@ Action: Add rating-range extraction pass. Most ranges are deterministic by item 
 - Injection Arrow: 1–14
 - Personal Assistant: 1–6
 
+**Revised ruling (owner, 2026-10-17): option b.** A range the book prints comes from
+extraction; an override row stays only where no book prints one.
+- Extracted (commit b8b0620e): Activesofts and Linguasofts 1–6 (CRB "All skillsofts are
+  available in ratings from 1 to 6", read from the heading the items sit under); GelWeave
+  1–4 (FS "Reactive Armor (Rating 1-4)", whose text names GelWeave); Extended Clip 1–2 (FS
+  "come in two styles: rating 1 and rating 2").
+- Override kept, with a note "range not printed; CL6 value, owner-accepted 2026-10-17":
+  14 BS BTLs/chips, Single Cybereye, CRB armor mods ×4, Attribute Increase, Iron Hawk bow and
+  arrow, Light/Heavy Barding, Naga Venom, Personal Assistant. Injection Arrow keeps its
+  override as the bow's printed cap of 14 (same mechanism as the CRB Arrow, commit 7645ccab).
+- Attribute Increase stays 1–13 (owner): the CRB's "maximum augmented increase of 4" is not
+  a cap on the item, because bonuses can stack.
+- Open: CRB prints "Linguasofts cannot go above rating 4" as well as the 1–6 skillsoft
+  sentence. Linguasofts carry 1–6 (CL6) until the owner rules.
+
 ---
 
 ## Group 3 — Avail not printed by book; CL6 infers it (36 items)
@@ -141,9 +156,14 @@ already correct). The class-a row is the `legality` field — our importer store
 **Root cause:** Legality field is not parsed separately from avail; importer copies the
 full avail string into both fields.
 
-**Ruling: FIX**
-Action: Extract restriction code separately. Legality field should store just the
-restriction ('L' / 'R' / etc.), not the full avail string.
+~~**Ruling: FIX**
+Action: Extract restriction code separately.~~
+
+**Revised ruling (owner, 2026-10-17): ACCEPT OURS → class-b.** The analysis above was wrong.
+The cl6check "ours" column shows our full avail string, but the comparison is of legality
+letters only: ours L (from the printed 3(L)), CL6 none (CL6 stores avail 2). The book prints
+3(L), so we are right on both the number and the letter; CL6 is wrong. The display-only
+change (commit 08e8d7ba) cleared nothing and was reverted (e0eedab3).
 
 ---
 
@@ -152,17 +172,18 @@ restriction ('L' / 'R' / etc.), not the full avail string.
 | Group | Items | Ruling | Action |
 |-------|-------|--------|--------|
 | 1 — HS dataterms avail+cost | 12 | FIX | Extract from H&S p52 table |
-| 2 — Rating range missing | 31 | FIX | Add per-item rating-range extraction |
+| 2 — Rating range missing | 31 | FIX | Extract printed ranges (4 items); override with note for unprinted |
 | 3A — SW preparations avail | 28 | ACCEPT OURS | Reclassify → class-b |
 | 3B — SO preparations avail | 3 | ACCEPT OURS | Reclassify → class-b |
 | 3C — DA Hurt Locker avail | 2 | ACCEPT OURS | Reclassify → class-b |
 | 3D — CLN Asphyxia Spores avail | 1 | ACCEPT OURS | Reclassify → class-b |
 | 3E — CRB-SEA Water-Repellent Coating avail | 1 | ACCEPT OURS | Reclassify → class-b |
 | 3F — TS Foamtek Refill avail | 1 | ACCEPT OURS | Reclassify → class-b |
-| 4 — WSS legality field | 1 | FIX | Extract restriction code separately |
+| 4 — WSS legality field | 1 | ACCEPT OURS | Reclassify → class-b (book prints 3(L); CL6 wrong) |
 | **Total** | **80** | | |
 
-**Real importer bugs to fix: 44** (Groups 1 + 2 + 4)  
-**Reclassify to class-b: 36** (Group 3, all sub-groups — book does not print avail; CL6 infers)
+**Importer fixes: 43** (Groups 1 + 2)  
+**Reclassify to class-b: 37** (Group 3, book does not print avail; Group 4, CL6 wrong)
 
-After fixes + reclassification: class-a count → 0. Accuracy target achieved.
+The before/after class-a count comes from a fresh cl6check run after PR #69 merges, not from
+this table. The 37 reclassifications are recorded here only; cl6check does not apply them yet.
