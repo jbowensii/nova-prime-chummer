@@ -658,5 +658,13 @@
   {"cl6": "Overclock", "kind": "programs", "id": "overclock", "kids": [{"tag": "fits", "attrs": {"slot": "software"}}], "gen": "family"},
   {"cl6": "Stealth", "kind": "programs", "id": "stealth", "kids": [{"tag": "fits", "attrs": {"slot": "software"}}], "gen": "family"},
   {"cl6": "Elemental Resistance", "kind": "qualities", "id": "elemental-resistance", "kids": [{"tag": "relevance", "attrs": {"topic": "combat"}}, {"tag": "selection", "attrs": {"type": "ELEMENT"}}], "gen": "family"},
-  {"cl6": "MCT-Nissan Roto-Drone", "kind": "vehicles", "id": "mct-nissan-roto-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint", "value": "1"}}], "gen": "family"}
+  {"cl6": "MCT-Nissan Roto-Drone", "kind": "vehicles", "id": "mct-nissan-roto-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint", "value": "1"}}], "gen": "family"},
+  {"cl6": "Chemical Protection", "id": "chemical-protection", "kind": "armor", "set": {"rating": "1–14"}, "gen": "value"},
+  {"cl6": "Cold Resistance", "id": "cold-resistance", "kind": "armor", "set": {"rating": "1–14"}, "gen": "value"},
+  {"cl6": "Electricity Resistance", "id": "electricity-resistance", "kind": "armor", "set": {"rating": "1–14"}, "gen": "value"},
+  {"cl6": "Fire Resistance", "id": "fire-resistance", "kind": "armor", "set": {"rating": "1–14"}, "gen": "value"},
+  {"cl6": "Attribute Increase", "id": "attribute-increase", "kind": "augmentations", "set": {"rating": "1–13"}, "gen": "value"},
+  {"cl6": "Activesoft", "id": "activesofts", "kind": "gear", "set": {"rating": "1–6"}, "gen": "value"},
+  {"cl6": "Linguasoft", "id": "linguasofts", "kind": "gear", "set": {"rating": "1–6"}, "gen": "value"},
+  {"cl6": "Injection Arrow", "id": "injection-arrow", "kind": "weapons", "set": {"rating": "1–14"}, "gen": "value"}
 ]
