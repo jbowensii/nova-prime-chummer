@@ -311,7 +311,7 @@ class ClassTest(unittest.TestCase):
         m = classes.table()
         self.assertGreater(sum(len(v) for v in m.values()), 200)
         self.assertTrue(all(key.fullmatch(c) for v in m.values() for c in v.values()))
-        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata")]
+        rows = [r for p in overrides.DIR.glob("*.json") for r in overrides.table(p.stem) if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner")]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
@@ -968,6 +968,18 @@ class OwnerRowsTest(unittest.TestCase):
         rows = [r for r in overrides.table("swc") if r.get("gen") == "owner"]
         self.assertEqual(rows, [{"cl6": "Nibiinaabe", "kind": "qualities", "id": "nibiinaabe", "gen": "owner",
                                  "kids": [{"tag": "power", "attrs": {"name": "Innate Spell (Darkness)"}, "replaces": {"name": "Darkness"}}]}])
+
+    def test_an_owner_row_sets_a_rating_over_a_stale_found_and_survives_a_value_regeneration(self):
+        from tools.cl6check import valuemap
+        xml = ('<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.chip" source="ZZ" page="9" rating="1"><name>Chip</name>'
+               '<found field="rating">p. 9</found><text/></gear></d>\n')
+        row = {"cl6": "Chip", "kind": "gear", "id": "zz.chip", "gen": "owner", "set": {"rating": "1–6"},
+               "note": "range not printed; CL6 value, owner-accepted 2026-10-17"}
+        g = ET.fromstring(overrides.apply("zz", {"gear.xml": xml}, overrides.check([row]))["gear.xml"].encode())[0]
+        self.assertEqual((g.get("rating"), [c.tag for c in g]), ("1–6", ["name", "text"]))
+        old = [row, {"cl6": "Old", "kind": "gear", "id": "zz.old", "gen": "value", "set": {"cost": "5"}}]
+        new = {"cl6": "New", "kind": "gear", "id": "zz.new", "gen": "value", "set": {"cost": "7"}}
+        self.assertEqual(valuemap.replace_value_rows(old, [new]), [row, new])
 
 
 class SplitRowsTest(unittest.TestCase):

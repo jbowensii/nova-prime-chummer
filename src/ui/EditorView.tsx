@@ -33,6 +33,7 @@ import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { Sheet } from '../print/Sheet'
 import { BookSheet } from '../print/BookSheet'
+import { OfficialSheet } from '../print/OfficialSheet'
 import { usePrintStyle } from '../print/shared'
 import { AskRules } from './AskRules'
 import { IconButton } from './icons'
@@ -42,7 +43,8 @@ import { TabBoundary } from '../shared/ui'
 
 /** The print page: the sheet the toolbar's Sheet type (or Settings) picks. */
 function PrintSheet() {
-  return usePrintStyle() === 'book' ? <BookSheet /> : <Sheet />
+  const p = usePrintStyle()
+  return p === 'official' ? <OfficialSheet /> : p === 'book' ? <BookSheet /> : <Sheet />
 }
 
 const TABS: [string, string][] = [

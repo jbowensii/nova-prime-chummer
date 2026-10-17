@@ -63,8 +63,8 @@ extraction; an override row stays only where no book prints one.
   override as the bow's printed cap of 14 (same mechanism as the CRB Arrow, commit 7645ccab).
 - Attribute Increase stays 1–13 (owner): the CRB's "maximum augmented increase of 4" is not
   a cap on the item, because bonuses can stack.
-- Open: CRB prints "Linguasofts cannot go above rating 4" as well as the 1–6 skillsoft
-  sentence. Linguasofts carry 1–6 (CL6) until the owner rules.
+- Linguasofts 1–4 (owner, 2026-10-17): the CRB's "Linguasofts cannot go above rating 4" wins over the general skillsoft 1–6 sentence; CommLink6 agrees.
+- Kept override rows are gen: owner (owner, 2026-10-17), so a valuemap.py regeneration leaves them.
 
 ---
 
