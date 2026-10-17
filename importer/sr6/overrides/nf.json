@@ -94,5 +94,6 @@
   {"cl6": "No Future errata", "kind": "augmentations", "id": "cybereyes-rating-5", "rename": "Cybereyes (Rating 6)", "alias": false},
   {"cl6": "No Future errata", "kind": "augmentations", "id": "cybereyes-rating-6", "rename": "Cybereyes (Rating 7)", "alias": false},
   {"cl6": "No Future errata", "kind": "augmentations", "id": "cyberears-rating-5", "rename": "Cyberears (Rating 6)", "alias": false},
-  {"cl6": "No Future errata", "kind": "augmentations", "id": "cyberears-rating-6", "rename": "Cyberears (Rating 7)", "alias": false}
+  {"cl6": "No Future errata", "kind": "augmentations", "id": "cyberears-rating-6", "rename": "Cyberears (Rating 7)", "alias": false},
+  {"cl6": "Vocal Expansion", "kind": "augmentations", "id": "vocal-expansion", "gen": "cl6", "why": "the book's text is cut off after the raised limit; Commlink6 gives an Edge on Con", "effects": [{"target": "skill:con", "op": "edge", "value": "1"}]}
 ]

@@ -423,6 +423,17 @@
          on the runner (owner decision #16) -->
     <xs:attribute name="affects"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="caster"/><xs:enumeration value="target"/><xs:enumeration value="others"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- the id of the linked entry whose effect the importer copied here (effects.py copy_links; owner direction
+         2026-10-17: every entry holds the effects of its whole object); the book's own word for the entry is without it -->
+    <xs:attribute name="from" type="xs:string"/>
+    <!-- the heading of the rule the book states for all the items of a class (a section's intro, a variant's table row):
+         the importer gives it to the entries of the same class in other books, each `from` "<source>:<heading>"
+         (import bookkeeping) -->
+    <xs:attribute name="rule" type="xs:string"/>
+    <!-- cl6: the effect is a hand-written Commlink6 override (importer/sr6/overrides/<book>.json, "gen": "cl6"), not the book
+         reader's: shown as such, a rare exception to the owner's rule that our reader is the primary source -->
+    <xs:attribute name="gen"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="cl6"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
        `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a
@@ -437,6 +448,9 @@
     <xs:attribute name="ref" type="sr6:Id"/>
     <xs:attribute name="level" type="xs:positiveInteger"/>
     <xs:attribute name="when" type="xs:string"/>
+    <!-- yes: the importer copied that entry's effects into this one (each `from` its id): not followed again -->
+    <xs:attribute name="copied"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="yes"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <xs:complexType name="Test">
     <xs:attribute name="skill" type="xs:string" use="required"/>

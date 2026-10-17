@@ -190,7 +190,7 @@ class RoundTwoReaderTest(unittest.TestCase):
 
     def test_buying_it_twice_is_not_a_second_effect(self):
         self.assertEqual([(a["target"], a["value"]) for a in attrs("+1 DV with claws. May be bought twice, for a total of +2.", "critterpowers")],
-                         [("item:dv", "1")])
+                         [("derived:unarmed-dv", "1")])  # (claws: the natural weapon, a critter power's DV is the unarmed one)
 
     def test_the_sentences_about_the_other_version_are_not_this_ones(self):
         files = augs([("g", "Zap Resist (Alpha Resistance (general))"), ("s", "Zap Resist (Alpha Resistance (specific))")])

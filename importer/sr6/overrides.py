@@ -20,6 +20,10 @@ runs cannot see: the No Future errata, nf.json): "set" values (null drops the at
 and "effects" (a list of effect attribute dicts, each with its "target": the entry's effect of that target is
 replaced), and "kids" (a <status name level> the item applies). It applies after every other id row, so it wins over
 Commlink6's values.
+An id row with "gen": "cl6" is an effect only Commlink6 has (the book's text states none, or states it in a form the format cannot read:
+the owner's direction 2026-10-17, our reader is the primary source and Commlink6 a rare override), written by hand, never regenerated: its
+"effects" (a list of effect attribute dicts, each with its "target" and "op": the entry's effect of that target and op is replaced; each is written with `gen="cl6"`, so
+the app, the export and the Foundry module can tell it from the book reader's) and its "why", one line.
 An id row with "gen": "owner" is the owner's correction of a book's misprint, by hand, never regenerated: its "kids" may
 carry "replaces" {"<attribute>": "<value>"}, the entry's child of the kid's tag with those attributes replaced in place
 (a name the book prints that is no entry: Nibiinaabe's gained power `Darkness`, a spell, is the critter power
@@ -129,7 +133,7 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family", "errata", "owner") and not any(k in r for k in OPS):
+        if "id" in r and r.get("gen") in ("value", "family", "errata", "owner", "cl6") and not any(k in r for k in OPS):
             if not (r.get("set") or r.get("kids") or r.get("effects")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
             if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
@@ -137,6 +141,8 @@ def check(rows):
         elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
+        if r.get("gen") == "cl6" and not (isinstance(r.get("why"), str) and r["why"].strip() and chr(10) not in r["why"]):
+            raise ValueError(f"override of {r.get('id')}: a Commlink6 row says why in one line")
         if not all(isinstance(a, dict) and a.get("target") for a in r.get("effects", [])):
             raise ValueError(f"override of {r.get('id')}: each effect names its target (it replaces the entry's effect of that target)")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
@@ -257,7 +263,7 @@ def _set_by_id(out, rows):
     want, forms, vals, kids, effs = {}, {}, {}, {}, {}
     for r in sorted(rows, key=lambda r: r.get("gen") == "errata"):  # (an errata's values last: they win)
         if r.get("effects"):
-            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["effects"])
+            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend({**a, "gen": "cl6"} if r.get("gen") == "cl6" else a for a in r["effects"])  # (a Commlink6 row's effect says so)
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
@@ -280,7 +286,7 @@ def _set_by_id(out, rows):
                     else:
                         e.set(k, str(v))
                 for a in effs.get(name, {}).get(e.get("id"), []):  # (replaces the same target's effect)
-                    for c in [c for c in e if c.tag == "effect" and c.get("target") == a["target"]]:
+                    for c in [c for c in e if c.tag == "effect" and c.get("target") == a["target"] and (not a.get("op") or c.get("op") == a["op"])]:
                         e.remove(c)
                     c = etree.Element("effect", {x: str(v) for x, v in a.items()})
                     e.insert(sum(1 for c in e if c.tag in ("name", "alias", "formula", "issue", "found")), c)

@@ -301,6 +301,31 @@ Same branch, still **not committed, no PR**. Importer suite 1,171 tests pass (27
 
 **Still open:** MeFeed, Shopsoft and Data Haven Membership have the right target but no `when` for the topic; "doubles the concealment bonus" (Krime Saint Nicholas Carbine) is a multiplier the grammar cannot hold; Facial Scanner's Edge stays on the user, as the text reads.
 
+## 12. The whole-object reader (2026-10-17)
+
+Owner direction: our reader is the primary source, from the whole imported entry; CommLink6 is a rare, marked override; the book wins where the two disagree.
+
+| Stage | CL6 effects reproduced (of 1,079) |
+|---|---:|
+| PR #70 | 727 (67.4%) |
+| Fairer matcher only (specializations, Essence/price units, variant to sibling entry) | 748 (69.3%) |
+| Batch 1: book block for empty entries, links copied across books, variant table rows, cyberlimb section rule, new defense/matrix/tire targets | 827 (76.6%) |
+| Batch 2 and four Opus review rounds | **881 (81.7%)** |
+
+The last figure comes from a replay that follows the importer's own order (`run.py` `_read`: read every entry, the overrides, then read the entries an override added). An earlier replay kept stale effects from the saved run and was replaced.
+
+**What the reader reads now:** the entry's own book block when its description is empty; links ("See X, p. N", "same as", "exactly like", "also have the X benefits") whose effects are copied onto the entry, marked `from=` the linked id, the link `copied`; a variant's row in its table; the cyberlimb section rule (`limb-attr:* set 2`, cyberlimbs only); printed fields ("Dice pool effect", ammunition DV); Edge wording and lists; natural weapons as unarmed Attack Rating and Damage Value; creation rules (`resource:maxed-out-attributes`, `maxed-out-skills`, `adjust-drake`).
+
+**New targets:** `test:defense-astral`, `test:defense-spell-direct`, `test:defense-spell-indirect`, `derived:matrix-defense`, `limb-attr:*`, on-road/off-road value pairs on `item:acceleration` and `item:speed-interval`.
+
+**CommLink6 as an override:** 11 rows (`"gen": "cl6"`, a required one-line `why`) in the crb, emc, fs, ll, nf and sw override files. Each replaces only its own target and op, and the effect it writes carries `gen="cl6"` so the app, the export and Foundry can tell it from the book reader. The FRAG warhead's 0.75 damage multiplier cannot be expressed.
+
+**Owner corrections reach linked entries (Option 1):** when the owner has corrected a linked entry (the edits layer), the app and the export follow it live and drop the stale copies, up to two links away, without counting an effect twice.
+
+**Not matched, and why:** 82 rows where CommLink6 differs from the book (book wins); about a dozen where the book prints no value (Reakt, engines, Improved Handling and Seating, Knowsofts, Critter Armor); natural weapons CommLink6 models as item stats; smaller wording gaps.
+
+**Checks:** 1,236 importer tests and 1,805 app tests pass; lint, format and types clean; no book text over 12 words in code or tests; Anarchy untouched. Opus reviewed batch 1, batch 2 and two rounds of fixes; every confirmed finding was fixed with a test.
+
 ## Appendix A: Translation table (CL6 signature to our target to Eden key)
 
 Evidence rows: `effects-matching\all_cl6_modifications_v3.csv`; the version-4 results are in `effects-matching\eval4.csv`. "Eden" is the actor key from [the catalog](active-effects-variable-catalog-2026-10-17.md).

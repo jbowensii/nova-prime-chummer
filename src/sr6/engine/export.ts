@@ -16,10 +16,10 @@ import type {
   Sr6Purchase,
   SlotShift,
 } from '../model/character'
-import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Source } from '../model/types'
+import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
 import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
-import { bonusValue } from './effects'
+import { bonusValue, linkedViews, ownParts, type LinkLookup } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
 import { num as ruleNum, type CreationRules } from './creation'
@@ -99,8 +99,13 @@ export interface Sr6ExportEffect {
   when?: string
   spec?: string
   affects?: 'caster' | 'target' | 'others'
+  /** the id of the linked entry the importer copied this effect from (effects.py copy_links) */
+  from?: string
+  /** `cl6`: a hand-written Commlink6 override (overrides/<book>.json), not the book reader's */
+  gen?: 'cl6'
 }
-/** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects */
+/** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects, unless `copied`
+ *  (they are already among this item's own effects, each `from` the linked id) */
 export interface Sr6ExportLink {
   rel: 'grants' | 'as'
   name: string
@@ -108,6 +113,7 @@ export interface Sr6ExportLink {
   id?: string
   level?: number
   when?: string
+  copied?: true
 }
 /** A test the entry's text calls for (the catalog's <test>): skill + attribute (threshold) */
 export interface Sr6ExportTest {
@@ -393,9 +399,9 @@ export function exportAttrs(e: Sr6Entry): Record<string, string> {
   return a
 }
 
-/** The catalog's <effect> and <test> parts of an entry, when it has any. */
-function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'links'> {
-  const effects = e.parts
+/** Effect parts as the export's effects. */
+const exportEffects = (parts: Sr6Part[]): Sr6ExportEffect[] =>
+  parts
     .filter(p => p.tag === 'effect' && p.attrs.target && p.attrs.value && p.attrs.op)
     .map(p => ({
       target: p.attrs.target,
@@ -405,10 +411,33 @@ function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'link
       ...(p.attrs.switch ? { switch: p.attrs.switch } : {}),
       ...(p.attrs.when ? { when: p.attrs.when } : {}),
       ...(p.attrs.spec ? { spec: p.attrs.spec } : {}),
+      ...(p.attrs.from ? { from: p.attrs.from } : {}),
+      ...(p.attrs.gen === 'cl6' ? { gen: 'cl6' as const } : {}),
       ...(p.attrs.affects === 'caster' || p.attrs.affects === 'target' || p.attrs.affects === 'others'
         ? { affects: p.attrs.affects as 'caster' | 'target' | 'others' }
         : {}),
     }))
+
+/** A linked entry's effects as the linking one holds them: its own less stale copies, then those of the entries it links
+ *  (two levels deep, as the reader reads them); a link's condition goes on them. */
+function liveEffects(lookup: LinkLookup, e: Sr6Entry, depth: number): Sr6ExportEffect[] {
+  const own = exportEffects(ownParts(lookup, e))
+  const more = depth < 2 ? linkedViews(lookup, e).flatMap(v => liveEffects(lookup, { ...v.entry, parts: v.parts }, depth + 1).map(f => whenOf(f, v.part))) : []
+  return [...own, ...more]
+}
+const whenOf = (f: Sr6ExportEffect, link: Sr6Part): Sr6ExportEffect =>
+  link.attrs.when ? { ...f, when: link.attrs.when, ...(f.switch ? {} : { switch: 'conditional' }) } : f
+
+/** The catalog's <effect> and <test> parts of an entry, when it has any. A link marked `copied` has its linked entry's effects
+ *  among the entry's own, each `from` that entry's id; when the user has corrected the linked entry (the edits layer) those
+ *  copies are stale and the corrected entry's live effects stand in their place, as copies `from` it, the link still `copied`
+ *  (so the Foundry importer module does not follow it again). */
+function effectsOf(e: Sr6Entry, lookup: LinkLookup): Pick<Sr6ExportItem, 'effects' | 'tests' | 'links'> {
+  const own = exportEffects(ownParts(lookup, e))
+  const live = linkedViews(lookup, e)
+    .filter(v => v.part.attrs.copied)
+    .flatMap(v => liveEffects(lookup, { ...v.entry, parts: v.parts }, 1).map(f => ({ ...whenOf(f, v.part), from: v.raw.id })))
+  const effects = [...own, ...live]
   const links = e.parts
     .filter(p => p.tag === 'link' && p.attrs.name && (p.attrs.rel === 'grants' || p.attrs.rel === 'as'))
     .map(p => ({
@@ -418,6 +447,7 @@ function effectsOf(e: Sr6Entry): Pick<Sr6ExportItem, 'effects' | 'tests' | 'link
       ...(p.attrs.ref ? { id: p.attrs.ref } : {}),
       ...(Number(p.attrs.level) > 0 ? { level: Number(p.attrs.level) } : {}),
       ...(p.attrs.when ? { when: p.attrs.when } : {}),
+      ...(p.attrs.copied ? { copied: true as const } : {}),
     }))
   const tests = e.parts
     .filter(p => p.tag === 'test' && p.attrs.skill && p.attrs.attr)
@@ -468,9 +498,9 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
   })
 
 /** The entry as printed plus its values; its text when `text` and there is some. */
-function item(c: Sr6Catalog, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
+function item(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return {
-    ...effectsOf(e),
+    ...effectsOf(e, data),
     ...aliasesOf(c, e),
     id: e.id,
     kind: e.kind,
@@ -521,7 +551,7 @@ const leveled = (data: Sr6Data, e: Sr6Entry | undefined, level: number | undefin
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {
   const e = leveled(data, entryOf(x, data), x.rating)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
-  const base = e ? item(c, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
+  const base = e ? item(c, data, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
   const one = priced({ ...x, qty: 1, accessories: [] }, data, cr),
     values = { ...base.values }
   for (const k of ['cost', 'avail', 'essence'] as const) if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
@@ -647,7 +677,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     qualities: b.qualities.map(q => {
       const e = leveled(data, data.entry('qualities', q.id), q.level)
       return defined({
-        ...(e ? item(c, e, true) : bare('qualities', q.name ?? q.id, q.id)),
+        ...(e ? item(c, data, e, true) : bare('qualities', q.name ?? q.id, q.id)),
         uid: q.uid,
         positive: e?.attrs.kind !== 'negative',
         level: q.level,
@@ -658,7 +688,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     picks: b.picks.map(p => {
       const e = leveled(data, data.entry(p.kind, p.id), p.level)
       return defined({
-        ...(e ? item(c, e, true) : bare(p.kind, p.name ?? p.id, p.id)),
+        ...(e ? item(c, data, e, true) : bare(p.kind, p.name ?? p.id, p.id)),
         uid: p.uid,
         pick: p.kind,
         level: p.level,
@@ -668,7 +698,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     martialArts: b.martialArts.map(m => {
       const line = (kind: 'martialarts' | 'martialtechniques', x: { uid: string; id: string; name?: string }) => {
         const e = data.entry(kind, x.id)
-        return { ...(e ? item(c, e, true) : bare(kind, x.name ?? x.id, x.id)), uid: x.uid }
+        return { ...(e ? item(c, data, e, true) : bare(kind, x.name ?? x.id, x.id)), uid: x.uid }
       }
       return {
         ...line('martialarts', m),
@@ -727,7 +757,7 @@ export const exportSr6Runners = (
 const BEINGS = new Set<Sr6Kind>(Object.values(NPC_KINDS).map(k => k.kind))
 function bookEntry(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean): Sr6ExportEntry {
   // a spirit or sprite at its default rating, a grunt at its Professional Rating
-  return { ...item(c, e, text), id: e.id, source: e.source, page: e.page, ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}) }
+  return { ...item(c, data, e, text), id: e.id, source: e.source, page: e.page, ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}) }
 }
 const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] => ({
   id: s.id,
