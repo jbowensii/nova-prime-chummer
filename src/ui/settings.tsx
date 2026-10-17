@@ -17,7 +17,7 @@ export interface Settings {
   /** system: light or dark as this device is set to (prefers-color-scheme); applySettings turns it into one of the two */
   theme: 'light' | 'dark' | 'system'
   texture: 'flat' | 'accents' | 'full'
-  print: 'plain' | 'color' | 'book' | 'neon' | 'hex' | 'dossier'
+  print: 'plain' | 'color' | 'book' | 'official' | 'neon' | 'hex' | 'dossier'
   art: 'on' | 'off'
   artStrength: number
   sheetArt: 'on' | 'off'
@@ -83,6 +83,7 @@ export const PRINT_STYLES: [Settings['print'], string, string][] = [
   ['plain', 'Printer-friendly', 'Book styling on white, no textures.'],
   ['color', 'Full color', 'Paper and paint, like a page from the PDF.'],
   ['book', 'Book style', 'Laid out like the rulebook’s example sheet.'],
+  ['official', 'Official sheet', 'The two-column fillable sheet: yellow column, coffee-ring attributes.'],
 ]
 /** Shadowrun 6's: the two paper styles, its own Book style (the official sheet's boxes), Neon (one dense page for play),
  *  Hex (one page, attributes and tracks as hexagons) and Dossier (rounded panels under magenta bars, up to two pages).
