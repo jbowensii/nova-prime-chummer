@@ -12,6 +12,7 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element name="npc" type="c:Npc" minOccurs="0"/>
+        <xs:element name="design" type="c:Design" minOccurs="0"/>
         <xs:element name="portrait" type="xs:string" minOccurs="0"/>
         <xs:element name="token" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
@@ -113,6 +114,10 @@
   <xs:simpleType name="CoreAttr"><xs:restriction base="c:Attr">
     <xs:enumeration value="bod"/><xs:enumeration value="agi"/><xs:enumeration value="rea"/><xs:enumeration value="str"/>
     <xs:enumeration value="wil"/><xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/>
+  </xs:restriction></xs:simpleType>
+  <!-- a vehicle's or drone's mod slot category (Double Clutch p. 120) -->
+  <xs:simpleType name="SlotKind"><xs:restriction base="xs:string">
+    <xs:enumeration value="chassis"/><xs:enumeration value="powertrain"/><xs:enumeration value="electronics"/>
   </xs:restriction></xs:simpleType>
   <xs:simpleType name="Count"><xs:restriction base="xs:nonNegativeInteger"/></xs:simpleType>
 
@@ -260,6 +265,30 @@
     <xs:attribute name="name" type="xs:string"/>
     <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
     <xs:attribute name="boughtOff" type="c:Count"/>
+    <!-- an owned critter's companion quality only (Wild Life pp. 184-186): tamed, the Wild Soul and the negative balancing
+         it a tamed critter gets (p. 184); bonded, bought with the runner's Karma through the Critter Bond path's Permanent
+         Improvement (SWC p. 139); absent: specified with the critter's purchase (its Karma moves the price, p. 180) -->
+    <xs:attribute name="how">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="tamed"/><xs:enumeration value="bonded"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- an owned critter's command or special training (Wild Life pp. 181-183): what (command or training), the catalog
+       action's id and name (no id: an older file's unnamed one); taught, taught after the critter was bought (+500¥ a
+       command, +750¥ a special training, p. 180; a tamed critter's always), absent: it came with the purchase (+1 Body in
+       the price formula and +1 Availability each, p. 183) -->
+  <xs:complexType name="Trained">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="what" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="command"/><xs:enumeration value="training"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="taught" type="xs:boolean"/>
   </xs:complexType>
 
   <!-- a spell, ritual, adept power, complex form, metamagic or echo -->
@@ -354,7 +383,8 @@
     <xs:sequence><xs:element name="entry" type="c:Entry" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
   </xs:complexType>
   <xs:complexType name="Entry" mixed="true">
-    <xs:choice minOccurs="0">
+    <!-- (two: a bond's quality and the negative taken with it) -->
+    <xs:choice minOccurs="0" maxOccurs="2">
       <xs:element name="knowledge" type="c:Knowledge"/>
       <xs:element name="quality" type="c:Quality"/>
       <xs:element name="pick" type="c:Pick"/>
@@ -363,6 +393,7 @@
       <xs:element name="purchase" type="c:Purchase"/>
       <xs:element name="contact" type="c:Contact"/>
       <xs:element name="sin" type="c:Sin"/>
+      <xs:element name="trained" type="c:Trained"/>
     </xs:choice>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="at" type="xs:string" use="required"/>
@@ -381,19 +412,32 @@
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
          sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
-         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN) -->
+         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN); fit: target the uid of the owned
+         line the <purchase> that follows is fitted to; unfit: target the uid of the accessory taken off (the <purchase>
+         removed may follow); shift: target the uid of the owned vehicle or drone whose mod slots are shifted, two of the
+         category `from` into one of `to` (Double Clutch p. 120; free); move: target the uid of the weapon moved, `mount`
+         the uid of the weapon mount (an accessory of the same vehicle) it is moved to (no new charge); bond: target the uid
+         of an owned critter, the <quality how="bonded"> bought for it with the runner's Karma (SWC p. 139; its uid naming
+         one of the critter's qualities: that one upgraded) and the negative <quality> taken with it, if any (WL p. 184);
+         teach: target the uid of an owned critter, the <trained taught="true"> taught to it (WL p. 180: +500¥ a command,
+         +750¥ a special training) -->
     <xs:attribute name="op">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="attribute"/><xs:enumeration value="skill"/><xs:enumeration value="spec"/>
         <xs:enumeration value="expertise"/><xs:enumeration value="knowledge"/><xs:enumeration value="quality"/>
         <xs:enumeration value="buyoff"/><xs:enumeration value="pick"/><xs:enumeration value="powerpoint"/>
         <xs:enumeration value="initiate"/><xs:enumeration value="purchase"/><xs:enumeration value="drop"/><xs:enumeration value="upgrade"/>
-        <xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
+        <xs:enumeration value="fit"/><xs:enumeration value="unfit"/><xs:enumeration value="shift"/><xs:enumeration value="move"/>
+        <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
+        <xs:enumeration value="teach"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
+    <xs:attribute name="from" type="c:SlotKind"/>
+    <xs:attribute name="to" type="c:SlotKind"/>
+    <xs:attribute name="mount" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
     <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
@@ -417,6 +461,39 @@
 
   <!-- an SR6 NPC's stat block: the printed values (stat) and the parts' text (line), copied from the catalog entry it was
        made from (from*) or entered by the GM; rating: the Professional Rating, Force or Level -->
+  <!-- a vehicle or drone design (the Designer, Double Clutch pp. 150-155; src/sr6/engine/design.ts), first in the file
+       (the server's design check), its build blank: the catalog's vehicledesign parts picked, each option, modification
+       or quality factor with its level (1: taken once; negative: an option taken in reverse), and the mods built in as
+       design options (2 Design Points per mod slot, their nuyen added to the price). diy: built yourself (half the
+       price, p. 155); approved: made or approved by a GM (bought, it needs no GM approval). Nothing derived is stored. -->
+  <xs:complexType name="Design">
+    <xs:sequence>
+      <xs:element name="option" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string" use="required"/>
+          <xs:attribute name="level" type="xs:integer" use="required"/>
+          <!-- Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both -->
+          <xs:attribute name="road">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="on"/><xs:enumeration value="off"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="vehicle"/><xs:enumeration value="drone"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="chassis" type="xs:string"/>
+    <xs:attribute name="powertrain" type="xs:string"/>
+    <xs:attribute name="console" type="xs:string"/>
+    <xs:attribute name="diy" type="xs:boolean"/>
+    <xs:attribute name="approved" type="xs:boolean"/>
+  </xs:complexType>
+
   <xs:complexType name="Npc">
     <xs:sequence>
       <xs:element name="stat" minOccurs="0" maxOccurs="unbounded">
@@ -440,7 +517,21 @@
           </xs:attribute>
         </xs:extension></xs:simpleContent></xs:complexType>
       </xs:element>
+      <!-- a critter the GM designs (designed="true"): its powers and weaknesses (catalog critter powers, id; none: by name)
+           and skills; its lines are generated from them -->
+      <xs:element name="power" type="c:CritterPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="weakness" type="c:CritterPower" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="skill" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="id" type="xs:string"/>
+          <xs:attribute name="name" type="xs:string" use="required"/>
+          <xs:attribute name="rank" type="c:Count" use="required"/>
+          <xs:attribute name="spec" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
     </xs:sequence>
+    <xs:attribute name="designed" type="xs:boolean"/>
+    <xs:attribute name="dice" type="c:Count"/>
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="grunt"/><xs:enumeration value="contact"/><xs:enumeration value="critter"/><xs:enumeration value="spirit"/><xs:enumeration value="sprite"/>
@@ -453,6 +544,12 @@
     <xs:attribute name="fromName" type="xs:string"/>
     <xs:attribute name="fromSource" type="xs:string"/>
     <xs:attribute name="fromPage" type="xs:positiveInteger"/>
+  </xs:complexType>
+  <xs:complexType name="CritterPower">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="level" type="c:Count"/>
+    <xs:attribute name="note" type="xs:string"/>
   </xs:complexType>
 
   <!-- what a ware, power or item adds (entered by the player): an attribute, initiative dice, Defense Rating or a skill's
@@ -496,6 +593,7 @@
       <xs:element name="bonus" type="c:Bonus" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="knowledge" type="c:Knowledge" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="quality" type="c:Quality" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="trained" type="c:Trained" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="pick" type="c:Pick" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
@@ -508,7 +606,7 @@
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="weapons"/><xs:enumeration value="armor"/><xs:enumeration value="augmentations"/>
         <xs:enumeration value="electronics"/><xs:enumeration value="programs"/><xs:enumeration value="gear"/>
-        <xs:enumeration value="vehicles"/><xs:enumeration value="ammotypes"/>
+        <xs:enumeration value="vehicles"/><xs:enumeration value="ammotypes"/><xs:enumeration value="critters"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string"/>
@@ -522,6 +620,36 @@
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
+    <!-- a weapon fitted to a vehicle or drone: the uid of the weapon mount (an accessory of the same vehicle) it is in -->
+    <xs:attribute name="mount" type="xs:string"/>
+    <!-- a vehicle mod the player installs: half its nuyen price (Double Clutch p. 120; never an accessory's) -->
+    <xs:attribute name="diy" type="xs:boolean"/>
+    <!-- a vehicle or drone bought from a design (the Designer): the design's id; the line's id is design.<that id> and its
+         snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
+         when a GM made or approved the design) -->
+    <xs:attribute name="design" type="xs:string"/>
+    <!-- a vehicle's or drone's mod slots shifted between categories (Double Clutch p. 120), in the order made: `from>to`
+         each, two slots of the first category given for one of the second (`chassis>powertrain`) -->
+    <xs:attribute name="slotShifts">
+      <xs:simpleType><xs:list>
+        <xs:simpleType><xs:restriction base="xs:string">
+          <xs:pattern value="(chassis|powertrain|electronics)&gt;(chassis|powertrain|electronics)"/>
+        </xs:restriction></xs:simpleType>
+      </xs:list></xs:simpleType>
+    </xs:attribute>
+    <!-- an owned critter (kind critters; its <quality>s its companion qualities, its <trained> its named commands and
+         special training): the pet class the player chose (absent: mundane; Awakened and Emerged come from its Magic or
+         Resonance), tamed from the wild instead of bought (no price, Wild Life p. 184) -->
+    <xs:attribute name="pet">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="mundane"/><xs:enumeration value="exotic"/><xs:enumeration value="wild"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="tamed" type="xs:boolean"/>
+    <!-- read only, an older file's (before they were named): how many commands and special training the critter had;
+         read as that many unnamed <trained> (with the purchase; a tamed critter's taught), noted. Not written -->
+    <xs:attribute name="commands" type="c:Count"/>
+    <xs:attribute name="training" type="c:Count"/>
     <!-- read only, an older file's (before every licence was one of a SIN's <licence item>): the uids of the SINs an item
          whose Availability prints a licence fee was licensed on; read as a licence on each (a fake SIN's rated as the
          SIN), one naming no SIN of the runner left out. Not written -->

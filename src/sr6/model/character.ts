@@ -83,11 +83,49 @@ export const BONUS_TARGETS: Bonus['target'][] = [
 /** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
-export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes'
-export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes']
+/** critters: a critter the runner owns (catalog critters; the Critters tab, src/sr6/engine/critters.ts) */
+export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes' | 'critters'
+export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes', 'critters']
+/** The pet classes a player picks for a critter bought (Wild Life p. 180); Awakened and Emerged come from its Magic or
+ *  Resonance. */
+export type PetClass = 'mundane' | 'exotic' | 'wild'
+export const PET_CLASSES: PetClass[] = ['mundane', 'exotic', 'wild']
+/** One of an owned critter's companion qualities (Wild Life pp. 184-186, catalog qualities of class CRITTERWARE/QUALITY).
+ *  how: none, specified when it was bought (its Karma moves the price, p. 180); tamed, the Wild Soul and the negative
+ *  balancing it a tamed critter gets (p. 184); bonded, bought with the runner's own Karma through the Critter Bond path's
+ *  Permanent Improvement (SWC p. 139). bought: (never stored; the career build's) the id and level one specified with
+ *  the purchase had before a bond upgraded it: what its price still reads. */
+export interface Sr6CritterQuality {
+  uid: string
+  id: string
+  level: number
+  name?: string
+  how?: 'tamed' | 'bonded'
+  bought?: { id: string; level: number }
+}
+/** One of an owned critter's trained commands or special trainings (Wild Life pp. 181-183: a catalog action of category
+ *  Critter Command Actions or Critter Special Training; no id: an older file's unnamed one, kept from its count). taught:
+ *  taught after it was bought (+500¥ a command, +750¥ a special training, p. 180; a tamed critter's always are); absent:
+ *  it came with the purchase (+1 Body in the price formula and +1 Availability each, p. 183). */
+export interface Sr6CritterTrained {
+  uid: string
+  what: 'command' | 'training'
+  id?: string
+  name?: string
+  taught?: true
+}
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
+/** A vehicle's or drone's mod slot categories (Double Clutch p. 120). */
+export type SlotKind = 'chassis' | 'powertrain' | 'electronics'
+export const SLOT_KINDS: SlotKind[] = ['chassis', 'powertrain', 'electronics']
+/** One shift of mod slots (Double Clutch p. 120: any available slots can be shifted to another category at 2:1): two
+ *  slots of `from` give one of `to`. */
+export interface SlotShift {
+  from: SlotKind
+  to: SlotKind
+}
 export interface Sr6Purchase {
   uid: string
   kind: PurchaseKind
@@ -106,6 +144,38 @@ export interface Sr6Purchase {
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
+  /** a weapon fitted to a vehicle or drone: the uid of the weapon mount (its sibling accessory) it sits in */
+  mount?: string
+  /** a vehicle mod installed by the player: half its nuyen price (Double Clutch p. 120; never an accessory's: owner Q6) */
+  diy?: true
+  /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
+   *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
+  design?: string
+  /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
+  slotShifts?: SlotShift[]
+  /** a critter: the pet class the player chose (none: mundane), tamed from the wild instead of bought (no price, Wild
+   *  Life p. 184), its named commands and special training (pp. 181-183) and companion qualities */
+  pet?: PetClass
+  tamed?: true
+  trained?: Sr6CritterTrained[]
+  critterQualities?: Sr6CritterQuality[]
+}
+
+/** A vehicle or drone design (the Designer, Double Clutch pp. 150-155): the parts picked (catalog vehicledesign ids),
+ *  each option, modification or quality factor with its level (1 for one taken once; negative: an option taken in
+ *  reverse), the mods built in as design options (gear lines: 2 Design Points per mod slot, their nuyen added to the
+ *  price), built yourself (half the price, p. 155) and approved by a GM (bought designs then need no approval). Nothing
+ *  derived is stored (src/sr6/engine/design.ts works it out). */
+export interface Sr6Design {
+  kind: 'vehicle' | 'drone'
+  chassis?: string
+  powertrain?: string
+  console?: string
+  /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
+  options: { id: string; level: number; road?: 'on' | 'off' }[]
+  mods: Sr6Purchase[]
+  diy?: true
+  approved?: true
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -296,6 +366,23 @@ export type Sr6Advance =
   /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
    *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
   | { op: 'upgrade'; target: string; line: Sr6Purchase }
+  /** an accessory (a vehicle mod, a weapon in a mount, an autosoft) fitted to the owned line whose uid is target, at its
+   *  price (do it yourself: half); unfit: the accessory whose uid is target taken off (no refund), kept for the history */
+  | { op: 'fit'; target: string; line: Sr6Purchase }
+  | { op: 'unfit'; target: string; line?: Sr6Purchase }
+  /** two mod slots of `from` shifted to one of `to` on the owned vehicle or drone whose uid is target (Double Clutch p. 120;
+   *  free); voiding it shifts them back */
+  | ({ op: 'shift'; target: string } & SlotShift)
+  /** a weapon (target: its uid) moved to another weapon mount of the same vehicle or drone (mount: that accessory's uid),
+   *  no new charge; voiding it puts the weapon back in the mount it was in */
+  | { op: 'move'; target: string; mount: string }
+  /** a companion quality for the owned critter whose uid is target, bought with the runner's Karma (the Critter Bond
+   *  path's Permanent Improvement, SWC p. 139), with the negative quality `with` taken alongside (Wild Life p. 184); a
+   *  line whose uid names one of the critter's qualities upgrades that one (its id and level replaced) */
+  | { op: 'bond'; target: string; line: Sr6CritterQuality; with?: Sr6CritterQuality }
+  /** a command or special training taught to the owned critter whose uid is target (Wild Life p. 180: +500¥ a command,
+   *  +750¥ a special training); past its limit it is recorded (Review warns); voiding it takes it back */
+  | { op: 'teach'; target: string; line: Sr6CritterTrained }
   | { op: 'contact'; line: Sr6Contact }
   /** a new SIN (no lifestyles; licences bought with it), or, line.uid naming a placeholder SIN, that one named and made
    *  a normal SIN (its lifestyles kept) */
@@ -328,6 +415,12 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'purchase',
   'drop',
   'upgrade',
+  'fit',
+  'unfit',
+  'shift',
+  'move',
+  'bond',
+  'teach',
   'contact',
   'sin',
   'lifestyle',
@@ -358,6 +451,25 @@ export interface Sr6Npc {
   from?: { kind: Sr6Kind; id: string; name: string; source: string; page: number }
   stats: Record<string, string>
   lines: { part: string; text: string }[]
+  /** a critter the GM designs (the Design tab, src/sr6/engine/critterdesign.ts): its powers, weaknesses and skills, the
+   *  lines generated from them */
+  design?: Sr6CritterDesign
+}
+/** A designed critter's power or weakness: its catalog critter power (id; none: not in the catalog, by name), its level
+ *  and note (`Enhanced Senses (Hearing, Smell)`: the note Hearing, Smell). Innate: 0 Karma. */
+export interface Sr6CritterPower {
+  id?: string
+  name: string
+  level?: number
+  note?: string
+}
+export interface Sr6CritterDesign {
+  powers: Sr6CritterPower[]
+  weaknesses: Sr6CritterPower[]
+  /** id: the catalog skill (none: by name) */
+  skills: { id?: string; name: string; rank: number; spec?: string }[]
+  /** initiative dice, as the GM enters them */
+  dice: number
 }
 
 /** A book sample's stat block numbers as printed (key: an attribute abbreviation, ess, init, cm or dr; value as printed,
@@ -368,9 +480,9 @@ export interface Sr6Printed {
   values: Record<string, string>
 }
 
-/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at Finalize.
- *  npc: set on an NPC (its build stays blank). sampleKey: the catalog entry a book NPC was loaded from, or the book sample an
- *  example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
+/** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at
+ *  Finalize. npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey:
+ *  the catalog entry a book NPC was loaded from, or the book sample an example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
  *  (src/sr6/engine/house.ts), so it keeps them when the compendium is unshared or deleted. */
 export interface Sr6Character {
   formatVersion: 1
@@ -382,6 +494,8 @@ export interface Sr6Character {
   campaign?: string
   ledger: Sr6LedgerEntry[]
   npc?: Sr6Npc
+  /** set on a vehicle or drone design (the Designer's store; its build stays blank) */
+  design?: Sr6Design
   sampleKey?: string
   house?: Sr6Entry[]
   printed?: Sr6Printed

@@ -15,6 +15,8 @@ export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6T
 export const sr6Repo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/characters', sr6Codec)
 /** SR6 NPCs (the server's /api/sr6/npcs, GMs only): SR6 runner files with an <npc> block. */
 export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/npcs', sr6Codec)
+/** SR6 vehicle and drone designs (the server's /api/sr6/designs, every account its own): SR6 files with a <design> block. */
+export const sr6DesignRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/designs', sr6Codec)
 
 /** A copy of the runner whose catalog lines (and their accessories, and the ledger's purchase lines) carry the entry as it
  *  is now (or the snapshot they had), with its compendium entries' copies up to date. */
@@ -53,6 +55,7 @@ export function readSr6Import(xml: string, taken: Set<string>): { ok: true; ch: 
   const r = xmlToSr6(xml)
   if (!r.ok) return r
   if (r.character.npc) return { ok: false, reason: 'This is an NPC. Import it on NPCs & Critters.' }
+  if (r.character.design) return { ok: false, reason: 'This is a vehicle or drone design. Import it in the Designer.' }
   return { ok: true, ch: { ...r.character, id: taken.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() } }
 }
 
@@ -64,6 +67,14 @@ export function readSr6NpcImport(xml: string, taken: Set<string>): { ok: true; c
   if (!r.character.npc) return { ok: false, reason: 'This is a runner, not an NPC. Import it on Your runners.' }
   const { finalizedAt: _f, final: _k, campaign: _c, ...ch } = r.character
   return { ok: true, ch: { ...ch, ledger: [], id: taken.has(ch.id) ? newId() : ch.id, lastExportedAt: new Date().toISOString() } }
+}
+
+/** The mirror for the Designer: the design (a new id when taken), or why not (a runner or NPC, or an Anarchy file). */
+export function readSr6DesignImport(xml: string, taken: Set<string>): { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
+  const r = xmlToSr6(xml)
+  if (!r.ok) return r
+  if (!r.character.design) return { ok: false, reason: 'This is a runner or NPC, not a vehicle or drone design.' }
+  return { ok: true, ch: { ...r.character, id: taken.has(r.character.id) ? newId() : r.character.id, lastExportedAt: new Date().toISOString() } }
 }
 
 /** A saved file that can't be read, read again with repair: the runner and what was changed, or why it still can't be. */

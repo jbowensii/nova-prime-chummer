@@ -152,10 +152,9 @@ test('Review: the GM approves every problem, Finalize opens the ledger; earnings
   const e = await open(built(), 'review')
   expect(pageText()).toMatch(/Problem/)
   expect(button('Finalize runner').disabled).toBe(true)
-  for (let b; (b = [...document.querySelectorAll('button')].find(x => x.textContent === 'GM approve'));) {
+  for (let b; (b = [...document.querySelectorAll<HTMLInputElement>('.viol input[type=checkbox]')].find(x => !x.checked && !x.disabled));) {
+    await change(field('GM note (optional)', b.closest('.viol')!), 'Made-up table ruling')
     await click(b)
-    await change(field(/e\.g\. Street-legend/), 'Made-up table ruling')
-    await click(button('Approve'))
   }
   expect(pageText()).toMatch(/GM: Made-up table ruling/)
   await click(button('Finalize runner'))

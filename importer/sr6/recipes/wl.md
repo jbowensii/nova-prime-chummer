@@ -21,8 +21,12 @@ converter's guessed heading sizes are right (60, 21, 15, 13, 9). No index or rep
   a power the stat blocks list under `Weakness(es):` (Fragile, Carrier) is marked `weakness="true"`.
 - Critter gear: a `GEAR DEFENSE RATING CAPACITY AVAIL COST` table (its items described by labelled lines above it),
   gear category critter-gear; prices are formulas of the critter's Body (book-value).
+- Purchasing a Critter (p. 180): the `CRITTER AVAIL COST` rows (gear category `critter purchase`) and the `OPTIONS`
+  rows (`critter purchase option`), as printed, class `CRITTERWARE/PURCHASE` (classes/section_prefix.json); the Critter
+  Companion Qualities (pp. 184-186) are class `CRITTERWARE/QUALITY`. The PDF's text layer draws every page twice; the
+  converter keeps one layer (layout.one_layer), so no table here reads doubled.
 - Critter companion qualities (positive and negative, `Cost:`/`Bonus: N Karma`) are for critters, not characters:
-  rules, with the edge actions, commands, training and statuses.
+  rules, with the edge actions, commands, training and statuses (the commands and training are actions too, below).
 
 ## Formula styles and issues (importer v2)
 
@@ -32,7 +36,9 @@ converter's guessed heading sizes are right (60, 21, 15, 13, 9). No index or rep
 
 ## Sections read as kinds (importer v3, sections.py)
 
-- **Actions:** `### Critter Command Actions` (each `#### Name`) and the critter `Edge Actions`.
+- **Actions:** `### Critter Command Actions` (each `#### Name`, category Critter Command Actions), `## Critter Special
+  Training` (each bold run-in, category Critter Special Training; Weapon Training runs on to p. 183) and the critter
+  `Edge Actions`. The app offers the first two only for an owned critter.
 
 ## Real-book check (local, nothing committed)
 

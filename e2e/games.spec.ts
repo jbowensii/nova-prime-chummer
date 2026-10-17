@@ -85,6 +85,7 @@ test('a fresh browser picks its game before signing in; SR6 opens its shell', as
   await expect(page.getByText('No runners yet.')).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
     'Your runners',
+    'Designer',
     'NPCs & Critters',
     'Compendiums',
     'Campaigns',
@@ -184,6 +185,7 @@ test('a player sees no SR6 Books', async ({ page }) => {
   await expect(page.getByText('No runners yet.')).toBeVisible()
   expect(await menu(page).evaluateAll(as => as.map(a => a.getAttribute('aria-label')))).toEqual([
     'Your runners',
+    'Designer',
     'Campaigns',
     'Rules',
     'Game data',

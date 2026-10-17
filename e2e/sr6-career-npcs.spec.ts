@@ -288,7 +288,7 @@ test('NPCs: Gil makes grunts, a spirit, a sprite, a critter and a blank one; imp
     await from.selectOption({ label: entry })
     if (rating) await dlg.getByLabel(kind === 'Spirit' ? 'Force' : 'Level').fill(rating)
     await dlg.getByRole('button', { name: critter ? 'Create critter' : 'Create NPC' }).click()
-    await expect(page).toHaveURL(/#\/sr6\/n\/[^/]+\/stats$/)
+    await expect(page).toHaveURL(critter ? /#\/sr6\/n\/[^/]+\/(stats|design)$/ : /#\/sr6\/n\/[^/]+\/stats$/)
     await page.getByRole('button', { name: 'Save and close' }).click()
     await expect(page).toHaveURL(critter ? /#\/sr6\/npcs\/critters$/ : /#\/sr6\/npcs$/)
   }

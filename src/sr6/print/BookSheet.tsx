@@ -613,10 +613,17 @@ export function BookSheet({ art }: { art: SheetArt }) {
                     <F l="Sensor" v={a.sensor} />
                     <F l="Seats" v={a.seats} />
                   </div>
-                  <F l="Notes" v={x && x.accessories.map(nameOf).join(', ')} />
+                  <F l="Notes" v={x && v.vehicleNotes(x).join('; ')} />
                 </Box>
               )
             })}
+            {/* (the same critter data as the other styles: view.ts critterNotes) */}
+            {lines('critters').map((x, i) => (
+              <Box key={x.uid} id={`k-critter${i}`} title="Critter" side="r" className="k-vehicle">
+                <F l="Critter" v={nameOf(x)} />
+                <F l="Notes" v={v.critterNotes(x).join('; ')} />
+              </Box>
+            ))}
             <Box id="k-spells" title="Spells / preparations / rituals / complex forms" side="r">
               <table className="k-spells">
                 <thead>

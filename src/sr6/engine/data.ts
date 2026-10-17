@@ -417,6 +417,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     grades,
     problems,
     entry: (kind, id) => resolveEntry(c, kind, id),
+    hasSource: id => (s => !!s && s.origin !== 'shipped')(c.sources.get(id)),
     named,
     categories: categoryIndex(all('categories')),
     family: (kind, id) => familyOf(c, kind, id),

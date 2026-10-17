@@ -91,6 +91,30 @@ past the box.
 Made-up advice on goats.
 <!-- page 180 -->
 # ON THE CARE AND FEEDING OF CRITTERS
+### Purchasing a Critter
+Made-up words on buying a critter.
+| CRITTER | AVAIL | COST |
+|---|---|---|
+| Pet (Fuzzy) | 3 | Body x 70 nuyen |
+| Glowing | (Magic + 2)(L) | (Body + Magic) x 900 nuyen |
+#### options
+| OPTIONS | AVAIL | COST |
+|---|---|---|
+| Trained: Fetch | +2 | +300 nuyen |
+## Critter Commands
+Made-up words on commands.
+### Critter Command Actions
+Made-up examples of commands.
+#### Fizz On Cue
+The critter fizzes when told to.
+#### Hum Along (Specify a Tune)
+The critter hums a made-up tune.
+## Critter Special Training
+Made-up words on training.
+**Harness Training:** The critter wears a made-up
+harness.
+**Glow Training:** The critter glows on a
+made-up signal.
 ## Critter Companion Qualities
 ### Snuggly
 A made-up cuddly critter.
@@ -154,11 +178,28 @@ class WlRecipeTest(unittest.TestCase):
         self.assertEqual(p["Brittle"].get("weakness"), "true")  # a stat block lists it as a weakness
         g = entries(self.res, "gear")["Fizz Harness"]
         self.assertEqual((g.get("category"), g.get("cost")), ("Critter gear", "300"))
+        # the Purchasing a Critter tables: a critter's price by its kind, and an option's (as printed)
+        g = entries(self.res, "gear")
+        self.assertEqual({n: (g[n].get("category"), g[n].get("avail"), g[n].get("cost")) for n in ("Pet (Fuzzy)", "Glowing", "Trained: Fetch")},
+                         {"Pet (Fuzzy)": ("Critter purchase", "3", "Body x 70 nuyen"),
+                          "Glowing": ("Critter purchase", "(Magic + 2)(L)", "(Body + Magic) x 900 nuyen"),
+                          "Trained: Fetch": ("Critter purchase option", "+2", "+300 nuyen")})
         r = entries(self.res, "rules")
         self.assertIn("Snuggly", r)  # critter qualities are for critters: rules
         self.assertIn("Critter Corner: Hum Goat", r)
         self.assertNotIn("Fizz Mole", r)  # its text went to its critters
         self.assertNotIn("qualities.xml", self.res.files)
+
+    def test_critter_commands_and_special_training(self):
+        # the book's two lists of what a critter learns: actions by their section, with their text
+        a = entries(self.res, "actions")
+        self.assertEqual({n: (e.get("category"), e.get("type")) for n, e in a.items()},
+                         {"Fizz On Cue": ("Critter Command Actions", None),
+                          "Hum Along (Specify a Tune)": ("Critter Command Actions", None),
+                          "Harness Training": ("Critter Special Training", None),
+                          "Glow Training": ("Critter Special Training", None)})
+        self.assertIn("hums a made-up tune", self.texts[("actions", "hum-along-specify-a-tune")])
+        self.assertIn("glows on a", self.texts[("actions", "glow-training")])
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

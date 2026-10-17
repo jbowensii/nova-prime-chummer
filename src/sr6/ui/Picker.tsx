@@ -1,7 +1,7 @@
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
-import { useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
 import { entryOf, priced } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
@@ -14,7 +14,7 @@ import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { critterOnly, infectedOff } from '../engine/critterware'
 import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
-import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from './editor'
+import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
@@ -58,7 +58,8 @@ export function LineName({ x }: { x: Sr6Purchase }) {
       <Sr6Ref kind={x.kind} id={e?.id}>
         <b>{e ? entryLabel(e) : (x.name ?? 'Custom item')}</b>
       </Sr6Ref>
-      {x.id && !data.entry(x.kind, x.id) && <span className="err"> (no longer in the catalog)</span>}
+      {x.id && !x.design && !data.entry(x.kind, x.id) && <span className="err"> (no longer in the catalog)</span>}
+      {x.design && <span className="noncanon">Custom design</span>}
       {e && (
         <span className="muted">
           {' '}
@@ -98,6 +99,8 @@ export function CatalogPicker({
   grades,
   note,
   onAdd,
+  from,
+  critter,
 }: {
   title: string
   open: boolean
@@ -107,8 +110,13 @@ export function CatalogPicker({
   grades?: boolean
   note?: (e: Sr6Entry) => string | undefined
   onAdd: (p: PickedItem) => string | null
+  /** the catalog and rules outside a runner's editor (the Designer's) */
+  from?: Pick<Sr6Ctx, 'c' | 'cr' | 'data'>
+  /** for an owned critter: the critter-only entries (critterware, critter gear, companion qualities) are offered too */
+  critter?: boolean
 }) {
-  const { c, cr, data } = useSr6Editor()
+  const ctx = useContext(Sr6Editor)
+  const { c, cr, data } = from ?? ctx!
   const [chosen, setChosen] = useState<PickedItem | null>(null)
   // grades for cyberware and bioware; geneware, nanoware, symbionts and transgenics are bought as printed (a grade on
   // one is offered marked, Review's gear.grade); the picker's grade step opens for an entry whose type takes one
@@ -118,7 +126,7 @@ export function CatalogPicker({
     ? []
     : kinds
         .flatMap(k => [...c.entries[k].values()])
-        .filter(e => !critterOnly(e) && !infectedOff(e, cr) && (!filter || filter(e))) // (critter-only equipment, and Infected entries while the table's rule is off, stay in the data browser, not here)
+        .filter(e => (critter || !critterOnly(e)) && !infectedOff(e, cr) && (!filter || filter(e))) // (critter-only equipment but for a critter, and Infected entries while the table's rule is off, stay in the data browser, not here)
         .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
   const close = () => {
     setChosen(null)
@@ -380,14 +388,29 @@ export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string;
 
 /** The accessories fitted to a line, each removable, and the picker to fit another: every accessory whose category names
  *  hosts (one naming others marked: it may still be fitted, Review's catalog.accessoryHost); one whose category names no
- *  host, by `filter`. */
-export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; name: string; kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }) {
+ *  host, by `filter`. An owned critter's (`critter`): whatever `filter` offers, critter-only entries too. */
+export function Accessories({
+  host,
+  name,
+  kinds,
+  filter,
+  critter,
+}: {
+  host: Sr6Purchase
+  name: string
+  kinds: PurchaseKind[]
+  filter?: (e: Sr6Entry) => boolean
+  critter?: boolean
+}) {
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
   const he = entryOf(host, data)
   // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
   // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
-  const fits = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
+  const fits = (e: Sr6Entry) =>
+    critter
+      ? !filter || filter(e)
+      : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
   const wrong = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) === false ? `for ${hostsOf(data.categories, e).join(' or ')}, not this` : undefined)
   return (
     <span className="row">
@@ -457,13 +480,14 @@ export function Accessories({ host, name, kinds, filter }: { host: Sr6Purchase; 
         )
       })}
       <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>
-        Accessory…
+        {critter ? 'Critterware or gear…' : 'Accessory…'}
       </button>
       <CatalogPicker
         title={`Add an accessory to ${name}`}
         open={open}
         onClose={() => setOpen(false)}
         kinds={kinds}
+        critter={critter}
         filter={fits}
         note={wrong}
         onAdd={p => act({ op: 'accessory', host: host.uid, kind: p.e.kind as PurchaseKind, id: p.e.id, rating: p.rating })}
@@ -560,6 +584,7 @@ export function PurchaseSection({
   bonuses,
   hint,
   offer,
+  show,
 }: {
   kind: PurchaseKind
   title: string
@@ -568,13 +593,15 @@ export function PurchaseSection({
   detail?: (x: Sr6Purchase) => ReactNode
   /** which catalog entries the picker offers (none: all) */
   offer?: (e: Sr6Entry) => boolean
-  accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean }
+  /** which of the kind's lines it lists (none: all) */
+  show?: (x: Sr6Purchase) => boolean
+  accessories?: { kinds: PurchaseKind[]; filter?: (e: Sr6Entry) => boolean; critter?: boolean }
   bonuses?: boolean
   hint?: ReactNode
 }) {
   const { ch, data, cr, act, d } = useSr6Editor()
   const [adding, setAdding] = useState(false)
-  const rows = ch.build.purchases.filter(x => x.kind === kind)
+  const rows = ch.build.purchases.filter(x => x.kind === kind && (!show || show(x)))
   const own = (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text
   const ware = kind === 'augmentations'
   return (

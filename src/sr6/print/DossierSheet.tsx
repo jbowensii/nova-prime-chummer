@@ -602,7 +602,12 @@ export function DossierSheet({ art }: { art: SheetArt }) {
                   <tr key={x.uid}>
                     <td>
                       {nameOf(x)}
-                      {acc(x)}
+                      {v.vehicleNotes(x).map(t => (
+                        <span key={t} className="d-small">
+                          {' '}
+                          {t}.
+                        </span>
+                      ))}
                     </td>
                     <td>{a.handling}</td>
                     <td>{a.accel}</td>
@@ -616,6 +621,22 @@ export function DossierSheet({ art }: { art: SheetArt }) {
               })}
             </tbody>
           </table>
+        </Panel>
+      )}
+
+      {/* (the same critter data as the other styles: view.ts critterNotes) */}
+      {lines('critters').length > 0 && (
+        <Panel id="d-critters" title="Critters">
+          <ul className="d-small">
+            {lines('critters').map(x => (
+              <li key={x.uid}>
+                {nameOf(x)}
+                {v.critterNotes(x).map(t => (
+                  <span key={t}> {t}.</span>
+                ))}
+              </li>
+            ))}
+          </ul>
         </Panel>
       )}
 

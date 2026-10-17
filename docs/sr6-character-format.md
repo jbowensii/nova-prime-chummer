@@ -118,12 +118,47 @@ copy". Book entries are never copied here.
   Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format.md), never stored
   here. An `<override>` of a martial arts check has the path `martial.<style uid>` (a missing augmentation's:
   `martial.<style uid>.<technique uid>`).
-- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles` or `ammotypes` (an ammunition type, from a line bought as gear
+- `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles`, `critters` (an owned critter, below) or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
-  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
+  items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
+  vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
+  `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in, or `builtin:<n>` for a weapon
+  mount built into the vehicle (its entry's or snapshot's n-th `<builtin>`, from 0: already paid for, never taken off;
+  owner 2026-10-16) (one naming none of them reads as in no mount, noted); a vehicle's or drone's `slotShifts` lists the mod slots shifted between categories, in the order
+  made (`chassis>powertrain electronics>chassis`: Double Clutch p. 120, any available slots shifted at 2:1, so each
+  entry takes two slots from its first category and gives one to its second; read with Double Clutch among the table's
+  books only; an entry naming no two categories reads as left out, noted; absent: none); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
+  p. 120; never an accessory's). Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
+  older files read as they were. A vehicle or drone bought from a design (the Designer, below) has `design` (the
+  design's id), `id="design.<that id>"` and a `<snapshot>` always: the vehicle as the design worked out when bought (its
+  stats, `cost` the price, `avail`, `dp` its Design Point Value, `approved="true"` when a GM made or approved the
+  design, and a `<builtin name ref? rating?>` per mod built in, `<builtin name="Easily Modified" slots category=
+  "universal">` for its universal mod slots). Later edits to the design never change it; Review warns "Custom design:
+  needs GM approval" until a GM approves it (`vehicle.design`, never blocking) unless the snapshot is `approved`. An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
+- An owned critter (the Critters tab, src/sr6/engine/critters.ts) is `<purchase kind="critters" id>` naming a catalog
+  critter: `pet` the class the player chose, `mundane`, `exotic` or `wild` (absent: mundane; an unknown one is left out,
+  noted; Awakened and Emerged come from the critter's Magic or Resonance, never stored), `tamed="true"` when tamed from
+  the wild instead of bought (no price, Wild Life p. 184), a `<trained uid what id? name? taught?>` per named command
+  (`what="command"`) or special training (`what="training"`): the catalog action of category Critter Command Actions or
+  Critter Special Training it is (Wild Life pp. 181-183; the same one may be there twice, Teamwork for two skills);
+  `taught="true"` taught after the critter was bought (+500¥ a command, +750¥ a special training, p. 180, no
+  Availability; a tamed critter's always are), absent: it came with the purchase (each +1 to the Body in the price
+  formula only and +1 Availability, p. 183). An older file's counts, `commands` and `training` on the `<purchase>`, load
+  as that many unnamed ones (no `id`, `uid` the line's + `-command-1` …; a tamed critter's taught), noted on a repair
+  load (a count that isn't a whole number from 0 is refused, in repair none; one past 99 refused, in repair 99); the
+  file is written the new way on its next save. Then a `<quality uid id level name? how?>` per companion quality (catalog qualities of
+  class `CRITTERWARE/QUALITY`, pp. 184-186): no `how`, specified with its purchase (each ±1 Availability, its net Karma
+  moving the price, p. 180: a net Karma bonus takes its percentage off the whole price, training included, never below 0;
+  one a career bond upgraded is priced at the level it was bought at);
+  `how="tamed"`, the Wild Soul and the negative balancing it that taming gives; `how="bonded"`,
+  bought with the runner's own Karma through the Critter Bond path's Permanent Improvement (SWC p. 139; at creation its
+  positives less its negatives, never below 0, in the karma budget). Its accessories are its critterware and gear,
+  priced as usual but at its Body where they print one (`Critter's Body x 50¥`) and, an augmentation, +10% a point of
+  natural Body over 8 (Body Shop p. 135); their Essence is the critter's, never the runner's. Its price and Availability,
+  its powers (innate, 0 Karma), limits and Essence are worked out, never stored. Older files have no critters.
 - `<bonus target value perRating?>` (on an accessory: what it adds to its host item, not the runner): what a ware, power or item adds, entered by the player (the catalog has no bonus
   data; a line with none counts its catalog entry's `add` effects instead, the low-confidence ones never). `target` is an
   attribute abbreviation, `initDice`, `defense` (Defense Rating), `physical` (Physical condition monitor boxes: a full
@@ -182,7 +217,21 @@ the entry its `event` names.
   the uid of the line removed; the removed line may follow for the history; a `buyoff` of Stolen Gear with `part`, No
   Future's errata (NF p. 162), buys off that much of the karma converted at creation, `stolenGearBuyOff` Karma each, and
   the line stays with the total so far in its `<quality boughtOff>`; without `part`, the rest, and it goes), `upgrade` (`target`: the uid of the bought
-  item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay),
+  item replaced by the higher level of its family in the `<purchase>` that follows; its accessories stay), `fit`
+  (`target`: the uid of an owned line, a vehicle or drone; the `<purchase>` that follows is fitted to it, at its price,
+  half with `diy`; a weapon's `mount` names one of the line's mounts) and `unfit` (`target`: the uid of the accessory
+  taken off, no refund; a weapon in it stays, in no mount; the removed `<purchase>` may follow for the history),
+  `shift` (`target`: the uid of the vehicle or drone, `from` and `to`: the categories `chassis`, `powertrain` or
+  `electronics`; two slots of `from` given for one of `to`, free, out of slots not in use; voiding it shifts them back) and
+  `move` (`target`: the uid of a weapon, `mount`: the uid of another weapon mount of the same vehicle it moves to; no new
+  charge; voiding it puts the weapon back in its old mount), `bond` (`target`: the uid of an owned critter; the
+  `<quality how="bonded">` that follows is bought for it with the runner's Karma, the Critter Bond path's Permanent
+  Improvement, SWC p. 139, and a second `<quality>` is the negative taken with it, Wild Life p. 184: Karma = (the
+  positive's Karma less the negative's bonus, never below 0) × `advance.qualityFactor`; a first `<quality>` whose `uid`
+  names one of the critter's qualities upgrades that one, its id and level replaced, priced at the difference; a `fit`
+  or `unfit` may name a critter too: its critterware and gear), `teach` (`target`: the uid of an owned critter; the
+  `<trained taught="true">` that follows is taught to it, priced at Wild Life's OPTIONS row, +500¥ a command, +750¥ a
+  special training, p. 180; past the critter's limit it is recorded and Review warns; voiding it takes it back),
   `initiate` (an optional metamagic or echo `<pick>`), `sin` (the `<sin>` bought, with its licences, rated as it, and no lifestyles:
   priced as creation prices it, a fake SIN's rating × `fakeSinPerRating`, a real one free, plus its licences' ratings ×
   `licencePerRating`; a `uid` naming a placeholder SIN names it and makes it a normal SIN, its lifestyles kept),
@@ -213,9 +262,43 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
   Professional Rating, Force or Level; `group` a grunt's.
 - `<stat key value>`: a printed value (key `a`–`z`, at most 20 letters; value at most 80 characters, e.g. `F+1`).
 - `<line part>`: `skills`, `powers`, `optionalPowers`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
+- A critter the GM designs (the Design tab, `src/sr6/engine/critterdesign.ts`) has `designed="true"`, its
+  initiative dice in `dice`, and after its lines `<power id? name level? note?>` and `<weakness id? name level? note?>`
+  (catalog critter powers by id; none: not in the catalog) and `<skill id? name rank spec?>`. Its `skills`, `powers`
+  and `weaknesses` lines are generated from them; its `cm`, `dr` and `init` stats are derived unless the GM typed
+  another value.
 - `sampleKey` (root): the catalog entry a book NPC was loaded from, `<source>|<id>`. An example runner (Load example
   characters on Your runners) has the book sample it was copied from, `<source>|<sample id>`.
 - The runners page refuses an NPC file ("Import it on NPCs & Critters") and the NPC page a runner.
+
+## Vehicle and drone designs
+
+A design (the Designer, `#/sr6/designs`; Double Clutch pp. 150-155; `src/sr6/engine/design.ts`) is the same file with
+`<design>` as the root's **first child** (the server keeps designs in `characters/sr6/.designs/<username>/`, every
+account its own, at `/api/sr6/designs`, with a trash as runners have) and a blank build. The root's `streetName` is
+the design's name. Nothing derived is stored:
+
+```xml
+<sr6:character … id="…" streetName="Red Zip">
+  <design kind="vehicle" chassis="dc.car" powertrain="dc.wheeled" console="dc.intermediate" diy="true" approved="true">
+    <option id="dc.improved-body" level="-1"/><option id="dc.racing" level="1"/><option id="dc.one-off-custom" level="1"/>
+    <purchase uid="m1" kind="gear" id="dc.spoof-kit" qty="1"/>
+  </design>
+  <build …/>
+</sr6:character>
+```
+
+- `kind`: `vehicle` or `drone`; `chassis`, `powertrain`, `console`: the catalog `vehicledesign` parts picked (absent:
+  none yet).
+- `<option id level>`: an option, design modification or quality factor (a `vehicledesign` id) and its level, a whole
+  number: 1 for one taken once, more for an option bought in levels, negative for one taken in reverse (p. 151).
+  Improved Handling's `road="on"` or `road="off"`: for on-road or off-road only, 3 Design Points a level (at most 3
+  levels), lowering only that Handling (absent: both, at its catalog price; owner 2026-10-16).
+- `<purchase>`: a mod built in as a design option (a `gear` line as in the build): 2 Design Points per mod slot,
+  multiplied with the rest; its nuyen added to the price after the × 1,000 (owner 2026-10-16).
+- `diy="true"`: built yourself, half the price (p. 155; the tests are the GM's). `approved="true"`: made or approved by
+  a GM (the Designer sets it on a GM's design; a GM may tick or untick it).
+- The runners and NPC pages refuse a design file ("Import it in the Designer"), and the Designer a runner or NPC.
 
 ## Reading bad files
 

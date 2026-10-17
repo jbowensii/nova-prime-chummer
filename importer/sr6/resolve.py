@@ -544,6 +544,7 @@ def corpus(books, sources=None, apply_errata=True):
             n["corpus"] += 1
     n["abbreviations"] = _spelled_out(bs, entries, changed)
     n["run-ins"] = _run_in_names(bs, entries, changed)
+    n["builtin"] = _builtin_mods(bs, entries, changed)
     for b, src, kind, path, tree in files:
         if path in changed:
             body = etree.tostring(tree, encoding="unicode")
@@ -628,6 +629,131 @@ def _spelled_out(bs, entries, changed):
         if full and not any((a.text or "").lower() == full.lower() for a in _kids(el, "alias")):
             _add_kid(el, "alias", {}, full)
             changed.add(path)
+            done += 1
+    return done
+
+
+# a box listing the modifications another book's vehicles come with (Double Clutch p. 146, `Core Vehicle Modifications`:
+# "Vehicles and drones from the … core rulebook … already incorporate the following modifications")
+_BUILTIN_BOX = re.compile(r"(?i)^\s*core\s+vehicle\s+modifications\s*$")
+_RUNIN = re.compile(r"^\s*(?:•\s*)?\*\*([^*]+?):\*\*\s*(.+?)\s*$")
+_SLOTS = re.compile(r"(?i)^(\d+)\s+additional\s+(\w+)\s+mod\s+slots?$")
+_LEVEL = re.compile(r"(?i)\s*\((?:rating|level|size\s+class)\s*\d+\)")
+
+
+def builtin_box(regrouped):
+    """A book's built-in modifications box as [(vehicle name, its list as printed, PDF page)]: the bold run-ins
+    (`**GMC Bulldog:** 4 additional Chassis mod slots`) of the block headed `Core Vehicle Modifications` and of the
+    deeper blocks right after it (its groups: `Bikes`, `Cars`). A run-in naming no vehicle (another column's text run
+    into the box) is dropped where it is applied (_builtin_mods)."""
+    from importer.sr6.regroup import blocks
+    out, level = [], None
+    for b in blocks(regrouped):
+        if _BUILTIN_BOX.match(b.name or ""):
+            level = b.level or 0
+        elif level is None or b.type == "section" or (b.level or 0) <= level:
+            level = None
+            continue
+        # (regroup hands a block's leading labelled lines over as labels; the rest stay in its text)
+        runins = [*b.labels.items(), *((m.group(1), m.group(2)) for ln in (b.text or "").splitlines() if (m := _RUNIN.match(ln)))]
+        out += [(k.strip(), v, b.page) for k, v in dict(runins).items()]
+    return out
+
+
+def builtin_parts(text):
+    """A box line's list -> [(tag, attrs, text)]: each modification a `builtin` (name as printed, its trailing number
+    the rating: `Realistic features 4`; `4 additional Chassis mod slots`: slots 4, category chassis), a line or part that
+    is a sentence rather than a name (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) a `note`
+    (field builtin), as printed."""
+    text = " ".join(text.split())
+    if re.search(r"\.\s+[A-Z]", text) or re.match(r"As\s", text):  # (sentences, not a list)
+        return [("note", {"field": "builtin"}, text)]
+    out, depth, cur = [], 0, ""
+    for ch in text + ",":  # (a comma inside parentheses is the part's own: `(amphibious, surface)`)
+        depth += (ch == "(") - (ch == ")")
+        if ch == "," and depth == 0:
+            if p := cur.strip(" ."):
+                out.append(p)
+            cur = ""
+        else:
+            cur += ch
+    kids = []
+    for p in out:
+        if m := _SLOTS.match(p):
+            kids.append(("builtin", {"name": p, "slots": m.group(1), "category": m.group(2).lower()}, None))
+        elif len(p.split()) >= 6 or "¥" in p or p[:1].islower() and re.search(r"\b(?:to|for|with)\b", p):
+            kids.append(("note", {"field": "builtin"}, p))
+        elif m := re.fullmatch(r"(.*?\S)\s+(\d+)", p):
+            kids.append(("builtin", {"name": m.group(1), "rating": m.group(2)}, None))
+        else:
+            kids.append(("builtin", {"name": p}, None))
+    return kids
+
+
+def _mod_ref(name, rating, mods):
+    """The id of the modification a box names (mods: [(id, [its names])]): the one whose words (catalog.word_stems, a
+    level's `(Rating 1)` left out) are the name's, else the only one whose words hold the name's or are held in them
+    (two words shared at least: `Ceramic plate armor` is `Ceramic Plate`, `rigger cocoon` `Rigger Cocoon (CF Mod)`); of
+    several levels, the rating's. None when none or several."""
+    want = catalog.word_stems(name)
+    for test in (lambda s: s == want, lambda s: len(s & want) >= 2 and (s <= want or want <= s)):
+        hits = list(dict.fromkeys(i for i, ns in mods if any(test(catalog.word_stems(_LEVEL.sub("", n))) for n in ns)))
+        if len(hits) > 1 and rating:
+            names = {i: ns for i, ns in mods}
+            hits = [i for i in hits if any(re.search(rf"\((?:rating|level)\s*{rating}\)", n, re.I) for n in names[i])]
+        if hits:
+            return hits[0] if len(hits) == 1 else None
+    return None
+
+
+def _alternatives(name):
+    """A vehicle name's squashed forms, each of a slash name's (`Federated-Boeing Commuter/Osprey X`: `Federated-Boeing
+    Commuter`, `Federated-Boeing Osprey X`)."""
+    out = {catalog.squash(name)}
+    if name.count("/") == 1:
+        a, b = (x.strip() for x in name.split("/"))
+        out |= {catalog.squash(a), catalog.squash(" ".join(a.split()[:-1] + [b]))}
+    return out
+
+
+def _builtin_mods(bs, entries, changed):
+    """A book's built-in modifications box (builtin_box) on the vehicles it names in the library's other books: each
+    named vehicle (by name, alias or a slash name's part) gets the box line's `builtin` children (ref: the box book's
+    gear entry of the modification's name, _mod_ref; source and page: the box's) and `note`s (builtin_parts), replacing
+    the ones an earlier pass gave it. Returns how many vehicles got them."""
+    done = 0
+    for b in bs:
+        path = os.path.join(b.dir, "regrouped.md")
+        if b.state != "done" or not os.path.exists(path):
+            continue
+        with open(path, encoding="utf8") as f:
+            box = builtin_box(f.read())
+        if not box:
+            continue
+        mine = [(el, kind) for ob, src, kind, el, _ in entries if ob is b and src == b.src]
+        mods = [(el.get("id"), [el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")])
+                for el, kind in mine if kind == "gear"]
+        page = next((el.get("page") for el, kind in mine if kind == "rules" and _BUILTIN_BOX.match(el.findtext("name") or "")),
+                    None)
+        lines = {}
+        for name, text, _ in box:
+            for k in _alternatives(name):
+                lines[k] = text
+        for ob, src, kind, el, epath in entries:
+            if kind != "vehicles" or ob is b:
+                continue
+            keys = set().union(*(_alternatives(n) for n in [el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")]))
+            text = next((lines[k] for k in keys if k in lines), None)
+            if text is None:
+                continue
+            for k in _kids(el, "builtin") + [x for x in _kids(el, "note") if x.get("field") == "builtin"]:
+                el.remove(k)
+            for tag, attrs, t in builtin_parts(text):
+                if tag == "builtin":
+                    attrs = {**attrs, "ref": _mod_ref(attrs["name"], attrs.get("rating"), mods),
+                             "source": b.src.upper(), "page": page}
+                _add_kid(el, tag, attrs, t)
+            changed.add(epath)
             done += 1
     return done
 

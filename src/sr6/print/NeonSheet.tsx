@@ -403,7 +403,12 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                       <tr key={x.uid}>
                         <td>
                           <b>{nameOf(x)}</b>
-                          {acc(x)}
+                          {v.vehicleNotes(x).map(t => (
+                            <span key={t} className="n-small">
+                              {' '}
+                              {t}.
+                            </span>
+                          ))}
                         </td>
                         <td>{a.handling}</td>
                         <td>{a.accel}</td>
@@ -417,6 +422,23 @@ export function NeonSheet({ art }: { art: SheetArt }) {
                   })}
                 </tbody>
               </table>
+            </section>
+          )}
+          {/* (the same critter data as the other styles: view.ts critterNotes) */}
+          {lines('critters').length > 0 && (
+            <section aria-labelledby="n-critters">
+              <H id="n-critters">Critters</H>
+              {lines('critters').map(x => (
+                <p key={x.uid}>
+                  <b>{nameOf(x)}</b>
+                  {v.critterNotes(x).map(t => (
+                    <span key={t} className="n-small">
+                      {' '}
+                      {t}.
+                    </span>
+                  ))}
+                </p>
+              ))}
             </section>
           )}
         </main>

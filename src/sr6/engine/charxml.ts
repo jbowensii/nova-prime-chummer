@@ -14,8 +14,10 @@ import {
   MAGIC_KIND_LABELS,
   PICK_KINDS,
   PRIORITY_COLUMNS,
+  PET_CLASSES,
   PURCHASE_KINDS,
   SR6_ADVANCE_OPS,
+  SLOT_KINDS,
   SR6_ATTRS,
   SR6_LEDGER_TYPES,
   SR6_METHODS,
@@ -26,10 +28,14 @@ import {
   type BonusSwitch,
   type ContactType,
   type MagicKind,
+  type SlotShift,
   type Sr6Advance,
   type Sr6Build,
   type Sr6Character,
   type Sr6Contact,
+  type Sr6CritterQuality,
+  type Sr6CritterTrained,
+  type Sr6Design,
   type Sr6Knowledge,
   type Sr6LedgerEntry,
   type Sr6MartialArt,
@@ -79,10 +85,22 @@ function purchaseXml(p: Sr6Purchase): string {
       worn: p.worn,
       note: p.note,
       seatsRemoved: p.seatsRemoved,
+      mount: p.mount,
+      diy: p.diy,
+      design: p.design,
+      slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
+      pet: p.pet,
+      tamed: p.tamed,
     },
-    bonusesXml(p.bonuses) + p.accessories.map(purchaseXml).join('') + (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
+    bonusesXml(p.bonuses) +
+      (p.critterQualities ?? []).map(critterQualityXml).join('') +
+      (p.trained ?? []).map(trainedXml).join('') +
+      p.accessories.map(purchaseXml).join('') +
+      (p.snapshot ? `<snapshot>${sr6EntryXml(p.snapshot)}</snapshot>` : ''),
   )
 }
+const critterQualityXml = (q: Sr6CritterQuality) => el('quality', { uid: q.uid, id: q.id, level: q.level, name: q.name, how: q.how })
+const trainedXml = (t: Sr6CritterTrained) => el('trained', { uid: t.uid, what: t.what, id: t.id, name: t.name, taught: t.taught })
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) =>
@@ -186,7 +204,18 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'drop':
       return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
     case 'upgrade':
+    case 'fit':
       return [{ target: a.target }, purchaseXml(a.line)]
+    case 'unfit':
+      return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
+    case 'shift':
+      return [{ target: a.target, from: a.from, to: a.to }, '']
+    case 'move':
+      return [{ target: a.target, mount: a.mount }, '']
+    case 'bond':
+      return [{ target: a.target }, critterQualityXml(a.line) + (a.with ? critterQualityXml(a.with) : '')]
+    case 'teach':
+      return [{ target: a.target }, trainedXml(a.line)]
     case 'contact':
       return [{}, contactXml(a.line)]
     case 'sin':
@@ -226,15 +255,43 @@ const houseXml = (h?: Sr6Entry[]) => (h?.length ? `<house>${h.map(e => sr6EntryX
 
 function npcXml(n?: Sr6Npc): string {
   if (!n) return ''
-  const f = n.from
+  const f = n.from,
+    d = n.design
   return el(
     'npc',
-    { kind: n.kind, rating: n.rating, group: n.group, fromKind: f?.kind, fromId: f?.id, fromName: f?.name, fromSource: f?.source, fromPage: f?.page },
+    {
+      kind: n.kind,
+      rating: n.rating,
+      group: n.group,
+      fromKind: f?.kind,
+      fromId: f?.id,
+      fromName: f?.name,
+      fromSource: f?.source,
+      fromPage: f?.page,
+      designed: d ? true : undefined,
+      dice: d?.dice,
+    },
     Object.entries(n.stats)
       .map(([key, value]) => el('stat', { key, value }))
-      .join('') + n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join(''),
+      .join('') +
+      n.lines.map(l => `<line${attrs({ part: l.part })}>${esc(l.text)}</line>`).join('') +
+      (d
+        ? d.powers.map(p => el('power', { ...p })).join('') +
+          d.weaknesses.map(p => el('weakness', { ...p })).join('') +
+          d.skills.map(s => el('skill', { ...s })).join('')
+        : ''),
   )
 }
+
+// a vehicle or drone design (the Designer): its parts, options with their levels and the mods built in
+const designXml = (d?: Sr6Design) =>
+  d
+    ? el(
+        'design',
+        { kind: d.kind, chassis: d.chassis, powertrain: d.powertrain, console: d.console, diy: d.diy, approved: d.approved },
+        d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
+      )
+    : ''
 
 const rulesXml = (rs?: Sr6Character['rules']) =>
   rs?.length ? el('rules', {}, rs.map(r => el('setting', { key: r.key, value: r.value, assumed: r.assumed, source: r.source, page: r.page })).join('')) : ''
@@ -254,6 +311,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
   const body = [
     npcXml(ch.npc),
+    designXml(ch.design),
     text('portrait', id.portrait) + text('token', id.token),
     text('background', id.background),
     text('notes', id.notes),
@@ -357,11 +415,81 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     bonuses: readBonuses(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
+    mount: str(e, 'mount'),
+    diy: yes(e, 'diy'),
+    design: str(e, 'design'),
+    slotShifts: readShifts(e, fix),
+    pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
+    tamed: yes(e, 'tamed'),
+    trained: listOrNone([...each(kids(e, 'trained'), readTrained, label, fix), ...olderTrained(e, fix)]),
+    critterQualities: listOrNone(each(kids(e, 'quality'), readCritterQuality, label, fix)),
     accessories: each(kids(e, 'purchase'), x => readPurchase(x, fix, licensed), label, fix),
     snapshot: snap ? toEntry(snap, kind) : undefined,
   })
+  // a weapon naming a mount its host doesn't have (a file edited by hand) sits in none: noted (a built-in one,
+  // `builtin:<n>`, is the catalog's: vehiclemods.ts warns when it isn't there)
+  for (const a of x.accessories)
+    if (a.mount && !a.mount.startsWith('builtin:') && !x.accessories.some(m => m.uid === a.mount)) {
+      fix?.push(`${a.name || 'A weapon'}: its weapon mount isn’t on ${x.name || 'its vehicle'}, so it’s in none (put it in one on the Vehicles or Drones tab).`)
+      delete a.mount
+    }
   if (on.length) licensed?.(x, on)
   return x
+}
+
+/** An owned critter's companion quality (`how`: tamed or bonded; none, specified with the purchase). */
+const readCritterQuality = (e: Element): Sr6CritterQuality => {
+  const how = str(e, 'how')
+  if (how !== undefined && how !== 'tamed' && how !== 'bonded') throw new Error(`critter quality how “${how}” (not tamed or bonded)`)
+  return def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', level: num(e, 'level', 1), name: str(e, 'name'), how })
+}
+
+/** An owned critter's named command or special training (`taught`: after it was bought; absent: with the purchase). */
+const readTrained = (e: Element): Sr6CritterTrained => {
+  const what = str(e, 'what')
+  if (what !== 'command' && what !== 'training') throw new Error(`trained what “${what ?? ''}” (not command or training)`)
+  return def({ uid: e.getAttribute('uid') ?? '', what, id: str(e, 'id'), name: str(e, 'name'), taught: yes(e, 'taught') })
+}
+/** The most of each an older file's count is read as: past any critter's Logic or Intuition × 2 (a count of 1e9 froze
+ *  the load). */
+const MAX_OLDER_TRAINED = 99
+/** An older file's counts (`commands="2" training="1"`, before they were named): as many unnamed ones, with the purchase
+ *  (a tamed critter's taught), noted so the player can pick which they are. A count that isn't a whole number from 0 is
+ *  refused (in repair: none, noted); one past MAX_OLDER_TRAINED is refused (in repair: that many, noted). */
+function olderTrained(e: Element, fix?: string[]): Sr6CritterTrained[] {
+  const out: Sr6CritterTrained[] = [],
+    who = e.getAttribute('name') || 'A critter'
+  for (const what of ['command', 'training'] as const) {
+    const a = what === 'command' ? 'commands' : 'training'
+    let n = num(e, a) ?? 0
+    if (!Number.isInteger(n) || n < 0) {
+      if (!fix) throw new Error(`${a}="${n}" isn’t a whole number from 0`)
+      fix.push(`${who}: its ${a} count “${n}” isn’t a whole number from 0, so it’s left out.`)
+      n = 0
+    } else if (n > MAX_OLDER_TRAINED) {
+      if (!fix) throw new Error(`${a}="${n}" is more than ${MAX_OLDER_TRAINED}`)
+      fix.push(`${who}: its ${a} count ${n} is more than any critter learns, so it’s read as ${MAX_OLDER_TRAINED}.`)
+      n = MAX_OLDER_TRAINED
+    }
+    for (let i = 0; i < n; i++) out.push(def({ uid: `${e.getAttribute('uid') ?? ''}-${what}-${i + 1}`, what, taught: yes(e, 'tamed') }))
+  }
+  if (out.length)
+    fix?.push(
+      `${e.getAttribute('name') || 'A critter'}: its ${out.length} trained commands and special training had no names, so they’re kept unnamed (pick which they are on the Critters tab).`,
+    )
+  return out
+}
+
+/** A vehicle's slotShifts (`chassis>powertrain …`, Double Clutch p. 120); one that names no category pair is left out, noted. */
+function readShifts(e: Element, fix?: string[]): SlotShift[] | undefined {
+  const out: SlotShift[] = []
+  for (const w of str(e, 'slotShifts')?.split(/\s+/).filter(Boolean) ?? []) {
+    const [from, to] = w.split('>')
+    if ((SLOT_KINDS as string[]).includes(from) && (SLOT_KINDS as string[]).includes(to) && from !== to) out.push({ from, to } as SlotShift)
+    else if (fix) fix.push(`${e.getAttribute('name') || 'A vehicle'}: the mod slot shift “${w}” isn’t between two categories, so it’s left out.`)
+    else throw new Error(`mod slot shift “${w}” (not category>category)`)
+  }
+  return out.length ? out : undefined
 }
 
 const readKnowledge = (e: Element): Sr6Knowledge =>
@@ -599,7 +727,27 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'drop':
       return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
     case 'upgrade':
+    case 'fit':
       return { op, target: req(e, 'target'), line: line(e, 'purchase', purchase, true) }
+    case 'unfit':
+      return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
+    case 'shift':
+      return {
+        op,
+        target: req(e, 'target'),
+        from: oneOf(e.getAttribute('from'), SLOT_KINDS, 'mod slot category')!,
+        to: oneOf(e.getAttribute('to'), SLOT_KINDS, 'mod slot category')!,
+      }
+    case 'move':
+      return { op, target: req(e, 'target'), mount: req(e, 'mount') }
+    case 'teach':
+      return { op, target: req(e, 'target'), line: line(e, 'trained', readTrained, true) }
+    case 'bond': {
+      // (the bought quality, and the negative taken with it)
+      const [q, w] = kids(e, 'quality').map(readCritterQuality)
+      if (!q) throw new Error('no <quality> inside the entry')
+      return def({ op, target: req(e, 'target'), line: q, with: w })
+    }
     case 'contact':
       return { op, line: line(e, 'contact', readContact, true) }
     case 'sin':
@@ -685,6 +833,41 @@ function readNpc(n: Element, fix?: string[]): Sr6Npc {
           },
     stats: Object.fromEntries(stats),
     lines: each(kids(n, 'line'), e => ({ part: oneOf(e.getAttribute('part'), SR6_NPC_PARTS, 'line part')!, text: e.textContent ?? '' }), label, fix),
+    design: yes(n, 'designed') && {
+      powers: each(kids(n, 'power'), readCritterPower, label, fix),
+      weaknesses: each(kids(n, 'weakness'), readCritterPower, label, fix),
+      skills: each(
+        kids(n, 'skill'),
+        e => def({ id: str(e, 'id'), name: e.getAttribute('name') ?? '', rank: num(e, 'rank', 0), spec: str(e, 'spec') }),
+        label,
+        fix,
+      ),
+      dice: num(n, 'dice', 1),
+    },
+  })
+}
+const readCritterPower = (e: Element) => def({ id: str(e, 'id'), name: e.getAttribute('name') ?? '', level: num(e, 'level'), note: str(e, 'note') })
+
+function readDesign(d: Element, fix?: string[]): Sr6Design {
+  return def({
+    kind: oneOf(d.getAttribute('kind'), ['vehicle', 'drone'] as const, 'design kind', 'vehicle', fix)!,
+    chassis: str(d, 'chassis'),
+    powertrain: str(d, 'powertrain'),
+    console: str(d, 'console'),
+    options: each(
+      kids(d, 'option'),
+      o => {
+        const level = num(o, 'level', 1)
+        if (!Number.isInteger(level)) throw new Error(`level="${level}" isn’t a whole number`)
+        const road = str(o, 'road') === undefined ? undefined : oneOf(o.getAttribute('road'), ['on', 'off'] as const, 'Improved Handling road', undefined, fix)
+        return def({ id: o.getAttribute('id') ?? '', level, road })
+      },
+      label,
+      fix,
+    ),
+    mods: each(kids(d, 'purchase'), x => readPurchase(x, fix), label, fix),
+    diy: yes(d, 'diy'),
+    approved: yes(d, 'approved'),
   })
 }
 
@@ -714,6 +897,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     const fk = num(r, 'finalKarma'),
       fn = num(r, 'finalNuyen'),
       npc = kid(r, 'npc'),
+      design = kid(r, 'design'),
       ledger = kid(r, 'ledger'),
       house = kid(r, 'house')
     const printed = kid(r, 'printed'),
@@ -745,6 +929,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
           )
         : [],
       npc: npc ? readNpc(npc, fix) : undefined,
+      design: design ? readDesign(design, fix) : undefined,
       sampleKey: str(r, 'sampleKey'),
       house: house?.children.length ? readHouse(house, fix) : undefined,
       printed: printed

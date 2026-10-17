@@ -12,7 +12,7 @@ import { normName } from './names'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
 import { bookValue, dataFind } from './values'
 import { entryLabel } from './categories'
-import { entryOf, licenceFee, priced, PURCHASE_TAB } from './purchases'
+import { entryOf, licenceFee, priced, purchaseTab } from './purchases'
 import { essenceBudget } from './essence'
 import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints } from './magic'
 import { skillSpend, knowledgePoints } from './skills'
@@ -76,7 +76,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       `purchase:${x.uid}`,
       `${purchaseName(x, data)}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
       priced(x, data, cr).cost,
-      PURCHASE_TAB[x.kind],
+      purchaseTab(x, data),
     )
   // (an item's licence on a real SIN is its printed fee: sinCost)
   const fee = (uid: string) => {

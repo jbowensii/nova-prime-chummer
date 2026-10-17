@@ -11,6 +11,7 @@ import { skillRank, skillSpend } from './skills'
 import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
+import { bondKarma } from './critters'
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
@@ -117,6 +118,13 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
+  // the Critter Bond path's Permanent Improvement (SWC p. 139): a critter's qualities bought with the runner's Karma
+  add(
+    'critterBond',
+    'Critter qualities bought by the bond',
+    b.purchases.reduce((t, x) => t + (x.kind === 'critters' ? bondKarma(x, data) : 0), 0),
+    'critters',
+  )
   const extra = extraMagic(b, data, cr, p)
   add('spells', 'Spells and rituals past the free ones', extra.spells * n0(cr, 'karmaSpell'), 'magic')
   add('complexForms', 'Complex forms past the free ones', extra.forms * n0(cr, 'karmaForm'), 'magic')

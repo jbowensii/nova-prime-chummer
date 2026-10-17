@@ -55,6 +55,8 @@ import type { Sr6Entry } from '../model/types'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
 import { ratingRange } from './values'
+import { modsOf } from './vehiclemods'
+import { critterView } from './critters'
 import { gradeFits, gradeKnown, gradeName } from './grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -119,6 +121,9 @@ const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => {
   const e = c.data.entry(x.kind, x.id)
   return e ? entryLabel(e) : (x.name ?? x.id)
 }
+
+/** The Review code of a designed vehicle's or drone's GM approval: a warning a GM may approve (Review.tsx). */
+export const DESIGN_APPROVAL = 'vehicle.design'
 
 const RULES: Rule[] = [
   {
@@ -1544,7 +1549,8 @@ const RULES: Rule[] = [
         if (!c.data.entry('martialarts', m.id)) hits.push(gone(`martial.${m.uid}`, m.name ?? m.id))
         for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`martial.${m.uid}`, t.name ?? t.id))
       }
-      for (const { x, path } of lines(c.b)) if (x.id && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
+      // (a design's line is no catalog entry: its snapshot is the vehicle)
+      for (const { x, path } of lines(c.b)) if (x.id && !x.design && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
       for (const s of c.b.sins) for (const l of s.lifestyles ?? []) if (!c.data.entry('lifestyles', l.id)) hits.push(gone(`contacts.lifestyle.${l.uid}`, l.id))
       for (const pk of c.b.lifepath) if (!c.data.lifemodules[pk.id]) hits.push(gone(`method.${pk.id}`, pk.id))
       return hits
@@ -1621,6 +1627,47 @@ const RULES: Rule[] = [
           ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, x)}: its accessories take ${used} capacity; it has ${cap}.`, ...entryCite(he) }]
           : []
       }),
+  },
+  // an owned vehicle's or drone's mods past its slots, hardpoints or mounts, a weapon in no mount or too big for it,
+  // autosofts past its Pilot (vehiclemods.ts): listed, never enforced (owner 2026-10-16)
+  {
+    code: 'vehicle.mods',
+    severity: 'warning',
+    tab: 'vehicles',
+    check: c => c.b.purchases.filter(x => x.kind === 'vehicles').flatMap(x => modsOf(x, c.data).warnings.map(w => ({ path: `vehicles.${x.uid}`, ...w }))),
+  },
+  // a vehicle or drone a player designed (the Designer) needs its GM's approval: a warning a GM approves, never blocking;
+  // one a GM made or approved needs nothing (owner 2026-10-16, BUILDER Q8); a design's line by its `design` or its
+  // `design.<id>` line or snapshot id, so a file with `design` taken out still asks
+  {
+    code: DESIGN_APPROVAL,
+    severity: 'warning',
+    tab: 'vehicles',
+    check: c =>
+      c.b.purchases
+        .filter(x => (x.design || [x.id, x.snapshot?.id].some(i => i?.startsWith('design.'))) && x.snapshot?.attrs.approved !== 'true')
+        .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
+  },
+  // an owned critter past its limits (critters.ts: commands, special training, qualities, taming, bonding, Body for
+  // critterware, Essence), and bonded qualities without the runner's Critter Bond path (SWC p. 139): warned, never refused
+  {
+    code: 'critter.rules',
+    severity: 'warning',
+    tab: 'critters',
+    check: c =>
+      c.b.purchases
+        .filter(x => x.kind === 'critters')
+        .flatMap(x => {
+          const v = critterView(x, c.data, priced(x, c.data, c.cr).essence),
+            bond =
+              x.critterQualities?.some(q => q.how === 'bonded') && !c.b.qualities.some(q => /critter bond/i.test(c.data.qualities[q.id]?.name ?? q.name ?? ''))
+          return [
+            ...v.warnings,
+            ...(bond
+              ? [{ message: `${v.name}: qualities bought by the bond need the runner’s Critter Bond path (Permanent Improvement).`, source: 'SWC', page: 139 }]
+              : []),
+          ].map(w => ({ path: `critters.${x.uid}`, ...w }))
+        }),
   },
   // a book sample keeps the numbers its stat block prints; where the rules give others, say so (the book isn't corrected)
   { code: 'sample.printed', severity: 'warning', tab: 'review', check: c => printedHits(c) },

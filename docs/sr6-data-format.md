@@ -68,8 +68,8 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | grades | grade | essence, cost (multipliers), avail (modifier): decimals (`1.1`, `-1`); types (the augmentation types it is for, absent: cyberware and bioware) | — |
 | electronics | device | category*, rating, array, programs, capacity, avail, cost | — |
 | programs | program | type* (basic, hacking, autosoft, … as printed), rating, avail, cost (where the book prints them: the core rulebook's per type, its `Autosoft` row's rating formula for the autosofts) | — |
-| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance) | — |
-| vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | — |
+| gear | gear | category*, rating, capacity, karma, avail, cost, per, slots, energy (a weapon power supply's Energy), range, pilot, sensor (a rocket or missile's range as printed and the Pilot and Sensor of its guidance), hardpoint small\|standard\|large\|huge (the hardpoint a vehicle weapon mount, drone rack or mechanical arm attaches to: its HARDPOINT column, Double Clutch pp. 142-145) | — |
+| vehicles | vehicle | category*, handling, accel, interval, topSpeed, body, armor, pilot, sensor, seats, avail, cost | builtin (name*, ref, rating, slots, category, source, page)×n and note (field `builtin`)×n: see Built-in modifications |
 | spells | spell | category* combat\|detection\|health\|illusion\|manipulation, tags, range, type, duration, dv, damage, opposed true (its test is opposed), essence true (its test counts the target's Essence, in its threshold or its resistance): see Flags | — |
 | rituals | ritual | keywords, threshold | — |
 | adeptpowers | adeptpower | cost, costCombat (the price for a combat skill, the power's `Combat skill: 1.0 PP per level; other skills 0.5 PP per level`: cost then the other skills'), perLevel true, maxLevel int, activation | — |
@@ -79,7 +79,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | martialarts | martialart | categories (Grappling, Weapon, … as printed), signature (its signature technique) | — |
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, augmentation, other: its prerequisites, below) |
 | traditions | tradition | — | — |
-| critterpowers | critterpower | type, action, range, duration, tags (Street Wyrd: `Free`, `Great`), weakness true (the book lists it as a weakness) | — |
+| critterpowers | critterpower | type, action, range, duration, tags (Street Wyrd: `Free`, `Great`), weakness true (the book lists it as a weakness: a stat block's `Weaknesses:`, or a heading under a `Weaknesses` section, the core rulebook's pp. 228-229) | — |
 | critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
@@ -88,7 +88,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | rules | rule | chapter*, level* int 1–4, parent (a rule id) | — |
 | actions | action | type (minor, major, edge, boost: the section's words), timing initiative\|anytime, edge int (an Edge action or boost's cost), with (the action it goes with), category (its section) | — |
 | packs | pack | category, cost, essence (as printed) | item (text)×n: the contents as printed |
-| vehicledesign | design | category (chassis, powertrain, console, …: its table), bp, dp (its cost in Design Points as printed, `2 x Armor Rating`: a cost, not an effect), rating, slots, avail, cost (as printed) | — |
+| vehicledesign | design | category (chassis type, powertrain type, console type, size class, …: its table or section), bp (its BUILD POINTS column), dp (its cost in Design Points as printed, `2 x Armor Rating`, `4`, `-10`: a cost, not an effect), perLevel true (dp is per level), max (the most it may be taken, as printed: `4`, `2 x Body`, `min(4, Body)`, `50% x Seat`, `Size Class 20`), maxReverse (the most it may be taken in reverse, when the book says; absent: max), multiplier (a quality factor's `Cost Multiplier`, `x2`, `x0.5`), rating, slots, avail, cost; a chassis's body, armor, handling, seats, sizeClass, a powertrain's accel, interval, topSpeed, a console's pilot, sensor, each table's special, a size class's length, weight, cargo (all as printed: see Vehicle design) | — |
 | ammotypes | ammotype | category, dv, ar (the modifiers as printed), avail, cost (a multiplier `x2` or a price) | — |
 | qualitypaths | qualitypath | — | step (text)×n: the headings under it |
 | qualitysets | qualityset | karma, metatypes (as printed) | quality (text)×n |
@@ -105,11 +105,66 @@ reads them by the book's own section words (`importer/sr6/sections.py`), never b
   naming its kind before a colon (`Quality Path: Critter Bond`, `New Edge Action: …`, `New Contact Type: …`). A
   lower-case box title, a heading naming the kind itself and an example are not;
 - a bold run-in (`• **Reroll one die:** …`) under a heading naming a run-in kind (Edge boosts and actions, data
-  structures, contact types) is an entry;
+  structures, contact types, a critter's special training) is an entry;
 - an action's type comes from its section's words (or a Matrix action's `(Major)` tag), its timing from `(I)`/`(A)`,
   its Edge cost from `(2 Edge)`, `N-Edge Boosts` or `Cost: N Edge`; a quality path's steps are the headings under it.
 
 The rule sections stay as they were (the rules contents still list them).
+
+Wild Life's two lists of what a critter learns are actions by their section (`category`): each `#### Name` under `###
+Critter Command Actions` (pp. 181-182) and each bold run-in under `## Critter Special Training` (pp. 182-183), with
+their description, no other printed field. Never a runner's: the app offers them only for an owned critter (the
+Critters tab and the Ledger's Teach, `src/sr6/engine/critters.ts` `trainedWhat`, owner 2026-10-16).
+
+**Vehicle design** (Double Clutch pp. 150-154; `sections.design_tables`, `design_terms`). Each row of a table with a
+BUILD POINTS column (chassis, powertrain and console types) and of the size class table (first header SIZE CLASS, a
+CARGO column; its rows named `Size Class 0` … `Size Class 20`) is a `design`, its columns its attributes as printed
+(`special` too: the console's `10`/`12` and the Bike's `0` are stored and shown, no rule reads them, owner 2026-10-16).
+Each option, modification and quality factor heading's text gives its terms: `Cost: 4 per level` (dp 4, perLevel), `Cost:
+20`, `Cost: Heavy Duty +10, Lightweight –10` (a heading over several: each its own), `Maximum level is 4`, `a maximum of 3
+levels`, `cannot be higher than twice the vehicle's Body` (`2 x Body`), `4 or the vehicle's original Body value,
+whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxReverse), `can only be purchased once` (max
+1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
+on-road or off-road only) stays in its text; the Designer applies it as a design option's `road`.
+
+The Designer (`src/sr6/engine/design.ts`, owner 2026-10-16) reads them: a chassis, powertrain or console by its category,
+a quality factor by its `multiplier` (all multiplied together), an option bought in levels by `perLevel` (or a rating, or
+a cost × a word), any other a design modification at its flat `dp`. Price = (the Design Points summed × every multiplier)
+× 1,000¥ + the built-in mods' nuyen (2 Design Points per mod slot); half when built yourself. A table's `special` that
+changes handling, off-road handling or cargo (`-2 handling`, `-2 to off road handling`, `Extra cargo (+4 CF)`) or reads
+`No Top Speed loss` is applied; any other (the console's 10/12, the Bike's 0) is shown as printed. What each option and
+modification changes is the book's rule for it by name (pp. 151-153); an unknown one counts its Design Points only. Each
+`max` form is read against the design: a number (levels; in reverse too unless `maxReverse`), `Size Class N` (the
+resulting size), `k x Stat` (the option's stat at most k × the final Stat, or k × its own starting value), `P% x Stat`
+(the increase at most P% of the starting Stat), a bare `Stat` (levels up to its starting value) and `min(…)` (each);
+passing one is a warning, never refused. The starting Cargo Factors include a table's extra cargo (the Truck's +4);
+Improved Size's seats never take a vehicle below 1 seat (owner 2026-10-16).
+
+**Built-in modifications** (Double Clutch p. 146, owner 2026-10-16; `resolve._builtin_mods`, in the corpus pass after
+every import). A book's `Core Vehicle Modifications` box lists, as bold run-ins under its group headings, the
+modifications the core rulebook's vehicles already have. Each vehicle it names, in the library's other books (by name,
+alias, or either part of a slash name: `Federated-Boeing Commuter/Osprey X`), gets one `<builtin>` per modification:
+`name` as printed, its trailing number the `rating` (`Realistic features 4`), `ref` the box book's gear entry of that name
+when exactly one matches by its words (`Ceramic plate armor` is `Ceramic Plate`; of several levels the rating's), or
+`slots` and `category` for `4 additional Chassis mod slots`; `source` and `page` are the box's. A line or part that is a
+sentence (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) is a `<note field="builtin">` as printed.
+They are already paid for (shown as built in, never taken off); each pass replaces the ones the last gave.
+
+**Owned vehicles and drones** (the app: `src/sr6/engine/vehiclemods.ts`, the Vehicles and Drones tabs' Modify panel,
+owner 2026-10-16). A `vehicles` entry is a drone by its class (`DRONE_…`) or category (`drone`). A gear entry is a vehicle
+mod by its class (`MOD_CHASSIS`, `MOD_SKIN`, `MOD_HARD`: chassis slots; `MOD_POWER`: powertrain; `MOD_ELEC`: electronics;
+`ACCESSORY/VEHICLE…`, `ACCESSORY/TIRES`: an accessory, no slots) or else its category's words; one with a `hardpoint`
+(or a `… weapon mount`, by its name: a heavy one large) sits on a hardpoint. With Double Clutch (source `DC`) among the
+table's books: each category has the unmodified Body in mod slots (p. 120) plus a `<builtin slots category>`'s; a mod
+takes its `slots` at its rating; the free hardpoints are Body / 3 standard ones (a small drone with Body over 3: one small;
+a micro or mini drone: none; p. 124), plus a `Small|Standard|Large|Huge hardpoint` mod's (0.5, 1, 2, 3 standard ones),
+and a device takes its `hardpoint`'s. A built-in mod with a `ref` counts as fitted there (owner 2026-10-16): a built-in
+weapon mount holds a weapon and takes its hardpoints (or counts among the core rulebook's mounts), a built-in hardpoint
+mod adds its; its mod slots aren't counted. Without it, the core rulebook's: up to Body / 3 weapon mounts, a heavy one counting
+two (CRB p. 295). A drone runs half its Pilot (rounded up) in autosofts and programs (CRB p. 201). A weapon sits in one
+mount (small: an SMG or smaller; standard: an assault rifle or smaller; large: any; DC p. 142, by its class or category).
+What goes past these is Review's `vehicle.mods` warning, never refused. A mod (not an accessory) may be installed by the
+player, half its nuyen (`diy`, p. 120; the install test is the GM's).
 
 **Martial arts** (Firing Squad p. 97). The builder buys a style on its Martial arts tab (`karmaMartialArt`); its signature
 technique, the `martialtechniques` entry whose name is the style's `signature`, comes with it free. Each other technique
@@ -917,7 +972,11 @@ and vehicles, and the laser weapons (`WEAPON_LASER/PISTOLS_LIGHT` …, Commlink6
 tools.cl6check` accepts an entry of such a class and reports "deliberate extra classes: N". A source's whole section can
 take one (`classes/section_prefix.json`: Body Shop's critter chapter, all `CRITTERWARE/AUGMENTATION`, whatever the entry had;
 the Companion's Infected optional powers, `INFECTED/OPTIONAL_POWER`, an extra; its Infected qualities, `INFECTED`, a rule
-marked `"commlink6": true` since Commlink6 has that type).
+marked `"commlink6": true` since Commlink6 has that type; Wild Life's Purchasing a Critter rows, p. 180,
+`CRITTERWARE/PURCHASE`: gear of category `Critter purchase` (Pet (Mundane), Pet (Exotic), Pet (Wild), Awakened, Emerged:
+avail and cost as printed, `Body x 100 nuyen`) and `Critter purchase option` (the qualities' and training's effects, `+1`,
+`+500 nuyen`), and its Critter Companion Qualities, pp. 184-186, `CRITTERWARE/QUALITY`: a critter's, never a runner's.
+The book's limit of six qualities on a purchased critter, p. 184, is a game rule, not data).
 
 ## Layout and load order
 

@@ -313,6 +313,54 @@ export function HexSheet({ art }: { art: SheetArt }) {
         </section>
       </div>
 
+      {/* (the same vehicle and drone data as the other styles: view.ts vehicleNotes) */}
+      {lines('vehicles').length > 0 && (
+        <section aria-labelledby="x-vehicles">
+          <Title id="x-vehicles">Vehicles & drones</Title>
+          <ul className="x-lines">
+            {lines('vehicles').map(x => {
+              const a = attrsOf(x)
+              return (
+                <li key={x.uid}>
+                  {nameOf(x)}
+                  <span className="x-small">
+                    {' '}
+                    {[
+                      ['Hand', a.handling],
+                      ['Accel', a.accel],
+                      ['Speed', a.topSpeed],
+                      ['Body', a.body],
+                      ['Armor', a.armor],
+                      ['Pilot', a.pilot],
+                      ['Sensor', a.sensor],
+                    ]
+                      .filter(([, y]) => y)
+                      .map(([l, y]) => `${l} ${y}`)
+                      .join(', ')}
+                    {v.vehicleNotes(x).map(t => `; ${t}`)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* (the same critter data as the other styles: view.ts critterNotes) */}
+      {lines('critters').length > 0 && (
+        <section aria-labelledby="x-critters">
+          <Title id="x-critters">Critters</Title>
+          <ul className="x-lines">
+            {lines('critters').map(x => (
+              <li key={x.uid}>
+                {nameOf(x)}
+                <span className="x-small">{v.critterNotes(x).map(t => `; ${t}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="x-band" aria-label="Condition monitor">
         <div>
           <span className="x-bl">Physical</span>

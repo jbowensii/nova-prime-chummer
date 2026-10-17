@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field, replace
 
 from importer.sr6 import effects, flags
-from importer.sr6.regroup import norm, text_page
+from importer.sr6.regroup import md_tables, norm, text_page
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
@@ -40,7 +40,11 @@ HEADING_KINDS = [
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
     ("qualitypaths", re.compile(r"\bquality\s+paths?\s*$", re.I)),
     ("vehicledesign", re.compile(r"\bdesign\s+(?:options?|modifications?)\b|\bquality\s+factors?\b", re.I)),
+    # a critter's weaknesses, each a heading under the section (the core rulebook's `WEAKNESSES`, pp. 228-229): critter
+    # powers marked weakness="true"
+    ("critterpowers", re.compile(r"^(?:critter\s+)?weaknesses$", re.I)),
 ]
+WEAKNESSES = HEADING_KINDS[-1][1]
 # the labels an entry of a kind read under its own heading prints (an adept power's Cost in PP, its Activation)
 FIELDED = {"adeptpowers": {"cost", "activation"}}
 TOXIN_LABELS = {"vector", "speed", "power"}  # a toxin's stat lines (the core rulebook's toxin form)
@@ -51,7 +55,9 @@ RUNIN_KINDS = [
     ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
-    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b", re.I)),
+    # (`Critter Special Training`, Wild Life p. 182: what a critter can be trained in, beside its Critter Command Actions)
+    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b"
+                           r"|\bcritter\s+special\s+training\b", re.I)),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
 ]
@@ -482,8 +488,8 @@ class Reader:
             name = re.sub(r"\s*\((?:\d+\s*(?:or|to|-|–)\s*\d+)\)\s*$", "", name)
         if kind == "vehicledesign":
             attrs = {"category": chain[-1] if chain else None}
-            if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Scrap Frame (x0.5 BP)`
-                name, attrs["bp"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
+            if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Scrap Frame (x0.5 BP)`: its cost multiplier
+                name, attrs["multiplier"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
                 name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
             # its Design Point cost as printed (`Cost: 2 Design Points x Armor Rating`): a cost, not an effect (owner
@@ -491,6 +497,9 @@ class Reader:
             if m := re.search(r"Cost:\**\s*(\+?\s*\d+(?:\.\d+)?)\s*Design Points?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)"
                               r"\s*(?:\.|$|\n|\()", _body(b), re.I):
                 attrs["dp"] = (m.group(1).replace(" ", "") + m.group(2).rstrip()).strip()
+            attrs = {**design_terms(name, _body(b)), **attrs}
+        if kind == "critterpowers" and chain and WEAKNESSES.search(chain[-1]):
+            attrs = {"weakness": "true"}
         if kind == "martialtechniques":  # its closing `Category:` line, inline after its last sentence
             attrs = {"category": flags.technique_category(text)}
         if kind == "metamagics":  # who may take it (`Adept Metamagics`, `(Adepts Only)`); the note leaves the name, so
@@ -568,42 +577,94 @@ def reprint(f, entries):
 
 # --- vehicle design (Double Clutch's design rules) ---------------------------------------------------------------
 
-_SEP = re.compile(r"\|(?:\s*:?-+:?\s*\|)+\s*$")
-
-
-def _md_tables(text):
-    """The markdown tables of a text: [(header, rows)]."""
-    lines, out, i = (text or "").splitlines(), [], 0
-    while i < len(lines):
-        if lines[i].startswith("|") and i + 1 < len(lines) and _SEP.match(lines[i + 1]):
-            header, rows, i = [c.strip() for c in lines[i].strip().strip("|").split("|")], [], i + 2
-            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
-                rows.append([c.strip() for c in lines[i].strip().strip("|").split("|")])
-                i += 1
-            out.append((header, rows))
-        else:
-            i += 1
-    return out
+# a design table's printed columns -> the part's attributes (Double Clutch p. 150's chassis, powertrain, console and
+# size class tables), each value as printed
+DESIGN_COLUMNS = {"BUILD POINTS": "bp", "BOD": "body", "BODY": "body", "ARM": "armor", "ARMOR": "armor", "HAND": "handling",
+                  "HANDLING": "handling", "SEAT": "seats", "SEATS": "seats", "SIZE CLASS": "sizeClass", "ACCEL": "accel",
+                  "SPD INT": "interval", "SPEED INTERVAL": "interval", "TOP SPD": "topSpeed", "TOP SPEED": "topSpeed",
+                  "PILOT": "pilot", "SENSOR": "sensor", "SPECIAL": "special", "LENGTH": "length", "WEIGHT": "weight",
+                  "CARGO": "cargo"}
 
 
 def design_tables(b, page):
-    """Each row of a table with a BUILD POINTS column (the chassis, powertrain and console type tables): a vehicle
-    design part, its category the table's first header (`chassis type`), its build points as printed."""
+    """Each row of a table with a BUILD POINTS column (the chassis, powertrain and console type tables) or of the size
+    class table (first header SIZE CLASS, a CARGO column): a vehicle design part, its category the table's first header
+    (`chassis type`, `size class`), its printed columns (DESIGN_COLUMNS) as printed. A size class row is named by its
+    table and number (`Size Class 6`)."""
     tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else []) \
-        + [(list(x), [list(x.values())]) for x in b.stats] + _md_tables(b.text)
+        + [(list(x), [list(x.values())]) for x in b.stats] + md_tables(b.text)
     out = []
     for header, rows in tables:
-        hu = [h.upper() for h in header]
-        if "BUILD POINTS" not in hu or len(header) < 2:
+        hu = [h.upper().strip() for h in header]
+        size = hu[:1] == ["SIZE CLASS"] and "CARGO" in hu
+        if "BUILD POINTS" not in hu and not size or len(header) < 2:
             continue
-        bp = hu.index("BUILD POINTS")
         for r in rows:
-            if r and r[0].strip() and len(r) > bp:
-                out.append(Found("vehicledesign", r[0].strip(), page, {"category": header[0].lower(),
-                                                                         "bp": r[bp].strip() or None}, [], ""))
-    for f in out:
-        f.attrs = {k: v for k, v in f.attrs.items() if v}
+            if not r or not r[0].strip() or len(r) < len(header):
+                continue
+            name = f"{header[0].strip().title()} {r[0].strip()}" if size else r[0].strip()
+            attrs = {"category": header[0].strip().lower()}
+            for h, v in list(zip(hu, r))[1:]:
+                if (a := DESIGN_COLUMNS.get(h)) and v.strip():
+                    attrs[a] = re.sub(r"^[–−]", "-", " ".join(v.split()))
+            out.append(Found("vehicledesign", name, page, attrs, [], ""))
     return out
+
+
+def _flat(text):
+    """A text on one line, words broken over a line joined (`Mul-\ntiplier`), bold marks gone."""
+    return " ".join(re.sub(r"(?<=[a-z])-\s*\n\s*(?=[a-z])", "", (text or "").replace("**", "")).split())
+
+
+_SIGNED = r"[+\-–−]?\s*\d+(?:\.\d+)?"
+_DP = re.compile(rf"\bCost:\s*({_SIGNED})(?:(\s+per\s+level)\b|(?=\s*(?:[.;]|$)))", re.I)
+_DP_LIST = re.compile(rf"\bCost:\s*((?:[A-Z][A-Za-z -]*?\s*{_SIGNED}\s*,?\s*)+)")
+_DP_PAIR = re.compile(rf"([A-Z][A-Za-z -]*?)\s*({_SIGNED})")
+_MULTIPLIER = re.compile(r"\bCost\s+Multiplier:\s*(x\s*\d+(?:\.\d+)?)", re.I)
+_V = r"vehicle[’']s\s+(?:original\s+|starting\s+)?"
+# the maximum an option's text prints, as a short expression in the book's words: (pattern, its expression)
+_MAXIMA = [
+    (re.compile(rf"maximum level is (\d+) or the {_V}(\w+) value,? whichever is lower", re.I), "min({0}, {1})"),
+    (re.compile(r"maximum increase is double the starting (\w+) or (\d+) levels,? whichever is less", re.I),
+     "min({1}, 2 x {0})"),
+    (re.compile(r"maximum level is (\d+)\b", re.I), "{0}"),
+    (re.compile(r"maximum of (\d+) levels\b", re.I), "{0}"),
+    (re.compile(rf"cannot be higher than twice the {_V}(\w+)", re.I), "2 x {0}"),
+    (re.compile(r"maximum increase is (\d+) percent more than the starting (\w+) value", re.I), "{0}% x {1}"),
+    (re.compile(r"cannot go beyond (size class \d+)", re.I), "{0}"),
+    (re.compile(r"can only be purchased once\b", re.I), "1"),
+]
+_MAX_REVERSE = re.compile(r"maximum decrease is (\d+) levels?\b", re.I)
+
+
+def _num(v):
+    return re.sub(r"^[–−]", "-", v.replace(" ", ""))
+
+
+def design_terms(name, text):
+    """A design option's, modification's or quality factor's printed terms (Double Clutch pp. 151-154), as printed: its
+    Design Point cost (`Cost: 4 per level`: dp 4, perLevel; `Cost: 20`; `Cost: Heavy Duty +10, Lightweight –10`, a
+    heading over several: the one this entry names), its maximum (`Maximum level is 4`: max 4; `cannot be higher than
+    twice the vehicle's Body`: `2 x Body`; `the maximum decrease is 2 levels`: maxReverse 2) and its cost multiplier
+    (`Cost Multiplier: x2`)."""
+    t, out = _flat(text), {}
+    if m := _DP.search(t):
+        out["dp"], out["perLevel"] = _num(m.group(1)), "true" if m.group(2) else None
+    elif m := _DP_LIST.search(t):
+        mine = norm(name)
+        for label, v in _DP_PAIR.findall(m.group(1)):  # (`Economy –15` for `Economy Engines`)
+            if mine.startswith(norm(label)) or norm(label).startswith(mine):
+                out["dp"] = _num(v)
+                break
+    if m := _MULTIPLIER.search(t):
+        out["multiplier"] = m.group(1).replace(" ", "")
+    for rx, expr in _MAXIMA:
+        if m := rx.search(t):
+            out["max"] = expr.format(*(g[:1].upper() + g[1:] for g in m.groups()))
+            break
+    if m := _MAX_REVERSE.search(t):
+        out["maxReverse"] = m.group(1)
+    return {k: v for k, v in out.items() if v}
 
 
 KEYWORDS = re.compile(r"\b(?:rituals?|spells?)\b", re.I)
@@ -613,7 +674,7 @@ def quality_sets(b, page):
     """Each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE METAGENIC
     QUALITIES | …`: the Companion's metagenic collectives): a set of qualities bought together."""
     out = []
-    for header, rows in _md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
+    for header, rows in md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
                                                if b.row is not None and b.header else []):
         hu = [h.upper() for h in header]
         qs = [i for i, h in enumerate(hu) if "QUALITIES" in h]

@@ -16,9 +16,11 @@ import {
   type CpPool,
   type Letter,
   type MagicKind,
+  type PetClass,
   type PickKind,
   type PriorityColumn,
   type PurchaseKind,
+  type SlotShift,
   type Sr6Attr,
   type Sr6Build,
   type Sr6Character,
@@ -33,8 +35,10 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { augmentationRoom, diyAllowed, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import { mountsOf, shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
+import { critterQualityNamed, isCritterQuality, trainedWhat } from './critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -73,10 +77,21 @@ export type Op =
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
+  /** a vehicle or drone bought from a design (design.ts boughtDesign); taken away as any line (purchase remove) */
+  | { op: 'design'; line: Sr6Purchase }
   /** a stacking line's quantity */
   | { op: 'quantity'; uid: string; qty: number }
-  | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number }
+  /** mount: a weapon's mount (the host's accessory it sits in); diy: a vehicle mod installed by the player (half price) */
+  | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number; mount?: string; diy?: boolean }
   | { op: 'accessory'; host: string; remove: string }
+  /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
+  | { op: 'diy'; uid: string; diy: boolean }
+  /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
+  | { op: 'mount'; uid: string; mount: string | null }
+  /** two mod slots of one category shifted to one of another on a vehicle or drone (Double Clutch p. 120), or the shift at
+   *  `remove` (its place in the vehicle's shifts) undone */
+  | ({ op: 'shift'; uid: string } & SlotShift)
+  | { op: 'shift'; uid: string; remove: number }
   | { op: 'wear'; uid: string; worn: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
@@ -122,10 +137,23 @@ export type Op =
   | { op: 'infected'; id: string }
   /** the player's override of the Awakened flag (null: derived again; Review warns while it differs) */
   | { op: 'awakened'; value: boolean | null }
+  /** an owned critter's pet class, or tamed from the wild (on: Wild Soul and High Maintenance 1 come with it, Wild Life
+   *  p. 184, and its commands and special training count as taught; off: the two go) */
+  | { op: 'critter'; uid: string; pet?: PetClass; tamed?: boolean }
+  /** a named command or special training (a catalog Critter Command Action or Critter Special Training) for the owned
+   *  critter `host`: with its purchase, or taught later (a tamed critter's always); one's taught set; or one taken off */
+  | { op: 'critterTrained'; host: string; id: string; taught?: boolean }
+  | { op: 'critterTrained'; host: string; uid: string; taught: boolean }
+  | { op: 'critterTrained'; host: string; remove: string }
+  /** a companion quality on the owned critter `host` (a catalog quality of class CRITTERWARE/QUALITY): specified with its
+   *  purchase (no how), from taming, or bonded (the runner's Karma); or one's level set, or one taken off */
+  | { op: 'critterQuality'; host: string; id: string; how?: 'tamed' | 'bonded'; level?: number }
+  | { op: 'critterQuality'; host: string; uid: string; level: number }
+  | { op: 'critterQuality'; host: string; remove: string }
 export type Result = { ok: true } | { ok: false; reason: string }
 
 /** R: weapons, armor, augmentations and vehicles always get their own line (each can carry its own accessories). */
-const OWN_LINE = new Set<PurchaseKind>(['weapons', 'armor', 'augmentations', 'vehicles'])
+const OWN_LINE = new Set<PurchaseKind>(['weapons', 'armor', 'augmentations', 'vehicles', 'critters'])
 const LETTER_METHODS = new Set<Sr6Method>(['priority', 'sumtoten'])
 
 /** Switch method. Spends that still mean something stay; point buy's character points, lifepath's modules and the
@@ -229,6 +257,11 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 
 /** Every purchase, and every accessory on one. */
 const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
+/** An accessory taken off its host; a weapon in it (a weapon mount) stays, in no mount. Shared with career.ts. */
+export function unfit(host: Sr6Purchase, uid: string): void {
+  host.accessories = host.accessories.filter(a => a.uid !== uid)
+  for (const a of host.accessories) if (a.mount === uid) delete a.mount
+}
 /** A removed line's licences go with it (the lines: it and its accessories). */
 const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
   for (const s of b.sins) s.licences = s.licences.filter(l => !gone.some(x => x.uid === l.item))
@@ -507,6 +540,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       else b.purchases.push(line)
       return OK
     }
+    case 'design': {
+      const x = op.line
+      if (x.kind !== 'vehicles' || !x.design || !x.snapshot) return no('not-a-design')
+      b.purchases.push({ ...structuredClone(x), uid: newId(), qty: 1 })
+      return OK
+    }
     case 'quantity': {
       const x = b.purchases.find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
@@ -524,13 +563,130 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
           b,
           host.accessories.filter(a => a.uid === op.remove),
         )
-        host.accessories = host.accessories.filter(a => a.uid !== op.remove)
+        unfit(host, op.remove)
         return OK
       }
       // an accessory whose category names other hosts goes on anyway (Review's catalog.accessoryHost)
       const line = newLine({ kind: op.kind, id: op.id, rating: op.rating }, data, cr)
       if ('reason' in line) return line
+      // critter equipment goes on an owned critter only (Body Shop's critterware, Wild Life's critter gear)
+      if (critterOnly(entryOf(line, data)) && host.kind !== 'critters') return no('critters-only')
+      if (op.mount !== undefined) {
+        if (!mountsOf(host, data).some(m => m.uid === op.mount)) return no('not-a-mount')
+        line.mount = op.mount
+      }
+      if (op.diy) {
+        if (!diyAllowed(entryOf(line, data))) return no('no-diy')
+        line.diy = true
+      }
       host.accessories.push(line) // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
+      return OK
+    }
+    case 'diy': {
+      const x = b.purchases.flatMap(p => p.accessories).find(a => a.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (op.diy && !diyAllowed(entryOf(x, data))) return no('no-diy')
+      if (op.diy) x.diy = true
+      else delete x.diy
+      return OK
+    }
+    case 'mount': {
+      const host = b.purchases.find(p => p.accessories.some(a => a.uid === op.uid)),
+        x = host?.accessories.find(a => a.uid === op.uid)
+      if (!host || !x) return no('unknown-line')
+      if (x.kind !== 'weapons') return no('not-a-weapon')
+      if (op.mount === null) {
+        delete x.mount
+        return OK
+      }
+      // (a fitted mount or a built-in one, vehiclemods.ts mountsOf)
+      if (!mountsOf(host, data).some(m => m.uid === op.mount)) return no('not-a-mount')
+      x.mount = op.mount
+      return OK
+    }
+    case 'shift': {
+      const x = b.purchases.find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if ('remove' in op) {
+        if (!x.slotShifts?.[op.remove]) return no('not-shifted')
+        x.slotShifts.splice(op.remove, 1)
+        if (!x.slotShifts.length) delete x.slotShifts
+        return OK
+      }
+      const why = shiftProblem(x, op.from, op.to, data)
+      if (why) return no(why)
+      x.slotShifts = [...(x.slotShifts ?? []), { from: op.from, to: op.to }]
+      return OK
+    }
+    case 'critter': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'critters')
+      if (!x) return no('unknown-line')
+      if (op.pet) x.pet = op.pet
+      if (op.tamed === false) {
+        delete x.tamed
+        x.critterQualities = x.critterQualities?.filter(q => q.how !== 'tamed')
+      } else if (op.tamed && !x.tamed) {
+        // Wild Life p. 184: Wild Soul, balanced by a negative quality, High Maintenance 1 by default (changed by taking it
+        // off and adding another negative as tamed); one it already has isn't added again, so untaming keeps it. (Its
+        // trained ones aren't marked taught: critters.ts isTaught reads every one of a tamed critter so, and untaming
+        // restores the price.)
+        x.tamed = true
+        x.critterQualities ??= []
+        for (const name of ['Wild Soul', 'High Maintenance']) {
+          const e = critterQualityNamed(data, name)
+          if (e && !x.critterQualities.some(q => q.id === e.id)) x.critterQualities.push({ uid: newId(), id: e.id, level: 1, name: e.name, how: 'tamed' })
+        }
+      }
+      if (!x.critterQualities?.length) delete x.critterQualities
+      return OK
+    }
+    case 'critterTrained': {
+      // (past the critter's limit: Review warns, never refused)
+      const x = b.purchases.find(p => p.uid === op.host && p.kind === 'critters')
+      if (!x) return no('unknown-host')
+      if ('remove' in op) {
+        if (!x.trained?.some(t => t.uid === op.remove)) return no('not-taken')
+        x.trained = x.trained.filter(t => t.uid !== op.remove)
+        if (!x.trained.length) delete x.trained
+        return OK
+      }
+      if ('uid' in op) {
+        const t = x.trained?.find(y => y.uid === op.uid)
+        if (!t) return no('not-taken')
+        if (op.taught || x.tamed) t.taught = true
+        else delete t.taught
+        return OK
+      }
+      const e = data.entry('actions', op.id)
+      if (!e) return no('unknown-entry')
+      const what = trainedWhat(e)
+      if (!what) return no('not-critter-training')
+      // (one taken again is another: Teamwork for another skill, Use Critter Power for another power, WL pp. 182-183)
+      x.trained = [...(x.trained ?? []), { uid: newId(), what, id: e.id, name: e.name, ...(op.taught || x.tamed ? { taught: true as const } : {}) }]
+      return OK
+    }
+    case 'critterQuality': {
+      const x = b.purchases.find(p => p.uid === op.host && p.kind === 'critters')
+      if (!x) return no('unknown-host')
+      if ('remove' in op) {
+        if (!x.critterQualities?.some(q => q.uid === op.remove)) return no('not-taken')
+        x.critterQualities = x.critterQualities.filter(q => q.uid !== op.remove)
+        if (!x.critterQualities.length) delete x.critterQualities
+        return OK
+      }
+      if ('uid' in op) {
+        const q = x.critterQualities?.find(y => y.uid === op.uid)
+        if (!q) return no('not-taken')
+        if (!(op.level >= 1)) return no('below-one')
+        q.level = op.level
+        return OK
+      }
+      const e = data.entry('qualities', op.id)
+      if (!e) return no('unknown-entry')
+      if (!isCritterQuality(e)) return no('not-a-critter-quality')
+      if (op.how === 'tamed' && !x.tamed) return no('not-tamed')
+      if (x.critterQualities?.some(q => q.id === op.id)) return no('already-taken')
+      x.critterQualities = [...(x.critterQualities ?? []), { uid: newId(), id: e.id, level: op.level ?? 1, name: e.name, ...(op.how ? { how: op.how } : {}) }]
       return OK
     }
     case 'wear': {

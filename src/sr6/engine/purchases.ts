@@ -10,6 +10,7 @@ import { fieldName } from '../../shared/formula'
 import { availability, bookValue, dataFind, ratingRange } from './values'
 import { capacityUsed } from './categories'
 import { qualityChoice } from './choices'
+import { critterPrice, critterStat, critterValue } from './critters'
 
 /** The editor tab each purchase kind is bought on. */
 export const PURCHASE_TAB: Record<PurchaseKind, string> = {
@@ -21,6 +22,7 @@ export const PURCHASE_TAB: Record<PurchaseKind, string> = {
   augmentations: 'augmentations',
   vehicles: 'vehicles',
   ammotypes: 'gear',
+  critters: 'critters',
 }
 export const round2 = (x: number) => Math.round(x * 100) / 100
 
@@ -47,13 +49,16 @@ export const hostTimes = (v?: string): number | null => {
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
  *  Essence (× qty, accessories added but those taking the host's Capacity), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
- *  work out counts 0 and makes ok false (unpriced: the cost is the one); notes: what a formula had to assume. */
+ *  work out counts 0 and makes ok false (unpriced: the cost is the one); notes: what a formula had to assume. A critter
+ *  is priced by Wild Life p. 180 (critters.ts critterPrice; its Essence: what its augmentations take) and gives its
+ *  natural `body` to what is fitted to it: a value printed in Body (`Critter's Body x 50¥`, WL p. 186), and an
+ *  augmentation's +10% a point of Body over 8 (Body Shop p. 135). */
 export function priced(
   x: Sr6Purchase,
   data: Sr6Data,
   cr: CreationRules,
-  host?: { cost: number; avail: number; essence: number },
-): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[] } {
+  host?: { cost: number; avail: number; essence: number; body?: number },
+): { cost: number; avail: number; essence: number; ok: boolean; unpriced: boolean; notes: string[]; body?: number } {
   let cost: number,
     avail: number,
     essence: number,
@@ -65,12 +70,27 @@ export function priced(
     cost = x.cost ?? 0
     avail = x.avail ?? 0
     essence = x.essence ?? 0
+  } else if (x.kind === 'critters') {
+    const c = critterPrice(x, data)
+    cost = c.cost
+    avail = c.avail
+    essence = 0
+    unpriced = !c.ok
+    ok = c.ok
+    notes.push(...c.notes)
   } else {
     // ratingOf's rating, but none for an unrated item (a formula then notes it; a printed value reads at 1 as before)
     const e = entryOf(x, data),
       r = x.rating ?? ratingRange(e?.attrs.rating)[0],
       find = dataFind(data)
     const read = (attr: string) => {
+      // (on a critter: a value printed in its Body, WL p. 186)
+      if (host?.body !== undefined && !e?.formulas?.some(f => f.field === attr) && /\bbody\b/i.test(e?.attrs[attr] ?? '')) {
+        const n = critterValue(e!.attrs[attr], { Body: host.body })
+        if (n === null) ok = false
+        if (n === null && attr === 'cost') unpriced = true
+        return n ?? 0
+      }
       // (H: the item an add-on is fitted to, its line's own value: a material's `x5` of the ammunition it goes on)
       const v = bookValue(e, attr, r, find, { Q: x.qty, H: host?.[attr as 'cost' | 'avail' | 'essence'] })
       if (!v.ok) {
@@ -97,10 +117,15 @@ export function priced(
     essence *= g('essence') ?? 1
     avail += g('avail') ?? 0
   }
+  // a vehicle mod the player installs: half its nuyen (Double Clutch p. 120), never an accessory's (owner Q6)
+  if (x.diy && diyAllowed(entryOf(x, data))) cost /= 2
+  // an augmentation on a critter of natural Body over 8: +10% a point over (Body Shop p. 135)
+  if (x.kind === 'augmentations' && host?.body !== undefined && host.body > 8) cost *= 1 + (host.body - 8) / 10
   // a formula with Q in it already works out the whole line
   if (!perLine.has('cost')) cost *= x.qty
   if (!perLine.has('essence')) essence *= x.qty
-  const own = { cost, avail, essence }
+  const body = x.kind === 'critters' ? critterStat(entryOf(x, data), 'bod') : undefined
+  const own = { cost, avail, essence, body }
   for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own),
       ae = entryOf(a, data)
@@ -112,7 +137,7 @@ export function priced(
     essence += ess
     ok &&= pa.ok
   }
-  return { cost, avail, essence: round2(essence), ok, unpriced, notes }
+  return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(body !== undefined ? { body } : {}) }
 }
 
 /** The licence fee an owned line's Availability prints (`2, 500¥`): what its licence on a real SIN costs (on a fake SIN
@@ -178,6 +203,42 @@ export function cargoFactor(x: Sr6Purchase, e?: Sr6Entry): { seats: number; carg
     per = /bike|motorcycle/i.test(cat) ? 1.25 : 1.5,
     removed = Math.min(seats, x.seatsRemoved ?? 0)
   return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed) + (/truck/i.test(cat) ? 4 : 0) }
+}
+
+/** A drone (by its class, `DRONE_SMALL/AIR`, else its category, `Small drone`): bought on the Drones tab. */
+export const isDrone = (e?: Sr6Entry) => /^DRONE_/i.test(e?.attrs.class ?? '') || /drone/i.test(e?.attrs.category ?? '')
+/** The editor tab a line is bought on: a drone's Drones (its Review path stays `vehicles.<uid>`: GM approvals keep). */
+export const purchaseTab = (x: Sr6Purchase, data: Sr6Data) => (x.kind === 'vehicles' && isDrone(entryOf(x, data)) ? 'drones' : PURCHASE_TAB[x.kind])
+
+/** A vehicle weapon mount (`Standard weapon mount`, `Small Turreted Weapon Mount`: by its name). */
+export const isMount = (e?: Sr6Entry) => !!e && /\bweapon mount\b/i.test(e.name)
+export type Hardpoint = 'small' | 'standard' | 'large' | 'huge'
+/** The hardpoint a device attaches to (Double Clutch pp. 124, 142-145): its printed `hardpoint`; a mount printing none (the
+ *  core rulebook's) by its name, a heavy one large. ponytail: a rack or arm without the attribute takes none. */
+export function hardpointOf(e?: Sr6Entry): Hardpoint | undefined {
+  const h = e?.attrs.hardpoint
+  if (h === 'small' || h === 'standard' || h === 'large' || h === 'huge') return h
+  return isMount(e) ? (/\bsmall\b/i.test(e!.name) ? 'small' : /\b(heavy|large)\b/i.test(e!.name) ? 'large' : 'standard') : undefined
+}
+export type ModKind = 'chassis' | 'powertrain' | 'electronics' | 'hardpoint' | 'accessory'
+/** A gear entry as a vehicle mod (Double Clutch pp. 120-145): the slots it takes (chassis, skins included; powertrain;
+ *  electronics), a device on a hardpoint (hardpointOf), or an accessory (no slots, no do-it-yourself saving, p. 120);
+ *  null: not a vehicle mod. By its class (`MOD_POWER/…`), else its printed category. */
+export function modKind(e?: Sr6Entry): ModKind | null {
+  if (!e || e.kind !== 'gear') return null
+  if (hardpointOf(e)) return 'hardpoint'
+  const cls = (e.attrs.class ?? '').toUpperCase(),
+    cat = e.attrs.category ?? ''
+  if (/^ACCESSORY\/(VEHICLE|TIRES)/.test(cls) || /^accessory equipment$/i.test(cat)) return 'accessory'
+  if (cls.startsWith('MOD_POWER') || /^powertrain mod/i.test(cat)) return 'powertrain'
+  if (cls.startsWith('MOD_ELEC') || /^electronics? mod/i.test(cat)) return 'electronics'
+  if (/^MOD_(CHASSIS|SKIN|HARD)/.test(cls) || /^(chassis|skin) mod|^vehicle modification$/i.test(cat)) return 'chassis'
+  return null
+}
+/** Whether a fitted line may be installed by the player at half price: a vehicle mod, not an accessory (owner Q6). */
+export const diyAllowed = (e?: Sr6Entry) => {
+  const k = modKind(e)
+  return k !== null && k !== 'accessory'
 }
 
 /** The statuses an item applies (its <status>s, CRB p. 51: the Molotov's `Burning 4`, No Future errata), as shown. */

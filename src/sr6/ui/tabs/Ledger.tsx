@@ -6,16 +6,20 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
-import { attrRating, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
+import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
 import {
   CORE_ATTRS,
   MAGIC_KIND_LABELS,
+  PET_CLASSES,
   PURCHASE_KINDS,
+  SLOT_KINDS,
   sinName,
+  type PetClass,
   type PickKind,
   type PurchaseKind,
+  type SlotKind,
   type Sr6Advance,
   type Sr6Attr,
   type Sr6LedgerEntry,
@@ -23,11 +27,16 @@ import {
 } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
-import { CatalogPicker, type PickedItem } from '../Picker'
+import { CatalogPicker, isAccessory, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../engine/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 import { awakenedFlag } from '../../engine/infected'
+import { boughtDesign } from '../../engine/design'
+import { useSr6Designs } from '../Designer'
+import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../engine/critters'
+import { critterWearable } from './Critters'
+import { mountsOf } from '../../engine/vehiclemods'
 
 const OPS = [
   ['attribute', 'Raise attribute'],
@@ -43,8 +52,16 @@ const OPS = [
   ['powerpoint', 'Power point (mystic adepts)'],
   ['initiate', 'Initiate or submerge'],
   ['purchase', 'Buy gear'],
+  ['design', 'Buy a vehicle or drone of your design'],
+  ['critter', 'Buy a critter'],
   ['upgrade', 'Upgrade gear to a higher level'],
   ['drop', 'Drop gear'],
+  ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone, or critterware or gear to a critter'],
+  ['unfit', 'Take a mod off a vehicle or drone, or critterware or gear off a critter'],
+  ['shift', 'Shift mod slots on a vehicle or drone'],
+  ['move', 'Move a weapon to another mount'],
+  ['bond', 'Bond: a quality for your critter (Critter Bond)'],
+  ['teach', 'Teach your critter a command or special training'],
   ['sin', 'SIN'],
   ['licensed', 'Licence on a SIN'],
   ['lifestyle', 'Lifestyle'],
@@ -83,7 +100,15 @@ export function LedgerTab() {
     rating: '1',
     gender: '',
     licName: '',
+    mount: '',
+    from: 'chassis',
+    to: 'powertrain',
+    diy: false,
+    pet: 'mundane',
+    neg: '',
   })
+  // (a critter bought: the commands and special training it comes with, catalog ids)
+  const [trainedIds, setTrainedIds] = useState<string[]>([])
   // (a new SIN's licences by name: each is rated as the SIN, career.ts)
   const [licences, setLicences] = useState<string[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
@@ -93,11 +118,23 @@ export function LedgerTab() {
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
   const [why, setWhy] = useState('')
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
+  const designs = useSr6Designs()
+  const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
+  // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them), and critters (critterware, gear)
+  const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
+    critters = ch.build.purchases.filter(x => x.kind === 'critters'),
+    hosts = [...vehicles, ...critters],
+    host = hosts.find(x => x.uid === f.target)
+  // (bond: the critter companion qualities in the catalog)
+  const companion = [...c.entries.qualities.values()].filter(isCritterQuality).sort((x, y) => x.name.localeCompare(y.name))
+  // (critter and teach: the book's Critter Command Actions and Critter Special Training in the catalog)
+  const trainable = [...c.entries.actions.values()].filter(e => trainedWhat(e)).sort((x, y) => x.name.localeCompare(y.name))
   const choose = (o: OpKey) => {
     setOp(o)
     setPicked(null)
     setLicences([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '' }))
+    setTrainedIds([])
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -171,8 +208,70 @@ export function LedgerTab() {
               },
             }
           : null
+      // a critter at the pet class picked, with the commands and special training it comes with (Wild Life pp. 180-183)
+      case 'critter':
+        return e
+          ? {
+              op: 'purchase',
+              line: {
+                uid: '',
+                kind: 'critters',
+                id: e.id,
+                qty: 1,
+                accessories: [],
+                ...(f.pet !== 'mundane' ? { pet: f.pet as PetClass } : {}),
+                ...(trainedIds.length ? { trained: trainedIds.map(id => ({ uid: '', what: trainedWhat(data.entry('actions', id))!, id })) } : {}),
+              },
+            }
+          : null
+      // a positive companion quality (one the critter has: a level more) and the negative taken with it (SWC p. 139)
+      case 'bond': {
+        const had = critters.find(x => x.uid === f.target)?.critterQualities?.find(q => q.id === f.name)
+        return f.target && f.name
+          ? {
+              op,
+              target: f.target,
+              line: had ? { ...had, level: had.level + 1 } : { uid: '', id: f.name, level: 1 },
+              ...(f.neg ? { with: { uid: '', id: f.neg, level: 1 } } : {}),
+            }
+          : null
+      }
+      // a command or special training taught to a critter the runner owns (+500¥, +750¥: Wild Life p. 180)
+      case 'teach': {
+        const w = trainedWhat(data.entry('actions', f.name))
+        return f.target && w ? { op, target: f.target, line: { uid: '', what: w, id: f.name, taught: true } } : null
+      }
+      // one of your designs (the Designer) as it works out now
+      case 'design': {
+        const doc = designs.find(d => d.id === f.target)
+        return doc ? { op: 'purchase', line: boughtDesign(doc, data, cr, '') } : null
+      }
       case 'drop':
+      case 'unfit':
         return f.target ? { op, target: f.target } : null
+      // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
+      case 'shift':
+        return f.target ? { op, target: f.target, from: f.from as SlotKind, to: f.to as SlotKind } : null
+      case 'move':
+        return f.target && f.mount ? { op, target: f.target, mount: f.mount } : null
+      // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
+      case 'fit':
+        return f.target && e
+          ? {
+              op,
+              target: f.target,
+              line: {
+                uid: '',
+                kind: e.kind as PurchaseKind,
+                id: e.id,
+                qty: 1,
+                accessories: [],
+                ...(picked!.rating ? { rating: picked!.rating } : {}),
+                ...(f.mount && e.kind === 'weapons' ? { mount: f.mount } : {}),
+                ...(f.diy && diyAllowed(e) ? { diy: true as const } : {}),
+              },
+            }
+          : null
       // the line's higher level (the old line's grade kept; its accessories follow in applyAdvance)
       case 'upgrade':
         return f.target && e
@@ -418,7 +517,9 @@ export function LedgerTab() {
           op === 'purchase' ||
           op === 'martialart' ||
           (op === 'technique' && f.target) ||
-          (op === 'upgrade' && f.target)) && (
+          (op === 'upgrade' && f.target) ||
+          op === 'critter' ||
+          (op === 'fit' && f.target)) && (
           <div style={{ alignSelf: 'end' }}>
             {picked && (
               <span>
@@ -478,6 +579,243 @@ export function LedgerTab() {
                     {initKind === 'metamagics' && !metamagicFits(b.magic, data.metamagics[e.id]?.user) ? ` (not for ${an(kindName)} ${kindName})` : ''}
                   </option>
                 ))}
+            </select>
+          </label>
+        )}
+        {op === 'design' && (
+          <label>
+            Design
+            <select aria-label="Design" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">{designs.length ? 'Pick one' : 'None yet: make one in the Designer'}</option>
+              {designs.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.identity.streetName || 'Unnamed design'}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {op === 'critter' && (
+          <>
+            <label>
+              Class
+              <select aria-label="Critter class" value={f.pet} onChange={e => set({ pet: e.target.value })}>
+                {PET_CLASSES.map(k => (
+                  <option key={k} value={k}>
+                    {CRITTER_CLASS_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {(['command', 'training'] as const).map(w => (
+              <fieldset key={w} className="row" aria-label={w === 'command' ? 'Commands it comes with' : 'Special training it comes with'}>
+                <legend>{w === 'command' ? 'Commands it comes with' : 'Special training it comes with'}</legend>
+                {trainable
+                  .filter(e => trainedWhat(e) === w)
+                  .map(e => (
+                    <label key={e.id} className="inline">
+                      <input
+                        type="checkbox"
+                        checked={trainedIds.includes(e.id)}
+                        onChange={ev => setTrainedIds(ids => (ev.target.checked ? [...ids, e.id] : ids.filter(i => i !== e.id)))}
+                      />{' '}
+                      {e.name}
+                    </label>
+                  ))}
+              </fieldset>
+            ))}
+          </>
+        )}
+        {op === 'teach' && (
+          <>
+            <label>
+              Critter
+              <select aria-label="Taught critter" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {critters.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Command or special training
+              <select aria-label="Taught" value={f.name} onChange={e => set({ name: e.target.value })}>
+                <option value="">Pick one</option>
+                {(['command', 'training'] as const).map(w => (
+                  <optgroup key={w} label={w === 'command' ? 'Commands' : 'Special training'}>
+                    {trainable
+                      .filter(e => trainedWhat(e) === w)
+                      .map(e => (
+                        <option key={e.id} value={e.id}>
+                          {e.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'bond' && (
+          <>
+            <label>
+              Critter
+              <select aria-label="Bonded critter" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {critters.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Quality
+              <select aria-label="Bonded quality" value={f.name} onChange={e => set({ name: e.target.value })}>
+                <option value="">Pick one</option>
+                {companion
+                  .filter(e => data.qualities[e.id]?.positive)
+                  .map(e => (
+                    <option key={e.id} value={e.id}>
+                      {entryLabel(e)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              With the negative
+              <select aria-label="Negative taken with it" value={f.neg} onChange={e => set({ neg: e.target.value })}>
+                <option value="">None</option>
+                {companion
+                  .filter(e => data.qualities[e.id]?.positive === false)
+                  .map(e => (
+                    <option key={e.id} value={e.id}>
+                      {entryLabel(e)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'fit' && (
+          <label>
+            Vehicle, drone or critter
+            <select
+              aria-label="Fit to"
+              value={f.target}
+              onChange={e => {
+                set({ target: e.target.value, mount: '' })
+                setPicked(null)
+              }}
+            >
+              <option value="">Pick one</option>
+              {hosts.map(x => (
+                <option key={x.uid} value={x.uid}>
+                  {itemName(x)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {op === 'fit' && host && picked?.e.kind === 'weapons' && (
+          <label>
+            Weapon mount
+            <select aria-label="In weapon mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
+              <option value="">None</option>
+              {mountsOf(host, data).map(m => (
+                <option key={m.uid} value={m.uid}>
+                  {m.name}
+                  {m.builtin ? ' (built in)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {op === 'fit' && picked && diyAllowed(picked.e) && (
+          <label className="inline" style={{ alignSelf: 'end' }}>
+            <input type="checkbox" aria-label="Do it yourself" checked={f.diy} onChange={e => set({ diy: e.target.checked })} /> Do it yourself (half price)
+          </label>
+        )}
+        {op === 'shift' && (
+          <>
+            <label>
+              Vehicle or drone
+              <select aria-label="Shift on" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {vehicles.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Two slots from
+              <select aria-label="Shift from" value={f.from} onChange={e => set({ from: e.target.value })}>
+                {SLOT_KINDS.map(k => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              One slot to
+              <select aria-label="Shift to" value={f.to} onChange={e => set({ to: e.target.value })}>
+                {SLOT_KINDS.map(k => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'move' && (
+          <>
+            <label>
+              Weapon
+              <select aria-label="Weapon to move" value={f.target} onChange={e => set({ target: e.target.value, mount: '' })}>
+                <option value="">Pick one</option>
+                {vehicles.flatMap(x =>
+                  x.accessories
+                    .filter(a => a.kind === 'weapons')
+                    .map(a => (
+                      <option key={a.uid} value={a.uid}>
+                        {itemName(a)} on {itemName(x)}
+                      </option>
+                    )),
+                )}
+              </select>
+            </label>
+            <label>
+              Into mount
+              <select aria-label="Move to mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
+                <option value="">Pick one</option>
+                {(v => (v ? mountsOf(v, data) : []))(vehicles.find(x => x.accessories.some(a => a.uid === f.target))).map(m => (
+                  <option key={m.uid} value={m.uid}>
+                    {m.name}
+                    {m.builtin ? ' (built in)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'unfit' && (
+          <label>
+            Fitted item
+            <select aria-label="Fitted item" value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">Pick one</option>
+              {hosts.flatMap(x =>
+                x.accessories.map(a => (
+                  <option key={a.uid} value={a.uid}>
+                    {itemName(a)} on {itemName(x)}
+                  </option>
+                )),
+              )}
             </select>
           </label>
         )}
@@ -791,8 +1129,13 @@ export function LedgerTab() {
               ? 'Learn'
               : op === 'upgrade'
                 ? 'Upgrade to'
-                : 'Buy gear'
+                : op === 'fit'
+                  ? 'Fit'
+                  : op === 'critter'
+                    ? 'Buy a critter'
+                    : 'Buy gear'
         }
+        critter={(op === 'fit' && host?.kind === 'critters') || undefined}
         kinds={
           op === 'quality'
             ? ['qualities']
@@ -804,10 +1147,24 @@ export function LedgerTab() {
                   ? ['martialtechniques']
                   : op === 'upgrade'
                     ? [upgradable.find(x => x.uid === f.target)?.kind ?? 'gear']
-                    : (PURCHASE_KINDS as Sr6Kind[])
+                    : op === 'fit'
+                      ? host?.kind === 'critters'
+                        ? ['augmentations', 'gear', 'electronics']
+                        : ['gear', 'weapons', 'electronics', 'programs']
+                      : op === 'critter'
+                        ? ['critters']
+                        : (PURCHASE_KINDS.filter(k => k !== 'critters') as Sr6Kind[])
         }
         filter={
-          op === 'quality' ? e => data.qualities[e.id]?.positive === true : op === 'upgrade' ? above(upgradable.find(x => x.uid === f.target)) : undefined
+          op === 'quality'
+            ? e => data.qualities[e.id]?.positive === true
+            : op === 'upgrade'
+              ? above(upgradable.find(x => x.uid === f.target))
+              : op === 'fit'
+                ? host?.kind === 'critters'
+                  ? critterWearable
+                  : e => e.kind !== 'weapons' || !isAccessory(e)
+                : undefined
         }
         note={
           op === 'pick'

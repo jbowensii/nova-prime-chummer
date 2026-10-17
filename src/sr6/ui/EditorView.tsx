@@ -3,7 +3,8 @@
 // tabs show the runner as it stands (its build with the ledger's live spends replayed, src/sr6/engine/career.ts) and are
 // read only but Concept, Review and Ledger: spends are recorded on the Ledger tab. A refused step shows its reason under
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
-// opens from the NPC store with tabs Concept, Stat block and Print, and its kind chip where a runner's state badge is.
+// opens from the NPC store with tabs Concept, Stat block (a critter's Design too) and Print, and its kind chip where a
+// runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, useMe } from '../../ui/auth'
 import { Brand, StateBadge } from '../../ui/bits'
@@ -28,6 +29,7 @@ import { rulesForRunner, tableRulesFor, useRunnerCampaign } from './Creation'
 import { withSampleFixes } from '../engine/samplefix'
 import { reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from './editor'
 import { npcChip } from './Npcs'
+import { problemParts } from './problems'
 import { downloadSr6Runners } from './Foundry'
 import { exportSr6, sr6NpcRepo, sr6Repo } from './repo'
 import { AttributesTab } from './tabs/Attributes'
@@ -43,10 +45,12 @@ import { QualitiesTab } from './tabs/Qualities'
 import { ReviewTab } from './tabs/Review'
 import { SkillsTab } from './tabs/Skills'
 import { StatsTab } from './tabs/Stats'
-import { VehiclesTab } from './tabs/Vehicles'
+import { DesignTab } from './tabs/Design'
+import { DronesTab, VehiclesTab } from './tabs/Vehicles'
+import { CrittersTab } from './tabs/Critters'
 import { Sr6Sheet } from '../print/Sheet'
 import { TabBoundary } from '../../shared/ui'
-import { NPC_TABS, sr6Tabs } from './tabList'
+import { npcTabs, sr6Tabs } from './tabList'
 
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
 
@@ -144,7 +148,7 @@ export function Sr6EditorView({
   const theirs = owner !== null,
     career = !!ch.finalizedAt
   const { view, ...derived } = calc
-  const tabs = npc ? NPC_TABS : sr6Tabs(view.build.magic, career && !ch.npc)
+  const tabs = npc ? npcTabs(ch.npc?.kind) : sr6Tabs(view.build.magic, career && !ch.npc)
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown),
     ro = theirs || locked
@@ -233,7 +237,8 @@ export function Sr6EditorView({
         <Sr6Sheet />
       </Sr6Editor.Provider>
     )
-  const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length
+  const errors = calc.v.filter(x => x.severity === 'error' && !x.approved).length,
+    open = problemParts(calc.v) // a GM reading a player's runner is told what's open on it
   const name = ch.identity.streetName || ch.identity.name || (npc ? 'Unnamed NPC' : 'Unnamed runner')
 
   return (
@@ -282,6 +287,11 @@ export function Sr6EditorView({
           Read only — {owner}’s {noun}. Only they can change it; you can still export a copy.
         </p>
       )}
+      {theirs && !npc && open.length > 0 && (
+        <p className="banner" role="status">
+          This runner has {open.join(' and ')} — <a href={href(ch.id, 'review')}>review them</a>.
+        </p>
+      )}
       {!theirs && locked && (
         <p className="banner readonly" role="status">
           Finalized: spend karma and nuyen on the <a href={sr6EditHref(ch.id, 'ledger')}>Ledger tab</a>.
@@ -309,10 +319,13 @@ export function Sr6EditorView({
               {shown === 'augmentations' && <AugmentationsTab />}
               {shown === 'gear' && <GearTab />}
               {shown === 'vehicles' && <VehiclesTab />}
+              {shown === 'drones' && <DronesTab />}
+              {shown === 'critters' && <CrittersTab />}
               {shown === 'contacts' && <ContactsTab />}
               {shown === 'review' && <ReviewTab />}
               {shown === 'ledger' && <LedgerTab />}
               {shown === 'stats' && <StatsTab />}
+              {shown === 'design' && <DesignTab />}
             </TabBoundary>
           </fieldset>
         </main>

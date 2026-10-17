@@ -174,6 +174,7 @@ export function advanceTarget(ch: Sr6Character, a: Sr6Advance): { attr: Sr6Attr 
     case 'expertise':
       return of('skills', a.target)
     case 'quality':
+    case 'bond':
       return of('qualities', a.line.id)
     case 'buyoff':
       return of('qualities', a.line?.id ?? b.qualities.find(q => q.uid === a.target)?.id)
@@ -186,13 +187,17 @@ export function advanceTarget(ch: Sr6Character, a: Sr6Advance): { attr: Sr6Attr 
     case 'technique':
       return of('martialtechniques', a.line.id)
     case 'purchase':
+    case 'fit':
       return of(a.line.kind, a.line.id)
-    case 'drop': {
+    case 'drop':
+    case 'unfit': {
       const x = a.line ?? lines(b.purchases).find(y => y.uid === a.target)
       return of(x?.kind, x?.id)
     }
     case 'lifestyle':
       return of('lifestyles', a.id)
+    case 'teach':
+      return of('actions', a.line.id)
     default:
       return undefined
   }

@@ -126,6 +126,9 @@ export interface Sr6Data extends CreationCatalog {
   grades: Record<string, Sr6GradeView>
   /** any catalog entry, for what has no typed view (gear, spells…) */
   entry(kind: Sr6Kind, id: string): Sr6Entry | undefined
+  /** whether a book (its source id, `DC`) is among the table's books: imported (not only in the shipped list of known
+   *  books) or a GM compendium (vehiclemods.ts: Double Clutch's rules) */
+  hasSource?(id: string): boolean
   /** an entry by its printed name (normName), in `kind` or else any kind (an effect's link, effects.ts) */
   named?(name: string, kind?: Sr6Kind): Sr6Entry | undefined
   /** the categories' records (categories.ts categoryIndex): an accessory category's hosts */

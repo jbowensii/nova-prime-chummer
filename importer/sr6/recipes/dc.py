@@ -38,8 +38,9 @@ CATALOG_CHAPTERS = ()
 VEHICLE = ("HANDLING", "ACCEL", "SPEED INTERVAL", "TOP SPEED", "BODY", "ARMOR", "PILOT", "SENSOR", "SEATS", "AVAIL", "COST")
 MOD_COLUMNS = {"MOD SLOTS", "RATING", "AVAILABILITY", "AVAIL", "COST"}
 RENAME = {"AVAL": "AVAIL", "AVAILABILITY": "AVAIL", "PRICE": "COST"}
-PROSE = {"HARDPOINT", "# DRONES", "# EXTRA", "SPACE", "SIZE CLASS", "BODY", "ARMOR", "ARM SIZE", "HARDPOINT SIZE",
-         "MELEE DV"}
+PROSE = {"# DRONES", "# EXTRA", "SPACE", "SIZE CLASS", "BODY", "ARMOR", "ARM SIZE", "MELEE DV"}
+HARDPOINT = {"HARDPOINT", "HARDPOINT SIZE"}  # the hardpoint a mount, rack or arm takes (pp. 142-145): `hardpoint`, lower case
+HARDPOINT_SIZES = {"small", "standard", "large", "huge"}
 # a catalog whose first column is a size, not a name: the row is named by the table title and that size
 SIZED = {"DRONE RACK SIZE": ("Drone Rack", 0), "SIZE": ("Expanded Drone Storage", 0), "ARM STRENGTH": ("Mechanical Arm", 1)}
 _VALUE = re.compile(r"(?:[\d/—–\-+*.,()¥]|\([A-Z]\))+|Special\*?")  # a value: `2/5`, `6(I)`, `11,500¥`, `—`, `Special*`
@@ -316,7 +317,10 @@ def fix(b, parent2):
     labels, row = dict(b.labels), {}
     for i, (h, v) in enumerate(b.row.items()):
         h = RENAME.get(h.upper(), h)
-        if i and h.upper() in PROSE and norm(b.chapter) not in VEHICLE_CHAPTERS:
+        if i and h.upper() in HARDPOINT:
+            if v.strip().lower() in HARDPOINT_SIZES:  # (a wrapped name's tail in the column is no size)
+                row["HARDPOINT"] = v.strip().lower()
+        elif i and h.upper() in PROSE and norm(b.chapter) not in VEHICLE_CHAPTERS:
             if v and v != "—":
                 labels.setdefault(h.capitalize(), v)
         else:

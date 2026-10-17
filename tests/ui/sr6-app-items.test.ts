@@ -226,7 +226,7 @@ test('Creation method: the Infected type’s gained powers (free) and weaknesses
 
 // every printed sheet style shows the same data (owner 2026-10-16): only the look differs
 test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
-  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty',
+  'the %s sheet shows the Infected gains, a licence per SIN, Burning 4, a melee weapon’s +1 damage, the Awakened override, Stolen Gear’s bounty, a vehicle’s mods, mounted weapon and shifted mod slots, a critter’s class, powers, qualities, named commands and training and gear',
   async style => {
     saveSettings({ ...loadSettings(), print: style })
     const gainer =
@@ -235,16 +235,44 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
       '<power name="Glimmer (Bright)"/><power name="Knack" rating="2"/><weakness name="Trouble Dice (Noon, Mild)"/><text/></quality>'
     const zapStick =
       '<weapon id="crb.zap-stick" source="CRB" page="250" category="clubs" dv="3S" ar="6/—/—/—/—" avail="2" cost="100"><name>Zap Stick</name><text/></weapon>'
-    const c = fixtureCatalog((f, x) =>
-      f.endsWith('crb/qualities.xml')
-        ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`)
-        : f.endsWith('crb/weapons.xml')
-          ? x
-              .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
-              .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
-          : f.endsWith('crb/gear.xml')
-            ? x.replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
-            : x,
+    const c = fixtureCatalog(
+      (f, x) =>
+        f.endsWith('crb/qualities.xml')
+          ? x.replace('</sr6:data>', `${gainer}\n</sr6:data>`)
+          : f.endsWith('crb/weapons.xml')
+            ? x
+                .replace('<name>Fizz Rifle 70</name>', '<name>Fizz Rifle 70</name><status name="Burning" level="4"/>')
+                .replace('</sr6:data>', `${zapStick}\n</sr6:data>`)
+            : f.endsWith('crb/gear.xml')
+              ? x
+                  .replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
+                  .replace(
+                    '</sr6:data>',
+                    '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear></sr6:data>',
+                  )
+              : f.endsWith('crb/vehicles.xml')
+                ? x.replace('<name>Putt-Putt</name>', '<name>Putt-Putt</name><builtin name="Zap horn"/>')
+                : x,
+      // (Double Clutch among the books: the vehicle's shifted mod slots show)
+      [
+        {
+          file: 'custom/sr6/imported/dc/sources.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1"><source id="DC" publisher="Made up" canon="true"><name>Made-up rigger book</name></source></sr6:data>',
+        },
+        // (a critter companion quality and critter gear: the critter-only catalog)
+        {
+          file: 'custom/sr6/imported/zz/qualities.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="qualities" version="1"><quality id="zz.snuggly" source="ZZ" page="1" kind="positive" karma="2" class="CRITTERWARE/QUALITY"><name>Snuggly</name><text/></quality></sr6:data>',
+        },
+        {
+          file: 'custom/sr6/imported/zz/gear.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1"><gear id="zz.fuzz-harness" source="ZZ" page="1" category="Critter gear" class="CRITTERWARE/GEAR" avail="2" cost="Critter’s Body x 30¥"><name>Fuzz Harness</name><text/></gear></sr6:data>',
+        },
+        {
+          file: 'custom/sr6/imported/zz/actions.xml',
+          xml: '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="actions" version="1"><action id="zz.fetch-fizz" source="ZZ" page="1" category="Critter Command Actions"><name>Fetch Fizz</name><text/></action><action id="zz.glow-training" source="ZZ" page="1" category="Critter Special Training"><name>Glow Training</name><text/></action></sr6:data>',
+        },
+      ],
     )
     const cr = stolenCr()
     cr.set('infectedAllowed', { key: 'infectedAllowed', value: true })
@@ -261,6 +289,30 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
       { uid: 'w2', kind: 'weapons', id: 'crb.zap-stick', qty: 1, accessories: [] },
       { uid: 'g1', kind: 'gear', id: 'crb.tangle-rope.1', qty: 1, accessories: [] },
       { uid: 'a1', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [] },
+      {
+        uid: 'v1',
+        kind: 'vehicles',
+        id: 'crb.putt-putt',
+        qty: 1,
+        slotShifts: [{ from: 'chassis', to: 'powertrain' }],
+        accessories: [
+          { uid: 'm1', kind: 'gear', id: 'crb.zap-mount', qty: 1, diy: true, accessories: [] },
+          { uid: 'w3', kind: 'weapons', id: 'crb.zap-gun', qty: 1, mount: 'm1', accessories: [] },
+        ],
+      },
+      {
+        uid: 'c1',
+        kind: 'critters',
+        id: 'crb.fuzzbeast',
+        qty: 1,
+        pet: 'exotic',
+        trained: [
+          { uid: 't1', what: 'command', id: 'zz.fetch-fizz' },
+          { uid: 't2', what: 'training', id: 'zz.glow-training', taught: true },
+        ],
+        critterQualities: [{ uid: 'cq', id: 'zz.snuggly', level: 1, how: 'bonded' }],
+        accessories: [{ uid: 'h1', kind: 'gear', id: 'zz.fuzz-harness', qty: 1, accessories: [] }],
+      },
     ]
     await open(ch, 'print', c, cr)
     expect(document.querySelector(style === 'plain' ? '.sr6-sheet' : `.sr6-${style}`)).not.toBeNull() // (that style, not another)
@@ -275,5 +327,16 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
     expect(t).toMatch(/Bounty: 3 of 3 karma turned into nuyen not bought off/)
     expect(t).toMatch(/Social/)
     expect(t).toMatch(/–1/) // (the vest's printed Social Rating)
+    expect(t).toMatch(/Putt-Putt[^]*Mods: Zap Weapon Mount \(do it yourself\)/)
+    expect(t).toMatch(/Weapons: Zap Gun \(in Zap Weapon Mount\)/)
+    expect(t).toMatch(/Built in: Zap horn/)
+    expect(t).toMatch(/Mod slots shifted: 2 chassis → 1 powertrain/)
+    expect(t).toMatch(/Fuzzbeast[^]*Exotic pet/)
+    expect(t).toMatch(/BOD 4, AGI 3, REA 4, STR 5/)
+    expect(t).toMatch(/Powers \(innate, 0 Karma\): Glimmer, Thick Fur/)
+    expect(t).toMatch(/Qualities: Snuggly \(bonded\)/)
+    expect(t).toMatch(/Commands 1 of 2: Fetch Fizz/)
+    expect(t).toMatch(/Special training 1 of 6: Glow Training \(taught\)/)
+    expect(t).toMatch(/With: Fuzz Harness/)
   },
 )

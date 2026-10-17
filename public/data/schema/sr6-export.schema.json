@@ -603,6 +603,171 @@
           "items": {
             "$ref": "#/$defs/purchase"
           }
+        },
+        "mount": {
+          "description": "A weapon fitted to a vehicle or drone: the uid of the weapon mount (a sibling accessory) it sits in, or builtin:<n> for the vehicle's built-in mount vehicle.builtin[n].",
+          "type": "string"
+        },
+        "diy": {
+          "description": "A vehicle mod the player installed (half its nuyen price).",
+          "const": true
+        },
+        "vehicle": {
+          "description": "An owned vehicle or drone: a drone or not, the mods built in (already paid for), its mod slot shifts, the seats taken out for cargo, the Designer design it was bought from.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "drone",
+            "builtin"
+          ],
+          "properties": {
+            "drone": {
+              "type": "boolean"
+            },
+            "builtin": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "slotShifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "properties": {
+                  "from": {
+                    "enum": [
+                      "chassis",
+                      "powertrain",
+                      "electronics"
+                    ]
+                  },
+                  "to": {
+                    "enum": [
+                      "chassis",
+                      "powertrain",
+                      "electronics"
+                    ]
+                  }
+                }
+              }
+            },
+            "seatsRemoved": {
+              "type": "number"
+            },
+            "design": {
+              "type": "string"
+            }
+          }
+        },
+        "npc": {
+          "description": "An owned critter: its stat block.",
+          "$ref": "#/$defs/npc"
+        },
+        "critter": {
+          "description": "An owned critter: its class, tamed or bought, its trained commands and special training (a count, or the named ones), its companion qualities (how: tamed or bonded; absent: specified with the purchase).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "class",
+            "tamed",
+            "commands",
+            "training",
+            "qualities"
+          ],
+          "properties": {
+            "class": {
+              "enum": [
+                "mundane",
+                "exotic",
+                "wild",
+                "awakened",
+                "emerged"
+              ]
+            },
+            "tamed": {
+              "type": "boolean"
+            },
+            "commands": {
+              "type": [
+                "number",
+                "array"
+              ]
+            },
+            "training": {
+              "type": [
+                "number",
+                "array"
+              ]
+            },
+            "trained": {
+              "description": "Each trained command and special training by name (Wild Life pp. 181-183): taught after the critter was bought (+500/+750 nuyen, p. 180) or with the purchase (+1 Body in its price, p. 183).",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "what",
+                  "name",
+                  "taught"
+                ],
+                "properties": {
+                  "what": {
+                    "enum": [
+                      "command",
+                      "training"
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "taught": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "qualities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "uid",
+                  "id",
+                  "level"
+                ],
+                "properties": {
+                  "uid": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "level": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "how": {
+                    "enum": [
+                      "tamed",
+                      "bonded"
+                    ]
+                  },
+                  "positive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

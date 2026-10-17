@@ -13,7 +13,7 @@ from xml.sax.saxutils import escape, quoteattr
 from importer.recipes import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, search, sections, shapes, tables
-from importer.sr6.regroup import _names, blocks, norm
+from importer.sr6.regroup import _names, blocks, md_tables, norm
 from importer.xmlio import HEAD, ILLEGAL
 
 CORE = "CRB"  # the core rulebook's source (recipes/crb.py): its catalog comes first, its sample runners cite their own
@@ -47,6 +47,7 @@ HEADERS = {
              "MOD SLOTS": "slots", "DV": "", "ATTACK RATING": "", "BLAST PROFILE": "",  # an ammunition's modifiers: prose
              "ENERGY": "energy",  # a weapon power supply's charge (the shots an energy weapon gets from it)
              "RANGE": "range", "PILOT": "pilot", "SENSOR": "sensor",  # a rocket or missile's range and guidance (DA p. 58)
+             "HARDPOINT": "hardpoint",  # the hardpoint a vehicle weapon mount or drone rack takes (DC pp. 142-145)
              **_PRICE},
     "vehicles": {"HANDLING": "handling", "HAND": "handling", "ACCEL": "accel", "ACCELERATION": "accel",
                  "HAND (ON/OFF ROAD)": "handling", "HANDL": "handling", "SPEED INTERVAL": "interval", "INTERVAL": "interval", "TOP SPEED": "topSpeed", "BODY": "body",
@@ -181,21 +182,6 @@ def readable(v):
         return ok
 
     return expr() and pos[0] == len(toks)
-
-
-def md_tables(text):
-    """The markdown tables in a block's text: (header, rows)."""
-    lines, out, i = text.splitlines(), [], 0
-    while i < len(lines):
-        if lines[i].startswith("|") and i + 1 < len(lines) and TABLE_SEP.match(lines[i + 1]):
-            header, rows, i = table_cells(lines[i]), [], i + 2
-            while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and TABLE_SEP.match(lines[i + 1])):
-                rows.append(table_cells(lines[i]))
-                i += 1
-            out.append((header, rows))
-        else:
-            i += 1
-    return out
 
 
 def md_table(h, rows):

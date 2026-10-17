@@ -126,7 +126,20 @@ function full(): Sr6Character {
       ],
       accessories: [],
     },
-    { uid: 'g4', kind: 'armor', id: 'crb.padded-vest', qty: 1, worn: true, accessories: [], bonuses: [{ target: 'defense', value: 1 }] },
+    // (slotShifts: a vehicle's mod slots shifted, Double Clutch p. 120; on any line the file format allows)
+    {
+      uid: 'g4',
+      kind: 'armor',
+      id: 'crb.padded-vest',
+      qty: 1,
+      worn: true,
+      accessories: [],
+      bonuses: [{ target: 'defense', value: 1 }],
+      slotShifts: [
+        { from: 'chassis', to: 'powertrain' },
+        { from: 'electronics', to: 'chassis' },
+      ],
+    },
     { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
   b.contacts = [
@@ -356,6 +369,24 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
     { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },
     { op: 'sin', line: { uid: 'ls', name: 'Pat <Fake>', kind: 'fake', rating: 2, gender: 'Other', licences: [{ name: 'Zap Gun', rating: 2 }] } },
+    // (a weapon into a vehicle's mount, a mod done yourself; one taken off, and one with the line kept)
+    { op: 'fit', target: 'g4', line: { ...gear, uid: 'lf', mount: 'lm9' } },
+    { op: 'fit', target: 'g4', line: { ...gear, uid: 'lf2', diy: true } },
+    { op: 'unfit', target: 'lf' },
+    { op: 'unfit', target: 'lf2', line: { ...gear, uid: 'lf2', diy: true } },
+    // (two chassis slots into one powertrain slot; a weapon moved to another mount)
+    { op: 'shift', target: 'g4', from: 'chassis', to: 'powertrain' },
+    { op: 'move', target: 'lf', mount: 'lm8' },
+    // (a critter's quality bought by the bond, with the negative taken alongside; one upgraded)
+    {
+      op: 'bond',
+      target: 'c1',
+      line: { uid: 'lb', id: 'wl.zap-keen', level: 1, name: 'Zap Keen', how: 'bonded' },
+      with: { uid: 'lb2', id: 'wl.zap-grumpy', level: 2, how: 'bonded' },
+    },
+    { op: 'bond', target: 'c1', line: { uid: 'lb', id: 'wl.zap-keen', level: 2 } },
+    // (a command taught to a critter after it was bought)
+    { op: 'teach', target: 'c1', line: { uid: 'lt', what: 'command', id: 'wl.zap-fetch', name: 'Zap Fetch', taught: true } },
   ]
   expect(new Set(ops.map(a => a.op))).toEqual(new Set(SR6_ADVANCE_OPS))
   ch.ledger = [
