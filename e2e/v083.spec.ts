@@ -127,7 +127,7 @@ test('print: the sheet type on the toolbar again; Letter and A4, both styles, no
   await expect(print).toHaveAttribute('data-tip', 'Print or save as PDF')
   const type = page.getByRole('combobox', { name: 'Sheet type' })
   await expect(type).toHaveValue('plain')
-  await expect(type.locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style'])
+  await expect(type.locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Official sheet'])
   await type.selectOption('book')
   await expect(page.locator('article.book-sheet')).toBeVisible()
   await expect(page.locator('.sheet')).toHaveCount(0)
