@@ -11,7 +11,7 @@
   {"cl6": "H&K Urban Stinger Pfeile (10x)", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "attrs": {"category": "Ammunition", "avail": "6(I)", "cost": "10", "class": "AMMUNITION/AMMUNITION_SPECIAL"}}},
   {"cl6": "H&K Urban Stinger Druckluftkartusche (50x)", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "attrs": {"category": "Ammunition", "avail": "4", "cost": "5", "class": "AMMUNITION/AMMUNITION_SPECIAL"}}},
   {"cl6": "Makarov V22.2 Kalte Munition (10x)", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "attrs": {"category": "Ammunition", "avail": "6(I)", "cost": "150", "class": "AMMUNITION/AMMUNITION_SPECIAL"}}},
-  {"cl6": "Naga Venom", "kind": "gear", "id": "naga-venom", "set": {"cost": "Rating x 100"}, "gen": "value", "formula": {"cost": "R * 100"}},
+  {"cl6": "Naga Venom", "kind": "gear", "id": "naga-venom", "set": {"cost": "Rating x 100", "rating": "1–9"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "value", "formula": {"cost": "R * 100"}},
   {"cl6": "Mortimer of London Belgrade Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-belgrade-sword-cane", "set": {"avail": "5(L)"}, "gen": "value"},
   {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"dv": "5P", "ar": "10/9/—/—/—", "modes": "SS", "ammo": "1(b)", "avail": "5(L)"}, "gen": "value"},
   {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"cost": "400"}, "gen": "value"},

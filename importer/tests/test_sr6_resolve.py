@@ -45,6 +45,17 @@ class BookCirclesTest(unittest.TestCase):
         own = "This lock comes in a maximum rating of 4."
         self.assertEqual(search.search_book(self.index, catalog.HEADERS, "gear", e, "rating", own), ("1–4", "text", 39))
 
+    def test_the_text_of_the_heading_above_an_item(self):
+        sect = lambda name, page, text, level: Block("item", name, "Gear", "Soft", "", page, [], None, [], "", {}, text, level)  # noqa: E731
+        idx = search.Index([sect("Zorpsofts", 50, "All zorpsofts are available in ratings from 1 to 6.", 4),
+                            sect("Blinksofts", 51, "Blinksofts replace blinking.", 5),
+                            sect("Plainsofts", 52, "Plainsofts have no ratings.", 4),
+                            sect("Dullsofts", 53, "Dullsofts are dull.", 5)], 1, catalog.md_tables, shapes.RENAME)
+        find = lambda name: search.search_book(idx, catalog.HEADERS, "gear", {"name": name, "page": 50, "attrs": {}}, "rating", "")  # noqa: E731
+        self.assertEqual(find("Blinksofts"), ("1–6", "text", 49))  # (printed on the page of the heading above)
+        self.assertIsNone(find("Dullsofts"))  # (under Plainsofts, whose text prints no range)
+        self.assertEqual(search.text_values("rating", ["Clips come in two styles: rating 1 and rating 2."]), {"1–2"})
+
     def test_nothing_or_a_disagreement_is_no_value(self):
         e = {"name": "Nothing Here", "page": 5, "attrs": {}}
         self.assertIsNone(search.search_book(self.index, catalog.HEADERS, "gear", e, "avail", ""))

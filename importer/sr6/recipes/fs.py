@@ -256,8 +256,11 @@ def _lists(bs):
             if again(b, n):
                 continue
             d = descs.get(norm(n))
+            # (a row with no heading of its own, named in the text of a heading that tags a rating range: `Reactive Armor
+            # (Rating 1-4)` over `plates and GelWeave`: that heading's range)
+            said = next((x.tags for x in descs.values() if x.tags and re.search(rf"(?i)\b{re.escape(n)}\b", x.text)), "")
             out.append(replace(b, name=n, stats=[{h: v for h, v in s.items() if h != col}], label="",
-                               text=d.text if d else b.text, tags=d.tags if d else b.tags))
+                               text=d.text if d else b.text, tags=d.tags if d else b.tags or said))
     return out
 
 

@@ -659,7 +659,8 @@ still shows what the book has ("book: none printed").
 somewhere other than the entry's own row. `how` is `table` (another table of the same book whose row names the item and
 has the column: a summary table, a gear list in another chapter, the implant table that prices an implant weapon),
 `text` (a sentence of the same book printing the value with its word: `ratings 1 to 6`, `Availability 4`, the item's
-own description first), `corpus` (another source of the library: the same kind and name in another book, a card
+own description first, then the text of the heading it is printed under: `All skillsofts are available in ratings from 1 to 6` over
+`Activesofts`), `corpus` (another source of the library: the same kind and name in another book, a card
 deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft`; the latest published wins, and
 sources of one date that disagree leave the issue), `errata` (an errata PDF's statement on its own book, applied
 when the errata is newer than the printing; the text keeps the value it replaced. A book's Current Printing

@@ -5,7 +5,8 @@ corpus, and the errata; the owner, phase 2C):
    for `Laser microphone`) and has a column for the field: a summary table, a gear list in another chapter, a
    comparison table, the implant table that prices an implant weapon;
 2. text: a sentence of the same book that prints the field's value with its word (`ratings 1 to 6`, `Availability
-   4`, `costs 500¥`): the item's own description first, then any sentence naming it.
+   4`, `costs 500¥`): the item's own description first, then the text of the heading it is printed under (`All
+   skillsofts are available in ratings from 1 to 6` over `Activesofts`), then any sentence naming it.
 
 Several different values found in one circle is no value (the issue stays). Nothing here names an item: the readers
 are the books' column headers and value words."""
@@ -16,7 +17,7 @@ import unicodedata
 _NUM = r"\d[\d,]*(?:\.\d+)?"
 TEXT = {
     "rating": [
-        (re.compile(r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)\s*(\d+)\b", re.I), "range"),
+        (re.compile(r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)\s*(?:ratings?\s+)?(\d+)\b", re.I), "range"),
         (re.compile(r"\b(?:maximum|max\.?)\s+rating\s*(?:is\s+|of\s+)?(\d+)\b", re.I), "max"),
         (re.compile(r"\bratings?\s+up\s+to\s+(\d+)\b|\bup\s+to\s+(?:a\s+)?rating\s+(?:of\s+)?(\d+)\b", re.I), "max"),
     ],
@@ -129,8 +130,9 @@ class Index:
     a block's text [(header, rows)]; rename: printed short headers -> the core rulebook's."""
 
     def __init__(self, blocks, offset, tables, rename=None):
-        self.rows, self.paras = [], []
+        self.rows, self.paras, self.parents = [], [], {}  # parents: {name: (page, text of the heading above it)}
         rn = rename or {}
+        above, chapter = [], None  # the open headings: (level, page, text)
 
         def up(h):
             h = " ".join(str(h).rstrip("*†").split()).upper()
@@ -139,6 +141,14 @@ class Index:
 
         for b in blocks:
             page = max(1, b.page - offset)
+            if b.chapter != chapter:
+                above, chapter = [], b.chapter
+            if b.level:
+                above = [a for a in above if a[0] < b.level]
+                if above and b.name:
+                    self.parents.setdefault(norm(b.name), above[-1][1:])
+                if (b.text or "").strip():
+                    above.append((b.level, page, b.text))
             if b.row is not None and b.header:
                 cells = {up(h): b.row.get(h, "") for h in b.header[1:]}
                 first = b.row.get(b.header[0], "")
@@ -233,6 +243,9 @@ def search_book(index, headers, kind, entry, field, own_text):
         return next(iter(own)), "text", entry["page"]
     if own:
         return None
+    above = next((index.parents[norm(n)] for n in names if norm(n) in index.parents), None)
+    if above and len(vals := text_values(field, sentences(above[1]))) == 1:
+        return next(iter(vals)), "text", above[0]
     hits = [(p, s) for n in names for p, s in index.mentions(n)]
     vals = {}
     for p, s in hits:

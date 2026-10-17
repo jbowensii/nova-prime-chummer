@@ -27,7 +27,8 @@ carry "replaces" {"<attribute>": "<value>"}, the entry's child of the kid's tag 
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
-<issue> and <found> children for each field set go (they described the value being replaced).
+<issue> and <found> children for each field set go (they described the value being replaced). A "note" on the row
+(why the value is the table's: `range not printed; CL6 value`) is for the table's reader, never applied.
 Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format.md):
   {"kind","id","remove":true}                     the entry goes (its aliases with it, its text in `texts()`)
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
