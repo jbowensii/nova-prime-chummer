@@ -57,7 +57,8 @@ def _levels(c, hits, entries):
     return hits if min(len(fields.compare(c, h)[1]) for h in hits) <= best else [min(sib, key=lambda e: len(fields.compare(c, e)[1]))]
 
 
-def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None):
+def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None,
+            verdicts=None):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
@@ -65,6 +66,7 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         by_src[c["src"]].append(c)
     results, extras, pairs = [], [], []
     keep = optional_package.load_keep() if keep is None else keep
+    verdicts = optional_package.load_verdicts() if verdicts is None else verdicts
     optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
     where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
     have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
@@ -123,8 +125,12 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
                     if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
-                    if d["class"] in ("a", "c") and any((c["src"], k, o["id"], d["field"]) in keep for k in (c["kind"], o["kind"])):
-                        d["class"], d["pdf"] = "b", "ours"  # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after the trace, which can make a row c)
+                    if d["class"] in ("a", "c") and any((c["src"], k, o["id"], d["field"]) in keep or (
+                            c["src"], k, c["id"], c["name"], o["id"], d["field"], d["cl6"], d["ours"]) in verdicts
+                                                        for k in (c["kind"], o["kind"])):
+                        # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after the trace,
+                        # which can make a row c; a `verdicts` row only while both values are the ones ruled on)
+                        d["class"], d["pdf"] = "b", "ours"
                         d.pop("cl6only", None)
             elif how != "optional package":
                 r["cause"] = report.miss_cause(c, s, bt, book)
