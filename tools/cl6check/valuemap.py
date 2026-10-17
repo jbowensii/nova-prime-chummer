@@ -156,6 +156,11 @@ def refile(runs, root=OVERRIDES):
     return done
 
 
+def replace_value_rows(old, rows):
+    """A table's rows with its earlier value rows replaced by `rows`; every other row (class, family, errata, owner) stays."""
+    return [r for r in old if r.get("gen") != "value"] + rows
+
+
 def main(argv):
     if "--refile" in argv:
         print("value rows refiled:", refile(argv[argv.index("--refile") + 1]))
@@ -206,7 +211,7 @@ def main(argv):
     for src, rows in new.items():
         p = OVERRIDES / f"{src}.json"
         old = json.loads(p.read_text(encoding="utf8")) if p.exists() else []
-        out = [r for r in old if r.get("gen") != "value"] + rows
+        out = replace_value_rows(old, rows)
         p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n", encoding="utf8")
 
 
