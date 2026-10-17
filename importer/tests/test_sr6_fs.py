@@ -170,6 +170,18 @@ def entries(res, kind):
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
+class ListedRowRangeTest(unittest.TestCase):
+    def test_a_listed_row_named_in_a_rating_tagged_heading_takes_its_range(self):
+        head = regroup.Block("section", "Reactive Armor", "SUIT UP", "Reactive Armor", "", 54, tags="Rating 1-4", level=3,
+                             text="Reactive armor comes in two forms: plates and GelWeave.")
+        box = regroup.Block("item", "Armor mods", "SUIT UP", "Armor mods", "", 55, stats=[
+            {"GEAR": "Reactive Armor Plates", "AVAIL": "9(I)", "COST": "Rating x 2,500¥"},
+            {"GEAR": "GelWeave", "AVAIL": "6(I)", "COST": "Rating x 5,000¥"},
+            {"GEAR": "Holster", "AVAIL": "1", "COST": "50¥"}], level=4)
+        tags = {b.name: b.tags for b in fs._lists([head, box])}
+        self.assertEqual(tags, {"Reactive Armor Plates": "Rating 1-4", "GelWeave": "Rating 1-4", "Holster": ""})
+
+
 class FsRecipeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

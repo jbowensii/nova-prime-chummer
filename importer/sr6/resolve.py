@@ -4,7 +4,7 @@
    for `Laser microphone`) and has a column for the field: a summary table, a gear list in another chapter, a
    comparison table, the implant table that prices an implant weapon;
 2. text (search.py): a sentence of the same book that prints the field's value with its word (`ratings 1 to 6`, `Availability
-   4`, `costs 500¥`): the item's own description first, then any sentence naming it;
+   4`, `costs 500¥`): the item's own description first, then the text of the heading it is printed under, then any sentence naming it;
 3. corpus (corpus() below, after every import): every other source in the library, the latest published first:
    another book's entry of the same kind and name, a card deck's stat line, a class-price row (`Cyberprogram,
    hacking`, `Autosoft`) for the class an entry names.
