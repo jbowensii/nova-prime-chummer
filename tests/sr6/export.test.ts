@@ -415,6 +415,11 @@ describe('SR6 export: what Eden takes besides the numbers', () => {
     expect(f.books![0].entries.find(e => e.id === 'mus.made-up-sight')!.effects).toEqual([{ target: 'item:ar', op: 'add', value: '0,1,1,0,0' }])
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
+  test('an effect marked for others (what others get against the entry) validates', () => {
+    const f = exportSr6Books(w.c, w.data, ['MUS'], SAMPLE_OPTS)
+    f.books![0].entries.find(e => e.id === 'mus.made-up-sight')!.effects![0].affects = 'others'
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
 })
 
 describe('SR6 export: augmentation types', () => {
