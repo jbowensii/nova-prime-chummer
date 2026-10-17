@@ -42,6 +42,11 @@ test('target words, by kind', () => {
     ['matrix:choice', 'a chosen Matrix attribute'],
     ['matrix:data-processing', 'Data Processing'],
     ['item:ar', 'Attack Rating'],
+    ['limb-attr:agi', 'the limb’s own Agility'],
+    ['derived:matrix-defense', 'Matrix Defense Rating'],
+    ['test:defense-astral', 'astral defense tests'],
+    ['test:defense-spell-direct', 'defense tests against direct combat spells'],
+    ['test:defense-spell-indirect', 'defense tests against indirect combat spells'],
     ['item:odd-stat', 'Odd Stat'],
     ['action:wrest', 'the Wrest Edge action'],
     ['lifestyle:comforts', 'Comforts (lifestyle points)'],
@@ -205,6 +210,17 @@ test('links: a named entry at a level takes that level of its family; one with n
   const bare = { ...data, named: undefined, atLevel: undefined } as unknown as typeof data
   give(q, link({ rel: 'grants', name: 'Stoneskin', kind: 'qualities', ref: 'crb.stoneskin', level: '3' }))
   expect(linkedEntries(bare, q).map(l => l.entry.id)).toContain('crb.stoneskin')
+})
+
+test('links: a link marked copied is not followed again (the importer put the linked entry’s effects on the entry)', () => {
+  const { data } = made()
+  const q = data.entry('qualities', 'crb.knack')!
+  give(
+    q,
+    link({ rel: 'grants', name: 'Stoneskin', kind: 'qualities', ref: 'crb.stoneskin', copied: 'yes' }),
+    link({ rel: 'grants', name: 'Lucky Streak', kind: 'qualities', ref: 'crb.lucky-streak' }),
+  )
+  expect(linkedEntries(data, q).map(l => l.entry.id)).toEqual(['crb.lucky-streak'])
 })
 
 test('attribute maxima: a set, an add per rating, a chosen attribute’s; low confidence, conditional and unknown attributes are skipped', () => {

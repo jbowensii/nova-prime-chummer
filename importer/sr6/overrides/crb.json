@@ -658,5 +658,8 @@
   {"cl6": "Overclock", "kind": "programs", "id": "overclock", "kids": [{"tag": "fits", "attrs": {"slot": "software"}}], "gen": "family"},
   {"cl6": "Stealth", "kind": "programs", "id": "stealth", "kids": [{"tag": "fits", "attrs": {"slot": "software"}}], "gen": "family"},
   {"cl6": "Elemental Resistance", "kind": "qualities", "id": "elemental-resistance", "kids": [{"tag": "relevance", "attrs": {"topic": "combat"}}, {"tag": "selection", "attrs": {"type": "ELEMENT"}}], "gen": "family"},
-  {"cl6": "MCT-Nissan Roto-Drone", "kind": "vehicles", "id": "mct-nissan-roto-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint", "value": "1"}}], "gen": "family"}
+  {"cl6": "MCT-Nissan Roto-Drone", "kind": "vehicles", "id": "mct-nissan-roto-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint", "value": "1"}}], "gen": "family"},
+  {"cl6": "Laser sight", "kind": "augmentations", "id": "laser-sight", "gen": "cl6", "why": "Commlink6 sizes the implanted version; the book prints no size for it", "effects": [{"target": "item:size", "op": "add", "value": "1", "switch": "conditional", "when": "implanted in a cyberweapon"}]},
+  {"cl6": "Silencer", "kind": "augmentations", "id": "silencer-suppressor", "gen": "cl6", "why": "Commlink6 sizes the implanted version; the book prints no size for it", "effects": [{"target": "item:size", "op": "add", "value": "2", "switch": "conditional", "when": "implanted in a cyberweapon"}]},
+  {"cl6": "Folding Stock", "kind": "gear", "id": "folding-stock", "gen": "cl6", "why": "the book's text gives the stock no concealability; Commlink6 does", "effects": [{"target": "item:concealability", "op": "add", "value": "1"}]}
 ]

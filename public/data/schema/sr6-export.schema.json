@@ -484,6 +484,14 @@
                   "target",
                   "others"
                 ]
+              },
+              "from": {
+                "description": "The id of the linked entry the importer copied this effect from.",
+                "type": "string"
+              },
+              "gen": {
+                "description": "cl6: a hand-written Commlink6 override, not the book reader's.",
+                "const": "cl6"
               }
             }
           }
@@ -519,6 +527,10 @@
               },
               "when": {
                 "type": "string"
+              },
+              "copied": {
+                "description": "The linked entry's effects are already among this item's own (each from its id): a reader does not follow the link again.",
+                "const": true
               }
             }
           }

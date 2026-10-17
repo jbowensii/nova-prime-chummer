@@ -338,7 +338,7 @@ A value outside its field's SR6 vocabulary (`importer/sr6/vocab.py`: a critter p
 adept powers, ware, gear, weapons, armor, ammunition, accessories, vehicle mods, spells, critter powers, metamagics,
 echoes, programs, foci, mentor spirits, data structures and the rest (not rules, stat blocks, vocabularies or life
 modules, whose points are their own attributes and choices). General rules over the sentences, the game's vocabulary
-only, never an item's name. Each effect is `<effect target op value [switch] [confidence] [when] [spec] [affects]>`:
+only, never an item's name. Each effect is `<effect target op value [switch] [confidence] [when] [spec] [affects] [from] [rule]>` (`from`, `rule`: see Whole-object effects):
 
 - **Targets**: `attr:<abbr>` (bod … cha, edg, mag, res, ess); `attr-max:<abbr>` an attribute's maximum
   (`attr-max:choice`: the one the player picks); `skill:<id>` a skill's pool (a specialization it is limited to in
@@ -346,11 +346,14 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   Influence: the tests that influence or con someone, CRB p. 97), `matrix` (Cracking, Electronics), `magic`,
   `resonance`, `combat`, `vehicle`, `physical` and `mental` (the skills linked to those attributes), `attr-<abbr>` (the
   tests using that attribute), `damage-resistance`, `drain-resistance`, `toxin-resistance`, `magic-resistance`,
-  `defense`, `surprise`, `crash`, `addiction`, `spell-<category>`, `all`, and `other` (tests whose words name no
-  skill, test type or activity: its words in `when`). A test the book names by activity (`tests involving grappling,
+  `defense`, `defense-astral` (the astral defense pool: `defense tests against astral attacks`, `astral defense dice`),
+  `defense-spell-direct` and `defense-spell-indirect` (defense tests against direct or indirect combat spells;
+  `derived:defense-astral` stays the astral Defense Rating), `surprise`, `crash`, `addiction`, `spell-<category>`,
+  `all`, and `other` (tests whose words name no skill, test type or activity: its words in `when`). A test the book names by activity (`tests involving grappling,
   escaping bonds`) is that activity's skill (owner decision 2026-10-10; `effects.ACTIVITIES`, from the core rulebook's
   skill descriptions: grappling Close Combat, escaping Athletics, haggling Influence …), its specialization in `spec`
   when the activity is one, else the activity's words in `when`; `derived:<name>` Defense Rating (`defense`, `defense-astral`, `social`),
+  `matrix-defense` (the Matrix Defense Rating: `Matrix Defense Rating`, a Matrix program's `+2 to Defense Rating`, CRB p. 184),
   initiative (`initiative`, `initiative-dice`, `matrix-initiative`, `matrix-initiative-dice`), condition monitor boxes
   (`physical-monitor`, `stun-monitor`, `matrix-monitor`, `overflow`), `composure`, `judge-intentions`, `memory`, `lift`, `movement`,
   `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`, `power-points`, the unarmed attack's `unarmed-ar`,
@@ -361,7 +364,7 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
   `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity); `action:<name>` an Edge or
   Matrix action (`the Snoop action`, `Called Shot—Disarm`, a list after `action:`); `complex-form:<name>` a complex
-  form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource;
+  form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource (`maxed-out-attributes` and `maxed-out-skills`, `set` the number that may start at their maximum, 0 for `may not start with any`; `adjust-drake`, `add` a drake's Adjustment Attributes);
   `skill-max:<id>` a skill's maximum (`skill-max:choice`: Aptitude's 10, Genetic Optimization's +1); `sense:<name>`
   a sense the entry is named for or grants (`low-light-vision`, `thermographic-vision`, `ultrasound`, `wide-band-hearing`
   …: `effects.SENSES`, a rule of its own, shown); `action-max:<name>` the cap on an action's bonus (`increases the
@@ -370,6 +373,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   per level`, Bestial Nature p. 21; `free up 0.1 Essence`, Companion p. 132: `R*0.25`, `R*0.1`, shown);
   `pricemod:<what>` a price in percent (`armor` for armor and clothing, `lifestyle`, `gear`, `everything`: `0.1` is
   +10%); `derived:monthly-cost` nuyen a month (`R*500`). A Matrix attribute, attribute or skill the entry leaves to the
+  `limb-attr:<abbr>` (bod, agi, rea, str) a cyberlimb's own attribute, never the runner's (`Basic limbs are installed with
+  all Physical attributes at 2`, CRB p. 288: `set` `2`; the section's rule, so every limb of the class in every book has
+  it); a Matrix attribute, attribute or skill the entry leaves to the
   player (`this attribute`, `the chosen Matrix attribute`) is `<family>:choice`; a variant row's words resolve it
   (`Cyberjack Boosters (Firewall)`: `matrix:firewall`; `(Agility)`: `attr:agi`), and a variant named for a family
   (`(attribute)`, `(skill)`) keeps that family's effects only.
@@ -400,7 +406,9 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   shown with the formula, never applied); `hits` (a spell's or complex form's, per net hit: `net hits are added to the
   subject's Defense Rating`, `each hit increases the target's Overwatch Score by 1`); `N` a native language; `20%` a
   percent of the base value; `R/-R` a vehicle's on-road and off-road Handling; or a formula over attributes (`edg`,
-  `edg/2`: a drake's Armor by its Edge). `hits`, percents and formulas are shown, never applied.
+  `edg/2`: a drake's Armor by its Edge); `a/b` a vehicle stat on the road and off it, on-road first (`R/-R` Handling; a
+  tire's `5/-5` Acceleration and `10/-10` Speed Interval, Double Clutch pp. 122-123); `bod`, `bod/2 RU` on a vehicle
+  accessory's `item:ar`: the vehicle's own Body (Shredders, p. 123). `hits`, percents and formulas are shown, never applied.
 - **How it is turned on** (`switch`): none (always on: in the total shown first), `wireless`, `activated` (at will,
   an action, overdrive, a drug while it acts, a data structure for the action after its Minor Action), `sustained`
   (a spell, ritual or complex form while it lasts),
@@ -484,10 +492,57 @@ armor's Defense Rating column is its defense field, not an effect.
 **Links** (`<link rel="grants"|"as" name kind ref level when>`): an entry that grants another (`gain the Built Tough
 quality`, `1 free level of Rapid Healing`) or works as another (`the same result as a Personalized Grip`) names it;
 `ref` its id when the book tells (its own entry, or the book a citation names: `p. 70, SR6` -> `crb.`). The app uses
-the linked entry's effects (`effects.ts linkedEntries`, by id, else by name), so a correction there follows. A
-variant priced from its base item (`essence="fifty percent more Essence than the base item"`: `Transgenic gills`)
+the linked entry's effects (`effects.ts linkedEntries`, by id, else by name). A link also names an entry the text only
+points to (`See Magic Resistance, p. 72, SR6`; `See p. 76, SR6` for the entry's own name in that book; `function
+exactly like the X quality`; `the same as the X quality`; `also have the X benefits`; `function as a laser sight or as
+a smartgun system`; tires `(with the same modifiers)`; `works in exactly the same way as the X system`). A variant priced from its base item (`essence="fifty percent more Essence than the base item"`: `Transgenic gills`)
 works as that item (the same kind's entry named as the rest of its name, the bioware one when two share it; owner
 decision 2026-10-10).
+
+**Whole-object effects** (owner direction 2026-10-17: the reader is the primary source of every entry's effects, from
+its text, tables, printed fields, name and category, siblings, links and section intros; Commlink6 is only a rare
+override). Besides the pass above:
+
+- An entry with no description of its own reads its book block's prose (a mentor spirit's `**All:** Edge Boosts cost 1
+  less for Outdoors tests` lines, less the fluff after `Similar Archetypes`): `effects._block_text`. Siblings that
+  share a description are the entries of one category (a `Gain …` sentence is not cut for an `(Gain)` entry of another).
+- Entries an override adds are read too (run.py `_read`: `effects.apply(only=…)` after `overrides.texts`).
+- After every book is imported or removed (run.py `_links`, `effects.copy_links`), each `<link rel="grants|as">` whose
+  entry is found (by `ref`, else its name and kind, in any book) copies the linked entry's effects into the entry:
+  `from="<linked id>"` on each copy, `when` of the link on it (`switch="conditional"` unless it has one), none for a
+  target, op and specialization the entry has of its own (the book's word for the entry wins), a `grants` link at its
+  `level` (the lowest when it names none: `R` counted at that level, a value that cannot be is not copied), two
+  levels deep as the app reads them; two links giving the same on-road/off-road pair (Smart Tires) the better of each
+  side. The link is marked `copied="yes"`: the app (`linkedEntries`) and the Foundry module (the export's link
+  `copied: true`, its effects' `from`) do not follow it again, so nothing is counted twice. A correction follows: when the user has
+  corrected the linked entry (the edits layer, `Sr6Entry.edited`, load.ts), the entry's stored copies `from` it are stale, the app
+  (`linkedEntries`, `ownParts`, `staleCopies`) follows the link live as an uncopied one, and the export gives that entry's live
+  effects as copies `from` it, the link still `copied`; every other copied link stays its stored copies. Run again it starts from the
+  entries' own effects (`from` copies are dropped first).
+- Batch 2 (2026-10-17), all from the book's words: an Edge bought back by a clause (`must be used on that test or it is lost` keeps the
+  test it names, or the one before's); `will not be able to gain any Edge on …`; Edge-cost lists whose lines print `(1 Karma)`,
+  `(1,2, or 3 Edge only on …)` or `Escape!`; a named Matrix action (`a Data Spike Matrix Action`: `action:data-spike`; a data
+  structure's `a test to compile or register a sprite`); `-1 dice pool penalty to all tests that include Magic` is `test:attr-mag`; a
+  body modification's, quality's, critter power's or martial technique's AR or DV in natural-weapon words is `derived:unarmed-ar|dv`;
+  an ammo type's unsigned DV is `item:dv` `set`; percent prices (`lowered by fifteen percent`, `fitted gear … ten percent per level`);
+  Essence per level (`attr:ess` `-R`) or grade (`derived:essence-hole` `R`); an add-on's sentence in its host's text is the add-on's
+  (`less_accessory`); a power focus reads its type's rule (`Power Foci`); a foundation armor's Acceleration and Top Speed come from the
+  section's blocks (`-R*0.5`, `-R*10`); a maker's laser sight keeps the core +1 at the ranges it works at; a section's `Notes:` line
+  with a sentence for each version (`Small … Large blast shields`) gives each item of the name its own; an item whose name holds a
+  section's words reads that section (`Machine Gun Blast Shield (small)`); a musical instrument's `Dice pool effect: N` is `skill:con`
+  on a Performance test.
+- An id row with `"gen": "cl6"` in importer/sr6/overrides/<book>.json is an effect only Commlink6 has (its `why` says so in one line;
+  `effects` replace the entry's effect of that target and op, each written `gen="cl6"` and exported as `gen: "cl6"`): the owner's direction, a rare
+  override of the reader, visible as one. Not expressible: a
+  multiplier (Warhead FRAG's DAMAGE 0.75).
+- A rule the book states for all the items of a class (a section intro's `Each cyberlimb adds one box`, `Basic limbs are
+  installed with all Physical attributes at 2` -> `limb-attr:*` `set` 2, CRB p. 288, or a variant's own table row,
+  `Missile Variant` NOTES `+2 to Attack Rating` and the section's `Missiles are rockets … sensor packages adding their
+  rating to the attack roll`, CRB p. 264-265, `when` the variant) carries `rule="<its heading>"`: copy_links gives it to the entries of
+  the same kind and CL6 class (`class=`, only the verified `CYBERWARE/CYBER_LIMBS` and `AMMUNITION/ROCKETS`) in other books that
+  have no effect of their own for it and whose text does not speak of it (Body Shop's Additional Cyberarm; Tarnished Star's
+  Foamtek rocket; not a partial limb: forearm, hand, lower leg, foot). `rule` is import bookkeeping; the copy carries
+  `from="<source>:<heading>"` and no `rule`.
 
 **What the app does with them** (`src/sr6/engine/effects.ts`): an `add` on an attribute, Defense Rating,
 initiative dice, Physical, Stun or Overflow boxes, a skill's pool, or a test type's pools is a bonus (lineBonuses: a

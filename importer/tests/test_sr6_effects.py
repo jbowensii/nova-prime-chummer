@@ -278,7 +278,7 @@ class DecisionsTest(unittest.TestCase):
                      '<!-- item {"name": "Zap Foot", "section": "Zap Limbs"} -->\n<!-- end -->\n')
         out, _ = effects.apply(files, texts, regrouped)
         x = out["augmentations.xml"]
-        self.assertIn('<name>Zap Arm</name><effect target="derived:physical-monitor" op="add" value="1"/>', x)
+        self.assertIn('<name>Zap Arm</name><effect target="derived:physical-monitor" op="add" value="1" rule="Zap Limbs"/>', x)
         self.assertNotIn('<name>Zap Foot</name><effect', x)  # (its own text excepts it)
         self.assertIn('<name>Transgenic gills</name><link rel="as" kind="augmentations" name="gills" ref="gills"/>', x)
         self.assertIn('<name>Glowbugs (Amber)</name><effect target="attr:cha" op="add" value="1"/></augmentation>', x)
@@ -398,7 +398,7 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("Zap commlinks have a device rating 1, Data Processing 1, and Firewall 2. Its Firewall attribute is cumulative with other devices.", "weapons"),
                          [("matrix:firewall", "add", "2", None, None)])
         self.assertEqual(fx("This modification offers a bonus Edge if the opposition doesn't have a vision enhancement to mitigate glare.", "gear"),
-                         [("test:other", "edge", "1", "conditional", "if the opposition doesn't have a vision enhancement")])
+                         [("test:other", "edge", "1", "conditional", "if the opposition doesn't have a vision enhancement to mitigate glare")])
         self.assertEqual(fx("Increase your dracoform Armor by half your Edge score (rounded down).", "critterpowers"), [("derived:defense", "add", "edg/2 RD", None, None)])
         self.assertEqual(fx("Gain Armor equal to half your Edge.", "critterpowers")[0][2], "edg/2 RU")  # (silent: round up)
         self.assertEqual(fx("Toughskin grants +1 Defense Rating for every two points of nanite volume.", "gear"),

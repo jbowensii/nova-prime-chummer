@@ -72,22 +72,118 @@ const DERIVED_BONUS: Record<string, Bonus['target']> = {
   'derived:matrix-initiative-dice': 'matrixInitDice',
 }
 
-/** The entries an entry grants or works as (its <link> parts): by id, else by the printed name in the kind it names
- *  (or any kind). */
-export function linkedEntries(data: Sr6Data, e: Sr6Entry | undefined): { part: Sr6Part; entry: Sr6Entry }[] {
-  const out: { part: Sr6Part; entry: Sr6Entry }[] = []
+/** What the link readers need of the catalog (Sr6Data, or the export's view of it). */
+export type LinkLookup = Pick<Sr6Data, 'entry'> & Partial<Pick<Sr6Data, 'named' | 'atLevel'>>
+
+type Resolved = { part: Sr6Part; entry: Sr6Entry; raw: Sr6Entry }
+/** A level entry's family id (`crb.zap.2` -> `crb.zap`): the importer's copies are `from` the id it resolved the link to. */
+const family = (id: string) => id.replace(/\.\d+$/, '')
+const effectKey = (x: Sr6Part) => `${x.attrs.target}|${x.attrs.op}|${x.attrs.spec ?? ''}`
+/** The importer's copies keep one effect per target, op, specialization, condition and switch (copy_links). */
+const copyKey = (x: Sr6Part) => `${effectKey(x)}|${x.attrs.when ?? ''}|${x.attrs.switch ?? ''}`
+
+/** Every link of `e` whose entry is found: the entry a link names (raw) and, for a granted level, that level of its family.
+ *  A link naming no kind takes the entry of `e`'s own kind first, then any (`Armor` a critter power's is the critter power). */
+function resolvedLinks(data: LinkLookup, e: Sr6Entry | undefined): Resolved[] {
+  const out: Resolved[] = []
   for (const p of e?.parts ?? []) {
     if (p.tag !== 'link') continue
     const kind = p.attrs.kind as Sr6Kind | undefined,
       ref = p.attrs.ref,
-      level = Number(p.attrs.level)
-    let found = (ref && kind ? data.entry(kind, ref) : undefined) ?? data.named?.(p.attrs.name ?? '', kind)
+      level = Number(p.attrs.level),
+      name = p.attrs.name ?? ''
+    const raw = (ref && kind ? data.entry(kind, ref) : undefined) ?? (kind ? data.named?.(name, kind) : (data.named?.(name, e?.kind) ?? data.named?.(name)))
     // (`1 free level of Rapid Healing`, `Mystic Armor 2`: that level of the family, levels.ts)
-    if (found && level >= 1) found = data.atLevel?.(found.kind, found.id, level) ?? found
-    if (found && found !== e) out.push({ part: p, entry: found })
+    const found = raw && level >= 1 ? (data.atLevel?.(raw.kind, raw.id, level) ?? raw) : raw
+    if (raw && found && found !== e) out.push({ part: p, entry: found, raw })
   }
   return out
 }
+
+/** Whether a link is followed: one not marked `copied` always; a copied one (the importer, effects.py copy_links, put that
+ *  entry's effects on this one, each `from` its id, so following it too would count them twice) only when the user has
+ *  corrected the linked entry, or this one (the edits layer, `Sr6Entry.edited`, load.ts): the stored copies are then stale
+ *  (staleCopies) and the correction is followed live (owner decision 2026-10-17). */
+const followed = (data: LinkLookup, e: Sr6Entry | undefined, l: Resolved) =>
+  !l.part.attrs.copied || !!(e?.edited || corrected(data, l.raw) || corrected(data, l.entry))
+/** Whether an entry, or one it links (the importer copies two levels deep, each copy `from` the first level's id), was corrected. */
+const corrected = (data: LinkLookup, x: Sr6Entry, depth = 0): boolean =>
+  !!x.edited || (depth < 1 && resolvedLinks(data, x).some(l => corrected(data, l.raw, depth + 1) || corrected(data, l.entry, depth + 1)))
+
+/** The entries an entry grants or works as (its <link> parts): by id, else by the printed name in the kind it names
+ *  (or any kind), those it follows (see `followed`). */
+export function linkedEntries(data: LinkLookup, e: Sr6Entry | undefined): { part: Sr6Part; entry: Sr6Entry }[] {
+  return resolvedLinks(data, e)
+    .filter(l => followed(data, e, l))
+    .map(({ part, entry }) => ({ part, entry }))
+}
+
+/** The copied links of `e` that are followed live (the linked entry or `e` corrected): their stored copies are stale. */
+export function liveLinks(data: LinkLookup, e: Sr6Entry | undefined): Resolved[] {
+  return resolvedLinks(data, e).filter(l => l.part.attrs.copied && followed(data, e, l))
+}
+
+/** The ids the stale copies are `from` (the linked entry's, its level entries' family too). */
+export function staleCopies(data: LinkLookup, e: Sr6Entry | undefined): Set<string> {
+  return new Set(liveLinks(data, e).flatMap(l => [l.raw.id, family(l.raw.id), l.entry.id, family(l.entry.id)]))
+}
+
+/** An entry's own parts less its stored copies of a corrected entry's effects (staleCopies). */
+export function ownParts(data: LinkLookup, e: Sr6Entry | undefined): Sr6Part[] {
+  const stale = staleCopies(data, e)
+  return (e?.parts ?? []).filter(x => !(stale.size && x.tag === 'effect' && x.attrs.from && stale.has(x.attrs.from)))
+}
+
+/** An effect value counted per rating at a level, as the importer's copies hold a granted level's (effects.py `_at_level`):
+ *  `R`, `R*2`, `R[1,2]`, each side of an on-road/off-road pair; what has no rating or is a formula stays. */
+export function atLevelValue(v: string, n: number): string {
+  if (v.includes('/'))
+    return v
+      .split('/')
+      .map(x => atLevelValue(x, n))
+      .join('/')
+  const e = effectValue(v)
+  return e && (e.perRating || e.byRating) ? String(bonusValue(e, n)) : v
+}
+
+/** The parts a followed link gives `e`. A copied one (followed live, the correction): less the effects `e` holds of its own for
+ *  the same target, op and specialization (the book's word for the entry wins, as in the importer's copies), and a levelless
+ *  `grants` at its lowest level or the level it names (as the copies are). `mine`: the keys of `e`'s own effects. */
+function linkParts(l: Resolved, mine: Set<string>): Sr6Part[] {
+  if (!l.part.attrs.copied) return l.entry.parts
+  const grants = l.part.attrs.rel === 'grants',
+    n = Number(l.part.attrs.level) >= 1 ? Number(l.part.attrs.level) : 1
+  return l.entry.parts
+    .filter(x => !(x.tag === 'effect' && mine.has(effectKey(x))))
+    .map(x => (grants && l.entry === l.raw && x.tag === 'effect' && x.attrs.value ? { ...x, attrs: { ...x.attrs, value: atLevelValue(x.attrs.value, n) } } : x))
+}
+const ownKeys = (data: LinkLookup, e: Sr6Entry | undefined) =>
+  new Set(
+    ownParts(data, e)
+      .filter(x => x.tag === 'effect' && !x.attrs.from)
+      .map(effectKey),
+  )
+
+/** The followed links' parts for `e`, each link's with `linkParts`' filter; a copied link gives less what `e` or an earlier link
+ *  already gives (the importer's copies keep the first link's: `copyKey`), so two links to one entry count it once. */
+export function linkedViews(data: LinkLookup, e: Sr6Entry | undefined): { part: Sr6Part; entry: Sr6Entry; raw: Sr6Entry; parts: Sr6Part[] }[] {
+  const mine = ownKeys(data, e),
+    seen = new Set(
+      ownParts(data, e)
+        .filter(x => x.tag === 'effect')
+        .map(copyKey),
+    )
+  return resolvedLinks(data, e)
+    .filter(l => followed(data, e, l))
+    .map(l => {
+      const parts = linkParts(l, mine).filter(x => !(l.part.attrs.copied && x.tag === 'effect' && seen.has(copyKey(x))))
+      for (const x of parts) if (x.tag === 'effect') seen.add(copyKey(x))
+      return { part: l.part, entry: l.entry, raw: l.raw, parts }
+    })
+}
+
+/** The parts of the entries `e` grants or works as that count for it (the followed links' `linkParts`). */
+export const linkedParts = (data: LinkLookup, e: Sr6Entry | undefined): Sr6Part[] => linkedViews(data, e).flatMap(v => v.parts)
 
 /** An entry's effects as bonuses: an `add` effect on an attribute, a derived value the engine counts (Defense Rating,
  *  initiative dice, condition monitor boxes), a skill's pool, or a test type's skills' pools; with the effects of the
@@ -100,7 +196,7 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
   // (a power's or quality's chosen skill or attribute, its note's: `skill:choice` on Improved Ability's skill; never an
   // `attr:choice` read beside an `attr-max:choice`, the maximum's)
   const maxed = (e?.parts ?? []).some(x => x.tag === 'effect' && x.attrs.target === 'attr-max:choice')
-  for (const x of e?.parts ?? []) {
+  for (const x of ownParts(data, e)) {
     const a = x.attrs,
       t =
         a.target === 'skill:choice' && choice.skill
@@ -130,8 +226,8 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
   }
   // (a grant that holds only sometimes, `while in animal form`: its effects too)
   if (depth < 2)
-    for (const l of linkedEntries(data, e))
-      out.push(...effectBonuses(data, l.entry, depth + 1).map(b => (l.part.attrs.when ? { ...b, when: l.part.attrs.when } : b)))
+    for (const l of linkedViews(data, e))
+      out.push(...effectBonuses(data, { ...l.entry, parts: l.parts }, depth + 1).map(b => (l.part.attrs.when ? { ...b, when: l.part.attrs.when } : b)))
   return out
 }
 
@@ -139,12 +235,28 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
  *  point`): attribute -> { set?, add }; `choice`: a chosen attribute's (`attr-max:choice`: Exceptional, Impaired), which
  *  the attribute the quality's note names takes (budgets.ts attrMax). One with a `when` holds only when it names the
  *  runner's metatype or its parent (`metatype`: the names, an Infected type's table row, `when="Human"`); any other `when` never. */
-export function maxEffects(
-  e: Sr6Entry | undefined,
-  ...metatype: string[]
-): Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> {
-  const out: Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>> = {}
-  for (const x of e?.parts ?? []) {
+export function maxEffects(e: Sr6Entry | undefined, ...metatype: string[]): MaxEffects {
+  return maxFrom(e?.parts ?? [], metatype)
+}
+type MaxEffects = Partial<Record<Sr6Attr | 'choice', { set?: number; add: number; perRating?: true }>>
+
+/** maxEffects with the catalog: the entry's own parts less the stale copies of a corrected entry's, and that entry's own followed
+ *  live (a copied link to an entry the user corrected). */
+export function liveMaxEffects(data: LinkLookup, e: Sr6Entry | undefined, ...metatype: string[]): MaxEffects {
+  return maxFrom(
+    [
+      ...ownParts(data, e),
+      ...linkedViews(data, e)
+        .filter(v => v.part.attrs.copied)
+        .flatMap(v => v.parts),
+    ],
+    metatype,
+  )
+}
+
+function maxFrom(parts: Sr6Part[], metatype: string[]): MaxEffects {
+  const out: MaxEffects = {}
+  for (const x of parts) {
     const t = x.attrs.target ?? '',
       v = effectValue(x.attrs.value)
     if (x.tag !== 'effect' || !t.startsWith('attr-max:') || x.attrs.confidence === 'low' || !v) continue
@@ -180,6 +292,7 @@ const ATTR_WORDS: Record<string, string> = {
 const DERIVED_WORDS: Record<string, string> = {
   defense: 'Defense Rating',
   'defense-astral': 'astral Defense Rating',
+  'matrix-defense': 'Matrix Defense Rating',
   social: 'Social Rating',
   initiative: 'Initiative',
   'initiative-dice': 'Initiative Dice',
@@ -204,6 +317,12 @@ const DERIVED_WORDS: Record<string, string> = {
   'unarmed-dv': 'unarmed Damage Value',
   'unarmed-damage': 'unarmed damage',
 }
+/** The defense pools the book names apart from the general defense test (importer/sr6/effects.py). */
+const TEST_WORDS: Record<string, string> = {
+  'defense-astral': 'astral defense tests',
+  'defense-spell-direct': 'defense tests against direct combat spells',
+  'defense-spell-indirect': 'defense tests against indirect combat spells',
+}
 const ITEM_WORDS: Record<string, string> = {
   ar: 'Attack Rating',
   dv: 'Damage Value',
@@ -223,6 +342,7 @@ export function targetText(t: string): string {
     v = t.slice(i + 1)
   if (k === 'attr') return ATTR_WORDS[v] ?? v
   if (k === 'attr-max') return `maximum ${ATTR_WORDS[v] ?? v}`
+  if (k === 'limb-attr') return `the limb’s own ${ATTR_WORDS[v] ?? v}` // (a cyberlimb's attribute, never the runner's: CRB p. 288)
   if (k === 'skill') return v === 'choice' ? 'a chosen skill' : title(v)
   if (k === 'skill-max') return v === 'choice' ? 'a chosen skill’s maximum' : `maximum ${title(v)}`
   if (k === 'action-max') return `the ${title(v)} action’s maximum bonus`
@@ -233,6 +353,7 @@ export function targetText(t: string): string {
   if (k === 'test') {
     if (v.startsWith('attr-')) return `tests using ${ATTR_WORDS[v.slice(5)] ?? v.slice(5)}`
     if (v.startsWith('spell-')) return `${title(v.slice(6))} spells`
+    if (TEST_WORDS[v]) return TEST_WORDS[v]
     return v === 'all' ? 'all tests' : v === 'other' ? 'those tests' : `${title(v)} tests`
   }
   if (k === 'derived') return DERIVED_WORDS[v] ?? title(v)

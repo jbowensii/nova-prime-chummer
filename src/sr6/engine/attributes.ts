@@ -3,7 +3,7 @@ import { MAGIC_KINDS, type Sr6Data } from './data'
 import type { Sr6Attr, Sr6Build, Sr6Quality } from '../model/character'
 import { num, str, type CreationRules } from './creation'
 import type { Provider } from './providers'
-import { maxEffects } from './effects'
+import { liveMaxEffects } from './effects'
 import { augmentBonus } from './bonuses'
 import { noteAttr } from './choices'
 import { baseMetatype, runnerInfected } from './infected'
@@ -36,7 +36,7 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
   const inf = runnerInfected(b, data)
   if (inf?.alt) max += inf.t.alt?.adds[k] ?? 0
   for (const q of b.qualities) {
-    const fx = maxEffects(data.entry('qualities', q.id), m.name, baseMetatype(data, b.metatype)),
+    const fx = liveMaxEffects(data, data.entry('qualities', q.id), m.name, baseMetatype(data, b.metatype)),
       x = fx[k],
       c = noteAttr(q.note) === k ? fx.choice : undefined
     if (x?.set !== undefined) max = x.set
@@ -46,7 +46,7 @@ export function attrMax(data: Sr6Data, cr: CreationRules, b: Sr6Build, k: Sr6Att
         lowered ||= y.add < 0
       }
   }
-  const own = (q: Sr6Quality) => maxEffects(data.entry('qualities', q.id), m.name, baseMetatype(data, b.metatype)).choice !== undefined
+  const own = (q: Sr6Quality) => liveMaxEffects(data, data.entry('qualities', q.id), m.name, baseMetatype(data, b.metatype)).choice !== undefined
   max += id ? b.qualities.filter(q => data.sameFamily('qualities', q.id, id) && !own(q) && noteAttr(q.note) === k).length : 0
   const floor = num(cr, 'attributeMaxFloor')
   return lowered && floor !== undefined ? Math.max(floor, max) : max

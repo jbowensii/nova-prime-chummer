@@ -127,6 +127,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         _corpus(book_dir, custom_dir)
         for d in _cited(book_dir, custom_dir, res) if refresh and not newer else ():
             run(d, custom_dir, convert_pdf=False, refresh=False)  # (once: no book read again reads others again)
+        if refresh:  # (once, at the top: the books read again for their cited entries are in the pass too)
+            _links(custom_dir)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
@@ -146,9 +148,13 @@ def _read(recipe, md, custom_dir, olds=()):
     if olds:  # (before the effects and the overrides, which name entries by id)
         res.files, res.texts = same_ids(res.files, res.texts, olds)
     res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
+    have = {(n[:-4], i) for n, x in res.files.items() if x for i in xmlio.top_ids(x)}
     res.files = overrides.apply(getattr(recipe, "ID", ""), res.files)  # the book's last-resort Commlink6 name table
     res.files = classes.apply(res.files, src=getattr(recipe, "ID", ""))  # Commlink6's class on each entry of a category it classes alike (an override's own stays)
     res.texts = overrides.texts(getattr(recipe, "ID", ""), res.files, res.texts)  # (an added entry that takes a heading's text)
+    added = {(n[:-4], i) for n, x in res.files.items() if x for i in xmlio.top_ids(x)} - have
+    if added:  # (an entry an override added is read too, with the text it took: the others are not read twice)
+        res.files, res.texts = effects.apply(res.files, res.texts, text, only=added)
     return res, md, text, report
 
 
@@ -322,6 +328,22 @@ def _corpus(book_dir, custom_dir):
         print(f"corpus pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
+def _links(custom_dir):
+    """The last pass (effects.copy_links): every entry holding a link takes the linked entry's effects, whichever book the
+    linked entry is in, so it runs over all the sources on disk after any book is imported or removed. A failure leaves
+    the entries as they are (each with its link, which the app still follows)."""
+    root = os.path.join(custom_dir, "imported")
+    try:
+        srcs = {s: {f: Path(root, s, f).read_text(encoding="utf8") for f in os.listdir(os.path.join(root, s)) if f.endswith(".xml")}
+                for s in os.listdir(root) if os.path.isdir(os.path.join(root, s))} if os.path.isdir(root) else {}
+        said = {s: {(of, i): t for of, i, t in xmlio.texts_entries(Path(custom_dir, "texts", f"{s}.xml").read_text(encoding="utf8"))}
+                for s in srcs if os.path.isfile(os.path.join(custom_dir, "texts", f"{s}.xml"))}
+        for (s, f), xml in effects.copy_links(srcs, said).items():
+            xmlio.write_file(os.path.join(root, s, f), xml)
+    except Exception as e:  # noqa: BLE001
+        print(f"links pass: {type(e).__name__}: {e}", file=sys.stderr)
+
+
 def _pdf_title(pdf):
     """The PDF's metadata title ('' when absent or unreadable): a book identified by its title (a general recipe) is
     identified again when re-run from its book.md."""
@@ -424,3 +446,4 @@ def remove(book_dir, custom_dir, forget=False):
             run(nxt[1], custom_dir, convert_pdf=False)
         except Exception:  # noqa: BLE001  (its own status says why; this book is removed)
             pass
+    _links(custom_dir)  # (the entries that took the removed book's effects, and the books that cite it)

@@ -20,7 +20,7 @@ import {
 import { flag, num, str, type CreationRules } from './creation'
 import { MAGIC_KINDS, type Sr6Data } from './data'
 import { normName } from './names'
-import { linkedEntries } from './effects'
+import { linkedParts, ownParts } from './effects'
 import type { Sr6Entry, Sr6Part } from '../model/types'
 import { makeProvider } from './providers'
 import { awakenedFlag, runnerInfected } from './infected'
@@ -422,8 +422,8 @@ function partsOf(b: Sr6Character['build'], data: Sr6Data, target: string, on: bo
     ...b.purchases.filter(x => x.kind !== 'critters').map(x => entryOf(x, data)),
   ].filter((e): e is Sr6Entry => !!e)
   return entries
-    .flatMap(e => [e, ...linkedEntries(data, e).map(l => l.entry)])
-    .flatMap(e => e.parts)
+    .flatMap(e => [ownParts(data, e), linkedParts(data, e)])
+    .flat()
     .filter(x => x.tag === 'effect' && x.attrs.target === target && x.attrs.confidence !== 'low' && (on || (!x.attrs.switch && !x.attrs.when)))
 }
 
