@@ -214,7 +214,7 @@ def compare(c, o, sib=()):
         mine = (m.group(1) or m.group(2)) if m else ""
         if (letters != {""} or mine) and O.value(av) is not None:  # an empty avail is the avail's diff
             want = sorted(letters)[-1]
-            add("legality", None if mine == want else {"field": "legality", "ours": a.get("avail", ""),
+            add("legality", None if mine == want else {"field": "legality", "ours": f"({mine})" if mine else "",
                                                        "cl6": want or "(legal)", "why": "differs",
                                                        "ours_tok": av, "cl6_tok": show(cl)})
     if f.get("rating") and k in PRICED:
