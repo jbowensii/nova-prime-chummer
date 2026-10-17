@@ -11,7 +11,7 @@ from dataclasses import replace
 
 from importer.sr6.ids import slug
 from importer.sr6 import catalog, shapes
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, md_tables, norm
 
 ID, NAME, PUBLISHER, CANON = "HS", "Shadowrun: Hack & Slash", "Catalyst Game Labs", True
 BOOK = "Hack & Slash"
@@ -89,6 +89,21 @@ def prepare(bs):
     table's rating rows as `<title> (Rating N)`; a
     `Complex Form:` or quality's `(Positive Quality)` prefix or suffix dropped."""
     out, pr, seen = [], None, set()
+    bs = list(bs)
+    # HS p.52-53: the dataterms table is printed as two separate tables with prose between them
+    # (ITEM | DEVICE RATING | ATTRIBUTES D/F, then ACTIVE PROGRAM SLOTS | AVAIL. | COST).
+    # regroup._stacked never fires because text separates them; merge the price table in here.
+    # ponytail: positional merge — breaks if extraction reorders rows; fine for a fixed print layout.
+    _dt = next((b for b in bs if b.type == "item" and b.row is None and norm(b.name) == "dataterms"), None)
+    if _dt:
+        for h, rs in md_tables(_dt.text):
+            if h and h[0].upper() == "ACTIVE PROGRAM SLOTS":
+                for item, r in zip([b for b in bs if b.label == "dataterms"], rs):
+                    idx = bs.index(item)
+                    extra = dict(zip(h, r))
+                    bs[idx] = replace(item, row={**item.row, **extra},
+                                      header=list(item.row) + [c for c in h if c not in item.row])
+                break
     bs = shapes.boxes(bs)
     rated = {}  # (chapter, name) -> rows of that name
     for b in bs:
