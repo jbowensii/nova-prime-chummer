@@ -352,6 +352,11 @@ test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and
   await page.goto('/#/c/anarchy-neon/print')
   await page.reload()
   await expect(page.locator('article.sheet')).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText(['Printer-friendly', 'Full color', 'Book style', 'Official sheet'])
+  await expect(page.getByRole('combobox', { name: 'Sheet type' }).locator('option')).toHaveText([
+    'Printer-friendly',
+    'Full color',
+    'Book style',
+    'Official sheet',
+  ])
   await expect(page.getByRole('combobox', { name: 'Sheet type' })).toHaveValue('plain')
 })
