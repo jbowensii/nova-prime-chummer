@@ -166,6 +166,7 @@ def main(argv):
     mine = ours.kinds(ours.index(runs)) if runs else {}
     keep = json.loads(KEEP.read_text(encoding="utf8")) if KEEP.exists() else {}
     skip = {tuple(k[:4]) for k in keep.get("keep", [])} | {tuple(k[:4]) for k in keep.get("hold", [])}
+    skip |= {(v["src"], v["kind"], v["our_id"], v["field"]) for v in keep.get("verdicts", [])}  # (the owner ruled ours right)
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
     for path in paths:  # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's legality)
         for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):

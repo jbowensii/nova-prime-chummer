@@ -51,7 +51,10 @@ the overlay changes.
   (`importer/sr6/overrides/<src>.json`, `"gen": "value"`) for each counted field difference that `value_keep.json` does not
   keep. `keep` lists the values the PDF's text layer prints (the owner's check of the 361 reviewed rows, native agents reading
   the page text, 2026-10-14); the checker settles a difference there as class b, whatever class it had (a, or c after the trace). A `variants` entry there (field `variants`) accepts an item that Commlink6 gives variant tags (an install option, a Guided/Rocket Assist warhead option) as one item. `hold` is what the owner decides (two
-  Commlink6 records disagree about one entry; a per-rating item).
+  Commlink6 records disagree about one entry; a per-rating item). `verdicts` are the owner's rulings that ours is right
+  (docs/reviews/cl6-class-a-decisions-2026-10-17.md: 37 rows, each with its book page and reason): keyed by source, kind,
+  Commlink6's id and name, our id, field, and both values, so a row is class b only while Commlink6's value and ours are
+  the ones ruled on; a change to either makes it a new difference, settled again. valuemap writes no override for them.
 - `familymap` writes the structured data (`"gen": "family"`): a weapon's `skill`/`spec`, an armor's `social`, the item
   structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks
   (docs/sr6-data-format.md, Item structure). Nothing reads the last three: the per-effect metric counts only our own
