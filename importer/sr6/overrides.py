@@ -27,11 +27,14 @@ the app, the export and the Foundry module can tell it from the book reader's) a
 An id row with "gen": "owner" is the owner's correction of a book's misprint, by hand, never regenerated: its "kids" may
 carry "replaces" {"<attribute>": "<value>"}, the entry's child of the kid's tag with those attributes replaced in place
 (a name the book prints that is no entry: Nibiinaabe's gained power `Darkness`, a spell, is the critter power
-`Innate Spell (Darkness)`, swc.json); a child it doesn't find is reported, nothing added.
+`Innate Spell (Darkness)`, swc.json); a child it doesn't find is reported, nothing added. An owner row may also "set"
+values (and a "formula") as a value row does, its stale <formula>/<issue>/<found> children going the same way; its "note"
+says why (`range not printed; CL6 value, owner-accepted`). valuemap.py regenerates "value" rows only, so these stay.
 An id row with "gen": "value" or "family" (made by tools/cl6check/valuemap.py and familymap.py) sets printed values taken from Commlink6 (VALUE_ATTRS:
 cost, avail, karma, dv, ar …; the owner's rule: where the book and the reviewers could not confirm ours) and optional
 "formula" {"<field>": "<expr>"} (a per-rating table as a tier(), see docs/sr6-data-format.md). The entry's own <formula>,
-<issue> and <found> children for each field set go (they described the value being replaced).
+<issue> and <found> children for each field set go (they described the value being replaced). A "note" on the row
+(why the value is the table's: `range not printed; CL6 value`) is for the table's reader, never applied.
 Further ops on the entries of a kind, by their unscoped id (docs/sr6-data-format.md):
   {"kind","id","remove":true}                     the entry goes (its aliases with it, its text in `texts()`)
   {"kind","merge":{"into","from","from_kind"}}    the attributes `into` lacks come from `from` (the table's copy), which goes
@@ -264,7 +267,7 @@ def _set_by_id(out, rows):
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
-        if r.get("gen") in ("value", "family", "errata"):
+        if r.get("gen") in ("value", "family", "errata", "owner"):
             forms.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("formula", {}))
             vals.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], set()).update(r.get("set", {}))
     missing = []

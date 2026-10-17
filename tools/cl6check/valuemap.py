@@ -156,6 +156,11 @@ def refile(runs, root=OVERRIDES):
     return done
 
 
+def replace_value_rows(old, rows):
+    """A table's rows with its earlier value rows replaced by `rows`; every other row (class, family, errata, owner) stays."""
+    return [r for r in old if r.get("gen") != "value"] + rows
+
+
 def main(argv):
     if "--refile" in argv:
         print("value rows refiled:", refile(argv[argv.index("--refile") + 1]))
@@ -166,6 +171,7 @@ def main(argv):
     mine = ours.kinds(ours.index(runs)) if runs else {}
     keep = json.loads(KEEP.read_text(encoding="utf8")) if KEEP.exists() else {}
     skip = {tuple(k[:4]) for k in keep.get("keep", [])} | {tuple(k[:4]) for k in keep.get("hold", [])}
+    skip |= {(v["src"], v["kind"], v["our_id"], v["field"]) for v in keep.get("verdicts", [])}  # (the owner ruled ours right)
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
     for path in paths:  # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's legality)
         for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
@@ -206,7 +212,7 @@ def main(argv):
     for src, rows in new.items():
         p = OVERRIDES / f"{src}.json"
         old = json.loads(p.read_text(encoding="utf8")) if p.exists() else []
-        out = [r for r in old if r.get("gen") != "value"] + rows
+        out = replace_value_rows(old, rows)
         p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n", encoding="utf8")
 
 

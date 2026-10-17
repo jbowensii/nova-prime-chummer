@@ -661,5 +661,11 @@
   {"cl6": "MCT-Nissan Roto-Drone", "kind": "vehicles", "id": "mct-nissan-roto-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint", "value": "1"}}], "gen": "family"},
   {"cl6": "Laser sight", "kind": "augmentations", "id": "laser-sight", "gen": "cl6", "why": "Commlink6 sizes the implanted version; the book prints no size for it", "effects": [{"target": "item:size", "op": "add", "value": "1", "switch": "conditional", "when": "implanted in a cyberweapon"}]},
   {"cl6": "Silencer", "kind": "augmentations", "id": "silencer-suppressor", "gen": "cl6", "why": "Commlink6 sizes the implanted version; the book prints no size for it", "effects": [{"target": "item:size", "op": "add", "value": "2", "switch": "conditional", "when": "implanted in a cyberweapon"}]},
-  {"cl6": "Folding Stock", "kind": "gear", "id": "folding-stock", "gen": "cl6", "why": "the book's text gives the stock no concealability; Commlink6 does", "effects": [{"target": "item:concealability", "op": "add", "value": "1"}]}
+  {"cl6": "Folding Stock", "kind": "gear", "id": "folding-stock", "gen": "cl6", "why": "the book's text gives the stock no concealability; Commlink6 does", "effects": [{"target": "item:concealability", "op": "add", "value": "1"}]},
+  {"cl6": "Chemical Protection", "id": "chemical-protection", "kind": "armor", "set": {"rating": "1–14"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Cold Resistance", "id": "cold-resistance", "kind": "armor", "set": {"rating": "1–14"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Electricity Resistance", "id": "electricity-resistance", "kind": "armor", "set": {"rating": "1–14"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Fire Resistance", "id": "fire-resistance", "kind": "armor", "set": {"rating": "1–14"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Attribute Increase", "id": "attribute-increase", "kind": "augmentations", "set": {"rating": "1–13"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Injection Arrow", "id": "injection-arrow", "kind": "weapons", "set": {"rating": "1–14"}, "note": "range not printed on the arrow; it is the bow's cap (maximum rating 14, p. 250), as for the Arrow (7645ccab); CL6 value, owner-accepted 2026-10-17", "gen": "owner"}
 ]

@@ -49,5 +49,7 @@
   {"cl6": "Shifter Naivety", "kind": "qualities", "id": "shifter-naivety-shifter-add-on", "kids": [{"tag": "relevance", "attrs": {"topic": "social"}}], "gen": "family"},
   {"cl6": "Shifter Reflexes", "kind": "qualities", "id": "shifter-reflexes-shifter-add-on", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "REACTION", "value": "1", "apply": "ANIMAL"}}], "gen": "family"},
   {"cl6": "Supernatural Recovery", "kind": "qualities", "id": "supernatural-recovery-shifter-add-on", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "ESSENCE", "value": "6000"}}], "gen": "family"},
-  {"cl6": "Renraku Pelican 2 Delivery Drone", "kind": "vehicles", "id": "renraku-pelican-2-delivery-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "1"}}], "gen": "family"}
+  {"cl6": "Renraku Pelican 2 Delivery Drone", "kind": "vehicles", "id": "renraku-pelican-2-delivery-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "1"}}], "gen": "family"},
+  {"cl6": "Light Barding", "id": "light-barding", "kind": "armor", "set": {"rating": "1–20"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Heavy Barding", "id": "heavy-barding", "kind": "armor", "set": {"rating": "1–20"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"}
 ]

@@ -12,6 +12,7 @@ from contextlib import redirect_stdout
 
 from tools.cl6check import __main__ as cli
 from tools.cl6check import canon, fields, match, modifiers, ours, patterns, reader, report
+from tools.cl6check import optional as optional_package
 
 R = reader.ROOT
 
@@ -599,3 +600,18 @@ class ValueKeepTest(unittest.TestCase):
         for key in (("gz", c["kind"], "gz.zorp", "cost"), ("gz", "augmentations", "gz.zorp", "cost")):
             res = cli.compare([c], mine, pdf=False, package=({}, {}, {}), accept={}, keep={key})[0]
             self.assertEqual([d["class"] for d in res[0]["diffs"] if d["field"] == "cost"], ["b"], key)
+
+    def test_an_owner_verdict_holds_only_while_both_values_are_the_ones_ruled_on(self):
+        from types import SimpleNamespace
+        c = canon.canonical(rec('<item id="z0" cost="100"/>', name="Zorp")) | {"src": "gz"}
+
+        def cls(ours_cost, v):
+            mine = {"gz": SimpleNamespace(entries=[entry("Zorp", cost=ours_cost)], book_dir=None)}
+            res = cli.compare([c], mine, pdf=False, package=({}, {}, {}), accept={}, keep=set(), verdicts={v})[0]
+            return [d["class"] for d in res[0]["diffs"] if d["field"] == "cost"]
+        v = ("gz", c["kind"], "z0", "Zorp", "gz.zorp", "cost", "100", "500")
+        self.assertEqual(cls("500", v), ["b"])
+        self.assertEqual(cls("600", v), ["c"])  # (our value changed: settled again)
+        self.assertEqual(cls("500", v[:6] + ("90", "500")), ["c"])  # (Commlink6's changed)
+        rows = json.loads(optional_package.KEEP.read_text(encoding="utf8"))["verdicts"]  # (the shipped verdicts are well formed)
+        self.assertTrue(rows and all(set(optional_package.VERDICT) | {"page", "reason"} <= set(r) for r in rows))
