@@ -1,0 +1,3 @@
+[
+  {"cl6": "Hyperallergenic", "kind": "gear", "id": "hyperallergenic", "gen": "book", "why": "effects review F0801, F0802: \"increase the power of the toxin by 1 per severity …\": raises Power, not a +1 resistance bonus (wrong sign/target)", "drops": [{"target": "test:toxin-resistance", "op": "add", "value": "1", "switch": "conditional", "when": "if a character already possesses the allergy quality", "affects": "others"}, {"target": "test:all", "op": "add", "value": "-6", "switch": "activated"}], "effects": [{"target": "test:all", "op": "add", "value": "-6", "switch": "conditional", "when": "while exposed to the allergen"}]}
+]

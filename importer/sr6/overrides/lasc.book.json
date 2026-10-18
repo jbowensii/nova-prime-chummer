@@ -1,0 +1,3 @@
+[
+  {"cl6": "Adaptive Coloration (Shadows)", "kind": "critterpowers", "id": "adaptive-coloration-shadows", "gen": "book", "why": "effects review F0250: penalty is on onlookers: \"reduce the Attack Rating for any ranged attacks by 2\"", "drops": [{"target": "item:ar", "op": "add", "value": "-2", "switch": "conditional", "when": "ranged attacks"}], "effects": [{"target": "item:ar", "op": "add", "value": "-2", "switch": "conditional", "when": "ranged attacks against the critter", "affects": "others"}]}
+]

@@ -1,0 +1,3 @@
+[
+  {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "gen": "book", "why": "effects review F0835: \"base swimming speed is increased by 1 meter for each …\"", "effects": [{"target": "derived:movement", "op": "add", "value": "R/R/0", "when": "swimming"}]}
+]

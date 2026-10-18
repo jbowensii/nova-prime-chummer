@@ -396,12 +396,12 @@
     <!-- add (+N/-N); set (the value replaces it: an attribute maximum); edge (N bonus Edge on those tests); edge-cost
          (Edge boosts and actions on them cost N more, -N less); edge-cost-set (an Edge action's new cost); no-edge (no
          Edge may be spent on them); no-edge-gain (none gained); wild-die (one die a wild die); hits (N extra hits);
-         threshold (the tests' threshold moves by N: a toxin extractor's -R) -->
+         threshold (the tests' threshold moves by N: a toxin extractor's -R); threshold-set (their new threshold: spider eyes' 2) -->
     <xs:attribute name="op" use="required"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="add"/><xs:enumeration value="set"/><xs:enumeration value="edge"/>
       <xs:enumeration value="edge-cost"/><xs:enumeration value="edge-cost-set"/><xs:enumeration value="no-edge"/>
       <xs:enumeration value="no-edge-gain"/><xs:enumeration value="wild-die"/><xs:enumeration value="hits"/>
-      <xs:enumeration value="threshold"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="threshold"/><xs:enumeration value="threshold-set"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="value" type="xs:string" use="required"/>
     <!-- low: read from a sentence the importer isn't sure of (a condition with no words, a formula per point of
          something): shown, never applied -->
@@ -430,10 +430,11 @@
          the importer gives it to the entries of the same class in other books, each `from` "<source>:<heading>"
          (import bookkeeping) -->
     <xs:attribute name="rule" type="xs:string"/>
+    <!-- book: the effect is a hand-written correction of what the book's text says that no reader rule expresses (the same file, "gen": "book") -->
     <!-- cl6: the effect is a hand-written Commlink6 override (importer/sr6/overrides/<book>.json, "gen": "cl6"), not the book
          reader's: shown as such, a rare exception to the owner's rule that our reader is the primary source -->
     <xs:attribute name="gen"><xs:simpleType><xs:restriction base="xs:string">
-      <xs:enumeration value="cl6"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="cl6"/><xs:enumeration value="book"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
        `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a
