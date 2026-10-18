@@ -102,7 +102,7 @@ export interface Sr6ExportEffect {
   /** the id of the linked entry the importer copied this effect from (effects.py copy_links) */
   from?: string
   /** `cl6`: a hand-written Commlink6 override (overrides/<book>.json), not the book reader's */
-  gen?: 'cl6'
+  gen?: 'cl6' | 'book'
 }
 /** Another entry this one grants (`grants`) or works as (`as`): the reader uses that entry's effects, unless `copied`
  *  (they are already among this item's own effects, each `from` the linked id) */
@@ -412,7 +412,7 @@ const exportEffects = (parts: Sr6Part[]): Sr6ExportEffect[] =>
       ...(p.attrs.when ? { when: p.attrs.when } : {}),
       ...(p.attrs.spec ? { spec: p.attrs.spec } : {}),
       ...(p.attrs.from ? { from: p.attrs.from } : {}),
-      ...(p.attrs.gen === 'cl6' ? { gen: 'cl6' as const } : {}),
+      ...(p.attrs.gen === 'cl6' || p.attrs.gen === 'book' ? { gen: p.attrs.gen } : {}),
       ...(p.attrs.affects === 'caster' || p.attrs.affects === 'target' || p.attrs.affects === 'others'
         ? { affects: p.attrs.affects as 'caster' | 'target' | 'others' }
         : {}),

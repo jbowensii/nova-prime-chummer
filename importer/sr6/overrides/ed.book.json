@@ -1,0 +1,3 @@
+[
+  {"cl6": "Utility Magnet (disposable)", "kind": "gear", "id": "utility-magnet-disposable", "gen": "book", "why": "effects review F0282: table footnote \"****Note\" belongs to hand/foot grips; disposable magnets stick to items", "drops": [{"target": "skill:athletics", "op": "add", "value": "1", "switch": "conditional", "when": "while moving in zero gravity"}]}
+]

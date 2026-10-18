@@ -38,7 +38,7 @@ export function testSkills(data: Sr6Data, type: string): string[] {
 
 /** A printed effect value as a bonus's: a number; so much per rating or level (`R`, `-R`, `R*2`, `2*R`); so much per
  *  level after the first (`R-1`, `R*2-2`: minus); or the book's own value per rating (`R[1,1,2,2]`: byRating; owner
- *  decisions 2026-10-11). undefined: a formula over attributes (`edg/2`), a percent or a band list (`0,1,1,0,0`), shown only. */
+ *  decisions 2026-10-11). undefined: a formula over attributes (`edg/2`) or a skill's ranks (`rank:con`), a percent or a band list (`0,1,1,0,0`), shown only. */
 export function effectValue(v: string | undefined): { value: number; perRating?: true; minus?: number; byRating?: number[] } | undefined {
   const s = (v ?? '').replace(/\s+/g, '')
   if (/^[+-]?\d+(\.\d+)?$/.test(s)) return { value: Number(s) }
@@ -316,6 +316,11 @@ const DERIVED_WORDS: Record<string, string> = {
   'unarmed-ar': 'unarmed Attack Rating',
   'unarmed-dv': 'unarmed Damage Value',
   'unarmed-damage': 'unarmed damage',
+  // (rule changes the vocabulary had no word for; effects review 2026-10-18)
+  'adept-drain-attribute': 'adept drain resisted with', // (`set` an attribute, `choice` or `tradition`: Logic instead of Willpower; shown, never applied)
+  'wound-penalty': 'wound penalty', // (`add -1`: one die of it ignored)
+  'wound-threshold': 'wound threshold (boxes)', // (`add 1`: the penalty starts one box farther down the Condition Monitor)
+  'drain-value': 'Drain Value', // (`add 2`: raised, the spell's or tool's own cost)
 }
 /** The defense pools the book names apart from the general defense test (importer/sr6/effects.py). */
 const TEST_WORDS: Record<string, string> = {
@@ -329,6 +334,7 @@ const ITEM_WORDS: Record<string, string> = {
   'speed-interval': 'Speed Interval',
   'top-speed': 'Top Speed',
   ammo: 'ammunition',
+  'damage-type': 'damage type', // (`set` S or P: ammunition that makes the damage Stun; the Foundry module to map it to the weapon's `system.stun`, planned)
 }
 const PRICE_WORDS: Record<string, string> = { armor: 'armor and clothing prices', lifestyle: 'lifestyle costs', gear: 'gear prices', everything: 'all prices' }
 const words = (s: string) => s.replace(/-/g, ' ')
@@ -374,6 +380,9 @@ const valueText = (v: string) => {
   const formula = /^(-?)([a-z][a-z-]*)\/(\d+)(?: (RD|RU))?$/.exec(v) // (`edg/2 RD`: half Edge, rounded down; owner decision 2026-10-11)
   if (formula)
     return `${formula[1]}${ATTR_WORDS[formula[2]] ?? words(formula[2])} ÷ ${formula[3]}${formula[4] ? ` (round ${formula[4] === 'RD' ? 'down' : 'up'})` : ''}`
+  if (/^x\d+(\.\d+)?$/.test(v)) return `× ${v.slice(1)}` // (`x0.75`: a multiplier on the value, a warhead's damage: shown, never applied)
+  const plus = /^([a-z]{3})\/(\d+)\+(\d+)$/.exec(v) // (`str/2+1`: the unarmed attack's base damage value, Dermal Deposits)
+  if (plus) return `${ATTR_WORDS[plus[1]] ?? plus[1]} ÷ ${plus[2]} + ${plus[3]}`
   if (/^-?[a-z]{3}$/.test(v) && ATTR_WORDS[v.replace('-', '')]) return `${v.startsWith('-') ? '−' : ''}${ATTR_WORDS[v.replace('-', '')]}`
   if (v.includes(','))
     return v
@@ -381,6 +390,9 @@ const valueText = (v: string) => {
       .map(x => (x === 'x' ? '— (removed)' : Number(x) > 0 ? `+${x}` : x === '0' ? '–' : x))
       .join('/')
   if (v === 'N') return 'native'
+  if (v === 'choice') return 'a chosen attribute' // (`derived:adept-drain-attribute`: any physical attribute, the player's pick)
+  if (v === 'tradition') return 'the tradition’s attribute'
+  if (/^rank:[a-z-]+$/.test(v)) return `${title(v.slice(5))} ranks` // (`add your ranks in Con to your dice pool`: the character's own, shown, never applied)
   if (v === 'R/-R') return '+rating on-road, −rating off-road'
   if (/^0\.\d+$/.test(v)) return `${Math.round(Number(v) * 100)}%`
   const r = /^R\*(-?[\d.]+)$/.exec(v) ?? /^(-?[\d.]+)\*R$/.exec(v)
@@ -409,7 +421,7 @@ export function effectText(p: Sr6Part): string {
   const how = `${a.affects === 'target' ? 'on the target: ' : a.affects === 'others' ? 'others get: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text =
     a.op === 'set'
-      ? `${t} ${valueText(v)}`
+      ? `${t} ${(a.target === 'item:damage-type' || a.target === 'derived:unarmed-damage') && /^[PS]$/.test(v) ? (v === 'S' ? 'Stun' : 'Physical') : valueText(v)}`
       : a.target?.startsWith('pricemod:')
         ? `${t} ${signed(v)}`
         : a.target?.startsWith('sense:')
@@ -428,9 +440,11 @@ export function effectText(p: Sr6Part): string {
                       ? `a wild die on ${t}`
                       : a.op === 'hits'
                         ? `${signed(v)} hits on ${t}`
-                        : a.op === 'threshold'
-                          ? `threshold ${signed(v)} on ${t}`
-                          : `${signed(v)} ${t}`
+                        : a.op === 'threshold-set'
+                          ? `threshold ${v} on ${t}`
+                          : a.op === 'threshold'
+                            ? `threshold ${signed(v)} on ${t}`
+                            : `${signed(v)} ${t}`
   return `${how}${text}${when ? ` (${when})` : ''}`
 }
 

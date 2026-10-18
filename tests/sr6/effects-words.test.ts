@@ -38,6 +38,11 @@ test('target words, by kind', () => {
     ['test:social', 'Social tests'],
     ['derived:defense', 'Defense Rating'],
     ['derived:odd-thing', 'Odd Thing'],
+    ['derived:adept-drain-attribute', 'adept drain resisted with'],
+    ['derived:wound-penalty', 'wound penalty'],
+    ['derived:wound-threshold', 'wound threshold (boxes)'],
+    ['derived:drain-value', 'Drain Value'],
+    ['item:damage-type', 'damage type'],
     ['matrix:overwatch', 'Overwatch Score'],
     ['matrix:choice', 'a chosen Matrix attribute'],
     ['matrix:data-processing', 'Data Processing'],
@@ -80,6 +85,19 @@ test('value words: per rating, after the first level, a band list, a formula ove
     ['7', '7'],
   ]
   for (const [v, w] of sets) expect(effectText(fx('derived:defense', 'set', v)), v).toBe(`Defense Rating ${w}`)
+})
+
+test('the rule changes of the effects review read as sentences: the drain attribute, the wound penalty and threshold, the Drain Value, the damage type', () => {
+  expect(effectText(fx('derived:adept-drain-attribute', 'set', 'log'))).toBe('adept drain resisted with Logic')
+  expect(effectText(fx('derived:adept-drain-attribute', 'set', 'choice'))).toBe('adept drain resisted with a chosen attribute')
+  expect(effectText(fx('derived:adept-drain-attribute', 'set', 'tradition'))).toBe('adept drain resisted with the tradition’s attribute')
+  expect(effectText(fx('derived:wound-penalty', 'add', '-1', { switch: 'conditional', when: 'acting for the ideal' }))).toBe(
+    '-1 wound penalty (acting for the ideal)',
+  )
+  expect(effectText(fx('derived:wound-threshold', 'add', 'R'))).toBe('+rating wound threshold (boxes)')
+  expect(effectText(fx('derived:drain-value', 'add', '2'))).toBe('+2 Drain Value')
+  expect(effectText(fx('item:damage-type', 'set', 'S'))).toBe('damage type Stun')
+  expect(effectText(fx('derived:unarmed-damage', 'set', 'P'))).toBe('unarmed damage Physical')
 })
 
 test('every effect operation reads as a sentence; a price change and a sense are signed or bare', () => {
@@ -240,4 +258,32 @@ test('attribute maxima: a set, an add per rating, a chosen attribute’s; low co
   } as unknown as Sr6Entry
   expect(maxEffects(e)).toEqual({ str: { set: 9, add: 1 }, agi: { add: 1, perRating: true }, choice: { add: 1 }, log: { add: 0 } })
   expect(maxEffects(undefined)).toEqual({})
+})
+
+test('a skill’s ranks as a value (rank:con) is shown in words and never applied', () => {
+  const p = fx('derived:composure', 'add', 'rank:con', { switch: 'conditional', when: 'if you do' })
+  expect(effectText(p)).toBe('+Con ranks Composure (if you do)')
+  expect(effectValue('rank:con')).toBeUndefined()
+  const { data } = made()
+  const e = { id: 'x.y', kind: 'qualities', name: 'Y', source: 'X', page: 1, attrs: {}, parts: [p], text: '' } as unknown as Sr6Entry
+  expect(effectBonuses(data, e)).toEqual([])
+})
+
+test('a threshold the entry sets (threshold-set) reads as the new threshold', () => {
+  expect(effectText(fx('test:surprise', 'threshold-set', '2'))).toBe('threshold 2 on Surprise tests')
+  expect(effectText(fx('test:toxin-resistance', 'threshold', '-1'))).toBe('threshold -1 on Toxin Resistance tests')
+})
+
+test('a base damage value over Strength (str/2+1) is shown in words and never applied', () => {
+  const p = fx('derived:unarmed-dv', 'set', 'str/2+1')
+  expect(effectText(p)).toBe('unarmed Damage Value Strength ÷ 2 + 1')
+  const { data } = made()
+  const e = { id: 'x.y', kind: 'qualities', name: 'Y', source: 'X', page: 1, attrs: {}, parts: [p], text: '' } as unknown as Sr6Entry
+  expect(effectBonuses(data, e)).toEqual([])
+})
+
+test('a multiplier on a value (x0.75) is shown in words and never applied', () => {
+  const p = fx('item:dv', 'set', 'x0.75')
+  expect(effectText(p)).toBe('Damage Value × 0.75')
+  expect(effectValue('x0.75')).toBeUndefined()
 })

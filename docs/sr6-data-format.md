@@ -358,11 +358,16 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   (`physical-monitor`, `stun-monitor`, `matrix-monitor`, `overflow`), `composure`, `judge-intentions`, `memory`, `lift`, `movement`,
   `minor-actions`, `major-actions`, `hardened-armor`, `damage-reduction`, `power-points`, the unarmed attack's `unarmed-ar`,
   `unarmed-dv` (`add`, or `set` from a table's `3P`: the bone lacing table, CRB Hong Kong p. 286) and `unarmed-damage`
-  (`set` `P`: `unarmed combat damage becomes Physical`); `matrix:<name>` a Matrix attribute
+  (`set` `P`: `unarmed combat damage becomes Physical`); the rule changes the review of 2026-10-18 found no word for, each shown
+  and never applied: `adept-drain-attribute` (`set` the attribute adept power drain is resisted with instead of Willpower or
+  Body: an attribute abbreviation, `choice` for any physical attribute, or `tradition`; the Ways, Street Wyrd p. 76), `wound-penalty`
+  (`add -1`: one die of the wound penalty ignored), `wound-threshold` (`add` N: the wound penalty starts N boxes farther down the
+  Condition Monitor, Pain Resistance) and `drain-value` (`add` N: the Drain Value of a spell or tool raised, a cost); `matrix:<name>` a Matrix attribute
   (`attack`, `sleaze`, `data-processing`, `firewall`, `choice`) or `matrix:overwatch`; `item:<field>` the item's own
   stat, or on an add-on (accessory, ammunition, vehicle mod) the stat of the item it fits (`ar`, a value a range band
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
-  `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity); `action:<name>` an Edge or
+  `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity, `damage-type` `set` `S` or `P`:
+  ammunition that makes the damage Stun or Physical; the Foundry module is to map `S` to the weapon's `system.stun` (planned, not done yet)); `action:<name>` an Edge or
   Matrix action (`the Snoop action`, `Called Shot—Disarm`, a list after `action:`); `complex-form:<name>` a complex
   form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource (`maxed-out-attributes` and `maxed-out-skills`, `set` the number that may start at their maximum, 0 for `may not start with any`; `adjust-drake`, `add` a drake's Adjustment Attributes);
   `skill-max:<id>` a skill's maximum (`skill-max:choice`: Aptitude's 10, Genetic Optimization's +1); `sense:<name>`
@@ -390,13 +395,13 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
 - **Operations** (the rule-changing effects are kinds of their own): `add`, `set` (an infected type's attribute
   maximum), `edge` (N bonus Edge on those tests), `edge-cost` (Edge boosts and actions cost N more, -N less),
   `edge-cost-set` (an Edge action's new cost), `no-edge` (no Edge may be spent), `no-edge-gain` (none gained),
-  `wild-die`, `hits` (N extra hits), `threshold` (the tests' threshold moves by N: a toxin extractor's `-R`). An extra
+  `wild-die`, `hits` (N extra hits), `threshold` (the tests' threshold moves by N: a toxin extractor's `-R`), `threshold-set` (their new threshold: spider eyes' Surprise tests at 2). An extra
   Minor or Major Action, Hardened Armor N and Overwatch -N are `add`s on their targets; `set` also gives a rating
   (`the Magic attribute at 3`, an artificial skill at the hardwire's rating).
 - **Values**: a number; `R`, `-R`, `R*N` (x the line's rating or level: `adds its rating`, `per level`, `each point
   of this mod`, `each point of X rating`; a value's own clause decides: `+1 to AR per level, and +1 to DV for every
   two levels (round up)` is `R` and `R/2 RU`, a formula, shown); a formula over a value of the character's (`dice
-  equal to your Initiate Grade`: `initiate-grade`; `increased by their Magic`: `mag`), shown; `R-1`, `R*N-N` (so much per level after the first: `each level after the
+  equal to your Initiate Grade`: `initiate-grade`; `increased by their Magic`: `mag`; `add your ranks in Con to your dice pool`: `rank:con`, a skill's ranks, owner 2026-10-17), shown; `R-1`, `R*N-N` (so much per level after the first: `each level after the
   first grants a +1 dice pool modifier for such tests`, Nimble Fingers; counted as rating − 1, never below 0; owner
   decision 2026-10-11); `R[1,1,2,2]` (the book's own value per rating, a per-rating table: rating 3 gives the third,
   beyond the table the last; owner decision 2026-10-11, for the owner's overrides of table-driven items); a range
@@ -535,6 +540,44 @@ override). Besides the pass above:
   `effects` replace the entry's effect of that target and op, each written `gen="cl6"` and exported as `gen: "cl6"`): the owner's direction, a rare
   override of the reader, visible as one. Not expressible: a
   multiplier (Warhead FRAG's DAMAGE 0.75).
+- Batch 3 (2026-10-17, owner rulings): Commlink6's own effect is a marked `gen="cl6"` override where the reader cannot derive it from the book,
+  carrying whom it is for in its target (`apply=` character is the owner: `attr:`, `skill:`, `test:`; item or add-on: `item:`; the unarmed attack:
+  `derived:unarmed-*`; a persona: `matrix:`/`derived:matrix-defense`); the book wins where Commlink6 contradicts the printed text (the rows are
+  not written). An effect of a row may carry `"replaces": "<target>"`: the entry's effect of that target (and the same op) goes instead of
+  the one of the effect's own target (the book names no test, `test:other`, and Commlink6 names Perception: Flare compensation). Where
+  Commlink6 splits one bonus over the defense pools (Awareness, Combat Sense, Cognitive Shield, Magic Resistance, Blubber, Dragon Skin …),
+  one effect is written per pool: `test:defense` (physical), `test:defense-spell-direct`, `test:defense-spell-indirect`,
+  `test:defense-astral`, the book's own (the physical) from the reader and the others `gen="cl6"`. The reader also takes: a skill's ranks added
+  to a test's dice pool (`rank:con` on `derived:composure`, `derived:judge-intentions`), a threshold the entry sets (`threshold-set`: spider
+  eyes' Surprise tests at 2), a band stated for one range (`+2 AR at Close range only`: `2,0,0,0,0`), the unarmed attack's base damage value
+  (`[(STR/2) + 1]P`: Physical, `derived:unarmed-dv` `set` `str/2+1`, a formula over Strength, shown, never applied), and a multiplier on a value (`item:dv` `set` `x0.75`: the Frag warhead's damage, Commlink6's; shown as `× 0.75`, never applied), a metamagic that raises the natural weapon, `tests involving a physical attribute`
+  (`test:physical`), `touch-based` tests (the Tactile specialization), `gain access to a network` (Cracking), ammunition that uses the wild die
+  (`skill:firearms`), `An implanted version of the X enhancement` (works as it), and two entries named alike but for `External` / `Internal` (`SmartCam`) read only the sentences that do not name the other.
+  A power that `functions … as X, except …` is no link to X (its effects are not X's).
+- The complete effects review (2026-10-18, owner-approved): the reader's rules by the families of misreading it found, and a `gen="book"` row where no
+  rule says it. The reader: the words after a test's name (`tests made in your Territory`, `tests to hide your origin`, `rolls to resist heat-based
+  attacks`) are its condition, up to twelve words, never cut on a dangling article and never a fragment, a question, a price or flavor (a drug's story
+  is cut from its `Effect:` line, a quality's `if you take this quality` is no condition); a dice modifier on tests it names no target of is
+  `test:other` with their words as its condition, on every test or action `test:all`; tests that involve an attribute are `test:attr-*`, never the
+  attribute; an attribute listed as what resists a spell, and a prose `body`, are not raised; Edge or dice for resisting a skill's or a spell's tests are
+  the defender's (`test:other`, `test:magic-resistance`); Edge against a kind of target is `test:other` with `vs. …`; what others gain (`the opposing
+  individual gains a point of Edge`) is `affects="others"`; a bonus Minor Action handed back is conditional on its trigger; a wireless line that brings
+  a bonus to N adds the difference from the base; `(choose one)` or `the choice of one skill is permanent` is `skill:choice` (a run-in label holds for
+  the sentences after it, and a variant's label may carry a prefix or suffix, `Endo-Booster`, `Swimming tail`; the paragraphs after the last variant's
+  are every variant's); a percent is a percent (`50%`, `R*20%` per rating), thresholds `threshold` (`-1`, a higher one the opposition's:
+  `affects="others"`), `Each point of nanite volume put in overdrive adds` is `nanite-volume`, `each point of your own Essence loss` is `-(6-ess) RU`;
+  overdrive lines: dice on `test:other`, `Convert one die … to a wild die` or `one of which must be a wild die` is `wild-die` on the same tests; a table
+  note for another model (`Use the wild die on garrote attacks`) is skipped; an ammo type's printed AR and DV are its effects, once (its text's copy and a
+  second, SR5 table are not); prices (`pays ten percent extra for any worn or fitted clothing`), `increase all Lifestyle costs by 500 nuyen per
+  month`, `gains four Physical Condition Monitor boxes`, `Add your dracogenesis rating to all flying tests`, a critter's `Gained Powers:` line, the Edge
+  cost of an action it names (`reduces the Edge cost for Protect the Principal by 2`), a reward for a result (`if you completely resist all damage …,
+  gain a point of Edge`), `cannot earn Edge or spend Edge in any form`, and `all tests involving the operation of a vehicle` (`test:vehicle`).
+  A `gen="book"` row (importer/sr6/overrides/<book>.book.json; `why` names the review's findings) puts in its `effects` (written `gen="book"`, exported as
+  `gen: "book"`) in place of the reader's of the same target and operation, as a Commlink6 row does (`"keep": true` adds only what is not there; one already
+  there is not added twice), takes out the effects its `drops` name exactly (those attributes equal, the ones it leaves out absent; a drop that matches
+  nothing is reported) and adds a link through `kids`. The rows are mostly generated from the review's findings against the reader of the day
+  (the review's scripts, not in the repository, regenerate them when the reader changes), a few written by hand; a rule in the reader is
+  preferred, and a row is deleted when a rule makes it redundant.
 - A rule the book states for all the items of a class (a section intro's `Each cyberlimb adds one box`, `Basic limbs are
   installed with all Physical attributes at 2` -> `limb-attr:*` `set` 2, CRB p. 288, or a variant's own table row,
   `Missile Variant` NOTES `+2 to Attack Rating` and the section's `Missiles are rockets … sensor packages adding their

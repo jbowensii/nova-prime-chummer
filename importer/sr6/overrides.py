@@ -23,7 +23,17 @@ Commlink6's values.
 An id row with "gen": "cl6" is an effect only Commlink6 has (the book's text states none, or states it in a form the format cannot read:
 the owner's direction 2026-10-17, our reader is the primary source and Commlink6 a rare override), written by hand, never regenerated: its
 "effects" (a list of effect attribute dicts, each with its "target" and "op": the entry's effect of that target and op is replaced; each is written with `gen="cl6"`, so
-the app, the export and the Foundry module can tell it from the book reader's) and its "why", one line.
+the app, the export and the Foundry module can tell it from the book reader's) and its "why", one line. An effect may carry "replaces"
+(a target): the entry's effect of that target and this op goes instead of the one of the effect's own target (the book's words name no
+test, `those tests`, and Commlink6 names the one it is for).
+An id row with "gen": "book" (<recipe id>.book.json) is a correction of what the book's text says that no reader rule in effects.py expresses
+(the effects review of 2026-10-18: one confirmed fact about one entry), kept few, each with its "why" in one line naming the review's findings.
+Its "effects" are written with `gen="book"` and REPLACE the entry's reader effects of the same target and operation (as a Commlink6 row's do; a row
+with "keep": true adds only what is not there), one already there is not added twice; an effect with "keep": true is a reader effect the row restates
+so the replacement leaves it (written without the mark); its "drops" are further effects to take out (a dict of target,
+op, value, switch, when, spec, affects, from: those equal, the ones it leaves out absent; one that matches nothing is reported, UNMATCHED_DROPS); its
+"kids" are links to add. Most of the rows were GENERATED from the review's findings against the reader of the day (the review's scripts, not in the
+repository), a few written by hand; regenerate them when the reader changes, and prefer a rule in effects.py to a row.
 An id row with "gen": "owner" is the owner's correction of a book's misprint, by hand, never regenerated: its "kids" may
 carry "replaces" {"<attribute>": "<value>"}, the entry's child of the kid's tag with those attributes replaced in place
 (a name the book prints that is no entry: Nibiinaabe's gained power `Darkness`, a spell, is the critter power
@@ -64,8 +74,11 @@ from importer.sr6.regroup import norm
 from importer.sr6.resolve import _add_kid
 
 DIR = Path(__file__).with_name("overrides")
+UNMATCHED_DROPS = []  # (the book rows' drops that took out nothing, [(entry id, drop)]: a row written against a reader that has changed since; tests and tools/ check it stays empty)
 OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
 SETTABLE = {"class"}  # (what an id row may set)
+EFFECT_KEYS = {"target", "op", "value", "switch", "when", "spec", "affects", "from"}
+EFFECT_OPS = {"add", "set", "edge", "edge-cost", "edge-cost-set", "no-edge", "no-edge-gain", "wild-die", "hits", "threshold", "threshold-set"}  # (docs/sr6-data-format.md)
 KID_TAGS = {"slot", "fits", "variant", "relevance", "flag", "modifier", "prerequisite", "selection",  # (a "gen": "family" row's "kids": Commlink6's item structure)
             "status",  # (an errata row's: a status the item applies, the No Future errata's Molotov Burning 4)
             "power"}  # (an owner row's: an Infected type's gained power, corrected)
@@ -116,7 +129,7 @@ def fit(rows):
         if bad:
             print(f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped", file=sys.stderr)
             r = {**r, "set": {k: v for k, v in r["set"].items() if k not in bad}, **({"formula": {k: v for k, v in r["formula"].items() if k not in bad}} if "formula" in r else {})}
-            if not (r["set"] or r.get("kids") or r.get("effects") or r.get("formula")):
+            if not (r["set"] or r.get("kids") or r.get("effects") or r.get("formula") or r.get("drops")):
                 continue
         out.append(r)
     return out
@@ -133,18 +146,27 @@ def check(rows):
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
-        if "id" in r and r.get("gen") in ("value", "family", "errata", "owner", "cl6") and not any(k in r for k in OPS):
-            if not (r.get("set") or r.get("kids") or r.get("effects")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
+        if "id" in r and r.get("gen") in ("value", "family", "errata", "owner", "cl6", "book") and not any(k in r for k in OPS):
+            if not (r.get("set") or r.get("kids") or r.get("effects") or r.get("drops")) or set(r.get("set", {})) - VALUE_ATTRS or set(r.get("formula", {})) - VALUE_ATTRS:
                 raise ValueError(f"override of {r.get('id')}: a value row sets {sorted(VALUE_ATTRS)} only")
-            if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS]:
-                raise ValueError(f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only")
+            if bad := [k for k in r.get("kids", []) if k.get("tag") not in KID_TAGS | ({"link"} if r.get("gen") == "book" else set())]:
+                raise ValueError(f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only (a book row's also a link)")
         elif "id" in r and not any(k in r for k in OPS):
             if not r.get("set") or set(r["set"]) - SETTABLE or not all(CLASS_KEY.fullmatch(str(v)) for v in r["set"].values()):
                 raise ValueError(f"override of {r.get('id')}: an id row sets {sorted(SETTABLE)} only")
-        if r.get("gen") == "cl6" and not (isinstance(r.get("why"), str) and r["why"].strip() and chr(10) not in r["why"]):
-            raise ValueError(f"override of {r.get('id')}: a Commlink6 row says why in one line")
+        if r.get("gen") in ("cl6", "book") and not (isinstance(r.get("why"), str) and r["why"].strip() and chr(10) not in r["why"]):
+            raise ValueError(f"override of {r.get('id')}: a Commlink6 or book row says why in one line")
+        if r.get("drops") is not None and not (r.get("gen") == "book" and isinstance(r["drops"], list) and all(isinstance(d, dict) and d.get("target") and set(d) <= EFFECT_KEYS for d in r["drops"])):
+            raise ValueError(f"override of {r.get('id')}: drops are a book row's list of the effects to take out (each names its target, {sorted(EFFECT_KEYS)})")
+        if "keep" in r and not (r.get("gen") == "book" and isinstance(r["keep"], bool)):
+            raise ValueError(f"override of {r.get('id')}: keep is a book row's true or false")
         if not all(isinstance(a, dict) and a.get("target") for a in r.get("effects", [])):
             raise ValueError(f"override of {r.get('id')}: each effect names its target (it replaces the entry's effect of that target)")
+        for a in r.get("effects", []):
+            if a.get("op") and a["op"] not in EFFECT_OPS:
+                raise ValueError(f"override of {r.get('id')}: {a['op']!r} is no effect operation ({sorted(EFFECT_OPS)})")
+            if "replaces" in a and not (isinstance(a["replaces"], str) and re.fullmatch(r"[a-z-]+:[a-z0-9-]+", a["replaces"])):
+                raise ValueError(f"override of {r.get('id')}: replaces names a target (`test:other`)")
         if "rename" in r and not (isinstance(r["rename"], str) and 0 < len(r["rename"]) <= 120 and chr(10) not in r["rename"]):
             raise ValueError(f"override of {r.get('id')}: rename is a name")
         for part in r.get("split", []):
@@ -226,8 +248,13 @@ def texts(recipe_id, files, texts_xml, rows=None):
 
 
 def table(recipe_id):
-    p = DIR / f"{(recipe_id or '').lower()}.json"
-    return check(json.loads(p.read_text(encoding="utf8"))) if p.is_file() else []
+    """The book's rows: its Commlink6 name table (`<id>.json`) and its book corrections (`<id>.book.json`, "gen": "book")."""
+    rows = []
+    for name in (f"{(recipe_id or '').lower()}.json", f"{(recipe_id or '').lower()}.book.json"):
+        p = DIR / name
+        if p.is_file():
+            rows += json.loads(p.read_text(encoding="utf8"))
+    return check(rows) if rows else []
 
 
 def _refile(out, rows):
@@ -260,10 +287,12 @@ def _set_by_id(out, rows):
     """The id rows applied: out[<kind>.xml] with each entry of an id the rows name given its attributes."""
     from lxml import etree
     rows = fit(_refile(out, rows))
-    want, forms, vals, kids, effs = {}, {}, {}, {}, {}
+    want, forms, vals, kids, effs, drops = {}, {}, {}, {}, {}, {}
     for r in sorted(rows, key=lambda r: r.get("gen") == "errata"):  # (an errata's values last: they win)
         if r.get("effects"):
-            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend({**a, "gen": "cl6"} if r.get("gen") == "cl6" else a for a in r["effects"])  # (a Commlink6 row's effect says so)
+            effs.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend({**a, "gen": r["gen"], **({"book": True, "add_only": bool(r.get("keep"))} if r["gen"] == "book" else {})} if r.get("gen") in ("cl6", "book") else a for a in r["effects"])  # (a Commlink6 or book row's effect says so)
+        if r.get("drops"):
+            drops.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["drops"])
         want.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], {}).update(r.get("set", {}))
         if r.get("kids"):
             kids.setdefault(f"{r['kind']}.xml", {}).setdefault(r["id"], []).extend(r["kids"])
@@ -285,11 +314,29 @@ def _set_by_id(out, rows):
                         e.attrib.pop(k, None)
                     else:
                         e.set(k, str(v))
-                for a in effs.get(name, {}).get(e.get("id"), []):  # (replaces the same target's effect)
-                    for c in [c for c in e if c.tag == "effect" and c.get("target") == a["target"] and (not a.get("op") or c.get("op") == a["op"])]:
+                for d in drops.get(name, {}).get(e.get("id"), []):  # (a book row takes out the effect it names: those attributes equal, the others it leaves out absent)
+                    gone = [c for c in e if c.tag == "effect" and all(c.get(k) == (str(d[k]) if k in d else None) for k in ("target", "op", "value", "switch", "when", "spec", "affects", "from"))]
+                    if not gone:
+                        UNMATCHED_DROPS.append((e.get("id"), d))
+                        print(f"override {e.get('id')}: the drop {d} matches no effect", file=sys.stderr)
+                    for c in gone:
                         e.remove(c)
-                    c = etree.Element("effect", {x: str(v) for x, v in a.items()})
-                    e.insert(sum(1 for c in e if c.tag in ("name", "alias", "formula", "issue", "found")), c)
+                book = effs.get(name, {}).get(e.get("id"), [])
+                taken = {(a["target"], a.get("op")) for a in book if a.get("book") and not a.get("add_only")}
+                for c in [c for c in e if c.tag == "effect" and (c.get("target"), c.get("op")) in taken and c.get("gen") not in ("cl6", "book")]:
+                    e.remove(c)  # (a book row's effects replace the reader's of the same target and operation, as a Commlink6 row's do, unless the row says `keep`)
+                for a in book:  # (replaces the same target's effect, or the one "replaces" names)
+                    if not a.get("book"):
+                        for c in [c for c in e if c.tag == "effect" and c.get("target") in (a.get("replaces", a["target"]), a["target"]) and (not a.get("op") or c.get("op") == a["op"])]:
+                            e.remove(c)
+                    attrs = {x: str(v) for x, v in a.items() if x not in ("replaces", "book", "add_only", "keep")}
+                    if a.get("keep"):
+                        attrs.pop("gen", None)  # (the reader's own effect, restated so the replacement leaves it: no mark)
+                    same = lambda c: c.tag == "effect" and all(c.get(k) == attrs.get(k) for k in ("target", "op", "value", "when", "switch", "spec", "affects"))  # noqa: E731
+                    if any(same(c) for c in e):
+                        continue  # (applied again, or the replaced effect gone: the effect is there once)
+                    c = etree.Element("effect", attrs)
+                    e.insert(len(e) - (1 if len(e) and e[-1].tag == "text" else 0), c)  # (the tail group's: after the kind's own children (infected, step, modifier), before the <text>)
                 for k in vals.get(name, {}).get(e.get("id"), ()):
                     for c in [c for c in e if c.tag in ("formula", "issue", "found") and c.get("field") == k]:
                         e.remove(c)  # (the value they described is replaced)
@@ -472,7 +519,7 @@ def apply(recipe_id, files, rows=None):
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
     _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge", "split"))])
-    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r or "drops" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out
 

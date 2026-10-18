@@ -68,8 +68,9 @@ class LabelsAndSwitchesTest(unittest.TestCase):
 class EdgeTest(unittest.TestCase):
     def test_edge_on_an_attributes_tests(self):
         self.assertEqual(fx("You gain 1 Edge on Logic."), [("test:attr-log", "edge", "1", None, None)])
-        # (an attribute bonus and a point of Edge in one sentence: the Edge is on tests, not the attribute)
-        self.assertEqual(fx("+1 to Edge, plus you gain a point of Edge."), [("test:attr-edg", "edge", "1", None, None)])
+        # (the word Edge is not the Edge attribute's tests: `a bonus Edge when making any Logic-based test`, reviewed 2026-10-18)
+        self.assertEqual(fx("+1 to Edge, plus you gain a point of Edge."), [])
+        self.assertEqual(fx("They gain a bonus Edge when making any Logic-based test."), [("test:attr-log", "edge", "1", None, None)])
 
     def test_edge_nobody_can_gain_or_spend(self):
         self.assertEqual(fx("You cannot gain Edge on Stealth tests."), [("skill:stealth", "no-edge-gain", "1", None, None)])

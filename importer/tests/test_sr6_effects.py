@@ -235,7 +235,7 @@ class DecisionsTest(unittest.TestCase):
         r = effects.read("Gain +2 dice on all climbing tests.")[0][1]
         self.assertEqual((r["target"], r.get("spec"), r.get("switch"), r.get("confidence")), ("skill:athletics", "Climbing", None, None))
         r = effects.read("Gain +1 die on Zapping tests while in the Matrix.")
-        self.assertEqual(r, [])  # (no vocabulary target: nothing)
+        self.assertEqual([(a["target"], a["switch"]) for _, a, _ in r], [("test:other", "conditional")])  # (no vocabulary target: `test:other`, the words its condition; effects review 2026-10-18)
         r = effects.read("Gain +1 Perception while in the Matrix.")[0][1]
         self.assertEqual((r["switch"], r["when"], r.get("confidence")), ("conditional", "while in the matrix", None))
         self.assertEqual(fx("They suffer a -2 dice pool penalty to all tests involving one of the four physical attributes."),
@@ -336,7 +336,7 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("It decreases the Semi-Auto and Burst Fire Attack Rating modifiers by 1.", "weapons"), [("item:ar", "add", "1", None, "semi-auto, burst fire")])
         self.assertEqual(fx("Improved zapping subtracts its rating directly from the base Handling stat of the vehicle.", "gear"), [("item:handling", "add", "-R", None, None)])
         self.assertEqual(fx("Each rating point permanently moves one point of the off-road Handling to the on-road Handling number.", "gear"), [("item:handling", "add", "R/-R", None, None)])
-        self.assertEqual(fx("Each rating point adds 20 percent to the base Top Speed number.", "gear"), [("item:top-speed", "add", "20%", None, None)])
+        self.assertEqual(fx("Each rating point adds 20 percent to the base Top Speed number.", "gear"), [("item:top-speed", "add", "R*20%", None, None)])
         self.assertEqual(fx("The pack holds a 1,000-round belt for the gun it feeds.", "weapons"), [("item:ammo", "set", "1000", None, None)])
         self.assertEqual(fx("Characters with this quality pay quality level x 500 nuyen per month in medication."), [("derived:monthly-cost", "add", "R*500", None, None)])
         self.assertEqual(fx("Your lifestyle cost increases by 1,000 nuyen per month."), [("derived:monthly-cost", "add", "1000", None, None)])
@@ -357,13 +357,13 @@ class RoundThreeTest(unittest.TestCase):
         self.assertEqual(fx("You gain one bonus point of Edge when making Perception tests to recognize people.")[0][3], "conditional")  # (a limit stays)
         self.assertEqual(fx("Users gain Edge when searching for items that glow in black light (body fluids, many kinds of critters).", "augmentations"),
                          [("skill:perception", "edge", "1", "conditional", "searching for items that glow in black light")])
-        self.assertEqual(fx("All zapears provide a bonus Edge vs. a target who has something interfering with their hearing.", "augmentations")[0][:2], ("skill:perception", "edge"))
+        self.assertEqual(fx("All zapears give a bonus Edge vs. a target who has something interfering with their eyes.", "augmentations")[0][:2], ("test:other", "edge"))  # (Edge against whom, not a Hearing Perception bonus: effects review 2026-10-18)
         self.assertEqual(fx("You gain the Kiezspeak (N) language skill at no cost plus a bonus point of Edge on any social test with activists."),
-                         [("test:social", "edge", "1", None, None), ("skill:language", "set", "N", None, None)])
+                         [("test:social", "edge", "1", "conditional", "with activists"), ("skill:language", "set", "N", None, None)])
         self.assertEqual(fx("You gain the knowledge skill Dragon Lore, which is not normally otherwise available."), [("skill:knowledge", "add", "1", None, None)])
         self.assertEqual(effects.read("You gain the knowledge skill Dragon Lore.")[0][1]["spec"], "Dragon Lore")
-        self.assertEqual(fx("You may add your ranks in Con to your dice pool on a Judge Intentions test—if you do, you must replace one of the dice with a Wild Die.")[0][:3],
-                         ("derived:judge-intentions", "wild-die", "1"))
+        self.assertIn(("derived:judge-intentions", "wild-die", "1"),
+                      [x[:3] for x in fx("You may add your ranks in Con to a Judge Intentions dice pool\u2014if you do, replace one die with a Wild Die.")])
         self.assertEqual(fx("Whenever you are affected by noise, reduce the cost of any Edge boosts or actions by 1 (to a minimum of 1)."),
                          [("test:all", "edge-cost", "-1", "conditional", "whenever you are affected by noise")])
         self.assertEqual(effects.read("You may not spend Edge on any Influence (Etiquette or Negotiation) test.")[0][1]["spec"], "Etiquette, Negotiation")
