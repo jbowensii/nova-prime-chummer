@@ -48,15 +48,28 @@ export function ReviewTab() {
     setErr(r ?? '')
     return !r
   }
-  // the "Approved by GM" box: ticked approves (with the note typed beside it), unticked revokes
-  const toggle = async (x: Violation, on: boolean) =>
-    done(
-      await approveAll!(
-        on
-          ? [...ch.overrides, { code: x.code, path: x.path, note: (typed.current[`${x.code}|${x.path}`] ?? '').trim() }]
-          : ch.overrides.filter(o => !(o.code === x.code && o.path === x.path)),
-      ),
-    )
+  // the "Approved by GM" box: ticked approves (with the note typed beside it), unticked revokes. Each sends the whole list,
+  // so a tick while one is saving is ignored: it would send a list without the first. The boxes say so with aria-disabled,
+  // not disabled, so the one just ticked keeps the focus (the ref: a second tick can come before the re-render)
+  const [approving, setApproving] = useState(false)
+  const busy = useRef(false)
+  const toggle = async (x: Violation, on: boolean) => {
+    if (busy.current) return
+    busy.current = true
+    setApproving(true)
+    try {
+      return done(
+        await approveAll!(
+          on
+            ? [...ch.overrides, { code: x.code, path: x.path, note: (typed.current[`${x.code}|${x.path}`] ?? '').trim() }]
+            : ch.overrides.filter(o => !(o.code === x.code && o.path === x.path)),
+        ),
+      )
+    } finally {
+      busy.current = false
+      setApproving(false)
+    }
+  }
   const finalize = () => {
     const next = finalizeSr6(ch, budgets, v)
     if (next) replace(next)
@@ -94,14 +107,14 @@ export function ReviewTab() {
       </p>
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>
-        {sorted.map((x, i) => {
+        {sorted.map(x => {
           const tab = tabOf(x.path),
             o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
           // the entry the line names, with its card (to check the book's numbers against the problem)
           const at = entryOfPath(ch, x.path),
             e = at && resolveEntry(c, at.kind, at.id)
           return (
-            <div key={i} className={`viol${x.approved ? ' approved' : ''}`}>
+            <div key={`${x.code}|${x.path}|${x.message}`} className={`viol${x.approved ? ' approved' : ''}`}>
               <span className={`sev ${x.approved ? 'ok' : x.severity === 'error' ? 'err' : 'warn'}`}>
                 {x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}
               </span>
@@ -127,7 +140,14 @@ export function ReviewTab() {
                   {(x.severity === 'error' || x.code === DESIGN_APPROVAL) && !x.hard && (
                     <>
                       <label className="check inline">
-                        <input type="checkbox" checked={!!x.approved} disabled={!gm} onChange={e => void toggle(x, e.target.checked)} /> Approved by GM
+                        <input
+                          type="checkbox"
+                          checked={!!x.approved}
+                          disabled={!gm}
+                          aria-disabled={approving || undefined}
+                          onChange={e => void toggle(x, e.target.checked)}
+                        />{' '}
+                        Approved by GM
                       </label>
                       {gm && !x.approved && (
                         <input

@@ -793,6 +793,9 @@ export function createServer({
       if (res.headersSent) return res.destroy()
       const code = [400, 401, 403, 404, 409, 413, 415, 429, 502].includes(e.code) ? e.code : 500
       if (e.retryAfter) res.setHeader('Retry-After', String(e.retryAfter))
+      // a body cut off unread (413 mid-upload): the connection can't carry another request, so the client mustn't reuse it
+      // (it would hang there until the keep-alive timeout ends it)
+      if (!req.complete) res.setHeader('Connection', 'close')
       send(res, code, { error: code === 500 ? 'server error' : e.message })
       if (code === 500) console.error(e.stack) // never a request body
     }

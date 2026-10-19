@@ -61,7 +61,9 @@ test('kind, id and body are checked before the importer runs', async () => {
     ['items', 'x', '<item id="x"/>'],
   ])
     expect((await put(kind, id, body)).status, `${kind} ${id} ${body}`).toBe(400)
-  expect((await put('items', 'x', item('x', 'X', 'y'.repeat(1100 * 1024)))).status).toBe(413)
+  // cut off unread: the connection closes, or the next request sent on it would hang there (the parallel saves below)
+  const big = await put('items', 'x', item('x', 'X', 'y'.repeat(1100 * 1024)))
+  expect([big.status, big.headers.get('connection')]).toEqual([413, 'close'])
   expect((await fetch(`${base}/api/edits/items/x`, { method: 'POST' })).status).toBe(405)
 })
 

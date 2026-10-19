@@ -150,6 +150,9 @@ async function shootAndPrint(page: Page, sel: string, name: string, pages: numbe
 }
 
 test('SR6 print: the Sheet type picker offers all six; Book style, Neon, Hex and Dossier print the runner', async ({ page }) => {
+  // four sheets, each two full-page screenshots and two PDFs: ~3 s here, but it scales with the CPU (30 s at a 16x
+  // throttle), so a busy runner ran out of the default 30 s
+  test.setTimeout(60000)
   await signIn(page)
   await put(page, '/api/sr6/characters/neon-moth', RUNNER)
   await page.goto('/#/sr6/c/neon-moth/print')
