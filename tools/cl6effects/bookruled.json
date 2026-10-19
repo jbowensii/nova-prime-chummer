@@ -35,20 +35,6 @@
     "why": "1b: a partial cyberlimb gives a whole box in the book"
   },
   {
-    "pair": ["crb", "cyberarm", "item"],
-    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR set=AUGMENTED apply=CHARACTER",
-    "cl6": "0.5",
-    "ours": ["derived:physical-monitor add 1"],
-    "why": "1b: a partial cyberlimb gives a whole box in the book"
-  },
-  {
-    "pair": ["crb", "cyberleg", "item"],
-    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR",
-    "cl6": "0.5",
-    "ours": ["derived:physical-monitor add 1"],
-    "why": "1b: a partial cyberlimb gives a whole box in the book"
-  },
-  {
     "pair": ["crb", "cyberleg", "item"],
     "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR",
     "cl6": "0.5",

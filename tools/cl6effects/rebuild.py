@@ -16,7 +16,7 @@ TEXT = re.compile(r'<text of="([^"]+)" id="([^"]+)">(.*?)</text>', re.S)
 def link(src, dst):
     if sys.platform == "win32":
         # (a junction needs no privilege; mklink wants backslashes)
-        p = subprocess.run(["cmd", "/c", "mklink", "/J", os.path.normpath(dst), os.path.normpath(src)], capture_output=True, text=True)
+        p = subprocess.run(["cmd", "/c", "mklink", "/J", os.path.abspath(dst), os.path.abspath(src)], capture_output=True, text=True)
         if p.returncode:
             sys.exit(f"mklink failed for {dst}: {p.stdout}{p.stderr}")
     else:
@@ -31,10 +31,13 @@ def fix_runs(runs, out):
         name = os.path.basename(run.rstrip("/\\"))
         dst = os.path.join(out, name)
         if os.path.exists(dst):
+            lib_link = os.path.join(dst, "library")
             try:
-                os.rmdir(os.path.join(dst, "library"))  # (the link only, never the saved run it points at)
+                os.rmdir(lib_link)  # (the link only, never the saved run it points at)
             except OSError:
                 pass
+            if os.path.lexists(lib_link):  # (a link still there: rmtree must never reach the saved run through it)
+                sys.exit(f"could not remove the link {lib_link}; stopped before deleting {dst}")
             shutil.rmtree(dst, ignore_errors=True)
         if not os.path.isdir(os.path.join(run, "custom")):
             continue

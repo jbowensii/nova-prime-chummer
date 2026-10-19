@@ -118,8 +118,11 @@ def main(argv=None):
     for label, tree in (("tree", a.tree), ("base", a.base)):
         if not tree:
             continue
-        tree, out = os.path.abspath(tree), os.path.join(a.out, label)
-        warns = rebuild(tree, a.runs, out)
+        tree, out = os.path.abspath(tree), os.path.abspath(os.path.join(a.out, label))
+        if not os.path.isdir(os.path.join(tree, "importer")):
+            print(f"cl6effects: --{label} {tree} is not a code tree (no importer/).", file=sys.stderr)
+            return 2
+        warns = rebuild(tree, os.path.abspath(a.runs), out)
         done[label] = (tree, out) + measure(recs, out)
         report(f"{label}: {tree}", done[label][2], warns)
     if "base" in done:
