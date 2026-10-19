@@ -20,7 +20,8 @@ const MORE: Record<string, string> = {
   'crb/electronics.xml': `<device id="crb.chatterbox" source="CRB" page="267" category="commlinks" rating="3" array="3/2" avail="2" cost="100"><name>Chatterbox</name><text/></device>`,
   'crb/qualities.xml': `<quality id="crb.lumpy-skin" source="CRB" page="71" kind="positive" karma="5"><name>Lumpy Skin</name><text/></quality>
   <quality id="crb.iron-bones" source="CRB" page="71" kind="positive" karma="5"><name>Iron Bones</name><effect target="derived:unarmed-dv" op="set" value="4"/><effect target="derived:unarmed-ar" op="add" value="2"/><text/></quality>
-  <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>`,
+  <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>
+  <quality id="crb.wings" source="CRB" page="71" kind="positive" karma="5"><name>Wings</name><effect target="derived:movement" op="add" value="-1/-1/0"/><effect target="derived:movement" op="add" value="R/R*2/1"/><effect target="derived:movement" op="add" value="10/30/3" switch="conditional" when="flying"/><effect target="derived:unarmed-ar" op="add" value="2,0,0,0,0"/><effect target="derived:unarmed-ar" op="add" value="1,1,0,0,0"/><text/></quality>`,
 }
 function setup(rules: Record<string, CreationValue> = {}) {
   const data = sr6Data(
@@ -112,6 +113,18 @@ test('movement: a Move, a Sprint and its metres a hit, with what adds to movemen
   expect(deriveSr6(data, cr, ch).movement).toEqual({ walk: 7 + 3, sprint: 11 + 3, perHit: 2 })
   cr.delete('moveSprint')
   expect(deriveSr6(data, cr, ch).movement).toBeNull()
+})
+
+test('movement: an a/b/c effect adds to the Move, the Sprint and its metres a hit; a conditional one only in the bracketed total', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.wings', level: 1 })
+  const { data, cr } = setup({ moveWalk: 7, moveSprint: 11, moveSprintPerHit: 2 })
+  const d = deriveSr6(data, cr, ch)
+  // (-1/-1/0 and R/R*2/1 at rating 1: walk 0, sprint +1, +1 a hit; flying 10/30/3 on top, bracketed)
+  expect(d.movement).toEqual({ walk: 7, sprint: 12, perHit: 3 })
+  expect(d.on.movement).toEqual({ walk: 17, sprint: 42, perHit: 6 })
+  // (a band list adds its first band only when the others add nothing: 2,0,0,0,0 yes, 1,1,0,0,0 never)
+  expect(d.attackRatings.unarmed).toBe(5 + 2 + 2)
 })
 
 test('unarmed damage: the base Stun value; Physical with the Dermal Deposits quality the settings name or an effect setting it; plus high Strength with the option', () => {

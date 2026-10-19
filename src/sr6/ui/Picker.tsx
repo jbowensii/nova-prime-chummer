@@ -288,9 +288,15 @@ const targetName = (t: Bonus['target']) =>
                   ? 'Unarmed DV'
                   : t === 'movement'
                     ? 'Movement (metres)'
-                    : t === 'matrixInitDice'
-                      ? 'Matrix initiative dice'
-                      : ATTR_NAMES[t]
+                    : t === 'moveWalk'
+                      ? 'Move (metres)'
+                      : t === 'moveSprint'
+                        ? 'Sprint (metres)'
+                        : t === 'moveHit'
+                          ? 'Sprint metres a hit'
+                          : t === 'matrixInitDice'
+                            ? 'Matrix initiative dice'
+                            : ATTR_NAMES[t]
 /** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
 export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) =>
   `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
