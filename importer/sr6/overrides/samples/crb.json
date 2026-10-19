@@ -1,0 +1,9 @@
+[
+  {"sample": "Street Shaman",
+   "note": "Book misprint: the spell list prints 'Burst'. No spell of that name exists in any SR6 book or CommLink6; the list is alphabetical and Burst sits between Animate Plastic and Chaos, where only Blast (CRB p.140, Clout's area version) fits. Read as Blast (owner ruling 2026-10-19).",
+   "edits": [{"field": "Spells", "from": "Burst", "to": "Blast"}]},
+  {"sample": "Face",
+   "note": "Book pricing: the gear line prints 'earbuds (rating 4; w/audio enhancement, audio link, select sound filter 2)', but the book priced the audio enhancement (4,000¥) and the select sound filter 2 (2 x 3,500¥ = 7,000¥) as standalone earware augmentations (CRB p.287 earware table, 0.1 Essence each), not as earbud accessories (the gear accessories cost 500¥ and 2 x 250¥). This is the only reading that matches the book: it accounts for the printed Essence 3.3, 0.2 below the 3.5 the listed augmentations leave, exactly, and for the nuyen gap of about 10,320¥ to within about 320¥, while cyberears rating 4 (about 18,300¥, 0.4 Essence) or rating 2 (about 13,800¥) overshoot both. So the earbuds keep audio link, and audio enhancement and select sound filter 2 are bought as augmentations (owner ruling 2026-10-19).",
+   "edits": [{"field": "Gear", "from": "earbuds (rating 4; w/audio enhancement, audio link, select sound filter 2)", "to": "earbuds (rating 4; w/audio link)"},
+             {"field": "Augmentations", "add": "audio enhancement, select sound filter 2"}]}
+]

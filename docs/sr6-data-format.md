@@ -1097,6 +1097,13 @@ The app loads `data/sr6/sources.xml`, then `custom/sr6/imported/sources.xml` (me
 **Scoping.** Every imported id is scoped by its source (`crb.zap-gun`), as the Anarchy books are, so two books never
 clash. Attribute `abbr` and skill `attr` values are never scoped.
 
+**Sample overrides (importer).** `importer/sr6/overrides/samples/<recipe id>.json` holds the owner's rulings on what a book
+sample prints that the importer can't read right (a misprinted name, a line the book priced another way), applied in
+`archetypes.build` before the stat block is read. A row is `{"sample": "<name>", "note": "<why>", "edits": [{"field":
+"<label>", "from": "<printed text>", "to": "<replacement>"} | {"field": "<label>", "add": "<text appended to the line>"}]}`;
+its `note` goes in the runner's notes. An edit whose printed text isn't there (a reprint) is reported on stderr, the row's
+note left out. `<samplefix>` (below) still corrects a `rating`, `qty` or `grade` in the app.
+
 **Edits.** An edit is a full entry of its kind with `by`. It replaces the loaded entry with the same id and survives
 re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means the book's text.
 

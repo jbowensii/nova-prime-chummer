@@ -14,8 +14,11 @@ initiative, condition monitors and Defense Rating go in <printed> for Review to 
 else (the printed lines, starting nuyen, what the catalog doesn't have) goes in the notes and, when a listed thing
 isn't found, in the report (unmatched-item).
 No description text is copied."""
+import json
 import math
 import re
+import sys
+from pathlib import Path
 from xml.sax.saxutils import escape, quoteattr
 
 from importer.sr6.ids import slug
@@ -201,6 +204,35 @@ def _named(idx, kinds, text):
     return hit, level, note
 
 
+SAMPLES_DIR = Path(__file__).with_name("overrides") / "samples"
+
+
+def _overridden(src, name, labels, page):
+    """The owner's corrections of a sample's printed lines (overrides/samples/<book>.json, last resort):
+    {"sample": "<name>", "note": "<why, shown in the runner's notes>", "edits": [{"field": "<label>", "from": "<printed text>",
+    "to": "<replacement>"} | {"field": "<label>", "add": "<text appended to the line>"}]}. Returns (labels, notes): a
+    copy of the labels with the edits applied, and the notes of the rows that applied. An edit whose printed text isn't
+    there is reported on stderr (a reprint can't skip it silently) and its row's note is left out."""
+    labels, notes = dict(labels), []
+    path = SAMPLES_DIR / f"{src.lower()}.json"
+    for r in json.loads(path.read_text(encoding="utf8")) if path.is_file() else []:
+        if r["sample"] != name:
+            continue
+        ok = True
+        for e in r["edits"]:
+            key = next((k for k in labels if k.lower() == e["field"].lower()), None)
+            if "add" in e:
+                labels[key or e["field"]] = (f"{labels[key].rstrip(' ,.;')}, " if key else "") + e["add"]
+            elif key and e["from"] in labels[key]:
+                labels[key] = labels[key].replace(e["from"], e["to"], 1)
+            else:
+                ok = False
+                print(f"sample override {name} (p.{page}): {e['field']} has no {e['from']!r}, skipped", file=sys.stderr)
+        if ok:
+            notes.append(r["note"])
+    return labels, notes
+
+
 def build(src, name, b, page, entries, updated, core=None, cs=None):
     """One archetype block -> (file id, sr6:character XML, report rows). `entries`: the recipe's catalog (kind -> its
     entries, ids unscoped); `core`: the core rulebook's as imported (ids scoped), for what the book cites from it; `cs`:
@@ -213,8 +245,9 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     # what the printed things cost, for fitting the priorities (fit.spend's `need`)
     need = {"raised": set(), "skills": [], "karma": 0, "neg": 0, "spells": 0, "forms": 0, "pp": 0, "nuyen": 0,
             "debt": False}
-    labels = {k.lower(): v for k, v in b.labels.items()}
-    notes, missing, report = [], {}, []
+    printed_labels, notes = _overridden(src, name, b.labels, page)  # (the owner's corrections of the book's misprints)
+    labels = {k.lower(): v for k, v in printed_labels.items()}
+    missing, report = {}, []
     uid = iter(range(1, 10_000))
 
     def miss(field, item):
@@ -309,7 +342,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     skill_of = lambda n: (h := idx.find(["skills"], n)) and h[1]  # noqa: E731
     for kind, items in picks.items():
         for p in items:
-            hit, level, _ = _named(idx, [kind], MISPRINTS.get(norm(p), p))
+            hit, level, _ = _named(idx, [kind], p)
             if not hit:
                 miss(next(k for k, v in PICKS.items() if v == kind).title(), p)
                 continue
@@ -396,7 +429,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         attrs[a] = int(natural(a, band[a], *_num(band.get(a))))
     skills = [(i, natural(f"skill:{i}", f"{r}" + (f"({bracket[f'skill:{i}']})" if f"skill:{i}" in bracket else ""), r,
                           bracket.get(f"skill:{i}")), sp, ex) for i, r, sp, ex in skills]
-    printed = [f"{k}: {v}" for k, v in b.labels.items() if k.lower() in PRINTED]
+    printed = [f"{k}: {v}" for k, v in printed_labels.items() if k.lower() in PRINTED]
     if band.get("ess"):
         printed.append(f"Essence: {band['ess']}")
     if printed:
@@ -405,7 +438,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
         notes.append("Augmented as printed: " + ", ".join(augmented) + ".")
     for field, items in missing.items():
         notes.append(f"{field} not in the catalog: " + "; ".join(items) + ".")
-    notes += [f"{k}: {v}" for k, v in b.labels.items() if k.lower() not in READ and k.lower() not in PRINTED]
+    notes += [f"{k}: {v}" for k, v in printed_labels.items() if k.lower() not in READ and k.lower() not in PRINTED]
 
     # the priorities that overspend least (fit.py): the attributes and skills spent from their pools, karma past them
     left = re.sub(r"\D", "", labels.get("starting nuyen", ""))
@@ -529,10 +562,7 @@ def _rank(free):
 MISPRINTS = {"proteus poseidon rigger command console": "Proteus Poseidon",
              "cyberspace designs dalmation drone": "Cyberspace Designs Dalmatian",
              "micro tranceiver": "Micro-transceiver", "micro tranceivers": "Micro-transceiver",
-             "dataline tap": "Data tap", "uzi v": "Uzi IV", "long coat": "Lined coat",
-             # (owner, 2026-10-19) the Street Shaman's alphabetical spell list prints `Burst` between Animate Plastic and
-             # Chaos: no spell of that name exists (CRB, CommLink6); Blast (CRB p.140) is the one that fits
-             "burst": "Blast"}
+             "dataline tap": "Data tap", "uzi v": "Uzi IV", "long coat": "Lined coat"}
 
 
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
