@@ -22,6 +22,8 @@ const MORE: Record<string, string> = {
   <quality id="crb.iron-bones" source="CRB" page="71" kind="positive" karma="5"><name>Iron Bones</name><effect target="derived:unarmed-dv" op="set" value="4"/><effect target="derived:unarmed-ar" op="add" value="2"/><text/></quality>
   <quality id="crb.centaur-body" source="CRB" page="71" kind="positive" karma="5"><name>Centaur Body</name><effect target="derived:movement" op="set" value="10/20/4"/><effect target="derived:movement" op="set" value="12/30/5" switch="conditional" when="galloping"/><text/></quality>
   <quality id="crb.drone-brain" source="CRB" page="71" kind="positive" karma="5"><name>Drone Brain</name><effect target="derived:initiative-dice" op="set" value="4" switch="activated"/><text/></quality>
+  <quality id="crb.way-of-logic" source="CRB" page="71" kind="positive" karma="5"><name>Way of Logic</name><effect target="derived:adept-drain-attribute" op="set" value="log"/><text/></quality>
+  <quality id="crb.way-of-any" source="CRB" page="71" kind="positive" karma="5"><name>Way of Any</name><effect target="derived:adept-drain-attribute" op="set" value="choice" switch="conditional" when="the Way"/><text/></quality>
   <quality id="crb.slow-legs" source="CRB" page="71" kind="positive" karma="5"><name>Slow Legs</name><effect target="derived:movement" op="set" value="8/16/2"/><text/></quality>
   <quality id="crb.hard-fists" source="CRB" page="71" kind="positive" karma="5"><name>Hard Fists</name><effect target="derived:unarmed-ar" op="set" value="6,0,0,0,0"/><effect target="derived:unarmed-dv" op="set" value="3P"/><text/></quality>
   <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>
@@ -259,4 +261,19 @@ test('set effects: initiative dice set replaces the usual count only when switch
   boost(ch, [{ target: 'initDice', value: 3 }])
   d = deriveSr6(data, cr, ch)
   expect(d.on.initiative.dice).toBe(5) // (4 + 3, capped at 5)
+})
+
+test('set effects: a Way has the runner resist drain with its attribute instead of Willpower; a choice reads the note; a conditional one only in the bracketed total', () => {
+  const ch = runner('full')
+  ch.build.drainAttr = 'cha'
+  const { data, cr } = setup({})
+  const base = deriveSr6(data, cr, ch).drain
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.way-of-logic', level: 1 })
+  const d = deriveSr6(data, cr, ch)
+  expect(d.drain).toBe(d.attrs.log.augmented + d.attrs.cha.augmented)
+  expect(d.drain).not.toBe(base)
+  ch.build.qualities = [{ uid: 'q2', id: 'crb.way-of-any', level: 1, note: 'Agility' }]
+  const e = deriveSr6(data, cr, ch)
+  expect(e.drain).toBe(base)
+  expect(e.on.drain).toBe(e.attrs.agi.augmented + e.attrs.cha.augmented)
 })

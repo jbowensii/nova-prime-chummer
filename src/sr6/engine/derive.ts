@@ -26,6 +26,7 @@ import type { Sr6Entry, Sr6Part } from '../model/types'
 import { makeProvider } from './providers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from './values'
+import { noteAttr } from './choices'
 import { categoryOf, entryLabel } from './categories'
 
 export interface Sr6Pool {
@@ -187,6 +188,24 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     return v === undefined ? null : a + v
   }
   // the initiative dice cap (CRB Hong Kong p. 39: never more than 5D6; unset: no cap)
+  // the attribute a Way (Sixth World Companion) has the runner resist drain with instead of Willpower (`derived:adept-drain-attribute`
+  // set): a named attribute, the tradition's (`tradition`) or the one the quality's note names (`choice`); the best of them if several
+  // apply; a value naming no attribute leaves the drain as it is. Switched or conditional ones only in the bracketed total.
+  const wayAttr = b.qualities
+    .flatMap(q =>
+      ownParts(data, data.entry('qualities', q.id))
+        .filter(
+          x =>
+            x.tag === 'effect' &&
+            x.attrs.target === 'derived:adept-drain-attribute' &&
+            x.attrs.op === 'set' &&
+            x.attrs.confidence !== 'low' &&
+            (on || (!x.attrs.switch && !x.attrs.when)),
+        )
+        .map(x => (x.attrs.value === 'choice' ? noteAttr(q.note) : x.attrs.value === 'tradition' ? b.drainAttr : (x.attrs.value as Sr6Attr | undefined))),
+    )
+    .filter((k): k is Sr6Attr => !!k && (SR6_ATTRS as string[]).includes(k))
+    .sort((x, y) => A(y) - A(x))[0]
   const capDice = (d: number | null) => {
     const most = num(cr, 'initiativeDiceMax')
     return d === null || most === undefined ? d : Math.min(d, most)
@@ -408,7 +427,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     memory: A('log') + A('int'),
     liftCarry: A('bod') + A('wil'),
     // CRB pp. 127, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
-    ...(kind.spells && b.drainAttr ? { drain: A('wil') + A(b.drainAttr) } : {}),
+    ...(kind.spells && b.drainAttr ? { drain: A(wayAttr ?? 'wil') + A(b.drainAttr) } : {}),
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools,
     karmaLeft: budgets.karma.left,
