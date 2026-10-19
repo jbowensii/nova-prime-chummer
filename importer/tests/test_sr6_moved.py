@@ -48,6 +48,16 @@ class MovedTest(unittest.TestCase):
         out2, n2 = moved.carry(self.prev(out), out)  # the next import keeps them, adds nothing
         self.assertEqual((n2, out2["ammotypes.xml"].count("<alias"), out2["gear.xml"].count("<alias")), (0, 1, 2))
 
+    def test_nanite_rows_renamed_2026_10_19(self):
+        prev = self.prev({"gear.xml": data("gear", ("zz.fizz-swarm-colony-template", "Fizz Swarm (colony template)", ""),
+                                           ("zz.fizz-swarm-pre-built", "Fizz Swarm (pre-built)", ""))})
+        new = {"gear.xml": data("gear", ("zz.fizz-swarm-colony", "Fizz Swarm Colony", ""),
+                                ("zz.fizz-swarm-nanites", "Fizz Swarm Nanites", ""))}
+        out, n = moved.carry(prev, new)
+        self.assertEqual(n, 2)
+        self.assertIn('<name>Fizz Swarm Colony</name><alias id="zz.fizz-swarm-colony-template"/>', out["gear.xml"])
+        self.assertIn('<name>Fizz Swarm Nanites</name><alias id="zz.fizz-swarm-pre-built"/>', out["gear.xml"])
+
     def test_two_candidates_are_no_match(self):
         prev = self.prev({"gear.xml": data("gear", ("zz.tag", "Tag", ""))})
         out, n = moved.carry(prev, {"gear.xml": data("gear", ("zz.red-tag", "Red Tag", ""), ("zz.blue-tag", "Blue Tag", ""))})

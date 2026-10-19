@@ -313,5 +313,7 @@ def kind_of(kinds, src, oid, kind):
 def carries(name, variants):
     """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item per
     variant (the owner's rule), so it has no variant list of its own."""
+    # (a nanite row is `<name> Colony` or `<name> Nanites`: Commlink6's `Colony Template` and `Pre-Built`, owner 2026-10-14)
+    name = re.sub(r"(?i)\bnanites$", "(pre-built)", re.sub(r"(?i)\bcolony$", "(colony template)", name or ""))
     n = f"-{_norm(name)}-"
     return any(_norm(v) and f"-{_norm(v)}-" in n for v in variants)
