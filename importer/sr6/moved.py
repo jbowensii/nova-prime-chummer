@@ -38,8 +38,14 @@ from importer.sr6 import categories
 RANGE = re.compile(r"\(\s*(?:rating\s*)?\d+\s*[-‐-―]\s*\d+\s*\)", re.I)
 
 
+NANITE_OLD = (("(colony template)", "colony"), ("(pre-built)", "nanites"))  # Body Shop's nanite rows before 2026-10-19
+
+
 def words(name):
-    ws = re.findall(r"[a-z0-9]+", RANGE.sub(" ", name.casefold()))
+    name = name.casefold()
+    for o, n in NANITE_OLD:  # `X (colony template)` is now `X Colony`, `X (pre-built)` is `X Nanites`
+        name = name.replace(o, n)
+    ws = re.findall(r"[a-z0-9]+", RANGE.sub(" ", name))
     return tuple(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in ws)
 
 

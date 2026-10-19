@@ -130,8 +130,8 @@ def _prep(bs):
     """Blocks the core rulebook's reading takes: a being's band with a table printed beside it (`1D6 ROLL`,
     `EQUIPMENT … COST`) split from it (an equipment row as its own item), a box titled `… table` holding a being named
     by the empty heading before it; a heading priced on its tag line (`(Cost: 225,000, Availability: 6)`, a cybernetic
-    shell) or by `Availability:` and `Cost:` labels with a `Vector:` (a drug) as a row; a nanite colony priced as a
-    template and pre-built as two rows."""
+    shell) or by `Availability:` and `Cost:` labels with a `Vector:` (a drug) as a row; a nanite row priced as a colony
+    template and as pre-built nanites is two items, `<name> Colony` and `<name> Nanites` (owner 2026-10-14)."""
     out = []
     for b in bs:
         prev = out[-1] if out else None
@@ -158,8 +158,8 @@ def _prep(bs):
                         labels={k: v for k, v in b.labels.items() if k.lower() not in ("availability", "cost")})
         if b.row is not None and "COLONY AVAIL" in b.row:
             r, name = b.row, b.name
-            for v, a, c in (("colony template", "COLONY AVAIL", "TEMPLATES COST"), ("pre-built", "PRE-BUILT AVAIL", "NANITES COST")):
-                row = {"ITEM": f"{name} ({v})", "AVAIL": r.get(a, ""), "COST": r.get(c, "")}
+            for v, a, c in (("Colony", "COLONY AVAIL", "TEMPLATES COST"), ("Nanites", "PRE-BUILT AVAIL", "NANITES COST")):
+                row = {"ITEM": f"{name} {v}", "AVAIL": r.get(a, ""), "COST": r.get(c, "")}
                 out.append(replace(b, name=row["ITEM"], header=list(row), row=row))
             continue
         if b.type == "item" and b.name[:1].islower():  # a box titled in lower case (`pet pal puppy`)

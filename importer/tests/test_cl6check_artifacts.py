@@ -64,6 +64,9 @@ class FamilyArtifactTest(unittest.TestCase):
         r = cli.compare([a], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0][0]
         self.assertFalse(r["families"]["variants"])
         self.assertTrue(ours.carries("Nanites (Colony Template)", ["colony-template", "pre-built"]))
+        self.assertTrue(ours.carries("Fizz Swarm Colony", ["Colony Template", "Pre-Built"]))
+        self.assertTrue(ours.carries("Utility Nanites (Toughskin) Nanites", ["Colony Template", "Pre-Built"]))
+        self.assertFalse(ours.carries("Fizz Swarm", ["Colony Template", "Pre-Built"]))
 
     def test_an_optional_package_record_has_no_families_to_count(self):
         a = canon.canonical(rec('<item id="aaa"/>', name="Alpha")) | {"src": "gz"}

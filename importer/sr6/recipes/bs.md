@@ -18,7 +18,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
   bioware, geneware (the therapeutic and augmentic tables, the critter genetic augmentations), symbionts, transgenics
   (transgenic infusions) and nanoware (nanohives, the nano-critter augmentations).
 - Nanotech gear (`ITEM | RATING | AVAIL | COST`) and drugs (`DRUG | POWER | AVAIL | COST (PER DOSE)`) are gear. The
-  nanite colonies print a template and a pre-built price: two entries. A drug described with `Vector:`, `Availability:`
+  nanite colonies print a template and a pre-built price: two entries, `<name> Colony` and `<name> Nanites`. A drug described with `Vector:`, `Availability:`
   and `Cost:` lines and in no table (EDGE OF ESSENCE) is read from those lines.
 - Implant and bioware weapon stats (`MELEE WEAPONS | TYPE | DAMAGE | ATTACK RATINGS`, `WEAPONS | DV | ATTACK RATINGS`):
   weapons.
