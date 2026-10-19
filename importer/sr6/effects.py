@@ -433,7 +433,7 @@ _PER_LEVEL = re.compile(r"\b(?:per|each|every|for each|for every)\s+(?:level|ran
 _NOT_A_THING = r"(?!(?:levels?|ranks?|ratings?|points?|grades?|hits?|net|full|whole|successe?s?|rounds?|turns?|scenes?|hours?|minutes?|days?|weeks?|months?|years?|seconds?|times?)\b)"
 # a value per something that is not the rating (`for each pair of cyberlimbs`, `for every 5 crew`, `each level of wound penalty`, `each drone beyond the first`)
 _PER_THING = re.compile(r"\b(?:per|for each|for every|each|every) (?P<x>pair of (?:[a-z-]+ ){0,2}?[a-z-]+s\b|(?:two|three|four|five|six|ten|\d+) (?:additional |extra |full |whole )?" + _NOT_A_THING + r"[a-z-]+|"
-                        r"(?:level|rank)s? of (?:wound|injury) penalt\w*|" + _NOT_A_THING + r"[a-z-]+ beyond the first)", re.I)
+                        r"(?:level|rank)s? of (?:wound|injury) penalt\w*|(?:additional |extra )?" + _NOT_A_THING + r"[a-z-]+ beyond the first)", re.I)
 _PER_LEVELS = re.compile(r"\b(?:for )?every (?P<n>two|three|four|\d) (?:levels|ranks|rating points|points of rating)\b", re.I)
 
 

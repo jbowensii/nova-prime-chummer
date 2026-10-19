@@ -346,6 +346,7 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
         self.assertEqual(fx("For every 5 crew who are unable to assist, increase Handling by 1.", "vehicles")[0][2:5], ("1", "conditional", "per 5 crew"))
         self.assertEqual(fx("All attacks by this zap gain +1 DV for each level of wound penalty it is suffering.", "critterpowers")[0][2:5], ("1", "conditional", "per level of wound penalty"))  # (no rating: not R)
         self.assertEqual(fx("Gain +1 die on Perception tests per round.")[0][3], None)  # (a time unit: no condition)
+        self.assertEqual(fx("Gain +1 die on Gunnery tests for each additional drone beyond the first.")[0][3:5], ("conditional", "per additional drone beyond the first"))
 
     def test_a_wild_die_on_every_test_is_on_all_tests(self):
         self.assertEqual(fx("When this zap is active, the user adds a wild die to every test they make while in the Matrix.", "gear"), [("test:all", "wild-die", "1", "activated", "while in the matrix", None, None, None)])
