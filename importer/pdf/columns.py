@@ -8,6 +8,7 @@ from importer.pdf.lines import line_extent
 GUTTER_HALF = 5  # pt; a gutter is a clear strip >= 10pt (~1 em at body size) wide
 _MIN_LINES_PER_SIDE = 2
 _MAX_CROSS_FRACTION = 0.10
+_RIVER_MIN_SHARE = 0.25  # of the rows each side of a river holds alone
 
 
 def _jump(a, b):
@@ -84,6 +85,32 @@ def gutter_crossings(rows, x, tol=0):
     return cross if beside >= _MIN_LINES_PER_SIDE else None
 
 
+def _rivers(rows, lo, hi):
+    """Centres of the strips >= 2*GUTTER_HALF wide in [lo, hi] that at most _MAX_CROSS_FRACTION of the rows have a word
+    over: a gutter whose columns share a baseline on too few rows to show it as a gap (a page of two text columns
+    set a few points apart, so each row holds one column's line, and a heading over one column the only row
+    holding both). Each side holds _RIVER_MIN_SHARE of the rows alone."""
+    xs = range(int(lo), int(hi) + 1)
+    cover = [0] * len(xs)
+    for row in rows:
+        for x in {x for w in row for x in range(max(int(w["x0"]) + 1, xs[0]), min(int(w["x1"]), xs[-1]) + 1)}:
+            cover[x - xs[0]] += 1
+    clear = [c <= _MAX_CROSS_FRACTION * len(rows) for c in cover]
+    out, start = [], None
+    for i, ok in enumerate(clear + [False]):
+        if ok and start is None:
+            start = i
+        elif not ok and start is not None:
+            c = xs[0] + (start + i - 1) // 2
+            # (both sides hold a real share of the rows: a short sidebar beside a long column is a gap in a row, not a river)
+            if i - start >= 2 * GUTTER_HALF and all(
+                    sum(side(row, c) for row in rows) >= _RIVER_MIN_SHARE * len(rows)
+                    for side in (lambda r, c: r[-1]["x1"] <= c, lambda r, c: r[0]["x0"] >= c)):
+                out.append(c)
+            start = None
+    return out
+
+
 def find_gutter(rows, right, left=0, tol=0):
     """Return a column-split x, or None if the page doesn't look 2-column.
 
@@ -103,6 +130,8 @@ def find_gutter(rows, right, left=0, tol=0):
         for a, b in zip(row, row[1:])
         if (b["x0"] - a["x1"] >= 2 * GUTTER_HALF or tol and b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
+    if tol and len(rows) >= 2 * _MIN_LINES_PER_SIDE:  # (the SR6 layout)
+        cands.update(_rivers(rows, lo, hi))
     scored = [(c, x) for x in sorted(cands) if (c := gutter_crossings(rows, x, tol)) is not None]
     return min(scored)[1] if scored else None
 
