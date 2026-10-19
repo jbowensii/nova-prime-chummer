@@ -1,0 +1,298 @@
+[
+  {
+    "pair": ["bn", "augmentation_integration", "metaecho"],
+    "sig": "valmod ATTRIBUTE ESSENCE_HOLE",
+    "cl6": "100",
+    "ours": ["derived:essence-hole add R*0.25"],
+    "why": "1b: the book prints 0.25 Essence per level"
+  },
+  {
+    "pair": ["crb", "flechette", "ammotype"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING",
+    "cl6": "-1,-1,-1,-1,-1",
+    "ours": ["item:ar add 1,1,1,1,1"],
+    "why": "1b: the book prints +1 AR"
+  },
+  {
+    "pair": ["crb", "balance_augmenter", "item"],
+    "sig": "checkmod SKILL athletics what=EDGE",
+    "cl6": "1",
+    "ours": ["skill:athletics add 1"],
+    "why": "1e: the book gives a die"
+  },
+  {
+    "pair": ["crb", "bone_lacing", "item"],
+    "sig": "valmod ITEM_ATTRIBUTE DAMAGE apply=UNARMED",
+    "cl6": "2",
+    "ours": ["derived:unarmed-dv add 1"],
+    "why": "1b: the book prints +1 for aluminium"
+  },
+  {
+    "pair": ["crb", "cyberarm", "item"],
+    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR set=AUGMENTED apply=CHARACTER",
+    "cl6": "0.5",
+    "ours": ["derived:physical-monitor add 1"],
+    "why": "1b: a partial cyberlimb gives a whole box in the book"
+  },
+  {
+    "pair": ["crb", "cyberarm", "item"],
+    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR set=AUGMENTED apply=CHARACTER",
+    "cl6": "0.5",
+    "ours": ["derived:physical-monitor add 1"],
+    "why": "1b: a partial cyberlimb gives a whole box in the book"
+  },
+  {
+    "pair": ["crb", "cyberleg", "item"],
+    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR",
+    "cl6": "0.5",
+    "ours": ["derived:physical-monitor add 1"],
+    "why": "1b: a partial cyberlimb gives a whole box in the book"
+  },
+  {
+    "pair": ["crb", "cyberleg", "item"],
+    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR",
+    "cl6": "0.5",
+    "ours": ["derived:physical-monitor add 1"],
+    "why": "1b: a partial cyberlimb gives a whole box in the book"
+  },
+  {
+    "pair": ["crb", "will_to_live", "quality"],
+    "sig": "valmod ATTRIBUTE DAMAGE_OVERFLOW",
+    "cl6": "1",
+    "ours": ["derived:overflow add R*2"],
+    "why": "1b: the book prints 2 per level"
+  },
+  {
+    "pair": ["fs", "ranger_arms_eagle_eye", "item"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING",
+    "cl6": "-4,-5,+4,+3,+2",
+    "ours": ["item:ar add -4,-5,-4,3,2"],
+    "why": "1b: the book prints band 3 as -4"
+  },
+  {
+    "pair": ["fs", "weapon_commlink", "itemenhancement"],
+    "sig": "valmod ITEM_ATTRIBUTE FIREWALL apply=PERSONA",
+    "cl6": "1",
+    "ours": ["matrix:firewall add 2"],
+    "why": "1b: the book prints Firewall 2"
+  },
+  {
+    "pair": ["sif-no", "bayou_born", "quality"],
+    "sig": "checkmod SKILL stealth what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": ["skill:stealth edge-cost -1"],
+    "why": "1e: the book gives a cheaper Edge boost, not Edge"
+  },
+  {
+    "pair": ["sif-no", "bayou_born", "quality"],
+    "sig": "checkmod SKILL perception what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": ["skill:perception edge-cost -1"],
+    "why": "1e: the book gives a cheaper Edge boost, not Edge"
+  },
+  {
+    "pair": ["sif-no", "bayou_born", "quality"],
+    "sig": "checkmod SKILL outdoors what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": ["skill:outdoors edge-cost -1"],
+    "why": "1e: the book gives a cheaper Edge boost, not Edge"
+  },
+  {
+    "pair": ["so", "poker_face", "quality"],
+    "sig": "checkmod ATTRIBUTE COMPOSURE what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["derived:composure add rank:con", "derived:composure edge-cost 1"],
+    "why": "1e: the book reading wins"
+  },
+  {
+    "pair": ["so", "practiced_paranoia", "quality"],
+    "sig": "checkmod ATTRIBUTE JUDGE_INTENTIONS what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["derived:judge-intentions add rank:con", "derived:judge-intentions wild-die 1"],
+    "why": "1e: the book reading wins"
+  },
+  {
+    "pair": ["swc", "bark", "quality"],
+    "sig": "checkmod ATTRIBUTE DEFENSE_RATING_PHYSICAL what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["derived:defense add 2"],
+    "why": "1e: the book gives +2 Defense Rating"
+  },
+  {
+    "pair": ["bn", "savage_rend", "metaecho"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING apply=ANIMAL",
+    "cl6": "0.5",
+    "ours": ["derived:unarmed-ar add R"],
+    "why": "owner-flag: the book adds +1 AR per level (and +1 DV per two); Commlink6 has half a point"
+  },
+  {
+    "pair": ["bs", "vocal_modification", "item"],
+    "sig": "checkmod SKILL con what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book gives the Growler Edge on Intimidation tests (Influence); Commlink6 puts it on Con"
+  },
+  {
+    "pair": ["bs", "pulmonary_arcane_arrester", "item"],
+    "sig": "checkmod ATTRIBUTE DEFENSE_POOL_MATRIX what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: Commlink6 puts the Edge on the Matrix defense pool; the book gives it on Magic Resistance tests"
+  },
+  {
+    "pair": ["bs", "spider_eyes", "item"],
+    "sig": "checkmod SKILL perception what=EDGE_BOOST",
+    "cl6": "1",
+    "ours": ["skill:perception edge 1"],
+    "why": "owner-flag: the book lowers the Surprise threshold and Edge boost costs, and gives wireless Edge on visual Perception; Commlink6 has an Edge boost on Perception"
+  },
+  {
+    "pair": ["bs", "neural_pattern_reinforcement", "item"],
+    "sig": "checkmod ATTRIBUTE LOGIC what=DICE",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book gives +1 on skill tests linked to Agility; Commlink6 says Logic"
+  },
+  {
+    "pair": ["bs", "sensitive_nose", "quality"],
+    "sig": "checkmod ATTRIBUTE RESIST_TOXIN what=DICE",
+    "cl6": "2",
+    "ours": [],
+    "why": "owner-flag: the book gives -2 on physical-attribute tests when exposed to an inhaled toxin; Commlink6 has +2 toxin resistance"
+  },
+  {
+    "pair": ["bs", "drug_tolerant", "quality"],
+    "sig": "checkmod ATTRIBUTE RESIST_TOXIN what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book gives a point of Edge on Addiction tests; Commlink6 puts it on toxin resistance"
+  },
+  {
+    "pair": ["crb", "encryption_rcc", "item"],
+    "sig": "valmod ITEM_ATTRIBUTE FIREWALL apply=PERSONA",
+    "cl6": "2",
+    "ours": ["matrix:firewall add 1"],
+    "why": "owner ruling: the book gives the rigger program +1 Firewall; Commlink6 has 2"
+  },
+  {
+    "pair": ["crb-ber", "exotic_style", "quality"],
+    "sig": "checkmod SKILL stealth what=EDGE_ONLY_TEST apply=CHARACTER",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book gives three ornamental modifications and no benefit; Commlink6 has Edge on Stealth",
+    "book_gives_none": true
+  },
+  {
+    "pair": ["dc", "economy_engines", "designmod"],
+    "sig": "valmod ITEM_ATTRIBUTE ACCELERATION",
+    "cl6": "+3/+3",
+    "ours": ["item:acceleration add -3"],
+    "why": "owner-flag: the book decreases Acceleration by 3; Commlink6 prints +3"
+  },
+  {
+    "pair": ["dc", "soft_knowledge", "item"],
+    "sig": "valmod SKILL LANGUAGE",
+    "cl6": "3",
+    "ours": [],
+    "why": "owner-flag: Commlink6 gives the Knowledge autosoft a Language skill of 3; the book gives Edge when searching with the knowledge skill"
+  },
+  {
+    "pair": ["dc", "armor_ceramic", "item"],
+    "sig": "checkmod ITEM_ATTRIBUTE DEFENSE_PHYSICAL what=DICE",
+    "cl6": "$$ARMOR/4",
+    "ours": [],
+    "why": "owner-flag: the book adds dice to Body for damage resistance tests; Commlink6 puts them on the physical defense of the item"
+  },
+  {
+    "pair": ["dod", "precise_throw", "power"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING",
+    "cl6": "1,1,1,0,0",
+    "ours": ["item:ar add R"],
+    "why": "owner-flag: the book adds +1 AR per level with no bands; Commlink6 lists the bands"
+  },
+  {
+    "pair": ["fs", "melee_hidden_arm_slide", "item"],
+    "sig": "valmod ITEM_ATTRIBUTE CONCEALABILITY",
+    "cl6": "1",
+    "ours": ["item:concealability add -1"],
+    "why": "owner-flag: the book decreases the Concealability threshold by 1, which is a negative modifier; Commlink6 has +1"
+  },
+  {
+    "pair": ["hs", "master_key", "datastructure"],
+    "sig": "checkmod ACTION known_exploit what=DICE",
+    "cl6": "$LEVEL",
+    "ours": [],
+    "why": "owner-flag: the book names Brute Force, Probe and Backdoor Entry; Commlink6 adds Known Exploit"
+  },
+  {
+    "pair": ["hs", "mefeed", "item"],
+    "sig": "checkmod ACTION matrix_perception what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book gives the Edge on Matrix searches; Commlink6 puts it on Matrix Perception"
+  },
+  {
+    "pair": ["nf", "external_synth", "item"],
+    "sig": "valmod SKILL con",
+    "cl6": "1",
+    "ours": ["skill:con add 2"],
+    "why": "owner-flag: the book prints a dice pool effect of 2; Commlink6 has 1"
+  },
+  {
+    "pair": ["crb", "sustaining_focus", "focus"],
+    "sig": "checkmod SKILL sorcery",
+    "cl6": "$LEVEL",
+    "ours": [],
+    "why": "owner default: the book lets the focus sustain the spell for you and states no dice; Commlink6 has Sorcery dice equal to the Force",
+    "book_gives_none": true
+  },
+  {
+    "pair": ["sw", "countermagic", "power"],
+    "sig": "valmod ATTRIBUTE DEFENSE_POOL_COMBAT_DIRECT",
+    "cl6": "1",
+    "ours": [],
+    "why": "owner-flag: the book adds a die per level to tests to resist spells (test:magic-resistance); Commlink6 puts it on the direct-spell pool, which would count it twice"
+  },
+  {
+    "pair": ["crb", "cyberears", "item"],
+    "sig": "checkmod SKILL perception what=EDGE",
+    "cl6": "1",
+    "ours": [],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["dc", "driving_style_getaway_driver", "quality"],
+    "sig": "checkmod ACTION evade_pursuit what=EDGE_BOOST",
+    "cl6": "2",
+    "ours": ["action:evade-pursuit edge-cost-set 1"],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["dc", "driving_style_getaway_driver", "quality"],
+    "sig": "checkmod ACTION evasive_action what=EDGE_BOOST",
+    "cl6": "2",
+    "ours": ["action:evasive-action edge-cost-set 1"],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["dc", "driving_style_getaway_driver", "quality"],
+    "sig": "checkmod ACTION escape what=EDGE_BOOST",
+    "cl6": "2",
+    "ours": ["action:escape edge-cost-set 1"],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["dc", "driving_style_getaway_driver", "quality"],
+    "sig": "checkmod ACTION double_down what=EDGE_BOOST",
+    "cl6": "1",
+    "ours": [],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["dc", "driving_style_interceptor", "quality"],
+    "sig": "checkmod ACTION redline what=EDGE_BOOST",
+    "cl6": "2",
+    "ours": ["action:redline edge-cost -1"],
+    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  }
+]
