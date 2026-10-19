@@ -20,6 +20,9 @@ const MORE: Record<string, string> = {
   'crb/electronics.xml': `<device id="crb.chatterbox" source="CRB" page="267" category="commlinks" rating="3" array="3/2" avail="2" cost="100"><name>Chatterbox</name><text/></device>`,
   'crb/qualities.xml': `<quality id="crb.lumpy-skin" source="CRB" page="71" kind="positive" karma="5"><name>Lumpy Skin</name><text/></quality>
   <quality id="crb.iron-bones" source="CRB" page="71" kind="positive" karma="5"><name>Iron Bones</name><effect target="derived:unarmed-dv" op="set" value="4"/><effect target="derived:unarmed-ar" op="add" value="2"/><text/></quality>
+  <quality id="crb.centaur-body" source="CRB" page="71" kind="positive" karma="5"><name>Centaur Body</name><effect target="derived:movement" op="set" value="10/20/4"/><effect target="derived:movement" op="set" value="12/30/5" switch="conditional" when="galloping"/><text/></quality>
+  <quality id="crb.slow-legs" source="CRB" page="71" kind="positive" karma="5"><name>Slow Legs</name><effect target="derived:movement" op="set" value="8/16/2"/><text/></quality>
+  <quality id="crb.hard-fists" source="CRB" page="71" kind="positive" karma="5"><name>Hard Fists</name><effect target="derived:unarmed-ar" op="set" value="6,0,0,0,0"/><effect target="derived:unarmed-dv" op="set" value="3P"/><text/></quality>
   <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>
   <quality id="crb.wings" source="CRB" page="71" kind="positive" karma="5"><name>Wings</name><effect target="derived:movement" op="add" value="-1/-1/0"/><effect target="derived:movement" op="add" value="R/R*2/1"/><effect target="derived:movement" op="add" value="10/30/3" switch="conditional" when="flying"/><effect target="derived:unarmed-ar" op="add" value="2,0,0,0,0"/><effect target="derived:unarmed-ar" op="add" value="1,1,0,0,0"/><text/></quality>`,
 }
@@ -216,4 +219,31 @@ test('Edge from an Attack Rating against a Defense Rating: 1 to the side the gap
   expect([ratingEdge(13, 7, cr), ratingEdge(1, 7, cr), ratingEdge(12, 7, cr)]).toEqual([2, -2, 1])
   cr.delete('arDrEdgeGap')
   expect(ratingEdge(10, 2, cr)).toBeNull()
+})
+
+test('set effects: a movement set replaces the base, adds still apply, the highest set wins, a conditional one only in the bracketed total', () => {
+  const ch = runner()
+  ch.build.qualities.push(
+    { uid: 'q1', id: 'crb.centaur-body', level: 1 },
+    { uid: 'q2', id: 'crb.slow-legs', level: 1 },
+    { uid: 'q3', id: 'crb.fleet', level: 1 },
+  )
+  const { data, cr } = setup({ moveWalk: 7, moveSprint: 11, moveSprintPerHit: 2 })
+  const d = deriveSr6(data, cr, ch)
+  // (10/20/4 beats 8/16/2; Fleet's +3 on top; the base 7/11/2 is replaced)
+  expect(d.movement).toEqual({ walk: 10 + 3, sprint: 20 + 3, perHit: 4 })
+  expect(d.on.movement).toEqual({ walk: 12 + 3, sprint: 30 + 3, perHit: 5 })
+})
+
+test('set effects: an unarmed Attack Rating set is the better of it and REA + STR, with adds on top; the Damage Value set reads 3P as 3', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.hard-fists', level: 1 })
+  const { data, cr } = setup({ unarmedDV: 2 })
+  const d = deriveSr6(data, cr, ch)
+  expect(d.attackRatings.unarmed).toBe(Math.max(5 + 2, 6)) // (REA 5 + STR 2 beats 6)
+  expect(d.unarmedDamage).toEqual({ dv: 3, physical: true })
+  ch.build.qualities.push({ uid: 'q2', id: 'crb.iron-bones', level: 1 })
+  expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(7 + 2)
+  ch.build.attributes.rea.points = 0
+  expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(6 + 2) // (REA 1 + STR 2 = 3 < 6)
 })

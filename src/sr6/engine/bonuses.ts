@@ -15,7 +15,7 @@ import { noteAttr, noteSkill } from './choices'
 // and in the skill's bracketed total for a specialization the runner hasn't)
 const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: number, skill?: string, on = false, spec?: string) =>
   (bonuses ?? [])
-    .filter(x => x.target === k && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
+    .filter(x => x.target === k && !x.set && counts(x, on) && (k !== 'skill' || x.skill === skill) && (!x.spec || (on && !sameSpec(x.spec, spec))))
     .reduce((s, x) => s + bonusValue(x, rating), 0)
 // (`Etiquette or Negotiation`: either)
 const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
@@ -49,7 +49,7 @@ export function bracketNotes(
   const out: { value: number; when: string; from: string }[] = []
   eachLine(b, data, (bs, rating, times, from) => {
     for (const x of bs)
-      if (x.target === target && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
+      if (x.target === target && !x.set && (target !== 'skill' || x.skill === skill) && counts(x, true) && !sameSpec(x.spec, spec) && (!counts(x) || !!x.spec))
         out.push({
           value: bonusValue(x, rating) * times,
           from,
@@ -91,6 +91,17 @@ export function augmentBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], ski
     total += bonusOf(bs, k, rating, skill, on, spec) * times
   })
   return total
+}
+/** The value a `set` effect gives `k` (Hardening's unarmed Attack Rating 6, a centaur body's movement), or undefined when none
+ *  counts (on: the switchable and conditional ones too). It replaces the base value; what adds to `k` (augmentBonus) still
+ *  applies on top. The highest wins when several apply (Foundry's actorChanges is mode 5 OVERRIDE, the last one; the builder
+ *  takes the highest so the choice never depends on the order of the runner's gear). */
+export function setBonus(b: Sr6Build, data: Sr6Data, k: Bonus['target'], on = false): number | undefined {
+  let best: number | undefined
+  eachLine(b, data, (bs, rating) => {
+    for (const x of bs) if (x.target === k && x.set && counts(x, on)) best = Math.max(best ?? -Infinity, bonusValue(x, rating))
+  })
+  return best
 }
 /** augmentBonus line by line: each pick, purchase or quality that adds to `k` in the total shown first, with its name and
  *  what it adds (the attribute card lists them; their sum is augmentBonus, so the two never disagree; the bracketed ones

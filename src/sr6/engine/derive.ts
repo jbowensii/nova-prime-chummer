@@ -8,6 +8,7 @@ import {
   attrMax,
   attrRating,
   augmentBonus,
+  setBonus,
   magicCap,
   conditionalBonuses,
   entryBonuses,
@@ -314,7 +315,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     dvBase === undefined
       ? null
       : {
-          dv: Math.max(dvBase, ...sets.map(x => Number(x.attrs.value) || 0)) + augmentBonus(b, data, 'unarmedDV', undefined, on) + highStrength,
+          dv: Math.max(dvBase, setBonus(b, data, 'unarmedDV', on) ?? 0) + augmentBonus(b, data, 'unarmedDV', undefined, on) + highStrength,
           physical:
             b.qualities.some(q => q.id === depositsId) ||
             sets.length > 0 ||
@@ -351,11 +352,12 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     sprint = num(cr, 'moveSprint'),
     perHit = num(cr, 'moveSprintPerHit'),
     moves = augmentBonus(b, data, 'movement', undefined, on)
-  const bm = (k: 'moveWalk' | 'moveSprint' | 'moveHit') => augmentBonus(b, data, k, undefined, on) // (an `a/b/c` effect's parts)
+  // (an `a/b/c` effect's parts; a `set` one replaces the base, the highest if several, and what adds still applies: setBonus)
+  const bm = (k: 'moveWalk' | 'moveSprint' | 'moveHit', base: number) => (setBonus(b, data, k, on) ?? base) + augmentBonus(b, data, k, undefined, on)
   const movement =
     walk === undefined || sprint === undefined || perHit === undefined
       ? null
-      : { walk: walk + moves + bm('moveWalk'), sprint: sprint + moves + bm('moveSprint'), perHit: perHit + bm('moveHit') }
+      : { walk: bm('moveWalk', walk) + moves, sprint: bm('moveSprint', sprint) + moves, perHit: bm('moveHit', perHit) }
 
   return {
     attrs,
@@ -385,7 +387,11 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
           0,
         ),
     // CRB p. 67: unarmed Attack Rating = REA + STR (and what adds to it: bone lacing); a weapon's from its catalog line
-    attackRatings: { unarmed: A('rea') + A(meleeAttr) + augmentBonus(b, data, 'unarmedAR', undefined, on), weapons },
+    // (an effect that sets it, Hardening's 6, is the better of it and REA + STR: an unarmed attack uses the higher; the highest set wins)
+    attackRatings: {
+      unarmed: Math.max(A('rea') + A(meleeAttr), setBonus(b, data, 'unarmedAR', on) ?? 0) + augmentBonus(b, data, 'unarmedAR', undefined, on),
+      weapons,
+    },
     unarmedDamage,
     movement,
     capped,
