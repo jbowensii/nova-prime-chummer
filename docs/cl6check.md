@@ -49,7 +49,7 @@ the overlay changes.
 
 `python -m tools.cl6effects` counts how many of Commlink6's modifications (1,079 "variables": a value or a kind a
 record changes) our imported entries carry as `<effect>`s. It re-imports nothing from the books: it takes the saved
-import runs (`.extract/cl6check-runs14`, or `--runs` / `$CL6_RUNS`), rewrites their effects with the importer of the
+import runs (`.extract/cl6check-runs26`: a full import of all 74 books made 2026-10-19 after the column-detection fix (PR #82), with `python -m tools.cl6check import`; or `--runs` / `$CL6_RUNS`), rewrites their effects with the importer of the
 tree you name (`effects.apply`, the overrides, the classes, the `gen="cl6"` and `gen="book"` rows,
 `effects.copy_links`, in the order of `run.py _read`), and compares them with the jar. Each variable ends as one of:
 
