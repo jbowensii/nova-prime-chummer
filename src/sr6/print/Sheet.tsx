@@ -14,7 +14,7 @@ import { entryOf, priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../model/character'
-import { ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
+import { adeptDrainLabel, ATTR_NAMES, n, sr6Href, useSr6Editor } from '../ui/editor'
 import { npcHeadline } from '../engine/npc'
 import { NpcBlock } from './NpcBlock'
 import { BookSheet } from './BookSheet'
@@ -258,6 +258,7 @@ export function Sr6Sheet() {
                       ['Memory', br(d.memory, d.on.memory)],
                       ['Lift/Carry', br(d.liftCarry, d.on.liftCarry)],
                       ['Drain', d.drain],
+                      [d.adeptDrain ? adeptDrainLabel(d.adeptDrain) : 'Adept drain', br(d.adeptDrain?.value, d.on.adeptDrain?.value)],
                       ['Fading', d.fading],
                       ['Spell Attack Rating', br(d.spellAttackRating, d.on.spellAttackRating)],
                       ['Matrix initiative (AR)', d.matrixInit && init(d.matrixInit.ar, d.on.matrixInit?.ar)],
@@ -381,6 +382,7 @@ export function Sr6Sheet() {
                 {[
                   k.spells && b.tradition && `Tradition: ${b.tradition}`,
                   d.drain !== undefined && `Drain ${d.drain}`,
+                  d.adeptDrain && `${adeptDrainLabel(d.adeptDrain)} ${br(d.adeptDrain.value, d.on.adeptDrain?.value)}`,
                   d.fading !== undefined && `Fading ${d.fading}`,
                   b.initiation > 0 && `Initiation grade ${b.initiation}`,
                   b.submersion > 0 && `Submersion grade ${b.submersion}`,

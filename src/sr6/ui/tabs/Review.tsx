@@ -11,7 +11,7 @@ import { purchaseTab } from '../../engine/purchases'
 import { draftAgain, finalizeSr6 } from '../../engine/finalize'
 import { canFinalizeSr6, DESIGN_APPROVAL } from '../../engine/rules'
 import { sr6Tabs } from '../tabList'
-import { ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
+import { adeptDrainLabel, ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
 import { attrShown, br, effectNotes } from '../../print/view'
 import type { Sr6Derived } from '../../engine/derive'
@@ -171,6 +171,7 @@ export function ReviewTab() {
         ['Memory', d.memory],
         ['Lift/Carry', d.liftCarry],
         ['Drain', d.drain],
+        [d.adeptDrain ? adeptDrainLabel(d.adeptDrain) : 'Adept drain', br(d.adeptDrain?.value, d.on.adeptDrain?.value)],
         ['Fading', d.fading],
         ['Unarmed damage', unarmed(d.unarmedDamage, d.on.unarmedDamage)],
         ['Spell Attack Rating', br(d.spellAttackRating, d.on.spellAttackRating)],

@@ -76,6 +76,9 @@ export interface Bonus {
    *  activated (released at will), a sustained one, or one holding on some tests only: counted in the bracketed total, as
    *  a book prints a switchable bonus in brackets, `4(5)` (owner, 2026-10-10). */
   switch?: BonusSwitch
+  /** a `set` effect (Hardening's unarmed Attack Rating 6, a centaur body's 10/20/4 movement): a replacement value, never added
+   *  (augmentBonus leaves it out; setBonus reads it) */
+  set?: true
 }
 /** the switch both games' effects share (src/shared/effects.ts) */
 export type BonusSwitch = EffectSwitch

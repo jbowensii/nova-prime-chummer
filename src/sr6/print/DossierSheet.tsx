@@ -9,7 +9,7 @@ import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName } from '../model/character'
-import { ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
+import { adeptDrainLabel, ATTR_NAMES, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { allSkills, attrShown, band, br, PICKS, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
@@ -254,6 +254,11 @@ export function DossierSheet({ art }: { art: SheetArt }) {
           </div>
           <Boxes count={d.monitors.stun} label="Stun damage track" />
           {d.drain !== undefined && <div className="d-small">Drain resist: {d.drain}</div>}
+          {d.adeptDrain && (
+            <div className="d-small">
+              {adeptDrainLabel(d.adeptDrain)}: {br(d.adeptDrain.value, d.on.adeptDrain?.value)}
+            </div>
+          )}
           {d.fading !== undefined && <div className="d-small">Fading resist: {d.fading}</div>}
         </div>
         <div>
@@ -537,6 +542,7 @@ export function DossierSheet({ art }: { art: SheetArt }) {
             {[
               k.spells && b.tradition,
               d.drain !== undefined && `Drain ${d.drain}`,
+              d.adeptDrain && `${adeptDrainLabel(d.adeptDrain)} ${br(d.adeptDrain.value, d.on.adeptDrain?.value)}`,
               d.fading !== undefined && `Fading ${d.fading}`,
               b.initiation > 0 && `Initiate ${b.initiation}`,
               b.submersion > 0 && `Submersion ${b.submersion}`,

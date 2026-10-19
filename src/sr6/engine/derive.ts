@@ -8,6 +8,7 @@ import {
   attrMax,
   attrRating,
   augmentBonus,
+  setBonus,
   magicCap,
   conditionalBonuses,
   entryBonuses,
@@ -25,6 +26,7 @@ import type { Sr6Entry, Sr6Part } from '../model/types'
 import { makeProvider } from './providers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from './values'
+import { noteAttr } from './choices'
 import { categoryOf, entryLabel } from './categories'
 
 export interface Sr6Pool {
@@ -102,6 +104,8 @@ export interface Sr6Derived {
   memory: number
   liftCarry: number
   drain?: number
+  /** adept drain (CRB, Adepts: Body + Willpower; a Way, Street Wyrd p. 77, swaps the Willpower): for an adept or mystic adept */
+  adeptDrain?: { value: number; attr: Sr6Attr }
   fading?: number
   pools: Sr6Pool[]
   karmaLeft: number
@@ -186,6 +190,24 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     return v === undefined ? null : a + v
   }
   // the initiative dice cap (CRB Hong Kong p. 39: never more than 5D6; unset: no cap)
+  // the attribute a Way (Street Wyrd p. 77: "resist adept drain with Logic instead of Willpower") has the runner resist ADEPT drain
+  // with instead of Willpower (`derived:adept-drain-attribute` set; never the spell drain): a named attribute, the tradition's (`tradition`) or the one the quality's note names (`choice`); the best of them if several
+  // apply; a value naming no attribute leaves the drain as it is. Switched or conditional ones only in the bracketed total.
+  const wayAttr = b.qualities
+    .flatMap(q =>
+      ownParts(data, data.entry('qualities', q.id))
+        .filter(
+          x =>
+            x.tag === 'effect' &&
+            x.attrs.target === 'derived:adept-drain-attribute' &&
+            x.attrs.op === 'set' &&
+            x.attrs.confidence !== 'low' &&
+            (on || (!x.attrs.switch && !x.attrs.when)),
+        )
+        .map(x => (x.attrs.value === 'choice' ? noteAttr(q.note) : x.attrs.value === 'tradition' ? b.drainAttr : (x.attrs.value as Sr6Attr | undefined))),
+    )
+    .filter((k): k is Sr6Attr => !!k && (SR6_ATTRS as string[]).includes(k))
+    .sort((x, y) => A(y) - A(x))[0]
   const capDice = (d: number | null) => {
     const most = num(cr, 'initiativeDiceMax')
     return d === null || most === undefined ? d : Math.min(d, most)
@@ -314,7 +336,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     dvBase === undefined
       ? null
       : {
-          dv: Math.max(dvBase, ...sets.map(x => Number(x.attrs.value) || 0)) + augmentBonus(b, data, 'unarmedDV', undefined, on) + highStrength,
+          dv: Math.max(dvBase, setBonus(b, data, 'unarmedDV', on) ?? 0) + augmentBonus(b, data, 'unarmedDV', undefined, on) + highStrength,
           physical:
             b.qualities.some(q => q.id === depositsId) ||
             sets.length > 0 ||
@@ -324,7 +346,12 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
   // CRB Hong Kong p. 179: Matrix AR initiative is the physical one; VR is Intuition + Data Processing with 1 (cold sim)
   // or 2 (hot sim) dice on top of the usual ones, within the 5D6. A technomancer's Data Processing is their Logic
   // (p. 189); a decker's the best commlink's (its D/F array, p. 174: the device's attributes are the persona's)
-  const initDice = plus(augmentBonus(b, data, 'initDice', undefined, on), 'initiativeDice'),
+  // (an effect that sets the dice, the Bio-Drone Harness's 4D6, replaces the usual count; the highest wins, adds stack, the cap applies)
+  const setDice = setBonus(b, data, 'initDice', on),
+    initDice =
+      setDice !== undefined
+        ? setDice + augmentBonus(b, data, 'initDice', undefined, on)
+        : plus(augmentBonus(b, data, 'initDice', undefined, on), 'initiativeDice'),
     usual = need('initiativeDice')
   const dp = kind.resonance
     ? A('log')
@@ -351,11 +378,12 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     sprint = num(cr, 'moveSprint'),
     perHit = num(cr, 'moveSprintPerHit'),
     moves = augmentBonus(b, data, 'movement', undefined, on)
-  const bm = (k: 'moveWalk' | 'moveSprint' | 'moveHit') => augmentBonus(b, data, k, undefined, on) // (an `a/b/c` effect's parts)
+  // (an `a/b/c` effect's parts; a `set` one replaces the base, the highest if several, and what adds still applies: setBonus)
+  const bm = (k: 'moveWalk' | 'moveSprint' | 'moveHit', base: number) => (setBonus(b, data, k, on) ?? base) + augmentBonus(b, data, k, undefined, on)
   const movement =
     walk === undefined || sprint === undefined || perHit === undefined
       ? null
-      : { walk: walk + moves + bm('moveWalk'), sprint: sprint + moves + bm('moveSprint'), perHit: perHit + bm('moveHit') }
+      : { walk: bm('moveWalk', walk) + moves, sprint: bm('moveSprint', sprint) + moves, perHit: bm('moveHit', perHit) }
 
   return {
     attrs,
@@ -385,7 +413,11 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
           0,
         ),
     // CRB p. 67: unarmed Attack Rating = REA + STR (and what adds to it: bone lacing); a weapon's from its catalog line
-    attackRatings: { unarmed: A('rea') + A(meleeAttr) + augmentBonus(b, data, 'unarmedAR', undefined, on), weapons },
+    // (an effect that sets it, Hardening's 6, is the better of it and REA + STR: an unarmed attack uses the higher; the highest set wins)
+    attackRatings: {
+      unarmed: Math.max(A('rea') + A(meleeAttr), setBonus(b, data, 'unarmedAR', on) ?? 0) + augmentBonus(b, data, 'unarmedAR', undefined, on),
+      weapons,
+    },
     unarmedDamage,
     movement,
     capped,
@@ -398,6 +430,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     liftCarry: A('bod') + A('wil'),
     // CRB pp. 127, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
     ...(kind.spells && b.drainAttr ? { drain: A('wil') + A(b.drainAttr) } : {}),
+    // CRB (Adepts): adepts resist drain with Body + Willpower; a Way (Street Wyrd p. 77) has the attribute it names in place of Willpower
+    ...(kind.powers ? { adeptDrain: { value: A('bod') + A(wayAttr ?? 'wil'), attr: wayAttr ?? 'wil' } } : {}),
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools,
     karmaLeft: budgets.karma.left,

@@ -215,8 +215,12 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
             ? `attr:${choice.attr}`
             : (a.target ?? ''),
       mv = t === 'derived:movement' ? movementParts(a.value) : undefined,
-      v = mv ? { value: 0 } : effectValue(t === 'derived:unarmed-ar' ? unarmedBand(a.value) : a.value)
-    if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v || a.affects === 'others') continue // (others': never the runner's, owner decision 16)
+      v = mv
+        ? { value: 0 }
+        : effectValue(t === 'derived:unarmed-ar' ? unarmedBand(a.value) : t === 'derived:unarmed-dv' && a.op === 'set' ? a.value?.replace(/P$/, '') : a.value)
+    // (a `set` is read only where the sheet shows a number it replaces: movement `a/b/c`, unarmed Attack Rating and Damage Value; the Damage Value's `3P` is 3, its Physical type the damage effect's)
+    const set = a.op === 'set' && (!!mv || t === 'derived:unarmed-ar' || t === 'derived:unarmed-dv' || t === 'derived:initiative-dice')
+    if (x.tag !== 'effect' || (a.op !== 'add' && !set) || a.confidence === 'low' || !v || a.affects === 'others') continue // (others': never the runner's, owner decision 16)
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? (a.switch as Bonus['switch']) : undefined
     const rate = (r: NonNullable<typeof v>) => ({
       ...(r.perRating ? { perRating: true as const } : {}),
@@ -225,14 +229,15 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
     })
     const state = {
       ...rate(v),
+      ...(set ? { set: true as const } : {}),
       ...(a.when ? { when: a.when } : {}),
       ...(sw ? { switch: sw } : {}),
       ...(a.affects === 'caster' || a.affects === 'target' ? { affects: a.affects as Bonus['affects'] } : {}),
     }
     if (mv) {
-      // (a part that adds nothing is left out)
+      // (a part that adds nothing is left out; a set one that is 0 sets 0)
       mv.forEach((r, i) => {
-        if (r && (r.value || r.byRating)) out.push({ target: MOVE_PARTS[i], value: r.value, ...state, ...rate(r) })
+        if (r && (r.value || r.byRating || set)) out.push({ target: MOVE_PARTS[i], value: r.value, ...state, ...rate(r) })
       })
     } else if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...state })
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))

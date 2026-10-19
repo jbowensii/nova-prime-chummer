@@ -277,6 +277,7 @@ export type Sr6ExportDerived = Pick<
   | 'memory'
   | 'liftCarry'
   | 'drain'
+  | 'adeptDrain'
   | 'fading'
   | 'pools'
   | 'unarmedDamage'
@@ -489,6 +490,7 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
     memory: d.memory,
     liftCarry: d.liftCarry,
     drain: d.drain,
+    adeptDrain: d.adeptDrain,
     fading: d.fading,
     pools: d.pools,
     unarmedDamage: d.unarmedDamage,
@@ -528,19 +530,21 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem => ({
 
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
-  (bs ?? []).map(b => {
-    const value = bonusValue(b, rating) * times
-    // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
-    const when = {
-      ...(b.when ? { when: b.when } : {}),
-      ...(b.switch ? { switch: b.switch } : {}),
-      ...(b.spec ? { spec: b.spec } : {}),
-      ...(b.affects ? { affects: b.affects } : {}),
-    }
-    return b.target === 'skill'
-      ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when }
-      : { target: b.target, value, ...when }
-  })
+  (bs ?? [])
+    .filter(b => !b.set) // (a set replaces a base value: derived holds it, not these adds)
+    .map(b => {
+      const value = bonusValue(b, rating) * times
+      // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
+      const when = {
+        ...(b.when ? { when: b.when } : {}),
+        ...(b.switch ? { switch: b.switch } : {}),
+        ...(b.spec ? { spec: b.spec } : {}),
+        ...(b.affects ? { affects: b.affects } : {}),
+      }
+      return b.target === 'skill'
+        ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when }
+        : { target: b.target, value, ...when }
+    })
 
 /** As augmentBonus counts it: a line’s bonuses (lineBonuses: entered, else its entry’s effects) × its rating (perRating) × its quantity; an accessory's by its own rating
  *  (they are its host's, not the runner's: derived.attributes leaves them out). */
