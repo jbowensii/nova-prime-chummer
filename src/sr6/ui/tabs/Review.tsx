@@ -49,9 +49,13 @@ export function ReviewTab() {
     return !r
   }
   // the "Approved by GM" box: ticked approves (with the note typed beside it), unticked revokes. Each sends the whole list,
-  // so the boxes wait while one is saving: a second tick then would send a list without the first
+  // so a tick while one is saving is ignored: it would send a list without the first. The boxes say so with aria-disabled,
+  // not disabled, so the one just ticked keeps the focus (the ref: a second tick can come before the re-render)
   const [approving, setApproving] = useState(false)
+  const busy = useRef(false)
   const toggle = async (x: Violation, on: boolean) => {
+    if (busy.current) return
+    busy.current = true
     setApproving(true)
     try {
       return done(
@@ -62,6 +66,7 @@ export function ReviewTab() {
         ),
       )
     } finally {
+      busy.current = false
       setApproving(false)
     }
   }
@@ -135,8 +140,14 @@ export function ReviewTab() {
                   {(x.severity === 'error' || x.code === DESIGN_APPROVAL) && !x.hard && (
                     <>
                       <label className="check inline">
-                        <input type="checkbox" checked={!!x.approved} disabled={!gm || approving} onChange={e => void toggle(x, e.target.checked)} /> Approved
-                        by GM
+                        <input
+                          type="checkbox"
+                          checked={!!x.approved}
+                          disabled={!gm}
+                          aria-disabled={approving || undefined}
+                          onChange={e => void toggle(x, e.target.checked)}
+                        />{' '}
+                        Approved by GM
                       </label>
                       {gm && !x.approved && (
                         <input
