@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import { ratingEdge, specFits, weaponSkill } from '../../src/sr6/engine/derive'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { sr6Data } from '../../src/sr6/engine/data'
+import { bonusSources, bracketNotes } from '../../src/sr6/engine/bonuses'
 import type { CreationValue } from '../../src/sr6/engine/creation'
 import { blankSr6, type Bonus, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
@@ -20,6 +21,12 @@ const MORE: Record<string, string> = {
   'crb/electronics.xml': `<device id="crb.chatterbox" source="CRB" page="267" category="commlinks" rating="3" array="3/2" avail="2" cost="100"><name>Chatterbox</name><text/></device>`,
   'crb/qualities.xml': `<quality id="crb.lumpy-skin" source="CRB" page="71" kind="positive" karma="5"><name>Lumpy Skin</name><text/></quality>
   <quality id="crb.iron-bones" source="CRB" page="71" kind="positive" karma="5"><name>Iron Bones</name><effect target="derived:unarmed-dv" op="set" value="4"/><effect target="derived:unarmed-ar" op="add" value="2"/><text/></quality>
+  <quality id="crb.centaur-body" source="CRB" page="71" kind="positive" karma="5"><name>Centaur Body</name><effect target="derived:movement" op="set" value="10/20/4"/><effect target="derived:movement" op="set" value="12/30/5" switch="conditional" when="galloping"/><text/></quality>
+  <quality id="crb.drone-brain" source="CRB" page="71" kind="positive" karma="5"><name>Drone Brain</name><effect target="derived:initiative-dice" op="set" value="4" switch="activated"/><text/></quality>
+  <quality id="crb.way-of-logic" source="CRB" page="71" kind="positive" karma="5"><name>Way of Logic</name><effect target="derived:adept-drain-attribute" op="set" value="log"/><text/></quality>
+  <quality id="crb.way-of-any" source="CRB" page="71" kind="positive" karma="5"><name>Way of Any</name><effect target="derived:adept-drain-attribute" op="set" value="choice" switch="conditional" when="the Way"/><text/></quality>
+  <quality id="crb.slow-legs" source="CRB" page="71" kind="positive" karma="5"><name>Slow Legs</name><effect target="derived:movement" op="set" value="8/16/2"/><text/></quality>
+  <quality id="crb.hard-fists" source="CRB" page="71" kind="positive" karma="5"><name>Hard Fists</name><effect target="derived:unarmed-ar" op="set" value="6,0,0,0,0"/><effect target="derived:unarmed-dv" op="set" value="3P"/><text/></quality>
   <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>
   <quality id="crb.wings" source="CRB" page="71" kind="positive" karma="5"><name>Wings</name><effect target="derived:movement" op="add" value="-1/-1/0"/><effect target="derived:movement" op="add" value="R/R*2/1"/><effect target="derived:movement" op="add" value="10/30/3" switch="conditional" when="flying"/><effect target="derived:unarmed-ar" op="add" value="2,0,0,0,0"/><effect target="derived:unarmed-ar" op="add" value="1,1,0,0,0"/><text/></quality>`,
 }
@@ -216,4 +223,79 @@ test('Edge from an Attack Rating against a Defense Rating: 1 to the side the gap
   expect([ratingEdge(13, 7, cr), ratingEdge(1, 7, cr), ratingEdge(12, 7, cr)]).toEqual([2, -2, 1])
   cr.delete('arDrEdgeGap')
   expect(ratingEdge(10, 2, cr)).toBeNull()
+})
+
+test('set effects: a movement set replaces the base, adds still apply, the highest set wins, a conditional one only in the bracketed total', () => {
+  const ch = runner()
+  ch.build.qualities.push(
+    { uid: 'q1', id: 'crb.centaur-body', level: 1 },
+    { uid: 'q2', id: 'crb.slow-legs', level: 1 },
+    { uid: 'q3', id: 'crb.fleet', level: 1 },
+  )
+  const { data, cr } = setup({ moveWalk: 7, moveSprint: 11, moveSprintPerHit: 2 })
+  const d = deriveSr6(data, cr, ch)
+  // (10/20/4 beats 8/16/2; Fleet's +3 on top; the base 7/11/2 is replaced)
+  expect(d.movement).toEqual({ walk: 10 + 3, sprint: 20 + 3, perHit: 4 })
+  expect(d.on.movement).toEqual({ walk: 12 + 3, sprint: 30 + 3, perHit: 5 })
+})
+
+test('set effects: an unarmed Attack Rating set is the better of it and REA + STR, with adds on top; the Damage Value set reads 3P as 3', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.hard-fists', level: 1 })
+  const { data, cr } = setup({ unarmedDV: 2 })
+  const d = deriveSr6(data, cr, ch)
+  expect(d.attackRatings.unarmed).toBe(Math.max(5 + 2, 6)) // (REA 5 + STR 2 beats 6)
+  expect(d.unarmedDamage).toEqual({ dv: 3, physical: true })
+  ch.build.qualities.push({ uid: 'q2', id: 'crb.iron-bones', level: 1 })
+  expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(7 + 2)
+  ch.build.attributes.rea.points = 0
+  expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(6 + 2) // (REA 1 + STR 2 = 3 < 6)
+})
+
+test('set effects: initiative dice set replaces the usual count only when switched on, adds stack, the cap applies', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.drone-brain', level: 1 })
+  const { data, cr } = setup({ initiativeDice: 1, initiativeDiceMax: 5 })
+  let d = deriveSr6(data, cr, ch)
+  expect(d.initiative.dice).toBe(1)
+  expect(d.on.initiative.dice).toBe(4)
+  boost(ch, [{ target: 'initDice', value: 3 }])
+  d = deriveSr6(data, cr, ch)
+  expect(d.on.initiative.dice).toBe(5) // (4 + 3, capped at 5)
+})
+
+test('adept drain (CRB Adepts, Street Wyrd p. 77): Body + Willpower, a Way swaps the Willpower; spell drain never changes; a full magician has none', () => {
+  const { data, cr } = setup({})
+  const way = { uid: 'q1', id: 'crb.way-of-logic', level: 1 }
+  const mystic = runner('mystic-adept')
+  mystic.build.drainAttr = 'cha'
+  const spell = deriveSr6(data, cr, mystic).drain
+  const w = deriveSr6(data, cr, mystic)
+  expect(w.adeptDrain).toEqual({ value: w.attrs.bod.augmented + w.attrs.wil.augmented, attr: 'wil' })
+  mystic.build.qualities.push(way)
+  const m = deriveSr6(data, cr, mystic)
+  expect(m.drain).toBe(spell) // (WIL + the tradition's CHA, unchanged)
+  expect(m.adeptDrain).toEqual({ value: m.attrs.bod.augmented + m.attrs.log.augmented, attr: 'log' })
+  const adept = runner('adept')
+  const a = deriveSr6(data, cr, adept)
+  expect(a.adeptDrain).toEqual({ value: a.attrs.bod.augmented + a.attrs.wil.augmented, attr: 'wil' })
+  const full = runner('full')
+  full.build.drainAttr = 'cha'
+  full.build.qualities.push(way)
+  const f = deriveSr6(data, cr, full)
+  expect(f.adeptDrain).toBeUndefined()
+  expect(f.drain).toBe(f.attrs.wil.augmented + f.attrs.cha.augmented)
+  // a choice reads the note; a conditional one only in the bracketed total
+  mystic.build.qualities = [{ uid: 'q2', id: 'crb.way-of-any', level: 1, note: 'Agility' }]
+  const c = deriveSr6(data, cr, mystic)
+  expect(c.adeptDrain?.attr).toBe('wil')
+  expect(c.on.adeptDrain?.attr).toBe('agi')
+})
+
+test('set effects: the breakdown lists a set value, marked, apart from the adds', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.hard-fists', level: 1 }, { uid: 'q2', id: 'crb.centaur-body', level: 1 })
+  const { data } = setup({})
+  expect(bonusSources(ch.build, data, 'unarmedAR')).toEqual([{ from: 'Hard Fists', kind: 'qualities', id: 'crb.hard-fists', value: 6, set: true }])
+  expect(bracketNotes(ch.build, data, 'moveWalk').map(x => [x.value, !!x.set])).toEqual([[12, true]])
 })

@@ -1,0 +1,62 @@
+[
+  {
+    "pair": ["dc", "dead_stick", "quality"],
+    "sig": "valmod SKILL piloting",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["dc", "easy_mark", "quality"],
+    "sig": "valmod SKILL stealth",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["fs", "detachable_drum_magazine", "item"],
+    "sig": "valmod ITEM_ATTRIBUTE AMMUNITION",
+    "cl6": "-98",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["nf", "instrument_professional", "item"],
+    "sig": "valmod SKILL con",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["nf", "instrument_rising_star", "item"],
+    "sig": "valmod SKILL con",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["swc", "relentless_tracker", "quality"],
+    "sig": "checkmod SKILL outdoors what=EDGE",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["swc", "soothing_static", "quality"],
+    "sig": "checkmod SKILL cracking what=EDGE_COST_MALUS",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["swc", "soothing_static", "quality"],
+    "sig": "checkmod SKILL electronics what=EDGE_COST_MALUS",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["swc", "trust_issues", "quality"],
+    "sig": "checkmod SKILL con what=NOT_SPEND_EDGE",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  },
+  {
+    "pair": ["swc", "trust_issues", "quality"],
+    "sig": "checkmod SKILL con what=NOT_EARN_EDGE",
+    "cl6": "0",
+    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
+  }
+]

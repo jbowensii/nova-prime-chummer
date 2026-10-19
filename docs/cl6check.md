@@ -45,6 +45,41 @@ Options:
 Errata (decision D1): measure an import made without the errata overlay and one made with it. Class b shows what
 the overlay changes.
 
+## Effects parity replay
+
+`python -m tools.cl6effects` counts how many of Commlink6's modifications (1,079 "variables": a value or a kind a
+record changes) our imported entries carry as `<effect>`s. It re-imports nothing from the books: it takes the saved
+import runs (`.extract/cl6check-runs14`, or `--runs` / `$CL6_RUNS`), rewrites their effects with the importer of the
+tree you name (`effects.apply`, the overrides, the classes, the `gen="cl6"` and `gen="book"` rows,
+`effects.copy_links`, in the order of `run.py _read`), and compares them with the jar. Each variable ends as one of:
+
+- strict match: our entry has the same target, kind and value;
+- book-ruled: the book states it differently and the owner ruled for the book (`tools/cl6effects/bookruled.json`);
+- accepted placeholder: Commlink6 prints `0` or `-98`, no real effect (`tools/cl6effects/cl6placeholder.json`).
+
+```
+python -m tools.cl6effects --tree . [--base <other tree>] [--runs <saved runs>] [--out <dir>] [--jar <jar>]
+```
+
+- `--tree` is the code tree to measure: a checkout, or an unpacked `git archive` of a commit. `--base` measures a second
+  tree too and prints every Commlink6 row whose status differs (entry, Commlink6 effect, ours before and after), then
+  each `gen="book"` correction row the base has and the tree has not, whose effects are missing from the tree's own
+  import (a retired row must leave its effect behind as a reader rule).
+- `--out` (default `.extract/cl6effects`) gets the rebuilt runs, one folder per tree. A worktree has no `.extract`:
+  pass `--runs` with the main checkout's. Windows only for now: `library/` of each run is linked with `mklink /J`.
+- With no jar (`--jar`, `$CL6_JAR`, `~/CommLink6/app/stable`) it prints "skipped" and exits 0, as `cl6check` does.
+- It also prints the number of `the drop ... matches no effect` warnings (a `gen="book"` row's `drops` that took out
+  nothing: the row was written against a reader that has changed).
+
+Expected on main: `parity: 1079/1079 (100.0%)` (1,027 strict + 42 book-ruled + 10 placeholders), `book-ruled keys that
+no longer fit: 0`, `still open by category: {}` and 0 unmatched drops.
+
+**Rule:** before merging any change to `importer/sr6/effects.py`, `importer/sr6/overrides/*.book.json` or the
+reader, run it on main (`--tree` an archive of `origin/main`) and on the branch. Both must read 1,079/1,079 with no
+unmatched drops. If a branch changes a number on purpose (a new Commlink6 row, a new owner ruling), update the two
+JSON files in `tools/cl6effects/` in the same change. `importer/tests/test_cl6effects.py` covers the evaluator on a
+tiny fixture without the jar.
+
 ## Value and structure overrides (2026-10-14)
 
 - `valuemap` (`python -m tools.cl6check.valuemap <diffs.csv> [<diffs of a run on the result>]`) writes a per-book override row
