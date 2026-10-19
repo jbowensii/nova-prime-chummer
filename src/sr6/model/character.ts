@@ -43,7 +43,21 @@ export const CP_POOLS: CpPool[] = ['attribute', 'skill', 'adjustment', 'resource
  *  Rating or Damage Value (bone lacing, CRB Hong Kong p. 286), movement metres or Matrix initiative dice (Hack & Slash's
  *  Matrix initiative booster). perRating: × the line's rating. */
 export interface Bonus {
-  target: Sr6Attr | 'initDice' | 'defense' | 'physical' | 'stun' | 'overflow' | 'skill' | 'unarmedAR' | 'unarmedDV' | 'movement' | 'matrixInitDice'
+  target:
+    | Sr6Attr
+    | 'initDice'
+    | 'defense'
+    | 'physical'
+    | 'stun'
+    | 'overflow'
+    | 'skill'
+    | 'unarmedAR'
+    | 'unarmedDV'
+    | 'movement'
+    | 'moveWalk'
+    | 'moveSprint'
+    | 'moveHit'
+    | 'matrixInitDice'
   skill?: string
   value: number
   perRating?: true
@@ -66,6 +80,7 @@ export interface Bonus {
 /** the switch both games' effects share (src/shared/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
+// (moveWalk, moveSprint and moveHit, the parts of a `a/b/c` movement effect, are made by the engine, never entered)
 export const BONUS_TARGETS: Bonus['target'][] = [
   ...SR6_ATTRS,
   'initDice',

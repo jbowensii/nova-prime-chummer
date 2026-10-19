@@ -351,7 +351,11 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     sprint = num(cr, 'moveSprint'),
     perHit = num(cr, 'moveSprintPerHit'),
     moves = augmentBonus(b, data, 'movement', undefined, on)
-  const movement = walk === undefined || sprint === undefined || perHit === undefined ? null : { walk: walk + moves, sprint: sprint + moves, perHit }
+  const bm = (k: 'moveWalk' | 'moveSprint' | 'moveHit') => augmentBonus(b, data, k, undefined, on) // (an `a/b/c` effect's parts)
+  const movement =
+    walk === undefined || sprint === undefined || perHit === undefined
+      ? null
+      : { walk: walk + moves + bm('moveWalk'), sprint: sprint + moves + bm('moveSprint'), perHit: perHit + bm('moveHit') }
 
   return {
     attrs,

@@ -60,6 +60,16 @@ export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byR
   return b.minus ? Math.max(0, rating * b.value - b.minus) : rating * b.value // (`R*2-2`: twice the rating, less 2: none at rating 1)
 }
 
+/** A movement effect `walk/sprint/per hit` (`-1/-1/0`, `10/30/3`, `R/R*2/0`) as its three parts' values; undefined when it is not
+ *  three values or one of them is a formula. A plain number is not one (it adds to walk and sprint both: target `movement`). */
+function movementParts(v: string | undefined) {
+  const parts = (v ?? '').split('/').map(effectValue)
+  return parts.length === 3 && parts.every(Boolean) ? parts : undefined
+}
+const MOVE_PARTS = ['moveWalk', 'moveSprint', 'moveHit'] as const
+/** Unarmed Attack Rating's five bands (`2,0,0,0,0`): an unarmed attack has one Attack Rating, so the first, when the rest add nothing. */
+const unarmedBand = (v: string | undefined) => /^(-?\d+(?:\.\d+)?),0,0,0,0$/.exec((v ?? '').replace(/\s+/g, ''))?.[1] ?? v
+
 const DERIVED_BONUS: Record<string, Bonus['target']> = {
   'derived:defense': 'defense',
   'derived:initiative-dice': 'initDice',
@@ -204,18 +214,27 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
           : a.target === 'attr:choice' && choice.attr && !maxed
             ? `attr:${choice.attr}`
             : (a.target ?? ''),
-      v = effectValue(a.value)
+      mv = t === 'derived:movement' ? movementParts(a.value) : undefined,
+      v = mv ? { value: 0 } : effectValue(t === 'derived:unarmed-ar' ? unarmedBand(a.value) : a.value)
     if (x.tag !== 'effect' || a.op !== 'add' || a.confidence === 'low' || !v || a.affects === 'others') continue // (others': never the runner's, owner decision 16)
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? (a.switch as Bonus['switch']) : undefined
+    const rate = (r: NonNullable<typeof v>) => ({
+      ...(r.perRating ? { perRating: true as const } : {}),
+      ...(r.minus ? { minus: r.minus } : {}),
+      ...(r.byRating ? { byRating: r.byRating } : {}),
+    })
     const state = {
-      ...(v.perRating ? { perRating: true as const } : {}),
-      ...(v.minus ? { minus: v.minus } : {}),
-      ...(v.byRating ? { byRating: v.byRating } : {}),
+      ...rate(v),
       ...(a.when ? { when: a.when } : {}),
       ...(sw ? { switch: sw } : {}),
       ...(a.affects === 'caster' || a.affects === 'target' ? { affects: a.affects as Bonus['affects'] } : {}),
     }
-    if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...state })
+    if (mv) {
+      // (a part that adds nothing is left out)
+      mv.forEach((r, i) => {
+        if (r && (r.value || r.byRating)) out.push({ target: MOVE_PARTS[i], value: r.value, ...state, ...rate(r) })
+      })
+    } else if (t.startsWith('attr:') && (SR6_ATTRS as string[]).includes(t.slice(5))) out.push({ target: t.slice(5) as Sr6Attr, value: v.value, ...state })
     else if (DERIVED_BONUS[t] && !(e?.kind === 'armor' && t === 'derived:defense'))
       // (armor: its defense field, derive.ts)
       out.push({ target: DERIVED_BONUS[t], value: v.value, ...state })
