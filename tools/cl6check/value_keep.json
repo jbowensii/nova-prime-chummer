@@ -396,7 +396,6 @@
     ["fs", "armor", "fs.concealable-ammo-pouch", "variants"]
   ],
   "hold": [
-    ["bs", "augmentations", "bs.bioamplifier-nanites-neurochemical-regulator-colony", "cost", "per-rating/variant by design? owner to decide"],
     ["crb", "weapons", "crb.arrow", "rating", "per-rating/variant by design? owner to decide"],
     ["bs", "augmentations", "bs.transgenic-chameleon-skin", "avail", "two Commlink6 records match this entry and disagree"],
     ["crb", "electronics", "crb.omnidirectional-microphone", "cost", "two Commlink6 records match this entry and disagree"],
@@ -873,6 +872,18 @@
       "ours": "Up to ½ Body",
       "page": "DC p125",
       "reason": "owner 2026-10-19: book range"
+    },
+    {
+      "src": "bs",
+      "kind": "augmentations",
+      "cl6_id": "neurochemical_regulator",
+      "cl6_name": "Neurochemical Regulator",
+      "our_id": "bs.bioamplifier-nanites-neurochemical-regulator-colony",
+      "field": "cost",
+      "cl6": "5500",
+      "ours": "45000",
+      "page": "BS p88",
+      "reason": "the colonies & nanites table prints the colony template at 45,000¥ (pre-built 4,500¥); Commlink6's 5,500¥ is the Neocortical Neural Amplifier row above it (owner rule 2026-10-17: a printed table wins)"
     }
   ]
 }
