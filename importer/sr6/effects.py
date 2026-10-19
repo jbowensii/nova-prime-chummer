@@ -506,13 +506,14 @@ def _sw(s, label=""):
             continue  # (`+2 AR at Close range only`: the band the number is for, no condition)
         if m.group(0) == "only" and re.search(r"\b(?:can|may|must|should|could|will)\s*$", low[:m.start()]) or words == "used":
             continue  # (`that can only be spent on …`, `each time it is used`: no condition on the effect)
-        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z' ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\)|\([a-z ]+ \+ [a-z ]+\))?\s*$", words)
+        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z', ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\)|\([a-z ]+ \+ [a-z ]+\))?\s*$", words)
                 or re.fullmatch(r"(?:when|whenever|while|if) (?:you are |they are )?targeted by (?:a |any )?spells?", words)) \
                 and (targets(words) or _activity(words)):
             continue  # (`When performing a Juryrigging test`: which test, not a condition; `… tests to recognize people` is one)
+        w1 = words.split(",")[0]  # (a list's first item: `involving combat, stealth, or social situations` is a condition, combat no test)
         if (m.group(0) in ("involving", "related to", "that use", "used") or "involve" in m.group(0)) and \
-                (targets(words if "involve" in m.group(0) else low[max(0, m.start() - 8):m.start()] + words)
-                 or any(re.search(rf"\b(?:{rx})\b", words) for rx, _ in ACTIVITIES)):
+                (targets(w1 if "involve" in m.group(0) else low[max(0, m.start() - 8):m.start()] + w1)
+                 or any(re.search(rf"\b(?:{rx})\b", w1) for rx, _ in ACTIVITIES)):
             continue  # (`tests involving grappling`, `… one of the four physical attributes`: which tests, not a condition)
         return ("activated" if act else "conditional"), words
     return ("activated" if act else None), None
@@ -528,18 +529,31 @@ def _garbled(words):
     return None
 
 
+# a serial list going on past a comma: `, security, or law enforcement personnel`, `, or from, a rural setting`; an item opening with a pronoun or
+# a verb is a new clause (`, they gain`, `, and is reduced`), not the list's
+_ITEM = r"(?!(?:you|they|he|she|it|we|this|these|those|which|who|then|also|but|so|gains?|receives?|gets?|grants?|adds?|suffers?|may|can|cannot|must|will|is|are|was|were|has|have|does|do|increas\w*|reduc\w*)\b)[a-z][a-z'-]*"
+_LIST_ON = re.compile(r",\s+(?:(?:or|and)\s+[a-z]+,\s+" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3}|(?:" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3},\s+){1,4}?(?:or|and)\s+" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3})", re.I)
+
+
 def _cond_words(s, at):
     """The condition's words: its clause from the condition word (`when you can be smelled`), up to twelve words (no more of the book than that)."""
-    clause = re.split(r"[,;:]|(?<!\bMr)(?<!\bMrs)(?<!\bMs)(?<!\bDr)(?<!\bSt)\.", re.sub(r"\s*\((?:see )?pp?\.[^)]*\)", "", s[at:]), maxsplit=1)[0]  # (less a page citation)
+    clause = re.split(r"[;:]|(?<!\bMr)(?<!\bMrs)(?<!\bMs)(?<!\bDr)(?<!\bSt)\.", re.sub(r"\s*\((?:see )?pp?\.[^)]*\)", "", s[at:]), maxsplit=1)[0]  # (less a page citation)
+    c, first, cap = -1, None, 12
+    while (c := clause.find(",", c + 1)) >= 0 and (m := _LIST_ON.match(clause, c)):
+        first, cap = c if first is None else first, max(cap, len(clause[:m.end()].split()))
+        c = m.end() - 1  # (a list goes on past its commas: `military, security, or law enforcement personnel`, `living in, or from, a rural setting`)
+    if cap > 16:  # (a list too long to state: its first item, as before)
+        c, cap = first, 12
+    clause = clause[:c] if c >= 0 else clause
     clause = re.split(r"(?<=[a-z0-9)]) (?=(?:Sometimes|Starting|Considered|The|This|These|It|You|They|There|However|Additionally|Also|Each|Every|Unlike)\b)", clause, maxsplit=1)[0]  # (a sentence run into this one with no full stop: `… firing two or more barrels Sometimes you just need …`)
-    words = " ".join(clause.split()[:12]).strip().lower()
+    words = " ".join(clause.split()[:cap]).strip(" ,").lower()
     cut = re.split(r"\s+and (?:suffer|cannot|can't|lose|take)\b|\s+(?:suffers?|gains?|receives?|may add|may not)\b", words)[0]  # (`while moving faster … and suffer a -1 penalty`: the penalty is the effect)
     words = re.sub(r"\s+(?:you|they|he|she|it)$", "", cut) if cut != words else words  # (`once per game session you may add …`)
     if words.count(")") > words.count("("):  # (a close with no open: the clause began inside a parenthesis, `… the allergen)`)
         words = words.rstrip(") ")
     if words.count("(") > words.count(")"):  # (cut inside a parenthesis: `… a tense situation (only`: without the open one)
         words = words[:words.rfind("(")].strip()
-    if len(clause.split()) > 12:  # (cut at twelve words: not on a dangling article or preposition)
+    if len(clause.split()) > cap:  # (cut at twelve words: not on a dangling article or preposition)
         words = re.sub(r"(?:\s+(?:the|a|an|of|to|for|and|or|with|in|on|at|by|as|than|that|which))+$", "", words)
     return words or None
 
@@ -681,7 +695,10 @@ def _qualified(s, kind):
     Home Ground gain an Edge`, `Survival tests in frigid environments`, `tests versus inhaled toxins`), or None."""
     if not (qual := _QUALIFIER.search(s)):
         return None
-    q_ = re.split(r"\s+(?:gains?|receives?|gets?|grants?|for use on)\b", qual.group("q"), maxsplit=1)[0].strip(" ,")
+    q_, e_ = qual.group("q"), qual.end("q")
+    while (lm := _LIST_ON.match(s, e_)) and (nx := re.match(r"[^.;,]*", s[lm.end():])):
+        q_, e_ = q_ + s[e_:lm.end()] + nx.group(0), lm.end() + nx.end()  # (`with military, security, or law enforcement personnel`: the whole list)
+    q_ = re.split(r"\s+(?:gains?|receives?|gets?|grants?|for use on)\b", q_, maxsplit=1)[0].strip(" ,")
     # (the tests are named before it, `Con (Disguise) tests to hide their metatype`: what follows limits them, whatever words it holds)
     head_ = any(t.startswith(("skill:", "test:", "derived:", "action:")) for t, _ in targets(re.split(r"\b(?:gains?|receives?|gets?|grants?|adds?|provides?)\b", s[:qual.start("q")])[-1], kind))
     limiter_ = re.match(r"to resist\b", q_ or "") and not re.fullmatch(r"to resist (?:all |any |the )?(?:(?:physical|stun|matrix) )?(?:damage|drain|fading|toxins?|spells?|magic|attacks?)", re.sub(r"\s*\([^)]*\)", "", q_))  # (`rolls to resist cold-based attacks`)
@@ -696,7 +713,7 @@ def _qualified(s, kind):
 # `, or +2 DV`), not a list's last item (`Stealth, Piloting, and Navigation tests`); a dash; `… and provides|can|gains …` (a second verb of the subject)
 _SUB_SPLIT = re.compile(r"(?<=, )(?=(?:while|whereas)\b|(?:and|but|or) (?:a|an|the|this|that|these|those|you|they|he|she|it|its|their|his|her|your|if|when|whenever|while|also|then|"
                         r"can|may|must|cannot|will|is|are|has|have|gains?|grants?|provides?|adds?|receives?|suffers?|each|every|any|all|no|in|on|one|two|three|four|[+-]?\s?\d)\b)|"
-                        r"(?<=[a-z][—–])(?=[a-z])|(?<=[a-z] [—–-] )(?=[a-z])|(?<=[a-z] )(?=and (?:(?:the|this|that|its|their|your|his|her) [a-z-]+ (?:[a-z-]+ )?|you |they |he |she |it )?(?:also )?"
+                        r"(?<=[a-z][—–])(?=[a-z])|(?<=[a-z] [—–-] )(?=[a-z])|(?<=[a-z0-9)] )(?=and (?:(?:the|this|that|its|their|your|his|her) [a-z-]+ (?:[a-z-]+ )?|you |they |he |she |it )?(?:also )?"
                         r"(?:can|may|will|must|gains?|gets?|creates?|provides?|grants?|receives?|adds?|offers?)\b)", re.I)
 
 
@@ -706,7 +723,7 @@ def _scoped(got, s, kind, label, when, rules):
     states it read alone (`rules`); a clause stating none that opens with a condition or `but` (`…, while jumped in`, `…, but it is limited to
     blades`) is the clause before's. The condition stays when it is in a sentence-initial condition clause (`During this phase, …`), the effect's
     own clause, or a clause before it that states nothing (`… brought low when the drug wears off, and the user suffers -1 Willpower`), or
-    when the effect's clause points back (`those attacks`); else the effect takes its own clause's condition, or none."""
+    when the effect's clause points back to it (`…, and you gain +1 DV to those attacks`); else the effect takes its own clause's condition, or none."""
     n = " ".join(s.split())
     at = n.casefold().find(when)
     lead = _CONDITION.match(n, len(n) - len(n.lstrip("•*- "))) and re.match(r"[^,;]*,\s+", n)
@@ -753,7 +770,8 @@ def _unplaced(s, sw, when, kind=None):
         if re.search(r"penalt", m.group(0), re.I) and not v.startswith("-"):
             v = "-" + v
         words = re.sub(r"\s*\([^)]*\)?", "", m.group("t"))  # (a parenthesis: a citation, an aside)
-        words = re.split(r"\s+and\s+(?=[+-]?\d|one\b|an?\b|you\b|they\b|suffers?\b|takes?\b|the\b)|,\s|;\s|:\s|\s+but\s+", words)[0]  # (the next clause is another effect's)
+        words = _LIST_ON.sub(lambda lm: lm.group(0).replace(",", "\0"), words)  # (a list's commas are no clause's end: `people living in, or from, a rural setting`)
+        words = re.split(r"\s+and\s+(?=[+-]?\d|one\b|an?\b|you\b|they\b|suffers?\b|takes?\b|the\b)|,\s|;\s|:\s|\s+but\s+", words)[0].replace("\0", ",")  # (the next clause is another effect's)
         words = re.sub(r"^(?:their |your |the )?dice pool\s+", "", words)
         words = re.sub(r"^when (?:making|rolling) (?:any|all) (?:tests?|rolls?)\b", "tests", words)
         words = " ".join(words.split()[:12]).strip(" ,").casefold()
@@ -1076,7 +1094,7 @@ def read(text, kind=None, name=None, cls=""):
         if k in at:
             for f in ("when", "spec"):
                 w0, w1 = uniq[at[k]][1].get(f), x[1].get(f)
-                if w1 and w0 and w1 not in w0.split(", "):
+                if w1 and w0 and f", {w1}, " not in f", {w0}, ":  # (the words may hold commas themselves: `yakuza, bunraku puppets, or …`)
                     uniq[at[k]][1][f] = f"{w0}, {w1}"
             continue
         at[k] = len(uniq)

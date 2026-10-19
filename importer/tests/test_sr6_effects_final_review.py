@@ -367,5 +367,40 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
         self.assertEqual(fx("Gain a point of Edge whenever you score at least one net hit on a zap test.", "datastructures")[0][2], "1")
 
 
+class BookCorrectionPatternsTier3Test(unittest.TestCase):
+    """The book corrections that were reader mistakes, Tier 3 (docs/reviews/sr6-reader-tier3-2026-10-19.md), now rules."""
+
+    def test_the_condition_is_the_effects_own_clauses(self):
+        got = fx("The zapper grants +1 Reaction, and two additional Minor Actions per round that can only be spent on actions that involve zapping.", "augmentations")
+        self.assertEqual(sorted(g[:5] for g in got), [("attr:rea", "add", "1", None, None), ("derived:minor-actions", "add", "2", "conditional", "that involve zapping")])
+        self.assertEqual(fx("The zap gives +1 AR, or +2 DV if the weapon has 5 DV or greater.", "gear"),
+                         [("item:ar", "add", "1", None, None, None, None, None), ("item:dv", "add", "2", "conditional", "if the weapon has 5 dv or greater", None, None, None)])
+        got = fx("The zap pistol's AR increases by +2 and the adept also gains +1 die on Perception tests after a successful Quick Draw action.", "adeptpowers")
+        self.assertEqual([g[3] for g in got if g[0] == "item:ar"], [None])  # (a second verb of the subject: its own clause)
+        # (kept: a clause before that states nothing, `… when the user sleeps, and the user suffers`; a sentence-initial condition)
+        self.assertEqual(fx("The zap wears off when the user sleeps, and the user suffers -1 Willpower.", "gear")[0][3:5], ("conditional", "when the user sleeps"))
+        self.assertEqual([g[4] for g in fx("While jumped in, the zapper grants +1 Reaction, and the user also gains +2 Agility.", "augmentations")], ["while jumped in"] * 2)
+
+    def test_words_that_are_no_condition(self):
+        self.assertEqual(fx("The zap provides -1 to the user's Social Rating, even when they're not supposed to have it.", "gear")[0][3], None)
+        self.assertEqual(effects._sw("Gain +1 Reaction, even after the zap wears off and is used up."), (None, None))  # (`used` inside it: neither)
+        self.assertEqual(effects._sw("You learn to tell if someone is lying and gain +1 Reaction."), (None, None))
+        self.assertEqual(fx("Gain +1 die on Perception tests, while also lacing those commands with intent.")[0][3], None)
+        self.assertEqual(fx("While costs are listed for single zaps, having a pair grants +1 Reaction.", "augmentations")[0][3], None)
+        self.assertEqual(fx("This power grants two additional Minor Actions and the ability to Zap as a Minor Action.", "adeptpowers")[0][3], None)
+
+    def test_a_list_in_a_condition_is_kept_whole(self):
+        self.assertEqual(fx("Gain +2 dice on Influence tests with military, security, or law enforcement personnel.")[0][4], "with military, security, or law enforcement personnel")
+        self.assertEqual(fx("You gain a point of Edge during any social interaction with people living in, or from, a zap setting.")[0][4],
+                         "during any social interaction with people living in, or from, a zap setting")
+        self.assertEqual(fx("The spirit gains a point of Edge in situations involving combat, stealth, or social situations.", "critterpowers")[0][4],
+                         "involving combat, stealth, or social situations")  # (combat is no test: a condition, not which tests)
+        self.assertEqual(fx("You gain a point of Edge when dealing with zappers, and the user gains +1 Reaction.")[0][4], "when dealing with zappers")  # (a new clause: no list)
+
+    def test_edge_when_casting_the_spell_is_the_casters_sorcery(self):
+        self.assertEqual(fx("Gain +1 Edge when casting the spell if the object is narrow.", "spells"),
+                         [("skill:sorcery", "edge", "1", "conditional", "if the object is narrow", "Spellcasting", "caster", None)])
+
+
 if __name__ == "__main__":
     unittest.main()
