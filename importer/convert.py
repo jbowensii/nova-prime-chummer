@@ -19,7 +19,7 @@ CONVERTER_VERSION = "6" + PDF_STEPS_VERSION  # convert(..., sr6=False); 2: bold 
 # rebuilt on one column grid; 4: a word outside every grid cell goes to the nearest column (was: the last);
 # 5: a cell set in two text columns (a boxed sidebar) is read column by column (was: line by line, interleaved);
 #    a label/value list in one cell keeps its rows; 6: a slightly tilted line keeps its words (was: a letter a word)
-SR6_CONVERTER_VERSION = "sr6-7" + PDF_STEPS_VERSION  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by
+SR6_CONVERTER_VERSION = "sr6-8" + PDF_STEPS_VERSION  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by
 # baseline, columns split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a
 # page's text layer dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's
 # faces (a table's last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
@@ -31,6 +31,8 @@ SR6_CONVERTER_VERSION = "sr6-7" + PDF_STEPS_VERSION  # convert(..., sr6=True), i
 #    (layout._column_parts; Double Clutch p. 130, Firing Squad p. 65, Deadly Arts' Combat MAID); a two-line header
 #    cell's letters stay on their own lines (layout.words; Hack & Slash's cyberterminals); a
 #    heading's small first letter (`xGUIDE`) stays in the heading
+# 8: two text columns whose lines sit a few points apart (no row holds both) are found by their clear strip
+#    (columns._rivers; Street Wyrd p. 29's rules box, read line by line before)
 
 
 def reusable(book_dir: str, version: str) -> bool:

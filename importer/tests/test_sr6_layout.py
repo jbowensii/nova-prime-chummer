@@ -29,7 +29,7 @@ class Sr6LayoutTest(unittest.TestCase):
         cls.text = "\n".join(cls.lines)
 
     def test_converter_version(self):
-        self.assertEqual(self.meta["converter"], "sr6-7")
+        self.assertEqual(self.meta["converter"], "sr6-8")
         self.assertEqual(_convert(sr6=False)[0]["converter"], "6")
 
     def test_headings_by_font(self):
@@ -258,3 +258,33 @@ class WordsLineByLineTest(unittest.TestCase):
         got = words(cs, **kw)
         self.assertEqual(sorted(w["text"] for w in got), ["AB", "CD", "EF"])
         self.assertEqual({w["text"]: w["top"] for w in got}, {"AB": 10, "CD": 13, "EF": 16})
+
+
+class StaggeredColumnsTest(unittest.TestCase):
+    """Two text columns whose lines sit a few points apart (a rules box on a Street Wyrd page), so no row holds a word
+    from each side: the gutter is a clear strip down the page, not a gap in any row. Made-up words."""
+
+    @staticmethod
+    def _rows():
+        w = lambda x0, x1, top: {"x0": x0, "x1": x1, "top": top, "bottom": top + 8, "size": 8, "text": "w", "chars": [{}]}
+        rows = [[w(90, 199, 39), w(344, 558, 39)]]  # a heading over the left column, beside the right one's first line
+        for k in range(1, 6):
+            rows += [[w(331, 558, 39 + 12 * k + 3)], [w(90, 318, 39 + 12 * k + 6)]]
+        return rows
+
+    def test_the_clear_strip_is_the_gutter(self):
+        from importer.pdf.columns import find_gutter
+        from importer.sr6.layout import GUTTER_TOL
+        self.assertTrue(318 < find_gutter(self._rows(), 612, tol=GUTTER_TOL) < 331)
+
+    def test_the_other_game_is_not_asked(self):
+        from importer.pdf.columns import find_gutter
+        self.assertIsNone(find_gutter(self._rows(), 612))
+
+    def test_one_column_with_indents_has_no_gutter(self):
+        # (a single column whose lines start indented or not and end ragged: every line crosses the middle)
+        from importer.pdf.columns import find_gutter
+        from importer.sr6.layout import GUTTER_TOL
+        w = lambda x0, x1, top: {"x0": x0, "x1": x1, "top": top, "bottom": top + 8, "size": 8, "text": "w", "chars": [{}]}
+        rows = [[w(90 + 12 * (k % 2), 540 - 30 * (k % 3), 39 + 12 * k)] for k in range(12)]
+        self.assertIsNone(find_gutter(rows, 612, tol=GUTTER_TOL))
