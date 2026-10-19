@@ -692,6 +692,16 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIn('id="nb.hum-mic"', line)
         self.assertNotIn("nb.zoom", line)  # (no Capacity: an accessory table's only)
         self.assertEqual(cost, 530)
+        # (owner, 2026-10-19) a count in the unit the entry is priced per, a host's own supplies, a book misprint
+        kit = archetypes._Index({"gear": [e("dram", "Reagents, per dram", cost="50"), e("kit", "Medkit", rating="1–6", cost="Rating x 250"),
+                                          e("kit-supplies", "Medkit supplies", cost="100", text="")],
+                                 "armor": [e("lined", "Lined coat", cost="900")]}, "NB")
+        line, _, cost = archetypes._purchase(kit, ["gear"], "reagents (20 drams)", 12, [], {})
+        self.assertEqual((cost, 'qty="20"' in line), (1000, True))
+        line, _, cost = archetypes._purchase(kit, ["gear"], "medkit (rating 4; 4 x supplies)", 13, [], {})
+        self.assertEqual((cost, 'id="nb.kit-supplies" name="Medkit supplies" qty="4"' in line), (1400, True))
+        line, _, cost = archetypes._purchase(kit, ["armor"], "long coat", 14, [], {})
+        self.assertEqual((cost, 'id="nb.lined" name="Lined coat"' in line, 'note="long coat"' in line), (900, True, True))
         limbs = archetypes._Index({"augmentations": [e("arm-synthetic", "Arm (synthetic)", capacity="8", cost="20000"),
                                                      e("arm-obvious", "Arm (obvious)", capacity="15", cost="15000")]}, "NB")
         line, _, cost = archetypes._purchase(limbs, ["augmentations"], "cyberarm (Agility 5; gizmo)", 10, [], {})

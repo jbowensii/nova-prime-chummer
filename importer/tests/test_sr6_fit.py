@@ -84,6 +84,17 @@ class FitTest(unittest.TestCase):
         self.assertEqual((got["method"], got["letters"]["attributes"], got["letters"]["skills"]), ("sumtoten", "A", "A"))
         self.assertEqual(fit.fit(need(skills=[(1, 0)]), ROWS, s10)["method"], "priority")  # one that fits stays priority
 
+    def test_sum_to_ten_when_the_priorities_leave_karma_past_the_limit(self):
+        """(owner, 2026-10-19) A gnoll magician that every priority assignment leaves 22 Karma past spending (5 carry
+        over): Sum-to-Ten's C C C for attributes, magic and skills spends all but 4."""
+        lim = {**CS, "maxKarmaLeft": 5.0, "maxNuyenLeft": 50.0}
+        s10 = {**lim, "sumToTenTarget": 10.0, **{f"letterValue:{L}": v for L, v in zip("ABCDE", (4.0, 3.0, 2.0, 1.0, 0.0))}}
+        n = need(meta="Gnoll", magic="full", attrs={**{k: 1 for k in fit.CORE}, "mag": 1}, skills=[(6, 0)], nuyen=900)
+        self.assertEqual((fit.fit(n, ROWS, lim)["method"], fit.fit(n, ROWS, lim)["karmaLeft"]), ("priority", 22))
+        got = fit.fit(n, ROWS, s10)
+        self.assertEqual((got["method"], got["karmaLeft"], got["over"]), ("sumtoten", 4, 0))
+        self.assertEqual([got["letters"][c] for c in ("attributes", "magic", "skills")], ["C", "C", "C"])
+
     def test_spells_past_the_free_ones(self):
         """Magic 2 (B) frees 2 spells: 3 printed leaves 1 past them, bought with karma (extraMagic: the importer then
         assumes the optional rule, CRB p.66)."""
