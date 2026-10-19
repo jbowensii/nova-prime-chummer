@@ -142,9 +142,11 @@ _CONDITION = re.compile(r"\b(?:when|whenever|any ?time|while|if|unless|(?:limite
                         r"related to|against|versus|during|in (?:vr|the presence)|that use|that (?:directly )?involves?|used|"
                         r"on an? (?:direct|critical) (?:hit|glitch)|(?:in|your|their) animal form|without (?:a|an|the|which|any)|once per (?:game )?(?:session|day|scene|run|week|round|turn|combat)|"
                         r"(?:individuals|characters|those) (?:going|undergoing) through|in (?:an? |the )?(?:dark|darkness|low light|dim light|cold|hot|bright light)\b)\b", re.I)
+# (an action paid to turn it on: `By spending an extra Minor Action`, `Investing a Minor Action`, `the expenditure of a Minor Action`)
+_SPEND_ACTION = re.compile(r"\b(?:spend\w*|invest\w*|expenditure of)(?: an?| one| extra| additional)* (?:minor|major) actions?\b", re.I)
 _SWITCH = (("wireless", re.compile(r"\bwireless\b", re.I)), ("sustained", re.compile(r"\bsustain(?:s|ed|ing)?\b", re.I)),
            ("activated", re.compile(r"\b(?:at will|activat\w*|(?:minor|major) action to|with an? (?:minor|major) action|turn(?:s|ed)? (?:on|off)|"
-                                    r"overdrive|while active|is active)\b", re.I)))
+                                    r"overdrive|while active|is active)\b|" + _SPEND_ACTION.pattern, re.I)))
 ROLES = {"magician": "magician", "magicians": "magician", "adept": "adept", "adepts": "adept"}
 
 
@@ -161,16 +163,16 @@ def _norm(s):
 
 def sentences(text, labels=False):
     """The text's sentences, a labelled line (`**Wireless bonus:** …`, `All: …`) and a list line each on its own; with
-    `labels`, (label, sentence) pairs, the label holding for the rest of its paragraph (`**Wireless bonus:** … increases
+    `labels`, (label, sentence, paragraph number) triples, the label holding for the rest of its paragraph (`**Wireless bonus:** … increases
     to 2. You gain a bonus Minor Action …`)."""
     out = []
-    for para in re.split(r"\n(?=\s*(?:[•*]|\*\*[^*]+:\*\*|[A-Z][\w ]{1,30}:\s))|\n\s*\n", text or ""):
+    for n, para in enumerate(re.split(r"\n(?=\s*(?:[•*]|\*\*[^*]+:\*\*|[A-Z][\w ]{1,30}:\s))|\n\s*\n", text or "")):
         one = _norm(para.replace("**", ""))
         # (a sentence may open with a quote; a clause after a semicolon is a statement of its own: `+2 to climbing tests;
         # if both hands and feet have setae, +4`, `Light armor reduces DV by 1; Medium armor by 2`; `Mr. Johnson`: no sentence's end)
         ss = [s for s in re.split(r"(?<=[.?])(?<!\bMr\.)(?<!\bMrs\.)(?<!\bMs\.)(?<!\bDr\.)(?<!\bSt\.)\s+(?=[A-Z(•“\"])|(?<=[.?]\))\s+(?=[A-Z])|(?<=!)\s+(?=[A-Z•“\"])|;\s+(?=\S)", one) if s.strip()]
         label = m.group(1) if ss and (m := re.match(r"^[•*\s]*([A-Z][\w ]{1,30}):\s+", ss[0])) else ""
-        out += [(label, s) for s in ss] if labels else ss
+        out += [(label, s, n) for s in ss] if labels else ss
     return out
 
 
@@ -422,8 +424,16 @@ def number(s):
     return (("-" if m.group(1) == "-" else "") + m.group(2)) if m else None
 
 
-_PER_LEVEL = re.compile(r"\b(?:per|each|every|for each|for every)\s+(?:level|rank|rating|point of (?:rating|force)|rating point|grade)\b|"
+# a sentence that limits the effects of the one before (`This bonus only applies while the user is jumped-in`, `The +2 Agility is only active while …`)
+_NARROW = re.compile(r"^\W*(?:this|these|that|the|they|it|its|such|all)\b[^.;]{0,60}?\b(?:only (?:appl(?:y|ies)|works?|counts?|functions?)|(?:is|are) only (?:active|in effect|applicable))\s+"
+                     r"(?P<q>(?!to (?:you|them|him|her|the user|the character)\b)(?:to|when|whenever|while|if|during|against|in|on|for|within|as long as)\b[^.;]*)", re.I)
+_ALWAYS = re.compile(r"\b(?:at all times|always|permanent\w*)\b", re.I)  # (what holds whether the thing is activated or not)
+_PER_LEVEL = re.compile(r"\b(?:per|each|every|for each|for every)\s+(?:level|rank|rating|point of (?:rating|force)|rating point|grade)\b(?! of (?:wound|injury) penalt)|"
                         r"\b(?:level|rating) of (?:this|the)\b", re.I)
+_NOT_A_THING = r"(?!(?:levels?|ranks?|ratings?|points?|grades?|hits?|net|full|whole|successe?s?|rounds?|turns?|scenes?|hours?|minutes?|days?|weeks?|months?|years?|seconds?|times?)\b)"
+# a value per something that is not the rating (`for each pair of cyberlimbs`, `for every 5 crew`, `each level of wound penalty`, `each drone beyond the first`)
+_PER_THING = re.compile(r"\b(?:per|for each|for every|each|every) (?P<x>pair of (?:[a-z-]+ ){0,2}?[a-z-]+s\b|(?:two|three|four|five|six|ten|\d+) (?:additional |extra |full |whole )?" + _NOT_A_THING + r"[a-z-]+|"
+                        r"(?:level|rank)s? of (?:wound|injury) penalt\w*|(?:additional |extra )?" + _NOT_A_THING + r"[a-z-]+ beyond the first)", re.I)
 _PER_LEVELS = re.compile(r"\b(?:for )?every (?P<n>two|three|four|\d) (?:levels|ranks|rating points|points of rating)\b", re.I)
 
 
@@ -461,11 +471,17 @@ def _sw(s, label=""):
         return "wireless", None
     if "overdrive" in lab:
         return "activated", "overdrive"
+    act = None  # (`When performing a verbal attack, gain +1 DV by spending a Minor Action`: activated, and its own condition kept)
     for k, rx in _SWITCH:
         if rx.search(s):
-            return k, None
+            if k != "activated" or not _SPEND_ACTION.search(s):
+                return k, None
+            act = rx
+            break
     for m in _CONDITION.finditer(low):
         words = _cond_words(s, m.start()) or ""
+        if act and (act.search(words) or re.match(r"(?:with|as|spend(?:ing)?|takes?|using) an? (?:minor|major) action", m.group(0)) or _garbled(words) or re.fullmatch(r"(?:in|your|their) animal form", m.group(0))):
+            continue  # (`When this power is activated`, `spending a Minor Action`: the switch, not a condition)
         if re.match(r"(?:when|if|once) (?:this|the) [a-z]+ is (?:taken|chosen|selected|purchased|bought)\b", words) \
                 or re.match(r"(?:when|if|once|whenever) you (?:take|have|choose|select|buy|purchase|acquire|install|get) (?:this|the) [a-z]+\s*$", words):
             continue  # (`When this way is taken`, `If you take this quality`: the entry itself)
@@ -481,7 +497,7 @@ def _sw(s, label=""):
             continue  # (`+2 AR at Close range only`: the band the number is for, no condition)
         if m.group(0) == "only" and re.search(r"\b(?:can|may|must|should|could|will)\s*$", low[:m.start()]) or words == "used":
             continue  # (`that can only be spent on …`, `each time it is used`: no condition on the effect)
-        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z' ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\))?\s*$", words)
+        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z' ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\)|\([a-z ]+ \+ [a-z ]+\))?\s*$", words)
                 or re.fullmatch(r"(?:when|whenever|while|if) (?:you are |they are )?targeted by (?:a |any )?spells?", words)) \
                 and (targets(words) or _activity(words)):
             continue  # (`When performing a Juryrigging test`: which test, not a condition; `… tests to recognize people` is one)
@@ -489,8 +505,8 @@ def _sw(s, label=""):
                 (targets(words if "involve" in m.group(0) else low[max(0, m.start() - 8):m.start()] + words)
                  or any(re.search(rf"\b(?:{rx})\b", words) for rx, _ in ACTIVITIES)):
             continue  # (`tests involving grappling`, `… one of the four physical attributes`: which tests, not a condition)
-        return "conditional", words
-    return None, None
+        return ("activated" if act else "conditional"), words
+    return ("activated" if act else None), None
 
 
 def _garbled(words):
@@ -694,13 +710,18 @@ def read(text, kind=None, name=None, cls=""):
     opposed = bool(re.search(r"\bopposed test\b", text or "", re.I))
     drug = kind == "gear" and bool(re.search(r"^[^\n]{0,30}?\bVector:", text or "", re.M))  # (a drug's or toxin's stat lines: Vector, Speed, Duration, Power, Effect)
     prev_pl, carry_label = None, None  # (a label run into a paragraph, `… **Cyberware overdrive:** Gain +2 dice … One of these dice must be a wild die.`, holds for the sentences after it)
-    for label, s in [(l_, c_) for l_, s_ in sentences(text, labels=True) for c_ in _clauses(s_)]:
+    prev_test = None  # (the one `Skill (Spec) + Attribute (N) test` the sentence before names: (target, specialization))
+    last_fx = None  # (the paragraph and effects of the last sentence that had any: `This bonus only applies …` limits them)
+    act_on = None  # (the paragraph a switch-only sentence, `This bioware requires a Minor Action to activate`, turns on: its later sentences are activated)
+    for label, s, para in [(l_, c_, n_) for l_, s_, n_ in sentences(text, labels=True) for c_ in _clauses(s_)]:
         if label != prev_pl:
             carry_label = None
         prev_pl = label
         if m := re.match(r"^[•*\s]*([A-Z][\w ]{1,30}):\s+(.*)$", s):
             label, s = m.group(1), m.group(2)
             carry_label = label
+            if kind == "adeptpowers" and label.casefold() == "activation" and re.match(r"(?:minor|major) action\b", s, re.I):
+                act_on = "entry"  # (an adept power's `**Activation:** Major Action`: what the power does is while it is activated)
             if targets(label, kind) and re.match(r"[+-]\s?\d", s):
                 s = f"{label} {s}"  # (`**AR:** +2`, `**Body:** +1`: the label names the target)
             if drug and label.casefold() in ("effect", "effects"):
@@ -737,6 +758,21 @@ def read(text, kind=None, name=None, cls=""):
         # price's note, `(–10 Karma if character is already Awakened)`: no condition on the sentence's effects)
         s = re.sub(r"\s*\((?:self only\b|[+–-]\s*\d+\s+Karma\b)[^()]*\)", "", s, flags=re.I)
         s = _DRAIN_UP.sub("", s)  # (`a cost of +1 Drain for each additional status`, `increases the spell's Drain by 1`: the spell's own cost)
+        if last_fx and last_fx[0] == para and (nm := _NARROW.match(s)):
+            # (`This bonus only applies while the user is jumped-in`, `This only applies to Matrix actions`: no effect of its own, a limit on the
+            # sentence before's (those it names, else all): its tests when it names tests, else its condition)
+            q = " ".join(re.sub(r"^(?:to|on|for)\s+", "", re.split(r",?\s+(?:and|but) (?:are|is|it|they)\b", nm.group("q"))[0]).split()[:12]).casefold()
+            named = {t for t, _ in targets(s[:nm.start("q")], kind)}
+            to = [(t, sp) for t, sp in targets(nm.group("q"), kind) if t.startswith(("skill:", "test:"))] if re.match(r"(?:to|on|for)\b", nm.group("q"), re.I) else []
+            for a in [a for a in last_fx[1] if a["target"] in named] or [a for a in last_fx[1] if not a["target"].startswith("pricemod:")]:  # (`This increased cost only applies to the cyberlimb itself`: no condition on a price)
+                if to and a["target"].startswith(("skill:", "test:")):
+                    a["target"] = to[0][0]
+                    a.pop("spec", None)
+                    if sp_ := _spec(to[0][0], to[0][1]):
+                        a["spec"] = sp_
+                else:
+                    a["switch"], a["when"] = a.get("switch") or "conditional", (a["when"] + ", " if a.get("when") else "") + q
+            continue
         sw, when = _sw(s, label)
         q_cond = None
         if sw is None and (qual := _QUALIFIER.search(s)):
@@ -763,12 +799,17 @@ def read(text, kind=None, name=None, cls=""):
         if sw is None and carried and not _CONDITION.search(s.casefold()):
             sw = carried
         carried = "activated" if re.match(r"\W*(?:once|when|while) (?:activated|active)\b", s, re.I) else carried if sw == carried else None
+        own_sw = sw
+        if act_on is not None and (sw is not None or _ALWAYS.search(s)):
+            act_on = None  # (a sentence with its own condition, or one that holds at all times, ends it)
+        elif act_on in (para, "entry"):
+            sw = "activated"
         when = when or role
         low_formula = False
         if role and not sw:
             sw = "conditional"
         per_n = None
-        if (per := re.search(r"\b(?:each|every|per) (?P<n>whole |two |three |four )?points? of (?:your |their |the )?(?:own )?(?!rating|force|level)([a-z][a-z -]{2,25}?)(?=[,.;:)]|\s*\(|\s+(?:and|or|that|which|you|they|the|to|for|above|below|beyond|over|put|adds?|added|provides?)\b|$)", s, re.I)) \
+        if (per := re.search(r"\b(?:each|every|per) (?P<n>whole |two |three |four )?points? of (?:your |their |the )?(?:own )?(?!rating|force|level)([a-z][a-z -]{2,25}?)(?=[,.;:)]|\s*\(|\s+(?:and|or|that|which|you|they|the|to|for|above|below|beyond|over|put|adds?|added|provides?|may|can|grants?|gives?)\b|$)", s, re.I)) \
                 and not _PER_RATED.search(s) and not re.search(r"\b(?:rating|level|force)\b", per.group(2), re.I) \
                 and not re.search(r"points? of (?:standard )?armor added over", s, re.I):  # (read in _rules: a stat lost per point of armor)
             sw, when = "conditional", f"per point of {per.group(2).lower()}"  # (`each point of your Essence loss`: a formula)
@@ -783,6 +824,10 @@ def read(text, kind=None, name=None, cls=""):
             if (n := NUMBERS.get((per.group("n") or "").strip().lower())) and n != "1":  # (`every two points of nanite volume`: a formula over the quantity)
                 per_n = f"{_slug(per.group(2))}/{n} {_rounding(s)}"
                 low_formula = False
+        elif (pm := _PER_THING.search(s)) and not re.search(r"\bper \w+\s*$", s[:pm.start()], re.I):  # (`2 meters per round per pair`: a rate's, not the effect's)
+            # (`+1 Willpower for each pair of cyberlimbs`, `For every 5 crew who are unable …`: a value per something that is not the rating, shown, never applied)
+            sw, when = sw or "conditional", f"per {pm.group('x').lower()}" + (f", {when}" if when else "")
+            low_formula = True
         rounding = _ROUNDING.search(s)
         if kind == "datastructures" and sw is None:
             sw = "activated"  # (a data structure is activated with a Minor Action for the next action, Hack & Slash p. 70)
@@ -790,7 +835,7 @@ def read(text, kind=None, name=None, cls=""):
             sw = "sustained"  # (a spell's, ritual's or complex form's: while it is cast and lasts)
         if label.casefold() in ("effect", "effects") and kind == "gear" and not sw:
             sw = "activated"  # (a drug's or toxin's `Effect:` line: while it acts)
-        om_ = _OTHERS.search(s)
+        om_ = _OTHERS.search(s) or (not re.match(r"\W*(?:if|when|whenever|while)\b", s, re.I) and _OTHERS_MID.search(s))
         others = om_ and not (om_.start() > 0 and re.search(r"(?<!against )(?<!to )(?<!for )(?<!with )(?<!on )(?<!at )(?<!of )(?<!by )(?<!if )\byou (?:also |then )?(?:gain|receive|get|may gain|can gain|add|may add)\b", s, re.I)) \
             and not (kind in ("spells", "rituals", "complexforms") and re.match(r"\W*(?:the )?(?:targets?|subjects?)\b", s, re.I)) \
             and not re.search(r"\b(?:oppose|resist|counter|defend against)\b[^.]*\btests? to (?:see|spot|notice|find|hear|track|detect)\b", s, re.I)  # (dice to oppose the tests to spot them: the owner's)
@@ -923,11 +968,23 @@ def read(text, kind=None, name=None, cls=""):
                     x[1]["switch"], x[1]["when"] = "conditional", resist.group("obj").strip().lower()
                 if x[1]["target"].startswith(("skill:", "test:")) and (x[1]["target"], x[1].get("spec")) not in here:
                     here.append((x[1]["target"], x[1].get("spec")))
-                if re.search(r"\bnet hits?\b|\b(?:each|every|per) hit\b", s, re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
+                if re.search(r"\bnet hits?\b|\b(?:each|every|per) hit\b", re.sub(r"\bat least (?:\w+ )?net hits?\b", "", s, flags=re.I), re.I) and re.fullmatch(r"-?(?:1|R)", x[1]["value"]):
                     x[1]["value"] = ("-" if x[1]["value"].startswith("-") else "") + "hits"  # (`1 per net hit`: shown, never applied)
             out.append(x)
+        if prev_test and re.search(r"\b(?:this|that|the) test\b", s, re.I):
+            for x in got:  # (`… with a successful Influence (Etiquette) + Charisma (2) test. You gain an Edge on this test if …`: that skill's test)
+                if x[0] == "effect" and x[1]["op"] in _EDGE_OPS and x[1]["target"] == "test:other" and not x[1].get("affects"):
+                    x[1]["target"] = prev_test[0]
+                    if sp_ := _spec(*prev_test):
+                        x[1]["spec"] = sp_
+        tests_ = list(_SKILL_TEST.finditer(s))
+        prev_test = (f"skill:{tests_[0].group(1).casefold().replace(' ', '-')}", tests_[0].group("sp")) if len(tests_) == 1 else None
+        if any(x[0] == "effect" for x in got):
+            last_fx = (para, [x[1] for x in got if x[0] == "effect"])
         if here:
             prev_tests = here
+        if own_sw == "activated" and not any(x[0] == "effect" for x in got) and re.search(r"\bactivat\w*|\bengag\w*|" + _SPEND_ACTION.pattern, s, re.I):
+            act_on = para  # (`With a Minor Action, a secondary function can be activated.`: the switch for the rest of its paragraph)
         if re.search(r"\b(?:is|are) also (?:active|effective|in effect) (?:on|in) the astral plane\b", s, re.I):
             # (Mystic Armor, CRB p. 158: `Gain 1 point of Armor for each level … Mystic Armor is also active on the astral plane`: the
             # Defense Rating it gave is the astral one too)
@@ -1072,8 +1129,11 @@ _OTHERS = re.compile(r"^\W*(?:(?:additionally|also|however|furthermore|in additi
                      r"\b(?:to|for) (?:anyone|anybody) (?:who|that|conducting|attempting|trying|making|performing|looking)\b|"
                      r"\b(?:perception )?tests? to (?:see|spot|notice|find|hear|track|detect) (?:them|you|the (?:character|user|individual))\b|"
                      r"^\W*users? of (?:the|this) \w+ grants?\b", re.I)
+# (a third party, the subject of a clause after a comma: `In addition …, anyone affiliated with Aztechnology … gains +2 dice`, `…, so any observers get a +1 dice pool bonus`)
+_OTHERS_MID = re.compile(r",\s+(?:so |and |then )?(?:anyone|any (?:observers?|opponents?|attackers?|enemies)|observers|opponents|attackers|enemies|others)\b[^.;,]{0,80}?\b(?:gains?|gets?|receives?)\b", re.I)
 _TEST = re.compile(rf"\b({'|'.join(s.title() for s in SKILLS)})\s*\+\s*({'|'.join(a.title() for a in ATTRIBUTES)})"
                    rf"\s*\((\d+)\)\s+test\b")
+_SKILL_TEST = re.compile(rf"\b({'|'.join(s.title() for s in SKILLS)})(?: \((?P<sp>[A-Z][\w' -]+)\))?\s*\+\s*(?:{'|'.join(a.title() for a in ATTRIBUTES)})(?:\s*\(\d+\))?\s+tests?\b")
 _VAL = r"(?P<v>[+-]?\s?\d+(?:\.\d+)?|one|two|three|four|five|six|an?|single)"
 _LOSS = re.compile(r"\b(?:lose[sd]?|losing|suffers?|subtract\w*|minus|penalt\w*|fewer|reduc\w*)\b[^.;]{0,30}$")  # (`loses 2 dice for …`: a penalty, not a bonus; left unread)
 _PER = r"(?:\s+(?:per|for each|each)\s+(?:level|rating(?: point)?|point of (?:rating|force)|hit))?"
@@ -1337,6 +1397,13 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False, prev=(), name=None)
                          r"an? (?P<t2>[a-z][a-z ]*?) dice pools?)\b", low):
         emit(targets((m.group("t") or m.group("t2")) + " test", kind)[:1], "add", "rank:" + _slug(m.group("s")))
     for m in re.finditer(r"\b(?:use|swap in|roll|adds?|gains?|and|imposes?|replace[sd]? [^.]* with)\s+(?:(?:a|the|one|an additional|an extra|a bonus)\s+)?wild die(?: (?:on|for|with|in|to)\s+(?:all (?:of )?)?(?:your )?(?P<t>[^.;]*))?", low):
+        if not targets(m.group("t") or "", kind) and (ev := re.search(r"\b(?:every|any|each|all)(?: of)?(?: (?:your|their|the))? (?:skill )?(?:tests?|rolls?)\b(?P<q>[^.;]*)|\bmakes? an? skill test\b", low)) \
+                and not any(t_.startswith("skill:") and t_ != "skill:choice" for t_, _ in targets(re.sub(r"\([^)]*\)", "", low), kind)):
+            # (`adds a wild die to every test they make while in the Matrix`, `Whenever this critter makes a skill test, add a wild die`: every test, on the
+            # sentence's condition or the one after the tests, not a skill named nearby)
+            cond = when or next((_cond_words(ev.group("q"), c.start()) for c in _CONDITION.finditer(ev.group("q") or "")), None)
+            emit([("test:all", None, cond) if cond else ("test:all", None)], "wild-die", "1")
+            continue
         ts = targets(m.group("t") or "", kind) or targets(low[m.end():], kind) or targets(re.sub(r"\branks? in [a-z]+\b", "ranks", low[:m.start()]), kind)  # (`… with a wild die when rolling any toxin test`; `on a Judge Intentions test … replace one of the dice with a Wild Die`; `your ranks in Con` names no test)
         emit(ts or ([("test:combat", None)] if kind == "weapons" else [("skill:firearms", None)] if kind == "ammotypes" else []), "wild-die", "1")  # (`rEVO rounds use the wild die`: the shots fired with them)
 
@@ -1545,7 +1612,7 @@ def _rules(s, kind, sw, when, edge_actions, label, ai=False, prev=(), name=None)
     # unarmed damage made Physical (Dermal Deposits, bone lacing and bone density: CRB Hong Kong pp. 71, 286, 291)
     if (m := re.search(r"\bunarmed (?:combat |melee )?(?:damage|attacks?)\b[^.;]{0,40}?\bphysical\b", low)) and not _negated(low, m.start()) \
             and not re.search(r"\b(?:not|never|n't)\b", m.group(0)):
-        out.append(_fx("derived:unarmed-damage", "set", "P"))  # (always: the sentence's condition is another clause's)
+        out.append(_fx("derived:unarmed-damage", "set", "P", "activated" if sw == "activated" else None))  # (always: the sentence's condition is another clause's; activated stays)
     for m in re.finditer(r"(?:(?:ar|attack ratings?)[^.;]{0,40}?|^|: ?)(?P<l>(?:[+-]?\d+|-)(?:/(?:[+-]?\d+|-)){4})(?!\d)", low):
         vals = m.group("l").split("/")
         if any(v.startswith(("+", "-")) and v != "-" for v in vals):  # (a modifier per range band: `+2/–/–1/–2/–3`)
