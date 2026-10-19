@@ -277,6 +277,7 @@ export type Sr6ExportDerived = Pick<
   | 'memory'
   | 'liftCarry'
   | 'drain'
+  | 'adeptDrain'
   | 'fading'
   | 'pools'
   | 'unarmedDamage'
@@ -489,6 +490,7 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
     memory: d.memory,
     liftCarry: d.liftCarry,
     drain: d.drain,
+    adeptDrain: d.adeptDrain,
     fading: d.fading,
     pools: d.pools,
     unarmedDamage: d.unarmedDamage,

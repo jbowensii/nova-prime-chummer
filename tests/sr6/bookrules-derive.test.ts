@@ -6,6 +6,7 @@ import { expect, test } from 'vitest'
 import { ratingEdge, specFits, weaponSkill } from '../../src/sr6/engine/derive'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { sr6Data } from '../../src/sr6/engine/data'
+import { bonusSources, bracketNotes } from '../../src/sr6/engine/bonuses'
 import type { CreationValue } from '../../src/sr6/engine/creation'
 import { blankSr6, type Bonus, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
@@ -263,17 +264,38 @@ test('set effects: initiative dice set replaces the usual count only when switch
   expect(d.on.initiative.dice).toBe(5) // (4 + 3, capped at 5)
 })
 
-test('set effects: a Way has the runner resist drain with its attribute instead of Willpower; a choice reads the note; a conditional one only in the bracketed total', () => {
-  const ch = runner('full')
-  ch.build.drainAttr = 'cha'
+test('adept drain (CRB Adepts, Street Wyrd p. 77): Body + Willpower, a Way swaps the Willpower; spell drain never changes; a full magician has none', () => {
   const { data, cr } = setup({})
-  const base = deriveSr6(data, cr, ch).drain
-  ch.build.qualities.push({ uid: 'q1', id: 'crb.way-of-logic', level: 1 })
-  const d = deriveSr6(data, cr, ch)
-  expect(d.drain).toBe(d.attrs.log.augmented + d.attrs.cha.augmented)
-  expect(d.drain).not.toBe(base)
-  ch.build.qualities = [{ uid: 'q2', id: 'crb.way-of-any', level: 1, note: 'Agility' }]
-  const e = deriveSr6(data, cr, ch)
-  expect(e.drain).toBe(base)
-  expect(e.on.drain).toBe(e.attrs.agi.augmented + e.attrs.cha.augmented)
+  const way = { uid: 'q1', id: 'crb.way-of-logic', level: 1 }
+  const mystic = runner('mystic-adept')
+  mystic.build.drainAttr = 'cha'
+  const spell = deriveSr6(data, cr, mystic).drain
+  const w = deriveSr6(data, cr, mystic)
+  expect(w.adeptDrain).toEqual({ value: w.attrs.bod.augmented + w.attrs.wil.augmented, attr: 'wil' })
+  mystic.build.qualities.push(way)
+  const m = deriveSr6(data, cr, mystic)
+  expect(m.drain).toBe(spell) // (WIL + the tradition's CHA, unchanged)
+  expect(m.adeptDrain).toEqual({ value: m.attrs.bod.augmented + m.attrs.log.augmented, attr: 'log' })
+  const adept = runner('adept')
+  const a = deriveSr6(data, cr, adept)
+  expect(a.adeptDrain).toEqual({ value: a.attrs.bod.augmented + a.attrs.wil.augmented, attr: 'wil' })
+  const full = runner('full')
+  full.build.drainAttr = 'cha'
+  full.build.qualities.push(way)
+  const f = deriveSr6(data, cr, full)
+  expect(f.adeptDrain).toBeUndefined()
+  expect(f.drain).toBe(f.attrs.wil.augmented + f.attrs.cha.augmented)
+  // a choice reads the note; a conditional one only in the bracketed total
+  mystic.build.qualities = [{ uid: 'q2', id: 'crb.way-of-any', level: 1, note: 'Agility' }]
+  const c = deriveSr6(data, cr, mystic)
+  expect(c.adeptDrain?.attr).toBe('wil')
+  expect(c.on.adeptDrain?.attr).toBe('agi')
+})
+
+test('set effects: the breakdown lists a set value, marked, apart from the adds', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.hard-fists', level: 1 }, { uid: 'q2', id: 'crb.centaur-body', level: 1 })
+  const { data } = setup({})
+  expect(bonusSources(ch.build, data, 'unarmedAR')).toEqual([{ from: 'Hard Fists', kind: 'qualities', id: 'crb.hard-fists', value: 6, set: true }])
+  expect(bracketNotes(ch.build, data, 'moveWalk').map(x => [x.value, !!x.set])).toEqual([[12, true]])
 })

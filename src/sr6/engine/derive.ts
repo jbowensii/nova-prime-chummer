@@ -104,6 +104,8 @@ export interface Sr6Derived {
   memory: number
   liftCarry: number
   drain?: number
+  /** adept drain (CRB, Adepts: Body + Willpower; a Way, Street Wyrd p. 77, swaps the Willpower): for an adept or mystic adept */
+  adeptDrain?: { value: number; attr: Sr6Attr }
   fading?: number
   pools: Sr6Pool[]
   karmaLeft: number
@@ -188,8 +190,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     return v === undefined ? null : a + v
   }
   // the initiative dice cap (CRB Hong Kong p. 39: never more than 5D6; unset: no cap)
-  // the attribute a Way (Sixth World Companion) has the runner resist drain with instead of Willpower (`derived:adept-drain-attribute`
-  // set): a named attribute, the tradition's (`tradition`) or the one the quality's note names (`choice`); the best of them if several
+  // the attribute a Way (Street Wyrd p. 77: "resist adept drain with Logic instead of Willpower") has the runner resist ADEPT drain
+  // with instead of Willpower (`derived:adept-drain-attribute` set; never the spell drain): a named attribute, the tradition's (`tradition`) or the one the quality's note names (`choice`); the best of them if several
   // apply; a value naming no attribute leaves the drain as it is. Switched or conditional ones only in the bracketed total.
   const wayAttr = b.qualities
     .flatMap(q =>
@@ -427,7 +429,9 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     memory: A('log') + A('int'),
     liftCarry: A('bod') + A('wil'),
     // CRB pp. 127, 189: drain WIL + the tradition's attribute; fading (complex forms) WIL + LOG
-    ...(kind.spells && b.drainAttr ? { drain: A(wayAttr ?? 'wil') + A(b.drainAttr) } : {}),
+    ...(kind.spells && b.drainAttr ? { drain: A('wil') + A(b.drainAttr) } : {}),
+    // CRB (Adepts): adepts resist drain with Body + Willpower; a Way (Street Wyrd p. 77) has the attribute it names in place of Willpower
+    ...(kind.powers ? { adeptDrain: { value: A('bod') + A(wayAttr ?? 'wil'), attr: wayAttr ?? 'wil' } } : {}),
     ...(kind.resonance ? { fading: A('wil') + A('log') } : {}),
     pools,
     karmaLeft: budgets.karma.left,

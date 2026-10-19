@@ -82,6 +82,8 @@ export const ATTR_NAMES: Record<Sr6Attr, string> = {
   mag: 'Magic',
   res: 'Resonance',
 }
+/** `Adept drain (Body + Willpower)`: the label of the adept drain line (a Way swaps the Willpower) */
+export const adeptDrainLabel = (a: { attr: Sr6Attr }) => `Adept drain (Body + ${ATTR_NAMES[a.attr]})`
 /** whole numbers with thousands separators; Essence-like values to two places */
 export const n = (x: number) => (Number.isInteger(x) ? x : Math.round(x * 100) / 100).toLocaleString('en-US')
 

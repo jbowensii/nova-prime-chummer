@@ -299,9 +299,9 @@ const targetName = (t: Bonus['target']) =>
                             : ATTR_NAMES[t]
 /** `+1 Agility`, `+2 Firearms dice` (a skill by its catalog name) */
 export const bonusText = (x: Bonus, data: Pick<Sr6Data, 'skills'>) =>
-  `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)} ${
+  `${x.set ? x.value : `${x.value >= 0 ? '+' : '−'}${Math.abs(x.value)}`} ${
     x.target === 'skill' ? `${data.skills[x.skill ?? '']?.name ?? x.skill ?? 'skill'} dice` : targetName(x.target)
-  }${x.perRating ? ' × rating' : ''}`
+  }${x.perRating ? ' × rating' : ''}${x.set ? ' (sets)' : ''}`
 
 /** The player's bonuses on a line or pick (R: the catalog has no bonus data), each removable, and a dialog to add one: to
  *  an attribute, initiative dice, the Defense Rating or one skill's dice pool. */

@@ -119,9 +119,12 @@ export function sr6AttrRow(ctx: Pick<Sr6Ctx, 'c' | 'data' | 'cr' | 'ch' | 'p' | 
   const { natural, augmented } = ctx.d.attrs[a],
     r = attrRange(ctx, a)
   const raised = [
-    ...bonusSources(ctx.ch.build, ctx.data, a).map(x => ({ text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}`, state: 'applied' as const })),
+    ...bonusSources(ctx.ch.build, ctx.data, a).map(x => ({
+      text: `${x.set ? `${x.value} (sets)` : `${x.value > 0 ? '+' : ''}${x.value}`} from ${x.from}`,
+      state: 'applied' as const,
+    })),
     ...bracketNotes(ctx.ch.build, ctx.data, a).map(x => ({
-      text: `${x.value > 0 ? '+' : ''}${x.value} from ${x.from}${x.when ? ` (${x.when})` : ''}`,
+      text: `${x.set ? `${x.value} (sets)` : `${x.value > 0 ? '+' : ''}${x.value}`} from ${x.from}${x.when ? ` (${x.when})` : ''}`,
       state: 'conditional' as const,
     })),
   ]

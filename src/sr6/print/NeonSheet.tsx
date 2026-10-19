@@ -8,7 +8,7 @@ import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName, type Sr6Attr } from '../model/character'
-import { n, useSr6Editor } from '../ui/editor'
+import { adeptDrainLabel, n, useSr6Editor } from '../ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
 import { attrShown, band, br, PICKS, poolOn, runnerView } from './view'
 import { entryLabel } from '../engine/categories'
@@ -75,6 +75,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
       ['Memory', br(d.memory, d.on.memory)],
       ['Lift/carry', br(d.liftCarry, d.on.liftCarry)],
       ['Drain', d.drain],
+      [d.adeptDrain ? adeptDrainLabel(d.adeptDrain) : 'Adept drain', br(d.adeptDrain?.value, d.on.adeptDrain?.value)],
       ['Fading', d.fading],
       ['Awakened', v.awakened],
     ] as [string, ReactNode][]
@@ -326,6 +327,7 @@ export function NeonSheet({ art }: { art: SheetArt }) {
               <p className="n-small">
                 {[
                   d.drain !== undefined && `Drain ${d.drain}`,
+                  d.adeptDrain && `${adeptDrainLabel(d.adeptDrain)} ${br(d.adeptDrain.value, d.on.adeptDrain?.value)}`,
                   d.fading !== undefined && `Fading ${d.fading}`,
                   b.initiation > 0 && `Initiate ${b.initiation}`,
                   b.submersion > 0 && `Submersion ${b.submersion}`,
