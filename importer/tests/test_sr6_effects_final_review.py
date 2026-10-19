@@ -396,6 +396,12 @@ class BookCorrectionPatternsTier3Test(unittest.TestCase):
         self.assertEqual(fx("The spirit gains a point of Edge in situations involving combat, stealth, or social situations.", "critterpowers")[0][4],
                          "involving combat, stealth, or social situations")  # (combat is no test: a condition, not which tests)
         self.assertEqual(fx("You gain a point of Edge when dealing with zappers, and the user gains +1 Reaction.")[0][4], "when dealing with zappers")  # (a new clause: no list)
+        # (review of PR #88: the words after the tests are clause-scoped too; a new subject after the list ends it, comma or not)
+        for s in ("Gain +2 dice on Influence tests with military, security, or law enforcement personnel, and the user gains +1 Reaction.",
+                  "Gain +2 dice on Influence tests with military, security, or law enforcement personnel and the user gains +1 Reaction."):
+            self.assertEqual(fx(s), [("skill:influence", "add", "2", "conditional", "with military, security, or law enforcement personnel", None, None, None),
+                                     ("attr:rea", "add", "1", None, None, None, None, None)])
+        self.assertEqual(fx("If one side or the other has the zap, that side should gain a point of Edge on Influence tests.")[0][4], "if one side or the other has the zap")  # (`or`: one subject)
 
     def test_edge_when_casting_the_spell_is_the_casters_sorcery(self):
         self.assertEqual(fx("Gain +1 Edge when casting the spell if the object is narrow.", "spells"),

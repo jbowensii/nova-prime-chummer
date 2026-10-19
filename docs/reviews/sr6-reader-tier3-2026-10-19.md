@@ -9,14 +9,15 @@ all this"). Tier 2 was [sr6-reader-tier2-2026-10-19.md](sr6-reader-tier2-2026-10
 - **Three reader patterns are now rules** in `importer/sr6/effects.py`, each with a test
   (`BookCorrectionPatternsTier3Test` in `importer/tests/test_sr6_effects_final_review.py`, invented sentences; all four
   tests fail on the Tier 2 branch).
-- **Book corrections: 347 rows down to 332.** 15 rows retired because the reader now reads what they said; 15 more rows
-  had a drop refreshed to what the reader now gives (the row's own effect is unchanged). "Drop matches no effect"
+- **Book corrections: 347 rows down to 338.** 9 rows retired because the reader now reads what they said; the six
+  object-spell rows lost their drop and stay effect-only for your ruled wording (see pattern 3); 15 more rows had a drop
+  refreshed to what the reader now gives (the row's own effect is unchanged). "Drop matches no effect"
   warnings: **0**.
 - **CommLink6: 1,079/1,079 on the Tier 2 branch and on this one** (1,027 strict, 42 book-ruled, 10 accepted
   placeholders), full replay on the fresh runs (`cl6check-runs26`). Rows whose status differs: **0**. Retired rows whose
   effects are missing from the import: **0**.
-- **In the real import, 32 entries change**: 19 are reviewed entries (retired rows, now the reader's), and **13 are
-  entries nobody reviewed**, all a condition that now keeps its whole list (listed below for you to check).
+- **In the real import, 28 entries change**: 13 are reviewed entries, and **15 are entries nobody reviewed**: 13 a
+  condition that now keeps its whole list, 2 a Social Rating penalty that is now always on (listed below for you to check).
 
 ## The patterns
 
@@ -27,10 +28,9 @@ each pattern against the one before; "items" leaves out rule entries.
 | --- | ------- | --------------: | ------------ | ----------- |
 | 1   | **The condition is the effect's own clause's** (P1). The sentence is cut into clauses at `, while/whereas`, at `, and/but/or` when a clause starts there (`, and you`, `, and an additional`, `, or +2 DV`; not a list's last item, `Stealth, Piloting, and Navigation tests`), at a dash, and at `… and provides/can/gains …` (a second verb of the same subject). Each effect's clause is the one that states it read alone; a clause that states nothing and opens with a condition or `but` (`…, while jumped in`, `…, but it is limited to …`) belongs to the clause before. When the sentence's condition is in another clause, the effect takes its own clause's condition (or the words after its tests, or none). It is kept when it is in a sentence-initial condition clause (`During this phase, …`), in the effect's own clause, or in a clause before it that states nothing (`… brought low when the drug wears off, and the user suffers -1 Willpower`). Also no condition: `even when/if/after …` (and the words of that clause), `if` after tell/see/determine/know/check/…, `while also …`, `While costs are listed for …`, `as a Minor Action` with no switch | 30 (23) | move-by-wire (rating 1, rating 2), solus, multitasking, brutal weapon | functional tail paddle, anabolic steroids, tusks (3), gearhead, spike strip, jiao di, phobia (object), lie detector, commanding voice, hip shooter, skateboard (hardened): stale drop refreshed |
 | 2   | **A list in a condition is kept whole** (P10). A condition's words go on past a comma when what follows is a serial list (`, security, or law enforcement personnel`, at least one middle item and a final `or`/`and` item), or a one-word inserted alternative (`living in, or from, a rural setting`). An item that opens with a pronoun or a verb is a new clause, not the list's. A list may take the words to 16; a longer one is cut at its first item, as before; the words never end on a comma. The same holds for the words after a test name (`Influence tests with military, security, or …`) and for `test:other` words. `involving combat, stealth, or social situations` is a condition (combat is no test): only the first item decides whether the words name tests | 27 (19) | under the radar, trusted veteran, good ol' folks (Emerald City), k-puppet trauma | grey mana armor, shadow cloak: stale drop refreshed |
-| 3   | **Edge when casting the spell** (owner ruling, the six Street Wyrd object spells). A spell's `Gain +1 Edge when casting the spell if …` is the caster's Edge on the casting test, `skill:sorcery` with `spec=Spellcasting`, `affects=caster`, the rest of the sentence its condition | 6 (6) | corrode, demolish, melt, ram, sludge, wreck (object) | none |
+| 3   | **Edge when casting the spell** (owner ruling, the six Street Wyrd object spells). A spell's `Gain +1 Edge when casting the spell if …` is the caster's Edge on the casting test, `skill:sorcery` with `spec=Spellcasting`, `affects=caster`, the rest of the sentence its condition | 6 (6) | none: corrode, demolish, melt, ram, sludge, wreck (object) lost their drop and keep their effect, your wording with the book's example (commit eda359a0) | 6 |
 
-Total against the Tier 2 branch: 62 entries, 47 of them items. The 15 retired rows: 5 for pattern 1, 4 for pattern 2, 6
-for pattern 3. Also fixed on the way: joining one effect's conditions from several tests split the words at `, `, so
+Total against the Tier 2 branch: 64 entries, 49 of them items (with the review fix). The 9 retired rows: 5 for pattern 1, 4 for pattern 2. Also fixed on the way: joining one effect's conditions from several tests split the words at `, `, so
 a condition with a list in it was repeated (`…, or seoulpa ring members, when dealing with …`); it compares whole
 conditions now (`effects.py`, the dedupe in `read()`).
 
@@ -71,18 +71,31 @@ conditions now (`effects.py`, the dedupe in `read()`).
   (`resisted by willpower, logic`).
 - **Shadow cloak keeps a condition.** It is the entry the earlier trial left unconditional: the words now list stealth and
   social as tests, so only the list's first item (`combat`) decides; it is no test, so it is a condition.
-- **The six object spells' condition is the book's wording**, `if the object is narrow rather than broad`, not your
-  row's `the spell's object is narrow rather than broad (e.g., Heavy Pistol instead of Firearm)` (the reader leaves out
-  parenthesized examples). Target, specialization, whom and switch are your ruling's. Say if you want the rows back for
-  the example.
+- **The six object spells' rows stay, effect-only.** The reader's condition is the book's wording, `if the object is
+  narrow rather than broad` (it leaves out parenthesized examples); your rows keep `the spell's object is narrow rather
+  than broad (e.g., Heavy Pistol instead of Firearm)`. Target, specialization, whom and switch are the same.
+
+### Review of PR #88 (gpt-reviewer), fixed
+
+- **The words after the tests are clause-scoped too.** `_scoped` ran only on a condition from `_sw`; a condition from
+  `_qualified` (`Influence tests with military, security, or law enforcement personnel, and the user gains +1 Reaction`)
+  stayed on the Reaction. It now runs on both.
+- **A new subject ends the list and the condition**, comma or not (`_NEW_SUBJECT`: `and/but` + a subject + a verb,
+  `… personnel and the user gains +1 Reaction`); a list item's next words are never `and/or`. `or` starts no new subject
+  (`If one side or the other has …`).
+- Corpus against the shipped branch: **2 entries change**, both better: scavenged rags (`-8` Social Rating) and blue-collar
+  clothing (`-2` Social Rating) are now always on; their Edge keeps its own condition (`… Con (Disguise) tests`,
+  `made to blend in …`). Neither has a row; both are in the table below.
 
 ## Effects on entries nobody reviewed (please check)
 
 From the real import (the branch replay against the Tier 2 branch's), item entries with no correction row or dataset row.
-Every one is the same effect with a longer condition: the list the book prints.
+Except the first two, every one is the same effect with a longer condition: the list the book prints.
 
 | Entry | Was `when=` | Now `when=` |
 | ----- | ----------- | ----------- |
+| so.scavenged-rags (Social Rating -8) | `to pass yourself off as a penniless vagabond-on those con (disguise) tests` (the Edge's) | none: always on |
+| so.blue-collar (Social Rating -2) | `to blend in within locations with a security rating of d-a` (the Edge's) | none: always on |
 | crb-sea.good-ol-folks (Edge, social) | `during any social interaction with people living in` | `… living in, or from, a rural setting` |
 | emc.suburbanite | as above | `… living in, or from, a suburban setting` |
 | emc.socialite | as above | `… living in, or from, people who` (the book goes on `who function in elite sectors`; a `who` clause ends a list) |
@@ -110,10 +123,10 @@ read.
 
 ## Checks
 
-- `python -m unittest discover -s importer/tests -t .`: OK (27 skipped).
+- `python -m unittest discover -s importer/tests -t .`: 1,379 tests, OK (27 skipped).
 - `npx prettier --check .`: clean. No TypeScript touched; Anarchy untouched.
 - **CommLink6 gate** (`python -m tools.cl6effects --tree <this worktree> --base <git archive of origin/feat/sr6-reader-tier2
-  @ 24dbf158> --runs .extract/cl6check-runs26 --out .extract/cl6fx-t3`): tree and base both **1,079/1,079** (1,027
+  @ 24dbf158> --runs .extract/cl6check-runs26 --out .extract/cl6fx-t3c`): tree and base both **1,079/1,079** (1,027
   strict, 42 book-ruled, 0 book-ruled keys that no longer fit, 10 placeholders); "drop matches no effect" **0** on both;
-  rows whose status differs **0**; correction rows only the base has **15**, with effects missing from the tree's import
+  rows whose status differs **0**; correction rows only the base has **9**, with effects missing from the tree's import
   **0**.

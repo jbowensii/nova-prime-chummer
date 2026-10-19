@@ -532,7 +532,11 @@ def _garbled(words):
 # a serial list going on past a comma: `, security, or law enforcement personnel`, `, or from, a rural setting`; an item opening with a pronoun or
 # a verb is a new clause (`, they gain`, `, and is reduced`), not the list's
 _ITEM = r"(?!(?:you|they|he|she|it|we|this|these|those|which|who|then|also|but|so|gains?|receives?|gets?|grants?|adds?|suffers?|may|can|cannot|must|will|is|are|was|were|has|have|does|do|increas\w*|reduc\w*)\b)[a-z][a-z'-]*"
-_LIST_ON = re.compile(r",\s+(?:(?:or|and)\s+[a-z]+,\s+" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3}|(?:" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3},\s+){1,4}?(?:or|and)\s+" + _ITEM + r"(?:\s+" + _ITEM + r"){0,3})", re.I)
+_MORE = r"(?:\s+(?!(?:and|or|nor)\b)" + _ITEM + r"){0,3}"  # (an item's next words: `law enforcement personnel`, not `… personnel and the user`)
+_LIST_ON = re.compile(r",\s+(?:(?:or|and)\s+[a-z]+,\s+" + _ITEM + _MORE + r"|(?:" + _ITEM + _MORE + r",\s+){1,4}?(?:or|and)\s+" + _ITEM + _MORE + r")", re.I)
+# a new subject after a list, with no comma: `… law enforcement personnel and the user gains +1 Reaction` (the list's condition ends there)
+_NEW_SUBJECT = re.compile(r"\s+(?:and|but)\s+(?:(?:the|a|an|his|her|their|its|your)\s+[a-z-]+(?:\s+[a-z-]+)?|you|they|he|she|it)\s+(?:also\s+)?"
+                          r"(?:[a-z]+s|can|may|must|will|gain|get|receive|suffer|take|lose|add)\b", re.I)
 
 
 def _cond_words(s, at):
@@ -545,6 +549,7 @@ def _cond_words(s, at):
     if cap > 16:  # (a list too long to state: its first item, as before)
         c, cap = first, 12
     clause = clause[:c] if c >= 0 else clause
+    clause = _NEW_SUBJECT.split(clause, maxsplit=1)[0]  # (`… or Seoulpa Ring members and the user gains +1 Reaction`: a new subject, a new clause)
     clause = re.split(r"(?<=[a-z0-9)]) (?=(?:Sometimes|Starting|Considered|The|This|These|It|You|They|There|However|Additionally|Also|Each|Every|Unlike)\b)", clause, maxsplit=1)[0]  # (a sentence run into this one with no full stop: `… firing two or more barrels Sometimes you just need …`)
     words = " ".join(clause.split()[:cap]).strip(" ,").lower()
     cut = re.split(r"\s+and (?:suffer|cannot|can't|lose|take)\b|\s+(?:suffers?|gains?|receives?|may add|may not)\b", words)[0]  # (`while moving faster … and suffer a -1 penalty`: the penalty is the effect)
@@ -696,7 +701,7 @@ def _qualified(s, kind):
     if not (qual := _QUALIFIER.search(s)):
         return None
     q_, e_ = qual.group("q"), qual.end("q")
-    while (lm := _LIST_ON.match(s, e_)) and (nx := re.match(r"[^.;,]*", s[lm.end():])):
+    while (lm := _LIST_ON.match(s, e_)) and not _NEW_SUBJECT.match(s, e_) and (nx := re.match(r"[^.;,]*", _NEW_SUBJECT.split(s[lm.end():], maxsplit=1)[0])):
         q_, e_ = q_ + s[e_:lm.end()] + nx.group(0), lm.end() + nx.end()  # (`with military, security, or law enforcement personnel`: the whole list)
     q_ = re.split(r"\s+(?:gains?|receives?|gets?|grants?|for use on)\b", q_, maxsplit=1)[0].strip(" ,")
     # (the tests are named before it, `Con (Disguise) tests to hide their metatype`: what follows limits them, whatever words it holds)
@@ -955,7 +960,7 @@ def read(text, kind=None, name=None, cls=""):
         here = []
         resist = _RESIST_OF.search(s)
         got = _rules(s, kind, sw, when, edge_actions, label, ai, last_named, name)
-        if sw == "conditional" and sw_when and when == sw_when:
+        if sw == "conditional" and when and when in (sw_when, q_cond):  # (a condition from _sw or the words after the tests: each effect's own clause's)
             got = _scoped(got, s, kind, label, when, lambda t: _rules(t, kind, None, None, edge_actions, label, ai, last_named, name))
         rs = _RESIST_CLAUSE.search(s)
         if rs and not others and not _EDGE_OTHERS.search(s):
