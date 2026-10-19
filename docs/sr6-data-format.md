@@ -438,12 +438,15 @@ What the rules read: lists (`+1 to your Agility, Body, Reaction, and Strength`),
 to X` / `+N X` / `a +N bonus on X` / `X is increased by N` / `adds its rating to X` / `the X's rating is added to Y`
 / `X equal to its rating`, Edge phrasings (`gain a (bonus) point of Edge on X`, `+1 Edge for X`, `cannot spend or
 gain Edge on X`, `Edge Boosts cost N less for X`, `reduce the Edge cost of the X Edge Action by N`, `X (N Edge)` in
-a list of Edge actions), initiative dice (`+1D6 Initiative`, `an additional Initiative Die`, `in VR` for Matrix),
+a list of Edge actions), initiative dice (`+1D6 Initiative`, `an additional Initiative Die`, `in VR` for Matrix; `with 4D6
+Initiative Dice` sets them, `removes one Initiative Die` is -1),
 condition monitor boxes (`adds one box to the Physical Condition Monitor`, `two extra boxes of Overflow`, `1 less Stun
 Box`), maxima (`maximum (but not current) rank increases by 1`, `physical attribute maximums are reduced by 1`,
 `racial limit`), Attack Rating bands (`+2/–/–1/–2/–3`), movement (`10/40/+3`), wild dice, extra hits, Minor
 Actions (`an additional two Minor Actions`, `use the Move and Avoid Incoming Minor Actions an additional time`),
-Hardened Armor, Overwatch, incoming damage, lifestyle points, an Attack Rating modifier limited to fire modes
+Hardened Armor, Overwatch, incoming damage (`reduces the Damage Value of any attack by 1`, `incoming DV by its rating`:
+`derived:damage-reduction`, not the item's DV), thresholds (`reducing thresholds by 1`, `have their threshold increased by
+1`, `-1 for all repair test thresholds`; `the threshold for Surprise tests is 1`: `threshold-set`), lifestyle points, an Attack Rating modifier limited to fire modes
 (`decreases the Semi-Auto and Burst Fire Attack Rating modifiers by 1`: `item:ar` +1 with the modes in `when`), a
 stat moved between on- and off-road, a rating subtracted from a stat, a cost in percent or nuyen a month, a
 knowledge or language skill granted (`gain the knowledge skill Dragon Lore`: `skill:knowledge` +1, the name in
@@ -495,7 +498,9 @@ metatype in `when`; `Ghoul (Dwarf)` reads the `Ghoul` row whose BASE is Dwarf), 
 armor's Defense Rating column is its defense field, not an effect.
 
 **Links** (`<link rel="grants"|"as" name kind ref level when>`): an entry that grants another (`gain the Built Tough
-quality`, `1 free level of Rapid Healing`) or works as another (`the same result as a Personalized Grip`) names it;
+quality`, `1 free level of Rapid Healing`, `gain the critter power Immunity (Pathogens, Toxins) with a rating of 2`: the
+bracket with a comma is its `when`; `Free Vocal Control power`; a drug's `Effect:` list naming one with its page,
+`High Pain Tolerance (p. 72)`) or works as another (`the same result as a Personalized Grip`) names it;
 `ref` its id when the book tells (its own entry, or the book a citation names: `p. 70, SR6` -> `crb.`). The app uses
 the linked entry's effects (`effects.ts linkedEntries`, by id, else by name). A link also names an entry the text only
 points to (`See Magic Resistance, p. 72, SR6`; `See p. 76, SR6` for the entry's own name in that book; `function
