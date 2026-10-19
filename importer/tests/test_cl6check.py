@@ -286,6 +286,17 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(got["Transgenic Gills"], ("contained", ["Gills"]))
         self.assertEqual(got["Nothing like it"], ("", []))
 
+    def test_one_nanite_record_is_both_of_our_items(self):
+        c = lambda name: {"name": name, "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}  # noqa: E731
+        nano = {"category": "Colony & nanite"}
+        mine = [entry("Fizz Swarm Colony", **nano), entry("Fizz Swarm Nanites", **nano), entry("Zap Nanites (Buzz) Colony", **nano),
+                entry("Zap Nanites (Buzz) Nanites", **nano), entry("Mars Colony")]
+        got = {x[0]["name"]: (x[2], sorted(o["name"] for o in x[1])) for x in match.match([c("Fizz Swarm"), c("Buzz")], mine)}
+        self.assertEqual(got["Fizz Swarm"], ("nanite colony and nanites", ["Fizz Swarm Colony", "Fizz Swarm Nanites"]))
+        self.assertEqual(got["Buzz"], ("nanite colony and nanites", ["Zap Nanites (Buzz) Colony", "Zap Nanites (Buzz) Nanites"]))
+        # (an entry that only ends in `Colony` is no nanite row)
+        self.assertEqual(match.match([c("Mars")], mine)[0][1], [])
+
     def test_names_apart_by_a_number_never_pair(self):
         c = {"name": "Zorp Model 9", "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}
         for stage_page in ("10", "99"):
