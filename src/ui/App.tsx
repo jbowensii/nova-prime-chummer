@@ -304,7 +304,10 @@ export default function App() {
     )
 
   const back = (u: User) => {
-    if (u.id !== user?.id) return location.reload() // saving stays held: the old account's changes are never sent
+    if (u.id !== user?.id) {
+      session.discarding = true
+      return location.reload() // saving stays held: the old account's changes are never sent
+    }
     session.held = false
     setMe({ user: u, setup: false, oidc: me.oidc })
     setEnded(false)

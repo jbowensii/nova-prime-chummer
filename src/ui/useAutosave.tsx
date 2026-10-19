@@ -143,7 +143,7 @@ export function useAutosave<T extends Doc>(repo: Repo<T>, id: string, o: Autosav
     addEventListener('ca2-leaving', flush) // signing out: send it before the session ends
     // closing or reloading the tab while a change is unsent or failed: the browser asks first
     const warn = (e: BeforeUnloadEvent) => {
-      if (unsaved() && !sync.current.paused) e.preventDefault()
+      if (unsaved() && !sync.current.paused && !session.discarding) e.preventDefault()
     }
     // a link out of this doc: send the change first; if it can't be saved, ask before leaving it behind
     const leave = (e: MouseEvent) => {

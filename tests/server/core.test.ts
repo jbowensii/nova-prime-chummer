@@ -2,7 +2,7 @@
 // Core data on the server. Start-up: a server without custom/imported/core/ whose Library holds the core rulebook
 // re-imports it, then the Conversion Guide and DHSA; with core data in place it leaves the Library alone. Core tables a
 // recipe couldn't read go through the AI review into custom/imported/core/. Stub worker in place of Python.
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test, vi } from 'vitest'
@@ -35,7 +35,11 @@ async function start(dir: string, calls: number) {
     python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
   })
   await srv.started
-  for (let i = 0; i < 600 && readFileSync(log, 'utf8').split('\n').filter(Boolean).length < calls; i++) await new Promise(r => setTimeout(r, 25))
+  // the calls logged and every job ended (jobs.json goes once the queue is empty): a stop mid-job would leave that job
+  // in jobs.json and the next start would resume it
+  const jobs = join(dir, 'library', '.config', 'jobs.json')
+  for (let i = 0; i < 600 && (readFileSync(log, 'utf8').split('\n').filter(Boolean).length < calls || existsSync(jobs)); i++)
+    await new Promise(r => setTimeout(r, 25))
   await new Promise(r => setTimeout(r, 200)) // nothing more comes
   srv.stopJobs()
   return readFileSync(log, 'utf8').split('\n').filter(Boolean)
