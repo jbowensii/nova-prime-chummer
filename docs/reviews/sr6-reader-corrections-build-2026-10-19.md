@@ -7,12 +7,12 @@ the owner's six conflict rulings of 2026-10-19. Branch `feat/sr6-reader-correcti
 
 - **Nine reader mistakes are now rules** in `importer/sr6/effects.py`, each with a test (`BookCorrectionPatternsTest` in
   `importer/tests/test_sr6_effects_final_review.py`, invented sentences).
-- **Book corrections: 378 rows down to 357.** 21 rows retired because the reader now reads what they said; 24 more rows
+- **Book corrections: 378 rows down to 361.** 17 rows retired because the reader now reads what they said; 24 more rows
   lost a drop that no longer matched anything (or had it moved to what the reader reads now). Every remaining drop
   matches a reader effect: the importer's "drop matches no effect" warnings went from **20 to 0**.
 - **The six conflict rulings are in the rows** (cyberarms, full leg, three weapons, tusks, mob lights, object spells).
-- **CommLink6:** no CommLink6 effect is lost or gained. Measured with a stand-in for the 1,079 check (see Checks): 932
-  CommLink6 modifications on our entries, 0 lost, 0 gained, by target and op and by value.
+- **CommLink6: 1,079/1,079, the same as main** (1,027 strict, 42 book-ruled, 10 accepted placeholders), measured with the
+  original replay pipeline on main and on this branch (see Checks).
 - **86 entries change** across all 16,760 entry texts. 50 of them are entries nobody reviewed: 41 new or changed effects
   and links (on 36 entries) are listed below for you to check, and 40 removed ones.
 
@@ -34,10 +34,10 @@ Entries changed: the corpus run of `effects.read()` and `links()` over every ent
 against the one before; 86 against main in all.
 
 Retired as already stale before this change (the reader stopped producing their drop earlier, nothing else in them):
-signal drug per dose, mimic signal drug per dose, gestalt step 1, cat (mentor spirit, its effect the reader's own). Stale
+signal drug per dose, mimic signal drug per dose, gestalt step 1. Stale
 drops taken out of rows that keep their effects: paint grenades large, critter bond, masterkey ammunition. The
-"Gained Powers" rule reads ghoul (elf), ghoul (human) and loup-garou exactly: retired. Nosferatu stays: the reader does
-not give its movement.
+"Gained Powers" rows (ghoul elf, ghoul human, loup-garou, nosferatu) stay: in the real import the line sits in a creature
+table the rule never sees.
 
 ## Owner rulings applied (2026-10-19)
 
@@ -165,3 +165,17 @@ Mostly rules and example entries, and attribute tests that were a word in anothe
 | swc.life-path-example | `test:attr-int edge 1` |
 | ttp.who-wrote-the-book-hook-4 | `skill:influence edge 1` |
 | ttp.who-wrote-the-book-the-job-4 | `test:attr-bod edge 1 [conditional] when='when hacking while in his cocoon'` |
+
+## Orchestrator re-check (2026-10-19)
+
+The full CommLink6 replay (the 1,079 pipeline from the 2026-10-17/18 work) first showed **1,078/1,079** and two side
+effects, now fixed on this branch:
+- **Enhanced articulation** (crb): rule 4 moved its Edge from Agility tests to `test:other`; CommLink6 has it on Athletics.
+  A correction row now gives `skill:athletics edge 1` with the printed condition.
+- **Four retired rows lost effects in the real import**, so they are restored: ghoul (elf), ghoul (human) and loup-garou
+  ("Gained Powers" sits in a creature table the reader never sees) and the cat mentor spirit (the reader still gives
+  Athletics to everyone; the row makes it the chosen skill). Corrections: 361, 17 retired.
+- **The six object spells' drops** were set to `affects=target`; in the real import the reader marks that garbled Edge as
+  the caster's, so the drop matched nothing and the junk effect stayed. Drops are back to `affects=caster`.
+
+After the fixes: 1,079/1,079, no "drop matches no effect" warning, 1,357 importer tests OK.
