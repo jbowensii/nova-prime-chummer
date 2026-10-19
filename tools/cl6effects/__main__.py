@@ -102,7 +102,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="cl6effects", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--tree", required=True, help="the code tree (a checkout or an archive of one) whose importer rebuilds the runs")
     p.add_argument("--base", help="a second tree: run both, print every row whose status differs and the correction rows only the base has")
-    p.add_argument("--runs", default=os.environ.get("CL6_RUNS") or str(REPO / ".extract" / "cl6check-runs14"), help="the saved import runs (default .extract/cl6check-runs14, or $CL6_RUNS)")
+    p.add_argument("--runs", default=os.environ.get("CL6_RUNS") or str(REPO / ".extract" / "cl6check-runs26"), help="the saved import runs (default .extract/cl6check-runs26, or $CL6_RUNS)")
     p.add_argument("--out", default=str(REPO / ".extract" / "cl6effects"), help="where the rebuilt runs go (one folder per tree)")
     p.add_argument("--jar")
     a = p.parse_args(argv)
