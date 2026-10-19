@@ -309,7 +309,7 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     skill_of = lambda n: (h := idx.find(["skills"], n)) and h[1]  # noqa: E731
     for kind, items in picks.items():
         for p in items:
-            hit, level, _ = _named(idx, [kind], p)
+            hit, level, _ = _named(idx, [kind], MISPRINTS.get(norm(p), p))
             if not hit:
                 miss(next(k for k, v in PICKS.items() if v == kind).title(), p)
                 continue
@@ -529,7 +529,10 @@ def _rank(free):
 MISPRINTS = {"proteus poseidon rigger command console": "Proteus Poseidon",
              "cyberspace designs dalmation drone": "Cyberspace Designs Dalmatian",
              "micro tranceiver": "Micro-transceiver", "micro tranceivers": "Micro-transceiver",
-             "dataline tap": "Data tap", "uzi v": "Uzi IV", "long coat": "Lined coat"}
+             "dataline tap": "Data tap", "uzi v": "Uzi IV", "long coat": "Lined coat",
+             # (owner, 2026-10-19) the Street Shaman's alphabetical spell list prints `Burst` between Animate Plastic and
+             # Chaos: no spell of that name exists (CRB, CommLink6); Blast (CRB p.140) is the one that fits
+             "burst": "Blast"}
 
 
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
