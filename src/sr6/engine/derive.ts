@@ -325,7 +325,12 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
   // CRB Hong Kong p. 179: Matrix AR initiative is the physical one; VR is Intuition + Data Processing with 1 (cold sim)
   // or 2 (hot sim) dice on top of the usual ones, within the 5D6. A technomancer's Data Processing is their Logic
   // (p. 189); a decker's the best commlink's (its D/F array, p. 174: the device's attributes are the persona's)
-  const initDice = plus(augmentBonus(b, data, 'initDice', undefined, on), 'initiativeDice'),
+  // (an effect that sets the dice, the Bio-Drone Harness's 4D6, replaces the usual count; the highest wins, adds stack, the cap applies)
+  const setDice = setBonus(b, data, 'initDice', on),
+    initDice =
+      setDice !== undefined
+        ? setDice + augmentBonus(b, data, 'initDice', undefined, on)
+        : plus(augmentBonus(b, data, 'initDice', undefined, on), 'initiativeDice'),
     usual = need('initiativeDice')
   const dp = kind.resonance
     ? A('log')

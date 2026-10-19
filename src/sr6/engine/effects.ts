@@ -219,7 +219,7 @@ export function effectBonuses(data: Sr6Data, e: Sr6Entry | undefined, depth = 0,
         ? { value: 0 }
         : effectValue(t === 'derived:unarmed-ar' ? unarmedBand(a.value) : t === 'derived:unarmed-dv' && a.op === 'set' ? a.value?.replace(/P$/, '') : a.value)
     // (a `set` is read only where the sheet shows a number it replaces: movement `a/b/c`, unarmed Attack Rating and Damage Value; the Damage Value's `3P` is 3, its Physical type the damage effect's)
-    const set = a.op === 'set' && (!!mv || t === 'derived:unarmed-ar' || t === 'derived:unarmed-dv')
+    const set = a.op === 'set' && (!!mv || t === 'derived:unarmed-ar' || t === 'derived:unarmed-dv' || t === 'derived:initiative-dice')
     if (x.tag !== 'effect' || (a.op !== 'add' && !set) || a.confidence === 'low' || !v || a.affects === 'others') continue // (others': never the runner's, owner decision 16)
     const sw = (BONUS_SWITCHES as string[]).includes(a.switch ?? '') ? (a.switch as Bonus['switch']) : undefined
     const rate = (r: NonNullable<typeof v>) => ({

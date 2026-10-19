@@ -21,6 +21,7 @@ const MORE: Record<string, string> = {
   'crb/qualities.xml': `<quality id="crb.lumpy-skin" source="CRB" page="71" kind="positive" karma="5"><name>Lumpy Skin</name><text/></quality>
   <quality id="crb.iron-bones" source="CRB" page="71" kind="positive" karma="5"><name>Iron Bones</name><effect target="derived:unarmed-dv" op="set" value="4"/><effect target="derived:unarmed-ar" op="add" value="2"/><text/></quality>
   <quality id="crb.centaur-body" source="CRB" page="71" kind="positive" karma="5"><name>Centaur Body</name><effect target="derived:movement" op="set" value="10/20/4"/><effect target="derived:movement" op="set" value="12/30/5" switch="conditional" when="galloping"/><text/></quality>
+  <quality id="crb.drone-brain" source="CRB" page="71" kind="positive" karma="5"><name>Drone Brain</name><effect target="derived:initiative-dice" op="set" value="4" switch="activated"/><text/></quality>
   <quality id="crb.slow-legs" source="CRB" page="71" kind="positive" karma="5"><name>Slow Legs</name><effect target="derived:movement" op="set" value="8/16/2"/><text/></quality>
   <quality id="crb.hard-fists" source="CRB" page="71" kind="positive" karma="5"><name>Hard Fists</name><effect target="derived:unarmed-ar" op="set" value="6,0,0,0,0"/><effect target="derived:unarmed-dv" op="set" value="3P"/><text/></quality>
   <quality id="crb.fleet" source="CRB" page="71" kind="positive" karma="5"><name>Fleet</name><effect target="derived:movement" op="add" value="3"/><text/></quality>
@@ -246,4 +247,16 @@ test('set effects: an unarmed Attack Rating set is the better of it and REA + ST
   expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(7 + 2)
   ch.build.attributes.rea.points = 0
   expect(deriveSr6(data, cr, ch).attackRatings.unarmed).toBe(6 + 2) // (REA 1 + STR 2 = 3 < 6)
+})
+
+test('set effects: initiative dice set replaces the usual count only when switched on, adds stack, the cap applies', () => {
+  const ch = runner()
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.drone-brain', level: 1 })
+  const { data, cr } = setup({ initiativeDice: 1, initiativeDiceMax: 5 })
+  let d = deriveSr6(data, cr, ch)
+  expect(d.initiative.dice).toBe(1)
+  expect(d.on.initiative.dice).toBe(4)
+  boost(ch, [{ target: 'initDice', value: 3 }])
+  d = deriveSr6(data, cr, ch)
+  expect(d.on.initiative.dice).toBe(5) // (4 + 3, capped at 5)
 })
