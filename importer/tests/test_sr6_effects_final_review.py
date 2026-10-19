@@ -326,5 +326,45 @@ class BookCorrectionPatternsTest(unittest.TestCase):
         self.assertEqual(fx("Make a Perception (3) test to spot the zap; a threshold of 2 to notice it.", "gear"), [])
 
 
+class BookCorrectionPatternsTier2Test(unittest.TestCase):
+    """The book corrections that were reader mistakes, Tier 2 (docs/reviews/sr6-reader-tier2-2026-10-19.md), now rules."""
+
+    def test_an_activation_sentence_carries_to_the_rest_of_its_paragraph(self):
+        got = fx("This zapware requires a Minor Action to activate the coil. When attempting a Zap test (Athletics + Strength), you jump 2 meters per hit. "
+                 "They also get +1 die on Jumping tests per level.\n\nThe coil gives +1 die on Perception tests.", "augmentations")
+        self.assertEqual([g[:4] for g in got], [("skill:athletics", "add", "R", "activated"), ("skill:perception", "add", "1", None)])  # (the next paragraph: not)
+        got = fx("**Activation:** Major Action\nThe adept gains +1 die per level to all Zap (Leadership) tests. The adept always gets +1 die on Perception tests.", "adeptpowers")
+        self.assertEqual([g[3] for g in got], ["activated", None])  # (`always`: not)
+        self.assertEqual(fx("With a Minor Action, a secondary zap can be activated. Unarmed damage becomes physical.", "gear")[0][:4], ("derived:unarmed-damage", "set", "P", "activated"))
+
+    def test_an_action_spent_is_the_switch_and_the_sentence_keeps_its_condition(self):
+        self.assertEqual(fx("When making a zap attack, gain +1 DV by spending a Minor Action.")[0][3:5], ("activated", "when making a zap attack"))
+        self.assertEqual(fx("Investing a Minor Action, the zapper gains one Edge on Sorcery tests.")[0][3:5], ("activated", None))
+
+    def test_a_value_per_something_not_the_rating_is_a_shown_condition(self):
+        self.assertEqual(fx("The zapper gains +1 Willpower for each pair of cyberlimbs they have."), [("attr:wil", "add", "1", "conditional", "per pair of cyberlimbs", None, None, "low")])
+        self.assertEqual(fx("For every 5 crew who are unable to assist, increase Handling by 1.", "vehicles")[0][2:5], ("1", "conditional", "per 5 crew"))
+        self.assertEqual(fx("All attacks by this zap gain +1 DV for each level of wound penalty it is suffering.", "critterpowers")[0][2:5], ("1", "conditional", "per level of wound penalty"))  # (no rating: not R)
+        self.assertEqual(fx("Gain +1 die on Perception tests per round.")[0][3], None)  # (a time unit: no condition)
+
+    def test_a_wild_die_on_every_test_is_on_all_tests(self):
+        self.assertEqual(fx("When this zap is active, the user adds a wild die to every test they make while in the Matrix.", "gear"), [("test:all", "wild-die", "1", "activated", "while in the matrix", None, None, None)])
+        self.assertNotIn("test:all", [g[0] for g in fx("Whenever this critter makes a skill test near Perception, add a wild die to its dice pool.")])  # (a skill named: its)
+
+    def test_a_sentence_that_only_limits_the_bonus_before_adds_none(self):
+        self.assertEqual(fx("Each level adds +1 die to Zap tests. This bonus only applies while the user is jumped-in.", "augmentations"),
+                         [("test:other", "add", "1", "conditional", "zap tests, while the user is jumped-in", None, None, None)])
+        self.assertEqual(fx("Whenever you are zapped, reduce the cost of any Edge boosts by 1. This only applies to Matrix actions.")[0][:3], ("test:matrix", "edge-cost", "-1"))
+
+    def test_edge_on_this_test_after_one_skill_test_is_that_skills(self):
+        got = fx("They go unnoticed with a successful Influence (Etiquette) + Charisma (2) test. You gain an Edge on this test if you are dressed for it.", "gear")
+        self.assertEqual(got, [("skill:influence", "edge", "1", "conditional", "if you are dressed for it", "Etiquette", None, None)])
+
+    def test_a_third_party_mid_sentence_and_at_least_one_net_hit(self):
+        self.assertEqual(fx("This zap makes spotting the user easier, so any observers get a +1 dice pool bonus on Perception tests.")[0][6], "others")
+        self.assertIsNone(fx("If you zap them, any observers get a +1 dice pool bonus on Perception tests.")[0][6])  # (a condition first: untouched)
+        self.assertEqual(fx("Gain a point of Edge whenever you score at least one net hit on a zap test.", "datastructures")[0][2], "1")
+
+
 if __name__ == "__main__":
     unittest.main()
