@@ -3,6 +3,7 @@ with the recipe's aliases and name headers. Every name, number and line is inven
 import os
 import re
 import unittest
+from unittest import mock
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -762,6 +763,27 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(flags.uncounted("Note: This quality does not count to- ward the six total qualities limitation."), {"uncounted": "true"})
         self.assertEqual(flags.uncounted("This does not count toward your maximum of six qualities at creation."), {"uncounted": "true"})
         self.assertEqual(flags.uncounted("The limit of six qualities at character creation still applies."), {})
+
+    def test_sample_overrides_replace_printed_text_and_note_it(self):
+        """A row of overrides/samples/<book>.json replaces a printed line's text (or appends to a line) and puts its note
+        on that sample only; text the book no longer prints is reported on stderr and its note left out (made-up rows)."""
+        import contextlib
+        import io
+        import json
+        import tempfile
+        rows = [{"sample": "Tester", "note": "Misprint.", "edits": [{"field": "Spells", "from": "Burst", "to": "Blast"},
+                                                                   {"field": "Gear", "add": "widget"}]},
+                {"sample": "Tester", "note": "Gone.", "edits": [{"field": "Spells", "from": "Nope", "to": "Yes"}]}]
+        labels = {"Spells": "Armor, Burst, Chaos", "Gear": "coat"}
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(archetypes, "SAMPLES_DIR", Path(d)):
+            (Path(d) / "nb.json").write_text(json.dumps(rows), encoding="utf8")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                got, notes = archetypes._overridden("NB", "Tester", labels, 9)
+            self.assertEqual(archetypes._overridden("NB", "Other", labels, 9), (labels, []))
+        self.assertEqual((got, notes), ({"Spells": "Armor, Blast, Chaos", "Gear": "coat, widget"}, ["Misprint."]))
+        self.assertEqual(labels["Spells"], "Armor, Burst, Chaos")  # (the book's labels are not changed)
+        self.assertIn("Spells has no 'Nope'", err.getvalue())
 
     def test_a_level_printed_on_a_quality_without_levels(self):
         """`Stubborn Shell 2` on a quality with one flat cost: taken once, the printed level kept for Review's note; a

@@ -69,7 +69,9 @@ voice modulator stays 7). Where a book rule explains the printed numbers,
 the runner gets that option as its own creation rule, marked assumed (the book
 doesn't say): the prime runner's 100 Karma (CRB p. 64), the first printing's
 cap on illegal gear only (CRB p. 66). A value the book misprints is corrected by
-the owner's override file (`<samplefix>`), never by the importer. It keeps the printed attributes, Essence,
+the owner's override file (`<samplefix>`: a rating, quantity or grade) or, for a misprinted name or a
+line the book priced from another table, by the importer's sample overrides
+(`importer/sr6/overrides/samples/<book>.json`, owner rulings only), which put the reason in the runner's notes. It keeps the printed attributes, Essence,
 initiative, condition monitors and Defense Rating in `<printed>`. Review
 compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
