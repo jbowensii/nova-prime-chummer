@@ -280,3 +280,11 @@ class StaggeredColumnsTest(unittest.TestCase):
     def test_the_other_game_is_not_asked(self):
         from importer.pdf.columns import find_gutter
         self.assertIsNone(find_gutter(self._rows(), 612))
+
+    def test_one_column_with_indents_has_no_gutter(self):
+        # (a single column whose lines start indented or not and end ragged: every line crosses the middle)
+        from importer.pdf.columns import find_gutter
+        from importer.sr6.layout import GUTTER_TOL
+        w = lambda x0, x1, top: {"x0": x0, "x1": x1, "top": top, "bottom": top + 8, "size": 8, "text": "w", "chars": [{}]}
+        rows = [[w(90 + 12 * (k % 2), 540 - 30 * (k % 3), 39 + 12 * k)] for k in range(12)]
+        self.assertIsNone(find_gutter(rows, 612, tol=GUTTER_TOL))
