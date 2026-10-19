@@ -478,10 +478,19 @@ def _sw(s, label=""):
                 return k, None
             act = rx
             break
+    past = 0  # (the end of a clause that is no condition: `even after the critter becomes used to …`, none of its words is one)
     for m in _CONDITION.finditer(low):
+        if m.start() < past:
+            continue
         words = _cond_words(s, m.start()) or ""
         if act and (act.search(words) or re.match(r"(?:with|as|spend(?:ing)?|takes?|using) an? (?:minor|major) action", m.group(0)) or _garbled(words) or re.fullmatch(r"(?:in|your|their) animal form", m.group(0))):
             continue  # (`When this power is activated`, `spending a Minor Action`: the switch, not a condition)
+        pre = low[max(0, m.start() - 30):m.start()]
+        if re.search(r"\beven\s*$", pre) or (m.group(0) == "if" and re.search(r"\b(?:tell|see|determine|know|learn|check|decide|ask|find out|discover|judge|detect|notice|wonder)\s*$", pre)) \
+                or re.match(r"while also\b|while (?:the )?[a-z]+ (?:is|are) (?:listed|given|shown|priced|printed|noted)\b", words) \
+                or (not act and re.fullmatch(r"as an? (?:minor|major) action", m.group(0))):
+            past = m.start() + len(words)
+            continue  # (`even when …`, `tests to determine if …`, `…, while also lacing …`, `While costs are listed for single tusks, …`, `Observe in Detail as a Minor Action`: no condition on the effect)
         if re.match(r"(?:when|if|once) (?:this|the) [a-z]+ is (?:taken|chosen|selected|purchased|bought)\b", words) \
                 or re.match(r"(?:when|if|once|whenever) you (?:take|have|choose|select|buy|purchase|acquire|install|get) (?:this|the) [a-z]+\s*$", words):
             continue  # (`When this way is taken`, `If you take this quality`: the entry itself)
@@ -497,13 +506,14 @@ def _sw(s, label=""):
             continue  # (`+2 AR at Close range only`: the band the number is for, no condition)
         if m.group(0) == "only" and re.search(r"\b(?:can|may|must|should|could|will)\s*$", low[:m.start()]) or words == "used":
             continue  # (`that can only be spent on …`, `each time it is used`: no condition on the effect)
-        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z' ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\)|\([a-z ]+ \+ [a-z ]+\))?\s*$", words)
+        if (re.match(r"(?:when|whenever|while|if) (?:you |they |the (?:character|user|adept) )?(?:are |is )?(?:perform|mak|us|roll|attempt|tak|do)\w* (?:an? |any |all |the |your |their )?(?:(?!\b(?:on|against|using|with|by|of|for|(?:this|that)(?! tests?\b))\b)[a-z', ()-])*?\b(?:tests?|checks?|rolls?|skill|actions?)\s*(?:\((?:see )?p\.[^)]*\)|\([a-z ]+ \+ [a-z ]+\))?\s*$", words)
                 or re.fullmatch(r"(?:when|whenever|while|if) (?:you are |they are )?targeted by (?:a |any )?spells?", words)) \
                 and (targets(words) or _activity(words)):
             continue  # (`When performing a Juryrigging test`: which test, not a condition; `… tests to recognize people` is one)
+        w1 = words.split(",")[0]  # (a list's first item: `involving combat, stealth, or social situations` is a condition, combat no test)
         if (m.group(0) in ("involving", "related to", "that use", "used") or "involve" in m.group(0)) and \
-                (targets(words if "involve" in m.group(0) else low[max(0, m.start() - 8):m.start()] + words)
-                 or any(re.search(rf"\b(?:{rx})\b", words) for rx, _ in ACTIVITIES)):
+                (targets(w1 if "involve" in m.group(0) else low[max(0, m.start() - 8):m.start()] + w1)
+                 or any(re.search(rf"\b(?:{rx})\b", w1) for rx, _ in ACTIVITIES)):
             continue  # (`tests involving grappling`, `… one of the four physical attributes`: which tests, not a condition)
         return ("activated" if act else "conditional"), words
     return ("activated" if act else None), None
@@ -519,18 +529,36 @@ def _garbled(words):
     return None
 
 
+# a serial list going on past a comma: `, security, or law enforcement personnel`, `, or from, a rural setting`; an item opening with a pronoun or
+# a verb is a new clause (`, they gain`, `, and is reduced`), not the list's
+_ITEM = r"(?!(?:you|they|he|she|it|we|this|these|those|which|who|then|also|but|so|gains?|receives?|gets?|grants?|adds?|suffers?|may|can|cannot|must|will|is|are|was|were|has|have|does|do|increas\w*|reduc\w*)\b)[a-z][a-z'-]*"
+_MORE = r"(?:\s+(?!(?:and|or|nor)\b)" + _ITEM + r"){0,3}"  # (an item's next words: `law enforcement personnel`, not `… personnel and the user`)
+_LIST_ON = re.compile(r",\s+(?:(?:or|and)\s+[a-z]+,\s+" + _ITEM + _MORE + r"|(?:" + _ITEM + _MORE + r",\s+){1,4}?(?:or|and)\s+" + _ITEM + _MORE + r")", re.I)
+# a new subject after a list, with no comma: `… law enforcement personnel and the user gains +1 Reaction` (the list's condition ends there)
+_NEW_SUBJECT = re.compile(r"\s+(?:and|but)\s+(?:(?:the|a|an|his|her|their|its|your)\s+[a-z-]+(?:\s+[a-z-]+)?|you|they|he|she|it)\s+(?:also\s+)?"
+                          r"(?:[a-z]+s|can|may|must|will|gain|get|receive|suffer|take|lose|add)\b", re.I)
+
+
 def _cond_words(s, at):
     """The condition's words: its clause from the condition word (`when you can be smelled`), up to twelve words (no more of the book than that)."""
-    clause = re.split(r"[,;:]|(?<!\bMr)(?<!\bMrs)(?<!\bMs)(?<!\bDr)(?<!\bSt)\.", re.sub(r"\s*\((?:see )?pp?\.[^)]*\)", "", s[at:]), maxsplit=1)[0]  # (less a page citation)
+    clause = re.split(r"[;:]|(?<!\bMr)(?<!\bMrs)(?<!\bMs)(?<!\bDr)(?<!\bSt)\.", re.sub(r"\s*\((?:see )?pp?\.[^)]*\)", "", s[at:]), maxsplit=1)[0]  # (less a page citation)
+    c, first, cap = -1, None, 12
+    while (c := clause.find(",", c + 1)) >= 0 and (m := _LIST_ON.match(clause, c)):
+        first, cap = c if first is None else first, max(cap, len(clause[:m.end()].split()))
+        c = m.end() - 1  # (a list goes on past its commas: `military, security, or law enforcement personnel`, `living in, or from, a rural setting`)
+    if cap > 16:  # (a list too long to state: its first item, as before)
+        c, cap = first, 12
+    clause = clause[:c] if c >= 0 else clause
+    clause = _NEW_SUBJECT.split(clause, maxsplit=1)[0]  # (`… or Seoulpa Ring members and the user gains +1 Reaction`: a new subject, a new clause)
     clause = re.split(r"(?<=[a-z0-9)]) (?=(?:Sometimes|Starting|Considered|The|This|These|It|You|They|There|However|Additionally|Also|Each|Every|Unlike)\b)", clause, maxsplit=1)[0]  # (a sentence run into this one with no full stop: `… firing two or more barrels Sometimes you just need …`)
-    words = " ".join(clause.split()[:12]).strip().lower()
+    words = " ".join(clause.split()[:cap]).strip(" ,").lower()
     cut = re.split(r"\s+and (?:suffer|cannot|can't|lose|take)\b|\s+(?:suffers?|gains?|receives?|may add|may not)\b", words)[0]  # (`while moving faster … and suffer a -1 penalty`: the penalty is the effect)
     words = re.sub(r"\s+(?:you|they|he|she|it)$", "", cut) if cut != words else words  # (`once per game session you may add …`)
     if words.count(")") > words.count("("):  # (a close with no open: the clause began inside a parenthesis, `… the allergen)`)
         words = words.rstrip(") ")
     if words.count("(") > words.count(")"):  # (cut inside a parenthesis: `… a tense situation (only`: without the open one)
         words = words[:words.rfind("(")].strip()
-    if len(clause.split()) > 12:  # (cut at twelve words: not on a dangling article or preposition)
+    if len(clause.split()) > cap:  # (cut at twelve words: not on a dangling article or preposition)
         words = re.sub(r"(?:\s+(?:the|a|an|of|to|for|and|or|with|in|on|at|by|as|than|that|which))+$", "", words)
     return words or None
 
@@ -667,6 +695,77 @@ def _clauses(s):
     return [p for p in parts if p.strip()] if len(parts) > 1 else [s]
 
 
+def _qualified(s, kind):
+    """The words after the test name, up to the verb, that limit the effect to what they name (`Edge on Con tests to blend in`, `tests made in your
+    Home Ground gain an Edge`, `Survival tests in frigid environments`, `tests versus inhaled toxins`), or None."""
+    if not (qual := _QUALIFIER.search(s)):
+        return None
+    q_, e_ = qual.group("q"), qual.end("q")
+    while (lm := _LIST_ON.match(s, e_)) and not _NEW_SUBJECT.match(s, e_) and (nx := re.match(r"[^.;,]*", _NEW_SUBJECT.split(s[lm.end():], maxsplit=1)[0])):
+        q_, e_ = q_ + s[e_:lm.end()] + nx.group(0), lm.end() + nx.end()  # (`with military, security, or law enforcement personnel`: the whole list)
+    q_ = re.split(r"\s+(?:gains?|receives?|gets?|grants?|for use on)\b", q_, maxsplit=1)[0].strip(" ,")
+    # (the tests are named before it, `Con (Disguise) tests to hide their metatype`: what follows limits them, whatever words it holds)
+    head_ = any(t.startswith(("skill:", "test:", "derived:", "action:")) for t, _ in targets(re.split(r"\b(?:gains?|receives?|gets?|grants?|adds?|provides?)\b", s[:qual.start("q")])[-1], kind))
+    limiter_ = re.match(r"to resist\b", q_ or "") and not re.fullmatch(r"to resist (?:all |any |the )?(?:(?:physical|stun|matrix) )?(?:damage|drain|fading|toxins?|spells?|magic|attacks?)", re.sub(r"\s*\([^)]*\)", "", q_))  # (`rolls to resist cold-based attacks`)
+    if re.match(r"(?:related|relating|pertaining) to\b", q_ or "") and (targets(q_, kind) or _activity(q_)):
+        return None  # (`tests related to balance`: the specialization, not a limit)
+    if q_ and ((not targets(q_, kind) and not _activity(q_)) or head_ or limiter_) and re.search(r"\b(?:edge|dice|die|bonus|modifier|penalty|(?:gain|spend)\w*)\b|[+-]\s?\d", s, re.I):
+        return " ".join(q_.split()[:12]).casefold()
+    return None
+
+
+# where a sentence's clauses meet: `, while|whereas …`; `, and|but|or …` opening a clause (`, and you gain`, `, and an additional two Minor Actions`,
+# `, or +2 DV`), not a list's last item (`Stealth, Piloting, and Navigation tests`); a dash; `… and provides|can|gains …` (a second verb of the subject)
+_SUB_SPLIT = re.compile(r"(?<=, )(?=(?:while|whereas)\b|(?:and|but|or) (?:a|an|the|this|that|these|those|you|they|he|she|it|its|their|his|her|your|if|when|whenever|while|also|then|"
+                        r"can|may|must|cannot|will|is|are|has|have|gains?|grants?|provides?|adds?|receives?|suffers?|each|every|any|all|no|in|on|one|two|three|four|[+-]?\s?\d)\b)|"
+                        r"(?<=[a-z][—–])(?=[a-z])|(?<=[a-z] [—–-] )(?=[a-z])|(?<=[a-z0-9)] )(?=and (?:(?:the|this|that|its|their|your|his|her) [a-z-]+ (?:[a-z-]+ )?|you |they |he |she |it )?(?:also )?"
+                        r"(?:can|may|will|must|gains?|gets?|creates?|provides?|grants?|receives?|adds?|offers?)\b)", re.I)
+
+
+def _scoped(got, s, kind, label, when, rules):
+    """The sentence's condition on its effects, each from its own clause: `+2 Reaction, +2 Agility, and two additional Minor Actions that
+    involve physical movement` limits the Minor Actions only. An effect's clause is the first of the sentence's clauses (`_SUB_SPLIT`) that
+    states it read alone (`rules`); a clause stating none that opens with a condition or `but` (`…, while jumped in`, `…, but it is limited to
+    blades`) is the clause before's. The condition stays when it is in a sentence-initial condition clause (`During this phase, …`), the effect's
+    own clause, or a clause before it that states nothing (`… brought low when the drug wears off, and the user suffers -1 Willpower`), or
+    when the effect's clause points back to it (`…, and you gain +1 DV to those attacks`); else the effect takes its own clause's condition, or none."""
+    n = " ".join(s.split())
+    at = n.casefold().find(when)
+    lead = _CONDITION.match(n, len(n) - len(n.lstrip("•*- "))) and re.match(r"[^,;]*,\s+", n)
+    start = lead.end() if lead else 0
+    if at < start:  # (not found: -1)
+        return got
+    cuts = sorted({start} | {m.start() for m in _SUB_SPLIT.finditer(n) if m.start() > start})
+    parts = []  # [(start, end, text, {(target, op, value)})]
+    for a, b in zip(cuts, cuts[1:] + [len(n)]):
+        t = n[a:b].strip(" ,;—–-")
+        fx = {(x[1]["target"], x[1]["op"], x[1]["value"]) for x in rules(t) if x[0] == "effect"}
+        if parts and not fx and re.match(r"but\b|" + _CONDITION.pattern, re.sub(r"^(?:and|or) ", "", t.casefold())):
+            parts[-1] = (parts[-1][0], b, n[parts[-1][0]:b].strip(" ,;—–-"), parts[-1][3])
+        else:
+            parts.append((a, b, t, fx))
+    cond = next((p for p in parts if p[0] <= at < p[1]), None)
+    if len(parts) < 2 or cond is None:
+        return got
+    for x in got:
+        if x[0] != "effect" or x[1].get("when") != when or x[1].get("switch") != "conditional":
+            continue
+        key = (x[1]["target"], x[1]["op"], x[1]["value"])
+        home = next((p for p in parts if key in p[3]), None) or next((p for p in parts if key[:2] in {k[:2] for k in p[3]}), None)
+        if home is None or home is cond or cond[0] < home[0] and (not cond[3] or re.search(r"\b(?:those|these|such|the same)\b", home[2], re.I)):
+            continue  # (no clause states it alone; the condition is its own clause's, or a clause's before it that states nothing; `those attacks`)
+        sw2, w2 = _sw(home[2], label)
+        if sw2 is None:
+            w2 = _qualified(home[2], kind)
+        elif sw2 != "conditional":
+            continue  # (a switch of its own: left as the sentence reads it)
+        if w2:
+            x[1]["when"] = w2
+        else:
+            x[1].pop("switch"), x[1].pop("when")
+    return got
+
+
 def _unplaced(s, sw, when, kind=None):
     """`-1 dice pool modifier to any fine manipulations using the webbed digits`: a dice modifier on tests the reader knows no target of is
     on `test:other`, the words naming them its condition; on every test or action, `test:all`."""
@@ -676,7 +775,8 @@ def _unplaced(s, sw, when, kind=None):
         if re.search(r"penalt", m.group(0), re.I) and not v.startswith("-"):
             v = "-" + v
         words = re.sub(r"\s*\([^)]*\)?", "", m.group("t"))  # (a parenthesis: a citation, an aside)
-        words = re.split(r"\s+and\s+(?=[+-]?\d|one\b|an?\b|you\b|they\b|suffers?\b|takes?\b|the\b)|,\s|;\s|:\s|\s+but\s+", words)[0]  # (the next clause is another effect's)
+        words = _LIST_ON.sub(lambda lm: lm.group(0).replace(",", "\0"), words)  # (a list's commas are no clause's end: `people living in, or from, a rural setting`)
+        words = re.split(r"\s+and\s+(?=[+-]?\d|one\b|an?\b|you\b|they\b|suffers?\b|takes?\b|the\b)|,\s|;\s|:\s|\s+but\s+", words)[0].replace("\0", ",")  # (the next clause is another effect's)
         words = re.sub(r"^(?:their |your |the )?dice pool\s+", "", words)
         words = re.sub(r"^when (?:making|rolling) (?:any|all) (?:tests?|rolls?)\b", "tests", words)
         words = " ".join(words.split()[:12]).strip(" ,").casefold()
@@ -774,19 +874,10 @@ def read(text, kind=None, name=None, cls=""):
                     a["switch"], a["when"] = a.get("switch") or "conditional", (a["when"] + ", " if a.get("when") else "") + q
             continue
         sw, when = _sw(s, label)
+        sw_when = when if sw == "conditional" else None  # (the condition _sw took: _scoped checks it is the effect's own clause's)
         q_cond = None
-        if sw is None and (qual := _QUALIFIER.search(s)):
-            # (`Edge on Con tests to blend in`, `tests made in your Home Ground gain an Edge`, `Survival tests in frigid environments`, `tests versus inhaled toxins`: the words after the
-            # test name, up to the verb, limit the effect to what they name)
-            q_ = re.split(r"\s+(?:gains?|receives?|gets?|grants?|for use on)\b", qual.group("q"), maxsplit=1)[0].strip(" ,")
-            # (the tests are named before it, `Con (Disguise) tests to hide their metatype`: what follows limits them, whatever words it holds)
-            head_ = any(t.startswith(("skill:", "test:", "derived:", "action:")) for t, _ in targets(re.split(r"\b(?:gains?|receives?|gets?|grants?|adds?|provides?)\b", s[:qual.start("q")])[-1], kind))
-            limiter_ = re.match(r"to resist\b", q_ or "") and not re.fullmatch(r"to resist (?:all |any |the )?(?:(?:physical|stun|matrix) )?(?:damage|drain|fading|toxins?|spells?|magic|attacks?)", re.sub(r"\s*\([^)]*\)", "", q_))  # (`rolls to resist cold-based attacks`)
-            if re.match(r"(?:related|relating|pertaining) to\b", q_ or "") and (targets(q_, kind) or _activity(q_)):
-                q_ = None  # (`tests related to balance`: the specialization, not a limit)
-            if q_ and ((not targets(q_, kind) and not _activity(q_)) or head_ or limiter_) and re.search(r"\b(?:edge|dice|die|bonus|modifier|penalty|(?:gain|spend)\w*)\b|[+-]\s?\d", s, re.I):
-                sw, when = "conditional", " ".join(q_.split()[:12]).casefold()
-                q_cond = when
+        if sw is None and (q_cond := _qualified(s, kind)):
+            sw, when = "conditional", q_cond
         if (refund := _REFUND.search(s)) and _BONUS_ACTION.search(s):
             # (`a bonus Minor Action on a turn when you extend the blades`: the Minor Action it cost, handed back; the switch stays, the trigger is the condition)
             when = " ".join(refund.group(0).split()[:12]).strip(" ,").casefold()
@@ -869,6 +960,8 @@ def read(text, kind=None, name=None, cls=""):
         here = []
         resist = _RESIST_OF.search(s)
         got = _rules(s, kind, sw, when, edge_actions, label, ai, last_named, name)
+        if sw == "conditional" and when and when in (sw_when, q_cond):  # (a condition from _sw or the words after the tests: each effect's own clause's)
+            got = _scoped(got, s, kind, label, when, lambda t: _rules(t, kind, None, None, edge_actions, label, ai, last_named, name))
         rs = _RESIST_CLAUSE.search(s)
         if rs and not others and not _EDGE_OTHERS.search(s):
             # (`Edge when resisting Intimidation`, `+1 die to resist Manipulation spells`: the defender's, not the attacker's skill or the casting of the spell)
@@ -955,6 +1048,13 @@ def read(text, kind=None, name=None, cls=""):
                     x[1]["affects"] = _edge_who(s, who) if x[1]["op"] in _EDGE_OPS and who != "others" else who
                 elif x[1]["op"] in _EDGE_OPS and (_EDGE_OTHERS.search(s) or (_THEY_EDGE.search(s) and re.search(r"\byour?\b", s, re.I))) and not re.search(r"\byou (?:also |then )?(?:gain|receive|get|may gain|can gain)\b[^.;]*\bedge", s, re.I):
                     x[1]["affects"] = "others"  # (`the opposing individual gains a point of Edge`: theirs, not the owner's)
+                if kind == "spells" and x[1]["op"] in _EDGE_OPS and x[1]["target"] == "test:other" and (cm := re.match(r"(?:when|while) casting (?:the|this) spell\b\s*", x[1].get("when") or "")):
+                    # (`Gain +1 Edge when casting the spell if the object is narrow`: the caster's Edge on the casting test, Sorcery (Spellcasting))
+                    x[1].update(target="skill:sorcery", spec="Spellcasting", affects="caster")
+                    if x[1]["when"][cm.end():]:
+                        x[1]["when"] = x[1]["when"][cm.end():]
+                    else:
+                        x[1].pop("when"), x[1].pop("switch", None)
                 if low_formula:
                     x[1]["confidence"] = "low"
                 if per_n and re.fullmatch(r"-?1", x[1]["value"]):
@@ -999,7 +1099,7 @@ def read(text, kind=None, name=None, cls=""):
         if k in at:
             for f in ("when", "spec"):
                 w0, w1 = uniq[at[k]][1].get(f), x[1].get(f)
-                if w1 and w0 and w1 not in w0.split(", "):
+                if w1 and w0 and f", {w1}, " not in f", {w0}, ":  # (the words may hold commas themselves: `yakuza, bunraku puppets, or …`)
                     uniq[at[k]][1][f] = f"{w0}, {w1}"
             continue
         at[k] = len(uniq)
