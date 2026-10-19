@@ -276,6 +276,9 @@ test('an ended session asks to sign in again over the page and keeps the unsaved
 })
 
 test('someone else signing in over the page: the unsaved change is never sent', async ({ page, context }) => {
+  // the page reloads on purpose, without "leave this page?": a dismissed prompt would keep Pat's page up (it once did)
+  const dialogs: string[] = []
+  page.on('dialog', d => (dialogs.push(d.type()), void d.dismiss()))
   await signIn(page, 'pat', PW.pat2)
   await openRunner(page, 'Pat Runner Two')
   await context.clearCookies()
@@ -297,6 +300,7 @@ test('someone else signing in over the page: the unsaved change is never sent', 
   await expect(page.getByLabel('Street name')).toHaveValue('Pat Runner Two')
   await page.waitForTimeout(500)
   expect(sent).toHaveLength(before)
+  expect(dialogs).toEqual([])
 })
 
 test('someone else signing in in another tab: this page’s change is refused, never saved as theirs', async ({ page, context }) => {

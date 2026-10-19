@@ -160,8 +160,9 @@ function LinkAuthelia({ open, onClose }: { open: boolean; onClose: () => void })
 // ended (expired, signed out elsewhere, disabled). ponytail: wraps window.fetch once; XHR uploads call sessionEnded().
 let expired: (() => void) | null = null
 /** held: no session to save under. Set the moment a 401 is seen (or on sign-out); only the same account signing back in
- *  clears it, so an unsaved change is never sent under someone else's session. */
-export const session = { held: false }
+ *  clears it, so an unsaved change is never sent under someone else's session. discarding: the page reloads on purpose
+ *  and drops what isn't saved (someone else signed in, sign-out), so the editor doesn't ask "leave this page?". */
+export const session = { held: false, discarding: false }
 /** Runner saves in flight (repo.ts tracks every server save and delete): sign-out waits for them before ending the session. */
 const saving = new Set<Promise<unknown>>()
 export function track<T>(p: Promise<T>): Promise<T> {
@@ -225,6 +226,7 @@ export async function signOut(force = false, wait = SIGN_OUT_WAIT): Promise<bool
   session.held = true
   await fetch('./api/auth/logout', { method: 'POST' }).catch(() => {})
   location.hash = '#/'
+  session.discarding = true
   location.reload()
   return true
 }
