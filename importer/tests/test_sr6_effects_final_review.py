@@ -269,5 +269,62 @@ class BookRowReplaceTest(unittest.TestCase):
                     self.assertTrue(d.get("target") and d.get("op"), (f, r.get("id")))
 
 
+def links(text, kind="qualities"):
+    return [a for t, a, _ in effects.links(text, kind)]
+
+
+class BookCorrectionPatternsTest(unittest.TestCase):
+    """The book corrections that were reader mistakes (docs/reviews/sr6-book-corrections-patterns-2026-10-19.md, Tier 1), now rules."""
+
+    def test_initiative_dice_written_nd6_and_one_removed(self):
+        self.assertEqual(fx("A zapbot's base initiative is Reaction + Pilot, with 3D6 Initiative Dice.", "augmentations")[0][:3], ("derived:initiative-dice", "set", "3"))
+        got = fx("When swallowed, the drug lowers the target's Reaction by 1 and removes one Initiative Die.", "gear")
+        self.assertIn(("derived:initiative-dice", "add", "-1"), [g[:3] for g in got])
+        self.assertEqual(fx("You can never have more than 5D6 Initiative Dice.", "rules"), [])  # (a cap)
+
+    def test_damage_the_wearer_takes_is_damage_reduction_not_a_weapons_dv(self):
+        self.assertEqual(fx("The zap plate reduces the Damage Value of any attack by 1 point.", "armor")[0][:3], ("derived:damage-reduction", "add", "1"))
+        self.assertEqual(fx("It reduces incoming DV by its rating.", "armor")[0][:3], ("derived:damage-reduction", "add", "R"))
+        self.assertEqual(fx("This zap reduces incoming Damage Value (DV) by 2 times its rating.", "armor")[0][:3], ("derived:damage-reduction", "add", "R*2"))
+
+    def test_the_owners_own_bonus_is_not_someone_elses(self):
+        self.assertIsNone(fx("+2 to Athletics for those with Flight specialization.", "vehicles")[0][6])
+        self.assertIsNone(fx("You don't gain Edge when making social tests to sell zap you have found.")[0][6])
+
+    def test_an_attribute_word_in_another_noun_is_no_attribute_test(self):
+        got = fx("You may use Strength or Agility for any grappling test, and you gain a bonus point of Edge on any grappling test.")
+        self.assertEqual([g[:2] for g in got], [("skill:close-combat", "edge")])
+        self.assertNotIn("test:attr-mag", [g[0] for g in fx("It gives a point of situational Edge on a zap test against attacks of toxic magic.")])
+        self.assertEqual(fx("Any tests made here that include the Magic attribute gain a point of Edge.")[0][:2], ("test:attr-mag", "edge"))  # (kept)
+        self.assertIn(("test:attr-agi", "no-edge"), [g[:2] for g in fx("The zapper may not spend Edge on any action linked to a Physical Attribute (Agility, Body).")])
+
+    def test_an_honorific_ends_no_sentence(self):
+        got = fx("Gain a bonus point of Edge when making Negotiation tests with fixers and Mr. Johnsons.")
+        self.assertEqual(got[0][4], "when making negotiation tests with fixers and mr. johnsons")
+
+    def test_a_specialization_by_another_word_takes_its_own_name(self):
+        self.assertEqual(fx("Gain a bonus point of Edge to use on Sprint or Swimming tests.")[0][5], "Sprinting, Swimming")
+        self.assertEqual(fx("Gain a point of Edge on tests to disguise oneself, or to impersonate someone.", "augmentations")[0][5], "Disguise, Impersonation")
+
+    def test_the_cost_of_an_edge_boost_on_an_activity(self):
+        got = fx("Reduce the cost of an Edge boost by 1 used during a grapple test.", "augmentations")
+        self.assertEqual(got[0][:3], ("skill:close-combat", "edge-cost", "-1"))
+
+    def test_grants_named_after_their_kind_with_a_list_in_brackets_and_in_a_drugs_effect(self):
+        self.assertEqual(links("Zappers gain the critter power Immunity (Pathogens, Toxins) with a rating of 2."),
+                         [{"rel": "grants", "name": "Immunity", "kind": "critterpowers", "level": "2", "when": "Pathogens, Toxins"}])
+        self.assertEqual(links("**Adept:** Free Zap Control power", "mentorspirits"), [{"rel": "grants", "name": "Zap Control", "kind": "adeptpowers", "when": "adept"}])
+        self.assertEqual(links("You get the Allergy (zaps, mild) quality."), [{"rel": "grants", "name": "Allergy", "kind": "qualities", "when": "zaps, mild"}])
+        self.assertEqual(links("**Effect:** -1 Logic, High Zap Tolerance (p. 72, SR6), Confused 2", "gear"), [{"rel": "grants", "name": "High Zap Tolerance", "book": "crb"}])
+        self.assertEqual(links("See the Zap quality (p. 72)."), [])  # (a cross-reference: see_links reads it)
+
+    def test_threshold_wordings_and_no_test_description(self):
+        self.assertEqual(fx("Useful for climbing tests, reducing thresholds by 1 for each zap.", "augmentations")[0][:3], ("skill:athletics", "threshold", "-1"))
+        self.assertEqual(fx("All tactile Perception tests you make have their threshold increased by 1.", "augmentations")[0][:4], ("skill:perception", "threshold", "1", None))
+        self.assertEqual(fx("Note: -1 for all repair test thresholds", "vehicles")[0][:3], ("skill:engineering", "threshold", "-1"))
+        self.assertEqual(fx("Their threshold for Surprise tests is 1.")[0][:3], ("test:surprise", "threshold-set", "1"))
+        self.assertEqual(fx("Make a Perception (3) test to spot the zap; a threshold of 2 to notice it.", "gear"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
