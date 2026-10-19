@@ -523,6 +523,15 @@ def _rank(free):
 # a cyberlimb printed by its part and kind (`cyberarm (obvious left, …)`): the catalog's `Arm (obvious)`; printed without
 # its kind (`cyberarm (Agility 5, …)`, CRB p.87), the obvious one: CRB p.290 prices both, and the Street Samurai's
 # printed nuyen holds only the obvious arm's
+# (owner, 2026-10-19) a name the core rulebook's archetypes print for a catalog entry the matcher can't find: a
+# misspelling (`Dalmation`, `tranceivers`), a longer name (`… rigger command console`), another name (`dataline tap`,
+# `long coat`), or the Uzi V that CRB p.255's weapon table prints as Uzi IV. By norm(); the book's text stays in the note.
+MISPRINTS = {"proteus poseidon rigger command console": "Proteus Poseidon",
+             "cyberspace designs dalmation drone": "Cyberspace Designs Dalmatian",
+             "micro tranceiver": "Micro-transceiver", "micro tranceivers": "Micro-transceiver",
+             "dataline tap": "Data tap", "uzi v": "Uzi IV", "long coat": "Lined coat"}
+
+
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
 
 
@@ -534,6 +543,9 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     m = re.match(r"(?:(\d+)\s*x\s+)?(.*)", item.strip(), re.I)
     qty, rest = int(m.group(1) or 1), m.group(2)
     base = re.split(r"\s*\(|\s+w/", rest, maxsplit=1)[0].strip()
+    as_printed = rest
+    if to := MISPRINTS.get(norm(base)):
+        rest, base = to + rest[len(base):], to
     printed = re.search(r"\b(?:device\s+)?rating\s*(\d+)", rest, re.I)
     printed = printed and int(printed.group(1))
     tail = re.fullmatch(r"(.*?)\s+(\d{1,2})", base)  # `muscle toner 1`: rating 1 (`Beretta 201`: a model)
@@ -570,7 +582,11 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     if hit[0] == "armor":  # (the one worn: the highest Defense Rating, set in build)
         worn.append((int(d.group()) if (d := re.search(r"\d+", hit[3].get("attrs", {}).get("defense") or "")) else 0, n))
     grade = hit[0] == "augmentations" and re.search(r"\((?:[^()]*\W)?(alpha|beta|delta|used)(?:ware)?\s*\)", rest, re.I)
-    note = note or (rest if norm(rest) != norm(hit[2]) else None)
+    note = note or (as_printed if norm(as_printed) != norm(hit[2]) else None)
+    # `reagents (20 drams)`: a quantity in the unit the entry is priced per (`Reagents, per dram`)
+    u = re.search(r"\((\d+)\s+([a-z]+?)s?\)", rest, re.I)
+    if qty == 1 and u and re.search(rf"\bper {u.group(2).lower()}\b", norm(hit[2])):
+        qty = int(u.group(1))
     ha = hit[3].get("attrs", {})
     low = re.match(r"\s*(\d*)", ha.get("rating") or "").group(1)  # unrated: the lowest it comes in (budgets.ts ratingOf)
     gf = cs.get(f"grade:{grade.group(1).lower()}:cost", 1) if grade else 1  # (an add-on has its implant's grade, CRB p. 282)
@@ -595,14 +611,19 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
     for i, a in enumerate(x.strip() for x in listed if x.strip()):
         if hit[0] == "weapons":
             break  # (_carried reads a weapon's)
-        c = re.fullmatch(r"(\d+)\s+(.*)", a)  # (`10 sheets electronic paper`: 10 of it)
+        c = re.fullmatch(r"(\d+)\s+(?:x\s+)?(.*)", a)  # (`10 sheets electronic paper`, `4 x supplies`: that many)
         count, a = (int(c.group(1)), c.group(2)) if c else (1, a)
         t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
         an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
         ok = lambda e: _rated(ar)(e) and (holds or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I)))  # noqa: E731
         searched = list(dict.fromkeys([hit[0], *kinds, "gear"]))
         got = idx.find(searched, an, accept=ok) or _worded(idx, searched, an)  # (a vehicle's spoof kit is gear)
-        if not got or norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
+        # (a medkit's `4 x supplies`: a count of the host's own Medkit supplies, bought apart however its text names them;
+        # never the host itself, `Bone lacing (titanium)`)
+        kit = not got and c and idx.find(searched, f"{base} {an}", loose=False)
+        kit = kit if kit and kit[1] != hit[1] else None
+        got = got or kit
+        if not got or not kit and norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
             continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
         took = re.fullmatch(r"\s*\[\s*(\d+|rating)\s*\]\s*", got[3].get("attrs", {}).get("capacity") or "", re.I)
         room += (ar or 1 if took.group(1).lower() == "rating" else int(took.group(1))) if took else 0

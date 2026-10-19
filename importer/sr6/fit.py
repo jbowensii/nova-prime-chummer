@@ -1,8 +1,8 @@
 """The priorities a book's sample runner (importer/sr6/archetypes.py) was most likely built with: of the 120 ways to give
 the letters A-E to the five columns, the one that overspends least for the build the stat block prints; when even that
-one overspends, Sum-to-Ten's assignments too (SWC p.28: any letters whose values add up to at most sumToTenTarget),
-taken when one overspends less. Magic (or Resonance) above the magic priority's rating and Edge go on adjustment
-points, what's left of those on the metatype's raised attributes; the core attributes on attribute points; skill ranks
+one overspends or leaves Karma or nuyen past the carry-over limits, Sum-to-Ten's assignments too (SWC p.28: any
+letters whose values add up to at most sumToTenTarget), taken when one overspends less or leaves fewer past them.
+Magic (or Resonance) above the magic priority's rating and Edge go on adjustment points, what's left of those on the metatype's raised attributes; the core attributes on attribute points; skill ranks
 on skill points, a specialization on the points still left. Whatever a pool can't hold is bought with karma, the
 cheapest ranks first, and nuyen past the resources with karma turned into nuyen. Assignments are compared on, in
 order: power points past the Magic rating (an adept's), Karma past the starting Karma, the count of leftovers past the
@@ -292,10 +292,11 @@ def spend(need, rows, cs):
 
 def fit(need, priorities, cs):
     """The build of the letter assignment that overspends least (see spend), or None when none holds the runner: the
-    priority system's (each letter once) first; when the best of those overspends, Sum-to-Ten's too (SWC p.28: any
-    letters whose values add up to at most sumToTenTarget), taken when it overspends less (its build's method
-    "sumtoten"). priorities: letter -> {letter, metas (name lower-cased -> adjustment points), attributes, skills, magic
-    (kind -> rating), nuyen}."""
+    priority system's (each letter once) first; when the best of those overspends or leaves Karma or nuyen past the
+    carry-over limits, Sum-to-Ten's too (SWC p.28: any letters whose values add up to at most sumToTenTarget), taken
+    when it overspends less or leaves fewer past the limits (owner, 2026-10-19; its build's method "sumtoten").
+    priorities: letter -> {letter, metas (name lower-cased -> adjustment points), attributes, skills, magic (kind ->
+    rating), nuyen}."""
     # the letters the runner takes (priorityLetters: a level of play's, street-level's B C C D E), each priced at the row
     # below it at street level (levelStreet, CRB Hong Kong p.63: E stays E), as providers.ts reads them
     want = cs.get("priorityLetters") or "ABCDE"
@@ -311,8 +312,8 @@ def fit(need, priorities, cs):
         return out
     got = best(sorted(set(itertools.permutations(want))), "priority")
     value, target = {L: cs.get(f"letterValue:{L}") for L in "ABCDE"}, cs.get("sumToTenTarget")
-    if (got is None or got[0][:2] > (0, 0)) and isinstance(target, float) and all(isinstance(v, float) for v in value.values()):
+    if (got is None or got[0][:3] > (0, 0, 0)) and isinstance(target, float) and all(isinstance(v, float) for v in value.values()):
         s10 = best((ls for ls in itertools.product(sorted(set(want)), repeat=5) if sum(value[L] for L in ls) <= target), "sumtoten")
-        if s10 and (got is None or s10[0][:2] < got[0][:2]):
+        if s10 and (got is None or s10[0][:3] < got[0][:3]):
             got = s10
     return got and {**got[1], "over": got[0][1]}  # (over: the Karma still past the starting Karma)
