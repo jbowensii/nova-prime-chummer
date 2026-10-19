@@ -857,9 +857,9 @@
       "our_id": "crb.hydraulic-jacks",
       "field": "rating",
       "cl6": "1–8",
-      "ours": "",
+      "ours": "1–6",
       "page": "CRB p290",
-      "reason": "owner 2026-10-19: book range (1–6), not Commlink6's 1–8; our entry holds no rating (the page text prints none)"
+      "reason": "owner 2026-10-19: 1–6 (the range Body Shop p.148 prints for its critter hydraulic jacks; the core rulebook prints none), not Commlink6's 1–8; set by an owner row in crb.json"
     },
     {
       "src": "dc",
