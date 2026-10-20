@@ -1,3 +1,5 @@
+> **Superseded** by the functional design in `docs/architecture/README.md`: the owner ruled that the split must be by functionality, not by layer or folder. Kept for its measurements.
+
 # Splitting Nova Prime Chummer into chunks (2026-10-20)
 
 Gossipcat consensus review (consensus `7b470047-1c334066`): Opus measured the repo, ChatGPT reviewed coupling and
