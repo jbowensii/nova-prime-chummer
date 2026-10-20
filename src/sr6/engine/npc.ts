@@ -222,6 +222,8 @@ export interface Sr6NpcThing {
   match?: Sr6NpcMatch
   /** how many (a weapon's ammunition: one full load) */
   qty?: number
+  /** an attack printed with stats the app can't roll (Cybercombat, a DV it can't read): kept as a note item */
+  unread?: true
   accessories: Sr6NpcThing[]
 }
 /** The line parts that hold things, and the catalog kinds a thing on one is looked for in, the first kind first. */
@@ -236,6 +238,8 @@ const POWER_KINDS: Record<'being' | 'person', Sr6Kind[]> = {
   person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms'],
 }
 const DEVICES = new Set<Sr6Kind>(['electronics', 'augmentations', 'programs'])
+/** an attack's printed stats: a bracket, a DV, an attack rating, a damage (`4P`) or range bands (`9/—`) */
+const STAT_SIGN = /\[|\bDV\b|\bAR\b|attack ratings?|\d\s*[PS]\b|\d\s*\/\s*(?:\d|[—–-])/i
 const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack/i
 const ACCESSORY_KINDS: Sr6Kind[] = ['weapons', 'armor', 'electronics', 'gear', 'augmentations', 'programs']
 const ATTACK_SKILLS = new Set(['close combat', 'exotic weapons', 'firearms', 'athletics'])
@@ -342,7 +346,8 @@ function readStats(stats: string[], rating: number | undefined) {
     if ((m = t.match(/^(?:w\/|with\s)\s*(.+)$/i))) {
       fitted = true
       accessories.push(...m[1].split(/\s+(?:and|&)\s+|\s*\+\s*/i))
-    } else if (v.dv == null && !dvText && (m = t.match(/^(?:DV\s*)?(\[[^\]]*\]|\([^)]*\)|\d+)\s*\(?([PS])\)?(?![a-z])/i))) {
+    } else if (v.dv == null && !dvText && (m = t.match(/^(?:DV\s*)?(\[[^\]]*\]|\([^)]*\)|F(?:\s*[x×*/+\-–]\s*\d+)*|\d+)\s*\(?([PS])\)?(?![a-z])/i))) {
+      // a number, a bracketed formula, or a bare one of the Force (`F/2P`, `F + 2 S`, `F x2P`): dv only when it reads
       dvText = t.replace(/^DV\s*/i, '')
       const n = valueAt(m[1].replace(/^[[(]|[\])]$/g, ''), rating)
       if (n != null) Object.assign(v, { dv: n, stun: m[2].toUpperCase() === 'S' })
@@ -568,8 +573,13 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2
       if (found && s.values.rating != null) found.entry = atLevel(c, found.entry.kind, found.entry.id, s.values.rating) ?? found.entry
       const entry = found?.entry
-      // (a Cybercombat attack is a Matrix action, not a weapon)
-      if (!entry && attack && ((s.values.dv == null && !s.values.ar && !s.dvText) || /cybercombat/i.test(s.category ?? ''))) continue
+      // An attack it can't roll (a Cybercombat one is a Matrix action; another prints no DV or attack ratings it reads): an
+      // item that is no weapon, its printed line kept (unread), when it prints stats at all; a bare name or book text the
+      // reader ran into the line stays in the notes only.
+      if (!entry && attack && ((s.values.dv == null && !s.values.ar && !s.dvText) || /cybercombat/i.test(s.category ?? ''))) {
+        if (STAT_SIGN.test(printed)) out.push({ part: l.part, printed, name, kind: 'gear', unread: true, values: s.values, accessories: [] })
+        continue
+      }
       const kind: Sr6Kind = entry
         ? entry.kind
         : attack

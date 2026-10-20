@@ -214,6 +214,26 @@ test('npc-combat-items: a generic “commlink” is the category’s standard it
   ])
 })
 
+test('npc-combat-items: a bare Force formula DV (`DV F/2P`) reads at the Force; without one it stays text', () => {
+  const lines = { attacks: 'Made-up Swipe [DV F/2P, (F x 2)/—/—/—/—] Made-up Lash [DV F + 1S, 8/—/—/—/—]' }
+  const spirit = exportNpc(npc('spirit', lines, 4), data, c).items
+  expect(by(spirit, 'Made-up Swipe')).toMatchObject({ kind: 'weapons', attrs: { dv: 'F/2P' }, values: { dv: 2, stun: false, ar: [8, null, null, null, null] } })
+  expect(by(spirit, 'Made-up Lash').values).toMatchObject({ dv: 5, stun: true })
+  // a critter has no Force: the DV stays text (a weapon still, the GM sets its damage)
+  const critter = exportNpc(npc('critter', lines), data, c).items
+  expect(by(critter, 'Made-up Swipe')).toMatchObject({ kind: 'weapons', attrs: { dv: 'F/2P' } })
+  expect(by(critter, 'Made-up Swipe').values).not.toHaveProperty('dv')
+})
+
+test('npc-combat-items: an attack it can’t roll is kept as a note item with its line (never dropped); a bare name stays in the notes', () => {
+  const x = exportNpc(npc('critter', { attacks: 'Made-up Zap [Cybercombat, DV 2, AR 8] Made-up Gas [DV GZ 6S, DV Close 4S] Made-up Wave' }), data, c).items
+  expect(x.map(i => [i.name, i.kind, i.line.unread])).toEqual([
+    ['Made-up Zap', 'gear', true],
+    ['Made-up Gas', 'gear', true],
+  ])
+  expect(by(x, 'Made-up Zap').line.printed).toBe('Made-up Zap [Cybercombat, DV 2, AR 8]')
+})
+
 test('npc-combat-items: nameRatio is the importer’s difflib ratio', () => {
   // python: difflib.SequenceMatcher(None, a, b).ratio()
   expect(nameRatio('ares predator vi', 'ares predatr vi')).toBeCloseTo(0.9677, 4)

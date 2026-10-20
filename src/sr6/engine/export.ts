@@ -214,7 +214,7 @@ export interface Sr6ExportNpc {
  *  standard item, or a weapon's regular ammunition, `<weapon uid>:ammo`, qty one full load). */
 export interface Sr6ExportNpcItem extends Omit<Sr6ExportPurchase, 'accessories'> {
   level?: number
-  line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string; match?: Sr6NpcMatch }
+  line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string; match?: Sr6NpcMatch; unread?: true }
   accessories: Sr6ExportNpcItem[]
 }
 export interface Sr6ExportLifestyle {
@@ -623,7 +623,7 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6
     worn: base.kind === 'armor',
     bonuses: [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
-    line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match }),
+    line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match, unread: t.unread }),
     accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`)),
   })
 }

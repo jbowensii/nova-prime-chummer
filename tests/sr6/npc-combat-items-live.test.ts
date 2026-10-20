@@ -103,13 +103,17 @@ test.skipIf(!LIVE)(
           notRolled.push({
             npc: name,
             printed: p,
-            why: x.items.some(i => i.line.printed === p)
-              ? 'a catalog item that is not a weapon'
-              : /cybercombat/i.test(p)
-                ? 'a Cybercombat (Matrix) attack, not a weapon'
-                : !/\[|\d\s*[PS]\b|\//.test(p) && (p.length > 40 || /^[a-z*]/.test(p))
-                  ? 'book text the reader ran into the line, or a footnote'
-                  : 'no catalog weapon of that name, and no DV or attack ratings it can read',
+            why: x.items.some(i => i.line.printed === p && i.line.unread)
+              ? /cybercombat/i.test(p)
+                ? 'kept as a note item: a Cybercombat (Matrix) attack'
+                : 'kept as a note item: printed stats it can’t roll'
+              : x.items.some(i => i.line.printed === p)
+                ? 'a catalog item that is not a weapon'
+                : /cybercombat/i.test(p)
+                  ? 'a Cybercombat (Matrix) attack, not a weapon'
+                  : !/\[|\d\s*[PS]\b|\//.test(p) && (p.length > 40 || /^[a-z*]/.test(p))
+                    ? 'book text the reader ran into the line, or a footnote'
+                    : 'no catalog weapon of that name, and no DV or attack ratings it can read',
           })
       if (!weapons.length) noneRollable.push(name)
     }

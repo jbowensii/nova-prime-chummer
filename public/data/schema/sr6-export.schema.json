@@ -1116,7 +1116,8 @@
               "type": "string"
             },
             "values": {
-              "type": "object"
+              "description": "The numbers the stat block prints (a subset of values).",
+              "$ref": "#/$defs/values"
             },
             "dv": {
               "type": "string"
@@ -1142,6 +1143,10 @@
                   ]
                 }
               }
+            },
+            "unread": {
+              "description": "An attack printed with stats the app can't roll (a Cybercombat one, a DV it can't read): an item that is no weapon.",
+              "const": true
             }
           }
         },
