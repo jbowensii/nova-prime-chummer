@@ -552,11 +552,11 @@ const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times =
 const leveled = (data: Sr6Data, e: Sr6Entry | undefined, level: number | undefined) =>
   e && data.family(e.kind, e.id)?.parent === e ? (data.atLevel(e.kind, e.id, level ?? Math.min(...data.family(e.kind, e.id)!.levels.keys())) ?? e) : e
 
-function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true): Sr6ExportPurchase {
+function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true, host?: Sr6Purchase): Sr6ExportPurchase {
   const e = leveled(data, entryOf(x, data), x.rating)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
   const base = e ? item(c, data, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
-  const one = priced({ ...x, qty: 1, accessories: [] }, data, cr),
+  const one = priced({ ...x, qty: 1, accessories: [] }, data, cr, host && priced({ ...host, accessories: [] }, data, cr)),
     values = { ...base.values }
   for (const k of ['cost', 'avail', 'essence'] as const) if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
   if (!e && x.rating !== undefined) values.rating = x.rating
@@ -571,7 +571,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     worn: !!x.worn,
     note: x.note,
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1),
-    accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false)),
+    accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
     mount: x.mount,
     diy: x.diy,
     ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),

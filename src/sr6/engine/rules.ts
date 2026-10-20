@@ -1562,8 +1562,8 @@ const RULES: Rule[] = [
     tab: 'gear',
     check: c => {
       const hits: Hit[] = []
-      for (const { x, path } of lines(c.b)) {
-        if (priced({ ...x, accessories: [] }, c.data, c.cr).ok) continue
+      for (const { x, path, host } of lines(c.b)) {
+        if (priced({ ...x, accessories: [] }, c.data, c.cr, host && priced({ ...host, accessories: [] }, c.data, c.cr)).ok) continue
         const e = entryOf(x, c.data)
         hits.push({ path, message: `${nameOf(c, x)}: a cost, Availability or Essence the app can’t read counts as 0.`, ...entryCite(e) })
       }
@@ -1577,8 +1577,8 @@ const RULES: Rule[] = [
     tab: 'gear',
     check: c => {
       const hits: Hit[] = []
-      for (const { x, path } of lines(c.b)) {
-        const { notes } = priced({ ...x, accessories: [] }, c.data, c.cr)
+      for (const { x, path, host } of lines(c.b)) {
+        const { notes } = priced({ ...x, accessories: [] }, c.data, c.cr, host && priced({ ...host, accessories: [] }, c.data, c.cr))
         if (notes.length) hits.push({ path, message: `${nameOf(c, x)}: ${notes.join('; ')}.`, ...entryCite(entryOf(x, c.data)) })
       }
       return hits
@@ -1912,12 +1912,30 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
   }
   // the catalog's own problems (data.ts), only for entries this runner uses (and the priority table): not every book's
   // (a level's entry, levels.ts, carries its family's parent's problems: the parent is the id the catalog warns under)
-  const families = [...JSON.stringify(ch.build).matchAll(/"id":"([^"]+)"/g)].flatMap(m => {
-    const e = [...PURCHASE_KINDS, ...PICK_KINDS, 'qualities' as const].map(k => data.entry(k, m[1])).find(Boolean)
-    return e?.attrs.family ? [e.attrs.family] : []
-  })
-  const used = JSON.stringify(ch.build) + JSON.stringify(families)
-  out.push(...data.problems.filter(v => v.path.startsWith('priorities.') || used.includes(`"${v.path.slice(v.path.indexOf('.') + 1)}"`)))
+  // (kind-qualified for the kinds whose ids repeat across kinds: the spell crb.armor is not the augmentation crb.armor; any other kind
+  // by its id alone. An object with no kind of its own (a quality) is read as a quality.)
+  const KQ = new Set<string>([...PURCHASE_KINDS, ...PICK_KINDS, 'qualities'])
+  const keys = new Set<string>()
+  const walk = (o: unknown): void => {
+    if (!o || typeof o !== 'object') return
+    if (Array.isArray(o)) return o.forEach(walk)
+    const r = o as Record<string, unknown>
+    if (typeof r.id === 'string') {
+      const kind = typeof r.kind === 'string' && KQ.has(r.kind) ? r.kind : 'qualities'
+      keys.add(`${kind}.${r.id}`)
+      const fam = data.entry(kind as 'qualities', r.id)?.attrs.family
+      if (fam) keys.add(`${kind}.${fam}`)
+    }
+    Object.values(r).forEach(walk)
+  }
+  walk(ch.build)
+  const used = JSON.stringify(ch.build)
+  out.push(
+    ...data.problems.filter(v => {
+      const kind = v.path.slice(0, v.path.indexOf('.'))
+      return v.path.startsWith('priorities.') || (KQ.has(kind) ? keys.has(v.path) : used.includes(`"${v.path.slice(kind.length + 1)}"`))
+    }),
+  )
   const approved = new Set(ch.overrides.map(o => `${o.code}|${o.path}`))
   return out.map(v => (approved.has(`${v.code}|${v.path}`) && !v.hard ? { ...v, approved: true } : v))
 }
