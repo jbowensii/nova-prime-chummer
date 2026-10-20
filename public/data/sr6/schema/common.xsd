@@ -849,6 +849,7 @@
       <xs:element name="skills" type="xs:string" minOccurs="0"/>
       <xs:element name="powers" type="xs:string" minOccurs="0"/>
       <xs:element name="optionalPowers" type="xs:string" minOccurs="0"/>
+      <xs:element name="spells" type="xs:string" minOccurs="0"/>
       <xs:element name="weaknesses" type="xs:string" minOccurs="0"/>
       <xs:element name="attacks" type="xs:string" minOccurs="0"/>
       <xs:element name="augmentations" type="xs:string" minOccurs="0"/>

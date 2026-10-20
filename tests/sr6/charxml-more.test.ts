@@ -217,7 +217,7 @@ test('an NPC block: a kind, stats with valid keys and short values, lines of a k
   expect(fix).toEqual([
     'Dropped stat 1: the key “Bad” isn’t 1 to 20 letters a to z.',
     'The NPC kind “robot” isn’t known: set to grunt.',
-    'Dropped line 1: line part “nope” (not one of skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons).',
+    'Dropped line 1: line part “nope” (not one of skills, powers, optionalPowers, spells, weaknesses, attacks, augmentations, gear, weapons).',
   ])
 })
 

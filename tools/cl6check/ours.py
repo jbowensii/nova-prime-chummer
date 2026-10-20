@@ -182,7 +182,9 @@ def _entries(src_dir, src):
                         "attrs": attrs, "families": families(e, kind),
                         "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
                         # where the importer found a value the row leaves out (resolve.py): field -> how
-                        "found": {x.get("field"): x.get("how") for x in e.findall("found")}})
+                        "found": {x.get("field"): x.get("how") for x in e.findall("found")},
+                        "found_at": {x.get("field"): f"{x.get('source', '')} p{x.get('page', '')}".strip()
+                                     for x in e.findall("found")}})
     return _inline_refs(out)
 
 

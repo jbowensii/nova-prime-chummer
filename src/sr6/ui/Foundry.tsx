@@ -1,4 +1,4 @@
-// Export for the Chummer SR6 importer in Foundry VTT (jbowensii/chummer-sr6-foundry, system shadowrun6-eden): Chummer SR6
+// Export for the Nova Prime Chummer — SR6 Importer in Foundry VTT (jbowensii/chummer-sr6-foundry, system shadowrun6-eden): SR6
 // export v1 files (docs/sr6-export-format.md). Runners and NPCs from their lists and editors (Anarchy's dialog), book data on
 // Game data (GMs), a compendium from its page.
 import { useState } from 'react'
@@ -12,7 +12,7 @@ import type { Sr6Catalog } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
 
 /** ExportRunnersDialog's line for SR6 */
-export const SR6_FOUNDRY_ABOUT = 'For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.'
+export const SR6_FOUNDRY_ABOUT = 'For the Nova Prime Chummer — SR6 Importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.'
 export const sr6ExportOpts = (descriptions: boolean): Sr6ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })
 export const sr6RunnersFileName = (now: Date, stem = 'runners') => `${stem}-${fileDate(now)}.sr6foundry.json`
 export const sr6BooksFileName = (now: Date) => `books-${fileDate(now)}.sr6foundry.json`
@@ -51,8 +51,8 @@ export function Sr6ExportBooksPanel({ c, data }: { c: Sr6Catalog; data: Sr6Data 
     <section aria-label="Export book data for Foundry" className="stack">
       {/* (its heading is the fold's, src/ui/GameData.tsx) */}
       <p className="muted">
-        For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your corrections. Compendiums export from
-        their own page.
+        For the Nova Prime Chummer — SR6 Importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your corrections. Compendiums
+        export from their own page.
       </p>
       <div className="row">
         <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Shared types for every Chummer Anarchy 2.0 data file. See docs/data-format.md. -->
+<!-- Shared types for every Nova Prime Chummer Anarchy 2.0 data file. See docs/data-format.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:ca2="urn:chummer-anarchy2:data:1"
            targetNamespace="urn:chummer-anarchy2:data:1"

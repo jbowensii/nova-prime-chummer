@@ -7,8 +7,10 @@ Output: a first line `<!-- regrouped v1 -->`, then blocks in reading order, each
 labelled lines, a blank line, its text, `<!-- end -->`."""
 import collections
 import difflib
+import itertools
 import json
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass, field, replace
 
@@ -18,7 +20,7 @@ HEAD = f"<!-- regrouped v{VERSION} -->"
 _PAGE = re.compile(r"<!-- page (\d+) -->$")
 _HEADING = re.compile(r"(#{1,6}) (.+)$")
 _SEP = re.compile(r"\|(?:-+\|)+$")
-_LABEL = re.compile(r"(•\s*)?\*\*([^*]+?):\*\*\s*(.*)$")
+_LABEL = re.compile(r"(•\s*)?\*\*([^*]+?)\*?:\*\*\s*(.*)$")  # (a footnote mark on the label: `**Spells*:**`)
 # a field printed with its value inside the bold (`**Activation: Passive**`): the fields a power or quality prints
 _BOLD_FIELD = re.compile(r"(•\s*)?\*\*(Activation|Action|Type|Range|Duration|Cost|Bonus|Power Points):\s+([^*]+?)\*\*")
 _SENTENCE_END = re.compile(r"[.!?][)\]”’\"']*$")
@@ -792,7 +794,9 @@ class _Unit:
         return bool(self.stats) or self.box_labels
 
     def has_text(self):
-        return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in self.body)  # (a box's footnote isn't)
+        # (a box's footnote isn't, nor the text from the first line set aside after its labelled lines on: _foreign)
+        own = itertools.takewhile(lambda b: not getattr(b, "after", False), self.body)
+        return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in own)
 
 
 # a first header that is a name column's own word, not a class of things (`FORMULAE`, `GRENADES`)
@@ -819,6 +823,34 @@ _FOOTNOTE_ROW = re.compile(r"\s*[*†‡]")
 _FOOTNOTE_LINE = re.compile(r"\s*(?:\*(?!\*)|[†‡])")  # a footnote printed under a table (not a bold label: `**Note:**`)
 _FIELD_HEAD = re.compile(r"(?:Karma\s+)?(?:Bonus|Cost)|Game\s+Effects?")
 _NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Za-z]")
+# prose: a sentence ending and the next beginning, or eight plain words in a row (a stat line's entries are a word or
+# three between commas and brackets)
+_PROSE = re.compile(r"[a-z]{2}[.!?][”’\"')]*\s+[A-Z]|(?:\b[A-Za-z][a-z’'-]*\s+){7}[A-Za-z][a-z’'-]*\b")
+_MARK = re.compile(r"\s*(?:\*|[†‡]|//)")  # a footnote, a bold run-in or an art title (`// **VODYANOY** //`)
+_MID_LABEL = re.compile(r"(?<=[^\s;])\s+\*\*([A-Z][A-Za-z ()/]{1,30}?)\*?:\*\*\s*")  # (not `; **Powers:**`: the readers')
+
+
+def _foreign(value, last, v, ahead):
+    """True when line v, after a labelled line whose value is open (`**Attacks:**` + its entries), is no part of it:
+    the value has an entry and is not broken off (no open bracket, no trailing comma or hyphen), and v is a footnote,
+    a bold run-in or an art title (the next entry's: Wild Life), or, after an entry closed (`…, 8/—/—/—/—]`), starts
+    prose (with the lines ahead: the paragraph after the block, a page's column or the back cover, Cutting Black
+    p. 176). A value the book prints as prose (`**Augmentations:** Spyder has a mix of …`, a note) goes on."""
+    depth = sum(value.count(c) for c in "[(") - sum(value.count(c) for c in "])")
+    if not value.strip() or depth > 0 or re.search(r"[,;/(&+–-]$", last.rstrip()):
+        return False
+    if _MARK.match(v):
+        return True
+    closed = re.search(r"(?:[])]|/[—–-])$", last.rstrip())
+    return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
+
+
+def _explains(value, v):
+    """True when line v starts a sentence on the value's last entry, by its name (`Fichetti Pain Inducer [Fichetti …,
+    20 charges]` + `The Fichetti Pain Inducer utilizes pulse microwave technology …`, The Needle's Eye p. 125): the
+    entry's note, the value's to its sentence's end."""
+    m = re.search(r"(?:^|[])])\s*([^][()]{3,40}?)\s*\[[^][]*\]$", value.strip())
+    return bool(m) and re.match(rf"(?:The\s+)?{re.escape(m.group(1))}\b\s+[a-z]", v.strip(), re.I) is not None
 
 
 def _is_label(level, text):
@@ -846,6 +878,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
     variant = ""  # the variant line over the next table of a box
     fresh = False  # nothing taken since the item heading (a "(tags)" heading may follow)
     label = None  # (unit, key) of the labelled line still open for a wrapped value
+    explaining = explained = None  # the label whose value goes on with a sentence on its last entry (_explains); ended
     last = ""  # the open label's last line
     listy = False  # the open label's value starts on the next line
     i = start
@@ -1006,11 +1039,31 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
                 targets, key = label
+                ahead = [e[2] for e in itertools.takewhile(lambda e: e[0] == "x" and not _LABEL.match(e[2]),
+                                                           els[i:min(i + 2, end)])]
+                banded = cur.stats or any(isinstance(b, _Table) and {"B", "A", "R", "S"} <= set(b.header) for b in cur.body)
+                if banded and explaining is not label and _explains(targets[0][key], v):
+                    explaining = label  # (a sentence on the entry above, `The Fichetti Pain Inducer utilizes …`: the value's)
+                elif banded and (explained is label or explaining is not label and _foreign(targets[0][key], last, v, ahead)):
+                    label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
+                    cur.body.append(v)  # (a being's band in its text too: after shadowtalk)
+                    continue
+                # (a label printed after the value's last wrap, on its line: `+2), **Knowledge Skills:** Awakened …`,
+                # Whisper Nets p. 120: the rest of the line starts it)
+                mid = _MID_LABEL.search(v) if banded else None
                 for d in targets:
-                    prev = d[key]
-                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
-                    d[key] = joined + v.strip()
+                    prev, part = d[key], v[:mid.start()].rstrip(" ,;") if mid else v.strip()
+                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and part[:1].islower() else prev + " " if prev else ""
+                    d[key] = joined + part
                 last = v
+                if explaining is label and _SENTENCE_END.search(v.strip()) \
+                        and sum(map(targets[0][key].count, "[(")) <= sum(map(targets[0][key].count, "])")):  # (not `(p.`)
+                    explained = label  # (the sentence on the entry ends the value: what follows is the block's text)
+                if mid:
+                    key, value = mid.group(1).strip(), v[mid.end():].strip()
+                    label = ([cur.labels], key) if key not in cur.labels else None
+                    cur.labels.setdefault(key, value)
+                    listy = not value
                 if mode == "box":
                     continue
             else:
@@ -1501,16 +1554,47 @@ def _emit(units):
     return out
 
 
+_COVER = re.compile(r"catalystgamelabs\.com|\bISBN\b|Under License From|Topps Company", re.I)
+
+
+def back_cover(md):
+    """The PDF page where the book's back cover and what follows it start (None: no back cover found). Of the last five
+    pages, the last that prints the back cover's furniture (the publisher's site, an ISBN, the licence line) and no
+    heading or table; with the pages before it that are part of it: such pages, nearly empty ones (`FIN`) and ones set
+    in spaced or vertical lettering (one or two letters a line). Everything from there on is the cover's (its blurb,
+    an ad, a map key printed after it), never an entry's: the blurb joined the last stat block (Cutting Black p. 178).
+    A page with a heading, a table row or a labelled line (`**Attacks:** …`: a short last stat block) is never the
+    cover's: the cut starts after it."""
+    parts = re.split(r"<!-- page (\d+) -->", md)
+    pages = [(int(n), [ln for ln in t.splitlines() if ln.strip()]) for n, t in zip(parts[1::2], parts[2::2])]
+    content = lambda ls: any(ln.startswith(("#", "|")) or _LABEL.match(ln) for ln in ls)  # noqa: E731
+    furniture = lambda ls: _COVER.search("\n".join(ls)) and not content(ls)  # noqa: E731
+    letters = lambda ls: sum(c.isalpha() for ln in ls for c in ln)  # noqa: E731
+    cover = next((k for k in range(len(pages) - 1, max(len(pages) - 6, -1), -1) if furniture(pages[k][1])), None)
+    if cover is None:
+        return None
+    while cover > 0 and not content(ls := pages[cover - 1][1]) and (
+            ls == [] or furniture(ls) or letters(ls) < 40 or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls)):
+        cover -= 1
+    return pages[cover][0]
+
+
 def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=False):
     """md: book.md. Returns (regrouped text, report rows). end_page: the PDF page where the back matter (index,
-    reprinted tables) starts; it and the pages after it are left out. variants: a catalog's name-only rows name the
-    rows under them (_variants)."""
+    reprinted tables) starts; it and the pages after it are left out (default: the back cover's, back_cover).
+    variants: a catalog's name-only rows name the rows under them (_variants)."""
     name_headers = {h.upper() for h in name_headers}
+    cover = None if end_page else back_cover(md)
+    end_page = end_page or cover
     els = list(_elements(md))
     els = _back_prices([e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page])
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
+    if cover:  # (a cut is never silent: the import log and the import report name its pages)
+        last = int(re.findall(r"<!-- page (\d+) -->", md)[-1])
+        print(f"back cover: cut PDF pages {cover}-{last}", file=sys.stderr)
+        report.append({"kind": "back-cover", "page": cover, "pages": last - cover + 1})
     # each chapter's table row names, for price_list's reprint test (a later chapter printing the rows again)
     rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
     # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
@@ -1561,7 +1645,7 @@ def _continuations(units):
             if tail and not _SENTENCE_END.search(tail[0].strip()):
                 prev.body += [b for b in u.body if isinstance(b, str)]
                 u.body = [b for b in u.body if not isinstance(b, str)]
-                if u.box_labels:
+                if u.box_labels and not getattr(texts[0], "after", False):  # (text after a box's labels: the text only)
                     for k, v in u.labels.items():
                         prev.labels.setdefault(k, v)
                     u.labels, u.box_labels = {}, False

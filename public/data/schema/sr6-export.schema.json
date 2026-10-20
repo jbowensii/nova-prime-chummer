@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:chummer-sr6:export:1",
-  "title": "Chummer SR6 export v1",
-  "description": "Shadowrun 6 runners, NPCs or book data from Chummer Anarchy 2.0 (docs/sr6-export-format.md). Every number in values is Chummer’s own; attrs and parts keep the entry as printed. The envelope, book and NPC block allow extra properties so later minor additions stay readable; the runner, items, purchases and values are closed (unevaluatedProperties false where a def extends item).",
+  "title": "SR6 export v1",
+  "description": "Shadowrun 6 runners, NPCs or book data from Nova Prime Chummer (docs/sr6-export-format.md). Every number in values is Chummer’s own; attrs and parts keep the entry as printed. The envelope, book and NPC block allow extra properties so later minor additions stay readable; the runner, items, purchases and values are closed (unevaluatedProperties false where a def extends item).",
   "type": "object",
   "required": [
     "format",

@@ -107,11 +107,23 @@ python -m tools.cl6check --ours .extract/cl6check-runsNN --out .extract/cl6check
   It measures per-book runs too, but they have no cross-book links, so they read lower.
 - cl6check reads the library's single `custom/sr6`. The PDF check uses each book's own `original.pdf`.
 
-Expected on main: effects `parity: 1079/1079`, completeness 4,476/4,476, class a 0, accuracy with class b as printed
+Expected on main: effects `parity: 1079/1079`, completeness 4,474/4,474, class a 0, accuracy with class b as printed
 4,307/4,307.
 
 **Rule:** a change to the reader, the overrides, `run.py` or `resolve.py` runs both gates: the replay (main and the
 branch, 0 differing rows) and a fresh `import --library` with the branch, which must read the numbers above.
+
+## The final analysis (2026-10-20)
+
+`python -m tools.cl6check.final_analysis --ours <library import> --printings <per-book runs>` builds the owner's two
+lists in docs/reviews/sr6-cl6-final-analysis-2026-10-20.md:
+- every Commlink6 record that no book of ours prints;
+- every change we made to Commlink6's data, with its page or ruling.
+
+It rewrites only the part between the doc's two markers. With `--check` it recomputes the counts and prints
+`counts reconcile: ok` when they match the doc's totals table (exit 1 if they don't). It also reads the records the
+reader leaves out (`reader.read(jar, listing)`) and the jar's German-only (`de_*`) and Misc. (US) (`other_us`) books,
+which the reader skips.
 
 ## Value and structure overrides (2026-10-14)
 

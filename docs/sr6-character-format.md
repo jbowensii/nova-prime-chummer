@@ -261,7 +261,7 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
 - `kind`: `grunt`, `contact` (one of the book's sample contacts), `critter`, `spirit` or `sprite`; `rating` the
   Professional Rating, Force or Level; `group` a grunt's.
 - `<stat key value>`: a printed value (key `a`–`z`, at most 20 letters; value at most 80 characters, e.g. `F+1`).
-- `<line part>`: `skills`, `powers`, `optionalPowers`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
+- `<line part>`: `skills`, `powers`, `optionalPowers`, `spells`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
 - A critter the GM designs (the Design tab, `src/sr6/engine/critterdesign.ts`) has `designed="true"`, its
   initiative dice in `dice`, and after its lines `<power id? name level? note?>` and `<weakness id? name level? note?>`
   (catalog critter powers by id; none: not in the catalog) and `<skill id? name rank spec?>`. Its `skills`, `powers`

@@ -1,4 +1,4 @@
-// Export for the Foundry importer module (jbowensii/chummer-anarchy2-foundry): Chummer Anarchy export v1 files
+// Export for the Foundry importer module (jbowensii/chummer-anarchy2-foundry): Anarchy 2.0 export v1 files
 // (docs/export-format.md). Runners from the editor and the runner list; book data on Game data (GMs).
 import { useState } from 'react'
 import { exportBooks, exportRunners, type ExportOpts } from '../engine'
@@ -56,7 +56,7 @@ export function ExportRunnersDialog<R extends Exportable>({
   onClose,
   noun = 'runner',
   download,
-  about = 'For the Chummer Anarchy 2.0 importer in Foundry VTT: upload the file there with Import from Chummer.',
+  about = 'For the Nova Prime Chummer — Anarchy 2 Importer in Foundry VTT: upload the file there with Import from Chummer.',
 }: {
   runners: R[]
   campaigns: Campaign[]
@@ -204,8 +204,8 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
     <section aria-label="Export book data for Foundry" className="stack">
       {/* (its heading is the fold's, GameData.tsx) */}
       <p className="muted">
-        For the Chummer Anarchy 2.0 importer in Foundry VTT. The books go out as this app sees them, with your corrections, house rules and the table rules
-        switched on.
+        For the Nova Prime Chummer — Anarchy 2 Importer in Foundry VTT. The books go out as this app sees them, with your corrections, house rules and the table
+        rules switched on.
       </p>
       <div className="row">
         <button className="btn small quiet" onClick={() => setPicked(new Set(all.map(s => s.id)))}>

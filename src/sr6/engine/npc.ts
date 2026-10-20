@@ -195,6 +195,7 @@ const PART_LABELS: Record<(typeof SR6_NPC_PARTS)[number], string> = {
   skills: 'Skills',
   powers: 'Powers',
   optionalPowers: 'Optional powers',
+  spells: 'Spells',
   weaknesses: 'Weaknesses',
   attacks: 'Attacks',
   augmentations: 'Augmentations',

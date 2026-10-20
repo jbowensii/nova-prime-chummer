@@ -1,4 +1,4 @@
-# SR6 export format (Chummer SR6 export v1)
+# SR6 export format (SR6 export v1)
 
 One JSON file of Shadowrun 6 runners, NPCs or book data, read by the Foundry VTT importer module
 `jbowensii/chummer-sr6-foundry` (module id `chummer-sr6-importer`, system `shadowrun6-eden`). It is separate from the SR6

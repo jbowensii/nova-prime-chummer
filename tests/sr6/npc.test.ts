@@ -183,6 +183,16 @@ test('a skill with its pool, or as printed; the line parts each kind uses', () =
   const boss = npcFromEntry(entry('npcs', 'crb.lot-boss'), undefined, NOW)
   expect(npcPools(boss.npc!, data).map(poolText)).toEqual(['Gab 5 (pool 10)', 'Tinkering 3 (pool 6)', 'Close Combat 6'])
   expect(npcParts('sprite').map(([k]) => k)).toEqual(['skills', 'powers'])
-  expect(npcParts('grunt').map(([, l]) => l)).toEqual(['Skills', 'Powers', 'Optional powers', 'Weaknesses', 'Attacks', 'Augmentations', 'Gear', 'Weapons'])
+  expect(npcParts('grunt').map(([, l]) => l)).toEqual([
+    'Skills',
+    'Powers',
+    'Optional powers',
+    'Spells',
+    'Weaknesses',
+    'Attacks',
+    'Augmentations',
+    'Gear',
+    'Weapons',
+  ])
   expect(npcParts('critter')).toEqual(npcParts('spirit'))
 })
