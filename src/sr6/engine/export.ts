@@ -1,4 +1,4 @@
-// Chummer SR6 export v1 (docs/sr6-export-format.md; schema public/data/schema/sr6-export.schema.json): Shadowrun 6
+// SR6 export v1 (docs/sr6-export-format.md; schema public/data/schema/sr6-export.schema.json): Shadowrun 6
 // runners, NPCs, books and GM compendiums as JSON for the Foundry importer module (jbowensii/chummer-sr6-foundry). Every number is the
 // engine's own (deriveSr6, priced, rated, npcValues), from the runner as it stands; each entry also keeps its printed
 // values (attrs, parts). Pure: no DOM.
