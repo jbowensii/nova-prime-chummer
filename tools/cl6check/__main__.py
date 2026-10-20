@@ -200,6 +200,9 @@ def run_library(books_file, out, md_from=None):
     import shutil
     lines = [ln.strip().split("|", 1) for ln in open(books_file, encoding="utf8") if "|" in ln]
     lib, custom = os.path.join(out, "library", "sr6"), os.path.join(out, "custom", "sr6")
+    # only ever clear a folder this command made: new/empty, or with its own import.log (never an app's data folder)
+    if os.path.isdir(out) and os.listdir(out) and not os.path.isfile(os.path.join(out, "import.log")):
+        sys.exit(f"{out}: not empty and not an earlier `import --library` output; refusing to clear it")
     for d in (os.path.join(out, "library"), os.path.join(out, "custom")):  # (only inside the scratch dir)
         shutil.rmtree(d, ignore_errors=True)
     os.makedirs(lib)
