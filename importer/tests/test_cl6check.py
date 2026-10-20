@@ -467,6 +467,14 @@ class OptionalPackageTest(unittest.TestCase):
         self.assertEqual([e["name"] for e in extras], ["Other"])  # (the relocated entry is not an extra)
         m = report.metrics(results, extras, {}, {"jar": "", "ours": "", "when": ""})
         self.assertEqual((m["optional_package"], m["accuracy"]["matched"]), (1, 2))  # (no entry to compare for the first)
+        for both in (({("gz", "aaa"): {}}, {("gz", "aaa"): {"our_id": "kz.moved"}}),  # (a record in two lists: counted twice)
+                     ({("gz", "aaa"): {}}, {}, {("gz", "aaa"): {"our_id": "kz.moved"}})):
+            with self.assertRaisesRegex(ValueError, "aaa"):
+                cli.compare([a, b, c], mine, pdf=False, package=both)
+
+    def test_no_record_is_both_optional_and_relocated(self):
+        optional, _ = optional_package.load()
+        self.assertEqual(set(optional) & set(optional_package.load_have()), set())
 
     def test_the_json_and_the_doc_list_the_same_records(self):
         import re

@@ -74,18 +74,6 @@
     },
     {
       "src": "da",
-      "cl6_id": "cougar_polearm_small",
-      "our_id": "da.knife",
-      "note": "Cougar Polearm (Small): already have under another name (A1); also da.one-hand, da.spear, da.pike"
-    },
-    {
-      "src": "da",
-      "cl6_id": "cougar_polearm_large",
-      "our_id": "da.knife",
-      "note": "Cougar Polearm (Large): already have under another name (A1); also da.one-hand, da.spear, da.pike"
-    },
-    {
-      "src": "da",
       "cl6_id": "ares_shadowstrider",
       "our_id": "da.ares-model-502-shadow-strider-cvw",
       "note": "Ares Shadowstrider: already have under another name (A1)"
