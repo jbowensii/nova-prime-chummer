@@ -145,12 +145,18 @@ The generated table at the end lists the 76 open items:
 - 68 `keep` rows that no longer settle any difference (harmless, can be pruned);
 - 1 Misc. (US) record to confirm (Buzzard Transit = Age of Rust's).
 
-Findings about the tools (not fixed here; each is an owner call):
+Findings about the tools:
 
-1. **cl6check counts two records twice.** The jar has 4,474 English records, not 4,476. The Cougar Polearm (Small)
-   and (Large) are in both `optional_package.json` (`optional`) and `relocated.json`. `compare()` in
-   `tools/cl6check/__main__.py` (lines 87 and 90) makes a result for each, so every report since then reads 4,476/4,476.
-   The fix is to drop them from one of the two files. The headline would then read 4,474/4,474.
+1. **Fixed in this PR: cl6check counted two records twice.** The jar has 4,474 English records, but earlier reports
+   read 4,476. The Cougar Polearm (Small) and (Large) were in both `optional_package.json` (`optional`) and
+   `relocated.json`, and `compare()` made a result for each.
+   - The pair now stays only in the optional package. CommLink6 composed each record from several of the book's rows
+     (docs/cl6check.md, `match.bundled`), and the relocation pointed at one of them, `da.knife`.
+   - `compare()` now refuses a record that is in both lists.
+   - Re-measured on runs28: completeness 4,474/4,474, owned pages 4,422/4,422, accuracy 4,050/4,307 strict and
+     4,307/4,307 with class b, class a 0. Effects stay at 1,079/1,079.
+
+   Items 2–4 are not fixed here; each is an owner call.
 2. **The `latest printing` class rests on the per-book runs of 2026-10-19** (runs26, made before PRs #91/#92). The 5
    rows it finds are the Control Rig price, Ultrasound sensor price, Mirrored Persona duration, and Fairlight Excalibur
    and Shiawase Cyber-6 availability. In each one the Berlin City Edition prints CommLink6's value. They are worth a

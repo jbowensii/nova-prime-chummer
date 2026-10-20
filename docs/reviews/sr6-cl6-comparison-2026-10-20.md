@@ -6,7 +6,7 @@ Analysis only: no code or data changed. Measured with `tools/cl6check` and `tool
 ## Bottom line
 
 - **Nothing went backwards between 10-19 and 10-20.** Rebuilding the saved import runs (runs26) with the
-  edfc978b code gives exactly the 10-19 numbers: 4,476/4,476 complete, 4,307/4,307 accurate with class b,
+  edfc978b code gives exactly the 10-19 numbers: 4,474/4,474 complete, 4,307/4,307 accurate with class b,
   class a 0, effects 1,079/1,079. No percentage moved.
 - **This is the first time the live production import has been measured, and it scores a bit lower:**
   accuracy 4,301/4,307 (99.86%), 5 class-a records, effects **1,058/1,079 (98.1%)**. The gap does not come
@@ -22,7 +22,7 @@ Analysis only: no code or data changed. Measured with `tools/cl6check` and `tool
 
 | Measure | 10-12 | 10-13/16 | 10-17 | 10-19 (runs, t3final) | 10-20 replay (runs26 + edfc978b) | **10-20 live** |
 |---|---|---|---|---|---|---|
-| Completeness, English records | 4,226/4,410 (95.83%) | 4,476/4,476 | 100% | 4,476/4,476 | 4,476/4,476 | **4,476/4,476** |
+| Completeness, English records | 4,226/4,410 (95.83%) | 4,474/4,474 | 100% | 4,474/4,474 | 4,474/4,474 | **4,474/4,474** |
 | Accuracy, strict | 89.82% | 4,082/4,307 (94.78%) | 93.17% | 4,049/4,307 (94.01%) | 4,049/4,307 (94.01%) | **4,044/4,307 (93.89%)** |
 | Accuracy, class b as printed | 92.0% | 4,304/4,307 (99.93%) | 98.28% | 4,307/4,307 (100%) | 4,307/4,307 (100%) | **4,301/4,307 (99.86%)** |
 | Class a (importer error), records | 99 (overstated) | 1 | 80 → 37, all owner-accepted | 0 | 0 | **5** |
@@ -35,6 +35,12 @@ Analysis only: no code or data changed. Measured with `tools/cl6check` and `tool
 | Effects parity (1,079 variables) | 0.9% (old metric) | left out | – | 1,079/1,079 | 1,079/1,079 (1,027 strict + 42 book-ruled + 10 placeholder) | **1,058/1,079** (1,007 + 41 + 10) |
 | Per-effect modifiers reproduced (informational) | – | – | – | 763/1,575 (48.44%) | 763/1,575 | 768/1,575 (48.76%) |
 | Book corrections (`gen="book"` rows) | – | – | – | 347 | 348 | 348 (same code) |
+
+**Completeness correction (PR #95).** These runs first reported 4,476/4,476. The jar has 4,474 English records. The
+Cougar Polearm (Small) and (Large) were in both `optional_package.json` and `relocated.json`, so each was counted
+twice. The pair is now in the optional package only, and cl6check refuses a record that is in both lists. Re-measured
+on the live-equivalent import (runs28): completeness 4,474/4,474 (owned pages 4,422/4,422), accuracy 4,050/4,307
+strict and 4,307/4,307 with class b, class a 0, 146 relocated, effects 1,079/1,079. The other numbers don't change.
 
 Book corrections, counted by parsing `importer/sr6/overrides/*.book.json` at each commit: fe98baae
 (10-18) 378, before Tier 2 362, b4c74b6f (10-19) 347, edfc978b 348. Tier 3 removed 9 rows, added 10 and
@@ -160,7 +166,7 @@ gate"). On main (edfc978b) it gives exactly the live numbers above. On this bran
 | Measure | Live / main, library import | This branch, library import |
 |---|---|---|
 | Effects parity | 1,058/1,079 (1,007 + 41 + 10) | **1,079/1,079** (1,027 strict + 42 book-ruled + 10 placeholder) |
-| Completeness | 4,476/4,476 | 4,476/4,476 |
+| Completeness | 4,474/4,474 | 4,474/4,474 |
 | Accuracy, strict | 4,044/4,307 (93.89%) | **4,050/4,307 (94.03%)** |
 | Accuracy, class b as printed | 4,301/4,307 (99.86%) | **4,307/4,307 (100%)** |
 | Class a | 5 | **0** |

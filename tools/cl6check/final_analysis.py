@@ -173,8 +173,6 @@ def lists(g):
     for r in g["results"]:
         c = by_kind.get((r["src"], r["kind"], r["id"]), {})
         add = added.get((r["src"], r["kind"], r["name"])) or added.get((r["src"], r.get("our_kind"), r["name"]))
-        if r["how"] in ("relocated", "already have") and (r["src"], r["id"]) in optional:
-            continue  # (a record in both the optional package and relocated.json has two results: the package's is listed)
         if r["kind"] == "ruleoptions":
             row1("rule options", r["src"], r["kind"], r["id"], r["name"], r["page"],
                  f"a rule setting of the app, no book item; ours is the rule preset {r['our_id'] or '(none)'}")

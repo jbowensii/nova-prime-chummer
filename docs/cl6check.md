@@ -107,7 +107,7 @@ python -m tools.cl6check --ours .extract/cl6check-runsNN --out .extract/cl6check
   It measures per-book runs too, but they have no cross-book links, so they read lower.
 - cl6check reads the library's single `custom/sr6`. The PDF check uses each book's own `original.pdf`.
 
-Expected on main: effects `parity: 1079/1079`, completeness 4,476/4,476, class a 0, accuracy with class b as printed
+Expected on main: effects `parity: 1079/1079`, completeness 4,474/4,474, class a 0, accuracy with class b as printed
 4,307/4,307.
 
 **Rule:** a change to the reader, the overrides, `run.py` or `resolve.py` runs both gates: the replay (main and the

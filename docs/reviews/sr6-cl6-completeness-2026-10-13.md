@@ -9,7 +9,7 @@ with no book and page, and CommLink6 pseudo-records are left out. Active effects
 
 | Measure | Value |
 |---|---|
-| Completeness, all English records | 4,476 / 4,476 = **100.0%** |
+| Completeness, all English records | 4,476 / 4,476 = **100.0%** (corrected 2026-10-20: 4,474 / 4,474. The Cougar Polearm pair was counted twice, PR #95) |
 | Completeness, pages we own | 4,424 / 4,424 = 100.0% |
 | Class match (our `class` = CommLink6 TYPE/SUBTYPE) | 2,353 / 2,353 = **100.0%** |
 | Accuracy, every compared field equal | 4,082 / 4,307 = 94.78% (was 91.49%) |

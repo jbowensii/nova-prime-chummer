@@ -42,7 +42,6 @@ def data():
                         result("gadget", "Gadget", "gz.gadget", diffs=[diff("cost", "10", "20")]),
                         result("range_9", "9 km", "gz.widget", how="relocated"),
                         result("bundle", "Bundle", how="optional package"),
-                        result("bundle", "Bundle", "gz.widget", how="already have"),
                         result("std", "Standard", "preset.std", kind="ruleoptions", how="already have")],
             "keep": [["gz", "gear", "gz.widget", "cost"], ["gz", "gear", "gz.widget", "variants"],
                      ["gz", "gear", "gz.gadget", "avail"]],
@@ -50,8 +49,7 @@ def data():
                                       "our_id": "gz.widget", "field": "avail", "cl6": "3", "ours": "4",
                                       "page": "GZ p11", "reason": "the table prints 4"}],
             "optional": [{"src": "gz", "cl6_id": "bundle", "name": "Bundle", "reason": "a construct"}],
-            "relocated": [{"src": "gz", "cl6_id": "range_9", "our_id": "gz.widget", "note": "a cell"},
-                          {"src": "gz", "cl6_id": "bundle", "our_id": "gz.widget", "note": "also"}],
+            "relocated": [{"src": "gz", "cl6_id": "range_9", "our_id": "gz.widget", "note": "a cell"}],
             "accept": [], "bookruled": [], "placeholder": [], "overrides": [], "keep_retired": [], "printings": {}}
 
 
@@ -59,7 +57,7 @@ class FinalAnalysis(unittest.TestCase):
     def test_lists(self):
         l1, l1b, l2, opened = fa.lists(data())
         groups = sorted((x["group"], x["id"]) for x in l1)
-        self.assertEqual(groups, [("Commlink6-invented or house content", "bundle"),  # (listed once)
+        self.assertEqual(groups, [("Commlink6-invented or house content", "bundle"),
                                   ("Commlink6-invented or house content", "range_9"),
                                   ("German-only books", "wurst"), ("German-rules duplicates", "dup"),
                                   ("no English name", "nameless"), ("other", "fan"), ("rule options", "std")])

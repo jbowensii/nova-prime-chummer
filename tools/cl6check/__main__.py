@@ -75,6 +75,8 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
     optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
     where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
     have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
+    if both := sorted(set(optional) & (set(relocated) | set(have))):  # (each list would make a result: the record counted twice)
+        raise ValueError(f"in both the optional package and relocated.json: {both}")
     moved = {id(where[r["our_id"]]) for r in [*relocated.values(), *have.values()] if r["our_id"] in where}
     for src, recs in sorted(by_src.items()):
         s = mine.get(src)
