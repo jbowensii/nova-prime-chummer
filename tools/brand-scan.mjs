@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(fileURLToPath(import.meta.url), '..', '..')
 const ROOTS = ['src', 'server', 'index.html', 'public', 'README.md', 'docs', 'e2e', 'tests', 'importer', 'unraid']
-// ponytail: history is not rewritten: reviews, dated plans/specs and public/data (data packs, schemas) are skipped
-const SKIP = ['public/data', 'docs/reviews', 'docs/superpowers', 'node_modules', 'importer/.venv']
+// ponytail: history is not rewritten: reviews, dated plans/specs and the public/data packs are skipped (schemas are scanned)
+const SKIP = ['docs/reviews', 'docs/superpowers', 'node_modules', 'importer/.venv']
 const TEXT = /\.(mjs|js|ts|tsx|css|html|md|xml|json|py|txt|xsd|yml|yaml)$/i
 
 // the token around each old name: "chummer-anarchy2-export", "urn:chummer-anarchy2:data:1", "Chummer Anarchy" ...
@@ -25,6 +25,8 @@ const files = []
 const walk = p => {
   const rel = relative(root, p).split(sep).join('/')
   if (SKIP.some(s => rel === s || rel.startsWith(s + '/'))) return
+  // data packs stay skipped (content, not branding); only the JSON schemas' title and description text is scanned
+  if (rel.startsWith('public/data/') && !rel.startsWith('public/data/schema')) return
   if (statSync(p).isDirectory()) return readdirSync(p).forEach(n => walk(join(p, n)))
   if (TEXT.test(p)) files.push([rel, p])
 }
