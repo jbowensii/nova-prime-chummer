@@ -4,9 +4,9 @@
 import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { Sr6Data } from './data'
-import { normName } from './names'
+import { matchKey, nameRatio, normName, quickRatio } from './names'
 import { atLevel } from './levels'
-import { formula } from './values'
+import { formula, rated } from './values'
 
 export const NPC_KINDS: Record<
   Sr6NpcKind,
@@ -218,6 +218,10 @@ export interface Sr6NpcThing {
   category?: string
   dvText?: string
   values: { rating?: number; dv?: number; stun?: boolean; ar?: (number | null)[]; modes?: string[]; ammo?: number; defense?: number }
+  /** how it found its entry (none: built) */
+  match?: Sr6NpcMatch
+  /** how many (a weapon's ammunition: one full load) */
+  qty?: number
   accessories: Sr6NpcThing[]
 }
 /** The line parts that hold things, and the catalog kinds a thing on one is looked for in, the first kind first. */
@@ -231,6 +235,8 @@ const POWER_KINDS: Record<'being' | 'person', Sr6Kind[]> = {
   being: ['critterpowers', 'adeptpowers', 'spells', 'complexforms'],
   person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms'],
 }
+const DEVICES = new Set<Sr6Kind>(['electronics', 'augmentations', 'programs'])
+const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack/i
 const ACCESSORY_KINDS: Sr6Kind[] = ['weapons', 'armor', 'electronics', 'gear', 'augmentations', 'programs']
 const ATTACK_SKILLS = new Set(['close combat', 'exotic weapons', 'firearms', 'athletics'])
 
@@ -359,33 +365,167 @@ function readStats(stats: string[], rating: number | undefined) {
   return { values: v, category, dvText, accessories: accessories.map(a => a.trim()).filter(Boolean) }
 }
 
-/** per catalog: `<kind>/<normName>` -> the entries of that kind with that name, catalog order */
-const byName = new WeakMap<Sr6Catalog['entries'], Map<string, Sr6Entry[]>>()
-/** The catalog entry a printed name is, in `kinds` (the first kind with one wins), the NPC's own book's before another
- *  book's; failing the name as printed, without its trailing note (`Khopesh (Weapon Foci +2)`) or footnote mark. */
-function findEntry(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: string): Sr6Entry | undefined {
-  let index = byName.get(c.entries)
-  if (!index) {
-    index = new Map()
-    for (const [k, map] of Object.entries(c.entries))
-      for (const e of map.values()) {
-        const key = `${k}/${normName(e.name)}`
-        index.set(key, [...(index.get(key) ?? []), e])
-      }
-    // a rated family's name (`Glow Eyes`, its levels `Glow Eyes 1`…): its lowest level
-    for (const f of c.levels?.values() ?? []) {
-      const key = `${f.kind}/${normName(f.parent?.name ?? '')}`,
-        e = f.parent && c.entries[f.kind].get(f.levels.get(Math.min(...f.levels.keys()))!)
-      if (e && !index.has(key)) index.set(key, [e])
-    }
-    byName.set(c.entries, index)
+/** The least nameRatio of a printed name and a catalog entry's (their matchKeys) that links them (owner 2026-10-20: "If
+ *  you can find a perfect match, great. If not, 85% match will do"). */
+export const NPC_MATCH = 0.85
+/** How a stat block thing found its entry: by name (score 1), by a name at least NPC_MATCH alike, as the standard item
+ *  of the category its generic name is (`commlink`), or as the regular ammunition of a weapon it carries. */
+export type Sr6NpcMatch = { score: number; how: 'exact' | 'fuzzy' | 'standard' | 'ammo' }
+interface Index {
+  exact: Map<string, Sr6Entry[]>
+  /** per kind: each matchKey with its entries */
+  loose: Map<Sr6Kind, { key: string; entries: Sr6Entry[] }[]>
+  /** per kind: each category's matchKey with its entries */
+  categories: Map<Sr6Kind, Map<string, Sr6Entry[]>>
+  /** gear and weapons by class (`AMMUNITION/BOWS`) */
+  classes: Map<string, Sr6Entry[]>
+}
+const indexes = new WeakMap<Sr6Catalog['entries'], Index>()
+function indexOf(c: Sr6Catalog): Index {
+  let x = indexes.get(c.entries)
+  if (x) return x
+  x = { exact: new Map(), loose: new Map(), categories: new Map(), classes: new Map() }
+  const add = <K>(m: Map<K, Sr6Entry[]>, k: K, e: Sr6Entry) => m.set(k, [...(m.get(k) ?? []), e])
+  const loose = new Map<Sr6Kind, Map<string, Sr6Entry[]>>()
+  const each = (k: Sr6Kind, name: string, e: Sr6Entry) => {
+    add(x!.exact, `${k}/${normName(name)}`, e)
+    add(loose.get(k) ?? loose.set(k, new Map()).get(k)!, matchKey(name), e)
   }
+  for (const [k, map] of Object.entries(c.entries) as [Sr6Kind, Map<string, Sr6Entry>][])
+    for (const e of map.values()) {
+      each(k, e.name, e)
+      if (e.attrs.category) add(x.categories.get(k) ?? x.categories.set(k, new Map()).get(k)!, matchKey(e.attrs.category), e)
+      if (e.attrs.class && (k === 'gear' || k === 'weapons')) add(x.classes, e.attrs.class, e)
+    }
+  // a rated family's name (`Glow Eyes`, its levels `Glow Eyes 1`…): its lowest level
+  for (const f of c.levels?.values() ?? []) {
+    const e = f.parent && c.entries[f.kind].get(f.levels.get(Math.min(...f.levels.keys()))!)
+    if (e && !x.exact.has(`${f.kind}/${normName(f.parent!.name)}`)) each(f.kind, f.parent!.name, e)
+  }
+  for (const [k, m] of loose)
+    x.loose.set(
+      k,
+      [...m].map(([key, entries]) => ({ key, entries })),
+    )
+  indexes.set(c.entries, x)
+  return x
+}
+/** Of entries that match alike: the NPC's own book's, then the latest printing's (owner: the current printing wins),
+ *  then catalog order. */
+const prefer = (c: Sr6Catalog, source: string | undefined) => {
+  const order = byPublication(c.sources)
+  return (list: Sr6Entry[]) => [...list].sort((a, b) => Number(b.source === source) - Number(a.source === source) || order(b.source, a.source))[0]
+}
+/** The catalog entry a printed name is, in `kinds`: by name (as printed, without its trailing note `Khopesh (Weapon Foci
+ *  +2)` or footnote mark; the first kind with one wins); else the entry whose name is most alike, at least NPC_MATCH
+ *  (matchKey, nameRatio, and sameWords; the first kind wins a tie; `how` loose or standard); else, with `standard`, the standard item of the category a generic
+ *  name is (`commlink`: the category Commlinks' lowest rated, then cheapest entry). Ties: the NPC's own book, then the
+ *  latest printing. */
+function findEntry(
+  c: Sr6Catalog,
+  name: string,
+  kinds: Sr6Kind[],
+  source?: string,
+  how: 'exact' | 'loose' | 'standard' = 'exact',
+  rating?: number,
+): { entry: Sr6Entry; match: Sr6NpcMatch } | undefined {
+  const x = indexOf(c),
+    pick = prefer(c, source)
   for (const n of [name, name.replace(/\s*\([^()]*\)\s*$/, ''), name.replace(/\*+$/, '')])
     for (const k of kinds) {
-      const list = index.get(`${k}/${normName(n)}`)
-      if (list?.length) return list.find(e => e.source === source) ?? list[0]
+      const list = x.exact.get(`${k}/${normName(n)}`)
+      if (list?.length) return { entry: pick(list), match: { score: 1, how: 'exact' } }
     }
-  return undefined
+  const key = matchKey(name)
+  if (how === 'exact' || key.length < 3) return undefined
+  let best: { score: number; entries: Sr6Entry[] } | undefined
+  // the name, and the name without a trailing generic word its kinds' categories are (`Erika Elite commlink`; two words
+  // left at least: `Basic spacesuit` is no `Basic`)
+  const cats = kinds.flatMap(k => [...(x.categories.get(k)?.keys() ?? [])])
+  const keys = [key, ...cats.filter(ck => key.endsWith(` ${ck}`)).map(ck => key.slice(0, -ck.length - 1))].filter((k, i) => !i || k.includes(' '))
+  for (const kk of keys)
+    for (const k of kinds)
+      for (const l of x.loose.get(k) ?? []) {
+        if (!within(kk, l.key) || quickRatio(kk, l.key) < NPC_MATCH) continue
+        const score = nameRatio(kk, l.key)
+        if (score >= NPC_MATCH && score > (best?.score ?? 0) && sameWords(kk, l.key)) best = { score, entries: l.entries }
+      }
+  if (best) return { entry: pick(best.entries), match: { score: round(best.score), how: 'fuzzy' } }
+  if (how !== 'standard' || KIND_WORDS.test(key)) return undefined
+  for (const k of kinds)
+    for (const [cat, entries] of x.categories.get(k) ?? []) {
+      const score = !within(key, cat) || quickRatio(key, cat) < NPC_MATCH ? 0 : nameRatio(key, cat)
+      if (score >= NPC_MATCH && score > (best?.score ?? 0)) best = { score, entries }
+    }
+  return best ? { entry: standardOf(best.entries, pick, rating), match: { score: round(best.score), how: 'standard' } } : undefined
+}
+/** A model number or numeral (`101`, `vi`): a name with one names that model. */
+const MODEL = /^(?:\d+|[ivx]+)$/
+/** A fuzzy link's guard past its score (live NPCs, 2026-10-20: `Uzi V` is no `Uzi IV`, `cyberarm` no `Cyberears`,
+ *  `stealth tags` no `Stealth Tap`): where both names print a model number or numeral they are the same; one word against
+ *  one is at least 0.9 alike; and every word of the shorter name has one at least 0.8 alike in the other. */
+function sameWords(a: string, b: string): boolean {
+  const [xs, ys] = (a.length <= b.length ? [a, b] : [b, a]).map(k => k.split(' '))
+  const nx = xs.filter(w => MODEL.test(w)).join(' '),
+    ny = ys.filter(w => MODEL.test(w)).join(' ')
+  if (nx && ny && nx !== ny) return false
+  // one word against one: 0.9 (`cyberarm` is no `cyberear`)
+  if (xs.length === 1 && ys.length === 1 && nameRatio(a, b) < 0.9) return false
+  return xs.every(w => MODEL.test(w) || ys.some(v => nameRatio(w, v) >= 0.8))
+}
+/** a generic name that is only a kind of thing (`augmentations`, `bioware`): no standard item */
+const KIND_WORDS = /^(?:augmentation|cyberware|bioware|gear|equipment|weapon|electronic|armor|power)$/
+/** lengths that can still reach NPC_MATCH (nameRatio is at most 2 × the shorter / both) */
+const within = (a: string, b: string) => (2 * Math.min(a.length, b.length)) / (a.length + b.length) >= NPC_MATCH
+const round = (n: number) => Math.round(n * 1000) / 1000
+/** A category's standard item: at the printed rating when one has it, else its lowest rating or level; then its lowest
+ *  price (a price it can't read last). */
+function standardOf(list: Sr6Entry[], pick: (l: Sr6Entry[]) => Sr6Entry, rating?: number): Sr6Entry {
+  const level = (e: Sr6Entry) => Number(e.attrs.level ?? e.attrs.rating) || 0,
+    cost = (e: Sr6Entry) => rated(e.attrs.cost, level(e) || 1).n ?? Infinity
+  const low = list.some(e => level(e) === rating) ? rating! : Math.min(...list.map(level)),
+    l1 = list.filter(e => level(e) === low)
+  const cheap = Math.min(...l1.map(cost))
+  return pick(l1.filter(e => cost(e) === cheap))
+}
+
+/** A ranged weapon's regular ammunition (owner 2026-10-20: "add regular ammo for weapons"): its class or printed category
+ *  -> the catalog's ammunition class and the name of its regular kind there. Melee and natural attacks match none. */
+const AMMO: [RegExp, string, RegExp][] = [
+  [/holdout|pistols? light|light pistol|machine pistol/, 'AMMUNITION/AMMUNITION', /light pistol/i],
+  [/pistols? heavy|heavy pistol|submachine|\bsmg\b/, 'AMMUNITION/AMMUNITION', /heavy pistol/i],
+  [/shotgun/, 'AMMUNITION/AMMUNITION', /^shotgun/i],
+  [/rifle|sniper/, 'AMMUNITION/AMMUNITION', /^rifles?$/i],
+  [/\b[lmh]mg\b|machine gun/, 'AMMUNITION/AMMUNITION', /^machine gun/i],
+  [/assault cannon/, 'AMMUNITION/AMMUNITION', /^assault cannon/i],
+  [/taser/, 'AMMUNITION/AMMUNITION_SPECIAL', /^taser/i],
+  [/\bdart\b/, 'AMMUNITION/AMMUNITION_SPECIAL', /dart/i],
+  [/crossbow/, 'AMMUNITION/CROSSBOWS', /^bolts?$/i],
+  [/\bbows?\b/, 'AMMUNITION/BOWS', /^arrows?$/i],
+  [/grenade launcher/, 'AMMUNITION/GRENADES', /fragmentation/i],
+  [/rocket|missile/, 'AMMUNITION/ROCKETS', /high explosive|^standard/i],
+]
+/** A weapon thing's regular ammunition: one full load (its printed or catalog ammo count), else 10. */
+function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6NpcThing | undefined {
+  const e = t.entry,
+    what = [e?.attrs.class, e?.attrs.category, t.category, t.name].filter(Boolean).join(' ').toLowerCase().replace(/_/g, ' ')
+  if (/close combat|melee|blade|club|unarmed|natural|throwing/.test(what)) return undefined
+  const row = AMMO.find(([re]) => re.test(what))
+  const list = row && (indexOf(c).classes.get(row[1]) ?? []).filter(a => row[2].test(a.name))
+  if (!list?.length) return undefined
+  const ammo = prefer(c, source)(list)
+  const load = t.values.ammo ?? (Number(e?.attrs.ammo?.match(/^\s*(\d+)/)?.[1]) || 10)
+  return {
+    part: t.part,
+    printed: t.printed,
+    name: ammo.name,
+    kind: ammo.kind,
+    entry: ammo,
+    match: { score: 1, how: 'ammo' },
+    qty: load,
+    values: {},
+    accessories: [],
+  }
 }
 
 /** The things an NPC's weapons, attacks, gear, augmentations and powers lines print, each its catalog entry where the
@@ -404,18 +544,30 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
     const kinds = power ? powers : THING_KINDS[l.part]
     if (!kinds) continue
     for (const printed of attack ? splitThings(l.text) : top(l.text)) {
-      const { name, stats } = power ? { name: printed, stats: [] } : pieces(printed)
-      const s = readStats(stats, npc.rating)
-      let entry = findEntry(c, name, kinds, src)
+      const p = power ? { name: printed, stats: [] } : pieces(printed)
+      const s = readStats(p.stats, npc.rating)
+      // a count printed with it: `2 x smoke grenades`, `Meta Link x2`, `data chip (x5)`
+      const n = p.name.length <= 200 ? p.name.match(/^(\d+)\s*x\s+(.+)$|^(.+?)(?:\s*\(x\s*(\d+)\)|\s+x\s*(\d+))$/i) : null
+      const name = n ? (n[2] ?? n[3]).trim() : p.name,
+        qty = n ? Number(n[1] ?? n[4] ?? n[5]) : undefined
+      let found = findEntry(c, name, kinds, src)
       // a trailing number is its rating or level: `white noise generator 3`, `Hardened Armor (4)`
       const lv = name.match(/^(.*?)\s*(?:\((\d{1,2})\)|\s(\d{1,2}))$/)
-      if (lv && (!entry || normName(entry.name) === normName(lv[1]))) {
-        entry ??= findEntry(c, lv[1], kinds, src)
+      if (lv && (!found || normName(found.entry.name) === normName(lv[1]))) {
+        found ??= findEntry(c, lv[1], kinds, src)
         s.values.rating ??= Number(lv[2] ?? lv[3])
       }
-      // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2, `control rig [rating 2]` Control Rig 2
-      if (s.values.rating != null)
-        entry = entry ? (atLevel(c, entry.kind, entry.id, s.values.rating) ?? entry) : findEntry(c, `${name} ${s.values.rating}`, kinds, src)
+      if (!found && s.values.rating != null) found = findEntry(c, `${name} ${s.values.rating}`, kinds, src)
+      // no name: the most alike one (at least NPC_MATCH); a generic piece of equipment: its category's standard item
+      found ??= findEntry(c, name, kinds, src, l.part === 'attacks' || power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
+      // a device's or implant's `DR 6` is its Device Rating, not a Defense
+      if (s.values.defense != null && (found ? DEVICES.has(found.entry.kind) : DEVICE_NAME.test(name))) {
+        s.values.rating ??= s.values.defense
+        delete s.values.defense
+      }
+      // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2
+      if (found && s.values.rating != null) found.entry = atLevel(c, found.entry.kind, found.entry.id, s.values.rating) ?? found.entry
+      const entry = found?.entry
       // (a Cybercombat attack is a Matrix action, not a weapon)
       if (!entry && attack && ((s.values.dv == null && !s.values.ar && !s.dvText) || /cybercombat/i.test(s.category ?? ''))) continue
       const kind: Sr6Kind = entry
@@ -430,20 +582,23 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
                 ? 'armor'
                 : 'gear'
       const accessories = s.accessories.flatMap(a => {
-        const e = findEntry(c, a, ACCESSORY_KINDS, src)
-        return e ? [{ part: l.part, printed: a, name: e.name, kind: e.kind, entry: e, values: {}, accessories: [] }] : []
+        const f = findEntry(c, a, ACCESSORY_KINDS, src, 'loose')
+        return f ? [{ part: l.part, printed: a, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }] : []
       })
       out.push({
         part: l.part,
         printed,
         name: entry?.name ?? name.replace(/\*+$/, ''),
         kind,
-        ...(entry ? { entry } : {}),
+        ...(found ? { entry: found.entry, match: found.match } : {}),
         ...(s.category ? { category: s.category } : {}),
         ...(s.dvText ? { dvText: s.dvText } : {}),
         values: s.values,
+        ...(qty && qty > 1 ? { qty } : {}),
         accessories,
       })
+      const ammo = attack && kind === 'weapons' ? ammoFor(c, out[out.length - 1], src) : undefined
+      if (ammo) out.push(ammo)
     }
   }
   return out

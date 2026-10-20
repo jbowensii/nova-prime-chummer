@@ -1120,6 +1120,28 @@
             },
             "dv": {
               "type": "string"
+            },
+            "match": {
+              "description": "How it found its catalog entry: by name (score 1), by a name at least 0.85 alike (fuzzy, its score), as the standard item of a generic name, or as a weapon's regular ammunition.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "score",
+                "how"
+              ],
+              "properties": {
+                "score": {
+                  "type": "number"
+                },
+                "how": {
+                  "enum": [
+                    "exact",
+                    "fuzzy",
+                    "standard",
+                    "ammo"
+                  ]
+                }
+              }
             }
           }
         },

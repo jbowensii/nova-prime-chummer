@@ -149,10 +149,20 @@ rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `v
 `[{ name, rating, attr?, pool?, printed }]`: the skills line resolved against the catalog's skills, pool = rating + the
 attribute's value; a skill the catalog doesn't have keeps its printed text only. `items` (npc.ts `npcThings`): each
 weapon, attack, piece of gear, augmentation and power the weapons, attacks, gear, augmentations and powers lines print, as
-a purchase (`uid`, `qty` 1, `worn`, `bonuses` [], `accessories`) plus `line { part, printed, values, dv? }`, the thing as printed,
-the numbers it prints and its DV as printed. An adept power has its `level`. It is its catalog entry where the catalog has one by name (the kinds its part names, the
-NPC's own book first; a printed level picks that level's entry), with the printed DV, attack ratings, firing modes, ammo,
-rating and Defense over the entry's `values`; else it is built from the line (no `id`): an attack printing a DV or attack
+a purchase (`uid`, `qty` (1, or a printed count: `2 x smoke grenades`), `worn`, `bonuses` [], `accessories`) plus
+`line { part, printed, values, dv?, match? }`, the thing as printed, the numbers it prints, its DV as printed and how it
+found its entry. An adept power has its `level`. It is its catalog entry (owner 2026-10-20: "If you can find a perfect
+match, great. If not, 85% match will do"): by name (`match.how` `exact`; the kinds its part names); else the entry whose
+name is most alike, at least 0.85 (`fuzzy`, `match.score`: names.ts `nameRatio`, the importer's difflib ratio, of their
+`matchKey`s; the name without a trailing generic word such as `commlink` tried too; where both print a model number or
+numeral they agree, and every word of the shorter has one at least 0.8 alike); else, on a weapons, gear or augmentations
+line, the standard item of the category a generic name is (`standard`: `commlink` is the Commlink category's entry at
+the printed rating, else its lowest rated, then cheapest). Ties: the NPC's own book, then the latest printing. A printed
+level picks that level's entry; a device's or implant's `DR N` is its Device Rating. The printed DV, attack ratings,
+firing modes, ammo, rating and Defense win over the entry's `values`. A ranged weapon (firearms, bows, crossbows,
+tasers, dart guns, grenade and rocket launchers, by its class or category) is followed by its regular ammunition
+(`ammo`, uid `<weapon uid>:ammo`, `qty` one full load: the printed or catalog ammo, else 10); melee and natural attacks
+get none. Else a thing is built from the line (no `id`): an attack printing a DV or attack
 ratings as a weapon (`attrs` `category` and `dv` as printed; `skill` the printed one, else Close Combat with only a close
 band, Exotic Weapons past it), gear printing a Defense as armor, other gear as gear, a power as a critter power. Formulas
 of Force are worked out at the rating; a band at 0 or less is none. Armor is worn. A Cybercombat attack (a Matrix action)

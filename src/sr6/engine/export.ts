@@ -27,7 +27,7 @@ import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
 import { withSampleFixes } from './samplefix'
 import { withSr6House } from './house'
-import { attackSkill, NPC_KINDS, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcThing } from './npc'
+import { attackSkill, NPC_KINDS, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcMatch, type Sr6NpcThing } from './npc'
 import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
@@ -210,10 +210,11 @@ export interface Sr6ExportNpc {
 /** A thing an NPC's stat block prints (npc.ts npcThings) as a purchase: its catalog entry's, the stat block's numbers over
  *  the entry's, else built from the printed line (no id); armor worn. uid `line:<part>:<printed>` (a power's
  *  `power:<printed>`, an accessory's `<host uid>:w/<printed>`): the Foundry module's earlier line item ids. line: the
- *  printed thing and the numbers it prints. */
+ *  printed thing, the numbers it prints and how it found its entry (match: exact, fuzzy with its score, a generic name's
+ *  standard item, or a weapon's regular ammunition, `<weapon uid>:ammo`, qty one full load). */
 export interface Sr6ExportNpcItem extends Omit<Sr6ExportPurchase, 'accessories'> {
   level?: number
-  line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string }
+  line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string; match?: Sr6NpcMatch }
   accessories: Sr6ExportNpcItem[]
 }
 export interface Sr6ExportLifestyle {
@@ -618,11 +619,11 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6
     ...base,
     uid,
     values,
-    qty: 1,
+    qty: t.qty ?? 1,
     worn: base.kind === 'armor',
     bonuses: [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
-    line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText }),
+    line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match }),
     accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`)),
   })
 }
@@ -631,7 +632,7 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6
 export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportNpc {
   const seen = new Map<string, number>()
   const items = npcThings(npc, c).map(t => {
-    const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}`,
+    const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}${t.match?.how === 'ammo' ? ':ammo' : ''}`,
       n = (seen.get(id) ?? 0) + 1
     seen.set(id, n)
     return npcItem(c, data, t, n > 1 ? `${id}#${n}` : id)

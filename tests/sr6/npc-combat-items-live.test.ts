@@ -29,7 +29,10 @@ test.skipIf(!LIVE)(
     const dir = join(LIVE!, 'characters/sr6/.npcs/admin')
     const n = { files: 0, read: 0, withAttacks: 0, attacks: 0, rollable: 0, linked: 0, built: 0, noDv: 0, armor: 0, gear: 0, augmentations: 0, powers: 0 }
     const kinds: Record<string, number> = {},
-      powers: Record<string, number> = {}
+      powers: Record<string, number> = {},
+      links: Record<string, number> = {},
+      unlinked: Record<string, number> = {},
+      picks: string[] = []
     const notRolled: { npc: string; printed: string; why: string }[] = [],
       noneRollable: string[] = []
     for (const f of readdirSync(dir)) {
@@ -43,7 +46,18 @@ test.skipIf(!LIVE)(
       const lines = npc.lines.filter(l => l.part === 'weapons' || l.part === 'attacks')
       const x = exportNpc(npc, data, c)
       const weapons = x.items.filter(i => i.kind === 'weapons' && (i.line.part === 'weapons' || i.line.part === 'attacks'))
+      // how each item found its entry (accessories too): exact, fuzzy by score, a generic name's standard item, ammo, or built
+      for (const i of x.items.flatMap(i => [i, ...i.accessories])) {
+        const m = i.line.match,
+          bin = !m ? `built (${i.line.part})` : m.how !== 'fuzzy' ? m.how : `fuzzy ${m.score < 0.9 ? '0.85–0.90' : m.score < 0.95 ? '0.90–0.95' : '0.95–1.00'}`
+        links[bin] = (links[bin] ?? 0) + 1
+        if (m?.how === 'fuzzy' || m?.how === 'standard') picks.push(`${m.how} ${m.score}: ${i.line.printed.slice(0, 70)} → ${i.kind} ${i.name}`)
+        if (!m && i.line.part !== 'weapons' && i.line.part !== 'attacks')
+          unlinked[`${i.line.part}: ${i.name}`] = (unlinked[`${i.line.part}: ${i.name}`] ?? 0) + 1
+        if (i.line.values.defense != null && i.kind !== 'armor') picks.push(`defense, not armor: ${i.line.printed.slice(0, 70)} → ${i.kind} ${i.name}`)
+      }
       for (const i of x.items) {
+        if (i.line.match?.how === 'ammo') continue
         if (i.kind === 'armor') n.armor++
         else if (i.kind === 'augmentations') n.augmentations++
         else if (i.line.part === 'powers' || i.line.part === 'optionalPowers') {
@@ -99,9 +113,13 @@ test.skipIf(!LIVE)(
           })
       if (!weapons.length) noneRollable.push(name)
     }
-    console.log(JSON.stringify({ ...n, kinds, powers, noneRollable: noneRollable.length }, null, 1))
+    console.log(JSON.stringify({ ...n, kinds, powers, links, noneRollable: noneRollable.length }, null, 1))
     for (const x of notRolled) console.log(`not rolled: ${x.npc}: ${x.printed.slice(0, 120)} — ${x.why}`)
-    if (process.env.SR6_LIVE_OUT) writeFileSync(process.env.SR6_LIVE_OUT, JSON.stringify({ ...n, kinds, powers, notRolled, noneRollable }, null, 1))
+    if (process.env.SR6_LIVE_OUT)
+      writeFileSync(
+        process.env.SR6_LIVE_OUT,
+        JSON.stringify({ ...n, kinds, powers, links, notRolled, noneRollable, picks, unlinked: Object.entries(unlinked).sort((a, b) => b[1] - a[1]) }, null, 1),
+      )
     expect(n.read).toBe(n.files)
   },
   600_000,

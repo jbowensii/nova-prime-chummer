@@ -7,6 +7,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { exportNpc, exportSr6Runners } from '../../src/sr6/engine/export'
+import { matchKey, nameRatio } from '../../src/sr6/engine/names'
 import { blankSr6Npc, splitThings } from '../../src/sr6/engine/npc'
 import type { Sr6Npc } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation } from './fixture'
@@ -63,7 +64,13 @@ test('npc-combat-items: a grunt’s gun and armor are its catalog entries with t
   expect(gun).toMatchObject({ uid: expect.stringMatching(/^line:weapons:Zap Gun \[/), id: 'crb.zap-gun', kind: 'weapons', qty: 1, worn: false })
   // the stat block's DV, attack ratings, mode and ammo over the catalog's 3P, 9/7, SS, 8
   expect(gun.values).toMatchObject({ dv: 4, stun: false, ar: [10, 8, null, null, null], modes: ['SA'], ammo: 8 })
-  expect(gun.line).toEqual({ part: 'weapons', printed: expect.stringContaining('Zap Gun ['), values: expect.objectContaining({ dv: 4 }), dv: '4P' })
+  expect(gun.line).toEqual({
+    part: 'weapons',
+    printed: expect.stringContaining('Zap Gun ['),
+    values: expect.objectContaining({ dv: 4 }),
+    dv: '4P',
+    match: { score: 1, how: 'exact' },
+  })
   expect(gun.accessories).toEqual([expect.objectContaining({ id: 'crb.zap-scope', uid: `${gun.uid}:w/Zap Scope` })])
   // no catalog entry: built from the line, its category and DV as printed (a weapon class: no skill, the class says)
   expect(by(x.items, 'Made-up Shredder')).toMatchObject({
@@ -139,4 +146,81 @@ test('npc-combat-items: an NPC’s runner export carries them and is valid; two 
     'line:weapons:Bite [Close Combat, DV 4P, 9/—/—/—/—]',
     'line:weapons:Bite [Close Combat, DV 4P, 9/—/—/—/—]#2',
   ])
+})
+
+// owner 2026-10-20: "If you can find a perfect match, great. If not, 85% match will do. Remember to add regular ammo for
+// weapons and standard items for equipment." Invented entries of an invented book, ZZ.
+const ZZ = 'xmlns:sr6="urn:chummer-sr6:data:1"'
+const zz = fixtureCatalog(undefined, [
+  {
+    file: 'custom/sr6/imported/zz/weapons.xml',
+    xml: `<sr6:data ${ZZ} kind="weapons" version="1">
+  <weapon id="zz.thunderbus" source="ZZ" page="1" category="Heavy pistol" dv="3P" modes="SA" ar="9/9/7/—/—" ammo="15(c)" avail="2" cost="500" class="WEAPON_FIREARMS/PISTOLS_HEAVY"><name>Made-up Thunderbus Pistol</name></weapon>
+  <weapon id="zz.carver" source="ZZ" page="1" category="Blade" dv="3P" ar="8/—/—/—/—" avail="1" cost="50" class="WEAPON_CLOSE_COMBAT/BLADES"><name>Made-up Carver</name></weapon>
+</sr6:data>`,
+  },
+  {
+    file: 'custom/sr6/imported/zz/gear.xml',
+    xml: `<sr6:data ${ZZ} kind="gear" version="1">
+  <gear id="zz.ammo-heavy" source="ZZ" page="2" category="Ammo by weapon type" avail="1" per="10 rounds" cost="10" class="AMMUNITION/AMMUNITION"><name>Heavy Pistol/SMG</name></gear>
+  <gear id="zz.ammo-rifle" source="ZZ" page="2" category="Ammo by weapon type" avail="1" per="10 rounds" cost="20" class="AMMUNITION/AMMUNITION"><name>Rifles</name></gear>
+</sr6:data>`,
+  },
+  {
+    file: 'custom/sr6/imported/zz/electronics.xml',
+    xml: `<sr6:data ${ZZ} kind="electronics" version="1">
+  <device id="zz.fancy-link" source="ZZ" page="3" category="Commlink" rating="4" avail="4" cost="2000" class="ELECTRONICS/COMMLINK"><name>Made-up Fancy Link</name></device>
+  <device id="zz.basic-link" source="ZZ" page="3" category="Commlink" rating="1" avail="1" cost="100" class="ELECTRONICS/COMMLINK"><name>Made-up Basic Link</name></device>
+</sr6:data>`,
+  },
+])
+const zzData = sr6Data(zz)
+const zzItems = (kind: Sr6Npc['kind'], lines: Record<string, string>) =>
+  exportNpc({ ...npc(kind, lines), from: { kind: 'npcs', id: 'zz.x', name: 'X', source: 'ZZ', page: 1 } }, zzData, zz).items
+
+test('npc-combat-items: a name at least 85% alike links (its score kept); one below stays built from the line', () => {
+  const x = zzItems('grunt', {
+    weapons: 'Made-up Thunderbuss Pistol [Heavy Pistol, DV 4P, SA, 10/9/7/—/—, 12(c)] Made-up Wonder Pistol [Heavy Pistol, DV 2P, SA, 8/7/—/—/—]',
+  })
+  expect(by(x, 'Made-up Thunderbus Pistol')).toMatchObject({
+    id: 'zz.thunderbus',
+    values: { dv: 4, ar: [10, 9, 7, null, null] },
+    line: { match: { score: 0.96, how: 'fuzzy' } },
+  }) // (matchKeys: made up thunderbuss pistol ~ made up thunderbu pistol)
+  // made up wonder pistol ~ made up thunderbus pistol: 0.826
+  const near = by(x, 'Made-up Wonder Pistol')
+  expect(near).not.toHaveProperty('id')
+  expect(near.line).not.toHaveProperty('match')
+})
+
+test('npc-combat-items: a pistol gets one full load of its regular ammo; a blade and a natural attack get none', () => {
+  const x = zzItems('grunt', {
+    weapons:
+      'Made-up Thunderbus Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 12(c)] Made-up Thunderbus Pistol, Made-up Carver [Blade, DV 3P, 8/—/—/—/—], Bite [Close Combat, DV 2P, 6/—/—/—/—]',
+  })
+  // the printed clip, else the catalog's
+  expect(x.filter(i => i.line.match?.how === 'ammo').map(i => [i.uid, i.id, i.qty])).toEqual([
+    ['line:weapons:Made-up Thunderbus Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 12(c)]:ammo', 'zz.ammo-heavy', 12],
+    ['line:weapons:Made-up Thunderbus Pistol:ammo', 'zz.ammo-heavy', 15],
+  ])
+  expect(x.filter(i => i.kind === 'weapons').map(i => i.name)).toEqual(['Made-up Thunderbus Pistol', 'Made-up Thunderbus Pistol', 'Made-up Carver', 'Bite'])
+})
+
+test('npc-combat-items: a generic “commlink” is the category’s standard item (lowest rating, then cheapest), noted as such', () => {
+  const x = zzItems('grunt', { gear: 'commlink, Made-up Fancy Link' })
+  expect(x.map(i => [i.name, i.id, i.line.match])).toEqual([
+    ['Made-up Basic Link', 'zz.basic-link', { score: 1, how: 'standard' }],
+    ['Made-up Fancy Link', 'zz.fancy-link', { score: 1, how: 'exact' }],
+  ])
+})
+
+test('npc-combat-items: nameRatio is the importer’s difflib ratio', () => {
+  // python: difflib.SequenceMatcher(None, a, b).ratio()
+  expect(nameRatio('ares predator vi', 'ares predatr vi')).toBeCloseTo(0.9677, 4)
+  expect(nameRatio('colt manhunter', 'colt man hunter')).toBeCloseTo(0.9655, 4)
+  expect(nameRatio('bite', 'kite')).toBe(0.75)
+  expect(nameRatio('synthleather jacket', 'synth leather jacket')).toBeCloseTo(0.9744, 4)
+  expect(matchKey('Throwing Knives (5)')).toBe('throwing knive')
+  expect(matchKey('Fists')).toBe(matchKey('fist'))
+  expect(matchKey('Erika Elite commlink [Rating 4]')).toBe('erika elite commlink')
 })
