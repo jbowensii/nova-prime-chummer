@@ -3,6 +3,11 @@ effects carry (strict match, book-ruled, accepted placeholder). Run it on main a
 importer/sr6/effects.py or importer/sr6/overrides/*.book.json; both must read 1,079/1,079 with no unmatched drops. See docs/cl6check.md.
 
   python -m tools.cl6effects --tree <code tree> [--base <tree>] [--runs <saved runs>] [--out <dir>] [--jar <jar>]
+  python -m tools.cl6effects --fresh <import> [--fresh <import> ...] [--jar <jar>]
+
+--fresh measures an import as it is, rebuilding nothing: a folder of `python -m tools.cl6check import` runs, or a library
+import (`import --library`, the production one). The replay rebuilds saved runs that already hold the overrides' structure
+and never runs the library's steps, so only a fresh import shows what production loses (the live import of 2026-10-20).
 """
 import argparse
 import collections
@@ -100,16 +105,28 @@ def report(label, t, warns):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="cl6effects", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--tree", required=True, help="the code tree (a checkout or an archive of one) whose importer rebuilds the runs")
+    p.add_argument("--tree", help="the code tree (a checkout or an archive of one) whose importer rebuilds the runs")
+    p.add_argument("--fresh", action="append", default=[], help="an import to measure as it is (runs or a library import), no rebuild; repeatable")
     p.add_argument("--base", help="a second tree: run both, print every row whose status differs and the correction rows only the base has")
     p.add_argument("--runs", default=os.environ.get("CL6_RUNS") or str(REPO / ".extract" / "cl6check-runs26"), help="the saved import runs (default .extract/cl6check-runs26, or $CL6_RUNS)")
     p.add_argument("--out", default=str(REPO / ".extract" / "cl6effects"), help="where the rebuilt runs go (one folder per tree)")
     p.add_argument("--jar")
     a = p.parse_args(argv)
+    if not a.tree and not a.fresh:
+        p.error("--tree or --fresh is required")
     jar = reader.find_jar(a.jar)
     if jar is None:
         print("cl6effects: no Commlink6 jar (--jar or $CL6_JAR): nothing to measure, skipped.")
         return 0
+    if a.fresh:
+        recs, _ = reader.read(jar)
+        for d in a.fresh:
+            if not os.path.isdir(d):
+                print(f"cl6effects: --fresh {d} is not a folder.", file=sys.stderr)
+                return 2
+            report(f"fresh: {os.path.abspath(d)}", measure(recs, os.path.abspath(d))[0], "not counted (no rebuild: see the import's log)")
+        if not a.tree:
+            return 0
     if not os.path.isdir(a.runs):
         print(f"cl6effects: --runs {a.runs} is not a folder of saved import runs.", file=sys.stderr)
         return 2
