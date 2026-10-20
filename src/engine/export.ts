@@ -1,5 +1,5 @@
 // src/engine/export.ts
-// Chummer Anarchy export v1 (docs/export-format.md; schema public/data/schema/export.schema.json): runners and book
+// Anarchy 2.0 export v1 (docs/export-format.md; schema public/data/schema/export.schema.json): runners and book
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
 import type { AmpEntry, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, Npc } from '../model/types'

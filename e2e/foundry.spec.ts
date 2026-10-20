@@ -1,4 +1,4 @@
-// 0.6.0: runners and book data download as Chummer Anarchy export v1 for the Foundry importer.
+// 0.6.0: runners and book data download as Anarchy 2.0 export v1 for the Foundry importer.
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 

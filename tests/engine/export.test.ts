@@ -1,5 +1,5 @@
 // tests/engine/export.test.ts
-// Chummer Anarchy export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
+// Anarchy 2.0 export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
 import { describe, expect, test } from 'vitest'
 import { derive } from '../../src/engine/derive'
 import { ampParts, exportBooks, exportRunners, parseRanges, sheetDisplayName } from '../../src/engine/export'

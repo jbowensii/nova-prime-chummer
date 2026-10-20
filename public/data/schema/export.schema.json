@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:chummer-anarchy2:export:1",
-  "title": "Chummer Anarchy export v1",
-  "description": "Runners or book data from Chummer Anarchy 2.0 (docs/export-format.md). Extra properties are allowed so later minor additions stay readable.",
+  "title": "Anarchy 2.0 export v1",
+  "description": "Runners or book data from Nova Prime Chummer (docs/export-format.md). Extra properties are allowed so later minor additions stay readable.",
   "type": "object",
   "required": [
     "format",
