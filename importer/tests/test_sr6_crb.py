@@ -877,6 +877,18 @@ class CrbRecipeTest(unittest.TestCase):
         _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={})
         self.assertEqual({x.get("id"): x.get("worn") for x in ET.fromstring(xml).iter("purchase")}, {"nb.thin": None, "nb.thick": "true"})
 
+    def test_the_armor_worn_is_the_one_that_makes_the_printed_defense_rating(self):
+        """Body 3, Defense Rating 5 printed: the +2 armor is worn, not the higher +3 one; no Defense Rating printed: the highest."""
+        from types import SimpleNamespace
+        entries = {"metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
+                   "armor": [{"id": "thin", "name": "Thin Wrap", "attrs": {"defense": "+2", "cost": "10"}},
+                             {"id": "thick", "name": "Thick Coat", "attrs": {"defense": "+3", "cost": "10"}}]}
+        worn = lambda stats: {x.get("id"): x.get("worn") for x in ET.fromstring(archetypes.build(  # noqa: E731
+            "NB", "Tester", SimpleNamespace(label="metatype: Glim", stats=stats, labels={"Gear": "Thin Wrap, Thick Coat"}), 9, entries,
+            "2026-10-09T00:00:00.000Z", cs={})[1]).iter("purchase")}
+        self.assertEqual(worn([{"B": "3"}, {"DR": "5"}]), {"nb.thin": "true", "nb.thick": None})
+        self.assertEqual(worn([{"B": "3"}]), {"nb.thin": None, "nb.thick": "true"})
+
     def test_an_always_on_bonus_is_folded_into_the_printed_number(self):
         """(owner, 2026-10-10) `Zap 4` with a reflex recorder (always on): natural Zap 3, noted; `Lurk 4(5)` with one: the
         brackets hold it, natural 4; `A 5` with muscle toner 2: natural 3; `R 3(4)` with wired reflexes 1 (switchable):

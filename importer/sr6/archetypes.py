@@ -386,8 +386,11 @@ def build(src, name, b, page, entries, updated, core=None, cs=None):
     if size:
         # (a line's kind its first purchase's; Math.round's half up)
         need["nuyen"] += math.floor(sum(c for x, c in bought if x and (size == "troll" or ' kind="armor"' in x.split(">", 1)[0])) * 0.1 + 0.5)
-    if worn:  # the armor worn: the highest Defense Rating (the first of equals); the rest carried
-        best = max(worn, key=lambda w: w[0])[1]
+    if worn:  # the armor worn: the one whose Defense Rating makes the printed one (Body, as printed, + what wares add + its own), else the highest (the first of equals); the rest carried
+        bod = _num(band.get("bod"))
+        base = (bod[1] if bod[1] is not None else bod[0] or 0) + sum(v for k, v, sw, _ in boosts if k == "defense" and not sw)
+        dr = _num(labels.get("defense rating") or next((v for st in b.stats for k, v in st.items() if k.upper() == "DR"), None))[0]
+        best = next((u for d, u in worn if dr is not None and base + d == dr), None) or max(worn, key=lambda w: w[0])[1]
         lines = [re.sub(rf'^(<purchase uid="g{best}" [^>]*?qty="\d+"(?: grade="\w+")?)', r'\1 worn="true"', x) for x in lines]
     pairs = []
     for c in split(labels.get("contacts", "")):
