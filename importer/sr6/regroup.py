@@ -7,6 +7,7 @@ Output: a first line `<!-- regrouped v1 -->`, then blocks in reading order, each
 labelled lines, a blank line, its text, `<!-- end -->`."""
 import collections
 import difflib
+import itertools
 import json
 import re
 import unicodedata
@@ -18,7 +19,7 @@ HEAD = f"<!-- regrouped v{VERSION} -->"
 _PAGE = re.compile(r"<!-- page (\d+) -->$")
 _HEADING = re.compile(r"(#{1,6}) (.+)$")
 _SEP = re.compile(r"\|(?:-+\|)+$")
-_LABEL = re.compile(r"(•\s*)?\*\*([^*]+?):\*\*\s*(.*)$")
+_LABEL = re.compile(r"(•\s*)?\*\*([^*]+?)\*?:\*\*\s*(.*)$")  # (a footnote mark on the label: `**Spells*:**`)
 # a field printed with its value inside the bold (`**Activation: Passive**`): the fields a power or quality prints
 _BOLD_FIELD = re.compile(r"(•\s*)?\*\*(Activation|Action|Type|Range|Duration|Cost|Bonus|Power Points):\s+([^*]+?)\*\*")
 _SENTENCE_END = re.compile(r"[.!?][)\]”’\"']*$")
@@ -792,7 +793,9 @@ class _Unit:
         return bool(self.stats) or self.box_labels
 
     def has_text(self):
-        return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in self.body)  # (a box's footnote isn't)
+        # (a box's footnote isn't, nor the text from the first line set aside after its labelled lines on: _foreign)
+        own = itertools.takewhile(lambda b: not getattr(b, "after", False), self.body)
+        return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in own)
 
 
 # a first header that is a name column's own word, not a class of things (`FORMULAE`, `GRENADES`)
@@ -819,6 +822,25 @@ _FOOTNOTE_ROW = re.compile(r"\s*[*†‡]")
 _FOOTNOTE_LINE = re.compile(r"\s*(?:\*(?!\*)|[†‡])")  # a footnote printed under a table (not a bold label: `**Note:**`)
 _FIELD_HEAD = re.compile(r"(?:Karma\s+)?(?:Bonus|Cost)|Game\s+Effects?")
 _NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Za-z]")
+# prose: a sentence ending and the next beginning, or eight plain words in a row (a stat line's entries are a word or
+# three between commas and brackets)
+_PROSE = re.compile(r"[a-z]{2}[.!?][”’\"')]*\s+[A-Z]|(?:\b[A-Za-z][a-z’'-]*\s+){7}[A-Za-z][a-z’'-]*\b")
+_MARK = re.compile(r"\s*(?:\*|[†‡]|//)")  # a footnote, a bold run-in or an art title (`// **VODYANOY** //`)
+
+
+def _foreign(value, last, v, ahead):
+    """True when line v, after a labelled line whose value is open (`**Attacks:**` + its entries), is no part of it:
+    the value has an entry and is not broken off (no open bracket, no trailing comma or hyphen), and v is a footnote,
+    a bold run-in or an art title (the next entry's: Wild Life), or, after an entry closed (`…, 8/—/—/—/—]`), starts
+    prose (with the lines ahead: the paragraph after the block, a page's column or the back cover, Cutting Black
+    p. 176). A value the book prints as prose (`**Augmentations:** Spyder has a mix of …`, a note) goes on."""
+    depth = sum(value.count(c) for c in "[(") - sum(value.count(c) for c in "])")
+    if not value.strip() or depth > 0 or re.search(r"[,;/(&+–-]$", last.rstrip()):
+        return False
+    if _MARK.match(v):
+        return True
+    closed = re.search(r"(?:[])]|/[—–-])$", last.rstrip())
+    return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
 
 
 def _is_label(level, text):
@@ -1006,6 +1028,13 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
                 targets, key = label
+                ahead = [e[2] for e in itertools.takewhile(lambda e: e[0] == "x" and not _LABEL.match(e[2]),
+                                                           els[i:min(i + 2, end)])]
+                banded = cur.stats or any(isinstance(b, _Table) and {"B", "A", "R", "S"} <= set(b.header) for b in cur.body)
+                if banded and _foreign(targets[0][key], last, v, ahead):  # (a being's band in its text: after shadowtalk)
+                    label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
+                    cur.body.append(v)
+                    continue
                 for d in targets:
                     prev = d[key]
                     joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
@@ -1561,7 +1590,7 @@ def _continuations(units):
             if tail and not _SENTENCE_END.search(tail[0].strip()):
                 prev.body += [b for b in u.body if isinstance(b, str)]
                 u.body = [b for b in u.body if not isinstance(b, str)]
-                if u.box_labels:
+                if u.box_labels and not getattr(texts[0], "after", False):  # (text after a box's labels: the text only)
                     for k, v in u.labels.items():
                         prev.labels.setdefault(k, v)
                     u.labels, u.box_labels = {}, False
