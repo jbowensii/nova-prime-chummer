@@ -645,6 +645,7 @@
   {"cl6": "Throwing Knives", "kind": "weapons", "id": "throwing-knives", "set": {"skill": "Athletics", "spec": "Throwing", "size": "Small"}, "gen": "family"},
   {"cl6": "Throwing Stars", "kind": "weapons", "id": "throwing-stars", "set": {"skill": "Athletics", "spec": "Throwing", "size": "Small"}, "gen": "family"},
   {"cl6": "Uzi V", "kind": "weapons", "id": "uzi-v", "set": {"skill": "Firearms", "spec": "Submachine Guns"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "stock"}}], "gen": "family"},
+  {"cl6": "Uzi V", "kind": "weapons", "id": "uzi-iv", "set": {"skill": "Firearms", "spec": "Submachine Guns"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "stock"}}], "gen": "family"},
   {"cl6": "Walther Palm Pistol", "kind": "weapons", "id": "walther-palm-pistol", "set": {"skill": "Firearms", "spec": "Holdouts"}, "gen": "family"},
   {"cl6": "Yamaha Pulsar I", "kind": "weapons", "id": "yamaha-pulsar-i", "set": {"skill": "Firearms", "spec": "Tasers"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}], "gen": "family"},
   {"cl6": "Yamaha Pulsar II", "kind": "weapons", "id": "yamaha-pulsar-ii", "set": {"skill": "Firearms", "spec": "Tasers"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}], "gen": "family"},

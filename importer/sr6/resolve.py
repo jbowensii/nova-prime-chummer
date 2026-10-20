@@ -395,9 +395,12 @@ def _errata_modules(bs, files, changed, n):
             have = (tb, tb.src, "lifemodules", path, etree.ElementTree(root))
             made.append(have)
         root = have[4].getroot()
-        names = {norm(el.findtext("name") or "") for el in root if isinstance(el.tag, str)}
+        # (the module's name less an `Event:` kicker: the errata's `Event: You had Fifteen Minutes of Fame` is the book's
+        # `You had Fifteen Minutes of Fame`, No Future p. 3)
+        bare = lambda el: norm(re.sub(r"^\s*event:\s*", "", el.findtext("name") or "", flags=re.I))  # noqa: E731
+        names = {bare(el) for el in root if isinstance(el.tag, str)}
         for el in etree.fromstring(cat.xml("lifemodules").encode("utf8")):
-            if not isinstance(el.tag, str) or norm(el.findtext("name") or "") in names:
+            if not isinstance(el.tag, str) or bare(el) in names:
                 continue
             el.set("id", f"{tb.src}.{el.get('id')}")
             _add_kid(el, "found", {"field": "entry", "how": "errata", "source": tb.src.upper(), "page": el.get("page")})
@@ -503,7 +506,10 @@ def corpus(books, sources=None, apply_errata=True):
     def offer(cands, ob, osrc, oel, f):
         v = oel.get(f)
         if v and good(f, v) and f not in {i.get("field") for i in _kids(oel, "issue")}:
-            cands.append((ob.date or "", v, osrc.upper(), oel.get("page"), _formula_of(oel, f)))
+            cands.append((ob.date or "", v, osrc.upper(), oel.get("page"), _formula_of(oel, f), oel))
+
+    def kind_of(e):  # (Commlink6's TYPE of the class: what kind of thing an entry is)
+        return (e.get("class") or "").split("/")[0]
 
     for b, src, kind, el, path in entries:
         todo = _kids(el, "issue")
@@ -513,12 +519,14 @@ def corpus(books, sources=None, apply_errata=True):
         for iss in todo:
             f, cands = iss.get("field"), []  # (date, value, source, page, formula)
             for ob, osrc, oel in by_name.get((kind, name), ()):
-                if not (ob is b and osrc == src):
+                # (the same name is another thing when the classes differ in kind: Street Wyrd's Climbing Gear, an alchemical
+                # preparation, is not the core rulebook's survival gear)
+                if not (ob is b and osrc == src) and not (kind_of(el) and kind_of(oel) and kind_of(el) != kind_of(oel)):
                     offer(cands, ob, osrc, oel, f)
             for cb, cs in deck_cards:
                 v = cs.get(name, {}).get(f)
                 if v and good(f, v):
-                    cands.append((cb.date or "", v, None, None, None))
+                    cands.append((cb.date or "", v, None, None, None, None))
             if el.get("type"):
                 for pat, cat in CLASS_ROWS.get(kind, ()):
                     t = PRICED_AS.get(el.get("type"), el.get("type"))
@@ -533,7 +541,7 @@ def corpus(books, sources=None, apply_errata=True):
                 iss.set("searched", "book,corpus")
                 n["searched"] += 1
                 continue
-            date, v, osrc, page, fx = next(c for c in cands if c[0] == latest)
+            date, v, osrc, page, fx, oel = next(c for c in cands if c[0] == latest)
             el.set(f, v)
             el.remove(iss)
             for x in [x for x in _kids(el, "formula") if x.get("field") == f]:
@@ -542,6 +550,14 @@ def corpus(books, sources=None, apply_errata=True):
                 _add_kid(el, "formula", dict(fx.attrib), fx.text)
             _add_kid(el, "found", {"field": f, "how": "corpus", "source": osrc, "page": page})
             n["corpus"] += 1
+            r = oel.get("rating") if oel is not None else None
+            if r and not el.get("rating") and fx is not None and re.search(r"\bR\b", fx.text or "") \
+                    and "rating" not in {i.get("field") for i in _kids(oel, "issue")}:
+                # (a price per rating comes with the ratings it is for: the Autosoft row's `1–9` with its `Rating x 500`, CRB p. 271)
+                el.set("rating", r)
+                for x in [x for x in _kids(el, "issue") if x.get("field") == "rating"]:
+                    el.remove(x)
+                _add_kid(el, "found", {"field": "rating", "how": "corpus", "source": osrc, "page": page})
     n["abbreviations"] = _spelled_out(bs, entries, changed)
     n["run-ins"] = _run_in_names(bs, entries, changed)
     n["builtin"] = _builtin_mods(bs, entries, changed)

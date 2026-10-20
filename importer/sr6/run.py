@@ -61,8 +61,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         if hasattr(recipe, "extra"):  # the further sources the book holds (a City Edition's city chapter)
             res.extra = recipe.extra(md, meta["sha256"])
             for x in res.extra:
-                x.files, x.texts = effects.apply(x.files, x.texts, text)
-                x.files = classes.apply(overrides.apply(x.source["id"], x.files), src=x.source["id"])  # (a City Edition's city: its own table)
+                x.files, x.texts = read_effects(x.source["id"], x.files, x.texts, text)  # (a City Edition's city: its own table)
         for r in report:  # regroup reports PDF pages; the import report prints the book's
             if isinstance(r.get("page"), int):
                 r["page"] = max(1, r["page"] - recipe.PAGE_OFFSET)
@@ -147,15 +146,48 @@ def _read(recipe, md, custom_dir, olds=()):
     res = recipe.extract(text, {"custom_dir": custom_dir})  # (a book's sample runners cite the core rulebook's catalog)
     if olds:  # (before the effects and the overrides, which name entries by id)
         res.files, res.texts = same_ids(res.files, res.texts, olds)
-    res.files, res.texts = effects.apply(res.files, res.texts, text)  # every entry's effects, from its text and the book's tables
-    have = {(n[:-4], i) for n, x in res.files.items() if x for i in xmlio.top_ids(x)}
-    res.files = overrides.apply(getattr(recipe, "ID", ""), res.files)  # the book's last-resort Commlink6 name table
-    res.files = classes.apply(res.files, src=getattr(recipe, "ID", ""))  # Commlink6's class on each entry of a category it classes alike (an override's own stays)
-    res.texts = overrides.texts(getattr(recipe, "ID", ""), res.files, res.texts)  # (an added entry that takes a heading's text)
-    added = {(n[:-4], i) for n, x in res.files.items() if x for i in xmlio.top_ids(x)} - have
-    if added:  # (an entry an override added is read too, with the text it took: the others are not read twice)
-        res.files, res.texts = effects.apply(res.files, res.texts, text, only=added)
+    res.files, res.texts = read_effects(getattr(recipe, "ID", ""), res.files, res.texts, text)
     return res, md, text, report
+
+
+def _shape(r):
+    """An override row less its effects and drops (None when nothing else is left): what it gives an entry's structure."""
+    r = {k: v for k, v in r.items() if k not in ("effects", "drops")}
+    return r if "id" not in r or any(k in r for k in overrides.OPS) or r.get("set") or r.get("kids") else None
+
+
+def read_effects(src, files, texts, regrouped, rows=None):
+    """(files, texts): every entry's effects read (effects.apply) on the structure the book's override rows give it, a
+    family row's `<variant name="Missile">`, a class row's class, a rename (the rules read them: a rocket's Missile
+    variant, a musical instrument's dice pool), then the rows' own effects and drops on the reader's (Commlink6's, the
+    book corrections', an errata's). Read before the rows, an entry an override reshaped lost the effects its new shape
+    has (the live import of 2026-10-20). An entry an override added is read apart, after the others and keeping the
+    effects its row gave it (effects.apply only=). rows: the book's override rows (default its tables)."""
+    rows, files = overrides.table(src) if rows is None else rows, dict(files)
+    ids = lambda fs: {(n[:-4], i) for n, x in fs.items() if x for i in xmlio.top_ids(x)}  # noqa: E731
+    have = ids(files)
+    shape = [s for s in map(_shape, rows) if s]
+    files = classes.apply(overrides.apply(src, files, rows=shape) if shape else files, src=src)  # (Commlink6's class on each entry of a category it classes alike: an override's own stays)
+    texts = overrides.texts(src, files, texts, rows=shape) if shape else texts  # (an added entry that takes a heading's text)
+    added = ids(files) - have
+    aside = {}  # (the added entries, out of the first read: the book's own entries are read as the book prints them, beside each other)
+    for n in {k + ".xml" for k, _ in added}:
+        keep = []
+        for ln in effects._split_entries(files[n]).splitlines(keepends=True):
+            m = effects._ENTRY.match(ln)
+            if m and (n[:-4], m.group(3)) in added:
+                aside.setdefault(n, []).append(ln.strip().removesuffix("</sr6:data>"))
+                ln = "</sr6:data>\n" if ln.rstrip().endswith("</sr6:data>") else ""
+            keep.append(ln)
+        files[n] = "".join(keep)
+    files, texts = effects.apply(files, texts, regrouped)  # every entry's effects, from its text and the book's tables
+    for n, els in aside.items():
+        x, end = files[n], files[n].rindex("</sr6:data>")
+        files[n] = x[:end].rstrip("\n") + "".join("\n  " + e for e in els) + "\n" + x[end:]
+    if added:  # (an entry an override added is read too, with the text it took, keeping the effects its row gave it)
+        files, texts = effects.apply(files, texts, regrouped, only=added)
+    fx = [r for r in rows if "id" in r and (r.get("effects") or r.get("drops") or any(k.get("tag") == "link" for k in r.get("kids", ())))]
+    return (overrides.apply(src, files, rows=fx) if fx else files), texts
 
 
 def _catalog(recipe, book_dir, custom_dir):

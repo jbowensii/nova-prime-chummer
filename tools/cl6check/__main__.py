@@ -7,6 +7,11 @@
       else .extract/cl6check (gitignored). The baseline is <out>/baseline.json unless --baseline names one.
   python -m tools.cl6check import <books file> <out dir> [-j 10]
       a fresh `importer sr6 check` of every book in parallel; each line of the books file is `<run name>|<pdf path>`.
+  python -m tools.cl6check import --library <books file> <out dir> [--md-from <runs dir>]
+      the production import: every book in one library (<out>/library/sr6/<run name>, one <out>/custom/sr6), one after
+      the other in the file's order, as the server's upload and Re-import all run them (`importer sr6 run`), with the
+      steps only a library has: the cross-book fill, the printings of a book, the errata, the links across books.
+      --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this converter.
   python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
       the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
       (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
@@ -187,6 +192,39 @@ def run_imports(books_file, out, jobs):
         return max(ex.map(one, lines), default=0)
 
 
+def run_library(books_file, out, md_from=None):
+    """Every `<run>|<pdf>` line imported into ONE library, in order, with `python -m importer sr6 run` (the server's
+    upload and Re-import all): <out>/library/sr6/<run>, <out>/custom/sr6, the log in <out>/import.log. A fresh library
+    each time. md_from: earlier runs (`import`'s) whose library/sr6/book1 book.md and import.xml are copied beside the
+    PDF, so `run --reuse` skips a conversion of the same PDF by the same converter."""
+    import shutil
+    lines = [ln.strip().split("|", 1) for ln in open(books_file, encoding="utf8") if "|" in ln]
+    lib, custom = os.path.join(out, "library", "sr6"), os.path.join(out, "custom", "sr6")
+    # only ever clear a folder this command made: new/empty, or with its own import.log (never an app's data folder)
+    if os.path.isdir(out) and os.listdir(out) and not os.path.isfile(os.path.join(out, "import.log")):
+        sys.exit(f"{out}: not empty and not an earlier `import --library` output; refusing to clear it")
+    for d in (os.path.join(out, "library"), os.path.join(out, "custom")):  # (only inside the scratch dir)
+        shutil.rmtree(d, ignore_errors=True)
+    os.makedirs(lib)
+    rc = 0
+    with open(os.path.join(out, "import.log"), "w", encoding="utf8") as log:
+        for name, pdf in lines:
+            d = os.path.join(lib, name)
+            os.makedirs(d)
+            shutil.copyfile(pdf, os.path.join(d, "original.pdf"))
+            old = os.path.join(md_from, name, "library", "sr6", "book1") if md_from else ""
+            for f in ("book.md", "import.xml"):
+                if old and os.path.isfile(os.path.join(old, f)):
+                    shutil.copyfile(os.path.join(old, f), os.path.join(d, f))
+            log.write(f"== {name}\n")
+            log.flush()
+            r = subprocess.call([sys.executable, "-m", "importer", "sr6", "run", d, "--custom", custom, "--reuse",
+                                 "--file", os.path.basename(pdf)], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
+            print(f"{name}: exit {r}", flush=True)
+            rc = max(rc, r)
+    return rc
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["trace"]:
@@ -216,8 +254,10 @@ def main(argv=None):
         p.add_argument("books")
         p.add_argument("out")
         p.add_argument("-j", type=int, default=10)
+        p.add_argument("--library", action="store_true", help="one library, in order, as production imports (run_library)")
+        p.add_argument("--md-from", help="with --library: earlier runs whose book.md to reuse")
         a = p.parse_args(argv[1:])
-        return run_imports(a.books, a.out, a.j)
+        return run_library(a.books, a.out, a.md_from) if a.library else run_imports(a.books, a.out, a.j)
     p = argparse.ArgumentParser(prog="cl6check", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--jar")
     p.add_argument("--ours", default=os.environ.get("CL6_OURS"))

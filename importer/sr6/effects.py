@@ -2895,13 +2895,16 @@ def apply(files, texts_xml, regrouped="", only=None):
                     for gn in grouped.get(kind, {}).get(gbase, ()) or grouped.get(kind, {}).get(gbase.rstrip("s"), ()):
                         if (gid := got.get(_key(gn))) and (pick is None or _key(gn) == pick):
                             found.append(("link", {"rel": "as", "kind": kind, "name": f"{gbase.title()}: {gn}", "ref": gid[0]}, None))
-            for t, a, _ in found:  # a link's entry: this book's, or the book its citation names (`p. 70, SR6`)
+            own_src = ((sm_ := re.search(r' source="([^"]*)"', attrs)) and sm_.group(1) or "").lower()
+            for t, a, _ in found:  # a link's entry: the book its citation names (`p. 70, SR6`), else this book's
                 if t == "link":
                     sl = _slug(a["name"])
-                    if a.get("kind") and sl in ids.get(a["kind"], ()):
+                    cited = (a.get("book") or "").lower()
+                    local = a.get("kind") and sl in ids.get(a["kind"], ())
+                    if cited in _source_ids() and (cited != own_src or not local):  # (a source's id, `swc`; a book's name or its first word is no id;
+                        a["ref"] = f"{cited}.{sl}"  # another book's citation wins over this book's entry of the name: the Companion's `See Dermal Deposits, p. 71, SR6.` is the core rulebook's, not itself)
+                    elif local:
                         a["ref"] = sl
-                    elif a.get("book") and a["book"].lower() in _source_ids():  # (a source's id, `swc`; a book's name or its first word is no id)
-                        a["ref"] = f"{a['book'].lower()}.{sl}"
                     a.pop("book", None)
             if kind == "programs" and (pm := re.search(r' type="([^"]*)"', _unesc(attrs))) and pm.group(1).casefold() in SOFT_TYPES:
                 sk = _key(re.sub(r"\s*\(.*$", "", nm))

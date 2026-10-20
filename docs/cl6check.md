@@ -80,6 +80,39 @@ unmatched drops. If a branch changes a number on purpose (a new Commlink6 row, a
 JSON files in `tools/cl6effects/` in the same change. `importer/tests/test_cl6effects.py` covers the evaluator on a
 tiny fixture without the jar.
 
+## The production import gate (2026-10-20)
+
+The replay above cannot see what only production does. Its saved runs already hold the structure the override rows
+gave each entry, and each run is one book alone. The first measurement of the live server's "Re-import all"
+(docs/reviews/sr6-cl6-comparison-2026-10-20.md) found 21 effects and 6 records lost that every replay had passed:
+- effects read before the override rows that gave an entry the structure they depend on (a rocket's `Missile` variant);
+- steps that need the whole library: the cross-book fill, the core rulebook's Current Printing with its older printings
+  filling in, an errata's life modules, links to another book's entries.
+
+So a reader, override, pipeline (`importer/sr6/run.py`) or corpus (`importer/sr6/resolve.py`) change is also measured on
+a fresh production import:
+
+```
+python -m tools.cl6check import --library <books file> .extract/cl6check-runsNN [--md-from .extract/cl6check-runs26]
+python -m tools.cl6effects --fresh .extract/cl6check-runsNN
+python -m tools.cl6check --ours .extract/cl6check-runsNN --out .extract/cl6check-runsNN-report
+```
+
+- `import --library` imports every book of the books file into one library, one after the other in the file's
+  order (`library/sr6/<run name>`, one `custom/sr6`), with `python -m importer sr6 run --reuse`, as the server's
+  upload and Re-import all do. `--md-from` copies each book's `book.md` from earlier per-book runs, so a PDF already
+  converted by this converter is not converted again. The log is `import.log` in the output folder. A full import of
+  the 74 books with `--md-from` takes about 15 minutes. Without it, every PDF is converted, which takes much longer.
+- `cl6effects --fresh` measures the import as it is, with no rebuild. It can be repeated (`--fresh A --fresh B`).
+  It measures per-book runs too, but they have no cross-book links, so they read lower.
+- cl6check reads the library's single `custom/sr6`. The PDF check uses each book's own `original.pdf`.
+
+Expected on main: effects `parity: 1079/1079`, completeness 4,476/4,476, class a 0, accuracy with class b as printed
+4,307/4,307.
+
+**Rule:** a change to the reader, the overrides, `run.py` or `resolve.py` runs both gates: the replay (main and the
+branch, 0 differing rows) and a fresh `import --library` with the branch, which must read the numbers above.
+
 ## Value and structure overrides (2026-10-14)
 
 - `valuemap` (`python -m tools.cl6check.valuemap <diffs.csv> [<diffs of a run on the result>]`) writes a per-book override row
