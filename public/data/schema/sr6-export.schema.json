@@ -1057,6 +1057,77 @@
               }
             }
           }
+        },
+        "items": {
+          "description": "The weapons, attacks, armor, gear, augmentations and powers its lines print, as items (absent in files written before it was added).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/npcItem"
+          }
+        }
+      }
+    },
+    "npcItem": {
+      "description": "A thing an NPC's stat block prints: its catalog entry's (id set), the stat block's numbers over the entry's, else built from the printed line (no id); armor worn. uid line:<part>:<printed>, a power's power:<printed>, an accessory's <host uid>:w/<printed>.",
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "qty",
+        "worn",
+        "bonuses",
+        "accessories",
+        "line"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "qty": {
+          "type": "number"
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
+        },
+        "level": {
+          "description": "An adept power's level.",
+          "type": "number"
+        },
+        "line": {
+          "description": "The thing as printed, its line's part, the numbers it prints (at the NPC's rating where they use its Force) and its DV as printed.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "part",
+            "printed",
+            "values"
+          ],
+          "properties": {
+            "part": {
+              "type": "string"
+            },
+            "printed": {
+              "type": "string"
+            },
+            "values": {
+              "type": "object"
+            },
+            "dv": {
+              "type": "string"
+            }
+          }
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/npcItem"
+          }
         }
       }
     },

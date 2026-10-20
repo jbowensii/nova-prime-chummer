@@ -140,14 +140,24 @@ for a dash).
 
 ## NPC block
 
-`{ kind, rating?, group?, from?, stats, lines, pools }`. `kind` `grunt`, `critter`, `spirit` or `sprite` (a contact, one of
+`{ kind, rating?, group?, from?, stats, lines, pools, items }`. `kind` `grunt`, `critter`, `spirit` or `sprite` (a contact, one of
 the book's sample contacts, goes out as `grunt` with `group` `Contact` and no rating); `rating` the Professional Rating,
 Force or Level; `group` a grunt's; `from` `{ kind, id, name, source, page }`, the catalog entry it was
 copied from. `stats` `[{ key, label, printed, value, ok }]` in stat-block order: the printed value and its value at the
 rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `value` is the printed text). `lines`
 `[{ part, text }]` (skills, powers, optional powers, weaknesses, attacks, augmentations, gear, weapons). `pools`
 `[{ name, rating, attr?, pool?, printed }]`: the skills line resolved against the catalog's skills, pool = rating + the
-attribute's value; a skill the catalog doesn't have keeps its printed text only. The block is GM-only data.
+attribute's value; a skill the catalog doesn't have keeps its printed text only. `items` (npc.ts `npcThings`): each
+weapon, attack, piece of gear, augmentation and power the weapons, attacks, gear, augmentations and powers lines print, as
+a purchase (`uid`, `qty` 1, `worn`, `bonuses` [], `accessories`) plus `line { part, printed, values, dv? }`, the thing as printed,
+the numbers it prints and its DV as printed. An adept power has its `level`. It is its catalog entry where the catalog has one by name (the kinds its part names, the
+NPC's own book first; a printed level picks that level's entry), with the printed DV, attack ratings, firing modes, ammo,
+rating and Defense over the entry's `values`; else it is built from the line (no `id`): an attack printing a DV or attack
+ratings as a weapon (`attrs` `category` and `dv` as printed; `skill` the printed one, else Close Combat with only a close
+band, Exotic Weapons past it), gear printing a Defense as armor, other gear as gear, a power as a critter power. Formulas
+of Force are worked out at the rating; a band at 0 or less is none. Armor is worn. A Cybercombat attack (a Matrix action)
+and an attack printing nothing to roll stay in `lines` only. uids: `line:<part>:<printed>` (`power:<printed>` for a
+power, `<host uid>:w/<printed>` for an accessory; a repeat gets `#2`…). The block is GM-only data.
 
 ## Book
 

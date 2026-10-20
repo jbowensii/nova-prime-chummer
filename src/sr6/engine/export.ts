@@ -27,13 +27,14 @@ import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
 import { withSampleFixes } from './samplefix'
 import { withSr6House } from './house'
-import { NPC_KINDS, npcFromEntry, npcPools, npcValues } from './npc'
+import { attackSkill, NPC_KINDS, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcThing } from './npc'
 import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
 import { prerequisites, type Prerequisite } from './martial'
 import { critterClass, isTaught, trainedName, type CritterClass } from './critters'
 import { builtinText, modsOf } from './vehiclemods'
+import { levelOf } from './levels'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
   SR6_EXPORT_VERSION = 1
@@ -203,6 +204,17 @@ export interface Sr6ExportNpc {
   stats: ReturnType<typeof npcValues>
   lines: Sr6Npc['lines']
   pools: ReturnType<typeof npcPools>
+  /** the weapons, attacks, armor, gear, augmentations and powers its lines print, as items (npcItem) */
+  items: Sr6ExportNpcItem[]
+}
+/** A thing an NPC's stat block prints (npc.ts npcThings) as a purchase: its catalog entry's, the stat block's numbers over
+ *  the entry's, else built from the printed line (no id); armor worn. uid `line:<part>:<printed>` (a power's
+ *  `power:<printed>`, an accessory's `<host uid>:w/<printed>`): the Foundry module's earlier line item ids. line: the
+ *  printed thing and the numbers it prints. */
+export interface Sr6ExportNpcItem extends Omit<Sr6ExportPurchase, 'accessories'> {
+  level?: number
+  line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string }
+  accessories: Sr6ExportNpcItem[]
 }
 export interface Sr6ExportLifestyle {
   uid: string
@@ -577,7 +589,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),
     ...(x.kind === 'critters'
       ? {
-          ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}),
+          ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data, c) } : {}),
           critter: {
             class: critterClass(x, e),
             tamed: !!x.tamed,
@@ -593,10 +605,38 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
   })
 }
 
-/** An NPC's stat block, read at its rating, with dice pools against the catalog's skills. A contact goes out as a grunt
- *  of group Contact (v1's kinds: the module makes it an NPC actor). */
-export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc =>
-  defined({
+/** A stat block's thing as an export item (Sr6ExportNpcItem): a built weapon's category and DV as printed, its skill the
+ *  printed one or attackSkill's. */
+function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6ExportNpcItem {
+  const e = leveled(data, t.entry, t.values.rating)
+  const skill = t.kind === 'weapons' && !e ? attackSkill(t) : undefined
+  const base = e
+    ? item(c, data, e, false, t.values.rating)
+    : { ...bare(t.kind, t.name), attrs: defined({ category: t.category ?? skill, skill, dv: t.dvText }) as Record<string, string> }
+  const values = { ...base.values, ...t.values }
+  return defined({
+    ...base,
+    uid,
+    values,
+    qty: 1,
+    worn: base.kind === 'armor',
+    bonuses: [],
+    level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
+    line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText }),
+    accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`)),
+  })
+}
+/** An NPC's stat block, read at its rating, with dice pools against the catalog's skills and its lines' things as items.
+ *  A contact goes out as a grunt of group Contact (v1's kinds: the module makes it an NPC actor). */
+export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportNpc {
+  const seen = new Map<string, number>()
+  const items = npcThings(npc, c).map(t => {
+    const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}`,
+      n = (seen.get(id) ?? 0) + 1
+    seen.set(id, n)
+    return npcItem(c, data, t, n > 1 ? `${id}#${n}` : id)
+  })
+  return defined({
     kind: npc.kind === 'contact' ? 'grunt' : npc.kind,
     rating: npc.rating,
     group: npc.kind === 'contact' ? 'Contact' : npc.group,
@@ -604,7 +644,9 @@ export const exportNpc = (npc: Sr6Npc, data: Sr6Data): Sr6ExportNpc =>
     stats: npcValues(npc),
     lines: npc.lines.map(l => ({ ...l })),
     pools: npcPools(npc, data),
+    items,
   })
+}
 
 /** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
 export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, printedCh: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
@@ -733,7 +775,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     ledger: ch.ledger
       .filter(e => e.type !== 'void' && !voided.has(e.id))
       .map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e), karma: 'karma' in e ? e.karma : 0, nuyen: 'nuyen' in e ? e.nuyen : 0 })),
-    ...(ch.npc ? { npc: exportNpc(ch.npc, data) } : {}),
+    ...(ch.npc ? { npc: exportNpc(ch.npc, data, c) } : {}),
     ...(exportRules(cr, ch).length ? { rules: exportRules(cr, ch) } : {}),
   }
 }
@@ -761,7 +803,13 @@ export const exportSr6Runners = (
 const BEINGS = new Set<Sr6Kind>(Object.values(NPC_KINDS).map(k => k.kind))
 function bookEntry(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean): Sr6ExportEntry {
   // a spirit or sprite at its default rating, a grunt at its Professional Rating
-  return { ...item(c, data, e, text), id: e.id, source: e.source, page: e.page, ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data) } : {}) }
+  return {
+    ...item(c, data, e, text),
+    id: e.id,
+    source: e.source,
+    page: e.page,
+    ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data, c) } : {}),
+  }
 }
 const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] => ({
   id: s.id,

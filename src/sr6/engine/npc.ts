@@ -2,9 +2,10 @@
 // block is a copy of the catalog entry's printed values and its rating (Professional Rating, Force or Level), read at
 // that rating with formula(); its skills line gives dice pools against the catalog's skills. No book numbers here.
 import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
-import type { Sr6Catalog, Sr6Entry } from '../model/types'
+import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import type { Sr6Data } from './data'
 import { normName } from './names'
+import { atLevel } from './levels'
 import { formula } from './values'
 
 export const NPC_KINDS: Record<
@@ -203,3 +204,254 @@ const PART_LABELS: Record<(typeof SR6_NPC_PARTS)[number], string> = {
 /** The line parts a kind uses, with their labels: a sprite has skills and powers, the others every part. */
 export const npcParts = (kind: Sr6NpcKind): [string, string][] =>
   SR6_NPC_PARTS.filter(p => kind !== 'sprite' || p === 'skills' || p === 'powers').map(p => [p, PART_LABELS[p]])
+
+/** What an NPC's stat block prints for one weapon, attack, piece of gear, augmentation or power: the catalog entry it is
+ *  (its printed level's), or none and the kind it is built as; the stat block's own numbers, which win over the entry's
+ *  (an attack's DV and attack ratings worked out at the NPC's Force); and its `w/` accessories the catalog has. */
+export interface Sr6NpcThing {
+  part: string
+  printed: string
+  name: string
+  kind: Sr6Kind
+  entry?: Sr6Entry
+  /** a weapon's printed category or skill (`Heavy Pistol`, `Close Combat`) and its DV as printed */
+  category?: string
+  dvText?: string
+  values: { rating?: number; dv?: number; stun?: boolean; ar?: (number | null)[]; modes?: string[]; ammo?: number; defense?: number }
+  accessories: Sr6NpcThing[]
+}
+/** The line parts that hold things, and the catalog kinds a thing on one is looked for in, the first kind first. */
+const THING_KINDS: Record<string, Sr6Kind[]> = {
+  weapons: ['weapons'],
+  attacks: ['weapons'],
+  gear: ['gear', 'electronics', 'armor', 'programs', 'vehicles', 'weapons'],
+  augmentations: ['augmentations'],
+}
+const POWER_KINDS: Record<'being' | 'person', Sr6Kind[]> = {
+  being: ['critterpowers', 'adeptpowers', 'spells', 'complexforms'],
+  person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms'],
+}
+const ACCESSORY_KINDS: Sr6Kind[] = ['weapons', 'armor', 'electronics', 'gear', 'augmentations', 'programs']
+const ATTACK_SKILLS = new Set(['close combat', 'exotic weapons', 'firearms', 'athletics'])
+
+/** `s` split at its commas outside any bracket; trimmed, empties dropped. */
+function top(s: string): string[] {
+  const out = ['']
+  let depth = 0
+  for (const ch of s) {
+    if ('([{'.includes(ch)) depth++
+    else if (')]}'.includes(ch)) depth = Math.max(0, depth - 1)
+    if (ch === ',' && !depth) out.push('')
+    else out[out.length - 1] += ch
+  }
+  return out.map(x => x.trim()).filter(Boolean)
+}
+/** five attack rating bands: `10/8/6/—/—`, `(F x 2) +4/—/—/—/—`, `8/2*` (a footnote mark), `6(8)` (with a focus) */
+const BAND = String.raw`(?:\d+(?:\(\d+\))?\*?|[—–-])`
+const AR_SRC = String.raw`(?:\(F\s*[x×*]\s*\d+\)\s*(?:[+-]\s*\d+)?|${BAND})(?:\s*\/\s*${BAND}){4}`
+const AR_RUN = new RegExp(AR_SRC, 'g'),
+  HAS_AR = new RegExp(AR_SRC)
+const CLOSES: Record<string, string> = { ')': '(', ']': '[', '}': '{' }
+/** The top-level bracket groups of `s` as [opening index, closing index]: a closer closes the nearest opener of its own
+ *  kind (an opener left open inside it closes with it: `[(DV 8S + Fatigue I, …]`); a stray closer counts for nothing. */
+function groups(s: string): [number, number][] {
+  const out: [number, number][] = [],
+    stack: { ch: string; at: number }[] = []
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if ('([{'.includes(ch)) stack.push({ ch, at: i })
+    else if (CLOSES[ch]) {
+      const k = stack.map(x => x.ch).lastIndexOf(CLOSES[ch])
+      if (k < 0) continue
+      if (k === 0) out.push([stack[0].at, i])
+      stack.length = k
+    }
+  }
+  return out
+}
+/** A weapons or attacks line split into its things: after each top-level `[…]` (`Bite [DV 2P, 8/—/—/—/—] Claws […]`)
+ *  or `(…)` holding attack ratings (`Beretta (2P, SA, 9/8/6/—/—) Shotgun (…)`), after each run of attack ratings printed
+ *  without one (`Bite 2P, 6/—/—/—/— Claw 1P, 4/—/—/—/—`), else at semicolons and at commas (but `Bite: DV 4P, Attack
+ *  Rating 9` stays one). What follows a `**` or ` // ` (book text the reader ran on with) is left out. */
+export function splitThings(text: string): string[] {
+  const s = text.split(/\*\*|\s\/\/\s/)[0]
+  const out: string[] = []
+  const loose = (t: string) => {
+    let at = 0
+    for (const m of t.matchAll(AR_RUN)) {
+      out.push(t.slice(at, m.index + m[0].length))
+      at = m.index + m[0].length
+    }
+    for (const chunk of t.slice(at).split(';')) out.push(...(/:\s*(?:DV\s*)?\d|^\S.*?\s\d+\s*[PS]\b/i.test(chunk) ? [chunk] : top(chunk)))
+  }
+  let at = 0
+  for (const [open, close] of groups(s)) {
+    if (s[open] !== '[' && !(s[open] === '(' && HAS_AR.test(s.slice(open, close)))) continue
+    // the group's thing is named by what follows the last comma or attack-rating run before it
+    const head = s.slice(at, open)
+    const cut = Math.max(head.lastIndexOf(','), head.lastIndexOf(';'), ...[...head.matchAll(AR_RUN)].map(m => m.index + m[0].length - 1))
+    if (cut >= 0) loose(head.slice(0, cut + 1))
+    out.push(s.slice(at + cut + 1, close + 1))
+    at = close + 1
+  }
+  loose(s.slice(at))
+  return out.map(x => x.replace(/^[\s,;]+|[\s,;]+$/g, '')).filter(x => x && x.length <= 200)
+}
+
+/** A printed number, or a formula of the NPC's Force at its rating (`(Force/2) + 2`, `(F x 2) +4`); null when it can't
+ *  be read. */
+function valueAt(s: string, rating: number | undefined): number | null {
+  let t = s
+    .replace(/\bForce\b/gi, 'F')
+    .replace(/\*/g, '')
+    .trim()
+  if (/^\d+$/.test(t)) return Number(t)
+  // a closing bracket the book left over: `(F x 2) – 8)`
+  while ((t.match(/\)/g) ?? []).length > (t.match(/\(/g) ?? []).length) t = t.replace(/\)\s*$/, '').trim()
+  if (rating == null || !/\bF\b/.test(t)) return null
+  const f = formula(t, rating, 'F')
+  return f.ok && f.dice == null ? f.n : null
+}
+/** A thing's name and its stat pieces: those of the bracket it ends with (`[…]`; gear's `Armor jacket (+4)`), or what
+ *  follows its name when it has none (`Bite: DV 19P, 38/—/—/—/—`, `Claws 2P, 11/—/—/—/—`). */
+function pieces(printed: string): { name: string; stats: string[] } {
+  const last = groups(printed).at(-1)
+  if (last && last[0] > 0 && last[1] === printed.length - 1)
+    return { name: printed.slice(0, last[0]).trim(), stats: top(printed.slice(last[0] + 1, -1).replace(/^\(\s*(?=DV)/i, '')) }
+  const bare = printed.length <= 200 ? printed.match(/^(.+?)(?::\s*|\s+(?=(?:DV\s*)?\d+\s*\(?[PS]\b))(.*\d.*)$/i) : null
+  return bare ? { name: bare[1].trim(), stats: top(bare[2]) } : { name: printed, stats: [] }
+}
+/** A thing's printed stats: its category, DV, attack ratings, firing modes, ammo, rating, Defense and `w/` accessories. */
+function readStats(stats: string[], rating: number | undefined) {
+  const v: Sr6NpcThing['values'] = {},
+    accessories: string[] = []
+  let category: string | undefined,
+    dvText: string | undefined,
+    fitted = false
+  // a category and DV printed without a comma (`Light Pistol DV 2S(e)`), accessories after a run without one (`8/8/6/—/— w/ …`)
+  const all = stats.flatMap(p => p.split(/\s+(?=DV\b)|\s+(?=w\/)|\s*;\s*/i))
+  all.forEach((raw, i) => {
+    const t = raw.replace(/^\(+(?=DV)/i, '').trim()
+    let m: RegExpMatchArray | null
+    if ((m = t.match(/^(?:w\/|with\s)\s*(.+)$/i))) {
+      fitted = true
+      accessories.push(...m[1].split(/\s+(?:and|&)\s+|\s*\+\s*/i))
+    } else if (v.dv == null && !dvText && (m = t.match(/^(?:DV\s*)?(\[[^\]]*\]|\([^)]*\)|\d+)\s*\(?([PS])\)?(?![a-z])/i))) {
+      dvText = t.replace(/^DV\s*/i, '')
+      const n = valueAt(m[1].replace(/^[[(]|[\])]$/g, ''), rating)
+      if (n != null) Object.assign(v, { dv: n, stun: m[2].toUpperCase() === 'S' })
+    } else if (!v.ar && (m = t.match(/^(?:AR|Attack Ratings?)\s*:?\s*(\d+)$/i))) v.ar = [Number(m[1]), null, null, null, null]
+    else if (!v.ar && (m = t.match(/^(?:AR|Attack Ratings?)?\s*([^/]*(?:\/[^/]*){4})$/i))) {
+      // a band's footnote mark, focus bonus (`6(8)`) or note (`— (Venom)`) aside
+      // a band's footnote mark, focus bonus (`6(8)`) or note (`— (Venom)`) aside; a band at 0 or less is none
+      const bands = m[1].split('/').map(b => {
+        const n = /\d|\bF\b/.test(b) ? valueAt(b.replace(/\(\d+\)|\s\((?!F\b).*$/g, ''), rating) : null
+        return n != null && n > 0 ? n : null
+      })
+      if (bands.some(b => b != null)) v.ar = bands
+    } else if (/^(SS|SA|BF|FA)(\s*\/\s*(SS|SA|BF|FA))*$/i.test(t)) v.modes = t.toUpperCase().split(/\s*\/\s*/)
+    else if ((m = t.match(/^(\d+)\s*\(?[a-z]{1,2}\)?$/i))) v.ammo = Number(m[1])
+    else if ((m = t.match(/^(?:R|Rating)\s*:?\s*(\d+)$/i))) v.rating = Number(m[1])
+    else if ((m = t.match(/^(?:DR\s*\+?\s*(\d+)|\+\s*(\d+)\s*(?:DR)?)$/i))) v.defense = Number(m[1] ?? m[2])
+    else if (i === 0 && /^[a-z][a-z -]{1,30}$/i.test(t)) category = t
+    else if (fitted && !/\d/.test(t)) accessories.push(t)
+  })
+  return { values: v, category, dvText, accessories: accessories.map(a => a.trim()).filter(Boolean) }
+}
+
+/** per catalog: `<kind>/<normName>` -> the entries of that kind with that name, catalog order */
+const byName = new WeakMap<Sr6Catalog['entries'], Map<string, Sr6Entry[]>>()
+/** The catalog entry a printed name is, in `kinds` (the first kind with one wins), the NPC's own book's before another
+ *  book's; failing the name as printed, without its trailing note (`Khopesh (Weapon Foci +2)`) or footnote mark. */
+function findEntry(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: string): Sr6Entry | undefined {
+  let index = byName.get(c.entries)
+  if (!index) {
+    index = new Map()
+    for (const [k, map] of Object.entries(c.entries))
+      for (const e of map.values()) {
+        const key = `${k}/${normName(e.name)}`
+        index.set(key, [...(index.get(key) ?? []), e])
+      }
+    // a rated family's name (`Glow Eyes`, its levels `Glow Eyes 1`…): its lowest level
+    for (const f of c.levels?.values() ?? []) {
+      const key = `${f.kind}/${normName(f.parent?.name ?? '')}`,
+        e = f.parent && c.entries[f.kind].get(f.levels.get(Math.min(...f.levels.keys()))!)
+      if (e && !index.has(key)) index.set(key, [e])
+    }
+    byName.set(c.entries, index)
+  }
+  for (const n of [name, name.replace(/\s*\([^()]*\)\s*$/, ''), name.replace(/\*+$/, '')])
+    for (const k of kinds) {
+      const list = index.get(`${k}/${normName(n)}`)
+      if (list?.length) return list.find(e => e.source === source) ?? list[0]
+    }
+  return undefined
+}
+
+/** The things an NPC's weapons, attacks, gear, augmentations and powers lines print, each its catalog entry where the
+ *  catalog has one (a level by its printed number: `Improved Reflexes 2` is that level's entry), else built from what is
+ *  printed: an attack printing a DV (read or not) or attack ratings as a weapon, gear with a printed Defense as armor,
+ *  other gear as gear, an augmentation as one, a power as a critter power. A weapon or attack with none of those and no
+ *  entry, or a Cybercombat one, is left out (its line stays in the notes). The printed numbers are kept (values), worked
+ *  out at the NPC's rating where they use its Force. */
+export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
+  const src = npc.from?.source,
+    powers = POWER_KINDS[npc.kind === 'grunt' || npc.kind === 'contact' ? 'person' : 'being']
+  const out: Sr6NpcThing[] = []
+  for (const l of npc.lines) {
+    const power = l.part === 'powers' || l.part === 'optionalPowers',
+      attack = l.part === 'weapons' || l.part === 'attacks'
+    const kinds = power ? powers : THING_KINDS[l.part]
+    if (!kinds) continue
+    for (const printed of attack ? splitThings(l.text) : top(l.text)) {
+      const { name, stats } = power ? { name: printed, stats: [] } : pieces(printed)
+      const s = readStats(stats, npc.rating)
+      let entry = findEntry(c, name, kinds, src)
+      // a trailing number is its rating or level: `white noise generator 3`, `Hardened Armor (4)`
+      const lv = name.match(/^(.*?)\s*(?:\((\d{1,2})\)|\s(\d{1,2}))$/)
+      if (lv && (!entry || normName(entry.name) === normName(lv[1]))) {
+        entry ??= findEntry(c, lv[1], kinds, src)
+        s.values.rating ??= Number(lv[2] ?? lv[3])
+      }
+      // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2, `control rig [rating 2]` Control Rig 2
+      if (s.values.rating != null)
+        entry = entry ? (atLevel(c, entry.kind, entry.id, s.values.rating) ?? entry) : findEntry(c, `${name} ${s.values.rating}`, kinds, src)
+      // (a Cybercombat attack is a Matrix action, not a weapon)
+      if (!entry && attack && ((s.values.dv == null && !s.values.ar && !s.dvText) || /cybercombat/i.test(s.category ?? ''))) continue
+      const kind: Sr6Kind = entry
+        ? entry.kind
+        : attack
+          ? 'weapons'
+          : power
+            ? 'critterpowers'
+            : l.part === 'augmentations'
+              ? 'augmentations'
+              : s.values.defense != null
+                ? 'armor'
+                : 'gear'
+      const accessories = s.accessories.flatMap(a => {
+        const e = findEntry(c, a, ACCESSORY_KINDS, src)
+        return e ? [{ part: l.part, printed: a, name: e.name, kind: e.kind, entry: e, values: {}, accessories: [] }] : []
+      })
+      out.push({
+        part: l.part,
+        printed,
+        name: entry?.name ?? name.replace(/\*+$/, ''),
+        kind,
+        ...(entry ? { entry } : {}),
+        ...(s.category ? { category: s.category } : {}),
+        ...(s.dvText ? { dvText: s.dvText } : {}),
+        values: s.values,
+        accessories,
+      })
+    }
+  }
+  return out
+}
+/** A built attack's skill: the one it prints as its category; none when its category is a weapon class (`Heavy Pistol`:
+ *  the class says); with no category, Exotic Weapons when it reaches past close range (an elemental attack), else Close
+ *  Combat. */
+export function attackSkill(t: Pick<Sr6NpcThing, 'category' | 'values'>): string | undefined {
+  if (t.category) return ATTACK_SKILLS.has(t.category.toLowerCase()) ? t.category : undefined
+  return (t.values.ar ?? []).slice(1).some(b => b != null) ? 'Exotic Weapons' : 'Close Combat'
+}
