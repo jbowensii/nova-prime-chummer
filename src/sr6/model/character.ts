@@ -461,7 +461,7 @@ export const SR6_LEDGER_TYPES: Sr6LedgerType[] = ['finalize', 'earn', 'advance',
 /** An SR6 NPC's stat block: the catalog entry's printed values (or the GM's) and its rating, evaluated at the rating. */
 export type Sr6NpcKind = 'grunt' | 'contact' | 'critter' | 'spirit' | 'sprite'
 export const SR6_NPC_KINDS: Sr6NpcKind[] = ['grunt', 'contact', 'critter', 'spirit', 'sprite']
-export const SR6_NPC_PARTS = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons'] as const
+export const SR6_NPC_PARTS = ['skills', 'powers', 'optionalPowers', 'spells', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons'] as const
 export interface Sr6Npc {
   kind: Sr6NpcKind
   rating?: number

@@ -80,7 +80,7 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | martialtechniques | martialtechnique | category (as printed; a restriction after it goes to the text) | `<requires kind>` (adeptpower, technique, quality, augmentation, other: its prerequisites, below) |
 | traditions | tradition | — | — |
 | critterpowers | critterpower | type, action, range, duration, tags (Street Wyrd: `Free`, `Great`), weakness true (the book lists it as a weakness: a stat block's `Weaknesses:`, or a heading under a `Weaknesses` section, the core rulebook's pp. 228-229) | — |
-| critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
+| critters / spirits / npcs | critter / spirit / npc | category, rating int (NPCs: the Professional Rating), group; bod agi rea str wil log int cha ess mag res edg dr init actions cm move | skills, powers, optionalPowers, spells, weaknesses, attacks, augmentations, gear, weapons (text, each at most once, in this order) |
 | sprites | sprite | attack, sleaze, data, firewall, init, res | skills, powers |
 | lifestyles | lifestyle | cost (per month) | — |
 | contacts | contact | connection, loyalty, archetype | — |

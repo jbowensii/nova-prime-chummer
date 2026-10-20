@@ -826,6 +826,7 @@ _NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Za-z]")
 # three between commas and brackets)
 _PROSE = re.compile(r"[a-z]{2}[.!?][”’\"')]*\s+[A-Z]|(?:\b[A-Za-z][a-z’'-]*\s+){7}[A-Za-z][a-z’'-]*\b")
 _MARK = re.compile(r"\s*(?:\*|[†‡]|//)")  # a footnote, a bold run-in or an art title (`// **VODYANOY** //`)
+_MID_LABEL = re.compile(r"(?<=[^\s;])\s+\*\*([A-Z][A-Za-z ()/]{1,30}?)\*?:\*\*\s*")  # (not `; **Powers:**`: the readers')
 
 
 def _foreign(value, last, v, ahead):
@@ -1035,11 +1036,19 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
                     cur.body.append(v)
                     continue
+                # (a label printed after the value's last wrap, on its line: `+2), **Knowledge Skills:** Awakened …`,
+                # Whisper Nets p. 120: the rest of the line starts it)
+                mid = _MID_LABEL.search(v) if banded else None
                 for d in targets:
-                    prev = d[key]
-                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and v[:1].islower() else prev + " " if prev else ""
-                    d[key] = joined + v.strip()
+                    prev, part = d[key], v[:mid.start()].rstrip(" ,;") if mid else v.strip()
+                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and part[:1].islower() else prev + " " if prev else ""
+                    d[key] = joined + part
                 last = v
+                if mid:
+                    key, value = mid.group(1).strip(), v[mid.end():].strip()
+                    label = ([cur.labels], key) if key not in cur.labels else None
+                    cur.labels.setdefault(key, value)
+                    listy = not value
                 if mode == "box":
                     continue
             else:
@@ -1530,11 +1539,34 @@ def _emit(units):
     return out
 
 
+_COVER = re.compile(r"catalystgamelabs\.com|\bISBN\b|Under License From|Topps Company", re.I)
+
+
+def back_cover(md):
+    """The PDF page where the book's back cover and what follows it start (None: no back cover found). Of the last five
+    pages, the last that prints the back cover's furniture (the publisher's site, an ISBN, the licence line) and no
+    heading or table; with the pages before it that are part of it: such pages, nearly empty ones (`FIN`) and ones set
+    in spaced or vertical lettering (one or two letters a line). Everything from there on is the cover's (its blurb,
+    an ad, a map key printed after it), never an entry's: the blurb joined the last stat block (Cutting Black p. 178)."""
+    parts = re.split(r"<!-- page (\d+) -->", md)
+    pages = [(int(n), [ln for ln in t.splitlines() if ln.strip()]) for n, t in zip(parts[1::2], parts[2::2])]
+    furniture = lambda ls: _COVER.search("\n".join(ls)) and not any(ln.startswith(("#", "|")) for ln in ls)  # noqa: E731
+    letters = lambda ls: sum(c.isalpha() for ln in ls for c in ln)  # noqa: E731
+    cover = next((k for k in range(len(pages) - 1, max(len(pages) - 6, -1), -1) if furniture(pages[k][1])), None)
+    if cover is None:
+        return None
+    while cover > 0 and ((ls := pages[cover - 1][1]) == [] or furniture(ls) or letters(ls) < 40
+                         or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls)):
+        cover -= 1
+    return pages[cover][0]
+
+
 def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=False):
     """md: book.md. Returns (regrouped text, report rows). end_page: the PDF page where the back matter (index,
-    reprinted tables) starts; it and the pages after it are left out. variants: a catalog's name-only rows name the
-    rows under them (_variants)."""
+    reprinted tables) starts; it and the pages after it are left out (default: the back cover's, back_cover).
+    variants: a catalog's name-only rows name the rows under them (_variants)."""
     name_headers = {h.upper() for h in name_headers}
+    end_page = end_page or back_cover(md)
     els = list(_elements(md))
     els = _back_prices([e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page])
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]

@@ -40,7 +40,8 @@ $44.99
 |---|---|---|---|---|
 | 5 | 10/4 | A1, I5 | 10 | 10/15/+1 |
 **Skills:** Conjuring 5 (Summoning +3), Sorcery 4
-(Spellcasting +2)
+(Spellcasting +2) **Knowledge Skills:** Made-up Lore, Fake
+History
 **Spells*:** Made-up Bolt, Made-up Heal
 **Weapons:**
 Zap rod [Clubs, DV 4S, 8/—/—/—/—]
@@ -61,6 +62,20 @@ following: made-up fin 2, made-up gill 3
 Bite* [Close Combat, DV 4P, 12/—/—/—/—]
 ***Note:** Use Bite for made-up rams.
 // **MUD SPRITE** //
+<!-- page 3 -->
+FIN
+<!-- page 4 -->
+e
+e
+r
+t
+s
+<!-- page 5 -->
+**MADE-UP STREETS HAVE RULES.**
+A made-up blurb for a made-up book.
+$9.99
+ISBN 000-0-000000-00-0
+madeup.catalystgamelabs.com
 """
 
 
@@ -83,6 +98,8 @@ class StatBlockBleedTest(unittest.TestCase):
         self.assertEqual(m["Weapons"], "Zap rod [Clubs, DV 4S, 8/—/—/—/—]")
         self.assertEqual(m["Skills"], "Conjuring 5 (Summoning +3), Sorcery 4 (Spellcasting +2)")
         self.assertEqual(m["Spells"], "Made-up Bolt, Made-up Heal")
+        # a label printed after the value's last wrap starts its own line
+        self.assertEqual(m["Knowledge Skills"], "Made-up Lore, Fake History")
         # a value the book prints as prose goes on; a footnote and the next entry's art title stay out
         e = labels["Puff Eel"]
         self.assertTrue(e["Augmentations"].endswith("following: made-up fin 2, made-up gill 3"), e["Augmentations"])
@@ -94,10 +111,22 @@ class StatBlockBleedTest(unittest.TestCase):
         flagged = [(x.findtext("name"), c.tag) for x in beings for c in x
                    if c.tag not in statbleed.SKIP and statbleed.why(c.text)]
         self.assertEqual(flagged, [("Puff Eel", "augmentations")])
+        # a spell list is a part of its own
+        medic = next(x for x in beings if x.findtext("name") == "Glow Medic")
+        self.assertEqual(medic.findtext("spells"), "Made-up Bolt, Made-up Heal")
+        # the back cover (from the `FIN` page: its lettering, its blurb) is in no being's description
+        self.assertEqual(regroup.back_cover(BOOK.prepare_md(BOOK_MD)), 3)
+        texts = [t.text or "" for t in ET.fromstring(res.texts) if t.get("of") in statbleed.KINDS]
+        self.assertTrue(texts)
+        self.assertEqual([statbleed.text_why(t) for t in texts if statbleed.text_why(t)], [])
+        self.assertNotIn("MADE-UP STREETS", regrouped)
 
     def test_the_scanner_flags_bled_lines(self):
         self.assertEqual(statbleed.why("Natural weapon (claw/bite) [DV 2P, 8/—/—/—/—]"), "")
         self.assertEqual(statbleed.why("Astral 7 (Astral Signatures +2), Athletics 4 (Throwing +2), Stealth 5"), "")
+        self.assertIn("lettering", statbleed.why("Data tap FIN e e r t s l u r"))
+        self.assertIn("back-cover", statbleed.text_why("A made-up runner. $9.99 ISBN 000-0-000000-00-0"))
+        self.assertEqual(statbleed.text_why("A made-up runner from Slamm-0-Matic©®™ shadowtalk."), "")
         self.assertIn("bold", statbleed.why("Claw [DV 2P, 8/—/—/—/—] **VOICES SCREAM.** Made-up blurb."))
         self.assertIn("prose", statbleed.why("Staff [Clubs, DV 4S, 8/—/—/—/—] When the fighting starts, the medic "
                                              "uses non-lethal methods on everything. She will also order spirits to "

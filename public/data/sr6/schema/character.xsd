@@ -511,6 +511,7 @@
           <xs:attribute name="part" use="required">
             <xs:simpleType><xs:restriction base="xs:string">
               <xs:enumeration value="skills"/><xs:enumeration value="powers"/><xs:enumeration value="optionalPowers"/>
+              <xs:enumeration value="spells"/>
               <xs:enumeration value="weaknesses"/><xs:enumeration value="attacks"/><xs:enumeration value="augmentations"/>
               <xs:enumeration value="gear"/><xs:enumeration value="weapons"/>
             </xs:restriction></xs:simpleType>

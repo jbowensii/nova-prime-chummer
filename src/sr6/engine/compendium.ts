@@ -32,7 +32,7 @@ const BEING = [
   'cm',
   'move',
 ]
-const BEING_LINES = ['skills', 'powers', 'optionalPowers', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons']
+const BEING_LINES = ['skills', 'powers', 'optionalPowers', 'spells', 'weaknesses', 'attacks', 'augmentations', 'gear', 'weapons']
 const ITEM = ['avail', 'cost']
 /** The kinds a compendium holds: every SR6 kind but those that carry creation structure or rule numbers (priorities,
  *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children

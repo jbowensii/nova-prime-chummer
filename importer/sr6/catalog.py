@@ -74,7 +74,7 @@ HEADERS = {
                   "CAPACITY": "", "BLAST PROFILE": ""},  # (a warhead type's band: prose)
 }
 # a being's labelled lists (label, lower case -> child element)
-LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "weaknesses": "weaknesses",
+LISTS = {"skills": "skills", "powers": "powers", "optional powers": "optionalPowers", "spells": "spells", "weaknesses": "weaknesses",
          "weakness": "weaknesses",
          "attacks": "attacks", "attack": "attacks", "augmentations": "augmentations", "cyberware": "augmentations", "gear": "gear",
          "weapons": "weapons"}
