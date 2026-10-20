@@ -381,6 +381,9 @@ def main(argv=None):
     a = p.parse_args(argv)
     jar = reader.find_jar(a.jar)
     if jar is None:
+        if a.jar or os.environ.get("CL6_JAR"):  # named but missing: a typo must not pass --check
+            print(f"final_analysis: Commlink6 jar not found: {a.jar or os.environ['CL6_JAR']}", file=sys.stderr)
+            return 2
         print("final_analysis: no Commlink6 jar (--jar or $CL6_JAR): nothing to measure, skipped.")
         return 0
     if not a.ours or not os.path.isdir(a.ours):

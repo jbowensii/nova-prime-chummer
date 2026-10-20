@@ -82,6 +82,10 @@ class FinalAnalysis(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(lines, ["list 1: total: doc 8, recomputed 7"])
 
+    def test_named_jar_missing_fails(self):
+        # an explicit --jar that does not exist must fail, not skip: a typo would otherwise pass --check
+        self.assertEqual(fa.main(["--check", "--jar", os.path.join(tempfile.gettempdir(), "no-such-cl6.jar")]), 2)
+
     def test_side_records(self):
         fd, path = tempfile.mkstemp(suffix=".jar")
         os.close(fd)
