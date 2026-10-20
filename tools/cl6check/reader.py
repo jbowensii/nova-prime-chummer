@@ -90,9 +90,10 @@ def books(z):
     return sorted(b for b in out if not GERMAN.match(b) and b not in NON_CONTENT)
 
 
-def read(jar):
+def read(jar, listing=None):
     """(records, excluded): every English record as {book, file, tag, id, name, page, wifi, variants, attrs, el} in jar
-    order, and Counter((book, tag, why)) of the records left out."""
+    order, and Counter((book, tag, why)) of the records left out. listing: a list that gets each left-out record as
+    {book, file, tag, id, name, page, why} (name: its English name, '' when it has none)."""
     recs, excluded = [], Counter()
     with zipfile.ZipFile(jar) as z:
         names = z.namelist()
@@ -118,18 +119,19 @@ def read(jar):
                 for el in root:
                     if not isinstance(el.tag, str) or not el.get("id"):
                         continue
-                    if el.get("lang") == "de":
-                        excluded[(book, el.tag, "lang=de (German-rules duplicate)")] += 1
-                        continue
                     iid = el.get("id")
                     keys = [(p, iid.lower()) for p in PREFIX.get(el.tag, (el.tag,))]
                     t = next((text[f][k] for f in files for k in keys if k in text[f]), {})
                     name = t.get("name") or next((anywhere[k] for k in keys if k in anywhere), "")
-                    if not name:
-                        excluded[(book, el.tag, "no English name in the jar")] += 1
-                        continue
-                    if RETIRED.match(name) and iid not in KEEP_RETIRED:  # (Commlink6 kept the record, marked "Depreciated": out of every count, owner 2026-10-13)
-                        excluded[(book, el.tag, "retired by Commlink6 (Depreciated)")] += 1
+                    why = ("lang=de (German-rules duplicate)" if el.get("lang") == "de" else
+                           "no English name in the jar" if not name else
+                           # (Commlink6 kept the record, marked "Depreciated": out of every count, owner 2026-10-13)
+                           "retired by Commlink6 (Depreciated)" if RETIRED.match(name) and iid not in KEEP_RETIRED else "")
+                    if why:
+                        excluded[(book, el.tag, why)] += 1
+                        if listing is not None:
+                            listing.append({"book": book, "file": stem, "tag": el.tag, "id": iid, "name": name,
+                                            "page": t.get("page", "").strip(), "why": why})
                         continue
                     variants = {k.split(".", 1)[1]: v for k, v in t.items() if k.startswith("variant.") and "." not in
                                 k.split(".", 1)[1]}
