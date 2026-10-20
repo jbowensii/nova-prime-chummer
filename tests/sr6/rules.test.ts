@@ -555,3 +555,25 @@ test('spells past the free ones at creation: an error while the optional rule is
   ch.build.picks.pop()
   expect(hit({}, ['karmaSpellsAtCreation'])).toBeUndefined() // within the free ones
 })
+
+// a sample's NOTE lines: an ammunition type fitted to a weapon is priced against its host, and a catalog problem is read by kind
+test('an ammunition type priced as a multiple of its host is no unreadable value', () => {
+  const ch = runner()
+  const gun = buy(ch.build, 'weapons', 'crb.zap-gun')
+  gun.accessories.push({ uid: 'r1', kind: 'ammotypes', id: 'crb.fizz-rounds', qty: 1, accessories: [] })
+  const v = check(ch).filter(x => x.code === 'catalog.bookValue' || x.code === 'catalog.formula')
+  expect(v.map(x => x.message)).toEqual([])
+})
+
+test('a catalog problem shows by kind: a spell pick does not pull in the augmentation of the same id', () => {
+  const ch = runner()
+  pick(ch.build, 'spells', 'crb.glow-ward')
+  const { data, cr } = made()
+  const problem = (kind: string) => ({ code: 'data.unresolved', severity: 'warning' as const, path: `${kind}.crb.glow-ward`, message: kind })
+  data.problems.push(problem('augmentations'), problem('spells'))
+  expect(
+    validateSr6(data, cr, ch)
+      .filter(x => x.code === 'data.unresolved' && x.path.endsWith('crb.glow-ward'))
+      .map(x => x.path),
+  ).toEqual(['spells.crb.glow-ward'])
+})
