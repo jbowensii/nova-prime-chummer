@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
 import { createServer } from '../server/server.mjs'
 
-// SR6 F1 end to end: Export for Foundry writes Chummer SR6 export v1 files (docs/sr6-export-format.md) from the runner list,
+// SR6 F1 end to end: Export for Foundry writes SR6 export v1 files (docs/sr6-export-format.md) from the runner list,
 // the editor, NPCs & Critters, Game data and a compendium, on a server of its own with the made-up SR6 fixture. Ada the
 // admin, Gil an editor, Pat a player; their runners are tests/fixtures/sr6/runner-career.xml renamed. Runs in order.
 const PW = { ada: 'ada-password-1', gil: 'gil-password-1', pat: 'pat-password-1' }
@@ -93,7 +93,7 @@ test('the runner list: ticked runners in one file; Tick a campaign ticks that SR
   await page.reload()
   await page.getByRole('button', { name: 'Export for Foundry…' }).click()
   const dlg = page.getByRole('dialog', { name: 'Export runners for Foundry' })
-  await expect(dlg).toContainText('For the Chummer SR6 importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.')
+  await expect(dlg).toContainText('For the Nova Prime Chummer — SR6 Importer in Foundry VTT (shadowrun6-eden): upload the file there with Import from Chummer.')
   await dlg.getByRole('button', { name: 'None' }).click()
   await dlg.getByRole('checkbox', { name: 'Gil One' }).check()
   await dlg.getByRole('checkbox', { name: 'Gil Three' }).check()
@@ -197,7 +197,7 @@ test('Pat: no book panel on Game data; he downloads his own runner', async ({ pa
   expect(streets((await file(dl)).f)).toEqual(['Pat One'])
 })
 
-test('isolation: the Anarchy runner list still writes Chummer Anarchy export files', async ({ page }) => {
+test('isolation: the Anarchy runner list still writes Anarchy 2.0 export files', async ({ page }) => {
   await page.goto('/#/')
   await page.getByRole('button', { name: 'Shadowrun Anarchy 2.0' }).click() // a new browser picks its game first
   await signIn(page, '/#/', 'gil')
@@ -208,7 +208,7 @@ test('isolation: the Anarchy runner list still writes Chummer Anarchy export fil
   await page.goto('/')
   await page.getByRole('button', { name: 'Export for Foundry…' }).click()
   const dlg = page.getByRole('dialog', { name: 'Export runners for Foundry' })
-  await expect(dlg).toContainText('For the Chummer Anarchy 2.0 importer in Foundry VTT: upload the file there')
+  await expect(dlg).toContainText('For the Nova Prime Chummer — Anarchy 2 Importer in Foundry VTT: upload the file there')
   await dlg.getByRole('button', { name: 'All' }).click()
   const dl = page.waitForEvent('download')
   await dlg.getByRole('button', { name: 'Download 1 runner' }).click()
