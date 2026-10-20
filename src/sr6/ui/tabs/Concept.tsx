@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import { GENDER_LIST, GenderList } from '../../../ui/bits'
 import { BACKDROP_NAMES, Face, PortraitEditor } from '../../../ui/Portrait'
+import { npcCorrections, npcThings } from '../../engine/npc'
 import { sr6EditHref, useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'
 
 export function ConceptTab() {
-  const { ch, data, update } = useSr6Editor()
+  const { ch, c, data, update } = useSr6Editor()
+  // an NPC's stat block corrections (worked out from the catalog, as its export carries them; never stored in the notes)
+  const corrections = ch.npc ? npcCorrections(npcThings(ch.npc, c)) : []
   const [pe, setPe] = useState(false),
     [te, setTe] = useState(false)
   const meta = data.metatypes[ch.build.metatype]
@@ -131,6 +134,17 @@ export function ConceptTab() {
           }
         />
       </label>
+      {corrections.length > 0 && (
+        <section aria-label="Stat block corrections">
+          <h4>Corrections</h4>
+          <p className="muted">How its stat block’s items were matched to the catalog. Worked out each time; the export and the Foundry notes carry them.</p>
+          <ul>
+            {corrections.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

@@ -224,6 +224,10 @@ export interface Sr6NpcThing {
   qty?: number
   /** an attack printed with stats the app can't roll (Cybercombat, a DV it can't read): kept as a note item */
   unread?: true
+  /** its name as printed (`name` is its entry's when it has one) */
+  printedName?: string
+  /** ammunition: the name of the weapon it is for */
+  ammoFor?: string
   accessories: Sr6NpcThing[]
 }
 /** The line parts that hold things, and the catalog kinds a thing on one is looked for in, the first kind first. */
@@ -238,6 +242,8 @@ const POWER_KINDS: Record<'being' | 'person', Sr6Kind[]> = {
   person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms'],
 }
 const DEVICES = new Set<Sr6Kind>(['electronics', 'augmentations', 'programs'])
+/** an attack's printed category that makes it a natural one */
+const NATURAL = /close combat|unarmed|natural|exotic weapons/i
 /** an attack's printed stats: a bracket, a DV, an attack rating, a damage (`4P`) or range bands (`9/—`) */
 const STAT_SIGN = /\[|\bDV\b|\bAR\b|attack ratings?|\d\s*[PS]\b|\d\s*\/\s*(?:\d|[—–-])/i
 const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack/i
@@ -370,11 +376,11 @@ function readStats(stats: string[], rating: number | undefined) {
   return { values: v, category, dvText, accessories: accessories.map(a => a.trim()).filter(Boolean) }
 }
 
-/** The least nameRatio of a printed name and a catalog entry's (their matchKeys) that links them (owner 2026-10-20: "If
- *  you can find a perfect match, great. If not, 85% match will do"). */
-export const NPC_MATCH = 0.85
-/** How a stat block thing found its entry: by name (score 1), by a name at least NPC_MATCH alike, as the standard item
- *  of the category its generic name is (`commlink`), or as the regular ammunition of a weapon it carries. */
+/** The least nameRatio of a printed name and a catalog entry's (their matchKeys) that links them (owner 2026-10-20: "75%
+ *  guesses are fine for matching"; first "If you can find a perfect match, great. If not, 85% match will do"). */
+export const NPC_MATCH = 0.75
+/** How a stat block thing found its entry: by name (score 1), by a name at least NPC_MATCH alike, as a standard item
+ *  (owner: "when in doubt use standard ammo, grenades, etc."), or as the regular ammunition of a weapon it carries. */
 export type Sr6NpcMatch = { score: number; how: 'exact' | 'fuzzy' | 'standard' | 'ammo' }
 interface Index {
   exact: Map<string, Sr6Entry[]>
@@ -443,43 +449,97 @@ function findEntry(
     }
   const key = matchKey(name)
   if (how === 'exact' || key.length < 3) return undefined
+  const words = key.split(' '),
+    head = words[words.length - 1],
+    rest = words.slice(0, -1)
+  // a guess's score: its name against the entry's, or without its type word (`Erika Elite commlink`: `Erika Elite`, 1)
+  const standard = (entry: Sr6Entry) => {
+    const ek = matchKey(entry.name),
+      score = round(Math.max(nameRatio(key, ek), rest.length ? nameRatio(rest.join(' '), ek) : 0))
+    return { entry, match: { score, how: score >= NPC_MATCH ? ('fuzzy' as const) : ('standard' as const) } }
+  }
+  // its type: its last word is a category's last word (`smoke grenade`, `Yamaha Rapier motorcycle`, `commlink`): that
+  // category's entries and the entries of its kinds with that word in their names
+  const ofType =
+    how === 'standard' && head.length >= 3 && !KIND_WORDS.test(head)
+      ? kinds.flatMap(k => [...(x.categories.get(k) ?? [])].filter(([ck]) => ck.split(' ').at(-1) === head).flatMap(([, es]) => es))
+      : []
+  const typeKinds = [...new Set(ofType.map(e => e.kind))]
+  const typed = [
+    ...new Set([...ofType, ...typeKinds.flatMap(k => (x.loose.get(k) ?? []).filter(l => l.key.split(' ').includes(head)).flatMap(l => l.entries))]),
+  ]
+  const hits = (e: Sr6Entry) => {
+    const ws = matchKey(e.name).split(' ')
+    return rest.filter(w => ws.some(v => nameRatio(w, v) >= 0.85)).length
+  }
+  const closest = (list: Sr6Entry[]) => {
+    const top = Math.max(...list.map(e => nameRatio(key, matchKey(e.name))))
+    return pick(list.filter(e => nameRatio(key, matchKey(e.name)) === top))
+  }
+  // of its type, one with all its other words (`smoke grenade`: `Smoke/thermal smoke`)
+  const whole = rest.length ? typed.filter(e => hits(e) === rest.length) : []
+  if (whole.length) return standard(closest(whole))
   let best: { score: number; entries: Sr6Entry[] } | undefined
   // the name, and the name without a trailing generic word its kinds' categories are (`Erika Elite commlink`; two words
   // left at least: `Basic spacesuit` is no `Basic`)
   const cats = kinds.flatMap(k => [...(x.categories.get(k)?.keys() ?? [])])
   const keys = [key, ...cats.filter(ck => key.endsWith(` ${ck}`)).map(ck => key.slice(0, -ck.length - 1))].filter((k, i) => !i || k.includes(' '))
+  // (the most alike within its type's kinds when it has one: a motorcycle is no rifle)
   for (const kk of keys)
-    for (const k of kinds)
+    for (const k of typeKinds.length ? typeKinds : kinds)
       for (const l of x.loose.get(k) ?? []) {
         if (!within(kk, l.key) || quickRatio(kk, l.key) < NPC_MATCH) continue
         const score = nameRatio(kk, l.key)
-        if (score >= NPC_MATCH && score > (best?.score ?? 0) && sameWords(kk, l.key)) best = { score, entries: l.entries }
+        if (score >= NPC_MATCH && score > (best?.score ?? 0)) best = { score, entries: l.entries }
       }
   if (best) return { entry: pick(best.entries), match: { score: round(best.score), how: 'fuzzy' } }
   if (how !== 'standard' || KIND_WORDS.test(key)) return undefined
+  // of its type, the one with most of its other words, else the type's standard item
+  if (typed.length) {
+    const most = Math.max(...typed.map(hits))
+    if (most > 0) return standard(closest(typed.filter(e => hits(e) === most)))
+    // (the name is its type alone, `commlink`: a whole match of the type)
+    const entry = standardOf(ofType, pick, rating)
+    return rest.length ? standard(entry) : { entry, match: { score: 1, how: 'standard' as const } }
+  }
   for (const k of kinds)
     for (const [cat, entries] of x.categories.get(k) ?? []) {
       const score = !within(key, cat) || quickRatio(key, cat) < NPC_MATCH ? 0 : nameRatio(key, cat)
       if (score >= NPC_MATCH && score > (best?.score ?? 0)) best = { score, entries }
     }
-  return best ? { entry: standardOf(best.entries, pick, rating), match: { score: round(best.score), how: 'standard' } } : undefined
-}
-/** A model number or numeral (`101`, `vi`): a name with one names that model. */
-const MODEL = /^(?:\d+|[ivx]+)$/
-/** A fuzzy link's guard past its score (live NPCs, 2026-10-20: `Uzi V` is no `Uzi IV`, `cyberarm` no `Cyberears`,
- *  `stealth tags` no `Stealth Tap`): where both names print a model number or numeral they are the same; one word against
- *  one is at least 0.9 alike; and every word of the shorter name has one at least 0.8 alike in the other. */
-function sameWords(a: string, b: string): boolean {
-  const [xs, ys] = (a.length <= b.length ? [a, b] : [b, a]).map(k => k.split(' '))
-  const nx = xs.filter(w => MODEL.test(w)).join(' '),
-    ny = ys.filter(w => MODEL.test(w)).join(' ')
-  if (nx && ny && nx !== ny) return false
-  // one word against one: 0.9 (`cyberarm` is no `cyberear`)
-  if (xs.length === 1 && ys.length === 1 && nameRatio(a, b) < 0.9) return false
-  return xs.every(w => MODEL.test(w) || ys.some(v => nameRatio(w, v) >= 0.8))
+  if (best) return { entry: standardOf(best.entries, pick, rating), match: { score: round(best.score), how: 'standard' as const } }
+  // its last word names a kind of thing (`jammer`): of the entries whose name or category has it, the one whose other
+  // words are most alike, else their standard one
+  if (head.length < 3 || /^\d+$/.test(head)) return undefined
+  const has = (k: string) => k.split(' ').includes(head)
+  const found = new Set<Sr6Entry>()
+  for (const k of kinds) {
+    for (const l of x.loose.get(k) ?? []) if (has(l.key)) l.entries.forEach(e => found.add(e))
+    for (const [ck, es] of x.categories.get(k) ?? []) if (has(ck)) es.forEach(e => found.add(e))
+  }
+  if (!found.size) return undefined
+  const others = (e: Sr6Entry) =>
+    matchKey(e.name)
+      .split(' ')
+      .filter(w => w !== head)
+      .join(' ')
+  const scored = [...found].map(e => ({ e, score: rest.length ? nameRatio(rest.join(' '), others(e)) : 0 }))
+  const top = Math.max(...scored.map(t => t.score))
+  return standard(standardOf(top > 0 ? scored.filter(t => t.score === top).map(t => t.e) : [...found], pick, rating))
 }
 /** a generic name that is only a kind of thing (`augmentations`, `bioware`): no standard item */
-const KIND_WORDS = /^(?:augmentation|cyberware|bioware|gear|equipment|weapon|electronic|armor|power)$/
+const KIND_WORDS = /^(?:augmentation|cyberware|bioware|gear|equipment|weapon|electronic|armor|power|item|thing)$/
+/** The standard armor for a printed Defense the catalog has no armor of that name for: an armor at that Defense, else the
+ *  nearest below, else the least; its standard one (standardOf). */
+function standardArmor(c: Sr6Catalog, defense: number, source: string | undefined): Sr6Entry | undefined {
+  const d = (e: Sr6Entry) => Number((e.attrs.defense ?? '').replace('+', ''))
+  const all = [...(c.entries.armor?.values() ?? [])].filter(e => /^\+?\d+$/.test(e.attrs.defense ?? '') && !/accessor|mod/i.test(e.attrs.category ?? ''))
+  if (!all.length) return undefined
+  const at = all.filter(e => d(e) === defense),
+    below = all.filter(e => d(e) < defense)
+  const list = at.length ? at : below.length ? below.filter(e => d(e) === Math.max(...below.map(d))) : all.filter(e => d(e) === Math.min(...all.map(d)))
+  return standardOf(list, prefer(c, source))
+}
 /** lengths that can still reach NPC_MATCH (nameRatio is at most 2 × the shorter / both) */
 const within = (a: string, b: string) => (2 * Math.min(a.length, b.length)) / (a.length + b.length) >= NPC_MATCH
 const round = (n: number) => Math.round(n * 1000) / 1000
@@ -527,6 +587,7 @@ function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6
     kind: ammo.kind,
     entry: ammo,
     match: { score: 1, how: 'ammo' },
+    ammoFor: t.name,
     qty: load,
     values: {},
     accessories: [],
@@ -541,7 +602,8 @@ function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6
  *  out at the NPC's rating where they use its Force. */
 export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
   const src = npc.from?.source,
-    powers = POWER_KINDS[npc.kind === 'grunt' || npc.kind === 'contact' ? 'person' : 'being']
+    being = npc.kind !== 'grunt' && npc.kind !== 'contact',
+    powers = POWER_KINDS[being ? 'being' : 'person']
   const out: Sr6NpcThing[] = []
   for (const l of npc.lines) {
     const power = l.part === 'powers' || l.part === 'optionalPowers',
@@ -563,13 +625,25 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         s.values.rating ??= Number(lv[2] ?? lv[3])
       }
       if (!found && s.values.rating != null) found = findEntry(c, `${name} ${s.values.rating}`, kinds, src)
-      // no name: the most alike one (at least NPC_MATCH); a generic piece of equipment: its category's standard item
-      found ??= findEntry(c, name, kinds, src, l.part === 'attacks' || power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
+      // no name: the most alike one (at least NPC_MATCH), else a standard item; a power only the most alike (a power the
+      // catalog lacks stays as printed); a natural attack (a bite: its skill as category, or a close band only) by name
+      // only, no catalog weapon being one
+      const natural =
+        attack &&
+        (NATURAL.test(s.category ?? '') ||
+          (!s.category && (s.values.dv != null || !!s.dvText) && (being || !(s.values.ar ?? []).slice(1).some(b => b != null))))
+      // (a Cybercombat attack is a Matrix action: no catalog thing; gear printing a Defense, not a device's, is armor)
+      const armored = !attack && !power && s.values.defense != null && !DEVICE_NAME.test(name)
+      if (!natural && !/cybercombat/i.test(s.category ?? ''))
+        found ??= findEntry(c, name, armored ? ['armor'] : kinds, src, power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
       // a device's or implant's `DR 6` is its Device Rating, not a Defense
       if (s.values.defense != null && (found ? DEVICES.has(found.entry.kind) : DEVICE_NAME.test(name))) {
         s.values.rating ??= s.values.defense
         delete s.values.defense
       }
+      // armor printing a Defense and nothing like its name: the standard armor at that Defense
+      const armor = !found && !attack && !power && s.values.defense != null ? standardArmor(c, s.values.defense, src) : undefined
+      if (armor) found = { entry: armor, match: { score: round(nameRatio(matchKey(name), matchKey(armor.name))), how: 'standard' } }
       // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2
       if (found && s.values.rating != null) found.entry = atLevel(c, found.entry.kind, found.entry.id, s.values.rating) ?? found.entry
       const entry = found?.entry
@@ -577,7 +651,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       // item that is no weapon, its printed line kept (unread), when it prints stats at all; a bare name or book text the
       // reader ran into the line stays in the notes only.
       if (!entry && attack && ((s.values.dv == null && !s.values.ar && !s.dvText) || /cybercombat/i.test(s.category ?? ''))) {
-        if (STAT_SIGN.test(printed)) out.push({ part: l.part, printed, name, kind: 'gear', unread: true, values: s.values, accessories: [] })
+        if (STAT_SIGN.test(printed)) out.push({ part: l.part, printed, name, printedName: name, kind: 'gear', unread: true, values: s.values, accessories: [] })
         continue
       }
       const kind: Sr6Kind = entry
@@ -593,12 +667,15 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
                 : 'gear'
       const accessories = s.accessories.flatMap(a => {
         const f = findEntry(c, a, ACCESSORY_KINDS, src, 'loose')
-        return f ? [{ part: l.part, printed: a, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }] : []
+        return f
+          ? [{ part: l.part, printed: a, name: f.entry.name, printedName: a, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }]
+          : []
       })
       out.push({
         part: l.part,
         printed,
         name: entry?.name ?? name.replace(/\*+$/, ''),
+        printedName: name.replace(/\*+$/, ''),
         kind,
         ...(found ? { entry: found.entry, match: found.match } : {}),
         ...(s.category ? { category: s.category } : {}),
@@ -613,6 +690,27 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
   }
   return out
 }
+/** The corrections npcThings made to a stat block, one line each, for the NPC's notes (owner 2026-10-20: "note the
+ *  corrections in the notes section"): a guessed link (`Ares Predator V → Ares Predator VI (fuzzy, 0.82)`), a standard
+ *  stand-in (`Smoke grenade → Smoke/thermal smoke (standard item)`), ammunition added, an attack kept that can't be rolled,
+ *  and (one line) what has no catalog entry and was built from the stat block. Worked out afresh each time: never stored. */
+export function npcCorrections(things: Sr6NpcThing[]): string[] {
+  const all = (l: Sr6NpcThing[]): Sr6NpcThing[] => l.flatMap(t => [t, ...all(t.accessories)])
+  const out: string[] = [],
+    built: string[] = []
+  for (const t of all(things)) {
+    const was = t.printedName ?? t.name,
+      m = t.match
+    if (t.unread) out.push(`Kept, not rollable: ${t.printed}`)
+    else if (m?.how === 'ammo') out.push(`Added: ${t.name} (regular ammo) ×${t.qty ?? 1} for ${t.ammoFor ?? 'its weapon'}`)
+    else if (m?.how === 'fuzzy' && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (fuzzy, ${m.score.toFixed(2)})`)
+    else if (m?.how === 'standard') out.push(`${was} → ${t.name} (standard item)`)
+    else if (!m) built.push(was)
+  }
+  if (built.length) out.push(`Not in the catalog, built from the stat block: ${[...new Set(built)].join(', ')}`)
+  return out
+}
+
 /** A built attack's skill: the one it prints as its category; none when its category is a weapon class (`Heavy Pistol`:
  *  the class says); with no category, Exotic Weapons when it reaches past close range (an elemental attack), else Close
  *  Combat. */

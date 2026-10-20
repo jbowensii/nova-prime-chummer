@@ -27,7 +27,22 @@ test.skipIf(!LIVE)(
     const c = buildSr6Catalog((await collectSr6Files(get)).files),
       data = sr6Data(c)
     const dir = join(LIVE!, 'characters/sr6/.npcs/admin')
-    const n = { files: 0, read: 0, withAttacks: 0, attacks: 0, rollable: 0, linked: 0, built: 0, noDv: 0, armor: 0, gear: 0, augmentations: 0, powers: 0 }
+    const n = {
+      files: 0,
+      read: 0,
+      withAttacks: 0,
+      attacks: 0,
+      rollable: 0,
+      linked: 0,
+      built: 0,
+      noDv: 0,
+      armor: 0,
+      gear: 0,
+      augmentations: 0,
+      powers: 0,
+      withCorrections: 0,
+      correctionLines: 0,
+    }
     const kinds: Record<string, number> = {},
       powers: Record<string, number> = {},
       links: Record<string, number> = {},
@@ -45,11 +60,13 @@ test.skipIf(!LIVE)(
       kinds[npc.kind] = (kinds[npc.kind] ?? 0) + 1
       const lines = npc.lines.filter(l => l.part === 'weapons' || l.part === 'attacks')
       const x = exportNpc(npc, data, c)
+      if (x.corrections.length) n.withCorrections++
+      n.correctionLines += x.corrections.length
       const weapons = x.items.filter(i => i.kind === 'weapons' && (i.line.part === 'weapons' || i.line.part === 'attacks'))
       // how each item found its entry (accessories too): exact, fuzzy by score, a generic name's standard item, ammo, or built
       for (const i of x.items.flatMap(i => [i, ...i.accessories])) {
         const m = i.line.match,
-          bin = !m ? `built (${i.line.part})` : m.how !== 'fuzzy' ? m.how : `fuzzy ${m.score < 0.9 ? '0.85–0.90' : m.score < 0.95 ? '0.90–0.95' : '0.95–1.00'}`
+          bin = !m ? `built (${i.line.part})` : m.how !== 'fuzzy' ? m.how : `fuzzy ${Math.min(0.95, Math.floor(m.score * 20) / 20).toFixed(2)}+`
         links[bin] = (links[bin] ?? 0) + 1
         if (m?.how === 'fuzzy' || m?.how === 'standard') picks.push(`${m.how} ${m.score}: ${i.line.printed.slice(0, 70)} → ${i.kind} ${i.name}`)
         if (!m && i.line.part !== 'weapons' && i.line.part !== 'attacks')

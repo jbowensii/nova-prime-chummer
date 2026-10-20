@@ -27,7 +27,7 @@ import { sr6Data, type Sr6Data } from './data'
 import { deriveSr6, type Sr6Derived } from './derive'
 import { withSampleFixes } from './samplefix'
 import { withSr6House } from './house'
-import { attackSkill, NPC_KINDS, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcMatch, type Sr6NpcThing } from './npc'
+import { attackSkill, NPC_KINDS, npcCorrections, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcMatch, type Sr6NpcThing } from './npc'
 import { catalogFind } from './load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from './values'
 import { entryLabel } from './categories'
@@ -206,6 +206,8 @@ export interface Sr6ExportNpc {
   pools: ReturnType<typeof npcPools>
   /** the weapons, attacks, armor, gear, augmentations and powers its lines print, as items (npcItem) */
   items: Sr6ExportNpcItem[]
+  /** what those items correct in the stat block, one line each, for its notes (npc.ts npcCorrections) */
+  corrections: string[]
 }
 /** A thing an NPC's stat block prints (npc.ts npcThings) as a purchase: its catalog entry's, the stat block's numbers over
  *  the entry's, else built from the printed line (no id); armor worn. uid `line:<part>:<printed>` (a power's
@@ -630,8 +632,9 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills and its lines' things as items.
  *  A contact goes out as a grunt of group Contact (v1's kinds: the module makes it an NPC actor). */
 export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportNpc {
-  const seen = new Map<string, number>()
-  const items = npcThings(npc, c).map(t => {
+  const seen = new Map<string, number>(),
+    things = npcThings(npc, c)
+  const items = things.map(t => {
     const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}${t.match?.how === 'ammo' ? ':ammo' : ''}`,
       n = (seen.get(id) ?? 0) + 1
     seen.set(id, n)
@@ -646,6 +649,7 @@ export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportN
     lines: npc.lines.map(l => ({ ...l })),
     pools: npcPools(npc, data),
     items,
+    corrections: npcCorrections(things),
   })
 }
 

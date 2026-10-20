@@ -8,7 +8,7 @@ import { expect, test } from 'vitest'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { exportNpc, exportSr6Runners } from '../../src/sr6/engine/export'
 import { matchKey, nameRatio } from '../../src/sr6/engine/names'
-import { blankSr6Npc, splitThings } from '../../src/sr6/engine/npc'
+import { blankSr6Npc, npcCorrections, npcThings, splitThings } from '../../src/sr6/engine/npc'
 import type { Sr6Npc } from '../../src/sr6/model/character'
 import { fixtureCatalog, fixtureCreation } from './fixture'
 import { SAMPLE_OPTS } from './samples'
@@ -85,7 +85,14 @@ test('npc-combat-items: a grunt’s gun and armor are its catalog entries with t
   })
   // armor worn (its Defense counts): the catalog's with the printed +3, and a built one from its printed DR
   expect(by(x.items, 'Padded Vest')).toMatchObject({ id: 'crb.padded-vest', kind: 'armor', worn: true, values: { defense: 3 } })
-  expect(by(x.items, 'Made-up longcoat')).toMatchObject({ kind: 'armor', worn: true, values: { defense: 2 } })
+  // armor the catalog has nothing like: the standard armor at its printed Defense
+  expect(x.items.find(i => i.line.printed === 'Made-up longcoat (DR +2)')).toMatchObject({
+    id: 'crb.padded-vest',
+    kind: 'armor',
+    worn: true,
+    values: { defense: 2 },
+    line: { match: { how: 'standard' } },
+  })
   // a printed rating is its level's entry; unknown gear and augmentations built as such
   expect(by(x.items, 'Tangle Rope 2')).toMatchObject({ kind: 'gear', values: { rating: 2 } })
   expect(by(x.items, 'Made-up credstick')).toMatchObject({ kind: 'gear', worn: false })
@@ -156,6 +163,8 @@ const zz = fixtureCatalog(undefined, [
     file: 'custom/sr6/imported/zz/weapons.xml',
     xml: `<sr6:data ${ZZ} kind="weapons" version="1">
   <weapon id="zz.thunderbus" source="ZZ" page="1" category="Heavy pistol" dv="3P" modes="SA" ar="9/9/7/—/—" ammo="15(c)" avail="2" cost="500" class="WEAPON_FIREARMS/PISTOLS_HEAVY"><name>Made-up Thunderbus Pistol</name></weapon>
+  <weapon id="zz.smoke" source="ZZ" page="1" category="Grenade" dv="—" ar="—/—/—/—/—" avail="2" cost="40" class="AMMUNITION/GRENADES"><name>Smoke/thermal smoke</name></weapon>
+  <weapon id="zz.stun" source="ZZ" page="1" category="Grenade" dv="10S" ar="—/—/—/—/—" avail="2" cost="30" class="AMMUNITION/GRENADES"><name>Stun</name></weapon>
   <weapon id="zz.carver" source="ZZ" page="1" category="Blade" dv="3P" ar="8/—/—/—/—" avail="1" cost="50" class="WEAPON_CLOSE_COMBAT/BLADES"><name>Made-up Carver</name></weapon>
 </sr6:data>`,
   },
@@ -178,19 +187,63 @@ const zzData = sr6Data(zz)
 const zzItems = (kind: Sr6Npc['kind'], lines: Record<string, string>) =>
   exportNpc({ ...npc(kind, lines), from: { kind: 'npcs', id: 'zz.x', name: 'X', source: 'ZZ', page: 1 } }, zzData, zz).items
 
-test('npc-combat-items: a name at least 85% alike links (its score kept); one below stays built from the line', () => {
+test('npc-combat-items: a name at least 75% alike links, its score kept (owner: "75% guesses are fine"); below it, a power stays as printed', () => {
   const x = zzItems('grunt', {
     weapons: 'Made-up Thunderbuss Pistol [Heavy Pistol, DV 4P, SA, 10/9/7/—/—, 12(c)] Made-up Wonder Pistol [Heavy Pistol, DV 2P, SA, 8/7/—/—/—]',
   })
+  // (matchKeys: made up thunderbuss pistol ~ made up thunderbu pistol)
   expect(by(x, 'Made-up Thunderbus Pistol')).toMatchObject({
     id: 'zz.thunderbus',
     values: { dv: 4, ar: [10, 9, 7, null, null] },
     line: { match: { score: 0.96, how: 'fuzzy' } },
-  }) // (matchKeys: made up thunderbuss pistol ~ made up thunderbu pistol)
-  // made up wonder pistol ~ made up thunderbus pistol: 0.826
-  const near = by(x, 'Made-up Wonder Pistol')
-  expect(near).not.toHaveProperty('id')
-  expect(near.line).not.toHaveProperty('match')
+  })
+  // made up wonder pistol ~ made up thunderbu pistol: refused at 85%, a guess at 75%
+  const guess = x.filter(i => i.id === 'zz.thunderbus')[1]
+  expect(guess.line).toMatchObject({ printed: expect.stringContaining('Made-up Wonder Pistol'), match: { how: 'fuzzy' } })
+  expect(guess.line.match!.score).toBeGreaterThanOrEqual(0.75)
+  expect(guess.line.match!.score).toBeLessThan(0.85)
+  // powers: glider ~ glimmer 0.769 links; glitter ~ glimmer 0.714 stays a printed power, no catalog link
+  const p = exportNpc(npc('critter', { powers: 'Glider, Glitter' }), data, c).items
+  expect(p.map(i => [i.name, i.id, i.line.match])).toEqual([
+    ['Glimmer', 'crb.glimmer', { score: 0.769, how: 'fuzzy' }],
+    ['Glitter', undefined, undefined],
+  ])
+})
+
+test('npc-combat-items: when in doubt, a grenade is its type’s (owner: "use standard ammo, grenades, etc.")', () => {
+  const x = zzItems('grunt', { gear: 'smoke grenade, 2 x stun grenades, grenade' })
+  expect(x.map(i => [i.line.printed, i.id, i.qty, i.line.match?.how])).toEqual([
+    // smoke grenade: of the grenades, the one with "smoke"
+    ['smoke grenade', 'zz.smoke', 1, 'standard'],
+    ['2 x stun grenades', 'zz.stun', 2, 'fuzzy'],
+    // a bare "grenade": the grenades' standard (cheapest) one
+    ['grenade', 'zz.stun', 1, 'standard'],
+  ])
+})
+
+test('npc-combat-items: the corrections, one line each, for the notes (worked out afresh: never stored)', () => {
+  const ch = blankSr6Npc('grunt')
+  ch.npc = {
+    ...npc('grunt', {
+      weapons:
+        'Made-up Thunderbuss Pistol [Heavy Pistol, DV 4P, SA, 10/9/7/—/—, 12(c)], Made-up Stick [Club, DV 3S, 7/—/—/—/—], Made-up Zap [Cybercombat, DV 2, AR 8]',
+      gear: 'smoke grenade, commlink',
+    }),
+    from: { kind: 'npcs', id: 'zz.x', name: 'X', source: 'ZZ', page: 1 },
+  }
+  const corrections = [
+    'Made-up Thunderbuss Pistol → Made-up Thunderbus Pistol (fuzzy, 0.96)',
+    'Added: Heavy Pistol/SMG (regular ammo) ×12 for Made-up Thunderbus Pistol',
+    'Kept, not rollable: Made-up Zap [Cybercombat, DV 2, AR 8]',
+    'smoke grenade → Smoke/thermal smoke (standard item)',
+    'commlink → Made-up Basic Link (standard item)',
+    'Not in the catalog, built from the stat block: Made-up Stick',
+  ]
+  expect(npcCorrections(npcThings(ch.npc, zz))).toEqual(corrections)
+  const f = exportSr6Runners(zz, zzData, fixtureCreation(), [ch, ch], SAMPLE_OPTS)
+  // each export works them out again: never appended twice
+  expect(f.runners!.map(r => r.npc!.corrections)).toEqual([corrections, corrections])
+  expect(ch.identity.notes).toBe('')
 })
 
 test('npc-combat-items: a pistol gets one full load of its regular ammo; a blade and a natural attack get none', () => {

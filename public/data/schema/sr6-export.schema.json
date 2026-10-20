@@ -1064,6 +1064,13 @@
           "items": {
             "$ref": "#/$defs/npcItem"
           }
+        },
+        "corrections": {
+          "description": "What its items correct in the stat block, one line each, for its notes: a guessed (fuzzy) link with its score, a standard item standing in, ammunition added, an attack kept that can't be rolled, what has no catalog entry (absent in files written before it was added).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
