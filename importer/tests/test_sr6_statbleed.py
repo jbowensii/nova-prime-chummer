@@ -48,6 +48,20 @@ Zap rod [Clubs, DV 4S, 8/—/—/—/—]
 When the fighting starts, the medic uses non-lethal
 methods on everything. She will also order spirits
 to take fallen team members out of the fight.
+#### Glow Duelist
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 5 | 4 | 3 | 3 | 3 | 4 | 3 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 6 | 8/1 | A1, I2 | 10 | 10/15/+1 |
+**Skills:** Close Combat 6
+**Weapons:**
+Hum lash [Whips, DV 3S, 9/—/—/—/—,
+2 charges]
+The Hum lash stuns a made-up target. With two net hits, it imparts
+the Dazed status (p. 52, SR6).
+and steps into the made-up crowd at every fake gala.
 #### Puff Eel
 | B | A | R | S | W | L | I | C | ESS |
 |---|---|---|---|---|---|---|---|---|
@@ -62,15 +76,25 @@ following: made-up fin 2, made-up gill 3
 Bite* [Close Combat, DV 4P, 12/—/—/—/—]
 ***Note:** Use Bite for made-up rams.
 // **MUD SPRITE** //
+#### Mud Imp
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 2 | 1 | 1 | 1 | 2 | 1 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 2 | 4/1 | A1, I2 | 8 | 5/10/+1 |
 <!-- page 3 -->
-FIN
+**Attacks:**
+Nip [Close Combat, DV 1P, 4/—/—/—/—]
 <!-- page 4 -->
+FIN
+<!-- page 5 -->
 e
 e
 r
 t
 s
-<!-- page 5 -->
+<!-- page 6 -->
 **MADE-UP STREETS HAVE RULES.**
 A made-up blurb for a made-up book.
 $9.99
@@ -98,6 +122,10 @@ class StatBlockBleedTest(unittest.TestCase):
         self.assertEqual(m["Weapons"], "Zap rod [Clubs, DV 4S, 8/—/—/—/—]")
         self.assertEqual(m["Skills"], "Conjuring 5 (Summoning +3), Sorcery 4 (Spellcasting +2)")
         self.assertEqual(m["Spells"], "Made-up Bolt, Made-up Heal")
+        # a sentence on the entry above, by its name, is the value's to its end; the column after it is not
+        self.assertEqual(labels["Glow Duelist"]["Weapons"],
+                         "Hum lash [Whips, DV 3S, 9/—/—/—/—, 2 charges] The Hum lash stuns a made-up target. With two "
+                         "net hits, it imparts the Dazed status (p. 52, SR6).")
         # a label printed after the value's last wrap starts its own line
         self.assertEqual(m["Knowledge Skills"], "Made-up Lore, Fake History")
         # a value the book prints as prose goes on; a footnote and the next entry's art title stay out
@@ -107,7 +135,7 @@ class StatBlockBleedTest(unittest.TestCase):
         # what the readers write: no stat line of any being the scanner flags but the value the book prints as prose
         # (the scanner can't tell it from a bleed: it lists it)
         beings = [x for k in statbleed.KINDS if f"{k}.xml" in res.files for x in ET.fromstring(res.files[f"{k}.xml"])]
-        self.assertEqual({x.findtext("name") for x in beings}, {"Fizz Swarm", "Glow Medic", "Puff Eel"})
+        self.assertEqual({x.findtext("name") for x in beings}, {"Fizz Swarm", "Glow Medic", "Glow Duelist", "Puff Eel", "Mud Imp"})
         flagged = [(x.findtext("name"), c.tag) for x in beings for c in x
                    if c.tag not in statbleed.SKIP and statbleed.why(c.text)]
         self.assertEqual(flagged, [("Puff Eel", "augmentations")])
@@ -115,7 +143,9 @@ class StatBlockBleedTest(unittest.TestCase):
         medic = next(x for x in beings if x.findtext("name") == "Glow Medic")
         self.assertEqual(medic.findtext("spells"), "Made-up Bolt, Made-up Heal")
         # the back cover (from the `FIN` page: its lettering, its blurb) is in no being's description
-        self.assertEqual(regroup.back_cover(BOOK.prepare_md(BOOK_MD)), 3)
+        # (a short last stat-block page right before it is never the cover's: its labelled line stays)
+        self.assertEqual(regroup.back_cover(BOOK.prepare_md(BOOK_MD)), 4)
+        self.assertEqual(labels["Mud Imp"]["Attacks"], "Nip [Close Combat, DV 1P, 4/—/—/—/—]")
         texts = [t.text or "" for t in ET.fromstring(res.texts) if t.get("of") in statbleed.KINDS]
         self.assertTrue(texts)
         self.assertEqual([statbleed.text_why(t) for t in texts if statbleed.text_why(t)], [])

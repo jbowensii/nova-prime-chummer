@@ -10,6 +10,7 @@ import difflib
 import itertools
 import json
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass, field, replace
 
@@ -844,6 +845,14 @@ def _foreign(value, last, v, ahead):
     return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
 
 
+def _explains(value, v):
+    """True when line v starts a sentence on the value's last entry, by its name (`Fichetti Pain Inducer [Fichetti …,
+    20 charges]` + `The Fichetti Pain Inducer utilizes pulse microwave technology …`, The Needle's Eye p. 125): the
+    entry's note, the value's to its sentence's end."""
+    m = re.search(r"(?:^|[])])\s*([^][()]{3,40}?)\s*\[[^][]*\]$", value.strip())
+    return bool(m) and re.match(rf"(?:The\s+)?{re.escape(m.group(1))}\b\s+[a-z]", v.strip(), re.I) is not None
+
+
 def _is_label(level, text):
     """A table title, box title or art caption: its first letter is lower case (`ares predator VI`)."""
     first = re.search(r"[^\W\d_]", text)
@@ -869,6 +878,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
     variant = ""  # the variant line over the next table of a box
     fresh = False  # nothing taken since the item heading (a "(tags)" heading may follow)
     label = None  # (unit, key) of the labelled line still open for a wrapped value
+    explaining = explained = None  # the label whose value goes on with a sentence on its last entry (_explains); ended
     last = ""  # the open label's last line
     listy = False  # the open label's value starts on the next line
     i = start
@@ -1032,9 +1042,11 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 ahead = [e[2] for e in itertools.takewhile(lambda e: e[0] == "x" and not _LABEL.match(e[2]),
                                                            els[i:min(i + 2, end)])]
                 banded = cur.stats or any(isinstance(b, _Table) and {"B", "A", "R", "S"} <= set(b.header) for b in cur.body)
-                if banded and _foreign(targets[0][key], last, v, ahead):  # (a being's band in its text: after shadowtalk)
+                if banded and explaining is not label and _explains(targets[0][key], v):
+                    explaining = label  # (a sentence on the entry above, `The Fichetti Pain Inducer utilizes …`: the value's)
+                elif banded and (explained is label or explaining is not label and _foreign(targets[0][key], last, v, ahead)):
                     label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
-                    cur.body.append(v)
+                    cur.body.append(v)  # (a being's band in its text too: after shadowtalk)
                     continue
                 # (a label printed after the value's last wrap, on its line: `+2), **Knowledge Skills:** Awakened …`,
                 # Whisper Nets p. 120: the rest of the line starts it)
@@ -1044,6 +1056,9 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     joined = prev[:-1] if re.search(r"[a-z]-$", prev) and part[:1].islower() else prev + " " if prev else ""
                     d[key] = joined + part
                 last = v
+                if explaining is label and _SENTENCE_END.search(v.strip()) \
+                        and sum(map(targets[0][key].count, "[(")) <= sum(map(targets[0][key].count, "])")):  # (not `(p.`)
+                    explained = label  # (the sentence on the entry ends the value: what follows is the block's text)
                 if mid:
                     key, value = mid.group(1).strip(), v[mid.end():].strip()
                     label = ([cur.labels], key) if key not in cur.labels else None
@@ -1547,16 +1562,19 @@ def back_cover(md):
     pages, the last that prints the back cover's furniture (the publisher's site, an ISBN, the licence line) and no
     heading or table; with the pages before it that are part of it: such pages, nearly empty ones (`FIN`) and ones set
     in spaced or vertical lettering (one or two letters a line). Everything from there on is the cover's (its blurb,
-    an ad, a map key printed after it), never an entry's: the blurb joined the last stat block (Cutting Black p. 178)."""
+    an ad, a map key printed after it), never an entry's: the blurb joined the last stat block (Cutting Black p. 178).
+    A page with a heading, a table row or a labelled line (`**Attacks:** …`: a short last stat block) is never the
+    cover's: the cut starts after it."""
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = [(int(n), [ln for ln in t.splitlines() if ln.strip()]) for n, t in zip(parts[1::2], parts[2::2])]
-    furniture = lambda ls: _COVER.search("\n".join(ls)) and not any(ln.startswith(("#", "|")) for ln in ls)  # noqa: E731
+    content = lambda ls: any(ln.startswith(("#", "|")) or _LABEL.match(ln) for ln in ls)  # noqa: E731
+    furniture = lambda ls: _COVER.search("\n".join(ls)) and not content(ls)  # noqa: E731
     letters = lambda ls: sum(c.isalpha() for ln in ls for c in ln)  # noqa: E731
     cover = next((k for k in range(len(pages) - 1, max(len(pages) - 6, -1), -1) if furniture(pages[k][1])), None)
     if cover is None:
         return None
-    while cover > 0 and ((ls := pages[cover - 1][1]) == [] or furniture(ls) or letters(ls) < 40
-                         or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls)):
+    while cover > 0 and not content(ls := pages[cover - 1][1]) and (
+            ls == [] or furniture(ls) or letters(ls) < 40 or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls)):
         cover -= 1
     return pages[cover][0]
 
@@ -1566,12 +1584,17 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     reprinted tables) starts; it and the pages after it are left out (default: the back cover's, back_cover).
     variants: a catalog's name-only rows name the rows under them (_variants)."""
     name_headers = {h.upper() for h in name_headers}
-    end_page = end_page or back_cover(md)
+    cover = None if end_page else back_cover(md)
+    end_page = end_page or cover
     els = list(_elements(md))
     els = _back_prices([e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page])
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
+    if cover:  # (a cut is never silent: the import log and the import report name its pages)
+        last = int(re.findall(r"<!-- page (\d+) -->", md)[-1])
+        print(f"back cover: cut PDF pages {cover}-{last}", file=sys.stderr)
+        report.append({"kind": "back-cover", "page": cover, "pages": last - cover + 1})
     # each chapter's table row names, for price_list's reprint test (a later chapter printing the rows again)
     rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
     # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
