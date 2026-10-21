@@ -270,7 +270,9 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 }
 
 /** Every purchase, and every accessory on one. */
-const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
+/** Lines and everything fitted to them, at any depth (a weapon's ammunition's ammunition type, as imports nest them). */
+const deep = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...deep(x.accessories)])
+const allLines = (b: Sr6Build) => deep(b.purchases)
 /** An accessory taken off its host; a weapon in it (a weapon mount) stays, in no mount. Shared with career.ts. */
 export function unfit(host: Sr6Purchase, uid: string): void {
   host.accessories = host.accessories.filter(a => a.uid !== uid)
@@ -538,7 +540,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         const x = b.purchases.find(x => x.uid === op.remove)
         if (!x) return no('unknown-line')
         b.purchases = b.purchases.filter(y => y !== x)
-        unlicense(b, [x, ...x.accessories])
+        unlicense(b, deep([x]))
         return OK
       }
       const line = newLine(op, data, cr)
@@ -573,10 +575,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!host) return no('unknown-host')
       if ('remove' in op) {
         if (!host.accessories.some(a => a.uid === op.remove)) return no('not-fitted')
-        unlicense(
-          b,
-          host.accessories.filter(a => a.uid === op.remove),
-        )
+        unlicense(b, deep(host.accessories.filter(a => a.uid === op.remove)))
         unfit(host, op.remove)
         return OK
       }
@@ -730,7 +729,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
       if (gp) return no(gp)
       // an implant's add-on has its grade (CRB p. 282): never one of its own
-      const host = b.purchases.find(h => h.kind === 'augmentations' && h.accessories.includes(x))
+      const host = allLines(b).find(h => h.kind === 'augmentations' && h.accessories.includes(x))
       if (host && op.grade !== undefined) return no('grade-follows-host')
       // (a level of a family: the level's own entry takes the line, which then needs no rating of its own)
       if (level) {

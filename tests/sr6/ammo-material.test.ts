@@ -73,6 +73,24 @@ test('ammo-material: set on ammunition only, refused elsewhere, and taken off wi
   expect(priced(b.purchases[0], data, cr).cost).toBe(before)
 })
 
+test('ammo-material: set and taken off on an ammunition type two levels down (weapon → ammunition → type), the price back', () => {
+  const { data, cr } = world(),
+    b = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'mundane' })
+  const gun: Sr6Purchase = { uid: 'w', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [pellets({ accessories: [fizz()] })] }
+  b.purchases.push(gun)
+  const before = priced(gun, data, cr).cost
+  expect(apply(b, { op: 'material', uid: 't', material: 'zz.glow-slugs-tin' }, data, cr)).toEqual({ ok: true })
+  expect(gun.accessories[0].accessories[0].material).toBe('zz.glow-slugs-tin')
+  expect(priced(gun, data, cr).cost).toBeGreaterThan(before)
+  expect(apply(b, { op: 'material', uid: 't', material: null }, data, cr)).toEqual({ ok: true })
+  expect(gun.accessories[0].accessories[0]).not.toHaveProperty('material')
+  expect(priced(gun, data, cr).cost).toBe(before)
+  // (the other line ops reach it too: a bonus on it, then taken off)
+  expect(apply(b, { op: 'bonus', uid: 't', bonuses: [{ target: 'defense', value: 1 }] }, data, cr)).toEqual({ ok: true })
+  expect(apply(b, { op: 'bonus', uid: 't', bonuses: [] }, data, cr)).toEqual({ ok: true })
+  expect(gun.accessories[0].accessories[0]).not.toHaveProperty('bonuses')
+})
+
 test('ammo-material: the effect is the runner’s effect note; the file keeps the material', async () => {
   const { data } = world(),
     ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
