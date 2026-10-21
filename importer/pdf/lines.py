@@ -1,11 +1,13 @@
 """A page's words into visual lines: rows by top (the SR6 layout groups by baseline: importer/sr6/layout.baseline_rows),
 a tilted line's letter sizes evened, the body size and the heading sizes."""
+
 import statistics
 
 LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line
 
 
 def size_bands(pdf):
+    """(body size, up to three heading sizes biggest first) of the book's first 40 pages."""
     sizes = [round(c["size"], 1) for p in pdf.pages[:40] for c in p.chars]
     if not sizes:
         return 10, []
@@ -21,7 +23,10 @@ def even_sizes(chars):
     """A slightly tilted line's letters (upright, a small rotation in the text matrix) measure a little apart
     in size, which would split every letter into its own word. Such chars less than _SIZE_NOISE from the next
     smaller one take its size, so a word still splits at a real size change (a small-caps initial)."""
-    tilted = lambda c: c["upright"] and c["matrix"][1] != 0
+
+    def tilted(c):
+        return c["upright"] and c["matrix"][1] != 0
+
     sizes = sorted({c["size"] for c in chars if tilted(c)})
     even, base = {}, None
     for i, s in enumerate(sizes):
@@ -31,6 +36,7 @@ def even_sizes(chars):
 
 
 def heading_level(size, big):
+    """The heading level (1 is the biggest) whose size `size` matches, else 0."""
     return next((i + 1 for i, s in enumerate(big) if abs(size - s) < 0.6), 0)
 
 
@@ -58,4 +64,5 @@ def cluster_lines(words):
 
 
 def line_extent(line):
+    """(left, right) x extent of a line of words."""
     return min(w["x0"] for w in line), max(w["x1"] for w in line)

@@ -1,3 +1,5 @@
+"""Data pack export, check and import tests."""
+
 import contextlib
 import hashlib
 import io
@@ -14,6 +16,8 @@ from importer import datapack
 from importer.__main__ import main
 from importer.tests.test_run import MINI
 
+# pylint: disable=unspecified-encoding  # the tests write and read back with the same platform default
+
 CORE = os.path.join(MINI, "imported", "core")  # the made-up core files
 
 
@@ -27,6 +31,7 @@ def custom(names=None):
 
 
 def pack(names=None):
+    """Export a data pack zip of the named custom files; its path."""
     p = os.path.join(tempfile.mkdtemp(), "pack.zip")
     datapack.export(custom(names), p, version="9.9.9")
     return p
@@ -52,16 +57,20 @@ def rezip(src, change=None, extra=None, attrs=None):
 
 def manifest_for(files):
     """datapack.xml text listing `files` ({core name: bytes})."""
-    rows = "".join(f'<file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>' for n, b in files.items())
+    rows = "".join(
+        f'<file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>' for n, b in files.items()
+    )
     return f'<datapack format="1" app="t" created="2026-01-01T00:00:00+00:00">{rows}</datapack>'.encode()
 
 
 def skills():
+    """The bytes of the core skills.xml."""
     return Path(CORE, "skills.xml").read_bytes()
 
 
 class DataPackTest(unittest.TestCase):
-    def assertRefused(self, path, why):
+    def assertRefused(self, path, why):  # pylint: disable=invalid-name  # matches unittest's assert* names
+        """Assert that checking the pack at path is refused with a message containing why."""
         with self.assertRaises(datapack.PackError) as e:
             datapack.check(path)
         self.assertIn(why, str(e.exception))
@@ -119,6 +128,7 @@ class DataPackTest(unittest.TestCase):
             if len(calls) == 20:  # mid-way through moving the new files in
                 raise OSError("disk trouble")
             return real(a, b)
+
         with unittest.mock.patch("importer.backup.os.replace", flaky), self.assertRaises(OSError):
             datapack.import_pack(pack(), d)
         self.assertEqual({n: Path(core, n).read_bytes() for n in os.listdir(core)}, before)
@@ -132,18 +142,35 @@ class DataPackTest(unittest.TestCase):
 
     def test_unsafe_names_are_refused(self):
         p = pack()
-        for name in ("core/../skills.xml", "../core/skills.xml", "/core/skills.xml", "//server/share/core/skills.xml",
-                     "core\\skills.xml", "C:/core/skills.xml", "core/CON.xml", "CON", "core/skills.xml.", "Core/Skills.xml",
-                     "core/notes.xml", "texts/crb.xml", "library/book/original.pdf", "library/.config/ai-keys.xml", "core/sub/"):
+        for name in (
+            "core/../skills.xml",
+            "../core/skills.xml",
+            "/core/skills.xml",
+            "//server/share/core/skills.xml",
+            "core\\skills.xml",
+            "C:/core/skills.xml",
+            "core/CON.xml",
+            "CON",
+            "core/skills.xml.",
+            "Core/Skills.xml",
+            "core/notes.xml",
+            "texts/crb.xml",
+            "library/book/original.pdf",
+            "library/.config/ai-keys.xml",
+            "core/sub/",
+        ):
             with self.subTest(name=name):
                 # Windows' zipfile reads a backslash as "/": then it's core/skills.xml twice
-                self.assertRefused(rezip(p, extra={name: b"<x/>"}), "" if "\\" in name and os.sep == "\\" else "a file a data pack can’t hold")
+                self.assertRefused(
+                    rezip(p, extra={name: b"<x/>"}),
+                    "" if "\\" in name and os.sep == "\\" else "a file a data pack can’t hold",
+                )
 
     def test_links_devices_encryption_and_bombs_are_refused(self):
         p = pack()
         self.assertRefused(rezip(p, attrs={"core/skills.xml": (stat.S_IFLNK | 0o777) << 16}), "symbolic link")
         self.assertRefused(rezip(p, attrs={"core/skills.xml": (stat.S_IFCHR | 0o600) << 16}), "device")
-        bomb = rezip(p, change={"core/skills.xml": b"<a/>" + b" " * (3 * 1024 ** 2)})
+        bomb = rezip(p, change={"core/skills.xml": b"<a/>" + b" " * (3 * 1024**2)})
         self.assertRefused(bomb, "expands too much")
         enc = rezip(p)
         with zipfile.ZipFile(enc) as zf:
@@ -158,10 +185,14 @@ class DataPackTest(unittest.TestCase):
     def test_duplicates_sizes_and_bad_zips_are_refused(self):
         p = pack()
         dup = rezip(p)
-        with zipfile.ZipFile(dup, "a") as zf, contextlib.redirect_stderr(io.StringIO()), unittest.mock.patch("warnings.warn"):
+        with (
+            zipfile.ZipFile(dup, "a") as zf,
+            contextlib.redirect_stderr(io.StringIO()),
+            unittest.mock.patch("warnings.warn"),
+        ):
             zf.writestr("core/skills.xml", skills())
         self.assertRefused(dup, "the same name twice")
-        big = b"<a>" + os.urandom(9 * 1024 ** 2).hex().encode() + b"</a>"  # 18 MB that doesn't compress
+        big = b"<a>" + os.urandom(9 * 1024**2).hex().encode() + b"</a>"  # 18 MB that doesn't compress
         self.assertRefused(rezip(p, change={"core/skills.xml": big}), "too large")
         notzip = os.path.join(tempfile.mkdtemp(), "x.zip")
         Path(notzip).write_bytes(b"PK\x03\x04 not really")
@@ -172,19 +203,23 @@ class DataPackTest(unittest.TestCase):
         self.assertRefused(rezip(p, change={"datapack.xml": None}), "no datapack.xml")
         self.assertRefused(rezip(p, change={"datapack.xml": b"<backup/>"}), "isn’t a data pack manifest")
         self.assertRefused(rezip(p, change={"datapack.xml": b"<datapack format='1'"}), "isn’t readable XML")
-        self.assertRefused(rezip(p, change={"datapack.xml": manifest_for({"skills.xml": skills()}).replace(b'format="1" ', b"")}),
-                           "doesn’t match its schema")
+        self.assertRefused(
+            rezip(p, change={"datapack.xml": manifest_for({"skills.xml": skills()}).replace(b'format="1" ', b"")}),
+            "doesn’t match its schema",
+        )
         doctype = b'<!DOCTYPE d [<!ENTITY e "x">]>' + manifest_for({"skills.xml": skills()})
         self.assertRefused(rezip(p, change={"datapack.xml": doctype}), "DOCTYPE")
         # the list: a file it doesn't name, a file it names that isn't there
-        self.assertRefused(rezip(p, extra={"core/levels.xml": Path(CORE, "levels.xml").read_bytes()}), "doesn’t match the files")
+        self.assertRefused(
+            rezip(p, extra={"core/levels.xml": Path(CORE, "levels.xml").read_bytes()}), "doesn’t match the files"
+        )
         self.assertRefused(rezip(p, change={"core/skills.xml": None}), "doesn’t match the files")
 
     def test_hash_or_size_mismatch_is_refused(self):
         p = pack(["skills.xml"])
         changed = skills().replace(b"</ca2:data>", b"<!-- edited --></ca2:data>")
         self.assertRefused(rezip(p, change={"core/skills.xml": changed}), "doesn’t match its size or hash")
-        same_size = skills().replace(b"version=\"1\"", b"version=\"2\"", 1)
+        same_size = skills().replace(b'version="1"', b'version="2"', 1)
         self.assertEqual(len(same_size), len(skills()))
         self.assertRefused(rezip(p, change={"core/skills.xml": same_size}), "doesn’t match its size or hash")
 
@@ -193,14 +228,22 @@ class DataPackTest(unittest.TestCase):
 
         def with_skills(b):
             return rezip(p, change={"core/skills.xml": b, "datapack.xml": manifest_for({"skills.xml": b})})
+
         self.assertIsNotNone(datapack.check(with_skills(skills()))[0])  # the helper itself makes a good pack
-        bad = skills().replace(b"<skill ", b"<skill bogus=\"1\" ", 1)
+        bad = skills().replace(b"<skill ", b'<skill bogus="1" ', 1)
         self.assertRefused(with_skills(bad), "core/skills.xml doesn’t match its schema")
         other = Path(CORE, "levels.xml").read_bytes()
         self.assertRefused(with_skills(other), "core/skills.xml isn’t the skills table")
         self.assertRefused(with_skills(b"<ca2:data"), "isn’t readable XML")
         weapons = Path(CORE, "weapons.xml").read_bytes()  # items.xsd, as validate-data.mjs picks it
-        good = rezip(p, change={"core/skills.xml": None, "core/weapons.xml": weapons, "datapack.xml": manifest_for({"weapons.xml": weapons})})
+        good = rezip(
+            p,
+            change={
+                "core/skills.xml": None,
+                "core/weapons.xml": weapons,
+                "datapack.xml": manifest_for({"weapons.xml": weapons}),
+            },
+        )
         self.assertEqual(datapack.check(good)[0].find("file").get("name"), "weapons.xml")
 
     def test_only_utf8_without_a_doctype(self):
@@ -208,11 +251,18 @@ class DataPackTest(unittest.TestCase):
 
         def with_skills(b):
             return rezip(p, change={"core/skills.xml": b, "datapack.xml": manifest_for({"skills.xml": b})})
+
         body = skills().split(b"?>", 1)[1]
-        utf16 = ('<?xml version="1.0" encoding="UTF-16"?>\n<!DOCTYPE x [<!ENTITY e "made up">]>'
-                 + body.decode("utf8")).encode("utf-16")  # a BOM: no "<!DOCTYPE" in the raw bytes
+        utf16 = (
+            '<?xml version="1.0" encoding="UTF-16"?>\n<!DOCTYPE x [<!ENTITY e "made up">]>' + body.decode("utf8")
+        ).encode(
+            "utf-16"
+        )  # a BOM: no "<!DOCTYPE" in the raw bytes
         self.assertRefused(with_skills(utf16), "core/skills.xml isn’t UTF-8")
-        self.assertRefused(with_skills(('<?xml version="1.0" encoding="UTF-16"?>' + body.decode("utf8")).encode("utf-16")), "isn’t UTF-8")
+        self.assertRefused(
+            with_skills(('<?xml version="1.0" encoding="UTF-16"?>' + body.decode("utf8")).encode("utf-16")),
+            "isn’t UTF-8",
+        )
         latin = b'<?xml version="1.0" encoding="ISO-8859-1"?>' + body  # ASCII bytes, but declared otherwise
         self.assertRefused(with_skills(latin), "isn’t UTF-8")
         self.assertRefused(with_skills(b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE x>' + body), "has a DOCTYPE")
@@ -225,7 +275,8 @@ class DataPackTest(unittest.TestCase):
         originals = {n: Path(core, n).read_bytes() for n in os.listdir(core)}
         # killed mid-swap: two originals moved aside, one new file already in, the rest still staged
         old, new = os.path.join(core, ".restore-old-x"), os.path.join(core, ".restore-new-y")
-        os.makedirs(old), os.makedirs(new)
+        os.makedirs(old)
+        os.makedirs(new)
         os.replace(os.path.join(core, "skills.xml"), os.path.join(old, "skills.xml"))
         os.replace(os.path.join(core, "levels.xml"), os.path.join(old, "levels.xml"))
         Path(core, "skills.xml").write_text("half-swapped new skills")

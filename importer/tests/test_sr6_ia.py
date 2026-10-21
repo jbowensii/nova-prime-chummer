@@ -2,6 +2,7 @@
 book's: a running head on every page, stat blocks printed as bold text lines under the athlete's name and `metatype:`
 line, two in a row with commentary between, a priced weapon in one, the game information under headings of its own).
 Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -54,11 +55,13 @@ A made-up variant that glows.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, ia.ALIASES, name_headers=ia.NAME_HEADERS, end_page=ia.END_PAGE)
     return ia.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: entry} of the `kind` entries of a reading."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -72,8 +75,10 @@ class IaRecipeTest(unittest.TestCase):
         n = entries(self.res, "npcs")
         self.assertEqual(list(n), ["Zed “Bolt” Glimmer", "Amy “Arc” Fizz"])
         z, a = n["Zed “Bolt” Glimmer"], n["Amy “Arc” Fizz"]
-        self.assertEqual((z.get("group"), z.get("rating"), z.get("rea"), z.get("init"), z.get("move")),
-                         ("Ingentis Athletes", None, "5(8)", "11/4", "10/15/+1"))
+        self.assertEqual(
+            (z.get("group"), z.get("rating"), z.get("rea"), z.get("init"), z.get("move")),
+            ("Ingentis Athletes", None, "5(8)", "11/4", "10/15/+1"),
+        )
         self.assertEqual(z.findtext("skills"), "Athletics 3, Close Combat 2")
         self.assertNotIn("commentary", z.findtext("weapons"))  # the weapons end where the commentary goes on
         self.assertEqual((a.get("bod"), a.get("dr"), a.findtext("gear")), ("9(+2)", "19", "Fizz jacket"))
@@ -83,8 +88,10 @@ class IaRecipeTest(unittest.TestCase):
 
     def test_priced_weapon(self):
         w = entries(self.res, "weapons")["Glow ball (4)"]  # `4 x glow ball`: the price of four
-        self.assertEqual((w.get("category"), w.get("dv"), w.get("ar"), w.get("avail"), w.get("cost")),
-                         ("Throwing weapon", "2S", "6/8/—/—/—", "1", "40"))
+        self.assertEqual(
+            (w.get("category"), w.get("dv"), w.get("ar"), w.get("avail"), w.get("cost")),
+            ("Throwing weapon", "2S", "6/8/—/—/—", "1", "40"),
+        )
 
     def test_rules(self):
         r = entries(self.res, "rules")

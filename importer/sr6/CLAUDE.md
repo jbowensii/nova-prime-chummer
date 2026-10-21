@@ -1,7 +1,8 @@
 # importer/sr6 (Python): Shadowrun 6 book import, owner rulings, CommLink6 gates
 
 Turns an SR6 book PDF into catalog entries under `custom/sr6`. Stages, in order: convert (`../convert.py`) -> layout
--> regroup (`regroup.py`) -> extract (`recipes/`, `classes/`, `shapes.py`, `tables.py`) -> effects (`effects.py`) ->
+-> regroup (`regroup.py`) -> extract (`recipes/`, `classes/`, `shapes.py`, `tables.py`; `catalog.py` reads the blocks
+into a Catalog, with `prose_items.py` as its pass for items and prices the books state in running text) -> effects (`effects.py`) ->
 resolve (`resolve.py`) -> links; `run.py` runs them, `__main__.py` is the CLI (`python -m importer sr6 ...`, usage in
 its docstring). The owner's rulings and book corrections live in `overrides/*.json` and `overrides/*.book.json` (about
 270k tokens of JSON: search them, do not read them whole); the package `overrides/` (`__init__.py`: the row format,

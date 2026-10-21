@@ -3,6 +3,7 @@
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
 import { useEffect, useState } from 'react'
 import { useMe } from '../../../core/ui-kit/auth'
+import { downloadFile } from '../../../core/ui-kit/download'
 import { newId } from '../../../core/shared/types'
 import type { Codec } from '../../../core/shared/types'
 import { serverRepo } from '../../../features/runner-store/repo'
@@ -44,12 +45,7 @@ export function snapshotSr6(c: Sr6Catalog, runner: Sr6Character): Sr6Character {
 /** Download the runner as its XML file. Returns it stamped as exported (with the snapshots). */
 export function exportSr6(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
   const out = { ...snapshotSr6(c, ch), lastExportedAt: new Date().toISOString() }
-  const url = URL.createObjectURL(new Blob([sr6ToXml(out)], { type: 'application/xml' }))
-  Object.assign(document.createElement('a'), {
-    href: url,
-    download: `${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`,
-  }).click()
-  URL.revokeObjectURL(url)
+  downloadFile(`${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`, sr6ToXml(out), 'application/xml')
   return out
 }
 

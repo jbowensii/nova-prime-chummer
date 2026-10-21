@@ -3,7 +3,10 @@
 `load(path)` takes a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs (each with custom/sr6 and
 library/sr6/book1), and returns {source id: Source}. A source printed by several runs (the core rulebook in each city
 edition) is read from the run whose printing is newest (the Current Printing, else the PDF's date; ties: first in name
-order). Values stay as printed; `value()` reads them at a rating the way the app's engine does (src/sr6/catalog/domain/values.ts rated())."""
+order). Values stay as printed; `value()` reads them at a rating the way the app's engine does
+(src/sr6/catalog/domain/values.ts rated()).
+"""
+
 import math
 import os
 import re
@@ -21,6 +24,8 @@ LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 
 @dataclass
 class Source:
+    """One source book's entries, with its book folder and description texts."""
+
     src: str
     entries: list = field(default_factory=list)
     book_dir: str | None = None  # library/sr6/<book>: import.xml, book.md, regrouped.md, original.pdf
@@ -124,38 +129,73 @@ def families(e, kind=None):
     vs = e.findall("variant")
     if vs:
         out["variants"] = frozenset(_norm(v.get("name") or v.findtext("name") or v.get("id")) for v in vs)
-    slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {("fits", _norm(f.get("slot")))
-                                                                         for f in e.findall("fits")}
-    if not slots and a.get("mount") and not NONE.match(a["mount"]):  # (a mount column only when the entry has no slot/fits of its own: a vehicle mount's `Under` is not a fit)
+    slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {
+        ("fits", _norm(f.get("slot"))) for f in e.findall("fits")
+    }
+    if (
+        not slots and a.get("mount") and not NONE.match(a["mount"])
+    ):  # (a mount column only when the entry has no slot/fits of its own: a vehicle mount's `Under` is not a fit)
         slots |= {("fits", _norm(m)) for m in re.split(r"\s*(?:/|,|\bor\b)\s*", a["mount"]) if m.strip()}
     if slots:
         out["slots"] = frozenset(slots)
     tags = {"effect": "effect", "test": "test", "grant": "grant", "allow": "allow"}
-    eff = sorted((tags[x.tag], x.get("target", "").casefold() or f"{_norm(x.get('kind'))}:{_norm(x.get('ref'))}",
-                  (x.get("value") or "").replace("+", "").casefold()) for x in e if x.tag in tags)
+    eff = sorted(
+        (
+            tags[x.tag],
+            x.get("target", "").casefold() or f"{_norm(x.get('kind'))}:{_norm(x.get('ref'))}",
+            (x.get("value") or "").replace("+", "").casefold(),
+        )
+        for x in e
+        if x.tag in tags
+    )
     if eff:
-        out["effects_own"] = tuple(eff)  # (our own <effect>s alone: the per-effect metric reads these, not Commlink6's data kept beside)
+        out["effects_own"] = tuple(
+            eff
+        )  # (our own <effect>s alone: the per-effect metric reads these, not Commlink6's data kept beside)
     # (Commlink6's own rule data kept beside ours, the schema's <modifier>/<prerequisite>/<selection>: never applied)
     mod = {"valmod": "effect", "checkmod": "test", "itemmod": "grant", "allowmod": "allow"}
-    eff = sorted(eff + [(mod[x.get("kind")], f"{_norm(x.get('type'))}:{_norm(x.get('ref'))}",
-                         re.sub(r"\$(RATING|LEVEL|FORCE)", "R", x.get("value") or "").replace("+", "").casefold())
-                        for x in e.findall("modifier") if x.get("kind") in mod])
+    eff = sorted(
+        eff
+        + [
+            (
+                mod[x.get("kind")],
+                f"{_norm(x.get('type'))}:{_norm(x.get('ref'))}",
+                re.sub(r"\$(RATING|LEVEL|FORCE)", "R", x.get("value") or "").replace("+", "").casefold(),
+            )
+            for x in e.findall("modifier")
+            if x.get("kind") in mod
+        ]
+    )
     if eff:
         out["effects"] = tuple(eff)
-    ch = sorted([_norm(c.get("kind")) for c in e.findall("choice") if c.get("kind") != "rating"]
-                + [_norm(c.get("type")) for c in e.findall("selection")])
+    ch = sorted(
+        [_norm(c.get("kind")) for c in e.findall("choice") if c.get("kind") != "rating"]
+        + [_norm(c.get("type")) for c in e.findall("selection")]
+    )
     if ch:
         out["choices"] = tuple(ch)
-    req = sorted([(_norm(r.get("kind") or r.tag), _norm(r.get("ref") or r.get("target")))
-                  for rq in e.findall("requires") for r in rq.iter() if r is not rq and r.tag not in ("any",)]
-                 + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite")])
+    req = sorted(
+        [
+            (_norm(r.get("kind") or r.tag), _norm(r.get("ref") or r.get("target")))
+            for rq in e.findall("requires")
+            for r in rq.iter()
+            if r is not rq and r.tag not in ("any",)
+        ]
+        + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite")]
+    )
     if req:
         out["requires"] = tuple(req)
     # (Commlink6's kind flags follow from our kind and category: the owned books print no flag)
     kind_flags = [{"augmentations": "augmentation", "electronics": "matrix_device"}.get(kind)] + [
-        "codemod" if re.search(r"(?i)codemod", a.get("category") or "") else None]
-    out.update(canon.ui_families([r.get("topic") for r in e.findall("relevance")],
-                                 [f.text for f in e.findall("flag")] + kind_flags, a.get("modonly") == "true"))
+        "codemod" if re.search(r"(?i)codemod", a.get("category") or "") else None
+    ]
+    out.update(
+        canon.ui_families(
+            [r.get("topic") for r in e.findall("relevance")],
+            [f.text for f in e.findall("flag")] + kind_flags,
+            a.get("modonly") == "true",
+        )
+    )
     return out
 
 
@@ -172,19 +212,37 @@ def _entries(src_dir, src):
             attrs = dict(e.attrib)
             for f in e.findall("formula"):  # the importer's rule for a field, beside its printed value: formula:<field>
                 expr = (f.text or "").strip()
-                opts = ",".join(sorted({m for m in re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr)}))
+                opts = ",".join(sorted(set(re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr))))
                 attrs[f"formula:{f.get('field')}"] = "|".join(
-                    [expr] + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)] + ([f"opts={opts}"] if opts else []))
+                    [expr]
+                    + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)]
+                    + ([f"opts={opts}"] if opts else [])
+                )
             if ks := [k.get("value") for k in e.findall("karmaif") if k.get("value")]:
-                attrs["karmaIf"] = " ".join(ks)  # (its Karma when a character flag holds: Commlink6's second record, `mutaqua_awakened`)
-            out.append({"src": src, "kind": kind, "id": e.get("id", ""), "name": name, "page": e.get("page", ""),
-                        "aliases": [x.get("name") or (x.text or "").strip() for x in e.findall("alias") if x.get("id") is None],
-                        "attrs": attrs, "families": families(e, kind),
-                        "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
-                        # where the importer found a value the row leaves out (resolve.py): field -> how
-                        "found": {x.get("field"): x.get("how") for x in e.findall("found")},
-                        "found_at": {x.get("field"): f"{x.get('source', '')} p{x.get('page', '')}".strip()
-                                     for x in e.findall("found")}})
+                attrs["karmaIf"] = " ".join(
+                    ks
+                )  # (its Karma when a character flag holds: Commlink6's second record, `mutaqua_awakened`)
+            out.append(
+                {
+                    "src": src,
+                    "kind": kind,
+                    "id": e.get("id", ""),
+                    "name": name,
+                    "page": e.get("page", ""),
+                    "aliases": [
+                        x.get("name") or (x.text or "").strip() for x in e.findall("alias") if x.get("id") is None
+                    ],
+                    "attrs": attrs,
+                    "families": families(e, kind),
+                    "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
+                    # where the importer found a value the row leaves out (resolve.py): field -> how
+                    "found": {x.get("field"): x.get("how") for x in e.findall("found")},
+                    "found_at": {
+                        x.get("field"): f"{x.get('source', '')} p{x.get('page', '')}".strip()
+                        for x in e.findall("found")
+                    },
+                }
+            )
     return _inline_refs(out)
 
 
@@ -195,6 +253,7 @@ def _inline_refs(entries):
     """A formula citing another entry of the source (`ref(augmentations:x, cost, R)*0.7`, an item derived from it) with
     that entry's own formula for the field, or its printed number, put in its place, so the formula can be evaluated."""
     from importer.sr6 import formula as F
+
     by = {(e["kind"], e["id"]): e["attrs"] for e in entries}
 
     def sub(m):
@@ -206,6 +265,7 @@ def _inline_refs(entries):
             return f"({f.split('|')[0]})"
         p = F.plain(a.get(m.group(3)) or "", m.group(3))
         return m.group(0) if p is None else f"({p:g})"
+
     for e in entries:
         for k, v in list(e["attrs"].items()):
             if k.startswith("formula:") and "ref(" in v:
@@ -241,19 +301,24 @@ def _printed(base):
     The owner's rule: the Current Printing is the newest whatever its PDF's metadata says (the City Editions' PDFs are
     dated later); otherwise the PDF date (corpus.resolve_date, '' when unknown)."""
     from tools.cl6check import corpus
-    lib = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(base)))), "library", "sr6", "book1")
+
+    lib = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(base)))), "library", "sr6", "book1"
+    )
     md, imp = os.path.join(lib, "book.md"), os.path.join(lib, "import.xml")
+    # pylint: disable=consider-using-with  # read once
     year = corpus.printed_year(corpus.lines(open(md, encoding="utf8").read())) if os.path.exists(md) else None
     sha = ET.parse(imp).getroot().get("sha256", "") if os.path.exists(imp) else ""
     date = corpus.resolve_date(*corpus.pdf_meta(os.path.join(lib, "original.pdf")), year, "")[0]
+    # pylint: disable=protected-access  # the corpus module's helper, shared inside cl6check
     return corpus._printing(sha) == "", date
 
 
 def _fill(new, old):
-    """The owner's rule, the latest printing wins and older ones only fill gaps: an entry (kind, id) `new` lacks is taken
-    from `old`; a field `new` left open (an issue of its own) takes `old`'s printed value when `old` has no issue on it.
-    ponytail: the importer's own merge (importer/sr6/run.py older_printings) also carries formulas and notes; this reads
-    the printed attribute only."""
+    """The owner's rule, the latest printing wins and older ones only fill gaps: an entry (kind, id) `new` lacks is
+    taken from `old`; a field `new` left open (an issue of its own) takes `old`'s printed value when `old` has no issue
+    on it. ponytail: the importer's own merge (importer/sr6/run.py older_printings) also carries formulas and notes;
+    this reads the printed attribute only."""
     have = {(e["kind"], e["id"]): e for e in new.entries}
     for o in old.entries:
         e = have.get((o["kind"], o["id"]))
@@ -274,7 +339,9 @@ def load(path):
         if os.path.basename(os.path.dirname(base)) == "imported" and any(f.endswith(".xml") for f in files):
             found.setdefault(os.path.basename(base).lower(), []).append(base)
     for src, bases in found.items():  # several printings: the newest, the older ones filling its gaps (_fill)
-        bases = sorted(bases, key=_printed, reverse=True) if len(bases) > 1 else bases  # (stable: name order breaks ties)
+        bases = (
+            sorted(bases, key=_printed, reverse=True) if len(bases) > 1 else bases
+        )  # (stable: name order breaks ties)
         for i, b in enumerate(bases):
             sr6 = os.path.dirname(os.path.dirname(b))  # custom/sr6
             run = os.path.dirname(os.path.dirname(sr6))  # the run (or the repo) holding custom/ and library/
@@ -305,17 +372,20 @@ def kinds(idx):
     return out
 
 
-def kind_of(kinds, src, oid, kind):
-    """The kind an override row for entry `oid` of `src` names: `kind` when that file holds the id, else the one file that
-    does; None when none does (the row is stale); `kind` again when several do (the importer reports it)."""
+def kind_of(
+    kinds, src, oid, kind
+):  # pylint: disable=redefined-outer-name  # the parameter shadows the kinds() function
+    """The kind an override row for entry `oid` of `src` names: `kind` when that file holds the id, else the one file
+    that does; None when none does (the row is stale); `kind` again when several do (the importer reports it)."""
     have = kinds.get((src, oid), [])
     return kind if kind in have or len(have) > 1 else (have[0] if have else None)
 
 
 def carries(name, variants):
-    """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item per
-    variant (the owner's rule), so it has no variant list of its own."""
-    # (a nanite row is `<name> Colony` or `<name> Nanites`: Commlink6's `Colony Template` and `Pre-Built`, owner 2026-10-14)
+    """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item
+    per variant (the owner's rule), so it has no variant list of its own."""
+    # (a nanite row is `<name> Colony` or `<name> Nanites`: Commlink6's `Colony Template` and `Pre-Built`, owner
+    # 2026-10-14)
     name = re.sub(r"(?i)\bnanites$", "(pre-built)", re.sub(r"(?i)\bcolony$", "(colony template)", name or ""))
     n = f"-{_norm(name)}-"
     return any(_norm(v) and f"-{_norm(v)}-" in n for v in variants)

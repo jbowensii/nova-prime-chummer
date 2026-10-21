@@ -1,6 +1,7 @@
 // What both games' Foundry exports share: file names, the .json download, and the runner-picking export dialog.
 import { useState } from 'react'
 import { Modal } from '../../core/ui-kit/bits'
+import { downloadFile } from '../../core/ui-kit/download'
 import type { Campaign } from '../campaigns/campaignsStore'
 import type { Character } from '../../ca2/formats/domain/types'
 
@@ -21,9 +22,7 @@ export const runnersStem = (chs: { identity: { name: string; streetName: string 
 }
 /** Saves data as a .json download. */
 export function downloadJson(name: string, data: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }))
-  Object.assign(document.createElement('a'), { href: url, download: name }).click()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
+  downloadFile(name, JSON.stringify(data, null, 1), 'application/json')
 }
 type Exportable = Pick<Character, 'id' | 'identity' | 'campaign'>
 const label = (ch: Exportable) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'

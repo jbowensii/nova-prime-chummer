@@ -1,6 +1,7 @@
 """The core rulebook City Editions' city chapter (importer/sr6/recipes/crb_city.py) as a source of its own, read from a
 made-up chapter in the converter's sr6 shape (qualities, contacts with their bands, a gear box, vehicles, weapons as
 bold lines), and written by the run beside the CRB (Result.extra). Every name, number and line is invented."""
+
 import os
 import tempfile
 import unittest
@@ -81,6 +82,7 @@ CITY = {SHA: ("CRB-FZ", "Made-Up Core Rulebook: City Edition Fizzburg", "FIZZBUR
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -93,6 +95,7 @@ class CityChapterTest(unittest.TestCase):
 
     def test_source(self):
         from importer.sr6.recipes import crb
+
         # (the city chapter's page offset and publisher are the core rulebook's, kept in crb_city: no import cycle)
         self.assertEqual((crb_city.PUBLISHER, crb_city.PAGE_OFFSET), (crb.PUBLISHER, crb.PAGE_OFFSET))
         self.assertEqual(self.none, [])
@@ -110,8 +113,17 @@ class CityChapterTest(unittest.TestCase):
         self.assertEqual((n["Ada Fizzle"]["group"], n["Ada Fizzle"]["cha"]), ("Contact", "5"))
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("Female Elf", texts[("contacts", "ada-fizzle")])
-        self.assertIn({"kind": "missing-value", "file": "contacts.xml", "name": "Bo Twin", "field": "stats", "page": 330,
-                       "source": "CRB-FZ"}, self.res.report)  # two bands in one box: not guessed
+        self.assertIn(
+            {
+                "kind": "missing-value",
+                "file": "contacts.xml",
+                "name": "Bo Twin",
+                "field": "stats",
+                "page": 330,
+                "source": "CRB-FZ",
+            },
+            self.res.report,
+        )  # two bands in one box: not guessed
 
     def test_gear_and_vehicles(self):
         self.assertEqual(entries(self.res, "armor")["Fizz hood"]["cost"], "1200")  # thousands printed with a dot
@@ -119,8 +131,17 @@ class CityChapterTest(unittest.TestCase):
         self.assertEqual((w["dv"], w["ar"], w["avail"], w["cost"]), ("3P", "9/8/6/—/—", "2(L)", "300"))
         v = entries(self.res, "vehicles")
         self.assertEqual((v["Rattle Cart"]["handling"], v["Rattle Cart"]["cost"]), ("4/4", "2500"))
-        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "Ghost Bike", "field": "stats",
-                       "page": 332, "source": "CRB-FZ"}, self.res.report)  # a box title with no values
+        self.assertIn(
+            {
+                "kind": "missing-value",
+                "file": "vehicles.xml",
+                "name": "Ghost Bike",
+                "field": "stats",
+                "page": 332,
+                "source": "CRB-FZ",
+            },
+            self.res.report,
+        )  # a box title with no values
 
     def test_rules(self):
         r = entries(self.res, "rules")

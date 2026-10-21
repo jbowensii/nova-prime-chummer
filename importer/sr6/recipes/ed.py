@@ -4,13 +4,14 @@ mission rosters' NPCs and the rule sections, ids unscoped (run scopes them as ed
 texts. Reads only regrouped.md (importer/sr6/regroup.py), after prepare_md() gives book.md's stat tables their titles,
 with the core rulebook's reading (catalog.read); layout notes in ed.md. A line or value that doesn't read is reported,
 never guessed."""
+
 import re
 import sys
 from dataclasses import replace
 
 from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.regroup import blocks, keys, norm
+from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "ED", "Shadowrun: Explosive Decompression", "Catalyst Game Labs", True
 BOOK = "Explosive Decompression"
@@ -24,8 +25,16 @@ NAME_HEADERS = frozenset({"ITEM", "WEAPON"})
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = set()
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("let me play among the stars", "the new space race", "running the void", "hailing frequencies",
-                 "opening bay doors", "prepare for launch", "mission logs", "mission rosters")
+RULE_CHAPTERS = (
+    "let me play among the stars",
+    "the new space race",
+    "running the void",
+    "hailing frequencies",
+    "opening bay doors",
+    "prepare for launch",
+    "mission logs",
+    "mission rosters",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ("opening bay doors", "prepare for launch")
 GEAR, SHIPS, ROSTERS = "opening bay doors", "prepare for launch", "mission rosters"
@@ -36,6 +45,7 @@ _RATING = re.compile(r"professional rating\s*(\d+)", re.I)
 
 
 def match(meta, md_head):
+    """How well a book matches Explosive Decompression: 1.0 by its file hash, else 0.9 when its title says so."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"explosive\s+decompression", f"{meta.get('title') or ''}\n{md_head}", re.I) else 0.0
@@ -51,9 +61,16 @@ def prepare_md(md):
     untitled stat table (HAND …, ITEM … with text right above) takes the nearest title above it (up to _TITLE_REACH
     lines) that no table follows and that names no titled table (`EVO II` beside `evo armadillo II`: an art caption)."""
     lines = md.splitlines()
-    heading = lambda ln: re.match(r"(#{4,5}) (.+)$", ln)
-    nxt = lambda i: next((j for j in range(i + 1, len(lines)) if lines[j].strip()), None)
-    prv = lambda i: next((j for j in range(i - 1, -1, -1) if lines[j].strip()), None)
+
+    def heading(ln):
+        return re.match(r"(#{4,5}) (.+)$", ln)
+
+    def nxt(i):
+        return next((j for j in range(i + 1, len(lines)) if lines[j].strip()), None)
+
+    def prv(i):
+        return next((j for j in range(i - 1, -1, -1) if lines[j].strip()), None)
+
     chapter, inside, titled, stray = "", [], [], []
     for i, ln in enumerate(lines):
         if ln.startswith("# "):
@@ -64,14 +81,25 @@ def prepare_md(md):
         if (m := heading(ln)) and (j := nxt(i)) is not None:
             (titled if lines[j].startswith("|") else stray).append(i)
     named = [_words(heading(lines[i]).group(2)) for i in titled]
-    stray = [i for i in stray if not (t := heading(lines[i]).group(2)).startswith("(")
-             and not t.lower().startswith("posted by") and (t[:1].islower() or len(heading(lines[i]).group(1)) == 5)
-             and not any(w and (w <= _words(t) or _words(t) <= w) for w in named)]
+    stray = [
+        i
+        for i in stray
+        if not (t := heading(lines[i]).group(2)).startswith("(")
+        and not t.lower().startswith("posted by")
+        and (t[:1].islower() or len(heading(lines[i]).group(1)) == 5)
+        and not any(w and (w <= _words(t) or _words(t) <= w) for w in named)
+    ]
     moves = {}
     for i in inside:
         p = prv(i)
-        if lines[i].startswith("|") and lines[i].strip("| ").split(" |")[0].upper() in _STAT_HEADS \
-                and p is not None and not lines[p].startswith(("|", "#")) and i + 1 < len(lines) and lines[i + 1].startswith("|-"):
+        if (
+            lines[i].startswith("|")
+            and lines[i].strip("| ").split(" |")[0].upper() in _STAT_HEADS
+            and p is not None
+            and not lines[p].startswith(("|", "#"))
+            and i + 1 < len(lines)
+            and lines[i + 1].startswith("|-")
+        ):
             t = next((s for s in reversed(stray) if i - _TITLE_REACH <= s < i and s not in moves.values()), None)
             if t is not None:
                 moves[i] = t
@@ -84,7 +112,11 @@ def prepare_md(md):
     # a vehicle table's title in lower case reads as a caption unless labels follow: as an item heading it is the box
     for i, ln in enumerate(out[:-1]):
         cells = out[i + 1].split("|")
-        if (m := re.match(r"(#{4,5} )([a-z])(.*)", ln)) and len(cells) > 2 and cells[1].strip().upper() in ("HAND", "HANDL", "ACCEL"):
+        if (
+            (m := re.match(r"(#{4,5} )([a-z])(.*)", ln))
+            and len(cells) > 2
+            and cells[1].strip().upper() in ("HAND", "HANDL", "ACCEL")
+        ):
             out[i] = m.group(1) + m.group(2).upper() + m.group(3)
     return "\n".join(out) + "\n"
 
@@ -95,26 +127,53 @@ def _described(bs):
     `Evomars rifter` under `EvoMars Rifter`), and that heading's name when the entry is a titled box; a one-row table
     whose row says only what it is (`Space Suit` under `aresspace guardian`) is named by its title. The description
     then holds no rule of its own."""
-    descs = [b for b in bs if norm(b.chapter) in (GEAR, SHIPS) and b.row is None and not b.stats and b.text.strip()
-             and (b.type == "item" and b.level == 4 or b.type == "section" and b.level == 3)]
+    descs = [
+        b
+        for b in bs
+        if norm(b.chapter) in (GEAR, SHIPS)
+        and b.row is None
+        and not b.stats
+        and b.text.strip()
+        and (b.type == "item" and b.level == 4 or b.type == "section" and b.level == 3)
+    ]
     taken, out = set(), []
     for b in bs:
-        if norm(b.chapter) in (GEAR, SHIPS) and b.row is None and b.stats and not _vehicle(b) \
-                and {"AVAIL", "COST"} & {h.upper() for h in b.stats[0]}:
+        if (
+            norm(b.chapter) in (GEAR, SHIPS)
+            and b.row is None
+            and b.stats
+            and not _vehicle(b)
+            and {"AVAIL", "COST"} & {h.upper() for h in b.stats[0]}
+        ):
             # a priced box under its title (the grenade launcher: its title right over its table) is its row
             b = replace(b, row={"ITEM": b.name, **b.stats[0]}, header=["ITEM", *b.stats[0]], stats=b.stats[1:])
         if norm(b.chapter) in (GEAR, SHIPS) and (b.row is not None or b.stats and _vehicle(b)):
             name, own = b.name, b.row is None
-            if b.row is not None and b.label and not b.text.strip() and not any(_words(name) <= _words(d.name) for d in descs) \
-                    and sum(1 for x in bs if x.label == b.label and x.row is not None) == 1:
+            if (
+                b.row is not None
+                and b.label
+                and not b.text.strip()
+                and not any(_words(name) <= _words(d.name) for d in descs)
+                and sum(1 for x in bs if x.label == b.label and x.row is not None) == 1
+            ):
                 name, own = b.label, True  # a single-row table: its title names the item
-            cands = [d for d in descs if _words(name) and (_words(name) <= _words(d.name)
-                                                           or own and len(_words(d.name)) > 1 and _words(d.name) <= _words(name))]
+            cands = [
+                d
+                for d in descs
+                if _words(name)
+                and (
+                    _words(name) <= _words(d.name) or own and len(_words(d.name)) > 1 and _words(d.name) <= _words(name)
+                )
+            ]
             d = next((d for d in cands if norm(d.name) == norm(name)), cands[0] if len(cands) == 1 else None)
             if d is not None:
                 taken.add(id(d))
-                b = replace(b, text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t),
-                            section=d.section if own else b.section, tags=b.tags or d.tags)
+                b = replace(
+                    b,
+                    text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t),
+                    section=d.section if own else b.section,
+                    tags=b.tags or d.tags,
+                )
                 name = d.name if own and _words(d.name) <= _words(name) else name  # (`Mk II` keeps its own)
             if b.row is not None:
                 b = replace(b, name=name, row={**b.row, b.header[0]: name})
@@ -131,11 +190,20 @@ def _rosters(bs):
     for b in bs:
         if norm(b.chapter) == ROSTERS and b.type == "section" and b.level == 3:
             secs[b.section] = b
-        elif norm(b.chapter) == ROSTERS and b.type == "item" and b.stats and "B" in {h.upper() for h in b.stats[0]} \
-                and (sec := secs.get(b.section)) is not None:
+        elif (
+            norm(b.chapter) == ROSTERS
+            and b.type == "item"
+            and b.stats
+            and "B" in {h.upper() for h in b.stats[0]}
+            and (sec := secs.get(b.section)) is not None
+        ):
             taken.add(id(sec))
-            b = replace(b, name=sec.name if _words(b.name) <= _words(sec.name) else b.name[:1].upper() + b.name[1:],
-                        tags=b.tags or sec.tags, text="\n\n".join(t for t in (sec.text.strip(), b.text.strip()) if t))
+            b = replace(
+                b,
+                name=sec.name if _words(b.name) <= _words(sec.name) else b.name[:1].upper() + b.name[1:],
+                tags=b.tags or sec.tags,
+                text="\n\n".join(t for t in (sec.text.strip(), b.text.strip()) if t),
+            )
         out.append(b)
     return [b for b in out if id(b) not in taken]
 
@@ -146,11 +214,23 @@ def _tagged(bs):
     an item with that row, named by the section."""
     out = []
     for b in bs:
-        t = next(((h, r) for h, r in catalog.md_tables(b.text) if len(r) == 1 and h[0].upper() == "TYPE"
-                  and norm(r[0][0]) == norm(b.tags)), None) if norm(b.chapter) == GEAR and b.tags and b.row is None else None
+        t = (
+            next(
+                (
+                    (h, r)
+                    for h, r in catalog.md_tables(b.text)
+                    if len(r) == 1 and h[0].upper() == "TYPE" and norm(r[0][0]) == norm(b.tags)
+                ),
+                None,
+            )
+            if norm(b.chapter) == GEAR and b.tags and b.row is None
+            else None
+        )
         if t:
             row = {"WEAPON": b.name, **dict(zip(t[0], t[1][0]))}
-            b = replace(b, type="item", row=row, header=list(row), text=b.text.replace(catalog.md_table(*t), "").strip())
+            b = replace(
+                b, type="item", row=row, header=list(row), text=b.text.replace(catalog.md_table(*t), "").strip()
+            )
         out.append(b)
     return out
 
@@ -159,7 +239,7 @@ def _vehicle(b):
     return any(h.upper() in ("HAND", "HANDL", "ACCEL") for h in (b.stats[0] if b.stats else b.header))
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """A vehicle's box as its row; an NPC's `(Professional Rating N)` tag as the core rulebook's section form (a named
     character keeps its tag line, `(Female Elf)`, and the book's group UNRATED_NPCS)."""
     if b.stats and _vehicle(b) and b.row is None:
@@ -171,6 +251,7 @@ def fix(b, parent2):
 
 
 def kind(chapter, b, parent2):
+    """(kind, category) of a block: a roster's NPCs, a gear or ships table's row, else (None, None)."""
     if chapter == ROSTERS:
         return ("npcs", None) if b.stats and "B" in {h.upper() for h in b.stats[0]} else (None, None)
     if chapter not in (GEAR, SHIPS) or b.row is None:
@@ -180,7 +261,9 @@ def kind(chapter, b, parent2):
     head = {h.upper() for h in b.header}
     if head & {"HAND", "HANDL", "ACCEL"}:
         thruster = chapter == GEAR and ("thruster" in b.name.lower() or norm(b.section) == "thruster packs")
-        return "vehicles", "thruster-packs" if thruster else slug(parent2 if chapter == SHIPS else b.section) or "vehicles"
+        return "vehicles", (
+            "thruster-packs" if thruster else slug(parent2 if chapter == SHIPS else b.section) or "vehicles"
+        )
     if head & {"DEFENSE RATING", "DR"}:
         return "armor", "spacesuits"
     if head & {"DV", "MODE", "MODES"}:
@@ -191,4 +274,5 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The entries of the book's regrouped text."""
     return catalog.read(_rosters(_tagged(_described(list(blocks(regrouped))))), ctx, sys.modules[__name__])

@@ -1,5 +1,6 @@
 """SR6 Firing Squad recipe (importer/sr6/recipes/fs.py) on a made-up book.md in the converter's sr6 shape (the book's:
 an item's heading, its text and a stat box titled with its name). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -9,6 +10,8 @@ from lxml import etree
 from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, fs, identify
+
+# pylint: disable=protected-access  # tests reach into the module internals they cover
 
 BOOK_MD = """<!-- page 1 -->
 <!-- page 3 -->
@@ -162,22 +165,43 @@ A made-up guard who bashes doors.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
     return fs.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
 class ListedRowRangeTest(unittest.TestCase):
     def test_a_listed_row_named_in_a_rating_tagged_heading_takes_its_range(self):
-        head = regroup.Block("section", "Reactive Armor", "SUIT UP", "Reactive Armor", "", 54, tags="Rating 1-4", level=3,
-                             text="Reactive armor comes in two forms: plates and GelWeave.")
-        box = regroup.Block("item", "Armor mods", "SUIT UP", "Armor mods", "", 55, stats=[
-            {"GEAR": "Reactive Armor Plates", "AVAIL": "9(I)", "COST": "Rating x 2,500¥"},
-            {"GEAR": "GelWeave", "AVAIL": "6(I)", "COST": "Rating x 5,000¥"},
-            {"GEAR": "Holster", "AVAIL": "1", "COST": "50¥"}], level=4)
+        head = regroup.Block(
+            "section",
+            "Reactive Armor",
+            "SUIT UP",
+            "Reactive Armor",
+            "",
+            54,
+            tags="Rating 1-4",
+            level=3,
+            text="Reactive armor comes in two forms: plates and GelWeave.",
+        )
+        box = regroup.Block(
+            "item",
+            "Armor mods",
+            "SUIT UP",
+            "Armor mods",
+            "",
+            55,
+            stats=[
+                {"GEAR": "Reactive Armor Plates", "AVAIL": "9(I)", "COST": "Rating x 2,500¥"},
+                {"GEAR": "GelWeave", "AVAIL": "6(I)", "COST": "Rating x 5,000¥"},
+                {"GEAR": "Holster", "AVAIL": "1", "COST": "50¥"},
+            ],
+            level=4,
+        )
         tags = {b.name: b.tags for b in fs._lists([head, box])}
         self.assertEqual(tags, {"Reactive Armor Plates": "Rating 1-4", "GelWeave": "Rating 1-4", "Holster": ""})
 
@@ -189,10 +213,26 @@ class FsRecipeTest(unittest.TestCase):
 
     def test_weapons_from_their_boxes_merged_headers_split(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Zap Knife"], {"id": "zap-knife", "source": "FS", "page": "9", "category": "Blades", "skill": "Close Combat", "spec": "Blades",
-                                          "type": "Blade", "dv": "2P", "ar": "7/—/—/—/—", "avail": "2(L)", "cost": "150"})
+        self.assertEqual(
+            w["Zap Knife"],
+            {
+                "id": "zap-knife",
+                "source": "FS",
+                "page": "9",
+                "category": "Blades",
+                "skill": "Close Combat",
+                "spec": "Blades",
+                "type": "Blade",
+                "dv": "2P",
+                "ar": "7/—/—/—/—",
+                "avail": "2(L)",
+                "cost": "150",
+            },
+        )
         r = w["Glow Rifle Mk II"]  # its box titled shorter than its heading
-        self.assertEqual((r["category"], r["ar"], r["ammo"], r["avail"], r["cost"]), ("Rifle", "3/9/11/7/2", "24(c)", "4(L)", "3300"))
+        self.assertEqual(
+            (r["category"], r["ar"], r["ammo"], r["avail"], r["cost"]), ("Rifle", "3/9/11/7/2", "24(c)", "4(L)", "3300")
+        )
         self.assertEqual(w["Grip Tape"]["category"], "Weapon modifications")
         self.assertFalse(any(n.startswith("*") for n in w))
 
@@ -200,21 +240,30 @@ class FsRecipeTest(unittest.TestCase):
         # (priced as a multiple of the ammunition: an ammunition type, catalog.ammo_type)
         self.assertEqual(entries(self.res, "ammotypes")["Fizz Rounds"]["category"], "Ammo")
         a = entries(self.res, "armor")
-        self.assertEqual({k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},
-                         {"category": "Armor", "defense": "+3", "capacity": "6", "cost": "900"})
+        self.assertEqual(
+            {k: a["Puff Jacket"][k] for k in ("category", "defense", "capacity", "cost")},
+            {"category": "Armor", "defense": "+3", "capacity": "6", "cost": "900"},
+        )
         self.assertEqual((a["Layer Suit (Light)"]["defense"], a["Layer Suit (Heavy)"]["cost"]), ("+4", "9000"))
         # its SOCIAL column: the social attribute, as printed
-        self.assertEqual((a["Puff Jacket"]["social"], a["Layer Suit (Heavy)"]["social"], a["Card House (Jack of Dice)"]["social"]),
-                         ("–1", "–4", "+2"))
+        self.assertEqual(
+            (a["Puff Jacket"]["social"], a["Layer Suit (Heavy)"]["social"], a["Card House (Jack of Dice)"]["social"]),
+            ("–1", "–4", "+2"),
+        )
         self.assertEqual((a["Pocket Patch"]["category"], a["Glow Lining"]["capacity"]), ("Armor modifications", "[2]"))
         # a suit table printed in the next section's text: back to the section naming its rows, its Extras rows folded
-        self.assertEqual((a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4"))
+        self.assertEqual(
+            (a["Card House (Jack of Dice)"]["cost"], a["Card House (Queen of Cups)"]["defense"]), ("1000", "+4")
+        )
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("**Extras:** Pocket Patch", texts[("armor", "card-house-queen-of-cups")])
         self.assertNotIn("Jack of Dice", texts[("rules", "stacking")])
         # a box titled as its heading: one armor entry with the heading's text, no rule of its own; a TYPE table in an
         # item's own text naming its rows (`comes in Coach and Sleeper`): its own variants, never an earlier section's
-        self.assertEqual((a["Zing Shield"]["defense"], a["Rail Line (Coach)"]["cost"], a["Rail Line (Sleeper)"]["social"]), ("+2", "200", "+2"))
+        self.assertEqual(
+            (a["Zing Shield"]["defense"], a["Rail Line (Coach)"]["cost"], a["Rail Line (Sleeper)"]["social"]),
+            ("+2", "200", "+2"),
+        )
         self.assertIn("shield that zings", texts[("armor", "zing-shield")])
         self.assertNotIn("Zing Shield", {e.findtext("name") for e in ET.fromstring(self.res.files["rules.xml"])})
         self.assertEqual(len(a), 10)  # the reprinted stats at the back are left out
@@ -242,17 +291,28 @@ class FsRecipeTest(unittest.TestCase):
         texts = {(x.get("of"), x.get("id")): x.text for x in ET.fromstring(self.res.texts)}
         self.assertIn("Similar Styles:** Made Boxing", texts[("martialarts", "glow-fist")])
         # the prerequisites its category line prints: the kind from its word, else from the technique's own text
-        req = {e.findtext("name"): [(r.get("kind"), r.text) for r in e.iter("requires")]
-               for e in ET.fromstring(self.res.files["martialtechniques.xml"])}
-        self.assertEqual((req["Glow Leap"], req["Hum Palm"], req["Glow Jab"]),
-                         ([("technique", "Glow Kick")], [("adeptpower", "Hum Touch")], []))
+        req = {
+            e.findtext("name"): [(r.get("kind"), r.text) for r in e.iter("requires")]
+            for e in ET.fromstring(self.res.files["martialtechniques.xml"])
+        }
+        self.assertEqual(
+            (req["Glow Leap"], req["Hum Palm"], req["Glow Jab"]),
+            ([("technique", "Glow Kick")], [("adeptpower", "Hum Touch")], []),
+        )
         self.assertEqual(t["Glow Leap"]["category"], "Striking")
         # learned near or far, up to twice: an entry each, the printed heading their search name
         mt = {e.findtext("name"): e for e in ET.fromstring(self.res.files["martialtechniques.xml"])}
-        self.assertEqual([(n, mt[n].get("id"), mt[n].get("category"), [a.text for a in mt[n].iter("alias")])
-                          for n in mt if n.startswith("Glow Step")],
-                         [("Glow Step (Near)", "glow-step-near", "Mobility", ["Glow Step"]),
-                          ("Glow Step (Far)", "glow-step-far", "Mobility", ["Glow Step"])])
+        self.assertEqual(
+            [
+                (n, mt[n].get("id"), mt[n].get("category"), [a.text for a in mt[n].iter("alias")])
+                for n in mt
+                if n.startswith("Glow Step")
+            ],
+            [
+                ("Glow Step (Near)", "glow-step-near", "Mobility", ["Glow Step"]),
+                ("Glow Step (Far)", "glow-step-far", "Mobility", ["Glow Step"]),
+            ],
+        )
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:

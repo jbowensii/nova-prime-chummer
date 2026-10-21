@@ -9,6 +9,7 @@ import type { Catalog, Character } from '../../formats/domain/types'
 import { newId } from '../../formats/domain/types'
 import { because, canEdit, isAdmin, savesSettled, send, useMe } from '../../../core/ui-kit/auth'
 import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from '../../../core/ui-kit/bits'
+import { downloadFile } from '../../../core/ui-kit/download'
 import { saveAsNew } from '../../../features/runner-store/repo'
 import { useRepo, type Stored, type Unreadable } from '../../../core/ui-kit/repoContext'
 import { arrange, ownerGroups, type SortBy } from '../../../features/runner-store/runnerList'
@@ -33,13 +34,7 @@ import { ExportRunnersDialog } from '../../../features/foundry-kit/foundryKit'
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {
   const out = { ...snapshotEntries(c, ch), lastExportedAt: new Date().toISOString() }
-  const url = URL.createObjectURL(new Blob([characterToXml(out)], { type: 'application/xml' }))
-  const a = Object.assign(document.createElement('a'), {
-    href: url,
-    download: `${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`,
-  })
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadFile(`${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`, characterToXml(out), 'application/xml')
   return out
 }
 
@@ -445,11 +440,7 @@ export function Library({ c }: { c: Catalog }) {
   }
 
   // a file that couldn't be read: listed with why; its owner or the admin can download it, its owner can try to repair it
-  const download = (u: Unreadable) => {
-    const url = URL.createObjectURL(new Blob([u.xml], { type: 'application/xml' }))
-    Object.assign(document.createElement('a'), { href: url, download: u.file }).click()
-    URL.revokeObjectURL(url)
-  }
+  const download = (u: Unreadable) => downloadFile(u.file, u.xml, 'application/xml')
   const tryRepair = (u: Unreadable) => {
     const changes: string[] = []
     const r = xmlToCharacter(u.xml, { repair: changes })

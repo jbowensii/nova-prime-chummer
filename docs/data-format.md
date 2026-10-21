@@ -213,7 +213,7 @@ printed rating doesn't pay for: it applies, at rating 0 (the import report lists
 A bonus limited to a specialization is added to that specialization's pool when the runner has it, else its Risk
 Reduction counts in the skill's bracketed total, with a note naming the specialization (an Advantage or Disadvantage on
 it is noted on the skill). A Test named by what it does ("Tests involving speed", "social Tests", "climb a metal structure") is every
-skill it uses (`importer/recipes/dhsa.py` ACTIVITIES).
+skill it uses (`importer/recipes/amps.py` ACTIVITIES).
 
 ### packages
 
@@ -256,7 +256,7 @@ These are the base chassis for vehicle amps.
 - `type` is an amptype id.
 - Each `effect ref` is an ampeffect id (or a narrative effect kind), and `param` fills its parameter (a
   skill id, spec id, attribute id, realm, Test, or free text).
-- The importer reads an amp's clauses as general rules (`importer/recipes/dhsa.py` Mapper, `importer/effects.py`): a
+- The importer reads an amp's clauses as general rules (`importer/recipes/amps.py` Mapper, `importer/effects.py`): a
   clause a rated effect reads becomes that effect, with its `switch` (a dose's `Duration:` makes it `activated`) and, for
   a bonus without a param of its own, its `when`; a rated reading that would push the amp past its printed rating (or
   take a drawback the plain reading doesn't) is added `unpriced` and the amp priced as read without it (the printed

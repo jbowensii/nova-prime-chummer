@@ -6,6 +6,7 @@ npc.shaman), so text is keyed by (prefix, id): the SR6-eden-Forge reader dropped
 page. A book can have several English files (core_seattle, easycome for sif_new_orleans): the one named like the
 record's file wins, then the book's others, then (names only) any English file in the jar. German books, lang="de"
 records and records with no English name anywhere are left out and counted."""
+
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -17,16 +18,52 @@ ROOT = "de/rpgframework/shadowrun6/data/"
 GERMAN = re.compile(r"^de_")
 NON_CONTENT = {"icons", "placeholder", "other_us"}
 LANG_FILE = re.compile(r"_[a-z]{2}$")  # core_de, core_fr, core_pt: translations
-PREFIX = {"power": ("adeptpower", "power"), "itemenhancement": ("itemmod", "itemenhancement"),
-          "magicreson": ("mor", "magicreson"), "feature": ("spellfeature", "ritualfeature", "feature")}
-BOOL_ATTRS = {"pos", "multi", "hasLevel", "nodouble", "selectable", "modonly", "reqVariant", "count", "noBase", "add",
-              "neg", "negate", "remove", "included", "unlimited", "opposed", "essence", "wild", "human", "ai", "illegal",
-              "opt", "spark", "magic", "resonance", "spells", "powers", "paysPowers", "aspected", "restrict", "untr"}
+PREFIX = {
+    "power": ("adeptpower", "power"),
+    "itemenhancement": ("itemmod", "itemenhancement"),
+    "magicreson": ("mor", "magicreson"),
+    "feature": ("spellfeature", "ritualfeature", "feature"),
+}
+BOOL_ATTRS = {
+    "pos",
+    "multi",
+    "hasLevel",
+    "nodouble",
+    "selectable",
+    "modonly",
+    "reqVariant",
+    "count",
+    "noBase",
+    "add",
+    "neg",
+    "negate",
+    "remove",
+    "included",
+    "unlimited",
+    "opposed",
+    "essence",
+    "wild",
+    "human",
+    "ai",
+    "illegal",
+    "opt",
+    "spark",
+    "magic",
+    "resonance",
+    "spells",
+    "powers",
+    "paysPowers",
+    "aspected",
+    "restrict",
+    "untr",
+}
 TRUE, FALSE = {"y", "yes", "true", "1"}, {"n", "no", "false", "0"}
 KEY = re.compile(r"^([A-Za-z_]+)\.([A-Za-z0-9_-]+)(?:\.(.+?))?\s*[=:]\s*(.*)$")
 ENV = "CL6_JAR"
 RETIRED = re.compile(r"(?i)depr[ei]ciat")
-KEEP_RETIRED = {"wss_explosive"}  # (the latest Firing Squad still prints the Weapon Security System Explosive: kept, owner 2026-10-14)
+KEEP_RETIRED = {
+    "wss_explosive"
+}  # (the latest Firing Squad still prints the Weapon Security System Explosive: kept, owner 2026-10-14)
 
 
 def find_jar(arg=None):
@@ -97,8 +134,11 @@ def read(jar, listing=None):
     recs, excluded = [], Counter()
     with zipfile.ZipFile(jar) as z:
         names = z.namelist()
-        english = [n for n in names if n.endswith(".properties") and "/i18n/" in n and
-                   not LANG_FILE.search(n.rsplit("/", 1)[1][:-11])]
+        english = [
+            n
+            for n in names
+            if n.endswith(".properties") and "/i18n/" in n and not LANG_FILE.search(n.rsplit("/", 1)[1][:-11])
+        ]
         text = {n: properties(decode(z.read(n))) for n in english}
         anywhere = {}
         for n in english:
@@ -110,7 +150,9 @@ def read(jar, listing=None):
             suffix = {f: f.rsplit("/", 1)[1][:-11].removeprefix(book).lstrip("_") for f in own}  # core_seattle: seattle
             for n in sorted(x for x in names if x.startswith(f"{ROOT}{book}/data/") and x.endswith(".xml")):
                 stem = n.rsplit("/", 1)[1][:-4]
-                files = sorted(own, key=lambda f: not (suffix[f] and stem.endswith("_" + suffix[f])))
+                files = sorted(
+                    own, key=lambda f, suffix=suffix, stem=stem: not (suffix[f] and stem.endswith("_" + suffix[f]))
+                )
                 try:
                     root = ET.fromstring(z.read(n))
                 except ET.ParseError:
@@ -123,19 +165,53 @@ def read(jar, listing=None):
                     keys = [(p, iid.lower()) for p in PREFIX.get(el.tag, (el.tag,))]
                     t = next((text[f][k] for f in files for k in keys if k in text[f]), {})
                     name = t.get("name") or next((anywhere[k] for k in keys if k in anywhere), "")
-                    why = ("lang=de (German-rules duplicate)" if el.get("lang") == "de" else
-                           "no English name in the jar" if not name else
-                           # (Commlink6 kept the record, marked "Depreciated": out of every count, owner 2026-10-13)
-                           "retired by Commlink6 (Depreciated)" if RETIRED.match(name) and iid not in KEEP_RETIRED else "")
+                    why = (
+                        "lang=de (German-rules duplicate)"
+                        if el.get("lang") == "de"
+                        else (
+                            "no English name in the jar"
+                            if not name
+                            else
+                            # (Commlink6 kept the record, marked "Depreciated": out of every count, owner 2026-10-13)
+                            (
+                                "retired by Commlink6 (Depreciated)"
+                                if RETIRED.match(name) and iid not in KEEP_RETIRED
+                                else ""
+                            )
+                        )
+                    )
                     if why:
                         excluded[(book, el.tag, why)] += 1
                         if listing is not None:
-                            listing.append({"book": book, "file": stem, "tag": el.tag, "id": iid, "name": name,
-                                            "page": t.get("page", "").strip(), "why": why})
+                            listing.append(
+                                {
+                                    "book": book,
+                                    "file": stem,
+                                    "tag": el.tag,
+                                    "id": iid,
+                                    "name": name,
+                                    "page": t.get("page", "").strip(),
+                                    "why": why,
+                                }
+                            )
                         continue
-                    variants = {k.split(".", 1)[1]: v for k, v in t.items() if k.startswith("variant.") and "." not in
-                                k.split(".", 1)[1]}
-                    recs.append({"book": book, "file": stem, "tag": el.tag, "id": iid, "name": name,
-                                 "page": t.get("page", "").strip(), "wifi": bool(t.get("wifi")), "variants": variants,
-                                 "attrs": dict(normalise(el).attrib), "el": el})
+                    variants = {
+                        k.split(".", 1)[1]: v
+                        for k, v in t.items()
+                        if k.startswith("variant.") and "." not in k.split(".", 1)[1]
+                    }
+                    recs.append(
+                        {
+                            "book": book,
+                            "file": stem,
+                            "tag": el.tag,
+                            "id": iid,
+                            "name": name,
+                            "page": t.get("page", "").strip(),
+                            "wifi": bool(t.get("wifi")),
+                            "variants": variants,
+                            "attrs": dict(normalise(el).attrib),
+                            "el": el,
+                        }
+                    )
     return recs, excluded

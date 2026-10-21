@@ -1,5 +1,6 @@
 """DHSA recipe: the row reader on made-up Markdown in the converter's shape, extract() on those rows,
 and (gated) parity with the oracle captured before the importer existed."""
+
 import re
 import unittest
 import xml.etree.ElementTree as ET
@@ -42,23 +43,56 @@ Prose after the footnote.
 
 
 def row(page, section, sub, name, type_, cost, effects):
-    return {"page": page, "section": section, "subsection": sub, "name": name, "type": type_, "cost": cost,
-            "effects": effects, "added": None}
+    """A made-up row of the DHSA row dump."""
+    return {
+        "page": page,
+        "section": section,
+        "subsection": sub,
+        "name": name,
+        "type": type_,
+        "cost": cost,
+        "effects": effects,
+        "added": None,
+    }
 
 
 class RowsTest(unittest.TestCase):
     def test_rows(self):
-        self.assertEqual(dhsa.rows(MD), [
-            row(5, "QUALITIES", "QUALITIES", "Made-up Knack", "Amp 2", "10 000¥*", ["RR 1 Influence (Animals)."]),
-            row(5, "QUALITIES", "QUALITIES", "Odd Habit Quirk", "Amp 0", "0¥*",
-                ["Gains an Edge point when the habit gets in the way.", "Note: a note."]),
-            # DV joins the cost and the range leads the effects, as the old PDF reader had them
-            row(6, "ARMORY – WEAPONS", "PISTOLS", "Zapper 3000 (Heavy pistol)", "Amp 2", "12 500¥ 5",
-                ["OK/Dis/Dis/-", "Smartlink: RR 1 Ranged W. (Handguns)"]),
-            row(6, "ARMORY – WEAPONS", "PISTOLS", "Buzz Mk I", "", "", []),
-            row(6, "CONTACTS", "CONTACTS", "Contact*", "Amp 2", "10 000¥",
-                ["Knows a person or two.", "RR 1 Network (domain of choice**)"]),
-        ])
+        self.assertEqual(
+            dhsa.rows(MD),
+            [
+                row(5, "QUALITIES", "QUALITIES", "Made-up Knack", "Amp 2", "10 000¥*", ["RR 1 Influence (Animals)."]),
+                row(
+                    5,
+                    "QUALITIES",
+                    "QUALITIES",
+                    "Odd Habit Quirk",
+                    "Amp 0",
+                    "0¥*",
+                    ["Gains an Edge point when the habit gets in the way.", "Note: a note."],
+                ),
+                # DV joins the cost and the range leads the effects, as the old PDF reader had them
+                row(
+                    6,
+                    "ARMORY – WEAPONS",
+                    "PISTOLS",
+                    "Zapper 3000 (Heavy pistol)",
+                    "Amp 2",
+                    "12 500¥ 5",
+                    ["OK/Dis/Dis/-", "Smartlink: RR 1 Ranged W. (Handguns)"],
+                ),
+                row(6, "ARMORY – WEAPONS", "PISTOLS", "Buzz Mk I", "", "", []),
+                row(
+                    6,
+                    "CONTACTS",
+                    "CONTACTS",
+                    "Contact*",
+                    "Amp 2",
+                    "10 000¥",
+                    ["Knows a person or two.", "RR 1 Network (domain of choice**)"],
+                ),
+            ],
+        )
 
 
 # Invented entries printed with levels, the three ways the book prints a range, plus two it prints without a top.
@@ -104,13 +138,28 @@ class LevelsTest(unittest.TestCase):
         cls.amps = {a.get("id"): a for a in ET.fromstring(cls.res.files["amps.xml"])}
 
     def got(self, family):
-        return [(a.get("id"), a.find("name").text, a.get("level"), a.get("printedRating"), [e.get("ref") for e in a.iter("effect")])
-                for a in self.amps.values() if a.get("family") == family]
+        """[(id, ...)] of the entries of `family` in the reading."""
+        return [
+            (
+                a.get("id"),
+                a.find("name").text,
+                a.get("level"),
+                a.get("printedRating"),
+                [e.get("ref") for e in a.iter("effect")],
+            )
+            for a in self.amps.values()
+            if a.get("family") == family
+        ]
 
     def test_level_range(self):
         self.assertEqual(dhsa.level_range("can be taken up to level 3", 1, False), (1, 3))
-        self.assertEqual(dhsa.level_range("+1 Attack (max +5 for a maximum Attack attribute 5 at most)", 1, True, ["attack-plus"]), (1, 5))
-        self.assertEqual(dhsa.level_range("Improves the Pilot. Max improvement +6 or up to a Pilot rating of 12.", 1, True), (1, 6))
+        self.assertEqual(
+            dhsa.level_range("+1 Attack (max +5 for a maximum Attack attribute 5 at most)", 1, True, ["attack-plus"]),
+            (1, 5),
+        )
+        self.assertEqual(
+            dhsa.level_range("Improves the Pilot. Max improvement +6 or up to a Pilot rating of 12.", 1, True), (1, 6)
+        )
         self.assertIsNone(dhsa.level_range("Improves handling.", 1, True, ["handling-plus"]))  # no max printed: one
         self.assertIsNone(dhsa.level_range("RR 1 Stealth", 2, False))
         self.assertEqual(dhsa.level_id("dhsa.hop", 2), "dhsa.hop-level-2")
@@ -119,13 +168,18 @@ class LevelsTest(unittest.TestCase):
     def test_up_to_level(self):
         # a level is a rating, printed (2) to the top (6); what a level adds over the printed rating is "Additional
         # narrative effect"s at the core's price (+2 in the made-up core: Hop 6 has two)
-        self.assertEqual([(i, n, l, r) for i, n, l, r, _ in self.got("hop")],
-                         [("hop", "Hop 2", "2", "2")] + [(f"hop-level-{n}", f"Hop {n}", str(n), str(n)) for n in range(3, 7)])
+        self.assertEqual(
+            [(i, n, l, r) for i, n, l, r, _ in self.got("hop")],
+            [("hop", "Hop 2", "2", "2")] + [(f"hop-level-{n}", f"Hop {n}", str(n), str(n)) for n in range(3, 7)],
+        )
         self.assertEqual(self.got("hop")[-1][4], ["narrative", "narrative"])
-        # the lowest level keeps the entry's id (owner, 2026-10-11: edits, runners and links on it stay), the others are new
+        # the lowest level keeps the entry's id (owner, 2026-10-11: edits, runners and links on it stay), the others are
+        # new
 
     def test_per_amp_point_sentences_add_up(self):
-        self.assertEqual([(n, r) for _, n, _, r, _ in self.got("hidey-hole")], [(f"Hidey Hole {n}", str(n)) for n in range(2, 6)])
+        self.assertEqual(
+            [(n, r) for _, n, _, r, _ in self.got("hidey-hole")], [(f"Hidey Hole {n}", str(n)) for n in range(2, 6)]
+        )
         # gear that becomes an Equipment amp by its levels: the item stays, its levels are amps bringing it
         box = self.got("strongbox")
         self.assertEqual([(n, r) for _, n, _, r, _ in box], [("Strongbox 1", "1"), ("Strongbox 2", "2")])
@@ -133,20 +187,40 @@ class LevelsTest(unittest.TestCase):
         self.assertIn("gear-strongbox", {g.get("id") for g in ET.fromstring(self.res.files["gear.xml"])})
 
     def test_add_on_levels_are_it_taken_that_many_times(self):
-        self.assertEqual(self.got("mod-turbo-kit"), [
-            ("mod-turbo-kit", "Turbo Kit +1", "1", "1", ["speed-plus"]),  # "Improves speed": the rated effect
-            ("mod-turbo-kit-level-2", "Turbo Kit +2", "2", "2", ["speed-plus", "speed-plus"])])
+        self.assertEqual(
+            self.got("mod-turbo-kit"),
+            [
+                ("mod-turbo-kit", "Turbo Kit +1", "1", "1", ["speed-plus"]),  # "Improves speed": the rated effect
+                ("mod-turbo-kit-level-2", "Turbo Kit +2", "2", "2", ["speed-plus", "speed-plus"]),
+            ],
+        )
         # "Max 4 identical drones" has no "+N": the core table's max for its one effect
-        self.assertEqual([(n, r) for _, n, _, r, _ in self.got("mod-identical-additional-drone")],
-                         [("Identical additional drone +1", "3"), ("Identical additional drone +2", "6"), ("Identical additional drone +3", "9")])
+        self.assertEqual(
+            [(n, r) for _, n, _, r, _ in self.got("mod-identical-additional-drone")],
+            [
+                ("Identical additional drone +1", "3"),
+                ("Identical additional drone +2", "6"),
+                ("Identical additional drone +3", "9"),
+            ],
+        )
 
     def test_a_range_without_its_top_stays_one_entry_and_is_reported(self):
         self.assertIn("keen-nose", self.amps)
         self.assertIn("mod-bolt-on-plates", self.amps)
         rows = {(r["id"], r["kind"]) for r in self.res.report if r["kind"].startswith("levels")}
-        self.assertEqual(rows, {("hop", "levels"), ("keen-nose", "levels-open"), ("hidey-hole", "levels"), ("strongbox", "levels"),
-                                ("mod-better-door-host", "levels"),
-                                ("mod-turbo-kit", "levels"), ("mod-identical-additional-drone", "levels"), ("mod-bolt-on-plates", "levels-open")})
+        self.assertEqual(
+            rows,
+            {
+                ("hop", "levels"),
+                ("keen-nose", "levels-open"),
+                ("hidey-hole", "levels"),
+                ("strongbox", "levels"),
+                ("mod-better-door-host", "levels"),
+                ("mod-turbo-kit", "levels"),
+                ("mod-identical-additional-drone", "levels"),
+                ("mod-bolt-on-plates", "levels-open"),
+            },
+        )
 
     def test_each_level_has_the_description(self):
         texts = {t.get("id") for t in ET.fromstring(self.res.texts)}
@@ -154,16 +228,30 @@ class LevelsTest(unittest.TestCase):
 
     def test_an_add_on_up_to_a_rating_starts_from_the_lowest_its_table_prints(self):
         # "+1 (max rating 5)" over lifestyles printing Firewall 2 and 4: +1 ... +3, an add-on for the lifestyle (Equipment) amps
-        self.assertEqual([(i, n, a.get("type"), a.get("mod")) for i, n, _, _, _ in self.got("mod-better-door-host") for a in [self.amps[i]]],
-                         [("mod-better-door-host", "Better door host +1", "equipment", "true"),
-                          ("mod-better-door-host-level-2", "Better door host +2", "equipment", "true"),
-                          ("mod-better-door-host-level-3", "Better door host +3", "equipment", "true")])
+        self.assertEqual(
+            [
+                (i, n, a.get("type"), a.get("mod"))
+                for i, n, _, _, _ in self.got("mod-better-door-host")
+                for a in [self.amps[i]]
+            ],
+            [
+                ("mod-better-door-host", "Better door host +1", "equipment", "true"),
+                ("mod-better-door-host-level-2", "Better door host +2", "equipment", "true"),
+                ("mod-better-door-host-level-3", "Better door host +3", "equipment", "true"),
+            ],
+        )
 
     def test_a_non_caster_version_is_its_own_entry(self):
         # "Rating 10 for characters unable to cast spells": the same entry at 10, without the sustained spell
         caster, nc = self.amps["calm-down"], self.amps["calm-down-non-caster"]
-        self.assertEqual((nc.find("name").text, nc.get("printedRating"), nc.get("type")), ("Calm Down (non-caster)", "10", "equipment"))
-        rated = lambda a: [e.get("ref") for e in a.iter("effect") if e.get("ref") != "narrative"]  # noqa: E731 (balancing aside)
+        self.assertEqual(
+            (nc.find("name").text, nc.get("printedRating"), nc.get("type")),
+            ("Calm Down (non-caster)", "10", "equipment"),
+        )
+
+        def rated(a):  # balancing aside
+            return [e.get("ref") for e in a.iter("effect") if e.get("ref") != "narrative"]
+
         self.assertEqual((rated(caster), rated(nc)), (["rr-attr", "sustain-spell"], ["rr-attr"]))
 
 
@@ -181,11 +269,15 @@ class ExtractTest(unittest.TestCase):
 
     def test_amps(self):
         knack = self.amps["made-up-knack"]
-        self.assertEqual([(e.get("ref"), e.get("param")) for e in knack.iter("effect")], [("rr-spec", "influence.animals")])
+        self.assertEqual(
+            [(e.get("ref"), e.get("param")) for e in knack.iter("effect")], [("rr-spec", "influence.animals")]
+        )
         zap = self.amps["zapper-3000-heavy-pistol-buzz-mk-i"]  # "Buzz Mk I" has no type or cost: a wrapped name
         self.assertEqual(zap.find("name").text, "Zapper 3000 (Heavy pistol) Buzz Mk I")
         self.assertEqual(zap.find("item").get("dv"), "5")
-        self.assertIn(("rr-spec", "ranged-weapons.pistols"), [(e.get("ref"), e.get("param")) for e in zap.iter("effect")])
+        self.assertIn(
+            ("rr-spec", "ranged-weapons.pistols"), [(e.get("ref"), e.get("param")) for e in zap.iter("effect")]
+        )
         contact = self.amps["contact-part-of-your-network"]
         self.assertEqual((contact.get("type"), contact.get("printedRating")), ("contact", "2"))
 
@@ -196,11 +288,28 @@ class ExtractTest(unittest.TestCase):
 
     def test_alternative_rule_seeds_the_table_rules(self):
         rules = ET.fromstring(self.res.files["rules-optional.xml"])
-        self.assertEqual([(r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text, r.find("text").text) for r in rules],
-                         [("optional-lifestyle-amps", "optional", "DHSA", "7", "Lifestyle Amps in place of the core lifestyle rules", None)])
+        self.assertEqual(
+            [
+                (r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text, r.find("text").text)
+                for r in rules
+            ],
+            [
+                (
+                    "optional-lifestyle-amps",
+                    "optional",
+                    "DHSA",
+                    "7",
+                    "Lifestyle Amps in place of the core lifestyle rules",
+                    None,
+                )
+            ],
+        )
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
-        self.assertEqual(texts["optional-lifestyle-amps"], "These Amps are an alternative to the core rulebook's rules regarding lifestyles. "
-                                                          "Made-up: pay once, earn the same as everyone.")
+        self.assertEqual(
+            texts["optional-lifestyle-amps"],
+            "These Amps are an alternative to the core rulebook's rules regarding lifestyles. "
+            "Made-up: pay once, earn the same as everyone.",
+        )
 
     def test_skills_overlay_adds_the_dhsa_specs_to_shipped_skills(self):
         skills = {s.get("id"): s for s in ET.fromstring(self.res.files["skills.xml"])}
@@ -216,15 +325,19 @@ ORACLE = ROOT / ".extract/private/oracle"
 # appended the Contacts section's opening paragraph (the next page's first lines) to the last Everyday life row.
 # Matched on the entry's own name as a prefix, so no book text is committed here.
 KNOWN_MISSING_PREFIX = ("gear.xml", "gear", "Mage License ")
-KNOWN_EXTRA = {("gear.xml", "gear", "Mage License"),
-               # gear whose rating "can be increased by 1 (max +2) for an additional Amp point": its levels are amps (2026-10-11)
-               ("amps.xml", "equipment", "Secure safe"),
-               # owner, 2026-10-11: the lifestyle add-on the reader skipped, and Psyché's version for non-casters
-               ("amps.xml", "equipment", "Improved home-automation host"), ("amps.xml", "equipment", "Psyché (non-caster)")}
+KNOWN_EXTRA = {
+    ("gear.xml", "gear", "Mage License"),
+    # gear whose rating "can be increased by 1 (max +2) for an additional Amp point": its levels are amps (2026-10-11)
+    ("amps.xml", "equipment", "Secure safe"),
+    # owner, 2026-10-11: the lifestyle add-on the reader skipped, and Psyché's version for non-casters
+    ("amps.xml", "equipment", "Improved home-automation host"),
+    ("amps.xml", "equipment", "Psyché (non-caster)"),
+}
 
 
 # entries the old tool didn't split by level: one per family, by its name without the level ("Freefall 2" → "Freefall")
 def entries(xml):
+    """{(name, family): count} of the entries in `xml`."""
     out = Counter()
     for e in ET.fromstring(xml):
         name, fam = e.find("name").text, e.get("family")
@@ -244,10 +357,12 @@ class AlternativeRulesBookTest(unittest.TestCase):
         self.assertGreater(len(rules[0][3]), 100)
 
 
-@unittest.skipUnless(LOCAL_CORE and BOOK.exists() and ORACLE.exists(), "owner's core copies, converted DHSA book and oracle not present")
+@unittest.skipUnless(
+    LOCAL_CORE and BOOK.exists() and ORACLE.exists(), "owner's core copies, converted DHSA book and oracle not present"
+)
 class ParityTest(unittest.TestCase):
-    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump, priced with the
-    owner's real core data."""
+    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump, priced with
+    the owner's real core data."""
 
     @classmethod
     def setUpClass(cls):
@@ -256,8 +371,11 @@ class ParityTest(unittest.TestCase):
 
     def test_counts(self):
         amps = ET.fromstring(self.res.files["amps.xml"])
-        got = (len(amps), sum(a.get("mod") == "true" for a in amps),
-               *(len(ET.fromstring(self.res.files[f])) for f in ("spells.xml", "complexforms.xml", "gear.xml")))
+        got = (
+            len(amps),
+            sum(a.get("mod") == "true" for a in amps),
+            *(len(ET.fromstring(self.res.files[f])) for f in ("spells.xml", "complexforms.xml", "gear.xml")),
+        )
         # 554 and 84 before levels: 8 entries became 9 families of 33 levels (Secure safe's gear stays), plus the
         # home-automation host's 3 and Psyché (non-caster)
         self.assertEqual(got, (583, 104, 77, 31, 41))
@@ -268,7 +386,11 @@ class ParityTest(unittest.TestCase):
         missing, extra = set(), set()
         for f in ("amps.xml", "spells.xml", "complexforms.xml", "gear.xml"):
             old, new = entries((ORACLE / f).read_text(encoding="utf8")), entries(self.res.files[f])
-            missing |= {(f, t, n) for t, n in old - new if (f, t) != KNOWN_MISSING_PREFIX[:2] or not n.startswith(KNOWN_MISSING_PREFIX[2])}
+            missing |= {
+                (f, t, n)
+                for t, n in old - new
+                if (f, t) != KNOWN_MISSING_PREFIX[:2] or not n.startswith(KNOWN_MISSING_PREFIX[2])
+            }
             extra |= {(f, *k) for k in new - old}
         self.assertEqual((missing, extra - KNOWN_EXTRA), (set(), set()))
 

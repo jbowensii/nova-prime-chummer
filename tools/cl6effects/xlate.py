@@ -1,50 +1,148 @@
 """CL6 modification <-> our <effect> into one comparable vocabulary ("atoms"), for evaluate.py."""
+
 import re
 
-SKILLS = "astral athletics biotech close-combat con conjuring cracking electronics enchanting engineering exotic-weapons firearms influence outdoors perception piloting sorcery stealth tasking".split()
-ABBR = {"BODY": "bod", "AGILITY": "agi", "REACTION": "rea", "STRENGTH": "str", "WILLPOWER": "wil", "LOGIC": "log",
-        "INTUITION": "int", "CHARISMA": "cha", "EDGE": "edg", "MAGIC": "mag", "RESONANCE": "res", "ESSENCE": "ess"}
-SKILL_ATTR = {"astral": "int", "athletics": "agi", "biotech": "log", "close-combat": "agi", "con": "cha", "conjuring": "mag", "cracking": "log",
-              "electronics": "log", "enchanting": "mag", "engineering": "log", "exotic-weapons": "agi", "firearms": "agi", "influence": "cha",
-              "outdoors": "int", "perception": "int", "piloting": "rea", "sorcery": "mag", "stealth": "agi", "tasking": "res"}
+# pylint: disable=invalid-name  # R, A, B: the short names of the CL6 value shapes being compared
+
+SKILLS = (
+    "astral athletics biotech close-combat con conjuring cracking electronics enchanting engineering exotic-weapons "
+    "firearms influence outdoors perception piloting sorcery stealth tasking"
+).split()
+ABBR = {
+    "BODY": "bod",
+    "AGILITY": "agi",
+    "REACTION": "rea",
+    "STRENGTH": "str",
+    "WILLPOWER": "wil",
+    "LOGIC": "log",
+    "INTUITION": "int",
+    "CHARISMA": "cha",
+    "EDGE": "edg",
+    "MAGIC": "mag",
+    "RESONANCE": "res",
+    "ESSENCE": "ess",
+}
+SKILL_ATTR = {
+    "astral": "int",
+    "athletics": "agi",
+    "biotech": "log",
+    "close-combat": "agi",
+    "con": "cha",
+    "conjuring": "mag",
+    "cracking": "log",
+    "electronics": "log",
+    "enchanting": "mag",
+    "engineering": "log",
+    "exotic-weapons": "agi",
+    "firearms": "agi",
+    "influence": "cha",
+    "outdoors": "int",
+    "perception": "int",
+    "piloting": "rea",
+    "sorcery": "mag",
+    "stealth": "agi",
+    "tasking": "res",
+}
+
+
 def skills_of(attrs):
+    """{skill:<id>} of the skills keyed to any of the attributes."""
     return {"skill:" + k for k, a in SKILL_ATTR.items() if a in attrs}
-GROUPS = {"social": ["con", "influence"], "matrix": ["cracking", "electronics"],
-          "magic": ["astral", "conjuring", "enchanting", "sorcery"], "resonance": ["tasking"],
-          "combat": ["close-combat", "exotic-weapons", "firearms"], "vehicle": ["piloting"], "all": SKILLS}
+
+
+GROUPS = {
+    "social": ["con", "influence"],
+    "matrix": ["cracking", "electronics"],
+    "magic": ["astral", "conjuring", "enchanting", "sorcery"],
+    "resonance": ["tasking"],
+    "combat": ["close-combat", "exotic-weapons", "firearms"],
+    "vehicle": ["piloting"],
+    "all": SKILLS,
+}
 ATTR_REF = {
-    "DEFENSE_RATING_PHYSICAL": "derived:defense", "DEFENSE_RATING_ASTRAL": "derived:defense-astral",
-    "DEFENSE_RATING_SOCIAL": "derived:social", "DEFENSE_RATING_MATRIX": "derived:defense-matrix",
-    "PHYSICAL_MONITOR": "derived:physical-monitor", "STUN_MONITOR": "derived:stun-monitor",
-    "DAMAGE_OVERFLOW": "derived:overflow", "MONITOR_MATRIX": "derived:matrix-monitor",
-    "INITIATIVE_DICE_PHYSICAL": "derived:initiative-dice", "INITIATIVE_PHYSICAL": "derived:initiative",
-    "INITIATIVE_DICE_ASTRAL": "derived:astral-initiative-dice", "INITIATIVE_ASTRAL": "derived:astral-initiative",
-    "INITIATIVE_DICE_MATRIX": "derived:matrix-initiative-dice", "INITIATIVE_DICE_MATRIX_VR_COLD": "derived:matrix-initiative-dice",
-    "INITIATIVE_DICE_MATRIX_VR_HOT": "derived:matrix-initiative-dice", "INITIATIVE_MATRIX": "derived:matrix-initiative",
-    "INITIATIVE_MATRIX_VR_COLD": "derived:matrix-initiative", "INITIATIVE_MATRIX_VR_HOT": "derived:matrix-initiative",
-    "COMPOSURE": "derived:composure", "JUDGE_INTENTIONS": "derived:judge-intentions", "MEMORY": "derived:memory",
-    "LIFT_CARRY": "derived:lift", "MOVEMENT": "derived:movement", "MINOR_ACTION_PHYSICAL": "derived:minor-actions",
-    "POWER_POINTS": "derived:power-points", "MONTHLY_COST": "derived:monthly-cost",
-    "DAMAGE_REDUCTION_PHYSICAL": "derived:damage-reduction", "ESSENCE_HOLE": "derived:essence-hole",
-    "DRAKE_EDGE": "derived:drake-edge", "ATTACK_RATING_PHYSICAL": "derived:unarmed-ar",
+    "DEFENSE_RATING_PHYSICAL": "derived:defense",
+    "DEFENSE_RATING_ASTRAL": "derived:defense-astral",
+    "DEFENSE_RATING_SOCIAL": "derived:social",
+    "DEFENSE_RATING_MATRIX": "derived:defense-matrix",
+    "PHYSICAL_MONITOR": "derived:physical-monitor",
+    "STUN_MONITOR": "derived:stun-monitor",
+    "DAMAGE_OVERFLOW": "derived:overflow",
+    "MONITOR_MATRIX": "derived:matrix-monitor",
+    "INITIATIVE_DICE_PHYSICAL": "derived:initiative-dice",
+    "INITIATIVE_PHYSICAL": "derived:initiative",
+    "INITIATIVE_DICE_ASTRAL": "derived:astral-initiative-dice",
+    "INITIATIVE_ASTRAL": "derived:astral-initiative",
+    "INITIATIVE_DICE_MATRIX": "derived:matrix-initiative-dice",
+    "INITIATIVE_DICE_MATRIX_VR_COLD": "derived:matrix-initiative-dice",
+    "INITIATIVE_DICE_MATRIX_VR_HOT": "derived:matrix-initiative-dice",
+    "INITIATIVE_MATRIX": "derived:matrix-initiative",
+    "INITIATIVE_MATRIX_VR_COLD": "derived:matrix-initiative",
+    "INITIATIVE_MATRIX_VR_HOT": "derived:matrix-initiative",
+    "COMPOSURE": "derived:composure",
+    "JUDGE_INTENTIONS": "derived:judge-intentions",
+    "MEMORY": "derived:memory",
+    "LIFT_CARRY": "derived:lift",
+    "MOVEMENT": "derived:movement",
+    "MINOR_ACTION_PHYSICAL": "derived:minor-actions",
+    "POWER_POINTS": "derived:power-points",
+    "MONTHLY_COST": "derived:monthly-cost",
+    "DAMAGE_REDUCTION_PHYSICAL": "derived:damage-reduction",
+    "ESSENCE_HOLE": "derived:essence-hole",
+    "DRAKE_EDGE": "derived:drake-edge",
+    "ATTACK_RATING_PHYSICAL": "derived:unarmed-ar",
     "ATTACK_RATING_MATRIX": "derived:attack-rating-matrix",
-    "RESIST_DAMAGE": "test:damage-resistance", "RESIST_DAMAGE_ASTRAL": "test:damage-resistance",
-    "RESIST_TOXIN": "test:toxin-resistance", "RESIST_DRAIN": "test:drain-resistance",
-    "DEFENSE_POOL_PHYSICAL": "test:defense", "DEFENSE_POOL_ASTRAL": "test:defense", "DEFENSE_POOL_MATRIX": "test:defense",
-    "DEFENSE_POOL_COMBAT_DIRECT": "test:magic-resistance", "DEFENSE_POOL_COMBAT_INDIRECT": "test:magic-resistance"}
-ITEM_REF = {"ATTACK_RATING": "item:ar", "DAMAGE": "item:dv", "HANDLING": "item:handling", "ACCELERATION": "item:acceleration",
-            "SPEED_INTERVAL": "item:speed-interval", "TOPSPEED": "item:top-speed", "BODY": "item:body", "ARMOR": "item:armor",
-            "PILOT": "item:pilot", "SENSORS": "item:sensor", "SEATS": "item:seats", "SIZE": "item:size",
-            "CONCEALABILITY": "item:concealability", "CARGO": "item:cargo", "AMMUNITION": "item:ammo",
-            "ATTACK": "matrix:attack", "SLEAZE": "matrix:sleaze", "DATA_PROCESSING": "matrix:data-processing",
-            "FIREWALL": "matrix:firewall"}
-CHECK_KIND = {"DICE": "add", "EDGE": "edge", "EDGE_ONLY_TEST": "edge", "EDGE_BOOST": "edge-cost", "EDGE_COST_MALUS": "edge-cost",
-              "NOT_SPEND_EDGE": "no-edge", "NOT_EARN_EDGE": "no-edge-gain", "REPLACE_WITH_WILD": "wild-die",
-              "ADD_WILD": "wild-die", "HIT": "hits", "REDUCE_THRESHOLD": "threshold", "EDGE_CHASE": "edge", "OTHER": "other",
-              "USAGE": "other", "": "other"}
+    "RESIST_DAMAGE": "test:damage-resistance",
+    "RESIST_DAMAGE_ASTRAL": "test:damage-resistance",
+    "RESIST_TOXIN": "test:toxin-resistance",
+    "RESIST_DRAIN": "test:drain-resistance",
+    "DEFENSE_POOL_PHYSICAL": "test:defense",
+    "DEFENSE_POOL_ASTRAL": "test:defense",
+    "DEFENSE_POOL_MATRIX": "test:defense",
+    "DEFENSE_POOL_COMBAT_DIRECT": "test:magic-resistance",
+    "DEFENSE_POOL_COMBAT_INDIRECT": "test:magic-resistance",
+}
+ITEM_REF = {
+    "ATTACK_RATING": "item:ar",
+    "DAMAGE": "item:dv",
+    "HANDLING": "item:handling",
+    "ACCELERATION": "item:acceleration",
+    "SPEED_INTERVAL": "item:speed-interval",
+    "TOPSPEED": "item:top-speed",
+    "BODY": "item:body",
+    "ARMOR": "item:armor",
+    "PILOT": "item:pilot",
+    "SENSORS": "item:sensor",
+    "SEATS": "item:seats",
+    "SIZE": "item:size",
+    "CONCEALABILITY": "item:concealability",
+    "CARGO": "item:cargo",
+    "AMMUNITION": "item:ammo",
+    "ATTACK": "matrix:attack",
+    "SLEAZE": "matrix:sleaze",
+    "DATA_PROCESSING": "matrix:data-processing",
+    "FIREWALL": "matrix:firewall",
+}
+CHECK_KIND = {
+    "DICE": "add",
+    "EDGE": "edge",
+    "EDGE_ONLY_TEST": "edge",
+    "EDGE_BOOST": "edge-cost",
+    "EDGE_COST_MALUS": "edge-cost",
+    "NOT_SPEND_EDGE": "no-edge",
+    "NOT_EARN_EDGE": "no-edge-gain",
+    "REPLACE_WITH_WILD": "wild-die",
+    "ADD_WILD": "wild-die",
+    "HIT": "hits",
+    "REDUCE_THRESHOLD": "threshold",
+    "EDGE_CHASE": "edge",
+    "OTHER": "other",
+    "USAGE": "other",
+    "": "other",
+}
 
 
 def nv(v):
+    """A value with the rating token folded to r, no spaces, case-folded."""
     return re.sub(r"\$(RATING|LEVEL|FORCE)", "r", (v or "")).replace("+", "").replace(" ", "").casefold()
 
 
@@ -61,7 +159,11 @@ def cl6_atoms(m):
             if R in ABBR:
                 a = ABBR[R]
                 k = "max" if st == "MAX" else "min" if st == "MIN" else "add"
-                return {("attr-max:" if k == "max" else "attr-min:" if k == "min" else "attr:") + a}, k, st if k == "add" else ""
+                return (
+                    {("attr-max:" if k == "max" else "attr-min:" if k == "min" else "attr:") + a},
+                    k,
+                    st if k == "add" else "",
+                )
             if R == "CHOICE":
                 return {"attr-max:choice" if st == "MAX" else "attr:choice"}, "max" if st == "MAX" else "add", ""
             if R in ATTR_REF:
@@ -115,9 +217,18 @@ def cl6_atoms(m):
 def our_atoms(e):
     """our <effect> -> (atoms, kind) with the test groups expanded to skills"""
     tg, op = e.get("target", ""), e.get("op", "")
-    kind = {"add": "add", "set": "set", "edge": "edge", "edge-cost": "edge-cost", "edge-cost-set": "edge-cost",
-            "no-edge": "no-edge", "no-edge-gain": "no-edge-gain", "wild-die": "wild-die", "hits": "hits",
-            "threshold": "threshold"}.get(op, op)
+    kind = {
+        "add": "add",
+        "set": "set",
+        "edge": "edge",
+        "edge-cost": "edge-cost",
+        "edge-cost-set": "edge-cost",
+        "no-edge": "no-edge",
+        "no-edge-gain": "no-edge-gain",
+        "wild-die": "wild-die",
+        "hits": "hits",
+        "threshold": "threshold",
+    }.get(op, op)
     fam, _, name = tg.partition(":")
     if fam == "test":
         if name in GROUPS:
@@ -141,6 +252,7 @@ def our_atoms(e):
 
 
 def vclass(v):
+    """The class of an effect value: number, rating, or rating-scaled form."""
     v = nv(v)
     if v == "":
         return ("",)

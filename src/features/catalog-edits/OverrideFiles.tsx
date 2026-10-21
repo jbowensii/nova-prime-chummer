@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { because } from '../../core/ui-kit/auth'
 import { Modal } from '../../core/ui-kit/bits'
+import { downloadFile } from '../../core/ui-kit/download'
 import { api } from '../../core/ui-kit/api'
 import { esc } from '../../core/shared/xml'
 
@@ -146,9 +147,7 @@ export function OverrideFiles({ g, reload }: { g: OverrideGame; reload: () => Pr
         setErr(book ? 'No edits of that book to export.' : 'No edits to export yet.')
         return
       }
-      const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }))
-      Object.assign(document.createElement('a'), { href: url, download: `${g.file}${book ? `-${book.toLowerCase()}` : ''}.xml` }).click()
-      setTimeout(() => URL.revokeObjectURL(url), 0)
+      downloadFile(`${g.file}${book ? `-${book.toLowerCase()}` : ''}.xml`, xml, 'application/xml')
       setExporting(false)
       setMsg(`Exported ${count === 1 ? '1 edit' : `${count} edits`}.`)
     } catch (x) {

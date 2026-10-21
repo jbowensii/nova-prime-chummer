@@ -1,6 +1,7 @@
 """SR6 Double Clutch recipe (importer/sr6/recipes/dc.py) on a made-up book.md in the converter's sr6 shape (the book's:
 a vehicle's description under a level-3 heading, its stat box under a level-5 title with its class, the box's headers in
 pieces). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -131,11 +132,13 @@ Zippo Scoot ........ p. 19
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the DC recipe."""
     regrouped, _ = regroup.regroup(md, dc.ALIASES, name_headers=dc.NAME_HEADERS, end_page=183)
     return dc.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -146,40 +149,86 @@ class DcRecipeTest(unittest.TestCase):
 
     def test_vehicles_from_their_boxes(self):
         v = entries(self.res, "vehicles")
-        self.assertEqual(v["Zippo Scoot"], {"id": "zippo-scoot", "source": "DC", "page": "19", "category": "Motorcycles",
-                                            "handling": "3/4", "accel": "10", "interval": "20", "topSpeed": "120",
-                                            "body": "5", "armor": "4", "pilot": "1", "sensor": "1", "seats": "1",
-                                            "avail": "2", "cost": "9500"})
+        self.assertEqual(
+            v["Zippo Scoot"],
+            {
+                "id": "zippo-scoot",
+                "source": "DC",
+                "page": "19",
+                "category": "Motorcycles",
+                "handling": "3/4",
+                "accel": "10",
+                "interval": "20",
+                "topSpeed": "120",
+                "body": "5",
+                "armor": "4",
+                "pilot": "1",
+                "sensor": "1",
+                "seats": "1",
+                "avail": "2",
+                "cost": "9500",
+            },
+        )
         van = v["Lumber Van"]  # headers run together, two values in a cell
-        self.assertEqual((van["topSpeed"], van["body"], van["armor"], van["pilot"], van["cost"]), ("110", "20", "12", "3", "60000"))
+        self.assertEqual(
+            (van["topSpeed"], van["body"], van["armor"], van["pilot"], van["cost"]), ("110", "20", "12", "3", "60000")
+        )
         fly = v["Buzz Fly"]  # values between bold headers
-        self.assertEqual((fly["category"], fly["handling"], fly["seats"], fly["avail"], fly["cost"]),
-                         ("Aerial drone", "3/5*", "—", "2", "5500"))
+        self.assertEqual(
+            (fly["category"], fly["handling"], fly["seats"], fly["avail"], fly["cost"]),
+            ("Aerial drone", "3/5*", "—", "2", "5500"),
+        )
         self.assertNotIn("Broken Fly", v)
-        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "Broken Fly (small rotor drone)",
-                       "field": "stats", "page": 89}, self.res.report)
+        self.assertIn(
+            {
+                "kind": "missing-value",
+                "file": "vehicles.xml",
+                "name": "Broken Fly (small rotor drone)",
+                "field": "stats",
+                "page": 89,
+            },
+            self.res.report,
+        )
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("scooter that zips", texts[("vehicles", "zippo-scoot")])
         # a lower-case box title is lost in the box before: named by the aircraft table's row with its values
-        self.assertEqual((v["Sky Crate"]["category"], v["Sky Crate"]["interval"], v["Sky Crate"]["cost"]),
-                         ("Jetpack", "15", "23000"))
+        self.assertEqual(
+            (v["Sky Crate"]["category"], v["Sky Crate"]["interval"], v["Sky Crate"]["cost"]), ("Jetpack", "15", "23000")
+        )
         self.assertEqual(v["Sky Sled"]["cost"], "7500")
         self.assertNotIn("strap", texts[("vehicles", "sky-sled")])
         self.assertIn("strap", texts[("vehicles", "sky-crate")])
-        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "a box after Sky Sled", "field": "name",
-                       "page": 89}, self.res.report)  # one the table doesn't list
+        self.assertIn(
+            {
+                "kind": "missing-value",
+                "file": "vehicles.xml",
+                "name": "a box after Sky Sled",
+                "field": "name",
+                "page": 89,
+            },
+            self.res.report,
+        )  # one the table doesn't list
         hush = v["Hush Glider"]  # a box with no title: the section's
         self.assertEqual((hush["category"], hush["accel"], hush["seats"]), ("Made-up gravdrive", "120", "2/8"))
         self.assertNotIn("VEHICLE", texts[("vehicles", "hush-glider")])
-        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "Ghost Kite", "field": "stats",
-                       "page": 89}, self.res.report)  # in the table, in no box
+        self.assertIn(
+            {"kind": "missing-value", "file": "vehicles.xml", "name": "Ghost Kite", "field": "stats", "page": 89},
+            self.res.report,
+        )  # in the table, in no box
         self.assertNotIn("Zippo Scoot", entries(self.res, "rules"))  # its description went to the vehicle
 
     def test_modifications_and_gear(self):
         g = entries(self.res, "gear")
-        self.assertEqual({k: g["Glow Bumper"][k] for k in ("category", "slots", "rating", "avail", "cost")},
-                         {"category": "Chassis mod", "slots": "1 x Rating", "rating": "1–3", "avail": "3 (L)",
-                          "cost": "Rating x 900"})
+        self.assertEqual(
+            {k: g["Glow Bumper"][k] for k in ("category", "slots", "rating", "avail", "cost")},
+            {
+                "category": "Chassis mod",
+                "slots": "1 x Rating",
+                "rating": "1–3",
+                "avail": "3 (L)",
+                "cost": "Rating x 900",
+            },
+        )
         self.assertEqual(g["Fizz Kit (Level 1)"]["cost"], "500")
         self.assertEqual((g["Drone Rack (Tiny)"]["category"], g["Drone Rack (Tiny)"]["cost"]), ("Drone racks", "700"))
         self.assertEqual(g["Drone Rack (Tiny)"]["hardpoint"], "small")  # its HARDPOINT column, lower case
@@ -189,9 +238,14 @@ class DcRecipeTest(unittest.TestCase):
         """Each skill sold as an autosoft is a program of type autosoft at the ratings the prose gives (unpriced); one
         whose own line sets its ratings has those (its parenthesis no specialization)."""
         p = entries(self.res, "programs")
-        self.assertEqual({n: (e.get("type"), e.get("rating"), e.get("cost")) for n, e in p.items()},
-                         {"Fizzing": ("autosoft", "1–6", None), "Glowing (Made-up Glow)": ("autosoft", "1–6", None),
-                          "Language": ("autosoft", "1, 5", None)})
+        self.assertEqual(
+            {n: (e.get("type"), e.get("rating"), e.get("cost")) for n, e in p.items()},
+            {
+                "Fizzing": ("autosoft", "1–6", None),
+                "Glowing (Made-up Glow)": ("autosoft", "1–6", None),
+                "Language": ("autosoft", "1, 5", None),
+            },
+        )
 
     def test_qualities(self):
         q = entries(self.res, "qualities")

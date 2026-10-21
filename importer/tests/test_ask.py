@@ -1,4 +1,6 @@
-"""Ask the rules (importer/ask.py, `python -m importer ask`) on invented texts; the provider is a local fake HTTP server."""
+"""Ask the rules (importer/ask.py, `python -m importer ask`) on invented texts; the provider is a local fake HTTP
+server."""
+
 import contextlib
 import io
 import json
@@ -12,25 +14,50 @@ from importer.__main__ import main
 from importer.ai import providers as AI
 from importer.tests.test_ai import KEY, Stub, write_providers
 
-D = '<?xml version="1.0" encoding="UTF-8"?>\n<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{}" version="1">\n{}\n</ca2:data>\n'
+D = (
+    '<?xml version="1.0" encoding="UTF-8"?>\n<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{}" '
+    'version="1">\n{}\n</ca2:data>\n'
+)
 # every name, rule and number here is invented
 FILES = {
-    "imported/core/skills.xml": D.format("skills", '<skill id="tinkering" attr="log" source="CORE" page="20"><name>Tinkering</name>'
-                                         '<spec id="tinkering.clocks" attr="log">Clockwork</spec></skill>'),
-    "imported/zz/rules.xml": D.format("rules", '<rule id="zz.puddle-jumping" sheet="base" section="Moving" source="ZZ" page="61"><title>Puddle jumping</title><text></text></rule>\n'
-                                      '<rule id="zz.optional-kettle" sheet="optional" section="Optional" source="ZZ" page="80"><title>Kettle breaks</title><text></text></rule>'),
-    "imported/zz/amps.xml": D.format("amps", '<amp id="zz.glow-skin" type="quality" source="ZZ" page="12"><name>Glow Skin</name><narrative></narrative></amp>'),
-    "imported/zz/items.xml": D.format("gear", '<item id="zz.teacup" kind="gear" source="ZZ" page="9"><name>Teacup</name><text></text></item>'),
+    "imported/core/skills.xml": D.format(
+        "skills",
+        '<skill id="tinkering" attr="log" source="CORE" page="20"><name>Tinkering</name>'
+        '<spec id="tinkering.clocks" attr="log">Clockwork</spec></skill>',
+    ),
+    "imported/zz/rules.xml": D.format(
+        "rules",
+        '<rule id="zz.puddle-jumping" sheet="base" section="Moving" source="ZZ" page="61"><title>Puddle '
+        "jumping</title><text></text></rule>\n"
+        '<rule id="zz.optional-kettle" sheet="optional" section="Optional" source="ZZ" page="80"><title>Kettle '
+        "breaks</title><text></text></rule>",
+    ),
+    "imported/zz/amps.xml": D.format(
+        "amps",
+        '<amp id="zz.glow-skin" type="quality" source="ZZ" page="12"><name>Glow '
+        "Skin</name><narrative></narrative></amp>",
+    ),
+    "imported/zz/items.xml": D.format(
+        "gear", '<item id="zz.teacup" kind="gear" source="ZZ" page="9"><name>Teacup</name><text></text></item>'
+    ),
     "index.xml": '<overlays><file href="house.xml"/></overlays>',  # a house rule removes an amp
     "house.xml": D.format("amps", '<remove id="zz.glow-skin"/>'),
-    "imported/index.xml": '<overlays><file href="zz/rules.xml"/><file href="zz/amps.xml"/><file href="zz/items.xml"/><file href="../../outside.xml"/></overlays>',
-    "texts/zz.xml": D.format("texts", '<text of="rules" id="zz.puddle-jumping">A runner leaps a puddle with Athletics; a miss means wet boots and minus one to the next test.</text>\n'
-                                      '<text of="amps" id="zz.glow-skin">The skin glows softly in darkness.</text>'),
-    "edits/texts.xml": D.format("texts", '<text of="items" id="zz.teacup">A porcelain teacup that never spills.</text>'),
+    "imported/index.xml": '<overlays><file href="zz/rules.xml"/><file href="zz/amps.xml"/><file '
+    'href="zz/items.xml"/><file href="../../outside.xml"/></overlays>',
+    "texts/zz.xml": D.format(
+        "texts",
+        '<text of="rules" id="zz.puddle-jumping">A runner leaps a puddle with Athletics; a miss means wet boots and '
+        "minus one to the next test.</text>\n"
+        '<text of="amps" id="zz.glow-skin">The skin glows softly in darkness.</text>',
+    ),
+    "edits/texts.xml": D.format(
+        "texts", '<text of="items" id="zz.teacup">A porcelain teacup that never spills.</text>'
+    ),
     "table-rules.xml": '<ca2:tablerules xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
-                       '<rule id="zz.optional-kettle" on="true"/>'
-                       '<rule id="house-1" on="true"><name>Biscuit rule</name><text>Every session opens with biscuits for the whole team.</text></rule>'
-                       '<rule id="house-2" on="false"><name>Muffin rule</name><text>Muffins are banned.</text></rule></ca2:tablerules>',
+    '<rule id="zz.optional-kettle" on="true"/>'
+    '<rule id="house-1" on="true"><name>Biscuit rule</name><text>Every session opens with biscuits for the whole '
+    "team.</text></rule>"
+    '<rule id="house-2" on="false"><name>Muffin rule</name><text>Muffins are banned.</text></rule></ca2:tablerules>',
 }
 
 
@@ -46,9 +73,13 @@ def custom(test):
 
 
 def run(argv, question):
+    """Run `python -m importer` with `argv` and `question` on stdin; (exit code, stdout, stderr)."""
     out, err = io.StringIO(), io.StringIO()
-    with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(question.encode()))), \
-            contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+    with (
+        unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(question.encode()))),
+        contextlib.redirect_stdout(out),
+        contextlib.redirect_stderr(err),
+    ):
         code = main(argv)
     return code, out.getvalue(), err.getvalue()
 
@@ -58,6 +89,7 @@ class RetrievalTest(unittest.TestCase):
         self.custom = custom(self)
 
     def docs(self):
+        """The passages the ask command would search in the custom folder."""
         with use_custom(self.custom):
             return ask.passages(self.custom)
 
@@ -88,6 +120,7 @@ class AnswerTest(unittest.TestCase):
         self.custom, self.lib = custom(self), tempfile.mkdtemp()
 
     def stub(self, content):
+        """A fake provider that answers every question with `content`; its key is saved in the library."""
         s = Stub(lambda p: (200, {"choices": [{"message": {"content": content}}]}))
         self.addCleanup(s.close)
         write_providers(os.path.join(self.lib, ".config"), url=s.url + "/v1")
@@ -95,6 +128,7 @@ class AnswerTest(unittest.TestCase):
         return s
 
     def argv(self):
+        """The ask command line for the invented custom folder and library."""
         return ["ask", "--custom", self.custom, "--library", self.lib]
 
     def test_not_covered_asks_no_one(self):
@@ -113,7 +147,10 @@ class AnswerTest(unittest.TestCase):
         self.assertEqual(code, 0)
         r = json.loads(out)
         self.assertEqual(r["answer"], "You leap it with Athletics; a miss means wet boots [ZZ p.61].")
-        self.assertEqual(r["sources"], [{"source": "ZZ", "page": "61", "title": "Puddle jumping", "kind": "rule", "id": "zz.puddle-jumping"}])  # the cited one
+        self.assertEqual(
+            r["sources"],
+            [{"source": "ZZ", "page": "61", "title": "Puddle jumping", "kind": "rule", "id": "zz.puddle-jumping"}],
+        )  # the cited one
         self.assertTrue(r["covered"] and r["called"])
         body = s.requests[0]["body"]
         system, user = body["messages"][0]["content"], body["messages"][1]["content"]
@@ -127,10 +164,15 @@ class AnswerTest(unittest.TestCase):
     def test_prose_and_the_model_saying_not_covered(self):
         self.stub("Plain prose [House rule] about biscuits.")
         r = json.loads(run(self.argv(), "biscuits?")[1])
-        self.assertEqual((r["answer"], r["sources"][0]["title"]), ("Plain prose [House rule] about biscuits.", "Biscuit rule"))
+        self.assertEqual(
+            (r["answer"], r["sources"][0]["title"]), ("Plain prose [House rule] about biscuits.", "Biscuit rule")
+        )
         self.stub(json.dumps({"answer": ask.NOT_COVERED}))
         # the model saying not covered was still a call: it counts
-        self.assertEqual(json.loads(run(self.argv(), "biscuits?")[1]), {"answer": ask.NOT_COVERED, "sources": [], "covered": False, "called": True})
+        self.assertEqual(
+            json.loads(run(self.argv(), "biscuits?")[1]),
+            {"answer": ask.NOT_COVERED, "sources": [], "covered": False, "called": True},
+        )
 
     def test_refusals_and_provider_errors_never_show_the_key(self):
         self.assertEqual(run(self.argv(), "puddle " * 80)[:2], (3, '{"called": false}\n'))  # over 500 characters
@@ -140,7 +182,9 @@ class AnswerTest(unittest.TestCase):
         write_providers(os.path.join(self.lib, ".config"), url=s.url + "/v1")
         AI.set_key(os.path.join(self.lib, ".config"), "openai", KEY)
         code, out, err = run(self.argv(), "puddle jumping?")
-        self.assertEqual((code, json.loads(out)), (3, {"called": True, "provider": True}))  # the request went out: it counts
+        self.assertEqual(
+            (code, json.loads(out)), (3, {"called": True, "provider": True})
+        )  # the request went out: it counts
         self.assertIn("bad key [key]", err)
         self.assertNotIn(KEY, err)
         write_providers(os.path.join(self.lib, ".config"), enabled="false")
@@ -152,14 +196,26 @@ class AnswerTest(unittest.TestCase):
 S = D.replace("ca2", "sr6").replace("chummer-anarchy2", "chummer-sr6")  # the SR6 root and namespace
 # SR6's own custom folder (custom/sr6), every name and rule invented
 SR6_FILES = {
-    "imported/qq/rules.xml": S.format("rules", '<rule id="qq.puddle-vaulting" source="QQ" page="44"><name>Puddle vaulting</name>'
-                                      '<text>A vault over a puddle uses Athletics + Agility.</text></rule>'
-                                      + "".join(f'<rule id="qq.filler-{i}" source="QQ" page="{50 + i}"><name>Filler {w}</name><text>About {w} only.</text></rule>'
-                                                for i, w in enumerate(["teapots", "lanterns", "kites", "hats"]))),
-    "imported/qq/gear.xml": S.format("gear", '<gear id="qq.puddle-boots" source="QQ" page="250"><name>Puddle boots</name></gear>'),
+    "imported/qq/rules.xml": S.format(
+        "rules",
+        '<rule id="qq.puddle-vaulting" source="QQ" page="44"><name>Puddle vaulting</name>'
+        "<text>A vault over a puddle uses Athletics + Agility.</text></rule>"
+        + "".join(
+            f'<rule id="qq.filler-{i}" source="QQ" page="{50 + i}"><name>Filler {w}</name><text>About {w} '
+            "only.</text></rule>"
+            for i, w in enumerate(["teapots", "lanterns", "kites", "hats"])
+        ),
+    ),
+    "imported/qq/gear.xml": S.format(
+        "gear", '<gear id="qq.puddle-boots" source="QQ" page="250"><name>Puddle boots</name></gear>'
+    ),
     "imported/index.xml": '<overlays><file href="qq/rules.xml"/><file href="qq/gear.xml"/></overlays>',
-    "texts/qq.xml": S.format("texts", '<text of="gear" id="qq.puddle-boots">Boots that keep a puddle out entirely.</text>'),
-    "edits/edits.xml": S.format("edits", '<samplefix id="qq.fix" source="QQ" page="1"><name>Puddle fix</name></samplefix>'),
+    "texts/qq.xml": S.format(
+        "texts", '<text of="gear" id="qq.puddle-boots">Boots that keep a puddle out entirely.</text>'
+    ),
+    "edits/edits.xml": S.format(
+        "edits", '<samplefix id="qq.fix" source="QQ" page="1"><name>Puddle fix</name></samplefix>'
+    ),
 }
 
 
@@ -172,23 +228,31 @@ class Sr6Test(unittest.TestCase):
         for rel, text in SR6_FILES.items():
             xmlio.write_file(os.path.join(self.custom, *rel.split("/")), text)
         self.sr6lib = os.path.join(self.lib, "sr6")
-        self.s = Stub(lambda p: (200, {"choices": [{"message": {"content": json.dumps({"answer": "Vault it [QQ p.44]."})}}]}))
+        self.s = Stub(
+            lambda p: (200, {"choices": [{"message": {"content": json.dumps({"answer": "Vault it [QQ p.44]."})}}]})
+        )
         self.addCleanup(self.s.close)
         write_providers(os.path.join(self.sr6lib, ".config"), url=self.s.url + "/v1")
         AI.set_key(os.path.join(self.sr6lib, ".config"), "openai", KEY)
 
     def ask(self, question, *extra):
+        """Run `sr6 ask` for `question` against the invented SR6 library."""
         with unittest.mock.patch.dict(os.environ, {"CA2_CUSTOM_DIR": self.anarchy}):
             return run(["sr6", "ask", "--custom", self.custom, "--library", self.sr6lib, *extra], question)
 
     def test_sr6_reads_only_its_own_data_and_settings(self):
         docs = {p["title"]: p for p in ask.passages(self.custom, "sr6")}
-        self.assertEqual({t for t in docs if not t.startswith("Filler")}, {"Puddle vaulting", "Puddle boots"})  # no Anarchy entry, no sample fix
+        self.assertEqual(
+            {t for t in docs if not t.startswith("Filler")}, {"Puddle vaulting", "Puddle boots"}
+        )  # no Anarchy entry, no sample fix
         self.assertIn("keep a puddle out", docs["Puddle boots"]["text"])  # its private description (of= the kind)
         code, out, _ = self.ask("How do I vault a puddle?")
         self.assertEqual(code, 0)
         r = json.loads(out)
-        self.assertEqual(r["sources"], [{"source": "QQ", "page": "44", "title": "Puddle vaulting", "kind": "rule", "id": "qq.puddle-vaulting"}])
+        self.assertEqual(
+            r["sources"],
+            [{"source": "QQ", "page": "44", "title": "Puddle vaulting", "kind": "rule", "id": "qq.puddle-vaulting"}],
+        )
         body = self.s.requests[0]["body"]
         system, user = body["messages"][0]["content"], body["messages"][1]["content"]
         self.assertIn("Shadowrun Sixth World", system)
@@ -201,7 +265,9 @@ class Sr6Test(unittest.TestCase):
         self.assertEqual(self.ask("How do I vault a puddle?")[0], 3)
 
     def test_rules_scope_searches_the_rules_only(self):
-        sent = lambda: self.s.requests[-1]["body"]["messages"][1]["content"]  # the passages the provider was given
+        def sent():
+            return self.s.requests[-1]["body"]["messages"][1]["content"]  # the passages the provider was given
+
         self.ask("puddle boots?", "--scope", "rules")
         self.assertIn("Puddle vaulting", sent())
         self.assertNotIn("Puddle boots", sent())

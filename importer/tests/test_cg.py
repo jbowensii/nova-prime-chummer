@@ -1,5 +1,6 @@
 """CG recipe: technomancer complex forms and rules reference from made-up text in the converter's
 real shape, and (gated) a report of every complex form the real book extracts."""
+
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -82,9 +83,19 @@ class RulesTest(unittest.TestCase):
         self.rules = {r["title"]: r for r in cg.extract_rules(cg.clean_lines(MD))}
 
     def test_all_eight_headings_captured(self):
-        self.assertEqual(set(self.rules), {
-            "Born Technomancer", "Complex Forms", "Sprites", "Courier Sprite", "Crack Sprite",
-            "Data Sprite", "Fault Sprite", "Machine Sprite"})
+        self.assertEqual(
+            set(self.rules),
+            {
+                "Born Technomancer",
+                "Complex Forms",
+                "Sprites",
+                "Courier Sprite",
+                "Crack Sprite",
+                "Data Sprite",
+                "Fault Sprite",
+                "Machine Sprite",
+            },
+        )
 
     def test_pages(self):
         self.assertEqual(self.rules["Born Technomancer"]["page"], 1)
@@ -161,11 +172,15 @@ class ExtractTest(unittest.TestCase):
         self.assertEqual(self.rules["technomancers-born-technomancer"].get("source"), "CG")
 
     def test_source(self):
-        self.assertEqual(self.res.source, {"id": "CG", "name": cg.NAME, "publisher": "Catalyst Game Labs", "canon": True})
+        self.assertEqual(
+            self.res.source, {"id": "CG", "name": cg.NAME, "publisher": "Catalyst Game Labs", "canon": True}
+        )
 
     def test_complex_form_price_is_a_partial_pricing_overlay(self):
         (el,) = ET.fromstring(self.res.files["pricing.xml"])
-        self.assertEqual(el.tag, "prices")  # only the price the book prints, written over the core pricing by the loader
+        self.assertEqual(
+            el.tag, "prices"
+        )  # only the price the book prints, written over the core pricing by the loader
         self.assertEqual(dict(el.attrib), {"id": "complex-forms", "complexForm": "1234", "source": "CG", "page": "2"})
         self.assertEqual(self.res.report, [])
 

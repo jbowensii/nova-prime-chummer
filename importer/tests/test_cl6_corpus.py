@@ -1,5 +1,6 @@
 """The cl6check corpus, lineage and trace (tools/cl6check/corpus.py, lineage.py, trace.py) on invented data: made-up
 books, dates, names and numbers. No book text, no Commlink6 data."""
+
 import os
 import shutil
 import tempfile
@@ -8,8 +9,11 @@ from pathlib import Path
 
 from tools.cl6check import corpus, crops, lineage, trace
 
+# pylint: disable=protected-access  # the tests reach into the module's private helpers
+
 
 def put(path, text):
+    """Write text to a file."""
     Path(path).write_text(text, encoding="utf8")
 
 
@@ -71,6 +75,7 @@ CATALOG = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def book(label, date, md=MD, entries=(), **kw):
+    """A corpus book with the markdown and entries."""
     b = corpus.Book(label.lower(), f"{label}.pdf", label, [label.lower()], kw.pop("belongs", label.lower()), date, **kw)
     b._md["book.md"] = corpus.lines(md)
     b.entries = list(entries)
@@ -80,11 +85,20 @@ def book(label, date, md=MD, entries=(), **kw):
 
 
 def entry(name, src="gza", kind="gear", **attrs):
-    return {"src": src, "kind": kind, "id": f"{src}.{name.lower()}", "name": name, "page": "2", "aliases": [],
-            "attrs": attrs}
+    """A catalog entry dict for the name."""
+    return {
+        "src": src,
+        "kind": kind,
+        "id": f"{src}.{name.lower()}",
+        "name": name,
+        "page": "2",
+        "aliases": [],
+        "attrs": attrs,
+    }
 
 
 def chains(c, names, kinds=("weapons",)):
+    """The lineage chains observed for the names."""
     return lineage.lineage(lineage.observe(c, set(kinds), names))
 
 
@@ -103,11 +117,16 @@ class LinesTest(unittest.TestCase):
 
 class DateTest(unittest.TestCase):
     def test_the_pdfs_own_date(self):
-        self.assertEqual(corpus.resolve_date("2021-09-13", "2021-09-01", 2021, "2021-08"), ("2021-09-13", "pdf modified"))
+        self.assertEqual(
+            corpus.resolve_date("2021-09-13", "2021-09-01", 2021, "2021-08"), ("2021-09-13", "pdf modified")
+        )
         # a re-save years later is not the book's date: the creation date, else the © year with sources' month
-        self.assertEqual(corpus.resolve_date("2026-07-24", "2022-01-20", 2022, "2022-01"), ("2022-01-20", "pdf created"))
-        self.assertEqual(corpus.resolve_date("2026-07-24", "", 2023, "2023-06"),
-                         ("2023-06", "© year, month from sources.xml"))
+        self.assertEqual(
+            corpus.resolve_date("2026-07-24", "2022-01-20", 2022, "2022-01"), ("2022-01-20", "pdf created")
+        )
+        self.assertEqual(
+            corpus.resolve_date("2026-07-24", "", 2023, "2023-06"), ("2023-06", "© year, month from sources.xml")
+        )
         self.assertEqual(corpus.resolve_date("", "", 2021, ""), ("2021", "© year"))
         self.assertEqual(corpus.resolve_date("", "", None, "2025-01"), ("2025-01", "sources.xml"))
         self.assertEqual(corpus.resolve_date("2020-08-24", "", None, ""), ("2020-08-24", "pdf modified"))
@@ -115,25 +134,33 @@ class DateTest(unittest.TestCase):
 
 class CorpusTest(unittest.TestCase):
     def test_order_is_by_day(self):
-        c = corpus.Corpus(sorted([book("B", "2020-03-20"), book("Err", "2020-03-05", errata=True), book("A", "2020-03")],
-                                 key=lambda b: b.order))
+        c = corpus.Corpus(
+            sorted(
+                [book("B", "2020-03-20"), book("Err", "2020-03-05", errata=True), book("A", "2020-03")],
+                key=lambda b: b.order,
+            )
+        )
         self.assertEqual([b.label for b in c.books], ["A", "Err", "B"])
 
     def test_entries_and_variants(self):
         a = book("A", "2020-03", entries=[entry("Zorp Widgets", avail="2"), entry("Zorp widget (deluxe)", avail="5")])
         b = book("B", "2022-07", entries=[entry("zorp widget", src="gzb", avail="3"), entry("Other")])
         c = corpus.Corpus([a, b])
-        self.assertEqual([(x.label, e["src"]) for x, e in c.entries({"gear"}, ["Zorp widget"])], [("A", "gza"), ("B", "gzb")])
+        self.assertEqual(
+            [(x.label, e["src"]) for x, e in c.entries({"gear"}, ["Zorp widget"])], [("A", "gza"), ("B", "gzb")]
+        )
         self.assertEqual([e["name"] for _, e in c.variants({"gear"}, ["Zorp widget"])], ["Zorp widget (deluxe)"])
         self.assertEqual(c.entries({"weapons"}, ["Zorp widget"]), [])
 
     def test_a_one_word_alias_does_not_pull_in_another_kind(self):
         a = book("A", "2020-03", entries=[entry("Blaster, Heavy", kind="weapons"), entry("Heavy", kind="gear")])
         c = corpus.Corpus([a])
-        self.assertEqual([e["name"] for _, e in c.entries({"weapons", "gear"}, ["Blaster, heavy", "heavy"], "a")],
-                         ["Blaster, Heavy"])
-        self.assertEqual([e["name"] for _, e in c.entries({"weapons", "gear"}, ["Heavy gizmo", "heavy"], "a")],
-                         ["Heavy"])  # (the alias alone finds it: kept)
+        self.assertEqual(
+            [e["name"] for _, e in c.entries({"weapons", "gear"}, ["Blaster, heavy", "heavy"], "a")], ["Blaster, Heavy"]
+        )
+        self.assertEqual(
+            [e["name"] for _, e in c.entries({"weapons", "gear"}, ["Heavy gizmo", "heavy"], "a")], ["Heavy"]
+        )  # (the alias alone finds it: kept)
 
     def test_mentions_find_every_line_in_book_order(self):
         c = corpus.Corpus([book("A", "2020-03"), book("B", "2022-07")])
@@ -151,14 +178,14 @@ class CorpusTest(unittest.TestCase):
                 os.makedirs(lib)
                 pdf = "Gizmo-Errata.pdf" if not sid else f"{run}.pdf"
                 attrs = f'source="{sid}" recipe="none"' if sid else ""
-                put(os.path.join(lib, "import.xml"),
-                    f'<import {attrs} file="{pdf}" sha256="00"><files/></import>')
+                put(os.path.join(lib, "import.xml"), f'<import {attrs} file="{pdf}" sha256="00"><files/></import>')
                 put(os.path.join(lib, "book.md"), MD)
                 if sid:
                     cat = os.path.join(runs, run, "custom", "sr6", "imported", sid.lower())
                     os.makedirs(cat)
-                    put(os.path.join(cat, "gear.xml"),
-                        CATALOG.format(src=sid.lower(), avail="2" if run == "a" else "3"))
+                    put(
+                        os.path.join(cat, "gear.xml"), CATALOG.format(src=sid.lower(), avail="2" if run == "a" else "3")
+                    )
             meta = {"a": ("2020-03-15", ""), "b": ("", ""), "e": ("2020-04-01", "")}
             extra = corpus.EXTRA
             corpus.EXTRA = [(r"Gizmo-Errata", "GZA errata", "GZA", True, False)]
@@ -166,9 +193,14 @@ class CorpusTest(unittest.TestCase):
                 c = corpus.load(runs, src, meta=lambda p: meta[p.split(os.sep)[-5]])
             finally:
                 corpus.EXTRA = extra
-            self.assertEqual([(b.label, b.date, b.how, b.errata) for b in c.books],
-                             [("GZA", "2020-03-15", "pdf modified", False), ("GZA errata", "2020-04-01", "pdf modified", True),
-                              ("GZB", "2022-07", "sources.xml", False)])
+            self.assertEqual(
+                [(b.label, b.date, b.how, b.errata) for b in c.books],
+                [
+                    ("GZA", "2020-03-15", "pdf modified", False),
+                    ("GZA errata", "2020-04-01", "pdf modified", True),
+                    ("GZB", "2022-07", "sources.xml", False),
+                ],
+            )
             self.assertEqual(c.disagreements(), [])
             c.books[0].src_month = "2020-02"
             self.assertEqual([b.label for b, *_ in c.disagreements()], ["GZA"])
@@ -179,8 +211,12 @@ class CorpusTest(unittest.TestCase):
 class LineageTest(unittest.TestCase):
     def test_winner_is_last_published_never_context_or_variant(self):
         a, b, q = book("A", "2020-03"), book("B", "2022-07"), book("Q", "2023-01", context=True)
-        obs = [lineage.Obs(q, "cost", "1", "q", "card", True), lineage.Obs(b, "cost", "120", "x"),
-               lineage.Obs(b, "cost", "130", "v", variant="deluxe"), lineage.Obs(a, "cost", "100", "y")]
+        obs = [
+            lineage.Obs(q, "cost", "1", "q", "card", True),
+            lineage.Obs(b, "cost", "120", "x"),
+            lineage.Obs(b, "cost", "130", "v", variant="deluxe"),
+            lineage.Obs(a, "cost", "100", "y"),
+        ]
         chain = lineage.lineage(obs)["cost"]
         self.assertEqual([o.value for o in chain], ["100", "120", "130", "1"])
         self.assertEqual(lineage.winner(chain).value, "120")
@@ -197,17 +233,27 @@ class LineageTest(unittest.TestCase):
         c = corpus.Corpus([book("A", "2020-03"), book("Cards", "2020-08", CARD, belongs="")])
         ch = chains(c, ["Zorp widget"])
         w = {f: lineage.winner(ch[f]).value for f in ("dv", "modes", "ar", "ammo", "avail", "cost")}
-        self.assertEqual(w, {"dv": "2P", "modes": "SS", "ar": "4/5/6/—/—", "ammo": "7(c)", "avail": "3", "cost": "120¥"})
+        self.assertEqual(
+            w, {"dv": "2P", "modes": "SS", "ar": "4/5/6/—/—", "ammo": "7(c)", "avail": "3", "cost": "120¥"}
+        )
         v = chains(c, ["Blarg roller"], ("vehicles",))
-        self.assertEqual({f: v[f][0].value for f in ("handling", "topSpeed", "seats", "cost")},
-                         {"handling": "3", "topSpeed": "90", "seats": "4", "cost": "9,000¥"})
+        self.assertEqual(
+            {f: v[f][0].value for f in ("handling", "topSpeed", "seats", "cost")},
+            {"handling": "3", "topSpeed": "90", "seats": "4", "cost": "9,000¥"},
+        )
 
     def test_errata_sentences(self):
-        c = corpus.Corpus([book("A", "2020-03", CARD.replace("## zorp", "## zorp widget\n").split("<!-- page 2")[0]),
-                           book("Err1", "2020-05", ERRATA, errata=True, belongs="a")])
+        c = corpus.Corpus(
+            [
+                book("A", "2020-03", CARD.replace("## zorp", "## zorp widget\n").split("<!-- page 2", maxsplit=1)[0]),
+                book("Err1", "2020-05", ERRATA, errata=True, belongs="a"),
+            ]
+        )
         ch = chains(c, ["Zorp widget"])
-        self.assertEqual([(o.book.label, o.value) for o in ch["ar"]],
-                         [("A", "4/5/6/—/—"), ("Err1", "4/5/6/—/1"), ("Err1", "4/8/6/—/1")])
+        self.assertEqual(
+            [(o.book.label, o.value) for o in ch["ar"]],
+            [("A", "4/5/6/—/—"), ("Err1", "4/5/6/—/1"), ("Err1", "4/8/6/—/1")],
+        )
         self.assertEqual(lineage.winner(ch["ar"]).value, "4/8/6/—/1")
         self.assertEqual(lineage.winner(ch["cost"]).value, "2,100¥")
         self.assertEqual(lineage.winner(chains(c, ["Blarg sprockets"])["avail"]).value, "4(L)")
@@ -215,50 +261,90 @@ class LineageTest(unittest.TestCase):
 
 class TraceTest(unittest.TestCase):
     def rec(self, **fields):
-        return {"book": "a", "src": "a", "file": "gear", "tag": "item", "id": "zorp", "name": "Zorp widget", "page": "3",
-                "kind": "gear", "modelled": True, "pool": ("gear",), "aliases": [], "fields": fields, "families": {}}
+        """A record dict with the given fields overriding the defaults."""
+        return {
+            "book": "a",
+            "src": "a",
+            "file": "gear",
+            "tag": "item",
+            "id": "zorp",
+            "name": "Zorp widget",
+            "page": "3",
+            "kind": "gear",
+            "modelled": True,
+            "pool": ("gear",),
+            "aliases": [],
+            "fields": fields,
+            "families": {},
+        }
 
     def test_the_row_above_is_a_misread(self):
         c = corpus.Corpus([book("A", "2020-03", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
         rows, n = trace.run(c, [self.rec(cost={None: 75.0}, avail={None: (1, "")})])
-        self.assertEqual({(r["field"], r["family"]) for r in rows}, {("cost", "Commlink6 misread"), ("avail", "Commlink6 misread")})
+        self.assertEqual(
+            {(r["field"], r["family"]) for r in rows}, {("cost", "Commlink6 misread"), ("avail", "Commlink6 misread")}
+        )
         self.assertIn("row above", rows[0]["where"])
         self.assertEqual(n["fields compared"], 2)
 
     def test_families_found_and_not_found(self):
         c = corpus.Corpus([book("A", "2020-03", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
         rows, _ = trace.run(c, [self.rec(cost={None: 40.0}, rating=(1, 4))])
-        self.assertEqual({r["field"]: r["family"] for r in rows}, {"cost": "description sentence", "rating": "description sentence"})
+        self.assertEqual(
+            {r["field"]: r["family"] for r in rows}, {"cost": "description sentence", "rating": "description sentence"}
+        )
         rows, _ = trace.run(c, [self.rec(cost={None: 75.0})])
         self.assertEqual(rows[0]["family"], "not found")  # printed in the book, not by the object
         rows, n = trace.run(c, [self.rec(cost={None: 999.0})])
-        self.assertEqual((rows[0]["family"], n["Commlink6-only fields"]), ("Commlink6-only field", 1))  # printed nowhere
+        self.assertEqual(
+            (rows[0]["family"], n["Commlink6-only fields"]), ("Commlink6-only field", 1)
+        )  # printed nowhere
         rows, _ = trace.run(c, [self.rec(cost={None: 1000.0})])
         self.assertNotEqual(rows[0]["family"], "Commlink6 misread")  # 100 → 1000 is no swap
         self.assertTrue(trace._swapped("1500", "5100"))
         self.assertFalse(trace._swapped("1500", "1500"))
 
     def test_commlink6_only_records_and_fields_are_counted_apart(self):
-        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", cost="100")])])
+        c = corpus.Corpus(
+            [book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", cost="100")])]
+        )
         rows, n = trace.run(c, [self.rec(cost={None: 100.0}, avail={None: (7, "")}), self.rec() | {"cl6only": True}])
         self.assertEqual({r["family"] for r in rows}, {"Commlink6-only field", "Commlink6-only record"})
         self.assertEqual((n["records"], n["Commlink6-only records"], n["objects"]), (2, 1, 1))
-        self.assertEqual((n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1))
-
+        self.assertEqual(
+            (n["fields compared"], n["fields equal"], n["Commlink6-only fields"], n["records exact"]), (1, 1, 1, 1)
+        )
 
     def test_owner_verdicts_and_commlink6_zero_prices(self):
-        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[entry("Zorp widget", src="a", avail="2", cost="100")])])
-        recs = [self.rec(cost={None: 0.0}, avail={None: (2, "")}),  # Commlink6 prices it 0: its own field
-                self.rec() | {"id": "made", "name": "Composed Zorp"},  # the owner: Commlink6's own record
-                self.rec(cost={None: 100.0}) | {"id": "renamed", "name": "Zorp gadget"}]  # the owner: our Zorp widget
-        verdicts = {"a|made|": {"family": "Commlink6-only record", "note": "composed"},
-                    "a|renamed|": {"family": "renamed", "rename": "Zorp widget"}}
+        c = corpus.Corpus(
+            [
+                book(
+                    "A",
+                    "2020-03",
+                    md="# Gear\n\nNothing here.\n",
+                    entries=[entry("Zorp widget", src="a", avail="2", cost="100")],
+                )
+            ]
+        )
+        recs = [
+            self.rec(cost={None: 0.0}, avail={None: (2, "")}),  # Commlink6 prices it 0: its own field
+            self.rec() | {"id": "made", "name": "Composed Zorp"},  # the owner: Commlink6's own record
+            self.rec(cost={None: 100.0}) | {"id": "renamed", "name": "Zorp gadget"},
+        ]  # the owner: our Zorp widget
+        verdicts = {
+            "a|made|": {"family": "Commlink6-only record", "note": "composed"},
+            "a|renamed|": {"family": "renamed", "rename": "Zorp widget"},
+        }
         rows, n = trace.run(c, recs, verdicts)
         self.assertEqual(sorted(r["family"] for r in rows), ["Commlink6-only field", "Commlink6-only record"])
-        self.assertEqual((n["Commlink6-only records"], n["objects"], n["fields compared"], n["fields equal"]), (1, 2, 2, 2))
+        self.assertEqual(
+            (n["Commlink6-only records"], n["objects"], n["fields compared"], n["fields equal"]), (1, 2, 2, 2)
+        )
 
     def test_two_entries_of_one_name_the_record_is_the_one_nearest_its_page(self):
-        e1, e2 = entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget", src="a", avail="5", cost="900")
+        e1, e2 = entry("Zorp widget", src="a", avail="2", cost="100"), entry(
+            "Zorp widget", src="a", avail="5", cost="900"
+        )
         e1.update(id="a.zorp-widget", page="3")
         e2.update(id="a.zorp-widget-2", page="40")
         c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=[e1, e2])])
@@ -266,7 +352,10 @@ class TraceTest(unittest.TestCase):
         self.assertEqual(([r["field"] for r in rows], n["fields equal"]), ([], 2))  # (page 3: not the page-40 one)
 
     def test_fields_compare_with_the_variant_row_that_agrees_most(self):
-        ents = [entry("Zorp widget", src="a", avail="2", cost="100"), entry("Zorp widget (large)", src="a", avail="2", cost="300")]
+        ents = [
+            entry("Zorp widget", src="a", avail="2", cost="100"),
+            entry("Zorp widget (large)", src="a", avail="2", cost="300"),
+        ]
         c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=ents)])
         rows, n = trace.run(c, [self.rec(cost={None: 300.0}, avail={None: (2, "")})])
         self.assertEqual(([r["field"] for r in rows], n["fields equal"], n["compared with a variant row"]), ([], 2, 1))
@@ -276,16 +365,26 @@ class TraceTest(unittest.TestCase):
     def test_a_record_no_name_finds_is_matched_by_its_stats(self):
         """Commlink6's hand-made name: several stats agree with one unmatched entry and none conflicts (a rename, our
         printed name kept); one stat, a conflict or a tie is only listed for review."""
+
         def rec(i, name, **f):
             return self.rec(**f) | {"id": i, "name": name}
-        ents = [entry("Blarg spanner", src="a", avail="3(L)", cost="450", rating="1–4"),
-                entry("Quux lens", src="a", avail="5", cost="900"), entry("Quux loupe", src="a", avail="5", cost="900"),
-                entry("Zorp widget", src="a", avail="2", cost="100")]
+
+        ents = [
+            entry("Blarg spanner", src="a", avail="3(L)", cost="450", rating="1–4"),
+            entry("Quux lens", src="a", avail="5", cost="900"),
+            entry("Quux loupe", src="a", avail="5", cost="900"),
+            entry("Zorp widget", src="a", avail="2", cost="100"),
+        ]
         c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n", entries=ents)])
-        rows, n = trace.run(c, [rec("w", "Zorp widget", cost={None: 100.0}),
-                                rec("s", "Wrench, Blarg", cost={None: 450.0}, avail={None: (3, "L")}, rating=(1, 4)),
-                                rec("q", "Optic, Mirr", cost={None: 900.0}, avail={None: (5, "")}, rating=(1, 1)),
-                                rec("x", "Gadget X", cost={None: 450.0}, avail={None: (4, "")})])
+        rows, n = trace.run(
+            c,
+            [
+                rec("w", "Zorp widget", cost={None: 100.0}),
+                rec("s", "Wrench, Blarg", cost={None: 450.0}, avail={None: (3, "L")}, rating=(1, 4)),
+                rec("q", "Optic, Mirr", cost={None: 900.0}, avail={None: (5, "")}, rating=(1, 1)),
+                rec("x", "Gadget X", cost={None: 450.0}, avail={None: (4, "")}),
+            ],
+        )
         by = {(r["id"], r["family"]): r for r in rows}
         self.assertEqual(by[("s", "renamed by stats")]["where"], "Blarg spanner")  # cost, avail, rating
         self.assertEqual((n["renamed by stats"], n["objects"], n["object not found"]), (1, 2, 2))
@@ -293,10 +392,23 @@ class TraceTest(unittest.TestCase):
         self.assertEqual(sorted(s["name"] for s in tie), ["Quux lens", "Quux loupe"])
         self.assertEqual(by[("x", "object not found")]["stat"], [])  # the avail conflicts with the one cost that agrees
         # one row printing two names: each record whose name shares a word with one of them is that one's rename
-        c = corpus.Corpus([book("A", "2020-03", md="# Gear\n\nNothing here.\n",
-                                entries=[entry("Zing / Zang Drone", src="a", avail="4", cost="700", rating="1–2")])])
-        rows, n = trace.run(c, [rec("g", "Acme Zing", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2)),
-                                rec("h", "Acme Zang", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2))])
+        c = corpus.Corpus(
+            [
+                book(
+                    "A",
+                    "2020-03",
+                    md="# Gear\n\nNothing here.\n",
+                    entries=[entry("Zing / Zang Drone", src="a", avail="4", cost="700", rating="1–2")],
+                )
+            ]
+        )
+        rows, n = trace.run(
+            c,
+            [
+                rec("g", "Acme Zing", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2)),
+                rec("h", "Acme Zang", cost={None: 700.0}, avail={None: (4, "")}, rating=(1, 2)),
+            ],
+        )
         self.assertEqual(n["renamed by stats"], 2)
 
 
@@ -306,8 +418,13 @@ class MoreTest(unittest.TestCase):
         a19 = book("A19", "2019-08", belongs="a")
         a25 = book("A25", "2025-03", belongs="a")
         b22 = book("B22", "2022-05", belongs="b")
-        chain = lineage.lineage([lineage.Obs(a19, "cost", "100", "x"), lineage.Obs(b22, "cost", "120", "y"),
-                                 lineage.Obs(a25, "cost", "100¥", "z")])["cost"]
+        chain = lineage.lineage(
+            [
+                lineage.Obs(a19, "cost", "100", "x"),
+                lineage.Obs(b22, "cost", "120", "y"),
+                lineage.Obs(a25, "cost", "100¥", "z"),
+            ]
+        )["cost"]
         self.assertEqual(lineage.winner(chain).book.label, "B22")
         chain.append(lineage.Obs(book("A26", "2026-01", belongs="a"), "cost", "90", "w"))
         self.assertEqual(lineage.winner(chain).value, "90")
@@ -328,13 +445,17 @@ class MoreTest(unittest.TestCase):
     def test_matches_with_a_note_and_per_rating(self):
         rec = TraceTest.rec(None, cost={None: 1900.0})
         self.assertEqual(trace._matches(rec, "gear", "cost", "1900", "cost"), "exact")
-        self.assertEqual(trace._matches(rec, "gear", "cost", "1900 each", "cost"), "exact")  # a unit price, read as the app does
+        self.assertEqual(
+            trace._matches(rec, "gear", "cost", "1900 each", "cost"), "exact"
+        )  # a unit price, read as the app does
         self.assertEqual(trace._matches(rec, "gear", "cost", "1900 per crate", "cost"), "with a note")
         self.assertEqual(trace._matches(rec, "gear", "cost", "1.900", "cost"), "with a note")
         self.assertIsNone(trace._matches(rec, "gear", "cost", "1800", "cost"))
         a = book("A", "2020-03", belongs="a")
-        obs = [lineage.Obs(a, "cost", v, f"catalog a/gear id=a.zorp-rating-{r} p.1", label=f"Zorp Rating {r}")
-               for r, v in ((1, "100"), (2, "200"), (3, "300"))]
+        obs = [
+            lineage.Obs(a, "cost", v, f"catalog a/gear id=a.zorp-rating-{r} p.1", label=f"Zorp Rating {r}")
+            for r, v in ((1, "100"), (2, "200"), (3, "300"))
+        ]
         per = TraceTest.rec(None, cost={1: 100.0, 2: 200.0, 3: 300.0})
         self.assertEqual(len(trace._per_rating(per, "cost", obs, "a")), 3)
         obs[1].value = "250"
@@ -343,39 +464,73 @@ class MoreTest(unittest.TestCase):
 
 class StepThreeTest(unittest.TestCase):
     def test_a_section_default_applies_but_never_beats_the_items_own_value(self):
-        md = ("<!-- page 1 -->\n## Gizmos\nAll of these gizmos have Availability 4(L) unless noted.\n#### Zorp widget\n"
-              "| TYPE | COST |\n|---|---|\n| Gizmo | 100¥ |\n#### Blarg roller\n| TYPE | AVAIL | COST |\n|---|---|---|\n"
-              "| Gizmo | 2 | 50¥ |\n")
+        md = (
+            "<!-- page 1 -->\n## Gizmos\nAll of these gizmos have Availability 4(L) unless noted.\n#### Zorp widget\n"
+            "| TYPE | COST |\n|---|---|\n| Gizmo | 100¥ |\n#### Blarg roller\n| TYPE | AVAIL | COST |\n|---|---|---|\n"
+            "| Gizmo | 2 | 50¥ |\n"
+        )
         c = corpus.Corpus([book("A", "2020-03", md)])
         zorp = chains(c, ["Zorp widget"], ("gear",))
         self.assertEqual((lineage.winner(zorp["avail"]).kind, lineage.winner(zorp["avail"]).value), ("section", "4(L)"))
         self.assertEqual(lineage.winner(chains(c, ["Blarg roller"], ("gear",))["avail"]).value, "2")
 
     def test_a_footnote_and_a_later_part_are_not_the_items_rows(self):
-        md = ("<!-- page 1 -->\n#### Zorp widget\n##### zorp staff\n| TYPE | DV |\n|---|---|\n| Club | 4S/4P* |\n"
-              "| †Maximum range | is 8 |\n##### detachable blade\n| TYPE | DV |\n|---|---|\n| Blade | 2P |\n")
+        md = (
+            "<!-- page 1 -->\n#### Zorp widget\n##### zorp staff\n| TYPE | DV |\n|---|---|\n| Club | 4S/4P* |\n"
+            "| †Maximum range | is 8 |\n##### detachable blade\n| TYPE | DV |\n|---|---|\n| Blade | 2P |\n"
+        )
         ch = chains(corpus.Corpus([book("A", "2020-03", md)]), ["Zorp widget"])
         self.assertEqual(lineage.winner(ch["dv"]).value, "4S/4P*")
         self.assertEqual([(o.value, o.variant) for o in ch["dv"]], [("4S/4P*", ""), ("2P", "detachable blade")])
 
     def test_verdicts_and_weak_links(self):
-        rows = [{"src": "a", "id": "x", "field": "avail", "family": "another column", "where": "w", "winner": "3",
-                 "cl6": "5"},
-                {"src": "a", "id": "y", "field": "cost", "family": "Commlink6 misread", "where": "w", "winner": "200",
-                 "cl6": "100", "strength": "1 field from that row"},
-                {"src": "a", "id": "z", "field": "cost", "family": "not found", "where": "", "winner": "345",
-                 "cl6": "325"}]
-        trace.apply_verdicts(rows, {"a|y|cost": {"family": "Commlink6 misread", "note": "row above", "crop": "c.png"},
-                                    "a|z|cost": {"family": "Commlink6 misread", "note": "the page prints ours"}})
+        rows = [
+            {
+                "src": "a",
+                "id": "x",
+                "field": "avail",
+                "family": "another column",
+                "where": "w",
+                "winner": "3",
+                "cl6": "5",
+            },
+            {
+                "src": "a",
+                "id": "y",
+                "field": "cost",
+                "family": "Commlink6 misread",
+                "where": "w",
+                "winner": "200",
+                "cl6": "100",
+                "strength": "1 field from that row",
+            },
+            {"src": "a", "id": "z", "field": "cost", "family": "not found", "where": "", "winner": "345", "cl6": "325"},
+        ]
+        trace.apply_verdicts(
+            rows,
+            {
+                "a|y|cost": {"family": "Commlink6 misread", "note": "row above", "crop": "c.png"},
+                "a|z|cost": {"family": "Commlink6 misread", "note": "the page prints ours"},
+            },
+        )
         self.assertEqual([r["family"] for r in rows], ["not found", "Commlink6 misread", "Commlink6 misread"])
         self.assertEqual(rows[0]["verdict"], trace.WEAK)
         self.assertIn("c.png", rows[1]["where"])
 
-
     def test_locate_finds_the_value_beside_the_name(self):
-        w = lambda t, x, y: {"text": t, "x0": x, "x1": x + 20, "top": y, "bottom": y + 8}  # noqa: E731
-        words = [w("Zorp", 10, 100), w("widget", 35, 100), w("2", 200, 100), w("100¥", 260, 100),
-                 w("Blarg", 10, 112), w("3", 200, 112), w("1,000¥", 260, 112), w("Zorp", 10, 300)]
+        def w(t, x, y):
+            return {"text": t, "x0": x, "x1": x + 20, "top": y, "bottom": y + 8}
+
+        words = [
+            w("Zorp", 10, 100),
+            w("widget", 35, 100),
+            w("2", 200, 100),
+            w("100¥", 260, 100),
+            w("Blarg", 10, 112),
+            w("3", 200, 112),
+            w("1,000¥", 260, 112),
+            w("Zorp", 10, 300),
+        ]
         self.assertEqual(crops.locate(words, "Zorp widget", "100¥"), (10, 100, 280, 108))
         self.assertEqual(crops.locate(words, "Blarg roller", "1000"), (10, 112, 280, 120))
         self.assertIsNone(crops.locate(words, "Zorp widget", "555"))
@@ -383,12 +538,29 @@ class StepThreeTest(unittest.TestCase):
 
 class DescriptionTest(unittest.TestCase):
     def test_a_count_in_words_and_a_wrapped_rating_range(self):
-        md = ("<!-- page 1 -->\n#### Zorp launcher\nIts internal magazines hold up to four bolts.\n"
-              "Zorp launchers are available with ratings from\n1 to 6.\n| WEAPON | COST |\n|---|---|\n| Zorp launcher | 100¥ |\n")
-        c = corpus.Corpus([book("A", "2020-03", md, entries=[entry("Zorp launcher", src="a", kind="weapons", cost="100")])])
-        rec = {"book": "a", "src": "a", "file": "w", "tag": "item", "id": "z", "name": "Zorp launcher", "page": "1",
-               "kind": "weapons", "modelled": True, "pool": ("weapons",), "aliases": [], "families": {},
-               "fields": {"ammo": "4(m)", "rating": (1, 6), "cost": {r: 100.0 * r for r in range(1, 7)}}}
+        md = (
+            "<!-- page 1 -->\n#### Zorp launcher\nIts internal magazines hold up to four bolts.\n"
+            "Zorp launchers are available with ratings from\n1 to 6.\n| WEAPON | COST |\n|---|---|\n| Zorp launcher | "
+            "100¥ |\n"
+        )
+        c = corpus.Corpus(
+            [book("A", "2020-03", md, entries=[entry("Zorp launcher", src="a", kind="weapons", cost="100")])]
+        )
+        rec = {
+            "book": "a",
+            "src": "a",
+            "file": "w",
+            "tag": "item",
+            "id": "z",
+            "name": "Zorp launcher",
+            "page": "1",
+            "kind": "weapons",
+            "modelled": True,
+            "pool": ("weapons",),
+            "aliases": [],
+            "families": {},
+            "fields": {"ammo": "4(m)", "rating": (1, 6), "cost": {r: 100.0 * r for r in range(1, 7)}},
+        }
         rows, _ = trace.run(c, [rec])
         fam = {r["field"]: r["family"] for r in rows}
         self.assertEqual(fam["ammo"], "description sentence")
@@ -398,6 +570,7 @@ class DescriptionTest(unittest.TestCase):
 class FormulaTest(unittest.TestCase):
     def test_read_printed_formulas(self):
         from tools.cl6check import formula as F
+
         self.assertEqual(F.read("Rating x 2,000¥"), ("rating * 2000", "rating"))
         self.assertEqual(F.read("1,000¥ + [500¥ x Size]"), ("1000 + 500 * rating", "rating"))
         self.assertEqual(F.read("300¥ per CF"), ("300 * qty", "qty"))
@@ -408,6 +581,7 @@ class FormulaTest(unittest.TestCase):
 
     def test_flattened_values(self):
         from tools.cl6check import formula as F
+
         self.assertEqual(F.flattened("1000 + [500 x Size]", {1: 1500, 2: 2000}), "rating 1..2: 1000 + 500 * rating")
         self.assertIn("rounds down", F.flattened("(Rating/3)", {1: 0, 2: 0, 3: 1, 6: 2}))
         self.assertEqual(F.flattened("300¥ per CF", {None: 2700}, qty=[9]), "300 * qty at count 9")
