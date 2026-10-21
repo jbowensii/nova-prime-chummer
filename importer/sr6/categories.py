@@ -21,7 +21,7 @@ import collections
 import re
 
 from importer.sr6.ids import slug
-from importer.sr6.formula import _stem
+from importer.sr6.formula import word_stem
 from importer.sr6.regroup import norm
 
 # a table's own words, not its category's
@@ -29,7 +29,7 @@ NOISE = re.compile(r"\btable\s*[\d.]+[a-z]?\b|\((?:[^()]*)\)|\b(?:cost|costs|and
                    r"chart|"
                    r"list|listing|prices?|pricing|summary|stats|statistics|continued|cont)\b", re.I)
 CONNECT = {"and", "or", "of", "the", "for", "with", "a", "an", "&", "to", "in", "on", "by"}
-ACCESSORY = {"accessory", "accessorie", "modification", "mod", "enhancement"}  # (singular, as _stem() leaves them)
+ACCESSORY = {"accessory", "accessorie", "modification", "mod", "enhancement"}  # (singular, as word_stem() leaves them)
 SPLIT_END = {"and", "or", "of", "&", "for", "with", "the", "to", "-", "–", ","}
 # a host named by a kind's or an augmentation type's own word: the kind (`weapon accessories` fit every weapon)
 KIND_WORDS = {"weapon": "weapons", "armor": "armor", "armour": "armor", "vehicle": "vehicles", "drone": "vehicles",
@@ -49,8 +49,8 @@ def words(s):
 
 
 def singular(w, seen=None):
-    """A word's singular, when the book prints it (`clothes` stays: no `clothe`); without the book's words, _stem's."""
-    s = w[:-1] if len(w) > 5 and w.endswith("ae") else _stem(w)  # (a Latin plural: `formulae`)
+    """A word's singular, when the book prints it (`clothes` stays: no `clothe`); without the book's words, word_stem's."""
+    s = w[:-1] if len(w) > 5 and w.endswith("ae") else word_stem(w)  # (a Latin plural: `formulae`)
     return s if seen is None or s == w or s in seen else w
 
 
@@ -81,16 +81,16 @@ def hosts(name):
     """The host categories an accessory category's name fits, or None when it is no accessory category:
     `Cyberlimb accessory` -> [`cyberlimb`], `Cyberarm and cyberleg mod` -> [`cyberarm`, `cyberleg`]."""
     ws = words(name)
-    if not ws or _stem(ws[-1]) not in ACCESSORY:
+    if not ws or word_stem(ws[-1]) not in ACCESSORY:
         return None
     rest = " ".join(ws[:-1])
     parts = re.split(r"\s*(?:\band\b|\bor\b|&|/|,)\s*", rest)
-    return [h for h in (" ".join(_stem(w) for w in p.split()) for p in parts) if h]
+    return [h for h in (" ".join(word_stem(w) for w in p.split()) for p in parts) if h]
 
 
 def key(s):
     """A category name compared with a host's: singular words, lower case."""
-    return " ".join(_stem(w) for w in words(s))
+    return " ".join(word_stem(w) for w in words(s))
 
 
 class Vocabulary:
@@ -150,8 +150,8 @@ def bare_part(name, cat, voc, others, accessory, cohesion, parts=False, maker=fr
     if any(re.search(r"\d|[a-z][A-Z]", t) for t in toks) or toks[0] in maker \
             or len(toks) > 1 and toks[0][:1].isupper() and not voc.common(toks[0]):
         return 0.0, []  # a maker's or model's name
-    cw = {_stem(w) for w in words(cat) if len(w) > 3}
-    if cw & {_stem(w.lower()) for w in toks}:
+    cw = {word_stem(w) for w in words(cat) if len(w) > 3}
+    if cw & {word_stem(w.lower()) for w in toks}:
         return 0.0, []  # it names its category already
     made = (voc.composed(toks[-1], cat) if len(toks) == 1 else []) if made is None else made
     s = {1: 0.3, 2: 0.2}.get(len(toks), 0.0)

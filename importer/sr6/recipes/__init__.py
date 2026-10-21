@@ -3,7 +3,7 @@ and extract(regrouped, ctx=None) -> importer.recipes.Result (files: <kind>.xml -
 picks the best match at or above THRESHOLD; a book none matches fails, unless skipped() knows it has nothing to import."""
 import re
 
-from importer.recipes import Result  # noqa: F401  (the SR6 recipes return Anarchy's Result)
+from importer.core import Result  # noqa: F401
 from importer.sr6.recipes import aw, bn, bs, crb, da, dc, ed, fs, general, hs, ia, jd, kk, ll, nf, so, sw, swc, ts, wl
 
 THRESHOLD = 0.6

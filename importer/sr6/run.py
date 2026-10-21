@@ -173,8 +173,8 @@ def read_effects(src, files, texts, regrouped, rows=None):
     aside = {}  # (the added entries, out of the first read: the book's own entries are read as the book prints them, beside each other)
     for n in {k + ".xml" for k, _ in added}:
         keep = []
-        for ln in effects._split_entries(files[n]).splitlines(keepends=True):
-            m = effects._ENTRY.match(ln)
+        for ln in effects.split_entries(files[n]).splitlines(keepends=True):
+            m = effects.ENTRY.match(ln)
             if m and (n[:-4], m.group(3)) in added:
                 aside.setdefault(n, []).append(ln.strip().removesuffix("</sr6:data>"))
                 ln = "</sr6:data>\n" if ln.rstrip().endswith("</sr6:data>") else ""
@@ -211,7 +211,7 @@ def older_printings(files, olds, prefix=""):
     source scope of the ids in `files` (a catalog on disk). (files, the fields filled)."""
     from lxml import etree
 
-    from importer.sr6.resolve import _add_kid, _kids
+    from importer.sr6.resolve import add_kid, kids
     parse = lambda xml: etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))  # noqa: E731
     index = {}
     for label, of in olds:
@@ -224,21 +224,21 @@ def older_printings(files, olds, prefix=""):
         root, changed = parse(xml), False
         for el in root:
             i = el.get("id") or "" if isinstance(el.tag, str) else ""
-            for iss in [x for x in _kids(el, "issue") if x.get("code") in FALLBACK]:
+            for iss in [x for x in kids(el, "issue") if x.get("code") in FALLBACK]:
                 f = iss.get("field")
                 got = next(((label, o) for label, o in index.get((name, i[len(prefix):] if i.startswith(prefix) else i), ())
                             if (o.get(f) or "").strip() not in ("", "—", "-")
-                            and not any(x.get("field") == f for x in _kids(o, "issue"))), None)
+                            and not any(x.get("field") == f for x in kids(o, "issue"))), None)
                 if not got:
                     continue
                 label, o = got
                 el.set(f, o.get(f))
                 el.remove(iss)
-                for x in [x for x in _kids(el, "formula") if x.get("field") == f]:
+                for x in [x for x in kids(el, "formula") if x.get("field") == f]:
                     el.remove(x)
-                for x in [x for x in _kids(o, "formula") if x.get("field") == f]:
-                    _add_kid(el, "formula", dict(x.attrib), x.text)
-                _add_kid(el, "found", {"field": f, "how": "printing", "source": el.get("source"), "page": o.get("page")}, label)
+                for x in [x for x in kids(o, "formula") if x.get("field") == f]:
+                    add_kid(el, "formula", dict(x.attrib), x.text)
+                add_kid(el, "found", {"field": f, "how": "printing", "source": el.get("source"), "page": o.get("page")}, label)
                 changed, n = True, n + 1
         out[name] = (xmlio.HEAD + etree.tostring(root, encoding="unicode").rstrip("\n") + "\n") if changed else xml
     return out, n

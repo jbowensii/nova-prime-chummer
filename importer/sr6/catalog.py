@@ -10,10 +10,10 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
 
-from importer.recipes import Result
+from importer.core import Result
 from importer.sr6.ids import slug
 from importer.sr6 import KINDS, NS, archetypes, categories, effects, flags, formula, regroup, search, sections, shapes, tables
-from importer.sr6.regroup import _names, blocks, md_tables, norm
+from importer.sr6.regroup import alt_names, blocks, md_tables, norm
 from importer.xmlio import HEAD, ILLEGAL
 
 CORE = "CRB"  # the core rulebook's source (recipes/crb.py): its catalog comes first, its sample runners cite their own
@@ -560,7 +560,7 @@ class Catalog:
                     (f"{name} ({m.group(4).lower()})", dict(f, cost=m.group(3)))]
         for v in (cost, f.get("avail", "")):
             parts = v.split("/")
-            names = _names(name)[:len(parts)] if "/" in name else []
+            names = alt_names(name)[:len(parts)] if "/" in name else []
             if len(names) == 2 and re.match(r"(?:w|with)\s+\S", names[1]):
                 # (owner, 2026-10-15: `Sim module / w Hot sim`: the second item is `Sim module w/ Hot sim`)
                 names[1] = f"{names[0]} w/ {names[1].split(None, 1)[1]}"
@@ -703,8 +703,8 @@ class Catalog:
             label, head = slug(b.label), slug(b.header[0] if b.header else "")
             head = "" if head.upper() in NAME_HEADERS or head.upper().replace("-", " ") in regroup.NAME_COLUMNS else head
             # (a plural class the title doesn't name: `weapon accessories` over ACCESSORY keeps its title)
-            narrower = head if re.search(r"[^s]s$", head) and formula._stem(head.split("-")[-1]) not in {
-                formula._stem(w) for w in label.split("-")} else ""
+            narrower = head if re.search(r"[^s]s$", head) and formula.word_stem(head.split("-")[-1]) not in {
+                formula.word_stem(w) for w in label.split("-")} else ""
             attrs["category"] = cat or narrower or (label if label not in ("", kind) else head) or slug(b.section) or label or kind
             if b.group:  # a row printed under a name-only row (`DocWagon contracts`): `DocWagon contract: Basic`
                 attrs["group"] = group_name(b.group)
@@ -724,7 +724,7 @@ class Catalog:
                     f["rating"] = rng.strip()
             if kind == "weapons" and "ammo" not in f and (ammo := ammo_from_text(b.text)):
                 f["ammo"] = ammo  # its row prints no ammo, its description does (`internal magazines that hold …`)
-            if kind == "weapons" and (spec := CLOSE_COMBAT.get(formula._stem((f.get("type") or "").strip().lower()))):
+            if kind == "weapons" and (spec := CLOSE_COMBAT.get(formula.word_stem((f.get("type") or "").strip().lower()))):
                 attrs.update(skill="Close Combat", spec=spec)  # its TYPE (`Blade`): the specialization it is used with
             if b.maker:
                 attrs["maker"] = b.maker  # a product's configuration row: its title's maker
@@ -1057,7 +1057,7 @@ def series_models(name, text):
 
 
 def regroup_stem(w):
-    return formula._stem(w)
+    return formula.word_stem(w)
 
 
 def _short_rule(rule, field):
@@ -1095,7 +1095,7 @@ def grouped_names(name, group):
     gw, cw = group.split(), core.split()
     if not gw or not cw:
         return []
-    if formula._stem(cw[-1].lower()) == formula._stem(gw[-1].lower()):
+    if formula.word_stem(cw[-1].lower()) == formula.word_stem(gw[-1].lower()):
         return [" ".join(gw[:-1] + cw) + tail] if len(gw) > 1 else []
     return [" ".join(gw[:-1] + cw + gw[-1:]) + tail, f"{core} {group}{tail}"]
 

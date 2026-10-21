@@ -34,6 +34,7 @@ from xml.sax.saxutils import quoteattr
 
 from importer import DATA_DIR, find_core_file, use_custom, xmlio
 from importer.convert import CONVERTER_VERSION, convert, reusable
+from importer.core import cmd_ask, flag
 from importer.library import SAFE_SOURCE_ID, remove, same_source, update_sources
 from importer.recipes import RECIPES, identify
 
@@ -334,14 +335,6 @@ def _cmd_propose(argv):
     return 0
 
 
-def _flag(argv, name):
-    """`name value` or `name=value` (the server passes free text as one `--name=…` argument)."""
-    for a in argv:
-        if a.startswith(name + "="):
-            return a[len(name) + 1:]
-    return argv[argv.index(name) + 1] if name in argv[:-1] else None
-
-
 def _cmd_remove(argv):
     if len(argv) < 3 or argv[1] != "--custom":
         print(USAGE, file=sys.stderr)
@@ -357,7 +350,7 @@ def _cmd_apply_review(argv):
     if "--core" in argv:
         apply_core_review(argv[0], argv[2])
     else:
-        apply_review(argv[0], argv[2], _flag(argv, "--source"), _flag(argv, "--name"), _flag(argv, "--canon"))
+        apply_review(argv[0], argv[2], flag(argv, "--source"), flag(argv, "--name"), flag(argv, "--canon"))
     print('<result state="done" />')
     return 0
 
@@ -421,51 +414,15 @@ def _cmd_test_ai(argv):
     return 0
 
 
-def _cmd_ask(argv, game="ca2"):
-    """A rules question from stdin, answered from the game's data (importer/ask.py) through the provider <library>/.config
-    chooses (SR6: `importer sr6 ask`, with custom/sr6 and library/sr6). --scope rules: the rules only.
-    Nothing is written or logged. Exit 3 with the reason on stderr (refused question, provider not set up or failing).
-    "called": whether the provider was asked (the server counts those against the daily limit, whatever came back)."""
-    library = _flag(argv, "--library")
-    if not library or not _flag(argv, "--custom"):
-        print(USAGE, file=sys.stderr)
-        return 2
-    import json
-    from importer import ask, custom_dir
-
-    called = False
-
-    def ask_ai(system, user):
-        nonlocal called
-        from importer.ai import providers  # the AI SDK: only when a passage clears the floor
-        called = True
-        return providers.call(os.path.join(library, ".config"), system, user, max_tokens=ask.MAX_TOKENS, timeout=ask.TIMEOUT)
-    try:
-        out = ask.answer(sys.stdin.buffer.read(4 * ask.MAX_QUESTION + 4).decode("utf8", "replace"),
-                         custom_dir() if game == "ca2" else os.path.abspath(_flag(argv, "--custom")), ask_ai, game=game,
-                         scope="rules" if _flag(argv, "--scope") == "rules" else None)
-    except ValueError as e:
-        print(e, file=sys.stderr)
-        print(json.dumps({"called": called}))
-        return 3
-    except Exception as e:  # ProviderError (already redacted), TruncatedReply
-        from importer.ai import providers
-        if not isinstance(e, providers.ProviderError):
-            raise
-        truncated = isinstance(e, providers.TruncatedReply)
-        print("the answer was too long; ask a narrower question" if truncated else e, file=sys.stderr)
-        # provider: the reason is the admin's (the server logs it and tells the asker only that the provider failed)
-        print(json.dumps({"called": called, **({} if truncated else {"provider": True})}))
-        return 3
-    print(json.dumps({**out, "called": called}, ensure_ascii=False))
-    return 0
+def _cmd_ask(argv):
+    return cmd_ask(argv, USAGE)
 
 
 def _cmd_edit(argv):
     """The edits layer (importer/edits.py). A refused edit exits 3 with the reason on stderr."""
     from importer import edits
-    sub, custom = (argv[0] if argv else None), _flag(argv, "--custom")
-    by = _flag(argv, "--by") if sub == "set" else None
+    sub, custom = (argv[0] if argv else None), flag(argv, "--custom")
+    by = flag(argv, "--by") if sub == "set" else None
     if not custom or (sub == "set" and len(argv) != (7 if by else 5)) or (sub == "remove" and len(argv) != 5)             or sub not in ("set", "remove", "add-source") or len(argv) < 2:
         print(USAGE, file=sys.stderr)
         return 2
@@ -476,7 +433,7 @@ def _cmd_edit(argv):
         elif sub == "remove":
             print(f'<result removed="{str(edits.remove_entry(custom, argv[1], argv[2])).lower()}" />')
         else:
-            edits.add_source(custom, argv[1], _flag(argv, "--name"), _flag(argv, "--publisher") or "")
+            edits.add_source(custom, argv[1], flag(argv, "--name"), flag(argv, "--publisher") or "")
             print('<result state="saved" />')
     except edits.EditError as e:
         print(e, file=sys.stderr)
@@ -485,23 +442,23 @@ def _cmd_edit(argv):
 
 
 def _dirs(argv):
-    dirs = {f: _flag(argv, "--" + f) for f in ("characters", "custom", "library")}
+    dirs = {f: flag(argv, "--" + f) for f in ("characters", "custom", "library")}
     return dirs if all(dirs.values()) else None
 
 
 def _cmd_backup(argv):
     from importer import backup
-    dirs, out = _dirs(argv), _flag(argv, "--out")
+    dirs, out = _dirs(argv), flag(argv, "--out")
     if not dirs or not out:
         print(USAGE, file=sys.stderr)
         return 2
-    backup.backup(dirs, out, keys="--keys" in argv, version=_flag(argv, "--version"))
+    backup.backup(dirs, out, keys="--keys" in argv, version=flag(argv, "--version"))
     return 0
 
 
 def _cmd_restore(argv):
     from importer import backup
-    zip_path, dirs = _flag(argv, "--check") or _flag(argv, "--apply"), _dirs(argv)
+    zip_path, dirs = flag(argv, "--check") or flag(argv, "--apply"), _dirs(argv)
     if not zip_path or ("--apply" in argv and not dirs):
         print(USAGE, file=sys.stderr)
         return 2
@@ -509,7 +466,7 @@ def _cmd_restore(argv):
         if "--check" in argv:
             print(xmlio.ET.tostring(backup.check(zip_path), encoding="unicode"))
         else:
-            safety = backup.apply(zip_path, dirs, version=_flag(argv, "--version"))
+            safety = backup.apply(zip_path, dirs, version=flag(argv, "--version"))
             print(f'<result state="restored" safety={quoteattr(os.path.basename(safety))} />')
     except backup.RestoreError as e:
         print(e, file=sys.stderr)
@@ -519,7 +476,7 @@ def _cmd_restore(argv):
 
 def _cmd_datapack(argv):
     from importer import datapack  # lxml: only for data packs
-    sub, custom, out = (argv[0] if argv else None), _flag(argv, "--custom"), _flag(argv, "--out")
+    sub, custom, out = (argv[0] if argv else None), flag(argv, "--custom"), flag(argv, "--out")
     if sub == "recover" and custom:
         datapack.recover(os.path.join(custom, "imported", "core"))
         return 0
@@ -528,7 +485,7 @@ def _cmd_datapack(argv):
         return 2
     try:
         if sub == "export":
-            datapack.export(custom, out, version=_flag(argv, "--version"))
+            datapack.export(custom, out, version=flag(argv, "--version"))
         elif sub == "check":
             print(datapack.check(argv[1])[1][datapack.MANIFEST].decode("utf8").strip())
         else:
@@ -551,7 +508,7 @@ def main(argv=None):
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2
-    custom = _flag(argv, "--custom")  # the core files are in <custom>/imported/core (importer.core_dir)
+    custom = flag(argv, "--custom")  # the core files are in <custom>/imported/core (importer.core_dir)
     with use_custom(os.path.abspath(custom)) if custom else contextlib.nullcontext():
         return cmds[argv[0]](argv[1:])
 

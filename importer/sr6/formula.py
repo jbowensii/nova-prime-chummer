@@ -539,14 +539,14 @@ def energy_ammo(text, section_text, supplies):
         return None
     for t in (text, section_text):
         for m in _SUPPLY.finditer(" ".join((t or "").split())):
-            want = _stem(m.group(1).lower().split()[-1])
-            sid = next((i for n, i in supplies.items() if _stem(n.split()[-1]) == want and names(m.group(1), n)), None)
+            want = word_stem(m.group(1).lower().split()[-1])
+            sid = next((i for n, i in supplies.items() if word_stem(n.split()[-1]) == want and names(m.group(1), n)), None)
             if sid:
                 return f"ref(gear:{sid}, energy)/{fmt(float(use.group(1)))}"
     return None
 
 
-def _stem(w):
+def word_stem(w):
     """A word's singular, roughly (boxes -> box, lorries -> lorry, trailers -> trailer)."""
     if w.endswith("ies") and len(w) > 4:
         return w[:-3] + "y"
@@ -557,8 +557,8 @@ def _stem(w):
 
 def names(heading, name):
     """True when a heading names an item: a word of the heading (singular) is a word of the item's name."""
-    hw = {_stem(w) for w in re.findall(r"[a-z]+", heading.lower()) if len(w) > 3}
-    return bool(hw & {_stem(w) for w in re.findall(r"[a-z]+", name.lower())})
+    hw = {word_stem(w) for w in re.findall(r"[a-z]+", heading.lower()) if len(w) > 3}
+    return bool(hw & {word_stem(w) for w in re.findall(r"[a-z]+", name.lower())})
 
 
 def _formula(f, expr, extra, page):

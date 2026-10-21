@@ -71,7 +71,7 @@ from xml.sax.saxutils import escape, quoteattr, unescape
 from importer import xmlio
 from importer.sr6.ids import slug
 from importer.sr6.regroup import norm
-from importer.sr6.resolve import _add_kid
+from importer.sr6.resolve import add_kid
 
 DIR = Path(__file__).with_name("overrides")
 UNMATCHED_DROPS = []  # (the book rows' drops that took out nothing, [(entry id, drop)]: a row written against a reader that has changed since; tests and tools/ check it stays empty)
@@ -455,7 +455,7 @@ def _ops(out, rows):
         if was != r["rename"]:
             n.text = r["rename"]
             if r.get("alias", True) and was and norm(was) not in {norm(x.text or "") for x in e.findall("alias")} | {norm(r["rename"])}:
-                _add_kid(e, "alias", {}, was)
+                add_kid(e, "alias", {}, was)
             out[name] = dump(old, root)
     for r in (x for x in rows if "move_kind" in x):
         m = r["move_kind"]
@@ -514,7 +514,7 @@ def apply(recipe_id, files, rows=None):
             for e in hit:
                 have = {norm(a.text or "") for a in e.findall("alias")} | {norm(e.findtext("name") or "")}
                 if norm(r["cl6"]) not in have:
-                    _add_kid(e, "alias", {}, r["cl6"])  # (before the entry's text, after its other aliases)
+                    add_kid(e, "alias", {}, r["cl6"])  # (before the entry's text, after its other aliases)
                 for k, v in sets.items():
                     e.set(k, str(v))
         out[name] = dump(out[name], root)

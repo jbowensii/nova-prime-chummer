@@ -121,7 +121,7 @@ def other_name(row, heading):
     return shorter_name(row, heading) or not hw <= rw and not rw <= hw
 
 
-def _names(name):
+def alt_names(name):
     """A heading `A 70/75` stands for `A 70` and `A 75`, `Devil Rat/Demon Rat` for each."""
     m = re.match(r"(.*\s)([\w-]+(?:/[\w-]+)+)$", name)
     parts = [m.group(1) + p for p in m.group(2).split("/")] if m else []
@@ -1084,7 +1084,7 @@ def _merge_boxes(units, aliases, report):
         if u.kind == "section" or not u.has_box() or any(u is d for d in descs) or u.kind == "item" and u.has_text():
             continue  # (an item with its band and its own text is whole: a spell named like an adept power)
         ks = keys(u.name, aliases)
-        cands = [d for d in descs if any(k in ks for nm in _names(d.name) for k in keys(nm, aliases))]
+        cands = [d for d in descs if any(k in ks for nm in alt_names(d.name) for k in keys(nm, aliases))]
         if cands:
             d = min(cands, key=lambda d: abs(d.pos - u.pos))
             took.setdefault(id(d), (d, []))[1].append(u)
@@ -1199,7 +1199,7 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     chapter = units[0].chapter
     exact, loose, first = {}, {}, {}  # key -> descriptions in reading order; primary key -> first description
     for d in descs:
-        for nm in dict.fromkeys([d.name] + _names(d.name)):
+        for nm in dict.fromkeys([d.name] + alt_names(d.name)):
             ks = keys(nm, aliases)
             for tier, group in ((exact, ks[:1]), (loose, ks[1:])):
                 for k in group:
@@ -1366,7 +1366,7 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     # pair (`Frog Tongue` between `Cerebellum Booster` and `Knowledge Infusion`): an item that table leaves out, its
     # values missing (issues), not a rule
     order = sorted(descs, key=lambda d: d.pos)
-    row_keys = {k for t in tables for r in t.rows if r for nm in _names(r[0]) for k in keys(nm, aliases)}
+    row_keys = {k for t in tables for r in t.rows if r for nm in alt_names(r[0]) for k in keys(nm, aliases)}
     for i, d in enumerate(order):
         if d.rows or d.has_box() or d.level < 4 or not d.name[:1].isupper() or d.name.isupper() \
                 or re.search(r"(?i)\btables?\b|\bstats\b", d.name):
@@ -1379,7 +1379,7 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         t = next((t for t, _ in prev.rows if id(t) in tabs and id(t) not in own), None)
         one = lambda w: w[:-1] if w.endswith("s") and not w.endswith("ss") else w  # noqa: E731
         dw = {one(w) for w in norm(d.name).split() if len(w) > 3}
-        if t is None or any(k in row_keys for nm in _names(d.name) for k in keys(nm, aliases)) \
+        if t is None or any(k in row_keys for nm in alt_names(d.name) for k in keys(nm, aliases)) \
                 or any(dw & {one(w) for w in norm(r[0]).split()} for r in t.rows if r) \
                 or re.search(r",|\band\b|\(", d.name):
             continue  # (a heading naming or sharing a word with a row describes it: `Move-By-Wire`, `Limb Replacement`)
@@ -1598,7 +1598,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     # each chapter's table row names, for price_list's reprint test (a later chapter printing the rows again)
     rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
     # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
-    heads = {k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in _names(e[2][1]) for k in keys(nm, aliases)}
+    heads = {k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in alt_names(e[2][1]) for k in keys(nm, aliases)}
     # the words the book's prose prints in lower case (a generic word, not a name: _own_rows)
     lower = {w for e in els if e[0] == "x" for w in re.findall(r"(?<![A-Za-z])[a-z]+(?![A-Za-z])", e[2])}
     for n, (start, end) in enumerate(bounds):
@@ -1606,7 +1606,7 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
             continue
         chapter = els[start][2][1] if els[start][0] == "h" and els[start][2][0] == 1 else ""
         item_keys = {k for _, _, (lv, tx) in (e for e in els[start:end] if e[0] == "h")
-                     if lv >= 4 and not _is_label(lv, tx) for nm in _names(tx) for k in keys(nm, aliases)}
+                     if lv >= 4 and not _is_label(lv, tx) for nm in alt_names(tx) for k in keys(nm, aliases)}
         units = _units(els, start, end, chapter, item_keys, aliases, _templates(els[start:end]))
         _continuations(units)
         if not chapter and not units[0].body and len(units) == 1:

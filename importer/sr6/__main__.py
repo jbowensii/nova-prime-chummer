@@ -95,10 +95,10 @@ def _cmd_remove(argv):
 
 def _cmd_edit(argv):
     """The SR6 edits layer (importer/sr6/edits.py). A refused edit exits 3 with the reason on stderr."""
-    from importer.__main__ import _flag
+    from importer.core import flag
     from importer.sr6 import edits
-    sub, custom = (argv[0] if argv else None), _flag(argv, "--custom")
-    by = _flag(argv, "--by") if sub == "set" else None
+    sub, custom = (argv[0] if argv else None), flag(argv, "--custom")
+    by = flag(argv, "--by") if sub == "set" else None
     if not custom or sub not in ("set", "remove") or len(argv) != (7 if by else 5):
         print(USAGE, file=sys.stderr)
         return 2
@@ -161,8 +161,8 @@ def _cmd_check(argv):
 
 
 def _cmd_ask(argv):
-    from importer.__main__ import _cmd_ask as ask
-    return ask(argv, game="sr6")
+    from importer.core import cmd_ask
+    return cmd_ask(argv, USAGE, game="sr6")
 
 
 def main(argv=None):
