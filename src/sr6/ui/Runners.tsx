@@ -6,7 +6,7 @@
 // books' sample runners (custom/sr6/imported/samples.xml) not loaded yet.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, isAdmin, savesSettled, send, useMe } from '../../ui/auth'
-import { joined, loadCampaigns, type Campaign } from '../../ui/Campaigns'
+import { joined, loadCampaigns, type Campaign } from '../../ui/campaignsStore'
 import { Modal, StateBadge } from '../../ui/bits'
 import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy } from '../../ui/runnerList'

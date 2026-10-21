@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, savesSettled, send, useMe } from '../../ui/auth'
 import { inBatches, Modal, Working, type Busy } from '../../ui/bits'
-import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
+import { loadCampaigns, type Campaign } from '../../ui/campaignsStore'
 import { ExportRunnersDialog } from '../../ui/Foundry'
 import { IconButton, IconLink } from '../../ui/icons'
 import { arrange, ownerGroups, type SortBy, unedited } from '../../ui/runnerList'

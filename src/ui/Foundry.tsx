@@ -5,7 +5,7 @@ import { exportBooks, exportRunners, type ExportOpts } from '../engine'
 import type { Catalog, Character, Compendium } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { loadTableRules, tableRulesForExport } from './TableRules'
-import type { Campaign } from './Campaigns'
+import type { Campaign } from './campaignsStore'
 import { bookNpcs, bookSamples, readSample } from './samples'
 
 export const exportOpts = (descriptions: boolean): ExportOpts => ({ descriptions, now: new Date().toISOString(), appVersion: __APP_VERSION__ })

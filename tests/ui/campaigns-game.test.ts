@@ -1,7 +1,7 @@
 // Campaigns per game (src/ui/Campaigns.tsx): Shadowrun 6's pages call /api/sr6/campaigns and link under #/sr6; Anarchy's
 // stay where they were. The server keeps the two games' campaigns apart (tests/server/games.test.ts).
 import { afterEach, expect, test, vi } from 'vitest'
-import { campaignLinks, loadCampaigns } from '../../src/ui/Campaigns'
+import { campaignLinks, loadCampaigns } from '../../src/ui/campaignsStore'
 
 afterEach(() => vi.unstubAllGlobals())
 const calls = () => {

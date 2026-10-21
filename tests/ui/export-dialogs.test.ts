@@ -4,7 +4,7 @@
 import { createElement } from 'react'
 import { expect, test, vi } from 'vitest'
 import { blankCharacter } from '../../src/engine/file'
-import type { Campaign } from '../../src/ui/Campaigns'
+import type { Campaign } from '../../src/ui/campaignsStore'
 import { ExportBooksPanel, ExportRunnersDialog } from '../../src/ui/Foundry'
 import { cat } from '../helpers'
 import { button, change, click, field, mount, pageText, stubFetch } from './dom'

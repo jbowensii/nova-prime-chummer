@@ -2,7 +2,7 @@
 // server's edits layer (PUT /api/edits/:kind/:id → `importer edit set`), then the catalog reloads. Amps open
 // the Amp Builder in catalog mode; items and rules a form. The Description box is always sent: empty (or
 // the book's own text, unchanged) means "use the book's text".
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml, fieldName, ISSUE_BOOK, type Issue } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
@@ -15,17 +15,11 @@ import { api } from './api'
 import { Editor, type EditorCtx } from './editor'
 import { useRepo } from './repo'
 import { AmpBuilder } from './tabs/AmpBuilder'
+import { EditCatalog, OpenEdit, editState, type EditKind, type Target } from './editTrigger'
 
-export type EditKind = 'amps' | 'items' | 'rules'
 /** What the entry form makes: the edits layer's kinds, and (a compendium's) vehicles. */
 export type FormKind = EditKind | 'vehicles'
-type Target = { kind: EditKind; id?: string } // no id: add an entry
 export type Entry = AmpTemplate | Item | Rule | VehicleBase
-
-const OpenEdit = createContext<((t: Target) => void) | null>(null)
-const EditCatalog = createContext<Catalog | null>(null)
-/** Opens the edit form; null when there's no server to save to (browser storage). */
-export const useOpenEdit = () => useContext(OpenEdit)
 
 const ITEM_KINDS: [ItemKind, string][] = [
   ['gear', 'Gear'],
@@ -42,43 +36,6 @@ export const NOUN: Record<FormKind, string> = { amps: 'amp', items: 'item', rule
 
 export const nameOf = (e: Entry) => ('title' in e ? e.title : e.name)
 const textOf = (e: Entry) => ('narrative' in e ? e.narrative : 'text' in e ? e.text : '')
-
-/** How an entry stands in the edits layer. An edit whose book is gone has no original and no house-rule source. */
-export function editState(c: Catalog, kind: EditKind, e: AmpTemplate | Item | Rule): 'book' | 'changed' | 'added' | 'orphan' {
-  if (!e.edited) return 'book'
-  if (c.original[kind].has(e.id)) return 'changed'
-  return c.sources.get(e.source)?.origin === 'user' ? 'added' : 'orphan'
-}
-
-export const EditedMark = () => (
-  <span className="edited" title="Changed in this app (Game data lists your edits)">
-    Edited
-  </span>
-)
-
-/** A compendium's entry is edited in its compendium (its owner only), never in the edits layer. */
-export function EditButton({ kind, id, name }: { kind: EditKind; id: string; name: string }) {
-  const open = useOpenEdit(),
-    c = useContext(EditCatalog),
-    me = useMe()
-  const comp = c?.sources.get(c[kind].get(id)?.source ?? '')?.compendium
-  if (comp)
-    return (
-      open &&
-      comp.owner === me?.username && (
-        <a className="btn small quiet" aria-label={`Edit ${name}`} href={`#/compendiums/${comp.id}/${encodeURIComponent(id)}`}>
-          Edit
-        </a>
-      )
-    )
-  return (
-    open && (
-      <button type="button" className="btn small quiet" aria-label={`Edit ${name}`} onClick={() => open({ kind, id })}>
-        Edit
-      </button>
-    )
-  )
-}
 
 /** Holds the edit dialog for the whole app; `reload` fetches the catalog again after a save. */
 export function CatalogEdits({ c, reload, children }: { c: Catalog; reload: () => Promise<void>; children: ReactNode }) {

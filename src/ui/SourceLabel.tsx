@@ -8,7 +8,7 @@
 import type { Catalog } from '../model/types'
 import { dupeLabel, isCanonSource } from '../engine'
 import { HouseChip, NonCanon } from './bits'
-import { EditedMark } from './EditEntry'
+import { EditedMark } from './editTrigger'
 
 type Props = { c: Catalog; source: string; page: number; id?: string } | { builtByYou: true }
 

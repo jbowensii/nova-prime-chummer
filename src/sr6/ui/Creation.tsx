@@ -5,7 +5,7 @@
 // other runner with the server's.
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
-import { loadCampaigns, type Campaign } from '../../ui/Campaigns'
+import { loadCampaigns, type Campaign } from '../../ui/campaignsStore'
 import {
   aboutOf,
   applyDeps,

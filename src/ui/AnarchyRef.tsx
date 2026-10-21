@@ -1,13 +1,142 @@
 // An Anarchy catalog entry named in the editor (an amp, an item, a skill or its specialization, the metatype, a package,
 // the lifestyle), with its card on hover, focus or tap (src/ui/EntryHover.tsx): the row Game data shows for it
-// (src/ui/tabs/Data.tsx browseKinds), made when shown.
+// (browseKinds below), made when shown.
 import type { ReactNode } from 'react'
-import { attrRRBracket, attrRRSources, bracketed, currentBuild, hasNoMetatype } from '../engine'
-import type { AttrId, Catalog, Character } from '../model/types'
+import { attrRRBracket, attrRRSources, bracketed, currentBuild, formulaText, hasNoMetatype, itemPrice, levelLabel, type Formula } from '../engine'
+import type { AttrId, Catalog, Character, Item, ItemKind, Ref } from '../model/types'
+import { fmt } from './bits'
+import type { BrowseKind } from './CatalogBrowser'
+import { EditButton, EditedMark } from './editTrigger'
 import type { BrowseRow } from './types'
 import { useEditor } from './editor'
 import { EntryHover } from './EntryHover'
-import { browseKinds } from './tabs/Data'
+
+const ITEM_KINDS: [ItemKind, string][] = [
+  ['weapon', 'Weapons'],
+  ['armor', 'Armor'],
+  ['gear', 'Gear'],
+  ['spell', 'Spells'],
+  ['complex-form', 'Complex forms'],
+]
+const vals = (xs: [string, unknown][]) =>
+  xs
+    .filter(([, v]) => v != null && v !== '' && v !== false)
+    .map(([k, v]) => (v === true ? k : `${k} ${v}`))
+    .join(' · ')
+
+/** Every browsable kind of the catalog, each entry with its sub-category (amps by type, weapons by category…) and values. */
+export function browseKinds(c: Catalog): BrowseKind[] {
+  const row = (e: Ref & { name: string }, more: Partial<BrowseRow>): BrowseRow => ({ key: e.id, name: e.name, source: e.source, page: e.page, ...more })
+  const edited = (e: { edited?: boolean }) => (e.edited ? <EditedMark /> : undefined)
+  // a formula with its value (the standard price is B for an item's cost; Anarchy items have no ratings)
+  const formulas = (e: { formulas?: Formula[] }, i?: Item) =>
+    (e.formulas ?? [])
+      .map(f => {
+        const v =
+          f.field === 'cost' && i ? itemPrice(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor }, i) : undefined
+        return `${f.field} = ${formulaText(f, v?.base.toLocaleString('en-US'))}${v ? ` (${v.error ? 'unpriced' : fmt(v.n)})` : ''}`
+      })
+      .join(' · ')
+  const item = (i: Item): BrowseRow =>
+    row(i, {
+      group: i.category,
+      text: i.text,
+      marks: edited(i),
+      action: <EditButton kind="items" id={i.id} name={i.name} />,
+      issues: i.issues,
+      details: [
+        vals([
+          ['specialist', i.specialist],
+          ['armor', i.armor],
+          ['dv', i.dv],
+          ['ranges', i.ranges],
+        ]),
+        formulas(i, i),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })
+  const items = [...c.items.values()]
+  return [
+    {
+      id: 'amps',
+      label: 'Amps',
+      rows: [...c.amps.values()].map(a =>
+        row(a, {
+          group: c.ampTypes.get(a.type)?.name ?? a.type,
+          text: a.narrative,
+          marks: edited(a),
+          action: <EditButton kind="amps" id={a.id} name={a.name} />,
+          issues: a.issues,
+          details: [
+            levelLabel(c, a),
+            vals([
+              ['rating', a.printedRating],
+              ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')],
+            ]),
+            formulas(a),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        }),
+      ),
+    },
+    {
+      id: 'ampeffects',
+      label: 'Amp effects',
+      rows: [...c.ampEffects.values()].map(e =>
+        row(e, {
+          group: e.category,
+          details: vals([
+            ['rating', e.rating],
+            ['for', e.types.join(', ')],
+            ['max', e.max],
+          ]),
+        }),
+      ),
+    },
+    ...ITEM_KINDS.map(([k, label]) => ({ id: k, label, rows: items.filter(i => i.kind === k).map(item) })),
+    {
+      id: 'skills',
+      label: 'Skills',
+      rows: [...c.skills.values()].map(sk =>
+        row(sk, { group: c.attributes.get(sk.attr)?.name, details: vals([['specializations', sk.specs.map(x => x.name).join(', ')]]) }),
+      ),
+    },
+    { id: 'metatypes', label: 'Metatypes', rows: [...c.metatypes.values()].map(m => row(m, { details: vals([['edge', m.edge]]) })) },
+    {
+      id: 'vehicles',
+      label: 'Vehicles',
+      rows: [...c.vehicles.values()].map(v =>
+        row(v, {
+          details: vals([
+            ['handling', v.handling],
+            ['speed', v.speed],
+            ['body', v.body],
+            ['armor', v.armor],
+            ['pilot', v.pilot],
+          ]),
+        }),
+      ),
+    },
+    {
+      id: 'packages',
+      label: 'Packages',
+      rows: [...c.packages.values()].map(k => row(k, { group: c.levels.get(k.level)?.name ?? k.level, details: k.archetype })),
+    },
+    { id: 'lifestyles', label: 'Lifestyles', rows: [...c.lifestyles.values()].map(l => row(l, { text: l.text, details: vals([['per run', l.perRun]]) })) },
+    {
+      id: 'rules',
+      label: 'Rules',
+      rows: [...c.rules.values()].map(r =>
+        row(
+          { ...r, name: r.title },
+          { group: r.sheet, text: r.text, details: r.section, marks: edited(r), action: <EditButton kind="rules" id={r.id} name={r.title} /> },
+        ),
+      ),
+    },
+  ]
+}
 
 /** amps, an item's kind (weapon, armor, gear, spell, complex-form), skills, metatypes, vehicles, packages, lifestyles */
 export type AnarchyKind = 'amps' | 'weapon' | 'armor' | 'gear' | 'spell' | 'complex-form' | 'skills' | 'metatypes' | 'vehicles' | 'packages' | 'lifestyles'
