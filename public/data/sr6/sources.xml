@@ -3,7 +3,7 @@
      description file for that source, in custom/sr6/ (never committed; loaded when present). published: the month the
      book came out (the core rulebook: its first printing), from the PDF's date where it has one, else its copyright
      year and a best-known month (marked guessed); cat: its Catalyst product number. Load book NPCs numbers a book NPC
-     printed differently in several books in this order (ties: cat, then id). See docs/sr6-data-format.md. -->
+     printed differently in several books in this order (ties: cat, then id). See docs/sr6-data-format/kinds.md. -->
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="sources" version="1">
   <source id="CRB" published="2019-08" cat="CAT28000" publisher="Catalyst Game Labs" canon="true" texts="texts/crb.xml"><name>Shadowrun, Sixth World Core Rulebook</name></source>
   <source id="CRB-SEA" published="2021-09" cat="CAT28000S" publisher="Catalyst Game Labs" canon="true" texts="texts/crb-sea.xml"><name>Shadowrun, Sixth World Core Rulebook: City Edition Seattle</name></source>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Schema for kind="sources" (SR6): the shipped public/data/sr6/sources.xml (the books a recipe supports) and the
-     importer's custom/sr6/imported/sources.xml. See docs/sr6-data-format.md. -->
+     importer's custom/sr6/imported/sources.xml. See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:data:1"
            targetNamespace="urn:chummer-sr6:data:1"

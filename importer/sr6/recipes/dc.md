@@ -50,7 +50,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
 - `N¥ x Rating`, slots `N x Rating`, `N per level`, `Adds N per level`, `N per Rating point` -> `R*N`. Seats `2/6`.
 - Issues: tires and mods printing two prices (`800¥/1,600¥`) or slots `2 or 1 CF` are `ambiguous`; slots `1/3 body
   (rounded up)` and prices `Body x N¥` need the vehicle's Body (no grammar variable): `unreadable`.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - A part the description prices beside a vehicle (`… the mini-outboard (costs 500¥)`) is an option on its cost:
   `3500 + 500*opt.mini-outboard`.
 
@@ -61,7 +61,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `dc.py`): 186 pages, p
   tables: its first header the category, every column an attribute) and of the size class table (`Size Class N`);
   each `#### Name` under `### Design Options and Quality Factors`, `### Design Modifications`, `### Quality Factors` (a
   heading over several, `Heavy Duty/Lightweight`, one entry each, its own `Cost:`; `(xN BP)` its multiplier), its
-  terms read from its text (dp, perLevel, max, maxReverse, multiplier: docs/sr6-data-format.md, Vehicle design).
+  terms read from its text (dp, perLevel, max, maxReverse, multiplier: docs/sr6-data-format/kinds.md, Vehicle design).
 - **Hardpoints:** a weapon mount's, drone rack's or mechanical arm's HARDPOINT (SIZE) column is its `hardpoint`, lower
   case (`fix()`).
 - **Core Vehicle Modifications** (p. 146): read in the corpus pass after every import, onto the core rulebook's

@@ -102,7 +102,7 @@ Berlin 331-345, Hong Kong 330-339): the fiction, the city overview and the back 
 - Capacity used in brackets: `[2]` is a number, `[Rating]` -> `R`. Vehicle seats `1/3` (front/back) -> `1 + 3`.
 - Issues: a rated price with no rating range anywhere (`missing rating`, about 50: armor and gear rows priced
   `Rating x N¥`); rows the table prints with no avail or price (`missing`).
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - Issues: the crossbows' rows print no firing modes (`missing modes`).
 
 ## Table shapes and value styles (importer v2)

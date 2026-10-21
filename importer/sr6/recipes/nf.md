@@ -39,7 +39,7 @@ errata's value statements to this book's entries when the errata PDF is in the l
 
 The replaced value is kept in a `<found how="errata">` child. Owner decision 2026-10-15: the errata wins, also in the
 per-book runs (where the corpus pass cannot see the errata PDF): `overrides/nf.json` carries its numbers as `"gen": "errata"`
-rows (docs/sr6-data-format.md, Errata rows): the 6E availabilities, the Trenchcoat's Concealability +2, the cybereyes and
+rows (docs/sr6-data-format/values-in-per-book-tables.md, Errata rows): the 6E availabilities, the Trenchcoat's Concealability +2, the cybereyes and
 cyberears as ratings 6 and 7 (ids kept), AutoVoice and Vocal Expansion unrated at rating 1, the hacked AutoVoice and the
 vision/audio enhancements removed. Stolen Gear's new rules are the engine's (its karma is 0 already; the creation
 settings `stolenGearQuality`, `karmaToNuyenRateStolenGear`, `karmaToNuyenMaxStolenGear`, `stolenGearBuyOff`, owner
@@ -50,7 +50,7 @@ level="4">` (owner 2026-10-16). Not applied (rules): the Companion versions of t
 
 - Rows by rating (the advanced cyberware rows) -> `tier()` rules for cost, avail, Essence, capacity. `x2` (twice
   the instrument's price): an `ambiguous` issue stating `base*2`. `Rating x N¥`, avail `(Rating x N)` -> `R*N`.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Importer v5
 

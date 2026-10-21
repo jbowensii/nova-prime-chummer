@@ -33,7 +33,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `sw.py`): 170 pages, p
 - Preparations `N¥ per charge` -> `Q*N`, unit charge. The New Preparations intro gives no availability, and no
   section does: every preparation has `<issue field="avail" code="missing">` (about 85).
 - Two preparations printed in one cell (`N¥/charge (A); N¥/charge (B)`) are `ambiguous`.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 - **Adept ways (sections.py `_bought_as_quality`):** `## Adept Ways and Their Benefits` is tagged `(20 Karma)` and
   says adepts take a way "by selecting it as a quality": each `### <Name> Way` heading under it (the section's own

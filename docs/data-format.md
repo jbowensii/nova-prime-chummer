@@ -591,7 +591,7 @@ data or the user's `custom/sources.xml` owns can't be taken.
 
 ## Formulas and issues
 
-As in Shadowrun 6 (`docs/sr6-data-format.md`, Formulas and issues; the parser is shared), an amp or item may carry
+As in Shadowrun 6 (`docs/sr6-data-format/formulas-and-issues.md`, Formulas and issues; the parser is shared), an amp or item may carry
 `<formula field round? unit? qty?>EXPR</formula>` and `<issue field code page?>note</issue>` children, in any order,
 just before its description (`<text>`, an amp's `<narrative>`):
 

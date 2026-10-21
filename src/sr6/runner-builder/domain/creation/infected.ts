@@ -1,5 +1,5 @@
 // The Sixth World Companion's playable Infected (pp. 104–114) and the Awakened flag. An Infected type is a quality whose
-// catalog entry carries <infected> (docs/sr6-data-format.md "Infected rules as data"); the runner is Infected while it has
+// catalog entry carries <infected> (docs/sr6-data-format/kinds.md "Infected rules as data"); the runner is Infected while it has
 // one (actions.ts infect takes, swaps and removes it; career.ts records one bought after creation). From the type: its
 // attribute maxima (its `when="<base>"` attr-max effects, attributes.ts; the non-human vampire's <infectedalt> added to
 // the runner's own), the free physical and mental points (budgets.ts), Essence (essence.ts), Magic and its highest

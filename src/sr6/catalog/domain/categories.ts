@@ -1,4 +1,4 @@
-// An item's category is the title of the table it is printed in (docs/sr6-data-format.md, Categories): the importer
+// An item's category is the title of the table it is printed in (docs/sr6-data-format/categories.md, Categories): the importer
 // writes it on each row (`category="Cyberlimb"`) and one record per category in categories.xml, which links an accessory
 // category to the hosts it fits (`Cyberlimb accessory` fits `Cyberlimb`). A row whose printed name needs its category
 // (a bare part: `Arm (synthetic)`) carries `group`; the app shows `Cyberlimb: Arm (synthetic)`. The printed name stays

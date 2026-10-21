@@ -3,7 +3,7 @@
      the core rulebook prints only in its text, entered by the admin or an editor from their own book, each with an
      optional source and page. Keys and their types: CREATION_KEYS in src/sr6/engine/creation.ts. The app ships the
      standard values in public/data/sr6/creation-defaults.xml; custom/sr6/creation.xml holds the admin's changes.
-     See docs/sr6-data-format.md. -->
+     See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:config:1"
            targetNamespace="urn:chummer-sr6:config:1"

@@ -46,7 +46,7 @@ STRUCTURE = ("slots", "variants", "relevance", "flags", "modonly", "size/ammo", 
 
 
 def structure(rec):
-    """({attribute: value}, [kid]) Commlink6's record gives for the item-structure families (docs/sr6-data-format.md, Item
+    """({attribute: value}, [kid]) Commlink6's record gives for the item-structure families (docs/sr6-data-format/kinds.md, Item
     structure), in the books' words where it has keys (`MILITARY` -> `Military`)."""
     el, attrs = rec["el"], rec["attrs"]
     sets, kids = {}, []

@@ -1,5 +1,5 @@
 // A book sample runner's printed lines as the owner's override file corrects them (the edits layer's <samplefix>,
-// docs/sr6-data-format.md): a value the book misprints (the Face's earbuds at rating 4, CRB p. 85) is set right for the
+// docs/sr6-data-format/kinds.md): a value the book misprints (the Face's earbuds at rating 4, CRB p. 85) is set right for the
 // app's numbers while the runner file keeps the book's. Applied wherever a runner is read (the editor, Your runners, the
 // export); Review notes each correction instead of the error.
 import type { SampleCorrection, Sr6Character, Sr6Purchase } from '../../../formats/domain/character'

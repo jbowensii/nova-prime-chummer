@@ -137,7 +137,7 @@ which the reader skips.
   the ones ruled on; a change to either makes it a new difference, settled again. valuemap writes no override for them.
 - `familymap` writes the structured data (`"gen": "family"`): a weapon's `skill`/`spec`, an armor's `social`, the item
   structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks
-  (docs/sr6-data-format.md, Item structure). Nothing reads the last three: the per-effect metric counts only our own
+  (docs/sr6-data-format/item-structure.md, Item structure). Nothing reads the last three: the per-effect metric counts only our own
   `<effect>`s (`effects_own`).
 - A Commlink6-only record is an entry of ours (importer/sr6/overrides `"gen": "cl6only"` adds), is "already in our data"
   (`relocated.json`) or is in the optional package; only the rule options are not entries, as the app's rule presets.

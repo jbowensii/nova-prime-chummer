@@ -66,7 +66,7 @@ the book's numbers (the book doesn't say)"). None: the table's rules, as before.
 
 `<migrated from to at>` (last): a catalog id the runner named that a re-import renamed, moved or re-kinded, turned into
 the new one when the runner was opened (`from` and `to` are `<kind>/<id>`; the entry's `<alias id kind>`,
-docs/sr6-data-format.md). Purchases and their accessories, picks, martial arts and their techniques, qualities, the lifestyles, the metatype and the ledger's
+docs/sr6-data-format/kinds.md). Purchases and their accessories, picks, martial arts and their techniques, qualities, the lifestyles, the metatype and the ledger's
 lines are turned when the new entry's kind fits the line; a line whose entry is gone with no successor keeps its id and
 its snapshot.
 
@@ -115,7 +115,7 @@ copy". Book entries are never copied here.
 - `<martialart id>` (after the picks): a martial arts style (catalog `martialarts`), with a `<technique id>` (catalog
   `martialtechniques`) for each technique learned under it, its signature one included (Firing Squad p. 97: it comes
   free with the style). `name` on either: the catalog name when added. A file without any reads as none. Edited on the
-  Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format.md), never stored
+  Martial arts tab; a technique's prerequisites are the catalog's (`<requires>`, docs/sr6-data-format/kinds.md), never stored
   here. An `<override>` of a martial arts check has the path `martial.<style uid>` (a missing augmentation's:
   `martial.<style uid>.<technique uid>`).
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles`, `critters` (an owned critter, below) or `ammotypes` (an ammunition type, from a line bought as gear
@@ -139,7 +139,7 @@ copy". Book entries are never copied here.
   "universal">` for its universal mod slots). Later edits to the design never change it; Review warns "Custom design:
   needs GM approval" until a GM approves it (`vehicle.design`, never blocking) unless the snapshot is `approved`. An item's licences are its SINs' (`<sin><licence item>`); an older file's `licensedOn` (the uids of the SINs an item whose Availability prints a licence fee was licensed on) reads as a licence on each of those SINs, and its `licence="bought"` as one on the first SIN (`unlicensed`: none); one naming no SIN of the runner is left out, noted. Neither is written. No `id`: a custom item at the player's own `cost`, `avail` and
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
-  files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
+  files' own format (docs/sr6-data-format/kinds.md), without its description; Export writes it so the line still reads when
   the entry is gone.
 - An owned critter (the Critters tab, src/sr6/runner-builder/domain/assets/critters.ts) is `<purchase kind="critters" id>` naming a catalog
   critter: `pet` the class the player chose, `mundane`, `exotic` or `wild` (absent: mundane; an unknown one is left out,
@@ -213,7 +213,7 @@ the entry its `event` names.
   the text is the reason). An unknown `type` or `op` is refused; repair drops the entry ("Dropped ledger entry 3: …").
 - `op` (advance): `attribute` and `skill` (`target`: the attribute abbreviation or skill id; +1), `spec` and `expertise`
   (`target` skill, `name`), `knowledge`, `quality`, `pick`, `purchase` and `contact` (the line added, as its build
-  element; a `quality`, `pick` or `initiate` whose line is a higher level of a family the runner has, docs/sr6-data-format.md
+  element; a `quality`, `pick` or `initiate` whose line is a higher level of a family the runner has, docs/sr6-data-format/kinds.md
   "Levels", names the lower level's uid in `target`: that line moves to the new level; a `quality` that is an Infected
   type changing the magic kind names the kind it leaves in `magic`, the one before kept as the build's `infectedFrom`),
   `buyoff` and `drop` (`target`:

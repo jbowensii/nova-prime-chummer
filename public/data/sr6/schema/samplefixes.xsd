@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Schema for kind="samplefixes": a book sample runner's printed line corrected (the edits layer only, edits.xsd's
-     <samplefix>; checked alone by the importer's edits). See docs/sr6-data-format.md. -->
+     <samplefix>; checked alone by the importer's edits). See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:data:1"
            targetNamespace="urn:chummer-sr6:data:1"

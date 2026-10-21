@@ -310,7 +310,7 @@ def fits_kind(kind, cls):
 
 def cl6_class(tag, attrs):
     """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a spell, an
-    ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format.md)."""
+    ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format/classification.md)."""
     t, s = attrs.get("type") or "", attrs.get("subtype") or ""
     if tag == "itemenhancement":
         return ""  # (an enhancement of an item is no item class: it has no type of its own)

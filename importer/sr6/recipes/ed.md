@@ -35,7 +35,7 @@ printed page = PDF page − 1 (`PAGE_OFFSET`).
 
 - `Rating x N¥` -> `R*N`; seats `N/N*` (footnote mark set aside) -> sum. Issues: seats `Special`, a defense
   `+N [per rating]` and words in a price are `unreadable`.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Real-book check (local, nothing committed)
 

@@ -21,7 +21,7 @@ pt (the guess reads them).
 ## Formula styles and issues (importer v2)
 
 - No formula styles: the book prints plain numbers. A field it leaves empty gets an `<issue>` (missing).
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Real-book check (local, nothing committed)
 

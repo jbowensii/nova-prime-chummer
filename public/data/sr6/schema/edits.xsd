@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Schema for kind="edits" (custom/sr6/edits/edits.xml): catalog entries edited in the app, full entries of any
-     kind, each with by="<username>" (who saved it; the server sets it). Each replaces the loaded entry with the same id. See docs/sr6-data-format.md. -->
+     kind, each with by="<username>" (who saved it; the server sets it). Each replaces the loaded entry with the same id. See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:data:1"
            targetNamespace="urn:chummer-sr6:data:1"

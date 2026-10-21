@@ -3,7 +3,7 @@
 // Usage: node tools/validate-data.mjs [extra custom dirs...] [--sr6=<SR6 custom dir>...]
 //   (an SR6 dir: its catalog files and creation.xml)
 //   (e.g. tests/fixtures/mini/custom --sr6=tests/fixtures/sr6/custom)
-// A file whose root is <sr6:data> (Shadowrun 6, docs/sr6-data-format.md) is checked against public/data/sr6/schema/
+// A file whose root is <sr6:data> (Shadowrun 6, docs/sr6-data-format/kinds.md) is checked against public/data/sr6/schema/
 // and skips the Anarchy cross-reference checks.
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'

@@ -33,7 +33,7 @@ fiction's at 27 (`HEADING_LEVELS` makes it a chapter of its own, not read).
   stating the rule (`base + R*N`). `N¥ (+N¥ per additional dart)` -> `N + N*(Q - 1)`, unit dart. `N¥ per sensor
   type`, `N¥/pair`, `N¥/glove` -> `Q*N`.
 - Issues: hacks and programs with no avail or price printed (`missing`), rated rows with no range.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Table shapes and value styles (importer v2)
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Schema for kind="ruleoptions" (SR6 catalog: <ruleoption> entries, <remove id> in overlays). See docs/sr6-data-format.md. -->
+<!-- Schema for kind="ruleoptions" (SR6 catalog: <ruleoption> entries, <remove id> in overlays). See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:data:1"
            targetNamespace="urn:chummer-sr6:data:1"

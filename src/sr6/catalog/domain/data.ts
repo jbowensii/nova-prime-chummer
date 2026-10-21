@@ -113,7 +113,7 @@ export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes
   return !m || m.includes(normName(data.metatypes[metatype]?.name ?? ''))
 }
 
-/** An Infected type's gained power or weakness (<power>, <weakness>: docs/sr6-data-format.md, Infected rules as data). */
+/** An Infected type's gained power or weakness (<power>, <weakness>: docs/sr6-data-format/kinds.md, Infected rules as data). */
 export interface Gained {
   tag: 'power' | 'weakness'
   name: string
