@@ -16,7 +16,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer.recipes import crb
 from importer.recipes.common import join_lines, strip_tab
-from importer.recipes.dhsa import parts, slug
+from importer.recipes.amps import parts, slug
 
 CONCEPTS = "GAMECONPTS"  # the GAME CONCEPTS margin tab's letters
 DECOR = re.compile(r"^\*\*(?:\d+|SHADOWRUN|ANARCHY)\*\*$")  # page numbers and running heads
@@ -221,7 +221,7 @@ def attributes(pages):
 def racial_effects(quality):
     """<effect>s of a Racial Quality (importer/effects.py): Low-light or Thermographic vision negate the dark's
     Disadvantage (CRB p.59)."""
-    from importer.recipes.dhsa import Mapper, fx_xml
+    from importer.recipes.amps import Mapper, fx_xml
 
     return fx_xml(Mapper({}).rules(quality))
 

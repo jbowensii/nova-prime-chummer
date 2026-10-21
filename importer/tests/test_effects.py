@@ -5,7 +5,7 @@ import unittest
 from unittest import mock
 
 from importer import effects as fx
-from importer.recipes import dhsa
+from importer.recipes import amps, dhsa
 
 SPECS = {
     ("perception", "physical"): "perception.physical",
@@ -16,7 +16,7 @@ SPECS = {
 
 
 def kinds(sentence, entry=""):
-    return [(r, p, v, st) for r, p, v, _, st in dhsa.Mapper(SPECS).rules(sentence, entry)]
+    return [(r, p, v, st) for r, p, v, _, st in amps.Mapper(SPECS).rules(sentence, entry)]
 
 
 class RulesTest(unittest.TestCase):
@@ -104,7 +104,7 @@ class RulesTest(unittest.TestCase):
 
 class MapperTest(unittest.TestCase):
     def setUp(self):
-        self.m = dhsa.Mapper(SPECS)
+        self.m = amps.Mapper(SPECS)
 
     def test_tests(self):
         self.assertEqual(
@@ -145,7 +145,7 @@ class MapperTest(unittest.TestCase):
             calls.append(self.m.extended)
             return ([], [], 3 if self.m.extended else 1)
 
-        self.assertEqual(dhsa.read_amp(self.m, read, 1)[2], 1)  # the extended reading overshot: read again without it
+        self.assertEqual(amps.read_amp(self.m, read, 1)[2], 1)  # the extended reading overshot: read again without it
         self.assertEqual(calls, [True, False])
         self.assertTrue(self.m.extended)
 
@@ -156,26 +156,26 @@ class MapperTest(unittest.TestCase):
             )
             return fx, [], 12 if self.m.extended else 10
 
-        with mock.patch.object(dhsa, "effect_rating", lambda ref: {"rr-attr": 10, "rr-spec": 2}.get(ref, 0)):
-            fx, _, rating = dhsa.read_amp(self.m, read, 10)
+        with mock.patch.object(amps, "effect_rating", lambda ref: {"rr-attr": 10, "rr-spec": 2}.get(ref, 0)):
+            fx, _, rating = amps.read_amp(self.m, read, 10)
         self.assertEqual(rating, 10)
         self.assertEqual(
             fx, [("rr-attr", "agi", None, None), ("rr-spec", "perception.physical", None, None, {"unpriced": "true"})]
         )
-        self.assertEqual(dhsa.unpriced_rows("made-up-drug", 3, fx)[0]["effects"], "rr-spec:perception.physical")
+        self.assertEqual(amps.unpriced_rows("made-up-drug", 3, fx)[0]["effects"], "rr-spec:perception.physical")
 
     def test_one_init(self):
         f = lambda r, p=None: (r, p, None, None)  # noqa: E731
         self.assertEqual(
-            dhsa.one_init([f("init-1"), f("init-realm", "vr"), f("init-1"), f("init-realm", "vr")]),
+            amps.one_init([f("init-1"), f("init-realm", "vr"), f("init-1"), f("init-realm", "vr")]),
             [f("init-1"), f("init-realm", "vr")],
         )
 
 
 class ItemsAndReferencesTest(unittest.TestCase):
     def test_item_effects(self):
-        m = dhsa.Mapper(SPECS)
-        got = dhsa.item_effects(
+        m = amps.Mapper(SPECS)
+        got = amps.item_effects(
             m,
             "Increases the Armor Rating applicable to both physical and magical attacks by 1 per 4 hits.",
             sustained=True,
@@ -187,15 +187,15 @@ class ItemsAndReferencesTest(unittest.TestCase):
                 ("mental-armor", {"confidence": "low", "switch": "sustained"}),
             ],
         )
-        got = dhsa.item_effects(
+        got = amps.item_effects(
             m, "The effect is identical to the Initiative Enhancement Amps. • 3 hits: +1 Edge per action scene."
         )
         self.assertEqual(sorted({f[0] for f in got}), ["init-1", "init-2", "init-3"])
         self.assertTrue(all(f[4].get("confidence") == "low" for f in got))
 
     def test_who_a_spell_affects(self):
-        m = dhsa.Mapper(SPECS)
-        got = dhsa.item_effects(
+        m = amps.Mapper(SPECS)
+        got = amps.item_effects(
             m,
             "The subject gains an Advantage on Perception (physical) Tests. In case of success, the caster suffers no "
             "Disadvantage from glare.",
@@ -205,7 +205,7 @@ class ItemsAndReferencesTest(unittest.TestCase):
         self.assertEqual(
             [(f[0], f[4].get("affects")) for f in got], [("advantage", "target"), ("no-disadvantage", "caster")]
         )
-        got = dhsa.item_effects(m, "Gain an Advantage on Perception (physical) Tests.", sustained=True, spell=True)
+        got = amps.item_effects(m, "Gain an Advantage on Perception (physical) Tests.", sustained=True, spell=True)
         self.assertEqual([f[4].get("affects") for f in got], ["caster"])  # (no one named: the caster, owner 2026-10-10)
 
     def test_references(self):

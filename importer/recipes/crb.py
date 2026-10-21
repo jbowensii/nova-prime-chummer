@@ -40,7 +40,7 @@ from xml.sax.saxutils import escape
 from importer import CORE_FILES, find_core_file, statblock, use_core
 from importer.recipes import Result
 from importer.recipes.common import join_lines, strip_tab
-from importer.recipes.dhsa import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
+from importer.recipes.amps import (  # same ids ("spell-" + slug, amp slugs) and effect rules as the DHSA recipe
     SKILLS,
     ATTRS,
     Mapper,
@@ -287,7 +287,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
             item = '<item kind="gear"/>'
     if atype == "vehicle":
         chassis = core()["chassis"]
-        m = statblock.VSTATS.search(text)  # shared with the stat blocks (read at call time: statblock imports dhsa)
+        m = statblock.VSTATS.search(text)  # shared with the stat blocks (read at call time: statblock imports amps)
         if m:
             p, b, h, s, a = map(int, m.groups())
             text = text[: m.start()] + text[m.end() :]
@@ -782,7 +782,7 @@ def _pdf(path):
 def _extract(md, report, spells_only=False, pdf=None):
     spells, amps, gear, texts, ids = [], [], [], [], set()
     spell_list = spell_rows(md)
-    mapper = Mapper({} if spells_only else load_skills(dhsa_specs=False)[1])
+    mapper = Mapper({} if spells_only else load_skills()[1])
     for page, fam, names, text in spell_list:
         # what a spell does (its Advantage, armor, initiative): sustained ones are marked so ("(enhancement, S)")
         fx = fx_xml(

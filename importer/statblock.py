@@ -37,7 +37,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 from importer import core_file, mechanics_roots
-from importer.recipes.dhsa import DHSA_SPECS, Mapper, stated
+from importer.recipes.amps import Mapper, stated
 
 ATTRS = ("str", "agi", "wil", "log", "cha")
 ANCHORS = (
@@ -100,7 +100,7 @@ LIMITED = re.compile(r"\bonly\b|first interaction|disadvantage|wears? off|must t
 INFLICTS = re.compile(r"\b(inflicts?|imposes?)\b", re.I)  # a Disadvantage it gives others is no drawback
 # words too common to tie an Equipment amp to an item by name
 LINK_STOP = {"with", "from", "high", "their", "into", "kit", "and", "the"}
-# spec names the booklet uses for a shipped specialization (DHSA's aliases also apply)
+# spec names the booklet uses for a shipped specialization (the amp engine's SPEC_ALIASES also apply)
 SPEC_NAMES = {
     ("engineering", "explosives"): "engineering.demolitions",
     ("piloting", "aerial drones"): "piloting.flying-drones",
@@ -115,7 +115,7 @@ def _slug(s):
 
 
 def load_rules(data=None):
-    """Core mechanics the recipe needs: skills (+ DHSA's specs), amp types and effects, chassis, armor and weapon
+    """Core mechanics the recipe needs: skills, amp types and effects, chassis, armor and weapon
     types, from `data` or the core files (importer.core_dir) plus what imported books add to skills, amp types and
     effects. Never a book catalog."""
 
@@ -131,11 +131,6 @@ def load_rules(data=None):
         skills.setdefault(sid, {"name": s.findtext("name"), "attr": s.get("attr"), "alt": s.get("alt"), "specs": {}})
         skills[sid]["specs"].update({sp.get("id"): sp.get("attr") for sp in s.iter("spec")})
         specs.update({(sid, sp.text.strip().lower()): sp.get("id") for sp in s.iter("spec")})
-    for sk, sp, attr, _, name in DHSA_SPECS:  # the DHSA import adds these; the booklet uses them
-        if sk not in skills:
-            continue
-        skills[sk]["specs"].setdefault(f"{sk}.{sp}", attr)
-        specs[(sk, name.lower())] = f"{sk}.{sp}"
     effects = {
         e.get("id"): {
             "rating": float(e.get("rating")),

@@ -20,7 +20,7 @@ spirit as printed.
 import re
 
 from importer import statblock
-from importer.recipes.dhsa import slug
+from importer.recipes.amps import slug
 
 PAGE_OFFSET = 2  # printed page = PDF page - 2 (crb.PAGE_OFFSET)
 FIRST, LAST = 244, 265  # printed pages of the stat blocks

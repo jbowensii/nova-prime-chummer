@@ -27,7 +27,7 @@ from xml.sax.saxutils import escape
 
 from importer.recipes import Result
 from importer import NoCoreData
-from importer.recipes.dhsa import Mapper, fx_xml, item_effects, load_skills, slug
+from importer.recipes.amps import Mapper, fx_xml, item_effects, load_skills, slug
 
 ID, NAME, PUBLISHER, CANON = "CG", "Shadowrun Anarchy 2.0 Conversion Guide v1.1", "Catalyst Game Labs", True
 SHA256 = ("502259843b7a5645d684b8f8312db7b9baeac669c0bb5912e5debd44746b9876",)  # the owner's v1.1 PDF
