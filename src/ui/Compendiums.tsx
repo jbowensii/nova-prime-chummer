@@ -25,6 +25,7 @@ import {
 } from './CompendiumShell'
 import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
+import { ca2Codec } from '../engine/charxml'
 import { npcRepoFor, useRepo } from './repo'
 import { downloadCompendium } from './Foundry'
 import { SourceLabel } from './SourceLabel'
@@ -156,7 +157,7 @@ function CompendiumPage({
   edit,
   targets,
 }: PageProps<Compendium> & { c: Catalog; g: CompGame<Compendium>; edit?: string }) {
-  const npcs = npcRepoFor(useRepo())
+  const npcs = npcRepoFor(useRepo(), ca2Codec)
   const [copying, setCopying] = useState<Row | null>(null)
   const [q, setQ] = useState('')
   const [form, setForm] = useState<{ kind: FormKind; entry?: Entry } | null>(() => {

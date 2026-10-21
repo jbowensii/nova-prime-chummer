@@ -15,8 +15,10 @@ import { loadCampaigns, type Campaign } from './Campaigns'
 import { listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { editHref } from './editor'
 import { downloadRunners, ExportRunnersDialog } from './Foundry'
-import { arrange, exportCharacter, FindDuplicates, ownerGroups, type SortBy } from './Library'
+import { exportCharacter, FindDuplicates } from './Library'
+import { arrange, ownerGroups, type SortBy } from './runnerList'
 import { Face } from './Portrait'
+import { ca2Codec } from '../engine/charxml'
 import { npcRepoFor, saveAsNew, useRepo, type Stored, type Unreadable } from './repo'
 import { bookNpcs, readCharacterFile, readSample } from './samples'
 import { loadTrash } from './Trash'
@@ -32,7 +34,7 @@ const SECTIONS: Record<Section, { label: string; href: string; kinds: Npc['kind'
 
 export function NpcsScreen({ c, section = 'npcs' }: { c: Catalog; section?: Section }) {
   const runners = useRepo()
-  const repo = useMemo(() => npcRepoFor(runners), [runners])
+  const repo = useMemo(() => npcRepoFor(runners, ca2Codec), [runners])
   const me = useMe()
   const [list, setList] = useState<Stored[] | null>(null)
   const [unreadable, setUnreadable] = useState<Unreadable[]>([])

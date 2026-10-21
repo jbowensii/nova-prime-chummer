@@ -7,6 +7,7 @@ import { newId } from '../model/types'
 import { because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
 import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
 import { saveAsNew, useRepo, type Stored, type Unreadable } from './repo'
+import { arrange, ownerGroups, type SortBy } from './runnerList'
 import { loadTrash } from './Trash'
 import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './Campaigns'
@@ -181,45 +182,8 @@ async function exampleList(sources: Sources, server: boolean): Promise<{ rows: E
   }
 }
 
-export type SortBy = 'az' | 'za' | 'recent'
-/** What the list's sort and search read (a runner of either game). */
-type Listed = Pick<Character, 'identity' | 'updatedAt'>
 const SORT_KEY = 'ca2.library.sort'
 const shownName = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
-/** The A–Z key: street name, else real name; accents, case and punctuation (O'Neil, "Doc") don't count. */
-export const sortKey = (ch: Pick<Character, 'identity'>) =>
-  (ch.identity.streetName || ch.identity.name)
-    .normalize('NFKD')
-    .replace(/[^\p{L}\p{N}\s]/gu, '')
-    .trim()
-    .toLowerCase()
-/** The runner list's order: A–Z (the default), Z–A or newest edit first; unnamed runners last. `q` keeps those whose
- *  street name or real name contains it. */
-export function arrange<T extends Listed>(rows: Stored<T>[], sort: SortBy, q: string): Stored<T>[] {
-  const want = q.trim().toLowerCase()
-  const hit = (s: Stored<T>) => !want || [s.ch.identity.streetName, s.ch.identity.name].some(n => n.toLowerCase().includes(want))
-  const az = (a: Stored<T>, b: Stored<T>) => {
-    const x = sortKey(a.ch),
-      y = sortKey(b.ch)
-    return !x !== !y ? (x ? -1 : 1) : x.localeCompare(y)
-  }
-  const by =
-    sort === 'recent'
-      ? (a: Stored<T>, b: Stored<T>) => b.ch.updatedAt.localeCompare(a.ch.updatedAt) || az(a, b)
-      : sort === 'za'
-        ? (a: Stored<T>, b: Stored<T>) => (!sortKey(a.ch) !== !sortKey(b.ch) ? az(a, b) : az(b, a))
-        : az
-  return rows.filter(hit).sort(by)
-}
-/** Other accounts' runners (the admin's view, an editor's campaigns), one group per owner: every owner with a runner
- *  or with a file that couldn't be read, so nothing is hidden. Rows sorted as the list is. */
-export function ownerGroups<T extends Listed>(others: Stored<T>[], unreadable: Unreadable[], sort: SortBy, q: string) {
-  const groups = new Map<string, { name: string; rows: Stored<T>[]; broken: Unreadable[] }>()
-  const group = (owner: string, name?: string) => groups.get(owner) ?? groups.set(owner, { name: name ?? owner, rows: [], broken: [] }).get(owner)!
-  for (const s of others) group(s.owner!, s.ownerName).rows.push(s)
-  for (const u of unreadable) group(u.owner!, u.ownerName).broken.push(u)
-  return [...groups].map(([owner, g]) => ({ owner, ...g, rows: arrange(g.rows, sort, q) }))
-}
 
 export { initial } from './Portrait'
 

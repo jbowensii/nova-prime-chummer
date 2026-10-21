@@ -5,6 +5,7 @@
 import { createElement } from 'react'
 import { expect, test, vi } from 'vitest'
 import { CatalogEdits, EditButton, EntryForm } from '../../src/ui/EditEntry'
+import { ca2Codec } from '../../src/engine/charxml'
 import { RepoContext, serverRepo } from '../../src/ui/repo'
 import { cat } from '../helpers'
 import { button, change, click, field, hasButton, mount, pageText, stubFetch } from './dom'
@@ -25,7 +26,7 @@ test('on the server, Edit opens the form; the change goes to the edits layer and
   await mount(
     createElement(
       RepoContext.Provider,
-      { value: serverRepo() },
+      { value: serverRepo(ca2Codec) },
       createElement(CatalogEdits, { c: cat, reload }, createElement(EditButton, { kind: 'items', id: 'test.nano-tape', name: 'Nano Tape' })),
     ),
   )

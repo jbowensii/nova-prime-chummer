@@ -8,6 +8,7 @@ import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
 import { Me, type User } from '../../src/ui/auth'
 import { Library } from '../../src/ui/Library'
+import { ca2Codec } from '../../src/engine/charxml'
 import { RepoContext, serverRepo } from '../../src/ui/repo'
 import { listCharacters, saveCharacter } from '../../src/ui/storage'
 import { cat } from '../helpers'
@@ -123,7 +124,9 @@ test('on the server: an unreadable file is listed and repaired, another account�
     [/\/api\/campaigns$/, () => [camp]],
     [/\/api\/books$/, () => [{ id: 'B' }]],
   ])
-  await mount(createElement(Me.Provider, { value: admin }, createElement(RepoContext.Provider, { value: serverRepo() }, createElement(Library, { c: cat }))))
+  await mount(
+    createElement(Me.Provider, { value: admin }, createElement(RepoContext.Provider, { value: serverRepo(ca2Codec) }, createElement(Library, { c: cat }))),
+  )
   expect(pageText()).toMatch(/Couldn’t open Made-up Broken/)
   expect(document.querySelector('section[aria-label="Made-up Pat’s runners"]')?.textContent).toMatch(/Made-up Theirs/)
   expect(pageText()).toMatch(/My runners/)

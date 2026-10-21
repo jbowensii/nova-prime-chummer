@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { PageHeader } from './nav'
 import { loadCatalog } from '../engine'
+import { ca2Codec } from '../engine/charxml'
 import { detectRepo, migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
@@ -73,7 +74,7 @@ function Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [moved, setMoved] = useState(0)
-  const npcs = useMemo(() => npcRepoFor(repo), [repo])
+  const npcs = useMemo(() => npcRepoFor(repo, ca2Codec), [repo])
   // on the server the compendiums join the catalog (a failed list loads it without them): staff get those they can read,
   // players the ones shared with the table and their campaigns (no NPCs; a runner sees its own campaign's, EditorView.tsx)
   const staff = repo.mode === 'server' && canEdit(me),
@@ -254,7 +255,7 @@ export default function App() {
   })
 
   useEffect(() => {
-    detectRepo().then(async r => {
+    detectRepo(ca2Codec).then(async r => {
       setMe(r.mode === 'server' ? await fetchMe() : { user: null, setup: false })
       setRepo(r)
     })

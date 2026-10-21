@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { rootAttr, serverRepo, type Codec } from '../../src/ui/repo'
+import type { Codec } from '../../src/shared/types'
+import { rootAttr, serverRepo } from '../../src/ui/repo'
 
 // a toy game: <toy:doc id=".." name=".."/>; "bad" in the file makes it unreadable
 interface Toy {
@@ -36,7 +37,7 @@ test('serverRepo with a codec: lists, gets by the codec’s root id, saves its X
       ]),
     )
   })
-  const repo = serverRepo<Toy>('/', 'toy/characters', toy)
+  const repo = serverRepo<Toy>(toy, '/', 'toy/characters')
   const all = await repo.listAll()
   expect(all.stored).toEqual([{ ch: { id: 'z1', name: 'Zip' }, rev: 7, file: 'zip.xml', owner: 'pat', ownerName: undefined }])
   expect(all.unreadable).toMatchObject([{ file: 'bad.xml', error: 'bad toy', name: 'Broke' }])

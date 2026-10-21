@@ -38,3 +38,10 @@ export interface Violation {
 
 /** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
 export const newId = (): string => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+
+/** One game's file format: its root tag (`rootAttr`), writer and reader. */
+export interface Codec<T> {
+  tag: string
+  toXml(doc: T): string
+  fromXml(xml: string): { ok: true; character: T } | { ok: false; reason: string }
+}
