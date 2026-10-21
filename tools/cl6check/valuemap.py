@@ -7,7 +7,7 @@ and the reviewers could not confirm is Commlink6's):
 --runs: our catalogs; a row's "kind" is then the kind file OUR entry is in (the override only looks there first)
 
 Every `counted` field difference (class a, b or c) becomes an id row `{"cl6", "kind", "id", "set": {...}, "formula"?,
-"gen": "value"}` (importer/sr6/overrides.py applies it) unless:
+"gen": "value"}` (importer/sr6/overrides/ applies it) unless:
 - value_keep.json lists it under "keep": the book prints our value and gossipcat's reviewers (gemini, gpt, opus) all
   confirmed it, 100% certain, from the PDF page;
 - value_keep.json lists it under "hold": left for the owner (a per-rating item, a variant's value ...), with why;

@@ -262,8 +262,7 @@ class BookRowReplaceTest(unittest.TestCase):
     def test_every_drop_of_a_shipped_row_names_its_effect(self):
         import glob
         import json
-        import os
-        for f in glob.glob(os.path.join(os.path.dirname(overrides.__file__), "overrides", "*.book.json")):
+        for f in glob.glob(str(overrides.DIR / "*.book.json")):
             for r in json.load(open(f, encoding="utf8")):
                 for d in r.get("drops", []):
                     self.assertTrue(d.get("target") and d.get("op"), (f, r.get("id")))

@@ -20,5 +20,5 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
 - `src/sr6/catalog/domain/structure.ts` `structureOf(entry)` reads them all.
 Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` writes the id rows `{"id", "set", "kids", "gen":
 "family"}` of the per-book tables from the Commlink6 record of each entry with a difference in that family; applied by
-`overrides.py` after the import (a child the entry already has is not added twice). An entry several Commlink6 records match
+`overrides/` after the import (a child the entry already has is not added twice). An entry several Commlink6 records match
 (a rated item's levels) gets the union.

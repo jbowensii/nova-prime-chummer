@@ -870,7 +870,7 @@ class OwnerVariantSplitsTest(unittest.TestCase):
 
 
 class ErrataRowsTest(unittest.TestCase):
-    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides.py): an errata's values win over Commlink6's and the book's."""
+    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides/): an errata's values win over Commlink6's and the book's."""
     XML = ('<?xml version="1.0"?>\n<d kind="augmentations">'
            '<augmentation id="zz-eyes-5" source="ZZ" page="9" rating="5" avail="15" cost="900"><name>Zeyes (Rating 5)</name>'
            '<formula field="avail">tier(R; 5: 15; 6: 18)</formula><issue field="cost" code="ambiguous"/></augmentation>'

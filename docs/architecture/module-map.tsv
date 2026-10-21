@@ -196,7 +196,10 @@ importer/sr6/ids.py	sr6/book-import	117
 importer/sr6/layout.py	sr6/book-import	10243
 importer/sr6/lifemodules.py	sr6/book-import	3348
 importer/sr6/moved.py	sr6/book-corrections	2866
-importer/sr6/overrides.py	sr6/book-corrections	8754
+importer/sr6/overrides/__init__.py	sr6/book-corrections	3184
+importer/sr6/overrides/rules.py	sr6/book-corrections	1399
+importer/sr6/overrides/schema.py	sr6/book-corrections	681
+importer/sr6/overrides/xmlops.py	sr6/book-corrections	3843
 importer/sr6/overrides/aw.json	sr6/book-corrections	1708
 importer/sr6/overrides/bn.book.json	sr6/book-corrections	695
 importer/sr6/overrides/bn.json	sr6/book-corrections	3500
