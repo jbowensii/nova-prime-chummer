@@ -351,5 +351,6 @@
   {"cl6": "Hitches: Trailer Hitch", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "name": "Hitches: Trailer Hitch", "attrs": {"category": "Chassis mod", "slots": "1", "avail": "2", "cost": "400", "class": "MOD_HARD/MOD_OTHERS"}}},
   {"cl6": "Hitches: Universal Connector", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "name": "Hitches: Universal Connector", "attrs": {"category": "Chassis mod", "slots": "1", "avail": "2", "cost": "600", "class": "MOD_HARD/MOD_OTHERS"}}},
   {"cl6": "Hitches: Fith Wheel", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "name": "Hitches: Fifth Wheel", "attrs": {"category": "Chassis mod", "slots": "2", "avail": "3", "cost": "900", "class": "MOD_HARD/MOD_OTHERS"}}},
-  {"cl6": "Hitches: Construction Equipment", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "name": "Hitches: Construction Equipment", "attrs": {"category": "Chassis mod", "slots": "3", "avail": "5", "cost": "2000", "class": "MOD_HARD/MOD_OTHERS"}}}
+  {"cl6": "Hitches: Construction Equipment", "kind": "gear", "gen": "cl6only", "add": {"page": 1, "name": "Hitches: Construction Equipment", "attrs": {"category": "Chassis mod", "slots": "3", "avail": "5", "cost": "2000", "class": "MOD_HARD/MOD_OTHERS"}}},
+  {"cl6": "Hitches: Fith Wheel", "kind": "gear", "ours": ["Hitches: Fifth Wheel"]}
 ]
