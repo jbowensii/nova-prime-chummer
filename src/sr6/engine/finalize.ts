@@ -2,7 +2,7 @@
 // ledger with a finalize entry (the balances run from it, src/sr6/engine/career.ts). Back to draft works only while the
 // ledger holds nothing live to undo since then; the old entries stay as history and the next Finalize starts again.
 import { newId, type Violation } from '../../core/shared/types'
-import type { Sr6Character } from '../model/character'
+import type { Sr6Character } from '../formats/domain/character'
 import type { Sr6Budgets } from './budgets'
 import { canDraft } from './career'
 import { canFinalizeSr6 } from './rules'

@@ -1,7 +1,7 @@
 // Contacts at creation: the contact points Charisma gives, and the expanded rules' karma.
-import type { Sr6Build } from '../model/character'
-import { flag, n0, num, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import type { Sr6Build } from '../formats/domain/character'
+import { flag, n0, num, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
 import { contactSpend, pool, type Budget, type Provider } from './providers'
 import { augmentedRating } from './attributes'
 

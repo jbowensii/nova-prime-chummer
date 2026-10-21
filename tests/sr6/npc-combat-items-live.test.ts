@@ -5,10 +5,10 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
-import { xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { exportNpc } from '../../src/sr6/engine/export'
-import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
+import { xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { exportNpc } from '../../src/sr6/foundry/domain/export'
+import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/catalog/domain/load'
 import { splitThings } from '../../src/sr6/engine/npc'
 
 const LIVE = process.env.SR6_LIVE

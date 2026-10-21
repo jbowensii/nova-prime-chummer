@@ -5,8 +5,8 @@ import { expect, test } from 'vitest'
 import { allBudgets } from '../../src/sr6/engine/budgets'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { blankSr6, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
 const DERIVED = { monitorBase: 9, monitorDivisor: 3, initiativeDice: 2, astralInitiativeDice: 3, specDice: 4, expertiseDice: 5, untrainedPenalty: 2 }

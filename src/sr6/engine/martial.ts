@@ -1,11 +1,11 @@
 // Martial arts (Firing Squad p. 97): a style is bought with karma (karmaMartialArt) and comes with its signature
 // technique free; any other technique of one of the style's categories, or of the General category, is bought
 // separately (karmaTechnique). No limit on styles; each technique is learned once, whichever style it was learned under.
-import type { Sr6Build, Sr6MartialArt, Sr6Purchase, Sr6Technique } from '../model/character'
-import type { Sr6Entry } from '../model/types'
-import { entryLabel } from './categories'
-import { num, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import type { Sr6Build, Sr6MartialArt, Sr6Purchase, Sr6Technique } from '../formats/domain/character'
+import type { Sr6Entry } from '../formats/domain/types'
+import { entryLabel } from '../catalog/domain/categories'
+import { num, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
 
 /** Where the rules are printed: Review's martial-arts checks cite it. */
 export const MARTIAL_CITE = { source: 'FS', page: 97 }

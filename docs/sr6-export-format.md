@@ -5,7 +5,7 @@ One JSON file of Shadowrun 6 runners, NPCs or book data, read by the Foundry VTT
 runner file (`docs/sr6-character-format.md`), which stays the format the app stores, and from Anarchy's export
 (`docs/export-format.md`): each Foundry module refuses the other game's file. The schema is
 `public/data/schema/sr6-export.schema.json` (JSON Schema draft 2020-12, `$id` `urn:chummer-sr6:export:1`); the module ships
-the same file. The producer is `src/sr6/engine/export.ts`.
+the same file. The producer is `src/sr6/foundry/domain/export.ts`.
 
 Two kinds, told apart by `kind`:
 
@@ -230,7 +230,7 @@ updated with it.
 ## Example
 
 The module's samples (`samples/test-*.json` in `chummer-sr6-foundry`) are written by Chummer's own tests from made-up data:
-`WRITE_SR6_SAMPLES=<dir> npx vitest run tests/sr6/export.test.ts` (`tests/sr6/samples.ts`). A made-up purchase:
+`WRITE_SR6_SAMPLES=<dir> npx vitest run tests/sr6/foundry/export.test.ts` (`tests/sr6/samples.ts`). A made-up purchase:
 
 ```json
 {

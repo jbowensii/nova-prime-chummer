@@ -2,8 +2,8 @@
 // recorded spends. Aliases are added to the made-up fixture here.
 import { expect, test } from 'vitest'
 import { migrateSr6Ids } from '../../src/sr6/engine/migrate'
-import { blankBuild, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../src/sr6/model/character'
-import { fixtureCatalog } from './fixture'
+import { blankBuild, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../src/sr6/formats/domain/character'
+import { fixtureCatalog } from './catalog/fixture'
 
 const ALIAS: Record<string, [string, string]> = {
   // file → [text to follow, alias]

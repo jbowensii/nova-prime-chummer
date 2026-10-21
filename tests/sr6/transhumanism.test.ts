@@ -7,9 +7,9 @@ import { essenceBudget, essenceHole } from '../../src/sr6/engine/essence'
 import { karmaBudget } from '../../src/sr6/engine/karma'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Purchase } from '../../src/sr6/model/character'
-import { n0, presetChanges } from '../../src/sr6/engine/creation'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { n0, presetChanges } from '../../src/sr6/table-setup/domain/creation'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const line = (id: string, kind: Sr6Purchase['kind']): Sr6Purchase => ({ uid: id, kind, id, qty: 1, accessories: [] })
 const on = { rules: { transhumanism: true } }

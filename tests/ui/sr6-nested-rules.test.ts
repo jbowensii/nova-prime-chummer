@@ -1,14 +1,14 @@
-// Table setup's creation rules form (src/sr6/ui/Creation.tsx): nine foldable sections, a real switch for every on/off rule,
+// Table setup's creation rules form (src/sr6/table-setup/ui/Creation.tsx): nine foldable sections, a real switch for every on/off rule,
 // nested optional rules with a child row under its parent, greyed and disabled with "needs …" while the parent is off; of two
 // rules that can't be on together, the second is disabled and says why. The standard values in grey, a changed one marked, Reset
 // section, the search box. Made-up fixture.
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, test } from 'vitest'
-import { CreationForm } from '../../src/sr6/ui/Creation'
-import { SECTIONS } from '../../src/sr6/ui/creationLayout'
-import { rulesFrom } from '../../src/sr6/engine/creation'
-import { fixtureCatalog, made } from '../sr6/fixture'
+import { CreationForm } from '../../src/sr6/table-setup/ui/Creation'
+import { SECTIONS } from '../../src/sr6/table-setup/ui/creationLayout'
+import { rulesFrom } from '../../src/sr6/table-setup/domain/creation'
+import { fixtureCatalog, made } from '../sr6/catalog/fixture'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null

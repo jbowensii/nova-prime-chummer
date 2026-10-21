@@ -5,13 +5,13 @@
 // warns that it isn't set). Never NaN.
 // The figures live in the modules re-exported here; this one holds the nuyen budget (purchases, lifestyles, SINs and
 // licences, data structures, the karma turned into nuyen) and adds every budget at once.
-import { SR6_ATTRS, sinName, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Sin } from '../model/character'
-import { flag, n0, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Sr6Data } from './data'
-import { normName } from './names'
+import { SR6_ATTRS, sinName, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Sin } from '../formats/domain/character'
+import { flag, n0, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, type Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
-import { bookValue, dataFind } from './values'
-import { entryLabel } from './categories'
+import { bookValue, dataFind } from '../catalog/domain/values'
+import { entryLabel } from '../catalog/domain/categories'
 import { entryOf, licenceFee, priced, purchaseTab } from './purchases'
 import { essenceBudget } from './essence'
 import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints } from './magic'

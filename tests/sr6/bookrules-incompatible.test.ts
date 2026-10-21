@@ -3,10 +3,10 @@
 // wireless exception is a note; the Sixth World Companion's Suprathyroid Bonuses Stack (p. 149) exempts the gland. Every
 // entry here is made up.
 import { expect, test } from 'vitest'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 const AUG = `<augmentation id="crb.zap-reflexes" source="CRB" page="287" type="cyberware" essence="1" avail="2" cost="1"><name>Zap Reflexes 2</name><effect target="attr:rea" op="add" value="2" switch="activated"/><incompatible targets="attr:rea derived:initiative-dice"/><compatible name="zip enhancers" switch="wireless"/><text/></augmentation>
   <augmentation id="crb.zip-enhancers" source="CRB" page="287" type="cyberware" essence="1" avail="2" cost="1"><name>Zip Enhancers</name><effect target="attr:rea" op="add" value="1"/><incompatible targets="attr:rea" names="zap reflexes"/><compatible name="zap reflexes" switch="wireless"/><text/></augmentation>

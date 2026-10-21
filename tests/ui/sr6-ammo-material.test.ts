@@ -2,11 +2,11 @@
 // off again, kept in the saved file. Invented material and factor on the made-up fixture.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
-import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/fixture'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { Sr6EditorView } from '../../src/sr6/shell/ui/EditorView'
+import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/catalog/fixture'
 import { button, change, click, fakeStore, field, mount, option, pageText, stubFetch } from './dom'
 
 const MATERIALS = {

@@ -3,11 +3,11 @@
 // counts replacing the standard ones while on, street-level's no illegal gear but cyberdecks, elite's no Availability
 // cap. All off by default. The fixture's catalog and every number here are made up.
 import { expect, test } from 'vitest'
-import { levelRules, runnerRules, type CreationValue } from '../../src/sr6/engine/creation'
+import { levelRules, runnerRules, type CreationValue } from '../../src/sr6/table-setup/domain/creation'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const rules = (r: Record<string, CreationValue>) => made({ rules: r })
 

@@ -3,10 +3,10 @@
 // buy's character points and lifepath's modules show only for their method; pools a method doesn't use are left out.
 // In career only the ledger's karma and nuyen (linking to the Ledger tab) and the current build's Essence.
 import { balances } from '../engine/career'
-import { num } from '../engine/creation'
-import { MAGIC_KINDS } from '../engine/data'
+import { num } from '../table-setup/domain/creation'
+import { MAGIC_KINDS } from '../catalog/domain/data'
 import type { Budget } from '../engine/budgets'
-import { MAGIC_KIND_LABELS, SR6_METHOD_LABELS } from '../model/character'
+import { MAGIC_KIND_LABELS, SR6_METHOD_LABELS } from '../formats/domain/character'
 import { n, sr6EditHref, useSr6Editor } from './editor'
 import { Sr6Ref } from './EntryRef'
 import { SidePanel } from '../../core/shared/ui'

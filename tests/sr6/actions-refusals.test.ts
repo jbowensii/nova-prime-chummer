@@ -2,9 +2,9 @@
 // out (specializations past the first, notes, level changes, mentor spirits, SIN and licence edits, seats…).
 import { expect, test } from 'vitest'
 import { apply, opposite, setMagic, type Op } from '../../src/sr6/engine/actions'
-import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/model/character'
+import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/formats/domain/character'
 import { critterOnly } from '../../src/sr6/engine/critterware'
-import { buildOf, GLIM, made } from './fixture'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
 function runner(o: { method?: Sr6Method; magic?: MagicKind; over?: Over } = {}) {

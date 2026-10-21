@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Made-up SR6 gear with formulas and issues (tests/sr6/issues.test.ts, e2e/issues-formulas.spec.ts). No book text. -->
+<!-- Made-up SR6 gear with formulas and issues (tests/sr6/catalog/issues.test.ts, e2e/issues-formulas.spec.ts). No book text. -->
 <sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1">
   <gear id="crb.flare-kit" source="CRB" page="270" category="survival" rating="1–6" avail="2" cost="Rating × 200"><name>Flare Kit</name><formula field="cost">R * 200</formula><text/></gear>
   <gear id="crb.null-box" source="CRB" page="271" category="survival" cost="150"><name>Null Box</name><issue field="avail" code="missing" page="91">no availability printed</issue><text/></gear>

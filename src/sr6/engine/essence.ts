@@ -1,7 +1,7 @@
 // Essence spent on augmentations, and the Magic or Resonance it takes off.
-import type { Sr6Build, Sr6Purchase } from '../model/character'
-import { flag, n0, num, str, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
+import type { Sr6Build, Sr6Purchase } from '../formats/domain/character'
+import { flag, n0, num, str, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
 import { pool, type Budget } from './providers'
 import { entryOf, priced, round2 } from './purchases'
 import { infectedEssence } from './infected'

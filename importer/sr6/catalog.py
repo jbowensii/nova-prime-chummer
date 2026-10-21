@@ -135,7 +135,7 @@ _LICENCE = re.compile(r"\s*(?:(.+?)\s*,\s+)?(?:\d{1,3}(?:,\d{3})+|\d+)\s*¥\s*")
 
 
 def readable(v):
-    """True when the app can read the value (src/sr6/engine/values.ts rated()): a dash, a number or a formula of
+    """True when the app can read the value (src/sr6/catalog/domain/values.ts rated()): a dash, a number or a formula of
     numbers, Rating (or Capacity, Force, Level: the rating the item is bought at), + × x * / ^ and parentheses, with an
     optional leading + (an add-on's price) and a legality suffix."""
     if v.strip() in ("", "—"):

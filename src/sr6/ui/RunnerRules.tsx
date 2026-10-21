@@ -3,11 +3,11 @@
 // the runner is built with and where it comes from (server, campaign, the runner, or locked by the campaign's GM); a
 // locked one can't be changed here. Stored on the runner (Sr6Character.rules, creation.ts runnerRules); none: the table's.
 import { useState } from 'react'
-import { aboutOf, blockedBy, CREATION_KEYS, isOn, keyType, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../engine/creation'
-import { RuleWhy } from './Creation'
-import { ruleKind, splitLabel } from './creationLayout'
-import { RuleSearch, RuleSections, type RuleItem } from './RuleSections'
-import type { Sr6Character } from '../model/character'
+import { aboutOf, blockedBy, CREATION_KEYS, isOn, keyType, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../table-setup/domain/creation'
+import { RuleWhy } from '../table-setup/ui/Creation'
+import { ruleKind, splitLabel } from '../table-setup/ui/creationLayout'
+import { RuleSearch, RuleSections, type RuleItem } from '../table-setup/ui/RuleSections'
+import type { Sr6Character } from '../formats/domain/character'
 import { useSr6Editor } from './editor'
 
 const META = new Map(CREATION_KEYS.map(k => [k.key, k])),

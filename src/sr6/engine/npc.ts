@@ -1,12 +1,12 @@
 // SR6 NPCs (S3): a grunt, contact, critter, spirit or sprite is an SR6 runner file with an <npc> block and a blank build. Its stat
 // block is a copy of the catalog entry's printed values and its rating (Professional Rating, Force or Level), read at
 // that rating with formula(); its skills line gives dice pools against the catalog's skills. No book numbers here.
-import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
-import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
-import type { Sr6Data } from './data'
-import { matchKey, nameRatio, normName, quickRatio } from './names'
-import { atLevel } from './levels'
-import { formula, rated } from './values'
+import { blankSr6, SR6_NPC_PARTS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../formats/domain/character'
+import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../formats/domain/types'
+import type { Sr6Data } from '../catalog/domain/data'
+import { matchKey, nameRatio, normName, quickRatio } from '../catalog/domain/names'
+import { atLevel } from '../catalog/domain/levels'
+import { formula, rated } from '../catalog/domain/values'
 
 export const NPC_KINDS: Record<
   Sr6NpcKind,

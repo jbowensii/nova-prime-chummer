@@ -4,11 +4,11 @@
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
 import { attrMax, qualityKarma } from '../../src/sr6/engine/budgets'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { baseMetatype, infectedTypes } from '../../src/sr6/engine/infected'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation } from './fixture'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation } from './catalog/fixture'
 
 const mt = (id: string, name: string) =>
   `<metatype id="crb.${id}" source="CRB" page="41"><name>${name}</name>` +

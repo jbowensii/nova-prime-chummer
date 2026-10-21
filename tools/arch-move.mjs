@@ -1,6 +1,6 @@
 // Moves src files into the module folders of docs/architecture/README.md ("Target layout"), one batch of modules at a
 // time, with `git mv` (history follows). Re-runnable: a file already at its target is left alone.
-// Usage: node tools/arch-move.mjs --only core/ [--dry-run]
+// Usage: node tools/arch-move.mjs --only core/ [--except sr6/runner-builder] [--dry-run]
 // It moves each src file docs/architecture/module-map.tsv gives a module under the prefix, and that module's tests
 // (tests/<folder>/*.ts, not tests/server or tests/fixtures) to tests/<module>/; then it rewrites every relative
 // import/export/import() specifier that points at a moved file (or from one), and every exact repo path of a moved file
@@ -37,6 +37,9 @@ export function clashes(rows) {
   return new Set(rows.filter(([path, mod]) => seen.get(`${mod}/${posix.basename(path)}`) > 1).map(([path]) => path))
 }
 
+/** Is a file of module `mod` in this batch: under the `only` prefix, and not under the `except` prefix (if given). */
+export const selected = (mod, only, except = '') => mod.startsWith(only) && !(except && mod.startsWith(except))
+
 const SUFFIXES = ['', '.ts', '.tsx', '.d.ts', '/index.ts', '/index.tsx', '.mjs', '.js']
 
 /** The specifier `file` should use for `spec` once `moves` (old -> new repo path) are done, or undefined if unchanged. */
@@ -62,8 +65,9 @@ function main() {
   const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const args = process.argv.slice(2)
   const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : ''
+  const except = args.includes('--except') ? args[args.indexOf('--except') + 1] : ''
   const dry = args.includes('--dry-run')
-  if (!only) throw new Error('usage: node tools/arch-move.mjs --only <module prefix, e.g. core/> [--dry-run]')
+  if (!only) throw new Error('usage: node tools/arch-move.mjs --only <module prefix, e.g. core/> [--except <prefix>] [--dry-run]')
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 })
   const tracked = new Set(git('ls-files', '-z').split('\0').filter(Boolean))
   const at = p => resolve(ROOT, p)
@@ -76,7 +80,7 @@ function main() {
   const moves = new Map()
   const clash = clashes(rows)
   for (const [path, mod, , sub] of rows) {
-    if (!mod.startsWith(only) || !tracked.has(path)) continue
+    if (!selected(mod, only, except) || !tracked.has(path)) continue
     const to = target(path, mod, sub, clash.has(path))
     if (to === path) continue
     if (tracked.has(to) || [...moves.values()].includes(to)) throw new Error(`${path} -> ${to}: the target is taken`)

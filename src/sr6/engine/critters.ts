@@ -9,13 +9,13 @@
 // critter powers innate, never priced (owner rule);
 // critterware on Body 2 or more, +10% a point of natural Body over 8, Essence loss taking Magic or Resonance (Body Shop
 // pp. 135, 140). Past a limit is a Review warning, never refused.
-import type { PetClass, Sr6CritterQuality, Sr6CritterTrained, Sr6Purchase } from '../model/character'
-import type { Sr6Entry } from '../model/types'
-import type { Sr6Data } from './data'
-import type { Sr6QualityView } from './types'
-import { entryLabel } from './categories'
-import { normName } from './names'
-import { legality, rated } from './values'
+import type { PetClass, Sr6CritterQuality, Sr6CritterTrained, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Entry } from '../formats/domain/types'
+import type { Sr6Data } from '../catalog/domain/data'
+import type { Sr6QualityView } from '../catalog/domain/types'
+import { entryLabel } from '../catalog/domain/categories'
+import { normName } from '../catalog/domain/names'
+import { legality, rated } from '../catalog/domain/values'
 
 export type CritterClass = PetClass | 'awakened' | 'emerged'
 /** Wild Life p. 180's CRITTER rows by their printed names; the OPTIONS rows. */

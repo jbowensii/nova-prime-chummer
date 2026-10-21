@@ -8,14 +8,14 @@
 // The numbers each option and modification changes are the book's rules (pp. 151-153), by the part's name: the catalog
 // keeps each part's cost and maximum, not its effect. A part the app has no rule for counts its Design Points only.
 import { newId } from '../../core/shared/types'
-import type { Sr6Character, Sr6Design, Sr6Purchase } from '../model/character'
-import type { Sr6Entry, Sr6Part } from '../model/types'
-import { entryLabel } from './categories'
-import type { CreationRules } from './creation'
-import type { Sr6Data } from './data'
-import { normName } from './names'
+import type { Sr6Character, Sr6Design, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Entry, Sr6Part } from '../formats/domain/types'
+import { entryLabel } from '../catalog/domain/categories'
+import type { CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { entryOf, priced, ratingOf } from './purchases'
-import { availability, bookValue, dataFind, legality } from './values'
+import { availability, bookValue, dataFind, legality } from '../catalog/domain/values'
 
 export type DesignPart = 'chassis' | 'powertrain' | 'console' | 'size' | 'option' | 'modification' | 'quality'
 /** A vehicledesign entry's part of a design: its table (by its category, the table's first header: `chassis type`), else

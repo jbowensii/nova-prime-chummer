@@ -1,7 +1,7 @@
 // Grades: the pickers' options and the reasons a grade cannot go on a line (src/sr6/engine/grades.ts).
 import { expect, test } from 'vitest'
 import { gradeKnown, gradeOptions, gradeProblem, gradesFor } from '../../src/sr6/engine/grades'
-import { made } from './fixture'
+import { made } from './catalog/fixture'
 
 const cyber = () => made().data.entry('augmentations', 'crb.glow-eyes')!
 const bio = () => made().data.entry('augmentations', 'crb.spring-tendons')!

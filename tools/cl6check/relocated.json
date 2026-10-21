@@ -862,25 +862,25 @@
       "src": "crb",
       "cl6_id": "core",
       "our_id": "creation.preset.core",
-      "note": "Standard: Standard preset: the shipped standard values (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+      "note": "Standard: Standard preset: the shipped standard values (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
     },
     {
       "src": "crb",
       "cl6_id": "core_seattle",
       "our_id": "creation.preset.core_seattle",
-      "note": "Standard (Seattle): Rule preset Standard (Seattle): meleeArStrength (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+      "note": "Standard (Seattle): Rule preset Standard (Seattle): meleeArStrength (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
     },
     {
       "src": "crb",
       "cl6_id": "srm",
       "our_id": "creation.preset.srm",
-      "note": "Shadowrun Missions: Rule preset Shadowrun Missions (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+      "note": "Shadowrun Missions: Rule preset Shadowrun Missions (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
     },
     {
       "src": "crb",
       "cl6_id": "houserules",
       "our_id": "creation.preset.houserules",
-      "note": "Configurable: Rule preset Configurable (RULE_PRESETS in src/sr6/engine/creation.ts, Table setup)"
+      "note": "Configurable: Rule preset Configurable (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
     }
   ]
 }

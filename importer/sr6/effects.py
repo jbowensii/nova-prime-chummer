@@ -3029,7 +3029,7 @@ def _num(x):
 
 
 def _at_level(v, n):
-    """An effect value counted per rating at level n, in the forms the app reads (src/sr6/engine/effects.ts effectValue): `R`, `-R`,
+    """An effect value counted per rating at level n, in the forms the app reads (src/sr6/catalog/domain/effects.ts effectValue): `R`, `-R`,
     `R*2`, `2*R`, `R-1`, `R*2-2`, `R[1,1,2]`, each side of an on-road/off-road pair `R/-R`; a value with no rating as it is
     (`2`, `edg/2`, `hits`); None for a rating in any other form."""
     s = (v or "").replace(" ", "")

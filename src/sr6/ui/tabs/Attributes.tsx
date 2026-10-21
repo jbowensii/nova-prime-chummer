@@ -3,9 +3,9 @@
 // attribute's name shows its card on hover, focus or tap (EntryRef.tsx Sr6AttrRef: what raises it, its max, the rule).
 import { Stepper } from '../../../core/ui-kit/bits'
 import { br } from '../../print/view'
-import { num } from '../../engine/creation'
-import { MAGIC_KINDS } from '../../engine/data'
-import { CORE_ATTRS, type Sr6Attr } from '../../model/character'
+import { num } from '../../table-setup/domain/creation'
+import { MAGIC_KINDS } from '../../catalog/domain/data'
+import { CORE_ATTRS, type Sr6Attr } from '../../formats/domain/character'
 import { ATTR_NAMES, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { attrRange, Sr6AttrRef } from '../EntryRef'

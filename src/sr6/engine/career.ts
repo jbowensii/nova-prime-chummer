@@ -19,7 +19,7 @@ import {
   type Sr6LedgerEntry,
   type Sr6Purchase,
   type Sr6Quality,
-} from '../model/character'
+} from '../formats/domain/character'
 import {
   aptitudeSkills,
   attrMax,
@@ -39,16 +39,16 @@ import {
   skillRank,
   toNuyen,
 } from './budgets'
-import { cite, flag, num, type CreationRules } from './creation'
-import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
+import { cite, flag, num, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from '../catalog/domain/data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
 import { CAREER_KEEP, validateSr6 } from './rules'
-import { bookValue, dataFind, ratingRange } from './values'
-import { entryLabel } from './categories'
+import { bookValue, dataFind, ratingRange } from '../catalog/domain/values'
+import { entryLabel } from '../catalog/domain/categories'
 import { critterOnly, infectedOff, infectedQuality } from './critterware'
 import { critterQualityKarma, isCritterQuality, taughtPrice, TRAINED_LABELS, trainedWhat } from './critters'
-import type { Sr6QualityView } from './types'
+import type { Sr6QualityView } from '../catalog/domain/types'
 import {
   awakenedFlag,
   boughtKind,

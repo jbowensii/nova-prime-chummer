@@ -3,9 +3,9 @@
 // the core rulebook's table, Body Shop's omega grade and exoware) by its key, the name without "ware" or "grade"
 // (Alphaware: alpha). A grade is offered once its Essence factor is set (a catalog grade also needs its cost: gammaware
 // prints none, it isn't bought). Grades are for cyberware and bioware; a catalog grade may name fewer types (exoware).
-import { GRADED_TYPES, type Sr6Entry } from '../model/types'
-import { flag, num, type CreationRules } from './creation'
-import type { Sr6Data } from './types'
+import { GRADED_TYPES, type Sr6Entry } from '../formats/domain/types'
+import { flag, num, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/types'
 
 export const STANDARD_GRADES = ['standard', 'alpha', 'beta', 'delta', 'used']
 export type GradeFactor = 'essence' | 'cost' | 'avail'

@@ -2,9 +2,9 @@
 // alone, accessories are reached by their host's path, and a level of a family moves with a rating fix. Invented runners.
 import { expect, test } from 'vitest'
 import { withSampleFixes } from '../../src/sr6/engine/samplefix'
-import { blankSr6, type Sr6Purchase } from '../../src/sr6/model/character'
-import type { Sr6SampleFix } from '../../src/sr6/model/types'
-import { fixtureCatalog } from './fixture'
+import { blankSr6, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import type { Sr6SampleFix } from '../../src/sr6/formats/domain/types'
+import { fixtureCatalog } from './catalog/fixture'
 
 const c = fixtureCatalog()
 const line = (uid: string, id: string, more: Partial<Sr6Purchase> = {}): Sr6Purchase => ({

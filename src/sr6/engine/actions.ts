@@ -27,13 +27,13 @@ import {
   type Sr6Knowledge,
   type Sr6Method,
   type Sr6Purchase,
-} from '../model/character'
-import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from './creation'
-import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
-import { normName } from './names'
+} from '../formats/domain/character'
+import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
-import { chosenRating, ratingRange } from './values'
+import { chosenRating, ratingRange } from '../catalog/domain/values'
 import { learned } from './martial'
 import {
   augmentationRoom,

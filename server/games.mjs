@@ -21,7 +21,7 @@ export const GAMES = {
     foreign: 'urn:chummer-anarchy2:',
   },
 }
-/** SR6 catalog kind (its file) -> entry tag, as KINDS in importer/sr6/__init__.py and src/sr6/model/types.ts. */
+/** SR6 catalog kind (its file) -> entry tag, as KINDS in importer/sr6/__init__.py and src/sr6/formats/domain/types.ts. */
 export const SR6_KINDS = {
   priorities: 'priority',
   metatypes: 'metatype',

@@ -1,12 +1,12 @@
 // The bonuses a runner's picks, purchases and qualities give (their entered ones, else their catalog entry's effects), and
 // what they add to an attribute, a skill's pool or a host item.
-import type { Bonus, Sr6Attr, Sr6Build, Sr6Purchase } from '../model/character'
-import type { Sr6Entry, Sr6Kind } from '../model/types'
-import type { Sr6Data } from './data'
-import { normName } from './names'
+import type { Bonus, Sr6Attr, Sr6Build, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Entry, Sr6Kind } from '../formats/domain/types'
+import type { Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { own } from '../../core/shared/effects'
-import { entryLabel } from './categories'
-import { bonusValue, effectBonuses, sr6Counts as counts } from './effects'
+import { entryLabel } from '../catalog/domain/categories'
+import { bonusValue, effectBonuses, sr6Counts as counts } from '../catalog/domain/effects'
 import { entryOf, ratingOf } from './purchases'
 import { noteAttr, noteSkill } from './choices'
 

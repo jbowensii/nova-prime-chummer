@@ -5,7 +5,7 @@
 // are grouped by kind; above it, on Game data, the game’s AI search (AskSearch: a find searches the browser for it). Needs
 // attention shows only the entries with an issue (a value the book leaves out or the importer
 // couldn't read, src/core/shared/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
-// (src/ca2/game-data/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
+// (src/ca2/game-data/ui/tabs/Data.tsx, src/sr6/game-data/ui/Data.tsx).
 import { useState } from 'react'
 import { AskSearch, type AskGame } from '../ai-assist/AskRules'
 import type { BrowseRow } from '../../core/ui-kit/types'

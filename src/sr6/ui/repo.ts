@@ -7,11 +7,11 @@ import { newId } from '../../core/shared/types'
 import type { Codec } from '../../core/shared/types'
 import { serverRepo } from '../../features/runner-store/repo'
 import { keepSr6House } from '../engine/house'
-import { resolveEntry } from '../engine/load'
-import { entryKey } from '../engine/names'
-import { sr6ToXml, xmlToSr6 } from '../engine/charxml'
-import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../model/character'
-import type { Sr6Catalog } from '../model/types'
+import { resolveEntry } from '../catalog/domain/load'
+import { entryKey } from '../catalog/domain/names'
+import { sr6ToXml, xmlToSr6 } from '../formats/domain/charxml'
+import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Catalog } from '../formats/domain/types'
 
 /** The repo codec (src/features/runner-store/repo.ts serverRepo). */
 export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }

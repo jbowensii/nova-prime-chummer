@@ -2,12 +2,12 @@
 // electronics, programs and autosofts (at a rating, priced by the book's formula) and other gear (a quantity where lines stack), and a custom item at the player's own price.
 import { useState } from 'react'
 import { Modal } from '../../../core/ui-kit/bits'
-import type { PurchaseKind, Sr6Purchase } from '../../model/character'
+import type { PurchaseKind, Sr6Purchase } from '../../formats/domain/character'
 import { entryOf, statusesOf, takesMaterial } from '../../engine/budgets'
 import { ratingEdge } from '../../engine/derive'
 import { useSr6Editor } from '../editor'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
-import { entryLabel, isAmmoType } from '../../engine/categories'
+import { entryLabel, isAmmoType } from '../../catalog/domain/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],

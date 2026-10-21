@@ -1,8 +1,8 @@
 // Skills at creation: skill points, specializations and expertises, aptitudes, and the free knowledge points.
-import type { Sr6Build, Sr6Skill } from '../model/character'
-import { flag, n0, num, str, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
-import { normName } from './names'
+import type { Sr6Build, Sr6Skill } from '../formats/domain/character'
+import { flag, n0, num, str, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { knowledgeSpend, pool, type Budget, type Provider } from './providers'
 import { noteSkill } from './choices'
 import { augmentedRating } from './attributes'

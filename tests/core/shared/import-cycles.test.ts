@@ -1,6 +1,6 @@
 // No import cycle in src, type imports included (as `npx madge --circular --extensions ts,tsx src` reports them): every
 // import or re-export of a src module counts, `import type` and `export type` too. Shared types live in the model and types modules
-// (src/ca2/formats/domain/types.ts, src/sr6/model/*, src/sr6/engine/types.ts, src/core/ui-kit/types.ts) so the modules using them don't loop.
+// (src/ca2/formats/domain/types.ts, src/sr6/formats/domain/*, src/sr6/catalog/domain/types.ts, src/core/ui-kit/types.ts) so the modules using them don't loop.
 // @vitest-environment node
 import { join, relative } from 'node:path'
 import { expect, test } from 'vitest'
@@ -43,9 +43,10 @@ test('src has no import cycle, type imports included', () => {
 
 test('the engines and models import nothing from a UI folder', () => {
   const rel = (f: string) => relative(SRC, f).replaceAll('\\', '/')
-  const domain = files(join(SRC, 'ca2')).filter(f => /^ca2\/[^/]+\/domain\//.test(rel(f)))
-  const layer = [...domain, ...['sr6/engine', 'sr6/model'].flatMap(d => files(join(SRC, d)))]
-  const ui = (f: string) => /^(ca2\/[^/]+\/ui|sr6\/ui|core\/(ui-kit|chrome|app))\//.test(rel(f))
+  const domain = ['ca2', 'sr6'].flatMap(g => files(join(SRC, g)).filter(f => new RegExp(`^${g}/[^/]+/domain/`).test(rel(f))))
+  // ponytail: sr6/engine is runner-builder's domain until it moves (move 5); drop it then
+  const layer = [...domain, ...files(join(SRC, 'sr6/engine'))]
+  const ui = (f: string) => /^((ca2|sr6)\/[^/]+\/ui|sr6\/ui|core\/(ui-kit|chrome|app))\//.test(rel(f))
   expect(
     layer.flatMap(f =>
       imports(f)

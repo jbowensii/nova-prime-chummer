@@ -3,8 +3,8 @@
 import { expect, test } from 'vitest'
 import { REASONS, reasonText, runAct } from '../../src/sr6/ui/editor'
 import { priceAt } from '../../src/sr6/ui/Picker'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { made } from './fixture'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { made } from './catalog/fixture'
 
 test('a refusal comes back as a sentence', () => {
   const { data, cr } = made(),

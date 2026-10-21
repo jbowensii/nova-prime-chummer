@@ -1,4 +1,4 @@
-// Accessories on their host (src/sr6/engine/categories.ts, budgets.ts hostBonus), on the made-up SR6 fixture: a
+// Accessories on their host (src/sr6/catalog/domain/categories.ts, budgets.ts hostBonus), on the made-up SR6 fixture: a
 // Torqlimb accessory goes on the Torqlimb arm (the picker marks another host's), its bonus lands on the arm only (the
 // line, the sheet's line and Review's derived values show the arm's own Strength; the runner's stays).
 import { test, expect, type Page } from '@playwright/test'

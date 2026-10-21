@@ -7,11 +7,11 @@ import { expect, test } from 'vitest'
 import { apply, type Op } from '../../src/sr6/engine/actions'
 import { attrMax, essenceBudget, qualityCost } from '../../src/sr6/engine/budgets'
 import { preview } from '../../src/sr6/engine/career'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import type { CreationValue } from '../../src/sr6/engine/creation'
-import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import type { CreationValue } from '../../src/sr6/table-setup/domain/creation'
+import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 const MORE = `<quality id="crb.gifted-attribute" source="CRB" page="71" kind="positive" karma="12"><name>Gifted (Attribute)</name><effect target="attr-max:choice" op="add" value="1"/><text/></quality>
   <quality id="crb.hobbled-attribute" source="CRB" page="76" kind="negative" karma="8" perLevel="true" maxLevel="9"><name>Hobbled (Attribute)</name><effect target="attr-max:choice" op="add" value="-R"/><text/></quality>

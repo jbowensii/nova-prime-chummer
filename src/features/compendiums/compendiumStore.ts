@@ -1,5 +1,5 @@
 // The GMs' compendiums on the server (server/compendiums.mjs), per game: Anarchy's at /api/compendiums, SR6's at
-// /api/sr6/compendiums (src/sr6/ui/compendiumStore.ts), never mixed. The ones this account can read, saved and deleted with
+// /api/sr6/compendiums (src/sr6/compendiums/ui/compendiumStore.ts), never mixed. The ones this account can read, saved and deleted with
 // the NPC store's rev/If-Match rules. Their files join that game's GM catalog as overlays (App.tsx Main, Sr6App.tsx); a
 // player's catalog gets the shared ones (listShared), read only.
 import { compendiumXml, readCompendium } from '../../ca2/formats/domain/compendium'

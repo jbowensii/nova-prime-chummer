@@ -4,8 +4,8 @@
 // Infected: an entry whose class starts with INFECTED (the Sixth World Companion's Infected qualities, Commlink6's type
 // INFECTED, and its Infected optional powers, INFECTED/OPTIONAL_POWER, pp. 109-114) is offered and accepted only while the
 // table's optional rule infectedAllowed is on (SWC p. 104: Infected player characters are an optional rule).
-import type { Sr6Entry } from '../model/types'
-import { flag, type CreationRules } from './creation'
+import type { Sr6Entry } from '../formats/domain/types'
+import { flag, type CreationRules } from '../table-setup/domain/creation'
 
 export const CRITTER_ONLY = 'CRITTERWARE/'
 

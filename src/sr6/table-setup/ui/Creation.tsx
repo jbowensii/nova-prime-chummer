@@ -1,0 +1,733 @@
+// SR6 creation rules (src/sr6/table-setup/domain/creation.ts): the form (one row per setting, in the nine sections of
+// creationLayout.ts), the shipped defaults (creation-defaults.xml) with the admin's changes over them as the server's
+// default on the Table setup page (#/sr6/table; the admin edits it, editors and players read it), and a campaign's own on
+// its page (its GMs and the admin choose the server's or their own copy; its players read it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
+// other runner with the server's.
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { canEdit, isAdmin, send, useMe } from '../../../core/ui-kit/auth'
+import { loadCampaigns, type Campaign } from '../../../features/campaigns/campaignsStore'
+import {
+  aboutOf,
+  applyDeps,
+  blockedBy,
+  CREATION_KEYS,
+  expandKeys,
+  levelRules,
+  mergeRules,
+  presetChanges,
+  readSettingsFile,
+  RULE_PRESETS,
+  rulesFrom,
+  RUNNER_RULE_KEYS,
+  runnerRules,
+  type CreationKey,
+  type CreationRow,
+  type CreationRules,
+  type RulePreset,
+} from '../domain/creation'
+import type { Sr6Character } from '../../formats/domain/character'
+import type { Sr6Catalog } from '../../formats/domain/types'
+import { ruleKind, splitLabel } from './creationLayout'
+import { RuleSearch, RuleSections } from './RuleSections'
+
+/** std: the shipped standard settings (loadCreation), which rules are overlaid on. */
+export type Loaded = { rules: CreationRules; errors: string[]; std?: CreationRules }
+type Row = { value: string; source: string; page: string }
+const NO_ROW: Row = { value: '', source: '', page: '' }
+const rowsOf = (cr: CreationRules): Record<string, Row> =>
+  Object.fromEntries([...cr.values()].map(s => [s.key, { value: String(s.value), source: s.source ?? '', page: s.page ? String(s.page) : '' }]))
+const norm = (v: string) => {
+  const t = v.trim()
+  return t && Number.isFinite(Number(t)) ? String(Number(t)) : t
+}
+/** A row as the standard has it (value, source and page); no standard: the row is empty. */
+const isStd = (r: Row, d?: Row) => (d ? norm(r.value) === norm(d.value) && r.source.trim() === d.source && r.page.trim() === d.page : !r.value.trim())
+const rowOf = (s: CreationRow): Row => ({ value: s.value, source: s.source ?? '', page: s.page ? String(s.page) : '' })
+
+/** The campaign a runner is in (its settings and locks), fetched each time the editor opens it: undefined while it
+ *  loads, null for none (or one this account can't read). */
+export function useRunnerCampaign(id: string | undefined): Campaign | null | undefined {
+  const [got, setGot] = useState<{ id?: string; camp: Campaign | null }>({ camp: null })
+  useEffect(() => {
+    if (id)
+      void send(`sr6/campaigns/${id}`, undefined, 'GET')
+        .then(r => r.json())
+        .then(
+          (c: Campaign) => c,
+          () => null,
+        )
+        .then(camp => setGot({ id, camp }))
+  }, [id])
+  return !id ? null : got.id === id ? got.camp : undefined
+}
+/** A campaign's settings as its list entry has them. */
+export const campaignRules = (c: Campaign | null | undefined) => (c?.creation ? rulesFrom(c.creation).rules : null)
+/** The rules a runner is built and checked with everywhere (editor, Your runners, the export): the server's or its
+ *  campaign's own, with the runner's own choices over them except where its campaign locked them (runnerRules). */
+export const rulesForRunner = (server: CreationRules, camp: Campaign | null | undefined, ch: Pick<Sr6Character, 'rules'>): CreationRules =>
+  runnerRules(
+    campaignRules(camp) ?? server,
+    ch.rules,
+    (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })),
+    camp?.creation ? 'campaign' : 'server',
+  )
+/** The table's rules for a runner's Creation rules panel: the server's or its campaign's, with its locks and a level of
+ *  play's numbers, every stored value kept (a nested rule whose parent is off too: mergeRules). */
+export const tableRulesFor = (server: CreationRules, camp: Campaign | null | undefined): CreationRules =>
+  levelRules(
+    mergeRules(
+      campaignRules(camp) ?? server,
+      [],
+      (camp?.locks ?? []).map(l => ({ key: l.key, by: l.byName ?? l.by })),
+      camp?.creation ? 'campaign' : 'server',
+    ),
+  )
+
+/** Why a rule doesn't apply (blockedBy) in words, under its label on Table setup and a runner's Creation rules. (What a
+ *  rule replaces, RULE_DEPS, its label already says.) */
+export function RuleWhy({ k, eff, label }: { k: string; eff: CreationRules; label: (key: string) => string }) {
+  const b = blockedBy(eff, k)
+  return b ? (
+    <div className="muted small rule-why">{'needs' in b ? `needs ${label(b.needs)}` : `can’t be on with ${label(b.conflicts)}, which is on`}</div>
+  ) : null
+}
+
+/** One setting's row: its name (short, then the rest of its label), a switch or the number, quality or letters, its book and
+ *  page, and, once it differs from the standard, the standard in grey with a Reset. Only the rows of an open section exist. */
+const RuleRow = memo(function RuleRow({
+  k,
+  depth,
+  r,
+  d,
+  known,
+  ro,
+  why,
+  qopts,
+  full,
+  qname,
+  set,
+  setOn,
+  reset,
+}: {
+  k: CreationKey
+  depth: number
+  r: Row
+  d?: Row
+  known: boolean
+  ro: boolean
+  why: string
+  qopts: React.ReactElement[]
+  full: boolean
+  qname: (id: string) => string
+  set: (key: string, f: Partial<Row>) => void
+  setOn: (key: string, on: boolean) => void
+  reset: (key: string) => void
+}) {
+  const changed = known && !isStd(r, d),
+    off = why !== '' || ro,
+    { title, hint } = splitLabel(k.label),
+    kind = ruleKind(k.key)
+  const shown = (x: string) => (k.type === 'bool' ? (x === 'true' ? 'On' : 'Off') : k.type === 'quality' ? qname(x) : x)
+  const id = `cr-${k.key}`,
+    v = (value: string) => set(k.key, { value })
+  const name = (
+    <>
+      {depth > 0 && hint ? (
+        <b>{hint[0].toUpperCase() + hint.slice(1)}</b>
+      ) : (
+        <>
+          <b>{title}</b>
+          {hint && <span className="hint">: {hint}</span>}
+        </>
+      )}
+      {kind && <span className="tag">{kind === 'option' ? 'option' : 'house rule'}</span>}
+    </>
+  )
+  return (
+    <div
+      className={['cr-row', k.type === 'bool' ? 'bool' : '', depth ? 'nested' : '', off ? 'blocked' : '', changed ? 'changed' : known ? 'at-std' : '']
+        .join(' ')
+        .trim()}
+    >
+      <div className="cr-name" title={aboutOf(k.key) || undefined}>
+        {k.type === 'bool' ? <label htmlFor={id}>{name}</label> : <span>{name}</span>}
+        {why && <div className="muted small rule-why">{why}</div>}
+      </div>
+      <div className="cr-val">
+        {k.type === 'bool' ? (
+          <label className="tgl">
+            <input
+              id={id}
+              type="checkbox"
+              role="switch"
+              aria-label={k.label}
+              checked={r.value === 'true'}
+              disabled={off}
+              onChange={e => setOn(k.key, e.target.checked)}
+            />
+            <span className="track" aria-hidden />
+          </label>
+        ) : k.type === 'number' ? (
+          <input type="number" step="any" aria-label={k.label} value={r.value} placeholder={d?.value} disabled={off} onChange={e => v(e.target.value)} />
+        ) : k.type === 'letters' ? (
+          <input
+            aria-label={k.label}
+            value={r.value}
+            placeholder={d?.value ?? 'ABCDE'}
+            maxLength={5}
+            size={6}
+            disabled={off}
+            onChange={e => v(e.target.value.toUpperCase())}
+          />
+        ) : (
+          <select aria-label={k.label} value={r.value} disabled={off} onChange={e => v(e.target.value)}>
+            <option value="">Not set</option>
+            {r.value && !qopts.some(o => o.key === r.value) && <option value={r.value}>{r.value} (not in the catalog)</option>}
+            {full ? qopts : qopts.filter(o => o.key === r.value)}
+          </select>
+        )}
+      </div>
+      <div className="cr-book">
+        <input
+          className="src-id"
+          aria-label={`${k.label}: source`}
+          placeholder="Book"
+          value={r.source}
+          disabled={ro}
+          onChange={e => set(k.key, { source: e.target.value.toUpperCase() })}
+        />
+        <input
+          type="number"
+          min={1}
+          step={1}
+          aria-label={`${k.label}: page`}
+          placeholder="Page"
+          value={r.page}
+          disabled={ro}
+          onChange={e => set(k.key, { page: e.target.value })}
+        />
+      </div>
+      {changed && !ro && (
+        <div className="cr-std">
+          Standard: {d ? `${shown(d.value)}${d.source ? ` (${d.source}${d.page ? ` p. ${d.page}` : ''})` : ''}` : 'none'}{' '}
+          <button type="button" className="btn small" aria-label={`Reset ${k.label} to standard`} onClick={() => reset(k.key)}>
+            Reset
+          </button>
+        </div>
+      )}
+    </div>
+  )
+})
+
+/** The form. `onSave` gets the whole list; without it the form is read only. Load settings file puts a local creation.xml's
+ *  values in the form for review (readSettingsFile); only Save sends them. */
+export function CreationForm({
+  c,
+  cr,
+  std,
+  onSave,
+  children,
+}: {
+  c: Sr6Catalog
+  cr: Loaded
+  std?: CreationRules
+  onSave?: (settings: CreationRow[]) => Promise<void>
+  children?: React.ReactNode
+}) {
+  const [draft, setDraft] = useState(() => rowsOf(cr.rules))
+  const stdRows = useMemo(() => rowsOf(std ?? new Map()), [std])
+  // new rules loaded: the form starts again from them (state adjusted while rendering)
+  const [draftOf, setDraftOf] = useState(cr)
+  if (draftOf !== cr) {
+    setDraftOf(cr)
+    setDraft(rowsOf(cr.rules))
+  }
+  const [msg, setMsg] = useState(''),
+    [err, setErr] = useState(''),
+    [saving, setSaving] = useState(false)
+  const [skipped, setSkipped] = useState<string[]>([]) // what the loaded file had that the form left out
+  const [q, setQ] = useState('')
+  const ro = !onSave || saving
+  const keys = useMemo(() => expandKeys({ metatypes: Object.fromEntries(c.entries.metatypes) }), [c])
+  const labelOf = useMemo(() => new Map(keys.map(k => [k.key, k.label.replace(/ \((house rule|option)\)$/, '')] as const)), [keys])
+  const label = (k: string) => labelOf.get(k) ?? k
+  // the draft as the engine would apply it: a nested rule whose parent is off, or one that can't be on with another, is greyed
+  const eff = useMemo(
+    () =>
+      applyDeps(
+        rulesFrom(
+          Object.entries(draft)
+            .filter(([, r]) => r.value.trim())
+            .map(([key, r]) => ({ key, value: r.value })),
+        ).rules,
+      ),
+    [draft],
+  )
+  // a quality setting's select lists every quality (thousands of options over the form): the list once per catalog, and
+  // only the chosen one until the form has painted (the rest follow in the background)
+  const full = useDeferredValue(true, false)
+  const qualityOptions = useMemo(
+    () =>
+      [...c.entries.qualities.values()]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(q => (
+          <option key={q.id} value={q.id}>
+            {q.name}
+          </option>
+        )),
+    [c],
+  )
+  const qname = useCallback((x: string) => c.entries.qualities.get(x)?.name ?? x, [c])
+  const set = useCallback((key: string, f: Partial<Row>) => {
+    setMsg('')
+    setDraft(d => ({ ...d, [key]: { ...NO_ROW, ...d[key], ...f } }))
+  }, [])
+  // a switch: on is "true"; off is "false", or no value where the standard has none (a setting the book doesn't give)
+  const setOn = useCallback((key: string, on: boolean) => set(key, { value: on ? 'true' : stdRows[key] ? 'false' : '' }), [set, stdRows])
+  const reset = useCallback(
+    (key: string) => {
+      setMsg('')
+      setDraft(x => {
+        const { [key]: _, ...rest } = x
+        return stdRows[key] ? { ...rest, [key]: stdRows[key] } : rest
+      })
+    },
+    [stdRows],
+  )
+  // a preset puts its toggles in the form (the other settings it manages go back to the standard); Save keeps them
+  const applyPreset = (id: RulePreset['id']) => {
+    const { set: sets, reset: back } = presetChanges(id)
+    if (!sets.length && !back.length) return
+    setDraft(x => {
+      const n = { ...x }
+      for (const key of back) {
+        if (stdRows[key]) n[key] = stdRows[key]
+        else delete n[key]
+      }
+      for (const [key, v] of sets) n[key] = { ...NO_ROW, ...x[key], value: String(v) }
+      return n
+    })
+    setMsg(`${RULE_PRESETS.find(p => p.id === id)!.label}: its settings are in the form; Save creation rules to keep them.`)
+  }
+  const resetKeys = (ks: string[]) => {
+    setMsg('')
+    setDraft(x => {
+      const n = { ...x }
+      for (const key of ks) {
+        if (stdRows[key]) n[key] = stdRows[key]
+        else delete n[key]
+      }
+      return n
+    })
+  }
+  const changedKey = (key: string) => !!std && !isStd(draft[key] ?? NO_ROW, stdRows[key])
+  async function load(f: File) {
+    setMsg('')
+    setErr('')
+    setSkipped([])
+    if (f.size > 1024 * 1024) return setErr(`${f.name} is larger than 1 MB: it isn’t a creation rules file.`)
+    const r = readSettingsFile(await f.text(), f.name)
+    if (r.fatal) return setErr(r.fatal)
+    setDraft(rowsOf(new Map([...(std ?? []), ...r.rules])))
+    setSkipped(r.errors)
+    setMsg(
+      `Loaded ${r.rules.size === 1 ? '1 setting' : `${r.rules.size} settings`} from ${f.name} into the form, in place of what it showed${std?.size ? ' (the standard values fill the rest)' : ''}. Check them, then Save creation rules; nothing is saved until then.`,
+    )
+  }
+  async function save() {
+    setMsg('')
+    setErr('')
+    setSkipped([])
+    setSaving(true)
+    const settings = Object.entries(draft)
+      .filter(([, r]) => r.value.trim())
+      .map(([key, r]) => ({
+        key,
+        value: r.value.trim(),
+        ...(r.source.trim() ? { source: r.source.trim() } : {}),
+        ...(r.page.trim() ? { page: r.page.trim() } : {}),
+      }))
+    try {
+      await onSave!(settings)
+      setMsg('Creation rules saved.')
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <>
+      {cr.errors.length > 0 && (
+        <ul className="err">
+          {cr.errors.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      )}
+      {children}
+      {onSave && (
+        <div className="creation-tools">
+          <div>
+            <label>
+              Rule preset{' '}
+              <select
+                aria-label="Rule preset"
+                disabled={saving}
+                value=""
+                onChange={e => {
+                  if (e.target.value) applyPreset(e.target.value as RulePreset['id'])
+                }}
+              >
+                <option value="">Choose a preset…</option>
+                {RULE_PRESETS.map(p => (
+                  <option key={p.id} value={p.id} title={p.about}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="muted">Sets a group of the settings below for you to review; Standard puts them back, Configurable leaves them as they are.</span>
+          </div>
+          <div>
+            <label className="btn file">
+              Load settings file…
+              <input
+                type="file"
+                accept=".xml,application/xml,text/xml"
+                aria-label="Load settings file"
+                disabled={saving}
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if (f) void load(f)
+                }}
+              />
+            </label>
+            <span className="muted">A creation.xml from your own notes or another server; you review it here before saving.</span>
+          </div>
+          {std && (
+            <div>
+              <button
+                type="button"
+                className="btn"
+                disabled={saving || Object.keys({ ...draft, ...stdRows }).every(k => isStd(draft[k] ?? NO_ROW, stdRows[k]))}
+                onClick={() => {
+                  setMsg('All settings are back to the standard values in the form; Save creation rules to keep them.')
+                  setDraft({ ...stdRows })
+                }}
+              >
+                Reset all to standard
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {skipped.length > 0 && (
+        <div className="warn">
+          <p>Left out of the file:</p>
+          <ul>
+            {skipped.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <RuleSearch q={q} setQ={setQ} label="Search the settings" />
+      <div className="bare">
+        <RuleSections
+          items={keys}
+          q={q}
+          changed={std ? k => changedKey(k.key) : undefined}
+          onReset={std && !ro ? resetKeys : undefined}
+          head={
+            <div className="cr-head" aria-hidden>
+              <span>Setting</span>
+              <span>Value</span>
+              <span>Book and page</span>
+            </div>
+          }
+          row={(k, depth) => {
+            const b = blockedBy(eff, k.key),
+              why = b ? ('needs' in b ? `needs ${label(b.needs)}` : `can’t be on with ${label(b.conflicts)}, which is on`) : ''
+            return (
+              <RuleRow
+                key={k.key}
+                k={k}
+                depth={depth}
+                r={draft[k.key] ?? NO_ROW}
+                d={stdRows[k.key]}
+                known={!!std}
+                ro={ro}
+                why={why}
+                qopts={qualityOptions}
+                full={full}
+                qname={qname}
+                set={set}
+                setOn={setOn}
+                reset={reset}
+              />
+            )
+          }}
+        />
+      </div>
+      {onSave && (
+        <p>
+          <button type="button" className="btn" disabled={saving} onClick={() => void save()}>
+            Save creation rules
+          </button>
+        </p>
+      )}
+      <div role="status" aria-live="polite">
+        {msg && <p className="ok">{msg}</p>}
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          {err}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Table setup's creation rules: the server's settings (the admin edits them), and where a campaign's own are set. */
+export function ServerCreation({ c, cr, reload }: { c: Sr6Catalog; cr: Loaded; reload: () => Promise<void> }) {
+  const me = useMe(),
+    admin = isAdmin(me),
+    staff = canEdit(me)
+  const [own, setOwn] = useState<Campaign[]>([]) // the caller's campaigns with their own settings
+  useEffect(() => {
+    loadCampaigns('sr6').then(
+      l => setOwn(l.filter(x => x.creation)),
+      () => {},
+    )
+  }, [])
+  return (
+    <section className="sr6-creation">
+      <h2>Creation rules</h2>
+      <p>
+        The numbers the books give in their text: the server’s settings, which every runner is built and checked against unless its campaign has its own. They
+        start as the standard values from the core rulebook and the Sixth World Companion (a value at the standard is grey; one you changed stands out, with the
+        standard beside it);{' '}
+        {admin
+          ? 'change what your table plays differently, or reset a value or a whole section to the standard.'
+          : 'the admin changes what the table plays differently.'}{' '}
+        {staff ? (
+          <>
+            A GM can give a campaign they run its own settings on <a href="#/sr6/campaigns">its campaign page</a>.
+          </>
+        ) : (
+          'A campaign’s GM can give it its own settings; they show on the campaign’s page.'
+        )}
+      </p>
+      {own.length > 0 && (
+        <p>
+          Campaigns with their own settings:{' '}
+          {own.map((x, i) => (
+            <span key={x.id}>
+              {i > 0 && ', '}
+              <a href={`#/sr6/campaigns/${x.id}`}>{x.name}</a>
+            </span>
+          ))}
+          .
+        </p>
+      )}
+      <CreationForm
+        c={c}
+        cr={cr}
+        std={cr.std}
+        onSave={
+          admin
+            ? async settings => {
+                // only what differs from the standard is saved: the rest follows the shipped values
+                const std = rowsOf(cr.std ?? new Map())
+                await send('sr6/creation', { settings: settings.filter(s => !isStd(rowOf(s), std[s.key])) }, 'PUT')
+                await reload()
+              }
+            : undefined
+        }
+      />
+    </section>
+  )
+}
+
+/** A campaign page's creation rules: the server's, or the campaign's own (a copy of the server's to start from). Its GMs and
+ *  the admin choose and save; its players read. */
+export function CampaignCreation({ c, cr, camp, onSaved }: { c: Sr6Catalog; cr: Loaded; camp: Campaign; onSaved: (camp: Campaign) => void }) {
+  const manages = camp.you !== 'member'
+  const [mine, setMine] = useState(!!camp.creation)
+  const [mineOf, setMineOf] = useState(camp) // (another campaign, or this one saved: its own choice again)
+  if (mineOf !== camp) {
+    setMineOf(camp)
+    setMine(!!camp.creation)
+  }
+  const shown: Loaded = useMemo(() => (camp.creation ? rulesFrom(camp.creation) : cr), [camp, cr])
+  const [msg, setMsg] = useState(''),
+    [err, setErr] = useState('')
+  const put = async (creation: CreationRow[] | null) => {
+    const next: Campaign = await (await send(`sr6/campaigns/${camp.id}`, { creation }, 'PUT')).json()
+    onSaved(next)
+  }
+  return (
+    <section className="sr6-creation">
+      <h2>Creation rules</h2>
+      {manages ? (
+        <fieldset className="bare row">
+          <legend className="sr-only">Creation rules for this campaign</legend>
+          <label className="check">
+            <input
+              type="radio"
+              name="camp-creation"
+              checked={!mine}
+              onChange={() => {
+                setMine(false)
+                setMsg('')
+                setErr('')
+              }}
+            />
+            Use the server’s settings
+          </label>
+          <label className="check">
+            <input
+              type="radio"
+              name="camp-creation"
+              checked={mine}
+              onChange={() => {
+                setMine(true)
+                setMsg('')
+                setErr('')
+              }}
+            />
+            Use this campaign’s own settings
+          </label>
+        </fieldset>
+      ) : (
+        <p>
+          {camp.creation ? (
+            'This campaign has its own settings, set by its GM. Your runners in it are built and checked with them.'
+          ) : (
+            <>
+              This campaign uses the server’s settings (the <a href="#/sr6/table">Table setup page</a>).
+            </>
+          )}
+        </p>
+      )}
+      {manages && !mine && (
+        <>
+          <p>
+            Runners in this campaign are built and checked with the server’s settings (the <a href="#/sr6/table">Table setup page</a>).
+          </p>
+          {camp.creation && (
+            <p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setErr('')
+                  put(null).then(
+                    () => setMsg('This campaign uses the server’s settings again.'),
+                    e => setErr((e as Error).message),
+                  )
+                }}
+              >
+                Save: use the server’s settings
+              </button>{' '}
+              <span className="muted">Its own settings are dropped.</span>
+            </p>
+          )}
+        </>
+      )}
+      {(mine || (!manages && camp.creation)) && (
+        <CreationForm c={c} cr={mine && !camp.creation ? cr : shown} std={cr.std} onSave={manages ? settings => put(settings) : undefined}>
+          {manages && !camp.creation && <p>A copy of the server’s settings to start from: change what this campaign plays differently, then save.</p>}
+        </CreationForm>
+      )}
+      <div role="status" aria-live="polite">
+        {msg && <p className="ok">{msg}</p>}
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          {err}
+        </p>
+      )}
+      <CampaignLocks camp={camp} manages={manages} onSaved={onSaved} />
+    </section>
+  )
+}
+
+/** The optional rules a campaign's GM (or the admin) locks for its runners: a locked one can't be chosen on a runner's
+ *  Creation method tab (runnerRules leaves the runner's choice out). Players read the list. */
+export function CampaignLocks({ camp, manages, onSaved }: { camp: Campaign; manages: boolean; onSaved: (camp: Campaign) => void }) {
+  const [draft, setDraft] = useState(() => new Set((camp.locks ?? []).map(l => l.key)))
+  const [draftOf, setDraftOf] = useState(camp) // (another campaign, or this one saved: its locks again)
+  if (draftOf !== camp) {
+    setDraftOf(camp)
+    setDraft(new Set((camp.locks ?? []).map(l => l.key)))
+  }
+  const [msg, setMsg] = useState(''),
+    [err, setErr] = useState('')
+  const by = new Map((camp.locks ?? []).map(l => [l.key, l.byName ?? l.by]))
+  const label = new Map(CREATION_KEYS.map(k => [k.key, k.label]))
+  const save = async () => {
+    setMsg('')
+    setErr('')
+    try {
+      onSaved(await (await send(`sr6/campaigns/${camp.id}`, { locks: [...draft] }, 'PUT')).json())
+      setMsg('Locks saved.')
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="stack">
+      <h3>Locked for this campaign’s runners</h3>
+      <p className="muted">A runner may choose these optional rules for itself on its Creation method tab, unless the campaign locks them.</p>
+      <div className="runner-locks">
+        {RUNNER_RULE_KEYS.map(({ key, about }) => (
+          <div key={key} className="row" title={about}>
+            {manages ? (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={draft.has(key)}
+                  aria-label={`Lock ${label.get(key) ?? key}`}
+                  onChange={e => {
+                    setMsg('')
+                    setDraft(d => {
+                      const n = new Set(d)
+                      if (e.target.checked) n.add(key)
+                      else n.delete(key)
+                      return n
+                    })
+                  }}
+                />
+                {label.get(key) ?? key}
+              </label>
+            ) : (
+              <span>
+                {label.get(key) ?? key}
+                {by.has(key) ? '' : ': the runner’s choice'}
+              </span>
+            )}
+            {by.has(key) && <span className="muted">locked by {by.get(key)}</span>}
+          </div>
+        ))}
+      </div>
+      {manages && (
+        <p>
+          <button type="button" className="btn" onClick={() => void save()}>
+            Save locks
+          </button>
+        </p>
+      )}
+      <div role="status" aria-live="polite">
+        {msg && <p className="ok">{msg}</p>}
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          {err}
+        </p>
+      )}
+    </div>
+  )
+}

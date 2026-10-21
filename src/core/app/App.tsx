@@ -11,10 +11,10 @@ import { Setup } from '../../features/accounts/Setup'
 import { Recover, SignIn } from '../../features/accounts/SignIn'
 import { RESTORED } from '../../features/backup/Backup'
 import '../ui-kit/app.css'
-import '../../sr6/ui/theme.css'
+import '../../sr6/shell/ui/theme.css'
 import { BackgroundArt } from '../../features/appearance/Background'
 import { GamePicker } from './GamePicker'
-import { Sr6Main } from '../../sr6/ui/Sr6App'
+import { Sr6Main } from '../../sr6/shell/ui/Sr6App'
 import { gameOf, homeOf, storedGame } from '../ui-kit/game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)

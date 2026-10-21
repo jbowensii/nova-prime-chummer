@@ -32,7 +32,7 @@ Every file has the same root, and one file holds one kind:
   the rating the item is bought at: numbers, `Rating` (also `Capacity`, `Force` or `Level`, any case: the same
   rating), `+`, `×`/`x`/`*`, `/` (rounded up), `^` and parentheses, an optional leading `+` (an add-on's price) and a
   legality suffix on `avail` (`(L)`, `I`, …). An item priced by its capacity takes its capacity range as its `rating`.
-  A nuyen amount printed under AVAIL (`15,000¥`) is a licence price ("available with licence"): it stays in `avail` as printed, never moved to `cost`. Alone it means freely available (availability 0) with that licence fee; `2, 15,000¥` is rating 2 plus the fee (`availability()` in `src/sr6/engine/values.ts` reads both; the stored text is unchanged).
+  A nuyen amount printed under AVAIL (`15,000¥`) is a licence price ("available with licence"): it stays in `avail` as printed, never moved to `cost`. Alone it means freely available (availability 0) with that licence fee; `2, 15,000¥` is rating 2 plus the fee (`availability()` in `src/sr6/catalog/domain/values.ts` reads both; the stored text is unchanged).
   `per` names what one cost buys (`10 rounds`, `100m`, `month`). A row printing two items is split into two entries:
   `A/B` names with `x/y` prices, `x/month or y/year` prices (`<name> (month)`, `<name> (year)`), `1,000¥ for cyberdeck/5,000¥ for cyberhack` prices (`<name> (cyberdeck)`, `<name> (cyberhack)`), and the cyberlimb
   table's per-variant price columns (`<name> (synthetic)`, `<name> (obvious)`). A price naming another item
@@ -592,7 +592,7 @@ override). Besides the pass above:
   Foamtek rocket; not a partial limb: forearm, hand, lower leg, foot). `rule` is import bookkeeping; the copy carries
   `from="<source>:<heading>"` and no `rule`.
 
-**What the app does with them** (`src/sr6/engine/effects.ts`): an `add` on an attribute, Defense Rating,
+**What the app does with them** (`src/sr6/catalog/domain/effects.ts`): an `add` on an attribute, Defense Rating,
 initiative dice, Physical, Stun or Overflow boxes, a skill's pool, or a test type's pools is a bonus (lineBonuses: a
 player's own bonuses still override, D3). The total shown first holds the always-on ones; the bracketed total
 (`derive.ts` on) adds the switchable and conditional ones, shown `6 (9)` on every sheet, Review and the Skills tab
@@ -632,7 +632,7 @@ metavariants and metasapients as metatypes (ranges and traits; their karma is a 
 qualities, critter powers, contacts (their stat blocks as NPCs, group Contact) and rule sections.
 
 The same kind → tag map is `KINDS` in `importer/sr6/__init__.py`, `SR6_KINDS` in `server/games.mjs` and `SR6_KINDS`
-in `src/sr6/model/types.ts`.
+in `src/sr6/formats/domain/types.ts`.
 
 Three more kinds complete the set:
 
@@ -676,7 +676,7 @@ name), and used by the builder, the sheets and the Foundry export:
 
 Owner decision 2026-10-11: every item with levels is one catalog item per level, otherwise duplicates, positive and
 negative levels alike. The files stay as printed (one rated or leveled entry); the app expands them when the catalog
-loads (`src/sr6/engine/levels.ts`, the last step of `buildSr6Catalog`, after the edits layer), so nothing is
+loads (`src/sr6/catalog/domain/levels.ts`, the last step of `buildSr6Catalog`, after the edits layer), so nothing is
 re-imported and an edit on the printed entry reaches every level:
 
 - an entry with a printed rating range (`rating="1–4"`) is one entry per rating, `rating="N"`: its printed `Rating ×
@@ -848,7 +848,7 @@ table a book's catalog rows come from, by the book's own words, never an item's 
   no category, a title naming only the kind (`vehicles` over `Microdrones`: the section's category is taken), a title
   split across lines, mixed rows (a table of two kinds), an accessory table with no host.
 
-The app (`src/sr6/engine/categories.ts`): an accessory belongs on a host of a category its record `fits`; the accessory
+The app (`src/sr6/catalog/domain/categories.ts`): an accessory belongs on a host of a category its record `fits`; the accessory
 picker lists every accessory naming hosts, another host's marked ("for Eyeware, not this"), and fits it anyway: Review's
 error `catalog.accessoryHost` (cited to the accessory's page; 0.11.1: a warning before, and the action refused it,
 `wrong-host`). It is also a problem (an error)
@@ -1032,13 +1032,13 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
   kind type ref …/>` (kind `datareq` or `valuereq`) and `<selection type ref options …/>` (a pick it offers) are Commlink6's
   own rule data, every attribute as it gives it (`$RATING` formulas, conditions). **No rule reads them**: the app applies our
   `<effect>`s, `<link>`s, `<requires>` and `<choice>`s only, so a character's maths is the same with or without them
-  (`tests/sr6/structure.test.ts`). They are the reference the day those are written from the books or checked against it.
+  (`tests/sr6/catalog/structure.test.ts`). They are the reference the day those are written from the books or checked against it.
 - A `<prerequisite … negate="true"/>` is the owner's, not Commlink6's: an exclusion the book prints, a warning only, never
   enforced (every prerequisite is a warning, 0.11.1). The Silencer/suppressor (CRB p. 261, "not compatible with revolvers or
   shotguns"; owner 2026-10-16) has `type="WEAPON_TYPE"` `ref="revolvers"` and `ref="shotguns"` in place of Commlink6's list
   of the weapon subtypes it fits: a weapon it is fitted to is a revolver when its ammunition prints `(cy)` (a cylinder), a
   shotgun when its category is Shotgun. The row is filed under weapons, the kind of our entry (the id is an implant weapon's too). cl6check keeps ours for its `requires` family (value_keep.json).
-- `src/sr6/engine/structure.ts` `structureOf(entry)` reads them all.
+- `src/sr6/catalog/domain/structure.ts` `structureOf(entry)` reads them all.
 Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` writes the id rows `{"id", "set", "kids", "gen":
 "family"}` of the per-book tables from the Commlink6 record of each entry with a difference in that family; applied by
 `overrides.py` after the import (a child the entry already has is not added twice). An entry several Commlink6 records match
@@ -1154,10 +1154,10 @@ no expertise with skill points at creation while p. 68 prices one, so its hover 
 metavariants and metasapients its import writes (`swc.<id>`); a metatype from another book needs its own.
 
 `custom/sr6/creation.xml` holds only what the admin changed (`PUT /api/sr6/creation`, on the Table setup page, `#/sr6/table`):
-the server's settings are the standard ones with those keys replaced (`loadCreation` in `src/sr6/engine/creation.ts`).
+the server's settings are the standard ones with those keys replaced (`loadCreation` in `src/sr6/table-setup/domain/creation.ts`).
 The Table setup page (and a campaign's own settings, a runner's Creation rules panel) lays the settings out in nine foldable
 sections (Budgets & priorities; Attributes & skills; Qualities; Magic & Resonance; Gear & augmentations; Contacts & lifestyle;
-Levels of play; Optional rules (book); House rules; `src/sr6/ui/creationLayout.ts`), a closed section drawing no rows, with a
+Levels of play; Optional rules (book); House rules; `src/sr6/table-setup/ui/creationLayout.ts`), a closed section drawing no rows, with a
 search box by name. Every on/off rule is a switch; a number that needs one sits indented under it, greyed with "needs …"
 while it is off. A value at the standard is grey; a changed one stands out and shows the standard and its page beside it, with
 **Reset** per value, **Reset section** and **Reset all to standard**; saving sends only the values that differ from the standard. An empty field means
@@ -1167,7 +1167,7 @@ campaign they run its own copy on its page; it is kept in `custom/sr6/campaigns.
 same `<setting/>` rows (`campaigns.xsd`, `PUT /api/sr6/campaigns/<id> { creation }`, its GMs and the admin; its players
 read it), and that campaign's runners are built, checked and priced with it. A campaign's own settings are a full copy,
 started from the server's settings. Keys, types and
-the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/creation.ts` (per metatype:
+the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/table-setup/domain/creation.ts` (per metatype:
 `metatypeKarma:<id>`; per awakened or emerged magic kind: `pointBuy.startRating:<kind>`, `magicKarma:<kind>`,
 `lifepath.startRating:<kind>`). A creation method whose settings are unset can't be picked.
 
@@ -1175,10 +1175,10 @@ the methods that need them: `CREATION_KEYS` and `expandKeys` in `src/sr6/engine/
 
 **Hover text.** Every setting's row on Table setup, and on a runner's Creation rules, has hover text (`aboutOf` in
 `creation.ts`): what it does in plain words, then where a book prints it (book and page), else `house rule` or
-`option`. No label or hover text names another app (`tests/sr6/settings-about.test.ts`), except the Karma build option's
+`option`. No label or hover text names another app (`tests/sr6/table-setup/settings-about.test.ts`), except the Karma build option's
 numbers, whose source reads `option (Commlink6 defaults)`.
 
-Every key (Table setup sorts them into its nine sections, `src/sr6/ui/creationLayout.ts`, not in this order). *Needed by*: the methods that can't be picked while it is unset (`all`:
+Every key (Table setup sorts them into its nine sections, `src/sr6/table-setup/ui/creationLayout.ts`, not in this order). *Needed by*: the methods that can't be picked while it is unset (`all`:
 every method); `optional`: unset, the rule that reads it is skipped (Advancement: the spend that needs it is refused,
 a cap isn't applied, an exchange isn't offered; Derived values: the value shows empty; a grade: it can't be
 chosen while its Essence factor is unset). `karmaToNuyenMax` isn't printed in the core rulebook (`maxKarmaLeft` is, from the
@@ -1406,7 +1406,7 @@ A GM's own collection of SR6 entries and NPCs, one file per compendium, kept by 
   the same id), `sharing` (`private`, `campaign`: the GMs of that SR6 `campaign`, or `table`), and the server's `rev`
   and `updatedAt`. The owner is the folder, never the file.
 - Children, in any order: entries of the compendium kinds (every kind but priorities, metatypes, attributes, skills,
-  life modules and rules; `COMP_KINDS` in `src/sr6/engine/compendium.ts`) under their usual tags, with only that kind's
+  life modules and rules; `COMP_KINDS` in `src/sr6/formats/domain/compendium.ts`) under their usual tags, with only that kind's
   attributes and string children, every one citing the compendium's `source` with a `page` of 1 or more and the GM's
   own text in `<text>` (never a book's: a copy from a book keeps the stats and drops the description); and NPCs as
   `<sr6:character>` elements exactly as an SR6 runner file's root (`docs/sr6-character-format.md`), each with its `<npc>`

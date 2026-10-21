@@ -1,10 +1,10 @@
 // Budget providers for the five creation methods (src/sr6/engine/providers.ts), on the made-up fixture catalog and its
 // invented creation rules (tests/fixtures/sr6/custom). Each SR6 Forge provider test re-expressed with invented numbers.
 import { expect, test } from 'vitest'
-import type { MagicKind, Sr6Build, Sr6Method } from '../../src/sr6/model/character'
+import type { MagicKind, Sr6Build, Sr6Method } from '../../src/sr6/formats/domain/character'
 import { attrRating, karmaBudget } from '../../src/sr6/engine/budgets'
 import { makeProvider, uncovered } from '../../src/sr6/engine/providers'
-import { buildOf as build, GLIM, made, STONE } from './fixture'
+import { buildOf as build, GLIM, made, STONE } from './catalog/fixture'
 
 const setup = (method: Sr6Method, over?: Parameters<typeof made>[0]) => {
   const { data, cr } = made(over)

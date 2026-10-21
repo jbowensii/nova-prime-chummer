@@ -1,9 +1,9 @@
 // An attribute's natural and augmented rating, and its maximum.
-import { MAGIC_KINDS, type Sr6Data } from './data'
-import type { Sr6Attr, Sr6Build, Sr6Quality } from '../model/character'
-import { num, str, type CreationRules } from './creation'
+import { MAGIC_KINDS, type Sr6Data } from '../catalog/domain/data'
+import type { Sr6Attr, Sr6Build, Sr6Quality } from '../formats/domain/character'
+import { num, str, type CreationRules } from '../table-setup/domain/creation'
 import type { Provider } from './providers'
-import { liveMaxEffects } from './effects'
+import { liveMaxEffects } from '../catalog/domain/effects'
 import { augmentBonus } from './bonuses'
 import { noteAttr } from './choices'
 import { baseMetatype, runnerInfected } from './infected'

@@ -100,7 +100,7 @@ Three rules on top of the ranks:
 
 - `sr6/catalog`: `loadSr6Catalog`, `buildSr6Catalog`, `resolveEntry`, `catalogFind`, `sr6Data`, and one
   `catalogForRunner(catalog, runner, { campaign })` that does today's campaign filter + house overlay + typed-view rebuild
-  (now done twice, in `src/sr6/ui/EditorView.tsx:99-101` and `src/sr6/engine/export.ts:612`, and the export copy lacks
+  (now done twice, in `src/sr6/shell/ui/EditorView.tsx:99-101` and `src/sr6/foundry/domain/export.ts:612`, and the export copy lacks
   the campaign filter).
 - `sr6/table-setup`: `loadCreation`, `CreationRules`, `rulesForRunner`, `parseCreation`, `missingFor`.
 - `sr6/runner-builder`: creation `makeProvider`, `allBudgets`, `apply`; review `validateSr6`, `canFinalize`; career
@@ -119,11 +119,11 @@ cycles into the new layout. The fixes are small and change no behaviour:
 
 | Problem | Evidence | Fix |
 |---|---|---|
-| SR6 borrows Anarchy's types | `src/sr6/model/character.ts:5, 508`; `src/core/shared/rules.ts:2`; `src/ca2/formats/domain/types.ts:323, 329, 338, 401-415` | Move the shared types to `src/core/shared/types.ts`, re-exported from the old file |
+| SR6 borrows Anarchy's types | `src/sr6/formats/domain/character.ts:5, 508`; `src/core/shared/rules.ts:2`; `src/ca2/formats/domain/types.ts:323, 329, 338, 401-415` | Move the shared types to `src/core/shared/types.ts`, re-exported from the old file |
 | Shell helpers live in Anarchy screens | `src/features/runner-store/repo.ts:80-83`, `src/ca2/runner-library/ui/Library.tsx:198, 216`, `src/ca2/foundry/ui/Foundry.tsx:12-52`, `src/ca2/runner-builder/ui/samples.ts:104` | Move them to runner-store and foundry-kit; `serverRepo` takes its file format as an argument |
 | The page header imports features | `src/core/chrome/nav.tsx:7, 12, 13`; `src/core/ui-kit/settings.tsx:6-8` | The app passes the header buttons in through one React context |
 | Reading an Anarchy file runs creation rules | `src/ca2/formats/domain/charxml.ts:8` → `src/ca2/formats/domain/file.ts:138` → `src/ca2/runner-builder/domain/amps.ts:60-73` | Move the three pure SINner lookups into Anarchy formats |
-| SR6's catalog type is defined in table setup | `src/sr6/engine/types.ts:116`, `creation.ts:37`, `data.ts:8`, `grades.ts:7, 15` | Move `CreationCatalog` to types.ts and `gradeKey` to names.ts |
+| SR6's catalog type is defined in table setup | `src/sr6/catalog/domain/types.ts:116`, `creation.ts:37`, `data.ts:8`, `grades.ts:7, 15` | Move `CreationCatalog` to types.ts and `gradeKey` to names.ts |
 | SR6 screens import from each other's pages | `src/sr6/ui/tabs/Ledger.tsx:36`, `tabs/Vehicles.tsx:17` → `Designer.tsx:40`; `tabs/Method.tsx:25` → `Runners.tsx:61`; `Compendiums.tsx:34` → `Npcs.tsx:104` | Move `useSr6Designs`, `missingLabels`, `npcChip` to the modules that own them |
 | Importer stages reach into each other's private helpers | `importer/sr6/overrides.py:74` → `resolve.py:295 _add_kid`; `run.py:176`; `categories.py:24`; `sr6/__main__.py:98, 164` | Make those helpers public in the stage that owns them |
 | Career's legality depends on review's code strings | `src/sr6/engine/career.ts:948-965` keeps 19 bare codes from `validateSr6` | Export the set next to `validateSr6`, plus a test that every code is still emitted |
@@ -174,7 +174,7 @@ Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's b
 3. **Pure moves (about 6 PRs):** `git mv` into `src/core`, `src/features`, `src/ca2`, `src/sr6`, with a scripted rewrite of
    import paths and path mentions; tests move to the matching `tests/` folders. SR6 runner-builder moves last, when no
    SR6 branch is open.
-   _Status: move 1 (`--only core/`), move 2 (`--only features/`) and move 3 (`--only ca2/`, all of Anarchy) done; tests of one module that share a file name keep their old folder (`tests/ca2/runner-builder/engine/price.test.ts`)._
+   _Status: move 1 (`--only core/`), move 2 (`--only features/`), move 3 (`--only ca2/`, all of Anarchy) and move 4 (`--only sr6/ --except sr6/runner-builder`, every SR6 module but the builder) done; tests of one module that share a file name keep their old folder (`tests/ca2/runner-builder/engine/price.test.ts`)._
 4. **Importer (3 PRs):** public cross-stage helpers; `effects.py` → `importer/sr6/effects/` package; `overrides.py` →
    package. Each behind the CommLink6 gates: the replay (main vs branch, 0 differing rows) and a fresh full import that
    reads 1,079/1,079 effects, 4,474/4,474 completeness and 4,307/4,307 accuracy.

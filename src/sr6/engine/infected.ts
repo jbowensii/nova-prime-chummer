@@ -6,11 +6,11 @@
 // (providers.ts, magic.ts), and which optional powers may be bought (<optionalpower>, one free pick). Awakened: a
 // magician, adept, mystic adept or aspected magician, or Infected; a technomancer is Emerged, not Awakened (owner,
 // 2026-10-16); the player may override it (a Review warning).
-import { MAGIC_KIND_LABELS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Quality } from '../model/character'
-import type { Sr6Entry } from '../model/types'
-import { flag, num, type CreationRules } from './creation'
-import { awakenedKind, gainsOf, type Gained, type Sr6Data } from './data'
-import { normName } from './names'
+import { MAGIC_KIND_LABELS, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Quality } from '../formats/domain/character'
+import type { Sr6Entry } from '../formats/domain/types'
+import { flag, num, type CreationRules } from '../table-setup/domain/creation'
+import { awakenedKind, gainsOf, type Gained, type Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 
 export interface InfectedType {
   id: string

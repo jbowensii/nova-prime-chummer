@@ -6,13 +6,13 @@ import type { Override, Violation } from '../../core/shared/types'
 import { apply, type Op } from '../engine/actions'
 import type { Sr6Budgets } from '../engine/budgets'
 import type { Preview, Typed } from '../engine/career'
-import { CREATION_KEYS, type CreationRules, type RuleLock } from '../engine/creation'
-import type { Sr6Data } from '../engine/data'
+import { CREATION_KEYS, type CreationRules, type RuleLock } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
 import type { Sr6Derived } from '../engine/derive'
 import { NPC_KINDS } from '../engine/npc'
 import type { Provider } from '../engine/providers'
-import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../model/character'
-import type { Sr6Catalog } from '../model/types'
+import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../formats/domain/character'
+import type { Sr6Catalog } from '../formats/domain/types'
 
 export interface Sr6Ctx {
   c: Sr6Catalog

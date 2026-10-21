@@ -2,15 +2,15 @@
 // them, the export's list, the file; a book sample's printed line corrected by the override file (samplefix.ts); a level
 // printed on a quality without levels. Made-up fixture, invented values.
 import { expect, test } from 'vitest'
-import { runnerRules, type CreationRules } from '../../src/sr6/engine/creation'
+import { runnerRules, type CreationRules } from '../../src/sr6/table-setup/domain/creation'
 import { allBudgets } from '../../src/sr6/engine/budgets'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { exportRules } from '../../src/sr6/engine/export'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { exportRules } from '../../src/sr6/foundry/domain/export'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { withSampleFixes } from '../../src/sr6/engine/samplefix'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const runner = (): Sr6Character => ({ ...blankSr6('priority', 'r1'), build: buildOf('priority', { letters: 'CABDA', metatype: GLIM }) })
 

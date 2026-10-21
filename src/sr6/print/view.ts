@@ -6,15 +6,25 @@
 import { entryOf, materialOf, priced, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
 import { balances, stolenLeft } from '../engine/career'
 import { awakenedFlag, runnerInfected } from '../engine/infected'
-import type { PickKind, PurchaseKind, Sr6Character, Sr6CritterQuality, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
+import type {
+  PickKind,
+  PurchaseKind,
+  Sr6Character,
+  Sr6CritterQuality,
+  Sr6Licence,
+  Sr6Lifestyle,
+  Sr6Purchase,
+  Sr6Quality,
+  Sr6Sin,
+} from '../formats/domain/character'
 import { CRITTER_CLASS_LABELS, critterView, isTaught, trainedName } from '../engine/critters'
 import { NPC_STATS } from '../engine/npc'
-import type { Sr6Entry } from '../model/types'
-import type { Sr6Data } from '../engine/data'
+import type { Sr6Entry } from '../formats/domain/types'
+import type { Sr6Data } from '../catalog/domain/data'
 import type { Sr6Derived, Sr6Pool } from '../engine/derive'
 import type { Sr6Ctx } from '../ui/editor'
-import { entryLabel } from '../engine/categories'
-import { effectState, effectText } from '../engine/effects'
+import { entryLabel } from '../catalog/domain/categories'
+import { effectState, effectText } from '../catalog/domain/effects'
 import { builtinText, modsOf, mountsOf } from '../engine/vehiclemods'
 
 export const PICKS: [PickKind, string][] = [

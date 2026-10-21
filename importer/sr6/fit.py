@@ -36,8 +36,8 @@ def settings(path=None):
     return out
 
 
-# src/sr6/engine/creation.ts's RULE_DEPS (requires, conflicts), LEVELS and SETS, as resolve() needs them
-# (tests/sr6/fit-parity.test.ts keeps them the same)
+# src/sr6/table-setup/domain/creation.ts's RULE_DEPS (requires, conflicts), LEVELS and SETS, as resolve() needs them
+# (tests/sr6/book-import/fit-parity.test.ts keeps them the same)
 _AWAKENED = ("full", "aspected", "mystic-adept", "adept", "technomancer")
 REQUIRES = {
     **{f"swcStreet.{s}": ["levelSwcStreet"] for s in ("sumToTen", "pointBuy", "modules", "letters")},
@@ -110,7 +110,7 @@ def metatype_size(name):
 
 
 def value(v, rating=1):
-    """A catalog value at `rating`, read as src/sr6/engine/values.ts rated() reads it; None when it can't be."""
+    """A catalog value at `rating`, read as src/sr6/catalog/domain/values.ts rated() reads it; None when it can't be."""
     if v is None or len(v) > 100 or re.fullmatch(r"\s*[—–-]?\s*", v):  # values.ts MAX_VALUE
         return None
     s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", _EACH.sub("", v)).strip().lstrip("+")),

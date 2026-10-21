@@ -19,7 +19,7 @@ import {
   type Sr6Character,
   type Sr6Purchase,
   type Sr6Quality,
-} from '../model/character'
+} from '../formats/domain/character'
 import {
   allBudgets,
   aptitudeSkills,
@@ -47,18 +47,18 @@ import {
   skillRank,
   type Sr6Budgets,
 } from './budgets'
-import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from './data'
-import { normName } from './names'
+import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { adeptBars, opposite } from './actions'
-import type { Sr6Entry } from '../model/types'
+import type { Sr6Entry } from '../formats/domain/types'
 import { deriveSr6 } from './derive'
 import { makeProvider, uncovered, type Provider } from './providers'
-import { ratingRange } from './values'
+import { ratingRange } from '../catalog/domain/values'
 import { modsOf } from './vehiclemods'
 import { critterView } from './critters'
 import { gradeFits, gradeKnown, gradeName } from './grades'
-import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from './categories'
+import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from '../catalog/domain/categories'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from './infected'
 import { infectedQuality } from './critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from './martial'

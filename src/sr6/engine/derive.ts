@@ -2,7 +2,7 @@
 // Intentions, Memory, lift/carry, drain/fading, essence and its magic loss): formulas in code, every constant they use a
 // creation setting (Derived values group). A setting that isn't set leaves its value null and is listed in `unset`;
 // nothing is guessed and nothing is NaN. Pages: the core rulebook's (checked against the owner's copy).
-import { CORE_ATTRS, SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../model/character'
+import { CORE_ATTRS, SR6_ATTRS, type Bonus, type Sr6Attr, type Sr6Character } from '../formats/domain/character'
 import {
   allBudgets,
   attrMax,
@@ -18,16 +18,16 @@ import {
   skillRank,
   specBonus,
 } from './budgets'
-import { flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Sr6Data } from './data'
-import { normName } from './names'
-import { linkedParts, ownParts } from './effects'
-import type { Sr6Entry, Sr6Part } from '../model/types'
+import { flag, num, str, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, type Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
+import { linkedParts, ownParts } from '../catalog/domain/effects'
+import type { Sr6Entry, Sr6Part } from '../formats/domain/types'
 import { makeProvider } from './providers'
 import { awakenedFlag, runnerInfected } from './infected'
-import { armorSocial, attackRatings, rated } from './values'
+import { armorSocial, attackRatings, rated } from '../catalog/domain/values'
 import { noteAttr } from './choices'
-import { categoryOf, entryLabel } from './categories'
+import { categoryOf, entryLabel } from '../catalog/domain/categories'
 
 export interface Sr6Pool {
   skill: string

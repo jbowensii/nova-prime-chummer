@@ -6,12 +6,12 @@
 // weapon and counts toward the hardpoints or mounts as a bought one; extra mod slots they give add to the vehicle's, and
 // slots shifted between categories at 2:1 (DC p. 120) move them. What goes past a limit is a Review warning, never
 // refused.
-import { SLOT_KINDS, type SlotKind, type SlotShift, type Sr6Purchase } from '../model/character'
-import type { Sr6Entry } from '../model/types'
-import type { Sr6Data } from './data'
-import { entryLabel } from './categories'
+import { SLOT_KINDS, type SlotKind, type SlotShift, type Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Entry } from '../formats/domain/types'
+import type { Sr6Data } from '../catalog/domain/data'
+import { entryLabel } from '../catalog/domain/categories'
 import { entryOf, hardpointOf, isDrone, isMount, modKind, ratingOf, type Hardpoint, type ModKind } from './purchases'
-import { bookValue, dataFind } from './values'
+import { bookValue, dataFind } from '../catalog/domain/values'
 
 export { SLOT_KINDS, type SlotKind }
 /** A hardpoint in standard ones: one standard splits into two small, two make a large, three a huge (DC p. 124). */

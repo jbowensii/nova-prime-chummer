@@ -3,8 +3,8 @@
 // uses in `house` (keepSr6House, on each change), and once a compendium is unshared or deleted those copies stand in for
 // the gone entries (withSr6House), noted on Review (houseNotes). Book entries are never copied.
 import type { Violation } from '../../core/shared/types'
-import type { Sr6Character, Sr6Purchase } from '../model/character'
-import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
+import type { Sr6Character, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../formats/domain/types'
 import { currentBuild } from './career'
 
 const key = (kind: Sr6Kind, id: string) => `${kind}:${id}`

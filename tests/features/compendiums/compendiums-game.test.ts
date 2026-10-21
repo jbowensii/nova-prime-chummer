@@ -1,11 +1,11 @@
-// The compendium store per game (src/features/compendiums/compendiumStore.ts, src/sr6/ui/compendiumStore.ts): Anarchy's calls stay on
+// The compendium store per game (src/features/compendiums/compendiumStore.ts, src/sr6/compendiums/ui/compendiumStore.ts): Anarchy's calls stay on
 // /api/compendiums, SR6's go to /api/sr6/compendiums with the SR6 file; each game's rows read only its own files.
 // Made-up compendiums; fetch is mocked.
 import { afterEach, expect, test, vi } from 'vitest'
 import { compendiumXml } from '../../../src/ca2/formats/domain/compendium'
-import { sr6CompendiumXml } from '../../../src/sr6/engine/compendium'
-import type { Sr6Compendium } from '../../../src/sr6/model/character'
-import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../../src/sr6/ui/compendiumStore'
+import { sr6CompendiumXml } from '../../../src/sr6/formats/domain/compendium'
+import type { Sr6Compendium } from '../../../src/sr6/formats/domain/character'
+import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../../src/sr6/compendiums/ui/compendiumStore'
 import { deleteCompendium, listCompendiums, listShared, parseRows } from '../../../src/features/compendiums/compendiumStore'
 
 const kit: Sr6Compendium = {

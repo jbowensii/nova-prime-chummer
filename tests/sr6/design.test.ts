@@ -6,14 +6,14 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { apply } from '../../src/sr6/engine/actions'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { boughtDesign, designOf, maxProblems } from '../../src/sr6/engine/design'
 import { validateSr6 } from '../../src/sr6/engine/rules'
 import { modsOf, mountsOf } from '../../src/sr6/engine/vehiclemods'
-import { blankBuild, blankSr6, type Sr6Design } from '../../src/sr6/model/character'
+import { blankBuild, blankSr6, type Sr6Design } from '../../src/sr6/formats/domain/character'
 import { DESIGN_GEAR, DESIGN_PARTS, designWorld as world, NS } from './design-fixture'
-import { fixtureCatalog, GLIM } from './fixture'
+import { fixtureCatalog, GLIM } from './catalog/fixture'
 
 const design = (over: Partial<Sr6Design> = {}): Sr6Design => ({
   kind: 'vehicle',
