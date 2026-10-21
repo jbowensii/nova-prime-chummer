@@ -22,11 +22,11 @@ import {
   type CompGame,
   type PageProps,
   type ShellRow,
-} from './CompendiumShell'
-import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
+} from '../features/compendiums/CompendiumShell'
+import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from '../features/compendiums/compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { ca2Codec } from '../engine/charxml'
-import { npcRepoFor } from './repo'
+import { npcRepoFor } from '../features/runner-store/repo'
 import { useRepo } from '../core/ui-kit/repoContext'
 import { downloadCompendium } from './Foundry'
 import { SourceLabel } from './SourceLabel'

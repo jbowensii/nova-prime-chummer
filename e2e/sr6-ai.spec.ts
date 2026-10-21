@@ -1,4 +1,4 @@
-// Each game's own AI (server/books.mjs ai(), src/ui/AskRules.tsx, AiSettings.tsx), on a server of its own with the stub
+// Each game's own AI (server/books.mjs ai(), src/features/ai-assist/AskRules.tsx, AiSettings.tsx), on a server of its own with the stub
 // worker and the made-up SR6 fixture: SR6's AI settings at #/sr6/books/ai, then SR6's Ask the rules in the header and its
 // AI search on Rules and Game data; Anarchy's AI stays unset meanwhile (no Ask there, no key on its settings page).
 import { test, expect, type Page } from '@playwright/test'

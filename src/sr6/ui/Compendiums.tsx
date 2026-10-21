@@ -1,5 +1,5 @@
 // SR6 Compendiums (#/sr6/compendiums[/<id>[/<entry id>]], admin and editors): the shell both games share
-// (src/ui/CompendiumShell.tsx) with SR6's store (compendiumStore.ts), catalog and pages. A compendium's entries are grouped by
+// (src/features/compendiums/CompendiumShell.tsx) with SR6's store (compendiumStore.ts), catalog and pages. A compendium's entries are grouped by
 // kind in COMP_KINDS order, then its NPCs; its owner adds, edits and deletes entries with Sr6EntryFields (EditEntry.tsx),
 // which fills what common.xsd requires, so the file always validates, and moves an NPC back out to NPCs & Critters. A
 // book (#/sr6/compendiums/<book source id>) and another GM's compendium are read only, with Copy to… into one of yours
@@ -18,8 +18,8 @@ import {
   type CompGame,
   type PageProps,
   type ShellRow,
-} from '../../ui/CompendiumShell'
-import { deleteCompendium } from '../../ui/compendiumStore'
+} from '../../features/compendiums/CompendiumShell'
+import { deleteCompendium } from '../../features/compendiums/compendiumStore'
 import { IconButton } from '../../core/ui-kit/icons'
 import { PageHeader } from '../../core/chrome/nav'
 import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, newEntryId } from '../engine/compendium'

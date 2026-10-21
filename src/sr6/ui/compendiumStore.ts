@@ -1,8 +1,8 @@
-// The SR6 compendiums on the server (/api/sr6/compendiums): Anarchy's store (src/ui/compendiumStore.ts) with SR6's file
+// The SR6 compendiums on the server (/api/sr6/compendiums): Anarchy's store (src/features/compendiums/compendiumStore.ts) with SR6's file
 // format (src/sr6/engine/compendium.ts). An Anarchy file never reads as an SR6 one. NPCs move between a compendium and
 // the SR6 NPC area with two calls (no server route of their own); a failed second call undoes the first.
 import { newId } from '../../core/shared/types'
-import { listCompendiums, parseRows, putCompendium, type CompendiumRow, type Stored } from '../../ui/compendiumStore'
+import { listCompendiums, parseRows, putCompendium, type CompendiumRow, type Stored } from '../../features/compendiums/compendiumStore'
 import type { SaveResult } from '../../core/ui-kit/repoContext'
 import { readSr6Compendium, sr6CompendiumXml } from '../engine/compendium'
 import type { Sr6Character } from '../model/character'

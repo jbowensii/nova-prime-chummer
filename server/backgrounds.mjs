@@ -1,4 +1,4 @@
-// Background art: images the admin uploads, shown faintly behind every page (src/ui/Background.tsx). They live in
+// Background art: images the admin uploads, shown faintly behind every page (src/features/appearance/Background.tsx). They live in
 // library/backgrounds/<id>.<png|jpg|webp> with library/backgrounds/backgrounds.xml (backgrounds.xsd); the Library is
 // never served as files, so they are read only through these routes. Shadowrun 6 has its own set, the same routes under
 // /api/sr6/backgrounds in library/sr6/backgrounds/ (server.mjs makes one api per game, `libraryDir` being the game's). Who may call them: server/auth.mjs's role table

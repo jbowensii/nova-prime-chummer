@@ -12,7 +12,7 @@ import { bdClass, printBackdrop } from '../core/ui-kit/Portrait'
 import { HeaderBars } from '../core/chrome/nav'
 import { IconButton, IconLink } from '../core/ui-kit/icons'
 import { ampLines, cells, lists, RISK, switchedBoxes } from './shared'
-import { SheetType, useSheetArt } from '../ui/sheetArt'
+import { SheetType, useSheetArt } from '../features/appearance/sheetArt'
 import './sheet.css'
 import './book-sheet.css'
 

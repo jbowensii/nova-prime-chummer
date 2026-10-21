@@ -1,14 +1,14 @@
-// Game data (everyone), in the layout both games share (src/ui/GameData.tsx): the catalog browser by kind with the book a
+// Game data (everyone), in the layout both games share (src/features/catalog-browser/GameData.tsx): the catalog browser by kind with the book a
 // filter (CatalogBrowser), the sources, the Foundry export, the catalog edits, the files that didn't load and those that did.
 import type { Catalog } from '../../model/types'
 import { canEdit, useMe } from '../../core/ui-kit/auth'
 import { NonCanon } from '../../core/ui-kit/bits'
-import { GameDataPage } from '../GameData'
-import { EditButton, editState, useOpenEdit, type EditKind } from '../editTrigger'
+import { GameDataPage } from '../../features/catalog-browser/GameData'
+import { EditButton, editState, useOpenEdit, type EditKind } from '../../features/catalog-edits/editTrigger'
 import { browseKinds } from '../AnarchyRef'
 import { SourceLabel } from '../SourceLabel'
 import { ExportBooksPanel } from '../Foundry'
-import { OverrideFiles, type OverrideGame } from '../OverrideFiles'
+import { OverrideFiles, type OverrideGame } from '../../features/catalog-edits/OverrideFiles'
 import { entryXml } from '../../engine/compendium'
 
 const KINDS: [EditKind, string][] = [

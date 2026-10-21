@@ -378,5 +378,5 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
   }
 }
 
-/** Anarchy's file format for the runner repo (src/ui/repo.ts serverRepo takes a game's codec). */
+/** Anarchy's file format for the runner repo (src/features/runner-store/repo.ts serverRepo takes a game's codec). */
 export const ca2Codec: Codec<Character> = { tag: 'ca2:character', toXml: ch => characterToXml(ch), fromXml: xml => xmlToCharacter(xml) }

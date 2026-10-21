@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { exportBooks, exportRunners, type ExportOpts } from '../engine/export'
 import type { Catalog, Character, Compendium } from '../model/types'
 import { NonCanon } from '../core/ui-kit/bits'
-import { downloadJson, fileDate, runnersStem } from './foundryKit'
+import { downloadJson, fileDate, runnersStem } from '../features/foundry-kit/foundryKit'
 import { loadTableRules, tableRulesForExport } from './TableRules'
 import { bookNpcs, bookSamples, readSample } from './samples'
 

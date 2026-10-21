@@ -6,7 +6,7 @@
 import { characterToXml, xmlToCharacter } from '../engine/charxml'
 import { parseCharacterFile } from '../engine/file'
 import type { Character } from '../model/types'
-import { unedited } from './runnerList'
+import { unedited } from '../features/runner-store/runnerList'
 
 /** What the library needs of a source: canon, and when its book was imported. Looked up case-insensitively. */
 export type SourceInfo = { canon: boolean; imported?: string }

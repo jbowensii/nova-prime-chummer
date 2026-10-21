@@ -3,7 +3,7 @@
 // Game data (GMs), a compendium from its page.
 import { useState } from 'react'
 import { NonCanon } from '../../core/ui-kit/bits'
-import { downloadJson, fileDate, runnersStem } from '../../ui/foundryKit'
+import { downloadJson, fileDate, runnersStem } from '../../features/foundry-kit/foundryKit'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { exportSr6Books, exportSr6Compendium, exportSr6Runners, type Sr6ExportOpts } from '../engine/export'
@@ -49,7 +49,7 @@ export function Sr6ExportBooksPanel({ c, data }: { c: Sr6Catalog; data: Sr6Data 
   }
   return (
     <section aria-label="Export book data for Foundry" className="stack">
-      {/* (its heading is the fold's, src/ui/GameData.tsx) */}
+      {/* (its heading is the fold's, src/features/catalog-browser/GameData.tsx) */}
       <p className="muted">
         For the Nova Prime Chummer — SR6 Importer in Foundry VTT (shadowrun6-eden). The books go out as this app sees them, with your corrections. Compendiums
         export from their own page.

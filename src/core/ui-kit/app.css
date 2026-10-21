@@ -2060,10 +2060,10 @@ dialog.drawer h2 {
   margin-top: 0;
 }
 
-/* ---- background art (src/ui/Background.tsx) ----
+/* ---- background art (src/features/appearance/Background.tsx) ----
    The admin's image behind every page, under the page color: the ::after layer is --bg at ART_CENTER (93%: the art shows at
    7%) across the middle, where the content is, easing to ART_EDGE (82%: 18%) at the corners; phones 95% and 88%. The art
-   itself is flattened (contrast .6) so neither a black nor a white image can pull text below its contrast: tests/ui/background.test.ts
+   itself is flattened (contrast .6) so neither a black nor a white image can pull text below its contrast: tests/features/appearance/background.test.ts
    checks the worst case against the tokens. Dark mode: the overlay is the indigo page, so the art takes its tint.
    Settings → Background → Strength (--art-strength, 0–1, per browser) fades the whole layer: at 1 it's the strengths above. */
 .bg-art {
