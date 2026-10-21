@@ -120,6 +120,7 @@ export const REASONS: Record<string, string> = {
   'not-shifted': 'That shift isn’t on it.',
   'same-mount': 'The weapon is in that mount already.',
   'no-diy': 'Only a vehicle mod can be installed yourself: an accessory can’t (Double Clutch p. 120).',
+  'no-material': 'Only ammunition can be of a material, and only a material the catalog has (Bestial Nature p. 36).',
   native: 'A native language is free: it has no ranks to buy.',
   'not-point-buy': 'Character points are for point buy only.',
   'not-lifepath': 'Life modules are for lifepath only.',

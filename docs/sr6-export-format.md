@@ -105,7 +105,10 @@ effects, with the effects of the entries it links to) `[{ target, value, when?, 
 keying its skills by name, as Eden does, finds it by; `derived.pools` counts it, or `derivedOn.pools` when it is switchable, conditional or limited to a specialization the runner hasn't), evaluated: × the
 rating when per rating, × the quantity (an accessory: its own rating). `accessories` are purchases too; an
 accessory's bonuses are its host item's (a cyberlimb's own Strength), never the runner's, so `derived.attributes` leaves
-them out.
+them out. `material` (ammunition of a material: an ammunition line or type, Bestial Nature p. 36) is `{ id, name,
+times, effect }`: the material's catalog id and name (`silver`), how many times as much the line costs (`values.cost`
+already has it) and what its rounds do, in words (a critter's Allergy or Vulnerability to it counts, its Immunity to
+Normal Weapons doesn't).
 
 What a vehicle, drone or critter the runner owns adds (the Foundry module makes each its own Eden Vehicle or Critter
 actor, tied to the runner):

@@ -8,7 +8,7 @@ import { normName } from './names'
 import { gradeFactor, type GradeFactor } from './grades'
 import { fieldName } from '../../shared/formula'
 import { availability, bookValue, dataFind, ratingRange } from './values'
-import { capacityUsed } from './categories'
+import { capacityUsed, isMaterial } from './categories'
 import { qualityChoice } from './choices'
 import { critterPrice, critterStat, critterValue } from './critters'
 
@@ -46,6 +46,26 @@ export const hostTimes = (v?: string): number | null => {
   return m ? Number(m[1]) : null
 }
 
+/** A line's ammunition material (Sr6Purchase.material, data.materials): its material (the add-on's name in brackets,
+ *  `Silver Bullets (silver)`: silver), how many times as much its line costs (the add-on's `x5`) and what the rounds do;
+ *  undefined: none, or an id that is no material. Owner (to-do 2026-10-13): any ammunition may be of a material, though
+ *  Bestial Nature p. 36 prints its silver bullets as an ammunition of their own ("may not be combined with other types"). */
+export function materialOf(data: Sr6Data, id?: string): { id: string; name: string; times: number; effect: string } | undefined {
+  const e = id ? data.materials.find(m => m.id === id) : undefined,
+    times = hostTimes(e?.attrs.cost)
+  if (!e || times === null) return undefined
+  const name = /\(([^()]+)\)\s*$/.exec(e.name)?.[1] ?? e.name
+  // (CRB p. 228 Allergy and p. 229 Vulnerability, a substance a critter is weak to; p. 225 Immunity to Normal Weapons)
+  const effect = `a target with an Allergy or Vulnerability to ${name} suffers it (Vulnerability: +DV equal to its Magic or 3, damage Regeneration can't heal) and its Immunity to Normal Weapons doesn't apply (CRB pp. 225, 228-229)`
+  return { id: e.id, name, times, effect }
+}
+/** Whether a line can be of a material: ammunition (a gear line printed in an ammunition table, an ammunition type), not a
+ *  material itself. */
+export const takesMaterial = (x: Sr6Purchase, data: Sr6Data) => {
+  const e = entryOf(x, data)
+  return !!e && !isMaterial(e) && (x.kind === 'ammotypes' || (x.kind === 'gear' && /ammo|ammunition/i.test(e.attrs.category ?? '')))
+}
+
 /** A purchase line's cost (× qty, accessories added), Availability (its own; accessories are checked one by one) and
  *  Essence (× qty, accessories added but those taking the host's Capacity), at its rating, quantity and grade: an entry's <formula> when it has one
  *  (bookValue), else the printed value. A custom item (no id) uses the player's numbers. A value the app can't read or
@@ -66,6 +86,8 @@ export function priced(
     unpriced = false
   const notes: string[] = [],
     perLine = new Set<string>()
+  // a line of a material (materialOf) costs that many times as much, its ammunition types with it
+  let material = materialOf(data, x.material)?.times ?? 1
   if (!x.id) {
     cost = x.cost ?? 0
     avail = x.avail ?? 0
@@ -104,8 +126,15 @@ export function priced(
     // an add-on priced as a multiple of what it's fitted to (an ammunition type's `x2`, CRB p. 261: the ammunition's
     // price times it) adds host × (N − 1) to its host's line
     const times = host && !e?.formulas?.some(f => f.field === 'cost') ? hostTimes(e?.attrs.cost) : null
+    // (of a material: the ammunition it makes costs that many times as much, the type's `x2` × the material's `x5`)
     if (times !== null) {
-      cost = host!.cost * (times - 1)
+      cost = host!.cost * (times * material - 1)
+      perLine.add('cost')
+      material = 1
+    } else if (host && e?.formulas?.some(f => f.field === 'cost' && /\bH\b/.test(f.expr))) {
+      // a cost formula of the item it goes on (a material's `H*5`) is what the host's line then costs, as `x5` is: the
+      // add-on adds that less the host's own price (host × (N − 1)), never N × host on top
+      cost = read('cost') - host.cost
       perLine.add('cost')
     } else cost = read('cost')
     avail = read('avail')
@@ -137,6 +166,7 @@ export function priced(
     essence += ess
     ok &&= pa.ok
   }
+  cost *= material
   return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(body !== undefined ? { body } : {}) }
 }
 

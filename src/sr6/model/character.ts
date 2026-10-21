@@ -166,6 +166,9 @@ export interface Sr6Purchase {
   mount?: string
   /** a vehicle mod installed by the player: half its nuyen price (Double Clutch p. 120; never an accessory's: owner Q6) */
   diy?: true
+  /** an ammunition line's material (purchases.ts materialOf): the catalog id of a material add-on, `bn.silver-bullets-silver`;
+   *  the line costs that many times as much and its rounds are of that material */
+  material?: string
   /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
    *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
   design?: string

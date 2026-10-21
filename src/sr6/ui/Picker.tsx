@@ -3,7 +3,7 @@
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
-import { entryOf, priced } from '../engine/budgets'
+import { entryOf, materialOf, priced, takesMaterial } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../shared/formula'
@@ -13,7 +13,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../mode
 import type { Sr6Data } from '../engine/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../engine/grades'
 import { critterOnly, infectedOff } from '../engine/critterware'
-import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf } from '../engine/categories'
+import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf, isAmmoType } from '../engine/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -394,19 +394,22 @@ export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string;
 
 /** The accessories fitted to a line, each removable, and the picker to fit another: every accessory whose category names
  *  hosts (one naming others marked: it may still be fitted, Review's catalog.accessoryHost); one whose category names no
- *  host, by `filter`. An owned critter's (`critter`): whatever `filter` offers, critter-only entries too. */
+ *  host, by `filter`. An owned critter's (`critter`): whatever `filter` offers, critter-only entries too. An ammunition
+ *  line's (`ammo`): the ammunition types `filter` offers. */
 export function Accessories({
   host,
   name,
   kinds,
   filter,
   critter,
+  ammo,
 }: {
   host: Sr6Purchase
   name: string
   kinds: PurchaseKind[]
   filter?: (e: Sr6Entry) => boolean
   critter?: boolean
+  ammo?: boolean
 }) {
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
@@ -414,7 +417,7 @@ export function Accessories({
   // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
   // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
   const fits = (e: Sr6Entry) =>
-    critter
+    critter || ammo
       ? !filter || filter(e)
       : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
   const wrong = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) === false ? `for ${hostsOf(data.categories, e).join(' or ')}, not this` : undefined)
@@ -480,13 +483,14 @@ export function Accessories({
             <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>
               ×
             </button>
+            <MaterialPick x={a} name={`${own} on ${name}`} />
             {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
             <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} />
           </span>
         )
       })}
       <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>
-        {critter ? 'Critterware or gear…' : 'Accessory…'}
+        {critter ? 'Critterware or gear…' : ammo ? 'Ammunition type…' : 'Accessory…'}
       </button>
       <CatalogPicker
         title={`Add an accessory to ${name}`}
@@ -501,6 +505,35 @@ export function Accessories({
     </span>
   )
 }
+
+/** An ammunition line's material (purchases.ts materialOf: Bestial Nature p. 36's copper, silver, gold), chosen or taken
+ *  off; nothing on a line that is no ammunition or when no book with materials is imported. */
+export function MaterialPick({ x, name }: { x: Sr6Purchase; name: string }) {
+  const { data, act } = useSr6Editor()
+  if (!takesMaterial(x, data) || !data.materials.length) return null
+  // (owner to-do: any ammunition, its types too; the book's own rule shown when they are combined, for the GM)
+  const combined = !!x.material && (isAmmoType(entryOf(x, data)) || x.accessories.some(a => isAmmoType(entryOf(a, data))))
+  return (
+    <label className="inline" title={MATERIAL_RULE}>
+      Material{' '}
+      <select aria-label={`${name}: material`} value={x.material ?? ''} onChange={ev => act({ op: 'material', uid: x.uid, material: ev.target.value || null })}>
+        <option value="">None</option>
+        {data.materials.map(e => {
+          const m = materialOf(data, e.id)
+          return (
+            m && (
+              <option key={e.id} value={e.id}>
+                {m.name} (×{m.times} the price)
+              </option>
+            )
+          )
+        })}
+      </select>
+      {combined && <span className="muted small"> {MATERIAL_RULE}</span>}
+    </label>
+  )
+}
+const MATERIAL_RULE = 'Bestial Nature p. 36: silver bullets “may not be combined with other types of ammunition” (the GM’s call; not enforced).'
 
 /** An entry of an accessory category (its record names the hosts it fits; one that names none, by its category's word). */
 export const isAccessory = (e: Sr6Entry) => /accessor|modification|\bmods?\b|enhancement/i.test(e.attrs.category ?? '')

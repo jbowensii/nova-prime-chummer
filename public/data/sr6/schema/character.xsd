@@ -625,6 +625,9 @@
     <xs:attribute name="mount" type="xs:string"/>
     <!-- a vehicle mod the player installs: half its nuyen price (Double Clutch p. 120; never an accessory's) -->
     <xs:attribute name="diy" type="xs:boolean"/>
+    <!-- an ammunition line's material: the catalog id of a material (an ammunition type priced H*N, Bestial Nature p. 36);
+         the line costs that many times as much -->
+    <xs:attribute name="material" type="xs:string"/>
     <!-- a vehicle or drone bought from a design (the Designer): the design's id; the line's id is design.<that id> and its
          snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
          when a GM made or approved the design) -->
