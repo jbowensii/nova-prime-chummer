@@ -1,6 +1,6 @@
 [
   {"cl6": "Samsung Jind-O", "kind": "vehicles", "id": "samsung-jind-0", "rename": "Samsung Jind-O", "note": "misprint: the book sets the letter O as a zero (Jind-0, jind-ø); the owner's ruling 2026-10-21, the Jindo dog", "gen": "owner"},
   {"cl6": "Samsung Jind-O Sporting", "kind": "vehicles", "id": "samsung-jind-0-sporting-breed", "rename": "Samsung Jind-O (Sporting breed)", "note": "the same misprint in the version the Jind-O's text prices; the owner's ruling 2026-10-21", "gen": "owner"},
-  {"kind": "weapons", "id": "type-81-gwisin", "set": {"avail": "2"}, "note": "printed 2(F), SR5's forbidden mark; SR6 prints no F (a known fix, the owner's ruling 2026-10-21)", "gen": "owner"},
-  {"kind": "weapons", "id": "type-81-gwisin-with-suppressor", "set": {"avail": "2"}, "note": "the same 2(F) as the Type 81 it is a version of (the owner's ruling 2026-10-21)", "gen": "owner"}
+  {"cl6": "Type 81 Gwisin", "kind": "weapons", "id": "type-81-gwisin", "set": {"avail": "2"}, "note": "printed 2(F), SR5's forbidden mark; SR6 prints no F (a known fix, the owner's ruling 2026-10-21)", "gen": "owner"},
+  {"cl6": "Type 81 Gwisin with suppressor", "kind": "weapons", "id": "type-81-gwisin-with-suppressor", "set": {"avail": "2"}, "note": "the same 2(F) as the Type 81 it is a version of (the owner's ruling 2026-10-21)", "gen": "owner"}
 ]
