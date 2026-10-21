@@ -1,5 +1,24 @@
 # Release notes
 
+## 0.19.0 — 2026-10-21
+
+The four newest Shadowrun 6 books are read in full, and a book's re-import cleans up after itself.
+
+**Admins, after updating:**
+- **Books → Re-import all**, then **Load book NPCs** and **Load example characters**.
+
+**Shadowrun 6**
+- **Seoul Survivor:** the Dokkaebi metatypes and their powers, Bujeok, the Faraday Pocket, the Type 81 Gwisin, the
+  Samsung Jind-O (the book prints "Jind-0") and the Dream Genie.
+- **Missions Guide:** its four grenades, under the book's names.
+- **Adversary:** the Adversary mentor spirit and the Turbobunny Special Ford Americar.
+- **Los Alamos: Cicada Whisper:** its animals in barding read as critters.
+- Priced versions of an item and its ammunition types are read; a being's name printed in capitals reads in mixed case.
+- Owner rulings: the Type 81's printed 2(F) reads as Availability 2; CommLink6's names are aliases of these books'
+  entries; the four SR6 forum hitches are CommLink6-only entries.
+- **Re-importing a book removes the files its last import wrote** and nothing else, so a book that is read again drops
+  stale entries without touching another book of the same source.
+
 ## 0.18.0 — 2026-10-21
 
 Shadowrun 6 NPCs and critters carry their gear as items, four new books import, and the code is reorganized by what it
