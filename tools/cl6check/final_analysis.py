@@ -186,7 +186,7 @@ def lists(g):
 
     by_name = (
         []
-    )  # (Misc. (US) records a book of ours prints under the same name or as an alias: not list 1's, for the owner to confirm)
+    )  # (Misc. (US) records a book of ours prints by name or alias: not list 1's, for the owner to confirm)
     for x in g["side"]:  # (the German-only books and Misc. (US))
         if x["book"].startswith("de_"):
             row1(
