@@ -3,14 +3,20 @@
 // those who may export), the game switch, Ask, Settings and the account (and a page's own tools). Row 2, only on a page that has any, holds that page's own actions. Pages a role can't use aren't listed
 // (App.tsx sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask asks SR6's own AI
 // (its books, its settings; shown once the admin sets it up).
-import { Children, type CSSProperties, type ReactNode } from 'react'
-import { AskButton } from './AskRules'
+import { Children, createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import { AccountMenu, canEdit, isAdmin, useMe } from './auth'
 import { Brand } from './bits'
 import { homeOf, storeGame } from './game'
 import { IconLink, type IconName } from './icons'
-import { useRepo } from './repo'
-import { SettingsButton } from './settings'
+
+/** What the app shell (App.tsx) supplies to every header: whether the server is in use, and the feature buttons (Ask, Settings)
+ *  that sit in row 1. This file imports no feature; without a provider the header just has neither button. */
+export interface HeaderBarsValue {
+  server: boolean
+  Ask?: ComponentType<{ game: 'ca2' | 'sr6' }>
+  Settings?: ComponentType
+}
+export const HeaderBarsContext = createContext<HeaderBarsValue>({ server: false })
 
 /** The Foundry export's fold on Game data (src/ui/GameData.tsx) */
 export const FOUNDRY = 'foundry-export'
@@ -26,7 +32,7 @@ export function showFoundry() {
 /** tools: the page's own icons at the start of row 1's right-hand group. */
 export function MainMenu({ tools }: { tools?: ReactNode } = {}) {
   const me = useMe(),
-    server = useRepo().mode === 'server'
+    { server } = useContext(HeaderBarsContext)
   const [here, sub] = location.hash.replace(/^#\/?/, '').split('/')
   if (here === 'sr6')
     return (
@@ -82,6 +88,7 @@ export function MainMenu({ tools }: { tools?: ReactNode } = {}) {
 function Bar({ items, section, sr6, tools }: { items: [string, IconName, string, boolean][]; section: string; sr6?: boolean; tools?: ReactNode }) {
   const other = sr6 ? 'ca2' : 'sr6',
     me = useMe(),
+    { Ask, Settings } = useContext(HeaderBarsContext),
     shown = items.filter(i => i[3])
   // on a phone the icons sit in an even grid: up to 6 in one row, more in two rows of equal length (no lone icon on a row)
   const cols = shown.length <= 6 ? shown.length : Math.ceil(shown.length / 2)
@@ -96,8 +103,8 @@ function Bar({ items, section, sr6, tools }: { items: [string, IconName, string,
         {tools}
         {canEdit(me) && <IconLink href={`#/${sr6 ? 'sr6/' : ''}data/foundry`} icon="foundry" label="Export book data for Foundry" onClick={showFoundry} />}
         <IconLink href={homeOf(other)} icon="switch" label={sr6 ? 'Switch to Shadowrun Anarchy' : 'Switch to Shadowrun 6'} onClick={() => storeGame(other)} />
-        <AskButton game={sr6 ? 'sr6' : 'ca2'} />
-        <SettingsButton />
+        {Ask && <Ask game={sr6 ? 'sr6' : 'ca2'} />}
+        {Settings && <Settings />}
         <AccountMenu />
       </div>
     </div>

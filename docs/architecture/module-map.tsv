@@ -621,8 +621,9 @@ src/sr6/ui/tabs/Stats.tsx	sr6/npcs	1444
 src/sr6/ui/tabs/Vehicles.tsx	sr6/runner-builder	2857
 src/sr6/ui/theme.css	sr6/shell	4800
 src/ui/AiSettings.tsx	features/ai-assist	4006
+src/ui/AnarchyMain.tsx	ca2/shell	7953
 src/ui/AnarchyRef.tsx	ca2/runner-builder	1364
-src/ui/App.tsx	core/app	3502
+src/ui/App.tsx	core/app	6793
 src/ui/AskRules.tsx	features/ai-assist	2233
 src/ui/Background.tsx	features/appearance	2060
 src/ui/Backup.tsx	features/backup	2330
@@ -648,6 +649,7 @@ src/ui/Prose.tsx	core/ui-kit	1134
 src/ui/Receipt.tsx	ca2/runner-builder	2091
 src/ui/Review.tsx	ca2/book-import	5583
 src/ui/Rules.tsx	ca2/game-data	1507
+src/ui/SettingsDialog.tsx	core/app	4926
 src/ui/Setup.tsx	features/accounts	649
 src/ui/SignIn.tsx	features/accounts	1903
 src/ui/SignInSettings.tsx	features/accounts	1454
@@ -664,11 +666,11 @@ src/ui/editor.ts	ca2/runner-builder	585
 src/ui/foundryKit.tsx	features/foundry-kit	1267
 src/ui/game.ts	core/ui-kit	241
 src/ui/icons.tsx	core/ui-kit	2284
-src/ui/nav.tsx	core/chrome	1487
+src/ui/nav.tsx	core/chrome	6406
 src/ui/repo.ts	features/runner-store	2178
 src/ui/runnerList.ts	features/runner-store	800
 src/ui/samples.ts	ca2/runner-builder	2387
-src/ui/settings.tsx	core/ui-kit	2314
+src/ui/settings.tsx	core/ui-kit	1171
 src/ui/sheetArt.tsx	features/appearance	1647
 src/ui/storage.ts	features/runner-store	394
 src/ui/tabs/AmpBuilder.tsx	ca2/runner-builder	3308
