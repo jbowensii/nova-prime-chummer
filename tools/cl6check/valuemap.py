@@ -15,6 +15,7 @@ Every `counted` field difference (class a, b or c) becomes an id row `{"cl6", "k
 Rows of an earlier run (`gen`: value) are replaced; the rest of a table is left as it is. Names and numbers only: no book
 text. A per-rating Commlink6 value ("R1 500, R2 1000 …") becomes `Rating x N` when it is linear, else the value at
 rating 1 with a `tier(R; 1: a; 2: b …)` formula."""
+
 import csv
 import json
 import re
@@ -29,17 +30,54 @@ ROOT = Path(__file__).resolve().parents[2]
 OVERRIDES = ROOT / "importer" / "sr6" / "overrides"
 KEEP = Path(__file__).with_name("value_keep.json")
 
-ATTR = {"cost": "cost", "avail": "avail", "legality": "avail", "karma": "karma", "essence": "essence",
-        "capacity": "capacity", "rating": "rating", "dv": "dv", "ar": "ar", "modes": "modes", "ammo": "ammo",
-        "defense": "defense", "seats": "seats", "handling": "handling", "interval": "interval", "range": "range",
-        "spell type": "type", "spell category": "category", "drain": "dv", "duration": "duration",
-        "positive": "kind", "threshold": "threshold", "power type": "type", "action": "action",
-        "activation": "activation", "fade": "fade"}
+ATTR = {
+    "cost": "cost",
+    "avail": "avail",
+    "legality": "avail",
+    "karma": "karma",
+    "essence": "essence",
+    "capacity": "capacity",
+    "rating": "rating",
+    "dv": "dv",
+    "ar": "ar",
+    "modes": "modes",
+    "ammo": "ammo",
+    "defense": "defense",
+    "seats": "seats",
+    "handling": "handling",
+    "interval": "interval",
+    "range": "range",
+    "spell type": "type",
+    "spell category": "category",
+    "drain": "dv",
+    "duration": "duration",
+    "positive": "kind",
+    "threshold": "threshold",
+    "power type": "type",
+    "action": "action",
+    "activation": "activation",
+    "fade": "fade",
+}
 ENUM = {  # Commlink6's keys -> the books' words (what our files print; vocab.py)
-    "duration": {"INSTANTANEOUS": "Instant", "SUSTAINED": "Sustained", "ALWAYS": "Always", "PERMANENT": "Permanent",
-                 "SPECIAL": "Special"},
-    "range": {"LINE_OF_SIGHT": "LOS", "LINE_OF_SIGHT_AREA": "LOS(A)", "TOUCH": "Touch", "SELF": "Self",
-              "SELF_AREA": "Self (A)", "LOS": "LOS", "LOS(A)": "LOS(A)", "T": "Touch", "S": "Self", "S(A)": "Self (A)"},
+    "duration": {
+        "INSTANTANEOUS": "Instant",
+        "SUSTAINED": "Sustained",
+        "ALWAYS": "Always",
+        "PERMANENT": "Permanent",
+        "SPECIAL": "Special",
+    },
+    "range": {
+        "LINE_OF_SIGHT": "LOS",
+        "LINE_OF_SIGHT_AREA": "LOS(A)",
+        "TOUCH": "Touch",
+        "SELF": "Self",
+        "SELF_AREA": "Self (A)",
+        "LOS": "LOS",
+        "LOS(A)": "LOS(A)",
+        "T": "Touch",
+        "S": "Self",
+        "S(A)": "Self (A)",
+    },
     "action": {"AUTO": "Auto", "MAJOR": "Major", "MINOR": "Minor", "SPECIAL": "Special"},
     "activation": {"MAJOR_ACTION": "Major Action", "MINOR_ACTION": "Minor Action", "PASSIVE": "Passive"},
     "spell type": {"MANA": "M", "PHYSICAL": "P"},
@@ -151,7 +189,11 @@ def refile(runs, root=OVERRIDES):
                 r["kind"] = k
                 moved.append(r)
         if moved:
-            p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in rows) + "\n]\n", encoding="utf8", newline="\n")
+            p.write_text(
+                "[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in rows) + "\n]\n",
+                encoding="utf8",
+                newline="\n",
+            )
             done[p.stem] = len(moved)
     return done
 
@@ -166,16 +208,29 @@ def main(argv):
         print("value rows refiled:", refile(argv[argv.index("--refile") + 1]))
         return
     dry = "--dry" in argv
-    runs = argv[argv.index("--runs") + 1] if "--runs" in argv else None  # (our catalogs: a row names OUR entry's kind, not Commlink6's)
+    runs = (
+        argv[argv.index("--runs") + 1] if "--runs" in argv else None
+    )  # (our catalogs: a row names OUR entry's kind, not Commlink6's)
     paths = [a for a in argv if not a.startswith("--") and a != runs]
     mine = ours.kinds(ours.index(runs)) if runs else {}
     keep = json.loads(KEEP.read_text(encoding="utf8")) if KEEP.exists() else {}
     skip = {tuple(k[:4]) for k in keep.get("keep", [])} | {tuple(k[:4]) for k in keep.get("hold", [])}
-    skip |= {(v["src"], v["kind"], v["our_id"], v["field"]) for v in keep.get("verdicts", [])}  # (the owner ruled ours right)
+    skip |= {
+        (v["src"], v["kind"], v["our_id"], v["field"]) for v in keep.get("verdicts", [])
+    }  # (the owner ruled ours right)
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
-    for path in paths:  # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's legality)
+    for (
+        path
+    ) in (
+        paths
+    ):  # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's legality)
         for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
-            if r["row"] != "field" or r["status"] != "counted" or r["class"] not in ("a", "b", "c") or r["field"] == "class":
+            if (
+                r["row"] != "field"
+                or r["status"] != "counted"
+                or r["class"] not in ("a", "b", "c")
+                or r["field"] == "class"
+            ):
                 continue
             key = (r["src"], r["kind"], r["our_id"], r["field"])
             if key in skip:
@@ -186,14 +241,22 @@ def main(argv):
             groups[key[:3]][r["field"]] = r
     for key in conflicts:
         groups[key[:3]].pop(key[3], None)
-    print(f"{len(conflicts)} fields left alone: two Commlink6 records match one entry and disagree: {sorted(conflicts)[:6]} ...")
+    print(
+        f"{len(conflicts)} fields left alone: two Commlink6 records match one entry and disagree: {sorted(conflicts)[:6]} ..."
+    )
     groups = {k: list(v.values()) for k, v in groups.items() if v}
     new, unmapped = defaultdict(list), []
     for (src, kind, oid), items in sorted(groups.items()):
         sets, forms, bad = row_values(items)
         unmapped += [(src, oid, b) for b in bad]
         if sets:
-            row = {"cl6": items[0]["name_cl6"], "kind": ours.kind_of(mine, src, oid, kind) or kind, "id": oid.split(".", 1)[1], "set": sets, "gen": "value"}
+            row = {
+                "cl6": items[0]["name_cl6"],
+                "kind": ours.kind_of(mine, src, oid, kind) or kind,
+                "id": oid.split(".", 1)[1],
+                "set": sets,
+                "gen": "value",
+            }
             if forms:
                 row["formula"] = forms
             new[src] += fit([row]) if mine else [row]  # (only our entry's kind says which attributes its schema has)
@@ -213,7 +276,9 @@ def main(argv):
         p = OVERRIDES / f"{src}.json"
         old = json.loads(p.read_text(encoding="utf8")) if p.exists() else []
         out = replace_value_rows(old, rows)
-        p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n", encoding="utf8")
+        p.write_text(
+            "[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n", encoding="utf8"
+        )
 
 
 if __name__ == "__main__":

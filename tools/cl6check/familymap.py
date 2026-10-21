@@ -12,6 +12,7 @@ earlier family rows still valid are kept and widened (a row that landed is no lo
 The other families (slots, variants, relevance, flags, modonly, size/ammo: elements and attributes the data schema does not
 have; choices, requires, effects: a Commlink6 modification has no one-to-one `<effect>`) are not written; see
 docs/reviews. Rows of an earlier run (`gen`: family) are replaced. Names and keys only."""
+
 import csv
 import json
 import sys
@@ -59,7 +60,12 @@ def structure(rec):
         sets["ammoClass"] = words(ammo.lower())
     for m in canon._mods(el):
         if m.tag in ("valmod", "itemmod") and m.get("type") == "HOOK" and m.get("ref"):
-            kids.append({"tag": "slot", "attrs": {"id": canon._norm(m.get("ref")), **({"value": m.get("value")} if m.get("value") else {})}})
+            kids.append(
+                {
+                    "tag": "slot",
+                    "attrs": {"id": canon._norm(m.get("ref")), **({"value": m.get("value")} if m.get("value") else {})},
+                }
+            )
         if m.tag == "relevancemod" and (m.get("topic") or "").strip():
             kids.append({"tag": "relevance", "attrs": {"topic": m.get("topic").strip().casefold()}})
     for u in canon._own(el, "usage"):
@@ -105,19 +111,30 @@ def merge(old, new, idx, src, variants=False):
     filed = {(x["kind"], x["id"]) for x in old if x.get("gen") == "family"}
     for r in old:
         k = ours.kind_of(held, src, f"{src}.{r['id']}", r["kind"]) if r.get("gen") == "family" else None
-        if k and (k == r["kind"] or (k, r["id"]) not in filed):  # (a row refiled onto one the kind file already has: dropped)
+        if k and (
+            k == r["kind"] or (k, r["id"]) not in filed
+        ):  # (a row refiled onto one the kind file already has: dropped)
             rows[k, r["id"]] = {**r, "kind": k}
             if r["kind"] == k:
                 landed.add((k, r["id"]))
     for r in new:
         o = rows.get((r["kind"], r["id"]))
         if o:
-            r = {**o, **r, "set": {**r.get("set", {}), **o.get("set", {})}, "kids": [*o.get("kids", []), *[k for k in r.get("kids", []) if k not in o.get("kids", [])]]}
+            r = {
+                **o,
+                **r,
+                "set": {**r.get("set", {}), **o.get("set", {})},
+                "kids": [*o.get("kids", []), *[k for k in r.get("kids", []) if k not in o.get("kids", [])]],
+            }
             r = {k: v for k, v in r.items() if v or k in ("cl6", "kind", "id", "gen")}
         rows[r["kind"], r["id"]] = r
     for i, r in list(rows.items()):
         names = [k["attrs"]["name"] for k in r.get("kids", []) if k["tag"] == "variant"]
-        if names and i not in landed and (ours.carries(idx.get((src, i[0], f"{src}.{i[1]}"), {}).get("name", ""), names) or not variants):
+        if (
+            names
+            and i not in landed
+            and (ours.carries(idx.get((src, i[0], f"{src}.{i[1]}"), {}).get("name", ""), names) or not variants)
+        ):
             kids = [k for k in r["kids"] if k["tag"] != "variant"]
             rows[i] = {k: v for k, v in {**r, "kids": kids}.items() if v or k != "kids"}
             if not (rows[i].get("set") or kids):
@@ -139,8 +156,14 @@ def main(argv):
     mine = ours.kinds(idx)
     groups = defaultdict(dict)
     skipped = defaultdict(int)
-    rows = [r for r in csv.DictReader(open(path, encoding="utf-8-sig", newline=""))
-            if r["row"] == "family" and r["status"] == "counted" and r["field"] in ("skill/spec", "social", *STRUCTURE) and r["our_id"]]  # (no our_id: a record no entry of ours matches)
+    rows = [
+        r
+        for r in csv.DictReader(open(path, encoding="utf-8-sig", newline=""))
+        if r["row"] == "family"
+        and r["status"] == "counted"
+        and r["field"] in ("skill/spec", "social", *STRUCTURE)
+        and r["our_id"]
+    ]  # (no our_id: a record no entry of ours matches)
     own = {(r["src"], r["kind"], r["our_id"]) for r in rows}  # (records of the entry's own kind file)
     for r in rows:
         rec = by.get((r["src"], r["kind"], r["cl6_id"].lower()))
@@ -164,7 +187,14 @@ def main(argv):
     for (src, kind, oid), v in sorted(groups.items()):
         name, kids = v.pop("_cl6"), v.pop("_kids", [])
         if v or kids:
-            row = {"cl6": name, "kind": kind, "id": oid, **({"set": v} if v else {}), **({"kids": kids} if kids else {}), "gen": "family"}
+            row = {
+                "cl6": name,
+                "kind": kind,
+                "id": oid,
+                **({"set": v} if v else {}),
+                **({"kids": kids} if kids else {}),
+                "gen": "family",
+            }
             new[src] += fit([row]) if runs else [row]  # (only our entry's kind says which attributes its schema has)
     print(f"{sum(map(len, new.values()))} entries in {len(new)} tables; left out: {dict(skipped)}")
     if dry:
@@ -175,8 +205,16 @@ def main(argv):
     for src, rows in new.items():
         p = OVERRIDES / f"{src}.json"
         old = json.loads(p.read_text(encoding="utf8")) if p.exists() else []
-        out = merge(old, rows, idx, src, "--variants" in argv) if runs else [r for r in old if r.get("gen") != "family"] + rows
-        p.write_text("[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n", encoding="utf8", newline="\n")
+        out = (
+            merge(old, rows, idx, src, "--variants" in argv)
+            if runs
+            else [r for r in old if r.get("gen") != "family"] + rows
+        )
+        p.write_text(
+            "[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in out) + "\n]\n",
+            encoding="utf8",
+            newline="\n",
+        )
 
 
 if __name__ == "__main__":

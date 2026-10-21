@@ -21,6 +21,7 @@ Two independent passes over the same cleaned lines:
     generally (a converter change here would need CG-specific handling regardless, per the ruling
     that already put CRB's margin-tab stripping in its own recipe).
 """
+
 import re
 from xml.sax.saxutils import escape
 
@@ -32,8 +33,16 @@ ID, NAME, PUBLISHER, CANON = "CG", "Shadowrun Anarchy 2.0 Conversion Guide v1.1"
 SHA256 = ("502259843b7a5645d684b8f8312db7b9baeac669c0bb5912e5debd44746b9876",)  # the owner's v1.1 PDF
 SHEET = "technomancers"
 
-HEADS = ["BORN TECHNOMANCER", "COMPLEX FORMS", "SPRITES", "COURIER SPRITE", "CRACK SPRITE",
-         "DATA SPRITE", "FAULT SPRITE", "MACHINE SPRITE"]
+HEADS = [
+    "BORN TECHNOMANCER",
+    "COMPLEX FORMS",
+    "SPRITES",
+    "COURIER SPRITE",
+    "CRACK SPRITE",
+    "DATA SPRITE",
+    "FAULT SPRITE",
+    "MACHINE SPRITE",
+]
 
 # margin tab letters, glued to real lines the way CRB's are (see importer/recipes/common.py strip_tab);
 # unique letters of "SHADOWRUN & ANARCHY" as printed down the page edge, minus "A" for leading strips
@@ -93,7 +102,7 @@ def extract_rules(lines):
             if cur and cur["text"]:
                 rules.append(cur)
             cur = {"title": h.title(), "page": page, "text": []}
-            rest = l[len(h):].strip()
+            rest = l[len(h) :].strip()
             if rest:
                 cur["text"].append(rest)
             continue
@@ -116,7 +125,7 @@ def extract_forms(lines):
     for page, l in lines:
         if l.startswith("COMPLEX FORMS"):
             active, cur, wrap = True, None, None
-            l = l[len("COMPLEX FORMS"):].strip()
+            l = l[len("COMPLEX FORMS") :].strip()
             if not l:
                 continue
         elif l.startswith("SPRITES"):
@@ -142,7 +151,7 @@ def extract_forms(lines):
             continue
         if wrap and l.split(" ", 1)[0] == wrap:
             cur["name"] += " " + wrap
-            rest = l[len(wrap):].strip()
+            rest = l[len(wrap) :].strip()
             if rest:
                 cur["text"] += " " + rest
             wrap = None
@@ -154,7 +163,11 @@ def extract_forms(lines):
 
 # the Tasking skill's specializations: the Anarchy 2.0 column of the conversion table under TASKING (its three columns
 # come apart in the converter). The skill uses Logic, as the complex form rules roll it (p.9).
-TASKING_SPECS = (("complex-forms", "Complex forms"), ("compiling", "Compiling"), ("decompiling", "Decompiling"))  # vocabulary
+TASKING_SPECS = (
+    ("complex-forms", "Complex forms"),
+    ("compiling", "Compiling"),
+    ("decompiling", "Decompiling"),
+)  # vocabulary
 TASKING_ATTR = "log"
 
 
@@ -163,9 +176,22 @@ def mechanics(lines):
     ("Emerged Shadow Amp (rank N, …)"), which the core rulebook doesn't have. Empty when the book doesn't print them."""
     tasking = next((p for p, l in lines if l == "TASKING"), None)
     emerged = next(((p, m[1]) for p, l in lines if (m := re.search(r"Emerged Shadow Amp \(rank (\d+)", l))), None)
-    skills = [f'  <skill id="tasking" attr="{TASKING_ATTR}" requires="emerged" source="{ID}" page="{tasking}"><name>Tasking</name>'
-              + "".join(f'<spec id="tasking.{i}" attr="{TASKING_ATTR}">{n}</spec>' for i, n in TASKING_SPECS) + "</skill>"] if tasking else []
-    types = [f'  <amptype id="emerged" base="{emerged[1]}" essence="0" source="{ID}" page="{emerged[0]}"><name>Emerged</name></amptype>'] if emerged else []
+    skills = (
+        [
+            f'  <skill id="tasking" attr="{TASKING_ATTR}" requires="emerged" source="{ID}" page="{tasking}"><name>Tasking</name>'
+            + "".join(f'<spec id="tasking.{i}" attr="{TASKING_ATTR}">{n}</spec>' for i, n in TASKING_SPECS)
+            + "</skill>"
+        ]
+        if tasking
+        else []
+    )
+    types = (
+        [
+            f'  <amptype id="emerged" base="{emerged[1]}" essence="0" source="{ID}" page="{emerged[0]}"><name>Emerged</name></amptype>'
+        ]
+        if emerged
+        else []
+    )
     return skills, types
 
 
@@ -196,8 +222,10 @@ def extract(md, ctx=None):
         ids.add(fid)
         category = "sustained" if f["type"] == "S" else "instant"
         text = f'{f["type"]}. {f["text"]}'.strip()
-        items.append(f'  <item id="{fid}" kind="complex-form" category="{category}" source="{ID}" page="{f["page"]}">'
-                     f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S", spell=True))}<text></text></item>')
+        items.append(
+            f'  <item id="{fid}" kind="complex-form" category="{category}" source="{ID}" page="{f["page"]}">'
+            f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S", spell=True))}<text></text></item>'
+        )
         texts.append(f'  <text of="items" id="{fid}">{escape(text)}</text>')
 
     rule_entries, rule_ids = [], set()
@@ -207,33 +235,57 @@ def extract(md, ctx=None):
         while rid in rule_ids:
             rid, n = f"{base}-{n}", n + 1
         rule_ids.add(rid)
-        rule_entries.append(f'  <rule id="{rid}" sheet="{SHEET}" source="{ID}" page="{r["page"]}">'
-                             f'<title>{escape(r["title"])}</title><text></text></rule>')
+        rule_entries.append(
+            f'  <rule id="{rid}" sheet="{SHEET}" source="{ID}" page="{r["page"]}">'
+            f'<title>{escape(r["title"])}</title><text></text></rule>'
+        )
         texts.append(f'  <text of="rules" id="{rid}">{escape(r["text"])}</text>')
 
     head = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    items_xml = (head + "<!-- Technomancer complex forms from the Conversion Guide. Generated by the importer "
-                 "(recipe cg); texts in custom/texts/cg.xml. -->\n"
-                 '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="complexforms" version="1">\n'
-                 + "\n".join(items) + "\n</ca2:data>\n")
-    rules_xml = (head + "<!-- Rules reference from the Conversion Guide's Technomancers section. Generated by "
-                 "the importer (recipe cg); text is private (custom/texts/cg.xml). -->\n"
-                 '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">\n'
-                 + "\n".join(rule_entries) + "\n</ca2:data>\n")
-    texts_xml = (head + '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">\n'
-                 + "\n".join(texts) + "\n</ca2:data>\n")
+    items_xml = (
+        head + "<!-- Technomancer complex forms from the Conversion Guide. Generated by the importer "
+        "(recipe cg); texts in custom/texts/cg.xml. -->\n"
+        '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="complexforms" version="1">\n'
+        + "\n".join(items)
+        + "\n</ca2:data>\n"
+    )
+    rules_xml = (
+        head + "<!-- Rules reference from the Conversion Guide's Technomancers section. Generated by "
+        "the importer (recipe cg); text is private (custom/texts/cg.xml). -->\n"
+        '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="rules" version="1">\n'
+        + "\n".join(rule_entries)
+        + "\n</ca2:data>\n"
+    )
+    texts_xml = (
+        head
+        + '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts" version="1">\n'
+        + "\n".join(texts)
+        + "\n</ca2:data>\n"
+    )
 
     files = {"complexforms.xml": items_xml, f"rules-{SHEET}.xml": rules_xml}
     for name, kind, rows_ in (("skills.xml", "skills", skill_rows), ("amptypes.xml", "amptypes", type_rows)):
         if rows_:  # technomancy, added to the core data (the loader adds a book's skills and amp types)
-            files[name] = (head + "<!-- Technomancy from the Conversion Guide. Generated by the importer (recipe cg). -->\n"
-                           f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n' + "\n".join(rows_) + "\n</ca2:data>\n")
+            files[name] = (
+                head + "<!-- Technomancy from the Conversion Guide. Generated by the importer (recipe cg). -->\n"
+                f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n'
+                + "\n".join(rows_)
+                + "\n</ca2:data>\n"
+            )
     report = []
     if price:  # a partial pricing overlay: the loader writes it over the core pricing (the CRB has no technomancers)
-        files["pricing.xml"] = (head + "<!-- The complex-form price from the Conversion Guide. Generated by the importer (recipe cg). -->\n"
-                                '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="pricing" version="1">\n'
-                                f'  <prices id="complex-forms" complexForm="{price[1]}" source="{ID}" page="{price[0]}"/>\n</ca2:data>\n')
+        files["pricing.xml"] = (
+            head + "<!-- The complex-form price from the Conversion Guide. Generated by the importer (recipe cg). -->\n"
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="pricing" version="1">\n'
+            f'  <prices id="complex-forms" complexForm="{price[1]}" source="{ID}" page="{price[0]}"/>\n</ca2:data>\n'
+        )
     else:
-        report.append({"kind": "price-unread", "problem": "no complex-form price found; complex forms keep the core price"})
-    return Result(files=files, texts=texts_xml, report=report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+        report.append(
+            {"kind": "price-unread", "problem": "no complex-form price found; complex forms keep the core price"}
+        )
+    return Result(
+        files=files,
+        texts=texts_xml,
+        report=report,
+        source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON},
+    )

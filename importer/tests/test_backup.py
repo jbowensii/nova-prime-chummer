@@ -67,10 +67,16 @@ def bad_zip(entries, manifest=True, attrs=None):
             info.external_attr = (attrs or {}).get(name, (stat.S_IFREG | 0o644) << 16)
             zf.writestr(info, data)
         if manifest:
-            zf.writestr("backup.xml", manifest if isinstance(manifest, str) else
-                        '<backup format="1" app="t" created="2026-01-01T00:00:00+00:00" keys="no" files="0" bytes="0">'
-                        '<folder name="characters" files="0" bytes="0"/><folder name="custom" files="0" bytes="0"/>'
-                        '<folder name="library" files="0" bytes="0"/></backup>')
+            zf.writestr(
+                "backup.xml",
+                (
+                    manifest
+                    if isinstance(manifest, str)
+                    else '<backup format="1" app="t" created="2026-01-01T00:00:00+00:00" keys="no" files="0" bytes="0">'
+                    '<folder name="characters" files="0" bytes="0"/><folder name="custom" files="0" bytes="0"/>'
+                    '<folder name="library" files="0" bytes="0"/></backup>'
+                ),
+            )
     return p
 
 
@@ -79,6 +85,7 @@ class BackupTest(unittest.TestCase):
         """A backup made while a data pack swaps would carry core/.restore-old-*; restored, `recover` would put those stale
         tables back over the live ones. The backup skips them at any depth, and check refuses a zip that has them."""
         from importer import datapack
+
         root = tempfile.mkdtemp()
         dirs = state(root)
         core = os.path.join(dirs["custom"], "imported", "core")
@@ -103,7 +110,12 @@ class BackupTest(unittest.TestCase):
     def test_contents_without_and_with_keys(self):
         root = tempfile.mkdtemp()
         dirs = state(root)
-        for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):  # session hashes and a recovery code's hash: never backed up
+        for never in (
+            "sessions.xml",
+            "reset.xml",
+            "device-key.xml",
+            "oidc-key.xml",
+        ):  # session hashes and a recovery code's hash: never backed up
             Path(dirs["library"], ".config", never).write_text("<x/>", encoding="utf8")
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out, version="9.9.9")
@@ -121,12 +133,33 @@ class BackupTest(unittest.TestCase):
             self.assertFalse([n for n in names if ".backups" in n or n.endswith(".tmp")])
         m = backup.check(out)
         self.assertEqual((m.get("app"), m.get("keys"), m.get("files")), ("9.9.9", "no", str(len(names) - 1)))
-        r = node("--input-type=module", "-e", XSD_CHECK, self._manifest(out), os.path.join(SCHEMA, "backup.xsd"),
-                 os.path.join(SCHEMA, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            self._manifest(out),
+            os.path.join(SCHEMA, "backup.xsd"),
+            os.path.join(SCHEMA, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
-        self.assertEqual(main(["backup", "--characters", dirs["characters"], "--custom", dirs["custom"],
-                               "--library", dirs["library"], "--out", out, "--keys"]), 0)
+        self.assertEqual(
+            main(
+                [
+                    "backup",
+                    "--characters",
+                    dirs["characters"],
+                    "--custom",
+                    dirs["custom"],
+                    "--library",
+                    dirs["library"],
+                    "--out",
+                    out,
+                    "--keys",
+                ]
+            ),
+            0,
+        )
         with zipfile.ZipFile(out) as zf:
             self.assertEqual(zf.read(backup.KEYS), b"<aikeys>secret</aikeys>")
             self.assertEqual(zf.read(backup.SR6_KEYS), b"<aikeys>sr6 secret</aikeys>")
@@ -188,11 +221,15 @@ class BackupTest(unittest.TestCase):
                 self.assertTrue(err.getvalue().strip())
 
     def test_entry_limit(self):
-        with unittest.mock.patch("importer.backup.MAX_ENTRIES", 2), self.assertRaisesRegex(backup.RestoreError, "more than"):
+        with unittest.mock.patch("importer.backup.MAX_ENTRIES", 2), self.assertRaisesRegex(
+            backup.RestoreError, "more than"
+        ):
             backup.check(bad_zip({"characters/a": b"x", "characters/b": b"y"}))
 
     def test_total_size_limit(self):
-        with unittest.mock.patch("importer.backup.MAX_TOTAL", 1000), self.assertRaisesRegex(backup.RestoreError, "20 GB"):
+        with unittest.mock.patch("importer.backup.MAX_TOTAL", 1000), self.assertRaisesRegex(
+            backup.RestoreError, "20 GB"
+        ):
             backup.check(bad_zip({"characters/x.xml": b"x" * 2000}))
 
     def test_check_prints_the_manifest(self):
@@ -220,7 +257,9 @@ class BackupTest(unittest.TestCase):
         self.assertNotIn("characters/only-old.xml", after)
         self.assertFalse([n for d in dst.values() for n in os.listdir(d) if n.startswith(backup.TEMP)])
         if os.name != "nt":
-            self.assertEqual(stat.S_IMODE(os.stat(os.path.join(dst["library"], ".config", "ai-keys.xml")).st_mode), 0o600)
+            self.assertEqual(
+                stat.S_IMODE(os.stat(os.path.join(dst["library"], ".config", "ai-keys.xml")).st_mode), 0o600
+            )
 
         backups = os.path.join(dst["library"], ".backups")
         safety = sorted(n for n in os.listdir(backups) if backup.STAMP.fullmatch(n))[-1]
@@ -242,7 +281,9 @@ class BackupTest(unittest.TestCase):
         with zipfile.ZipFile(z) as zf:
             self.assertIn("library/.config/reset.xml", zf.namelist())
         backup.apply(z, dst)
-        self.assertEqual(sorted(os.listdir(os.path.join(dst["library"], ".config"))), ["ai-keys.xml", "ai-providers.xml"])
+        self.assertEqual(
+            sorted(os.listdir(os.path.join(dst["library"], ".config"))), ["ai-keys.xml", "ai-providers.xml"]
+        )
 
     def test_keys_kept_when_the_zip_has_none(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
@@ -250,24 +291,38 @@ class BackupTest(unittest.TestCase):
         z = os.path.join(src_root, "nokeys.zip")
         backup.backup(src, z)
         backup.apply(z, dst)
-        self.assertEqual(Path(dst["library"], ".config", "ai-keys.xml").read_text(encoding="utf8"), "<aikeys>secret old</aikeys>")
-        self.assertEqual(Path(dst["library"], "sr6", ".config", "ai-keys.xml").read_text(encoding="utf8"), "<aikeys>sr6 secret old</aikeys>")
-        self.assertEqual(Path(dst["library"], ".config", "ai-providers.xml").read_text(encoding="utf8"), "<aiproviders/>")
-        self.assertEqual(Path(dst["characters"], "runner-1.xml").read_text(encoding="utf8"), "<runner>Ghost new</runner>")
+        self.assertEqual(
+            Path(dst["library"], ".config", "ai-keys.xml").read_text(encoding="utf8"), "<aikeys>secret old</aikeys>"
+        )
+        self.assertEqual(
+            Path(dst["library"], "sr6", ".config", "ai-keys.xml").read_text(encoding="utf8"),
+            "<aikeys>sr6 secret old</aikeys>",
+        )
+        self.assertEqual(
+            Path(dst["library"], ".config", "ai-providers.xml").read_text(encoding="utf8"), "<aiproviders/>"
+        )
+        self.assertEqual(
+            Path(dst["characters"], "runner-1.xml").read_text(encoding="utf8"), "<runner>Ghost new</runner>"
+        )
 
     def test_kept_keys_never_follow_a_restored_address(self):
         """A keyless backup whose settings send a provider elsewhere: that provider's key is dropped, the others stay
         (the rule saving settings keeps: a key only goes to the address it was entered for)."""
         from importer.ai import providers
+
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root), state(dst_root)
         row = lambda p, url: f'<provider id="{p}" enabled="true" baseUrl="{url}"/>'  # noqa: E731
-        settings = lambda *rows: f'<ca2:aiproviders xmlns:ca2="{providers.NS}" version="1">{"".join(rows)}</ca2:aiproviders>'  # noqa: E731
+        settings = (
+            lambda *rows: f'<ca2:aiproviders xmlns:ca2="{providers.NS}" version="1">{"".join(rows)}</ca2:aiproviders>'
+        )  # noqa: E731
         Path(src["library"], ".config", "ai-providers.xml").write_text(
-            settings(row("openai", "https://evil.example/v1"), row("gemini", "https://g.example")), encoding="utf8")
+            settings(row("openai", "https://evil.example/v1"), row("gemini", "https://g.example")), encoding="utf8"
+        )
         cfg = os.path.join(dst["library"], ".config")
         Path(cfg, "ai-providers.xml").write_text(
-            settings(row("openai", "https://api.openai.com/v1"), row("gemini", "https://g.example")), encoding="utf8")
+            settings(row("openai", "https://api.openai.com/v1"), row("gemini", "https://g.example")), encoding="utf8"
+        )
         os.remove(os.path.join(cfg, "ai-keys.xml"))
         for p, k in (("openai", "sk-openai-KEPT"), ("gemini", "gm-KEPT"), ("anthropic", "sk-ant-KEPT")):
             providers.set_key(cfg, p, k)
@@ -276,7 +331,9 @@ class BackupTest(unittest.TestCase):
         backup.apply(z, dst)
         self.assertIn("evil.example", providers.read_providers(cfg)[1]["openai"]["baseUrl"])
         self.assertIsNone(providers.read_key(cfg, "openai"))
-        self.assertEqual((providers.read_key(cfg, "gemini"), providers.read_key(cfg, "anthropic")), ("gm-KEPT", "sk-ant-KEPT"))
+        self.assertEqual(
+            (providers.read_key(cfg, "gemini"), providers.read_key(cfg, "anthropic")), ("gm-KEPT", "sk-ant-KEPT")
+        )
         # settings that can't be read send nothing anywhere a key was entered for: every kept key goes
         Path(src["library"], ".config", "ai-providers.xml").write_text("<not closed", encoding="utf8")
         backup.backup(src, z)
@@ -287,11 +344,23 @@ class BackupTest(unittest.TestCase):
         """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no file)."""
         cfg = os.path.join(dirs["library"], ".config")
         ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
-        rows = "".join(f'<user id="{i:012x}" username="user{i}" name="User {i}" role="admin" method="authelia" enabled="true" '
-                       f'created="2026-09-28T00:00:00Z"/>' for i in range(users))
+        rows = "".join(
+            f'<user id="{i:012x}" username="user{i}" name="User {i}" role="admin" method="authelia" enabled="true" '
+            f'created="2026-09-28T00:00:00Z"/>'
+            for i in range(users)
+        )
         Path(cfg, "users.xml").write_text(f"<ca2:users {ns}>{rows}</ca2:users>", encoding="utf8")
-        for name, text in (("auth.xml", issuer is not None and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" tokenAuth="client_secret_basic"/></ca2:auth>'),
-                           ("auth-secret.xml", secret is not None and f'<ca2:authsecret {ns} issuer="{secret}" secret="s3cret-{secret}"/>')):
+        for name, text in (
+            (
+                "auth.xml",
+                issuer is not None
+                and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" tokenAuth="client_secret_basic"/></ca2:auth>',
+            ),
+            (
+                "auth-secret.xml",
+                secret is not None and f'<ca2:authsecret {ns} issuer="{secret}" secret="s3cret-{secret}"/>',
+            ),
+        ):
             if text:
                 Path(cfg, name).write_text(text, encoding="utf8")
             elif os.path.exists(os.path.join(cfg, name)):
@@ -306,8 +375,10 @@ class BackupTest(unittest.TestCase):
         for keys in (False, True):
             backup.backup(dirs, out, keys=keys)
             with zipfile.ZipFile(out) as zf:
-                self.assertTrue({backup.USERS, "library/.config/auth.xml", "characters/runner-1.xml", "characters/.trash/old.xml"}
-                                <= set(zf.namelist()))
+                self.assertTrue(
+                    {backup.USERS, "library/.config/auth.xml", "characters/runner-1.xml", "characters/.trash/old.xml"}
+                    <= set(zf.namelist())
+                )
                 self.assertEqual(backup.AUTH_SECRET in zf.namelist(), keys)
                 written = backup.ET.fromstring(zf.read("backup.xml"))
             m = backup.check(out)
@@ -380,11 +451,13 @@ class BackupTest(unittest.TestCase):
         self.assertEqual(backup.check(out).get("users"), "2")
         ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
         bad = {
-            "users.xml": [f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="boss" method="password" '
-                          'enabled="true" created="2026-09-28T00:00:00Z"/></ca2:users>',  # no such role
-                          f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="admin" method="password" '
-                          'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" p="1"/></user></ca2:users>',
-                          f'<ca2:sessions {ns}/>'],  # another root users.xsd allows
+            "users.xml": [
+                f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="boss" method="password" '
+                'enabled="true" created="2026-09-28T00:00:00Z"/></ca2:users>',  # no such role
+                f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="admin" method="password" '
+                'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" p="1"/></user></ca2:users>',
+                f"<ca2:sessions {ns}/>",
+            ],  # another root users.xsd allows
             "auth.xml": [f'<ca2:auth {ns}><oidc issuer="x"/></ca2:auth>', "<auth/>"],
         }
         for name, texts in bad.items():
@@ -410,9 +483,12 @@ class BackupTest(unittest.TestCase):
         """Passes check (the headers are fine) but its data fails the CRC when unpacked."""
         p = bad_zip({"characters/x.xml": b"hello"}, manifest=False)
         with zipfile.ZipFile(p, "a") as zf:
-            zf.writestr("backup.xml", '<backup format="1" app="t" created="2026-01-01T00:00:00+00:00" keys="no" files="1" '
-                        'bytes="5"><folder name="characters" files="1" bytes="5"/><folder name="custom" files="0" bytes="0"/>'
-                        '<folder name="library" files="0" bytes="0"/></backup>')
+            zf.writestr(
+                "backup.xml",
+                '<backup format="1" app="t" created="2026-01-01T00:00:00+00:00" keys="no" files="1" '
+                'bytes="5"><folder name="characters" files="1" bytes="5"/><folder name="custom" files="0" bytes="0"/>'
+                '<folder name="library" files="0" bytes="0"/></backup>',
+            )
         raw = bytearray(Path(p).read_bytes())
         raw[raw.find(b"PK") + 16] ^= 0xFF  # the first central-directory entry's CRC
         Path(p).write_bytes(raw)
@@ -425,7 +501,9 @@ class BackupTest(unittest.TestCase):
         backup.check(p)
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            self.assertEqual(main(["restore", "--apply", p, *[a for f in backup.FOLDERS for a in ("--" + f, dst[f])]]), 3)
+            self.assertEqual(
+                main(["restore", "--apply", p, *[a for f in backup.FOLDERS for a in ("--" + f, dst[f])]]), 3
+            )
         self.assertIn("nothing was changed", err.getvalue())
         self.assertEqual(tree(dst), before)
         self.assertFalse([n for d in dst.values() for n in os.listdir(d) if n.startswith(backup.TEMP)])
@@ -436,7 +514,9 @@ class BackupTest(unittest.TestCase):
         for _ in range(4):
             with self.assertRaises(backup.RestoreError):
                 backup.apply(p, dst)
-        self.assertEqual(len([n for n in os.listdir(os.path.join(dst["library"], ".backups")) if backup.STAMP.fullmatch(n)]), 3)
+        self.assertEqual(
+            len([n for n in os.listdir(os.path.join(dst["library"], ".backups")) if backup.STAMP.fullmatch(n)]), 3
+        )
 
     def test_backups_folder_outside_library_is_ordinary(self):
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
@@ -481,6 +561,7 @@ class BackupTest(unittest.TestCase):
             if os.path.basename(a) == "b.xml":
                 raise OSError("disk trouble")
             return real(a, b)
+
         with unittest.mock.patch("importer.backup.os.replace", flaky), self.assertRaises(OSError):
             backup.swap(dst["custom"], new)
         self.assertEqual({k: v for k, v in tree(dst).items() if backup.TEMP not in k}, before)

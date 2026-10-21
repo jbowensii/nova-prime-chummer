@@ -2,6 +2,7 @@
 book's: a running head on every page, an NPC a page under a heading with its `Professional rating` line, the drake
 qualities and powers, a bold label hyphenated over two lines, a martial art's closing lines). Every name, number and
 line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -76,8 +77,10 @@ class LlRecipeTest(unittest.TestCase):
 
     def test_npc(self):
         n = entries(self.res, "npcs")["Glowing Fizzcorp Clerk"]
-        self.assertEqual((n.get("rating"), n.get("group"), n.get("log"), n.get("init")),
-                         ("2", "Those Who Serve The Dragon", "5(7)", "8/1"))
+        self.assertEqual(
+            (n.get("rating"), n.get("group"), n.get("log"), n.get("init")),
+            ("2", "Those Who Serve The Dragon", "5(7)", "8/1"),
+        )
         self.assertEqual(n.findtext("skills"), "Con 3, Influence 4")
         text = self.texts[("npcs", "glowing-fizzcorp-clerk")]
         self.assertIn("files glowing forms", text)

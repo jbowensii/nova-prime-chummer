@@ -1,0 +1,39 @@
+# Python tooling for importer/ and tools/ (the app itself is TypeScript; see package.json).
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 0
+
+[tool.pylint.format]
+max-line-length = 120
+# a URL or a quoted book sentence in a comment can't be wrapped
+ignore-long-lines = '^\s*(# )?<?https?://\S+>?$|^\s*#.*["“].*["”]'
+
+[tool.pylint.messages_control]
+disable = [
+  # Design-size checks. The readers are long by nature (a book table is many cases); size is not judged by a count.
+  "too-many-locals",
+  "too-many-branches",
+  "too-many-statements",
+  "too-many-return-statements",
+  "too-many-boolean-expressions",
+  "too-many-arguments",
+  "too-many-positional-arguments",
+  "too-many-instance-attributes",
+  "too-many-nested-blocks",
+  "too-many-lines",
+  "too-few-public-methods",
+  "duplicate-code",
+  # Imports inside functions are how the stage tree breaks import cycles (importer/sr6/regroup.py) and keeps optional
+  # libraries (pdfplumber, anthropic) off the start-up path.
+  "import-outside-toplevel",
+  "cyclic-import",
+]
+
+[tool.pylint.basic]
+# short names the readers use throughout: a block, a row, an entry, a match
+good-names = ["b", "e", "i", "j", "k", "m", "n", "p", "r", "s", "t", "x", "y", "_", "bs", "ch", "fx", "id", "ok", "db"]

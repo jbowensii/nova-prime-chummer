@@ -4,10 +4,24 @@ import xml.etree.ElementTree as ET
 
 # the shipped data (sources.xml, schema/): public/data in the repo, CA2_DATA_DIR in the image. In development it also
 # holds the owner's local copies of the core files (gitignored).
-DATA_DIR = os.environ.get("CA2_DATA_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "data")
+DATA_DIR = os.environ.get("CA2_DATA_DIR") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "public", "data"
+)
 # the rules engine's core files, built by the CRB import (custom/imported/core/) or loaded from a data pack
-CORE_FILES = ("ampeffects", "amptypes", "armor", "attributes", "levels", "lifestyles", "metatypes", "packages", "pricing",
-              "skills", "vehicles", "weapons")
+CORE_FILES = (
+    "ampeffects",
+    "amptypes",
+    "armor",
+    "attributes",
+    "levels",
+    "lifestyles",
+    "metatypes",
+    "packages",
+    "pricing",
+    "skills",
+    "vehicles",
+    "weapons",
+)
 _override, _custom = [], []
 
 
@@ -44,7 +58,12 @@ def core_dir():
     """The folder with the core files: use_core's, else CA2_CORE_DIR, else <custom>/imported/core (loaded after
     public/data, so it wins), else DATA_DIR (the owner's local copies in development)."""
     custom = custom_dir()
-    for d in (*_override[-1:], os.environ.get("CA2_CORE_DIR"), custom and os.path.join(custom, "imported", "core"), DATA_DIR):
+    for d in (
+        *_override[-1:],
+        os.environ.get("CA2_CORE_DIR"),
+        custom and os.path.join(custom, "imported", "core"),
+        DATA_DIR,
+    ):
         if d and os.path.isfile(os.path.join(d, "skills.xml")):
             return d
     raise NoCoreData("There is no core data yet: import the core rulebook first, or upload a data pack.")
@@ -53,7 +72,12 @@ def core_dir():
 def find_core_file(name):
     """`name` from the first core folder that has it (use_core's, CA2_CORE_DIR, <custom>/imported/core, DATA_DIR), or None."""
     custom = custom_dir()
-    for d in (*_override[-1:], os.environ.get("CA2_CORE_DIR"), custom and os.path.join(custom, "imported", "core"), DATA_DIR):
+    for d in (
+        *_override[-1:],
+        os.environ.get("CA2_CORE_DIR"),
+        custom and os.path.join(custom, "imported", "core"),
+        DATA_DIR,
+    ):
         if d and os.path.isfile(os.path.join(d, name)):
             return os.path.join(d, name)
     return None

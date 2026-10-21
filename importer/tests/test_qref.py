@@ -39,13 +39,26 @@ class QrefTest(unittest.TestCase):
 
     def test_titles_sections_pages_text(self):
         r = qref.extract_sheet("matrix", MD)
-        self.assertEqual([x["title"] for x in r], [
-            "Bricking", "Brute Force", "VR hot-sim", "Long Note – Aside", "Steps And Turns", "Grouped Effects", "Alpha"])
+        self.assertEqual(
+            [x["title"] for x in r],
+            [
+                "Bricking",
+                "Brute Force",
+                "VR hot-sim",
+                "Long Note – Aside",
+                "Steps And Turns",
+                "Grouped Effects",
+                "Alpha",
+            ],
+        )
         self.assertEqual([x["section"] for x in r][:3], ["Actions", "Actions", "Connection Modes"])
         self.assertEqual([x["page"] for x in r], [1, 1, 1, 1, 2, 2, 2])
         self.assertIn("Sub Two: also folded", r[1]["text"])
         self.assertIn("Test text with bold inside.", r[1]["text"])
-        self.assertEqual(r[4]["text"], "1. First: numbered steps are not titles 2. Second: they become one rule named after the section")
+        self.assertEqual(
+            r[4]["text"],
+            "1. First: numbered steps are not titles 2. Second: they become one rule named after the section",
+        )
         self.assertEqual(r[0]["text"], "damages a device. Test text. Roll a thing + LOG")
         self.assertNotIn("design by", " ".join(x["text"] for x in r))
 
@@ -57,7 +70,10 @@ class QrefTest(unittest.TestCase):
         res = qref.extract(MD)
         self.assertEqual(list(res.files), ["rules-matrix.xml"])
         xml = res.files["rules-matrix.xml"]
-        self.assertIn('<rule id="matrix-vr-hot-sim" sheet="matrix" section="Connection Modes" effects="vr-hot" source="QREF" page="1">', xml)
+        self.assertIn(
+            '<rule id="matrix-vr-hot-sim" sheet="matrix" section="Connection Modes" effects="vr-hot" source="QREF" page="1">',
+            xml,
+        )
         self.assertIn('<text of="rules" id="matrix-bricking">damages a device.', res.texts)
         self.assertEqual(res.source["id"], "QREF")
 
@@ -68,9 +84,13 @@ class QrefTest(unittest.TestCase):
         prev = qref.extract(MD).files["rules-matrix.xml"].replace("<title>Alpha</title>", "<title>Gone</title>")
         with open(os.path.join(d, "rules-matrix.xml"), "w", encoding="utf8") as f:
             f.write(prev.replace('id="matrix-', 'id="qref.matrix-'))  # stored files carry scoped ids
-        self.assertEqual(qref.extract(MD, ctx).report, [
-            {"kind": "title-missing", "sheet": "matrix", "title": "Gone"},
-            {"kind": "title-new", "sheet": "matrix", "title": "Alpha"}])
+        self.assertEqual(
+            qref.extract(MD, ctx).report,
+            [
+                {"kind": "title-missing", "sheet": "matrix", "title": "Gone"},
+                {"kind": "title-new", "sheet": "matrix", "title": "Alpha"},
+            ],
+        )
 
     def test_sheet_from_heading(self):
         self.assertEqual(qref.sheet_of("# Rules QUICK REFEReNCE"), "base")

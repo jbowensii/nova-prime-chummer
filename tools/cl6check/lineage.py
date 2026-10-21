@@ -16,6 +16,7 @@ An observation (Obs) is one value of one field that one book prints for the obje
   before it.
 `observe()` collects them for one object, `lineage()` orders them by publication date per field (resolving patches)
 and `winner()` is the last-published value that is neither context nor another variant's."""
+
 import re
 from dataclasses import dataclass
 
@@ -30,12 +31,25 @@ for _kind in catalog.HEADERS.values():
     for _h, _f in _kind.items():
         if _f and _f != "dv+":
             HEADER_FIELD.setdefault(_h, _f)
-NAME_HEADERS = {h.upper() for h in crb.NAME_HEADERS | general._NAME_COLUMNS} | {"NAME", "SOFTWARE", "PROGRAM", "SPELL",
-                                                                                  "QUALITY", "POWER", "CLASS"}
+NAME_HEADERS = {h.upper() for h in crb.NAME_HEADERS | general._NAME_COLUMNS} | {
+    "NAME",
+    "SOFTWARE",
+    "PROGRAM",
+    "SPELL",
+    "QUALITY",
+    "POWER",
+    "CLASS",
+}
 VARIANT_HEADERS = {"RATING", "GRADE", "LEVEL", "FORCE", "VERSION", "MODEL", "VARIANT", "SIZE"}
 SKIP_ATTRS = {"id", "source", "page"}
-HEADER_WORDS = [("cost", r"\bCOST\b|\bPRICE\b"), ("avail", r"^AVAIL"), ("essence", r"^ESS"), ("capacity", r"^CAPACITY"),
-                ("dv", r"^DV\b"), ("rating", r"^RATING\b")]
+HEADER_WORDS = [
+    ("cost", r"\bCOST\b|\bPRICE\b"),
+    ("avail", r"^AVAIL"),
+    ("essence", r"^ESS"),
+    ("capacity", r"^CAPACITY"),
+    ("dv", r"^DV\b"),
+    ("rating", r"^RATING\b"),
+]
 
 
 def field_of(header):
@@ -48,25 +62,86 @@ def field_of(header):
     if bare in HEADER_FIELD:
         return HEADER_FIELD[bare]
     return next((f for f, rx in HEADER_WORDS if re.search(rx, bare)), None)
-CARD_FIELD = {"DV": "dv", "MODE": "modes", "MODES": "modes", "RATING": "ar", "ATTACK RATINGS": "ar", "AR": "ar",
-              "AMMO": "ammo", "AVAILABILITY": "avail", "AVAIL": "avail", "COST": "cost"}
+
+
+CARD_FIELD = {
+    "DV": "dv",
+    "MODE": "modes",
+    "MODES": "modes",
+    "RATING": "ar",
+    "ATTACK RATINGS": "ar",
+    "AR": "ar",
+    "AMMO": "ammo",
+    "AVAILABILITY": "avail",
+    "AVAIL": "avail",
+    "COST": "cost",
+}
 CARD_LABEL = re.compile(r"\*\*([A-Za-z .]+?):\*\*\s*([^*]*?)\s*(?=\*\*|$)")
-CARD_HEADS = ["SPD INT", "TOP SPD", "HAND", "ACCEL", "BOD", "ARM", "PILOT", "SENS", "SEAT", "AVAIL", "COST", "HANDLING",
-              "BODY", "ARMOR", "SENSOR", "SEATS"]
+CARD_HEADS = [
+    "SPD INT",
+    "TOP SPD",
+    "HAND",
+    "ACCEL",
+    "BOD",
+    "ARM",
+    "PILOT",
+    "SENS",
+    "SEAT",
+    "AVAIL",
+    "COST",
+    "HANDLING",
+    "BODY",
+    "ARMOR",
+    "SENSOR",
+    "SEATS",
+]
 BANDS = ("close", "near", "medium", "far", "extreme")
 AR_RE = r"[\d—–-]+\*?(?:\s*/\s*[\d—–-]+\*?){2,4}"
 MODES_RE = r"\b(?:SS|SA|BF|FA)(?:/(?:SS|SA|BF|FA))*\b"
 AMMO_RE = r"\d+\s*\((?:c|m|b|d|cy|belt|ml|s|sm)\)"
-FIELD_WORDS = [("ar", r"attack ratings?|\bAR\b"), ("dv", r"\bDV\b|damage(?: code| value)?"),
-               ("modes", r"firing modes?|\bmodes?\b"), ("ammo", r"\bammo\b"),
-               ("avail", r"\bavail(?:ability|abiltiy)?\b"), ("cost", r"\bcost\b|\bprices?\b"),
-               ("essence", r"\bessence\b"), ("capacity", r"\bcapacity\b")]
-VALUE = {"ar": AR_RE + r"|\d+", "dv": r"\d+\s*[PS](?:\s*\([a-z]+\))?", "modes": MODES_RE, "ammo": AMMO_RE,
-         "avail": r"\+?\d+\s*(?:\([LIRF]\)|[LIRF]\b)?|—", "cost": r"\+?\d[\d,]*\s*¥?", "essence": r"\d*\.\d+|\d+",
-         "capacity": r"\d+"}
+FIELD_WORDS = [
+    ("ar", r"attack ratings?|\bAR\b"),
+    ("dv", r"\bDV\b|damage(?: code| value)?"),
+    ("modes", r"firing modes?|\bmodes?\b"),
+    ("ammo", r"\bammo\b"),
+    ("avail", r"\bavail(?:ability|abiltiy)?\b"),
+    ("cost", r"\bcost\b|\bprices?\b"),
+    ("essence", r"\bessence\b"),
+    ("capacity", r"\bcapacity\b"),
+]
+VALUE = {
+    "ar": AR_RE + r"|\d+",
+    "dv": r"\d+\s*[PS](?:\s*\([a-z]+\))?",
+    "modes": MODES_RE,
+    "ammo": AMMO_RE,
+    "avail": r"\+?\d+\s*(?:\([LIRF]\)|[LIRF]\b)?|—",
+    "cost": r"\+?\d[\d,]*\s*¥?",
+    "essence": r"\d*\.\d+|\d+",
+    "capacity": r"\d+",
+}
 QUALIFIER = re.compile(r"((?:Rating\s+\d+)|[A-Z][\w-]*)\s+$")  # 'Rating 7 Widgets', 'Deluxe-grade Widget …'
-NOT_QUALIFIERS = {"Change", "The", "Add", "Remove", "Replace", "Adjust", "Note", "All", "Stats", "Make", "Set", "For", "A",
-                  "An", "Each", "Both", "Increase", "Decrease", "Reduce", "Its"}
+NOT_QUALIFIERS = {
+    "Change",
+    "The",
+    "Add",
+    "Remove",
+    "Replace",
+    "Adjust",
+    "Note",
+    "All",
+    "Stats",
+    "Make",
+    "Set",
+    "For",
+    "A",
+    "An",
+    "Each",
+    "Both",
+    "Increase",
+    "Decrease",
+    "Reduce",
+    "Its",
+}
 CONNECT = r"\s*(?:\([^)]*\)\s*)?(?:(?:is\s+)?(?:changed\s+)?from\s+\S+\s+to|to\s+be|to|is|are|of|has|:|=)?\s*(?:an?\s+\w+\s+of\s+)?"
 
 
@@ -97,10 +172,15 @@ def from_entry(book, e, variant="", errata_book=None):
     (errata_book: the latest errata of the entry's book), not the book's."""
     where = f"catalog {e['src']}/{e['kind']} id={e['id']} p.{e['page']}"
     errata = {f for f, how in (e.get("found") or {}).items() if how == "errata"}
-    return [Obs(errata_book, f, v, where + " (errata applied)", "errata", errata_book.context, variant, label=e["name"])
-            if f in errata and errata_book is not None else
-            Obs(book, f, v, where, "catalog", book.context, variant, label=e["name"]) for f, v in e["attrs"].items()
-            if f not in SKIP_ATTRS and v not in (None, "") and (f not in errata or errata_book is not None)]
+    return [
+        (
+            Obs(errata_book, f, v, where + " (errata applied)", "errata", errata_book.context, variant, label=e["name"])
+            if f in errata and errata_book is not None
+            else Obs(book, f, v, where, "catalog", book.context, variant, label=e["name"])
+        )
+        for f, v in e["attrs"].items()
+        if f not in SKIP_ATTRS and v not in (None, "") and (f not in errata or errata_book is not None)
+    ]
 
 
 def from_row(book, ln, kind="row", variant=""):
@@ -108,7 +188,9 @@ def from_row(book, ln, kind="row", variant=""):
     for h, v in ln.cells().items():
         if h == "AMMOAVAIL" and len(v.split()) == 2:  # two columns the converter set as one
             for f, x in zip(("ammo", "avail"), v.split()):
-                out.append(Obs(book, f, x, f"book.md L{ln.no} p.{ln.page} [{ln.heading}]", kind, book.context, variant, ln))
+                out.append(
+                    Obs(book, f, x, f"book.md L{ln.no} p.{ln.page} [{ln.heading}]", kind, book.context, variant, ln)
+                )
             continue
         f = field_of(h)
         if f and v:
@@ -164,7 +246,7 @@ def from_card(book, i):
     out, page = [], _card_lines(book, i)
     title = next((k for k, x in enumerate(page) if x is book.md()[i]), 0)
     subs = [k for k, x in enumerate(page) if k > title and x.level >= 3]
-    page = page[:subs[1]] if len(subs) > 1 else page
+    page = page[: subs[1]] if len(subs) > 1 else page
     for j, ln in enumerate(page):
         where = f"book.md L{ln.no} p.{ln.page} card [{book.md()[i].heading}]"
         for label, v in CARD_LABEL.findall(ln.text):
@@ -180,13 +262,16 @@ def from_card(book, i):
                     cols = []
                     break
                 cols.append(h)
-                rest = rest[len(h):].strip()
+                rest = rest[len(h) :].strip()
             vals = page[j + 1].text.split()
             if cols and len(vals) == len(cols):
-                out += [Obs(book, HEADER_FIELD[h], v, where, "card", book.context, "", page[j + 1])
-                        for h, v in zip(cols, vals) if h in HEADER_FIELD]
+                out += [
+                    Obs(book, HEADER_FIELD[h], v, where, "card", book.context, "", page[j + 1])
+                    for h, v in zip(cols, vals)
+                    if h in HEADER_FIELD
+                ]
         if ln.text.strip() == "**RANGE**":  # a quick-start card: Close 9, Near 9, …
-            bands = [re.match(r"(Close|Near|Medium|Far|Extreme)\s+(\S+)", x.text) for x in page[j + 1:j + 6]]
+            bands = [re.match(r"(Close|Near|Medium|Far|Extreme)\s+(\S+)", x.text) for x in page[j + 1 : j + 6]]
             if all(bands):
                 out.append(Obs(book, "ar", "/".join(m.group(2) for m in bands), where, "card", book.context, "", ln))
     return out
@@ -199,11 +284,16 @@ def from_bracket(book, ln, names):
         m = p.search(K.norm_line(t))
         if not m:
             continue
-        b = re.match(r"\s*\[([^\]]*)\]?", K.norm_line(t)[m.end():])
+        b = re.match(r"\s*\[([^\]]*)\]?", K.norm_line(t)[m.end() :])
         if not b:
             continue
         s, where = b.group(1), f"book.md L{ln.no} p.{ln.page} NPC [{ln.heading}]"
-        for f, rx in (("dv", r"\bDV\s*([^,\]]+)"), ("modes", f"({MODES_RE})"), ("ar", f"({AR_RE})"), ("ammo", f"({AMMO_RE})")):
+        for f, rx in (
+            ("dv", r"\bDV\s*([^,\]]+)"),
+            ("modes", f"({MODES_RE})"),
+            ("ar", f"({AR_RE})"),
+            ("ammo", f"({AMMO_RE})"),
+        ):
             x = re.search(rx, s, re.I)
             if x:
                 v = x.group(1).strip()
@@ -228,6 +318,7 @@ def _statements(book):
         for part in re.split(r"●|(?=\bp\.\s*\d+\s*:)", body):
             if part.strip():
                 out.append((label, _clean(part), first))
+
     for ln in book.md():
         if ln.level:
             flush()
@@ -266,7 +357,7 @@ def from_errata(book, names):
                     continue
                 found = [m for p in pats for m in [p.search(K.norm_line(c))] if m]
                 nm = max((m.end() for m in found), default=0)
-                q = QUALIFIER.search(c[:min(m.start() for m in found)]) if found else None
+                q = QUALIFIER.search(c[: min(m.start() for m in found)]) if found else None
                 variant = q.group(1) if q and q.group(1).split()[0] not in NOT_QUALIFIERS else ""
                 for f, e in tries:
                     m = re.compile(CONNECT + f"({VALUE[f]})", re.I).match(c, nm if nm > e else e)
@@ -298,13 +389,13 @@ def section_text(book, i):
             continue
         lv = ls[k].level
         intro = []
-        for x in ls[k + 1:]:
+        for x in ls[k + 1 :]:
             if x.level:
                 break
             intro.append(x)
         if intro:
             out.append((ls[k], intro[0], " ".join(x.text for x in intro if not x.text.startswith("|"))))
-        for x in ls[k + 1:k + 401]:
+        for x in ls[k + 1 : k + 401]:
             if x.level and x.level <= lv:
                 break
             if FOOTNOTE.match(x.text):
@@ -327,8 +418,18 @@ def from_section(book, i):
                 f = next(f for f, rx in FIELD_WORDS if re.fullmatch(rx, m.group(0), re.I))
                 v = re.compile(CONNECT + f"({VALUE[f]})", re.I).match(sentence, m.end())
                 if v:
-                    out.append(Obs(book, f, _clean(v.group(1)), f"book.md L{ln.no} p.{ln.page} section [{head.heading[:50]}]",
-                                   "section", book.context, "", ln))
+                    out.append(
+                        Obs(
+                            book,
+                            f,
+                            _clean(v.group(1)),
+                            f"book.md L{ln.no} p.{ln.page} section [{head.heading[:50]}]",
+                            "section",
+                            book.context,
+                            "",
+                            ln,
+                        )
+                    )
     return out
 
 
@@ -369,8 +470,9 @@ def observe(corpus, kinds, names, home=None):
                 out += from_block(b, idx[ln.no], names)
                 # (a card titled with the object's name, maybe a maker or nickname more: not one whose title only holds
                 # the name among other words, `onotari arms rhino Hunter A/B` for `Rhino`)
-                if ln.level <= 2 and any(2 * len(match.toks(n) & match.toks(ln.heading)) >= len(match.toks(ln.heading))
-                                         for n in names):
+                if ln.level <= 2 and any(
+                    2 * len(match.toks(n) & match.toks(ln.heading)) >= len(match.toks(ln.heading)) for n in names
+                ):
                     out += from_card(b, idx[ln.no])
             elif ln.cells() and text:
                 h0 = ln.header[0].upper()
@@ -387,9 +489,14 @@ def observe(corpus, kinds, names, home=None):
         if key not in seen:
             seen.add(key)
             text.append(o)
+
     def errata_of(b):
-        return max((x for x in corpus.books if x.errata and family(x.belongs) == family(b.belongs)),
-                   key=lambda x: x.order, default=None)
+        return max(
+            (x for x in corpus.books if x.errata and family(x.belongs) == family(b.belongs)),
+            key=lambda x: x.order,
+            default=None,
+        )
+
     text += [o for b, e in ents for o in from_entry(b, e, "", errata_of(b))]
     text += [o for b, e in corpus.variants(kinds, names, home) for o in from_entry(b, e, e["name"], errata_of(b))]
     return text
@@ -423,6 +530,7 @@ def lineage(obs):
 def same(a, b):
     """Two printed values say the same: equal as numbers at rating 1, else equal as text (spacing, case, ¥ aside)."""
     from tools.cl6check import ours
+
     va, vb = ours.value(a), ours.value(b)
     if va is not None and vb is not None:
         return va == vb

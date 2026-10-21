@@ -3,6 +3,7 @@ category, the description of the section it sits in), the new critter powers (th
 weakness marked so), the critter gear and the rule sections, ids unscoped (run scopes them as wl.<slug>), descriptions
 in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read);
 layout notes in wl.md. A line or value that doesn't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -24,9 +25,20 @@ PURCHASE = {"CRITTER": "critter purchase", "OPTIONS": "critter purchase option"}
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"critterpowers"}
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("living instincts", "grasslands and plains", "mountains", "forests", "swamps", "jungles and rainforests",
-                 "savannas", "deserts", "polar regions", "oceans seas and lakes", "urban environments",
-                 "on the care and feeding of critters")
+RULE_CHAPTERS = (
+    "living instincts",
+    "grasslands and plains",
+    "mountains",
+    "forests",
+    "swamps",
+    "jungles and rainforests",
+    "savannas",
+    "deserts",
+    "polar regions",
+    "oceans seas and lakes",
+    "urban environments",
+    "on the care and feeding of critters",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ("on the care and feeding of critters",)
 POWERS = "on the care and feeding of critters"  # the chapter whose level-3 sections with a TYPE/ACTION band are powers
@@ -61,7 +73,9 @@ def _being(b):
 
 
 def _power_band(b):
-    return next(((h, r) for h, r in catalog.md_tables(b.text) if r and [x.upper() for x in h[:2]] == ["TYPE", "ACTION"]), None)
+    return next(
+        ((h, r) for h, r in catalog.md_tables(b.text) if r and [x.upper() for x in h[:2]] == ["TYPE", "ACTION"]), None
+    )
 
 
 def _cap(name):
@@ -94,7 +108,9 @@ def _critters(bs):
     out, taken = [], set()
     for b in bs:
         if b.type == "section" and b.level == 3 and (b.chapter, norm(b.name)) not in boxed and "| B | A |" in b.text:
-            b = replace(catalog.text_stats(b, catalog.BEING), type="item")  # its box's title lost: its bands in its text
+            b = replace(
+                catalog.text_stats(b, catalog.BEING), type="item"
+            )  # its box's title lost: its bands in its text
             b = b if _being(b) else replace(b, type="section", stats=[])
         elif b.type == "item" and _being(b):
             sec = secs.get(owner(b))

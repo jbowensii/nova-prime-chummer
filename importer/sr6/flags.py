@@ -25,6 +25,7 @@ Foundry export use). General readers over the printed name, its section and its 
   (`against melee or ranged attacks (choose which category when learning this technique)`) and that it may be taken
   as many times as there are options to gain them all (`may be taken up to twice in order to gain both`): one entry per
   option, `<Name> (<Option>)` (catalog.Catalog.add)."""
+
 import re
 
 from importer.sr6.regroup import norm
@@ -33,12 +34,20 @@ _ONLY = re.compile(r"\(?\s*\b(adepts?|magicians?)\s+only\b\s*\)?", re.I)
 _SECTION = re.compile(r"^(adepts?|magicians?)\s+metamagics?\b")
 _WORD = r"(?:one|two|three|four|five|six|\d+)"
 _NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
-_AGAIN = re.compile(rf"\b(?:take|taken|select|selected|choose|chosen|learn|learned|purchase|purchased|buy|bought)\b"
-                    rf"[^.]{{0,40}}?\b(?:as\s+many\s+times|more\s+than\s+once|multiple\s+times|several\s+times"
-                    rf"|up\s+to\s+({_WORD})\s+times)\b", re.I)
-_ATTR = r"(?:Body|Agility|Reaction|Strength|Willpower|Logic|Intuition|Charisma|Edge|Magic|Resonance|Object\s+Resistance)"
-_OPPOSED = re.compile(r"(?<!as )\bopposed\b(?!\s+to\b)|\bresist(?:s|ed)?\s+(?:by|with)\b"
-                      rf"|\b(?:vs\.?|versus)\s+(?:the\s+)?(?:(?:target|subject|victim)[’']?s?\s+)?{_ATTR}\b", re.I)
+_AGAIN = re.compile(
+    rf"\b(?:take|taken|select|selected|choose|chosen|learn|learned|purchase|purchased|buy|bought)\b"
+    rf"[^.]{{0,40}}?\b(?:as\s+many\s+times|more\s+than\s+once|multiple\s+times|several\s+times"
+    rf"|up\s+to\s+({_WORD})\s+times)\b",
+    re.I,
+)
+_ATTR = (
+    r"(?:Body|Agility|Reaction|Strength|Willpower|Logic|Intuition|Charisma|Edge|Magic|Resonance|Object\s+Resistance)"
+)
+_OPPOSED = re.compile(
+    r"(?<!as )\bopposed\b(?!\s+to\b)|\bresist(?:s|ed)?\s+(?:by|with)\b"
+    rf"|\b(?:vs\.?|versus)\s+(?:the\s+)?(?:(?:target|subject|victim)[’']?s?\s+)?{_ATTR}\b",
+    re.I,
+)
 _CLOSING = re.compile(r"(?:\*\*|_)?\b(Category|Restriction)\b(?:\*\*|_)?\s*:\s*", re.I)
 _MUST = r"(?:the\s+)?(?:user|character|practitioner)\s+must\s+(?:already\s+)?"
 _NEED = re.compile(rf"^(?:requires?|{_MUST}(know|have|possess))\s+(.+)$", re.I)
@@ -47,14 +56,22 @@ _KIND_WORD = r"(technique|adept\s+power|power|quality)"
 _KINDS = {"technique": "technique", "power": "adeptpower", "adept power": "adeptpower", "quality": "quality"}
 _PRINTED = re.compile(r"^(?:the|an?|one\s+or\s+both\s+versions\s+of|either\s+version\s+of)\s+", re.I)
 _AUGMENT = re.compile(r"\b(?:cyber|bio|implant|augment)\w*|\b\w+ware\b", re.I)
-_OPTIONS = re.compile(r"((?:[\w-]+,\s+)*[\w-]+,?\s+or\s+[\w-]+)\s+[\w-]+\s*\(?\s*choose\s+which\b[^.)]*?\bwhen\s+"
-                      r"(?:learning|taking|selecting|buying|purchasing)\b", re.I)
-_ALL = re.compile(r"\b(?:taken|learned|selected|purchased|bought)\s+(?:up\s+to\s+)?(twice|\w+\s+times)\b[^.]*?\b(?:both|all)\b", re.I)
+_OPTIONS = re.compile(
+    r"((?:[\w-]+,\s+)*[\w-]+,?\s+or\s+[\w-]+)\s+[\w-]+\s*\(?\s*choose\s+which\b[^.)]*?\bwhen\s+"
+    r"(?:learning|taking|selecting|buying|purchasing)\b",
+    re.I,
+)
+_ALL = re.compile(
+    r"\b(?:taken|learned|selected|purchased|bought)\s+(?:up\s+to\s+)?(twice|\w+\s+times)\b[^.]*?\b(?:both|all)\b", re.I
+)
 _WHOSE = r"(?:the\s+)?(?:(?:target|subject|victim)[’']?s\s+|their\s+|its\s+|his\s+or\s+her\s+)?"
-_ESSENCE = re.compile(rf"\d+\s*(?:[–−-]|minus)\s*{_WHOSE}Essence\b"
-                      rf"|\bthreshold\s+(?:is\s+|of\s+)?(?:equal\s+to\s+)?{_WHOSE}Essence\b"
-                      rf"|\b{_ATTR}\s*\+\s*{_WHOSE}Essence\b|\bEssence\s*\+\s*{_ATTR}\b"
-                      rf"|\bresist[^.]{{0,60}}?\bdepends?\s+on\s+{_WHOSE}Essence\b", re.I)
+_ESSENCE = re.compile(
+    rf"\d+\s*(?:[–−-]|minus)\s*{_WHOSE}Essence\b"
+    rf"|\bthreshold\s+(?:is\s+|of\s+)?(?:equal\s+to\s+)?{_WHOSE}Essence\b"
+    rf"|\b{_ATTR}\s*\+\s*{_WHOSE}Essence\b|\bEssence\s*\+\s*{_ATTR}\b"
+    rf"|\bresist[^.]{{0,60}}?\bdepends?\s+on\s+{_WHOSE}Essence\b",
+    re.I,
+)
 
 
 def _user(word):
@@ -66,7 +83,7 @@ def metamagic(name, text="", context=()):
     context: the headings it is printed under, its tag line."""
     attrs = {}
     if m := _ONLY.search(name):
-        name, attrs["user"] = (name[:m.start()] + name[m.end():]).strip(), _user(m.group(1))
+        name, attrs["user"] = (name[: m.start()] + name[m.end() :]).strip(), _user(m.group(1))
     else:
         for c in context:
             if c and (m := _ONLY.fullmatch(c.strip()) or _SECTION.match(norm(c))):
@@ -101,8 +118,8 @@ def _closing(text):
     t = re.sub(r"(?<=[a-z])-\n(?=[a-z])", "", text or "")
     out = []
     for m in _CLOSING.finditer(t):
-        own_line = not t[t.rfind("\n", 0, m.start()) + 1:m.start()].strip(" •")
-        rest = t[m.end():]
+        own_line = not t[t.rfind("\n", 0, m.start()) + 1 : m.start()].strip(" •")
+        rest = t[m.end() :]
         rest = rest.split("\n")[0] if own_line else re.split(r"\n\s*\n|\n(?=\*\*[^*\n]+:\*\*)", rest)[0]
         out.append((m.group(1).title(), " ".join(rest.replace("**", "").replace("_", " ").split())))
     return out
@@ -149,7 +166,9 @@ def options(text):
     return [o[:1].upper() + o[1:] for o in opts] if times == len(opts) > 1 else []
 
 
-_UNCOUNTED = re.compile(r"\bdoes\s+not\s+count\s+to(?:ward)?s?\s+(?:the|your)\s+(?:maximum\s+of\s+|limit\s+of\s+)?six\b", re.I)
+_UNCOUNTED = re.compile(
+    r"\bdoes\s+not\s+count\s+to(?:ward)?s?\s+(?:the|your)\s+(?:maximum\s+of\s+|limit\s+of\s+)?six\b", re.I
+)
 
 
 def uncounted(text):

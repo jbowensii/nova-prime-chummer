@@ -1,6 +1,7 @@
 """SR6 Explosive Decompression recipe (importer/sr6/recipes/ed.py) on a made-up book.md in the converter's sr6 shape
 for this book (stat tables set apart from their titles, descriptions under level-3 and level-4 headings, roster stat
 boxes under their section). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -99,8 +100,10 @@ class EdRecipeTest(unittest.TestCase):
         self.assertIn("suit that fizzes", self.texts[("armor", "fizz-suit")])
         self.assertEqual(entries(self.res, "gear")["Glow Boots"]["cost"], "300")
         v = entries(self.res, "vehicles")
-        self.assertEqual((v["Zoom Pack"]["category"], v["Zoom Pack"]["handling"], v["Zoom Pack"]["cost"]),
-                         ("Thruster pack", "2", "7000"))
+        self.assertEqual(
+            (v["Zoom Pack"]["category"], v["Zoom Pack"]["handling"], v["Zoom Pack"]["cost"]),
+            ("Thruster pack", "2", "7000"),
+        )
         self.assertEqual((v["MadeCorp Comet"]["category"], v["MadeCorp Comet"]["seats"]), ("Spaceships", "2"))
         self.assertIn("ship, quick", self.texts[("vehicles", "madecorp-comet")])
         self.assertNotIn("MadeCorp Comet", entries(self.res, "rules"))

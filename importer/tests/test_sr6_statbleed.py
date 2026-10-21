@@ -2,6 +2,7 @@
 paragraph after it, a page's other column, the back cover (Cutting Black p. 176: the blurb in ALPHA MERGE's attacks),
 a footnote or the next entry's art title (Wild Life's `// **NAME** //`). tools/statbleed.py flags what still does.
 The shapes are the books'; every name, number and line is invented."""
+
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -113,8 +114,9 @@ class StatBlockBleedTest(unittest.TestCase):
         regrouped, res = run_recipe()
         labels = {b.name: b.labels for b in regroup.blocks(regrouped)}
         # the back cover after a page break stays out of the last labelled line; the line's own wrap is kept
-        self.assertEqual(labels["Fizz Swarm"]["Attacks"],
-                         "Made-up claw [DV [(Force/2) + 2]P, Attack Ratings (F x 2) +4/—/—/—/—]")
+        self.assertEqual(
+            labels["Fizz Swarm"]["Attacks"], "Made-up claw [DV [(Force/2) + 2]P, Attack Ratings (F x 2) +4/—/—/—/—]"
+        )
         self.assertEqual(labels["Fizz Swarm"]["Skills"], "Astral, Athletics, Close Combat, Perception, Stealth")
         # the paragraph after the block is the block's text; a wrap at a space (`Sorcery 4` + `(Spellcasting +2)`)
         # is the value's; a label with a footnote mark is a label
@@ -123,9 +125,11 @@ class StatBlockBleedTest(unittest.TestCase):
         self.assertEqual(m["Skills"], "Conjuring 5 (Summoning +3), Sorcery 4 (Spellcasting +2)")
         self.assertEqual(m["Spells"], "Made-up Bolt, Made-up Heal")
         # a sentence on the entry above, by its name, is the value's to its end; the column after it is not
-        self.assertEqual(labels["Glow Duelist"]["Weapons"],
-                         "Hum lash [Whips, DV 3S, 9/—/—/—/—, 2 charges] The Hum lash stuns a made-up target. With two "
-                         "net hits, it imparts the Dazed status (p. 52, SR6).")
+        self.assertEqual(
+            labels["Glow Duelist"]["Weapons"],
+            "Hum lash [Whips, DV 3S, 9/—/—/—/—, 2 charges] The Hum lash stuns a made-up target. With two "
+            "net hits, it imparts the Dazed status (p. 52, SR6).",
+        )
         # a label printed after the value's last wrap starts its own line
         self.assertEqual(m["Knowledge Skills"], "Made-up Lore, Fake History")
         # a value the book prints as prose goes on; a footnote and the next entry's art title stay out
@@ -135,9 +139,15 @@ class StatBlockBleedTest(unittest.TestCase):
         # what the readers write: no stat line of any being the scanner flags but the value the book prints as prose
         # (the scanner can't tell it from a bleed: it lists it)
         beings = [x for k in statbleed.KINDS if f"{k}.xml" in res.files for x in ET.fromstring(res.files[f"{k}.xml"])]
-        self.assertEqual({x.findtext("name") for x in beings}, {"Fizz Swarm", "Glow Medic", "Glow Duelist", "Puff Eel", "Mud Imp"})
-        flagged = [(x.findtext("name"), c.tag) for x in beings for c in x
-                   if c.tag not in statbleed.SKIP and statbleed.why(c.text)]
+        self.assertEqual(
+            {x.findtext("name") for x in beings}, {"Fizz Swarm", "Glow Medic", "Glow Duelist", "Puff Eel", "Mud Imp"}
+        )
+        flagged = [
+            (x.findtext("name"), c.tag)
+            for x in beings
+            for c in x
+            if c.tag not in statbleed.SKIP and statbleed.why(c.text)
+        ]
         self.assertEqual(flagged, [("Puff Eel", "augmentations")])
         # a spell list is a part of its own
         medic = next(x for x in beings if x.findtext("name") == "Glow Medic")
@@ -158,9 +168,14 @@ class StatBlockBleedTest(unittest.TestCase):
         self.assertIn("back-cover", statbleed.text_why("A made-up runner. $9.99 ISBN 000-0-000000-00-0"))
         self.assertEqual(statbleed.text_why("A made-up runner from Slamm-0-Matic©®™ shadowtalk."), "")
         self.assertIn("bold", statbleed.why("Claw [DV 2P, 8/—/—/—/—] **VOICES SCREAM.** Made-up blurb."))
-        self.assertIn("prose", statbleed.why("Staff [Clubs, DV 4S, 8/—/—/—/—] When the fighting starts, the medic "
-                                             "uses non-lethal methods on everything. She will also order spirits to "
-                                             "take fallen team members out of the fight."))
+        self.assertIn(
+            "prose",
+            statbleed.why(
+                "Staff [Clubs, DV 4S, 8/—/—/—/—] When the fighting starts, the medic "
+                "uses non-lethal methods on everything. She will also order spirits to "
+                "take fallen team members out of the fight."
+            ),
+        )
 
 
 if __name__ == "__main__":

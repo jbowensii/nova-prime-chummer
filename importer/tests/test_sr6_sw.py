@@ -2,6 +2,7 @@
 spells and spirit powers as in the core rulebook, a spirit's box titled with its name, a metamagic with its `Game
 Information`, preparations' labelled lines, traditions under the faith and logic sections). Every name, number and line
 is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -148,15 +149,19 @@ class SwRecipeTest(unittest.TestCase):
         self.assertEqual((a["cost"], a["perLevel"], a["activation"]), ("0.5", "true", "Passive"))
         self.assertEqual(set(entries(self.res, "metamagics")), {"Glow Attunement", "Glow Summoning"})
         # (printed under `Adept Metamagics`: an adept's only; the other any initiate's)
-        self.assertEqual({n: m.get("user") for n, m in entries(self.res, "metamagics").items()},
-                         {"Glow Attunement": "adept", "Glow Summoning": None})
+        self.assertEqual(
+            {n: m.get("user") for n, m in entries(self.res, "metamagics").items()},
+            {"Glow Attunement": "adept", "Glow Summoning": None},
+        )
         self.assertIn("made-up dice", self.texts[("metamagics", "glow-summoning")])
         v = entries(self.res, "gear")["Glow Vial"]
         self.assertEqual((v["category"], v["cost"], v["per"]), ("Preparations", "450", "charge"))
 
     def test_traditions_and_qualities(self):
         t = entries(self.res, "traditions")
-        self.assertEqual(set(t), {"Glow Tradition", "Traditions of Fizz", "Zap tradition", "Path of the Spark", "Buzzing"})
+        self.assertEqual(
+            set(t), {"Glow Tradition", "Traditions of Fizz", "Zap tradition", "Path of the Spark", "Buzzing"}
+        )
         q = entries(self.res, "qualities")["Glow Mage"]
         self.assertEqual((q["kind"], q["karma"]), ("positive", "4"))
         r = entries(self.res, "rules")

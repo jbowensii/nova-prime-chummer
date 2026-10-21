@@ -35,8 +35,15 @@ def _convert_to_lines(pdf_bytes, tmp_name):
 class ConvertTest(unittest.TestCase):
     def test_bold_runs_are_marked(self):
         _, _, lines = _convert_to_lines(bold_label_pdf(), "bold")
-        self.assertEqual(lines, ["**Made Up Label:** some regular words.", "A plain line with no label.",
-                                 "x **Solo:** more words.", "**Note - Topic:** words."])
+        self.assertEqual(
+            lines,
+            [
+                "**Made Up Label:** some regular words.",
+                "A plain line with no label.",
+                "x **Solo:** more words.",
+                "**Note - Topic:** words.",
+            ],
+        )
 
     def test_pages_headings_tables(self):
         meta, text, _ = _convert_to_lines(two_page_pdf(), "t")
@@ -51,8 +58,15 @@ class ConvertTest(unittest.TestCase):
 
     def test_merged_table_row_is_split_on_the_column_grid(self):
         _, _, lines = _convert_to_lines(striped_table_pdf(), "striped")
-        self.assertEqual(lines, ["| Name | Effect |", "|---|---|", "| **Made Up Rig** | Plus one |",
-                                 "| **Toy Kit** | Line one<br>line two |"])
+        self.assertEqual(
+            lines,
+            [
+                "| Name | Effect |",
+                "|---|---|",
+                "| **Made Up Rig** | Plus one |",
+                "| **Toy Kit** | Line one<br>line two |",
+            ],
+        )
 
     def test_table_nested_in_a_cell_is_part_of_the_outer_table(self):
         _, _, lines = _convert_to_lines(nested_table_pdf(), "nested")
@@ -60,9 +74,7 @@ class ConvertTest(unittest.TestCase):
 
     def test_two_columns_read_top_to_bottom_then_next_column(self):
         _, _, lines = _convert_to_lines(two_column_page_pdf(), "cols")
-        self.assertEqual(
-            lines, ["Alpha one", "Alpha two", "Alpha three", "Beta one", "Beta two", "Beta three"]
-        )
+        self.assertEqual(lines, ["Alpha one", "Alpha two", "Alpha three", "Beta one", "Beta two", "Beta three"])
         for ln in lines:
             self.assertFalse("Alpha" in ln and "Beta" in ln, f"columns merged in line: {ln!r}")
 
@@ -100,9 +112,7 @@ class ConvertTest(unittest.TestCase):
         # still a real gutter and must come out as two blocks, not
         # interleaved by y with the main column.
         _, _, lines = _convert_to_lines(two_columns_uneven_sidebar_pdf(), "sidebar")
-        self.assertEqual(
-            lines, ["Left0", "Left1", "Left2", "Left3", "Left4", "Side0", "Side1"]
-        )
+        self.assertEqual(lines, ["Left0", "Left1", "Left2", "Left3", "Left4", "Side0", "Side1"])
 
     def test_indented_block_below_bullets_is_not_a_second_column(self):
         # The indented block sits below the bullets, not beside them: no
@@ -135,6 +145,7 @@ class ConvertTest(unittest.TestCase):
     def test_tilted_line_keeps_its_words(self):
         _, _, lines = _convert_to_lines(tilted_line_pdf(), "tilted")
         self.assertEqual(lines, ["Made up tilted words", "M ADE UP"])
+
 
 if __name__ == "__main__":
     unittest.main()

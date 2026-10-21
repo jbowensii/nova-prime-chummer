@@ -6,6 +6,7 @@ swc.md.
 The book prints its entries as prose with labelled lines (`Cost: 6 Karma`, `Contact Points: 2`), its bold lost in the
 PDF, and its few tables as text: they are read from the blocks' text here, never from regroup's rows. A line or value
 that doesn't read is reported, never guessed."""
+
 import re
 
 from importer.recipes import Result
@@ -17,8 +18,10 @@ from importer.sr6.catalog import BEING, HEADERS, Catalog, block_md, block_text, 
 from importer.sr6.regroup import blocks, norm, text_page
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
-SHA256 = ("348a545b057f2daaa2337636570dbc6151e8229fd1d1e30d8827664d5516e768",  # the owner's copy
-          "464fcef8e463fc2c497c9e972119ee2ddc0d261859f1f02b7a844847c7c005de")  # an earlier copy, its fonts re-embedded
+SHA256 = (
+    "348a545b057f2daaa2337636570dbc6151e8229fd1d1e30d8827664d5516e768",  # the owner's copy
+    "464fcef8e463fc2c497c9e972119ee2ddc0d261859f1f02b7a844847c7c005de",
+)  # an earlier copy, its fonts re-embedded
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 205  # PDF page: the table index (the book's tables reprinted) starts here (left out)
 ALIASES = {}
@@ -31,9 +34,20 @@ OPENING = ("born this way", "growing up", "coming of age")
 METAVARIANTS = ("types and shadows", "creating a metavariant")  # chapter, section of the summary tables
 QUALITY_CHAPTERS = ("people of exceptional quality", "express yourself", "darker alterations")
 CONTACTS = "meta human resources"
-RULE_CHAPTERS = ("runner s world", "exteriors and interiors", "building a shadow", "suit up", "types and shadows",
-                 "darker alterations", "express yourself", "people of exceptional quality", "ways to play",
-                 "meta human resources", "what you get", "a most false imposition")
+RULE_CHAPTERS = (
+    "runner s world",
+    "exteriors and interiors",
+    "building a shadow",
+    "suit up",
+    "types and shadows",
+    "darker alterations",
+    "express yourself",
+    "people of exceptional quality",
+    "ways to play",
+    "meta human resources",
+    "what you get",
+    "a most false imposition",
+)
 
 
 def match(meta, md_head):
@@ -44,8 +58,6 @@ def match(meta, md_head):
         return 0.9
     # the contents page: lifepath's modules and sum-to-ten are this book's
     return 0.75 if re.search(r"event\s+life\s+modules", hay, re.I) and re.search(r"sum-to-ten", hay, re.I) else 0.0
-
-
 
 
 # --- life modules -------------------------------------------------------------------------------------------------
@@ -68,8 +80,6 @@ def _split_hidden(name, text):
     return out + [(name, "\n".join(cur))]
 
 
-
-
 # --- metavariants ---------------------------------------------------------------------------------------------------
 
 _RANGE = r"\d+\s*[–-]\s*\d+\*?"
@@ -88,6 +98,7 @@ def _metavariants(cat, chunks):
 
     def missing(r):
         return [a for a in _ALL + ("mag",) if a not in r["ranges"] and (a != "mag" or r["mag"])]
+
     for page, raw in ((p, ln) for p, text in chunks for ln in text.splitlines()):
         ln, table = raw.replace("**", "").strip(), raw.startswith("|")
         if table:
@@ -117,7 +128,7 @@ def _metavariants(cat, chunks):
         elif m and head and len(vals) <= len(head):
             last = {"name": m.group(1).strip(), "ranges": {}, "traits": "", "page": page, "mag": "mag" in head}
             rows.append(last)
-            target, attrs, traits = last, head[:len(vals)], None
+            target, attrs, traits = last, head[: len(vals)], None
         elif nums and part and len(part) == len(vals):
             want = [a for a in part if a in _ALL]
             target = next((r for r in rows if want and set(want) <= set(missing(r))), None)
@@ -133,8 +144,16 @@ def _metavariants(cat, chunks):
         else:
             continue
         if target is None:
-            cat.report.append({"kind": "book-value", "file": "metatypes.xml", "name": m.group(1) if m else "",
-                               "field": "ranges", "value": ln, "page": page})
+            cat.report.append(
+                {
+                    "kind": "book-value",
+                    "file": "metatypes.xml",
+                    "name": m.group(1) if m else "",
+                    "field": "ranges",
+                    "value": ln,
+                    "page": page,
+                }
+            )
             continue
         for a, v in zip(attrs, vals):
             lo, hi = re.findall(r"\d+", v)
@@ -142,8 +161,15 @@ def _metavariants(cat, chunks):
     for r in rows:
         missing = [a for a in _ALL if a not in r["ranges"]]
         if missing:
-            cat.report.append({"kind": "missing-value", "file": "metatypes.xml", "name": r["name"],
-                               "field": " ".join(missing), "page": r["page"]})
+            cat.report.append(
+                {
+                    "kind": "missing-value",
+                    "file": "metatypes.xml",
+                    "name": r["name"],
+                    "field": " ".join(missing),
+                    "page": r["page"],
+                }
+            )
         kids = [("range", {"attr": a, "min": lo, "max": hi}, None) for a, (lo, hi) in r["ranges"].items() if a in _ALL]
         kids += [("trait", {}, t) for t in _traits(r["traits"])]
         cat.add("metatypes", r["name"], r["page"], {}, kids)
@@ -171,8 +197,11 @@ def _development(cat, rows):
             continue
         for h, v in zip(header, row):
             m = re.search(r"PRIORITY\s+([A-E])$", h.upper())
-            if m and re.fullmatch(r"\d+", v.strip()) and not any(t == "priority" and a["letter"] == m.group(1)
-                                                                  for t, a, _ in e["children"]):
+            if (
+                m
+                and re.fullmatch(r"\d+", v.strip())
+                and not any(t == "priority" and a["letter"] == m.group(1) for t, a, _ in e["children"])
+            ):
                 e["children"].append(("priority", {"letter": m.group(1), "points": int(v)}, None))
 
 
@@ -197,7 +226,8 @@ _SUBNAME = re.compile(r"^[A-Z0-9<][\w’'/<>,-]*(?:\s+(?:[A-Z0-9<][\w’'/<>,-]*
 
 def _qualities(cat, name, text, page, block=None):
     """Each `Cost: N Karma` (positive) or `Bonus: N Karma` (negative) line in the block is one quality: the block's,
-    or a sub-quality named by the short title line above it (`Camouflage` under `Animal Pelage`). False: no karma line."""
+    or a sub-quality named by the short title line above it (`Camouflage` under `Animal Pelage`). False: no karma line.
+    """
     lines = [ln.replace("**", "").strip() for ln in text.splitlines()]
     found = False
 
@@ -205,6 +235,7 @@ def _qualities(cat, name, text, page, block=None):
         j = next((j for j in range(i - 1, -1, -1) if lines[j] and lines[j] != "•"), None)
         p = lines[j] if j is not None else ""
         return j if _SUBNAME.match(p) and len(p.split()) <= 5 and p != name else None
+
     karma_at = [i for i, ln in enumerate(lines) if _KARMA.match(ln)]
     for i, ln in enumerate(lines):
         m = _KARMA.match(ln)
@@ -216,28 +247,41 @@ def _qualities(cat, name, text, page, block=None):
         own = text
         if sub:  # a sub-quality's own lines: from its title to the next sub-quality's title (not its neighbours')
             nxt = next((k for k in karma_at if k > i and sub_at(k) is not None), None)
-            own = "\n".join(lines[j:sub_at(nxt) if nxt is not None else len(lines)])
+            own = "\n".join(lines[j : sub_at(nxt) if nxt is not None else len(lines)])
         qname = sub or name  # a sub-quality is a quality of its own (`Monkey Paws`)
         karma, j = m.group(2), i + 1
         while karma.count("(") > karma.count(")") and j < len(lines) and lines[j] and not lines[j].endswith(":"):
-            karma, j = f"{karma} {lines[j]}", j + 1  # (a price note wrapped onto the next line: `(–10 Karma if … already` `Awakened)`)
+            karma, j = (
+                f"{karma} {lines[j]}",
+                j + 1,
+            )  # (a price note wrapped onto the next line: `(–10 Karma if … already` `Awakened)`)
         kids = []
         if aw := _AWAKENED_LESS.search(karma):  # (`54 Karma (–10 Karma if character is already Awakened)`, p. 113)
-            karma = karma[:aw.start()]
+            karma = karma[: aw.start()]
         k = sections.karma_list(karma)  # (`5, 10 Karma`: the first, the highest)
         if aw and k:
             n = int(aw.group(1))
-            kids.append(("karmaif", {"flag": "awakened", "value": k[0] - n,
-                                     "note": f"less {n} if the character is already Awakened"}, None))
+            kids.append(
+                (
+                    "karmaif",
+                    {"flag": "awakened", "value": k[0] - n, "note": f"less {n} if the character is already Awakened"},
+                    None,
+                )
+            )
         lv = re.search(r"max(?:imum)?\.?\s*(?:of\s*)?(\d+)\s*levels?", karma, re.I)
-        attrs = {"kind": "positive" if m.group(1).lower() == "cost" else "negative", "karma": k[0] if k else None,
-                 "karmaMax": max(k) if k and max(k) > k[0] else None, "karmaSteps": sections.karma_steps(karma) if k and max(k) > k[0] else None,
-                 "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None, "maxLevel": lv and int(lv.group(1))}
+        attrs = {
+            "kind": "positive" if m.group(1).lower() == "cost" else "negative",
+            "karma": k[0] if k else None,
+            "karmaMax": max(k) if k and max(k) > k[0] else None,
+            "karmaSteps": sections.karma_steps(karma) if k and max(k) > k[0] else None,
+            "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None,
+            "maxLevel": lv and int(lv.group(1)),
+        }
         if not k and re.search(r"\bsee\s+text\b", karma, re.I):
             # `Bonus: See text`: the prices its own paragraphs print (`a bonus of 8 Karma … a bonus of 15 Karma`),
             # up to the next quality's price line
             nxt = next((j for j in range(i + 1, len(lines)) if _KARMA.match(lines[j])), len(lines))
-            para = plain("\n".join(lines[i + 1:nxt]))
+            para = plain("\n".join(lines[i + 1 : nxt]))
             ks = [int(x) for x in re.findall(r"\b(?:bonus|cost)\s+of\s+(\d+)\s+Karma", para, re.I)]
             by = {bool(w.group(1)): int(w.group(2)) for w in _AWAKENED_PRICE.finditer(para)}
             if set(by) == {True, False}:
@@ -245,15 +289,31 @@ def _qualities(cat, name, text, page, block=None):
                 # Karma`, Astral Hazing p. 127: one price and its Awakened price, owner 2026-10-16)
                 k = True
                 attrs["karma"] = by[True]
-                kids.append(("karmaif", {"flag": "awakened", "value": by[False],
-                                         "note": f"{by[False]} if the character is Awakened"}, None))
+                kids.append(
+                    (
+                        "karmaif",
+                        {"flag": "awakened", "value": by[False], "note": f"{by[False]} if the character is Awakened"},
+                        None,
+                    )
+                )
             elif ks:
                 k = True
-                attrs.update(karma=min(ks), karmaMax=max(ks) if len(set(ks)) > 1 else None,
-                             karmaSteps=" ".join(map(str, sorted(set(ks)))) if len(set(ks)) > 1 else None)
+                attrs.update(
+                    karma=min(ks),
+                    karmaMax=max(ks) if len(set(ks)) > 1 else None,
+                    karmaSteps=" ".join(map(str, sorted(set(ks)))) if len(set(ks)) > 1 else None,
+                )
         if not k:
-            cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": qname, "field": "karma",
-                               "value": karma, "page": page})
+            cat.report.append(
+                {
+                    "kind": "book-value",
+                    "file": "qualities.xml",
+                    "name": qname,
+                    "field": "karma",
+                    "value": karma,
+                    "page": page,
+                }
+            )
         # (a sub-quality on its own page: its title line's, the block printed over several pages)
         at = max(1, text_page(block, sub) - PAGE_OFFSET) if sub and block is not None else page
         cat.add("qualities", qname, at, attrs, kids, _plain_text(own))
@@ -266,19 +326,43 @@ _PER = re.compile(r"\(\s*per\s+(?:level|point)\s*\)", re.I)
 def _priced_list(cat, b, page):
     """A block that is only a `QUALITY | KARMA` table (its rows no blocks of their own, no prose: the Infected Optional
     Powers Table) lists qualities bought at the price its row prints: each row a positive quality, its name as printed
-    (`Armor (per point)`: per level), its category the table's title without `Table`. Returns the category, else None."""
+    (`Armor (per point)`: per level), its category the table's title without `Table`. Returns the category, else None.
+    """
     rows = [list(r.items()) for r in b.stats]  # (regroup's box tables: one header -> cell dict per row)
-    if b.row is not None or not rows or (b.text or "").strip() or b.labels or \
-            any([norm(h) for h, _ in r] != ["quality", "karma"] for r in rows):
+    if (
+        b.row is not None
+        or not rows
+        or (b.text or "").strip()
+        or b.labels
+        or any([norm(h) for h, _ in r] != ["quality", "karma"] for r in rows)
+    ):
         return None
     category = re.sub(r"\s+table$", "", b.name.strip(), flags=re.I)
     for (_, name), (_, karma) in rows:
         k = re.fullmatch(r"(\d+)", karma.strip())
         if not k:
-            cat.report.append({"kind": "book-value", "file": "qualities.xml", "name": name, "field": "karma", "value": karma, "page": page})
-        cat.add("qualities", name, page, {"kind": "positive", "karma": k and int(k.group(1)), "category": category,
-                                          "perLevel": "true" if _PER.search(name) else None},
-                cid=f"{slug(category)}.{slug(name)}")  # (its own id: a same-named quality of another table, Biosonar's)
+            cat.report.append(
+                {
+                    "kind": "book-value",
+                    "file": "qualities.xml",
+                    "name": name,
+                    "field": "karma",
+                    "value": karma,
+                    "page": page,
+                }
+            )
+        cat.add(
+            "qualities",
+            name,
+            page,
+            {
+                "kind": "positive",
+                "karma": k and int(k.group(1)),
+                "category": category,
+                "perLevel": "true" if _PER.search(name) else None,
+            },
+            cid=f"{slug(category)}.{slug(name)}",
+        )  # (its own id: a same-named quality of another table, Biosonar's)
     return category
 
 
@@ -287,23 +371,33 @@ def _list_texts(cat, categories):
     description (`Sharpened Natural Weapon` under New Critter Powers)."""
     powers = {norm(e["name"]): e for e in cat.entries["critterpowers"] if e["text"].strip()}
     for e in cat.entries["qualities"]:
-        if e["attrs"].get("category") in categories and not e["text"] and (p := powers.get(norm(_PER.sub("", e["name"])))):
+        if (
+            e["attrs"].get("category") in categories
+            and not e["text"]
+            and (p := powers.get(norm(_PER.sub("", e["name"]))))
+        ):
             e["text"] = p["text"]
             cat.texts.append(("qualities", e["id"], p["text"].strip()))
 
 
 # --- Infected qualities (pp. 104-114; owner decisions 2026-10-16) ---------------------------------------------------
 
-_AWAKENED_LESS = re.compile(r"\(\s*[–-]\s*(\d+)\s*Karma\s+if\s+(?:the\s+)?character\s+is\s+already\s+Awakened\s*\)", re.I)
-_AWAKENED_PRICE = re.compile(r"\bFor\s+(non-?)?Awakened\s+\w+,\s*this\s+quality\s+has\s+a\s+(?:bonus|cost)\s+of\s+(\d+)\s+Karma", re.I)
+_AWAKENED_LESS = re.compile(
+    r"\(\s*[–-]\s*(\d+)\s*Karma\s+if\s+(?:the\s+)?character\s+is\s+already\s+Awakened\s*\)", re.I
+)
+_AWAKENED_PRICE = re.compile(
+    r"\bFor\s+(non-?)?Awakened\s+\w+,\s*this\s+quality\s+has\s+a\s+(?:bonus|cost)\s+of\s+(\d+)\s+Karma", re.I
+)
 # The chapter's rules every Infected quality follows (game numbers, not text): two free physical and two free mental
 # attribute points (p. 104, Creating Infected Characters); Essence and Magic by strain (p. 106, Infection and Magic):
 # Strain II and III set Essence to 5 and give Magic 1, or take 1 from a Magic the character has, its maximum 5 + initiate
 # grade; Strain I (and Ia, treated as I) gives no starting Essence, its maximum Magic Essence + initiate grade.
 _FREE_POINTS = {"freePhysical": 2, "freeMental": 2}
-_STRAIN = {"I": {"magicMax": "ess+initiate-grade"},
-           "II": {"essence": 5, "magic": 1, "magicLoss": 1, "magicMax": "5+initiate-grade"},
-           "III": {"essence": 5, "magic": 1, "magicLoss": 1, "magicMax": "5+initiate-grade"}}
+_STRAIN = {
+    "I": {"magicMax": "ess+initiate-grade"},
+    "II": {"essence": 5, "magic": 1, "magicLoss": 1, "magicMax": "5+initiate-grade"},
+    "III": {"essence": 5, "magic": 1, "magicLoss": 1, "magicMax": "5+initiate-grade"},
+}
 _ATTRS = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha")
 
 
@@ -325,8 +419,11 @@ def _head_args(item):
     its parenthesis' items less page citations and book names; a trailing `+1` (`Armor +1`) is no part of the name."""
     head, _, rest = item.partition("(")
     head = re.sub(r"\s*\+\d+\s*$", "", head).strip()
-    args = [a for a in _split_top(rest[:rest.rfind(")")] if ")" in rest else rest)
-            if not re.match(r"(?:p\.|pp\.|SR6\b|Street Wyrd|Core)", a.strip(), re.I)]
+    args = [
+        a
+        for a in _split_top(rest[: rest.rfind(")")] if ")" in rest else rest)
+        if not re.match(r"(?:p\.|pp\.|SR6\b|Street Wyrd|Core)", a.strip(), re.I)
+    ]
     return _words(head), [norm(a) for a in args]
 
 
@@ -349,8 +446,16 @@ def _optional(cat, e, label, page, rows):
         else:
             got, missing = same[:1], [] if same else [item]
         for a in missing:
-            cat.report.append({"kind": "unmatched", "file": "qualities.xml", "name": e["name"], "field": "optional power",
-                               "value": f"{item}: {a}" if a != item else item, "page": page})
+            cat.report.append(
+                {
+                    "kind": "unmatched",
+                    "file": "qualities.xml",
+                    "name": e["name"],
+                    "field": "optional power",
+                    "value": f"{item}: {a}" if a != item else item,
+                    "page": page,
+                }
+            )
         out += [r for r in got if r not in out]
     return out
 
@@ -358,9 +463,13 @@ def _optional(cat, e, label, page, rows):
 def _free(cat, e, powers, page, rows):
     """The free Optional Power the type's Gained Powers offer (`Gain one of the Enhanced Senses or Immunities as a free
     Optional Power`, `Gain either Armor +1, Enhanced Senses (Hearing), or Immunity (Toxins) …`, `Gain one Optional Powers
-    (except Regeneration) for free`): the ones of `rows` (the type's optional powers) it names; [] when it offers none."""
-    m = re.search(r"\bGain\s+(?:one\s+of\s+the|either|one)\s+(.+?)\s+(?:as\s+a\s+free\s+Optional\s+Power|Optional\s+Powers?\s+for\s+free|for\s+free)",
-                  powers, re.I)
+    (except Regeneration) for free`): the ones of `rows` (the type's optional powers) it names; [] when it offers none.
+    """
+    m = re.search(
+        r"\bGain\s+(?:one\s+of\s+the|either|one)\s+(.+?)\s+(?:as\s+a\s+free\s+Optional\s+Power|Optional\s+Powers?\s+for\s+free|for\s+free)",
+        powers,
+        re.I,
+    )
     if not m:
         return []
     if ex := re.fullmatch(r"Optional\s+Powers?\s*\(\s*except\s+(.+?)\s*\)", m.group(1), re.I):
@@ -371,8 +480,16 @@ def _free(cat, e, powers, page, rows):
         head, args = _head_args(term)
         got = [r for r in rows if r[0] == head and (not args or r[1] in args)]
         if not got:
-            cat.report.append({"kind": "unmatched", "file": "qualities.xml", "name": e["name"], "field": "free optional power",
-                               "value": term, "page": page})
+            cat.report.append(
+                {
+                    "kind": "unmatched",
+                    "file": "qualities.xml",
+                    "name": e["name"],
+                    "field": "free optional power",
+                    "value": term,
+                    "page": page,
+                }
+            )
         out += [r for r in got if r not in out]
     return out
 
@@ -393,7 +510,7 @@ def _items(s):
             cur = ""
             continue
         cur += ch
-        if ch == ")" and not depth and re.match(r"\s+[A-Z+–−-]", s[i + 1:]):
+        if ch == ")" and not depth and re.match(r"\s+[A-Z+–−-]", s[i + 1 :]):
             out.append(cur)
             cur = ""
     return [x.strip(" .") for x in out + [cur] if x.strip(" .")]
@@ -438,8 +555,17 @@ def _gains(label, tag, own):
             elif parts:
                 quals.append(", ".join(parts))
         ref = own.get(_words(head)) if tag == "power" else None
-        out.append((tag, {**({"ref": ref} if ref else {}), "name": head + "".join(f" ({q})" for q in quals),
-                          **({"rating": rating} if rating else {})}, None))
+        out.append(
+            (
+                tag,
+                {
+                    **({"ref": ref} if ref else {}),
+                    "name": head + "".join(f" ({q})" for q in quals),
+                    **({"rating": rating} if rating else {}),
+                },
+                None,
+            )
+        )
     return out
 
 
@@ -470,34 +596,61 @@ def _infected(cat, found, lists, bs):
     another base metatype a sidebar gives it (the non-human vampire), an <optionalpower> per optional power it may
     buy, `free` on those its free pick may take, and a <power> or <weakness> per item it gains (_gains). Placed first
     among the entry's children (the Quality schema's order)."""
-    rows = [(_words(e["name"].partition("(")[0]), norm(e["name"].partition("(")[2].rstrip(")")), e["id"])
-            for e in cat.entries["qualities"] if e["attrs"].get("category") in lists]
-    own = {_words(e["name"]): e["id"] for e in cat.entries["critterpowers"]}  # (this book's critter powers, for a gained one)
+    rows = [
+        (_words(e["name"].partition("(")[0]), norm(e["name"].partition("(")[2].rstrip(")")), e["id"])
+        for e in cat.entries["qualities"]
+        if e["attrs"].get("category") in lists
+    ]
+    own = {
+        _words(e["name"]): e["id"] for e in cat.entries["critterpowers"]
+    }  # (this book's critter powers, for a gained one)
     others = _other_base(bs)
     for b, entries in found:
         page = max(1, b.page - PAGE_OFFSET)
-        lab = _labels(block_text(b), ["Cost", "Gained Powers", "Optional Powers", "Gained Weaknesses", "Attack", "Notes"])
+        lab = _labels(
+            block_text(b), ["Cost", "Gained Powers", "Optional Powers", "Gained Weaknesses", "Attack", "Notes"]
+        )
         notes = lab.get("notes", "")
         strain = re.search(r"\bStrain\s+(III|II|Ia|I)\b", notes)
         if not strain:
-            cat.report.append({"kind": "missing-value", "file": "qualities.xml", "name": b.name, "field": "strain", "page": page})
+            cat.report.append(
+                {"kind": "missing-value", "file": "qualities.xml", "name": b.name, "field": "strain", "page": page}
+            )
             continue
         printed = strain.group(1)
         awakens = re.search(r"\bAwaken\s+as\s+(adept|magician)s?\b", notes, re.I)
         for e in entries:
             base = re.search(r"\(([^()]+)\)$", e["name"]) if e["name"] != b.name else None
-            a = {"strain": "I" if printed == "Ia" else printed, "printed": printed if printed == "Ia" else None,
-                 "base": base.group(1) if base else b.row.get("BASE", "").strip(),
-                 "awakens": awakens and awakens.group(1).lower(), **_FREE_POINTS, **_STRAIN["I" if printed == "Ia" else printed]}
+            a = {
+                "strain": "I" if printed == "Ia" else printed,
+                "printed": printed if printed == "Ia" else None,
+                "base": base.group(1) if base else b.row.get("BASE", "").strip(),
+                "awakens": awakens and awakens.group(1).lower(),
+                **_FREE_POINTS,
+                **_STRAIN["I" if printed == "Ia" else printed],
+            }
             kids = [("infected", {k: v for k, v in a.items() if v is not None}, None)]
             if alt := others.get(_words(b.name)):
                 karma, add, at = alt
-                kids.append(("infectedalt", {"base": "other", "karma": karma, **{x: add[x] for x in _ATTRS if x in add},
-                                             "page": at, "note": f"{karma} Karma for a non-human {b.name.lower()}"}, None))
+                kids.append(
+                    (
+                        "infectedalt",
+                        {
+                            "base": "other",
+                            "karma": karma,
+                            **{x: add[x] for x in _ATTRS if x in add},
+                            "page": at,
+                            "note": f"{karma} Karma for a non-human {b.name.lower()}",
+                        },
+                        None,
+                    )
+                )
             opt = _optional(cat, e, lab.get("optional powers", ""), page, rows)
             free = _free(cat, e, lab.get("gained powers", ""), page, opt)
             kids += [("optionalpower", {"ref": r[2], **({"free": "true"} if r in free else {})}, None) for r in opt]
-            kids += _gains(lab.get("gained powers", ""), "power", own) + _gains(lab.get("gained weaknesses", ""), "weakness", own)
+            kids += _gains(lab.get("gained powers", ""), "power", own) + _gains(
+                lab.get("gained weaknesses", ""), "weakness", own
+            )
             e["children"][:0] = kids
 
 
@@ -537,13 +690,20 @@ def _contact(cat, name, text, page, band=""):
     m = re.search(r"Typical Connection Rating\s*:\s*(\d+)", s)
     if not m:
         return False
-    lines = [" ".join(c.strip() for c in ln.strip().strip("|").split("|")) if ln.startswith("|") else ln.replace("**", "").strip()
-             for ln in (band + "\n" + text).splitlines() if not re.fullmatch(r"\|(?:-+\|)+", ln.strip())]
+    lines = [
+        (
+            " ".join(c.strip() for c in ln.strip().strip("|").split("|"))
+            if ln.startswith("|")
+            else ln.replace("**", "").strip()
+        )
+        for ln in (band + "\n" + text).splitlines()
+        if not re.fullmatch(r"\|(?:-+\|)+", ln.strip())
+    ]
     cat.add("contacts", name, page, {"archetype": name, "connection": int(m.group(1))}, (), _plain_text(text))
     for i, ln in enumerate(lines[:-1]):
         if _BAND.match(ln) and len(ln.split()) == len(lines[i + 1].split()):
             stats = {BEING[h]: v for h, v in zip(ln.split(), lines[i + 1].split()) if h in BEING}
-            rest = " ".join(lines[i + 2:])
+            rest = " ".join(lines[i + 2 :])
             sk = re.search(r"Active Skills\s*:\s*(.*?)(?=Knowledge Skills|$)", rest)
             kids = [("skills", {}, sk.group(1).strip())] if sk else []
             cat.add("npcs", name, page, {"group": "Contact", **stats}, kids, "")
@@ -555,15 +715,24 @@ def _vehicle(cat, b, band, page):
     """A vehicle printed with its stats in its text (shapes.vehicle_band): a vehicles entry, its tag line the
     category, a lower-case title capitalized."""
     cols = HEADERS["vehicles"]
-    attrs = {"category": slug(b.tags) or "vehicles", **{cols[h]: printed_value(cols[h], v) for h, v in band.items() if h in cols}}
+    attrs = {
+        "category": slug(b.tags) or "vehicles",
+        **{cols[h]: printed_value(cols[h], v) for h, v in band.items() if h in cols},
+    }
     name = b.name.title() if b.name[:1].islower() else b.name
-    keep = [ln for ln in b.text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip())
-            and not re.fullmatch(r"[\d/—–\-+*.,()¥A-Z ]+", ln.strip())]
+    keep = [
+        ln
+        for ln in b.text.splitlines()
+        if not ln.startswith("|")
+        and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip())
+        and not re.fullmatch(r"[\d/—–\-+*.,()¥A-Z ]+", ln.strip())
+    ]
     cat.add("vehicles", name, page, attrs, (), "\n".join(keep).strip())
     return True
 
 
 # --- the book ------------------------------------------------------------------------------------------------------
+
 
 def extract(regrouped, ctx=None):
     cat = Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
@@ -571,7 +740,9 @@ def extract(regrouped, ctx=None):
     bs = list(blocks(regrouped))
     cat.index = search.Index(bs, PAGE_OFFSET, md_tables, shapes.RENAME)
     kinds, found, lists, infected = sections.Reader(), [], set(), []
-    bases = {}  # (the Infected Metatype Attributes table, p. 109: a type's name -> the base metatypes it prints, in order)
+    bases = (
+        {}
+    )  # (the Infected Metatype Attributes table, p. 109: a type's name -> the base metatypes it prints, in order)
     for b in bs:
         if b.row is not None and [norm(h) for h in (b.header or [])[:2]] == ["type", "base"]:
             bases.setdefault(norm(b.row.get(b.header[0], "")), []).append(b.row.get(b.header[1], "").strip())
@@ -585,9 +756,17 @@ def extract(regrouped, ctx=None):
         text = block_text(b)
         done = False
         if ch == METAVARIANTS[0]:  # the development tables: a row of its own, a block's band or a table in its text
-            tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])                 + [(list(x), [list(x.values())]) for x in b.stats] + md_tables(b.text)
-            dev += [(h, r, page) for h, rs in tables if norm(h[0]) == "metavariant" and any("PRIORITY" in x.upper() for x in h)
-                    for r in rs]  # (they stay rules too)
+            tables = (
+                ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])
+                + [(list(x), [list(x.values())]) for x in b.stats]
+                + md_tables(b.text)
+            )
+            dev += [
+                (h, r, page)
+                for h, rs in tables
+                if norm(h[0]) == "metavariant" and any("PRIORITY" in x.upper() for x in h)
+                for r in rs
+            ]  # (they stay rules too)
         if ch == LIFE[0] and sec == LIFE[1] and b.type == "item":
             if any(norm(b.name).startswith(o) for o in OPENING):
                 lifemodule(cat, "opening", b.name, text, page)
@@ -630,8 +809,15 @@ def extract(regrouped, ctx=None):
         while stack and stack[-1][0] >= level:
             stack.pop()
         parent = stack[-1][1] if stack else None
-        e = cat.add("rules", b.name, page, {"chapter": b.chapter, "level": max(1, level), "parent": parent}, (),
-                    "\n\n".join(x for x in (block_md(b), text) if x), parent=parent)
+        e = cat.add(
+            "rules",
+            b.name,
+            page,
+            {"chapter": b.chapter, "level": max(1, level), "parent": parent},
+            (),
+            "\n\n".join(x for x in (block_md(b), text) if x),
+            parent=parent,
+        )
         stack.append((level, e["id"]))
     _list_texts(cat, lists)
     _infected(cat, infected, lists, bs)
@@ -643,5 +829,9 @@ def extract(regrouped, ctx=None):
         _metavariants(cat, ranges)
     _development(cat, dev)
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
-    return Result(files=files, texts=cat.texts_xml() if cat.texts else None, report=cat.report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+    return Result(
+        files=files,
+        texts=cat.texts_xml() if cat.texts else None,
+        report=cat.report,
+        source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON},
+    )

@@ -1,5 +1,6 @@
 """SR6 Sixth World Companion recipe (importer/sr6/recipes/swc.py) on a made-up book.md in the converter's sr6 shape (the
 Companion's: labels unbolded, tables as text). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -164,7 +165,9 @@ class SwcRecipeTest(unittest.TestCase):
 
     def test_opening_modules_from_their_sentences(self):
         m = entries(self.res, "lifemodules")
-        self.assertEqual(m["Born This Way"].attrib, {"id": "born-this-way", "source": "SWC", "page": "9", "stage": "opening"})
+        self.assertEqual(
+            m["Born This Way"].attrib, {"id": "born-this-way", "source": "SWC", "page": "9", "stage": "opening"}
+        )
         g = m["Growing Up: Made-Up Years"].attrib
         self.assertEqual((g["stage"], g["skillPoints"], g["knowledgeSkills"]), ("opening", "6", "1"))
         c = m["Coming of Age: Made-Up Days"].attrib
@@ -172,12 +175,26 @@ class SwcRecipeTest(unittest.TestCase):
 
     def test_adult_module_grants_and_choices(self):
         p = entries(self.res, "lifemodules")["Gutter Poet"]
-        self.assertEqual({k: p.get(k) for k in ("stage", "nuyen", "contactPoints", "contactTypes", "knowledgeSkills")},
-                         {"stage": "adult", "nuyen": "7000", "contactPoints": "3", "contactTypes": "media street",
-                          "knowledgeSkills": "2"})
-        self.assertEqual(choices(p), [("1", "agi bod rea"), ("2", "skill:crb.con skill:crb.exotic-weapons"),
-                                      ("1", "edg nuyen:5000"), ("1", "skill:crb.stealth skill:crb.perception"),
-                                      ("1", "skill:crb.stealth skill:crb.perception")])
+        self.assertEqual(
+            {k: p.get(k) for k in ("stage", "nuyen", "contactPoints", "contactTypes", "knowledgeSkills")},
+            {
+                "stage": "adult",
+                "nuyen": "7000",
+                "contactPoints": "3",
+                "contactTypes": "media street",
+                "knowledgeSkills": "2",
+            },
+        )
+        self.assertEqual(
+            choices(p),
+            [
+                ("1", "agi bod rea"),
+                ("2", "skill:crb.con skill:crb.exotic-weapons"),
+                ("1", "edg nuyen:5000"),
+                ("1", "skill:crb.stealth skill:crb.perception"),
+                ("1", "skill:crb.stealth skill:crb.perception"),
+            ],
+        )
         self.assertEqual([(r["name"], r["value"]) for r in self.rep("unread-option")], [("Gutter Poet", "Juggling")])
 
     def test_hidden_heading_requires_and_events(self):
@@ -198,9 +215,20 @@ class SwcRecipeTest(unittest.TestCase):
     def test_metavariants_from_the_text_tables(self):
         mt = entries(self.res, "metatypes")
         ranges = lambda n: {r.get("attr"): (r.get("min"), r.get("max")) for r in mt[n].iter("range")}
-        self.assertEqual(ranges("Glimmerling"), {"bod": ("1", "5"), "agi": ("1", "7"), "rea": ("1", "6"), "str": ("1", "5"),
-                                                 "wil": ("1", "6"), "log": ("1", "6"), "int": ("1", "6"), "cha": ("1", "7"),
-                                                 "edg": ("1", "6")})
+        self.assertEqual(
+            ranges("Glimmerling"),
+            {
+                "bod": ("1", "5"),
+                "agi": ("1", "7"),
+                "rea": ("1", "6"),
+                "str": ("1", "5"),
+                "wil": ("1", "6"),
+                "log": ("1", "6"),
+                "int": ("1", "6"),
+                "cha": ("1", "7"),
+                "edg": ("1", "6"),
+            },
+        )
         self.assertEqual([t.text for t in mt["Glimmerling"].iter("trait")], ["Night Eyes", "Glow (2, very bright)"])
         self.assertEqual((ranges("Dimling")["int"], ranges("Dimling")["cha"]), (("1", "7"), ("1", "6")))
         self.assertEqual((ranges("Stonekin")["int"], ranges("Stonekin")["cha"]), (("1", "6"), ("1", "5")))
@@ -211,17 +239,27 @@ class SwcRecipeTest(unittest.TestCase):
         """The development table: a metavariant's adjustment points at each priority it can be taken at; N/A: none."""
         mt = entries(self.res, "metatypes")
         pts = lambda n: {p.get("letter"): p.get("points") for p in mt[n].iter("priority")}
-        self.assertEqual(pts("Glimmerling"), {"A": "12", "B": "10", "C": "8", "D": "3"})  # `Glimmerlings`: the plural row
+        self.assertEqual(
+            pts("Glimmerling"), {"A": "12", "B": "10", "C": "8", "D": "3"}
+        )  # `Glimmerlings`: the plural row
         self.assertEqual(pts("Stonekin"), {"B": "11", "C": "9", "D": "4", "E": "1"})
         self.assertEqual(pts("Dimling"), {})
         self.assertEqual([r["name"] for r in self.rep("unmatched") if r.get("file") == "metatypes.xml"], ["Shadowkin"])
 
     def test_qualities_and_sub_qualities(self):
         q = entries(self.res, "qualities")
-        self.assertEqual({n: (e.get("kind"), e.get("karma")) for n, e in q.items()},
-                         {"Lucky Charm": ("positive", "5"), "Spiky Hair": ("positive", "3"), "Long Nose": ("positive", "4"),
-                          "Clumsy Oaf": ("negative", "7"), "Glow Burst": ("positive", "7"), "Thick Hide (per point)": ("positive", "3"),
-                          "Odd Gift": ("positive", None)})
+        self.assertEqual(
+            {n: (e.get("kind"), e.get("karma")) for n, e in q.items()},
+            {
+                "Lucky Charm": ("positive", "5"),
+                "Spiky Hair": ("positive", "3"),
+                "Long Nose": ("positive", "4"),
+                "Clumsy Oaf": ("negative", "7"),
+                "Glow Burst": ("positive", "7"),
+                "Thick Hide (per point)": ("positive", "3"),
+                "Odd Gift": ("positive", None),
+            },
+        )
         self.assertEqual((q["Long Nose"].get("perLevel"), q["Long Nose"].get("maxLevel")), ("true", "3"))
         # a sub-quality's description is its own lines, not its neighbours' (the block's)
         texts = {t.get("id"): t.text or "" for t in ET.fromstring(self.res.texts) if t.get("of") == "qualities"}
@@ -235,13 +273,20 @@ class SwcRecipeTest(unittest.TestCase):
         the book's critter power of its name; a price that isn't a number is reported, never guessed."""
         q = entries(self.res, "qualities")
         g, h = q["Glow Burst"], q["Thick Hide (per point)"]
-        self.assertEqual((g.get("id"), g.get("category"), g.get("page"), g.get("perLevel")),
-                         ("made-up-optional-powers.glow-burst", "Made-Up Optional Powers", "39", None))
-        self.assertEqual((h.get("perLevel"), h.get("maxLevel"), h.get("category")), ("true", None, "Made-Up Optional Powers"))
+        self.assertEqual(
+            (g.get("id"), g.get("category"), g.get("page"), g.get("perLevel")),
+            ("made-up-optional-powers.glow-burst", "Made-Up Optional Powers", "39", None),
+        )
+        self.assertEqual(
+            (h.get("perLevel"), h.get("maxLevel"), h.get("category")), ("true", None, "Made-Up Optional Powers")
+        )
         texts = {t.get("id"): t.text or "" for t in ET.fromstring(self.res.texts) if t.get("of") == "qualities"}
         self.assertIn("made-up light", texts["made-up-optional-powers.glow-burst"])
         self.assertNotIn("made-up-optional-powers.thick-hide-per-point", texts)
-        self.assertEqual([(r["name"], r["value"]) for r in self.rep("book-value") if r["file"] == "qualities.xml"], [("Odd Gift", "see text")])
+        self.assertEqual(
+            [(r["name"], r["value"]) for r in self.rep("book-value") if r["file"] == "qualities.xml"],
+            [("Odd Gift", "see text")],
+        )
         self.assertNotIn("Made-Up Optional Powers Table", entries(self.res, "rules"))
 
     def test_critter_power_contact_and_rules(self):
@@ -250,8 +295,10 @@ class SwcRecipeTest(unittest.TestCase):
         c = entries(self.res, "contacts")["Dock Boss"].attrib
         self.assertEqual((c["archetype"], c["connection"]), ("Dock Boss", "3"))
         n = entries(self.res, "npcs")["Dock Boss"]
-        self.assertEqual((n.get("group"), n.get("bod"), n.get("log"), n.get("ess"), n.findtext("skills")),
-                         ("Contact", "3", "2", "6", "Con 3, Influence 2"))
+        self.assertEqual(
+            (n.get("group"), n.get("bod"), n.get("log"), n.get("ess"), n.findtext("skills")),
+            ("Contact", "3", "2", "6", "Con 3, Influence 2"),
+        )
         r = entries(self.res, "rules")
         self.assertIn("Made-Up Rule", r)
         self.assertIn("Starting down the life path", r)
@@ -368,42 +415,90 @@ class InfectedTest(unittest.TestCase):
         self.assertNotIn("Grubber", self.q)
         for base in ("Dwarf", "Troll"):
             g = self.q[f"Grubber ({base})"]
-            self.assertEqual((g.get("id"), g.get("karma"), g.get("kind")), (f"grubber-{base.lower()}", "21", "positive"))
-            self.assertEqual(self.kids(f"Grubber ({base})", "infected"),
-                             [{"strain": "III", "base": base, "freePhysical": "2", "freeMental": "2", "essence": "5", "magic": "1",
-                               "magicLoss": "1", "magicMax": "5+initiate-grade"}])
+            self.assertEqual(
+                (g.get("id"), g.get("karma"), g.get("kind")), (f"grubber-{base.lower()}", "21", "positive")
+            )
+            self.assertEqual(
+                self.kids(f"Grubber ({base})", "infected"),
+                [
+                    {
+                        "strain": "III",
+                        "base": base,
+                        "freePhysical": "2",
+                        "freeMental": "2",
+                        "essence": "5",
+                        "magic": "1",
+                        "magicLoss": "1",
+                        "magicMax": "5+initiate-grade",
+                    }
+                ],
+            )
 
     def test_strain_base_awakening_and_the_awakened_price(self):
-        self.assertEqual(self.kids("Dusker", "infected"),
-                         [{"strain": "I", "printed": "Ia", "base": "Human", "awakens": "magician", "freePhysical": "2",
-                           "freeMental": "2", "magicMax": "ess+initiate-grade"}])  # (Ia is Strain I; no starting Essence)
+        self.assertEqual(
+            self.kids("Dusker", "infected"),
+            [
+                {
+                    "strain": "I",
+                    "printed": "Ia",
+                    "base": "Human",
+                    "awakens": "magician",
+                    "freePhysical": "2",
+                    "freeMental": "2",
+                    "magicMax": "ess+initiate-grade",
+                }
+            ],
+        )  # (Ia is Strain I; no starting Essence)
         self.assertEqual(self.q["Dusker"].get("karma"), "25")  # (the note wrapped onto the next line: still one price)
-        self.assertEqual(self.kids("Dusker", "karmaif"),
-                         [{"flag": "awakened", "value": "15", "note": "less 10 if the character is already Awakened"}])
+        self.assertEqual(
+            self.kids("Dusker", "karmaif"),
+            [{"flag": "awakened", "value": "15", "note": "less 10 if the character is already Awakened"}],
+        )
         self.assertEqual(self.kids("Marrowkin", "infected")[0]["strain"], "II")
         self.assertEqual(self.kids("Marrowkin", "karmaif"), [])
         # (a `See text` price with a non-Awakened and an Awakened price: one item, its Awakened price a karmaif)
         m = self.q["Mana Itch"]
-        self.assertEqual((m.get("kind"), m.get("karma"), m.get("karmaMax"), m.get("karmaSteps")), ("negative", "4", None, None))
-        self.assertEqual(self.kids("Mana Itch", "karmaif"), [{"flag": "awakened", "value": "9", "note": "9 if the character is Awakened"}])
+        self.assertEqual(
+            (m.get("kind"), m.get("karma"), m.get("karmaMax"), m.get("karmaSteps")), ("negative", "4", None, None)
+        )
+        self.assertEqual(
+            self.kids("Mana Itch", "karmaif"),
+            [{"flag": "awakened", "value": "9", "note": "9 if the character is Awakened"}],
+        )
 
     def test_optional_powers_and_the_free_pick(self):
-        self.assertEqual(self.optional("Dusker"), [("glow-sense-smell", "true"), ("glow-sense-sight", "true"), ("hush", None)])
+        self.assertEqual(
+            self.optional("Dusker"), [("glow-sense-smell", "true"), ("glow-sense-sight", "true"), ("hush", None)]
+        )
         self.assertEqual(self.optional("Grubber (Troll)"), [("hard-hide-per-point", "true"), ("mendflesh", None)])
         self.assertEqual(self.optional("Marrowkin"), [])
         # (an item no row prices is reported, never guessed)
-        self.assertEqual([(r["name"], r["value"]) for r in self.res.report if r["kind"] == "unmatched" and r.get("field") == "optional power"],
-                         [("Dusker", "Immunity (Age)")])
+        self.assertEqual(
+            [
+                (r["name"], r["value"])
+                for r in self.res.report
+                if r["kind"] == "unmatched" and r.get("field") == "optional power"
+            ],
+            [("Dusker", "Immunity (Age)")],
+        )
 
     def test_a_free_pick_naming_no_optional_power_and_a_type_naming_no_strain_are_reported(self):
         self.assertEqual(self.optional("Gloamer"), [("hush", "true")])
-        self.assertEqual([(r["name"], r["value"]) for r in self.res.report if r.get("field") == "free optional power"], [("Gloamer", "Ghost Step")])
-        self.assertEqual([r["name"] for r in self.res.report if r["kind"] == "missing-value" and r.get("field") == "strain"], ["Murkling"])
+        self.assertEqual(
+            [(r["name"], r["value"]) for r in self.res.report if r.get("field") == "free optional power"],
+            [("Gloamer", "Ghost Step")],
+        )
+        self.assertEqual(
+            [r["name"] for r in self.res.report if r["kind"] == "missing-value" and r.get("field") == "strain"],
+            ["Murkling"],
+        )
         self.assertEqual(self.kids("Murkling", "infected"), [])
         self.assertEqual(self.kids("Gloamer", "infectedalt"), [])  # (its sidebar gives no total cost: nothing)
 
     def test_gained_powers_and_weaknesses(self):
-        self.assertEqual(self.kids("Dusker", "power"), [{"name": "Dual Natured"}, {"name": "Movement (Self Only)"}])  # (no modifier, no free pick)
+        self.assertEqual(
+            self.kids("Dusker", "power"), [{"name": "Dual Natured"}, {"name": "Movement (Self Only)"}]
+        )  # (no modifier, no free pick)
         self.assertEqual(self.kids("Dusker", "weakness"), [{"name": "Allergy (Dawn, Mild)"}])
         self.assertEqual(self.kids("Murkling", "power"), [])  # (no strain: no rules as data)
         tags = [k.tag for k in self.q["Dusker"]]
@@ -412,21 +507,55 @@ class InfectedTest(unittest.TestCase):
 
     def test_gained_items_tolerate_the_book_s_typos(self):
         own = {"glowhide": "glowhide"}
-        got = swc._gains("Hard Hide 1, Glow Ward (2), Grip Tough 2, Glow Sense (Smell, Sight) Glowhides, Hush (self only, p. 12, Street Wyrd), "
-                         "Shell (6) (replaces Shell (4)), +1 initiative die. Gain one of the Glow Senses as a free Optional Power.", "power", own)
-        self.assertEqual([a for _, a, _ in got], [
-            {"name": "Hard Hide", "rating": "1"}, {"name": "Glow Ward", "rating": "2"}, {"name": "Grip Tough", "rating": "2"},
-            {"name": "Glow Sense (Smell, Sight)"}, {"ref": "glowhide", "name": "Glowhides"},  # (a comma left out; a plural is its power)
-            {"name": "Hush (self only)"}, {"name": "Shell (replaces Shell (4))", "rating": "6"}])
+        got = swc._gains(
+            "Hard Hide 1, Glow Ward (2), Grip Tough 2, Glow Sense (Smell, Sight) Glowhides, Hush (self only, p. 12, Street Wyrd), "
+            "Shell (6) (replaces Shell (4)), +1 initiative die. Gain one of the Glow Senses as a free Optional Power.",
+            "power",
+            own,
+        )
+        self.assertEqual(
+            [a for _, a, _ in got],
+            [
+                {"name": "Hard Hide", "rating": "1"},
+                {"name": "Glow Ward", "rating": "2"},
+                {"name": "Grip Tough", "rating": "2"},
+                {"name": "Glow Sense (Smell, Sight)"},
+                {"ref": "glowhide", "name": "Glowhides"},  # (a comma left out; a plural is its power)
+                {"name": "Hush (self only)"},
+                {"name": "Shell (replaces Shell (4))", "rating": "6"},
+            ],
+        )
         # (an unclosed parenthesis runs to the end; a weakness has no ref, a modifier is no item)
-        got = swc._gains("Allergy (Dusk, Mild) –1 Logic, Glowhide, Dozing (Lack of Light, (Essence) Minutes, (p. 9, SR6)", "weakness", own)
-        self.assertEqual([a for _, a, _ in got], [{"name": "Allergy (Dusk, Mild)"}, {"name": "Glowhide"}, {"name": "Dozing (Lack of Light, (Essence) Minutes)"}])
+        got = swc._gains(
+            "Allergy (Dusk, Mild) –1 Logic, Glowhide, Dozing (Lack of Light, (Essence) Minutes, (p. 9, SR6)",
+            "weakness",
+            own,
+        )
+        self.assertEqual(
+            [a for _, a, _ in got],
+            [
+                {"name": "Allergy (Dusk, Mild)"},
+                {"name": "Glowhide"},
+                {"name": "Dozing (Lack of Light, (Essence) Minutes)"},
+            ],
+        )
         self.assertEqual(swc._gains("", "power", own), [])
 
     def test_the_other_base_sidebar(self):
-        self.assertEqual(self.kids("Dusker", "infectedalt"),
-                         [{"base": "other", "karma": "30", "bod": "1", "wil": "1", "cha": "2", "page": "69",
-                           "note": "30 Karma for a non-human dusker"}])
+        self.assertEqual(
+            self.kids("Dusker", "infectedalt"),
+            [
+                {
+                    "base": "other",
+                    "karma": "30",
+                    "bod": "1",
+                    "wil": "1",
+                    "cha": "2",
+                    "page": "69",
+                    "note": "30 Karma for a non-human dusker",
+                }
+            ],
+        )
         self.assertEqual(self.kids("Marrowkin", "infectedalt"), [])
 
     def test_files_validate(self):
@@ -438,13 +567,18 @@ class InfectedTest(unittest.TestCase):
 class ModuleGrantsTest(unittest.TestCase):
     def test_choose_an_attribute_is_one_choice(self):
         from importer.sr6.lifemodules import _module_grants
+
         report = []
-        text = ("• Choose an Attribute: +1 to Agility or Strength\n• Choose an Alignment: Zorp or Blip\n"
-                "• Choose a Skill: +2 to Stealth or Con\n• +1 to Willpower or your other drain attribute\n")
+        text = (
+            "• Choose an Attribute: +1 to Agility or Strength\n• Choose an Alignment: Zorp or Blip\n"
+            "• Choose a Skill: +2 to Stealth or Con\n• +1 to Willpower or your other drain attribute\n"
+        )
         attrs, kids = _module_grants("Made-Up Module", text, 5, report)
         self.assertEqual((attrs, report), ({}, []))
-        self.assertEqual([(k[1]["points"], k[1]["options"]) for k in kids],
-                         [(1, "agi str"), (2, "skill:crb.stealth skill:crb.con"), (1, "wil log int cha")])
+        self.assertEqual(
+            [(k[1]["points"], k[1]["options"]) for k in kids],
+            [(1, "agi str"), (2, "skill:crb.stealth skill:crb.con"), (1, "wil log int cha")],
+        )
 
 
 if __name__ == "__main__":

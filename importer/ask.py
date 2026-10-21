@@ -4,7 +4,9 @@ title, its names and numbers flattened to text, plus its private description fro
 house rules. BM25 picks the best few; below a floor the answer is "not covered" and nothing is sent anywhere.
 Otherwise the question and those passages go to the configured provider (importer/ai/providers.py).
 Each game asks its own: game "sr6" reads custom/sr6/ only (no Anarchy core files, SR6's own prompt), and the server
-passes its own library (library/sr6/.config: SR6's provider, key and AnythingLLM workspace). scope "rules": rules only."""
+passes its own library (library/sr6/.config: SR6's provider, key and AnythingLLM workspace). scope "rules": rules only.
+"""
+
 import glob
 import json
 import math
@@ -26,7 +28,10 @@ TEXT_KIND = {"amp": "amps", "item": "items", "rule": "rules", "lifestyle": "life
 STOP = set("""a an and are as at be been but by can could do does did for from had has have how i if in into is it its
 me my of on or our so than that the their them then there these they this those to up was we were what when where which
 while who whom why will with would you your about any get gets got use used using much many more most""".split())
-GAMES = {"ca2": ("Shadowrun Anarchy 2.0", "Shadowrun"), "sr6": ("Shadowrun Sixth World (SR6)", "other Shadowrun editions or Anarchy")}
+GAMES = {
+    "ca2": ("Shadowrun Anarchy 2.0", "Shadowrun"),
+    "sr6": ("Shadowrun Sixth World (SR6)", "other Shadowrun editions or Anarchy"),
+}
 
 
 def system(game="ca2"):
@@ -63,8 +68,10 @@ def _parse(path):
 def _texts(custom):
     """{(of, id): description} from custom/texts/*.xml, custom/texts.xml, then the edits layer's (last wins)."""
     out = {}
-    for path in sorted(glob.glob(os.path.join(custom, "texts", "*.xml"))) + [os.path.join(custom, "texts.xml"),
-                                                                             os.path.join(custom, "edits", "texts.xml")]:
+    for path in sorted(glob.glob(os.path.join(custom, "texts", "*.xml"))) + [
+        os.path.join(custom, "texts.xml"),
+        os.path.join(custom, "edits", "texts.xml"),
+    ]:
         root = _parse(path) if os.path.isfile(path) else None
         for t in root if root is not None else []:
             if t.tag == "text" and (t.text or "").strip():
@@ -75,7 +82,10 @@ def _texts(custom):
 def _listed(index, base, custom):
     """The files an index.xml (<overlays><file href/>) lists, inside the custom folder."""
     root = _parse(index) if os.path.isfile(index) else None
-    paths = [os.path.normpath(os.path.join(base, f.get("href") or "")) for f in (root.iter("file") if root is not None else [])]
+    paths = [
+        os.path.normpath(os.path.join(base, f.get("href") or ""))
+        for f in (root.iter("file") if root is not None else [])
+    ]
     return [p for p in paths if p.startswith(os.path.normpath(custom) + os.sep)]
 
 
@@ -97,6 +107,7 @@ def passages(custom, game="ca2"):
     texts, by_id = _texts(custom), {}
     if game == "sr6":
         from importer.sr6 import KINDS
+
         text_kind = {tag: kind for kind, tag in KINDS.items()}  # SR6 texts name the kind (its file)
     else:
         text_kind = TEXT_KIND
@@ -112,18 +123,36 @@ def passages(custom, game="ca2"):
             title = (e.findtext("name") or e.findtext("title") or e.get("id")).strip()
             body = " ".join(" ".join(e.itertext()).split())
             desc = texts.get((text_kind.get(e.tag), e.get("id")), "")
-            by_id[(e.tag, e.get("id"))] = {"source": e.get("source") or "", "page": e.get("page") or "", "title": title,
-                                           "text": f"{body} {desc}".strip(), "kind": e.tag, "id": e.get("id")}
+            by_id[(e.tag, e.get("id"))] = {
+                "source": e.get("source") or "",
+                "page": e.get("page") or "",
+                "title": title,
+                "text": f"{body} {desc}".strip(),
+                "kind": e.tag,
+                "id": e.get("id"),
+            }
     out = list(by_id.values())
-    rules = _parse(os.path.join(custom, "table-rules.xml")) if os.path.isfile(os.path.join(custom, "table-rules.xml")) else None
+    rules = (
+        _parse(os.path.join(custom, "table-rules.xml"))
+        if os.path.isfile(os.path.join(custom, "table-rules.xml"))
+        else None
+    )
     on = {r.get("id"): r for r in (rules if rules is not None else []) if r.get("on") == "true"}
     for p in out:
         if p["id"] in on:
             p["text"] += " This table plays with this optional rule (switched on by the GM)."
     for r in on.values():
         if (r.findtext("name") or "").strip():
-            out.append({"source": "House rule", "page": "", "title": r.findtext("name").strip(), "kind": "", "id": "",
-                        "text": f"{r.findtext('name').strip()} {(r.findtext('text') or '').strip()}"})
+            out.append(
+                {
+                    "source": "House rule",
+                    "page": "",
+                    "title": r.findtext("name").strip(),
+                    "kind": "",
+                    "id": "",
+                    "text": f"{r.findtext('name').strip()} {(r.findtext('text') or '').strip()}",
+                }
+            )
     return out
 
 
@@ -153,7 +182,8 @@ def cite(p):
 
 def answer(question, custom, ask_ai, game="ca2", scope=None):
     """{answer, sources: [{source, page, title, kind, id}], covered}. `ask_ai(system, user) -> text` is only called when
-    some passage clears the floor. scope "rules": only the rules (and house rules) are searched (the Rules page's search)."""
+    some passage clears the floor. scope "rules": only the rules (and house rules) are searched (the Rules page's search).
+    """
     question = " ".join((question or "").split())
     if not question:
         raise ValueError("ask a question")
@@ -164,7 +194,8 @@ def answer(question, custom, ask_ai, game="ca2", scope=None):
     if not found:
         return {"answer": NOT_COVERED, "sources": [], "covered": False}
     user = f"Question: {question}\n\nPassages:\n" + "\n\n".join(
-        f"[{i}] [{cite(p)}] {p['title']}\n{p['text'][:PASSAGE_CHARS]}" for i, p in enumerate(found, 1))
+        f"[{i}] [{cite(p)}] {p['title']}\n{p['text'][:PASSAGE_CHARS]}" for i, p in enumerate(found, 1)
+    )
     reply = (ask_ai(system(game), user) or "").strip()
     try:
         text = json.loads(reply)["answer"]
@@ -175,4 +206,8 @@ def answer(question, custom, ask_ai, game="ca2", scope=None):
     if text == NOT_COVERED:
         return {"answer": text, "sources": [], "covered": False}
     cited = [p for p in found if f"[{cite(p)}]" in text]  # the passages the answer cites, else all it was given
-    return {"answer": text, "sources": [{k: p[k] for k in ("source", "page", "title", "kind", "id")} for p in cited or found], "covered": True}
+    return {
+        "answer": text,
+        "sources": [{k: p[k] for k in ("source", "page", "title", "kind", "id")} for p in cited or found],
+        "covered": True,
+    }

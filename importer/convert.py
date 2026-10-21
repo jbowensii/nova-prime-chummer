@@ -2,6 +2,7 @@
 PDF page by page; importer/pdf/ holds the steps: lines.py (words into lines, headings by size), columns.py (two text
 columns, reading order), tables.py (ruled tables' cells) and markdown.py (bold runs, tables as Markdown). The SR6
 layout's own steps (importer/sr6/layout.py: rows by baseline, header-band tables, boxes) run only for sr6=True."""
+
 import hashlib
 
 import pdfplumber
@@ -40,6 +41,7 @@ def reusable(book_dir: str, version: str) -> bool:
     file with this converter version. A re-import then skips the conversion (Books → Re-import all: run --reuse)."""
     import os
     import xml.etree.ElementTree as ET
+
     pdf, md, imp = (os.path.join(book_dir, f) for f in ("original.pdf", "book.md", "import.xml"))
     if not (os.path.exists(pdf) and os.path.exists(md) and os.path.exists(imp)):
         return False
@@ -53,8 +55,14 @@ def reusable(book_dir: str, version: str) -> bool:
         return hashlib.sha256(f.read()).hexdigest() == rec.get("sha256")
 
 
-def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, sr6: bool = False,
-            levels: dict | None = None, heading: str | None = None) -> dict:
+def convert(
+    pdf_path: str,
+    md_path: str,
+    pages: tuple[int, int] | None = None,
+    sr6: bool = False,
+    levels: dict | None = None,
+    heading: str | None = None,
+) -> dict:
     """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout
     (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped). levels: the SR6 heading
     sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings' font
@@ -78,12 +86,18 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
             found = [] if sr6 else page.find_tables()
             # a table nested in another is a fragment of it (its words are in the outer one's cells);
             # of two with the same box, the first is kept
-            tables = [t for i, t in enumerate(found)
-                      if not any(inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i)]
+            tables = [
+                t
+                for i, t in enumerate(found)
+                if not any(
+                    inside(t.bbox, o.bbox) and (o.bbox != t.bbox or j < i) for j, o in enumerate(found) if j != i
+                )
+            ]
             # stream order (columns._jump); a second copy of the page's text layer dropped (layout.one_layer)
             chars = [{**c, "i": i} for i, c in enumerate(layout.one_layer(page.chars))] if sr6 else page.chars
             all_words = (layout.words if sr6 else pdfplumber.utils.extract_words)(
-                even_sizes(chars), extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
+                even_sizes(chars), extra_attrs=["size"], keep_blank_chars=False, return_chars=True
+            )
             bands = []
             if sr6:
                 all_words = layout.furniture(page, all_words, fonts)
@@ -111,8 +125,13 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
                 xs.append(x0)
                 spans.append((min(w["top"] for w in line), x0, x1, level))
             if sr6:
-                marks = layout.sidebar_marks(spans, page.rects, [bbox for bbox, _, _ in bands], page.width,
-                                             lambda a, b: column_kind(a, b, mid, tol))
+                marks = layout.sidebar_marks(
+                    spans,
+                    page.rects,
+                    [bbox for bbox, _, _ in bands],
+                    page.width,
+                    lambda a, b: column_kind(a, b, mid, tol),
+                )
                 boxes = [bbox[1] for bbox, _, _ in bands if column_kind(bbox[0], bbox[2], mid, tol) == "band"]
                 blocks = layout.join_headings(layout.box_titles(layout.box_margin(blocks, xs), geo, boxes), geo)
             for t in tables:
@@ -130,5 +149,9 @@ def convert(pdf_path: str, md_path: str, pages: tuple[int, int] | None = None, s
     text = "\n".join(out) + "\n"
     with open(md_path, "w", encoding="utf8", newline="\n") as f:
         f.write(layout.rejoin_ligatures(text) if sr6 else text)
-    return {"pages": pages, "converter": SR6_CONVERTER_VERSION if sr6 else CONVERTER_VERSION, "sha256": sha,
-            "title": title}
+    return {
+        "pages": pages,
+        "converter": SR6_CONVERTER_VERSION if sr6 else CONVERTER_VERSION,
+        "sha256": sha,
+        "title": title,
+    }

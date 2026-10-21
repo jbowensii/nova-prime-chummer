@@ -4,6 +4,7 @@ vehicles and drones (and the vehicle mounted weapons), armor and armor modificat
 rituals and the rule sections, ids unscoped (run scopes them as da.<slug>), descriptions in the private texts. Reads
 only regrouped.md with the core rulebook's reading (catalog.read); the book's own box shapes (several items a box, a box
 under its heading) through importer/sr6/shapes.py. Layout notes in da.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -20,13 +21,22 @@ HEADING_LEVELS = {60.0: 1, 56.0: 1, 52.0: 1, 48.0: 1, 40.0: 1, 27.0: 1, 21.0: 2,
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 185  # PDF page: the back cover
 ALIASES = {}
-NAME_HEADERS = frozenset({"DRUG"})  # the medical chapter's `drugs` table: its rows are items (their headings are sections)
+NAME_HEADERS = frozenset(
+    {"DRUG"}
+)  # the medical chapter's `drugs` table: its rows are items (their headings are sections)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"spells"}
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("registered as a lethal weapon", "bleeders and bone breakers", "sending it downrange", "frag orders",
-                 "mil spec mayhem", "mystical force multipliers", "best of the rest")
+RULE_CHAPTERS = (
+    "registered as a lethal weapon",
+    "bleeders and bone breakers",
+    "sending it downrange",
+    "frag orders",
+    "mil spec mayhem",
+    "mystical force multipliers",
+    "best of the rest",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
@@ -83,11 +93,26 @@ def _text_list(b):
     ls = m.group(0).strip().splitlines()
     head = [c.strip() for c in ls[0].strip()[1:-1].split("|")]
     rows = [[c.strip() for c in ln.strip()[1:-1].split("|")] for ln in ls[2:]]
-    if len(rows) < 2 or "COST" not in head or any(len(r) != len(head) or "¥" not in r[head.index("COST")] for r in rows):
+    if (
+        len(rows) < 2
+        or "COST" not in head
+        or any(len(r) != len(head) or "¥" not in r[head.index("COST")] for r in rows)
+    ):
         return None
-    out = [replace(b, name=r[0], row=(row := {head[0]: r[0], **shapes.cells(dict(zip(head[1:], r[1:])))}),
-                   header=list(row), label=b.name, text="", labels={}, aliases=[]) for r in rows]
-    return out + [replace(b, text=(b.text[:m.start()] + b.text[m.end():]).strip())]
+    out = [
+        replace(
+            b,
+            name=r[0],
+            row=(row := {head[0]: r[0], **shapes.cells(dict(zip(head[1:], r[1:])))}),
+            header=list(row),
+            label=b.name,
+            text="",
+            labels={},
+            aliases=[],
+        )
+        for r in rows
+    ]
+    return out + [replace(b, text=(b.text[: m.start()] + b.text[m.end() :]).strip())]
 
 
 # a structural hint about one misplaced header (Rockets and Missiles, p. 58): the header prints `PILOT AVAIL SENSOR
@@ -110,12 +135,18 @@ def _swap_avail(bs):
         if not filled("AVAIL") or any(_LEGAL.search(v) for v in filled("AVAIL")):
             continue
         for k in (a - 1, a + 1):
-            if 0 < k < len(head) and head[k] not in ("COST", "AVAIL") and filled(head[k]) \
-                    and 2 * sum(bool(_LEGAL.search(v)) for v in filled(head[k])) > len(filled(head[k])):
+            if (
+                0 < k < len(head)
+                and head[k] not in ("COST", "AVAIL")
+                and filled(head[k])
+                and 2 * sum(bool(_LEGAL.search(v)) for v in filled(head[k])) > len(filled(head[k]))
+            ):
                 swap.update({id(r): head[k] for r in rows})
                 break
-    return [replace(b, row={**b.row, "AVAIL": b.row[swap[id(b)]], swap[id(b)]: b.row["AVAIL"]}) if id(b) in swap else b
-            for b in bs]
+    return [
+        replace(b, row={**b.row, "AVAIL": b.row[swap[id(b)]], swap[id(b)]: b.row["AVAIL"]}) if id(b) in swap else b
+        for b in bs
+    ]
 
 
 def prepare(bs):
@@ -135,14 +166,23 @@ def prepare(bs):
         m = _PAREN.search(b.name)
         cat = m and m.group(1).lower()
         if b.type == "section" and b.level == 3 and cat in SPELL_CATEGORIES and "RANGE" in b.text:
-            b = catalog.text_stats(replace(b, type="item", level=4, name=b.name[:m.start()], tags=m.group(1).title(),
-                                           section=m.group(1).title()), catalog.HEADERS["spells"])
+            b = catalog.text_stats(
+                replace(
+                    b,
+                    type="item",
+                    level=4,
+                    name=b.name[: m.start()],
+                    tags=m.group(1).title(),
+                    section=m.group(1).title(),
+                ),
+                catalog.HEADERS["spells"],
+            )
         elif b.type == "item" and b.stats and cat in SPELL_CATEGORIES:
-            b = replace(b, name=b.name[:m.start()], tags=b.tags or m.group(1).title(), section=m.group(1).title())
+            b = replace(b, name=b.name[: m.start()], tags=b.tags or m.group(1).title(), section=m.group(1).title())
         elif m and cat in ("positive", "negative") and {"cost", "bonus"} & {k.lower() for k in b.labels}:
-            b = replace(b, name=b.name[:m.start()])
+            b = replace(b, name=b.name[: m.start()])
         elif m and "Threshold" in b.labels:
-            b = replace(b, name=b.name[:m.start()], tags=m.group(1))
+            b = replace(b, name=b.name[: m.start()], tags=m.group(1))
         out += shapes.martial_pair(shapes.martial(b))
     return out
 

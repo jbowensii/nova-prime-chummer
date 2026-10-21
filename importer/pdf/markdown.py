@@ -1,4 +1,5 @@
 """Markdown out: a line's words with its bold runs as **…**, a table's rows as a Markdown table."""
+
 import re
 
 BOLD_FONT = re.compile(r"bold|black|heavy", re.I)
@@ -17,11 +18,18 @@ def _split_bold(w):
     k = next((i for i, c in enumerate(cs) if c["text"] in "—–"), 0)
     a, b = cs[:k], cs[k:]
     letters = lambda part: [c for c in part if c["text"].isalnum()]
-    if not k or not letters(a) or not letters(b) or not all(BOLD_FONT.search(c["fontname"]) for c in letters(a)) \
-            or any(BOLD_FONT.search(c["fontname"]) for c in letters(b)):
+    if (
+        not k
+        or not letters(a)
+        or not letters(b)
+        or not all(BOLD_FONT.search(c["fontname"]) for c in letters(a))
+        or any(BOLD_FONT.search(c["fontname"]) for c in letters(b))
+    ):
         return [w]
-    return [{**w, "text": "".join(c["text"] for c in a), "chars": a},
-            {**w, "text": "".join(c["text"] for c in b), "chars": b, "glue": True}]
+    return [
+        {**w, "text": "".join(c["text"] for c in a), "chars": a},
+        {**w, "text": "".join(c["text"] for c in b), "chars": b, "glue": True},
+    ]
 
 
 def line_text(line, split=False):
@@ -31,8 +39,10 @@ def line_text(line, split=False):
     if split:
         line = [p for w in line for p in _split_bold(w)]
     bold = [is_bold(w) for w in line]
-    bold = [b or (0 < i < len(line) - 1 and bold[i - 1] and bold[i + 1] and not any(c.isalnum() for c in line[i]["text"]))
-            for i, b in enumerate(bold)]
+    bold = [
+        b or (0 < i < len(line) - 1 and bold[i - 1] and bold[i + 1] and not any(c.isalnum() for c in line[i]["text"]))
+        for i, b in enumerate(bold)
+    ]
     out, run = [], []
     for w, b in zip(line + [None], bold + [False]):
         if b:
@@ -56,6 +66,4 @@ def table_md(rows):
     if not rows:
         return []
     head, *body = rows
-    return ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)] + [
-        "| " + " | ".join(r) + " |" for r in body
-    ]
+    return ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)] + ["| " + " | ".join(r) + " |" for r in body]

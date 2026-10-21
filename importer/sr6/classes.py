@@ -8,6 +8,7 @@ it had: a deliberate extra (classes/extra_classes.json: not Commlink6's), or Com
 (`"commlink6": true`). Body Shop's critter-only chapter is all `CRITTERWARE/AUGMENTATION`, which the app keeps out of the
 player's pickers; the Companion's Infected qualities are `INFECTED` and its Infected optional powers
 `INFECTED/OPTIONAL_POWER`, which the app offers only with the table's infectedAllowed rule on."""
+
 import json
 import re
 from pathlib import Path
@@ -39,7 +40,11 @@ def in_section(rule, src, kind, page):
         n = int(page)
     except (TypeError, ValueError):
         return False
-    return (src or "").lower() == rule["src"].lower() and kind in rule["kinds"] and rule["pages"][0] <= n <= rule["pages"][1]
+    return (
+        (src or "").lower() == rule["src"].lower()
+        and kind in rule["kinds"]
+        and rule["pages"][0] <= n <= rule["pages"][1]
+    )
 
 
 def apply(files, cmap=None, src=None, rules=None):
@@ -50,6 +55,7 @@ def apply(files, cmap=None, src=None, rules=None):
     if not cmap and not rules:
         return files
     from lxml import etree
+
     out = dict(files)
     for name, xml in files.items():
         kind = name[:-4]
@@ -65,7 +71,9 @@ def apply(files, cmap=None, src=None, rules=None):
                 if kind == "categories":
                     cls = cmap.get(e.get("of") or "", {}).get(e.findtext("name") or "")
                 else:
-                    cls = cmap.get(kind, {}).get(e.get("category") or (e.get("type") if kind == "programs" else "") or "")
+                    cls = cmap.get(kind, {}).get(
+                        e.get("category") or (e.get("type") if kind == "programs" else "") or ""
+                    )
                 if cls:
                     e.set("class", cls)
                     changed = True

@@ -1,6 +1,7 @@
 """SR6 Tarnished Star recipe (importer/sr6/recipes/ts.py) on a made-up book.md in the converter's sr6 shape (the book's:
 an item's level-5 stat box under its level-3 description, stats as tables or a bold header over a value line; ROLL
 CALL's archetypes, contacts and NPCs). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -126,9 +127,22 @@ class TsRecipeTest(unittest.TestCase):
 
     def test_weapons(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Zap Ruger"], {"id": "zap-ruger", "source": "TS", "page": "139", "category": "Heavy pistol",
-                                          "type": "Heavy Pistol", "dv": "3P", "modes": "SA/BF", "ar": "9/8/6/—/—",
-                                          "ammo": "12(c)", "avail": "3(L)", "cost": "1200"})
+        self.assertEqual(
+            w["Zap Ruger"],
+            {
+                "id": "zap-ruger",
+                "source": "TS",
+                "page": "139",
+                "category": "Heavy pistol",
+                "type": "Heavy Pistol",
+                "dv": "3P",
+                "modes": "SA/BF",
+                "ar": "9/8/6/—/—",
+                "ammo": "12(c)",
+                "avail": "3(L)",
+                "cost": "1200",
+            },
+        )
         self.assertIn("pistol that pops", self.texts[("weapons", "zap-ruger")])  # the heading's description
         self.assertEqual((w["Glue Gun"]["dv"], w["Glue Gun"]["cost"]), ("2S", "700"))  # its footnote row: the text
         glue = next(e for e in ET.fromstring(self.res.files["weapons.xml"]) if e.findtext("name") == "Glue Gun")
@@ -146,13 +160,31 @@ class TsRecipeTest(unittest.TestCase):
 
     def test_vehicles(self):
         v = entries(self.res, "vehicles")
-        self.assertEqual(v["Putt Scooter"], {"id": "putt-scooter", "source": "TS", "page": "139", "category": "Bike",
-                                             "handling": "3/5", "accel": "10", "interval": "20", "topSpeed": "90",
-                                             "body": "6", "armor": "2", "pilot": "2", "sensor": "2", "seats": "1",
-                                             "avail": "3", "cost": "9000"})
+        self.assertEqual(
+            v["Putt Scooter"],
+            {
+                "id": "putt-scooter",
+                "source": "TS",
+                "page": "139",
+                "category": "Bike",
+                "handling": "3/5",
+                "accel": "10",
+                "interval": "20",
+                "topSpeed": "90",
+                "body": "6",
+                "armor": "2",
+                "pilot": "2",
+                "sensor": "2",
+                "seats": "1",
+                "avail": "3",
+                "cost": "9000",
+            },
+        )
         self.assertNotIn("Lost Kart", v)
-        self.assertIn({"kind": "missing-value", "file": "vehicles.xml", "name": "Lost Kart", "field": "stats",
-                       "page": 139}, self.res.report)
+        self.assertIn(
+            {"kind": "missing-value", "file": "vehicles.xml", "name": "Lost Kart", "field": "stats", "page": 139},
+            self.res.report,
+        )
 
     def test_roll_call(self):
         n, c = entries(self.res, "npcs"), entries(self.res, "contacts")

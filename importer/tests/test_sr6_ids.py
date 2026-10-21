@@ -1,4 +1,5 @@
 """importer/sr6/ids.py slug: frozen output (an SR6 id must never move), and the same as dhsa.slug today."""
+
 import unittest
 
 from importer.recipes import dhsa

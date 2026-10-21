@@ -1,5 +1,6 @@
 """More of the SR6 edits layer (importer/sr6/edits.py): a sample or catalog file that is missing or broken. Made-up
 entries, on a copy of the made-up fixture."""
+
 import os
 import unittest
 from pathlib import Path
@@ -14,9 +15,11 @@ class MissingOrBrokenFilesTest(unittest.TestCase):
         imported = os.path.join(d, "imported")
         os.makedirs(os.path.join(imported, "crb", "samples"))
         with open(os.path.join(imported, "samples.xml"), "w", encoding="utf8") as f:
-            f.write('<samples><sample source="CRB" name="Broken" href="crb/samples/crb.broken.xml"/>'
-                    '<sample source="CRB" name="Gone" href="crb/samples/crb.gone.xml"/>'
-                    '<sample source="CRB" name="Plain" href="crb/samples/crb.plain.xml"/></samples>')
+            f.write(
+                '<samples><sample source="CRB" name="Broken" href="crb/samples/crb.broken.xml"/>'
+                '<sample source="CRB" name="Gone" href="crb/samples/crb.gone.xml"/>'
+                '<sample source="CRB" name="Plain" href="crb/samples/crb.plain.xml"/></samples>'
+            )
         with open(os.path.join(imported, "crb", "samples", "crb.broken.xml"), "w", encoding="utf8") as f:
             f.write("<not closed")
         with open(os.path.join(imported, "crb", "samples", "crb.plain.xml"), "w", encoding="utf8") as f:

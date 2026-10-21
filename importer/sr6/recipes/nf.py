@@ -8,6 +8,7 @@ nf.md. The book has no NPC or contact with stats.
 Its gear prints in small tables under lower-case titles, some with Fifth Edition columns (a range's attack ratings
 CLOSE … EXTREME in columns of their own): they are joined to the core rulebook's ATTACK RATINGS. The errata PDF's
 values are applied by the corpus pass (importer/sr6/resolve.py) when it is in the library (nf.md)."""
+
 import re
 import sys
 from dataclasses import replace
@@ -21,12 +22,34 @@ SHA256 = ("bc95f18d1aa29afc7a4bc37f456d18fbdac912a503b7a3b1210390451d6122df",)  
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 166  # PDF page: the ads and the Johnson run (an adventure, no stats) start here (left out)
 # a row's name -> its description heading's (norm forms)
-ALIASES = {"molotov": "molotov cocktail", "s b condor": "skiorsky bell condor", "milk 1 liter": "liter of milk",
-           "audiotune": "autovoice"}
+ALIASES = {
+    "molotov": "molotov cocktail",
+    "s b condor": "skiorsky bell condor",
+    "milk 1 liter": "liter of milk",
+    "audiotune": "autovoice",
+}
 # first header cells that make a table a catalog (its rows are items even when no description pairs)
-NAME_HEADERS = frozenset({"INSTRUMENT", "EXOTIC WEAPON", "CLUB", "BLADES", "GRENADES", "DEVICE", "CLOTHING", "TYPE",
-                          "GROUNDCRAFT", "AIRCRAFT", "ID AND CREDIT", "OPTICAL DEVICES", "EQUIPMENT", "BASIC BIOWARE",
-                          "CYBEREYES", "CYBEREARS", "HEADWARE"})
+NAME_HEADERS = frozenset(
+    {
+        "INSTRUMENT",
+        "EXOTIC WEAPON",
+        "CLUB",
+        "BLADES",
+        "GRENADES",
+        "DEVICE",
+        "CLOTHING",
+        "TYPE",
+        "GROUNDCRAFT",
+        "AIRCRAFT",
+        "ID AND CREDIT",
+        "OPTICAL DEVICES",
+        "EQUIPMENT",
+        "BASIC BIOWARE",
+        "CYBEREYES",
+        "CYBEREARS",
+        "HEADWARE",
+    }
+)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"qualities"}
@@ -35,18 +58,42 @@ RULE_CHAPTERS = ("blitzkrieg bops", "game information")
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ("game information",)
 # BLITZKRIEG BOPS: its level-3 sections that are rules (performing, a performer's status); the rest is setting
-PERFORMING = ("synthlinks", "wax", "go live or go die", "impact", "creating a piece of art", "playing a gig",
-              "artist status", "booking", "artist s cut", "royalties", "recognition", "status",
-              "dancing for the man or shouting for the people", "expression point exchange")
+PERFORMING = (
+    "synthlinks",
+    "wax",
+    "go live or go die",
+    "impact",
+    "creating a piece of art",
+    "playing a gig",
+    "artist status",
+    "booking",
+    "artist s cut",
+    "royalties",
+    "recognition",
+    "status",
+    "dancing for the man or shouting for the people",
+    "expression point exchange",
+)
 # first header -> (kind, category)
-TABLES = {"INSTRUMENT": ("gear", "instruments"), "EXOTIC WEAPON": ("weapons", "exotic-weapons"),
-          "CLUB": ("weapons", "clubs"), "BLADES": ("weapons", "blades"), "GRENADES": ("weapons", "grenades"),
-          "DEVICE": ("gear", "biotech"), "CLOTHING": ("armor", "clothing"), "TYPE": ("gear", "tools"),
-          "GROUNDCRAFT": ("vehicles", "groundcraft"), "AIRCRAFT": ("vehicles", "aircraft"),
-          "ID AND CREDIT": ("gear", "id-and-credit"), "OPTICAL DEVICES": ("gear", "optical-devices"),
-          "EQUIPMENT": ("gear", "printing-presses"), "BASIC BIOWARE": ("augmentations", "basic-bioware"),
-          "CYBEREYES": ("augmentations", "cybereyes"), "CYBEREARS": ("augmentations", "cyberears"),
-          "HEADWARE": ("augmentations", "headware")}
+TABLES = {
+    "INSTRUMENT": ("gear", "instruments"),
+    "EXOTIC WEAPON": ("weapons", "exotic-weapons"),
+    "CLUB": ("weapons", "clubs"),
+    "BLADES": ("weapons", "blades"),
+    "GRENADES": ("weapons", "grenades"),
+    "DEVICE": ("gear", "biotech"),
+    "CLOTHING": ("armor", "clothing"),
+    "TYPE": ("gear", "tools"),
+    "GROUNDCRAFT": ("vehicles", "groundcraft"),
+    "AIRCRAFT": ("vehicles", "aircraft"),
+    "ID AND CREDIT": ("gear", "id-and-credit"),
+    "OPTICAL DEVICES": ("gear", "optical-devices"),
+    "EQUIPMENT": ("gear", "printing-presses"),
+    "BASIC BIOWARE": ("augmentations", "basic-bioware"),
+    "CYBEREYES": ("augmentations", "cybereyes"),
+    "CYBEREARS": ("augmentations", "cyberears"),
+    "HEADWARE": ("augmentations", "headware"),
+}
 RANGES = ("CLOSE", "NEAR", "MEDIUM", "FAR", "EXTREME")  # attack ratings in columns of their own
 BLASTS = ("IMPACT", "2M", "5M", "10M")  # a grenade's DV by distance, in columns of their own
 # printed -> the core rulebook's header (a vehicle keeps its ARMOR)
@@ -114,8 +161,11 @@ def _prep(bs):
     named with its item (the table's title, else UNTITLED) and takes that item's description; one named by a rating
     with its table (`Cybereyes (Rating 5)`); `<x> (as above)` with the row above in its table (`AudioTune (Hacked)`).
     (A quality's `(positive quality)` line reads as a caption: dropped, its kind is its Cost or Bonus label.)"""
-    items = {norm(b.name): b for b in bs if b.type == "item" and b.row is None and not b.stats
-             and norm(b.chapter) == "game information"}
+    items = {
+        norm(b.name): b
+        for b in bs
+        if b.type == "item" and b.row is None and not b.stats and norm(b.chapter) == "game information"
+    }
     out, used, above = [], set(), {}
     for b in bs:
         if b.type == "section" and (n := re.fullmatch(r"1 to (\d+) karma", b.labels.get("Bonus", ""), re.I)):

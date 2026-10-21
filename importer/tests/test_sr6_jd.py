@@ -2,6 +2,7 @@
 a card's front with its title, metatype line and bio, its back with plot hooks, a stat line in bold over its values,
 labelled stats and favors), and the converter's card pages (text to the edge, a sideways line dropped). Every name,
 number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -74,12 +75,16 @@ class JdRecipeTest(unittest.TestCase):
 
     def test_johnsons_as_contacts(self):
         c = entries(self.res, "contacts")
-        self.assertEqual({k: v.get("archetype") for k, v in c.items()},
-                         {"Glow ‘Zapper’ McFizz": "Mr. Johnson", "Bright Bob": "Mr. Johnson"})
+        self.assertEqual(
+            {k: v.get("archetype") for k, v in c.items()},
+            {"Glow ‘Zapper’ McFizz": "Mr. Johnson", "Bright Bob": "Mr. Johnson"},
+        )
         n = entries(self.res, "npcs")
         g = n["Glow ‘Zapper’ McFizz"]
-        self.assertEqual((g.get("group"), g.get("rea"), g.get("ess"), g.findtext("skills")),
-                         ("Contact", "4(6)", "5.5", "Con 4, Influence 5"))
+        self.assertEqual(
+            (g.get("group"), g.get("rea"), g.get("ess"), g.findtext("skills")),
+            ("Contact", "4(6)", "5.5", "Con 4, Influence 5"),
+        )
         self.assertEqual((n["Bright Bob"].get("bod"), n["Bright Bob"].get("agi")), ("2(+4)", "3(7)"))
         text = self.texts[("contacts", "glow-zapper-mcfizz")]
         for part in ("glows in the dark", "Glow job", "**Gear Level:** 3", "**Reference:** 20 Karma"):

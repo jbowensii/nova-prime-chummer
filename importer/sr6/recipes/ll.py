@@ -2,6 +2,7 @@
 one a page), the drake qualities, the drake powers (critter powers), its martial art and the rule sections (drakes,
 the initiatory group), ids unscoped (run scopes them as ll.<slug>), descriptions in the private texts. The book prints
 no priced gear. Reads only regrouped.md with the core rulebook's reading (catalog.read). Layout notes in ll.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -77,8 +78,13 @@ def prepare(bs):
             labels["Signature Technique"] = name.strip()
             b = replace(b, labels=labels)  # its full line stays in the text (the bulleted copy)
             if rest.strip():  # (the line defines the technique too, `Rake. Increase the Damage Value …`: an entry)
-                tech = replace(b, name=name.strip(), level=b.level + 1, text=rest.strip(),
-                               labels={"Category": labels.get("Category", ""), "Signature of": b.name})
+                tech = replace(
+                    b,
+                    name=name.strip(),
+                    level=b.level + 1,
+                    text=rest.strip(),
+                    labels={"Category": labels.get("Category", ""), "Signature of": b.name},
+                )
         out += [b] + ([tech] if tech else [])
     return out
 

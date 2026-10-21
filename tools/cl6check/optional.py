@@ -1,6 +1,7 @@
 """Commlink6 records the analysis counts as matched without a catalog entry (optional_package.json): `optional` ones
 are differences we ship as an optional data package (docs/sr6-cl6-optional-package.md), `relocated` ones are in our
 catalog under another source than Commlink6 cites."""
+
 import json
 from pathlib import Path
 
@@ -11,8 +12,10 @@ HAVE = Path(__file__).with_name("relocated.json")
 
 def load(path=FILE):
     d = json.loads(Path(path).read_text(encoding="utf8"))
-    return ({(r["src"], r["cl6_id"]): r for r in d.get("optional", [])},
-            {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])})
+    return (
+        {(r["src"], r["cl6_id"]): r for r in d.get("optional", [])},
+        {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])},
+    )
 
 
 def load_accept(path=ACCEPT):
@@ -33,7 +36,8 @@ KEEP = Path(__file__).with_name("value_keep.json")
 
 def load_keep(path=KEEP):
     """{(src, kind, our id, field)} of the field values the PDF's text layer shows as printed (value_keep.json `keep`: the
-    owner's 2026-10-14 check of the 361 reviewed rows): a difference from Commlink6 there is a verified printed one, class b."""
+    owner's 2026-10-14 check of the 361 reviewed rows): a difference from Commlink6 there is a verified printed one, class b.
+    """
     d = json.loads(Path(path).read_text(encoding="utf8"))
     return {tuple(k[:4]) for k in d.get("keep", [])}
 

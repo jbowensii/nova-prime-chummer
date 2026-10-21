@@ -3,6 +3,7 @@ other books' recipes and catalog.py use them too), as regroup hands them over: a
 row (a name wrapped onto a second row, a second band of columns under the first), a box under the heading it
 describes, an item's stat band printed as its own little table. Pure functions over regroup's blocks; the recipes map
 what comes out with catalog.read. Nothing is guessed: a box that doesn't read stays where it was (a rule's table)."""
+
 import re
 from dataclasses import replace
 
@@ -10,19 +11,44 @@ from importer.sr6.ids import slug
 from importer.sr6.regroup import full_name, keys, norm, other_name
 
 # a box's first column naming its rows (`NAME`, `CASE TYPE`, `DIGITAL WEAPON CODEMODS`, `IC`, …)
-NAME_COL = re.compile(r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
-                      r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON|FEATURE|ENHANCEMENT)$")
+NAME_COL = re.compile(
+    r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
+    r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON|FEATURE|ENHANCEMENT)$"
+)
 # headers printed in short or run together -> the core rulebook's (a tuple: two headers, the value split at its last space)
-RENAME = {"SPD INT": "SPEED INTERVAL", "SPD INTERVAL": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "SEAT": "SEATS",
-          "ACC": "ACCEL", "BOD": "BODY", "ARM": "ARMOR", "PIL": "PILOT", "SENS": "SENSOR", "AVAILABILITY": "AVAIL",
-          "AVAIL.": "AVAIL", "MODE": "MODES", "CAP": "CAPACITY", "ATTACK": "ATTACK RATINGS", "ATTR": "ATTRIBUTE ARRAY",
-          "PROGRAM": "PROGRAMS", "AMMOAVAIL": ("AMMO", "AVAIL"), "RATINGSAMMOAVAIL": ("AMMO", "AVAIL"),
-          "SPD INT TOP SPD": ("SPEED INTERVAL", "TOP SPEED")}
+RENAME = {
+    "SPD INT": "SPEED INTERVAL",
+    "SPD INTERVAL": "SPEED INTERVAL",
+    "TOP SPD": "TOP SPEED",
+    "SEAT": "SEATS",
+    "ACC": "ACCEL",
+    "BOD": "BODY",
+    "ARM": "ARMOR",
+    "PIL": "PILOT",
+    "SENS": "SENSOR",
+    "AVAILABILITY": "AVAIL",
+    "AVAIL.": "AVAIL",
+    "MODE": "MODES",
+    "CAP": "CAPACITY",
+    "ATTACK": "ATTACK RATINGS",
+    "ATTR": "ATTRIBUTE ARRAY",
+    "PROGRAM": "PROGRAMS",
+    "AMMOAVAIL": ("AMMO", "AVAIL"),
+    "RATINGSAMMOAVAIL": ("AMMO", "AVAIL"),
+    "SPD INT TOP SPD": ("SPEED INTERVAL", "TOP SPEED"),
+}
 PRICE = {"AVAIL", "COST"}
 VEHICLE = {"HANDLING", "HAND", "ACCEL", "SPEED INTERVAL", "TOP SPEED"}
 WEAPON = {"DV", "ATTACK RATINGS", "ATTACK RATING", "AR", "MODES"}
-DEVICE = {"DATA PROCESSING", "FIREWALL", "ATTRIBUTES (D/F)", "ATTRIBUTE ARRAY", "DEVICE RATING", "ACTIVE PROGRAM SLOTS",
-          "PROGRAMS"}
+DEVICE = {
+    "DATA PROCESSING",
+    "FIREWALL",
+    "ATTRIBUTES (D/F)",
+    "ATTRIBUTE ARRAY",
+    "DEVICE RATING",
+    "ACTIVE PROGRAM SLOTS",
+    "PROGRAMS",
+}
 
 
 def words(name):
@@ -60,7 +86,9 @@ def name_col(rs):
     if NAME_COL.search(first.upper()):
         return first
     same = [r[first] for r in rs if next(iter(r), "") == first]
-    return first if first.upper() in ("TYPE", "SIZE", "CLASS") and len(same) > 1 and len(set(same)) == len(same) else None
+    return (
+        first if first.upper() in ("TYPE", "SIZE", "CLASS") and len(same) > 1 and len(set(same)) == len(same) else None
+    )
 
 
 def rows(stats, known=frozenset()):
@@ -78,7 +106,7 @@ def rows(stats, known=frozenset()):
     while i < len(rs):
         r = rs[i]
         if not named(r):
-            if out and list(out[-1])[:len(r)] == list(r) and not named(out[-1]):
+            if out and list(out[-1])[: len(r)] == list(r) and not named(out[-1]):
                 return None  # unnamed rows of one header
             if out:
                 out[-1] = {**out[-1], **{h: v for h, v in r.items() if h not in out[-1] or not out[-1][h]}}
@@ -91,8 +119,11 @@ def rows(stats, known=frozenset()):
             name = r[col]
             below = nxt is not None and _filled(nxt) > 1
             above = bool(out) and list(out[-1]) == list(r) and _filled(out[-1]) > 1 and not out[-1].get("_wrapped")
-            down = below and (norm(f"{name} {nxt[col]}") in known or not (above and norm(f"{out[-1][col]} {name}") in known)
-                              and (any(v.rstrip().endswith((" or", "-", ",")) for v in r.values()) or not above))
+            down = below and (
+                norm(f"{name} {nxt[col]}") in known
+                or not (above and norm(f"{out[-1][col]} {name}") in known)
+                and (any(v.rstrip().endswith((" or", "-", ",")) for v in r.values()) or not above)
+            )
             if down:
                 out.append({**_join(r, nxt), "_wrapped": True})
                 i += 2
@@ -101,7 +132,12 @@ def rows(stats, known=frozenset()):
                 out[-1] = {**_join(out[-1], r), "_wrapped": True}
                 i += 1
                 continue
-        if out and named(out[-1]) and re.match(r"\(|[a-z]", r[col].strip()) and not re.match(r"[a-z]+-?\d", r[col].strip()):
+        if (
+            out
+            and named(out[-1])
+            and re.match(r"\(|[a-z]", r[col].strip())
+            and not re.match(r"[a-z]+-?\d", r[col].strip())
+        ):
             r = {**r, col: f"{out[-1][col]} {r[col].strip()}"}
         out.append(r)
         i += 1
@@ -132,17 +168,30 @@ def _match(name, d):
     heading's, or a one-word row name (a model name, 5 letters or more) the heading prints after its maker (`Firebolt`
     under `Ares Firebolt`)."""
     nw, dw = norm(name).split(), norm(d).split()
-    return bool(set(keys(name)) & set(keys(d))) or len(words(name)) > 1 and words(name) <= words(d) or (
-        len(nw) == 1 and len(nw[0]) >= 5 and len(dw) == 2 and dw[1] == nw[0] and name[:1].isupper())
+    return (
+        bool(set(keys(name)) & set(keys(d)))
+        or len(words(name)) > 1
+        and words(name) <= words(d)
+        or (len(nw) == 1 and len(nw[0]) >= 5 and len(dw) == 2 and dw[1] == nw[0] and name[:1].isupper())
+    )
 
 
 def _row_block(b, name, c, label, text=None, labels=None, col=None, aliases=None):
     if col is not None:
         c = {h: v for h, v in c.items() if h != col}
     row = {"ITEM": name, **c}
-    return replace(b, type="item", name=name, row=row, header=list(row), stats=[], label=label,
-                   text=b.text if text is None else text, labels=b.labels if labels is None else labels,
-                   aliases=list(b.aliases) if aliases is None else aliases)
+    return replace(
+        b,
+        type="item",
+        name=name,
+        row=row,
+        header=list(row),
+        stats=[],
+        label=label,
+        text=b.text if text is None else text,
+        labels=b.labels if labels is None else labels,
+        aliases=list(b.aliases) if aliases is None else aliases,
+    )
 
 
 def _alias(name, head):
@@ -155,9 +204,34 @@ def priced(c):
 
 
 # the words a maker's name ends with (`Cougar Weapons`, `Ares Arms`): the game's corporate vocabulary
-CORPORATE = {"weapons", "arms", "armaments", "firearms", "munitions", "ordnance", "industries", "industrial", "systems",
-             "technologies", "technology", "tech", "defense", "defence", "corporation", "corp", "inc", "ltd",
-             "manufacturing", "motors", "dynamics", "electronics", "enterprises", "international", "labs", "aerospace"}
+CORPORATE = {
+    "weapons",
+    "arms",
+    "armaments",
+    "firearms",
+    "munitions",
+    "ordnance",
+    "industries",
+    "industrial",
+    "systems",
+    "technologies",
+    "technology",
+    "tech",
+    "defense",
+    "defence",
+    "corporation",
+    "corp",
+    "inc",
+    "ltd",
+    "manufacturing",
+    "motors",
+    "dynamics",
+    "electronics",
+    "enterprises",
+    "international",
+    "labs",
+    "aerospace",
+}
 
 
 def maker_split(title):
@@ -178,16 +252,23 @@ def configurations(b, items, col, described, lower=frozenset()):
     words or more. Each row is its own item with its own printed stats, named as printed; the box's title is their
     product (and maker), its description, notes and wireless bonus theirs. None when the box isn't one."""
     names = [" ".join(c[col].split()) for c in items]
-    if len(b.name.split()) < 3 or any(len(n.split()) > 2 or re.search(r"\d|[a-z][A-Z]", n) or not n[:1].isupper()
-                                      or not all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", n)) for n in names):
+    if len(b.name.split()) < 3 or any(
+        len(n.split()) > 2
+        or re.search(r"\d|[a-z][A-Z]", n)
+        or not n[:1].isupper()
+        or not all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", n))
+        for n in names
+    ):
         return None
     if any(described(n, peek=True)[2] for n in names):
         return None  # a row with a description of its own is an item of its own
     text, labels, head = described(b.name)
     maker, product = maker_split(b.name)
     body = "\n\n".join(t for t in (text.strip(), b.text.strip()) if t)
-    return [replace(_row_block(b, n, c, b.name, body, {**labels, **b.labels}, col), product=product, maker=maker)
-            for n, c in zip(names, items)]
+    return [
+        replace(_row_block(b, n, c, b.name, body, {**labels, **b.labels}, col), product=product, maker=maker)
+        for n, c in zip(names, items)
+    ]
 
 
 def boxes(bs):
@@ -200,15 +281,23 @@ def boxes(bs):
     row regroup paired keeps its pairing, its headers named as the core rulebook's."""
     bs = list(bs)
     known = {k for b in bs if b.type in ("item", "section") for k in keys(b.name)}
-    lower = {w for b in bs for w in re.findall(r"(?<![A-Za-z])[a-z]+", b.text or "")}  # the words the prose prints in lower case
+    lower = {
+        w for b in bs for w in re.findall(r"(?<![A-Za-z])[a-z]+", b.text or "")
+    }  # the words the prose prints in lower case
     said = {(b.chapter, norm(k)): v for b in bs for k, v in b.labels.items() if v}  # `**Code Buddy:** …` lines
     gone, out = set(), []
 
     def described(i, b, name, peek=False):
         """(text, labels, heading) of the description of `name`: the nearest heading of its name with text and no box
         of its own (it then goes, unless only peeking), else a labelled line of its name in the chapter (heading "")."""
-        near = sorted((j for j, d in enumerate(bs) if j not in gone and d.chapter == b.chapter and _desc(d)
-                       and _match(name, d.name)), key=lambda j: (j > i, abs(j - i)))
+        near = sorted(
+            (
+                j
+                for j, d in enumerate(bs)
+                if j not in gone and d.chapter == b.chapter and _desc(d) and _match(name, d.name)
+            ),
+            key=lambda j: (j > i, abs(j - i)),
+        )
         if near:
             if not peek:
                 gone.add(near[0])
@@ -223,29 +312,46 @@ def boxes(bs):
             if not b.text.strip():
                 text, labels, head = described(i, b, b.name)
                 full = full_name(b.name, head)
-                b = replace(b, text=text, labels={**labels, **b.labels}, name=head if full else b.name,  # its full name
-                            aliases=b.aliases or ([] if full else _alias(b.name, head)))
+                b = replace(
+                    b,
+                    text=text,
+                    labels={**labels, **b.labels},
+                    name=head if full else b.name,  # its full name
+                    aliases=b.aliases or ([] if full else _alias(b.name, head)),
+                )
             out.append(b)
             # a stat box printed under the row's table, its own named rows of the same columns (a weapon table
             # stacked over two more): each row an item
             more = rows(b.stats, known) if b.stats else None
             col = name_col([cells(s) for s in b.stats]) if more else None
-            if more and col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and all(priced(c) for c in more):
+            if (
+                more
+                and col is not None
+                and col.upper() not in ("TYPE", "SIZE", "CLASS")
+                and all(priced(c) for c in more)
+            ):
                 out[-1] = replace(b, stats=[])
                 for c in more:
                     name = " ".join(c[col].split())
                     text, labels, head = described(i, b, name)
                     full = full_name(name, head)
-                    out.append(_row_block(b, head if full else name, c, b.label, text, labels, col,
-                                          [] if full else _alias(name, head)))
+                    out.append(
+                        _row_block(
+                            b, head if full else name, c, b.label, text, labels, col, [] if full else _alias(name, head)
+                        )
+                    )
             continue
         items = rows(b.stats, known) if b.stats else None
         if not items or not all(priced(c) for c in items):
             out.append(b)
             continue
         col = name_col([cells(s) for s in b.stats])
-        if col is not None and col.upper() not in ("TYPE", "SIZE", "CLASS") and len(items) > 1 and (cfg := configurations(
-                b, items, col, lambda n, peek=False: described(i, b, n, peek), lower)):
+        if (
+            col is not None
+            and col.upper() not in ("TYPE", "SIZE", "CLASS")
+            and len(items) > 1
+            and (cfg := configurations(b, items, col, lambda n, peek=False: described(i, b, n, peek), lower))
+        ):
             out += cfg
             continue
         if col is not None and col.upper() in ("TYPE", "SIZE", "CLASS"):
@@ -254,8 +360,13 @@ def boxes(bs):
         if col is None:
             prev = len(out) - 1
             p = out[prev] if out else None
-            if p is not None and _desc(p) and p.chapter == b.chapter and b.type == "item" and (
-                    norm(p.name) == norm(b.name) or words(b.name) <= words(p.name)):
+            if (
+                p is not None
+                and _desc(p)
+                and p.chapter == b.chapter
+                and b.type == "item"
+                and (norm(p.name) == norm(b.name) or words(b.name) <= words(p.name))
+            ):
                 text = "\n\n".join(t for t in (p.text.strip(), b.text.strip()) if t)
                 out[prev] = _row_block(b, p.name, items[0], b.name, text, {**p.labels, **b.labels})
                 continue
@@ -266,7 +377,9 @@ def boxes(bs):
             text, labels, head = described(i, b, name)
             full = full_name(name, head)  # (a maker in front: the heading's full name)
             al = [] if full else _alias(name, head)
-            if not al and not full and len(items) == 1 and words(name) < words(b.name):  # a box of one: its title heads it
+            if (
+                not al and not full and len(items) == 1 and words(name) < words(b.name)
+            ):  # a box of one: its title heads it
                 al = [b.name]
             out.append(_row_block(b, head if full else name, c, b.name, text, labels, col, al))
     taken = {id(bs[j]) for j in gone}
@@ -285,7 +398,9 @@ def category(b, parent2=""):
 
 _MA_BREAK = re.compile(r"-\*\*\n\*\*")  # a bold label hyphenated across two lines: `**Catego-**` + `**ry:**`
 # (`Techniques:` alone at a line's start: its `Signature` lost in print)
-_MA = re.compile(r"(?:^|\*\*)(Categor(?:y|ies)|(?:Signature )?Techniques?|Similar Styles)(?:\*\*)?\s*:\s*(?:\*\*)?\s*", re.M)
+_MA = re.compile(
+    r"(?:^|\*\*)(Categor(?:y|ies)|(?:Signature )?Techniques?|Similar Styles)(?:\*\*)?\s*:\s*(?:\*\*)?\s*", re.M
+)
 
 
 def martial(b):
@@ -297,15 +412,19 @@ def martial(b):
     m = _MA.search(text)
     if not m:
         return b
-    head, tail = text[:m.start()].rstrip(), text[m.start():]
+    head, tail = text[: m.start()].rstrip(), text[m.start() :]
     lines = tail.splitlines()
     cut = next((i for i, ln in enumerate(lines) if ln.startswith(("|", "#"))), len(lines))
     tail, rest = "\n".join(lines[:cut]), "\n".join(lines[cut:])
     parts = _MA.split(tail)  # ['', label, value, label, value, …]
     labels = {}
     for k, v in zip(parts[1::2], parts[2::2]):
-        k = {"Categories": "Category", "Technique": "Signature Technique", "Techniques": "Signature Technique",
-             "Signature Techniques": "Signature Technique"}.get(k.title(), k.title())
+        k = {
+            "Categories": "Category",
+            "Technique": "Signature Technique",
+            "Techniques": "Signature Technique",
+            "Signature Techniques": "Signature Technique",
+        }.get(k.title(), k.title())
         v = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(v.replace("**", "").split()))  # `Weap-` + `on`
         labels[k] = v.rstrip(" ,.")
     if ";" in labels.get("Category", ""):
@@ -324,9 +443,11 @@ def configuration_rows(bs):
     `Spear (Blade)`, `Knife (Blade)`): each an entry of its own with its printed stats, named `<item> (<row>
     configuration)`, its printed `Name (Type)` an alias, `configOf` the item (Block.config_of), never priced apart. regroup may
     have paired such a row with the item's heading (its label): it goes after the item of that name."""
+
     def unpriced(s):
-        return any(h.upper() == "COST" for h in s) and all(_DASH_CELL.fullmatch(v or "") for h, v in s.items()
-                                                           if h.upper() in ("AVAIL", "AVAILABILITY", "COST"))
+        return any(h.upper() == "COST" for h in s) and all(
+            _DASH_CELL.fullmatch(v or "") for h, v in s.items() if h.upper() in ("AVAIL", "AVAILABILITY", "COST")
+        )
 
     def priced(s):
         return any(re.search(r"\d", v or "") for h, v in s.items() if h.upper() == "COST")
@@ -339,13 +460,28 @@ def configuration_rows(bs):
         n = n if re.search(r"(?i)\b(?:configuration|mode)\b", n) else f"{n} configuration"
         new = {"ITEM": f"{item.name} ({n})", **({"TYPE": kind} if kind else {}), **dict(cells[1:])}
         # (its printed row an alias when it names more than a bare type: `Spear (Blade)`, not `Shotgun`)
-        return replace(item, name=new["ITEM"], row=new, header=list(new), stats=[], label=item.name, text="",
-                       aliases=[printed] if m else [], config_of=item.name)
+        return replace(
+            item,
+            name=new["ITEM"],
+            row=new,
+            header=list(new),
+            stats=[],
+            label=item.name,
+            text="",
+            aliases=[printed] if m else [],
+            config_of=item.name,
+        )
 
     out, later = [], {}
     for b in bs:
-        if b.type == "item" and b.row is not None and b.label and b.label != b.name and unpriced(b.row) \
-                and any(x.name == b.label and x.chapter == b.chapter for x in bs):
+        if (
+            b.type == "item"
+            and b.row is not None
+            and b.label
+            and b.label != b.name
+            and unpriced(b.row)
+            and any(x.name == b.label and x.chapter == b.chapter for x in bs)
+        ):
             later.setdefault(b.label, []).append(b.row)
             continue
         if b.type == "item" and len(b.stats) > 1 and priced(b.stats[0]) and any(map(unpriced, b.stats[1:])):
@@ -389,7 +525,11 @@ def text_bands(text):
     row, cut = {}, []
     for m in _TEXT_BAND.finditer(text):
         heads = m.group(1).split()
-        vals = [v for t in re.sub(r"\s+\(", "(", m.group(2).strip()).split() for v in re.findall(r"[^()\s]+(?:\([^)]*\))?", t)]
+        vals = [
+            v
+            for t in re.sub(r"\s+\(", "(", m.group(2).strip()).split()
+            for v in re.findall(r"[^()\s]+(?:\([^)]*\))?", t)
+        ]
         if len(heads) == len(vals):
             row.update(zip(heads, vals))
             cut.append((m.start(), m.end() + 1))  # with its line break
@@ -399,12 +539,34 @@ def text_bands(text):
 
 
 # a vehicle's stat columns as the books print them (spelled out, cut short, on two lines) -> the core rulebook's
-VEHICLE_COLUMNS = {"HAND": "HANDLING", "HANDLING": "HANDLING", "HANDL": "HANDLING", "ACC": "ACCEL", "ACCEL": "ACCEL",
-                   "ACCELERATION": "ACCEL", "SPD INT": "SPEED INTERVAL", "SPEED INT": "SPEED INTERVAL",
-                   "SPEED INTERVAL": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "SPEED TOP": "TOP SPEED",
-                   "TOP SPEED": "TOP SPEED", "BOD": "BODY", "BODY": "BODY", "ARM": "ARMOR", "ARMOR": "ARMOR",
-                   "PIL": "PILOT", "PILOT": "PILOT", "SENS": "SENSOR", "SENSE": "SENSOR", "SENSOR": "SENSOR",
-                   "SEAT": "SEATS", "SEATS": "SEATS", "AVAIL": "AVAIL", "AVAILABILITY": "AVAIL", "COST": "COST"}
+VEHICLE_COLUMNS = {
+    "HAND": "HANDLING",
+    "HANDLING": "HANDLING",
+    "HANDL": "HANDLING",
+    "ACC": "ACCEL",
+    "ACCEL": "ACCEL",
+    "ACCELERATION": "ACCEL",
+    "SPD INT": "SPEED INTERVAL",
+    "SPEED INT": "SPEED INTERVAL",
+    "SPEED INTERVAL": "SPEED INTERVAL",
+    "TOP SPD": "TOP SPEED",
+    "SPEED TOP": "TOP SPEED",
+    "TOP SPEED": "TOP SPEED",
+    "BOD": "BODY",
+    "BODY": "BODY",
+    "ARM": "ARMOR",
+    "ARMOR": "ARMOR",
+    "PIL": "PILOT",
+    "PILOT": "PILOT",
+    "SENS": "SENSOR",
+    "SENSE": "SENSOR",
+    "SENSOR": "SENSOR",
+    "SEAT": "SEATS",
+    "SEATS": "SEATS",
+    "AVAIL": "AVAIL",
+    "AVAILABILITY": "AVAIL",
+    "COST": "COST",
+}
 _SQUASHED = {k.replace(" ", ""): v for k, v in VEHICLE_COLUMNS.items()}
 _HEAD_LINE = re.compile(r"^\*\*([A-Z][A-Z .]+)\*\*\s*$")
 
@@ -414,17 +576,18 @@ def _columns(tokens):
     together (`SPEED INT.`), two run into one token (`SEATAVAIL`), or a two-line header the converter interleaved
     (`S INP TD`, regroup.deinterleave)."""
     from importer.sr6.regroup import deinterleave
+
     out, i = [], 0
     while i < len(tokens):
         for k in (1, 2, 3, 4):
-            s = "".join(tokens[i:i + k]).replace(".", "")
+            s = "".join(tokens[i : i + k]).replace(".", "")
             if s in _SQUASHED:
                 out.append(_SQUASHED[s])
                 break
             if k == 1 and (two := next(((a, b) for a in _SQUASHED for b in _SQUASHED if a + b == s), None)):
                 out += [_SQUASHED[two[0]], _SQUASHED[two[1]]]
                 break
-            if (d := deinterleave(" ".join(tokens[i:i + k]))) and d in VEHICLE_COLUMNS:
+            if (d := deinterleave(" ".join(tokens[i : i + k]))) and d in VEHICLE_COLUMNS:
                 out.append(VEHICLE_COLUMNS[d])
                 break
         else:

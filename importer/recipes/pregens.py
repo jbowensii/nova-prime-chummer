@@ -5,6 +5,7 @@ anchor). The table of contents ("**Name (Role) ..... N**") gives the name as pri
 importer.statblock does the reading and building; the samples are written as character XML to
 custom/imported/pregens/samples/pregens.<name>.xml and every printed number goes to the report.
 """
+
 import re
 from datetime import datetime, timezone
 
@@ -30,15 +31,21 @@ def extract(md, ctx=None):
         if not re.search(r"^SKILLS RATING", text, re.M):
             continue
         name, role = toc.get(page) or _story_title(pages.get(page - 1, ""))
-        s, rows = statblock.sample(statblock.parse_statblock(text), rules, ID, name, role, page,
-                                   f"{role}. {NAME} p.{page}.", updated, samples)
+        s, rows = statblock.sample(
+            statblock.parse_statblock(text), rules, ID, name, role, page, f"{role}. {NAME} p.{page}.", updated, samples
+        )
         samples.append(s)
         report += rows
-    return Result(files={}, texts=None, samples=samples, report=report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+    return Result(
+        files={},
+        texts=None,
+        samples=samples,
+        report=report,
+        source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON},
+    )
 
 
 def _story_title(text):
-    """"# TEST FACE" / "(MADE-UP FACE)" on the story page, when the contents don't list the runner."""
+    """ "# TEST FACE" / "(MADE-UP FACE)" on the story page, when the contents don't list the runner."""
     m = re.search(r"^# (.+)\n\((.+)\)", text, re.M)
     return (m.group(1).title(), m.group(2).capitalize()) if m else ("Runner", "")

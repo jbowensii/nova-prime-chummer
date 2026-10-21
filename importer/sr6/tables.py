@@ -31,7 +31,9 @@ def columns(header):
 def is_item_table(header):
     """True when the header carries item stats: a price column, or the stat set of a kind."""
     c = columns(header)
-    return bool(c & PRICE or len(c & VEHICLE) >= 2 or "ESSENCE" in c or "DV" in c and c & WEAPON or "DEFENSE RATING" in c)
+    return bool(
+        c & PRICE or len(c & VEHICLE) >= 2 or "ESSENCE" in c or "DV" in c and c & WEAPON or "DEFENSE RATING" in c
+    )
 
 
 def kind_of(header, title="", section=""):

@@ -34,12 +34,14 @@ def node(*args):
 class XmlioTest(unittest.TestCase):
     def test_write_overlay_scopes_ids_and_internal_refs(self):
         d = os.path.join(tempfile.mkdtemp(), "DHSA")
-        xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
-               '<amp id="rush" type="equipment" source="DHSA" page="1"><effect ref="dv-plus"/></amp>'
-               '<amp id="kit" linkedItem="rush" type="equipment" source="DHSA" page="2"/>'
-               # same names as entries of the set, but these attributes point at base data: never scoped
-               '<amp id="equipment" type="equipment" source="DHSA" page="3"><effect ref="rush"/></amp>'
-               '<amp id="small-drone" type="vehicle" vehicle="small-drone" source="DHSA" page="4"/></ca2:data>')
+        xml = (
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
+            '<amp id="rush" type="equipment" source="DHSA" page="1"><effect ref="dv-plus"/></amp>'
+            '<amp id="kit" linkedItem="rush" type="equipment" source="DHSA" page="2"/>'
+            # same names as entries of the set, but these attributes point at base data: never scoped
+            '<amp id="equipment" type="equipment" source="DHSA" page="3"><effect ref="rush"/></amp>'
+            '<amp id="small-drone" type="vehicle" vehicle="small-drone" source="DHSA" page="4"/></ca2:data>'
+        )
         xmlio.write_overlay(d, "amps.xml", xml)
         out = Path(os.path.join(d, "amps.xml")).read_text(encoding="utf8")
         self.assertIn('<amp id="dhsa.rush"', out)
@@ -52,19 +54,25 @@ class XmlioTest(unittest.TestCase):
 
     def test_a_level_family_is_scoped_like_the_id_it_was(self):
         d = os.path.join(tempfile.mkdtemp(), "DHSA")
-        xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
-               '<amp id="hop-level-1" type="adept" family="hop" level="1" source="DHSA" page="1"/>'
-               '<amp id="hop-level-2" type="adept" family="dhsa.hop" level="2" source="DHSA" page="1"/></ca2:data>')
+        xml = (
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="amps" version="1">'
+            '<amp id="hop-level-1" type="adept" family="hop" level="1" source="DHSA" page="1"/>'
+            '<amp id="hop-level-2" type="adept" family="dhsa.hop" level="2" source="DHSA" page="1"/></ca2:data>'
+        )
         xmlio.write_overlay(d, "amps.xml", xml)
         out = Path(os.path.join(d, "amps.xml")).read_text(encoding="utf8")
         self.assertIn('<amp id="dhsa.hop-level-1" type="adept" family="dhsa.hop" level="1"', out)
-        self.assertIn('<amp id="dhsa.hop-level-2" type="adept" family="dhsa.hop" level="2"', out)  # already scoped: once
+        self.assertIn(
+            '<amp id="dhsa.hop-level-2" type="adept" family="dhsa.hop" level="2"', out
+        )  # already scoped: once
 
     def test_skill_additions_keep_the_base_skill_id(self):
         d = os.path.join(tempfile.mkdtemp(), "DHSA")
-        xml = ('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">'
-               '<skill id="influence" attr="cha" source="DHSA" page="5"><name>Influence</name>'
-               '<spec id="influence.made-up" attr="cha">Made up</spec></skill></ca2:data>')
+        xml = (
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1">'
+            '<skill id="influence" attr="cha" source="DHSA" page="5"><name>Influence</name>'
+            '<spec id="influence.made-up" attr="cha">Made up</spec></skill></ca2:data>'
+        )
         xmlio.write_overlay(d, "skills.xml", xml)
         self.assertIn('<skill id="influence"', Path(os.path.join(d, "skills.xml")).read_text(encoding="utf8"))
 
@@ -90,20 +98,33 @@ class RunTest(unittest.TestCase):
         run(book, custom, convert_pdf=False)
 
         imported = os.path.join(custom, "imported")
-        for p in [os.path.join(imported, "qref", "rules-matrix.xml"), os.path.join(custom, "texts", "qref.xml"),
-                  os.path.join(imported, "index.xml"), os.path.join(imported, "sources.xml")]:
+        for p in [
+            os.path.join(imported, "qref", "rules-matrix.xml"),
+            os.path.join(custom, "texts", "qref.xml"),
+            os.path.join(imported, "index.xml"),
+            os.path.join(imported, "sources.xml"),
+        ]:
             self.assertTrue(os.path.exists(p), p)
         rules = Path(os.path.join(imported, "qref", "rules-matrix.xml")).read_text(encoding="utf8")
         self.assertIn('id="qref.matrix-vr-hot-sim"', rules)
-        self.assertIn('id="qref.matrix-bricking"', Path(os.path.join(custom, "texts", "qref.xml")).read_text(encoding="utf8"))
-        self.assertIn('href="qref/rules-matrix.xml"', Path(os.path.join(imported, "index.xml")).read_text(encoding="utf8"))
+        self.assertIn(
+            'id="qref.matrix-bricking"', Path(os.path.join(custom, "texts", "qref.xml")).read_text(encoding="utf8")
+        )
+        self.assertIn(
+            'href="qref/rules-matrix.xml"', Path(os.path.join(imported, "index.xml")).read_text(encoding="utf8")
+        )
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
 
         r = node("tools/validate-data.mjs", MINI, imported, "--texts=" + os.path.join(custom, "texts", "qref.xml"))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        for f, xsd in [(os.path.join(imported, "sources.xml"), "sources.xsd"), (os.path.join(book, "import.xml"), "import.xsd"),
-                       (os.path.join(book, "status.xml"), "status.xsd")]:
-            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
+        for f, xsd in [
+            (os.path.join(imported, "sources.xml"), "sources.xsd"),
+            (os.path.join(book, "import.xml"), "import.xsd"),
+            (os.path.join(book, "status.xml"), "status.xsd"),
+        ]:
+            r = node(
+                "--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd")
+            )
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
 
     def _book(self):
@@ -153,8 +174,14 @@ class RemoveTest(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         book, custom = self._run(tmp, "b1"), os.path.join(tmp, "custom")
         imported = os.path.join(custom, "imported")
-        Path(imported, "qref", "rules-gone.xml").write_text("<x/>", encoding="utf8")  # an overlay the recipe no longer emits
-        imp = Path(book, "import.xml").read_text(encoding="utf8").replace("<files>", '<files><file name="rules-gone.xml" entries="0"/>')
+        Path(imported, "qref", "rules-gone.xml").write_text(
+            "<x/>", encoding="utf8"
+        )  # an overlay the recipe no longer emits
+        imp = (
+            Path(book, "import.xml")
+            .read_text(encoding="utf8")
+            .replace("<files>", '<files><file name="rules-gone.xml" entries="0"/>')
+        )
         Path(book, "import.xml").write_text(imp, encoding="utf8")
         self.assertEqual(main(["remove", book, "--custom", custom]), 0)
         self.assertFalse(os.path.exists(os.path.join(imported, "qref")))
@@ -165,8 +192,13 @@ class RemoveTest(unittest.TestCase):
         self.assertEqual((imp.get("file"), imp.get("source")), ("b1.pdf", None))
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "removed")
         self.assertTrue(os.path.exists(os.path.join(book, "book.md")))
-        for f, xsd in [(os.path.join(book, "import.xml"), "import.xsd"), (os.path.join(book, "status.xml"), "status.xsd")]:
-            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd"))
+        for f, xsd in [
+            (os.path.join(book, "import.xml"), "import.xsd"),
+            (os.path.join(book, "status.xml"), "status.xsd"),
+        ]:
+            r = node(
+                "--input-type=module", "-e", XSD_CHECK, f, os.path.join(SCHEMA, xsd), os.path.join(SCHEMA, "common.xsd")
+            )
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
         run(book, custom, convert_pdf=False)  # re-import after a remove
         self.assertTrue(os.path.exists(os.path.join(imported, "qref", "rules-matrix.xml")))
@@ -197,8 +229,14 @@ class Sr6FolderTest(unittest.TestCase):
         lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
         for b in ("sr6", "b1"):
             os.makedirs(os.path.join(lib, b))
-        xmlio.write_import(os.path.join(lib, "sr6"), source="MADEUP", file="made-up.pdf", sha256="00", name="Made-up book",
-                           imported="2026-10-02T00:00:00Z")
+        xmlio.write_import(
+            os.path.join(lib, "sr6"),
+            source="MADEUP",
+            file="made-up.pdf",
+            sha256="00",
+            name="Made-up book",
+            imported="2026-10-02T00:00:00Z",
+        )
         update_sources(custom, lib, xmlio.CA2)
         for call in (lambda: update_sources(custom, lib), lambda: remove(os.path.join(lib, "b1"), custom)):
             with self.assertRaises(TypeError):  # a game's data root is never defaulted to Anarchy's
@@ -216,6 +254,7 @@ class RereadTest(unittest.TestCase):
         # the sample runners come out the same in any import order: a book that adds a skill, an amp type or effect (or
         # the core) imports the other books with sample runners again, from their book.md, once
         import importer.__main__ as m
+
         tmp = tempfile.mkdtemp()
         lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
         for b in ("b1", "b2"):
@@ -231,7 +270,10 @@ class RereadTest(unittest.TestCase):
             res = real(md, ctx)
             res.files["skills.xml"] = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1"/>'
             return res
-        with mock.patch.object(qref, "extract", side_effect=adds_a_skill), mock.patch.object(m, "run", wraps=m.run) as again:
+
+        with mock.patch.object(qref, "extract", side_effect=adds_a_skill), mock.patch.object(
+            m, "run", wraps=m.run
+        ) as again:
             run(os.path.join(lib, "b2"), custom, convert_pdf=False)
         again.assert_called_once_with(os.path.join(lib, "b1"), custom, convert_pdf=False, reread=False)
         self.assertEqual([xmlio.read_state(os.path.join(lib, b)) for b in ("b1", "b2")], ["done", "done"])

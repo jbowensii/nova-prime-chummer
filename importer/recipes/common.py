@@ -1,4 +1,5 @@
 """Text helpers the Anarchy recipes share (the CRB recipe and its core-table reader)."""
+
 import functools
 import re
 
@@ -6,8 +7,11 @@ import re
 @functools.cache
 def _tab_regexes(tab):
     # a glued lead letter; "A" only before a mark and "I" only before a mark or a capital, since they start sentences
-    return (re.compile(rf"^[{tab}]$"), re.compile(rf" [{tab}]$"),
-            re.compile(rf"^(?:[{tab.replace('A', '').replace('I', '')}] |A (?=[*(+•])|I (?=[*(+•A-Z]))"))
+    return (
+        re.compile(rf"^[{tab}]$"),
+        re.compile(rf" [{tab}]$"),
+        re.compile(rf"^(?:[{tab.replace('A', '').replace('I', '')}] |A (?=[*(+•])|I (?=[*(+•A-Z]))"),
+    )
 
 
 def strip_tab(lines, tab):

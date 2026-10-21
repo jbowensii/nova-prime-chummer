@@ -9,6 +9,7 @@ importer/sr6/effects.py or importer/sr6/overrides/*.book.json; both must read 1,
 import (`import --library`, the production one). The replay rebuilds saved runs that already hold the overrides' structure
 and never runs the library's steps, so only a fresh import shows what production loses (the live import of 2026-10-20).
 """
+
 import argparse
 import collections
 import glob
@@ -30,8 +31,14 @@ from tools.cl6effects import evaluate, pairs  # noqa: E402
 
 def rebuild(tree, runs, out):
     """Rebuild the runs with `tree`'s importer in its own process -> the count of "drop matches no effect" warnings."""
-    p = subprocess.run([sys.executable, "-W", "ignore", str(HERE / "rebuild.py"), str(tree), str(runs), str(out)],
-                       cwd=tree, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    p = subprocess.run(
+        [sys.executable, "-W", "ignore", str(HERE / "rebuild.py"), str(tree), str(runs), str(out)],
+        cwd=tree,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     sys.stdout.write(p.stdout)
     if p.returncode:
         sys.exit(f"rebuild with {tree} failed:\n{p.stderr[-3000:]}")
@@ -56,7 +63,11 @@ def differing(ev_base, ev_tree):
         a[key(e)].append(sig(e))
     for e in ev_tree:
         b[key(e)].append(sig(e))
-    return [(k, sorted(a.get(k, [])), sorted(b.get(k, []))) for k in sorted(set(a) | set(b), key=str) if sorted(a.get(k, [])) != sorted(b.get(k, []))]
+    return [
+        (k, sorted(a.get(k, [])), sorted(b.get(k, [])))
+        for k in sorted(set(a) | set(b), key=str)
+        if sorted(a.get(k, [])) != sorted(b.get(k, []))
+    ]
 
 
 def book_rows(tree):
@@ -74,7 +85,11 @@ def entry_effects(out, stem, kind, eid):
     """The (target, op, value) of every effect the rebuilt runs carry on entry `stem.eid` of file `kind` (any run), or None when no run has the entry."""
     found, fx = False, set()
     for f in glob.glob(os.path.join(out, "*", "custom", "sr6", "imported", stem, kind + ".xml")):
-        m = re.search(r'<(\w+) id="' + re.escape(f"{stem}.{eid}") + r'"[^>]*?(?:/>|>.*?</\1>)', open(f, encoding="utf-8").read(), re.S)
+        m = re.search(
+            r'<(\w+) id="' + re.escape(f"{stem}.{eid}") + r'"[^>]*?(?:/>|>.*?</\1>)',
+            open(f, encoding="utf-8").read(),
+            re.S,
+        )
         if m:
             found = True
             for a in re.findall(r"<effect ([^>]*)/>", m.group(0)):
@@ -100,16 +115,32 @@ def report(label, t, warns):
     print(f"== {label}")
     for l in evaluate.lines(t):
         print("  " + l)
-    print(f"  override warnings, \"drop matches no effect\": {warns}")
+    print(f'  override warnings, "drop matches no effect": {warns}')
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="cl6effects", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        prog="cl6effects", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--tree", help="the code tree (a checkout or an archive of one) whose importer rebuilds the runs")
-    p.add_argument("--fresh", action="append", default=[], help="an import to measure as it is (runs or a library import), no rebuild; repeatable")
-    p.add_argument("--base", help="a second tree: run both, print every row whose status differs and the correction rows only the base has")
-    p.add_argument("--runs", default=os.environ.get("CL6_RUNS") or str(REPO / ".extract" / "cl6check-runs26"), help="the saved import runs (default .extract/cl6check-runs26, or $CL6_RUNS)")
-    p.add_argument("--out", default=str(REPO / ".extract" / "cl6effects"), help="where the rebuilt runs go (one folder per tree)")
+    p.add_argument(
+        "--fresh",
+        action="append",
+        default=[],
+        help="an import to measure as it is (runs or a library import), no rebuild; repeatable",
+    )
+    p.add_argument(
+        "--base",
+        help="a second tree: run both, print every row whose status differs and the correction rows only the base has",
+    )
+    p.add_argument(
+        "--runs",
+        default=os.environ.get("CL6_RUNS") or str(REPO / ".extract" / "cl6check-runs26"),
+        help="the saved import runs (default .extract/cl6check-runs26, or $CL6_RUNS)",
+    )
+    p.add_argument(
+        "--out", default=str(REPO / ".extract" / "cl6effects"), help="where the rebuilt runs go (one folder per tree)"
+    )
     p.add_argument("--jar")
     a = p.parse_args(argv)
     if not a.tree and not a.fresh:
@@ -124,7 +155,11 @@ def main(argv=None):
             if not os.path.isdir(d):
                 print(f"cl6effects: --fresh {d} is not a folder.", file=sys.stderr)
                 return 2
-            report(f"fresh: {os.path.abspath(d)}", measure(recs, os.path.abspath(d))[0], "not counted (no rebuild: see the import's log)")
+            report(
+                f"fresh: {os.path.abspath(d)}",
+                measure(recs, os.path.abspath(d))[0],
+                "not counted (no rebuild: see the import's log)",
+            )
         if not a.tree:
             return 0
     if not os.path.isdir(a.runs):
@@ -148,7 +183,9 @@ def main(argv=None):
         for k, before, after in diff:
             print(f"  {k[0]} | {k[1]} | CL6 {k[2]}\n    base: {before}\n    tree: {after}")
         miss, n = retired(done["base"][0], done["tree"][0], done["tree"][1])
-        print(f"== correction rows (gen=book) only the base has: {n}; with effects missing from the tree's import: {len(miss)}")
+        print(
+            f"== correction rows (gen=book) only the base has: {n}; with effects missing from the tree's import: {len(miss)}"
+        )
         for key, effects, why, nothere in miss:
             print(f"  {'/'.join(key)}{' (entry absent)' if nothere else ''}: missing {effects}\n    {why}")
     return 0

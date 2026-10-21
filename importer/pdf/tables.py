@@ -1,5 +1,6 @@
 """The ruled tables pdfplumber finds: a table nested in another, which words a table holds, and its cells rebuilt on one
 column grid (a cell set in two text columns read column by column)."""
+
 import statistics
 
 from importer.pdf.columns import find_gutter, gutter_crossings, split_at

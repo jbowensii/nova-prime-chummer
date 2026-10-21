@@ -1,6 +1,7 @@
 """Two text columns: the gutter between them (a whitespace river, or where the content stream jumps), each line's side
 or a full-width band, and the reading order (each column, band by band). The SR6 layout's boxes:
 importer/sr6/layout.py."""
+
 from importer.pdf.lines import line_extent
 
 # ponytail: fixed heuristics for 1-2 columns; add real N-column clustering
@@ -25,10 +26,13 @@ def split_at(row, x, tol=0):
     text's) and is wider than a word space at its words' size (a chapter title's word spaces are a strip wide), or
     where the content stream jumps (`_jump`)."""
     if tol:
-        gaps = [(b["x0"] - a["x1"], min(max(x, a["x1"] + GUTTER_HALF), b["x0"] - GUTTER_HALF), k)
-                for k, (a, b) in enumerate(zip(row, row[1:]), 1)
-                if b["x0"] - a["x1"] >= max(2 * GUTTER_HALF, (a["size"] + b["size"]) / 4)
-                or b["x0"] > a["x1"] and _jump(a, b)]
+        gaps = [
+            (b["x0"] - a["x1"], min(max(x, a["x1"] + GUTTER_HALF), b["x0"] - GUTTER_HALF), k)
+            for k, (a, b) in enumerate(zip(row, row[1:]), 1)
+            if b["x0"] - a["x1"] >= max(2 * GUTTER_HALF, (a["size"] + b["size"]) / 4)
+            or b["x0"] > a["x1"]
+            and _jump(a, b)
+        ]
         gaps = [g for g in gaps if abs(g[1] - x) <= tol]
         if not gaps:
             return [row]
@@ -78,7 +82,13 @@ def gutter_crossings(rows, x, tol=0):
         bottom = min(max(b for _, b in left), max(b for _, b in right))
         inside = sum(top <= t < bottom for t, _ in crossing)
         zone = inside + sum(top <= t < bottom for t, _ in left + right)
-        if not tol or splits < _MIN_LINES_PER_SIDE or jumps < splits or not zone or inside / zone >= _MAX_CROSS_FRACTION:
+        if (
+            not tol
+            or splits < _MIN_LINES_PER_SIDE
+            or jumps < splits
+            or not zone
+            or inside / zone >= _MAX_CROSS_FRACTION
+        ):
             return None
         # (scored by all its crossing lines: a gutter the plain rule accepts wins)
     beside = sum(any(t < lb and lt < b for lt, lb in left) for t, b in right)
@@ -104,8 +114,9 @@ def _rivers(rows, lo, hi):
             c = xs[0] + (start + i - 1) // 2
             # (both sides hold a real share of the rows: a short sidebar beside a long column is a gap in a row, not a river)
             if i - start >= 2 * GUTTER_HALF and all(
-                    sum(side(row, c) for row in rows) >= _RIVER_MIN_SHARE * len(rows)
-                    for side in (lambda r, c: r[-1]["x1"] <= c, lambda r, c: r[0]["x0"] >= c)):
+                sum(side(row, c) for row in rows) >= _RIVER_MIN_SHARE * len(rows)
+                for side in (lambda r, c: r[-1]["x1"] <= c, lambda r, c: r[0]["x0"] >= c)
+            ):
                 out.append(c)
             start = None
     return out
@@ -128,7 +139,8 @@ def find_gutter(rows, right, left=0, tol=0):
         round((a["x1"] + b["x0"]) / 2)
         for row in rows
         for a, b in zip(row, row[1:])
-        if (b["x0"] - a["x1"] >= 2 * GUTTER_HALF or tol and b["x0"] > a["x1"] and _jump(a, b)) and lo < (a["x1"] + b["x0"]) / 2 < hi
+        if (b["x0"] - a["x1"] >= 2 * GUTTER_HALF or tol and b["x0"] > a["x1"] and _jump(a, b))
+        and lo < (a["x1"] + b["x0"]) / 2 < hi
     }
     if tol and len(rows) >= 2 * _MIN_LINES_PER_SIDE:  # (the SR6 layout)
         cands.update(_rivers(rows, lo, hi))

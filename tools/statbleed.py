@@ -8,6 +8,7 @@ its spaced lettering (`e e r t s l u r`) in a description.
 Prints one line per flagged stat line or description (source, entry, line or `text`, why) and the count. A stat line
 is a list: entries split by commas or set one after another (`Staff [Clubs, DV 4S, 8/—/—/—/—]`); what reads as prose
 is flagged. A description is prose: only the back cover's furniture and spaced lettering are flagged there."""
+
 import glob
 import os
 import re
@@ -16,7 +17,9 @@ import xml.etree.ElementTree as ET
 
 KINDS = ("npcs", "critters", "spirits", "sprites")
 SKIP = {"name", "alias", "note", "modifier", "effect"}
-_COVER = re.compile(r"catalystgamelabs|\bISBN\b|Under License From|Topps Company", re.I)  # (not `©`: shadowtalk prints it)
+_COVER = re.compile(
+    r"catalystgamelabs|\bISBN\b|Under License From|Topps Company", re.I
+)  # (not `©`: shadowtalk prints it)
 # a bold run-in (`**VOICES`, `***Note:**`; not a footnote mark: `DV 5P**,`, `** Onotari …`)
 _BOLD = re.compile(r"(?<!\S)\*{2,}(?=[^\s*])")
 _LETTERING = re.compile(r"(?<!\S)(?:[A-Za-z] ){4,}[A-Za-z](?!\S)")  # a cover's spaced or vertical lettering
@@ -80,8 +83,10 @@ def main(argv):
         print(f"{src}\t{name}\t{tag}\t{r}")
         if "--show" in argv:
             print("    " + " ".join(text.split()))
-    print(f"flagged: {len(rows)} ({sum(r[2] != 'text' for r in rows)} stat lines, "
-          f"{sum(r[2] == 'text' for r in rows)} descriptions)")
+    print(
+        f"flagged: {len(rows)} ({sum(r[2] != 'text' for r in rows)} stat lines, "
+        f"{sum(r[2] == 'text' for r in rows)} descriptions)"
+    )
     return 0
 
 

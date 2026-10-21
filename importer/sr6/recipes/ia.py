@@ -4,6 +4,7 @@ athlete carries, and the game information's rule sections (the troll variants, t
 ids unscoped (run scopes them as ia.<slug>), descriptions in the private texts. The stat blocks print as bold text
 lines, not tables: they are read line by line from the blocks' text. Reads only regrouped.md with the core rulebook's
 reading (catalog.read). Layout notes in ia.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -34,7 +35,9 @@ _RUNNING = re.compile(r"(?m)^(?:\*\*PAGE\*\*|ingentis athletes|shadow stock|\d{1
 _META = re.compile(r"\s*metatype:", re.I)  # a stat block's second line, under the athlete's name
 _LABEL = re.compile(r"^\*\*([^*\n]+):\*\*\s*(.*)$")
 # an NPC's weapon with its price (`10 x throwing ball [Throwing Weapon, DV 3S, 8/10/3/—/—, Avail 2, Cost 135¥]`)
-_PRICED = re.compile(r"(?:(\d+) x )?([^\[\],]+?)\s*\[([^,\]]+), DV ([^,\]]+), ([^,\]]+), Avail ([^,\]]+), Cost ([^\]]+)\]")
+_PRICED = re.compile(
+    r"(?:(\d+) x )?([^\[\],]+?)\s*\[([^,\]]+), DV ([^,\]]+), ([^,\]]+), Avail ([^,\]]+), Cost ([^\]]+)\]"
+)
 
 
 def match(meta, md_head):
@@ -94,16 +97,39 @@ def athletes(b):
             i += 1
             continue
         j = _end(lines, i + 1)
-        row, body = shapes.text_bands("\n".join(lines[i + 2:j]))
+        row, body = shapes.text_bands("\n".join(lines[i + 2 : j]))
         labels = _lines(body)
-        npcs.append(Block(type="item", name=lines[i].strip(), chapter=b.chapter, section=f"Professional Rating: {GROUP}",
-                          label="", page=b.page, stats=[row], labels=labels, text=lines[i + 1].strip(), level=4))
+        npcs.append(
+            Block(
+                type="item",
+                name=lines[i].strip(),
+                chapter=b.chapter,
+                section=f"Professional Rating: {GROUP}",
+                label="",
+                page=b.page,
+                stats=[row],
+                labels=labels,
+                text=lines[i + 1].strip(),
+                level=4,
+            )
+        )
         for w in _PRICED.finditer(labels.get("Weapons", "")):
             n, name, cat, dv, ar, avail, cost = w.groups()
             name = name.strip().capitalize() + (f" ({n})" if n else "")  # `10 x throwing ball`: the price of ten
             cells = {"WEAPON": name, "DV": dv, "ATTACK RATINGS": ar, "AVAIL": avail, "COST": cost}
-            rows.append(Block(type="item", name=name, chapter=b.chapter, section="", label=cat, page=b.page,
-                              header=list(cells), row=cells, level=4))
+            rows.append(
+                Block(
+                    type="item",
+                    name=name,
+                    chapter=b.chapter,
+                    section="",
+                    label=cat,
+                    page=b.page,
+                    header=list(cells),
+                    row=cells,
+                    level=4,
+                )
+            )
         i = j
     return npcs, rows, "\n".join(keep).strip()
 

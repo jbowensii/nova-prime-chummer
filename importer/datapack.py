@@ -8,6 +8,7 @@ the book. A pack never holds descriptions (texts/), PDFs or keys: only the 12 co
   import  check, then the pack's files replace custom/imported/core/'s in one swap (all or none); files the pack
           doesn't hold are kept.
 """
+
 import functools
 import hashlib
 import os
@@ -26,7 +27,7 @@ from importer.backup import TEMP, app_version, swap, unsafe_entry
 
 MANIFEST = "datapack.xml"
 NAMES = {f"core/{n}.xml" for n in CORE_FILES}
-MAX_FILE = 16 * 1024 ** 2  # a core file; the real ones are well under 1 MB
+MAX_FILE = 16 * 1024**2  # a core file; the real ones are well under 1 MB
 MAX_MANIFEST = 64 * 1024
 ITEMS = ("weapons", "armor")  # kinds items.xsd holds (tools/validate-data.mjs schemaFor)
 PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
@@ -48,9 +49,13 @@ def export(custom, out, version=None):
     if not names:
         raise PackError("there is no core data to put in a pack. Import the core rulebook first")
     data = {n: Path(core, n).read_bytes() for n in names}
-    rows = "".join(f'  <file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>\n' for n, b in data.items())
-    manifest = (xmlio.HEAD + f'<datapack format="1" app={quoteattr(app_version(version))} '
-                f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}">\n{rows}</datapack>\n')
+    rows = "".join(
+        f'  <file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>\n' for n, b in data.items()
+    )
+    manifest = (
+        xmlio.HEAD + f'<datapack format="1" app={quoteattr(app_version(version))} '
+        f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}">\n{rows}</datapack>\n'
+    )
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(out)), prefix=".datapack.", suffix=".tmp")
     os.close(fd)
     try:
@@ -108,7 +113,9 @@ def check(path):
             if name == "core/":
                 continue
             if name != MANIFEST and name not in NAMES:
-                raise PackError(f"the pack has a file a data pack can’t hold: {name} (only datapack.xml and the core files in core/)")
+                raise PackError(
+                    f"the pack has a file a data pack can’t hold: {name} (only datapack.xml and the core files in core/)"
+                )
             problem = unsafe_entry(info)
             if problem:
                 raise PackError(f"the pack {problem}: {name}")

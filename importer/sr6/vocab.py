@@ -2,6 +2,7 @@
 SR5 leftover: `Complex` for an action, `12R` for an availability). A vocabulary, the same in every book, never an
 item's name or value. The importer marks such a value with an issue (formula.children); the Commlink6 check's lineage
 passes over it when it picks the value published last (tools/cl6check/lineage.py)."""
+
 import re
 
 # field -> (what SR6 prints, the pattern of a value outside it)
@@ -9,7 +10,10 @@ _SR5 = {
     # a critter power's action: Major, Minor, Auto, Special (SR5's Complex, Simple and Free actions are gone)
     "action": ("Major, Minor, Auto or Special", re.compile(r"^\s*(complex|simple|free)\b", re.I)),
     # an adept power's activation: Major Action, Minor Action, Passive
-    "activation": ("Major Action, Minor Action or Passive", re.compile(r"^\s*(complex|simple|free)(?:\s+action)?\b", re.I)),
+    "activation": (
+        "Major Action, Minor Action or Passive",
+        re.compile(r"^\s*(complex|simple|free)(?:\s+action)?\b", re.I),
+    ),
     # an availability's legality letter: (L) licensed, (I) illegal (SR5's R restricted and F forbidden are gone)
     "avail": ("a legality of L or I", re.compile(r"\d\s*\(?\s*([RF])\s*\)?\s*$")),
 }

@@ -1,5 +1,6 @@
 """An item's other printed name (an <alias>): a row kept under a longer heading, a box's one row under its title, a
 supply table right after its weapon; and a box stacking several weapon tables. Invented books only."""
+
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -76,8 +77,9 @@ class AliasTest(unittest.TestCase):
         self.assertIn("ZX-12", w)
         self.assertEqual([a.text for a in w["Scorcher"].findall("alias")], ["Bloop Scorcher Vehicle Sprayer"])
         g = weapons(da.extract(text), "gear")
-        self.assertEqual([a.text for a in g["Vehicle Sprayer Fuel"].findall("alias")],
-                         ["Scorcher Fuel", "Fuel for Scorcher"])
+        self.assertEqual(
+            [a.text for a in g["Vehicle Sprayer Fuel"].findall("alias")], ["Scorcher Fuel", "Fuel for Scorcher"]
+        )
 
 
 if __name__ == "__main__":

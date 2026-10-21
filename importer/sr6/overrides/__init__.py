@@ -64,6 +64,7 @@ The package: rules (check: what a row may say), schema (allowed, fit: what a kin
 rows applied to the xml, dump). This module loads a book's table (table) and applies it (apply, texts); it re-exports
 the names the importer, its tests and tools/ use (tools/cl6effects/rebuild.py imports `importer.sr6.overrides` by name,
 from older trees too)."""
+
 import json
 import re
 import sys
@@ -91,14 +92,26 @@ def texts(recipe_id, files, texts_xml, rows=None):
     every = table(recipe_id) if rows is None else check(rows)
     rows = [r for r in every if r.get("add", {}).get("text_from")]
     splits = [r for r in every if r.get("split")]
-    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext") or r.get("split")} | {(r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r}
+    gone = {(r["kind"], r["id"]) for r in every if r.get("remove") or r.get("notext") or r.get("split")} | {
+        (r["merge"].get("from_kind", r["kind"]), r["merge"]["from"]) for r in every if "merge" in r
+    }
     if not texts_xml or not (rows or gone):
         return texts_xml
     own = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
-    copies = "".join(f"  <text of={quoteattr(r['kind'])} id={quoteattr(p['id'])}>{escape(own[r['kind'], r['id']])}</text>{chr(10)}"
-                     for r in splits if (r["kind"], r["id"]) in own for p in r["split"] if (r["kind"], p["id"]) not in own)  # (a split's parts: the source's text each)
+    copies = "".join(
+        f"  <text of={quoteattr(r['kind'])} id={quoteattr(p['id'])}>{escape(own[r['kind'], r['id']])}</text>{chr(10)}"
+        for r in splits
+        if (r["kind"], r["id"]) in own
+        for p in r["split"]
+        if (r["kind"], p["id"]) not in own
+    )  # (a split's parts: the source's text each)
     for of, i in gone:
-        texts_xml = re.sub(r"[ \t]*<text of=%s id=%s>.*?</text>\n?" % (re.escape(quoteattr(of)), re.escape(quoteattr(i))), "", texts_xml, flags=re.S)
+        texts_xml = re.sub(
+            r"[ \t]*<text of=%s id=%s>.*?</text>\n?" % (re.escape(quoteattr(of)), re.escape(quoteattr(i))),
+            "",
+            texts_xml,
+            flags=re.S,
+        )
     have = {(of, i): t for of, i, t in xmlio.texts_entries(texts_xml)}
     heads = {}
     for fname, xml in files.items():
@@ -135,6 +148,7 @@ def apply(recipe_id, files, rows=None):
     if not rows:
         return files
     from lxml import etree
+
     out = dict(files)
     for r in rows:
         if "id" in r or any(k in r for k in OPS):
@@ -160,6 +174,15 @@ def apply(recipe_id, files, rows=None):
                     e.set(k, str(v))
         out[name] = dump(out[name], root)
     _ops(out, [r for r in rows if any(k in r for k in ("remove", "merge", "split"))])
-    _set_by_id(out, [r for r in rows if "id" in r and ("set" in r or "kids" in r or "effects" in r or "drops" in r) and not any(k in r for k in OPS)])  # (after the adds: a created entry takes its class too)
+    _set_by_id(
+        out,
+        [
+            r
+            for r in rows
+            if "id" in r
+            and ("set" in r or "kids" in r or "effects" in r or "drops" in r)
+            and not any(k in r for k in OPS)
+        ],
+    )  # (after the adds: a created entry takes its class too)
     _ops(out, [r for r in rows if any(k in r for k in ("rename", "move_kind"))])
     return out

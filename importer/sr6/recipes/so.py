@@ -4,6 +4,7 @@ espionage gear …), the positive and negative qualities (and the quality paths'
 runners (as the core rulebook's archetypes) and the rule sections, ids unscoped (run scopes them as so.<slug>),
 descriptions in the private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading
 (catalog.read); layout notes in so.md. A line or value that doesn't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -24,15 +25,36 @@ ALIASES = {}
 # (`Explosive Cosmetics` over `Lipstick`, `Eyeliner` … in the espionage gear table; regroup._variants)
 VARIANT_ROWS = True
 # the gear tables' first headers (their rows are items)
-NAME_HEADERS = frozenset({"OUTFIT", "ARMOR MOD", "NAME", "FASHION ACCESSORIES", "PROFESSIONAL GROOMING SERVICES",
-                          "ESPIONAGE GEAR", "SUBSCRIPTION", "GEAR", "ITEM"})
+NAME_HEADERS = frozenset(
+    {
+        "OUTFIT",
+        "ARMOR MOD",
+        "NAME",
+        "FASHION ACCESSORIES",
+        "PROFESSIONAL GROOMING SERVICES",
+        "ESPIONAGE GEAR",
+        "SUBSCRIPTION",
+        "GEAR",
+        "ITEM",
+    }
+)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"qualities"}
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("let me have a word", "maps of desire", "getting a read", "tricks of the trade", "are you getting played",
-                 "faces in the crowd", "mana infused manners", "social shopping", "social edge", "ultimate team player",
-                 "more than a pretty face")
+RULE_CHAPTERS = (
+    "let me have a word",
+    "maps of desire",
+    "getting a read",
+    "tricks of the trade",
+    "are you getting played",
+    "faces in the crowd",
+    "mana infused manners",
+    "social shopping",
+    "social edge",
+    "ultimate team player",
+    "more than a pretty face",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ("social shopping",)
 ARCHETYPES = "faces in the crowd"  # the sample faces: a level-2 section, `Metatype:` and the stat bands in its text
@@ -74,21 +96,36 @@ def _gear_texts(bs):
         if b.row is not None and norm(b.chapter) == GEAR:
             nxt = bs[i + 1] if i + 1 < len(bs) else None
             last = list(b.row)[-1]
-            if nxt is not None and nxt.row is not None and nxt.header == b.header and re.search(r"(x|\+)\s*$", b.row[last]) \
-                    and [v for v in list(nxt.row.values())[1:] if v] == [nxt.row[last]]:
-                b = replace(b, name=f"{b.name} {nxt.name}", row={**b.row, list(b.row)[0]: f"{b.name} {nxt.name}",
-                                                                last: f"{b.row[last]} {nxt.row[last]}"})
+            if (
+                nxt is not None
+                and nxt.row is not None
+                and nxt.header == b.header
+                and re.search(r"(x|\+)\s*$", b.row[last])
+                and [v for v in list(nxt.row.values())[1:] if v] == [nxt.row[last]]
+            ):
+                b = replace(
+                    b,
+                    name=f"{b.name} {nxt.name}",
+                    row={**b.row, list(b.row)[0]: f"{b.name} {nxt.name}", last: f"{b.row[last]} {nxt.row[last]}"},
+                )
                 skip.add(id(nxt))
             sec = next((secs[k] for k in keys(b.name) if k in secs), None)
             if sec is not None and not b.text.strip():
                 taken[id(sec)] = sec
-                more = [x.text.strip() for x in bs if x.type == "item" and x.section == sec.name and norm(x.name) == "game information"]
+                more = [
+                    x.text.strip()
+                    for x in bs
+                    if x.type == "item" and x.section == sec.name and norm(x.name) == "game information"
+                ]
                 b = replace(b, text="\n\n".join(t for t in [sec.text.strip(), *more] if t))
         if id(b) not in skip:
             out.append(b)
     names = {s.name for s in taken.values()}
-    return [b for b in out if id(b) not in taken
-            and not (b.type == "item" and norm(b.name) == "game information" and b.section in names)]
+    return [
+        b
+        for b in out
+        if id(b) not in taken and not (b.type == "item" and norm(b.name) == "game information" and b.section in names)
+    ]
 
 
 def fix(b, parent2):
@@ -101,12 +138,17 @@ def fix(b, parent2):
         b = replace(b, tags=m.group(1), text=b.text.replace(first, "", 1).strip())
     if ch == MAGIC and b.type == "item" and norm(b.tags) in catalog.SPELL_CATEGORIES:  # (or read as a level-5 tag line)
         b = replace(b, label=norm(b.tags), tags="")
-    if ch == ARCHETYPES and "Metatype" in b.labels and (b.stats or "| B | A |" in b.text):  # (bands in a section's text)
+    if (
+        ch == ARCHETYPES and "Metatype" in b.labels and (b.stats or "| B | A |" in b.text)
+    ):  # (bands in a section's text)
         b = replace(catalog.text_stats(b, catalog.BEING), type="item", label=f"metatype: {b.labels['Metatype']}")
     if ch == MAGIC and norm(parent2) == "alchemical preps" and b.type == "item" and (c := b.labels.get("Cost")):
         m = re.fullmatch(r"(.+?)\s*/\s*(\w+)", c)
-        b = replace(b, row={"ITEM": b.name, **({f"COST (PER {m.group(2).upper()})": m.group(1)} if m else {"COST": c})},
-                    header=["ITEM", "COST"])
+        b = replace(
+            b,
+            row={"ITEM": b.name, **({f"COST (PER {m.group(2).upper()})": m.group(1)} if m else {"COST": c})},
+            header=["ITEM", "COST"],
+        )
     return b
 
 
@@ -132,7 +174,9 @@ def kind(chapter, b, parent2):
         head = [h.upper() for h in b.header]
         if head[0] == "ARMOR MOD":
             return "armor", "armor-modifications"
-        if head[0] == "OUTFIT":  # clothing is armor with no defense (owner 2026-10-15); its SOCIAL RATING column is `social`
+        if (
+            head[0] == "OUTFIT"
+        ):  # clothing is armor with no defense (owner 2026-10-15); its SOCIAL RATING column is `social`
             return "armor", "clothing"
         return "gear", slug(p2) or "gear"
     return None, None

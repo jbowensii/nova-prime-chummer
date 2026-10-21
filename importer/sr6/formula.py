@@ -22,6 +22,7 @@ writes such a rule as an `ambiguous` issue stating it (`base + R*100`), never as
 Readers here are general: the books' value styles (`Rating x 2,000¥`, `300¥ per CF`, `2,000¥ (+500¥ per additional
 dart)`, `x2`, `Commlink cost plus rating x 100`, `[4,000¥ x Size]`, `Magic*100¥`, a seat count `2/6`, rows of rating
 bands), never an item's name."""
+
 import math
 import re
 
@@ -36,8 +37,10 @@ _NUM = r"\d[\d,]*(?:\.\d+)?|\.\d+"
 
 # --- parsing and evaluating -----------------------------------------------------------------------------------------
 
-_TOKEN = re.compile(r"\s*(?:(?P<num>\d+(?:\.\d+)?|\.\d+)|(?P<opt>opt\.[a-z0-9][a-z0-9-]*)"
-                    r"|(?P<ref>[a-z]+:[a-z0-9][a-z0-9.\-]*)|(?P<name>[A-Za-z_]+)|(?P<op>[-+*/(),;:]))")
+_TOKEN = re.compile(
+    r"\s*(?:(?P<num>\d+(?:\.\d+)?|\.\d+)|(?P<opt>opt\.[a-z0-9][a-z0-9-]*)"
+    r"|(?P<ref>[a-z]+:[a-z0-9][a-z0-9.\-]*)|(?P<name>[A-Za-z_]+)|(?P<op>[-+*/(),;:]))"
+)
 
 
 class FormulaError(ValueError):
@@ -245,6 +248,7 @@ def variables(expr):
             walk(n[1])
             for _, _, x in n[2]:
                 walk(x)
+
     walk(parse(expr))
     return out
 
@@ -256,6 +260,7 @@ def fmt(v):
 
 
 # --- reading a printed value ----------------------------------------------------------------------------------------
+
 
 def _clean(text):
     t = (text or "").replace("¥", "").replace("×", "x").replace("–", "-").replace("—", "-").replace("−", "-")
@@ -271,8 +276,9 @@ def _arith(t):
     e = re.sub(rf"\b(?:{_VAR_WORDS})\b", " R ", e, flags=re.I)
     e = re.sub(r"\bmagic\b", " M ", e, flags=re.I)
     e = re.sub(r"(?<![a-z])x(?![a-z])|\*", " * ", e, flags=re.I)
-    e = re.sub(r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$|(?<=\))\s*[LIRF]$", "",
-               e.strip())  # a legality suffix (`(Force +3) L`: after the bracket)
+    e = re.sub(
+        r"\s*\(\s*[LIRF]\s*\)\s*$|(?<=\d)\s*[LIRF]$|(?<=R)\s*[LIRF]$|(?<=\))\s*[LIRF]$", "", e.strip()
+    )  # a legality suffix (`(Force +3) L`: after the bracket)
     e = " ".join(e.split())
     if not e or re.search(r"[A-Za-z]", re.sub(r"\b[RM]\b", "", e)):
         return None
@@ -338,8 +344,12 @@ def read(text, field="cost"):
         return f"Q*{fmt(_n(m.group(1)))}", {"unit": _unit(m.group(2)), "each": True}
     if m := re.fullmatch(rf"(?:an?\s+)?additional\s+({_NUM})\s*¥?", t, re.I):  # `additional 100¥`: added to its item's
         return f"B + {fmt(_n(m.group(1)))}", {}
-    if (m := re.fullmatch(rf"(.+?)\s*(?:\bper\b|/)\s*({_UNIT})", t, re.I)) and not _TIME.match(m.group(2)) \
-            and not re.match(r"\d", m.group(2)) and (e := _arith(m.group(1))):
+    if (
+        (m := re.fullmatch(rf"(.+?)\s*(?:\bper\b|/)\s*({_UNIT})", t, re.I))
+        and not _TIME.match(m.group(2))
+        and not re.match(r"\d", m.group(2))
+        and (e := _arith(m.group(1)))
+    ):
         if re.match(rf"(?:{_VAR_WORDS})\b", m.group(2), re.I):  # `1 per Rating point`, `2 per level`: by the rating
             return (f"R*{e}" if re.fullmatch(_NUM, e) else f"R*({e})"), {}
         return (f"Q*{e}" if re.fullmatch(_NUM, e) else f"Q*({e})"), {"unit": _unit(m.group(2))}
@@ -362,10 +372,16 @@ def read(text, field="cost"):
         rest = _arith(m.group(2))
         if rest and not re.fullmatch(_NUM, m.group(1).strip()):
             return f"B + {rest}", {}
-    if m := re.fullmatch(rf"\+?\s*({_NUM})\s*(?:plus|\+)\s*\(?\s*(?:({_NUM})\s+(?:doses?\s+(?:of\s+)?)?)?"
-                         rf"(?:cost\s+of\s+)?({_WORDS})(?:\s+(?:dose\s+)?cost)?(?:\s*x\s*({_NUM}))?\s*\)?", t, re.I):
+    if m := re.fullmatch(
+        rf"\+?\s*({_NUM})\s*(?:plus|\+)\s*\(?\s*(?:({_NUM})\s+(?:doses?\s+(?:of\s+)?)?)?"
+        rf"(?:cost\s+of\s+)?({_WORDS})(?:\s+(?:dose\s+)?cost)?(?:\s*x\s*({_NUM}))?\s*\)?",
+        t,
+        re.I,
+    ):
         k = m.group(2) or m.group(4)
-        if not re.search(r"\b(?:up to|or)\b", m.group(3)) and not re.fullmatch(rf"(?:{_VAR_WORDS}|magic)", m.group(3), re.I):
+        if not re.search(r"\b(?:up to|or)\b", m.group(3)) and not re.fullmatch(
+            rf"(?:{_VAR_WORDS}|magic)", m.group(3), re.I
+        ):
             return f"{fmt(_n(m.group(1)))} + {fmt(_n(k)) + '*' if k else ''}B", {}
     t2 = re.sub(r"\s*\((?![^()]*\b(?:rating|force|level|size)\b)[^()]*\)\s*$", "", t, flags=re.I)  # a note: (10 uses)
     t2 = re.sub(r"\s*/\s*(?:month|year|week|day)s?$", "", t2, flags=re.I)  # a price a period: the period is `per`
@@ -417,35 +433,69 @@ def two_values(text):
     """True when a cell prints two prices or counts side by side (`Rating x 2,500¥/4,000¥`, `300/350`): two values
     for two variants, not one formula."""
     t = (text or "").replace("¥", "¥ ")
-    if re.search(r"¥\s*/\s*\d", text or "") or re.search(r"(?<![\d.])\d[\d,]{2,}\s*/\s*\d[\d,]{2,}(?![\d.])", t) \
-            and not re.search(r"(?i)\b(?:rating|force|level|size)\b\s*/", t):
+    if (
+        re.search(r"¥\s*/\s*\d", text or "")
+        or re.search(r"(?<![\d.])\d[\d,]{2,}\s*/\s*\d[\d,]{2,}(?![\d.])", t)
+        and not re.search(r"(?i)\b(?:rating|force|level|size)\b\s*/", t)
+    ):
         return True
     # `400¥ (MZM); 450¥ (MZM+)`, `500 or 2 CF`, `+100 / +250`, `5,000¥ for cyberdeck/7,000¥ for cyberhack`
     parts = re.split(r"\s*;\s*|\s+or\s+|(?<=[a-z%)])\s*/\s*(?=[+\d])|\s*/\s*(?=\+)", t.strip(), flags=re.I)
-    return len(parts) > 1 and any(re.search(r"\d", p) for p in parts) and (
-        len([p for p in parts if re.search(r"\d", p)]) > 1 or re.search(r"\s+or\s+", t, re.I) is not None)
+    return (
+        len(parts) > 1
+        and any(re.search(r"\d", p) for p in parts)
+        and (len([p for p in parts if re.search(r"\d", p)]) > 1 or re.search(r"\s+or\s+", t, re.I) is not None)
+    )
 
 
 # --- the children an entry gets ----------------------------------------------------------------------------------
 
-PRICED = ("weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs")  # ordered: catalog.derived's first base
+PRICED = (
+    "weapons",
+    "armor",
+    "augmentations",
+    "electronics",
+    "gear",
+    "vehicles",
+    "programs",
+)  # ordered: catalog.derived's first base
 # the fields a formula may stand in, by kind (the rest are words, or ranges: rating)
-FORMULA_FIELDS = {"weapons": ("cost", "avail"), "armor": ("cost", "avail", "capacity", "defense"),
-                  "augmentations": ("cost", "avail", "essence", "capacity"),
-                  "electronics": ("cost", "avail", "capacity"), "gear": ("cost", "avail", "capacity", "karma", "slots"),
-                  "vehicles": ("cost", "avail", "seats"), "programs": ("cost", "avail"), "lifestyles": ("cost",)}
+FORMULA_FIELDS = {
+    "weapons": ("cost", "avail"),
+    "armor": ("cost", "avail", "capacity", "defense"),
+    "augmentations": ("cost", "avail", "essence", "capacity"),
+    "electronics": ("cost", "avail", "capacity"),
+    "gear": ("cost", "avail", "capacity", "karma", "slots"),
+    "vehicles": ("cost", "avail", "seats"),
+    "programs": ("cost", "avail"),
+    "lifestyles": ("cost",),
+}
 # the fields an entry of a kind needs: none printed is an issue
 NEEDED = {k: ("avail", "cost") for k in PRICED} | {"lifestyles": ("cost",), "qualities": ("karma",)}
-VEHICLE_STATS = {"handling": "handling", "accel": "acceleration", "interval": "speed interval", "topSpeed": "top speed",
-                 "body": "body", "armor": "armor", "pilot": "pilot", "sensor": "sensor", "seats": "seats"}
-_NOTE = {"avail": "no availability printed", "cost": "no price printed", "karma": "no Karma cost printed",
-         "rating": "no rating range printed", "essence": "no Essence printed"}
+VEHICLE_STATS = {
+    "handling": "handling",
+    "accel": "acceleration",
+    "interval": "speed interval",
+    "topSpeed": "top speed",
+    "body": "body",
+    "armor": "armor",
+    "pilot": "pilot",
+    "sensor": "sensor",
+    "seats": "seats",
+}
+_NOTE = {
+    "avail": "no availability printed",
+    "cost": "no price printed",
+    "karma": "no Karma cost printed",
+    "rating": "no rating range printed",
+    "essence": "no Essence printed",
+}
 _DASH = re.compile(r"\s*(?:[—–-]+|n/a)[*†]?\s*", re.I)
 
 
 def _short(v, n=40):
     v = " ".join(str(v).split())
-    return v if len(v) <= n else v[:n - 1] + "…"
+    return v if len(v) <= n else v[: n - 1] + "…"
 
 
 def printed(attrs, f):
@@ -460,9 +510,12 @@ def printed(attrs, f):
     return v
 
 
-_SECTION_OPTION = re.compile(r"\b([a-z]+)(?:\s+construction)?\s+versions?\b[^.]{0,40}?\b(?:are|is)\s+available\s+"
-                             r"(?:at|for)\s+(half|twice|double|\d+\s*%)\s+(?:of\s+)?the\s+(?:listed\s+|normal\s+)?"
-                             r"(?:cost|price)", re.I)
+_SECTION_OPTION = re.compile(
+    r"\b([a-z]+)(?:\s+construction)?\s+versions?\b[^.]{0,40}?\b(?:are|is)\s+available\s+"
+    r"(?:at|for)\s+(half|twice|double|\d+\s*%)\s+(?:of\s+)?the\s+(?:listed\s+|normal\s+)?"
+    r"(?:cost|price)",
+    re.I,
+)
 
 
 def section_options(text):
@@ -478,8 +531,11 @@ def section_options(text):
 
 _LENGTH = {"mm": 0.1, "millimeter": 0.1, "cm": 1, "centimeter": 1, "m": 100, "meter": 100, "metre": 100}
 _WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "ten": 10, "twenty": 20, "hundred": 100}
-_TEXT_UNIT = re.compile(r"\bcost\s+is\s+(?:based\s+on\s+[a-z]+\s+)?per\s+(?:(\d+|[a-z]+)\s+)?([a-z]+?)s?\b"
-                        r"(?:\s*\(\s*minimum\s+([\d.]+)\s*([a-z]+?)s?\s*,\s*maximum\s+([\d.]+)\s*([a-z]+?)s?\s*\))?", re.I)
+_TEXT_UNIT = re.compile(
+    r"\bcost\s+is\s+(?:based\s+on\s+[a-z]+\s+)?per\s+(?:(\d+|[a-z]+)\s+)?([a-z]+?)s?\b"
+    r"(?:\s*\(\s*minimum\s+([\d.]+)\s*([a-z]+?)s?\s*,\s*maximum\s+([\d.]+)\s*([a-z]+?)s?\s*\))?",
+    re.I,
+)
 
 
 def text_unit(text):
@@ -505,14 +561,20 @@ def text_unit(text):
 
 
 _TEXT_OPTION = re.compile(r"\bthe\s+([a-z][a-z' -]{2,30}?)\s*\(\s*costs?\s+([\d,]+)\s*¥\s*\)", re.I)
-_HALF = re.compile(r"\bone\s+half\s+(?:of\s+)?the\s+((?:essence|nuyen\s+cost|cost|price|capacity|availability)"
-                   r"(?:\s*(?:,|and)\s*(?:the\s+)?(?:essence|nuyen\s+cost|cost|price|capacity|availability))*)", re.I)
+_HALF = re.compile(
+    r"\bone\s+half\s+(?:of\s+)?the\s+((?:essence|nuyen\s+cost|cost|price|capacity|availability)"
+    r"(?:\s*(?:,|and)\s*(?:the\s+)?(?:essence|nuyen\s+cost|cost|price|capacity|availability))*)",
+    re.I,
+)
 
 
 def text_options(text):
     """[(id, name, price)]: parts the description prices beside the item (`powered by the mini-outboard (costs
     500¥)`), each an option added to its cost."""
-    return [(_slug(m.group(1)), m.group(1).strip(), _n(m.group(2))) for m in _TEXT_OPTION.finditer(" ".join((text or "").split()))]
+    return [
+        (_slug(m.group(1)), m.group(1).strip(), _n(m.group(2)))
+        for m in _TEXT_OPTION.finditer(" ".join((text or "").split()))
+    ]
 
 
 def half_of(text):
@@ -521,8 +583,17 @@ def half_of(text):
     out = set()
     for m in _HALF.finditer(" ".join((text or "").split())):
         w = m.group(1).lower()
-        out |= {f for f, k in (("essence", "essence"), ("cost", "cost"), ("cost", "price"), ("capacity", "capacity"),
-                               ("avail", "availability")) if k in w}
+        out |= {
+            f
+            for f, k in (
+                ("essence", "essence"),
+                ("cost", "cost"),
+                ("cost", "price"),
+                ("capacity", "capacity"),
+                ("avail", "availability"),
+            )
+            if k in w
+        }
     return out
 
 
@@ -540,7 +611,9 @@ def energy_ammo(text, section_text, supplies):
     for t in (text, section_text):
         for m in _SUPPLY.finditer(" ".join((t or "").split())):
             want = word_stem(m.group(1).lower().split()[-1])
-            sid = next((i for n, i in supplies.items() if word_stem(n.split()[-1]) == want and names(m.group(1), n)), None)
+            sid = next(
+                (i for n, i in supplies.items() if word_stem(n.split()[-1]) == want and names(m.group(1), n)), None
+            )
             if sid:
                 return f"ref(gear:{sid}, energy)/{fmt(float(use.group(1)))}"
     return None
@@ -584,8 +657,12 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
         if f in tiered:
             out.append(("formula", {"field": f}, tiered[f]))  # (its band is its rating: no range to ask for)
             continue
-        if f == "cost" and (options or adds) and v is not None and (got := read(v, f) or (
-                (fmt(p), {}) if (p := plain(v, f)) is not None else None)):
+        if (
+            f == "cost"
+            and (options or adds)
+            and v is not None
+            and (got := read(v, f) or ((fmt(p), {}) if (p := plain(v, f)) is not None else None))
+        ):
             expr, extra = got
             for oid, name, factor in options:  # a version its section prices apart: a factor
                 expr = f"({expr})*(1 {'-' if factor < 1 else '+'} {fmt(abs(factor - 1))}*opt.{oid})"
@@ -614,8 +691,13 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             out.append(_formula(f, expr, extra, page))
             uses_r |= "R" in variables(expr)
             if extra.get("each"):  # (bought by the unit, how many at most not printed: the user's to say, no guess)
-                out.append(("issue", {"field": "qty", "code": "missing", "page": page},
-                            f"the most one buys ({extra['unit']}) isn't printed"))
+                out.append(
+                    (
+                        "issue",
+                        {"field": "qty", "code": "missing", "page": page},
+                        f"the most one buys ({extra['unit']}) isn't printed",
+                    )
+                )
         elif two_values(v):
             out.append(("issue", {"field": f, "code": "ambiguous", "page": page}, f"two values printed: {_short(v)}"))
         elif not (readable and readable(v)):
@@ -624,10 +706,18 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
         v = attrs.get(f)
         if v is None or not str(v).strip():
             out.append(("issue", {"field": f, "code": "missing", "page": page}, _NOTE[f]))
-    if kind == "augmentations" and not (attrs.get("essence") or "").strip() and not (attrs.get("capacity") or "").strip():
+    if (
+        kind == "augmentations"
+        and not (attrs.get("essence") or "").strip()
+        and not (attrs.get("capacity") or "").strip()
+    ):
         out.append(("issue", {"field": "essence", "code": "missing", "page": page}, _NOTE["essence"]))
     bands = [b for b in re.split(r"\s*/\s*", re.sub(r"\([^)]*\)", "", attrs.get("ar") or "")) if b.strip()]
-    if kind == "weapons" and len([b for b in bands if not _DASH.fullmatch(b)]) > 1 and not re.search(r"(?i)only", attrs.get("ar") or ""):
+    if (
+        kind == "weapons"
+        and len([b for b in bands if not _DASH.fullmatch(b)]) > 1
+        and not re.search(r"(?i)only", attrs.get("ar") or "")
+    ):
         for f, note in (("modes", "no firing modes printed"), ("ammo", "no ammo printed")):
             if not (attrs.get(f) or "").strip():  # a ranged weapon (attack ratings past Close) needs both
                 out.append(("issue", {"field": f, "code": "missing", "page": page}, note))
@@ -635,7 +725,9 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
         for f in VEHICLE_STATS:
             if not (attrs.get(f) or "").strip():  # a stat line read in part: the field it leaves out
                 out.append(("issue", {"field": f, "code": "missing", "page": page}, f"no {VEHICLE_STATS[f]} printed"))
-    if kind == "weapons" and (m := re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")):
+    if kind == "weapons" and (
+        m := re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")
+    ):
         out.append(("formula", {"field": "dv"}, "R"))  # `(1–10) S`: a DV the rating gives, in its range
     r = attrs.get("rating")
     if uses_r and (r is None or not str(r).strip() or _DASH.fullmatch(str(r))):
@@ -659,7 +751,7 @@ def tier_groups(entries):
     for e in entries:
         a = e["attrs"]
         m = _BAND_NAME.search(e["name"])
-        name = e["name"][:m.start()] if m else e["name"]
+        name = e["name"][: m.start()] if m else e["name"]
         b = band(str(a.get("rating") or "")) or (band(m.group(1)) if m else None)
         if b:
             groups.setdefault((name.strip().lower(), a.get("category"), e["page"]), []).append((b, e))

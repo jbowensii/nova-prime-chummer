@@ -2,6 +2,7 @@
 a re-import never touches them. custom/edits/edits.xml holds full entries (kind="edits": <amp>, <item>,
 <rule>), texts.xml their edited descriptions, sources.xml the house-rule sources the user created
 (canon="false"). The loader applies them after the imported books and before custom/index.xml."""
+
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -14,10 +15,17 @@ ID = re.compile(r"[a-z0-9][a-z0-9.\-]*")
 POS = re.compile(r"[1-9][0-9]*")
 BOOL = ("true", "false", "1", "0")
 # what edits.xsd (common.xsd's Amp, Item, Rule) allows: attributes, required ones, child sequence
-ATTRS = {"amp": {"type", "printedRating", "vehicle", "mod", "family", "level"}, "item": {"kind", "specialist", "armor", "dv", "ranges", "category"},
-         "rule": {"sheet", "section", "effects"}}
+ATTRS = {
+    "amp": {"type", "printedRating", "vehicle", "mod", "family", "level"},
+    "item": {"kind", "specialist", "armor", "dv", "ranges", "category"},
+    "rule": {"sheet", "section", "effects"},
+}
 REQUIRED = {"amp": "type", "item": "kind", "rule": "sheet"}
-CHILDREN = {"amp": re.compile(r"name (item )?(effect )*narrative "), "item": re.compile(r"name (effect )*text "), "rule": re.compile("title text ")}
+CHILDREN = {
+    "amp": re.compile(r"name (item )?(effect )*narrative "),
+    "item": re.compile(r"name (effect )*text "),
+    "rule": re.compile("title text "),
+}
 ITEM_KINDS = ("gear", "weapon", "armor", "spell", "complex-form")
 USERNAME = re.compile(r"[a-z0-9][a-z0-9._\-]{1,31}")  # server/auth.mjs USERNAME
 MAX_BODY = 1024 * 1024  # one entry and its description; the server caps the request body too
@@ -43,8 +51,14 @@ def _listed(index):
 
 def catalog_ids(custom_dir, tag, house=False):
     """Ids of `tag` entries loaded before the edits layer (house: those of the house rules, loaded after it)."""
-    files = _listed(os.path.join(custom_dir, "index.xml")) if house else (
-        [os.path.join(core_dir(), f"{n}.xml") for n in CORE_FILES] + _listed(os.path.join(custom_dir, "imported", "index.xml")))
+    files = (
+        _listed(os.path.join(custom_dir, "index.xml"))
+        if house
+        else (
+            [os.path.join(core_dir(), f"{n}.xml") for n in CORE_FILES]
+            + _listed(os.path.join(custom_dir, "imported", "index.xml"))
+        )
+    )
     ids = set()
     for f in files:
         try:
@@ -63,15 +77,19 @@ def house_sources(custom_dir):
 
 
 def listed_sources(custom_dir):
-    return _sources(os.path.join(DATA_DIR, "sources.xml"), os.path.join(custom_dir, "imported", "sources.xml"),
-                    os.path.join(custom_dir, "sources.xml"), _path(custom_dir, "sources.xml"))
+    return _sources(
+        os.path.join(DATA_DIR, "sources.xml"),
+        os.path.join(custom_dir, "imported", "sources.xml"),
+        os.path.join(custom_dir, "sources.xml"),
+        _path(custom_dir, "sources.xml"),
+    )
 
 
 def _shape(entry):
     """edits.xsd's rules for one entry: what is wrong, or []."""
     tag, a = entry.tag, entry.attrib
     notes = [f'unknown attribute "{k}"' for k in a if k not in ATTRS[tag] | {"id", "source", "page"}]
-    notes += [f'no {k}' for k in ("id", "source", "page", REQUIRED[tag]) if not a.get(k, "").strip()]
+    notes += [f"no {k}" for k in ("id", "source", "page", REQUIRED[tag]) if not a.get(k, "").strip()]
     for k in ("id", "type", "vehicle", "sheet"):
         if a.get(k) and not ID.fullmatch(a[k]):
             notes.append(f'{k} "{a[k]}" isn’t an id (a-z, 0-9, dots and dashes)')
@@ -88,7 +106,11 @@ def _shape(entry):
     if tag == "rule":
         notes += [f'effects "{e}" isn’t an id' for e in a.get("effects", "").split() if not ID.fullmatch(e)]
     if not CHILDREN[tag].fullmatch("".join(c.tag + " " for c in entry)):
-        want = {"amp": "<name>, <item>?, <effect>…, <narrative>", "item": "<name>, <effect>…, <text>", "rule": "<title>, <text>"}[tag]
+        want = {
+            "amp": "<name>, <item>?, <effect>…, <narrative>",
+            "item": "<name>, <effect>…, <text>",
+            "rule": "<title>, <text>",
+        }[tag]
         notes.append(f"its elements must be {want} in that order")
     if (entry.text or "").strip() or any((c.tail or "").strip() for c in entry):
         notes.append(f"text outside the elements of <{tag}>")
@@ -101,11 +123,20 @@ def _shape(entry):
             notes.append(f"<{c.tag}> holds no elements or text")
         if c.tag == "item":
             k = c.attrib
-            notes += [f'unknown attribute "{x}" on <item>' for x in k if x not in ("kind", "specialist", "armor", "dv", "ranges")]
+            notes += [
+                f'unknown attribute "{x}" on <item>'
+                for x in k
+                if x not in ("kind", "specialist", "armor", "dv", "ranges")
+            ]
             if k.get("kind") not in ("gear", "weapon", "armor"):
                 notes.append("<item> kind must be gear, weapon or armor")
         elif c.tag == "effect":
-            notes += [f'unknown attribute "{x}" on <effect>' for x in c.attrib if x not in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")]
+            notes += [
+                f'unknown attribute "{x}" on <effect>'
+                for x in c.attrib
+                if x
+                not in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")
+            ]
             if not ID.fullmatch(c.get("ref") or ""):
                 notes.append("an <effect> has no ref id")
             if c.get("value") and not POS.fullmatch(c.get("value")):
@@ -117,10 +148,15 @@ def _refs(entry):
     """The propose/apply-review checks (validate-data.mjs's reference rules) for one entry."""
     from importer.__main__ import entry_notes
     from importer.ai import propose
+
     m = propose.mechanics()
     if entry.tag == "amp":
         vehicles = {v.get("id") for v in ET.parse(os.path.join(core_dir(), "vehicles.xml")).getroot()}
-        bad = [f'unknown vehicle "{entry.get("vehicle")}"'] if entry.get("vehicle") and entry.get("vehicle") not in vehicles else []
+        bad = (
+            [f'unknown vehicle "{entry.get("vehicle")}"']
+            if entry.get("vehicle") and entry.get("vehicle") not in vehicles
+            else []
+        )
         return entry_notes("amp", entry, m) + bad
     if entry.tag == "item":
         return entry_notes(entry.get("kind"), entry, m)
@@ -160,8 +196,12 @@ def _edits_xml(entries):
     for e in entries:
         e.tail = None
         rows.append("  " + ET.tostring(e, encoding="unicode"))
-    return (xmlio.HEAD + "<!-- Catalog entries edited or added in the app. Written by the importer. -->\n"
-            f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="edits" version="1">\n' + "".join(r + "\n" for r in rows) + "</ca2:data>\n")
+    return (
+        xmlio.HEAD + "<!-- Catalog entries edited or added in the app. Written by the importer. -->\n"
+        f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="edits" version="1">\n'
+        + "".join(r + "\n" for r in rows)
+        + "</ca2:data>\n"
+    )
 
 
 def _entries(custom_dir):
@@ -182,10 +222,16 @@ def set_entry(custom_dir, kind, id, body, by=None):
     if not notes:
         src = entry.get("source")
         if id in catalog_ids(custom_dir, entry.tag, house=True):
-            notes.append(f'"{id}" comes from your house rules (custom/index.xml), which load after edits; change it there')
-        elif id not in catalog_ids(custom_dir, entry.tag) and (src not in house_sources(custom_dir) or not id.startswith(src.lower() + ".")):
-            notes.append(f'a new entry needs a house-rule source (add one first) and an id "<source>.<name>"; '
-                         f'"{id}" from "{src}" isn’t one')
+            notes.append(
+                f'"{id}" comes from your house rules (custom/index.xml), which load after edits; change it there'
+            )
+        elif id not in catalog_ids(custom_dir, entry.tag) and (
+            src not in house_sources(custom_dir) or not id.startswith(src.lower() + ".")
+        ):
+            notes.append(
+                f'a new entry needs a house-rule source (add one first) and an id "<source>.<name>"; '
+                f'"{id}" from "{src}" isn’t one'
+            )
         elif src not in listed_sources(custom_dir):
             notes.append(f'source "{src}" isn’t listed in any sources file')
         notes += _refs(entry)
@@ -227,6 +273,7 @@ def remove_entry(custom_dir, kind, id):
 def add_source(custom_dir, sid, name, publisher=""):
     """Add a house-rule source (canon="false") to custom/edits/sources.xml; the id must be new everywhere."""
     from importer.__main__ import SOURCE_ID, reserved_sources
+
     if not SOURCE_ID.fullmatch(sid or "") or not (name or "").strip():
         raise EditError("a house-rule source needs an id (A-Z, 0-9 and dashes, starting with a letter) and a name")
     taken = reserved_sources(custom_dir) | {i.upper() for i in listed_sources(custom_dir)}
@@ -237,5 +284,8 @@ def add_source(custom_dir, sid, name, publisher=""):
     rows = [] if root is None else [s for s in root if s.tag == "source"]
     body = "".join(f"  {ET.tostring(s, encoding='unicode').strip()}\n" for s in rows)
     body += f'  <source id={quoteattr(sid)} publisher={quoteattr(publisher)} canon="false"><name>{escape(name.strip())}</name></source>\n'
-    xmlio.write_file(path, xmlio.HEAD + "<!-- House-rule sources created in the app. Written by the importer. -->\n"
-                     f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="sources" version="1">\n{body}</ca2:data>\n')
+    xmlio.write_file(
+        path,
+        xmlio.HEAD + "<!-- House-rule sources created in the app. Written by the importer. -->\n"
+        f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="sources" version="1">\n{body}</ca2:data>\n',
+    )

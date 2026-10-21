@@ -2,6 +2,7 @@
 contact (archetype Mr. Johnson) with its stat block as an NPC (group Contact), and the deck's rules (gear level,
 favors), ids unscoped (run scopes them as jd.<slug>), the bio, plot hooks and favors in the private texts. Reads only
 regrouped.md with the core rulebook's reading (catalog.read). Layout notes in jd.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -43,8 +44,9 @@ def _name(s):
     """A card's title as a name, a word at a time: `HERA ‘LEGS’ ANDERSON` -> `Hera ‘Legs’ Anderson`, `M c SWEENEY` ->
     `McSweeney`."""
     s = re.sub(r"\bM [cC] (?=\w)", "Mc", " ".join(s.split()))
-    return " ".join(w.title() if w.isupper() or w.islower() else "Mc" + w[2:].title() if w[2:].isupper() else w
-                    for w in s.split())
+    return " ".join(
+        w.title() if w.isupper() or w.islower() else "Mc" + w[2:].title() if w[2:].isupper() else w for w in s.split()
+    )
 
 
 def prepare(bs):
@@ -73,9 +75,20 @@ def prepare(bs):
                 body = re.sub(r"\s+" + re.escape(meta) + r"\s*$", "", body, flags=re.I)
             parts.append(f"#### {x.name.title()}\n{body}")
         labels = {_LABELS.get(k, k): v for k, v in stats.labels.items()}
-        out.append(Block(type="item", name=_name(ch), chapter=ch, section="", label="", page=g[0].page, stats=[row],
-                         labels={**labels, "Archetype": "Mr. Johnson"}, text="\n\n".join(p for p in parts if p),
-                         level=4))
+        out.append(
+            Block(
+                type="item",
+                name=_name(ch),
+                chapter=ch,
+                section="",
+                label="",
+                page=g[0].page,
+                stats=[row],
+                labels={**labels, "Archetype": "Mr. Johnson"},
+                text="\n\n".join(p for p in parts if p),
+                level=4,
+            )
+        )
     return out
 
 

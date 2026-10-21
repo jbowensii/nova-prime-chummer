@@ -1,5 +1,6 @@
 """SR6 Body Shop recipe (importer/sr6/recipes/bs.py) on a made-up book.md in the converter's sr6 shape (the book's:
 descriptions under item headings, priced in a titled catalog table). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -158,9 +159,21 @@ class BsRecipeTest(unittest.TestCase):
 
     def test_cyberware_variant_rows_named_by_their_group(self):
         a = entries(self.res, "augmentations")
-        self.assertEqual(a["Hum box"], {"id": "hum-box", "source": "BS", "page": "29", "type": "cyberware",
-                                        "category": "Bodyware", "rating": "1–3", "essence": "Rating x 0.1",
-                                        "capacity": "[1]", "avail": "2", "cost": "Rating x 500"})
+        self.assertEqual(
+            a["Hum box"],
+            {
+                "id": "hum-box",
+                "source": "BS",
+                "page": "29",
+                "type": "cyberware",
+                "category": "Bodyware",
+                "rating": "1–3",
+                "essence": "Rating x 0.1",
+                "capacity": "[1]",
+                "avail": "2",
+                "cost": "Rating x 500",
+            },
+        )
         self.assertEqual((a["Zap tail (Short)"]["essence"], a["Zap tail (Long)"]["cost"]), ("0.2", "2000"))
         self.assertNotIn("Zap tail", a)  # the group row itself is no entry
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
@@ -171,25 +184,49 @@ class BsRecipeTest(unittest.TestCase):
         # `Zapsense: Basic`, each with its own run-in of the heading's text and an id carrying the group
         a = entries(self.res, "augmentations")
         self.assertNotIn("Zapsense", a)
-        self.assertEqual({k: v for k, v in a["Basic"].items() if k != "page"}, {"id": "zapsense-basic", "source": "BS", "type": "bioware", "category": "Biosenses",
-                                                                                "group": "Zapsense", "essence": "0.1", "avail": "4", "cost": "12000"})
-        self.assertEqual((a["Tactical"]["id"], a["Tactical"]["rating"], a["Tactical"]["essence"], a["Tactical"]["cost"]),
-                         ("zapsense-tactical", "1–3", "Rating x0.2", "Rating x 15000"))
+        self.assertEqual(
+            {k: v for k, v in a["Basic"].items() if k != "page"},
+            {
+                "id": "zapsense-basic",
+                "source": "BS",
+                "type": "bioware",
+                "category": "Biosenses",
+                "group": "Zapsense",
+                "essence": "0.1",
+                "avail": "4",
+                "cost": "12000",
+            },
+        )
+        self.assertEqual(
+            (a["Tactical"]["id"], a["Tactical"]["rating"], a["Tactical"]["essence"], a["Tactical"]["cost"]),
+            ("zapsense-tactical", "1–3", "Rating x0.2", "Rating x 15000"),
+        )
         self.assertEqual((a["Zap shield"]["essence"], a["Zap shield"]["cost"]), ("Rating x 0.15", "Rating x 25000"))
         x = self.res.files["augmentations.xml"]
-        self.assertIn('<name>Basic</name><alias>Zapsense Basic</alias>', x)
-        x = effects.apply(self.res.files, self.res.texts, "")[0]["augmentations.xml"]  # (the effects pass, as run.py runs it)
-        self.assertIn('<effect target="test:surprise" op="edge" value="1"/>', x.split('<name>Basic</name>')[1].split("</augmentation>")[0])
-        self.assertIn('<effect target="test:defense" op="add" value="R"/>', x.split('<name>Tactical</name>')[1].split("</augmentation>")[0])
+        self.assertIn("<name>Basic</name><alias>Zapsense Basic</alias>", x)
+        x = effects.apply(self.res.files, self.res.texts, "")[0][
+            "augmentations.xml"
+        ]  # (the effects pass, as run.py runs it)
+        self.assertIn(
+            '<effect target="test:surprise" op="edge" value="1"/>',
+            x.split("<name>Basic</name>")[1].split("</augmentation>")[0],
+        )
+        self.assertIn(
+            '<effect target="test:defense" op="add" value="R"/>',
+            x.split("<name>Tactical</name>")[1].split("</augmentation>")[0],
+        )
 
     def test_nuyen_under_avail_is_a_licence_price_and_stays_in_avail(self):
         # (owner 2026-10-15, every table: `15,000¥` under AVAIL is "available with licence", never a misplaced cost)
         a = entries(self.res, "augmentations")
         self.assertEqual((a["Zap Limb, Synthetic"]["avail"], a["Zap Limb, Synthetic"].get("cost")), ("15,000¥", None))
-        self.assertEqual((a["Zap Limb, Obvious"]["avail"], a["Zap Limb, Obvious"]["cost"]), ("10,000¥", "Rating x 5000"))
+        self.assertEqual(
+            (a["Zap Limb, Obvious"]["avail"], a["Zap Limb, Obvious"]["cost"]), ("10,000¥", "Rating x 5000")
+        )
 
     def test_a_licence_fee_is_a_readable_availability_so_the_search_never_replaces_it(self):
         from importer.sr6 import catalog, overrides
+
         self.assertTrue(all(catalog.readable(v) for v in ("15,000¥", "7,500¥", "2, 15,000¥", "6(L), 500¥")))
         self.assertFalse(catalog.readable("x, 500¥"))
         # (Deadly Arts' MGL-24 prints AVAIL 7,500¥: no Commlink6 value row sets its avail to 4)
@@ -197,11 +234,15 @@ class BsRecipeTest(unittest.TestCase):
 
     def test_geneware_shells_and_nanites(self):
         a = entries(self.res, "augmentations")
-        self.assertEqual((a["Glow Genes"]["type"], a["Glow Genes"]["category"], a["Glow Genes"]["essence"]),
-                         ("geneware", "Therapeutic geneware", "0.1"))
+        self.assertEqual(
+            (a["Glow Genes"]["type"], a["Glow Genes"]["category"], a["Glow Genes"]["essence"]),
+            ("geneware", "Therapeutic geneware", "0.1"),
+        )
         # each with its book's type: symbionts, transgenic infusions, nanohives (nanoware)
-        self.assertEqual([(a[n]["type"], a[n]["category"]) for n in ("Purr Leech", "Fur Pack", "Tiny Hive")],
-                         [("symbionts", "Symbionts"), ("transgenics", "Transgenic infusions"), ("nanoware", "Nanohives & supports")])
+        self.assertEqual(
+            [(a[n]["type"], a[n]["category"]) for n in ("Purr Leech", "Fur Pack", "Tiny Hive")],
+            [("symbionts", "Symbionts"), ("transgenics", "Transgenic infusions"), ("nanoware", "Nanohives & supports")],
+        )
         s = a["Made-Up Shells (Sleek)"]
         self.assertEqual((s["type"], s["cost"], s["avail"]), ("cyberware", "99000", "5"))
         g = entries(self.res, "gear")
@@ -210,9 +251,14 @@ class BsRecipeTest(unittest.TestCase):
 
     def test_grades_read_from_their_prose(self):
         g = entries(self.res, "grades")
-        self.assertEqual({k: (v.get("essence"), v.get("cost"), v.get("avail"), v.get("types")) for k, v in g.items()},
-                         {"Rusty Grade": ("1.3", "0.4", "-2", None), "Clunkware": ("1.2", "0.7", None, "cyberware"),
-                          "Dreamware": ("0.3", None, None, None)})
+        self.assertEqual(
+            {k: (v.get("essence"), v.get("cost"), v.get("avail"), v.get("types")) for k, v in g.items()},
+            {
+                "Rusty Grade": ("1.3", "0.4", "-2", None),
+                "Clunkware": ("1.2", "0.7", None, "cyberware"),
+                "Dreamware": ("0.3", None, None, None),
+            },
+        )
         self.assertIn(("missing-value", "Vagueware"), [(r["kind"], r["name"]) for r in self.res.report])
         self.assertIn("Clunkware", entries(self.res, "rules"))  # the sections stay rules too
         self.assertEqual(g["Rusty Grade"].get("replaces"), "shabby")  # a grade the book redefines as this one

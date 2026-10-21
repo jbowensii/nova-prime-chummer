@@ -11,6 +11,7 @@
    and one no record matches, gets no row: we invent no class. Rows of an earlier run (`gen`) are replaced; the rest of a
    table is left as it is.
 Read-only on the runs; no cl6check report is made."""
+
 import csv
 import json
 import sys
@@ -29,7 +30,11 @@ def category_map(csv_path):
     """{kind: {category: class}} from the study's csv: CLEAR categories with a Commlink6 class."""
     out = defaultdict(dict)
     for r in csv.DictReader(open(csv_path, encoding="utf-8-sig")):
-        if r["status"] == "CLEAR" and r["majority_cl6"] not in ("", "itemenhancement") and r["kind"] in canon.CLASS_KINDS:
+        if (
+            r["status"] == "CLEAR"
+            and r["majority_cl6"] not in ("", "itemenhancement")
+            and r["kind"] in canon.CLASS_KINDS
+        ):
             out[r["kind"]][r["category"]] = r["majority_cl6"]
     return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
 
@@ -62,14 +67,21 @@ def item_rows(pairs, cmap, hand=frozenset()):
                 continue
             classes = named
         cls, name = next(iter(classes.items()))
-        if (cmap.get(kind, {}).get(o["attrs"].get("category") or (o["attrs"].get("type") if kind == "programs" else "") or "") or "").casefold() == cls.casefold():
+        if (
+            cmap.get(kind, {}).get(
+                o["attrs"].get("category") or (o["attrs"].get("type") if kind == "programs" else "") or ""
+            )
+            or ""
+        ).casefold() == cls.casefold():
             continue
         if not oid.startswith(src + "."):
             no_id.append((src, oid))
             continue
-        if (src, kind, oid[len(src) + 1:]) in hand:
+        if (src, kind, oid[len(src) + 1 :]) in hand:
             continue
-        rows[src] += fit([{"cl6": name, "kind": kind, "id": oid[len(src) + 1:], "set": {"class": cls}, "gen": "class"}])
+        rows[src] += fit(
+            [{"cl6": name, "kind": kind, "id": oid[len(src) + 1 :], "set": {"class": cls}, "gen": "class"}]
+        )
     return rows, conflicts, no_id
 
 
@@ -96,12 +108,15 @@ def main(argv):
         return 2
     from tools.cl6check import ours, reader
     from tools.cl6check.__main__ import compare
+
     cmap = category_map(args[0])
     recs, _ = reader.read(reader.find_jar(jar if jar and not jar.startswith("--") else None))
     pairs = compare([canon.canonical(r) for r in recs], ours.load(args[1]), pdf=False)[2]
     rows, conflicts, no_id = item_rows(pairs, cmap, hand_ids())
-    print(f"categories mapped: {sum(len(v) for v in cmap.values())}; item rows: {sum(map(len, rows.values()))}; "
-          f"conflicts: {len(conflicts)}; ids not of their source: {len(no_id)}")
+    print(
+        f"categories mapped: {sum(len(v) for v in cmap.values())}; item rows: {sum(map(len, rows.values()))}; "
+        f"conflicts: {len(conflicts)}; ids not of their source: {len(no_id)}"
+    )
     for c in conflicts:
         print("  conflict", c)
     if "--dry" not in argv:

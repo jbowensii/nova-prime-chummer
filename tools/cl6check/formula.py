@@ -6,12 +6,21 @@ The expression grammar is the one the storage design proposes (cl6-examples.md, 
 `rating`, `qty` (a count: CF, sensor types, darts, …) and `magic`/`force`; + - * /; `ceil()`, `floor()`, `min()`, `max()`;
 `base` (the price of the item it modifies or copies). `read()` returns (expression, variable) or None; `evaluate()`
 computes it; `flattened()` returns the binding that reproduces Commlink6's values, or None."""
+
 import ast
 import math
 import re
 
-VARS = {"rating": "rating", "level": "rating", "force": "rating", "size": "rating", "cf": "qty", "capacity": "qty",
-        "magic": "rating", "grade": "rating"}
+VARS = {
+    "rating": "rating",
+    "level": "rating",
+    "force": "rating",
+    "size": "rating",
+    "cf": "qty",
+    "capacity": "qty",
+    "magic": "rating",
+    "grade": "rating",
+}
 UNITS = r"cf|sensor types?|additional \w+|dart|darts|dose|doses|meter|meters|m3|unit|units"
 NUM = r"\d[\d,]*(?:\.\d+)?"
 
@@ -87,6 +96,7 @@ def evaluate(expr, env, div="ceil"):
             args = [ev(x) for x in n.args]
             return {"ceil": math.ceil, "floor": math.floor, "min": min, "max": max}[n.func.id](*args)
         raise ValueError(ast.dump(n))
+
     return ev(tree)
 
 
@@ -118,7 +128,9 @@ def flattened(text, cl6, qty=None, base=None):
             try:
                 if all(_close(evaluate(expr, {"rating": r}, div), v) for r, v in vals.items()):
                     rs = sorted(vals)
-                    return f"rating {rs[0]}..{rs[-1]}: {expr}" + (" (/ rounds down)" if div == "floor" and "/" in expr else "")
+                    return f"rating {rs[0]}..{rs[-1]}: {expr}" + (
+                        " (/ rounds down)" if div == "floor" and "/" in expr else ""
+                    )
             except (ValueError, ZeroDivisionError):
                 return None
         if var == "rating" and list(vals) == [None]:
@@ -129,7 +141,7 @@ def flattened(text, cl6, qty=None, base=None):
             want = sorted(vals.items(), key=lambda x: (x[0] is None, x[0] or 0))
             if all(r is not None for r, _ in want) and all(_close(evaluate(expr, {"qty": r}), v) for r, v in want):
                 return f"count = rating {want[0][0]}..{want[-1][0]}: {expr}"
-            for q in (qty or []):
+            for q in qty or []:
                 if _close(evaluate(expr, {"qty": q}), want[0][1]):
                     return f"{expr} at count {q}"
     return None

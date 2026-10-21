@@ -5,6 +5,7 @@ metamagics are one a grade of initiation), the shifter gear (armor, gear, ammuni
 ids unscoped (run scopes them as bn.<slug>), descriptions in the private texts. Reads only regrouped.md
 (importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout notes
 in bn.md. A line or value that doesn't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -41,7 +42,9 @@ def match(meta, md_head):
 
 
 _RUNNING = re.compile(r"(#+ )?(BESTIAL NATURE|\d{1,2})|\*\*PAGE\*\*")  # each page's running head, number and tab
-_SPLIT = re.compile(r"(?<![\w'’])([A-Z][A-Za-z]{0,3}) ([A-Za-z][a-z]*)\b")  # `Sh ifter`, `SI Ns`: a heading's word kerned apart
+_SPLIT = re.compile(
+    r"(?<![\w'’])([A-Z][A-Za-z]{0,3}) ([A-Za-z][a-z]*)\b"
+)  # `Sh ifter`, `SI Ns`: a heading's word kerned apart
 
 
 def prepare_md(md):
@@ -55,6 +58,7 @@ def prepare_md(md):
     def join(m):
         a, b = m.groups()
         return a + b if (a + b).lower() in words or b.lower() not in words else m.group(0)
+
     return "\n".join(_SPLIT.sub(join, ln) if ln.startswith("#") else ln for ln in lines) + "\n"
 
 
@@ -74,8 +78,15 @@ def _drones(bs):
                 tables.append(s)
                 holders.add(id(b))
     if len(drones) != len(tables):
-        return bs, [{"kind": "unmapped", "name": "; ".join(d.name for d in drones), "chapter": GEAR,
-                     "label": f"{len(drones)} drones, {len(tables)} vehicle tables", "page": drones[0].page if drones else 0}]
+        return bs, [
+            {
+                "kind": "unmapped",
+                "name": "; ".join(d.name for d in drones),
+                "chapter": GEAR,
+                "label": f"{len(drones)} drones, {len(tables)} vehicle tables",
+                "page": drones[0].page if drones else 0,
+            }
+        ]
     own = {id(d): t for d, t in zip(drones, tables)}
     out = []
     for b in bs:
@@ -86,8 +97,14 @@ def _drones(bs):
             if b.type == "item" and not b.stats and any(norm(d.name) == norm(b.name) for d in drones):
                 continue  # a drone's box or its heading printed again over its table: the drone has it
         if norm(b.chapter) == GEAR:
-            b = replace(b, text="\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))
-                        if "| HAND |" in b.text else b.text)
+            b = replace(
+                b,
+                text=(
+                    "\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))
+                    if "| HAND |" in b.text
+                    else b.text
+                ),
+            )
         out.append(b)
     return out, []
 
@@ -107,8 +124,11 @@ def fix(b, parent2):
     elif norm(b.section) in ADD_ONS and b.level == 4:
         lines = b.text.splitlines()
         plain = [m for ln in lines if (m := _PLAIN_LABEL.fullmatch(ln.strip()))]
-        b = replace(b, labels={**{m.group(1): m.group(2) for m in plain}, **b.labels},
-                    text="\n".join(ln for ln in lines if not _PLAIN_LABEL.fullmatch(ln.strip())))
+        b = replace(
+            b,
+            labels={**{m.group(1): m.group(2) for m in plain}, **b.labels},
+            text="\n".join(ln for ln in lines if not _PLAIN_LABEL.fullmatch(ln.strip())),
+        )
         if b.labels:
             b = replace(b, name=re.sub(r"^(.*?)(\s*\(1 to \d+\))?$", r"\1 (Shifter add-on)\2", b.name))
     return b

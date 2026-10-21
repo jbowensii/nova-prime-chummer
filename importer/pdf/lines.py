@@ -1,5 +1,6 @@
 """A page's words into visual lines: rows by top (the SR6 layout groups by baseline: importer/sr6/layout.baseline_rows),
 a tilted line's letter sizes evened, the body size and the heading sizes."""
+
 import statistics
 
 LINE_TOLERANCE = 3  # pt; baseline jitter between regular/bold runs on one visual line

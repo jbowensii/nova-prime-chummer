@@ -1,4 +1,5 @@
 """xmlio.write_file survives Windows refusing the rename while the server is reading the destination (a status.xml poll)."""
+
 import os
 import tempfile
 import unittest
@@ -17,7 +18,9 @@ class WriteFileRetry(unittest.TestCase):
                 raise PermissionError(5, "Access is denied")
             real(a, b)
 
-        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", True), mock.patch.object(xmlio.os, "replace", flaky):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", True), mock.patch.object(
+            xmlio.os, "replace", flaky
+        ):
             p = os.path.join(d, "status.xml")
             xmlio.write_file(p, "x")
             self.assertEqual(open(p, encoding="utf8").read(), "x")

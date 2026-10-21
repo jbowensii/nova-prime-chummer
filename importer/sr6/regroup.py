@@ -5,6 +5,7 @@ pair, or pairs twice, is reported, never guessed.
 Output: a first line `<!-- regrouped v1 -->`, then blocks in reading order, each
 `<!-- item {json} -->` or `<!-- section {json} -->`, its tables (the row first when the json says "row"), its
 labelled lines, a blank line, its text, `<!-- end -->`."""
+
 import collections
 import difflib
 import itertools
@@ -83,11 +84,12 @@ def keys(name, aliases=None):
 def full_name(row, heading):
     """True when a heading prints a row's item under its full name, so the entry takes it: the row drops a maker or
     brand in front (`Bulldog` / `GMC Bulldog`) or cuts its last word short (`Laser mic` / `Laser microphone`). A heading
-    adding words after the row's name (`Ballista II Missile System`, a nickname) is a description title, not the name."""
+    adding words after the row's name (`Ballista II Missile System`, a nickname) is a description title, not the name.
+    """
     rw, hw = norm(row).split(), norm(heading).split()
     if not shorter_name(row, heading):
         return False
-    return hw[len(hw) - len(rw):] == rw or (len(rw) > 1 and hw[-1].startswith(rw[-1]) and hw[-1] != rw[-1])
+    return hw[len(hw) - len(rw) :] == rw or (len(rw) > 1 and hw[-1].startswith(rw[-1]) and hw[-1] != rw[-1])
 
 
 def shorter_name(row, heading):
@@ -97,10 +99,20 @@ def shorter_name(row, heading):
     rw, hw = norm(row).split(), norm(heading).split()
     if not rw or not hw or rw == hw or re.search(r"\band\b|&|/|,", heading):
         return False  # (a heading over several items names none of them in full)
-    if len(rw) < len(hw) and set(rw) <= set(hw) and (len(rw) > 1 or re.search(r"\d", rw[0])) and " ".join(rw) in " ".join(hw):
+    if (
+        len(rw) < len(hw)
+        and set(rw) <= set(hw)
+        and (len(rw) > 1 or re.search(r"\d", rw[0]))
+        and " ".join(rw) in " ".join(hw)
+    ):
         return True
-    return (len(rw) > 1 and "".join(rw[:-1]) == "".join(hw[:-1]) and len(rw[-1]) >= 3 and hw[-1].startswith(rw[-1])
-            and rw[-1] != hw[-1])
+    return (
+        len(rw) > 1
+        and "".join(rw[:-1]) == "".join(hw[:-1])
+        and len(rw[-1]) >= 3
+        and hw[-1].startswith(rw[-1])
+        and rw[-1] != hw[-1]
+    )
 
 
 def distinct(name):
@@ -130,6 +142,7 @@ def alt_names(name):
 
 # --- reading book.md -------------------------------------------------------------------------------------------
 
+
 def _cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
@@ -152,6 +165,7 @@ def md_tables(text):
 
 class _PLine(str):
     """A text line that keeps the PDF page it is printed on through a unit's body (a block's page breaks: _breaks)."""
+
     page = 0
 
 
@@ -180,6 +194,7 @@ def text_page(b, needle):
 
 class _Row(list):
     """A table row (its cells) with the name-only row it is grouped under, if any, and the other names it goes by."""
+
     group = ""
     aliases = ()
     product = maker = ""  # a line's rows: the product their table titles and the maker its heading prints first
@@ -205,8 +220,15 @@ def _row_groups(lines, rows):
     for ln in lines:
         first = ln.strip()[1:-1].split("|")[0].lstrip(" \t")
         cells = _cells(ln)
-        raw.append((cells[0], first.startswith(_INDENT), _BOLD_MARK in first[:3], _valueless(cells[1:]),
-                    re.sub(r"\d[\d,.]*", "N", " | ".join(cells[1:]))))
+        raw.append(
+            (
+                cells[0],
+                first.startswith(_INDENT),
+                _BOLD_MARK in first[:3],
+                _valueless(cells[1:]),
+                re.sub(r"\d[\d,.]*", "N", " | ".join(cells[1:])),
+            )
+        )
     group = [""] * len(raw)
     i = 0
     while i < len(raw):
@@ -217,7 +239,9 @@ def _row_groups(lines, rows):
             while j < len(raw) and raw[j][1]:
                 group[j] = name
                 if raw[j][3] and re.match(r"[^\W_]", raw[j][0]):
-                    name = raw[j][0]  # (an indented name-only row heads the indented rows after it: `Biosprayer` in `Biospike`)
+                    name = raw[j][
+                        0
+                    ]  # (an indented name-only row heads the indented rows after it: `Biosprayer` in `Biospike`)
                 j += 1
         elif bare and bold and name and j < len(raw) and not raw[j][1] and not raw[j][2] and not raw[j][3]:
             shape = raw[j][4]
@@ -311,7 +335,7 @@ def _elements(md):
             # wrapped lines too (a row of a few cells under it: `Ratings for | the long | barrel. | | …`)
             m = next((n for n in range(len(rows) - 1, 0, -1) if rows[n] and _FOOTNOTE_ROW.match(rows[n][0])), None)
             notes = []
-            if m is not None and len(rows) - m <= 3 and all(not all(c.strip() for c in r) for r in rows[m + 1:]):
+            if m is not None and len(rows) - m <= 3 and all(not all(c.strip() for c in r) for r in rows[m + 1 :]):
                 notes = [" ".join(" ".join(c.strip() for c in r if c.strip()) for r in rows[m:])]
                 rows = rows[:m]
             prev = out[-1] if out else None
@@ -335,8 +359,14 @@ def _elements(md):
             level, text = len(m.group(1)), m.group(2).strip()
             prev = out[-1] if out else None
             # a box title wrapped onto a second line: `##### Delta Force` + `##### and Support Rigger`
-            if (prev and prev[0] == "h" and prev[2][0] == level and text[0].islower() and _UPPER.search(text)
-                    and _UPPER.search(prev[2][1])):
+            if (
+                prev
+                and prev[0] == "h"
+                and prev[2][0] == level
+                and text[0].islower()
+                and _UPPER.search(text)
+                and _UPPER.search(prev[2][1])
+            ):
                 out[-1] = ("h", prev[1], (level, prev[2][1] + " " + text))
             # a heading printed twice in a row (`Spirits of Air` over its box `SPIRITS OF AIR`) is one
             elif not (prev and prev[0] == "h" and norm(prev[2][1]) == norm(text)):
@@ -355,18 +385,24 @@ def _elements(md):
 # a table whose header the converter set as one bold line and its rows as plain lines (`**WEAPON TYPE DV ATTACK
 # RATING AVAIL COST**`, `Zapper Exotic 2P 8/—/—/—/— 3(L) 200¥`): a name column first, the price columns last (a column
 # printed between AVAIL and COST: `AVAIL SENSOR COST`)
-_BOLD_HEAD = re.compile(r"^\*\*((?:NAME|ITEM|WEAPON|GEAR|DEVICE|ARMOR)\s[A-Z][A-Z0-9 ./()#-]*\s(?:AVAIL\.?|AVAILABILITY)"
-                        r"(?:\s+[A-Z]+)?\s+COST)\*\*$")
+_BOLD_HEAD = re.compile(
+    r"^\*\*((?:NAME|ITEM|WEAPON|GEAR|DEVICE|ARMOR)\s[A-Z][A-Z0-9 ./()#-]*\s(?:AVAIL\.?|AVAILABILITY)"
+    r"(?:\s+[A-Z]+)?\s+COST)\*\*$"
+)
 # its name column's header printed on two lines around the others (`**CYBERWARE**` / `**ESSENCE CAP COST**` /
 # `**FEATURE**`): the three lines
 _BOLD_WORD = re.compile(r"^\*\*([A-Z]{3,})\*\*$")
 _BOLD_REST = re.compile(r"^\*\*([A-Z][A-Z0-9 ./()#-]*\sCOST)\*\*$")
 _MULTI = ("ATTACK RATINGS", "ATTACK RATING", "DEVICE RATING", "TOP SPEED", "SPEED INT", "SPD INT")
 _PRICE_ONLY = re.compile(r"^[\d,.]+\s*¥$")
-_BOLD_SHAPES = {"RANGE": r"[\d.]+\s*(?i:km|m)|" + "[—–-]",  # (a range printed with its unit: two words)
-                "CAP": r"\[?\d+\]?|[—–-]", "CAPACITY": r"\[?\d+\]?|[—–-]", "COST": r"\+?[\d,.]+\s*¥.*|[—–-]",  # (`+2,500¥`)
-                # a rocket's class, its size in parentheses (`0 (60mm x .5m)`): printed over two or three lines
-                "CLASS": r"\d+(?:\s*\(\s*[\d.]+\s*mm\s*x\s*[\d.]+\s*m\))?|[—–-]"}
+_BOLD_SHAPES = {
+    "RANGE": r"[\d.]+\s*(?i:km|m)|" + "[—–-]",  # (a range printed with its unit: two words)
+    "CAP": r"\[?\d+\]?|[—–-]",
+    "CAPACITY": r"\[?\d+\]?|[—–-]",
+    "COST": r"\+?[\d,.]+\s*¥.*|[—–-]",  # (`+2,500¥`)
+    # a rocket's class, its size in parentheses (`0 (60mm x .5m)`): printed over two or three lines
+    "CLASS": r"\d+(?:\s*\(\s*[\d.]+\s*mm\s*x\s*[\d.]+\s*m\))?|[—–-]",
+}
 _WRAPS = {"CLASS"}  # the columns whose cell the books wrap over lines (besides the name)
 
 
@@ -389,8 +425,12 @@ def _bold_head(lines, i):
     ln = lines[i - 1].strip()
     if m := _BOLD_HEAD.match(ln):
         return _bold_columns(m.group(1)), i
-    if (m := _BOLD_WORD.match(ln)) and i + 1 < len(lines) and (r := _BOLD_REST.match(lines[i].strip())) \
-            and (w := _BOLD_WORD.match(lines[i + 1].strip())):
+    if (
+        (m := _BOLD_WORD.match(ln))
+        and i + 1 < len(lines)
+        and (r := _BOLD_REST.match(lines[i].strip()))
+        and (w := _BOLD_WORD.match(lines[i + 1].strip()))
+    ):
         return [f"{m.group(1)} {w.group(1)}"] + _bold_columns(r.group(1)), i + 2
     return None
 
@@ -425,7 +465,7 @@ def _bold_row(cols, ln, cost=None):
             break
         v = m.group(1).strip()
         vals.append(v + "".join(x for p, x in marks.items() if m.start(1) < p <= m.start(1) + len(v)))
-        s = s[:m.start(1)].strip()
+        s = s[: m.start(1)].strip()
     return s, vals[::-1]
 
 
@@ -442,6 +482,7 @@ def _wrapped(parts, shape):
         for cut in range(len(lines[k]), -1, -1):  # (the name's words first)
             for n, c in splits(k + 1):
                 yield [lines[k][:cut]] + n, [lines[k][cut:]] + c
+
     for n, c in splits(0):
         cell = " ".join(w for x in c for w in x)
         if sum(1 for x in c if x) > 1 and re.fullmatch(rf"(?:{shape})", cell) and any(n):
@@ -457,7 +498,7 @@ def _centered(items):
     rows = [k for k, it in enumerate(items) if it[0] == "row"]
     if not rows:
         return None
-    gaps = [[it for it in items[a + 1:b] if it[0] == "frag"] for a, b in zip([-1] + rows, rows + [len(items)])]
+    gaps = [[it for it in items[a + 1 : b] if it[0] == "frag"] for a, b in zip([-1] + rows, rows + [len(items)])]
 
     def solve(k, over):
         nxt = gaps[k + 1]
@@ -470,6 +511,7 @@ def _centered(items):
             if rest is not None:
                 return [(over, nxt[:u])] + rest
         return None
+
     return solve(0, gaps[0])
 
 
@@ -487,8 +529,9 @@ def _bold_table(cols, lines, i):
         if not ln or _PAGE.match(ln):
             j += 1
             continue
-        if ln.startswith("**Note:") and any(_bold_row(cols, x.strip()) is not None for x in lines[j + 1:j + 8]
-                                            if not x.startswith(("#", "|", "**"))):
+        if ln.startswith("**Note:") and any(
+            _bold_row(cols, x.strip()) is not None for x in lines[j + 1 : j + 8] if not x.startswith(("#", "|", "**"))
+        ):
             notes.append(lines[j])  # (a note on the rows over it, the table going on under it)
             j += 1
             continue
@@ -523,7 +566,9 @@ def _bold_table(cols, lines, i):
                 continue
             nxt = items[k + 1] if k + 1 < len(items) else None
             prev = rows[-1] if rows and items[k - 1] is rows[-1] else None
-            back = prev is not None and (it[1].startswith("(") or prev[3] and not prev[4] and not (nxt and nxt[0] == "row" and nxt[3]))
+            back = prev is not None and (
+                it[1].startswith("(") or prev[3] and not prev[4] and not (nxt and nxt[0] == "row" and nxt[3])
+            )
             if back:
                 prev[4].append(it[1])
                 prev[1] = f"{prev[1]} {it[1]}"
@@ -535,8 +580,10 @@ def _bold_table(cols, lines, i):
     return cols, [[r[1]] + [v or "" for v in r[2]] for r in rows], j, notes
 
 
-_TEXT_ROW = re.compile(r"^(?P<name>[A-Z(][^|¥]*?\S)\s+(?P<avail>\d{1,2}\s*(?:\(\s*[LIF]\s*\)|[LIF])?|[—–-])\s+"
-                       r"(?P<cost>(?:Rating\s*[x×]\s*)?\d[\d,.]*\s*¥.*)$")
+_TEXT_ROW = re.compile(
+    r"^(?P<name>[A-Z(][^|¥]*?\S)\s+(?P<avail>\d{1,2}\s*(?:\(\s*[LIF]\s*\)|[LIF])?|[—–-])\s+"
+    r"(?P<cost>(?:Rating\s*[x×]\s*)?\d[\d,.]*\s*¥.*)$"
+)
 _GROUP_LINE = re.compile(r"^[A-Z][\w'’&./-]*(?:\s+[\w'’&./-]+){0,5}$")
 
 
@@ -576,8 +623,20 @@ def _text_rows(header, lines, i):
 
 # column headers the books set on two lines (a general vocabulary of the stat columns): the converter, reading a
 # header cell's two lines letter by letter across, can interleave them (`S INP TD` for SPD over INT)
-TWO_LINE_HEADERS = ("SPD INT", "TOP SPD", "SPEED INT", "SPEED TOP", "TOP SPEED", "SPEED INTERVAL", "ATTACK RATINGS",
-                    "DEVICE RATING", "DATA PROCESSING", "DEFENSE RATING", "MOD SLOTS", "SIZE CLASS")
+TWO_LINE_HEADERS = (
+    "SPD INT",
+    "TOP SPD",
+    "SPEED INT",
+    "SPEED TOP",
+    "TOP SPEED",
+    "SPEED INTERVAL",
+    "ATTACK RATINGS",
+    "DEVICE RATING",
+    "DATA PROCESSING",
+    "DEFENSE RATING",
+    "MOD SLOTS",
+    "SIZE CLASS",
+)
 
 
 def _interleaves(s, a, b):
@@ -586,7 +645,9 @@ def _interleaves(s, a, b):
         return False
     ok = {(0, 0)}
     for k, ch in enumerate(s, 1):
-        ok = {(i + 1, j) for i, j in ok if i < len(a) and a[i] == ch} | {(i, j + 1) for i, j in ok if j < len(b) and b[j] == ch}
+        ok = {(i + 1, j) for i, j in ok if i < len(a) and a[i] == ch} | {
+            (i, j + 1) for i, j in ok if j < len(b) and b[j] == ch
+        }
         if not ok:
             return False
     return (len(a), len(b)) in ok
@@ -598,8 +659,14 @@ def deinterleave(cell):
     s = re.sub(r"[\s.]", "", cell.upper())
     if not s.isalpha() or cell.upper().strip() in TWO_LINE_HEADERS:
         return None
-    return next((h for h in TWO_LINE_HEADERS if (w := h.split()) and len(w) == 2
-                 and (_interleaves(s, w[0], w[1]) or _interleaves(s, w[1], w[0]))), None)
+    return next(
+        (
+            h
+            for h in TWO_LINE_HEADERS
+            if (w := h.split()) and len(w) == 2 and (_interleaves(s, w[0], w[1]) or _interleaves(s, w[1], w[0]))
+        ),
+        None,
+    )
 
 
 _PRICE_HEAD = {"AVAIL", "AVAILABILITY", "AVAIL.", "COST"}
@@ -610,8 +677,7 @@ def _header_rest(header, rows):
     """A header cell set on two lines (`ATTACK` over `RATINGS`): the first row holds only the rest of some header cells
     (capitals, no digits, its name cell empty) -> joined into the header."""
     r = rows[0] if rows else None
-    if (r and len(r) == len(header) and not r[0] and any(r)
-            and all(not c or _HEAD_WORD.fullmatch(c) for c in r)):
+    if r and len(r) == len(header) and not r[0] and any(r) and all(not c or _HEAD_WORD.fullmatch(c) for c in r):
         return [f"{h} {c}".strip() for h, c in zip(header, r)], rows[1:]
     return header, rows
 
@@ -625,8 +691,13 @@ _COLUMN_SHAPES = {
     "AVAIL": rf"\d+\s*(?:\(?[LIF]\)?)?|{_DASH}",
     "COST": rf"[\d,.]+\s*¥.*|{_DASH}",
 }
-_COLUMN_NAMES = {"MODE": "MODES", "ATTACK RATING": "ATTACK RATINGS", "AR": "ATTACK RATINGS",
-                 "AVAILABILITY": "AVAIL", "AVAIL.": "AVAIL"}
+_COLUMN_NAMES = {
+    "MODE": "MODES",
+    "ATTACK RATING": "ATTACK RATINGS",
+    "AR": "ATTACK RATINGS",
+    "AVAILABILITY": "AVAIL",
+    "AVAIL.": "AVAIL",
+}
 
 
 def _shape(h):
@@ -645,9 +716,13 @@ def _repair_row(header, row):
     where both halves fit their columns' shapes (_COLUMN_SHAPES), the later cells move back into place and the stray
     one goes. Only when every shaped cell then fits; otherwise the row stays as printed. The converse: the Essence run into
     the name (`Nonconductive 0.2 | 2(L) | 5,000¥ |`, every later cell one column to the left, the last one empty)."""
-    if len(row) == len(header) > 3 and "ESS" in header[1].upper() and not row[-1].strip() \
-            and (m := re.fullmatch(r"(.*\S)\s+(\d*\.\d+)", row[0].strip())) \
-            and all(_shape(h) and _fits(h, v) for h, v in zip(header[2:], row[1:-1])):
+    if (
+        len(row) == len(header) > 3
+        and "ESS" in header[1].upper()
+        and not row[-1].strip()
+        and (m := re.fullmatch(r"(.*\S)\s+(\d*\.\d+)", row[0].strip()))
+        and all(_shape(h) and _fits(h, v) for h, v in zip(header[2:], row[1:-1]))
+    ):
         return [m.group(1), m.group(2)] + row[1:-1]
     if len(row) not in (len(header), len(header) - 1) or all(_fits(h, v) for h, v in zip(header, row)):
         return row
@@ -660,7 +735,7 @@ def _repair_row(header, row):
                 continue  # (never inside a number: `7,500¥` under AVAIL is the book's, not `7` and `,500¥`)
             x, y = v[:k].strip(), v[k:].strip()
             if x and y and _fits(a, x) and _fits(b, y):
-                fixed = (row[:i] + [x, y] + row[i + 1:])[:len(header)]
+                fixed = (row[:i] + [x, y] + row[i + 1 :])[: len(header)]
                 if all(_fits(h, c) for h, c in zip(header, fixed)):
                     return fixed
     return row
@@ -678,24 +753,57 @@ def _wrapped_rows(header, rows):
     while i < len(rows):
         a = rows[i]
         b = rows[i + 1] if i + 1 < len(rows) else None
-        if b and len(a) == len(b) == len(hs) and a[0].strip() and not a[0].strip().startswith("(") \
-                and all(not a[k].strip() and b[k].strip() for k in need) and any(c.strip() for c in a[1:]) \
-                and all(c.strip().endswith("/") for c in a[1:] if c.strip()):
-            out.append(_Row([(x.strip() + ("" if x.strip().endswith("/") else " ") + y.strip()).strip() for x, y in zip(a, b)]))
+        if (
+            b
+            and len(a) == len(b) == len(hs)
+            and a[0].strip()
+            and not a[0].strip().startswith("(")
+            and all(not a[k].strip() and b[k].strip() for k in need)
+            and any(c.strip() for c in a[1:])
+            and all(c.strip().endswith("/") for c in a[1:] if c.strip())
+        ):
+            out.append(
+                _Row([(x.strip() + ("" if x.strip().endswith("/") else " ") + y.strip()).strip() for x, y in zip(a, b)])
+            )
             i += 2
             continue
         # (the converse: a row printing its prices, its cells' rest on the next line, `Dart | SS | As drug | 10/6/– |
         # … | 400¥ +` over `Pistol | | | /–/– | | | drug`: that line prints no price, only under the row's cells, and a
         # cell it continues breaks off at a `/`, `+`, `–` or `,`)
         avail = [k for k in need if hs[k] in ("AVAIL", "AVAILABILITY")]
-        if b and len(a) == len(b) == len(hs) and avail and all(a[k].strip() and not b[k].strip() for k in avail) \
-                and all(a[k].strip() for k, c in enumerate(b) if c.strip()) \
-                and sum(1 for c in b if c.strip()) * 2 <= len(b) and not re.match(r"\s*[*†‡]", b[0]) \
-                and any(re.search(r"[/+,]$", a[k].strip()) or c.strip()[:1] == "/"
-                        or re.search(r"[–—-]$", a[k].strip()) and 1 < len(a[k].split("/")) < 5
-                        for k, c in enumerate(b) if c.strip()):
-            out.append(_Row([x.strip() if not y.strip() else (x.strip() + ("" if x.strip().endswith("/") or y.strip().startswith("/")
-                                                                          else " ") + y.strip()) for x, y in zip(a, b)]))
+        if (
+            b
+            and len(a) == len(b) == len(hs)
+            and avail
+            and all(a[k].strip() and not b[k].strip() for k in avail)
+            and all(a[k].strip() for k, c in enumerate(b) if c.strip())
+            and sum(1 for c in b if c.strip()) * 2 <= len(b)
+            and not re.match(r"\s*[*†‡]", b[0])
+            and any(
+                re.search(r"[/+,]$", a[k].strip())
+                or c.strip()[:1] == "/"
+                or re.search(r"[–—-]$", a[k].strip())
+                and 1 < len(a[k].split("/")) < 5
+                for k, c in enumerate(b)
+                if c.strip()
+            )
+        ):
+            out.append(
+                _Row(
+                    [
+                        (
+                            x.strip()
+                            if not y.strip()
+                            else (
+                                x.strip()
+                                + ("" if x.strip().endswith("/") or y.strip().startswith("/") else " ")
+                                + y.strip()
+                            )
+                        )
+                        for x, y in zip(a, b)
+                    ]
+                )
+            )
             i += 2
             continue
         out.append(a)
@@ -727,8 +835,14 @@ def _products(header, rows, line, title="", heads=frozenset()):
     the table isn't one (one set of prices, or a band line that doesn't name each set)."""
     up = [h.upper() for h in header]
     ends = [i for i, h in enumerate(up) if h.startswith("COST")]
-    if len(ends) < 2 or not line or line.startswith(("|", "#", "*", "<")) or len(line) > 60 or ":" in line \
-            or up[0] not in NAME_COLUMNS | {"SIZE"}:
+    if (
+        len(ends) < 2
+        or not line
+        or line.startswith(("|", "#", "*", "<"))
+        or len(line) > 60
+        or ":" in line
+        or up[0] not in NAME_COLUMNS | {"SIZE"}
+    ):
         return None  # (its first column names the rows; a title line `krime party: SR6` names no band)
     sets = [list(range(a + 1, b + 1)) for a, b in zip([0] + ends, ends)]
     if ends[-1] != len(header) - 1 or any(sum(up[i].startswith("AVAIL") for i in s) != 1 for s in sets):
@@ -742,7 +856,11 @@ def _products(header, rows, line, title="", heads=frozenset()):
     # title's when the book heads that class (`Autocannon Ammunition`: its `Autocannons`), else a later band's words
     # after its first (`HEX Assault Cannon`), its first word the band's tag
     own = _AMMO_WORD.sub("", title).strip()
-    cls = own if own and own != title and set(keys(own)) & heads else         next((b.split(None, 1)[1] for b in names[1:] if len(b.split()) > 1), "")
+    cls = (
+        own
+        if own and own != title and set(keys(own)) & heads
+        else next((b.split(None, 1)[1] for b in names[1:] if len(b.split()) > 1), "")
+    )
     tag = lambda b: b.split()[0] if len(b.split()) > 1 else b  # noqa: E731
     out_h = first + extra
     out = []
@@ -764,12 +882,18 @@ def _stacked(t, header, rows):
     `NAME | TYPE | DV | MODE | ATTACK RATINGS` over `AMMO | AVAIL | COST`): as many rows, headers sharing no cell, and
     the second band carrying the price columns."""
     up = {h.upper() for h in t.header}
-    return (bool(rows) and len(rows) == len(t.rows) and not up & {h.upper() for h in header}
-            and bool(_PRICE_HEAD & {h.upper() for h in header}) and not _PRICE_HEAD & up
-            and not any(a[:1] == b[:1] and a[:1] != [""] for a, b in zip(t.rows, rows)))  # (a second table of the names)
+    return (
+        bool(rows)
+        and len(rows) == len(t.rows)
+        and not up & {h.upper() for h in header}
+        and bool(_PRICE_HEAD & {h.upper() for h in header})
+        and not _PRICE_HEAD & up
+        and not any(a[:1] == b[:1] and a[:1] != [""] for a, b in zip(t.rows, rows))
+    )  # (a second table of the names)
 
 
 # --- units: what one heading (or a chapter's lead) holds --------------------------------------------------------
+
 
 @dataclass
 class _Unit:
@@ -807,8 +931,11 @@ def _names_class(header, first):
     """A table stacked under another's title whose first header names its own class of things (`FORMULAE`,
     `MAGICAL SUPPLIES` under `foci`): that header is its title."""
     h = (header[0] if header else "").strip().upper()
-    return (bool(re.fullmatch(r"[A-Z][A-Z ]{3,}", h)) and h not in NAME_COLUMNS
-            and h != (first[0] if first else "").strip().upper())
+    return (
+        bool(re.fullmatch(r"[A-Z][A-Z ]{3,}", h))
+        and h not in NAME_COLUMNS
+        and h != (first[0] if first else "").strip().upper()
+    )
 
 
 # a line naming a box's variant over its bands: lower case, one to three words (`command car`, `battle wagon`)
@@ -827,7 +954,9 @@ _NEW_ENTRY = re.compile(r"new\s+[a-z ]+?:\s*[A-Za-z]")
 # three between commas and brackets)
 _PROSE = re.compile(r"[a-z]{2}[.!?][”’\"')]*\s+[A-Z]|(?:\b[A-Za-z][a-z’'-]*\s+){7}[A-Za-z][a-z’'-]*\b")
 _MARK = re.compile(r"\s*(?:\*|[†‡]|//)")  # a footnote, a bold run-in or an art title (`// **VODYANOY** //`)
-_MID_LABEL = re.compile(r"(?<=[^\s;])\s+\*\*([A-Z][A-Za-z ()/]{1,30}?)\*?:\*\*\s*")  # (not `; **Powers:**`: the readers')
+_MID_LABEL = re.compile(
+    r"(?<=[^\s;])\s+\*\*([A-Z][A-Za-z ()/]{1,30}?)\*?:\*\*\s*"
+)  # (not `; **Powers:**`: the readers')
 
 
 def _foreign(value, last, v, ahead):
@@ -892,7 +1021,11 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
             label = None
             if level == 1:  # the chapter heading itself
                 continue
-            if cur.kind == "item" and level > cur.level and (_FIELD_HEAD.fullmatch(text) or norm(text) in templates and not fresh):
+            if (
+                cur.kind == "item"
+                and level > cur.level
+                and (_FIELD_HEAD.fullmatch(text) or norm(text) in templates and not fresh)
+            ):
                 # a field set as a heading under the item (`##### Bonus` over `5 Karma per level`), or a part heading
                 # every entry of the section prints (`##### Advantages` under each mentor spirit): its labelled line
                 cur.body.append(f"**{text}:**")
@@ -943,8 +1076,11 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     continue  # an art caption: dropped, the text flows on
                 # a stat box: a title an item heading has, or one-row bands followed by labelled lines
                 j = i
-                while j < end and els[j][0] == "t" \
-                        and len([r for r in els[j][2].rows if not _FOOTNOTE_ROW.match(r[0] if r else "")]) == 1:
+                while (
+                    j < end
+                    and els[j][0] == "t"
+                    and len([r for r in els[j][2].rows if not _FOOTNOTE_ROW.match(r[0] if r else "")]) == 1
+                ):
                     j += 1  # (a one-row band, its footnote set as a second row: `*Attack | Ratings are | …`)
                 k = j
                 while k < end and els[k][0] == "x" and _FOOTNOTE_LINE.match(els[k][2]):
@@ -952,13 +1088,19 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # (a title over a list of several rows is a table title even when an item heading has its name; a
                 # one-row band titled with part of the item heading's name is a box: `ingram white knight mod 2` under
                 # `Ingram White Knight Mod 1 and Mod 2`, `rhino` under the caption-cased `rEVOlution Arms Rhino, …`)
-                boxed = (k < end and els[k][0] == "x" and _LABEL.match(els[k][2])) or \
-                    (j > i or els[i][0] != "t") and any(k in item_keys for k in keys(text, aliases)) or \
-                    j > i and any(set(norm(text).split()) <= set(norm(n).split()) for n in (head_name(), caption) if n) or \
-                    j > i and not any(re.match(r"[^\W\d_]{2}", (r[0] if r else "")) for x in range(i, j)
-                                      for r in els[x][2].rows) \
-                    and any({"AVAIL", "AVAIL.", "COST"} & {h.upper() for h in els[x][2].header} for x in range(i, j)) \
-                    and difflib.SequenceMatcher(None, norm(text), norm(cur.name)).ratio() < 0.8  # (not `accesory rails`)
+                boxed = (
+                    (k < end and els[k][0] == "x" and _LABEL.match(els[k][2]))
+                    or (j > i or els[i][0] != "t")
+                    and any(k in item_keys for k in keys(text, aliases))
+                    or j > i
+                    and any(set(norm(text).split()) <= set(norm(n).split()) for n in (head_name(), caption) if n)
+                    or j > i
+                    and not any(
+                        re.match(r"[^\W\d_]{2}", (r[0] if r else "")) for x in range(i, j) for r in els[x][2].rows
+                    )
+                    and any({"AVAIL", "AVAIL.", "COST"} & {h.upper() for h in els[x][2].header} for x in range(i, j))
+                    and difflib.SequenceMatcher(None, norm(text), norm(cur.name)).ratio() < 0.8
+                )  # (not `accesory rails`)
                 # (priced bands naming no row: `flash scope` over `(5–10)S | SA | … | 5,000¥`)
                 if not boxed:  # a table title: its tables join the flow, the text goes on in the same unit
                     first = i
@@ -986,8 +1128,13 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
         elif kind == "t":
             fresh, label = False, None
             v.section = section
-            if not v.title and i >= 2 and els[i - 2][0] == "x" and _SET_TITLE.fullmatch(els[i - 2][2].strip()) \
-                    and not _same(els[i - 2][2].strip(), cur.name):
+            if (
+                not v.title
+                and i >= 2
+                and els[i - 2][0] == "x"
+                and _SET_TITLE.fullmatch(els[i - 2][2].strip())
+                and not _same(els[i - 2][2].strip(), cur.name)
+            ):
                 v.title, v.titled = els[i - 2][2].strip(), True  # a title the converter set as a line (`sprayers`)
             # a section's tables are its text; an item's or box's tables right under its heading are its stat box, and
             # so is a later one with a header of that box (a box's next item printed after a note on the one above)
@@ -996,9 +1143,16 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
             if boxed and cur.kind != "section" and variant:
                 v.variant = variant
             variant = ""
-        elif (mode == "box" and cur.kind != "section" and _VARIANT_LINE.fullmatch(v.strip()) and i < end
-              and els[i][0] == "t"):
-            variant = v.strip()[:1].upper() + v.strip()[1:]  # a box's variant over its bands (`command car`): their TYPE
+        elif (
+            mode == "box"
+            and cur.kind != "section"
+            and _VARIANT_LINE.fullmatch(v.strip())
+            and i < end
+            and els[i][0] == "t"
+        ):
+            variant = (
+                v.strip()[:1].upper() + v.strip()[1:]
+            )  # a box's variant over its bands (`command car`): their TYPE
         elif mode == "box" and cur.stats and _FOOTNOTE_LINE.match(v):
             cur.body.append(v)  # a footnote under a box's band: the box goes on (its labelled lines next)
         else:
@@ -1031,20 +1185,42 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 if mode == "box":
                     cur.box_labels = True
                     continue
-            elif label and not v.startswith("•") and (listy or not _SENTENCE_END.search(last) and (
-                    (mode == "box" and cur.stats) or not v[:1].isupper() or last.endswith((",", "-"))
-                    or (i >= end or els[i][0] != "x") and not _SENTENCE_END.search(v))):
+            elif (
+                label
+                and not v.startswith("•")
+                and (
+                    listy
+                    or not _SENTENCE_END.search(last)
+                    and (
+                        (mode == "box" and cur.stats)
+                        or not v[:1].isupper()
+                        or last.endswith((",", "-"))
+                        or (i >= end or els[i][0] != "x")
+                        and not _SENTENCE_END.search(v)
+                    )
+                )
+            ):
                 # a wrapped value, or the next entry of a label printed alone on its line (`**Weapons:**` over one
                 # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text (but a
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.
                 targets, key = label
-                ahead = [e[2] for e in itertools.takewhile(lambda e: e[0] == "x" and not _LABEL.match(e[2]),
-                                                           els[i:min(i + 2, end)])]
-                banded = cur.stats or any(isinstance(b, _Table) and {"B", "A", "R", "S"} <= set(b.header) for b in cur.body)
+                ahead = [
+                    e[2]
+                    for e in itertools.takewhile(
+                        lambda e: e[0] == "x" and not _LABEL.match(e[2]), els[i : min(i + 2, end)]
+                    )
+                ]
+                banded = cur.stats or any(
+                    isinstance(b, _Table) and {"B", "A", "R", "S"} <= set(b.header) for b in cur.body
+                )
                 if banded and explaining is not label and _explains(targets[0][key], v):
-                    explaining = label  # (a sentence on the entry above, `The Fichetti Pain Inducer utilizes …`: the value's)
-                elif banded and (explained is label or explaining is not label and _foreign(targets[0][key], last, v, ahead)):
+                    explaining = (
+                        label  # (a sentence on the entry above, `The Fichetti Pain Inducer utilizes …`: the value's)
+                    )
+                elif banded and (
+                    explained is label or explaining is not label and _foreign(targets[0][key], last, v, ahead)
+                ):
                     label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
                     cur.body.append(v)  # (a being's band in its text too: after shadowtalk)
                     continue
@@ -1052,15 +1228,20 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # Whisper Nets p. 120: the rest of the line starts it)
                 mid = _MID_LABEL.search(v) if banded else None
                 for d in targets:
-                    prev, part = d[key], v[:mid.start()].rstrip(" ,;") if mid else v.strip()
-                    joined = prev[:-1] if re.search(r"[a-z]-$", prev) and part[:1].islower() else prev + " " if prev else ""
+                    prev, part = d[key], v[: mid.start()].rstrip(" ,;") if mid else v.strip()
+                    joined = (
+                        prev[:-1] if re.search(r"[a-z]-$", prev) and part[:1].islower() else prev + " " if prev else ""
+                    )
                     d[key] = joined + part
                 last = v
-                if explaining is label and _SENTENCE_END.search(v.strip()) \
-                        and sum(map(targets[0][key].count, "[(")) <= sum(map(targets[0][key].count, "])")):  # (not `(p.`)
+                if (
+                    explaining is label
+                    and _SENTENCE_END.search(v.strip())
+                    and sum(map(targets[0][key].count, "[(")) <= sum(map(targets[0][key].count, "])"))
+                ):  # (not `(p.`)
                     explained = label  # (the sentence on the entry ends the value: what follows is the block's text)
                 if mid:
-                    key, value = mid.group(1).strip(), v[mid.end():].strip()
+                    key, value = mid.group(1).strip(), v[mid.end() :].strip()
                     label = ([cur.labels], key) if key not in cur.labels else None
                     cur.labels.setdefault(key, value)
                     listy = not value
@@ -1074,6 +1255,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
 
 
 # --- pairing ----------------------------------------------------------------------------------------------------
+
 
 def _merge_boxes(units, aliases, report):
     """A titled stat box joins the nearest description with its key that has no box of its own. Several boxes
@@ -1099,8 +1281,15 @@ def _merge_boxes(units, aliases, report):
             u.body, u.labels, u.tags = d.body + u.body, {**d.labels, **u.labels}, u.tags or d.tags
             u.shared = True
         d.merged = True
-        report.append({"kind": "shared-description", "name": d.name, "rows": "; ".join(u.name for u in boxes),
-                       "page": d.page, "chapter": d.chapter})
+        report.append(
+            {
+                "kind": "shared-description",
+                "name": d.name,
+                "rows": "; ".join(u.name for u in boxes),
+                "page": d.page,
+                "chapter": d.chapter,
+            }
+        )
 
 
 def _share_runs(units, report):
@@ -1112,8 +1301,15 @@ def _share_runs(units, report):
         if boxed and u.has_text() and run:
             for r in run:
                 r.body = [b for b in u.body if isinstance(b, str)]
-            report.append({"kind": "shared-description", "name": u.name, "rows": "; ".join(r.name for r in run + [u]),
-                           "page": u.page, "chapter": u.chapter})
+            report.append(
+                {
+                    "kind": "shared-description",
+                    "name": u.name,
+                    "rows": "; ".join(r.name for r in run + [u]),
+                    "page": u.page,
+                    "chapter": u.chapter,
+                }
+            )
         run = run + [u] if boxed and not u.has_text() else []
 
 
@@ -1156,18 +1352,32 @@ def _own_rows(t, u, lower, makers=frozenset()):
     maker = len(u.name.split()) > 1 and norm(u.name.split()[0]) in makers  # (a learned maker's heading)
     # (a TYPE table titled `modifications` under the item it modifies, `Hunter's Alloy`: the heading's versions)
     kinds = hs[:1] == ["TYPE"] and bool(title) and title <= {"modification", "modifications"}
-    if not t.titled or not title or not (title <= name or kinds) or not hs or cost is None \
-            or hs[0] not in (_ITEM_COLUMNS | {"TYPE"} if maker or kinds else _ITEM_COLUMNS) \
-            or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs):
+    if (
+        not t.titled
+        or not title
+        or not (title <= name or kinds)
+        or not hs
+        or cost is None
+        or hs[0] not in (_ITEM_COLUMNS | {"TYPE"} if maker or kinds else _ITEM_COLUMNS)
+        or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs)
+    ):
         return None
     # (a footnote or note set as a row: a mark or a label in its first cell, or a sentence there)
-    rows = [r for r in t.rows if r and re.match(r"[^\W\d_]", r[0]) and not re.search(r"[*†‡:]", r[0])
-            and len(r[0].split()) <= 6]
+    rows = [
+        r
+        for r in t.rows
+        if r and re.match(r"[^\W\d_]", r[0]) and not re.search(r"[*†‡:]", r[0]) and len(r[0].split()) <= 6
+    ]
     if sum(1 for r in rows if len(r) > cost and re.search(r"\d", r[cost])) < 2:
         return None
     head = set(norm(u.name).split())
-    generic = all(len(r[0].split()) <= 2 and not re.search(r"\d", r[0]) and not head & set(norm(r[0]).split())
-                  and all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", r[0])) for r in rows)
+    generic = all(
+        len(r[0].split()) <= 2
+        and not re.search(r"\d", r[0])
+        and not head & set(norm(r[0]).split())
+        and all(w.lower() in lower for w in re.findall(r"[A-Za-z]+", r[0]))
+        for r in rows
+    )
     # a brand: the heading prints a maker before its title's words (`Zoé` + `heritage line`: the brand `Zoé Heritage
     # Line`). Its rows are named with it, as the editions name them (owner, 2026-10-07): `Zoé Heritage Bearded Axe`,
     # searched also as `Heritage Bearded Axe`, `Zoé Bearded Axe` (not the bare row: the generic `Tonfa` is another
@@ -1231,11 +1441,18 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         transit` under `Rapid Transit`: its variants, the recipe's to read)."""
         hs = [h.upper() for h in t.header]
         cost = next((i for i, h in enumerate(hs) if h.startswith("COST")), None)
-        if cost is None or len(hs) < 3 or len(t.rows) < 2 or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs) \
-                or hs[0] in _PRICE_HEAD or not all(r and re.match(r"[^\W\d_]", r[0].lstrip(_INDENT + _BOLD_MARK + " ")) for r in t.rows):
+        if (
+            cost is None
+            or len(hs) < 3
+            or len(t.rows) < 2
+            or not {"AVAIL", "AVAILABILITY", "AVAIL."} & set(hs)
+            or hs[0] in _PRICE_HEAD
+            or not all(r and re.match(r"[^\W\d_]", r[0].lstrip(_INDENT + _BOLD_MARK + " ")) for r in t.rows)
+        ):
             return False
-        priced = sum(1 for r in t.rows if len(r) > cost and re.search(r"\d", r[cost])
-                     and not re.match(r"\s*[x×]", r[cost]))
+        priced = sum(
+            1 for r in t.rows if len(r) > cost and re.search(r"\d", r[cost]) and not re.match(r"\s*[x×]", r[cost])
+        )
         if 2 * priced < len(t.rows):
             return False
         own = [r for r in t.rows if norm(r[0]) not in later]  # (the rows a later chapter prints again are its)
@@ -1259,9 +1476,12 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
         for t in [b for b in u.body if isinstance(b, _Table)]:
             # (not a list of the items its own subheadings describe: `security devices` over `Key Lock`, `Maglock`)
             # nor of items described anywhere, half of them (`stun cages` over `Trode Patch`, `Smart Manacles`)
-            if not u.stats and 2 * sum(1 for r in t.rows if r and found(r[0])) < len(t.rows) \
-                    and not any(id(d) in under(u) for r in t.rows if r for d in found(r[0])) \
-                    and (rows := _own_rows(t, u, lower, makers)):
+            if (
+                not u.stats
+                and 2 * sum(1 for r in t.rows if r and found(r[0])) < len(t.rows)
+                and not any(id(d) in under(u) for r in t.rows if r for d in found(r[0]))
+                and (rows := _own_rows(t, u, lower, makers))
+            ):
                 t.rows, t.catalog, t.own = rows, True, True  # (its rows are its own: no description takes them)
                 tables.append(t)
                 own.add(id(t))
@@ -1270,14 +1490,33 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             # a list of ammunition types titled as one (`warhead types`) in a section's text: its rows are entries,
             # priced as modifiers of the round's (`x 2 Base Cost`, `+100¥`), a nameless row a band of the one above
             # the options a section's own box prices after its band (`weapon security system`: CAPACITY, then OPTIONS)
-            options = u.kind == "section" and (bool(t.parent) and _same(t.parent, u.name)
-                                               or bool(t.title) and _same(t.title, u.name) and not t.titled) and price_list(t)
-            typed = u.kind == "section" and bool(TYPES_TITLE.search(t.title or "")) \
+            options = (
+                u.kind == "section"
+                and (
+                    bool(t.parent)
+                    and _same(t.parent, u.name)
+                    or bool(t.title)
+                    and _same(t.title, u.name)
+                    and not t.titled
+                )
+                and price_list(t)
+            )
+            typed = (
+                u.kind == "section"
+                and bool(TYPES_TITLE.search(t.title or ""))
                 and (t.header[0] if t.header else "").upper() in NAME_COLUMNS
+            )
             if typed:
                 t.rows = _band_rows(t.header, t.rows)
-            t.catalog = is_catalog(t) or typed or options or u.kind == "item" and (t.titled or cls) \
-                and not _same(t.title, u.name) and price_list(t)
+            t.catalog = (
+                is_catalog(t)
+                or typed
+                or options
+                or u.kind == "item"
+                and (t.titled or cls)
+                and not _same(t.title, u.name)
+                and price_list(t)
+            )
             if t.catalog and cls and not t.title:  # (products under an item heading: that heading is their title)
                 t.title = u.name if t.products and u.kind == "item" else t.header[0].lower()
             tables += [t] if t.catalog else []
@@ -1293,8 +1532,9 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             described = variants if isinstance(variants, set) else set()
             # (a row of two words or more the book describes anywhere: `Injector Pen`; one word is a variant's:
             # `Synthetic`, `Obvious` name sections of their own too)
-            t.rows = _variants(t.rows, lambda n: found(n) or len(n.split()) > 1
-                               and any(k in described for k in keys(n, aliases)))
+            t.rows = _variants(
+                t.rows, lambda n: found(n) or len(n.split()) > 1 and any(k in described for k in keys(n, aliases))
+            )
 
     # each row takes the nearest description with its key that no row with the same name took yet; the widest
     # tables (the stat tables, not a list of names) choose first
@@ -1320,8 +1560,17 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
                 if k and full_name(r[0], d.name):  # (paired by an alias: the heading prints the full name)
                     d.full.add(id(r))
             if k and k in seen:
-                report.append({"kind": "duplicate", "of": "row", "name": r[0], "table": t.title or t.header[0],
-                               "page": t.page, "chapter": chapter, "paired": d.name if d else ""})
+                report.append(
+                    {
+                        "kind": "duplicate",
+                        "of": "row",
+                        "name": r[0],
+                        "table": t.title or t.header[0],
+                        "page": t.page,
+                        "chapter": chapter,
+                        "paired": d.name if d else "",
+                    }
+                )
             elif not d:
                 unpaired.append((t, r))
             seen.add(k)
@@ -1353,9 +1602,14 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             # (what the heading is: `… are miniaturized light emitters`, the row right after is/are and at most two
             # modifiers; not one it mentions, `is compatible with all space suits`)
             row = r"\s+".join(re.escape(w[:-1] if w.endswith("s") else w) + r"s?" for w in ws)
-            if len(ws) >= 2 and abs(t.page - d.page) <= 3 and re.search(
+            if (
+                len(ws) >= 2
+                and abs(t.page - d.page) <= 3
+                and re.search(
                     rf"\b(?:is|are)\s+(?:an?\s+|the\s+)?(?:(?!(?:with|of|for|to|in|on|all|and|or|by|from|as|that)\b)\w+\s+){{0,2}}{row}\b",
-                    first):
+                    first,
+                )
+            ):
                 hits.append((t, r))
         if len(hits) == 1:
             t, r = hits[0]
@@ -1368,24 +1622,37 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     order = sorted(descs, key=lambda d: d.pos)
     row_keys = {k for t in tables for r in t.rows if r for nm in alt_names(r[0]) for k in keys(nm, aliases)}
     for i, d in enumerate(order):
-        if d.rows or d.has_box() or d.level < 4 or not d.name[:1].isupper() or d.name.isupper() \
-                or re.search(r"(?i)\btables?\b|\bstats\b", d.name):
+        if (
+            d.rows
+            or d.has_box()
+            or d.level < 4
+            or not d.name[:1].isupper()
+            or d.name.isupper()
+            or re.search(r"(?i)\btables?\b|\bstats\b", d.name)
+        ):
             continue
         prev = next((x for x in reversed(order[:i]) if x.level <= d.level), None)
-        nxt = next((x for x in order[i + 1:] if x.level <= d.level), None)
+        nxt = next((x for x in order[i + 1 :] if x.level <= d.level), None)
         if not (prev and nxt and prev.level == nxt.level == d.level and prev.section == nxt.section == d.section):
             continue
         tabs = {id(t) for t, _ in prev.rows} & {id(t) for t, _ in nxt.rows}
         t = next((t for t, _ in prev.rows if id(t) in tabs and id(t) not in own), None)
         one = lambda w: w[:-1] if w.endswith("s") and not w.endswith("ss") else w  # noqa: E731
         dw = {one(w) for w in norm(d.name).split() if len(w) > 3}
-        if t is None or any(k in row_keys for nm in alt_names(d.name) for k in keys(nm, aliases)) \
-                or any(dw & {one(w) for w in norm(r[0]).split()} for r in t.rows if r) \
-                or re.search(r",|\band\b|\(", d.name):
+        if (
+            t is None
+            or any(k in row_keys for nm in alt_names(d.name) for k in keys(nm, aliases))
+            or any(dw & {one(w) for w in norm(r[0]).split()} for r in t.rows if r)
+            or re.search(r",|\band\b|\(", d.name)
+        ):
             continue  # (a heading naming or sharing a word with a row describes it: `Move-By-Wire`, `Limb Replacement`)
         text = norm(" ".join(x for x in d.body if isinstance(x, str)))
-        if any(isinstance(x, _Table) for x in d.body) or len(text) < 150 or re.match(r"(?:if|when|to)\b", text) or any(
-                re.search(rf"\b{re.escape(one(norm(r[0])))}s?\b", text) for r in t.rows if r and len(norm(r[0])) > 4):
+        if (
+            any(isinstance(x, _Table) for x in d.body)
+            or len(text) < 150
+            or re.match(r"(?:if|when|to)\b", text)
+            or any(re.search(rf"\b{re.escape(one(norm(r[0])))}s?\b", text) for r in t.rows if r and len(norm(r[0])) > 4)
+        ):
             continue  # (a table title, a one-line note, or a rule about the rows its text names: `Skillsoft Subscriptions`)
         r = _Row([d.name] + [""] * (len(t.header) - 1))
         r.unlisted = True
@@ -1395,19 +1662,33 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
     for d in descs:
         k = keys(d.name, aliases)[0]
         if k.endswith(" series"):
-            stem = k[:-len(" series")]
+            stem = k[: -len(" series")]
             took = [(t, r) for t, r in unpaired if (keys(r[0], aliases)[0] + " ").startswith(stem + " ")]
             d.rows += took
             unpaired = [p for p in unpaired if p not in took]
             for t, r in took:
                 t.unpaired.remove(r)
     for t, r in unpaired:
-        report.append({"kind": "unpaired-row", "name": r[0] if r else "", "table": t.title or t.header[0],
-                       "page": t.page, "chapter": chapter})
+        report.append(
+            {
+                "kind": "unpaired-row",
+                "name": r[0] if r else "",
+                "table": t.title or t.header[0],
+                "page": t.page,
+                "chapter": chapter,
+            }
+        )
     for d in descs:
         if len(d.rows) > 1:
-            report.append({"kind": "shared-description", "name": d.name, "rows": "; ".join(r[0] for _, r in d.rows),
-                           "page": d.page, "chapter": d.chapter})
+            report.append(
+                {
+                    "kind": "shared-description",
+                    "name": d.name,
+                    "rows": "; ".join(r[0] for _, r in d.rows),
+                    "page": d.page,
+                    "chapter": d.chapter,
+                }
+            )
         if not d.rows and not d.has_box() and d.section in {t.section for t in tables}:  # its section has a catalog
             report.append({"kind": "unpaired-description", "name": d.name, "page": d.page, "chapter": d.chapter})
     for u in units:
@@ -1440,7 +1721,9 @@ def _rating_groups(rows, first=None):
     bare = lambda r: bool(r and r[0] and not any(r[1:]) and not _RATING_ROW.match(r[0]))
     for i, r in enumerate(rows):
         if r and r[0][:1].islower() and not re.match(r"[a-z]+-?\d", r[0]) and out and out[-1][0]:
-            base = base or out[-1][0]  # (a run of variants hangs on the row above it: `Wrist shield` + `slashing`, `bashing`)
+            base = (
+                base or out[-1][0]
+            )  # (a run of variants hangs on the row above it: `Wrist shield` + `slashing`, `bashing`)
             out.append([f"{base} {r[0]}"] + list(r[1:]))
             continue
         base = None
@@ -1471,8 +1754,11 @@ def _variants(rows, found):
     for r in rows:
         if r and r[0] and not any(r[1:]):
             group = r[0]
-        elif group and r and (not r[0] or not found(r[0]) and not re.search(r"\(rating", r[0], re.I)
-                                and not r[0].startswith(group)):
+        elif (
+            group
+            and r
+            and (not r[0] or not found(r[0]) and not re.search(r"\(rating", r[0], re.I) and not r[0].startswith(group))
+        ):
             r = [f"{group} ({r[0] or 'Rating ' + (r[1] if len(r) > 1 else '')})"] + list(r[1:])
         else:
             group = None
@@ -1511,7 +1797,9 @@ def _row(header, r):
     # first cell keeping the header (`… | AVAIL | COST | COST`: the price is the first)
     names = []
     for i, h in enumerate(header):
-        names.append("RES" if h == "R" and "R" in header[:i] else f"{h} ({header[:i].count(h) + 1})" if h in header[:i] else h)
+        names.append(
+            "RES" if h == "R" and "R" in header[:i] else f"{h} ({header[:i].count(h) + 1})" if h in header[:i] else h
+        )
     return dict(zip(names, r))
 
 
@@ -1522,35 +1810,90 @@ def _emit(units):
             continue
         text, breaks = _text(u.body), _breaks(u.body, u.page)
         if u.kind == "section":
-            out.append(Block("section", u.name, u.chapter, u.section, "", u.page, tags=u.tags, labels=dict(u.labels),
-                             text=text, level=u.level, breaks=breaks))
+            out.append(
+                Block(
+                    "section",
+                    u.name,
+                    u.chapter,
+                    u.section,
+                    "",
+                    u.page,
+                    tags=u.tags,
+                    labels=dict(u.labels),
+                    text=text,
+                    level=u.level,
+                    breaks=breaks,
+                )
+            )
         else:
             # a box of several one-row tables, a note under each: each row keeps its own notes (as columns: NOTE …)
             # (an item's row: named, not a being's or a vehicle's band)
             several = sum(1 for t in u.stats if len(t.rows) == 1) > 1
             # (a box row grouped under a name-only row, `Medkit` over its indented `Advanced (Rating 1–6)`: named
             # with its group, as a catalog row is: `Medkit Advanced (Rating 1–6)`)
-            stats = [{**({"TYPE": t.variant} if t.variant else {}),
-                      **_row(t.header, [f"{r.group} {r[0]}"] + list(r[1:]) if getattr(r, "group", "") else r),
-                      **({k.upper(): x for k, x in t.notes.items()}
-                                              if several and len(t.rows) == 1 and len(t.header[0]) > 2
-                                              and re.search(r"[A-Za-z]{2}", r[0] if r else "") else {})}
-                     for t in u.stats for r in t.rows]
+            stats = [
+                {
+                    **({"TYPE": t.variant} if t.variant else {}),
+                    **_row(t.header, [f"{r.group} {r[0]}"] + list(r[1:]) if getattr(r, "group", "") else r),
+                    **(
+                        {k.upper(): x for k, x in t.notes.items()}
+                        if several
+                        and len(t.rows) == 1
+                        and len(t.header[0]) > 2
+                        and re.search(r"[A-Za-z]{2}", r[0] if r else "")
+                        else {}
+                    ),
+                }
+                for t in u.stats
+                for r in t.rows
+            ]
             label = u.name if u.kind == "box" else ""
             for t, r in u.rows or [(None, None)]:
                 name = u.name if r and id(r) in u.full else r[0] if r else u.name
                 al = [u.name] if r and name != u.name and other_name(name, u.name) else []
-                out.append(Block("item", name, u.chapter, u.section, t.title if t else label, u.page,
-                                 list(t.header) if t else [], _row(t.header, r) if t else None, stats, u.tags,
-                                 dict(u.labels), text, u.level, al, group=getattr(r, "group", ""),
-                                 table=t.parent if t else "", unlisted=getattr(r, "unlisted", False),
-                                 breaks=breaks))
+                out.append(
+                    Block(
+                        "item",
+                        name,
+                        u.chapter,
+                        u.section,
+                        t.title if t else label,
+                        u.page,
+                        list(t.header) if t else [],
+                        _row(t.header, r) if t else None,
+                        stats,
+                        u.tags,
+                        dict(u.labels),
+                        text,
+                        u.level,
+                        al,
+                        group=getattr(r, "group", ""),
+                        table=t.parent if t else "",
+                        unlisted=getattr(r, "unlisted", False),
+                        breaks=breaks,
+                    )
+                )
         for t in [b for b in u.body if isinstance(b, _Table) and b.catalog]:
-            out += [Block("item", r[0], u.chapter, t.section, t.title, t.page, list(t.header), _row(t.header, r),
-                          aliases=list(getattr(r, "aliases", ())), group=getattr(r, "group", ""), table=t.parent,
-                          product=getattr(r, "product", ""), maker=getattr(r, "maker", ""),
-                          text=_text(u.body) if t.own else "", labels=dict(u.labels) if t.own else {})
-                    for r in t.unpaired]
+            out += [
+                Block(
+                    "item",
+                    r[0],
+                    u.chapter,
+                    t.section,
+                    t.title,
+                    t.page,
+                    list(t.header),
+                    _row(t.header, r),
+                    aliases=list(getattr(r, "aliases", ())),
+                    group=getattr(r, "group", ""),
+                    table=t.parent,
+                    product=getattr(r, "product", ""),
+                    maker=getattr(r, "maker", ""),
+                    text=_text(u.body) if t.own else "",
+                    labels=dict(u.labels) if t.own else {},
+                )
+                for r in t.unpaired
+            ]
     return out
 
 
@@ -1573,8 +1916,11 @@ def back_cover(md):
     cover = next((k for k in range(len(pages) - 1, max(len(pages) - 6, -1), -1) if furniture(pages[k][1])), None)
     if cover is None:
         return None
-    while cover > 0 and not content(ls := pages[cover - 1][1]) and (
-            ls == [] or furniture(ls) or letters(ls) < 40 or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls)):
+    while (
+        cover > 0
+        and not content(ls := pages[cover - 1][1])
+        and (ls == [] or furniture(ls) or letters(ls) < 40 or 5 * sum(len(ln.strip()) <= 3 for ln in ls) >= 3 * len(ls))
+    ):
         cover -= 1
     return pages[cover][0]
 
@@ -1587,7 +1933,9 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     cover = None if end_page else back_cover(md)
     end_page = end_page or cover
     els = list(_elements(md))
-    els = _back_prices([e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page])
+    els = _back_prices(
+        [e for e in els if not end_page or e[1] < end_page], [e for e in els if end_page and e[1] >= end_page]
+    )
     starts = [i for i, e in enumerate(els) if e[0] == "h" and e[2][0] == 1]
     bounds = list(zip([0] + starts, starts + [len(els)]))
     report, blks = [], []
@@ -1598,20 +1946,27 @@ def regroup(md, aliases=None, name_headers=frozenset(), end_page=None, variants=
     # each chapter's table row names, for price_list's reprint test (a later chapter printing the rows again)
     rows_in = [{norm(r[0]) for e in els[a:b] if e[0] == "t" for r in e[2].rows if r and r[0]} for a, b in bounds]
     # every heading's keys, book-wide: a variant group ends at a row the book describes anywhere (_variants)
-    heads = {k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in alt_names(e[2][1]) for k in keys(nm, aliases)}
+    heads = {
+        k for e in els if e[0] == "h" and not _is_label(*e[2]) for nm in alt_names(e[2][1]) for k in keys(nm, aliases)
+    }
     # the words the book's prose prints in lower case (a generic word, not a name: _own_rows)
     lower = {w for e in els if e[0] == "x" for w in re.findall(r"(?<![A-Za-z])[a-z]+(?![A-Za-z])", e[2])}
     for n, (start, end) in enumerate(bounds):
         if start == end:
             continue
         chapter = els[start][2][1] if els[start][0] == "h" and els[start][2][0] == 1 else ""
-        item_keys = {k for _, _, (lv, tx) in (e for e in els[start:end] if e[0] == "h")
-                     if lv >= 4 and not _is_label(lv, tx) for nm in alt_names(tx) for k in keys(nm, aliases)}
+        item_keys = {
+            k
+            for _, _, (lv, tx) in (e for e in els[start:end] if e[0] == "h")
+            if lv >= 4 and not _is_label(lv, tx)
+            for nm in alt_names(tx)
+            for k in keys(nm, aliases)
+        }
         units = _units(els, start, end, chapter, item_keys, aliases, _templates(els[start:end]))
         _continuations(units)
         if not chapter and not units[0].body and len(units) == 1:
             continue
-        _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1:]), lower)
+        _chapter(units, aliases, name_headers, report, variants and heads, set().union(*rows_in[n + 1 :]), lower)
         blks += _emit(units)
     return HEAD + "\n" + "".join(render(b) for b in blks), report
 
@@ -1664,12 +2019,15 @@ def _back_prices(els, back):
     heads, hs = {}, [i for i, e in enumerate(els) if e[0] == "h"]
     for n, i in enumerate(hs):
         if els[i][2][0] >= 4:
-            j = next((k for k in hs[n + 1:] if els[k][2][0] <= els[i][2][0]), len(els))
+            j = next((k for k in hs[n + 1 :] if els[k][2][0] <= els[i][2][0]), len(els))
             heads.setdefault(norm(els[i][2][1]), (i, j))
 
     def priced(i, j):  # (a heading the chapter prices itself: a price table or a `¥` under it, its boxes' included)
-        return any(e[0] == "t" and any("COST" in h.upper() for h in e[2].header) or e[0] == "x" and "¥" in e[2]
-                   for e in els[i + 1:j])
+        return any(
+            e[0] == "t" and any("COST" in h.upper() for h in e[2].header) or e[0] == "x" and "¥" in e[2]
+            for e in els[i + 1 : j]
+        )
+
     ins = []
     for e in back:
         if e[0] != "t":
@@ -1677,8 +2035,13 @@ def _back_prices(els, back):
         hu = [h.upper() for h in e[2].header]
         names = {norm(r[0]) for r in e[2].rows if r and r[0]}
         at = sorted(heads[n] for n in names if n in heads)
-        if any("AVAIL" in h for h in hu) and hu[-1].endswith("COST") and len(at) >= 2 and not names & rows \
-                and not any(priced(i, j) for i, j in at):
+        if (
+            any("AVAIL" in h for h in hu)
+            and hu[-1].endswith("COST")
+            and len(at) >= 2
+            and not names & rows
+            and not any(priced(i, j) for i, j in at)
+        ):
             ins.append((at[0][0], ("t", els[at[0][0]][1], replace(e[2], page=els[at[0][0]][1]))))
     for i, t in sorted(ins, key=lambda x: -x[0]):
         els.insert(i, t)
@@ -1687,19 +2050,34 @@ def _back_prices(els, back):
 
 # --- the regrouped file ------------------------------------------------------------------------------------------
 
+
 def _md(header, rows):
     return ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)] + ["| " + " | ".join(r) + " |" for r in rows]
 
 
 def render(b):
-    meta = {"name": b.name, "chapter": b.chapter, "section": b.section, "label": b.label, "page": b.page,
-            "tags": b.tags, "level": b.level, "row": b.row is not None, **({"aliases": b.aliases} if b.aliases else {}),
-            **({"group": b.group} if b.group else {}), **({"table": b.table} if b.table else {}),
-            **({"product": b.product} if b.product else {}), **({"maker": b.maker} if b.maker else {}),
-            **({"unlisted": True} if b.unlisted else {}), **({"breaks": b.breaks} if b.breaks else {})}
+    meta = {
+        "name": b.name,
+        "chapter": b.chapter,
+        "section": b.section,
+        "label": b.label,
+        "page": b.page,
+        "tags": b.tags,
+        "level": b.level,
+        "row": b.row is not None,
+        **({"aliases": b.aliases} if b.aliases else {}),
+        **({"group": b.group} if b.group else {}),
+        **({"table": b.table} if b.table else {}),
+        **({"product": b.product} if b.product else {}),
+        **({"maker": b.maker} if b.maker else {}),
+        **({"unlisted": True} if b.unlisted else {}),
+        **({"breaks": b.breaks} if b.breaks else {}),
+    }
     lines = [f"<!-- {b.type} {json.dumps(meta, ensure_ascii=False)} -->"]
     if b.row is not None:
-        lines += _md(b.header, [[b.row.get(n, "") for n in _row(b.header, [])]])  # (a header printed twice: its 2nd cell)
+        lines += _md(
+            b.header, [[b.row.get(n, "") for n in _row(b.header, [])]]
+        )  # (a header printed twice: its 2nd cell)
     for s in b.stats:
         lines += _md(list(s), [list(s.values())])
     lines += [f"**{k}:** {v}".rstrip() for k, v in b.labels.items()]
@@ -1738,9 +2116,28 @@ def blocks(text):
                 header, row = h, _row(h, rows[0])
             else:
                 stats += [_row(h, r) for r in rows]
-        out.append(Block(m.group(1), meta["name"], meta["chapter"], meta["section"], meta["label"], meta["page"],
-                         header, row, stats, meta["tags"], labels, "\n".join(body), meta["level"],
-                         meta.get("aliases", []), group=meta.get("group", ""), table=meta.get("table", ""),
-                         product=meta.get("product", ""), maker=meta.get("maker", ""),
-                         unlisted=meta.get("unlisted", False), breaks=meta.get("breaks", [])))
+        out.append(
+            Block(
+                m.group(1),
+                meta["name"],
+                meta["chapter"],
+                meta["section"],
+                meta["label"],
+                meta["page"],
+                header,
+                row,
+                stats,
+                meta["tags"],
+                labels,
+                "\n".join(body),
+                meta["level"],
+                meta.get("aliases", []),
+                group=meta.get("group", ""),
+                table=meta.get("table", ""),
+                product=meta.get("product", ""),
+                maker=meta.get("maker", ""),
+                unlisted=meta.get("unlisted", False),
+                breaks=meta.get("breaks", []),
+            )
+        )
     return out

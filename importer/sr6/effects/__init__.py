@@ -50,11 +50,23 @@ values (targets, values, conditions), rules (_rules, the phrasing rules), reader
 incompatibilities), tables (a table's modifier columns, accessory), entries (a section's entries, rating tables, variants,
 section_effects), emit (apply, copy_links). This module re-exports the names the importer, its tests and tools/cl6effects
 use (tools/cl6effects/rebuild.py imports `importer.sr6.effects` by name, from older trees too)."""
+
 from .words import sentences
 from .values import _activity, _armor_performance, _rated, _sw, split_cost, targets
 from .reader import _road_pairs, read
 from .citations import addon_links, incompatibilities, links, see_links, tire_links
 from .tables import accessory, less_accessory, table
-from .entries import (ENTRY, _block_text, _own_part, _resolve_variant, _runins, _sections, _variant_part, _variant_sentences, rating_table,
-                      section_effects, split_entries)
+from .entries import (
+    ENTRY,
+    _block_text,
+    _own_part,
+    _resolve_variant,
+    _runins,
+    _sections,
+    _variant_part,
+    _variant_sentences,
+    rating_table,
+    section_effects,
+    split_entries,
+)
 from .emit import _at_level, _tag, apply, copy_links

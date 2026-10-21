@@ -2,6 +2,7 @@
 module's lines print (lifemodule: one lifemodules entry), and the adult modules a book prints in body type under a
 `Life Modules` heading or line (modules: the companion's form, an adventure's or an errata's). Shared by the SWC and
 general recipes and the errata reading (resolve.py)."""
+
 import re
 
 from importer.sr6 import regroup
@@ -9,14 +10,53 @@ from importer.sr6.ids import slug
 from importer.sr6.regroup import norm
 
 # the core rulebook's attributes and skills, by name (game terms): a life module's options name them
-ATTRS = {"body": "bod", "agility": "agi", "reaction": "rea", "strength": "str", "willpower": "wil", "logic": "log",
-         "intuition": "int", "charisma": "cha", "edge": "edg", "magic": "mag", "resonance": "res"}
-SKILLS = ("Astral", "Athletics", "Biotech", "Close Combat", "Con", "Conjuring", "Cracking", "Electronics", "Enchanting",
-          "Engineering", "Exotic Weapons", "Firearms", "Influence", "Outdoors", "Perception", "Piloting", "Sorcery",
-          "Stealth", "Tasking")
+ATTRS = {
+    "body": "bod",
+    "agility": "agi",
+    "reaction": "rea",
+    "strength": "str",
+    "willpower": "wil",
+    "logic": "log",
+    "intuition": "int",
+    "charisma": "cha",
+    "edge": "edg",
+    "magic": "mag",
+    "resonance": "res",
+}
+SKILLS = (
+    "Astral",
+    "Athletics",
+    "Biotech",
+    "Close Combat",
+    "Con",
+    "Conjuring",
+    "Cracking",
+    "Electronics",
+    "Enchanting",
+    "Engineering",
+    "Exotic Weapons",
+    "Firearms",
+    "Influence",
+    "Outdoors",
+    "Perception",
+    "Piloting",
+    "Sorcery",
+    "Stealth",
+    "Tasking",
+)
 SKILL_IDS = {norm(s): f"skill:crb.{slug(s)}" for s in SKILLS}
-CONTACT_TYPES = ("academic", "corporate", "criminal", "engineering", "government", "magic", "matrix", "media", "medical",
-                 "street")
+CONTACT_TYPES = (
+    "academic",
+    "corporate",
+    "criminal",
+    "engineering",
+    "government",
+    "magic",
+    "matrix",
+    "media",
+    "medical",
+    "street",
+)
 NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8}
 REQUIRES = {"awakened": "awakened", "adepts": "adept", "adept": "adept", "emerged": "emerged", "magicians": "magician"}
 
@@ -29,8 +69,10 @@ def plain(text):
 
 
 _ONLY = re.compile(r"\s*[\[(]\s*(\w+)\s+only\s*[\])]", re.I)
-_ITEM = re.compile(r"(?=Choose (?:one|two|three|an? \w+):|(?<!: )\+\d+ to |Resources:|Contact Points:|Contact Types:|"
-                   r"Knowledge [Ss]kills?\b|One rank in|Option:)")
+_ITEM = re.compile(
+    r"(?=Choose (?:one|two|three|an? \w+):|(?<!: )\+\d+ to |Resources:|Contact Points:|Contact Types:|"
+    r"Knowledge [Ss]kills?\b|One rank in|Option:)"
+)
 
 
 def _options(word):
@@ -46,10 +88,17 @@ def _options(word):
     if w in ATTRS or w in SKILL_IDS or w + "s" in SKILL_IDS:
         return [ATTRS.get(w) or SKILL_IDS.get(w) or SKILL_IDS[w + "s"]]
     if m := re.fullmatch(r"(?:any )?(?:other )?(mental |physical )?(skill|attribute)(?: or (skill|attribute))?", w):
-        groups = {"mental ": ["wil", "log", "int", "cha"], "physical ": ["bod", "agi", "rea", "str"],
-                  None: ["bod", "agi", "rea", "str", "wil", "log", "int", "cha"]}
-        return [t for g in (m.group(2), m.group(3)) if g
-                for t in (list(SKILL_IDS.values()) if g == "skill" else groups[m.group(1)])]
+        groups = {
+            "mental ": ["wil", "log", "int", "cha"],
+            "physical ": ["bod", "agi", "rea", "str"],
+            None: ["bod", "agi", "rea", "str", "wil", "log", "int", "cha"],
+        }
+        return [
+            t
+            for g in (m.group(2), m.group(3))
+            if g
+            for t in (list(SKILL_IDS.values()) if g == "skill" else groups[m.group(1)])
+        ]
     return None
 
 
@@ -62,7 +111,9 @@ def _choice(body, module, page, report):
     points, rest = int(m.group(1)), re.sub(r"\s*\(\s*\w+ only\s*\)", "", m.group(2)).strip(" .")
     words = [w.strip() for w in re.split(r",?\s+or\s+|,\s+", rest) if w.strip()]
     if any(len(w.split()) > 4 for w in words):  # prose (a sidebar run into the list), not options
-        report.append({"kind": "unread-line", "file": "lifemodules.xml", "name": module, "value": body[:80], "page": page})
+        report.append(
+            {"kind": "unread-line", "file": "lifemodules.xml", "name": module, "value": body[:80], "page": page}
+        )
         return None
     opts, bad = [], []
     for w in words:
@@ -81,6 +132,7 @@ def _module_grants(name, text, page, report):
 
     def add(k, v):
         attrs[k] = attrs.get(k, 0) + v
+
     for it in items:
         # `Choose two: …`, or one: `Choose an Attribute: +1 to Agility or Strength` (an Alignment's is no grant)
         if m := re.match(r"Choose (one|two|three|an? \w+):\s*(.*)", it):
@@ -114,8 +166,16 @@ def _module_grants(name, text, page, report):
             if types and types[0] != "any":
                 bad = [t for t in types if t not in CONTACT_TYPES]
                 for t in bad:
-                    report.append({"kind": "unread-option", "file": "lifemodules.xml", "name": name, "field": "contactTypes",
-                                   "value": t, "page": page})
+                    report.append(
+                        {
+                            "kind": "unread-option",
+                            "file": "lifemodules.xml",
+                            "name": name,
+                            "field": "contactTypes",
+                            "value": t,
+                            "page": page,
+                        }
+                    )
                 attrs["contactTypes"] = " ".join(t for t in types if t in CONTACT_TYPES) or None
         elif m := re.match(r"Knowledge skills?\s*(?:\(choose (\w+)\)|:\s*choose (?:any |up to )?(\w+))", it, re.I):
             add("knowledgeSkills", NUMBERS.get(m.group(1) or m.group(2), 1))
@@ -153,15 +213,17 @@ def lifemodule(cat, stage, name, text, page):
     else:
         attrs, kids = _module_grants(name, text, page, cat.report)
         if not attrs and not kids:
-            cat.report.append({"kind": "missing-value", "file": "lifemodules.xml", "name": name, "field": "grants",
-                               "page": page})
+            cat.report.append(
+                {"kind": "missing-value", "file": "lifemodules.xml", "name": name, "field": "grants", "page": page}
+            )
     cat.add("lifemodules", name, page, {"stage": stage, "requires": req, **attrs}, kids)
 
 
 _MODULES = re.compile(r"(?:new\s+)?(?:adult\s+|event\s+)?life\s+modules?", re.I)
 # a grant: a bold label (the companion's), or a bulleted one (an errata's: `• Contact Points: 4`)
-_GRANT = re.compile(r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):",
-                    re.I | re.M)
+_GRANT = re.compile(
+    r"\*\*(?:choose \w+|contact points|resources):\*\*|^\s*•\s*(?:choose \w+|contact points|resources):", re.I | re.M
+)
 
 
 def _unbold(s):
@@ -176,8 +238,14 @@ def _bare(s):
 def _title_line(s):
     # (an `Event:` kicker on the title's own line: `Event: You had Fifteen Minutes of Fame`)
     words = len(re.sub(r"^Event:\s*", "", s or "").split())
-    return bool(s) and s[0].isupper() and words <= (6 if s.startswith("Event:") else 5) and s[0] not in "•*#|>" \
-        and "," not in s and not re.search(r"[.;!?-]$", s)
+    return (
+        bool(s)
+        and s[0].isupper()
+        and words <= (6 if s.startswith("Event:") else 5)
+        and s[0] not in "•*#|>"
+        and "," not in s
+        and not re.search(r"[.;!?-]$", s)
+    )
 
 
 def modules(bs):
@@ -195,7 +263,11 @@ def modules(bs):
             continue
         if level is not None and b.level > level:  # a module under its own heading
             # (its labelled lines once: the text's own, else regroup's labels)
-            body = b.text if _GRANT.search(b.text) else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
+            body = (
+                b.text
+                if _GRANT.search(b.text)
+                else "\n".join([f"**{k}:** {v}" for k, v in b.labels.items()] + [b.text])
+            )
             if _GRANT.search(body):
                 heads.append((b.name.strip(), body, b.page))
             continue
@@ -203,8 +275,11 @@ def modules(bs):
         if b.level and _MODULES.fullmatch(b.name.strip()):
             level = b.level
         text = _paged(b)
-        at = 0 if _MODULES.fullmatch(b.name.strip()) else next(
-            (i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
+        at = (
+            0
+            if _MODULES.fullmatch(b.name.strip())
+            else next((i + 1 for i, ln in enumerate(text) if _MODULES.fullmatch(_bare(ln))), None)
+        )
         if at is not None:
             lines, page, on = lines + [""] + text[at:], page or b.page, True
     out, cur, name, at = [], [], [], 0
@@ -218,8 +293,11 @@ def modules(bs):
             name, cur, i = [], [], i + 1
             continue
         # (a title set in bold starts a module after lines with no grant too: an errata's `Student Athlete: Use …`)
-        if _title_line(s) and (not "".join(cur).strip() or any(_GRANT.search(c) for c in cur)
-                               or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())):
+        if _title_line(s) and (
+            not "".join(cur).strip()
+            or any(_GRANT.search(c) for c in cur)
+            or re.fullmatch(r"\*\*[^*]+\*\*", lines[i].strip())
+        ):
             j = i
             while j < len(lines) and _title_line(_unbold(lines[j])) and not _MODULES.fullmatch(_bare(lines[j])):
                 j += 1

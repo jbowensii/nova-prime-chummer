@@ -2,6 +2,7 @@
 gear tables under a lower-case title, a rating table, complex forms' `Fade Value Duration` line, echoes and programs
 as labelled lines, a sprite's band in its section, an NPC's rating over its section). Every name, number and line is
 invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -131,8 +132,13 @@ class HsRecipeTest(unittest.TestCase):
         self.assertEqual((g["Matrix Relay"]["rating"], g["Matrix Relay"]["cost"]), ("1–3", "Rating x 1000"))
         self.assertEqual(g["Glow Buddy"]["category"], "Commlink app")
         # (a cyberdeck case's printed capacity, cyberdeck/cyberhack; a case priced per variant: the capacity is each item's)
-        self.assertEqual((g["Zip Case"]["capacity"], g["Tiny Case"]["capacity"]), ("12/4 (includes cyberhack and deck)", "4/Not Available"))
-        self.assertEqual((g["Twin Case (cyberdeck)"]["capacity"], g["Twin Case (cyberhack)"]["capacity"]), ("2/2", "2/2"))
+        self.assertEqual(
+            (g["Zip Case"]["capacity"], g["Tiny Case"]["capacity"]),
+            ("12/4 (includes cyberhack and deck)", "4/Not Available"),
+        )
+        self.assertEqual(
+            (g["Twin Case (cyberdeck)"]["capacity"], g["Twin Case (cyberhack)"]["capacity"]), ("2/2", "2/2")
+        )
         self.assertEqual((g["Twin Case (cyberdeck)"]["cost"], g["Twin Case (cyberhack)"]["cost"]), ("1000", "5000"))
         self.assertIn("app that glows", self.texts[("gear", "glow-buddy")])  # its labelled line
 
@@ -151,8 +157,10 @@ class HsRecipeTest(unittest.TestCase):
         r = entries(self.res, "rules")
         self.assertIn("Basic Cyberprograms", r)  # the programs' sections stay rule sections too
         p = entries(self.res, "programs")
-        self.assertEqual({k: v.get("type") for k, v in p.items()},  # (a commlink app listed as a run-in: sections.py)
-                         {"Fizz Host": "basic", "Zap Kit": "hacking", "Glow Buddy": "app"})
+        self.assertEqual(
+            {k: v.get("type") for k, v in p.items()},  # (a commlink app listed as a run-in: sections.py)
+            {"Fizz Host": "basic", "Zap Kit": "hacking", "Glow Buddy": "app"},
+        )
         self.assertNotIn("avail", p["Zap Kit"])  # the book prints no price for a program
         self.assertNotIn("Not Read", r)
 

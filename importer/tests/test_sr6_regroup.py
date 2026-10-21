@@ -1,5 +1,6 @@
 """SR6 regroup (importer/sr6/regroup.py): table rows and stat boxes paired with their descriptions. All made up,
 in the shape the converter's sr6 layout writes."""
+
 import unittest
 
 from importer.sr6 import regroup
@@ -107,13 +108,15 @@ class RegroupTest(unittest.TestCase):
         self.assertEqual([r["name"] for r in self.rep("shared-description")], ["Fizz Rifle 70/75"])
 
     def test_unpaired(self):
-        self.assertEqual([(r["name"], r["page"], r["table"]) for r in self.rep("unpaired-row")],
-                         [("Lost Row", 10, "zappers")])
+        self.assertEqual(
+            [(r["name"], r["page"], r["table"]) for r in self.rep("unpaired-row")], [("Lost Row", 10, "zappers")]
+        )
         self.assertEqual(self.items["Lost Row"].page, 10)
         self.assertEqual(self.items["Lost Row"].text, "")
         # Old Story is in a chapter without catalog tables: not reported
-        self.assertEqual([(r["name"], r["page"]) for r in self.rep("unpaired-description")],
-                         [("Orphan Gadget (Rating 1–3)", 11)])
+        self.assertEqual(
+            [(r["name"], r["page"]) for r in self.rep("unpaired-description")], [("Orphan Gadget (Rating 1–3)", 11)]
+        )
         self.assertEqual(self.items["Orphan Gadget (Rating 1–3)"].page, 11)
         self.assertIsNone(self.items["Orphan Gadget (Rating 1–3)"].row)
         self.assertEqual(self.items["Old Story"].chapter, "LORE")
@@ -139,11 +142,14 @@ class RegroupTest(unittest.TestCase):
 
     def test_rule_table_stays_in_section(self):
         s = [b for b in self.blocks if b.type == "section" and b.name == "Making Trouble"][0]
-        self.assertEqual(s.text, "Trouble rules.\n| ROLL | RESULT |\n|---|---|\n| 1 | Nothing |\n| 2 | Sparks |\n"
-                                 "More trouble text.")
+        self.assertEqual(
+            s.text,
+            "Trouble rules.\n| ROLL | RESULT |\n|---|---|\n| 1 | Nothing |\n| 2 | Sparks |\n" "More trouble text.",
+        )
         self.assertEqual((s.chapter, s.section, s.level), ("GADGETS", "Making Trouble", 2))
-        self.assertEqual([b.name for b in self.blocks if b.type == "section"],
-                         ["GADGETS", "Gadget Shop", "Making Trouble", "LORE"])
+        self.assertEqual(
+            [b.name for b in self.blocks if b.type == "section"], ["GADGETS", "Gadget Shop", "Making Trouble", "LORE"]
+        )
 
     def test_catalog_without_name_header(self):
         # 3 of 5 rows pair (at least half): a catalog table even when GADGET is not a name header
@@ -157,7 +163,7 @@ class RegroupTest(unittest.TestCase):
         self.assertEqual(z[0].row["DV"], "3P")
 
     def test_round_trip(self):
-        self.assertEqual("".join(render(b) for b in self.blocks), self.text[self.text.index("\n") + 1:])
+        self.assertEqual("".join(render(b) for b in self.blocks), self.text[self.text.index("\n") + 1 :])
 
 
 MD2 = """<!-- page 20 -->
@@ -220,9 +226,13 @@ Hammer Exotic 2P 6/—/—/—/— 5(I)
 """
         t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
         self.assertEqual(t.header, ["WEAPON", "TYPE", "DV", "ATTACK RATING", "AVAIL", "COST"])
-        self.assertEqual([(r[0], r[-1]) for r in t.rows], [("Zapper", "200¥"), ("Zip (Heavy)", "500¥"),
-                                                         ("Blip Stomp", "125¥"), ("Mete Hammer (Double)", "900¥")])
-        rows = regroup._elements("**NAME CLASS RANGE AVAIL COST**\nm40 0 3 km 4(L) 750¥\nm60 1 7 km 5(L) 900¥\n")[0][2].rows
+        self.assertEqual(
+            [(r[0], r[-1]) for r in t.rows],
+            [("Zapper", "200¥"), ("Zip (Heavy)", "500¥"), ("Blip Stomp", "125¥"), ("Mete Hammer (Double)", "900¥")],
+        )
+        rows = regroup._elements("**NAME CLASS RANGE AVAIL COST**\nm40 0 3 km 4(L) 750¥\nm60 1 7 km 5(L) 900¥\n")[0][
+            2
+        ].rows
         self.assertEqual([r[:3] for r in rows], [["m40", "0", "3 km"], ["m60", "1", "7 km"]])
         self.assertEqual([r[0] for r in regroup._rating_groups(rows)], ["m40", "m60"])  # a model code, no variant
 
@@ -249,17 +259,29 @@ made-up text after the table.
         els = regroup._elements(md)
         t = els[0][2]
         self.assertEqual(t.header, ["NAME", "CLASS", "RANGE", "CAP", "PILOT", "AVAIL", "SENSOR", "COST"])
-        self.assertEqual([r[:2] + r[-2:] for r in t.rows], [
-            ["Zip Dart", "0 (20mm x 1m)", "5(I)", "2,000¥"], ["Zop Lance", "1 (30mm x .5m)", "6(I)", "3,000¥"],
-            ["Boost Option for Darts", "", "+1(I)", "+500¥"], ["1,000-meter wire spools", "-", "6", "900¥"]])
-        self.assertEqual([v for k, _, v in els[1:]], ["**Note:** A made-up note on the Zop.", "made-up text after the table."])
+        self.assertEqual(
+            [r[:2] + r[-2:] for r in t.rows],
+            [
+                ["Zip Dart", "0 (20mm x 1m)", "5(I)", "2,000¥"],
+                ["Zop Lance", "1 (30mm x .5m)", "6(I)", "3,000¥"],
+                ["Boost Option for Darts", "", "+1(I)", "+500¥"],
+                ["1,000-meter wire spools", "-", "6", "900¥"],
+            ],
+        )
+        self.assertEqual(
+            [v for k, _, v in els[1:]], ["**Note:** A made-up note on the Zop.", "made-up text after the table."]
+        )
         # a name column's header printed on two lines around the others
-        t = regroup._elements("**WIDGET**\n**ESSENCE CAP COST**\n**PART**\nTwo\nZap 0.2 [1] 300¥\nTone\nBuzz 0.5 [6] 1,500¥\n")[0][2]
+        t = regroup._elements(
+            "**WIDGET**\n**ESSENCE CAP COST**\n**PART**\nTwo\nZap 0.2 [1] 300¥\nTone\nBuzz 0.5 [6] 1,500¥\n"
+        )[0][2]
         self.assertEqual(t.header, ["WIDGET PART", "ESSENCE", "CAP", "COST"])
         self.assertEqual(t.rows, [["Two Zap Tone", "0.2", "[1]", "300¥"], ["Buzz", "0.5", "[6]", "1,500¥"]])
         # two lines a row, the values on the lower
-        t = regroup._elements("**NAME CLASS RANGE CAP AVAIL COST**\nZip 0 (20mm\nDart x .5m) 1 km 16 5(I) 2,000¥\n"
-                              "Zip 0 (20mm\n1 km 16 6(I) 4,000¥\nBolt x .5m)\n")[0][2]
+        t = regroup._elements(
+            "**NAME CLASS RANGE CAP AVAIL COST**\nZip 0 (20mm\nDart x .5m) 1 km 16 5(I) 2,000¥\n"
+            "Zip 0 (20mm\n1 km 16 6(I) 4,000¥\nBolt x .5m)\n"
+        )[0][2]
         self.assertEqual([r[:2] for r in t.rows], [["Zip Dart", "0 (20mm x .5m)"], ["Zip Bolt", "0 (20mm x .5m)"]])
 
 
@@ -290,13 +312,20 @@ class RegroupRulesTest(unittest.TestCase):
     def test_same_name_in_two_tables_takes_the_nearest(self):
         g = {b.row["COST"]: b.text for b in self.rows("Glowware")}
         # the wider implant table chooses first and takes the nearer heading; both rows are reported
-        self.assertEqual(g, {"100": "Glowware glows (the gadget).\n**Wireless bonus:** Tools hum along.",
-                             "10": "Glowware glows (the implant)."})
+        self.assertEqual(
+            g,
+            {
+                "100": "Glowware glows (the gadget).\n**Wireless bonus:** Tools hum along.",
+                "10": "Glowware glows (the implant).",
+            },
+        )
         self.assertEqual([r["of"] for r in self.report if r["kind"] == "duplicate"], ["heading", "row"])
 
     def test_rating_and_variant_rows(self):
-        self.assertEqual([b.name for b in self.blocks if b.text in ("Eyes see.", "Coats coat.")],
-                         ["Coat", "Coat w/hood", "Eyes basic system (Rating 1)", "Eyes basic system (Rating 2)"])
+        self.assertEqual(
+            [b.name for b in self.blocks if b.text in ("Eyes see.", "Coats coat.")],
+            ["Coat", "Coat w/hood", "Eyes basic system (Rating 1)", "Eyes basic system (Rating 2)"],
+        )
         self.assertFalse(self.rows("Eyes basic system"))
         self.assertEqual(self.rows("Coat w/hood")[0].row["COST"], "70")
 
@@ -351,8 +380,10 @@ class RegroupSectionsAndBoxesTest(unittest.TestCase):
 
     def test_section_tag_lines_and_labels(self):
         p = self.blocks["Pest Control"]
-        self.assertEqual((p.type, p.tags, p.labels, p.text),
-                         ("section", "Made Up, Tags", {"Threshold": "3", "Untrained": "No"}, "Pests are controlled."))
+        self.assertEqual(
+            (p.type, p.tags, p.labels, p.text),
+            ("section", "Made Up, Tags", {"Threshold": "3", "Untrained": "No"}, "Pests are controlled."),
+        )
         self.assertEqual(self.blocks["Hack the Gizmo"].tags, "(legal) Gizmo + Logic (Major); Outsider/User")
         self.assertEqual(self.blocks["Small Homes"].labels, {"Cost": "5 nuyen a month"})
 
@@ -373,10 +404,12 @@ class RegroupSectionsAndBoxesTest(unittest.TestCase):
 
 class SideBySideTest(unittest.TestCase):
     def test_items_side_by_side_share_the_text(self):
-        md = ("# SPELLS\n#### Glow Dart\n##### (Glow)\n| RANGE | DV |\n|---|---|\n| LOS | 2 |\n"
-              "#### Glow Storm\n##### (Glow, Area)\n| RANGE | DV |\n|---|---|\n| LOS (A) | 3 |\n<!-- page 9 -->\n"
-              "Dart hits one, storm hits all.\n#### Dim Ward\n##### (Dim)\n| RANGE | DV |\n|---|---|\n| T | 1 |\n"
-              "#### Dim Veil\n**Cost:** 2 Karma\nVeils dim.\n")
+        md = (
+            "# SPELLS\n#### Glow Dart\n##### (Glow)\n| RANGE | DV |\n|---|---|\n| LOS | 2 |\n"
+            "#### Glow Storm\n##### (Glow, Area)\n| RANGE | DV |\n|---|---|\n| LOS (A) | 3 |\n<!-- page 9 -->\n"
+            "Dart hits one, storm hits all.\n#### Dim Ward\n##### (Dim)\n| RANGE | DV |\n|---|---|\n| T | 1 |\n"
+            "#### Dim Veil\n**Cost:** 2 Karma\nVeils dim.\n"
+        )
         text, report = regroup.regroup(md)
         b = {b.name: b for b in blocks(text)}
         self.assertEqual([b["Glow Dart"].text, b["Glow Storm"].text], ["Dart hits one, storm hits all."] * 2)
@@ -451,14 +484,18 @@ class RealBookShapesTest(unittest.TestCase):
 
     def test_an_item_with_its_own_band_and_text_is_whole(self):
         g = self.items("Glow Sense")
-        self.assertEqual([(b.stats, b.text) for b in g], [([], "The toy senses glow."),
-                                                         ([{"RANGE": "T", "DV": "2"}], "The spell senses glow.")])
+        self.assertEqual(
+            [(b.stats, b.text) for b in g],
+            [([], "The toy senses glow."), ([{"RANGE": "T", "DV": "2"}], "The spell senses glow.")],
+        )
 
     def test_a_last_line_before_a_heading_ends_a_label(self):
         self.assertEqual(self.items("Gadget Sprite")[0].labels["Powers"], "Zap, Fizz Storm")
 
     def test_unpaired_description_only_in_a_section_with_a_catalog(self):
-        self.assertEqual([r["name"] for r in self.report if r["kind"] == "unpaired-description"], ["Sky Decks", "Gadget Sprite"])
+        self.assertEqual(
+            [r["name"] for r in self.report if r["kind"] == "unpaired-description"], ["Sky Decks", "Gadget Sprite"]
+        )
         self.assertNotIn("Winding Up", [r["name"] for r in self.report])
 
     def test_end_page_leaves_out_the_back_matter(self):
@@ -507,7 +544,9 @@ class StackedTablesTest(unittest.TestCase):
 
     def test_second_band_joins_the_row(self):
         r = self.items["Zorp Cannon"].row
-        self.assertEqual((r["ATTACK RATINGS"], r["AMMO"], r["AVAIL"], r["COST"]), ("—/5/6/7/8", "2(c)", "6(I)", "9,000¥"))
+        self.assertEqual(
+            (r["ATTACK RATINGS"], r["AMMO"], r["AVAIL"], r["COST"]), ("—/5/6/7/8", "2(c)", "6(I)", "9,000¥")
+        )
 
     def test_a_second_table_of_the_names_stays_apart(self):
         tables = regroup._elements(STACKED)
@@ -522,26 +561,32 @@ class StackedTablesTest(unittest.TestCase):
 
 class RepairRowTest(unittest.TestCase):
     """Invented rows with two cells run together by the converter."""
+
     H = ["NAME", "DV", "MODE", "ATTACK RATINGS", "AMMO", "AVAIL", "COST"]
 
     def test_mode_and_attack_ratings_run_together(self):
         row = ["Zorp", "9P", "SA(2)—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥", "2,000¥"]
-        self.assertEqual(regroup._repair_row(self.H, row),
-                         ["Zorp", "9P", "SA(2)", "—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥"])
+        self.assertEqual(
+            regroup._repair_row(self.H, row), ["Zorp", "9P", "SA(2)", "—/4/6/8/9(3km)", "Energy", "5(I)", "1,000¥"]
+        )
 
     def test_attack_ratings_and_ammo_run_together(self):
         h = self.H[:5] + ["TYPE"] + self.H[5:]
         row = ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km) 10(br) + Energy", "Z1", "6(I)", "900¥", "50¥"]
-        self.assertEqual(regroup._repair_row(h, row),
-                         ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km)", "10(br) + Energy", "Z1", "6(I)", "900¥"])
+        self.assertEqual(
+            regroup._repair_row(h, row),
+            ["Blarg", "8P", "SS (1)", "—/—/7/9/9 (5km)", "10(br) + Energy", "Z1", "6(I)", "900¥"],
+        )
 
     def test_a_row_that_reads_stays(self):
         row = ["Quux", "4P", "SA", "8/8/6/—/—", "12(c)", "3(L)", "450¥"]
         self.assertIs(regroup._repair_row(self.H, row), row)
 
     def test_a_box_row_grouped_under_a_name_only_row_takes_its_name(self):
-        md = ("# MADE CHAPTER\n##### Zap Kits\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Zap Kit |  |  |\n"
-              "| \u00a0\u00a0Small (Rating 1–6) | 2 | Rating x 10¥ |\n| Glow Pen | 2 | 20¥ |\n")
+        md = (
+            "# MADE CHAPTER\n##### Zap Kits\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Zap Kit |  |  |\n"
+            "| \u00a0\u00a0Small (Rating 1–6) | 2 | Rating x 10¥ |\n| Glow Pen | 2 | 20¥ |\n"
+        )
         b = next(b for b in blocks(regroup.regroup(md)[0]) if b.name == "Zap Kits")
         self.assertEqual([s["ITEM"] for s in b.stats], ["Zap Kit", "Zap Kit Small (Rating 1–6)", "Glow Pen"])
 
@@ -552,7 +597,9 @@ class RepairRowTest(unittest.TestCase):
 
     def test_the_essence_run_into_the_name_goes_back_to_its_column(self):
         h = ["AUGMENTATION", "ESS", "AVAIL", "COST"]
-        self.assertEqual(regroup._repair_row(h, ["Glow proof 0.2", "2(L)", "5,000¥", ""]), ["Glow proof", "0.2", "2(L)", "5,000¥"])
+        self.assertEqual(
+            regroup._repair_row(h, ["Glow proof 0.2", "2(L)", "5,000¥", ""]), ["Glow proof", "0.2", "2(L)", "5,000¥"]
+        )
         row = ["Fizz mod 0.2", "0.1", "2(L)", "5,000¥"]  # (every cell where it belongs: the name keeps its number)
         self.assertEqual(regroup._repair_row(h, row), row)
 
@@ -591,8 +638,10 @@ A zap mic hears zaps.
         self.assertEqual(items["Zap microphone"].text, "A zap mic hears zaps.")
 
     def test_a_header_printed_twice_keeps_the_first_cell(self):
-        self.assertEqual(regroup._row(["NAME", "AVAIL", "COST", "COST"], ["Zorp", "4", "900¥", "2"]),
-                         {"NAME": "Zorp", "AVAIL": "4", "COST": "900¥", "COST (2)": "2"})
+        self.assertEqual(
+            regroup._row(["NAME", "AVAIL", "COST", "COST"], ["Zorp", "4", "900¥", "2"]),
+            {"NAME": "Zorp", "AVAIL": "4", "COST": "900¥", "COST (2)": "2"},
+        )
         self.assertEqual(regroup._row(["B", "R", "R"], ["1", "2", "3"]), {"B": "1", "R": "2", "RES": "3"})
 
 
@@ -640,6 +689,7 @@ Glow kits glow in the dark.
 
 class PriceListTest(unittest.TestCase):
     """A price list set in an item's text (the core rulebook's credsticks under a bank account's heading)."""
+
     MD = """<!-- page 7 -->
 # GIZMOS
 ## Paying
@@ -694,29 +744,46 @@ class RowGroupsAndSubTablesTest(unittest.TestCase):
     """Indented rows under a name-only row, a bold name-only row over rows of one price shape, and sub-tables stacked
     under one table's title (the core rulebook's `magical goods table`: foci, formulae, supplies). Made up; the
     converter's marks: two no-break spaces for an indented first cell, an en space for a bold one."""
-    MD = ("<!-- page 9 -->\n# GIZMOS\n## Gizmo Shop\n#### Zorp Gadgets\nZorp gadgets are made up.\n#### zorp gear table\n"
-          "##### widgets\n| TYPE | BONDING COST | AVAIL | COST |\n|---|---|---|---|\n| Glow widget | 2 | 3 | 500¥ |\n"
-          "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | 10¥ |\n"
-          "| Large | 2 | 20¥ |\n| Other kit | 3 | 9¥/day |\n"
-          "| SUPPLIES | AVAIL | COST |\n|---|---|---|\n| Zorp dust | 1 | 5¥ |\n| Zorp wire | 1 | 5¥ |\n"
-          "#### Hire\nHiring is made up.\n#### hire table\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Plans club |  |  |\n"
-          "| \u00a0\u00a0Bronze | 1 | 50¥/month or 500¥/year |\n| \u00a0\u00a0Gold | 1 | 90¥ |\n| Lone gizmo | 1 | 5¥ |\n")
+
+    MD = (
+        "<!-- page 9 -->\n# GIZMOS\n## Gizmo Shop\n#### Zorp Gadgets\nZorp gadgets are made up.\n#### zorp gear table\n"
+        "##### widgets\n| TYPE | BONDING COST | AVAIL | COST |\n|---|---|---|---|\n| Glow widget | 2 | 3 | 500¥ |\n"
+        "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | 10¥ |\n"
+        "| Large | 2 | 20¥ |\n| Other kit | 3 | 9¥/day |\n"
+        "| SUPPLIES | AVAIL | COST |\n|---|---|---|\n| Zorp dust | 1 | 5¥ |\n| Zorp wire | 1 | 5¥ |\n"
+        "#### Hire\nHiring is made up.\n#### hire table\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Plans club |  |  |\n"
+        "| \u00a0\u00a0Bronze | 1 | 50¥/month or 500¥/year |\n| \u00a0\u00a0Gold | 1 | 90¥ |\n| Lone gizmo | 1 | 5¥ |\n"
+    )
 
     @classmethod
     def setUpClass(cls):
-        cls.items = {b.name: b for b in blocks(regroup.regroup(cls.MD, name_headers=frozenset({"TYPE", "ITEM"}))[0])
-                     if b.row is not None}
+        cls.items = {
+            b.name: b
+            for b in blocks(regroup.regroup(cls.MD, name_headers=frozenset({"TYPE", "ITEM"}))[0])
+            if b.row is not None
+        }
 
     def test_indented_rows_are_their_name_only_rows_group(self):
-        self.assertEqual([self.items[n].group for n in ("Bronze", "Gold", "Lone gizmo")], ["Plans club", "Plans club", ""])
+        self.assertEqual(
+            [self.items[n].group for n in ("Bronze", "Gold", "Lone gizmo")], ["Plans club", "Plans club", ""]
+        )
 
     def test_a_bold_name_only_row_groups_the_rows_of_one_price_shape(self):
-        self.assertEqual([self.items[n].group for n in ("Small", "Large", "Other kit", "Zap plan")], ["Fizz plans", "Fizz plans", "", ""])
+        self.assertEqual(
+            [self.items[n].group for n in ("Small", "Large", "Other kit", "Zap plan")],
+            ["Fizz plans", "Fizz plans", "", ""],
+        )
 
     def test_sub_tables_take_their_first_header_and_keep_the_tables_title(self):
         got = {n: (self.items[n].label, self.items[n].table) for n in ("Glow widget", "Zap plan", "Zorp dust")}
-        self.assertEqual(got, {"Glow widget": ("widgets", "zorp gear table"), "Zap plan": ("plans", "zorp gear table"),
-                               "Zorp dust": ("supplies", "zorp gear table")})
+        self.assertEqual(
+            got,
+            {
+                "Glow widget": ("widgets", "zorp gear table"),
+                "Zap plan": ("plans", "zorp gear table"),
+                "Zorp dust": ("supplies", "zorp gear table"),
+            },
+        )
 
 
 class VariantRunTest(unittest.TestCase):
@@ -724,30 +791,63 @@ class VariantRunTest(unittest.TestCase):
 
     def test_a_run_of_lower_case_variants_hangs_on_the_row_above_not_on_each_other(self):
         rows = [["Zap shield", "", ""], ["slashing", "2P", "5"], ["bashing", "3S", "5"], ["Plain gun", "4P", "2"]]
-        self.assertEqual([r[0] for r in regroup._rating_groups(rows)],
-                         ["Zap shield", "Zap shield slashing", "Zap shield bashing", "Plain gun"])
+        self.assertEqual(
+            [r[0] for r in regroup._rating_groups(rows)],
+            ["Zap shield", "Zap shield slashing", "Zap shield bashing", "Plain gun"],
+        )
 
     def test_an_indented_name_only_row_heads_the_indented_rows_after_it(self):
-        ind = chr(0xa0) * 2
-        lines = ["| Zorp |  |", f"| {ind}Blade | 3P |", f"| {ind}Fizz |  |", f"| {ind}Hot (rating 1-3) | 2P |",
-                 f"| {ind}Cold | 1P |", "| Lone | 1P |"]
+        ind = chr(0xA0) * 2
+        lines = [
+            "| Zorp |  |",
+            f"| {ind}Blade | 3P |",
+            f"| {ind}Fizz |  |",
+            f"| {ind}Hot (rating 1-3) | 2P |",
+            f"| {ind}Cold | 1P |",
+            "| Lone | 1P |",
+        ]
         got = [(r[0], r.group) for r in regroup._row_groups(lines, [regroup._cells(ln) for ln in lines])]
-        self.assertEqual(got, [("Zorp", ""), ("Blade", "Zorp"), ("Fizz", "Zorp"), ("Hot (rating 1-3)", "Fizz"),
-                               ("Cold", "Fizz"), ("Lone", "")])
+        self.assertEqual(
+            got,
+            [
+                ("Zorp", ""),
+                ("Blade", "Zorp"),
+                ("Fizz", "Zorp"),
+                ("Hot (rating 1-3)", "Fizz"),
+                ("Cold", "Fizz"),
+                ("Lone", ""),
+            ],
+        )
 
 
 class SidebarAndNestedGroupsTest(unittest.TestCase):
     """Made-up markup: a boxed sidebar interrupting an item, and a name-only row over name-only rows."""
 
     def test_what_follows_a_sidebar_goes_back_to_the_item_it_interrupted(self):
-        md = ("#### Zorp Seal\nIt seals\n<!-- box -->\n#### Gizmo Lore\nAn aside.\n<!-- /box -->\nthe cabin.\n"
-              "##### Level 1\n| AVAIL | COST |\n|---|---|\n| 4 | 100¥ |\n#### Next Mod\nText.\n")
+        md = (
+            "#### Zorp Seal\nIt seals\n<!-- box -->\n#### Gizmo Lore\nAn aside.\n<!-- /box -->\nthe cabin.\n"
+            "##### Level 1\n| AVAIL | COST |\n|---|---|\n| 4 | 100¥ |\n#### Next Mod\nText.\n"
+        )
         heads = [v[1] for k, _, v in regroup._elements(md) if k == "h"]
         self.assertEqual(heads, ["Zorp Seal", "Level 1", "Gizmo Lore", "Next Mod"])
 
     def test_a_name_only_row_over_name_only_rows_is_their_group(self):
-        rows = [["Zap Boosters", "", ""], ["Speed", "", ""], ["Rating 1", "4", "5¥"], ["Rating 2", "6", "9¥"],
-                ["Grip", "", ""], ["Rating 1", "4", "7¥"], ["Lone kit", "1", "3¥"]]
-        self.assertEqual([r[0] for r in regroup._rating_groups(rows)],
-                         ["Zap Boosters", "Zap Boosters (Speed) (Rating 1)", "Zap Boosters (Speed) (Rating 2)",
-                          "Zap Boosters (Grip) (Rating 1)", "Lone kit"])
+        rows = [
+            ["Zap Boosters", "", ""],
+            ["Speed", "", ""],
+            ["Rating 1", "4", "5¥"],
+            ["Rating 2", "6", "9¥"],
+            ["Grip", "", ""],
+            ["Rating 1", "4", "7¥"],
+            ["Lone kit", "1", "3¥"],
+        ]
+        self.assertEqual(
+            [r[0] for r in regroup._rating_groups(rows)],
+            [
+                "Zap Boosters",
+                "Zap Boosters (Speed) (Rating 1)",
+                "Zap Boosters (Speed) (Rating 2)",
+                "Zap Boosters (Grip) (Rating 1)",
+                "Lone kit",
+            ],
+        )

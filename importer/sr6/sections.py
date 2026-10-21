@@ -17,6 +17,7 @@ heading and its section print: an action's type (minor, major, edge, boost: the 
 `(Major)` tag), its timing (`(I)` initiative, `(A)` anytime), its Edge cost (`(2 Edge)`, `N-Edge Boosts`, `Cost: N
 Edge`), the action it goes with (`Anticipation (Multiple Attacks, Ranged Attack)`); a quality path's steps (the headings
 under it)."""
+
 import re
 from dataclasses import dataclass, field, replace
 
@@ -34,9 +35,18 @@ HEADING_KINDS = [
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     # a kind a Game Information chapter lists under a heading of its own (`ADEPT POWERS`): each heading under it that
     # prints the kind's own labels (FIELDED) is one, its fields read from them as the recipe reads them
-    ("adeptpowers", re.compile(r"^(?:new\s+)?adept\s+powers?$", re.I)),  # (`New Adept Power`: one, Collapsing Now p. 62)
-    ("actions", re.compile(r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
-                           r"|\bedge\s+boosts?\b|\bspending\s+edge\b", re.I)),
+    (
+        "adeptpowers",
+        re.compile(r"^(?:new\s+)?adept\s+powers?$", re.I),
+    ),  # (`New Adept Power`: one, Collapsing Now p. 62)
+    (
+        "actions",
+        re.compile(
+            r"\bactions\b|\b(?:edge|major|minor|matrix|free|interrupt|status|response|chase)\s+action\b"
+            r"|\bedge\s+boosts?\b|\bspending\s+edge\b",
+            re.I,
+        ),
+    ),
     ("mentorspirits", re.compile(r"\bmentor\s+spirits?\b|\bparagons\b", re.I)),
     ("qualitypaths", re.compile(r"\bquality\s+paths?\s*$", re.I)),
     ("vehicledesign", re.compile(r"\bdesign\s+(?:options?|modifications?)\b|\bquality\s+factors?\b", re.I)),
@@ -50,37 +60,57 @@ FIELDED = {"adeptpowers": {"cost", "activation"}}
 TOXIN_LABELS = {"vector", "speed", "power"}  # a toxin's stat lines (the core rulebook's toxin form)
 # kind -> the words of a heading (the block's own or its parent's) whose bold run-ins are its entries
 RUNIN_KINDS = [
-    ("gear", re.compile(r"\bfoci\b", re.I)),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
+    (
+        "gear",
+        re.compile(r"\bfoci\b", re.I),
+    ),  # `Enchanting Foci`: its kinds of focus, priced as the `Enchanting focus` row
     ("echoes", re.compile(r"\bechoes\b", re.I)),
     ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
     # (`Critter Special Training`, Wild Life p. 182: what a critter can be trained in, beside its Critter Command Actions)
-    ("actions", re.compile(r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b"
-                           r"|\bcritter\s+special\s+training\b", re.I)),
+    (
+        "actions",
+        re.compile(
+            r"\bedge\s+(?:boosts?|actions?)\b|\bspending\s+edge\b|\b(?:fire|combat)\s+actions\b"
+            r"|\bcritter\s+special\s+training\b",
+            re.I,
+        ),
+    ),
     ("datastructures", re.compile(r"\bdata\s+structures\b", re.I)),
     ("contacttypes", re.compile(r"\bcontact\s+types\b", re.I)),
 ]
 # a heading naming its kind before a colon (`Quality Path: X`, `New Edge Action: X`, `New Contact Type: X`)
-PREFIX = [("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$", re.I)),
-          ("actions", re.compile(r"^(?:new\s+)?(?:(?:status|response|chase)\s+)?(?:edge|major|minor)\s+action\s*:\s*(.+)$", re.I)),
-          ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I)),
-          ("metamagics", re.compile(r"^(?:new\s+)?metamagic\s*:\s*(.+)$", re.I)),
-          ("programs", re.compile(r"^new\s+(?:[a-z-]+\s+)?program\s*:\s*(.+)$", re.I)),  # `new hacking program: hitchhiker`
-          ("qualities", re.compile(r"^new\s+(?:(?:positive|negative)\s+)?quality\s*:\s*(.+)$", re.I))]
+PREFIX = [
+    ("qualitypaths", re.compile(r"^(?:new\s+)?quality\s+path\s*:\s*(.+)$", re.I)),
+    (
+        "actions",
+        re.compile(r"^(?:new\s+)?(?:(?:status|response|chase)\s+)?(?:edge|major|minor)\s+action\s*:\s*(.+)$", re.I),
+    ),
+    ("contacttypes", re.compile(r"^(?:new\s+)?contact\s+type\s*:\s*(.+)$", re.I)),
+    ("metamagics", re.compile(r"^(?:new\s+)?metamagic\s*:\s*(.+)$", re.I)),
+    ("programs", re.compile(r"^new\s+(?:[a-z-]+\s+)?program\s*:\s*(.+)$", re.I)),  # `new hacking program: hitchhiker`
+    ("qualities", re.compile(r"^new\s+(?:(?:positive|negative)\s+)?quality\s*:\s*(.+)$", re.I)),
+]
 # a heading whose tag line names its kind (`##### Vanishing` over `(Ability/Critter Power)`)
 TAG_KINDS = [("critterpowers", re.compile(r"\bcritter\s+power\b", re.I))]
 # a heading naming its kind after the name (`##### Paragon (Positive Quality)`)
 KIND_SUFFIX = re.compile(r"^(.+?)\s*\(((?:positive|negative)\s+quality)\)$", re.I)
 # run-in labels that are a field of the block, not an entry of its kind
-FIELD_LABELS = re.compile(r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
-                          r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
-                          r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
-                          r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$", re.I)
+FIELD_LABELS = re.compile(
+    r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
+    r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
+    r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
+    r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$",
+    re.I,
+)
 # a Matrix action's test line, set under its heading: `(Illegal) Cracking + Logic vs. Willpower + Firewall (Major)`
 MATRIX_TEST = re.compile(r"\((?:il)?legal\)[^;]*\((?:major|minor)\b", re.I)
-EXAMPLE = re.compile(r"\b(?:example|sample|summary|table|definition|note)s?\b|\bby\s+cost\b|^\d+\s*-?\s*edge$"
-                     r"|\((?:positive|negative)\s+quality\)", re.I)
+EXAMPLE = re.compile(
+    r"\b(?:example|sample|summary|table|definition|note)s?\b|\bby\s+cost\b|^\d+\s*-?\s*edge$"
+    r"|\((?:positive|negative)\s+quality\)",
+    re.I,
+)
 _COST_LINE = re.compile(r"\bCost:\s*\d+\s*(Edge|Karma)\b", re.I)  # an entry's price line (`Cost: 2 Edge`)
 _TIMING = re.compile(r"\s*\((I|A)\)\s*$")
 _EDGE = re.compile(r"\s*\((\d+)\s*Edge\)\s*$", re.I)
@@ -93,8 +123,9 @@ GRANTED_LIST = re.compile(r"(powers|characteristics)", re.I)
 # a list of what a section costs its taker (`### The Costs` under `# Drakes`): its bold run-ins drawbacks it grants
 DRAWBACKS = re.compile(r"(?:the\s+)?(?:costs|drawbacks)", re.I)
 # `Select two powers from the list … and one characteristic from …`: (count, noun) pairs
-CHOOSE = re.compile(r"(?:\b(?:select|choose|pick|take)\s+|\band\s+)(\d+|one|two|three|four|five|six)\s+(\w+?)s?\s+from\b",
-                    re.I)
+CHOOSE = re.compile(
+    r"(?:\b(?:select|choose|pick|take)\s+|\band\s+)(\d+|one|two|three|four|five|six)\s+(\w+?)s?\s+from\b", re.I
+)
 _COUNTS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
 
 
@@ -108,7 +139,11 @@ def _singular(name):
     if not words:
         return ""
     last = words[-1]
-    one = last[:-3] + "y" if last.lower().endswith("ies") else last[:-1] if last.lower().endswith("s")         and not last.lower().endswith("ss") else last
+    one = (
+        last[:-3] + "y"
+        if last.lower().endswith("ies")
+        else last[:-1] if last.lower().endswith("s") and not last.lower().endswith("ss") else last
+    )
     return " ".join(words[:-1] + [one])
 
 
@@ -149,7 +184,9 @@ def forms(text):
     """The names a section's text gives as its forms (`comes in one of two forms: boosted defense and dispelling`),
     in norm form."""
     m = re.search(r"\bforms?\b[^.:;]{0,40}:\s*([^.;]+)", " ".join((text or "").split()), re.I)
-    return {norm(x) for x in re.split(r",\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", m.group(1)) if x.strip()} if m else set()
+    return (
+        {norm(x) for x in re.split(r",\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", m.group(1)) if x.strip()} if m else set()
+    )
 
 
 def _action_attrs(name, chain, tags="", text=""):
@@ -158,10 +195,10 @@ def _action_attrs(name, chain, tags="", text=""):
     m = _TIMING.search(name)
     if m:
         a["timing"] = "initiative" if m.group(1) == "I" else "anytime"
-        name = name[:m.start()]
+        name = name[: m.start()]
     m = _EDGE.search(name)
     if m:
-        a["edge"], name = m.group(1), name[:m.start()]
+        a["edge"], name = m.group(1), name[: m.start()]
     m = _EDGE_FIRST.match(name)
     if m:
         a["edge"], name = m.group(1), m.group(2)
@@ -191,6 +228,7 @@ def _action_attrs(name, chain, tags="", text=""):
 class Reader:
     """Fed every block in reading order (feed(block, page)), it returns the entries of the section kinds the block is
     or holds."""
+
     # toxins read from their stat lines (a book printing no price table for them: the general recipe's books turn it
     # on while they are read; the core rulebook prices its drugs and toxins in tables of its own)
     toxins = False
@@ -222,8 +260,9 @@ class Reader:
                     self.path[2] = self.path[2] or lv
                 if lv == self.path[2] and b.name[:1].isupper() and not EXAMPLE.search(b.name):
                     self.path[1].children.append(("step", {}, b.name))
-                    qs = step_qualities(b, page, "" if named else self.path[1].name, self.path[1].name, self.path[3],
-                                        self.path[4])
+                    qs = step_qualities(
+                        b, page, "" if named else self.path[1].name, self.path[1].name, self.path[3], self.path[4]
+                    )
                     self.path[1].priced_steps += any(q.path is None for q in qs)
                     for q in qs:
                         q.path = q.path and self.path[1]
@@ -278,12 +317,14 @@ class Reader:
                 n = m.group(1).strip()
                 f = self._make(kind, n[:1].upper() + n[1:], b, page, chain)
                 if f and kind == "programs":
-                    f.attrs["type"] = program_type(name[:m.start(1)])
+                    f.attrs["type"] = program_type(name[: m.start(1)])
                 return [f] if f else []
         if m := KIND_SUFFIX.match(name) or KIND_SUFFIX.match(f"{name} ({b.tags})"):
             return [f for f in [self._make("qualities", m.group(1), b, page, chain + [m.group(2)[:-1] + "ies"])] if f]
         # (its tag line, or a parenthesized line among the first of its text: regroup leaves it there under labels)
-        tagline = b.tags or next((ln for ln in (b.text or "").splitlines()[:4] if re.fullmatch(r"\s*\([^()]+\)\s*", ln)), "")
+        tagline = b.tags or next(
+            (ln for ln in (b.text or "").splitlines()[:4] if re.fullmatch(r"\s*\([^()]+\)\s*", ln)), ""
+        )
         for kind, rx in TAG_KINDS:
             if rx.search(tagline) and name[:1].isupper():
                 return [f for f in [self._make(kind, name, b, page, chain)] if f]
@@ -295,8 +336,12 @@ class Reader:
             return [f]
         if f := self._granted_quality(b, page):
             return [f]
-        if self.toxins and TOXIN_LABELS <= {k.lower() for k in b.labels} and name[:1].isupper() \
-                and "|" not in (b.text or ""):
+        if (
+            self.toxins
+            and TOXIN_LABELS <= {k.lower() for k in b.labels}
+            and name[:1].isupper()
+            and "|" not in (b.text or "")
+        ):
             # a toxin's stat lines (Vector, Speed, Power …) under its heading, no price table (a drug's row is read
             # with its table): gear, its category the heading over it
             return [Found("gear", name, page, {"category": parent or None}, [], _body(b), b)]
@@ -306,18 +351,31 @@ class Reader:
         if not kind and (f := optional_rule_quality(b, page)):
             return [f]
         labels = {k.lower(): v for k, v in b.labels.items()}
-        if not kind and "game effect" in labels and re.match(r"\s*\d+\s*Karma\b", labels.get("cost") or labels.get("bonus") or "", re.I) \
-                and (name[:1].isupper() or re.match(r"[a-z]+[A-Z]{2}", name)) and not EXAMPLE.search(name) \
-                and b.row is None and not b.stats \
-                and not _kind_of(name, HEADING_KINDS + RUNIN_KINDS) and not any(
-                    (m := _RUNIN.match(ln)) and not FIELD_LABELS.match(m.group("name").strip())
-                    for ln in (b.text or "").splitlines()):
+        if (
+            not kind
+            and "game effect" in labels
+            and re.match(r"\s*\d+\s*Karma\b", labels.get("cost") or labels.get("bonus") or "", re.I)
+            and (name[:1].isupper() or re.match(r"[a-z]+[A-Z]{2}", name))
+            and not EXAMPLE.search(name)
+            and b.row is None
+            and not b.stats
+            and not _kind_of(name, HEADING_KINDS + RUNIN_KINDS)
+            and not any(
+                (m := _RUNIN.match(ln)) and not FIELD_LABELS.match(m.group("name").strip())
+                for ln in (b.text or "").splitlines()
+            )
+        ):
             # a quality's own shape wherever it is printed (`### rEVOlutionary` under `## Game Information`: `Cost: 10
             # Karma`, `Game Effect: …`)
             return [f for f in [self._make("qualities", name, b, page, chain)] if f]
-        if not kind and len(chain) > 1 and self.stack[-1][3] and (m := _COST_LINE.search(" ".join((b.text or "").split()))) \
-                and (pm := _COST_LINE.search(" ".join((self.stack[-1][2].text or "").split()))) \
-                and m.group(1).lower() == pm.group(1).lower():
+        if (
+            not kind
+            and len(chain) > 1
+            and self.stack[-1][3]
+            and (m := _COST_LINE.search(" ".join((b.text or "").split())))
+            and (pm := _COST_LINE.search(" ".join((self.stack[-1][2].text or "").split())))
+            and m.group(1).lower() == pm.group(1).lower()
+        ):
             # an entry set a level too deep under the one before it, priced as it is (`#### Yielding Force` after
             # `### Weapon Spread`, both `Cost: N Edge`): the kind's next entry, the one before it its sibling
             if k := _kind_of(chain[-2], HEADING_KINDS):
@@ -339,9 +397,16 @@ class Reader:
             kind = "actions"
         if (len(chain), parent) in self.prefixed:
             return []
-        if not kind or not name[:1].isupper() and not name[:1].isdigit() or EXAMPLE.search(name) \
-                or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]) or name.startswith("(") \
-                or name.isupper() and len(name.split()) > 1:  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
+        if (
+            not kind
+            or not name[:1].isupper()
+            and not name[:1].isdigit()
+            or EXAMPLE.search(name)
+            or _kind_of(name, [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind])
+            or name.startswith("(")
+            or name.isupper()
+            and len(name.split()) > 1
+        ):  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
             return []
         if kind in FIELDED and not FIELDED[kind] & {k.lower() for k in b.labels}:
             return []  # (a heading under the kind's heading that prints none of its labels: a rule section)
@@ -356,7 +421,9 @@ class Reader:
         quality it hands out (`Metahuman Quality: … requires the Drake positive quality`, `Unsteady Hands: Drakes gain
         the Unsteady Hands quality`)."""
         # (regroup hands a block's leading labelled lines over as labels: read with its text)
-        t = "\n".join([f"**{k}:** {v}" for k, v in b.labels.items() if f"**{k}:**" not in (b.text or "")] + [b.text or ""])
+        t = "\n".join(
+            [f"**{k}:** {v}" for k, v in b.labels.items() if f"**{k}:**" not in (b.text or "")] + [b.text or ""]
+        )
         if not owner or not re.search(rf"\b{re.escape(owner)}s?\b", " ".join(t.split()), re.I):
             return []
         out, lines = [], t.splitlines()
@@ -366,16 +433,26 @@ class Reader:
                 continue
             name = " ".join(m.group("name").split()).strip()
             body = [m.group("rest").strip()]
-            for nxt in lines[i + 1:]:
+            for nxt in lines[i + 1 :]:
                 if _RUNIN.match(nxt) or nxt.startswith(("#", "|")) or not nxt.strip():
                     break
                 body.append(nxt.strip())
             para = re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(x for x in body if x))  # (`Un- steady`)
-            if re.search(r"\bquality\b", name, re.I) or re.search(rf"\bgains?\s+the\s+{re.escape(name)}\s+quality\b", para, re.I):
+            if re.search(r"\bquality\b", name, re.I) or re.search(
+                rf"\bgains?\s+the\s+{re.escape(name)}\s+quality\b", para, re.I
+            ):
                 continue
             at = max(1, text_page(b, ln.strip()[:40]) - (b.page - page))
-            out.append(Found("qualities", name, at, {"kind": "negative", "karma": "0", "granted": "true",
-                                                       "category": f"{owner} drawback"}, effects.read(para), para))
+            out.append(
+                Found(
+                    "qualities",
+                    name,
+                    at,
+                    {"kind": "negative", "karma": "0", "granted": "true", "category": f"{owner} drawback"},
+                    effects.read(para),
+                    para,
+                )
+            )
         return out
 
     def _family_quality(self, b, page):
@@ -388,8 +465,15 @@ class Reader:
         karma = re.search(r"\bcosts?\s+(\d+)\s+Karma\b", " ".join((pb.text or "").split()), re.I)
         if not fam or not karma or b.level != plv + 1:
             return None
-        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": karma.group(1),
-                                                          "category": fam.group(1).strip()}, [], _body(b), b)
+        return Found(
+            "qualities",
+            b.name.strip(),
+            page,
+            {"kind": "positive", "karma": karma.group(1), "category": fam.group(1).strip()},
+            [],
+            _body(b),
+            b,
+        )
 
     def _bought_as_quality(self, b, page, chain):
         """A heading under a section whose text says its entries are taken as a quality, at the price its tag prints
@@ -400,7 +484,11 @@ class Reader:
         pb = self.stack[-1][2]
         karma = re.fullmatch(r"\(?(\d+)\s*Karma\)?", (pb.tags or "").strip(), re.I)
         noun = re.search(r"(\w+?)s\b", pb.name)
-        if not karma or not noun or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", " ".join((pb.text or "").split()), re.I):
+        if (
+            not karma
+            or not noun
+            or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", " ".join((pb.text or "").split()), re.I)
+        ):
             return None
         if not re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
             return None
@@ -417,18 +505,32 @@ class Reader:
         pb = self.stack[-1][2]
         text = " ".join((pb.text or "").split())
         noun = re.search(r"(\w+?)s\b", pb.name)
-        if not re.fullmatch(r"\(?\d+\s*Karma\)?", (pb.tags or "").strip(), re.I) or not noun \
-                or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", text, re.I) \
-                or not (m := re.search(r"\bgives?\s+(?:them|you|it)\s+the\s+([^.]+?)\s+abilit(?:y|ies)\b", text, re.I)):
+        if (
+            not re.fullmatch(r"\(?\d+\s*Karma\)?", (pb.tags or "").strip(), re.I)
+            or not noun
+            or not re.search(r"\bas\s+an?\s+(?:positive\s+)?quality\b", text, re.I)
+            or not (m := re.search(r"\bgives?\s+(?:them|you|it)\s+the\s+([^.]+?)\s+abilit(?:y|ies)\b", text, re.I))
+        ):
             return None
         if re.search(rf"\b{re.escape(noun.group(1))}$", b.name.strip(), re.I):
             return None  # (an entry of the section: `Artisan's Way`)
         named = {norm(x) for x in re.split(r",\s*(?:and\s+)?|\s+and\s+", m.group(1))}
         if not (norm(b.name) in named or set(norm(b.name).split()) & {w for x in named for w in x.split()}):
             return None  # (a heading the sentence doesn't name)
-        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": "0", "granted": "true",
-                                                         "category": f"{noun.group(1).split()[-1].capitalize()} ability"},
-                     effects.read(_body(b)), _body(b), b)
+        return Found(
+            "qualities",
+            b.name.strip(),
+            page,
+            {
+                "kind": "positive",
+                "karma": "0",
+                "granted": "true",
+                "category": f"{noun.group(1).split()[-1].capitalize()} ability",
+            },
+            effects.read(_body(b)),
+            _body(b),
+            b,
+        )
 
     def _granted_quality(self, b, page):
         """A heading under a `Powers` or `Characteristics` heading whose text names the section over it (`### Powers`
@@ -448,9 +550,15 @@ class Reader:
         most = re.search(r"\bno\s+more\s+than\s+(\w+)\b", " ".join((lb.text or "").split()), re.I)
         self.granted[noun] = (cat, _count(most.group(1)) if most else None)
         body = _body(b)
-        return Found("qualities", b.name.strip(), page, {"kind": "positive" if noun == "power" else "negative",
-                                                         "karma": "0", "granted": "true", "category": cat},
-                     effects.read(body), body, b)
+        return Found(
+            "qualities",
+            b.name.strip(),
+            page,
+            {"kind": "positive" if noun == "power" else "negative", "karma": "0", "granted": "true", "category": cat},
+            effects.read(body),
+            body,
+            b,
+        )
 
     def _priced_heading(self, b, page, chain):
         """A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive quality at that price; the
@@ -464,10 +572,27 @@ class Reader:
         for n, noun in CHOOSE.findall(" ".join(body.split())):
             cat, most = self.granted.get(_singular(noun).lower(), (None, None))
             if cat and _count(n):
-                kids.append(("choice", {"kind": "quality", "category": cat, "count": str(_count(n)),
-                                        **({"max": str(most)} if most else {})}, None))
-        return Found("qualities", m.group(1).strip(), page, {"kind": "positive", "karma": m.group(2)},
-                     kids + effects.read(body), body, b)
+                kids.append(
+                    (
+                        "choice",
+                        {
+                            "kind": "quality",
+                            "category": cat,
+                            "count": str(_count(n)),
+                            **({"max": str(most)} if most else {}),
+                        },
+                        None,
+                    )
+                )
+        return Found(
+            "qualities",
+            m.group(1).strip(),
+            page,
+            {"kind": "positive", "karma": m.group(2)},
+            kids + effects.read(body),
+            body,
+            b,
+        )
 
     def _make(self, kind, name, b, page, chain):
         attrs, text = {}, b.text or ""
@@ -489,13 +614,17 @@ class Reader:
         if kind == "vehicledesign":
             attrs = {"category": chain[-1] if chain else None}
             if m := re.search(r"\((x\s*[\d.]+)\s*BP\)", name, re.I):  # `Scrap Frame (x0.5 BP)`: its cost multiplier
-                name, attrs["multiplier"] = name[:m.start()].strip(), m.group(1).replace(" ", "")
+                name, attrs["multiplier"] = name[: m.start()].strip(), m.group(1).replace(" ", "")
             if m := re.search(r"\s*\((\d+\s*[–-]\s*\d+)\)\s*$", name):  # `Mil-Spec Frame (1-12)`: its rating range
-                name, attrs["rating"] = name[:m.start()], m.group(1).replace(" ", "")
+                name, attrs["rating"] = name[: m.start()], m.group(1).replace(" ", "")
             # its Design Point cost as printed (`Cost: 2 Design Points x Armor Rating`): a cost, not an effect (owner
             # decision 2026-10-10; a vehicle designer reads it later)
-            if m := re.search(r"Cost:\**\s*(\+?\s*\d+(?:\.\d+)?)\s*Design Points?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)"
-                              r"\s*(?:\.|$|\n|\()", _body(b), re.I):
+            if m := re.search(
+                r"Cost:\**\s*(\+?\s*\d+(?:\.\d+)?)\s*Design Points?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)"
+                r"\s*(?:\.|$|\n|\()",
+                _body(b),
+                re.I,
+            ):
                 attrs["dp"] = (m.group(1).replace(" ", "") + m.group(2).rstrip()).strip()
             attrs = {**design_terms(name, _body(b)), **attrs}
         if kind == "critterpowers" and chain and WEAKNESSES.search(chain[-1]):
@@ -520,7 +649,7 @@ class Reader:
         t = "\n".join(lead + [b.text or ""])
         t = re.sub(r"\*\*\s*\n\s*\*\*", " ", t)  # a bold name wrapped onto two lines
         lines = t.splitlines()
-        intro = "\n".join(lines[:next((i for i, ln in enumerate(lines) if _RUNIN.match(ln)), len(lines))])
+        intro = "\n".join(lines[: next((i for i, ln in enumerate(lines) if _RUNIN.match(ln)), len(lines))])
         cites = tuple(int(n) for n in re.findall(r"\(\s*p\.\s*(\d+)\s*\)", re.sub(r"\*\*", "", intro)))
         for i, ln in enumerate(lines):
             m = _RUNIN.match(ln)
@@ -530,19 +659,30 @@ class Reader:
             if only is not None and not only.match(name):
                 continue
             if (new := re.match(r"(?i)new\s+([\w ]+?)\s*:", name)) and not _kind_of(
-                    new.group(1) + "s", [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]):
+                new.group(1) + "s", [(k, rx) for k, rx in HEADING_KINDS + RUNIN_KINDS if k == kind]
+            ):
                 continue  # `New Status: Painted` among new actions: another kind of thing
-            if FIELD_LABELS.match(name) or FIELD_LABELS.match(name.split(":")[0].strip()) or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[" or re.match(r"[a-z][A-Z]", name)) \
-                    or len(name) > 70 or norm(name) in seen:
+            if (
+                FIELD_LABELS.match(name)
+                or FIELD_LABELS.match(name.split(":")[0].strip())
+                or not (name[:1].isupper() or name[:1].isdigit() or name[:1] in "+[" or re.match(r"[a-z][A-Z]", name))
+                or len(name) > 70
+                or norm(name) in seen
+            ):
                 continue
             seen.add(norm(name))
             pre = next((pm for k, rx in PREFIX if k == kind and (pm := rx.match(name))), None)  # `New Edge Action: X`
             if not pre and _runin_kind(name) == kind:
                 continue  # (`Electronic Warfare Programs:` introduces the kind)
             body = [m.group("rest").strip()]
-            for nxt in lines[i + 1:]:
+            for nxt in lines[i + 1 :]:
                 n2 = _RUNIN.match(nxt)
-                if n2 and not FIELD_LABELS.match(n2.group("name").strip()) or nxt.startswith(("#", "|")) or not nxt.strip():
+                if (
+                    n2
+                    and not FIELD_LABELS.match(n2.group("name").strip())
+                    or nxt.startswith(("#", "|"))
+                    or not nxt.strip()
+                ):
                     break  # (its own labelled lines, `• **Cost:** N Karma`, are its paragraph's)
                 body.append(nxt.strip())
             para = "\n".join(x for x in body if x)  # (its lines kept: the texts are reflowed later)
@@ -571,19 +711,41 @@ def reprint(f, entries):
     """True when run-in f repeats an entry its list's intro points to (the rigging chapter's `Rigger Programs`, `See
     the Programs section … (p. 184)`, lists the matrix chapter's programs again): an entry of its kind and name on a
     cited page (or the next: an entry runs over a page). The list references it; no second entry is made."""
-    return bool(f.cites) and any(norm(e["name"]) == norm(f.name) and str(e["page"]).isdigit()
-                                 and any(0 <= int(e["page"]) - c <= 1 for c in f.cites) for e in entries)
+    return bool(f.cites) and any(
+        norm(e["name"]) == norm(f.name)
+        and str(e["page"]).isdigit()
+        and any(0 <= int(e["page"]) - c <= 1 for c in f.cites)
+        for e in entries
+    )
 
 
 # --- vehicle design (Double Clutch's design rules) ---------------------------------------------------------------
 
 # a design table's printed columns -> the part's attributes (Double Clutch p. 150's chassis, powertrain, console and
 # size class tables), each value as printed
-DESIGN_COLUMNS = {"BUILD POINTS": "bp", "BOD": "body", "BODY": "body", "ARM": "armor", "ARMOR": "armor", "HAND": "handling",
-                  "HANDLING": "handling", "SEAT": "seats", "SEATS": "seats", "SIZE CLASS": "sizeClass", "ACCEL": "accel",
-                  "SPD INT": "interval", "SPEED INTERVAL": "interval", "TOP SPD": "topSpeed", "TOP SPEED": "topSpeed",
-                  "PILOT": "pilot", "SENSOR": "sensor", "SPECIAL": "special", "LENGTH": "length", "WEIGHT": "weight",
-                  "CARGO": "cargo"}
+DESIGN_COLUMNS = {
+    "BUILD POINTS": "bp",
+    "BOD": "body",
+    "BODY": "body",
+    "ARM": "armor",
+    "ARMOR": "armor",
+    "HAND": "handling",
+    "HANDLING": "handling",
+    "SEAT": "seats",
+    "SEATS": "seats",
+    "SIZE CLASS": "sizeClass",
+    "ACCEL": "accel",
+    "SPD INT": "interval",
+    "SPEED INTERVAL": "interval",
+    "TOP SPD": "topSpeed",
+    "TOP SPEED": "topSpeed",
+    "PILOT": "pilot",
+    "SENSOR": "sensor",
+    "SPECIAL": "special",
+    "LENGTH": "length",
+    "WEIGHT": "weight",
+    "CARGO": "cargo",
+}
 
 
 def design_tables(b, page):
@@ -591,8 +753,11 @@ def design_tables(b, page):
     class table (first header SIZE CLASS, a CARGO column): a vehicle design part, its category the table's first header
     (`chassis type`, `size class`), its printed columns (DESIGN_COLUMNS) as printed. A size class row is named by its
     table and number (`Size Class 6`)."""
-    tables = ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else []) \
-        + [(list(x), [list(x.values())]) for x in b.stats] + md_tables(b.text)
+    tables = (
+        ([(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else [])
+        + [(list(x), [list(x.values())]) for x in b.stats]
+        + md_tables(b.text)
+    )
     out = []
     for header, rows in tables:
         hu = [h.upper().strip() for h in header]
@@ -625,8 +790,10 @@ _V = r"vehicle[’']s\s+(?:original\s+|starting\s+)?"
 # the maximum an option's text prints, as a short expression in the book's words: (pattern, its expression)
 _MAXIMA = [
     (re.compile(rf"maximum level is (\d+) or the {_V}(\w+) value,? whichever is lower", re.I), "min({0}, {1})"),
-    (re.compile(r"maximum increase is double the starting (\w+) or (\d+) levels,? whichever is less", re.I),
-     "min({1}, 2 x {0})"),
+    (
+        re.compile(r"maximum increase is double the starting (\w+) or (\d+) levels,? whichever is less", re.I),
+        "min({1}, 2 x {0})",
+    ),
     (re.compile(r"maximum level is (\d+)\b", re.I), "{0}"),
     (re.compile(r"maximum of (\d+) levels\b", re.I), "{0}"),
     (re.compile(rf"cannot be higher than twice the {_V}(\w+)", re.I), "2 x {0}"),
@@ -674,8 +841,9 @@ def quality_sets(b, page):
     """Each row of a table listing qualities with a Karma price (`TYPE | KARMA | METATYPE | POSITIVE METAGENIC
     QUALITIES | …`: the Companion's metagenic collectives): a set of qualities bought together."""
     out = []
-    for header, rows in md_tables(b.text) + ([(b.header, [[b.row.get(h, "") for h in b.header]])]
-                                               if b.row is not None and b.header else []):
+    for header, rows in md_tables(b.text) + (
+        [(b.header, [[b.row.get(h, "") for h in b.header]])] if b.row is not None and b.header else []
+    ):
         hu = [h.upper() for h in header]
         qs = [i for i, h in enumerate(hu) if "QUALITIES" in h]
         karma = next((i for i, h in enumerate(hu) if "KARMA" in h), None)
@@ -686,18 +854,37 @@ def quality_sets(b, page):
             if not r or not r[0].strip() or len(r) < len(header):
                 continue
             items = [x for i in qs for x in _items(r[i]) if x and x != "—"]
-            out.append(Found("qualitysets", r[0].strip(), page, {k: v for k, v in (
-                ("karma", r[karma].strip()), ("metatypes", r[meta].strip() if meta is not None else "")) if v},
-                [("quality", {}, x) for x in items], ""))
+            out.append(
+                Found(
+                    "qualitysets",
+                    r[0].strip(),
+                    page,
+                    {
+                        k: v
+                        for k, v in (
+                            ("karma", r[karma].strip()),
+                            ("metatypes", r[meta].strip() if meta is not None else ""),
+                        )
+                        if v
+                    },
+                    [("quality", {}, x) for x in items],
+                    "",
+                )
+            )
     return out
 
 
 _OR = r"(?:\s*(?:,\s*(?:or\s+)?|or|to|–|-|/)\s*\d+)*"  # (`4 or 8 Karma`, `3,6, or 9 Karma`: the first the lowest)
-_COST = re.compile(rf"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+){_OR}\s*Karma|\bCost:\s*(\d+){_OR}\s*Karma"
-                   r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
-                   re.I)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
-_BONUS = re.compile(rf"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+){_OR}\s*Karma|\bBonus:\s*(\d+){_OR}\s*Karma"
-                    r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b", re.I)
+_COST = re.compile(
+    rf"\*\*(?:Karma\s+)?Cost:?\*\*:?\s*(\d+){_OR}\s*Karma|\bCost:\s*(\d+){_OR}\s*Karma"
+    r"|\*\*Karma\s+Cost:?\*\*:?\s*(\d+)\b|\*\*Cost:?\*\*:?\s*(\d+)\s*points?\b",
+    re.I,
+)  # (`Karma Cost: 6 points`; `Cost: 5 Points`, Karma points: not `5 Design Points`)
+_BONUS = re.compile(
+    rf"\*\*(?:Karma\s+)?Bonus:?\*\*:?\s*(\d+){_OR}\s*Karma|\bBonus:\s*(\d+){_OR}\s*Karma"
+    r"|\*\*Karma\s+Bonus:?\*\*:?\s*(\d+)\b",
+    re.I,
+)
 _NONE = re.compile(r"\*\*(?:Karma\s+)?(?:Cost|Bonus):?\*\*:?\s*None\b|\b(?:Cost|Bonus):\s*None\b", re.I)
 _ANY_COST = re.compile(r"\*\*(?:Karma\s+)?Cost:?\*\*", re.I)  # a cost in nuyen, or by a rule (`5 x new rating`)
 _EFFECT = re.compile(r"\*\*Game\s+Effects?:?\*\*", re.I)
@@ -742,9 +929,14 @@ def quality_attrs(name, chain, text):
     karma = next((g for g in k.groups() if g), None) if k else None
     if karma is None and _NONE.search(text or ""):
         karma = "0"  # (`Bonus: None`: In Debt, CRB p. 77, gives no Karma)
-    top =max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
+    top = max((int(n) for n in re.findall(r"\d+", k.group(0))), default=0) if k else 0
     steps = karma_steps(k.group(0)) if k and karma and top > int(karma) else None
-    return {"kind": kind, "karma": karma, **({"karmaMax": str(top)} if karma and top > int(karma) else {}), **({"karmaSteps": steps} if steps else {})}
+    return {
+        "kind": kind,
+        "karma": karma,
+        **({"karmaMax": str(top)} if karma and top > int(karma) else {}),
+        **({"karmaSteps": steps} if steps else {}),
+    }
 
 
 def template_headings(bs, chapters=3):
@@ -771,22 +963,33 @@ def _granted(name, body):
     """The step grants a quality printed elsewhere: `gain the Home Ground quality`, `the Home Ground quality (p. 72)`."""
     one = " ".join((body or "").split())
     n = re.escape(name)
-    return bool(re.search(rf"(?i)\b(?:gains?|purchases?|buys?|takes?|receives?)\s+the\s+{n}\s+quality\b|\b{n}\s+quality\s*\(p\.", one))
+    return bool(
+        re.search(
+            rf"(?i)\b(?:gains?|purchases?|buys?|takes?|receives?)\s+the\s+{n}\s+quality\b|\b{n}\s+quality\s*\(p\.", one
+        )
+    )
 
 
 INTRO_STEP = re.compile(r"(?i)start(?:ing)?\s+point|how\s+to\s+move\s+on")  # a path's intro, no step
 _BARE_STEP = re.compile(r"(?i)step\s+(\d+|one|two|three|four|five)")
 # a step's price in its prose: `spend 10 Karma`, `By investing 10 Karma`, `an expenditure of 15 Karma`
-_STEP_PRICE = re.compile(r"(?i)\b(?:(?:spend(?:ing|s)?|invest(?:ing|s)?|expenditure\s+of|pay(?:ing|s)?|costs?)\s+(\d+)\s+Karma\b"
-                         r"|(\d+)\s+Karma\s+(?:expenditure|investment)\b)")  # (`with a 15 Karma expenditure`)
+_STEP_PRICE = re.compile(
+    r"(?i)\b(?:(?:spend(?:ing|s)?|invest(?:ing|s)?|expenditure\s+of|pay(?:ing|s)?|costs?)\s+(\d+)\s+Karma\b"
+    r"|(\d+)\s+Karma\s+(?:expenditure|investment)\b)"
+)  # (`with a 15 Karma expenditure`)
 # a price the path's prose gives a later step: `They must spend 10 Karma, and they move to step 1`
-_MOVE_PRICE = re.compile(r"(?i)\b(\d+)\s+Karma\b[^.]{0,40}?\bmove\s+(?:on\s+)?to\s+step\s+(\d+|one|two|three|four|five)\b")
+_MOVE_PRICE = re.compile(
+    r"(?i)\b(\d+)\s+Karma\b[^.]{0,40}?\bmove\s+(?:on\s+)?to\s+step\s+(\d+|one|two|three|four|five)\b"
+)
 _STEP_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
 
 
 def step_prices(text):
     """{step number: Karma} the prose gives the steps after it (`spend 10 Karma, and they move to step 1`)."""
-    return {_STEP_WORDS.get(m.group(2).lower(), m.group(2)): m.group(1) for m in _MOVE_PRICE.finditer(" ".join((text or "").split()))}
+    return {
+        _STEP_WORDS.get(m.group(2).lower(), m.group(2)): m.group(1)
+        for m in _MOVE_PRICE.finditer(" ".join((text or "").split()))
+    }
 
 
 def step_qualities(b, page, path, owner="", prices=None, granted=None):
@@ -812,14 +1015,18 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
         attrs = quality_attrs(name, [], body) or {"kind": "positive"}
         if not attrs.get("karma"):
             k = _STEP_PRICE.search(" ".join(body.split()))
-            attrs["karma"] = (k.group(1) or k.group(2)) if k else (prices or {}).get(_STEP_WORDS.get(m.group(1).lower(), m.group(1)))
+            attrs["karma"] = (
+                (k.group(1) or k.group(2)) if k else (prices or {}).get(_STEP_WORDS.get(m.group(1).lower(), m.group(1)))
+            )
         attrs.update({"category": owner, "group": owner, "_id": f"{owner} {name.strip()}"})
         return [Found("qualities", name.strip(), page, {k: v for k, v in attrs.items() if v}, [], body, b, path=True)]
     for n in re.split(r"\s+or\s+", name):
         attrs = quality_attrs(n, [], body)
         if attrs:
             out.append(Found("qualities", n.strip(), page, {k: v for k, v in attrs.items() if v}, [], body))
-        elif n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body)) and not _BARE_STEP.fullmatch(n.strip()):
+        elif (
+            n.strip()[:1].isupper() and (name != b.name or _EFFECT.search(body)) and not _BARE_STEP.fullmatch(n.strip())
+        ):
             if not _granted(n.strip(), body):
                 out.append(imposed(n.strip(), page, body))
             elif granted is not None and name != b.name:
@@ -832,7 +1039,9 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
 
 # (owner, 2026-10-08) an optional rule that prices itself in Karma is a quality too
 OPTIONAL = re.compile(r"\b(?:use this rule|optional rule)\b", re.I)
-_GRADE_KARMA = re.compile(r"\bkarma cost to become or advance an? [\w-]+ grade is (\d+)\s*\+\s*(?:the\s+)?next\s+grade", re.I)
+_GRADE_KARMA = re.compile(
+    r"\bkarma cost to become or advance an? [\w-]+ grade is (\d+)\s*\+\s*(?:the\s+)?next\s+grade", re.I
+)
 _COST_TO = re.compile(r"\bcost to (?:become|be|gain)\b[^.]*?\bis (\d+) Karma\b", re.I)
 
 
@@ -846,9 +1055,15 @@ def optional_rule_quality(b, page):
     if not OPTIONAL.search(text) or not b.name[:1].isupper() or EXAMPLE.search(b.name):
         return None
     if g := _GRADE_KARMA.search(text):
-        return Found("qualities", b.name.strip(), page, {"kind": "positive", "karma": str(int(g.group(1)) + 1),
-                                                         "category": "Optional rule"},
-                     [("formula", {"field": "karma"}, f"{g.group(1)} + R")], _body(b), b)
+        return Found(
+            "qualities",
+            b.name.strip(),
+            page,
+            {"kind": "positive", "karma": str(int(g.group(1)) + 1), "category": "Optional rule"},
+            [("formula", {"field": "karma"}, f"{g.group(1)} + R")],
+            _body(b),
+            b,
+        )
     ks = [int(x) for x in _COST_TO.findall(text)]
     if not ks:
         return None
@@ -862,9 +1077,17 @@ def optional_rule_quality(b, page):
 def imposed(name, page, body):
     """A quality a path's step imposes: positive when it prints a cost in nuyen or by a rule, else negative with an
     issue (the book doesn't say)."""
-    kids = [] if _ANY_COST.search(body) else [
-        ("issue", {"field": "kind", "code": "missing", "page": page},
-         "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated")]
+    kids = (
+        []
+        if _ANY_COST.search(body)
+        else [
+            (
+                "issue",
+                {"field": "kind", "code": "missing", "page": page},
+                "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated",
+            )
+        ]
+    )
     return Found("qualities", name, page, {"kind": "negative" if kids else "positive"}, kids, body, path=True)
 
 
@@ -874,8 +1097,11 @@ def class_row(heading):
     if not words:
         return ""
     last = words[-1]
-    one = "focus" if last.lower() == "foci" else last[:-3] + "y" if last.lower().endswith("ies") else \
-        last[:-1] if last.lower().endswith("s") else last
+    one = (
+        "focus"
+        if last.lower() == "foci"
+        else last[:-3] + "y" if last.lower().endswith("ies") else last[:-1] if last.lower().endswith("s") else last
+    )
     return " ".join(words[:-1] + [one.lower()])
 
 
@@ -883,7 +1109,13 @@ def program_type(heading):
     """A program's type, from the heading listing it: `Basic Cyberprograms` -> basic, `Autosofts` -> autosoft,
     `Commlink Apps` -> app (the game's own words)."""
     h = heading.lower()
-    for w, t in (("autosoft", "autosoft"), ("e-soft", "e-soft"), ("app", "app"), ("hacking", "hacking"), ("basic", "basic")):
+    for w, t in (
+        ("autosoft", "autosoft"),
+        ("e-soft", "e-soft"),
+        ("app", "app"),
+        ("hacking", "hacking"),
+        ("basic", "basic"),
+    ):
         if re.search(rf"\b{w}", h):
             return t
     return h.strip() or "program"
@@ -901,13 +1133,30 @@ def split_names(name):
 
 # --- items a section derives from others by a rule (Body Shop's transgenic infusions) -------------------------------
 
-_NUMBER_WORDS = {"ten": 10, "twenty": 20, "twenty-five": 25, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
-                 "seventy": 70, "seventy-five": 75, "eighty": 80, "ninety": 90, "hundred": 100, "one hundred": 100}
+_NUMBER_WORDS = {
+    "ten": 10,
+    "twenty": 20,
+    "twenty-five": 25,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "seventy-five": 75,
+    "eighty": 80,
+    "ninety": 90,
+    "hundred": 100,
+    "one hundred": 100,
+}
 _PCT = r"(\d+|[a-z]+(?:-[a-z]+)?)\s*(?:%|percent)\s+(more|less)\s+(essence|nuyen)"
-_RULE = re.compile(rf"\bcosts?\s+{_PCT}\s+than\s+their\s+([\w-]+)\s+equivalents?(?:,?\s*(?:but|and)\s+costs?\s+{_PCT})?",
-                   re.I)
-_FOLLOWING = re.compile(r"\bthe\s+following\s+([\w-]+)\s+can\s+be\s+(?:imitated|reproduced|replicated)\s+"
-                        r"(?:through|by|as|with)\s+([\w-]+)\s+[\w-]+s?\b", re.I)
+_RULE = re.compile(
+    rf"\bcosts?\s+{_PCT}\s+than\s+their\s+([\w-]+)\s+equivalents?(?:,?\s*(?:but|and)\s+costs?\s+{_PCT})?", re.I
+)
+_FOLLOWING = re.compile(
+    r"\bthe\s+following\s+([\w-]+)\s+can\s+be\s+(?:imitated|reproduced|replicated)\s+"
+    r"(?:through|by|as|with)\s+([\w-]+)\s+[\w-]+s?\b",
+    re.I,
+)
 _LIST_LINE = re.compile(r"^(?:[A-Z][^:]{0,60}):\s*(.+)$")
 DERIVED_FIELDS = {"essence": "essence", "nuyen": "cost"}
 
@@ -963,9 +1212,16 @@ def derived(b, page):
                 continue
             seen.add(norm(item))
             rule_text = rule.group(0)
-            out.append(Found("augmentations", f"{adj} {item}", page,
-                             {"_base": item, "_basekind": follow.group(1), "_factors": factors, "_rule": rule_text}, [],
-                             ""))
+            out.append(
+                Found(
+                    "augmentations",
+                    f"{adj} {item}",
+                    page,
+                    {"_base": item, "_basekind": follow.group(1), "_factors": factors, "_rule": rule_text},
+                    [],
+                    "",
+                )
+            )
     return out
 
 
@@ -1013,10 +1269,17 @@ def _joined(text):
         ln = ln.strip()
         # (a wrapped line opening with a parenthesis continues its paragraph, `(rating 3), contacts …`; a price starts
         # its own)
-        if out and ln and not ln.startswith(("**", "#", "|", "<!--")) and not _PRICE_START.match(ln) \
-                and not _RATING_PRICE.match(ln) \
-                and not _PRICE_LINE.match(ln) and not out[-1].endswith((".", "!", "?")) \
-                and not _PRICE_LINE.match(out[-1]) and not _RATING_PRICE.match(out[-1]):
+        if (
+            out
+            and ln
+            and not ln.startswith(("**", "#", "|", "<!--"))
+            and not _PRICE_START.match(ln)
+            and not _RATING_PRICE.match(ln)
+            and not _PRICE_LINE.match(ln)
+            and not out[-1].endswith((".", "!", "?"))
+            and not _PRICE_LINE.match(out[-1])
+            and not _RATING_PRICE.match(out[-1])
+        ):
             out[-1] = re.sub(r"(\w)-$", r"\1", out[-1]) + ("" if out[-1].endswith("-") else " ") + ln
         elif out and ln.startswith("**") and re.fullmatch(r"\*\*[\d,]*\s*nuyen\*\*|\*\*nuyen\*\*", ln):
             out[-1] += " " + ln
@@ -1042,22 +1305,46 @@ def packs(b, page, parent, chapter_has_packs):
         for ln in lines + [f"**{k}:** {v}" for k, v in b.labels.items()]:
             if (lm := _LIST.match(ln)) and not NOT_CONTENTS.search(lm.group(1)):
                 items += _items(lm.group(2))
-        return [Found("packs", _pack_name(b.name), page, {k: v for k, v in attrs.items() if v},
-                      [("item", {}, x) for x in dict.fromkeys(items)], _body(b))]
+        return [
+            Found(
+                "packs",
+                _pack_name(b.name),
+                page,
+                {k: v for k, v in attrs.items() if v},
+                [("item", {}, x) for x in dict.fromkeys(items)],
+                _body(b),
+            )
+        ]
     if not in_packs:
         return []
     for ln in lines:
         if (m := re.match(r"^\*\*([^*]+?):?\*\*:?\s*(.*)$", ln)) and (p := _NUYEN.search(ln)):
             name = m.group(1).strip().rstrip(":")
-            rest = m.group(2)[:_NUYEN.search(m.group(2)).start()] if _NUYEN.search(m.group(2)) else ""
+            rest = m.group(2)[: _NUYEN.search(m.group(2)).start()] if _NUYEN.search(m.group(2)) else ""
             rest = rest.strip().rstrip(":").strip()
             contents = re.sub(r"^\(\s*(?:w/\s*)?", "", rest)  # (`(w/ …)`, `(throwback, w/ …)`)
             contents = contents[:-1] if rest.startswith("(") and contents.endswith(")") else contents
-            out.append(Found("packs", _pack_name(name), page, {"category": b.name, "cost": p.group(1).replace(",", "")},
-                             [("item", {}, x) for x in _items(contents)], ln))
+            out.append(
+                Found(
+                    "packs",
+                    _pack_name(name),
+                    page,
+                    {"category": b.name, "cost": p.group(1).replace(",", "")},
+                    [("item", {}, x) for x in _items(contents)],
+                    ln,
+                )
+            )
         elif m := _RATING_PRICE.match(ln):
-            out.append(Found("packs", f"{_pack_name(b.name)} {m.group(2)}", page,
-                             {"category": b.name, "cost": m.group(3).replace(",", "")}, [], ln))
+            out.append(
+                Found(
+                    "packs",
+                    f"{_pack_name(b.name)} {m.group(2)}",
+                    page,
+                    {"category": b.name, "cost": m.group(3).replace(",", "")},
+                    [],
+                    ln,
+                )
+            )
     own = [f for f in out if f.attrs.get("category") == b.name]
     if PACK_WORD.search(b.name) and not _PACKS.search(b.name) and len(own) == 1:  # the PACK heading's own price line
         own[0].name, own[0].attrs["category"], own[0].text = _pack_name(b.name), parent or None, _body(b)

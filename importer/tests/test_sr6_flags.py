@@ -1,5 +1,6 @@
 """The metamagic and spell flags (importer/sr6/flags.py), alone and read by the core rulebook recipe from a made-up
 book. Every name and line is invented."""
+
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -63,31 +64,43 @@ class FlagsTest(unittest.TestCase):
     def test_metamagic_user_from_the_name_note_or_the_section(self):
         self.assertEqual(flags.metamagic("Glow Stance (Adepts Only)"), ("Glow Stance", {"user": "adept"}))
         self.assertEqual(flags.metamagic("Fizz Craft (Magicians Only)"), ("Fizz Craft", {"user": "magician"}))
-        self.assertEqual(flags.metamagic("Fizz Way", "", ["Force and Grace", "Adept Metamagics"]), ("Fizz Way", {"user": "adept"}))
+        self.assertEqual(
+            flags.metamagic("Fizz Way", "", ["Force and Grace", "Adept Metamagics"]), ("Fizz Way", {"user": "adept"})
+        )
         self.assertEqual(flags.metamagic("Hum Gift", "", ["(Adepts Only)"]), ("Hum Gift", {"user": "adept"}))
         self.assertEqual(flags.metamagic("Fizz Shield", "A made-up shield.", ["Metamagics"]), ("Fizz Shield", {}))
 
     def test_metamagic_taken_again(self):
-        self.assertEqual(flags.metamagic("Spark", "You can take this as many times as you like.")[1], {"perLevel": "true"})
-        self.assertEqual(flags.metamagic("Shift", "This metamagic can be taken multiple times, each a new way.")[1],
-                         {"perLevel": "true"})
-        self.assertEqual(flags.metamagic("Hop", "It may be selected up to three times.")[1], {"perLevel": "true", "maxLevel": "3"})
+        self.assertEqual(
+            flags.metamagic("Spark", "You can take this as many times as you like.")[1], {"perLevel": "true"}
+        )
+        self.assertEqual(
+            flags.metamagic("Shift", "This metamagic can be taken multiple times, each a new way.")[1],
+            {"perLevel": "true"},
+        )
+        self.assertEqual(
+            flags.metamagic("Hop", "It may be selected up to three times.")[1], {"perLevel": "true", "maxLevel": "3"}
+        )
         # (another thing done more than once is no second taking)
         self.assertEqual(flags.metamagic("Loop", "The spell can be sustained multiple times.")[1], {})
 
     def test_spell_opposed_and_essence(self):
         self.assertEqual(flags.spell("combat", "A made-up bolt."), {"opposed": "true"})  # every Combat spell
         self.assertEqual(flags.spell("illusion", "Opposed by Willpower + Logic."), {"opposed": "true"})
-        self.assertEqual(flags.spell("manipulation", "Roll Sorcery + Magic vs. Object Resistance."), {"opposed": "true"})
+        self.assertEqual(
+            flags.spell("manipulation", "Roll Sorcery + Magic vs. Object Resistance."), {"opposed": "true"}
+        )
         self.assertEqual(flags.spell("detection", "The spell is resisted by Willpower."), {"opposed": "true"})
         self.assertEqual(flags.spell("detection", "Only sights there, as opposed to sights near them."), {})
         self.assertEqual(flags.spell("health", "Roll Sorcery + Magic (5 – Essence)."), {"essence": "true"})
         self.assertEqual(flags.spell("health", "Heals a made-up box."), {})
         # the target's Essence in the threshold or in the resistance
-        for t in ("Roll Sorcery + Magic with a threshold of 6 minus the target’s Essence.",
-                  "Roll Sorcery + Magic with a threshold equal to their Essence (round down).",
-                  "The target resists with Body + Essence.",
-                  "The hits resisted by each target depend on their Essence."):
+        for t in (
+            "Roll Sorcery + Magic with a threshold of 6 minus the target’s Essence.",
+            "Roll Sorcery + Magic with a threshold equal to their Essence (round down).",
+            "The target resists with Body + Essence.",
+            "The hits resisted by each target depend on their Essence.",
+        ):
             self.assertEqual(flags.spell("health", t).get("essence"), "true", t)
         # the caster losing Essence is no test of it
         self.assertEqual(flags.spell("health", "The caster loses a point of Essence."), {})
@@ -95,49 +108,107 @@ class FlagsTest(unittest.TestCase):
     def test_technique_prerequisites(self):
         r = flags.requires
         # a Restriction label line (shapes.martial): the kind word after the name, or `know`
-        self.assertEqual(r("**Category:** Striking\n**Restriction:** Requires the Zap Hop technique\nHop."),
-                         [("requires", {"kind": "technique"}, "Zap Hop")])
-        self.assertEqual(r("**Restriction:** Requires the Glow Sense quality"), [("requires", {"kind": "quality"}, "Glow Sense")])
+        self.assertEqual(
+            r("**Category:** Striking\n**Restriction:** Requires the Zap Hop technique\nHop."),
+            [("requires", {"kind": "technique"}, "Zap Hop")],
+        )
+        self.assertEqual(
+            r("**Restriction:** Requires the Glow Sense quality"), [("requires", {"kind": "quality"}, "Glow Sense")]
+        )
         # no kind word: the entry's own text names it with one (`the Fizz Hands power`), else other
-        self.assertEqual(r("If the adept has the Fizz Hands power active, fizz.\n**Restriction:** Requires Fizz Hands"),
-                         [("requires", {"kind": "adeptpower"}, "Fizz Hands")])
+        self.assertEqual(
+            r("If the adept has the Fizz Hands power active, fizz.\n**Restriction:** Requires Fizz Hands"),
+            [("requires", {"kind": "adeptpower"}, "Fizz Hands")],
+        )
         # the closing line after the last sentence, wrapped and hyphenated, several prerequisites
-        self.assertEqual(r("Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a hum lim-\nb."),
-                         [("requires", {"kind": "technique"}, "Zap Hop"), ("requires", {"kind": "augmentation"}, "glow implant or a hum limb")])
+        self.assertEqual(
+            r(
+                "Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a hum lim-\nb."
+            ),
+            [
+                ("requires", {"kind": "technique"}, "Zap Hop"),
+                ("requires", {"kind": "augmentation"}, "glow implant or a hum limb"),
+            ],
+        )
         # an augmentation by its words (cyber…, implant…, …ware); the rest other
-        self.assertEqual(r("Zap. **Category:** Ranged, requires an implanted zapper."), [("requires", {"kind": "augmentation"}, "implanted zapper")])
-        self.assertEqual(r("Zap. **Category:** General, requires at least one full cyberpaw."), [("requires", {"kind": "augmentation"}, "at least one full cyberpaw")])
-        self.assertEqual(r("x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both versions of zap hop."),
-                         [("requires", {"kind": "other"}, "at least 1.5 Essence in glow"), ("requires", {"kind": "technique"}, "zap hop")])
+        self.assertEqual(
+            r("Zap. **Category:** Ranged, requires an implanted zapper."),
+            [("requires", {"kind": "augmentation"}, "implanted zapper")],
+        )
+        self.assertEqual(
+            r("Zap. **Category:** General, requires at least one full cyberpaw."),
+            [("requires", {"kind": "augmentation"}, "at least one full cyberpaw")],
+        )
+        self.assertEqual(
+            r(
+                "x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both versions of zap hop."
+            ),
+            [
+                ("requires", {"kind": "other"}, "at least 1.5 Essence in glow"),
+                ("requires", {"kind": "technique"}, "zap hop"),
+            ],
+        )
         # a usage note, a prerequisite word outside the closing line: none
-        self.assertEqual(r("This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used with sticks"), [])
+        self.assertEqual(
+            r(
+                "This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used with sticks"
+            ),
+            [],
+        )
         self.assertEqual(flags.technique_category("Zap. **Category:** Grappling,\nrequires a hum limb."), "Grappling")
         self.assertIsNone(flags.technique_category("No closing line."))
 
     def test_options_learned_one_at_a_time(self):
         o = flags.options
-        self.assertEqual(o("Gain a made-up edge against near _or_ far zaps (choose which kind when learning this technique). "
-                           "This technique may be taken up to twice in order to gain both the near and the far bonus."), ["Near", "Far"])
-        self.assertEqual(o("Hum at low, mid, or high pitch (choose which pitch when taking it). It may be taken three times "
-                           "to gain all of them."), ["Low", "Mid", "High"])
+        self.assertEqual(
+            o(
+                "Gain a made-up edge against near _or_ far zaps (choose which kind when learning this technique). "
+                "This technique may be taken up to twice in order to gain both the near and the far bonus."
+            ),
+            ["Near", "Far"],
+        )
+        self.assertEqual(
+            o(
+                "Hum at low, mid, or high pitch (choose which pitch when taking it). It may be taken three times "
+                "to gain all of them."
+            ),
+            ["Low", "Mid", "High"],
+        )
         # a choice made each time it is used, or taken again for another thing: one entry
-        self.assertEqual(o("Each time you hum, choose which of the two tunes plays. You may take this quality multiple times."), [])
+        self.assertEqual(
+            o("Each time you hum, choose which of the two tunes plays. You may take this quality multiple times."), []
+        )
         self.assertEqual(o("Near or far zaps (choose which kind when learning this technique)."), [])
 
     def test_the_recipe_writes_them(self):
         s = read("spells")
-        self.assertEqual({n: (e.get("opposed"), e.get("essence")) for n, e in s.items()},
-                         {"Fizz Bolt": ("true", None), "Glow Mend": (None, "true"), "Hum Haze": ("true", None),
-                          "Quiet Hum": (None, None)})
+        self.assertEqual(
+            {n: (e.get("opposed"), e.get("essence")) for n, e in s.items()},
+            {
+                "Fizz Bolt": ("true", None),
+                "Glow Mend": (None, "true"),
+                "Hum Haze": ("true", None),
+                "Quiet Hum": (None, None),
+            },
+        )
         m = read("metamagics")
-        self.assertEqual({n: (e.get("id"), e.get("user"), e.get("perLevel")) for n, e in m.items()},
-                         {"Glow Stance": ("glow-stance", "adept", None), "Spark Point": ("spark-point", "adept", "true"),
-                          "Fizz Shield": ("fizz-shield", None, None)})
+        self.assertEqual(
+            {n: (e.get("id"), e.get("user"), e.get("perLevel")) for n, e in m.items()},
+            {
+                "Glow Stance": ("glow-stance", "adept", None),
+                "Spark Point": ("spark-point", "adept", "true"),
+                "Fizz Shield": ("fizz-shield", None, None),
+            },
+        )
         # a technique a section heading lists: its closing line's category and prerequisites
         t = read("martialtechniques")
-        self.assertEqual({n: (e.get("category"), [(r.get("kind"), r.text) for r in e.iter("requires")]) for n, e in t.items()},
-                         {"Zap Elbow": ("Striking", [("technique", "Glow Jab"), ("other", "hum limb")]),
-                          "Zap Knee": ("Grappling", [])})
+        self.assertEqual(
+            {n: (e.get("category"), [(r.get("kind"), r.text) for r in e.iter("requires")]) for n, e in t.items()},
+            {
+                "Zap Elbow": ("Striking", [("technique", "Glow Jab"), ("other", "hum limb")]),
+                "Zap Knee": ("Grappling", []),
+            },
+        )
         # the printed name stays a search name
         self.assertEqual([a.text for a in m["Glow Stance"].iter("alias")], ["Glow Stance (Adepts Only)"])
 

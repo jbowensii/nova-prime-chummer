@@ -3,6 +3,7 @@ after the reference tables. The CRB recipe reads the book (crb.py); this reads t
 (CRB-SEA, CRB-BER, CRB-HK; crb.extra -> Result.extra): its qualities, contacts (each with its NPC), gear, vehicles and
 weapons, and its rule sections (the plot hooks, the city's reputation and heat modifiers). The fiction and the city
 overview are left out (CITIES: the pages read). Layout notes in crb.md."""
+
 import re
 from dataclasses import replace
 from types import SimpleNamespace
@@ -16,24 +17,52 @@ from importer.sr6.regroup import blocks, norm
 PUBLISHER, PAGE_OFFSET = "Catalyst Game Labs", 1
 # fingerprint -> (source id, name, chapter, first PDF page read, first PDF page left out)
 CITIES = {
-    "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5":
-        ("CRB-SEA", "Shadowrun, Sixth World Core Rulebook: City Edition Seattle", "SEATTLE", 328, 342),
-    "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f":
-        ("CRB-BER", "Shadowrun, Sixth World Core Rulebook: City Edition Berlin", "BERLIN", 331, 346),
-    "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6":
-        ("CRB-HK", "Shadowrun, Sixth World Core Rulebook: City Edition Hong Kong", "HONG KONG", 330, 340),
+    "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5": (
+        "CRB-SEA",
+        "Shadowrun, Sixth World Core Rulebook: City Edition Seattle",
+        "SEATTLE",
+        328,
+        342,
+    ),
+    "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f": (
+        "CRB-BER",
+        "Shadowrun, Sixth World Core Rulebook: City Edition Berlin",
+        "BERLIN",
+        331,
+        346,
+    ),
+    "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6": (
+        "CRB-HK",
+        "Shadowrun, Sixth World Core Rulebook: City Edition Hong Kong",
+        "HONG KONG",
+        330,
+        340,
+    ),
 }
 NAME_HEADERS = frozenset({"ITEM", "VEHICLE", "TYPE"})
 # printed header -> the core rulebook's (catalog.HEADERS)
-RENAME = {"HANDL": "HANDLING", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "INTERVAL": "SPEED INTERVAL",
-          "ARM": "ARMOR", "SENS": "SENSOR", "SEAT": "SEATS", "ACCEL.": "ACCEL", "AVAIL.": "AVAIL", "CAP": "CAPACITY",
-          "AVAIL (BERLIN)": "AVAIL", "AVAIL. (BERLIN)": "AVAIL"}
+RENAME = {
+    "HANDL": "HANDLING",
+    "SPD INT": "SPEED INTERVAL",
+    "TOP SPD": "TOP SPEED",
+    "INTERVAL": "SPEED INTERVAL",
+    "ARM": "ARMOR",
+    "SENS": "SENSOR",
+    "SEAT": "SEATS",
+    "ACCEL.": "ACCEL",
+    "AVAIL.": "AVAIL",
+    "CAP": "CAPACITY",
+    "AVAIL (BERLIN)": "AVAIL",
+    "AVAIL. (BERLIN)": "AVAIL",
+}
 PROSE = {"SIZE"}  # (and ARMOR in a table with no handling: a tent's)
 _PRICE = {"AVAIL", "COST", "AVAIL.", "AVAIL (BERLIN)", "AVAIL. (BERLIN)"}
 _PERSON = re.compile(r"(?:male|female|non-binary)\b", re.I)
 # `**Sorokin Predator I** [Heavy Pistol, DV 3P, SA, 10/9/8/—/— , 15(c), Avail: 2(L), Cost: 200¥]`
-_WEAPON = re.compile(r"\*\*([^*\[]+?)\*\*\s*\[([^\[\]]+?),\s*DV\s*([^,]+),\s*([^,]+),\s*([^,]+?)\s*,\s*([^,]+),"
-                     r"\s*Avail:\s*([^,]+),\s*Cost:\s*([^\]]+)\]")
+_WEAPON = re.compile(
+    r"\*\*([^*\[]+?)\*\*\s*\[([^\[\]]+?),\s*DV\s*([^,]+),\s*([^,]+),\s*([^,]+?)\s*,\s*([^,]+),"
+    r"\s*Avail:\s*([^,]+),\s*Cost:\s*([^\]]+)\]"
+)
 
 
 def extra(md, sha):
@@ -44,9 +73,22 @@ def extra(md, sha):
     pages = re.split(r"(?=<!-- page \d+ -->)", md)
     keep = [p for p in pages if (m := re.match(r"<!-- page (\d+) -->", p)) and first <= int(m.group(1)) < end]
     text, report = regroup.regroup(f"# {chapter}\n" + "".join(keep), {}, name_headers=NAME_HEADERS)
-    book = SimpleNamespace(ID=sid, NAME=name, PUBLISHER=PUBLISHER, CANON=True, BOOK=name, PAGE_OFFSET=PAGE_OFFSET,
-                           SECTIONS=[], SECTION_KINDS={"qualities"}, LABEL_SECTIONS={}, RULE_CHAPTERS=(norm(chapter),),
-                           ATTRIBUTE_CHAPTERS=(), CATALOG_CHAPTERS=(), fix=fix, kind=kind)
+    book = SimpleNamespace(
+        ID=sid,
+        NAME=name,
+        PUBLISHER=PUBLISHER,
+        CANON=True,
+        BOOK=name,
+        PAGE_OFFSET=PAGE_OFFSET,
+        SECTIONS=[],
+        SECTION_KINDS={"qualities"},
+        LABEL_SECTIONS={},
+        RULE_CHAPTERS=(norm(chapter),),
+        ATTRIBUTE_CHAPTERS=(),
+        CATALOG_CHAPTERS=(),
+        fix=fix,
+        kind=kind,
+    )
     rows = []
     res = catalog.read(_prep(list(blocks(text)), rows), None, book)
     for r in report:  # regroup reports PDF pages; the import report prints the book's
@@ -58,16 +100,27 @@ def extra(md, sha):
 
 def _bands(b):
     """How many attribute bands the block prints (more than one: two beings' boxes printed into each other)."""
-    return sum("B" in {h.upper() for h in s} for s in b.stats) + len(ts.band(b.text)) + \
-        sum("B" in {h.upper() for h in t[0]} for t in catalog.md_tables(b.text))
+    return (
+        sum("B" in {h.upper() for h in s} for s in b.stats)
+        + len(ts.band(b.text))
+        + sum("B" in {h.upper() for h in t[0]} for t in catalog.md_tables(b.text))
+    )
 
 
 def _contact(b, p):
     """The block with its band as a contact block (crb's contact: a contact and its NPC), named by its person's section
     `p` (its description and labels, its metatype line)."""
     b = catalog.text_stats(b, catalog.HEADERS["npcs"])
-    return replace(b, type="item", level=4, name=p.name, section="contact", labels={"Metatype": p.tags, **p.labels, **b.labels},
-                   stats=ts.band(b.text) + b.stats, text="\n\n".join(t for t in ((p.text if p is not b else ""), b.text) if t))
+    return replace(
+        b,
+        type="item",
+        level=4,
+        name=p.name,
+        section="contact",
+        labels={"Metatype": p.tags, **p.labels, **b.labels},
+        stats=ts.band(b.text) + b.stats,
+        text="\n\n".join(t for t in ((p.text if p is not b else ""), b.text) if t),
+    )
 
 
 def _prep(bs, report):
@@ -82,7 +135,9 @@ def _prep(bs, report):
         nxt = bs[i + 1] if i + 1 < len(bs) else None
         page = max(1, b.page - PAGE_OFFSET)
         if b.type == "section":
-            if b.level == 3 and (_PERSON.match(b.tags) or nxt is not None and nxt.type == "item" and _PERSON.match(nxt.name)):
+            if b.level == 3 and (
+                _PERSON.match(b.tags) or nxt is not None and nxt.type == "item" and _PERSON.match(nxt.name)
+            ):
                 persons[catalog.squash(b.name)] = (b, page)
                 if _bands(b) == 1:  # the band printed in the person's own text
                     used.add(id(b))
@@ -91,7 +146,10 @@ def _prep(bs, report):
             sections = [b] if b.level <= 2 else [s for s in sections if s.level < 3] + [b]
         if b.type == "item" and _PERSON.fullmatch(b.name.strip()) and out and out[-1].type == "section":
             out[-1] = replace(out[-1], tags=b.name, text="\n\n".join(t for t in (out[-1].text, b.text) if t))
-            persons[catalog.squash(out[-1].name)] = (out[-1], persons.get(catalog.squash(out[-1].name), (None, page))[1])
+            persons[catalog.squash(out[-1].name)] = (
+                out[-1],
+                persons.get(catalog.squash(out[-1].name), (None, page))[1],
+            )
             continue  # a person's metatype line read as a heading
         if b.type == "item" and b.row is None and _bands(b):
             p = next((p for k, (p, _) in persons.items() if catalog.describes(p, b.name)), None)
@@ -104,29 +162,63 @@ def _prep(bs, report):
             continue
         if b.row is None and (ws := _WEAPON.findall(" ".join(b.text.split()))):
             for n, typ, dv, modes, ar, ammo, av, cost in ws:
-                row = {"WEAPON": n.strip(), "TYPE": typ, "DV": dv, "MODES": modes, "ATTACK RATINGS": ar.replace(" ", ""),
-                       "AMMO": ammo, "AVAIL": av, "COST": cost}
-                out.append(replace(b, type="item", name=row["WEAPON"], header=list(row), row=row, stats=[], labels={},
-                                   text="", label=slug(typ)))
+                row = {
+                    "WEAPON": n.strip(),
+                    "TYPE": typ,
+                    "DV": dv,
+                    "MODES": modes,
+                    "ATTACK RATINGS": ar.replace(" ", ""),
+                    "AMMO": ammo,
+                    "AVAIL": av,
+                    "COST": cost,
+                }
+                out.append(
+                    replace(
+                        b,
+                        type="item",
+                        name=row["WEAPON"],
+                        header=list(row),
+                        row=row,
+                        stats=[],
+                        labels={},
+                        text="",
+                        label=slug(typ),
+                    )
+                )
             out.append(replace(b, text=_WEAPON.sub("", b.text)))
             continue
         if b.type == "section" and (lines := re.findall(r"^•?\s*(Cost|Bonus):\s*(.+)$", b.text, re.M)):
             b = replace(b, labels={**dict(lines), **b.labels})  # a quality's `• Cost: 5 Karma` printed plain
         tabs = [(list(s), [list(s.values())]) for s in b.stats] if b.row is None and b.type == "item" else []
-        tabs += [t for t in catalog.md_tables(b.text) if t[0][:1] and t[0][0].upper() not in NAME_HEADERS]  # (those are rows)
+        tabs += [
+            t for t in catalog.md_tables(b.text) if t[0][:1] and t[0][0].upper() not in NAME_HEADERS
+        ]  # (those are rows)
         tabs = [t for t in tabs if _PRICE & {h.upper() for h in t[0]}]
         if tabs:
             text = "\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))
             if b.type == "section" and norm(b.name) in boxed:
-                report.append({"kind": "missing-value", "file": "vehicles.xml", "name": f"a box in {b.name}",
-                               "field": "name", "page": page})  # another's values, printed in this section
+                report.append(
+                    {
+                        "kind": "missing-value",
+                        "file": "vehicles.xml",
+                        "name": f"a box in {b.name}",
+                        "field": "name",
+                        "page": page,
+                    }
+                )  # another's values, printed in this section
                 out.append(replace(b, text=text))
                 continue
-            desc = None if b.type == "section" else next((d for d in reversed(sections) if catalog.describes(d, b.name)), None)
+            desc = (
+                None
+                if b.type == "section"
+                else next((d for d in reversed(sections) if catalog.describes(d, b.name)), None)
+            )
             if desc is not None:
                 used.add(id(desc))
                 text = "\n\n".join(t for t in (desc.text, text) if t)
-            names, own = [], desc.name if desc is not None and catalog.squash(desc.name) == catalog.squash(b.name) else b.name
+            names, own = [], (
+                desc.name if desc is not None and catalog.squash(desc.name) == catalog.squash(b.name) else b.name
+            )
             for h, rows in tabs:
                 vehicle = bool({"HANDL", "HANDLING"} & {x.upper() for x in h})
                 for r in rows:
@@ -136,23 +228,47 @@ def _prep(bs, report):
                     n = f"{n} ({names.count(n)})" if names.count(n) > 1 else n
                     row = {"ITEM": n, **dict(zip(h[1:], r[1:]))} if first else {"ITEM": n, **dict(zip(h, r))}
                     # the category: a vehicle's class tag (`(Medium Drone)`), else the item's description heading
-                    cat = slug((desc or b).tags.strip("()")) if vehicle or b.type == "section" else \
-                        slug(desc.name if desc is not None else b.name)
-                    out.append(replace(b, type="item", level=max(b.level, 4), name=n, header=list(row), row=row, stats=[],
-                                       text=text, label=cat))
+                    cat = (
+                        slug((desc or b).tags.strip("()"))
+                        if vehicle or b.type == "section"
+                        else slug(desc.name if desc is not None else b.name)
+                    )
+                    out.append(
+                        replace(
+                            b,
+                            type="item",
+                            level=max(b.level, 4),
+                            name=n,
+                            header=list(row),
+                            row=row,
+                            stats=[],
+                            text=text,
+                            label=cat,
+                        )
+                    )
             continue
-        if b.type == "item" and b.level == 5 and not b.text.strip() and not b.stats and not b.labels \
-                and catalog.squash(b.name) not in persons:
+        if (
+            b.type == "item"
+            and b.level == 5
+            and not b.text.strip()
+            and not b.stats
+            and not b.labels
+            and catalog.squash(b.name) not in persons
+        ):
             empty.append((b, page))  # a box title: reported unless an entry of its name is read
             continue
         out.append(b)
     read = {norm(b.name) for b in out if b.row is not None or b.section == "contact"}
     for b, page in empty:
         if norm(b.name) not in read:
-            report.append({"kind": "missing-value", "file": "vehicles.xml", "name": b.name, "field": "stats", "page": page})
+            report.append(
+                {"kind": "missing-value", "file": "vehicles.xml", "name": b.name, "field": "stats", "page": page}
+            )
     for k, (p, page) in persons.items():
         if id(p) not in used:
-            report.append({"kind": "missing-value", "file": "contacts.xml", "name": p.name, "field": "stats", "page": page})
+            report.append(
+                {"kind": "missing-value", "file": "contacts.xml", "name": p.name, "field": "stats", "page": page}
+            )
     return [b for b in out if id(b) not in used or b.type != "section"]
 
 

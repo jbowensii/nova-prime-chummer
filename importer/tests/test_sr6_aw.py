@@ -1,6 +1,7 @@
 """SR6 Astral Ways recipe (importer/sr6/recipes/aw.py) on a made-up book.md in the converter's sr6 shape (the book's:
 beings as a level-4 heading with a tag line, then a level-5 box with the band; small catalog tables; each chapter's
 Game Information). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -136,20 +137,28 @@ class AwRecipeTest(unittest.TestCase):
         s = entries(self.res, "spirits")
         self.assertEqual((s["Glim"]["category"], s["Glim"]["bod"], s["Glim"]["cm"]), ("fire", "3", "10"))
         self.assertIn("made-up spark", self.texts[("spirits", "glim")])  # the heading's description
-        self.assertEqual((s["Drizz"]["bod"], s["Drizz"]["move"]), ("4", "5/10/+2"))  # a band as a header and a value line
+        self.assertEqual(
+            (s["Drizz"]["bod"], s["Drizz"]["move"]), ("4", "5/10/+2")
+        )  # a band as a header and a value line
         self.assertNotIn("Blank Wisp", s)
-        self.assertIn({"kind": "missing-value", "file": "spirits.xml", "name": "Blank Wisp", "field": "stats",
-                       "page": 19}, self.res.report)
+        self.assertIn(
+            {"kind": "missing-value", "file": "spirits.xml", "name": "Blank Wisp", "field": "stats", "page": 19},
+            self.res.report,
+        )
         n = entries(self.res, "npcs")
         self.assertEqual((n["Toad Warden"]["rating"], n["Toad Warden"]["group"]), ("4", "Made-Up Denizens"))
         c = entries(self.res, "critters")
         self.assertEqual(c["Clay golem"]["category"], "made-up-citadel")
-        self.assertIn({"kind": "missing-value", "file": "critters.xml", "name": "Tilekin", "field": "stats",
-                       "page": 19}, self.res.report)  # a band whose headers print run together
+        self.assertIn(
+            {"kind": "missing-value", "file": "critters.xml", "name": "Tilekin", "field": "stats", "page": 19},
+            self.res.report,
+        )  # a band whose headers print run together
 
     def test_catalog(self):
         v = entries(self.res, "vehicles")["Puff Skiff"]
-        self.assertEqual((v["category"], v["handling"], v["topSpeed"], v["body"], v["cost"]), ("Airships", "3", "300", "10", "10000"))
+        self.assertEqual(
+            (v["category"], v["handling"], v["topSpeed"], v["body"], v["cost"]), ("Airships", "3", "300", "10", "10000")
+        )
         self.assertEqual(entries(self.res, "weapons")["Pebble Sling"]["ar"], "2/8/10/4/2")
         g = entries(self.res, "gear")["Hush Cloak"]
         self.assertEqual((g["category"], g["rating"], g["karma"]), ("Astral devices", "1–6", "Force x 1"))

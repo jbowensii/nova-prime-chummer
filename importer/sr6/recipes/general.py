@@ -6,6 +6,7 @@ as <id>.<slug>), descriptions in the private texts. Each known book is a recipe 
 name, and how its title or first page names it); they share the core rulebook's reading (catalog.read). Reads only
 regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat blocks set in body type; layout notes in
 general.md. A line or value that doesn't read is reported, never guessed."""
+
 import difflib
 import re
 from collections import Counter
@@ -19,16 +20,32 @@ from importer.sr6.regroup import blocks, keys, norm
 # The id: a short form of the book's title (a letter first: THN for 30 Nights), as the core rulebook's CRB.
 BOOKS = [
     ("THN", "Shadowrun: 30 Nights", "CAT28400", r"\b30\s+nights\b", ()),
-    ("AOR", "Shadowrun: Tales from the UCAS: Age of Rust", "", r"\bage\s+of\s+rust\b", ("TALES FROM THE UCAS", "age of rust")),
+    (
+        "AOR",
+        "Shadowrun: Tales from the UCAS: Age of Rust",
+        "",
+        r"\bage\s+of\s+rust\b",
+        ("TALES FROM THE UCAS", "age of rust"),
+    ),
     ("ASN", "Shadowrun: Assassin's Night", "CAT28402", r"\bassassin.?s\s+night\b", ()),
     ("BBR", "Shadowrun: Beginner Box: Battle Royale", "CAT28010", r"\bbattle\s+royale\b", ("BATTLE ROYALE ADVENTURE",)),
-    ("CCG", "Shadowrun, Sixth World: Character Conversion Guide", "", r"character\s+conversion\s+guide",
-     ("CHARACTER CONVERSION GUIDE", "SIXTH WORLD", "Using this Guide")),
+    (
+        "CCG",
+        "Shadowrun, Sixth World: Character Conversion Guide",
+        "",
+        r"character\s+conversion\s+guide",
+        ("CHARACTER CONVERSION GUIDE", "SIXTH WORLD", "Using this Guide"),
+    ),
     ("CLN", "Shadowrun: Collapsing Now", "CAT28450", r"\bcollapsing\s+now\b", ("Undersea Heist", "Freedom Network")),
     ("CBK", "Shadowrun: Cutting Black", "CAT28300", r"\bcutting\s+black\b", ("SNAFU", "Detroit rupture")),
     ("DOD", "Shadowrun: Dealers of Death", "", r"\bdealers\s+of\s+death\b", ("dealers of death", "DOWN THE BARREL")),
-    ("EOLSQ", "Shadowrun: Echoes of a Lost Signal (QSR Edition)", "", r"echoes\s+of\s+a\s+lost\s+signal.*\bqsr\b",
-     ("Quick-Start Rules", "Help her", "Andrew")),
+    (
+        "EOLSQ",
+        "Shadowrun: Echoes of a Lost Signal (QSR Edition)",
+        "",
+        r"echoes\s+of\s+a\s+lost\s+signal.*\bqsr\b",
+        ("Quick-Start Rules", "Help her", "Andrew"),
+    ),
     ("EOLS", "Shadowrun: Echoes of a Lost Signal", "", r"echoes\s+of\s+a\s+lost\s+signal", ("Help her", "Andrew")),
     ("EMC", "Shadowrun: Emerald City", "CAT28100", r"\bemerald\s+city\b", ("Butterfly in Oz", "of freedom")),
     ("FPT", "Shadowrun: Falling Point", "CAT28453", r"\bfalling\s+point\b", ("Chaos Tacos", "state of the world")),
@@ -37,23 +54,73 @@ BOOKS = [
     ("LHV", "Shadowrun: Lethal Harvest", "CAT28305", r"\blethal\s+harvest\b", ("All or Nothing", "Disian Shadow War")),
     ("LASC", "Shadowrun: Los Alamos: The Secret City", "", r"\blos\s+alamos\b", ("LOS ALAMOS", "THE SECRET CITY")),
     ("MGC", "Shadowrun: Margin Calls", "CAT28306", r"\bmargin\s+calls\b", ("Wind and Fire", "winners & losers")),
-    ("ML2083-03", "Shadowrun Missions Legends 2083-03: Nile Gambit: City Under the Sand", "",
-     r"city\s+under\s+the\s+sand", ("LEGENDS 2083-03", "Nile gambit")),
-    ("ML2083-04", "Shadowrun Missions Legends 2083-04: Nile Gambit: Cave of Shadows", "",
-     r"cave\s+of\s+shadows", ("LEGENDS 2083-04", "Nile gambit")),
-    ("NAS", "Shadowrun: Neo-Anarchist's Streetpedia", "CAT27454", r"streetpedia", ("Just a Punk", "From Ashes, Neo-Anarchism")),
+    (
+        "ML2083-03",
+        "Shadowrun Missions Legends 2083-03: Nile Gambit: City Under the Sand",
+        "",
+        r"city\s+under\s+the\s+sand",
+        ("LEGENDS 2083-03", "Nile gambit"),
+    ),
+    (
+        "ML2083-04",
+        "Shadowrun Missions Legends 2083-04: Nile Gambit: Cave of Shadows",
+        "",
+        r"cave\s+of\s+shadows",
+        ("LEGENDS 2083-04", "Nile gambit"),
+    ),
+    (
+        "NAS",
+        "Shadowrun: Neo-Anarchist's Streetpedia",
+        "CAT27454",
+        r"streetpedia",
+        ("Just a Punk", "From Ashes, Neo-Anarchism"),
+    ),
     ("NUV", "Shadowrun: Null Value", "CAT28452", r"\bnull\s+value\b", ("Relationship Talk", "EX MACHINA")),
     ("PWP", "Shadowrun: Power Plays", "CAT28451", r"\bpower\s+plays\b", ("IN THE FLOW", "power networking")),
-    ("RAR", "Shadowrun: Risks & Rewards", "CAT28454", r"\brisks\s+(?:&|and)\s+rewards\b", ("an eye for trouble", "shadows of cairo")),
-    ("SCO", "Shadowrun: Scotophobia", "CAT28303", r"\bscotophobia\b", ("One Last Job", "Just how fragged up things are")),
+    (
+        "RAR",
+        "Shadowrun: Risks & Rewards",
+        "CAT28454",
+        r"\brisks\s+(?:&|and)\s+rewards\b",
+        ("an eye for trouble", "shadows of cairo"),
+    ),
+    (
+        "SCO",
+        "Shadowrun: Scotophobia",
+        "CAT28303",
+        r"\bscotophobia\b",
+        ("One Last Job", "Just how fragged up things are"),
+    ),
     ("SHC", "Shadowrun: Shadow Cast", "CAT28510", r"\bshadow\s+cast\b", ("RUNTHROUGH", "ACADEMIC MAGE")),
-    ("SIF-NO", "Shadowrun: Shadows in Focus: New Orleans: Easy Come, Easy Go", "", r"easy\s+come,?\s+easy\s+go",
-     ("shadows in focus", "easy come, easy go")),
+    (
+        "SIF-NO",
+        "Shadowrun: Shadows in Focus: New Orleans: Easy Come, Easy Go",
+        "",
+        r"easy\s+come,?\s+easy\s+go",
+        ("shadows in focus", "easy come, easy go"),
+    ),
     ("SHS", "Shadowrun: Shoot Straight", "CAT28513", r"\bshoot\s+straight\b", ("Branching Out", "Running the Shadows")),
-    ("SLS", "Shadowrun: Slip Streams", "CAT28301", r"\bslip\s+streams\b", ("What’s Up with the Metaplanes", "FRAYED FABRIC")),
-    ("SOTA2084", "Shadowrun: State of the Art 2084", "", r"state\s+of\s+the\s+art\s+2084", ("A View to a Thrill", "Growing Shadows")),
-    ("TKC", "Shadowrun: The Kechibi Code", "CAT28302", r"^(?:shadowrun:\s*)?the\s+kechibi\s+code\b",
-     ("Requiem and Rebirth", "alpha and omega")),
+    (
+        "SLS",
+        "Shadowrun: Slip Streams",
+        "CAT28301",
+        r"\bslip\s+streams\b",
+        ("What’s Up with the Metaplanes", "FRAYED FABRIC"),
+    ),
+    (
+        "SOTA2084",
+        "Shadowrun: State of the Art 2084",
+        "",
+        r"state\s+of\s+the\s+art\s+2084",
+        ("A View to a Thrill", "Growing Shadows"),
+    ),
+    (
+        "TKC",
+        "Shadowrun: The Kechibi Code",
+        "CAT28302",
+        r"^(?:shadowrun:\s*)?the\s+kechibi\s+code\b",
+        ("Requiem and Rebirth", "alpha and omega"),
+    ),
     ("TNE", "Shadowrun: The Needle's Eye", "CAT28304", r"needle.?s\s+eye", ("The Hammer Price", "TOUR DE FORCE")),
     ("TTP", "Shadowrun: The Third Parallel", "CAT28403", r"\bthird\s+parallel\b", ("A Bad Omen", "SHADOWS OF DENVER")),
     ("WHN", "Shadowrun: Whisper Nets", "CAT28404", r"\bwhisper\s+nets\b", ("On Track", "A New York State of Mind")),
@@ -66,7 +133,16 @@ _RATING = re.compile(r"\(?\s*professional\s+rating\s*:?\s*(\d+)\s*\)?", re.I)
 _PRICE = {"AVAIL", "AVAILABILITY", "COST"}
 _NAME_COLUMNS = {"ITEM", "WEAPON", "NAME", "GEAR", "DEVICE", "VEHICLE", "AUGMENTATION", "ARMOR"}
 _SHORT = {"ACC": "ACCEL", "PIL": "PILOT", "HAN": "HAND", "SEN": "SENSOR"}  # vehicle headers set shorter than the core's
-_CRITTER_ONLY = {"gear", "augmentations", "adept powers", "complex forms", "spells", "cyberware", "bioware", "living persona"}
+_CRITTER_ONLY = {
+    "gear",
+    "augmentations",
+    "adept powers",
+    "complex forms",
+    "spells",
+    "cyberware",
+    "bioware",
+    "living persona",
+}
 
 
 def _being(b):
@@ -121,15 +197,26 @@ def _name_line(lines, k, loose=False):
     title: `micro bull shark`), or (loose: right over its band) after a labelled line or a weapon's bracketed stats:
     the next being of a box printing several (`gorilla chimera` after `**Weapons:** …`)."""
     s = lines[k].strip()
-    if not s or s[0] in "#|>*<•" or len(s.split()) > 6 or len(s) > 60 or _PROSE_END.search(re.sub(r"\s*\([^()]*\)$", "", s)):
+    if (
+        not s
+        or s[0] in "#|>*<•"
+        or len(s.split()) > 6
+        or len(s) > 60
+        or _PROSE_END.search(re.sub(r"\s*\([^()]*\)$", "", s))
+    ):
         return False
     words = [w for w in re.findall(r"[^\W\d_][\w’'-]*", re.sub(r"\([^()]*\)", "", s)) if len(w) > 3]
     if words and s[0].isupper() and sum(not w[0].isupper() for w in words) <= (len(words) > 1 and len(s.split()) <= 4):
         return True  # (a word the PDF split, `Neo-PD Interve ntion`, may leave one piece in lower case)
     p = _prev(lines, k)
     after = r"[.!?”]$|^#|^\||^\*\*|\]$" if loose else r"[.!?”]$|^#|^\|"
-    return s == s.lower() and len(s.split()) <= 4 and (p is None or bool(re.search(after, lines[p].strip()))) \
-        or bool(_SEX.search(s)) and len(s.split()) <= 6
+    return (
+        s == s.lower()
+        and len(s.split()) <= 4
+        and (p is None or bool(re.search(after, lines[p].strip())))
+        or bool(_SEX.search(s))
+        and len(s.split()) <= 6
+    )
 
 
 def _box_title(s):
@@ -149,7 +236,12 @@ def _name_group(lines, i):
     if j is None:
         return None
     s = lines[j].strip()
-    if s.startswith("#") and not re.fullmatch(r"#{3,5} [^(#|*].{0,60}", s) or not s.startswith("#") and not _name_line(lines, j):
+    if (
+        s.startswith("#")
+        and not re.fullmatch(r"#{3,5} [^(#|*].{0,60}", s)
+        or not s.startswith("#")
+        and not _name_line(lines, j)
+    ):
         return None
     return [j] + idx
 
@@ -183,12 +275,16 @@ def _split_shared(lines):
             end += 1
         if end < len(lines) and _BAND_LINE.match(lines[end]) and (g := _name_group(lines, end)):
             end = g[0]
-        shared = lines[i + 3:end]
+        shared = lines[i + 3 : end]
         names = [[out[x] for x in g] for g in groups]
-        del out[groups[0][0]:]
+        del out[groups[0][0] :]
         for n, s in enumerate(starts):
             e = starts[n + 1] if n + 1 < len(starts) else len(cells)
-            out += names[n] + ["| " + " | ".join(cells[s:e]) + " |", "|" + "---|" * (e - s), "| " + " | ".join(vals[s:e]) + " |"]
+            out += names[n] + [
+                "| " + " | ".join(cells[s:e]) + " |",
+                "|" + "---|" * (e - s),
+                "| " + " | ".join(vals[s:e]) + " |",
+            ]
             out += shared if n == 0 else [x for x in shared if not x.startswith("<!-- page")]
         i = end
     return out
@@ -213,8 +309,11 @@ def _spell_box(b):
     | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
     (`Illusion spells`: the catalog's spell category)."""
     s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
-    if not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys() or s["TYPE"][1].strip().lower() not in catalog.SPELL_CATEGORIES \
-            or s["DV"][1].strip().upper() not in ("P", "M"):
+    if (
+        not {"TYPE", "DV", "DRAIN", "RANGE"} <= s.keys()
+        or s["TYPE"][1].strip().lower() not in catalog.SPELL_CATEGORIES
+        or s["DV"][1].strip().upper() not in ("P", "M")
+    ):
         return b
     box = {h: v for h, v in b.stats[0].items() if h.upper() not in ("TYPE", "DV", "DRAIN")}
     box = {s["TYPE"][0]: s["DV"][1], **box, s["DV"][0]: s["DRAIN"][1]}
@@ -256,12 +355,17 @@ def _weapon_bands(lines):
             j += 1
             if j < len(lines) and re.fullmatch(r"[a-z]+\)", lines[j].strip()):
                 j += 1
-            cells = _weapon_band(" ".join(lines[i + 1:j]))
+            cells = _weapon_band(" ".join(lines[i + 1 : j]))
             if cells:
-                if out and (h := re.fullmatch(r"(#{2,6}) ([^A-Z#|]+)", out[-1])):  # its box title in lower case: an item's
+                if out and (
+                    h := re.fullmatch(r"(#{2,6}) ([^A-Z#|]+)", out[-1])
+                ):  # its box title in lower case: an item's
                     out[-1] = f"{h.group(1)} " + " ".join(w[:1].upper() + w[1:] for w in h.group(2).split())
-                out += ["| " + " | ".join(_WEAPON_COLUMNS) + " |", "|" + "---|" * len(_WEAPON_COLUMNS),
-                        "| " + " | ".join(cells) + " |"]
+                out += [
+                    "| " + " | ".join(_WEAPON_COLUMNS) + " |",
+                    "|" + "---|" * len(_WEAPON_COLUMNS),
+                    "| " + " | ".join(cells) + " |",
+                ]
                 i = j
                 continue
         out.append(lines[i])
@@ -312,6 +416,7 @@ def _contact(b):
 
 class Book:
     """One known book: the attributes catalog.read reads (a recipe module's), its match() and extract()."""
+
     __name__ = "importer.sr6.recipes.general"  # run records the recipe as `general`
     PUBLISHER, CANON = "Catalyst Game Labs", True
     PAGE_OFFSET = 1  # printed page = PDF page - 1 (a cover page first)
@@ -362,8 +467,12 @@ class Book:
             if j is None:
                 continue
             t = _prev(lines, j)  # a box title in body type between the tag line and the band (`egyptian army regulars`)
-            if t is not None and lines[j].strip() == lines[j].strip().lower() and lines[j][:1] not in "#|>*<" \
-                    and _TAG_LINE.fullmatch(bare(lines[t])):
+            if (
+                t is not None
+                and lines[j].strip() == lines[j].strip().lower()
+                and lines[j][:1] not in "#|>*<"
+                and _TAG_LINE.fullmatch(bare(lines[t]))
+            ):
                 lines[j], j = "", t
             if m := re.fullmatch(r"(\([^()]+)\),\s*([^()]+)", bare(lines[j])):
                 lines[j] = f"{m.group(1)}, {m.group(2)})"
@@ -395,30 +504,52 @@ class Book:
             b = _text_bands(b)
             if b.type == "section" and _being(b):
                 b = replace(b, type="item")
-        if b.type == "item" and b.row is None and b.stats and _PRICE & {h.upper() for h in b.stats[0]} and not _being(b):
+        if (
+            b.type == "item"
+            and b.row is None
+            and b.stats
+            and _PRICE & {h.upper() for h in b.stats[0]}
+            and not _being(b)
+        ):
             cells = {h: v for i, (h, v) in enumerate(b.stats[0].items()) if i or h.upper() not in _NAME_COLUMNS}
             if b.name == b.name.lower():  # a box titled in lower case (`flash scope`): its words capitalized
                 b = replace(b, name=" ".join(w[:1].upper() + w[1:] for w in b.name.split()))
             b = replace(b, row={"ITEM": b.name, **cells}, header=["ITEM", *cells], stats=b.stats[1:], label="")
         if b.row is not None and _SHORT.keys() & set(b.row):
-            b = replace(b, row={_SHORT.get(h, h): v for h, v in b.row.items()}, header=[_SHORT.get(h, h) for h in b.header])
+            b = replace(
+                b, row={_SHORT.get(h, h): v for h, v in b.row.items()}, header=[_SHORT.get(h, h) for h in b.header]
+            )
         if _being(b):
             first = (b.text.strip().splitlines() or [""])[0]
             m = next((m for s in (b.tags, b.name, first, *b.labels.values()) if (m := _RATING.search(s))), None)
             name = _SEX.sub("", _RATING.sub("", b.name)).strip(" ,") or b.name
-            name = " ".join(w[:1].upper() + w[1:] for w in name.split()) if name == name.lower() else name[:1].upper() + name[1:]
+            name = (
+                " ".join(w[:1].upper() + w[1:] for w in name.split())
+                if name == name.lower()
+                else name[:1].upper() + name[1:]
+            )
             if m:
                 text = b.text.replace(first, "", 1).strip() if _RATING.fullmatch(first.strip()) else b.text
-                b = replace(b, name=name, text=text, section=f"Professional Rating {m.group(1)}: {b.section or self.BOOK}")
+                b = replace(
+                    b, name=name, text=text, section=f"Professional Rating {m.group(1)}: {b.section or self.BOOK}"
+                )
             else:
                 b = replace(b, name=name)
         return b
 
     def kind(self, chapter, b, parent2):
         labels = {k.lower() for k in b.labels}
-        if not b.stats and b.row is None and b.level >= 3 and {"cost", "bonus"} & labels and re.search(
-                r"karma|^\s*\d+\s*points?\b", " ".join(v for k, v in b.labels.items() if k.lower() in ("cost", "bonus")),
-                re.I):  # (Emerald City prices its Local Character qualities `5 Points`: Karma points)
+        if (
+            not b.stats
+            and b.row is None
+            and b.level >= 3
+            and {"cost", "bonus"} & labels
+            and re.search(
+                r"karma|^\s*\d+\s*points?\b",
+                " ".join(v for k, v in b.labels.items() if k.lower() in ("cost", "bonus")),
+                re.I,
+            )
+        ):  # (Emerald City prices its Local Character qualities `5 Points`: Karma points)
             return "qualities", "negative" if "bonus" in labels else "positive"
         if b.type == "section" and not b.stats:
             return None, None
@@ -440,8 +571,11 @@ class Book:
         cat = slug(b.label if b.label and norm(b.label) != norm(b.name) else b.section) or None
         if head & {"HAND", "HANDL", "HANDLING", "HAND (ON/OFF ROAD)", "ACCEL"}:
             return "vehicles", cat
-        if head & {"DV", "MODE", "MODES", "ATTACK RATINGS", "AR"} and not head & {"COST MULTIPLIER"} \
-                and b.header[0].upper() not in ("AMMO",):
+        if (
+            head & {"DV", "MODE", "MODES", "ATTACK RATINGS", "AR"}
+            and not head & {"COST MULTIPLIER"}
+            and b.header[0].upper() not in ("AMMO",)
+        ):
             return "weapons", cat
         if head & {"DEFENSE RATING", "DR", "DEFENSE"}:
             return "armor", cat
@@ -449,7 +583,9 @@ class Book:
             return "augmentations", cat
         if head & {"ATTRIBUTES (D/F)", "ATTRIBUTES (A/S)", "ATTRIBUTE ARRAY", "DEVICE RATING"}:
             return "electronics", cat
-        if head & {"AVAIL", "AVAILABILITY"} or any(re.search(r"\d", v) for h, v in b.row.items() if h.upper() == "COST"):
+        if head & {"AVAIL", "AVAILABILITY"} or any(
+            re.search(r"\d", v) for h, v in b.row.items() if h.upper() == "COST"
+        ):
             return "gear", cat  # (a list of places with `¥¥` for a price is none)
         return None, None
 

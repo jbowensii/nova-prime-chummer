@@ -1,6 +1,7 @@
 """SR6 Bestial Nature recipe (importer/sr6/recipes/bn.py) on a made-up book.md in the converter's shape for this book
 (a running head and page number on each page's top, headings kerned apart). Every name, number and line is
 invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -105,7 +106,9 @@ class BnRecipeTest(unittest.TestCase):
         g = q["Glow Coat (Shifter add-on)"]
         self.assertEqual((g["karma"], g["perLevel"], g["maxLevel"]), ("3", "true", "3"))
         self.assertEqual(q["Zap Tail (Shifter add-on)"]["karma"], "5")  # its cost line printed without bold
-        self.assertEqual((q["Sleepy (Shifter add-on)"]["kind"], q["Sleepy (Shifter add-on)"]["karma"]), ("negative", "4"))
+        self.assertEqual(
+            (q["Sleepy (Shifter add-on)"]["kind"], q["Sleepy (Shifter add-on)"]["karma"]), ("negative", "4")
+        )
         self.assertEqual(len(q), 4)  # the worked examples stay a rule
         self.assertIn("Examples", entries(self.res, "rules"))
 
@@ -114,7 +117,9 @@ class BnRecipeTest(unittest.TestCase):
         self.assertEqual(entries(self.res, "gear")["Zip Collar"]["cost"], "200")
         v = entries(self.res, "vehicles")  # the tables in reading order: the first under the second drone's text
         self.assertEqual((v["Hop Drone"]["handling"], v["Hop Drone"]["cost"]), ("3", "2000"))
-        self.assertEqual((v["Bop Drone"]["handling"], v["Bop Drone"]["interval"], v["Bop Drone"]["cost"]), ("5", "3", "4000"))
+        self.assertEqual(
+            (v["Bop Drone"]["handling"], v["Bop Drone"]["interval"], v["Bop Drone"]["cost"]), ("5", "3", "4000")
+        )
         self.assertNotIn("Fizz Fiction", entries(self.res, "rules"))  # fiction is no rules
 
     def test_files_validate(self):

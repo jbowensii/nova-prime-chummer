@@ -1,6 +1,7 @@
 """Several printings of one SR6 book (importer/sr6/run.py): the newest imported is the one loaded, the older ones listed
 as superseded; removing the newest loads the next. And the known PDFs with nothing to import (recipes.skipped). Made-up
 books (test_sr6_crb's), made-up printings."""
+
 import hashlib
 import os
 import tempfile
@@ -17,8 +18,14 @@ from importer.tests.test_sr6_crb_city import CITY, CITY_MD, SHA as CITY_SHA
 
 OLD, MID, NEW = b"%PDF- old", b"%PDF- mid", b"%PDF- new"
 # (listed out of order: a printing ranks by the month it was published, not by its place in the list)
-PRINTINGS = {hashlib.sha256(b).hexdigest(): (month, label) for b, month, label in
-             ((NEW, "2099-01", "New Printing"), (OLD, "2090-06", "Old Printing"), (MID, "2095-11", "Middle Printing"))}
+PRINTINGS = {
+    hashlib.sha256(b).hexdigest(): (month, label)
+    for b, month, label in (
+        (NEW, "2099-01", "New Printing"),
+        (OLD, "2090-06", "Old Printing"),
+        (MID, "2095-11", "Middle Printing"),
+    )
+}
 
 
 def _sha(b):
@@ -26,8 +33,10 @@ def _sha(b):
 
 
 def _data(kind, *rows):
-    return ('<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="%s">%s</sr6:data>\n'
-            % (kind, "".join(rows)))
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="%s">%s</sr6:data>\n'
+        % (kind, "".join(rows))
+    )
 
 
 class PrintingsTest(unittest.TestCase):
@@ -71,9 +80,11 @@ class PrintingsTest(unittest.TestCase):
     def test_an_entry_only_an_older_printing_prints_is_added_to_the_loaded_one_in_either_order(self):
         # (made up: the old printing prints a Zap Cannon row and its text the new one leaves out, and a Zip Gun that is
         # the new one's Zap Gun renamed: the cannon is added, with its text, the renamed gun is not)
-        old_md = BOOK_MD.replace("Zap Gun", "Zip Gun").replace(
-            "| Zapp Rifle |", "| Zap Cannon | 7P | SS | 5/9/—/— | 5(m) | 6 | 6(I) | 5,000¥ |\n| Zapp Rifle |").replace(
-            "#### Zip Gun\n", "#### Zap Cannon\nA cannon that zaps a lot.\n#### Zip Gun\n")
+        old_md = (
+            BOOK_MD.replace("Zap Gun", "Zip Gun")
+            .replace("| Zapp Rifle |", "| Zap Cannon | 7P | SS | 5/9/—/— | 5(m) | 6 | 6(I) | 5,000¥ |\n| Zapp Rifle |")
+            .replace("#### Zip Gun\n", "#### Zap Cannon\nA cannon that zaps a lot.\n#### Zip Gun\n")
+        )
         for order in (("new", "old"), ("old", "new")):
             with self.subTest(order=order):
                 self.setUp()
@@ -88,31 +99,54 @@ class PrintingsTest(unittest.TestCase):
                 self.assertIn('id="crb.zap-cannon"', texts)
                 self.assertIn("A cannon that zaps a lot.", texts)
                 self.assertEqual(self.status(ds["new"]), ("done", ""))
-                rep = [r for r in xmlio.read_import(ds["new"]).findall("report/row") if r.get("kind") == "printing-extra"]
+                rep = [
+                    r for r in xmlio.read_import(ds["new"]).findall("report/row") if r.get("kind") == "printing-extra"
+                ]
                 self.assertEqual([(r.get("id"), r.get("printing")) for r in rep], [("zap-cannon", "Old Printing")])
 
     def test_an_older_extra_is_not_added_when_the_loaded_printing_has_the_item_under_another_id(self):
-        files = {"gear.xml": _data("gear", '<gear id="focus" page="5" category="foci" cost="1"><name>Ritual</name></gear>')}
-        old = {"gear.xml": _data("gear", '<gear id="foci.ritual" page="5" category="foci" cost="1"><name>Ritual</name></gear>'
-                                         '<gear id="ritual" page="9" category="Formula" cost="2"><name>Ritual</name></gear>')}
+        files = {
+            "gear.xml": _data("gear", '<gear id="focus" page="5" category="foci" cost="1"><name>Ritual</name></gear>')
+        }
+        old = {
+            "gear.xml": _data(
+                "gear",
+                '<gear id="foci.ritual" page="5" category="foci" cost="1"><name>Ritual</name></gear>'
+                '<gear id="ritual" page="9" category="Formula" cost="2"><name>Ritual</name></gear>',
+            )
+        }
         olds = [("Old", old, "")]
         got, _ = same_ids(files, "", olds)  # (the older printing's id for the focus: its Formula row took the bare one)
         self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["foci.ritual"])
         got, _ = older_extras(got, "", olds)  # (the Formula is another item: added, under its own id)
-        self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["foci.ritual", "ritual"])
+        self.assertEqual(
+            [e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["foci.ritual", "ritual"]
+        )
         again, _ = older_extras(got, "", olds)
         self.assertEqual(again, got)  # (nothing more to add)
 
     def test_same_ids_moves_the_text_with_the_id_and_leaves_ambiguous_names_alone(self):
-        files = {"gear.xml": _data("gear", '<gear id="a" page="5" category="x"><name>Twin</name></gear>'
-                                           '<gear id="a-2" page="6" category="x"><name>Twin</name></gear>'
-                                           '<gear id="b" page="7" category="x"><name>Solo</name></gear>')}
-        old = {"gear.xml": _data("gear", '<gear id="x.a" page="5" category="x"><name>Twin</name></gear>'
-                                         '<gear id="x.b" page="7" category="x"><name>Solo</name></gear>')}
+        files = {
+            "gear.xml": _data(
+                "gear",
+                '<gear id="a" page="5" category="x"><name>Twin</name></gear>'
+                '<gear id="a-2" page="6" category="x"><name>Twin</name></gear>'
+                '<gear id="b" page="7" category="x"><name>Solo</name></gear>',
+            )
+        }
+        old = {
+            "gear.xml": _data(
+                "gear",
+                '<gear id="x.a" page="5" category="x"><name>Twin</name></gear>'
+                '<gear id="x.b" page="7" category="x"><name>Solo</name></gear>',
+            )
+        }
         texts = '<sr6:data><text of="gear" id="a">one</text><text of="gear" id="b">two</text></sr6:data>'
         got, new_texts = same_ids(files, texts, [("Old", old, "")])
         self.assertEqual([e.get("id") for e in ET.fromstring(got["gear.xml"].encode("utf8"))], ["a", "a-2", "x.b"])
-        self.assertEqual(new_texts, '<sr6:data><text of="gear" id="a">one</text><text of="gear" id="x.b">two</text></sr6:data>')
+        self.assertEqual(
+            new_texts, '<sr6:data><text of="gear" id="a">one</text><text of="gear" id="x.b">two</text></sr6:data>'
+        )
 
     def test_an_older_printing_imported_later_is_superseded(self):
         new = self.book("a-new", NEW)
@@ -190,7 +224,9 @@ class PrintingsTest(unittest.TestCase):
             run(old, self.custom, convert_pdf=False)
         self.assertEqual(self.status(old)[0], "superseded")
         self.assertTrue(os.path.isfile(os.path.join(self.custom, "imported", "crb-fz", "qualities.xml")))
-        self.assertIn('href="crb-fz/qualities.xml"', Path(self.custom, "imported", "index.xml").read_text(encoding="utf8"))
+        self.assertIn(
+            'href="crb-fz/qualities.xml"', Path(self.custom, "imported", "index.xml").read_text(encoding="utf8")
+        )
         remove(old, self.custom)
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported", "crb-fz")))
         self.assertIn("crb.zap-gun", self.weapons())
@@ -203,14 +239,22 @@ class PrintingsTest(unittest.TestCase):
         for order in (("new", "old", "mid"), ("old", "mid", "new"), ("mid", "new", "old")):
             with self.subTest(order=order):
                 self.setUp()
-                ds = {"new": self.book("a-new", NEW), "mid": self.book("b-mid", MID, mid_md), "old": self.book("c-old", OLD, old_md)}
+                ds = {
+                    "new": self.book("a-new", NEW),
+                    "mid": self.book("b-mid", MID, mid_md),
+                    "old": self.book("c-old", OLD, old_md),
+                }
                 for k in order:
                     run(ds[k], self.custom, convert_pdf=False)
                 w = {e.get("id"): e for e in ET.fromstring(self.weapons().encode("utf8"))}
                 rifle = w["crb.zapp-rifle"]
-                self.assertEqual(rifle.get("cost"), "1100")  # (the newest printing printing it: the middle one, not the old)
-                self.assertEqual((rifle.find("found").get("how"), rifle.find("found").get("field"), rifle.find("found").text),
-                                 ("printing", "cost", "Middle Printing"))
+                self.assertEqual(
+                    rifle.get("cost"), "1100"
+                )  # (the newest printing printing it: the middle one, not the old)
+                self.assertEqual(
+                    (rifle.find("found").get("how"), rifle.find("found").get("field"), rifle.find("found").text),
+                    ("printing", "cost", "Middle Printing"),
+                )
                 self.assertIsNone(rifle.find("issue"))
                 self.assertEqual(w["crb.zap-gun"].get("cost"), "1250")  # (its own valid value wins)
                 self.assertEqual(self.status(ds["new"]), ("done", ""))
@@ -234,9 +278,14 @@ class PrintingsTest(unittest.TestCase):
         city = self.sources().get("CRB-FZ")
         self.assertIsNotNone(city)
         self.assertEqual(city.find("name").text, "Made-Up Core Rulebook: City Edition Fizzburg")
-        self.assertEqual((city.get("publisher"), city.get("canon"), city.get("sha256")), (self.sources()["CRB"].get("publisher"), "true", _sha(OLD)))
+        self.assertEqual(
+            (city.get("publisher"), city.get("canon"), city.get("sha256")),
+            (self.sources()["CRB"].get("publisher"), "true", _sha(OLD)),
+        )
         self.assertEqual(city.get("texts"), "texts/crb-fz.xml")
-        self.assertEqual(self.sources()["CRB"].get("sha256"), _sha(NEW))  # the superseded printing's own source isn't listed
+        self.assertEqual(
+            self.sources()["CRB"].get("sha256"), _sha(NEW)
+        )  # the superseded printing's own source isn't listed
         remove(old, self.custom)
         self.assertNotIn("CRB-FZ", self.sources())
 
@@ -269,11 +318,12 @@ class PrintingsTest(unittest.TestCase):
         self.assertEqual(self.status(b), ("done", ""))
         self.assertTrue(os.path.isfile(os.path.join(self.custom, "imported", "crb-fz", "qualities.xml")))
         self.assertTrue(os.path.isfile(os.path.join(self.custom, "texts", "crb-fz.xml")))
-        self.assertIn('href="crb-fz/qualities.xml"', Path(self.custom, "imported", "index.xml").read_text(encoding="utf8"))
+        self.assertIn(
+            'href="crb-fz/qualities.xml"', Path(self.custom, "imported", "index.xml").read_text(encoding="utf8")
+        )
         self.assertIn("crb.zap-gun", self.weapons())
         remove(b, self.custom)  # the last copy: the city chapter goes with it
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported", "crb-fz")))
-
 
 
 class SkippedTest(unittest.TestCase):
@@ -286,19 +336,28 @@ class SkippedTest(unittest.TestCase):
         self.assertEqual(set(crb.PRINTINGS), set(crb.SHA256))
 
     def test_known_files_with_nothing_to_import(self):
-        cases = [({"title": "Shadowrun: Gun Rack (Weapon Cards)"}, "", "card deck"),
-                 ({"title": ""}, "Shadowrun 6e-Rides-Vehicle Cards-CAT28509.pdf", "card deck"),
-                 ({"title": "about:blank"}, "Shadowrun 6e-Seattle Metroplex Map-Map-none.pdf", "map"),
-                 ({"title": ""}, "Shadowrun 6e-Adversary-Enhanced Fiction-none.pdf", "fiction"),
-                 ({"title": ""}, "Shadowrun 6e-Sixth World Gamemaster's Screen-Accessory-CAT28001.pdf", "images only"),
-                 ({"title": "Firing Squad Errata & FAQ"}, "", "errata"),
-                 ({"title": ""}, "SR6-Core-Rulebook-Errata-Feb-2020.pdf", "errata"),
-                 ({"title": "Shadowrun Sixth World Record Sheet"}, "", "character sheet"),
-                 ({"title": "", "sha256": "3abee49d736ac3f337e6e0ffdb47b5a360eb32e7ef16237237a788c731b5a6a5"}, "original.pdf", "errata")]
+        cases = [
+            ({"title": "Shadowrun: Gun Rack (Weapon Cards)"}, "", "card deck"),
+            ({"title": ""}, "Shadowrun 6e-Rides-Vehicle Cards-CAT28509.pdf", "card deck"),
+            ({"title": "about:blank"}, "Shadowrun 6e-Seattle Metroplex Map-Map-none.pdf", "map"),
+            ({"title": ""}, "Shadowrun 6e-Adversary-Enhanced Fiction-none.pdf", "fiction"),
+            ({"title": ""}, "Shadowrun 6e-Sixth World Gamemaster's Screen-Accessory-CAT28001.pdf", "images only"),
+            ({"title": "Firing Squad Errata & FAQ"}, "", "errata"),
+            ({"title": ""}, "SR6-Core-Rulebook-Errata-Feb-2020.pdf", "errata"),
+            ({"title": "Shadowrun Sixth World Record Sheet"}, "", "character sheet"),
+            (
+                {"title": "", "sha256": "3abee49d736ac3f337e6e0ffdb47b5a360eb32e7ef16237237a788c731b5a6a5"},
+                "original.pdf",
+                "errata",
+            ),
+        ]
         for meta, name, why in cases:
             self.assertIn(why, skipped(meta, name) or "", (meta, name))
-        for meta, name in (({"title": "Shadowrun, Sixth World Core Rulebook"}, "Shadowrun 6e-Sixth World Core Rulebook.pdf"),
-                           ({"title": "Rides of the Sixth World"}, "made-up.pdf"), ({}, None)):
+        for meta, name in (
+            ({"title": "Shadowrun, Sixth World Core Rulebook"}, "Shadowrun 6e-Sixth World Core Rulebook.pdf"),
+            ({"title": "Rides of the Sixth World"}, "made-up.pdf"),
+            ({}, None),
+        ):
             self.assertIsNone(skipped(meta, name), (meta, name))
 
     def test_a_skipped_file_is_not_a_failure(self):

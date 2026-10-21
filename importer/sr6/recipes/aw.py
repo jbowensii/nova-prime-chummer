@@ -9,6 +9,7 @@ descriptions in the private texts. Reads only regrouped.md (importer/sr6/regroup
 A being prints as a level-4 heading with a tag line (`(Fire, Force 4)`, `(Professional Rating 5)`), its description,
 then a level-5 box (often titled in lower case) with its stat band: the box takes the heading's tag and text. A being
 whose box has no band is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -37,9 +38,22 @@ CATALOG_CHAPTERS = ()
 RULE_PARTS = ("game information", "translation of characters to the elemental planes")
 RULE_BOOK_CHAPTERS = ("techniques of travel",)
 # printed header -> the core rulebook's (catalog.HEADERS)
-RENAME = {"HAND": "HANDLING", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "BOD": "BODY", "ACC": "ACCEL",
-          "INT": "SPEED INTERVAL", "SPD": "TOP SPEED", "ARM": "ARMOR", "PIL": "PILOT", "SENS": "SENSOR", "SEAT": "SEATS",
-          "FORCE": "RATING", "BONDING COST": "BONDING COST (IN KARMA)", "DEFENSIVE RATING": "DEFENSE RATING"}
+RENAME = {
+    "HAND": "HANDLING",
+    "SPD INT": "SPEED INTERVAL",
+    "TOP SPD": "TOP SPEED",
+    "BOD": "BODY",
+    "ACC": "ACCEL",
+    "INT": "SPEED INTERVAL",
+    "SPD": "TOP SPEED",
+    "ARM": "ARMOR",
+    "PIL": "PILOT",
+    "SENS": "SENSOR",
+    "SEAT": "SEATS",
+    "FORCE": "RATING",
+    "BONDING COST": "BONDING COST (IN KARMA)",
+    "DEFENSIVE RATING": "DEFENSE RATING",
+}
 PROSE = {"SKILL"}  # an airship weapon's skill: to the text
 _BAND = {"B", "BOD"}
 _RATING = re.compile(r"professional rating\s*(\d+)", re.I)
@@ -59,8 +73,9 @@ def _words(name):
 
 
 def _banded(b):
-    return any(_BAND & {h.upper() for h in s} for s in b.stats) or \
-        any(_BAND & {h.upper() for h in t[0]} for t in catalog.md_tables(b.text))
+    return any(_BAND & {h.upper() for h in s} for s in b.stats) or any(
+        _BAND & {h.upper() for h in t[0]} for t in catalog.md_tables(b.text)
+    )
 
 
 def _with_band(b):
@@ -79,36 +94,83 @@ def _prep(bs, report):
     for b in bs:
         part = b.name if b.type == "section" and b.level <= 2 else part
         prev = out[-1] if out else None
-        if b.type == "item" and b.level == 5 and b.row is None and prev is not None and prev.type == "item" \
-                and prev.level == 4 and prev.row is None and not prev.stats and _words(b.name) <= _words(prev.name) | {""}:
-            b = replace(b, name=prev.name, level=4, tags=prev.tags or b.tags, labels={**prev.labels, **b.labels},
-                        text="\n\n".join(t for t in (prev.text.strip(), b.text.strip()) if t))
+        if (
+            b.type == "item"
+            and b.level == 5
+            and b.row is None
+            and prev is not None
+            and prev.type == "item"
+            and prev.level == 4
+            and prev.row is None
+            and not prev.stats
+            and _words(b.name) <= _words(prev.name) | {""}
+        ):
+            b = replace(
+                b,
+                name=prev.name,
+                level=4,
+                tags=prev.tags or b.tags,
+                labels={**prev.labels, **b.labels},
+                text="\n\n".join(t for t in (prev.text.strip(), b.text.strip()) if t),
+            )
             out.pop()
             prev = out[-1] if out else None
-        if prev is not None and prev.type == "section" and (m := re.match(r"new metamagic:\s*(.+)", prev.name, re.I)) \
-                and b.type == "item" and b.name.lower().startswith("prerequisite:"):
-            out[-1] = replace(b, name=m.group(1), level=4, labels={"Prerequisite": b.name.split(":", 1)[1].strip()},
-                              label="metamagic")
+        if (
+            prev is not None
+            and prev.type == "section"
+            and (m := re.match(r"new metamagic:\s*(.+)", prev.name, re.I))
+            and b.type == "item"
+            and b.name.lower().startswith("prerequisite:")
+        ):
+            out[-1] = replace(
+                b, name=m.group(1), level=4, labels={"Prerequisite": b.name.split(":", 1)[1].strip()}, label="metamagic"
+            )
             continue
         if b.row is not None and [h.upper() for h in b.header[:2]] == ["TYPE", "ACTION"] and b.label:
             name = re.sub(r"\s*critter power$", "", b.label, flags=re.I)
             head = next((i for i, x in enumerate(out) if x.type == "item" and norm(x.name) == norm(b.label)), None)
             text = out.pop(head).text if head is not None else ""
-            b = replace(b, name=name, row=None, header=[], stats=[dict(list(b.row.items()))], text=text, label="critter power")
+            b = replace(
+                b, name=name, row=None, header=[], stats=[dict(list(b.row.items()))], text=text, label="critter power"
+            )
         if b.type == "item" and b.name[:1].islower():
             b = replace(b, name=b.name[:1].upper() + b.name[1:])
         if b.type == "section" and (m := _QUALITY.fullmatch(b.name)):  # `Negative Metagenetic Quality: Saurian`
             b = replace(b, name=m.group(2), label=f"{m.group(1).lower()} quality")
         out.append(_with_band(b) if b.type == "item" and b.row is None else b)
     for b in out:
-        if b.type == "item" and b.row is None and not _banded(b) and any(re.search(r"\bB A\b", " ".join(s)) for s in b.stats):
-            report.append({"kind": "missing-value", "file": "critters.xml", "name": b.name, "field": "stats",
-                           "page": max(1, b.page - PAGE_OFFSET)})  # a band whose headers print run together
+        if (
+            b.type == "item"
+            and b.row is None
+            and not _banded(b)
+            and any(re.search(r"\bB A\b", " ".join(s)) for s in b.stats)
+        ):
+            report.append(
+                {
+                    "kind": "missing-value",
+                    "file": "critters.xml",
+                    "name": b.name,
+                    "field": "stats",
+                    "page": max(1, b.page - PAGE_OFFSET),
+                }
+            )  # a band whose headers print run together
         if b.type == "item" and b.row is None and (_RATING.search(b.tags) or _FORCE.search(b.tags)) and not _banded(b):
-            report.append({"kind": "missing-value", "file": "npcs.xml" if _RATING.search(b.tags) else "spirits.xml",
-                           "name": b.name, "field": "stats", "page": max(1, b.page - PAGE_OFFSET)})
-    return [b for b in out if not (b.type == "item" and b.row is None and (_RATING.search(b.tags) or _FORCE.search(b.tags))
-                                   and not _banded(b))]
+            report.append(
+                {
+                    "kind": "missing-value",
+                    "file": "npcs.xml" if _RATING.search(b.tags) else "spirits.xml",
+                    "name": b.name,
+                    "field": "stats",
+                    "page": max(1, b.page - PAGE_OFFSET),
+                }
+            )
+    return [
+        b
+        for b in out
+        if not (
+            b.type == "item" and b.row is None and (_RATING.search(b.tags) or _FORCE.search(b.tags)) and not _banded(b)
+        )
+    ]
 
 
 def fix(b, parent2):
@@ -173,8 +235,14 @@ def _vehicles(bs):
         t = next((t for t in catalog.md_tables(b.text) if t[0][:1] == ["HAND"] and len(t[1]) == 1), None)
         if b.type == "item" and b.row is None and not b.stats and t is not None:
             row = {"VEHICLE": b.name, **dict(zip(t[0], t[1][0]))}
-            b = replace(b, header=list(row), row=row, text="\n".join(ln for ln in b.text.splitlines()
-                                                                      if not ln.startswith("|") and ln.strip() != "**SPD TOP**"))
+            b = replace(
+                b,
+                header=list(row),
+                row=row,
+                text="\n".join(
+                    ln for ln in b.text.splitlines() if not ln.startswith("|") and ln.strip() != "**SPD TOP**"
+                ),
+            )
         out.append(b)
     return out
 

@@ -1,6 +1,7 @@
 """run.py calls a recipe's prepare_md(markdown) before regroup; recipes that tidy their regrouped blocks keep a
 different, private step. A recipe's prepare_md must take and return the book's markdown text (a mix-up crashed six
 real imports in 0.9.2)."""
+
 import inspect
 import unittest
 

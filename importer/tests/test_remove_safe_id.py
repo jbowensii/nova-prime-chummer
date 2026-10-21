@@ -1,5 +1,6 @@
 """Removing a book never deletes outside custom/imported when its import.xml has been tampered with (a source id
 or an extra source id that is a path, e.g. from a hand-edited backup)."""
+
 import os
 import tempfile
 import unittest

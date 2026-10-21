@@ -3,6 +3,7 @@
   ai-keys.xml       the API keys and nothing else (mode 600), read only at call time
 Anthropic goes through the official SDK; the others are plain HTTP with urllib.
 Errors raise ProviderError with a plain message that never contains a key."""
+
 import contextlib
 import json
 import os
@@ -31,8 +32,12 @@ GEMINI_THINKING = 512  # a capped call's thinking budget: 2.5 Pro needs at least
 OPENAI_CAP = 4  # a capped call's max_completion_tokens is this many times max_tokens: reasoning models count their thinking in it
 PING_TIMEOUT = 25  # a connection test: fail well inside the server's 30 s cap
 # what a status means for a connection test (the provider's own words stay out: they may be long, or echo a header)
-HTTP_SAYS = {401: "the provider didn’t accept the API key", 403: "the provider didn’t accept the API key",
-             404: "the address, model or workspace wasn’t found", 429: "the provider is rate limiting this key; try again later"}
+HTTP_SAYS = {
+    401: "the provider didn’t accept the API key",
+    403: "the provider didn’t accept the API key",
+    404: "the address, model or workspace wasn’t found",
+    429: "the provider is rate limiting this key; try again later",
+}
 
 
 class ProviderError(Exception):
@@ -67,7 +72,11 @@ def _parse_settings(text):
         raise SettingsError(f"the provider settings aren’t well-formed XML ({e})") from None
     if root.tag != f"{{{NS}}}aiproviders":
         raise SettingsError("body is not a ca2:aiproviders document")
-    if set(root.attrib) - {"version", "use"} or not (root.get("version") or "").isdigit() or int(root.get("version")) < 1:
+    if (
+        set(root.attrib) - {"version", "use"}
+        or not (root.get("version") or "").isdigit()
+        or int(root.get("version")) < 1
+    ):
         raise SettingsError("aiproviders takes version (a positive number) and use only")
     if root.get("use") is not None and root.get("use") not in PROVIDER_IDS:
         raise SettingsError(f"use “{root.get('use')}” isn’t a known provider")
@@ -87,7 +96,7 @@ def _parse_settings(text):
         if pid in out:
             raise SettingsError(f"provider “{pid}” is listed twice")
         if p.get("enabled") not in ("true", "false", "1", "0"):
-            raise SettingsError(f"provider “{pid}” needs enabled=\"true\" or \"false\"")
+            raise SettingsError(f'provider “{pid}” needs enabled="true" or "false"')
         if p.get("baseUrl") and not _web_url(p.get("baseUrl")):
             raise SettingsError(f"provider “{pid}”: the address is an http:// or https:// URL with a host")
         out[pid] = dict(p.attrib)
@@ -105,7 +114,10 @@ def set_settings(config_dir, text):
     q = lambda v: '"' + escape(v, {'"': "&quot;"}) + '"'  # noqa: E731
     root = "".join(f" {k}={q(v)}" for k, v in attrs.items())
     rows = "".join("  <provider" + "".join(f" {k}={q(v)}" for k, v in p.items()) + "/>\n" for p in new.values())
-    xmlio.write_file(path, f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aiproviders xmlns:ca2="{NS}"{root}>\n{rows}</ca2:aiproviders>\n')
+    xmlio.write_file(
+        path,
+        f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aiproviders xmlns:ca2="{NS}"{root}>\n{rows}</ca2:aiproviders>\n',
+    )
     return cleared
 
 
@@ -133,7 +145,11 @@ def clear_moved_keys(config_dir, old, new):
 
 def _keys(config_dir):
     p = os.path.join(config_dir, "ai-keys.xml")
-    return {k.get("provider"): (k.text or "").strip() for k in ET.parse(p).getroot().findall("key")} if os.path.exists(p) else {}
+    return (
+        {k.get("provider"): (k.text or "").strip() for k in ET.parse(p).getroot().findall("key")}
+        if os.path.exists(p)
+        else {}
+    )
 
 
 def read_key(config_dir, provider):
@@ -153,7 +169,9 @@ def set_key(config_dir, provider, key):
     fd, tmp = tempfile.mkstemp(dir=config_dir, prefix=".ai-keys.", suffix=".tmp")  # O_EXCL, mode 600
     try:
         with os.fdopen(fd, "w", encoding="utf8", newline="\n") as f:
-            f.write(f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aikeys xmlns:ca2="{NS}" version="1">\n{body}</ca2:aikeys>\n')
+            f.write(
+                f'<?xml version="1.0" encoding="UTF-8"?>\n<ca2:aikeys xmlns:ca2="{NS}" version="1">\n{body}</ca2:aikeys>\n'
+            )
             f.flush()
             os.fsync(f.fileno())
         os.chmod(tmp, 0o600)  # on Windows this only clears read-only; the folder's ACL protects the file
@@ -188,18 +206,38 @@ def complete(provider, key, system, user, schema=None, max_tokens=None, timeout=
         if pid == "anthropic":
             return _anthropic(provider, key, model, system, user, schema, max_tokens or 16000, timeout)
         if pid == "openai":
-            body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                    "response_format": {"type": "json_object"}, **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {})}  # servers without JSON mode ignore it; propose tolerates prose
-            out = _request(provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT)
+            body = {
+                "model": model,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                "response_format": {"type": "json_object"},
+                **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {}),
+            }  # servers without JSON mode ignore it; propose tolerates prose
+            out = _request(
+                provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT
+            )
             if out["choices"][0].get("finish_reason") == "length":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return out["choices"][0]["message"]["content"]
         if pid == "gemini":
             url = f"{(provider.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
-            body = {"systemInstruction": {"parts": [{"text": system}]}, "contents": [{"role": "user", "parts": [{"text": user}]}],
-                    "generationConfig": {"responseMimeType": "application/json", **({"maxOutputTokens": max_tokens + 2 * GEMINI_THINKING,
-                                                                                         "thinkingConfig": {"thinkingBudget": GEMINI_THINKING}} if max_tokens else {})}}
-            out = _request(url, {"x-goog-api-key": key}, body, timeout=timeout or TIMEOUT)  # header, not ?key=: URLs end up in logs
+            body = {
+                "systemInstruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                "generationConfig": {
+                    "responseMimeType": "application/json",
+                    **(
+                        {
+                            "maxOutputTokens": max_tokens + 2 * GEMINI_THINKING,
+                            "thinkingConfig": {"thinkingBudget": GEMINI_THINKING},
+                        }
+                        if max_tokens
+                        else {}
+                    ),
+                },
+            }
+            out = _request(
+                url, {"x-goog-api-key": key}, body, timeout=timeout or TIMEOUT
+            )  # header, not ?key=: URLs end up in logs
             if out["candidates"][0].get("finishReason") == "MAX_TOKENS":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return "".join(p.get("text", "") for p in out["candidates"][0]["content"]["parts"])
@@ -232,15 +270,25 @@ def list_models(provider_id, library_dir):
         elif provider_id == "openai":
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
-            ids = [m["id"] for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]]
+            ids = [
+                m["id"]
+                for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]
+            ]
         elif provider_id == "anythingllm":
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
             ids = [f"{slug}\t{name}" for name, slug in _workspaces(p["baseUrl"], key, LIST_TIMEOUT, fresh=True)]
         else:  # ponytail: one page of 1000; Gemini offers a few dozen models, follow nextPageToken if that changes
-            out = _request(f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000", {"x-goog-api-key": key}, timeout=LIST_TIMEOUT)
-            ids = [m["name"].removeprefix("models/") for m in out.get("models", [])
-                   if "generateContent" in m.get("supportedGenerationMethods", [])]
+            out = _request(
+                f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models?pageSize=1000",
+                {"x-goog-api-key": key},
+                timeout=LIST_TIMEOUT,
+            )
+            ids = [
+                m["name"].removeprefix("models/")
+                for m in out.get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
     except ProviderError as e:
         raise ProviderError(_redact(str(e), key)) from None
     except (KeyError, IndexError, TypeError, AttributeError) as e:
@@ -273,12 +321,21 @@ def ping(provider_id, library_dir):
             if not model:
                 raise ProviderError("choose a model first")
             # ponytail: no output cap: OpenAI's reasoning models refuse max_tokens and spend a small cap on thinking; the prompt keeps it short
-            out = _request(p["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key),
-                           {"model": model, "messages": [{"role": "user", "content": PING}]}, timeout=PING_TIMEOUT)
+            out = _request(
+                p["baseUrl"].rstrip("/") + "/chat/completions",
+                _bearer(key),
+                {"model": model, "messages": [{"role": "user", "content": PING}]},
+                timeout=PING_TIMEOUT,
+            )
             return model, out["choices"][0]["message"].get("content") or ""
         if provider_id == "gemini":
             url = f"{(p.get('baseUrl') or GEMINI_URL).rstrip('/')}/v1beta/models/{urllib.parse.quote(model, safe='')}:generateContent"
-            out = _request(url, {"x-goog-api-key": key}, {"contents": [{"role": "user", "parts": [{"text": PING}]}]}, timeout=PING_TIMEOUT)
+            out = _request(
+                url,
+                {"x-goog-api-key": key},
+                {"contents": [{"role": "user", "parts": [{"text": PING}]}]},
+                timeout=PING_TIMEOUT,
+            )
             return model, "".join(x.get("text", "") for x in out["candidates"][0].get("content", {}).get("parts", []))
         if not p.get("workspace"):
             raise ProviderError("save the workspace first")
@@ -309,21 +366,29 @@ def _workspaces(base_url, key, timeout, fresh=False):
 
 
 def _no_workspace(workspace, spaces):
-    return ProviderError(f"Workspace “{workspace}” isn’t on this AnythingLLM server. "
-                         f"Its workspaces: {', '.join(n for n, _ in spaces) or 'none'}.")
+    return ProviderError(
+        f"Workspace “{workspace}” isn’t on this AnythingLLM server. "
+        f"Its workspaces: {', '.join(n for n, _ in spaces) or 'none'}."
+    )
 
 
 def _anythingllm_chat(p, key, message, timeout):
     """POST to the saved workspace's chat. AnythingLLM wants the slug; the saved text may be the display name."""
     base, ws = p["baseUrl"].rstrip("/"), p["workspace"].strip()
     spaces = _workspaces(base, key, timeout)
-    slug = next((s for _, s in spaces if s == ws), None) or next((s for n, s in spaces if n.strip().casefold() == ws.casefold()), None)
+    slug = next((s for _, s in spaces if s == ws), None) or next(
+        (s for n, s in spaces if n.strip().casefold() == ws.casefold()), None
+    )
     if slug is None:
         raise _no_workspace(ws, spaces)
     try:
-        return _request(f"{base}/api/v1/workspace/{urllib.parse.quote(slug, safe='')}/chat", _bearer(key),
-                        # a session of its own: no earlier question's history (another user's) is added to this one
-                        {"message": message, "mode": "chat", "sessionId": f"ca2-{uuid.uuid4().hex}"}, timeout=timeout)
+        return _request(
+            f"{base}/api/v1/workspace/{urllib.parse.quote(slug, safe='')}/chat",
+            _bearer(key),
+            # a session of its own: no earlier question's history (another user's) is added to this one
+            {"message": message, "mode": "chat", "sessionId": f"ca2-{uuid.uuid4().hex}"},
+            timeout=timeout,
+        )
     except ProviderError as e:
         if getattr(e, "status", None) == 400 and "not a valid workspace" in str(e):  # removed since the list was read
             raise _no_workspace(ws, _workspaces(base, key, timeout, fresh=True)) from None
@@ -356,8 +421,14 @@ def _web_url(url):
 
 # http and https only: build_opener would add file:, ftp: and data: handlers too
 _OPENER = urllib.request.OpenerDirector()
-for _h in (urllib.request.ProxyHandler(), urllib.request.HTTPHandler(), urllib.request.HTTPSHandler(),
-           urllib.request.HTTPDefaultErrorHandler(), _NoRedirects(), urllib.request.HTTPErrorProcessor()):
+for _h in (
+    urllib.request.ProxyHandler(),
+    urllib.request.HTTPHandler(),
+    urllib.request.HTTPSHandler(),
+    urllib.request.HTTPDefaultErrorHandler(),
+    _NoRedirects(),
+    urllib.request.HTTPErrorProcessor(),
+):
     _OPENER.add_handler(_h)
 
 
@@ -367,7 +438,9 @@ def _request(url, headers, body=None, timeout=TIMEOUT):
         raise ProviderError("the provider’s address isn’t an http:// or https:// URL with a host")
     host = urllib.parse.urlsplit(url).netloc
     data = None if body is None else json.dumps(body).encode("utf8")
-    req = urllib.request.Request(url, data, {"Content-Type": "application/json", **headers}, method="GET" if data is None else "POST")
+    req = urllib.request.Request(
+        url, data, {"Content-Type": "application/json", **headers}, method="GET" if data is None else "POST"
+    )
     try:
         with _OPENER.open(req, timeout=timeout) as r:
             return json.load(r)
@@ -383,7 +456,9 @@ def _request(url, headers, body=None, timeout=TIMEOUT):
 
 def _anthropic_client(key, base_url, **kw):
     """The SDK's client without redirects: httpx would otherwise resend the key header to whatever host a 30x names."""
-    return anthropic.Anthropic(api_key=key, base_url=base_url or None, http_client=anthropic.DefaultHttpxClient(follow_redirects=False), **kw)
+    return anthropic.Anthropic(
+        api_key=key, base_url=base_url or None, http_client=anthropic.DefaultHttpxClient(follow_redirects=False), **kw
+    )
 
 
 @contextlib.contextmanager
@@ -406,13 +481,20 @@ def _anthropic_errors():
 
 def _anthropic(provider, key, model, system, user, schema, max_tokens, timeout):
     # a bounded call (Ask the rules) isn't retried: the server stops it at 60 s, the provider's own error reads better
-    client = _anthropic_client(key, provider.get("baseUrl"), timeout=timeout or ANTHROPIC_TIMEOUT, **({"max_retries": 0} if timeout else {}))
+    client = _anthropic_client(
+        key, provider.get("baseUrl"), timeout=timeout or ANTHROPIC_TIMEOUT, **({"max_retries": 0} if timeout else {})
+    )
     extra = {"output_config": {"format": {"type": "json_schema", "schema": schema}}} if schema else {}
     with _anthropic_errors():
         resp = client.beta.messages.create(
-            model=model, max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            model=model,
+            max_tokens=max_tokens,
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],  # same for every chunk
-            messages=[{"role": "user", "content": user}], **extra)
+            messages=[{"role": "user", "content": user}],
+            **extra,
+        )
     if resp.stop_reason == "refusal":
         raise ProviderError("declined: the model refused this part of the book")
     if resp.stop_reason == "max_tokens":

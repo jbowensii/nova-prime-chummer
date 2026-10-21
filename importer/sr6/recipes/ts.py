@@ -9,6 +9,7 @@ ts.md. The book prints no qualities.
 An item's stat box is a level-5 heading under its description (a level-3 heading, or a level-4 one under it); its
 stats print as a table, as a bold header line over a value line (a weapon) or as two one-row tables (a vehicle: HAND …
 ARM, then PILOT … COST). A box whose values don't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -36,8 +37,19 @@ GEAR, ROLL_CALL, WHO = "right tools for the job", "roll call", "its who you know
 WHO_RULES = ("game information", "blackmail how to play dirty")  # IT'S WHO YOU KNOW's level-2 sections that are rules
 WEAPON_LINE = ("TYPE", "DV", "MODE", "ATTACK RATING", "AMMO", "AVAIL", "COST")  # a weapon box's bold header line
 # a vehicle box's two tables -> the core rulebook's headers (catalog.HEADERS)
-VEHICLE = {"HAND": "HANDLING", "ACCEL": "ACCEL", "SPD INT": "SPEED INTERVAL", "TOP SPD": "TOP SPEED", "BOD": "BODY",
-           "ARM": "ARMOR", "PILOT": "PILOT", "SENSE": "SENSOR", "SEAT": "SEATS", "AVAIL": "AVAIL", "COST": "COST"}
+VEHICLE = {
+    "HAND": "HANDLING",
+    "ACCEL": "ACCEL",
+    "SPD INT": "SPEED INTERVAL",
+    "TOP SPD": "TOP SPEED",
+    "BOD": "BODY",
+    "ARM": "ARMOR",
+    "PILOT": "PILOT",
+    "SENSE": "SENSOR",
+    "SEAT": "SEATS",
+    "AVAIL": "AVAIL",
+    "COST": "COST",
+}
 PROSE = {"TYPE", "DV", "ATTACK RATING", "POWER", "SOCIAL"}  # gear columns with no attribute: to the text
 _AR = re.compile(r"[^/\s]+(?:/[^/\s]+){4}")  # attack ratings: `9/12/10/—/—`
 _DV = re.compile(r"(.*\S)\s+(\d+[PS]\S*)")  # a TYPE cell holding the DV too: `Special 2S`
@@ -71,7 +83,9 @@ def _vehicle(text):
     pilot = [t for t in tabs if "PILOT" in t[0]]  # its own table, or the second band joined to the first (regroup)
     if len(hand) != 1 or len(pilot) != 1 or re.search(r"\d¥$", text, re.M) and len(re.findall(r"\d¥", text)) > 1:
         return None
-    cells = {h: v for t in {id(t): t for t in (hand[0], pilot[0])}.values() if len(t[1]) == 1 for h, v in zip(t[0], t[1][0])}
+    cells = {
+        h: v for t in {id(t): t for t in (hand[0], pilot[0])}.values() if len(t[1]) == 1 for h, v in zip(t[0], t[1][0])
+    }
     return {VEHICLE[h]: cells[h] for h in VEHICLE} if set(cells) == set(VEHICLE) else None
 
 
@@ -79,15 +93,18 @@ def band(text):
     """A stat band printed as a bold header line over a value line (`**B A R S W L I C ESS**`) -> [{header: value}]."""
     lines = text.splitlines()
     for i, ln in enumerate(lines[:-1]):
-        if (m := re.fullmatch(r"\*\*((?:[A-Z]{1,3} )+[A-Z]{1,3})\*\*", ln.strip())) and \
-                len(vals := lines[i + 1].split()) == len(hs := m.group(1).split()):
+        if (m := re.fullmatch(r"\*\*((?:[A-Z]{1,3} )+[A-Z]{1,3})\*\*", ln.strip())) and len(
+            vals := lines[i + 1].split()
+        ) == len(hs := m.group(1).split()):
             return [dict(zip(hs, vals))]
     return []
 
 
 def _strip(text):
     """The box's text without its stat lines."""
-    return "\n".join(ln for ln in text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\(.*\)", ln.strip()))
+    return "\n".join(
+        ln for ln in text.splitlines() if not ln.startswith("|") and not re.fullmatch(r"\(.*\)", ln.strip())
+    )
 
 
 def _prep(bs, report):
@@ -103,7 +120,9 @@ def _prep(bs, report):
             out.append(b)
             continue
         if b.row is not None and re.match(r"notes?:", b.name, re.I) and out and out[-1].row is not None:
-            out[-1] = replace(out[-1], text="\n".join(t for t in (out[-1].text, f"**Notes:** {b.name.split(':', 1)[1].strip()}") if t))
+            out[-1] = replace(
+                out[-1], text="\n".join(t for t in (out[-1].text, f"**Notes:** {b.name.split(':', 1)[1].strip()}") if t)
+            )
             continue  # a table's note printed as a row: the row above's
         if b.row is not None and " Notes: " in b.name:
             name, note = b.name.split(" Notes: ", 1)
@@ -126,8 +145,9 @@ def _prep(bs, report):
             if not b.stats and (bd := band(b.text)):  # its attributes as a header and a value line
                 b = catalog.text_stats(b, catalog.HEADERS["npcs"])
                 b = replace(b, stats=bd + b.stats)
-            b = replace(b, labels=labels, section=section,
-                        text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t))
+            b = replace(
+                b, labels=labels, section=section, text="\n\n".join(t for t in (d.text.strip(), b.text.strip()) if t)
+            )
         out.append(b)
     return [b for b in out if id(b) not in used]
 
@@ -142,7 +162,9 @@ def _gear_box(b, report, vehicles):
         cls = re.match(r"\s*\(([^()]+)\)", b.text)
         v = _vehicle(b.text)
         if v is None:
-            report.append({"kind": "missing-value", "file": "vehicles.xml", "name": b.name, "field": "stats", "page": page})
+            report.append(
+                {"kind": "missing-value", "file": "vehicles.xml", "name": b.name, "field": "stats", "page": page}
+            )
             return []
         row = {"VEHICLE": b.name, **v}
         return [replace(b, header=list(row), row=row, stats=[], label=cls.group(1) if cls else "", text=_strip(b.text))]
@@ -153,11 +175,23 @@ def _gear_box(b, report, vehicles):
         if len(priced) == 1:
             return [_row(b, b.name, priced[0], text)]
         prefix = b.name.rsplit(" ", 1)[0]
-        return [replace(_row(b, f"{prefix} {s['TYPE']}", {k: v for k, v in s.items() if k != "TYPE"}, text), label=b.name)
-                for s in priced]
+        return [
+            replace(_row(b, f"{prefix} {s['TYPE']}", {k: v for k, v in s.items() if k != "TYPE"}, text), label=b.name)
+            for s in priced
+        ]
     if (cells := weapon_line(b.text)) is not None:
-        return [_row(b, b.name, cells, "\n".join(ln for ln in b.text.splitlines()
-                                                 if not ln.startswith("**TYPE") and ln.split()[-1:] != [cells["COST"]]))]
+        return [
+            _row(
+                b,
+                b.name,
+                cells,
+                "\n".join(
+                    ln
+                    for ln in b.text.splitlines()
+                    if not ln.startswith("**TYPE") and ln.split()[-1:] != [cells["COST"]]
+                ),
+            )
+        ]
     if any({"AVAIL", "COST"} & {h.upper() for h in st} for st in b.stats) or "**TYPE" in b.text:
         report.append({"kind": "missing-value", "file": "weapons.xml", "name": b.name, "field": "stats", "page": page})
         return []
@@ -201,7 +235,11 @@ def _kind(b):
             return "armor", "shields"
         if "helmet" in name:
             return "armor", "helmets"
-        return ("armor", "armor") if any(h.upper() == "DEFENSE RATING" for h in b.header) else ("gear", "armor-modifications")
+        return (
+            ("armor", "armor")
+            if any(h.upper() == "DEFENSE RATING" for h in b.header)
+            else ("gear", "armor-modifications")
+        )
     if head == "DEVICE":
         return "gear", slug(b.label) or "security-scanners"
     if head == "NAME":

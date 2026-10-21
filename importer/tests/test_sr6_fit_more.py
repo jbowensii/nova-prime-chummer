@@ -1,5 +1,6 @@
 """More of the sample-runner fit (importer/sr6/fit.py): the app's value reader on powers and sums, ranks that run out,
 a technomancer's forms and a printed karma-to-nuyen count. Every number is made up."""
+
 import unittest
 
 from importer.sr6 import fit
@@ -27,10 +28,18 @@ class CheapestTest(unittest.TestCase):
 class SpendMoreTest(unittest.TestCase):
     def test_a_technomancers_forms_past_the_free_ones_cost_karma(self):
         rows = {**ROWS, "A": {**ROWS["A"], "magic": {"full": 3, "technomancer": 2}}}
-        n = need(magic="technomancer", attrs={**{k: 1 for k in fit.CORE}, "res": 3, "edg": 1}, forms=3, spells=1, meta="Gnoll")
+        n = need(
+            magic="technomancer",
+            attrs={**{k: 1 for k in fit.CORE}, "res": 3, "edg": 1},
+            forms=3,
+            spells=1,
+            meta="Gnoll",
+        )
         got = fit.fit(n, rows, CS)
         self.assertEqual(got["letters"]["magic"], "A")  # (the row that lists the kind)
-        self.assertEqual(got["attrs"]["res"], [0, 1, 0])  # (the point above the priority's Resonance is an adjustment point)
+        self.assertEqual(
+            got["attrs"]["res"], [0, 1, 0]
+        )  # (the point above the priority's Resonance is an adjustment point)
         self.assertEqual(got["extraMagic"], 2)  # (one form past the two free, and the sprite spell)
         self.assertEqual(got["karmaLeft"], 26)  # (30 less 2 karma a form and 2 a spell past the free ones)
 
@@ -40,7 +49,9 @@ class SpendMoreTest(unittest.TestCase):
         self.assertEqual(free, 4)  # (what the gear needs past the 100 the E row gives)
         got = fit.fit({**n, "toNuyen": 5}, ROWS, CS)
         self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"], got["karmaLeft"]), (5, 150, 25))
-        self.assertEqual(fit.fit({**n, "toNuyen": 0}, ROWS, CS)["karmaToNuyen"], free)  # (never less than the gear needs)
+        self.assertEqual(
+            fit.fit({**n, "toNuyen": 0}, ROWS, CS)["karmaToNuyen"], free
+        )  # (never less than the gear needs)
 
     def test_the_house_rule_limits_the_karma_turned_into_nuyen(self):
         """karmaToNuyenCap on: no more than karmaToNuyenMax, printed or needed (budgets.ts counts no more); off: no limit."""

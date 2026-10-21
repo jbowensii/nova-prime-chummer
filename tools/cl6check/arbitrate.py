@@ -7,6 +7,7 @@ Commlink6's page) and see which value it prints.
 
 Reads the import's own copy of the book (library/sr6/<book>/original.pdf) with pypdfium2 and pdfplumber; without
 them, or with --no-pdf, every difference is class c."""
+
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -24,6 +25,7 @@ class Book:
             self.pages = int(imp.get("pages") or 0) or None
             try:
                 from importer.sr6 import recipes
+
                 self.offset = next((r.PAGE_OFFSET for r in recipes.RECIPES if r.ID == imp.get("source")), 1)
             except ImportError:
                 pass
@@ -41,6 +43,7 @@ class Book:
             try:
                 import pdfplumber
                 import pypdfium2
+
                 self._pdfium = self._pdfium or pypdfium2.PdfDocument(self.pdf_path)
                 self._plumber = self._plumber or pdfplumber.open(self.pdf_path)
                 if 0 <= idx < len(self._pdfium):
@@ -59,9 +62,12 @@ class Book:
             idx = int(printed) + self.offset - 1
             if idx not in self._words:
                 import pdfplumber
+
                 self._plumber = self._plumber or pdfplumber.open(self.pdf_path)
                 pg = self._plumber.pages[idx]
-                self._words[idx] = pg.extract_words(extra_attrs=["size"]) + [{"text": "|width", "x0": pg.width, "x1": pg.width, "top": 0, "size": 0}]
+                self._words[idx] = pg.extract_words(extra_attrs=["size"]) + [
+                    {"text": "|width", "x0": pg.width, "x1": pg.width, "top": 0, "size": 0}
+                ]
                 pg.flush_cache()
             return self._words[idx]
         except Exception:  # noqa: BLE001  (a page that won't read settles nothing)
@@ -103,7 +109,7 @@ def name_window(book, page, name, extra_pages=()):
             if len(re.findall(r"\d+", lines[i])) >= 2 and n1(lines[i]).find(k) <= 2:
                 return norm_line(lines[i])
         if hits and fallback is None and p == pages[0]:
-            fallback = norm_line(" ".join(lines[hits[0]:hits[0] + 7]))
+            fallback = norm_line(" ".join(lines[hits[0] : hits[0] + 7]))
     return fallback
 
 
@@ -112,7 +118,9 @@ def stat_box(book, page, name, extra_pages=()):
     accessories: the box can sit a long way under the heading, and the box above it in the column is the previous item's):
     "2 140" for a box printing 2 and 140¥; None when the heading or a box below it is not found. The heading is the
     largest print of the item's name on its page, the next or the one before."""
-    toks = [t for t in (re.sub(r"[^a-z0-9]", "", x) for x in name.lower().split()) if t][:3]  # (`Low-Light` is one word of the page; a long heading wraps: its first words)
+    toks = [t for t in (re.sub(r"[^a-z0-9]", "", x) for x in name.lower().split()) if t][
+        :3
+    ]  # (`Low-Light` is one word of the page; a long heading wraps: its first words)
     if not toks:
         return None
     for q in (page, *extra_pages):
@@ -141,11 +149,19 @@ def stat_box(book, page, name, extra_pages=()):
             width = next(x["x0"] for x in ws if x["text"] == "|width")
             right = h["x0"] > width * 0.45
             col = lambda x: (x["x0"] > width * 0.45) == right  # noqa: E731 (two columns)
-            labels = sorted((x for x in ws if x["text"] == "AVAIL" and x["top"] > h["top"] and col(x)), key=lambda x: x["top"])
+            labels = sorted(
+                (x for x in ws if x["text"] == "AVAIL" and x["top"] > h["top"] and col(x)), key=lambda x: x["top"]
+            )
             for a in labels:
-                c = next((x for x in ws if x["text"] == "COST" and abs(x["top"] - a["top"]) < 3 and x["x0"] > a["x0"]), None)
+                c = next(
+                    (x for x in ws if x["text"] == "COST" and abs(x["top"] - a["top"]) < 3 and x["x0"] > a["x0"]), None
+                )
                 if c:
-                    vals = [x for x in ws if a["top"] + 3 < x["top"] < a["top"] + 25 and a["x0"] - 15 <= x["x0"] < c["x0"] + 90]
+                    vals = [
+                        x
+                        for x in ws
+                        if a["top"] + 3 < x["top"] < a["top"] + 25 and a["x0"] - 15 <= x["x0"] < c["x0"] + 90
+                    ]
                     left = " ".join(x["text"] for x in sorted(vals, key=lambda x: x["x0"]) if x["x0"] < c["x0"] - 5)
                     rest = " ".join(x["text"] for x in sorted(vals, key=lambda x: x["x0"]) if x["x0"] >= c["x0"] - 5)
                     return norm_line(f"{left} {rest}")
@@ -172,8 +188,10 @@ def token_in(window, token):
 def load_trace(path):
     """{(src, cl6 id, field): 'only' | 'demote'} from a trace run's cl6-trace.csv ({} without one): where the trace shows
     Commlink6's value is no book's ('Commlink6-only field': left out like the other Commlink6-only fields), or is not
-    confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer error)."""
+    confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer error).
+    """
     import csv
+
     if not path or not os.path.exists(path):
         return {}
     out = {}
@@ -181,10 +199,18 @@ def load_trace(path):
         for r in csv.DictReader(fh):
             if r["field"] and r["family"] == "Commlink6-only field":
                 out[(r["src"], r["id"], r["field"])] = "only"
-            elif r["field"] and (r["family"] == "own row" or r.get("verdict") == "weak link, not confirmed on the page"):
+            elif r["field"] and (
+                r["family"] == "own row" or r.get("verdict") == "weak link, not confirmed on the page"
+            ):
                 out[(r["src"], r["id"], r["field"])] = "demote"
-            elif r["field"] not in ("", "rating") and r["family"] in ("description sentence", "not found", "another book"):
-                out[(r["src"], r["id"], r["field"])] = "unprinted"  # no row of this book prints it (rating ranges are modelled apart)
+            elif r["field"] not in ("", "rating") and r["family"] in (
+                "description sentence",
+                "not found",
+                "another book",
+            ):
+                out[(r["src"], r["id"], r["field"])] = (
+                    "unprinted"  # no row of this book prints it (rating ranges are modelled apart)
+                )
     return out
 
 
@@ -209,7 +235,10 @@ def settle(book, entry, rec, diff):
     if pdf == "cl6" and diff["why"].startswith("ours empty") and (diff.get("ours") or "").strip() in ("—", "–", "-"):
         return "b", "ours"  # the row prints a dash; Commlink6's value only matches a stray digit in the window
     if pdf == "cl6" and w is not None and re.search(r"[A-Za-z]", diff.get("ours") or "") and token_in(w, diff["ours"]):
-        return "b", "ours"  # our formula ('Capacity x 50', 'Rating') is printed on the row; Commlink6 flattens it to one number
+        return (
+            "b",
+            "ours",
+        )  # our formula ('Capacity x 50', 'Rating') is printed on the row; Commlink6 flattens it to one number
     if pdf == "cl6":
         return "a", pdf
     if pdf == "ours":

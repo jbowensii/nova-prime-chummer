@@ -9,6 +9,7 @@ maps nowhere is a rule section if it has no row or stat box (rule chapters only)
 priority and metatype tables are rule tables in regroup's output: they are read from any block's text (or a catalog
 row) by their first header. The archetypes chapter's sample characters become SR6 runner files (Result.samples,
 importer/sr6/archetypes.py)."""
+
 import json
 import os
 import re
@@ -19,26 +20,34 @@ from importer.sr6.recipes import crb_city
 from importer.sr6.catalog import NAME_HEADERS  # noqa: F401  (the recipe's own: regroup reads it)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
-SHA256 = ("15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
-          # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin (2023)
-          "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
-          "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
-          "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f")
+SHA256 = (
+    "15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
+    # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin (2023)
+    "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
+    "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
+    "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f",
+)
 # the printings, each with the month it was published (sources.xml's CRB, CRB-SEA, CRB-BER, CRB-HK): of several imported,
 # the CURRENT one (the owner: the Current Printing, whatever a City Edition is dated) is loaded, else the one published last (run.py), and a printing whose PDF carries no date is dated by it (resolve.py: an
 # errata older than the printing never overrides it); each City Edition's city chapter is a source of its own and loads
 # from its own printing regardless
-PRINTINGS = {SHA256[0]: ("2019-08", "Current Printing (CAT28000, 2019)"),
-             SHA256[2]: ("2021-09", "City Edition Seattle (CAT28000S, 2021)"),
-             SHA256[3]: ("2023-06", "City Edition Berlin (CAT28000B, 2023)"),
-             SHA256[1]: ("2025-03", "City Edition Hong Kong (CAT28000H, 2025)")}
-CURRENT = (SHA256[0],)  # the printings that outrank every other (recipes.printing): values come from the Current Printing, the City Editions only fill what it leaves out
+PRINTINGS = {
+    SHA256[0]: ("2019-08", "Current Printing (CAT28000, 2019)"),
+    SHA256[2]: ("2021-09", "City Edition Seattle (CAT28000S, 2021)"),
+    SHA256[3]: ("2023-06", "City Edition Berlin (CAT28000B, 2023)"),
+    SHA256[1]: ("2025-03", "City Edition Hong Kong (CAT28000H, 2025)"),
+}
+CURRENT = (
+    SHA256[0],
+)  # the printings that outrank every other (recipes.printing): values come from the Current Printing, the City Editions only fill what it leaves out
 # heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
 HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 305  # PDF page: the index and the reprinted tables start here (left out)
 # the book's spelling differences between a table row and its description heading (norm form -> norm form; names only)
-with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "crb_aliases.json"), encoding="utf8") as _f:
+with open(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "crb_aliases.json"), encoding="utf8"
+) as _f:
     ALIASES = json.load(_f)
 
 # (chapter key, context key, kind, category), first match wins. The chapter key is a substring of the block's chapter,
@@ -107,8 +116,18 @@ SECTION_KINDS = {"skills", "rituals", "lifestyles", "critterpowers"}  # level-3 
 # in the block's text when that is longer): kind, or (kind, attributes)
 LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
 # chapters whose unmapped sections (and level-4 headings with no row or box) are rule sections
-RULE_CHAPTERS = ("game concepts", "character creation", "skills", "combat", "magic", "matrix", "rigging", "wild life",
-                 "running the game", "gear")
+RULE_CHAPTERS = (
+    "game concepts",
+    "character creation",
+    "skills",
+    "combat",
+    "magic",
+    "matrix",
+    "rigging",
+    "wild life",
+    "running the game",
+    "gear",
+)
 ATTRIBUTE_CHAPTERS = ("game concepts", "character creation")
 CATALOG_CHAPTERS = ("gear",)  # a table row there with a name header is a catalog item: reported when it maps nowhere
 BOOK = "the Shadowrun 6 core rulebook"

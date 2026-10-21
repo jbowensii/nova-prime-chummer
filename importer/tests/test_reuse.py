@@ -1,6 +1,7 @@
 """run --reuse (Books → Re-import all): a book folder holding only its PDF (and its upload record) imports from scratch; a
 re-import after that keeps book.md when the same file was converted by the same converter, and converts again when the
 PDF or the converter changed. Made-up PDF only (minipdf)."""
+
 import io
 import os
 import subprocess
@@ -23,7 +24,9 @@ def book_with_pdf_only():
     os.makedirs(book)
     os.makedirs(custom)
     Path(book, "original.pdf").write_bytes(two_page_pdf())
-    Path(book, "upload.xml").write_text('<upload file="made-up.pdf" size="1" sha256="00" uploaded="2026-10-06T00:00:00Z"/>\n', encoding="utf8")
+    Path(book, "upload.xml").write_text(
+        '<upload file="made-up.pdf" size="1" sha256="00" uploaded="2026-10-06T00:00:00Z"/>\n', encoding="utf8"
+    )
     return book, custom
 
 
@@ -71,15 +74,21 @@ class GamesConvertersTest(unittest.TestCase):
         self.assertIn('PDF_STEPS_VERSION = ""', src)
         ns = {}
         exec(compile(src.replace('PDF_STEPS_VERSION = ""', 'PDF_STEPS_VERSION = "+pdf2"'), conv.__file__, "exec"), ns)
-        self.assertEqual((ns["CONVERTER_VERSION"], ns["SR6_CONVERTER_VERSION"]),
-                         (CONVERTER_VERSION + "+pdf2", SR6_CONVERTER_VERSION + "+pdf2"))
+        self.assertEqual(
+            (ns["CONVERTER_VERSION"], ns["SR6_CONVERTER_VERSION"]),
+            (CONVERTER_VERSION + "+pdf2", SR6_CONVERTER_VERSION + "+pdf2"),
+        )
 
     def test_the_anarchy_conversion_never_loads_the_sr6_layout(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        script = ("import sys, tempfile, os; from importer.convert import convert; from importer.tests.minipdf import two_page_pdf; "
-                  "d = tempfile.mkdtemp(); p = os.path.join(d, 'x.pdf'); open(p, 'wb').write(two_page_pdf()); "
-                  "convert(p, os.path.join(d, 'x.md')); print(sorted(m for m in sys.modules if m.startswith('importer.sr6')))")
-        out = subprocess.run([sys.executable, "-c", script], cwd=root, capture_output=True, text=True, check=True).stdout
+        script = (
+            "import sys, tempfile, os; from importer.convert import convert; from importer.tests.minipdf import two_page_pdf; "
+            "d = tempfile.mkdtemp(); p = os.path.join(d, 'x.pdf'); open(p, 'wb').write(two_page_pdf()); "
+            "convert(p, os.path.join(d, 'x.md')); print(sorted(m for m in sys.modules if m.startswith('importer.sr6')))"
+        )
+        out = subprocess.run(
+            [sys.executable, "-c", script], cwd=root, capture_output=True, text=True, check=True
+        ).stdout
         self.assertEqual(out.strip(), "[]")
 
 

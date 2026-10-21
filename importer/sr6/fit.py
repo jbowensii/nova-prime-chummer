@@ -11,6 +11,7 @@ nuyen (karma turned into nuyen past what the gear needs, while karma is left), t
 full tie keeps the first in letter order. The numbers are the creation settings the app ships
 (public/data/sr6/creation-defaults.xml), resolved as the app applies them (resolve: nested rules, levels of play), and
 the catalog's priority rows; nothing is read from the book's text."""
+
 import itertools
 import math
 import os
@@ -42,34 +43,73 @@ _AWAKENED = ("full", "aspected", "mystic-adept", "adept", "technomancer")
 REQUIRES = {
     **{f"swcStreet.{s}": ["levelSwcStreet"] for s in ("sumToTen", "pointBuy", "modules", "letters")},
     **{f"swcElite.{s}": ["levelSwcElite"] for s in ("sumToTen", "pointBuy", "modules", "letters")},
-    "swcStreet.karmaBuild": ["levelSwcStreet", "karmaBuildMethod"], "swcElite.karmaBuild": ["levelSwcElite", "karmaBuildMethod"],
+    "swcStreet.karmaBuild": ["levelSwcStreet", "karmaBuildMethod"],
+    "swcElite.karmaBuild": ["levelSwcElite", "karmaBuildMethod"],
     **{k: ["expandedContacts"] for k in ("contactKarma", "contactPairPerCha", "contactRatingMax")},
-    "twentyQuestionsKarma": ["twentyQuestions"], "stackingAdvantage": ["arDrEdgeGap"],
+    "twentyQuestionsKarma": ["twentyQuestions"],
+    "stackingAdvantage": ["arDrEdgeGap"],
     "infectedPowersAtCreation": ["infectedAllowed"],
-    "strengthDamageStep1": ["highStrengthDamage"], "strengthDamageStep2": ["highStrengthDamage"],
-    "advance.karmaToNuyenRate": ["workingForTheMan"], "advance.nuyenToKarmaRate": ["workingForThePeople"],
-    **{k: [parent] for parent, kids in (
-        ("ownCarryOver", ("carryOver.karma", "carryOver.nuyen")), ("karmaToNuyenCap", ("karmaToNuyenMax",)),
-        ("positiveQualityMultiplier", ("positiveQualityFactor",)), ("buyPowerPoints", ("advance.powerPoint",)),
-        ("karmaBuildMethod", ("karmaBuild.start", "karmaBuild.startRating", "karmaBuild.freeSpellsPerMagic",
-                              "karmaBuild.freeFormsPerResonance", *(f"magicKarma:{k}" for k in _AWAKENED))),
-        ("dataStructureCaps", ("dataStructure.maxCount", "dataStructure.maxRating")),
-        ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion", "gradeCap.transhuman")),
-        ("restrictMethods", tuple(f"methodAllowed.{m}" for m in ("priority", "sumtoten", "pointbuy", "karma", "lifepath")))) for k in kids},
+    "strengthDamageStep1": ["highStrengthDamage"],
+    "strengthDamageStep2": ["highStrengthDamage"],
+    "advance.karmaToNuyenRate": ["workingForTheMan"],
+    "advance.nuyenToKarmaRate": ["workingForThePeople"],
+    **{
+        k: [parent]
+        for parent, kids in (
+            ("ownCarryOver", ("carryOver.karma", "carryOver.nuyen")),
+            ("karmaToNuyenCap", ("karmaToNuyenMax",)),
+            ("positiveQualityMultiplier", ("positiveQualityFactor",)),
+            ("buyPowerPoints", ("advance.powerPoint",)),
+            (
+                "karmaBuildMethod",
+                (
+                    "karmaBuild.start",
+                    "karmaBuild.startRating",
+                    "karmaBuild.freeSpellsPerMagic",
+                    "karmaBuild.freeFormsPerResonance",
+                    *(f"magicKarma:{k}" for k in _AWAKENED),
+                ),
+            ),
+            ("dataStructureCaps", ("dataStructure.maxCount", "dataStructure.maxRating")),
+            ("gradeCapAtCreation", ("gradeCap.initiation", "gradeCap.submersion", "gradeCap.transhuman")),
+            (
+                "restrictMethods",
+                tuple(f"methodAllowed.{m}" for m in ("priority", "sumtoten", "pointbuy", "karma", "lifepath")),
+            ),
+        )
+        for k in kids
+    },
     "eliteSumToThirteen": ["levelSwcElite"],
 }
 LEVEL_KEYS = ("levelStreet", "levelPrime", "levelSwcStreet", "levelSwcElite")  # one at a time: the first listed wins
 LEVELS = [
-    ["levelSwcStreet", [["sumToTenTarget", "swcStreet.sumToTen"], ["pointBuy.total", "swcStreet.pointBuy"],
-                        ["lifepath.moduleCount", "swcStreet.modules"], ["priorityLetters", "swcStreet.letters"],
-                        ["karmaBuild.start", "swcStreet.karmaBuild"]]],
-    ["levelSwcElite", [["sumToTenTarget", "swcElite.sumToTen"], ["pointBuy.total", "swcElite.pointBuy"],
-                       ["lifepath.moduleCount", "swcElite.modules"], ["priorityLetters", "swcElite.letters"],
-                       ["karmaBuild.start", "swcElite.karmaBuild"]]],
+    [
+        "levelSwcStreet",
+        [
+            ["sumToTenTarget", "swcStreet.sumToTen"],
+            ["pointBuy.total", "swcStreet.pointBuy"],
+            ["lifepath.moduleCount", "swcStreet.modules"],
+            ["priorityLetters", "swcStreet.letters"],
+            ["karmaBuild.start", "swcStreet.karmaBuild"],
+        ],
+    ],
+    [
+        "levelSwcElite",
+        [
+            ["sumToTenTarget", "swcElite.sumToTen"],
+            ["pointBuy.total", "swcElite.pointBuy"],
+            ["lifepath.moduleCount", "swcElite.modules"],
+            ["priorityLetters", "swcElite.letters"],
+            ["karmaBuild.start", "swcElite.karmaBuild"],
+        ],
+    ],
     ["ownCarryOver", [["maxKarmaLeft", "carryOver.karma"], ["maxNuyenLeft", "carryOver.nuyen"]]],
 ]
-SETS = [["eliteSumToThirteen", "sumToTenTarget", 13], ["availabilitySeven", "maxAvailability", 7],
-        ["pointBuyErrataNuyen", "pointBuy.max.nuyen", 450000]]
+SETS = [
+    ["eliteSumToThirteen", "sumToTenTarget", 13],
+    ["availabilitySeven", "maxAvailability", 7],
+    ["pointBuyErrataNuyen", "pointBuy.max.nuyen", 450000],
+]
 
 
 def _on(cs, k):
@@ -106,15 +146,21 @@ DWARF_SIZED = ("dwarf", "dwarfs", "dwarves", "gnome", "hanuman", "koborokuru", "
 def metatype_size(name):
     """'troll' or 'dwarf' when the metatype's name has a troll- or dwarf-sized word (metatypeSizePricing), else None."""
     words = norm(name or "").split()
-    return "troll" if any(w in TROLL_SIZED for w in words) else "dwarf" if any(w in DWARF_SIZED for w in words) else None
+    return (
+        "troll" if any(w in TROLL_SIZED for w in words) else "dwarf" if any(w in DWARF_SIZED for w in words) else None
+    )
 
 
 def value(v, rating=1):
     """A catalog value at `rating`, read as src/sr6/catalog/domain/values.ts rated() reads it; None when it can't be."""
     if v is None or len(v) > 100 or re.fullmatch(r"\s*[—–-]?\s*", v):  # values.ts MAX_VALUE
         return None
-    s = re.sub(r"\b(?:rating|capacity|force|level)\b", " R ", re.sub(r"[×x*]", " * ", _LEGAL.sub("", _EACH.sub("", v)).strip().lstrip("+")),
-               flags=re.I)
+    s = re.sub(
+        r"\b(?:rating|capacity|force|level)\b",
+        " R ",
+        re.sub(r"[×x*]", " * ", _LEGAL.sub("", _EACH.sub("", v)).strip().lstrip("+")),
+        flags=re.I,
+    )
     toks = re.findall(r"\d+(?:\.\d+)?|\.\d+|R|[+*/^()]|\S", s)
     if "/" in toks and "R" not in toks:
         return None  # `300/350`: two prices
@@ -189,8 +235,9 @@ def spend(need, rows, cs):
     n = lambda k: cs.get(k) if isinstance(cs.get(k), float) else 0
     # the karma it starts with (providers.ts): twice the customization Karma for a prime runner (CRB Hong Kong p.63),
     # Twenty Questions' karma (SWC p.25)
-    start = n("startingKarma") * (2 if cs.get("levelPrime") == "true" else 1) \
-        + (n("twentyQuestionsKarma") if cs.get("twentyQuestions") == "true" else 0)
+    start = n("startingKarma") * (2 if cs.get("levelPrime") == "true" else 1) + (
+        n("twentyQuestionsKarma") if cs.get("twentyQuestions") == "true" else 0
+    )
     meta, att, mag, skl, res = (rows[c] for c in COLUMNS)
     adj = meta.get("metas", {}).get(need["meta"].lower())
     kind, a = need["magic"], need["attrs"]
@@ -216,8 +263,11 @@ def spend(need, rows, cs):
         build[k][1] = min(adj, a.get(k, 1) - 1)
         adj -= build[k][1]
     want = [a.get(k, 1) - 1 - build[k][1] for k in CORE]
-    took = _cheapest([a.get(k, 1) for k in CORE], [a.get(k, 1) - w for k, w in zip(CORE, want)],
-                     max(0, sum(want) - att.get("attributes", 0)))
+    took = _cheapest(
+        [a.get(k, 1) for k in CORE],
+        [a.get(k, 1) - w for k, w in zip(CORE, want)],
+        max(0, sum(want) - att.get("attributes", 0)),
+    )
     for k, w, t in zip(CORE, want, took):
         build[k][0], build[k][2] = w - t, t
         karma += _karma(a.get(k, 1), t, n("karmaAttrPerRank"))
@@ -249,7 +299,11 @@ def spend(need, rows, cs):
     per = n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic")
     free = max(0, rating - need.get("loss", 0) - bought) * per if special else 0
     # past the free ones: bought with the customization Karma (an optional rule at creation: karmaSpellsAtCreation)
-    extra = max(0, need["forms"] - free) + need["spells"] if special == "res" else max(0, need["spells"] - free) + need["forms"]
+    extra = (
+        max(0, need["forms"] - free) + need["spells"]
+        if special == "res"
+        else max(0, need["spells"] - free) + need["forms"]
+    )
     if special == "res":
         karma += max(0, need["forms"] - free) * n("karmaForm") + need["spells"] * n("karmaSpell")
     else:
@@ -262,7 +316,11 @@ def spend(need, rows, cs):
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
     # the house rule's limit on the karma turned (karmaToNuyenCap on: karmaToNuyenMax; budgets.ts toNuyen counts no more)
-    cap = int(cs["karmaToNuyenMax"]) if cs.get("karmaToNuyenCap") == "true" and isinstance(cs.get("karmaToNuyenMax"), float) else None
+    cap = (
+        int(cs["karmaToNuyenMax"])
+        if cs.get("karmaToNuyenCap") == "true" and isinstance(cs.get("karmaToNuyenMax"), float)
+        else None
+    )
     low = math.ceil(short / rate) if short > 0 and rate else 0
     low = low if cap is None else min(low, cap)
     room = start + need["neg"] - karma  # karma left before any turns into nuyen
@@ -272,22 +330,39 @@ def spend(need, rows, cs):
         nuyen = res.get("nuyen", 0) + k * rate - need["nuyen"]
         over_n = nuyen - top("maxNuyenLeft")
         excess = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 and rate else 0)
-        return ((room - k > top("maxKarmaLeft")) + (over_n > 0), abs(nuyen - need["left"]) if need["left"] is not None else 0,
-                excess, k)
+        return (
+            (room - k > top("maxKarmaLeft")) + (over_n > 0),
+            abs(nuyen - need["left"]) if need["left"] is not None else 0,
+            excess,
+            k,
+        )
+
     # (more than the gear needs only while the nuyen stays within its limit)
-    ks = [k for k in range(low, max(low, math.floor(room) if cap is None else min(math.floor(room), cap)) + 1)
-          if k == low or res.get("nuyen", 0) + k * rate - need["nuyen"] <= top("maxNuyenLeft")]
+    ks = [
+        k
+        for k in range(low, max(low, math.floor(room) if cap is None else min(math.floor(room), cap)) + 1)
+        if k == low or res.get("nuyen", 0) + k * rate - need["nuyen"] <= top("maxNuyenLeft")
+    ]
     to_nuyen = min(ks, key=leftover) if rate else 0
     if need.get("toNuyen") is not None:  # printed (In Debt's debt): that many, or what the gear needs when more
         to_nuyen = max(low, need["toNuyen"]) if cap is None else min(max(low, need["toNuyen"]), cap)
     errors, gap, excess, _ = leftover(to_nuyen)
     karma += to_nuyen
     over = max(0.0, karma - start - need["neg"])
-    pp_over = max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0  # one per point of Magic (CRB p.157)
+    pp_over = (
+        max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0
+    )  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
-    return (pp_over, over, errors, gap, excess), {"letters": {c: rows[c]["letter"] for c in COLUMNS}, "attrs": build,
-                                   "skills": skills, "karmaToNuyen": to_nuyen, "nuyenLeft": left, "karmaLeft": room - to_nuyen, "extraMagic": extra,
-                                   "powerPointsBought": bought}
+    return (pp_over, over, errors, gap, excess), {
+        "letters": {c: rows[c]["letter"] for c in COLUMNS},
+        "attrs": build,
+        "skills": skills,
+        "karmaToNuyen": to_nuyen,
+        "nuyenLeft": left,
+        "karmaLeft": room - to_nuyen,
+        "extraMagic": extra,
+        "powerPointsBought": bought,
+    }
 
 
 def fit(need, priorities, cs):
@@ -300,8 +375,11 @@ def fit(need, priorities, cs):
     # the letters the runner takes (priorityLetters: a level of play's, street-level's B C C D E), each priced at the row
     # below it at street level (levelStreet, CRB Hong Kong p.63: E stays E), as providers.ts reads them
     want = cs.get("priorityLetters") or "ABCDE"
-    row = (lambda L: priorities.get("ABCDE"[min("ABCDE".index(L) + 1, 4)], {})) if cs.get("levelStreet") == "true" \
+    row = (
+        (lambda L: priorities.get("ABCDE"[min("ABCDE".index(L) + 1, 4)], {}))
+        if cs.get("levelStreet") == "true"
         else (lambda L: priorities.get(L, {}))
+    )
 
     def best(assignments, method):
         out = None
@@ -310,10 +388,18 @@ def fit(need, priorities, cs):
             if got and (out is None or got[0] < out[0]):
                 out = (got[0], {**got[1], "method": method})
         return out
+
     got = best(sorted(set(itertools.permutations(want))), "priority")
     value, target = {L: cs.get(f"letterValue:{L}") for L in "ABCDE"}, cs.get("sumToTenTarget")
-    if (got is None or got[0][:3] > (0, 0, 0)) and isinstance(target, float) and all(isinstance(v, float) for v in value.values()):
-        s10 = best((ls for ls in itertools.product(sorted(set(want)), repeat=5) if sum(value[L] for L in ls) <= target), "sumtoten")
+    if (
+        (got is None or got[0][:3] > (0, 0, 0))
+        and isinstance(target, float)
+        and all(isinstance(v, float) for v in value.values())
+    ):
+        s10 = best(
+            (ls for ls in itertools.product(sorted(set(want)), repeat=5) if sum(value[L] for L in ls) <= target),
+            "sumtoten",
+        )
         if s10 and (got is None or s10[0][:3] < got[0][:3]):
             got = s10
     return got and {**got[1], "over": got[0][1]}  # (over: the Karma still past the starting Karma)

@@ -1,21 +1,22 @@
 """cl6check: measure our SR6 imports against Commlink6 (docs/cl6check.md).
 
-  python -m tools.cl6check --ours <dir> [--jar <jar>] [--out <dir>] [--save-baseline] [--baseline <json>] [--no-pdf]
-                           [--fail-under completeness=99,accuracy=99]
-      <dir>: a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs. The jar: --jar, else $CL6_JAR,
-      else the default Commlink6 install; none found → nothing to measure, exit 0. Reports: --out, else $CL6CHECK_OUT,
-      else .extract/cl6check (gitignored). The baseline is <out>/baseline.json unless --baseline names one.
-  python -m tools.cl6check import <books file> <out dir> [-j 10]
-      a fresh `importer sr6 check` of every book in parallel; each line of the books file is `<run name>|<pdf path>`.
-  python -m tools.cl6check import --library <books file> <out dir> [--md-from <runs dir>]
-      the production import: every book in one library (<out>/library/sr6/<run name>, one <out>/custom/sr6), one after
-      the other in the file's order, as the server's upload and Re-import all run them (`importer sr6 run`), with the
-      steps only a library has: the cross-book fill, the printings of a book, the errata, the links across books.
-      --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this converter.
-  python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
-      the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
-      (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
+python -m tools.cl6check --ours <dir> [--jar <jar>] [--out <dir>] [--save-baseline] [--baseline <json>] [--no-pdf]
+                         [--fail-under completeness=99,accuracy=99]
+    <dir>: a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs. The jar: --jar, else $CL6_JAR,
+    else the default Commlink6 install; none found → nothing to measure, exit 0. Reports: --out, else $CL6CHECK_OUT,
+    else .extract/cl6check (gitignored). The baseline is <out>/baseline.json unless --baseline names one.
+python -m tools.cl6check import <books file> <out dir> [-j 10]
+    a fresh `importer sr6 check` of every book in parallel; each line of the books file is `<run name>|<pdf path>`.
+python -m tools.cl6check import --library <books file> <out dir> [--md-from <runs dir>]
+    the production import: every book in one library (<out>/library/sr6/<run name>, one <out>/custom/sr6), one after
+    the other in the file's order, as the server's upload and Re-import all run them (`importer sr6 run`), with the
+    steps only a library has: the cross-book fill, the printings of a book, the errata, the links across books.
+    --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this converter.
+python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
+    the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
+    (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
 """
+
 import argparse
 import datetime
 import json
@@ -43,7 +44,12 @@ def _same(fam, cl, h, shared, keep=()):
     mine = h["families"].get(fam)
     if mine == cl:
         return True
-    if (h["src"], h["kind"], h["id"], fam) in keep:  # (the owner keeps ours: value_keep.json, field `variants` for an install/option tag, `social` for a printed `Rating`)
+    if (
+        h["src"],
+        h["kind"],
+        h["id"],
+        fam,
+    ) in keep:  # (the owner keeps ours: value_keep.json, field `variants` for an install/option tag, `social` for a printed `Rating`)
         return True
     if fam == "variants":  # (or the entry's name carries the variant)
         return ours.carries(h["name"], cl)
@@ -59,11 +65,16 @@ def _levels(c, hits, entries):
     base = {(h["kind"], RATED.sub("", h["name"]).casefold()) for h in hits}
     sib = [e for e in entries if (e["kind"], RATED.sub("", e["name"]).casefold()) in base and RATED.search(e["name"])]
     best = min(len(fields.compare(c, e)[1]) for e in sib)
-    return hits if min(len(fields.compare(c, h)[1]) for h in hits) <= best else [min(sib, key=lambda e: len(fields.compare(c, e)[1]))]
+    return (
+        hits
+        if min(len(fields.compare(c, h)[1]) for h in hits) <= best
+        else [min(sib, key=lambda e: len(fields.compare(c, e)[1]))]
+    )
 
 
-def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None,
-            verdicts=None):
+def compare(
+    cl6, mine, pdf=True, trace=None, package=None, accept=None, sections=None, extra=None, keep=None, verdicts=None
+):
     """(per-record results, our extras, matched (record, entry) pairs) for every canonical record against our
     sources."""
     by_src = defaultdict(list)
@@ -72,10 +83,18 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
     results, extras, pairs = [], [], []
     keep = optional_package.load_keep() if keep is None else keep
     verdicts = optional_package.load_verdicts() if verdicts is None else verdicts
-    optional, relocated, *h = package if package is not None else (*optional_package.load(), optional_package.load_have())
-    where = {o["id"]: o for e in mine.values() for o in e.entries}  # (relocated records name an entry of another source)
-    have = dict(h[0]) if h else {}  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
-    if both := sorted(set(optional) & (set(relocated) | set(have))):  # (each list would make a result: the record counted twice)
+    optional, relocated, *h = (
+        package if package is not None else (*optional_package.load(), optional_package.load_have())
+    )
+    where = {
+        o["id"]: o for e in mine.values() for o in e.entries
+    }  # (relocated records name an entry of another source)
+    have = (
+        dict(h[0]) if h else {}
+    )  # (an entry of ours that isn't a loaded catalog entry, e.g. a rules section, is stood in for by its id)
+    if both := sorted(
+        set(optional) & (set(relocated) | set(have))
+    ):  # (each list would make a result: the record counted twice)
         raise ValueError(f"in both the optional package and relocated.json: {both}")
     moved = {id(where[r["our_id"]]) for r in [*relocated.values(), *have.values()] if r["our_id"] in where}
     for src, recs in sorted(by_src.items()):
@@ -84,12 +103,46 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         book = arbitrate.Book(s.book_dir if s else None)
         bt = report.BookText(s.book_dir if s else None)
         matched = set()
-        found = match.match([c for c in recs if (src, c["id"]) not in optional and (src, c["id"]) not in relocated
-                              and (src, c["id"]) not in have], entries)
+        found = match.match(
+            [
+                c
+                for c in recs
+                if (src, c["id"]) not in optional and (src, c["id"]) not in relocated and (src, c["id"]) not in have
+            ],
+            entries,
+        )
         found += [(c, [], "optional package") for c in recs if (src, c["id"]) in optional]
-        found += [(c, [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [], "relocated")
-                  for c in recs if (src, c["id"]) in relocated]
-        found += [(c, [where.get(have[src, c["id"]]["our_id"]) or {"id": have[src, c["id"]]["our_id"], "name": have[src, c["id"]]["our_id"], "src": src, "page": "", "kind": "rules", "families": {}, "attrs": {}, "kids": [], "effects": []}], "already have") for c in recs if (src, c["id"]) in have]
+        found += [
+            (
+                c,
+                [where[relocated[src, c["id"]]["our_id"]]] if relocated[src, c["id"]]["our_id"] in where else [],
+                "relocated",
+            )
+            for c in recs
+            if (src, c["id"]) in relocated
+        ]
+        found += [
+            (
+                c,
+                [
+                    where.get(have[src, c["id"]]["our_id"])
+                    or {
+                        "id": have[src, c["id"]]["our_id"],
+                        "name": have[src, c["id"]]["our_id"],
+                        "src": src,
+                        "page": "",
+                        "kind": "rules",
+                        "families": {},
+                        "attrs": {},
+                        "kids": [],
+                        "effects": [],
+                    }
+                ],
+                "already have",
+            )
+            for c in recs
+            if (src, c["id"]) in have
+        ]
         stems = defaultdict(list)  # (the entries that are levels or tiers of one item: wired-reflexes-1, -2 …)
         for e in entries:
             stems[e["kind"], LEVEL.sub("", e["id"])].append(e)
@@ -100,24 +153,42 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
         for c, hits, how in found:
             first, hits = hits, _levels(c, hits, entries)
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
-            sib = lambda h: stems[h["kind"], LEVEL.sub("", h["id"])] if len(stems[h["kind"], LEVEL.sub("", h["id"])]) > 1 else ()  # noqa: E731
+            sib = lambda h: (
+                stems[h["kind"], LEVEL.sub("", h["id"])] if len(stems[h["kind"], LEVEL.sub("", h["id"])]) > 1 else ()
+            )  # noqa: E731
             o = min(hits, key=lambda h: len(fields.compare(c, h, sib(h))[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
-                "matched": bool(hits) or how == "optional package", "how": how if hits or how == "optional package" else "", "our_id": o["id"] if o else "", "our_name": o["name"] if o else "",
-                "our_page": o["page"] if o else "", "our_kind": o["kind"] if o else "", "compared": [], "diffs": [],
-                "families": {f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1, keep) for h in hits)
-                             for f, v in c["families"].items() if f != "subtype"  # (subtype: the class family's now)
-                             and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)},  # (an entry of a kind with no class)
-                "cl6_class": c.get("cl6_class", ""), "our_class": (o["attrs"].get("class", "") if o else ""),
-                "cause": "", "excluded": None,
-                "cl6only": bool(c.get("cl6only")) and not hits and how not in ("optional package", "relocated", "already have")}  # (one the package or our data holds is matched)
+                "matched": bool(hits) or how == "optional package",
+                "how": how if hits or how == "optional package" else "",
+                "our_id": o["id"] if o else "",
+                "our_name": o["name"] if o else "",
+                "our_page": o["page"] if o else "",
+                "our_kind": o["kind"] if o else "",
+                "compared": [],
+                "diffs": [],
+                "families": {
+                    f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1, keep) for h in hits)
+                    for f, v in c["families"].items()
+                    if f != "subtype"  # (subtype: the class family's now)
+                    and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)
+                },  # (an entry of a kind with no class)
+                "cl6_class": c.get("cl6_class", ""),
+                "our_class": (o["attrs"].get("class", "") if o else ""),
+                "cause": "",
+                "excluded": None,
+                "cl6only": bool(c.get("cl6only"))
+                and not hits
+                and how not in ("optional package", "relocated", "already have"),
+            }  # (one the package or our data holds is matched)
             if not c["page"]:
                 r["excluded"] = "no page in this book"
             elif book.pages and c["page"].isdigit() and int(c["page"]) + book.offset > book.pages:
                 r["excluded"] = "page beyond the owned PDF"
             if how == "optional package" and not hits:
                 r["families"] = {}  # (not in the shipped data: no entry of ours to hold a family)
-            if o and how == "already have":  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
+            if (
+                o and how == "already have"
+            ):  # (the owner counts it complete; the entry is another item's: no fields, pairs or families)
                 r["families"] = {}
                 results.append(r)
                 continue
@@ -130,11 +201,15 @@ def compare(cl6, mine, pdf=True, trace=None, package=None, accept=None, sections
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
                     if t == "unprinted" and not d["why"].startswith("ours empty"):
                         t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
-                    if t and d["class"] == "a":  # the trace says the book never printed Commlink6's value: not our error
+                    if (
+                        t and d["class"] == "a"
+                    ):  # the trace says the book never printed Commlink6's value: not our error
                         d["class"], d["cl6only"] = "c", t == "only"
-                    if d["class"] in ("a", "c") and any((c["src"], k, o["id"], d["field"]) in keep or (
-                            c["src"], k, c["id"], c["name"], o["id"], d["field"], d["cl6"], d["ours"]) in verdicts
-                                                        for k in (c["kind"], o["kind"])):
+                    if d["class"] in ("a", "c") and any(
+                        (c["src"], k, o["id"], d["field"]) in keep
+                        or (c["src"], k, c["id"], c["name"], o["id"], d["field"], d["cl6"], d["ours"]) in verdicts
+                        for k in (c["kind"], o["kind"])
+                    ):
                         # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after the trace,
                         # which can make a row c; a `verdicts` row only while both values are the ones ruled on)
                         d["class"], d["pdf"] = "b", "ours"
@@ -163,17 +238,26 @@ def _settle_classes(results, accept, sections=None, extra=None):
                 if r not in fits:
                     del r["families"]["class"]
     from importer.sr6 import classes
+
     rules = classes.prefixes() if sections is None else sections
     extra = classes.extra() if extra is None else extra
     for r in results:
         if "class" in r["families"] and accept.get((r["src"], r["id"])) == r["our_id"]:
             r["families"]["class"] = True
-        elif "class" in r["families"] and r.get("our_class") and any(
-                classes.in_section(x, r["src"], r["our_kind"], r["our_page"]) and r["our_class"] == x["class"] for x in rules):
+        elif (
+            "class" in r["families"]
+            and r.get("our_class")
+            and any(
+                classes.in_section(x, r["src"], r["our_kind"], r["our_page"]) and r["our_class"] == x["class"]
+                for x in rules
+            )
+        ):
             # a section's deliberate extra class (CRITTERWARE/AUGMENTATION, not Commlink6's): accepted whatever Commlink6's is
             r["families"]["class"] = True
             r["class_via"] = "section class"
-        elif "class" in r["families"] and r.get("our_class") in extra:  # (a deliberate extra class: Commlink6 has no such one)
+        elif (
+            "class" in r["families"] and r.get("our_class") in extra
+        ):  # (a deliberate extra class: Commlink6 has no such one)
             r["families"]["class"] = True
             r["class_via"] = "extra class"
 
@@ -185,10 +269,15 @@ def run_imports(books_file, out, jobs):
     def one(item):
         name, pdf = item
         with open(os.path.join(out, f"{name}.log"), "w", encoding="utf8") as log:
-            rc = subprocess.call([sys.executable, "-m", "importer", "sr6", "check", pdf, "--out", os.path.join(out, name)],
-                                 cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
+            rc = subprocess.call(
+                [sys.executable, "-m", "importer", "sr6", "check", pdf, "--out", os.path.join(out, name)],
+                cwd=REPO,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
         print(f"{name}: exit {rc}", flush=True)
         return rc
+
     os.makedirs(out, exist_ok=True)
     with ThreadPoolExecutor(jobs) as ex:
         return max(ex.map(one, lines), default=0)
@@ -200,6 +289,7 @@ def run_library(books_file, out, md_from=None):
     each time. md_from: earlier runs (`import`'s) whose library/sr6/book1 book.md and import.xml are copied beside the
     PDF, so `run --reuse` skips a conversion of the same PDF by the same converter."""
     import shutil
+
     lines = [ln.strip().split("|", 1) for ln in open(books_file, encoding="utf8") if "|" in ln]
     lib, custom = os.path.join(out, "library", "sr6"), os.path.join(out, "custom", "sr6")
     # only ever clear a folder this command made: new/empty, or with its own import.log (never an app's data folder)
@@ -220,8 +310,24 @@ def run_library(books_file, out, md_from=None):
                     shutil.copyfile(os.path.join(old, f), os.path.join(d, f))
             log.write(f"== {name}\n")
             log.flush()
-            r = subprocess.call([sys.executable, "-m", "importer", "sr6", "run", d, "--custom", custom, "--reuse",
-                                 "--file", os.path.basename(pdf)], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
+            r = subprocess.call(
+                [
+                    sys.executable,
+                    "-m",
+                    "importer",
+                    "sr6",
+                    "run",
+                    d,
+                    "--custom",
+                    custom,
+                    "--reuse",
+                    "--file",
+                    os.path.basename(pdf),
+                ],
+                cwd=REPO,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
             print(f"{name}: exit {r}", flush=True)
             rc = max(rc, r)
     return rc
@@ -231,6 +337,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["trace"]:
         from tools.cl6check import corpus, trace
+
         p = argparse.ArgumentParser(prog="cl6check trace")
         p.add_argument("--runs", required=True)
         p.add_argument("--out", required=True)
@@ -248,19 +355,25 @@ def main(argv=None):
         trace.write(a.out, rows, n, c)
         with open(os.path.join(a.out, "cl6-trace.md"), "w", encoding="utf8") as f:
             f.write(trace.markdown(rows, n, c))
-        print(f"traced {n['records']} records: {n['fields compared']} fields compared, {n['fields equal']} equal; "
-              f"{os.path.join(a.out, 'cl6-trace.md')}")
+        print(
+            f"traced {n['records']} records: {n['fields compared']} fields compared, {n['fields equal']} equal; "
+            f"{os.path.join(a.out, 'cl6-trace.md')}"
+        )
         return 0
     if argv[:1] == ["import"]:
         p = argparse.ArgumentParser(prog="cl6check import")
         p.add_argument("books")
         p.add_argument("out")
         p.add_argument("-j", type=int, default=10)
-        p.add_argument("--library", action="store_true", help="one library, in order, as production imports (run_library)")
+        p.add_argument(
+            "--library", action="store_true", help="one library, in order, as production imports (run_library)"
+        )
         p.add_argument("--md-from", help="with --library: earlier runs whose book.md to reuse")
         a = p.parse_args(argv[1:])
         return run_library(a.books, a.out, a.md_from) if a.library else run_imports(a.books, a.out, a.j)
-    p = argparse.ArgumentParser(prog="cl6check", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        prog="cl6check", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--jar")
     p.add_argument("--ours", default=os.environ.get("CL6_OURS"))
     p.add_argument("--out", default=os.environ.get("CL6CHECK_OUT") or os.path.join(REPO, ".extract", "cl6check"))
@@ -274,12 +387,16 @@ def main(argv=None):
         print("cl6check: no Commlink6 jar (--jar or $CL6_JAR): nothing to measure, skipped.")
         return 0
     if not a.ours or not os.path.isdir(a.ours):
-        print("cl6check: --ours (or $CL6_OURS) must name a custom/sr6 folder or a folder of import runs.", file=sys.stderr)
+        print(
+            "cl6check: --ours (or $CL6_OURS) must name a custom/sr6 folder or a folder of import runs.", file=sys.stderr
+        )
         return 2
     recs, excluded = reader.read(jar)
     cl6 = [canon.canonical(r) for r in recs]
     mine = ours.load(a.ours)
-    results, extras, pairs = compare(cl6, mine, pdf=not a.no_pdf, trace=arbitrate.load_trace(os.path.join(a.out, "cl6-trace.csv")))
+    results, extras, pairs = compare(
+        cl6, mine, pdf=not a.no_pdf, trace=arbitrate.load_trace(os.path.join(a.out, "cl6-trace.csv"))
+    )
     when = datetime.datetime.now().isoformat(timespec="seconds")
     base_path = a.baseline or os.path.join(a.out, "baseline.json")
     base = json.load(open(base_path, encoding="utf8")) if os.path.exists(base_path) and not a.save_baseline else None
@@ -295,14 +412,18 @@ def main(argv=None):
         with open(base_path, "w", encoding="utf8") as f:
             json.dump(m, f, indent=1, ensure_ascii=False)
     c, acc = m["completeness"], m["accuracy"]
-    print(f"completeness {c['all']['matched']}/{c['all']['records']} = {c['all']['pct']}% "
-          f"(modelled {c['modelled']['pct']}%, owned {c['owned']['pct']}%); accuracy {acc['pct']}% "
-          f"({acc['pct_b_as_printed']}% with class b as printed); report {os.path.join(a.out, 'cl6-report.md')}"
-          + ("; baseline saved" if a.save_baseline else ""))
+    print(
+        f"completeness {c['all']['matched']}/{c['all']['records']} = {c['all']['pct']}% "
+        f"(modelled {c['modelled']['pct']}%, owned {c['owned']['pct']}%); accuracy {acc['pct']}% "
+        f"({acc['pct_b_as_printed']}% with class b as printed); report {os.path.join(a.out, 'cl6-report.md')}"
+        + ("; baseline saved" if a.save_baseline else "")
+    )
     pe = m["per_effect"]
     print(f"per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = {pe['pct']}%")
     gate = dict(x.split("=") for x in a.fail_under.split(",") if "=" in x)
-    low = [k for k, v in gate.items() if ({"completeness": c["all"]["pct"], "accuracy": acc["pct"]}.get(k) or 0) < float(v)]
+    low = [
+        k for k, v in gate.items() if ({"completeness": c["all"]["pct"], "accuracy": acc["pct"]}.get(k) or 0) < float(v)
+    ]
     return 1 if low else 0
 
 

@@ -15,6 +15,7 @@ sort by date, then label; the Beginner Box PDFs are context only (their quick-st
 one of the names (match.n1, rows naming several 'A/B' split); `variants()` the entries printed under the name with a
 qualifier (match.n2: a parenthetical, 'Rating 3'). `Corpus.mentions(names)` finds every line of every book that prints
 one of the names, in book order, through a word index."""
+
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -87,7 +88,7 @@ def lines(text):
 def section(ls, i):
     """The lines under heading ls[i], up to the next heading of its level or above."""
     lv, out = ls[i].level, []
-    for ln in ls[i + 1:]:
+    for ln in ls[i + 1 :]:
         if ln.level and ln.level <= lv:
             break
         out.append(ln)
@@ -140,6 +141,7 @@ def published(sources_xml):
 def pdf_meta(pdf):
     """(modification, creation) dates of a PDF's metadata as YYYY-MM-DD, '' when absent."""
     import pdfplumber
+
     try:
         with pdfplumber.open(pdf) as d:
             m = d.metadata or {}
@@ -149,6 +151,7 @@ def pdf_meta(pdf):
     def day(v):
         x = PDFDATE.search(str(v or ""))
         return f"{x.group(1)}-{x.group(2)}-{x.group(3)}" if x else ""
+
     return day(m.get("ModDate")), day(m.get("CreationDate"))
 
 
@@ -159,8 +162,10 @@ def printed_year(ls):
 
 def resolve_date(mod, created, year, src_month):
     """(date, how) from the PDF's metadata dates, its © year and sources.xml's month (see the module doc)."""
+
     def ok(d):
         return d and (year is None or year <= int(d[:4]) <= year + 1)
+
     if ok(mod):
         return mod, "pdf modified"
     if ok(created):
@@ -175,6 +180,7 @@ def resolve_date(mod, created, year, src_month):
 def _printing(sha):
     """The core rulebook printing's City Edition source id (upper), '' for the 2019 printing, None for another PDF."""
     from importer.sr6.recipes import crb, crb_city
+
     if sha in crb_city.CITIES:
         return crb_city.CITIES[sha][0]
     return "" if sha in crb.SHA256 else None
@@ -182,6 +188,7 @@ def _printing(sha):
 
 def _offset(recipe):
     from importer.sr6.recipes import RECIPES
+
     mod = next((r for r in RECIPES if getattr(r, "__name__", "").rsplit(".", 1)[-1] == recipe), None)
     return getattr(mod, "PAGE_OFFSET", 0) if mod else 0
 
@@ -203,7 +210,9 @@ def book_of(run, run_dir, months, meta=pdf_meta):
         key, label, belongs = src, src, src.lower()
     else:
         x = next((x for x in EXTRA if re.search(x[0], pdf, re.I)), None)
-        key, label, belongs, errata, context = (x[2], x[1], x[2].lower(), x[3], x[4]) if x else ("", pdf, "", False, False)
+        key, label, belongs, errata, context = (
+            (x[2], x[1], x[2].lower(), x[3], x[4]) if x else ("", pdf, "", False, False)
+        )
     b = Book(run, pdf, label, sources, belongs, "", errata=errata, context=context or bool(CONTEXT.search(pdf)))
     b.dir = lib
     b.src_month = months.get(key, "") if src or printing is not None else ""
@@ -236,8 +245,12 @@ def family(src):
 def _keys(e, norm):
     # (not a lone word cut from a longer name: `Increasing` of `Increasing/Reducing Cargo Space (CF Mod)` is another
     # book entry's name, `Increasing (a Form)`)
-    return {norm(p) for n in [e["name"], *e["aliases"]] for p in match.split_names(n)
-            if not (n.startswith(p + "/") and len(p.split()) == 1 and len(n.split()) > 2)} - {""}
+    return {
+        norm(p)
+        for n in [e["name"], *e["aliases"]]
+        for p in match.split_names(n)
+        if not (n.startswith(p + "/") and len(p.split()) == 1 and len(n.split()) > 2)
+    } - {""}
 
 
 def _cat(e):
@@ -281,36 +294,48 @@ class Corpus:
             first = {match.n1(p) for p in match.split_names(names[0])}
             out = [(b, e) for b, e in out if family(b.belongs) == home or first & _keys(e, match.n1)]
         if not out:  # (a brand put after the name, `Tonfa (Zoé Heritage)`, printed first: `Zoé Heritage Tonfa`)
-            first = [f"{m.group(2)} {m.group(1)}" for n in names if (m := re.fullmatch(r"(.+?)\s*\(([^()]+)\)", n or ""))]
-            out = [(b, e) for b, e in self._find("n1", kinds, first) if home is None or family(b.belongs) == home] if first else []
+            first = [
+                f"{m.group(2)} {m.group(1)}" for n in names if (m := re.fullmatch(r"(.+?)\s*\(([^()]+)\)", n or ""))
+            ]
+            out = (
+                [(b, e) for b, e in self._find("n1", kinds, first) if home is None or family(b.belongs) == home]
+                if first
+                else []
+            )
         if not out:
             out = [(b, e) for b, e in self._find("n2", kinds, names) if home is None or family(b.belongs) == home]
         if home is not None:
             # the kinds the home book gives the object: under its own name when that finds it (an alias of one word,
             # `standard` of `Crossbow, standard`, doesn't pull in the credstick `Standard`)
             first = {match.n1(p) for p in match.split_names(names[0])} if names else set()
-            own = {e["kind"] for b, e in out if family(b.belongs) == home and first & _keys(e, match.n1)} \
-                or {e["kind"] for b, e in out if family(b.belongs) == home}
+            own = {e["kind"] for b, e in out if family(b.belongs) == home and first & _keys(e, match.n1)} or {
+                e["kind"] for b, e in out if family(b.belongs) == home
+            }
             if own:
                 out = [(b, e) for b, e in out if e["kind"] in own]
             # and in a category sharing a word with the home book's: one of another category is another thing of the
             # same name (Body Shop's `Buzzsaw` implant weapon, Deadly Arts' `Buzzsaw` extreme cyberweapon feature)
             cats = {_cat(e) for b, e in out if family(b.belongs) == home} - {frozenset()}
             if cats:
-                out = [(b, e) for b, e in out if family(b.belongs) == home or not _cat(e) or any(_cat(e) & c for c in cats)]
+                out = [
+                    (b, e) for b, e in out if family(b.belongs) == home or not _cat(e) or any(_cat(e) & c for c in cats)
+                ]
         return out
 
     def variants(self, kinds, names, home=None):
         """[(book, entry)]: the entries printed under one of the names with a qualifier, not in entries()."""
         exact = {id(e) for _, e in self.entries(kinds, names, home)}
-        return [(b, e) for b, e in self._find("n2", kinds, names) if id(e) not in exact
-                and (home is None or family(b.belongs) == home)]
+        return [
+            (b, e)
+            for b, e in self._find("n2", kinds, names)
+            if id(e) not in exact and (home is None or family(b.belongs) == home)
+        ]
 
     def mentions(self, names, which="book.md", books=None):
         """[(book, Line)] in book order: every line printing one of the names (words in order, plurals loose)."""
         pats = [(p, match.words(n)) for n in names if (p := _name_re(n))]
         out = []
-        for b in (books or self.books):
+        for b in books or self.books:
             ls = b.md(which)
             if which != "book.md":
                 out += [(b, ln) for ln in ls if any(p.search(norm_line(ln.text)) for p, _ in pats)]
@@ -327,14 +352,20 @@ class Corpus:
 
     def disagreements(self):
         """[(book, pdf date, how, sources.xml month)] where the PDF's date and sources.xml's month differ."""
-        return [(b, b.date, b.how, b.src_month) for b in self.books
-                if b.src_month and b.how.startswith("pdf") and b.date[:7] != b.src_month]
+        return [
+            (b, b.date, b.how, b.src_month)
+            for b in self.books
+            if b.src_month and b.how.startswith("pdf") and b.date[:7] != b.src_month
+        ]
 
 
 def load(runs, sources_xml, meta=pdf_meta):
     months = published(sources_xml)
-    books = [book_of(r, os.path.join(runs, r), months, meta) for r in sorted(os.listdir(runs))
-             if os.path.exists(os.path.join(runs, r, "library", "sr6", "book1", "import.xml"))]
+    books = [
+        book_of(r, os.path.join(runs, r), months, meta)
+        for r in sorted(os.listdir(runs))
+        if os.path.exists(os.path.join(runs, r, "library", "sr6", "book1", "import.xml"))
+    ]
     books = sorted(books, key=lambda b: b.order)
     # a formula citing another book's entry (`ref(gear:crb.spell-focus, cost, R)`): resolved over the merged corpus, as
     # the app's merged catalog does (each book's own refs were resolved on loading it)

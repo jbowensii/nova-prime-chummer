@@ -8,6 +8,7 @@ fs.md.
 The book prints an item as a heading, its description and a stat box titled with its name (TYPE, DV, ... AVAIL, COST):
 the box becomes the item's row here. A few headers set too close together print as one (`AMMOAVAIL`): they are split,
 their value at its last space. A line or value that doesn't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -33,8 +34,13 @@ CATALOG_CHAPTERS = ("weapons rack", "suit up")
 WEAPON_PARTS = ("weapon modifications", "melee weapon modifications", "weapon accessories")  # SUIT UP level-2 sections
 ARMOR_MODS = "accessories and modifications"
 # headers printed as one: header -> the headers it holds (the value splits at its last space), or its real name
-MERGED = {"AMMOAVAIL": ("AMMO", "AVAIL"), "RATINGSAMMOAVAIL": ("AMMO", "AVAIL"), "ATTACK": "ATTACK RATINGS",
-          "DV CLOSEDV": "DV CLOSE", "NEAR": "DV NEAR"}
+MERGED = {
+    "AMMOAVAIL": ("AMMO", "AVAIL"),
+    "RATINGSAMMOAVAIL": ("AMMO", "AVAIL"),
+    "ATTACK": "ATTACK RATINGS",
+    "DV CLOSEDV": "DV CLOSE",
+    "NEAR": "DV NEAR",
+}
 _OWN_ROWS = 6
 _TAG, _UPTO = re.compile(r"\(([^()]+)\)"), re.compile(r",?\s*1\s+to\s+(\d+)\s*$")
 _RATING = re.compile(r"professional rating\s*(\d+)", re.I)
@@ -47,7 +53,13 @@ def match(meta, md_head):
     return 0.9 if re.search(r"firing\s+squad", hay, re.I) else 0.0
 
 
-_NAME_COLUMNS = {"ITEM", "WEAPON", "GRENADES", "GEAR", "APP"}  # a box's first column naming the item: the heading names it
+_NAME_COLUMNS = {
+    "ITEM",
+    "WEAPON",
+    "GRENADES",
+    "GEAR",
+    "APP",
+}  # a box's first column naming the item: the heading names it
 
 
 def _unmerge(cells):
@@ -128,36 +140,97 @@ def _boxes(bs):
     out, several = [], None
     for b in bs:
         prev = out[-1] if out else None
-        if b.level in (3, 4) and not b.stats and b.row is None and norm(b.chapter) in ("suit up", "weapons rack") and \
-                (t := next(((h, r) for h, r in catalog.md_tables(b.text) if 0 < len(r) <= _OWN_ROWS and h[0].upper() not in _NAME_COLUMNS
-                           and {"AVAIL", "COST"} & {x.upper() for x in h}
-                           and (norm(b.chapter) == "suit up" or h[0].upper() == "TYPE")), None)):
-            b = replace(b, type="item", stats=[dict(zip(t[0], r)) for r in t[1]  # its stat table printed in its text
-                                               if not re.search(r"[*†‡]", r[0]) and len(r[0].split()) <= 4])  # (not a garbled note)
+        if (
+            b.level in (3, 4)
+            and not b.stats
+            and b.row is None
+            and norm(b.chapter) in ("suit up", "weapons rack")
+            and (
+                t := next(
+                    (
+                        (h, r)
+                        for h, r in catalog.md_tables(b.text)
+                        if 0 < len(r) <= _OWN_ROWS
+                        and h[0].upper() not in _NAME_COLUMNS
+                        and {"AVAIL", "COST"} & {x.upper() for x in h}
+                        and (norm(b.chapter) == "suit up" or h[0].upper() == "TYPE")
+                    ),
+                    None,
+                )
+            )
+        ):
+            b = replace(
+                b,
+                type="item",
+                stats=[
+                    dict(zip(t[0], r))
+                    for r in t[1]  # its stat table printed in its text
+                    if not re.search(r"[*†‡]", r[0]) and len(r[0].split()) <= 4
+                ],
+            )  # (not a garbled note)
         if b.type == "item" and (m := _TAG.fullmatch(b.name)) and prev is not None and not prev.text.strip():
             n = _UPTO.search(m.group(1))  # `(Behavior, 1 to 6)`: a tag line read as a heading
-            out[-1] = replace(prev, name=prev.name + (f" (1 to {n.group(1)})" if n else ""),
-                              tags=m.group(1)[:n.start()] if n else m.group(1), labels={**prev.labels, **b.labels},
-                              text=b.text, stats=b.stats, row=b.row, header=b.header)
+            out[-1] = replace(
+                prev,
+                name=prev.name + (f" (1 to {n.group(1)})" if n else ""),
+                tags=m.group(1)[: n.start()] if n else m.group(1),
+                labels={**prev.labels, **b.labels},
+                text=b.text,
+                stats=b.stats,
+                row=b.row,
+                header=b.header,
+            )
             continue
-        if b.type == "item" and b.label == b.name and b.row is None and b.stats and several is not None \
-                and several.chapter == b.chapter and _words(b.name) <= _words(several.name):
+        if (
+            b.type == "item"
+            and b.label == b.name
+            and b.row is None
+            and b.stats
+            and several is not None
+            and several.chapter == b.chapter
+            and _words(b.name) <= _words(several.name)
+        ):
             # one of the items a heading names (`rhino` under `rEVOlution Arms Rhino, Behemoth, Juggernaut`): named
             # as the heading spells its words, the heading's description theirs
             spelt = {norm(w): w for w in several.name.replace(",", " ").split()}
-            out.append(replace(b, name=" ".join(spelt.get(norm(w), w) for w in b.name.split()), tags=several.tags or b.tags,
-                               text="\n\n".join(t for t in (several.text.strip(), b.text.strip()) if t)))
+            out.append(
+                replace(
+                    b,
+                    name=" ".join(spelt.get(norm(w), w) for w in b.name.split()),
+                    tags=several.tags or b.tags,
+                    text="\n\n".join(t for t in (several.text.strip(), b.text.strip()) if t),
+                )
+            )
             continue
         if b.level in (3, 4) and not b.stats and b.row is None and b.text.strip():
             several = b if _SEVERAL.search(b.name) else None
-        if b.type == "item" and (b.label == b.name or not b.label and not b.text.strip() and norm(b.name) == norm(prev.name if prev else ""))\
-                and b.row is None and b.stats and prev is not None \
-                and prev.chapter == b.chapter and not prev.stats and prev.row is None and prev.text.strip() \
-                and _words(b.name) <= _words(prev.name):
+        if (
+            b.type == "item"
+            and (
+                b.label == b.name
+                or not b.label
+                and not b.text.strip()
+                and norm(b.name) == norm(prev.name if prev else "")
+            )
+            and b.row is None
+            and b.stats
+            and prev is not None
+            and prev.chapter == b.chapter
+            and not prev.stats
+            and prev.row is None
+            and prev.text.strip()
+            and _words(b.name) <= _words(prev.name)
+        ):
             # (a box titled as its heading, `Securetech SkinShield` under `### Securetech SkinShield`: one item, the
             # heading's description its text, no rule section of its own)
-            out[-1] = replace(b, name=prev.name, level=prev.level, tags=prev.tags or b.tags, labels={**prev.labels, **b.labels},
-                              text="\n\n".join(t for t in (prev.text.strip(), b.text.strip()) if t))
+            out[-1] = replace(
+                b,
+                name=prev.name,
+                level=prev.level,
+                tags=prev.tags or b.tags,
+                labels={**prev.labels, **b.labels},
+                text="\n\n".join(t for t in (prev.text.strip(), b.text.strip()) if t),
+            )
             continue
         if b.type == "item" and b.name == b.name.lower():
             b = replace(b, name=b.name[:1].upper() + b.name[1:])
@@ -180,8 +253,14 @@ def _strays(bs):
             names = lambda t: re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))  # noqa: E731
             if names(b.text.replace(catalog.md_table(h, rows), "")):
                 continue  # its own text names its rows (`Rapid Transit … comes in Basic, Elite …`): its own table
-            j = next((j for j in range(i - 1, -1, -1) if bs[j].chapter == b.chapter and bs[j].level == 3
-                      and not bs[j].stats and names(bs[j].text)), None)
+            j = next(
+                (
+                    j
+                    for j in range(i - 1, -1, -1)
+                    if bs[j].chapter == b.chapter and bs[j].level == 3 and not bs[j].stats and names(bs[j].text)
+                ),
+                None,
+            )
             if j is None:
                 continue
             stats, labels = [], dict(b.labels)
@@ -211,8 +290,13 @@ def _hosted(bs):
     out = []
     for b in bs:
         rest = b.stats[1:]
-        if b.type != "item" or b.row is not None or len(rest) < 2 or first(b.stats[0]).upper() in _NAME_COLUMNS \
-                or not all(first(s).upper() in _NAME_COLUMNS - {"APP"} and s[first(s)] and priced(s) for s in rest):
+        if (
+            b.type != "item"
+            or b.row is not None
+            or len(rest) < 2
+            or first(b.stats[0]).upper() in _NAME_COLUMNS
+            or not all(first(s).upper() in _NAME_COLUMNS - {"APP"} and s[first(s)] and priced(s) for s in rest)
+        ):
             out.append(b)
             continue
         out.append(replace(b, stats=b.stats[:1]))
@@ -231,16 +315,38 @@ def _lists(bs):
     reprinted in the chapter's list of armor modifications) is that row's: no second entry."""
     first = lambda b: next(iter(b.stats[0]), "") if b.stats else ""
     priced = lambda s: any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL", "AVAILABILITY"))
-    listed = [b for b in bs if b.type == "item" and b.row is None and len(b.stats) > 1 and all(map(priced, b.stats))
-              and first(b).upper() in _NAME_COLUMNS | {"TYPE"} and len({s.get(first(b)) for s in b.stats}) == len(b.stats)]
+    listed = [
+        b
+        for b in bs
+        if b.type == "item"
+        and b.row is None
+        and len(b.stats) > 1
+        and all(map(priced, b.stats))
+        and first(b).upper() in _NAME_COLUMNS | {"TYPE"}
+        and len({s.get(first(b)) for s in b.stats}) == len(b.stats)
+    ]
     have = {(b.chapter, norm(b.name)) for b in bs if b.row is not None}
     again = lambda b, n: first(b).upper() != "TYPE" and (b.chapter, norm(n)) in have  # noqa: E731
-    named = {norm(s[first(b)]): s[first(b)] for b in listed if first(b).upper() != "TYPE" for s in b.stats
-             if not again(b, s[first(b)])}
+    named = {
+        norm(s[first(b)]): s[first(b)]
+        for b in listed
+        if first(b).upper() != "TYPE"
+        for s in b.stats
+        if not again(b, s[first(b)])
+    }
     descs = {}
     for b in bs:  # a heading whose words are all in a listed name (`Reactive Armor`: `Reactive Armor Plates`)
-        k = next((k for k, n in named.items() if b.type == "section" and b.level == 3 and not b.stats
-                  and (norm(b.name) == k or _words(b.name) <= _words(n))), None)
+        k = next(
+            (
+                k
+                for k, n in named.items()
+                if b.type == "section"
+                and b.level == 3
+                and not b.stats
+                and (norm(b.name) == k or _words(b.name) <= _words(n))
+            ),
+            None,
+        )
         if k and k not in descs:
             descs[k] = b
     out = []
@@ -258,9 +364,19 @@ def _lists(bs):
             d = descs.get(norm(n))
             # (a row with no heading of its own, named in the text of a heading that tags a rating range: `Reactive Armor
             # (Rating 1-4)` over `plates and GelWeave`: that heading's range)
-            said = next((x.tags for x in descs.values() if x.tags and re.search(rf"(?i)\b{re.escape(n)}\b", x.text)), "")
-            out.append(replace(b, name=n, stats=[{h: v for h, v in s.items() if h != col}], label="",
-                               text=d.text if d else b.text, tags=d.tags if d else b.tags or said))
+            said = next(
+                (x.tags for x in descs.values() if x.tags and re.search(rf"(?i)\b{re.escape(n)}\b", x.text)), ""
+            )
+            out.append(
+                replace(
+                    b,
+                    name=n,
+                    stats=[{h: v for h, v in s.items() if h != col}],
+                    label="",
+                    text=d.text if d else b.text,
+                    tags=d.tags if d else b.tags or said,
+                )
+            )
     return out
 
 
@@ -282,18 +398,39 @@ def _pointed(bs):
             continue
         said = _squash(b.text)
         have = {norm(x.name) for x in bs if x.chapter == b.chapter and (x.row is not None or x.stats)} | {
-            norm(v) for x in bs if x.chapter == b.chapter for s in x.stats for v in list(s.values())[:1]}  # (a box's rows)
+            norm(v) for x in bs if x.chapter == b.chapter for s in x.stats for v in list(s.values())[:1]
+        }  # (a box's rows)
         rows = []
         for t in bs:
             if t.chapter != b.chapter or not any(abs(t.page - (int(p) + PAGE_OFFSET)) <= 1 for p in pages):
                 continue
             for h, rs in catalog.md_tables(t.text):
                 if h[0].upper() == "ITEM" and "DR" in {x.upper() for x in h}:  # (its page: the one pointed to)
-                    rows += [(int(pages[0]) + PAGE_OFFSET, h, r) for r in rs if r[0] and norm(r[0]) not in have
-                             and r[0][:1].isupper() and re.search(rf"\b{re.escape(_squash(r[0].split()[0]))}\b", said)]
+                    rows += [
+                        (int(pages[0]) + PAGE_OFFSET, h, r)
+                        for r in rs
+                        if r[0]
+                        and norm(r[0]) not in have
+                        and r[0][:1].isupper()
+                        and re.search(rf"\b{re.escape(_squash(r[0].split()[0]))}\b", said)
+                    ]
         j = next(k for k, x in enumerate(out) if x is b) + 1
-        out[j:j] = [replace(b, type="item", name=r[0], header=list(h), row=dict(zip(h, r)), stats=[], text="", label="",
-                            page=page, level=4, group=b.name) for page, h, r in rows]
+        out[j:j] = [
+            replace(
+                b,
+                type="item",
+                name=r[0],
+                header=list(h),
+                row=dict(zip(h, r)),
+                stats=[],
+                text="",
+                label="",
+                page=page,
+                level=4,
+                group=b.name,
+            )
+            for page, h, r in rows
+        ]
     return out
 
 
