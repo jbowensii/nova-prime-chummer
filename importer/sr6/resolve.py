@@ -288,15 +288,15 @@ def _sources_dates():
     return {s.get("id"): s.get("published") or "" for s in xmlio.ET.parse(p).getroot() if s.get("id")}
 
 
-def _kids(el, tag):
+def kids(el, tag):
     return [k for k in el if isinstance(k.tag, str) and k.tag == tag]
 
 
-def _add_kid(el, tag, attrs, text=None):
+def add_kid(el, tag, attrs, text=None):
     from lxml import etree
     k = etree.Element(tag, {a: str(v) for a, v in attrs.items() if v not in (None, "")})
     k.text = text or None
-    t = _kids(el, "text")
+    t = kids(el, "text")
     if t:
         t[0].addprevious(k)
     else:
@@ -305,7 +305,7 @@ def _add_kid(el, tag, attrs, text=None):
 
 
 def _formula_of(el, f):
-    return next((x for x in _kids(el, "formula") if x.get("field") == f), None)
+    return next((x for x in kids(el, "formula") if x.get("field") == f), None)
 
 
 def _errata_books(bs):
@@ -332,7 +332,7 @@ def _apply_errata(bs, entries, changed, n):
     for eb, tb in _errata_books(bs):
         stmts = errata(eb.md)
         ents = [{"name": el.findtext("name") or "", "page": int(el.get("page") or 0), "el": el, "path": path,
-                 "aliases": [a.text for a in _kids(el, "alias") if a.text]}
+                 "aliases": [a.text for a in kids(el, "alias") if a.text]}
                 for b, src, kind, el, path in entries if b is tb and src == tb.src and kind != "rules"]
         if not tb.current:
             _renumber(ents, [s for s in stmts if s[2] == "_renumber"], tb, changed, n)
@@ -344,7 +344,7 @@ def _apply_errata(bs, entries, changed, n):
                 continue
             if field.startswith("_"):
                 continue
-            open_ = lambda e: any(i.get("field") == field for i in _kids(e["el"], "issue"))  # noqa: E731
+            open_ = lambda e: any(i.get("field") == field for i in kids(e["el"], "issue"))  # noqa: E731
             hit = errata_targets([e for e in ents if open_(e) or e["el"].get(field) is not None and not tb.current], page, subj)
             if not hit:
                 continue
@@ -354,9 +354,9 @@ def _apply_errata(bs, entries, changed, n):
             if new is None or new == old:
                 continue
             el.set(field, new)
-            for x in [x for x in _kids(el, "issue") + _kids(el, "formula") if x.get("field") == field]:
+            for x in [x for x in kids(el, "issue") + kids(el, "formula") if x.get("field") == field]:
                 el.remove(x)
-            _add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": page}, old)
+            add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": page}, old)
             changed.add(path)
             n["errata"] += 1
 
@@ -403,7 +403,7 @@ def _errata_modules(bs, files, changed, n):
             if not isinstance(el.tag, str) or bare(el) in names:
                 continue
             el.set("id", f"{tb.src}.{el.get('id')}")
-            _add_kid(el, "found", {"field": "entry", "how": "errata", "source": tb.src.upper(), "page": el.get("page")})
+            add_kid(el, "found", {"field": "entry", "how": "errata", "source": tb.src.upper(), "page": el.get("page")})
             el.tail = "\n"
             root.append(el)
             changed.add(path)
@@ -418,7 +418,7 @@ def _renumber(ents, stmts, tb, changed, n):
     `found` record."""
     todo = []
     # (by their printed names: an entry renamed by an earlier corpus pass is found, and left, by its printed name)
-    view = [dict(e, name=f.text or "", done=True) if (f := next((f for f in _kids(e["el"], "found") if f.get("field") == "name"
+    view = [dict(e, name=f.text or "", done=True) if (f := next((f for f in kids(e["el"], "found") if f.get("field") == "name"
                                                                 and f.get("how") == "errata"), None)) is not None
             else dict(e, done=False) for e in ents]
     olds = {o for _, _, _, (o, _), _ in stmts}
@@ -436,9 +436,9 @@ def _renumber(ents, stmts, tb, changed, n):
         e["name"] = re.sub(rf"\bRating\s+{old}\b", f"Rating {new}", printed)
         el.find("name").text = e["name"]
         m = {o: x for es in maps.values() for o, x in es.items()}  # (the family's bands: tier(R; 5: …; 6: …))
-        for f in _kids(el, "formula"):
+        for f in kids(el, "formula"):
             f.text = re.sub(r"(?<=[;(]\s)(\d+)(?=\s*:)", lambda k: str(m.get(int(k.group(1)), k.group(1))), f.text or "")
-        _add_kid(el, "found", {"field": "name", "how": "errata", "source": tb.src.upper(), "page": e["page"]}, printed)
+        add_kid(el, "found", {"field": "name", "how": "errata", "source": tb.src.upper(), "page": e["page"]}, printed)
         changed.add(e["path"])
         n["errata"] += 1
 
@@ -449,7 +449,7 @@ def _unrate(e, rating, tb, changed, n):
     from importer.sr6 import formula as F
     el = e["el"]
     done = False
-    for f in _kids(el, "formula"):
+    for f in kids(el, "formula"):
         try:
             v = F.evaluate(f.text or "", R=rating)
         except Exception:  # (a formula needing more than the rating: left)
@@ -457,7 +457,7 @@ def _unrate(e, rating, tb, changed, n):
         if v is None:
             continue
         field = f.get("field")
-        _add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": e["page"]}, el.get(field))
+        add_kid(el, "found", {"field": field, "how": "errata", "source": tb.src.upper(), "page": e["page"]}, el.get(field))
         el.set(field, F.fmt(v))
         el.remove(f)
         done = True
@@ -494,7 +494,7 @@ def corpus(books, sources=None, apply_errata=True):
         for el in tree.getroot():
             if isinstance(el.tag, str) and el.get("id") is not None:
                 entries.append((b, src, kind, el, path))
-                for n in dict.fromkeys([el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias") if a.get("id") is None]):
+                for n in dict.fromkeys([el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias") if a.get("id") is None]):
                     by_name.setdefault((kind, norm(n)), []).append((b, src, el))
     changed, n = set(), {"corpus": 0, "errata": 0, "searched": 0}
     if apply_errata:
@@ -505,14 +505,14 @@ def corpus(books, sources=None, apply_errata=True):
 
     def offer(cands, ob, osrc, oel, f):
         v = oel.get(f)
-        if v and good(f, v) and f not in {i.get("field") for i in _kids(oel, "issue")}:
+        if v and good(f, v) and f not in {i.get("field") for i in kids(oel, "issue")}:
             cands.append((ob.date or "", v, osrc.upper(), oel.get("page"), _formula_of(oel, f), oel))
 
     def kind_of(e):  # (Commlink6's TYPE of the class: what kind of thing an entry is)
         return (e.get("class") or "").split("/")[0]
 
     for b, src, kind, el, path in entries:
-        todo = _kids(el, "issue")
+        todo = kids(el, "issue")
         name = norm(el.findtext("name") or "")
         if todo:
             changed.add(path)
@@ -544,20 +544,20 @@ def corpus(books, sources=None, apply_errata=True):
             date, v, osrc, page, fx, oel = next(c for c in cands if c[0] == latest)
             el.set(f, v)
             el.remove(iss)
-            for x in [x for x in _kids(el, "formula") if x.get("field") == f]:
+            for x in [x for x in kids(el, "formula") if x.get("field") == f]:
                 el.remove(x)
             if fx is not None:
-                _add_kid(el, "formula", dict(fx.attrib), fx.text)
-            _add_kid(el, "found", {"field": f, "how": "corpus", "source": osrc, "page": page})
+                add_kid(el, "formula", dict(fx.attrib), fx.text)
+            add_kid(el, "found", {"field": f, "how": "corpus", "source": osrc, "page": page})
             n["corpus"] += 1
             r = oel.get("rating") if oel is not None else None
             if r and not el.get("rating") and fx is not None and re.search(r"\bR\b", fx.text or "") \
-                    and "rating" not in {i.get("field") for i in _kids(oel, "issue")}:
+                    and "rating" not in {i.get("field") for i in kids(oel, "issue")}:
                 # (a price per rating comes with the ratings it is for: the Autosoft row's `1–9` with its `Rating x 500`, CRB p. 271)
                 el.set("rating", r)
-                for x in [x for x in _kids(el, "issue") if x.get("field") == "rating"]:
+                for x in [x for x in kids(el, "issue") if x.get("field") == "rating"]:
                     el.remove(x)
-                _add_kid(el, "found", {"field": "rating", "how": "corpus", "source": osrc, "page": page})
+                add_kid(el, "found", {"field": "rating", "how": "corpus", "source": osrc, "page": page})
     n["abbreviations"] = _spelled_out(bs, entries, changed)
     n["run-ins"] = _run_in_names(bs, entries, changed)
     n["builtin"] = _builtin_mods(bs, entries, changed)
@@ -612,8 +612,8 @@ def _run_in_names(bs, entries, changed):
                 pre = re.match(rf"(?i)^(.+?)[\s-]+{re.escape(part)}$", x)
                 if pre and head.startswith(norm(pre.group(1)).replace(" ", "")) or _typo(x, part) and norm(x) not in parts:
                     hits.add(x)
-            if len(hits) == 1 and not any((a.text or "") == next(iter(hits)) for a in _kids(el, "alias")):
-                _add_kid(el, "alias", {}, next(iter(hits)))
+            if len(hits) == 1 and not any((a.text or "") == next(iter(hits)) for a in kids(el, "alias")):
+                add_kid(el, "alias", {}, next(iter(hits)))
                 changed.add(path)
                 done += 1
     return done
@@ -642,8 +642,8 @@ def _spelled_out(bs, entries, changed):
     for b, src, kind, el, path in entries:
         name = (el.findtext("name") or "").strip()
         full = spelled.get(name)
-        if full and not any((a.text or "").lower() == full.lower() for a in _kids(el, "alias")):
-            _add_kid(el, "alias", {}, full)
+        if full and not any((a.text or "").lower() == full.lower() for a in kids(el, "alias")):
+            add_kid(el, "alias", {}, full)
             changed.add(path)
             done += 1
     return done
@@ -747,7 +747,7 @@ def _builtin_mods(bs, entries, changed):
         if not box:
             continue
         mine = [(el, kind) for ob, src, kind, el, _ in entries if ob is b and src == b.src]
-        mods = [(el.get("id"), [el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")])
+        mods = [(el.get("id"), [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")])
                 for el, kind in mine if kind == "gear"]
         page = next((el.get("page") for el, kind in mine if kind == "rules" and _BUILTIN_BOX.match(el.findtext("name") or "")),
                     None)
@@ -758,17 +758,17 @@ def _builtin_mods(bs, entries, changed):
         for ob, src, kind, el, epath in entries:
             if kind != "vehicles" or ob is b:
                 continue
-            keys = set().union(*(_alternatives(n) for n in [el.findtext("name") or ""] + [a.text or "" for a in _kids(el, "alias")]))
+            keys = set().union(*(_alternatives(n) for n in [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")]))
             text = next((lines[k] for k in keys if k in lines), None)
             if text is None:
                 continue
-            for k in _kids(el, "builtin") + [x for x in _kids(el, "note") if x.get("field") == "builtin"]:
+            for k in kids(el, "builtin") + [x for x in kids(el, "note") if x.get("field") == "builtin"]:
                 el.remove(k)
             for tag, attrs, t in builtin_parts(text):
                 if tag == "builtin":
                     attrs = {**attrs, "ref": _mod_ref(attrs["name"], attrs.get("rating"), mods),
                              "source": b.src.upper(), "page": page}
-                _add_kid(el, tag, attrs, t)
+                add_kid(el, tag, attrs, t)
             changed.add(epath)
             done += 1
     return done

@@ -2311,12 +2311,12 @@ def less_accessory(text, thing):
 SKIP_KINDS = {"rules", "actions", "npcs", "contacts", "critters", "spirits", "sprites", "categories", "priorities", "metatypes",
               "skills", "lifemodules", "grades", "attributes", "samples", "sources", "index", "packs", "contacttypes",
               "licencetypes", "magictypes", "senses", "trueelements", "ruleoptions", "spellfeatures", "qualitysets"}
-_ENTRY = re.compile(r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>(?:</sr6:data>)?\s*$')  # (the file's last entry may close the root on its line: an override's)
+ENTRY = re.compile(r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>(?:</sr6:data>)?\s*$')  # (the file's last entry may close the root on its line: an override's)
 _KEEP = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')  # (an add-on's effect read from its host's text: catalog.add_ons)
 _DROP = re.compile(r'<(?:effect|test|link|incompatible|compatible) [^>]*/>')
 
 
-def _split_entries(xml):
+def split_entries(xml):
     """The catalog one entry a line again: the entries an override appended run together on the file's last line."""
     return re.sub(r"(</(\w+)>)(?=<\2 id=)", r"\1\n  ", xml) if xml else xml
 
@@ -2666,7 +2666,7 @@ def apply(files, texts_xml, regrouped="", only=None):
     before (an add-on's effects on its host, read from the host's text, stay); and the texts with a variant's own run-in
     paragraph added to its description where the book prints it under the parent's heading (`Genotype Enhancement
     (NeoElastian)`: `**NeoElastian:** …`). only: {(kind, id)} to read only these entries (the ones an override added)."""
-    files = {f: _split_entries(x) for f, x in files.items()}
+    files = {f: split_entries(x) for f, x in files.items()}
     texts = {}
     for m in re.finditer(r'<text of="([^"]+)" id="([^"]+)">(.*?)</text>', texts_xml or "", re.S):
         texts[(m.group(1), m.group(2))] = _unesc(m.group(3))
@@ -2728,7 +2728,7 @@ def apply(files, texts_xml, regrouped="", only=None):
             continue
         lines = []
         for ln in xml.splitlines(keepends=True):
-            m = _ENTRY.match(ln)
+            m = ENTRY.match(ln)
             if not m or only is not None and (kind, m.group(3)) not in only:
                 lines.append(ln)
                 continue
@@ -3084,7 +3084,7 @@ def copy_links(sources, texts=None):
     for src, files in sources.items():
         for fname, xml in files.items():
             for ln in (xml or "").splitlines():
-                if not (m := _ENTRY.match(ln)):
+                if not (m := ENTRY.match(ln)):
                     continue
                 _, _, eid, eattrs, name, kids = m.groups()
                 e = {"src": src, "file": fname, "kind": fname[:-4], "id": eid, "key": _key(name), "name": _unesc(name),
@@ -3167,7 +3167,7 @@ def copy_links(sources, texts=None):
             out, hit = [], False
             by = by_file.get((src, fname), {})
             for ln in (xml or "").splitlines(keepends=True):
-                m = _ENTRY.match(ln)
+                m = ENTRY.match(ln)
                 if not m or m.group(3) not in by or not (by[m.group(3)]["links"] or by[m.group(3)]["copies"] or ' from="' in ln):
                     out.append(ln)
                     continue
