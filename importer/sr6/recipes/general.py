@@ -327,12 +327,17 @@ NEAR_NAME = 0.88  # a box title this close to its heading's name (difflib ratio 
 
 def _box_named(b):
     """A stat box under its item's heading, titled a letter or a joining word off it (`ceramic or plasteel knife` under
-    `Ceramic/Plasteel Knife`), or the start of its name (`type 81` under `Type 81 “Gwisin”`): named by the heading (the
-    printed name), the box title an alias."""
+    `Ceramic/Plasteel Knife`), or the start of its name (`type 81` under `Type 81 “Gwisin”`; a stat box only, not a
+    map's caption, `bainbridge` under `Bainbridge Island`): named by the heading (the printed name), the box title an
+    alias."""
     if b.type != "item" or not b.label or b.name != b.label or b.name != b.name.lower() or not b.section:
         return b
     a, h = keys(b.name)[0], keys(b.section)[0]
-    if a == h or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME and not h.startswith(a):
+    if (
+        a == h
+        or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME
+        and not ((b.stats or b.row) and h.startswith(a))
+    ):
         return b
     return replace(b, name=b.section, aliases=[*b.aliases, b.name])
 
