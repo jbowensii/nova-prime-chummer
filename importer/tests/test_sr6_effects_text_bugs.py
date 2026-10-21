@@ -487,3 +487,31 @@ class RoundThreeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DisguiseSkillTest(unittest.TestCase):
+    """Disguise is a specialization of both Con and Stealth (CRB): the skill the text names keeps it; a bare Disguise
+    test is Stealth (owner ruling 2026-10-21). Made-up sentences."""
+
+    def test_the_named_skill_keeps_disguise_and_a_bare_one_is_stealth(self):
+        from importer.sr6.effects import values
+
+        self.assertEqual(values.targets("+2 dice on con (disguise) tests"), [("skill:con", "disguise")])
+        self.assertEqual(values.targets("+1 die on stealth (disguise) tests"), [("skill:stealth", "disguise")])
+        self.assertEqual(values.targets("+2 dice on disguise tests"), [("skill:stealth", "disguise")])
+
+    def test_a_bare_disguise_follows_another_specialization_beside_it(self):
+        from importer.sr6.effects import values
+
+        self.assertEqual(
+            values.targets("+2 dice on disguise or impersonation tests"),
+            [("skill:con", "disguise"), ("skill:con", "impersonation")],
+        )
+        self.assertEqual(
+            values.targets("+2 dice on disguise or sneaking tests"),
+            [("skill:stealth", "disguise"), ("skill:stealth", "sneaking")],
+        )
+        self.assertEqual(
+            values.targets("+2 dice on disguise, sneaking, or impersonation tests"),
+            [("skill:stealth", "disguise"), ("skill:stealth", "sneaking"), ("skill:con", "impersonation")],
+        )
