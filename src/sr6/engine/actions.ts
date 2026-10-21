@@ -35,7 +35,19 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, diyAllowed, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import {
+  augmentationRoom,
+  diyAllowed,
+  entryOf,
+  licenceFee,
+  licenceName,
+  materialOf,
+  noteSkill,
+  qualityChoice,
+  seatsOf,
+  takesMaterial,
+  toNuyenMax,
+} from './budgets'
 import { mountsOf, shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from './critters'
@@ -86,6 +98,8 @@ export type Op =
   | { op: 'accessory'; host: string; remove: string }
   /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
   | { op: 'diy'; uid: string; diy: boolean }
+  /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
+  | { op: 'material'; uid: string; material: string | null }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
   | { op: 'mount'; uid: string; mount: string | null }
   /** two mod slots of one category shifted to one of another on a vehicle or drone (Double Clutch p. 120), or the shift at
@@ -256,7 +270,9 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 }
 
 /** Every purchase, and every accessory on one. */
-const allLines = (b: Sr6Build) => b.purchases.flatMap(x => [x, ...x.accessories])
+/** Lines and everything fitted to them, at any depth (a weapon's ammunition's ammunition type, as imports nest them). */
+const deep = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...deep(x.accessories)])
+const allLines = (b: Sr6Build) => deep(b.purchases)
 /** An accessory taken off its host; a weapon in it (a weapon mount) stays, in no mount. Shared with career.ts. */
 export function unfit(host: Sr6Purchase, uid: string): void {
   host.accessories = host.accessories.filter(a => a.uid !== uid)
@@ -524,7 +540,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         const x = b.purchases.find(x => x.uid === op.remove)
         if (!x) return no('unknown-line')
         b.purchases = b.purchases.filter(y => y !== x)
-        unlicense(b, [x, ...x.accessories])
+        unlicense(b, deep([x]))
         return OK
       }
       const line = newLine(op, data, cr)
@@ -559,10 +575,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!host) return no('unknown-host')
       if ('remove' in op) {
         if (!host.accessories.some(a => a.uid === op.remove)) return no('not-fitted')
-        unlicense(
-          b,
-          host.accessories.filter(a => a.uid === op.remove),
-        )
+        unlicense(b, deep(host.accessories.filter(a => a.uid === op.remove)))
         unfit(host, op.remove)
         return OK
       }
@@ -588,6 +601,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.diy && !diyAllowed(entryOf(x, data))) return no('no-diy')
       if (op.diy) x.diy = true
       else delete x.diy
+      return OK
+    }
+    case 'material': {
+      const x = allLines(b).find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (op.material === null) delete x.material
+      else if (!takesMaterial(x, data) || !materialOf(data, op.material)) return no('no-material')
+      else x.material = op.material
       return OK
     }
     case 'mount': {
@@ -708,7 +729,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const gp = op.grade ? gradeProblem(cr, data, op.grade, x.id ? data.entry(x.kind, x.id) : undefined) : null
       if (gp) return no(gp)
       // an implant's add-on has its grade (CRB p. 282): never one of its own
-      const host = b.purchases.find(h => h.kind === 'augmentations' && h.accessories.includes(x))
+      const host = allLines(b).find(h => h.kind === 'augmentations' && h.accessories.includes(x))
       if (host && op.grade !== undefined) return no('grade-follows-host')
       // (a level of a family: the level's own entry takes the line, which then needs no rating of its own)
       if (level) {

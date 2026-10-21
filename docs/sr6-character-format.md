@@ -128,7 +128,10 @@ copy". Book entries are never copied here.
   made (`chassis>powertrain electronics>chassis`: Double Clutch p. 120, any available slots shifted at 2:1, so each
   entry takes two slots from its first category and gives one to its second; read with Double Clutch among the table's
   books only; an entry naming no two categories reads as left out, noted; absent: none); a mod's `diy="true"` is the player's do-it-yourself saving, half its nuyen price (Double Clutch
-  p. 120; never an accessory's). Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
+  p. 120; never an accessory's). An ammunition line's (a gear line of an ammunition table, an ammunition type, also one
+  fitted as an add-on) `material` is the catalog id of an ammunition material (an ammunition type priced `H*N`, Bestial
+  Nature p. 36: copper, silver, gold): the line, its ammunition types with it, costs N times as much and its rounds are of
+  that material (src/sr6/engine/purchases.ts materialOf); an id that is no material counts as none. Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
   older files read as they were. A vehicle or drone bought from a design (the Designer, below) has `design` (the
   design's id), `id="design.<that id>"` and a `<snapshot>` always: the vehicle as the design worked out when bought (its
   stats, `cost` the price, `avail`, `dp` its Design Point Value, `approved="true"` when a GM made or approved the

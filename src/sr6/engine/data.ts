@@ -7,7 +7,7 @@ import type { MagicKind, PickKind, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import { MAX_RATING, rated } from './values'
 import { resolveEntry } from './load'
-import { categoryIndex } from './categories'
+import { categoryIndex, isMaterial } from './categories'
 import { gradeKey, normName } from './names'
 import { atLevel, familyOf, levelOf, sameFamily, siblings } from './levels'
 import type { RangeAttr, Grant, Sr6PriorityRow, Sr6MetatypeView, Sr6Data } from './types'
@@ -419,6 +419,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     hasSource: id => (s => !!s && s.origin !== 'shipped')(c.sources.get(id)),
     named,
     categories: categoryIndex(all('categories')),
+    materials: all('ammotypes').filter(isMaterial),
     family: (kind, id) => familyOf(c, kind, id),
     atLevel: (kind, id, level) => atLevel(c, kind, id, level),
     siblings: (kind, id) => siblings(c, kind, id),

@@ -18,7 +18,7 @@ import type {
 } from '../model/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
-import { entryOf, fitted, lineBonuses, priced, ratingOf, skillRank } from './budgets'
+import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from './budgets'
 import { bonusValue, linkedViews, ownParts, type LinkLookup } from './effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from './career'
 import { sr6CompendiumSource } from './compendium'
@@ -158,6 +158,9 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   mount?: string
   /** a vehicle mod the player installed: half its nuyen price (Double Clutch p. 120) */
   diy?: true
+  /** ammunition of a material (purchases.ts materialOf): the material's id and name, how many times as much the line
+   *  costs (values.cost has it) and what its rounds do, in words */
+  material?: { id: string; name: string; times: number; effect: string }
   /** a vehicle or drone: what the Foundry module needs past its numbers (values.vehicle) */
   vehicle?: Sr6ExportVehicle
   /** an owned critter: its stat block (exportNpc), how it was priced and trained, and its companion qualities */
@@ -589,6 +592,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
     mount: x.mount,
     diy: x.diy,
+    material: materialOf(data, x.material),
     ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),
     ...(x.kind === 'critters'
       ? {

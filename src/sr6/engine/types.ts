@@ -138,6 +138,8 @@ export interface Sr6Data extends CreationCatalog {
   named?(name: string, kind?: Sr6Kind): Sr6Entry | undefined
   /** the categories' records (categories.ts categoryIndex): an accessory category's hosts */
   categories: Map<string, Sr6Entry[]>
+  /** the ammunition materials (categories.ts isMaterial: Bestial Nature p. 36's copper, silver, gold), in catalog order */
+  materials: Sr6Entry[]
   /** levels (src/sr6/engine/levels.ts): the family an id belongs to (a level's, a printed row's or the hidden parent's),
    *  the entry at a level of it, its levels lowest first, an entry's own level, and whether an id is `target` or a level
    *  of the family `target` names (a creation setting's quality) */

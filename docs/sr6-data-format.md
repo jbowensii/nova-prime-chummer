@@ -736,7 +736,8 @@ EXPR is read by the app's own small parser (`src/shared/formula.ts`, never `eval
 
 - numbers, `+ - * /` (`×` too), parentheses, a leading minus;
 - `R` the rating, `Q` the quantity, `M` the runner's Magic, `B` this field's printed value, `H` the same field of the
-  item it goes on (a material add-on's `H*2`: twice its ammunition's price), `opt.<id>` an option;
+  item it goes on (a material add-on's `H*2`: its ammunition then costs twice as much, so the add-on adds the host's
+  price once more, as an `x2` cost does), `opt.<id>` an option;
 - `tier(R; 1-3: a; 4-6: b; 7+: c)`: the value of the band the first argument falls in (a single number is a band);
 - `ref(kind:id, field[, R])`: another entry's value (its formula, else its printed value), at this rating or the one
   given, e.g. `ref(gear:crb.flare-kit, cost, 2) + 50`;
