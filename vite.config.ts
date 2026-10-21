@@ -1,8 +1,8 @@
-/// <reference types="vitest/config" />
 import { readFileSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { configDefaults } from 'vitest/config'
 
 // The core files (src/ca2/catalog/domain/load.ts CORE_FILES) come from the core rulebook's import or a data pack. The owner's local
 // copies in public/data serve `npm run dev`; a build never ships them.
@@ -41,11 +41,14 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],
+    exclude: [...configDefaults.exclude, 'tests/perf/**'], // timing checks run by `npm run perf` (vitest.perf.config.ts)
     coverage: {
       provider: 'v8',
-      include: ['src/**'],
+      include: ['src/**', 'server/**'],
       exclude: ['**/*.d.ts', 'tests/**'],
       reporter: ['text-summary', 'json-summary'],
+      // floors ~1 point under the 2026-10-21 measure (80.94 / 73.37 / 71.53 / 81.05), so coverage can't silently drop
+      thresholds: { statements: 80, branches: 72, functions: 70, lines: 80 },
     },
   },
 })

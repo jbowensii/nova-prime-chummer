@@ -204,7 +204,8 @@ npm run test:py        # importer tests (Python 3.12)
 npm run build && npm run e2e   # Playwright end-to-end tests
 npm run lint           # ESLint
 npm run format:check   # Prettier (npm run format fixes)
-npm run coverage       # test coverage
+npm run coverage       # test coverage; fails under the floors in vite.config.ts (npm run check runs it)
+npm run perf           # timing checks (tests/perf): median of 15 runs per slow path against a budget; not part of npm test
 ```
 
 Docs live in [docs/](docs/): data, character and export formats for each game, the design system, sign-in and hosting ([hosting-auth.md](docs/hosting-auth.md)), and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)).
