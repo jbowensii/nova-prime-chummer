@@ -1057,6 +1057,111 @@
               }
             }
           }
+        },
+        "items": {
+          "description": "The weapons, attacks, armor, gear, augmentations and powers its lines print, as items (absent in files written before it was added).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/npcItem"
+          }
+        },
+        "corrections": {
+          "description": "What its items correct in the stat block, one line each, for its notes: a guessed (fuzzy) link with its score, a standard item standing in, ammunition added, an attack kept that can't be rolled, what has no catalog entry (absent in files written before it was added).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "npcItem": {
+      "description": "A thing an NPC's stat block prints: its catalog entry's (id set), the stat block's numbers over the entry's, else built from the printed line (no id); armor worn. uid line:<part>:<printed>, a power's power:<printed>, an accessory's <host uid>:w/<printed>.",
+      "$ref": "#/$defs/item",
+      "unevaluatedProperties": false,
+      "required": [
+        "uid",
+        "qty",
+        "worn",
+        "bonuses",
+        "accessories",
+        "line"
+      ],
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "qty": {
+          "type": "number"
+        },
+        "worn": {
+          "type": "boolean"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
+        },
+        "level": {
+          "description": "An adept power's level.",
+          "type": "number"
+        },
+        "line": {
+          "description": "The thing as printed, its line's part, the numbers it prints (at the NPC's rating where they use its Force) and its DV as printed.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "part",
+            "printed",
+            "values"
+          ],
+          "properties": {
+            "part": {
+              "type": "string"
+            },
+            "printed": {
+              "type": "string"
+            },
+            "values": {
+              "description": "The numbers the stat block prints (a subset of values).",
+              "$ref": "#/$defs/values"
+            },
+            "dv": {
+              "type": "string"
+            },
+            "match": {
+              "description": "How it found its catalog entry: by name (score 1), by a name at least 0.85 alike (fuzzy, its score), as the standard item of a generic name, or as a weapon's regular ammunition.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "score",
+                "how"
+              ],
+              "properties": {
+                "score": {
+                  "type": "number"
+                },
+                "how": {
+                  "enum": [
+                    "exact",
+                    "fuzzy",
+                    "standard",
+                    "ammo"
+                  ]
+                }
+              }
+            },
+            "unread": {
+              "description": "An attack printed with stats the app can't roll (a Cybercombat one, a DV it can't read): an item that is no weapon.",
+              "const": true
+            }
+          }
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/npcItem"
+          }
         }
       }
     },

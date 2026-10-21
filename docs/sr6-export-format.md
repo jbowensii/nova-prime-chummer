@@ -140,14 +140,43 @@ for a dash).
 
 ## NPC block
 
-`{ kind, rating?, group?, from?, stats, lines, pools }`. `kind` `grunt`, `critter`, `spirit` or `sprite` (a contact, one of
+`{ kind, rating?, group?, from?, stats, lines, pools, items, corrections }`. `kind` `grunt`, `critter`, `spirit` or `sprite` (a contact, one of
 the book's sample contacts, goes out as `grunt` with `group` `Contact` and no rating); `rating` the Professional Rating,
 Force or Level; `group` a grunt's; `from` `{ kind, id, name, source, page }`, the catalog entry it was
 copied from. `stats` `[{ key, label, printed, value, ok }]` in stat-block order: the printed value and its value at the
 rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `value` is the printed text). `lines`
 `[{ part, text }]` (skills, powers, optional powers, weaknesses, attacks, augmentations, gear, weapons). `pools`
 `[{ name, rating, attr?, pool?, printed }]`: the skills line resolved against the catalog's skills, pool = rating + the
-attribute's value; a skill the catalog doesn't have keeps its printed text only. The block is GM-only data.
+attribute's value; a skill the catalog doesn't have keeps its printed text only. `items` (npc.ts `npcThings`): each
+weapon, attack, piece of gear, augmentation and power the weapons, attacks, gear, augmentations and powers lines print, as
+a purchase (`uid`, `qty` (1, or a printed count: `2 x smoke grenades`), `worn`, `bonuses` [], `accessories`) plus
+`line { part, printed, values, dv?, match? }`, the thing as printed, the numbers it prints, its DV as printed and how it
+found its entry. An adept power has its `level`. It is its catalog entry (owner 2026-10-20: "75% guesses are fine for
+matching please. when in doubt use standard ammo, grenades, etc."): by name (`match.how` `exact`; the kinds its part
+names). Else, its type first: when its last word is a category's last word (`smoke grenade`, `Yamaha Rapier
+motorcycle`, `commlink`), the entry of that type with all its other words (`Smoke/thermal smoke`). Else the entry
+whose name is most alike, at least 0.75, within its type's kinds when it has a type (`fuzzy`, `match.score`: names.ts
+`nameRatio`, the importer's difflib ratio, of their `matchKey`s; the name without a trailing generic word such as
+`commlink` tried too). Else, on a weapons, gear or augmentations line, a standard item (`standard`): of its type the
+one with most of its other words, else the type's standard entry (at the printed rating, else lowest rated, then
+cheapest); else the standard item of the category a generic name is; else of the entries its last word names; armor
+printing a Defense is looked for among armor only, and is the standard armor at that Defense when nothing is alike. A power, or a spell on the spells line (the catalog's spells and rituals), is linked by name or by a 75% guess only (one the catalog lacks stays a printed power or spell). A natural attack (its
+skill as category, or on a critter, spirit or sprite one with no category) and a Cybercombat one are linked by name
+only. Ties: the NPC's own book, then the latest printing. A printed level picks that level's entry; a device's or
+implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over
+the entry's `values`. A ranged weapon (firearms, bows, crossbows, tasers, dart guns, grenade and rocket launchers, by
+its class or category) is followed by its regular ammunition (`ammo`, uid `<weapon uid>:ammo`, `qty` one full load: the
+printed or catalog ammo, else 10); melee and natural attacks get none. Else a thing is built from the line (no `id`):
+an attack printing a DV (a number or a Force formula, `F/2P`) or attack ratings as a weapon (`attrs` `category` and
+`dv` as printed; `skill` the printed one, else Close Combat with only a close band, Exotic Weapons past it), gear as
+gear, a power as a critter power. Formulas of Force are worked out at the rating; a band at 0 or less is none. Armor is
+worn. An attack printing stats it can't roll (a Cybercombat one, a DV it can't read) is a note item (`line.unread`,
+kind gear); a bare name or book text the reader ran into a line stays in `lines` only. uids: `line:<part>:<printed>`
+(`power:<printed>` for a power, `<host uid>:w/<printed>` for an accessory; a repeat gets `#2`…). `corrections`
+(npc.ts `npcCorrections`): what those items correct, one line each, for the NPC's notes: a guess (`Ares Predator V →
+Ares Predator VI (fuzzy, 0.82)`), a standard stand-in (`smoke grenade → Smoke/thermal smoke (standard item)`), ammo
+added (`Added: Heavy Pistol/SMG (regular ammo) ×15 for Ares Predator VI`), an attack kept that can't be rolled, and one
+line of what has no catalog entry; worked out on every export, never stored. The block is GM-only data.
 
 ## Book
 
