@@ -110,7 +110,7 @@ function main() {
   // the folders the moves emptied (rmdirSync refuses a folder that still holds anything)
   for (const d of new Set([...moves.keys()].map(p => posix.dirname(p)))) if (existsSync(at(d)) && !readdirSync(at(d)).length) rmdirSync(at(d))
   if (!rows.some(([p, m, , s]) => p.startsWith('src/') && !moves.has(p) && target(p, m, s) !== p))
-    console.log('every src file is in its module folder: moduleOf in tests/ui/module-boundaries.test.ts may now read the folder')
+    console.log('every src file is in its module folder: moduleOf in tests/core/shared/module-boundaries.test.ts may now read the folder')
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()

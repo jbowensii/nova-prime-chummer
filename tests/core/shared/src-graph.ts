@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import ts from 'typescript'
 
-export const SRC = resolve(__dirname, '../../src')
+export const SRC = resolve(__dirname, '../../../src')
 export const files = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap(d =>
     d.isDirectory() ? files(join(dir, d.name)) : /\.tsx?$/.test(d.name) && !d.name.endsWith('.d.ts') ? [join(dir, d.name)] : [],

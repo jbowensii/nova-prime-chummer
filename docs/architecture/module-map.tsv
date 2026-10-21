@@ -968,6 +968,8 @@ tests/ui/export-dialogs.test.ts	ca2/foundry	849
 tests/core/ui-kit/game.test.ts	core/ui-kit	322
 tests/ui/gamedata.test.ts	features/catalog-browser	1917
 tests/core/shared/import-cycles.test.ts	core/shared	842
+tests/core/shared/module-boundaries.test.ts	core/shared	2000
+tests/core/shared/src-graph.ts	core/shared	500
 tests/ui/knowledge.test.ts	ca2/runner-builder	525
 tests/ui/library-screen.test.ts	ca2/runner-library	1573
 tests/ui/library.test.ts	ca2/runner-library	958

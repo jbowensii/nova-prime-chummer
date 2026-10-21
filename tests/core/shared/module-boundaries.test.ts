@@ -3,7 +3,7 @@
 // may import only a game's `formats` module (core/app also its `shell`); (3) a module imports only modules ranked strictly below it (or itself).
 // Today's violations are listed in module-boundaries.allow.json ("from > to", src-relative). The list may only shrink: a new
 // violation fails, and so does an entry that no longer violates. Refactors delete entries; `UPDATE_ALLOW=1 npx vitest run
-// tests/ui/module-boundaries.test.ts` rewrites the file after a refactor (review the diff: it must only lose lines).
+// tests/core/shared/module-boundaries.test.ts` rewrites the file after a refactor (review the diff: it must only lose lines).
 // @vitest-environment node
 import { readFileSync, writeFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'

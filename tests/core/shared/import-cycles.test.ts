@@ -4,7 +4,7 @@
 // @vitest-environment node
 import { join, relative } from 'node:path'
 import { expect, test } from 'vitest'
-import { SRC, files, imports } from '../../ui/src-graph'
+import { SRC, files, imports } from './src-graph'
 
 /** Each cycle once, as the modules on it (depth-first: a module back on the current path closes one). */
 function cycles(graph: Map<string, string[]>): string[][] {
