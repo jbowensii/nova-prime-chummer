@@ -86,6 +86,19 @@ class Sr6RunTest(unittest.TestCase):
         self.assertIn("unknown-column", {k for k, _ in rows})  # and the recipe's
         self.assertEqual({f.get("name"): f.get("entries") for f in imp.iter("file")}["weapons.xml"], "5")
 
+    def test_a_book_read_again_drops_what_this_reading_no_longer_finds(self):
+        self.assertEqual(self.cli("run", self.book, "--custom", self.custom, "--md")[0], 0)
+        crb = os.path.join(self.custom, "imported", "crb")
+        # (a kind file and a sample runner the last reading wrote that this one does not)
+        Path(crb, "lifemodules.xml").write_text("<old/>", encoding="utf8")
+        Path(crb, "samples", "crb.gone-runner.xml").write_text("<old/>", encoding="utf8")
+        self.assertEqual(self.cli("run", self.book, "--custom", self.custom, "--md")[0], 0)
+        self.assertFalse(os.path.exists(os.path.join(crb, "lifemodules.xml")))
+        self.assertFalse(os.path.exists(os.path.join(crb, "samples", "crb.gone-runner.xml")))
+        self.assertTrue(os.path.isfile(os.path.join(crb, "weapons.xml")))
+        self.assertTrue(os.path.isfile(os.path.join(crb, "samples", "crb.glow-runner.xml")))
+        self.assertEqual(validate(self.custom), [])
+
     def test_texts_are_reflowed_into_paragraphs(self):
         md = BOOK_MD.replace(
             "Trouble rules text.\n",

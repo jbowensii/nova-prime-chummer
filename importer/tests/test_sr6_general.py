@@ -326,6 +326,8 @@ A made-up armor modification that hides made-up things.
 ### Zap Popper “Ghost”
 (Hold-Out Pistol)
 A made-up hold-out pistol, printed in made-up plastic.
+For an additional 100 nuyen, a Zap Popper can be printed with a custom-fit silencer, which increases the threshold for
+Perception (audio) tests by 2.
 ##### zap popper
 [Hold-Out, DV 1P, SS, AR 10/5/—/—/—, 4(b), Avail:
 3, Cost: 200¥]
@@ -337,6 +339,11 @@ More made-up words about the wards.
 | HAND | ACC | BOD | ARM | PIL | SEN | SEATAVAIL | COST |
 |---|---|---|---|---|---|---|---|
 | 2/2 | 4 | 2 | 0 | 1 | 2 — | 3 | 1,000¥ |
+**Note:** The Bleep Pup can be upgraded to a “racing breed” version, with a body 3 frame for a total base cost of 2000¥.
+### Fizz Rounds
+##### (ammo type)
+AR –1, Cost Multiplier: x3
+Made-up rounds that fizz.
 ### Which charm works on a made-up spirit?
 Any of them, and because they have no price:
 Charm Availability Cost
@@ -410,6 +417,16 @@ class GeneralShapesTest(unittest.TestCase):
         self.assertEqual([t.text for t in m.iter("trait")], ["Hide (Self)", "Low-Light Vision"])
         p = entries(self.res, "critterpowers")["Hide (Self)"]
         self.assertEqual((p["action"], p["duration"]), ("Major", "Sustained"))
+
+    def test_priced_versions(self):
+        w = entries(self.res, "weapons")
+        self.assertEqual(w["Zap Popper “Ghost” with silencer"]["cost"], "300")  # the item's 200 and 100 more
+        v = entries(self.res, "vehicles")["Bleep Pup (Racing breed)"]
+        self.assertEqual((v["body"], v["cost"], v["handling"]), ("3", "2000", "2/2"))
+
+    def test_ammo_type(self):
+        a = entries(self.res, "ammotypes")["Fizz Rounds"]
+        self.assertEqual((a["cost"], a["ar"]), ("x3", "–1"))
 
     def test_mentor_spirit_on_its_own(self):
         self.assertIn("Grumble", entries(self.res, "mentorspirits"))

@@ -1,3 +1,4 @@
 [
-  {"cl6": "Samsung Jind-O", "kind": "vehicles", "id": "samsung-jind-0", "rename": "Samsung Jind-O", "note": "misprint: the book sets the letter O as a zero (Jind-0, jind-ø); the owner's ruling 2026-10-21, the Jindo dog", "gen": "owner"}
+  {"cl6": "Samsung Jind-O", "kind": "vehicles", "id": "samsung-jind-0", "rename": "Samsung Jind-O", "note": "misprint: the book sets the letter O as a zero (Jind-0, jind-ø); the owner's ruling 2026-10-21, the Jindo dog", "gen": "owner"},
+  {"cl6": "Samsung Jind-O Sporting", "kind": "vehicles", "id": "samsung-jind-0-sporting-breed", "rename": "Samsung Jind-O (Sporting breed)", "note": "the same misprint in the version the Jind-O's text prices; the owner's ruling 2026-10-21", "gen": "owner"}
 ]

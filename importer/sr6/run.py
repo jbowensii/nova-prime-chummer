@@ -118,6 +118,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
                 else None
             )
             files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids, ROOT) for n, x in res.files.items()})
+            _prune(out_dir, set(files), {x["file"] for x in res.samples})
             for name, xml in files.items():
                 xmlio.write_file(os.path.join(out_dir, name), xml)
             if texts:
@@ -606,6 +607,17 @@ def _write_extra(custom_dir, res, prev=None):
     if res.texts:
         path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
         xmlio.write_file(path, _texts(path, res.texts, src, ids))
+
+
+def _prune(out_dir, names, samples):
+    """The last import's files this one no longer writes (an NPC, critter or sample runner list a reader change leaves
+    out): they go, so a book read again holds only what this reading found. Only the importer's own files (every
+    .xml in the source's folder and its samples/ folder is one: moved.previous)."""
+    for folder, keep in ((out_dir, names), (os.path.join(out_dir, "samples"), samples)):
+        if os.path.isdir(folder):
+            for f in os.listdir(folder):
+                if f.endswith(".xml") and f not in keep and os.path.isfile(os.path.join(folder, f)):
+                    os.remove(os.path.join(folder, f))
 
 
 def _drop(custom_dir, src):

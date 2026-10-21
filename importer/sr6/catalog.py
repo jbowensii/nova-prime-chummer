@@ -29,7 +29,7 @@ from importer.sr6 import (
     tables,
 )
 from importer.sr6.regroup import alt_names, blocks, md_tables, norm
-from importer.sr6.prose_items import add_ons, dv_settings, run_in_items, sentence_items, stated_items
+from importer.sr6.prose_items import add_ons, dv_settings, run_in_items, sentence_items, stated_items, variants
 from importer.xmlio import HEAD, ILLEGAL
 
 CORE = "CRB"  # the core rulebook's source (recipes/crb.py): its catalog comes first, its sample runners cite their own
@@ -2115,7 +2115,7 @@ def read(regrouped, ctx, book):
     known = {norm(b.name) for b in bs if b.name} | {norm(b.row.get(b.header[0], "")) for b in bs if b.row and b.header}
     bs = [x for b in bs for x in stat_lines(b, known)]  # (a heading whose text holds its stat line: that item)
     cat.index = search.Index(bs, bk.PAGE_OFFSET, md_tables, shapes.RENAME)
-    sec, found, variants = sections.Reader(), [], []
+    sec, found, dev_tables = sections.Reader(), [], []
     for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
@@ -2134,7 +2134,7 @@ def read(regrouped, ctx, book):
         ):
             cat.metatype([], [f"Racial Qualities: {q}"], page)  # printed as a labelled line under the table
         if _VARIANT_BAND.search(block_text(b)):  # a development table set as text lines (metavariants)
-            variants.append((page, block_text(b)))
+            dev_tables.append((page, block_text(b)))
         if (
             b.row is not None
             and b.header
@@ -2233,8 +2233,8 @@ def read(regrouped, ctx, book):
             parent=parent,
         )
         stack.append((level, e["id"]))
-    if variants:
-        metavariants(cat, variants)
+    if dev_tables:
+        metavariants(cat, dev_tables)
         racial_powers(bs, cat, bk.PAGE_OFFSET)
     for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
@@ -2244,6 +2244,7 @@ def read(regrouped, ctx, book):
     dv_settings(bs, cat, bk.PAGE_OFFSET)
     add_ons(cat)
     stated_items(bs, cat, bk.PAGE_OFFSET, core=bk.ID == CORE)
+    variants(bs, cat, bk.PAGE_OFFSET)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):
