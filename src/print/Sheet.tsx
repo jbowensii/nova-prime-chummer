@@ -7,7 +7,8 @@ import { NpcBlock } from '../ui/NpcBlock'
 import { bdClass, printBackdrop } from '../ui/Portrait'
 import { HeaderBars } from '../ui/nav'
 import { IconButton, IconLink } from '../ui/icons'
-import { ampLines, cells, lists, RISK, rrText, SheetType, switchedBoxes, useSheetArt } from './shared'
+import { ampLines, cells, lists, RISK, rrText, switchedBoxes } from './shared'
+import { SheetType, useSheetArt } from '../ui/sheetArt'
 import './sheet.css'
 
 export function Sheet() {
