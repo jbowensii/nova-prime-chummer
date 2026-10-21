@@ -35,6 +35,9 @@ jobs:
         with: { python-version: '${{ matrix.python }}', cache: pip, cache-dependency-path: importer/requirements.lock }
       - run: pip install --require-hashes -r importer/requirements.lock
       - run: python -m unittest discover -s importer/tests -t .
+      # Python style, once: Black formats, pylint lints (config: pyproject.toml). Versions pinned in importer/requirements-lint.txt.
+      - if: matrix.python == '3.12'
+        run: pip install -r importer/requirements-lint.txt && black --check importer tools && pylint importer tools
   docker:
     runs-on: ubuntu-latest
     steps:

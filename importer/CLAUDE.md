@@ -12,6 +12,7 @@ shell: `server/jobs.mjs:41`); nothing in `src/` imports it. Shadowrun 6 has its 
   `tools/cl6effects/rebuild.py:27` import by module name. Keep those import names when a file becomes a package.
 - **Depends on:** only the shared kernel (`core/shared`'s contract: the XML shapes, `public/data` schemas). It never
   imports the TypeScript side; the TypeScript side reaches it over the command line only.
+- **Style:** Black (120 columns) and pylint, configured in `pyproject.toml`; CI runs both (`pip install -r importer/requirements-lint.txt`, then `black --check importer tools` and `pylint importer tools`).
 - **Test:** `npm run test:py` (= `python -m unittest discover -s importer/tests -t .`, what CI runs). One file:
   `python -m unittest importer.tests.test_ask`.
 - **CommLink6 gates:** a change to the Shadowrun 6 reader, overrides or pipeline runs the gates in `docs/cl6check.md`
