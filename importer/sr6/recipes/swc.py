@@ -14,7 +14,7 @@ from importer.sr6.ids import slug
 from importer.sr6 import KINDS, search, sections
 from importer.sr6 import shapes
 from importer.sr6.lifemodules import REQUIRES, lifemodule, plain
-from importer.sr6.catalog import BEING, HEADERS, Catalog, block_md, block_text, md_tables, printed_value
+from importer.sr6.catalog import BEING, HEADERS, Catalog, block_md, block_text, md_tables, metavariants, printed_value
 from importer.sr6.regroup import blocks, norm, text_page
 
 ID, NAME, PUBLISHER, CANON = "SWC", "Shadowrun: Sixth World Companion", "Catalyst Game Labs", True
@@ -81,102 +81,6 @@ def _split_hidden(name, text):
     return out + [(name, "\n".join(cur))]
 
 
-# --- metavariants ---------------------------------------------------------------------------------------------------
-
-_RANGE = r"\d+\s*[–-]\s*\d+\*?"
-_HEAD = re.compile(r"(?:(?:BOD|AGI|REA|STR|WIL|LOG|INT|CHA|EDG|M)\s*)+")
-_ROW = re.compile(rf"([A-Z][^\d]*?)\s+((?:{_RANGE}\s*)+)$")
-_NUMS = re.compile(rf"(?:{_RANGE}\s*)+")
-_ALL = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha", "edg")
-
-
-def _metavariants(cat, chunks):
-    """The summary tables (`<X> Variant Attribute Ranges`), in either print: a header of attribute abbreviations (a
-    table header, or a text line), rows `Name 1–7 1–6 …` (or a nameless table row whose name is the next line), and
-    later number-only rows for the same names in the same order: under a header of the rest (`CHA EDG`), else the rows'
-    missing attributes in order. Each row's `Racial Traits:` line (wrapped) follows it."""
-    head, part, rows, last, traits, pending = [], None, [], None, None, None
-
-    def missing(r):
-        return [a for a in _ALL + ("mag",) if a not in r["ranges"] and (a != "mag" or r["mag"])]
-
-    for page, raw in ((p, ln) for p, text in chunks for ln in text.splitlines()):
-        ln, table = raw.replace("**", "").strip(), raw.startswith("|")
-        if table:
-            ln = " ".join(c.strip() for c in ln.strip("|").split("|"))
-        if not ln or ln.startswith("#") or re.fullmatch(r"[-\s]+", ln):
-            continue
-        if _HEAD.fullmatch(ln):
-            h = [BEING.get(t, "mag") for t in ln.split()]
-            head, part, pending = (h, None, None) if h[0] == "bod" else (head, h, pending)
-            traits = None
-            continue
-        if m := re.match(r"Racial Traits\s*:\s*(.*)", ln):
-            traits = last
-            if last is not None:
-                last["traits"] = m.group(1)
-            continue
-        m = _ROW.match(ln)
-        nums = m.group(2) if m else ln if _NUMS.fullmatch(ln) else None
-        vals = re.findall(_RANGE, nums) if nums else []
-        if table and nums and len(vals) == len(head):  # its name is the next line
-            pending, traits = vals, None
-            continue
-        if pending and not nums and re.fullmatch(r"[A-Z][^\d:]*", ln):
-            last = {"name": ln, "ranges": {}, "traits": "", "page": page, "mag": "mag" in head}
-            rows.append(last)
-            target, attrs, vals, pending, traits = last, head, pending, None, None
-        elif m and head and len(vals) <= len(head):
-            last = {"name": m.group(1).strip(), "ranges": {}, "traits": "", "page": page, "mag": "mag" in head}
-            rows.append(last)
-            target, attrs, traits = last, head[: len(vals)], None
-        elif nums and part and len(part) == len(vals):
-            want = [a for a in part if a in _ALL]
-            target = next((r for r in rows if want and set(want) <= set(missing(r))), None)
-            attrs, traits = part, None
-        elif nums and not m:
-            target = next((r for r in rows if len(missing(r)) == len(vals)), None)
-            attrs, traits = (missing(target) if target else []), None
-        elif nums:  # a named row with more columns than the header
-            target = None
-        elif traits is not None:
-            traits["traits"] += " " + ln  # a wrapped trait list
-            continue
-        else:
-            continue
-        if target is None:
-            cat.report.append(
-                {
-                    "kind": "book-value",
-                    "file": "metatypes.xml",
-                    "name": m.group(1) if m else "",
-                    "field": "ranges",
-                    "value": ln,
-                    "page": page,
-                }
-            )
-            continue
-        # pylint: disable=possibly-used-before-assignment  # every branch that reaches here set attrs
-        for a, v in zip(attrs, vals):
-            lo, hi = re.findall(r"\d+", v)
-            target["ranges"][a] = (int(lo), int(hi))
-    for r in rows:
-        missing = [a for a in _ALL if a not in r["ranges"]]
-        if missing:
-            cat.report.append(
-                {
-                    "kind": "missing-value",
-                    "file": "metatypes.xml",
-                    "name": r["name"],
-                    "field": " ".join(missing),
-                    "page": r["page"],
-                }
-            )
-        kids = [("range", {"attr": a, "min": lo, "max": hi}, None) for a, (lo, hi) in r["ranges"].items() if a in _ALL]
-        kids += [("trait", {}, t) for t in _traits(r["traits"])]
-        cat.add("metatypes", r["name"], r["page"], {}, kids)
-
-
 # a development table row's name -> the metavariant it is (the row printed under another name)
 DEV_ALIASES = {"dour": "duende"}
 _BASE = {"human", "elf", "dwarf", "ork", "troll"}  # the core rulebook's: its priority table has them
@@ -205,19 +109,6 @@ def _development(cat, rows):
                 and not any(t == "priority" and a["letter"] == m.group(1) for t, a, _ in e["children"])
             ):
                 e["children"].append(("priority", {"letter": m.group(1), "points": int(v)}, None))
-
-
-def _traits(s):
-    """`A, B (2), C (x, y)` -> names, split at commas outside parentheses."""
-    out, depth, cur = [], 0, ""
-    for ch in s:
-        depth += (ch == "(") - (ch == ")")
-        if ch == "," and depth == 0:
-            out.append(cur)
-            cur = ""
-        else:
-            cur += ch
-    return [t.strip(" .") for t in out + [cur] if t.strip(" .")]
 
 
 # --- qualities, critter powers, contacts ----------------------------------------------------------------------------
@@ -835,7 +726,7 @@ def extract(regrouped, _ctx=None):
         if sections.is_path(f, template):
             cat.section(f)
     if ranges:
-        _metavariants(cat, ranges)
+        metavariants(cat, ranges)
     _development(cat, dev)
     files = {f"{k}.xml": cat.xml(k) for k in KINDS if cat.entries[k]}
     return Result(

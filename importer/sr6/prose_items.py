@@ -28,6 +28,19 @@ _CLASS_HEADING = re.compile(r"(?:(?:Unique|New)\s+)?((?:[A-Z][a-z]+\s+){0,2}Focu
 
 # an item a heading prices in one line of its text: `Availability 6, Cost 5,000¥`
 _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*(\d+\s*(?:\([A-Z]\))?)\s*,\s*Cost:?\s*([\d,]+)\s*¥\s*$", re.M)
+# the same, its cost first and by rating, its rating range after, at the start of its text: `Cost: 500 x Rating,
+# Availability 5, Rating 1-6`
+_COST_FIRST = re.compile(
+    r"^\W*Cost:?\s*((?:Rating\s*[x×]\s*)?[\d,]+\s*¥?(?:\s*[x×]\s*Rating)?)\s*,\s*Avail(?:ability)?:?\s*"
+    r"(\d+\s*(?:\([A-Z]\))?)(?:\s*,\s*Rating\s*(\d+)\s*[-–]\s*(\d+))?\b"
+)
+# a price list set as text lines, no table (the Missions Guide p. 46): a header `Grenade Availability Cost`, then rows
+# `Grenade of gold 5 700 ¥`
+_TEXT_PRICE_HEAD = re.compile(r"^\s*([A-Z][A-Za-z ]{1,30}?)\s+Avail(?:ability)?\s+Cost\s*$")
+_TEXT_PRICE_ROW = re.compile(r"^\s*([A-Z][^\d¥|]*?)\s+(\d+\s*(?:\([A-Z]\))?)\s+([\d,]+)\s*¥\s*$")
+_COST_MULTIPLIER = re.compile(r"\bCost Multiplier:?\s*[x×]\s*(\d+(?:\.\d+)?)", re.I)
+# a heading naming its item's class after it: `Bujeok (Magical Gear)`
+_CLASS_TAG = re.compile(r"(.+?)\s*\(([^()]*\bgear)\)\s*", re.I)
 
 
 # (owner, 2026-10-08) a replacement a section's prose prices, in figures or words: `a replacement instrument costs one
@@ -181,6 +194,11 @@ def run_in_items(bs, cat, _offset):
             cat.add(kind, name, e["page"], attrs, kids, "")
 
 
+def _labelled(b, label):
+    """The block's text with its leading labelled line `label` (regroup hands it over as a label) back at its start."""
+    return f"**{label}:** {b.labels[label]}\n{b.text}" if label in b.labels else b.text or ""
+
+
 def sentence_items(bs, offset):
     """[(kind, name, page, attrs, children, text)] of the items a book prices only in a sentence of another block's
     text (_AMMO_MULTIPLE, _PRICED_AS), each once (a description printed twice: its first)."""
@@ -223,6 +241,58 @@ def sentence_items(bs, offset):
                         b.text,
                     )
                 )
+        elif (
+            b.row is None
+            and not b.stats
+            and (m := _COST_FIRST.match(re.sub(r"\*\*", "", body := _labelled(b, "Cost"))))
+        ):
+            # `Cost: 500 x Rating, Availability 5, Rating 1-6` opening a heading's text: the heading's item, a class
+            # it names after it its category (`Bujeok (Magical Gear)`)
+            c = _CLASS_TAG.fullmatch(b.name)
+            name = c.group(1) if c else b.name
+            if norm(name) not in seen and norm(name) not in {norm(x.name) for x in bs if x.row is not None}:
+                seen.add(norm(name))
+                cost = " ".join(m.group(1).replace("¥", "").replace(",", "").split())
+                out.append(
+                    (
+                        "gear",
+                        name,
+                        page,
+                        {
+                            "category": c.group(2) if c else b.section or b.chapter or "Gear",
+                            "avail": " ".join(m.group(2).split()),
+                            "cost": cost,
+                            **({"rating": f"{m.group(3)}–{m.group(4)}"} if m.group(3) else {}),
+                        },
+                        (),
+                        body,
+                    )
+                )
+        if (
+            re.fullmatch(r"(?i)ammo(?:unition)?\s+type", (b.tags or "").strip())
+            and (mult := _COST_MULTIPLIER.search(b.text or ""))
+            and norm(b.name) not in seen
+        ):
+            # a heading tagged `(ammo type)` over its stat line `AR –2, Cost Multiplier: x2`: an ammunition type, its
+            # cost the multiplier, its attack-rating change as printed
+            seen.add(norm(b.name))
+            ar = re.search(r"\bAR\s*([+–−-]\s*\d+)", b.text or "")
+            attrs = {"category": "Ammo type", "cost": f"x{mult.group(1)}", **({"ar": ar.group(1)} if ar else {})}
+            out.append(("ammotypes", b.name.strip(), page, attrs, (), b.text))
+        lines = re.sub(r"\*\*", "", b.text or "").splitlines()
+        for k, ln in enumerate(lines):
+            if not (h := _TEXT_PRICE_HEAD.match(ln)):
+                continue
+            rows = []
+            for r in lines[k + 1 :]:
+                if not (rm := _TEXT_PRICE_ROW.match(r)):
+                    break
+                rows.append(rm)
+            for rm in rows if len(rows) >= 2 else ():  # (two rows or more: a list, not a sentence's price)
+                if norm(rm.group(1)) not in seen:
+                    seen.add(norm(rm.group(1)))
+                    attrs = {"category": h.group(1), "avail": " ".join(rm.group(2).split())}
+                    out.append(("gear", rm.group(1), page, {**attrs, "cost": rm.group(3).replace(",", "")}, (), ""))
         for m in _PURCHASED.finditer(re.sub(r"\*\*", "", text)):
             name = m.group(1)[:1].upper() + m.group(1)[1:]
             if norm(name) not in seen:
@@ -548,6 +618,57 @@ def _band_tier(rows, header=("RATING", "COST")):
         cost[-1][1],
         legal.pop() if len(legal) == 1 else "",
     )
+
+
+# a priced version of an item its text describes: `For an additional 500 nuyen, a Type 81 can be printed with a
+# custom-fit suppressor, which …`; `The Jind-0 can be upgraded to a “sporting breed” version, with a medium sized, body
+# 3 frame for a total base cost of 5000¥.`
+_WITH_VERSION = re.compile(
+    r"\bFor an additional ([\d,]+)\s*(?:nuyen|¥),\s+(an?\s+[^,.]{1,40}?\s+can be [a-z]+ with an? (?:[\w-]+\s+){0,3}?"
+    r"([a-z]+)\b(?=[,.])[^.]*\.)"
+)
+_NAMED_VERSION = re.compile(
+    r"\bcan be upgraded to an? [“\"]([^”\"]+)[”\"] version\b([^.]*?)\bfor a total (?:base )?cost of ([\d,]+)\s*"
+    r"(?:¥|nuyen)"
+)
+_VERSION_KINDS = ("weapons", "vehicles", "armor", "gear")
+_VERSION_STATS = {"weapons": (), "vehicles": ("body", "armor", "seats"), "armor": (), "gear": ()}
+
+
+def variants(bs, cat, offset):
+    """The priced versions of an item its description states (prose, no table row): an entry each, the item's
+    attributes with the version's price (`For an additional 500 nuyen …`: the item's cost plus it, named `<item> with
+    <suppressor>`; `… upgraded to a “sporting breed” version, with a … body 3 frame for a total base cost of 5000¥`:
+    that cost and the stats it names, named `<item> (Sporting breed)`), its text the sentence (the item's effects
+    reader leaves the priced sentence to it). The description is the item's own text or its heading's."""
+    heads = {norm(b.name): b for b in bs if b.name}
+    for kind in _VERSION_KINDS:
+        for e in list(cat.entries[kind]):
+            if not re.fullmatch(r"\d+", e["attrs"].get("cost") or ""):
+                continue
+            head = heads.get(norm(e["name"]))
+            text = " ".join(" ".join([e["text"] or "", head.text if head else ""]).replace("**", "").split())
+            text = re.sub(r"(?<=[a-z])- (?=[a-z])", "", text)  # (`be- fore`)
+            page = e["page"]
+            for m in _WITH_VERSION.finditer(text):
+                name = f"{e['name']} with {m.group(3)}"
+                cost = str(int(e["attrs"]["cost"]) + int(m.group(1).replace(",", "")))
+                said = m.group(2)[:1].upper() + m.group(2)[1:]
+                if norm(name) not in {norm(x["name"]) for x in cat.entries[kind]}:
+                    v = cat.add(kind, name, page, {**e["attrs"], "cost": cost}, (), said)
+                    v["tab"] = e.get("tab")  # (the item's table: its category the item's, categories.build)
+            for m in _NAMED_VERSION.finditer(text):
+                name = f"{e['name']} ({m.group(1)[:1].upper() + m.group(1)[1:]})"
+                stats = {
+                    a: s.group(1)
+                    for a in _VERSION_STATS[kind]
+                    if (s := re.search(rf"\b{a}\s+(\d+)\b", m.group(2), re.I))
+                }
+                if norm(name) not in {norm(x["name"]) for x in cat.entries[kind]}:
+                    attrs = {**e["attrs"], **stats, "cost": m.group(3).replace(",", "")}
+                    v = cat.add(kind, name, page, attrs, (), m.group(0).strip())
+                    v["tab"] = e.get("tab")
+    del offset  # (the entries carry their pages)
 
 
 def stated_items(bs, cat, offset, core=False):

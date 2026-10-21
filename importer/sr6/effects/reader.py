@@ -127,6 +127,10 @@ def read(text, kind=None, name=None, cls=""):
             # (`For example, the −1 modifier for 3 boxes can be removed`: an illustration of
             # a rule, no effect of its own; a worked `Example:` of an entry's own numbers stays read, Off Road Chassis)
             continue
+        if re.match(r"\W*for an additional [\d,]+\s*(?:nuyen|¥),[^.]*\bcan be [a-z]+ with\b", s, re.I):
+            # (`For an additional 500 nuyen, a Type 81 can be printed with a custom-fit suppressor, which increases …`:
+            # the priced version's, an entry of its own, prose_items.variants)
+            continue
         if (
             any(x[0] == "effect" for x in out)
             and not re.search(r"\b(?:each|per)\b", s, re.I)

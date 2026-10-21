@@ -29,7 +29,7 @@ from importer.sr6 import (
     tables,
 )
 from importer.sr6.regroup import alt_names, blocks, md_tables, norm
-from importer.sr6.prose_items import add_ons, dv_settings, run_in_items, sentence_items, stated_items
+from importer.sr6.prose_items import add_ons, dv_settings, run_in_items, sentence_items, stated_items, variants
 from importer.xmlio import HEAD, ILLEGAL
 
 CORE = "CRB"  # the core rulebook's source (recipes/crb.py): its catalog comes first, its sample runners cite their own
@@ -1905,6 +1905,144 @@ def ware_type(keys):
     return next((t for w, t in WARE_TYPES if w in hay), "cyberware")
 
 
+# --- metavariant attribute tables (the Sixth World Companion's summaries, Seoul Survivor's development table) ----
+
+_RANGE = r"\d+\s*[–-]\s*\d+\*?"
+_HEAD = re.compile(r"(?i)(?:(?:variant|metatype)\s+)?(?:\b(?:BOD|AGI|REA|STR|WIL|LOG|INT|CHA|EDG|M)\b\s*)+")
+_ROW = re.compile(rf"([A-Z][^\d]*?)\s+((?:{_RANGE}\s*)+)$")
+_NUMS = re.compile(rf"(?:{_RANGE}\s*)+")
+_ALL = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha", "edg")
+
+
+def metavariants(cat, chunks):
+    """The summary tables (`<X> Variant Attribute Ranges`), in either print: a header of attribute abbreviations (a
+    table header, or a text line), rows `Name 1–7 1–6 …` (or a nameless table row whose name is the next line), and
+    later number-only rows for the same names in the same order: under a header of the rest (`CHA EDG`), else the rows'
+    missing attributes in order. Each row's `Racial Traits:` line (wrapped) follows it. Seoul Survivor's development
+    table prints the same in text: a header led by its first column's name, in capitals and lower case (`Variant Bod
+    Agi Rea Str`), set bold at the end of a labelled line (each bold run is read as a line of its own), `Racial
+    Qualities:` for the traits, and labelled lines after them (`Average Height:`) that end the list."""
+    head, part, rows, last, traits, pending = [], None, [], None, None, None
+
+    def missing(r):
+        return [a for a in _ALL + ("mag",) if a not in r["ranges"] and (a != "mag" or r["mag"])]
+
+    lines = ((p, x) for p, text in chunks for ln in text.splitlines() for x in re.split(r"\s+(?=\*\*)", ln))
+    for page, raw in lines:
+        ln, table = raw.replace("**", "").strip(), raw.startswith("|")
+        if table:
+            ln = " ".join(c.strip() for c in ln.strip("|").split("|"))
+        if not ln or ln.startswith("#") or re.fullmatch(r"[-\s]+", ln):
+            continue
+        if _HEAD.fullmatch(ln):
+            h = [BEING.get(t.upper(), "mag") for t in ln.split() if t.lower() not in ("variant", "metatype")]
+            head, part, pending = (h, None, None) if h[0] == "bod" else (head, h, pending)
+            traits = None
+            continue
+        if m := re.match(r"Racial (?:Traits|Qualities)\s*:\s*(.*)", ln):
+            traits = last
+            if last is not None:
+                last["traits"] = m.group(1)
+            continue
+        m = _ROW.match(ln)
+        nums = m.group(2) if m else ln if _NUMS.fullmatch(ln) else None
+        vals = re.findall(_RANGE, nums) if nums else []
+        if table and nums and len(vals) == len(head):  # its name is the next line
+            pending, traits = vals, None
+            continue
+        if pending and not nums and re.fullmatch(r"[A-Z][^\d:]*", ln):
+            last = {"name": ln, "ranges": {}, "traits": "", "page": page, "mag": "mag" in head}
+            rows.append(last)
+            target, attrs, vals, pending, traits = last, head, pending, None, None
+        elif m and head and len(vals) <= len(head):
+            last = {"name": m.group(1).strip(), "ranges": {}, "traits": "", "page": page, "mag": "mag" in head}
+            rows.append(last)
+            target, attrs, traits = last, head[: len(vals)], None
+        elif nums and part and len(part) == len(vals):
+            want = [a for a in part if a in _ALL]
+            target = next((r for r in rows if want and set(want) <= set(missing(r))), None)
+            attrs, traits = part, None
+        elif nums and not m:
+            target = next((r for r in rows if len(missing(r)) == len(vals)), None)
+            attrs, traits = (missing(target) if target else []), None
+        elif nums:  # a named row with more columns than the header
+            target = None
+        elif traits is not None and not re.match(r"[A-Z][\w ]{2,30}:", ln):
+            # pylint: disable-next=unsupported-assignment-operation  # (a row: set by its `Racial Traits:` line)
+            traits["traits"] += " " + ln  # a wrapped trait list (a labelled line after it ends it)
+            continue
+        else:
+            continue
+        if target is None:
+            cat.report.append(
+                {
+                    "kind": "book-value",
+                    "file": "metatypes.xml",
+                    "name": m.group(1) if m else "",
+                    "field": "ranges",
+                    "value": ln,
+                    "page": page,
+                }
+            )
+            continue
+        # pylint: disable=possibly-used-before-assignment  # every branch that reaches here set attrs
+        for a, v in zip(attrs, vals):
+            lo, hi = re.findall(r"\d+", v)
+            target["ranges"][a] = (int(lo), int(hi))
+    for r in rows:
+        missing = [a for a in _ALL if a not in r["ranges"]]
+        if missing:
+            cat.report.append(
+                {
+                    "kind": "missing-value",
+                    "file": "metatypes.xml",
+                    "name": r["name"],
+                    "field": " ".join(missing),
+                    "page": r["page"],
+                }
+            )
+        kids = [("range", {"attr": a, "min": lo, "max": hi}, None) for a, (lo, hi) in r["ranges"].items() if a in _ALL]
+        kids += [("trait", {}, t) for t in trait_names(r["traits"])]
+        cat.add("metatypes", r["name"], r["page"], {}, kids)
+
+
+_VARIANT_BAND = re.compile(r"(?i)\*\*(?:variant|metatype)\s+bod\s+agi\s+rea\s+str\b")  # (Seoul Survivor p. 21)
+
+
+def racial_powers(bs, cat, offset):
+    """A heading whose `Requirement:` names a metatype the book read (`Concealment (Self):`, `Requirement: Minor
+    Dokkaebi Major Action, Sustained.`): that metatype's racial ability, a critter power named as printed, its action
+    and duration the words after the name."""
+    metas = sorted((e["name"] for e in cat.entries["metatypes"]), key=len, reverse=True)
+    have = {norm(e["name"]) for e in cat.entries["critterpowers"]}
+    for b in bs:
+        req = re.sub(r"\*\*", "", next((v for k, v in b.labels.items() if k.lower() == "requirement"), ""))
+        meta = next((m for m in metas if norm(req).startswith(norm(m))), None)
+        name = b.name.strip(" :")
+        if not meta or b.type != "item" or norm(name) in have:
+            continue
+        have.add(norm(name))
+        rest = req[len(meta) :] if req.lower().startswith(meta.lower()) else req
+        act = re.search(r"\b(Major|Minor)\s+action\b", rest, re.I)
+        dur = re.search(r"\b(Sustained|Always|Instant|Permanent)\b", rest, re.I)
+        attrs = {"action": act and act.group(1).capitalize(), "duration": dur and dur.group(1).capitalize()}
+        text = f"**Requirement:** {req}\n{b.text}"
+        cat.add("critterpowers", name, max(1, b.page - offset), {k: v for k, v in attrs.items() if v}, (), text)
+
+
+def trait_names(s):
+    """`A, B (2), C (x, y)` -> names, split at commas outside parentheses."""
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        depth += (ch == "(") - (ch == ")")
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    return [t.strip(" .") for t in out + [cur] if t.strip(" .")]
+
+
 def _variant_table(header):
     """A metatype ranges table titled by variant: first header VARIANT, at least four mental attributes' columns."""
     return (
@@ -1977,7 +2115,7 @@ def read(regrouped, ctx, book):
     known = {norm(b.name) for b in bs if b.name} | {norm(b.row.get(b.header[0], "")) for b in bs if b.row and b.header}
     bs = [x for b in bs for x in stat_lines(b, known)]  # (a heading whose text holds its stat line: that item)
     cat.index = search.Index(bs, bk.PAGE_OFFSET, md_tables, shapes.RENAME)
-    sec, found = sections.Reader(), []
+    sec, found, dev_tables = sections.Reader(), [], []
     for b in bs:
         if b.chapter != chapter:
             chapter, parent2, sub, stack = b.chapter, "", "", []
@@ -1995,6 +2133,8 @@ def read(regrouped, ctx, book):
             and (q := next((v for k, v in b.labels.items() if re.match(r"racial qualit", k, re.I)), None))
         ):
             cat.metatype([], [f"Racial Qualities: {q}"], page)  # printed as a labelled line under the table
+        if _VARIANT_BAND.search(block_text(b)):  # a development table set as text lines (metavariants)
+            dev_tables.append((page, block_text(b)))
         if (
             b.row is not None
             and b.header
@@ -2093,6 +2233,9 @@ def read(regrouped, ctx, book):
             parent=parent,
         )
         stack.append((level, e["id"]))
+    if dev_tables:
+        metavariants(cat, dev_tables)
+        racial_powers(bs, cat, bk.PAGE_OFFSET)
     for kind, name, page, attrs, kids, text in sentence_items(bs, bk.PAGE_OFFSET):
         if not any(norm(e["name"]) == norm(name) for e in cat.entries[kind]):
             cat.add(kind, name, page, attrs, kids, text)
@@ -2101,6 +2244,7 @@ def read(regrouped, ctx, book):
     dv_settings(bs, cat, bk.PAGE_OFFSET)
     add_ons(cat)
     stated_items(bs, cat, bk.PAGE_OFFSET, core=bk.ID == CORE)
+    variants(bs, cat, bk.PAGE_OFFSET)
     template = sections.template_headings(bs)
     for f in found:  # (after the book's own entries: one the recipe reads as well is the recipe's)
         if sections.is_path(f, template):

@@ -8,6 +8,7 @@ regrouped.md (importer/sr6/regroup.py), after prepare_md() titles the stat block
 general.md. A line or value that doesn't read is reported, never guessed."""
 
 import difflib
+import itertools
 import re
 from collections import Counter
 from dataclasses import replace
@@ -326,11 +327,17 @@ NEAR_NAME = 0.88  # a box title this close to its heading's name (difflib ratio 
 
 def _box_named(b):
     """A stat box under its item's heading, titled a letter or a joining word off it (`ceramic or plasteel knife` under
-    `Ceramic/Plasteel Knife`): named by the heading (the printed name), the box title an alias."""
+    `Ceramic/Plasteel Knife`), or the start of its name (`type 81` under `Type 81 “Gwisin”`; a stat box only, not a
+    map's caption, `bainbridge` under `Bainbridge Island`): named by the heading (the printed name), the box title an
+    alias."""
     if b.type != "item" or not b.label or b.name != b.label or b.name != b.name.lower() or not b.section:
         return b
     a, h = keys(b.name)[0], keys(b.section)[0]
-    if a == h or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME:
+    if (
+        a == h
+        or difflib.SequenceMatcher(None, a, h).ratio() < NEAR_NAME
+        and not ((b.stats or b.row) and h.startswith(a))
+    ):
         return b
     return replace(b, name=b.section, aliases=[*b.aliases, b.name])
 
@@ -401,6 +408,95 @@ def _weapon_bands(lines):
                 continue
         out.append(lines[i])
         i += 1
+    return out
+
+
+# an item's stat line in square brackets, priced (`[Capacity 2, Availability 3, Cost: 250¥]`)
+_BRACKET_LINE = re.compile(r"\[([^\[\]]*\bCost:?\s*[\d,]+\s*¥)\s*\]")
+_BRACKET_LABELS = {
+    "capacity": "CAPACITY",
+    "availability": "AVAIL",
+    "avail": "AVAIL",
+    "cost": "COST",
+    "dv": "DV",
+    "ar": "ATTACK RATINGS",
+}
+
+
+def _bracket_cells(s):
+    """An item's stat line in brackets (`Hold-Out, DV 2P, SS/BF, AR 12/7/—/—/—, 6(b), Avail: 2(F), Cost: 300¥`,
+    `Capacity 2, Availability 3, Cost: 250¥`) -> {column: value}: a labelled part under its label, a weapon's modes and
+    ammunition by their shapes, an unlabelled first part its type; None when a part reads as none of them or it has no
+    availability and cost."""
+    cells = {}
+    for n, part in enumerate(p.strip() for p in s.split(",")):
+        m = re.fullmatch(r"([A-Za-z]+):?\s+(.+)", part)
+        if m and m.group(1).lower() in _BRACKET_LABELS:
+            cells[_BRACKET_LABELS[m.group(1).lower()]] = m.group(2).strip()
+        elif re.fullmatch(r"(?:SS|SA|BF|FA|SUS)(?:/(?:SS|SA|BF|FA|SUS))*", part):
+            cells["MODES"] = part
+        elif re.fullmatch(r"\d+\s*\([a-z]+\)", part):
+            cells["AMMO"] = part
+        elif n == 0 and re.fullmatch(r"[A-Z][\w-]*(?: [A-Za-z][\w-]*)?", part):
+            cells["TYPE"] = part
+        else:
+            return None
+    return cells if {"AVAIL", "COST"} <= cells.keys() else None
+
+
+def _stat_brackets(lines):
+    """A line that is an item's stat line in square brackets (wrapped over two lines at most: `[Hold-Out, DV 2P, …,
+    Avail:` / `2(F), Cost: 300¥]`) -> the stat box table (regroup pairs it with the box title over it, or the heading
+    whose text it is in: catalog.stat_lines). A weapon's bracketed stats in a stat block (`Bite [Close Combat, DV 3P,
+    …]`) are no such line: a name before them, no price."""
+    out, i = [], 0
+    while i < len(lines):
+        s, j = lines[i].strip(), i + 1
+        if s.startswith("[") and "]" not in s and j < len(lines):
+            s, j = f"{s} {lines[j].strip()}", j + 1
+        m = _BRACKET_LINE.fullmatch(s) if s.startswith("[") else None
+        cells = _bracket_cells(m.group(1)) if m else None
+        if cells:
+            cols = sorted(cells, key=lambda c: c != "TYPE")  # (its type first: the stat line's form)
+            out += [
+                "| " + " | ".join(cols) + " |",
+                "|" + "---|" * len(cols),
+                "| " + " | ".join(cells[c] for c in cols) + " |",
+            ]
+            i = j
+            continue
+        out.append(lines[i])
+        i += 1
+    return out
+
+
+_COLUMNS = {h for hs in catalog.HEADERS.values() for h in hs}
+
+
+def _glue_cut(cell):
+    """Where a header cell glues two column names (`SEATAVAIL`: 4), else None."""
+    c = cell.upper()
+    return next((n for n in range(2, len(c) - 1) if c[:n] in _COLUMNS and c[n:] in _COLUMNS), None)
+
+
+def _glued_columns(lines):
+    """A table whose header glues two column names into one cell (`| SEN | SEATAVAIL | COST |`, Seoul Survivor p. 16)
+    and whose rows glue those two columns' values into the cell before it (`| 3 — | 2 | 3,500¥ |`): both split, the
+    values back under their columns (`SEN 3`, `SEAT —`, `AVAIL 2`). Left as printed when a row doesn't read so."""
+    out = list(lines)
+    for i, ln in enumerate(lines[:-2]):
+        cells = table_cells(ln) if ln.startswith("|") else []
+        g = next((n for n, c in enumerate(cells) if n and c.upper() not in _COLUMNS and _glue_cut(c)), None)
+        if g is None or not re.fullmatch(r"\|(?:\s*-+\s*\|)+", lines[i + 1].strip()):
+            continue
+        rows = [table_cells(x) for x in itertools.takewhile(lambda x: x.startswith("|"), lines[i + 2 :])]
+        if not rows or any(len(r) != len(cells) or len(r[g - 1].split()) != 2 for r in rows):
+            continue
+        cut = _glue_cut(cells[g])
+        head = cells[:g] + [cells[g][:cut], cells[g][cut:]] + cells[g + 1 :]
+        out[i : i + 2 + len(rows)] = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)] + [
+            "| " + " | ".join(r[: g - 1] + r[g - 1].split() + r[g:]) + " |" for r in rows
+        ]
     return out
 
 
@@ -490,7 +586,7 @@ class Book:
         there gets a capital (a box title over a tag line reads as an art caption); a tag line with more after it
         (`(Professional Rating 4), Human`) as one tag. A kicker set small over a heading (`Part of the Family:` over
         `Deserted`, `Event:` over a life module's title) is one heading with it, at the heading's level."""
-        lines = _weapon_bands(_kickers(_split_shared(md.splitlines())))
+        lines = _glued_columns(_stat_brackets(_weapon_bands(_kickers(_split_shared(md.splitlines())))))
 
         def bare(s):
             return re.sub(r"^#{4,5} ", "", s.strip())
