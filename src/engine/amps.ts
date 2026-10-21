@@ -1,25 +1,10 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
-import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectParam, EffectPick, ItemEntry, TableFlags } from '../model/types'
-// the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
-import RULES from './rule-effects.json'
+import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, TableFlags } from '../model/types'
+import { RULE_EFFECTS } from './load'
+import { isSinner, realSinItem, sinnerTemplate } from './file'
 
-/** The narrative effects' kinds (CRB p.59, src/engine/rule-effects.json): what an amp's narrative effect, an item or a racial
- *  quality does, machine-readable.
- *  Rating 0: the book prices narrative effects with the amp's base rating and its "Additional narrative effect"s (which
- *  stay), so a kind only says what one does; the loader adds them to every catalog's Amp effects (loadRuleEffects).
- *  `text` reads `{p}` as the effect's param (a Test for the test kinds), `{v}` as its value. */
-export const RULE_EFFECTS: (Omit<AmpEffect, 'types' | 'source' | 'page'> & { text: string })[] = (
-  RULES as { id: string; name: string; text: string; param?: EffectParam }[]
-).map(e => ({ ...e, category: 'narrative', rating: 0 }))
 const RULE_TEXT = new Map(RULE_EFFECTS.map(e => [e.id, e.text]))
 export const isRuleEffect = (ref: string) => RULE_TEXT.has(ref)
-
-/** The narrative effect kinds as Amp effects every amp type may take (CRB p.59), added where the catalog has none of
- *  that id. */
-export function loadRuleEffects(c: Catalog) {
-  const types = [...c.ampTypes.keys()]
-  for (const { text: _, ...e } of RULE_EFFECTS) if (!c.ampEffects.has(e.id)) c.ampEffects.set(e.id, { ...e, types, source: 'CRB', page: 59 })
-}
 
 /** A Test as the sheet names it: a skill, `Skill (spec)`, an attribute-based one, a custom one's own words, or all Tests. */
 export function testName(c: Catalog, param?: string): string {
@@ -55,37 +40,6 @@ export interface AmpCtx {
 export const FREE_SINNER = 'ca2.free-sinner'
 export const sinnerFree = (ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'freeSinner' | 'locked'>) =>
   (table?.locked?.includes(FREE_SINNER) ? undefined : ch.optionalRules?.[FREE_SINNER]) ?? table?.freeSinner ?? true
-
-/** case and spacing aside */
-export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
-/** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
-export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
-const effectKey = (es: EffectPick[]) =>
-  es
-    .map(e => `${e.ref}|${e.param ?? ''}|${e.value ?? ''}`)
-    .sort()
-    .join(';')
-/** An amp that is the SINner quality, and still only that: a Quality that is the catalog's SINner entry (by catalog id
- *  when the catalog is at hand, else its snapshot's name or its own; added by the box or by hand) with that entry's effects, or a
- *  hand-built Quality named exactly SINner (any case) with no effects at all. Renaming another amp, or adding any
- *  effect to a SINner (a narrative one too), makes it an amp priced like any other, first-Quality rule included.
- *  House rule (owner, 0.5.5): a SINner is always 0¥ and never takes the first-Quality slot, however it got there. */
-export function isSinner(a: AmpEntry, c?: Catalog): boolean {
-  if (a.type !== 'quality') return false
-  const bare = a.effects.length === 0
-  if (a.catalogId) {
-    // without the catalog (reading a file): its snapshot, or with none its name
-    const t = c
-      ? a.catalogId === sinnerTemplate(c)?.id
-        ? c.amps.get(a.catalogId)
-        : undefined
-      : plain(a.snapshot?.name ?? a.name) === 'sinner'
-        ? (a.snapshot ?? { effects: [] })
-        : undefined
-    return !!t && (bare || effectKey(a.effects) === effectKey(t.effects))
-  }
-  return (!!a.realSin || plain(a.name) === 'sinner') && bare
-}
 
 export function effectRating(c: Catalog, pick: EffectPick): number {
   const eff = c.ampEffects.get(pick.ref)
@@ -211,4 +165,29 @@ export function ampFromTemplate(t: AmpTemplate, uid: () => string): { amp: AmpEn
   }
   amp.linkedItem = item.uid
   return { amp, item }
+}
+
+/** The Concept tab's "Has a real SIN": on adds a free Real SIN entry and, when a book has one and the runner lacks it,
+ *  the SINner quality; off removes the entry and every SINner quality. */
+export function setRealSin(c: Catalog, b: Build, on: boolean): void {
+  if (!on) {
+    b.items = b.items.filter(i => i.starting !== 'real-sin')
+    b.amps = b.amps.filter(a => !isSinner(a, c))
+    return
+  }
+  if (!b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
+  const t = sinnerTemplate(c)
+  if (t && !b.amps.some(a => isSinner(a, c))) {
+    const { amp } = ampFromTemplate(t, () => 'real-sin-amp')
+    b.amps.push({ ...amp, realSin: true })
+  }
+}
+
+/** After every edit: a SINner quality brings its free Real SIN entry, and taking the last one off takes the entry with it
+ *  (kept when no book has a SINner, so a runner from before stays as it was). */
+export function syncRealSin(c: Catalog, b: Build): void {
+  const has = b.amps.some(a => isSinner(a, c)),
+    entry = b.items.some(i => i.starting === 'real-sin')
+  if (has && !entry) b.items.push(realSinItem())
+  if (!has && entry && sinnerTemplate(c)) b.items = b.items.filter(i => i.starting !== 'real-sin')
 }

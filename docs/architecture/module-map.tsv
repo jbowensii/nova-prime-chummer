@@ -664,13 +664,15 @@ src/ui/auth.tsx	core/ui-kit	4622
 src/ui/bits.tsx	core/ui-kit	3128
 src/ui/compendiumStore.ts	features/compendiums	1233
 src/ui/editor.ts	ca2/runner-builder	585
+src/ui/foundryKit.tsx	features/foundry-kit	1267
 src/ui/game.ts	core/ui-kit	241
 src/ui/icons.tsx	core/ui-kit	2284
 src/ui/nav.tsx	core/chrome	6406
 src/ui/repo.ts	features/runner-store	2178
 src/ui/runnerList.ts	features/runner-store	800
 src/ui/samples.ts	ca2/runner-builder	2387
-src/ui/settings.tsx	core/ui-kit	4686
+src/ui/settings.tsx	core/ui-kit	1171
+src/ui/sheetArt.tsx	features/appearance	1647
 src/ui/storage.ts	features/runner-store	394
 src/ui/tabs/AmpBuilder.tsx	ca2/runner-builder	3308
 src/ui/tabs/Amps.tsx	ca2/runner-builder	2435
@@ -704,6 +706,7 @@ tests/engine/canon.test.ts	ca2/catalog	1541
 tests/engine/career-more.test.ts	ca2/runner-builder	2924
 tests/engine/career.test.ts	ca2/runner-builder	4313
 tests/engine/charxml-more.test.ts	ca2/formats	2345
+tests/engine/charxml-old-file.test.ts	ca2/formats	1371
 tests/engine/charxml.test.ts	ca2/formats	1956
 tests/engine/compendium-more.test.ts	ca2/compendiums	1279
 tests/engine/compendium.test.ts	ca2/compendiums	1688

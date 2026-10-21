@@ -23,7 +23,8 @@ import {
   voidEvent,
 } from '../../src/engine/career'
 import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
-import { blankCharacter, setRealSin } from '../../src/engine/file'
+import { blankCharacter } from '../../src/engine/file'
+import { setRealSin } from '../../src/engine/amps'
 import { price } from '../../src/engine/price'
 import { validate } from '../../src/engine/validate'
 import type { Character } from '../../src/model/types'

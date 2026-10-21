@@ -6,7 +6,7 @@
 // adds its specs to the base skill of that id. The edits layer (custom/edits/, kind="edits") replaces
 // entries by id after the imports and before the house rules; the replaced entries stay in c.original. A GM's compendium
 // (kind="compendium", an extra overlay) adds its entries under its own house source.
-import type { AttrId, Catalog, Pricing, Source } from '../model/types'
+import type { AmpEffect, AttrId, Catalog, EffectParam, Pricing, Source } from '../model/types'
 import type { SourceFile } from '../shared/source'
 import {
   parseDataFile,
@@ -26,7 +26,8 @@ import {
   toSource,
   toVehicle,
 } from './parse'
-import { loadRuleEffects } from './amps'
+// the kinds' ids, names and lines; also read by tools/validate-data.mjs (a data file may use them)
+import RULES from './rule-effects.json'
 import { compendiumSource, readCompendium } from './compendium'
 import { openIssues, type Formula, type Issue } from './formula'
 
@@ -48,6 +49,22 @@ export const DATA_FILES = [
 /** The rules engine's core files: built by the core rulebook's import (or a data pack) into custom/imported/core/; in
  * development the owner's local copies in public/data load first. Everything but sources.xml. */
 export const CORE_FILES = DATA_FILES.filter(n => n !== 'sources')
+
+/** The narrative effects' kinds (CRB p.59, src/engine/rule-effects.json): what an amp's narrative effect, an item or a racial
+ *  quality does, machine-readable.
+ *  Rating 0: the book prices narrative effects with the amp's base rating and its "Additional narrative effect"s (which
+ *  stay), so a kind only says what one does; the loader adds them to every catalog's Amp effects (loadRuleEffects).
+ *  `text` reads `{p}` as the effect's param (a Test for the test kinds), `{v}` as its value. */
+export const RULE_EFFECTS: (Omit<AmpEffect, 'types' | 'source' | 'page'> & { text: string })[] = (
+  RULES as { id: string; name: string; text: string; param?: EffectParam }[]
+).map(e => ({ ...e, category: 'narrative', rating: 0 }))
+
+/** The narrative effect kinds as Amp effects every amp type may take (CRB p.59), added where the catalog has none of
+ *  that id. */
+export function loadRuleEffects(c: Catalog) {
+  const types = [...c.ampTypes.keys()]
+  for (const { text: _, ...e } of RULE_EFFECTS) if (!c.ampEffects.has(e.id)) c.ampEffects.set(e.id, { ...e, types, source: 'CRB', page: 59 })
+}
 
 // a data file as the loaders get it: both games' (src/shared/source.ts)
 export type { SourceFile }

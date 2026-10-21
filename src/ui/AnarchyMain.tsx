@@ -2,7 +2,7 @@
 // this or Shadowrun 6's Sr6Main.
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from './nav'
-import { loadCatalog } from '../engine'
+import { dupeGroups, loadCatalog } from '../engine'
 import { ca2Codec } from '../engine/charxml'
 import { migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
 import type { Catalog } from '../model/types'
@@ -159,7 +159,7 @@ export function Main({ repo, route }: { repo: Repo; route: string[] }) {
         ) : page === 'books' && id && tab === 'review' ? (
           <BookReview key={id} c={catalog} id={id} />
         ) : page === 'books' ? (
-          <BooksScreen c={catalog} reload={() => void refresh()} />
+          <BooksScreen c={catalog} reload={() => void refresh()} dupeGroups={dupeGroups} />
         ) : page === 'data' ? (
           <DataScreen c={catalog} reload={refresh} />
         ) : page === 'rules' ? (

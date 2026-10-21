@@ -2,6 +2,7 @@
 // book (source id, title, canon) and add the accepted ones. Every decision is saved back to review.xml at once.
 import { useEffect, useState } from 'react'
 import { blankCharacter, toPick } from '../engine'
+import { SOURCE_ID } from '../shared/source'
 import { ATTRS, type AmpEntry, type AttrId, type Catalog } from '../model/types'
 import { Modal } from './bits'
 import { api } from './api'
@@ -200,7 +201,7 @@ export function BookReview({ c, id }: { c: Catalog; id: string }) {
   const decide = (p: Element, state: string) => save(() => p.setAttribute('state', state))
   const accepted = proposals.filter(p => ['accepted', 'edited'].includes(p.getAttribute('state')!)).length
   const pending = proposals.filter(p => p.getAttribute('state') === 'pending')
-  const validSource = /^[A-Z][A-Z0-9-]{0,19}$/.test(source)
+  const validSource = SOURCE_ID.test(source)
   const taken = validSource && c.sources.has(source) && book?.source !== source
 
   // rows for core tables the book's recipe couldn't read: they go to the core data, cited to the book as imported
