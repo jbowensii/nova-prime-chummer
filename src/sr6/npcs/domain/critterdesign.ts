@@ -7,10 +7,10 @@
 import type { Sr6CritterDesign, Sr6CritterPower, Sr6Npc } from '../../formats/domain/character'
 import type { Sr6Entry } from '../../formats/domain/types'
 import { num, type CreationRules } from '../../table-setup/domain/creation'
-import { firstNumber } from '../../engine/critters'
+import { firstNumber } from '../../runner-builder/domain/assets/critters'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { normName } from '../../catalog/domain/names'
-import { NPC_STATS } from '../../engine/npc'
+import { NPC_STATS } from '../../runner-builder/domain/creation/npc'
 
 /** The attributes the Design tab sets, in stat-block order, with their labels. */
 export const CRITTER_ATTRS = NPC_STATS.filter(([k]) => ['bod', 'agi', 'rea', 'str', 'wil', 'log', 'int', 'cha', 'edg', 'ess', 'mag', 'res'].includes(k))

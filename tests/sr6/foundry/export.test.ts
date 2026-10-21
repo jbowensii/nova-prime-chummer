@@ -3,16 +3,16 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
-import { priced } from '../../../src/sr6/engine/budgets'
-import { balances, currentBuild } from '../../../src/sr6/engine/career'
-import { deriveSr6 } from '../../../src/sr6/engine/derive'
+import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { balances, currentBuild } from '../../../src/sr6/runner-builder/domain/career/career'
+import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { entryValues, exportAttrs, exportSr6Books, exportSr6Compendium, exportSr6Runners } from '../../../src/sr6/foundry/domain/export'
 import { xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
-import { blankSr6Npc } from '../../../src/sr6/engine/npc'
+import { blankSr6Npc } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import type { Sr6Purchase } from '../../../src/sr6/formats/domain/character'
 import type { Sr6Compendium } from '../../../src/sr6/formats/domain/character'
 import { made, fixtureCatalog } from '../catalog/fixture'
-import { ganger, mara, SAMPLE_OPTS, sampleWorld, streetKit } from '../samples'
+import { ganger, mara, SAMPLE_OPTS, sampleWorld, streetKit } from '../runner-builder/samples'
 
 const OPTS = { descriptions: true, now: '2026-10-04T09:00:00.000Z', appVersion: '0.9.0' }
 const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
@@ -286,7 +286,7 @@ describe('SR6 export: compendium', () => {
   })
 })
 
-describe('the Foundry module’s samples (tests/sr6/samples.ts)', () => {
+describe('the Foundry module’s samples (tests/sr6/runner-builder/samples.ts)', () => {
   const w = sampleWorld()
   const files = () => ({
     'test-runners.json': exportSr6Runners(w.c, w.data, w.cr, [mara(w), ganger()], SAMPLE_OPTS),

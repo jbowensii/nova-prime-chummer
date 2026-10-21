@@ -155,7 +155,7 @@ export function buildSr6Catalog(files: SourceFile[]): Sr6Catalog {
           if (e) e.text = el.textContent ?? ''
         }
       } else if (kind === 'edits') {
-        // a book sample runner's printed lines corrected: not a catalog entry (src/sr6/engine/samplefix.ts)
+        // a book sample runner's printed lines corrected: not a catalog entry (src/sr6/runner-builder/domain/creation/samplefix.ts)
         for (const el of els.filter(x => x.localName === 'samplefix')) {
           const a = (n: string) => el.getAttribute(n) ?? ''
           c.sampleFixes ??= new Map()

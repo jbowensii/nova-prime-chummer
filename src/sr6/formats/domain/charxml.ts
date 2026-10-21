@@ -251,7 +251,7 @@ function entryXml(e: Sr6LedgerEntry): string {
   }
 }
 const ledgerXml = (l: Sr6LedgerEntry[]) => (l.length ? `<ledger>\n    ${l.map(entryXml).join('\n    ')}\n  </ledger>` : '')
-// the compendium entries the runner uses, with their text (src/sr6/engine/house.ts)
+// the compendium entries the runner uses, with their text (src/sr6/runner-builder/domain/career/house.ts)
 const houseXml = (h?: Sr6Entry[]) => (h?.length ? `<house>${h.map(e => sr6EntryXml(e, true)).join('')}</house>` : '')
 
 function npcXml(n?: Sr6Npc): string {

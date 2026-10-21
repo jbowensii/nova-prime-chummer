@@ -2829,7 +2829,7 @@ table.data tr.group td {
   min-width: 7rem;
 }
 
-/* SR6 contacts (sr6/ui/tabs/Contacts.tsx): a table while it fits, one card per contact when its box is narrow; never a
+/* SR6 contacts (sr6/runner-builder/ui/tabs/Contacts.tsx): a table while it fits, one card per contact when its box is narrow; never a
    sideways scroll */
 .contacts-wrap {
   container-type: inline-size;

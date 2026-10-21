@@ -4,10 +4,10 @@
 // bonus over the catalog's effect, an expertise's own specialization. Made-up fixture, invented numbers.
 import { expect, test } from 'vitest'
 import type { Sr6Build } from '../../../src/sr6/formats/domain/character'
-import { allBudgets, attrMax, attrRating, augmentBonus } from '../../../src/sr6/engine/budgets'
-import { deriveSr6 } from '../../../src/sr6/engine/derive'
-import { makeProvider } from '../../../src/sr6/engine/providers'
-import { validateSr6 } from '../../../src/sr6/engine/rules'
+import { allBudgets, attrMax, attrRating, augmentBonus } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
+import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
+import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 import { buildOf, GLIM, made } from './fixture'
 

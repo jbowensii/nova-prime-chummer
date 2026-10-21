@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { MAGIC_KINDS, sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { normName } from '../../../src/sr6/catalog/domain/names'
 import { missingFor } from '../../../src/sr6/table-setup/domain/creation'
-import { setMetatype } from '../../../src/sr6/engine/actions'
+import { setMetatype } from '../../../src/sr6/runner-builder/domain/creation/actions'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 import { fixtureCatalog, fixtureCreation, made } from './fixture'
 

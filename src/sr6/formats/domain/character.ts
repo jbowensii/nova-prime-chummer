@@ -1,6 +1,6 @@
 // The Shadowrun 6 runner model (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): one runner = one
 // <sr6:character> file, read and written by src/sr6/formats/domain/charxml.ts. The build holds what the player spent; budgets,
-// rules and derived values are computed from it (src/sr6/engine/*), never stored.
+// rules and derived values are computed from it (src/sr6/runner-builder/domain/), never stored.
 import { EFFECT_SWITCHES, type EffectSwitch } from '../../../core/shared/effects'
 import { newId, type Identity, type Override } from '../../../core/shared/types'
 import type { Sr6Entry, Sr6Kind } from './types'
@@ -101,7 +101,7 @@ export const BONUS_TARGETS: Bonus['target'][] = [
 /** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
 export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
 export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
-/** critters: a critter the runner owns (catalog critters; the Critters tab, src/sr6/engine/critters.ts) */
+/** critters: a critter the runner owns (catalog critters; the Critters tab, src/sr6/runner-builder/domain/assets/critters.ts) */
 export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes' | 'critters'
 export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes', 'critters']
 /** The pet classes a player picks for a critter bought (Wild Life p. 180); Awakened and Emerged come from its Magic or
@@ -186,7 +186,7 @@ export interface Sr6Purchase {
  *  each option, modification or quality factor with its level (1 for one taken once; negative: an option taken in
  *  reverse), the mods built in as design options (gear lines: 2 Design Points per mod slot, their nuyen added to the
  *  price), built yourself (half the price, p. 155) and approved by a GM (bought designs then need no approval). Nothing
- *  derived is stored (src/sr6/engine/design.ts works it out). */
+ *  derived is stored (src/sr6/runner-builder/domain/assets/design.ts works it out). */
 export interface Sr6Design {
   kind: 'vehicle' | 'drone'
   chassis?: string
@@ -327,7 +327,7 @@ export interface Sr6Build {
   /** a metatype id, '' while none is picked */
   metatype: string
   magic: MagicKind
-  /** the player's override of the Awakened flag (src/sr6/engine/infected.ts awakenedFlag); none: derived */
+  /** the player's override of the Awakened flag (src/sr6/runner-builder/domain/creation/infected.ts awakenedFlag); none: derived */
   awakened?: boolean
   /** the magic kind before the Infected type changed it (Awakened it, or took a technomancer's Resonance: SWC p. 105);
    *  the kind the method bought, and what taking the type away restores */
@@ -361,7 +361,7 @@ export interface Sr6Build {
   karmaToNuyen: number
 }
 
-/** A career spend (S3), replayed on the finalized build (src/sr6/engine/career.ts). target: an attribute, a skill id or
+/** A career spend (S3), replayed on the finalized build (src/sr6/runner-builder/domain/career/career.ts). target: an attribute, a skill id or
  *  (buyoff, drop) the line's uid; line: what joins the build (buyoff, drop: the removed one, kept for the history).
  *  convert: karma > 0 turns karma into nuyen, < 0 nuyen into karma. */
 export type Sr6Advance =
@@ -504,7 +504,7 @@ export interface Sr6Printed {
 /** identity.metatype mirrors build.metatype (the file keeps it once, on the root). final: the karma and nuyen left at
  *  Finalize. npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey:
  *  the catalog entry a book NPC was loaded from, or the book sample an example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
- *  (src/sr6/engine/house.ts), so it keeps them when the compendium is unshared or deleted. */
+ *  (src/sr6/runner-builder/domain/career/house.ts), so it keeps them when the compendium is unshared or deleted. */
 export interface Sr6Character {
   formatVersion: 1
   id: string
@@ -527,7 +527,7 @@ export interface Sr6Character {
   rules?: RunnerRule[]
   /** (never stored) its book sample's printed lines as the owner's override file corrects them (engine/samplefix.ts) */
   corrections?: SampleCorrection[]
-  /** catalog ids turned into the ones a re-import gave the entries (src/sr6/engine/migrate.ts): `<kind>/<id>` each */
+  /** catalog ids turned into the ones a re-import gave the entries (src/sr6/runner-builder/domain/career/migrate.ts): `<kind>/<id>` each */
   migrated?: { from: string; to: string; at: string }[]
 }
 

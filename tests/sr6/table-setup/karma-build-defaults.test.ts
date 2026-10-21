@@ -14,8 +14,8 @@ import {
   runnerRules,
   type CreationRules,
 } from '../../../src/sr6/table-setup/domain/creation'
-import { allBudgets, freeSpellSlots } from '../../../src/sr6/engine/budgets'
-import { makeProvider } from '../../../src/sr6/engine/providers'
+import { allBudgets, freeSpellSlots } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import type { MagicKind, Sr6Build } from '../../../src/sr6/formats/domain/character'
 import { buildOf, GLIM, made } from '../catalog/fixture'
 

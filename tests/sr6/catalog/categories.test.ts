@@ -2,11 +2,11 @@
 // composed names; an accessory category fits its host's exact category (or kind); the accessory action refuses another
 // host's accessory; Review flags an accessory on the wrong host and accessories over the host's capacity.
 import { expect, test } from 'vitest'
-import { apply } from '../../../src/sr6/engine/actions'
+import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
 import { capacityOf, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../../src/sr6/catalog/domain/categories'
-import { validateSr6 } from '../../../src/sr6/engine/rules'
-import { deriveSr6 } from '../../../src/sr6/engine/derive'
-import { priced } from '../../../src/sr6/engine/budgets'
+import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
+import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
+import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 import { buildOf, made, STONE } from './fixture'
 

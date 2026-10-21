@@ -1,6 +1,6 @@
 // The SR6 runner's editor (#/sr6/c/<id>/<tab>): the Anarchy editor's look (topbar, tabs, the budgets panel where the
 // receipt is) over useAutosave (save, conflict, undo). Read only for someone else's runner. Once finalized (career) the
-// tabs show the runner as it stands (its build with the ledger's live spends replayed, src/sr6/engine/career.ts) and are
+// tabs show the runner as it stands (its build with the ledger's live spends replayed, src/sr6/runner-builder/domain/career/career.ts) and are
 // read only but Concept, Review and Ledger: spends are recorded on the Ledger tab. A refused step shows its reason under
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/ui/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
 // opens from the NPC store with tabs Concept, Stat block (a critter's Design too) and Print, and its kind chip where a
@@ -13,43 +13,43 @@ import { IconButton } from '../../../core/ui-kit/icons'
 import { HeaderBars } from '../../../core/chrome/nav'
 import { Face } from '../../../core/ui-kit/Portrait'
 import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-store/useAutosave'
-import { allBudgets } from '../../engine/budgets'
-import { currentBuild, preview, record, validateCareer } from '../../engine/career'
+import { allBudgets } from '../../runner-builder/domain/creation/budgets'
+import { currentBuild, preview, record, validateCareer } from '../../runner-builder/domain/career/career'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
-import { deriveSr6 } from '../../engine/derive'
-import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../../engine/house'
-import { makeProvider } from '../../engine/providers'
-import { migrateSr6Ids } from '../../engine/migrate'
-import { validateSr6 } from '../../engine/rules'
+import { deriveSr6 } from '../../runner-builder/domain/creation/derive'
+import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../../runner-builder/domain/career/house'
+import { makeProvider } from '../../runner-builder/domain/creation/providers'
+import { migrateSr6Ids } from '../../runner-builder/domain/career/migrate'
+import { validateSr6 } from '../../runner-builder/domain/review/rules'
 import type { Sr6Character } from '../../formats/domain/character'
 import type { Sr6Catalog } from '../../formats/domain/types'
-import { Budgets } from '../../ui/Budgets'
+import { Budgets } from '../../runner-builder/ui/Budgets'
 import { rulesForRunner, tableRulesFor, useRunnerCampaign } from '../../table-setup/ui/Creation'
-import { withSampleFixes } from '../../engine/samplefix'
-import { npcChip, reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from '../../ui/editor'
-import { problemParts } from '../../ui/problems'
+import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
+import { npcChip, reasonText, runAct, SR6_FINAL_TIP, Sr6Editor, sr6EditHref, sr6NpcHref, sr6NpcsHref, type Sr6Ctx } from '../../runner-builder/ui/editor'
+import { problemParts } from '../../runner-builder/ui/problems'
 import { downloadSr6Runners } from '../../foundry/ui/Foundry'
-import { exportSr6, sr6NpcRepo, sr6Repo } from '../../ui/repo'
-import { AttributesTab } from '../../ui/tabs/Attributes'
-import { AugmentationsTab } from '../../ui/tabs/Augmentations'
-import { ConceptTab } from '../../ui/tabs/Concept'
-import { ContactsTab } from '../../ui/tabs/Contacts'
-import { GearTab } from '../../ui/tabs/Gear'
-import { LedgerTab } from '../../ui/tabs/Ledger'
-import { MagicTab } from '../../ui/tabs/Magic'
-import { MartialArtsTab } from '../../ui/tabs/MartialArts'
-import { MethodTab } from '../../ui/tabs/Method'
-import { QualitiesTab } from '../../ui/tabs/Qualities'
-import { ReviewTab } from '../../ui/tabs/Review'
-import { SkillsTab } from '../../ui/tabs/Skills'
+import { exportSr6, sr6NpcRepo, sr6Repo } from '../../runner-builder/ui/repo'
+import { AttributesTab } from '../../runner-builder/ui/tabs/Attributes'
+import { AugmentationsTab } from '../../runner-builder/ui/tabs/Augmentations'
+import { ConceptTab } from '../../runner-builder/ui/tabs/Concept'
+import { ContactsTab } from '../../runner-builder/ui/tabs/Contacts'
+import { GearTab } from '../../runner-builder/ui/tabs/Gear'
+import { LedgerTab } from '../../runner-builder/ui/tabs/Ledger'
+import { MagicTab } from '../../runner-builder/ui/tabs/Magic'
+import { MartialArtsTab } from '../../runner-builder/ui/tabs/MartialArts'
+import { MethodTab } from '../../runner-builder/ui/tabs/Method'
+import { QualitiesTab } from '../../runner-builder/ui/tabs/Qualities'
+import { ReviewTab } from '../../runner-builder/ui/tabs/Review'
+import { SkillsTab } from '../../runner-builder/ui/tabs/Skills'
 import { StatsTab } from '../../npcs/ui/tabs/Stats'
 import { DesignTab } from '../../npcs/ui/tabs/Design'
-import { DronesTab, VehiclesTab } from '../../ui/tabs/Vehicles'
-import { CrittersTab } from '../../ui/tabs/Critters'
+import { DronesTab, VehiclesTab } from '../../runner-builder/ui/tabs/Vehicles'
+import { CrittersTab } from '../../runner-builder/ui/tabs/Critters'
 import { Sr6Sheet } from '../../print/ui/Sheet'
 import { TabBoundary } from '../../../core/shared/ui'
-import { npcTabs, sr6Tabs } from '../../ui/tabList'
+import { npcTabs, sr6Tabs } from '../../runner-builder/ui/tabList'
 
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
 
@@ -151,7 +151,7 @@ export function Sr6EditorView({
   const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown),
     ro = theirs || locked
-  // a compendium entry it uses is copied onto it (src/sr6/engine/house.ts): it keeps it if the compendium goes
+  // a compendium entry it uses is copied onto it (src/sr6/runner-builder/domain/career/house.ts): it keeps it if the compendium goes
   const commit = (next: Sr6Character, undoable = true) => {
     setRefusal(null)
     save.commit(keepSr6House(c, next), undoable)

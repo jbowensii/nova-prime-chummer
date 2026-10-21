@@ -6,9 +6,9 @@
 import type { ReactNode } from 'react'
 import { MAGIC_KINDS } from '../../catalog/domain/data'
 import { MAGIC_KIND_LABELS, sinKind, sinName } from '../../formats/domain/character'
-import { useSr6Editor } from '../../ui/editor'
+import { useSr6Editor } from '../../runner-builder/ui/editor'
 import type { SheetArt } from './BookSheet'
-import { allSkills, band, br, poolOn, runnerView } from '../view'
+import { allSkills, band, br, poolOn, runnerView } from '../../runner-builder/ui/view'
 
 /** a pointy-topped hexagon with a value (and a small line under it) inside */
 function Hex({ v, sub, className }: { v?: ReactNode; sub?: ReactNode; className?: string }) {

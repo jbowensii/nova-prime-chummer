@@ -4,9 +4,9 @@
 // powertrain and console; options by level (negative: in reverse; Improved Handling for on-road or off-road only), design
 // modifications and quality factors; the mods built in (2 Design Points a mod slot, their nuyen added to the price);
 // built yourself; and the live totals
-// (src/sr6/engine/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
+// (src/sr6/runner-builder/domain/assets/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
 // design is approved (a GM may tick or untick it); a player's, bought by a runner, is a Review warning a GM approves.
-// A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs (src/sr6/ui/repo.ts).
+// A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs (src/sr6/runner-builder/ui/repo.ts).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, canEdit, useMe } from '../../../core/ui-kit/auth'
 import { Brand, Modal, Stepper } from '../../../core/ui-kit/bits'
@@ -21,13 +21,13 @@ import { newId } from '../../../core/shared/types'
 import { entryLabel } from '../../catalog/domain/categories'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
-import { designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../engine/design'
-import { entryOf, modKind } from '../../engine/purchases'
+import { designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
+import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
-import { n } from '../../ui/editor'
-import { CatalogPicker } from '../../ui/Picker'
-import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../ui/repo'
+import { n } from '../../runner-builder/ui/editor'
+import { CatalogPicker } from '../../runner-builder/ui/Picker'
+import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-builder/ui/repo'
 
 const designName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed design'
 const href = (id: string) => `#/sr6/designs/${id}`

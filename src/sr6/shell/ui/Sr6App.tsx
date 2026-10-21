@@ -27,9 +27,9 @@ import { CampaignCreation, ServerCreation, type Loaded } from '../../table-setup
 import { Sr6Data } from '../../game-data/ui/Data'
 import { Sr6DesignEditor, Sr6Designs } from '../../designer/ui/Designer'
 import { Sr6EditorView } from './EditorView'
-import { NPC_TABS, SR6_TABS } from '../../ui/tabList'
+import { NPC_TABS, SR6_TABS } from '../../runner-builder/ui/tabList'
 import { Sr6Npcs } from '../../npcs/ui/Npcs'
-import { Sr6CampaignScreen } from '../../ui/problems'
+import { Sr6CampaignScreen } from '../../runner-builder/ui/problems'
 import { Sr6Rules } from '../../game-data/ui/Rules'
 import { Sr6Runners } from '../../runner-library/ui/Runners'
 

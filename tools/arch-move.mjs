@@ -14,14 +14,15 @@ import { fileURLToPath } from 'node:url'
 /** Files that stay where they are whatever their module: the Vite entry (index.html loads /src/main.tsx). */
 const STAY = new Set(['src/main.tsx'])
 
-/** Where a file of `mod` belongs. `sub` is the map's optional 4th column (e.g. sr6/runner-builder's creation, review, career, assets). */
+/** Where a file of `mod` belongs. `sub` is the map's optional 4th column (e.g. sr6/runner-builder's creation, review, career, assets; `ui` for the ui layer's root). */
 export function target(path, mod, sub = '', clash = false) {
   if (STAY.has(path) || /^core\/(platform|archive)$/.test(mod) || !/^(core|features|ca2|sr6)\//.test(mod)) return path
   const name = posix.basename(path)
   if (path.startsWith('src/')) {
     if (!/^(ca2|sr6)\//.test(mod)) return `src/${mod}/${name}`
-    const layer = /\.(tsx|css)$/.test(path) || /\/ui\//.test(path) ? 'ui' : 'domain'
-    return posix.join('src', mod, layer, sub || (/\/tabs\//.test(path) ? 'tabs' : ''), name)
+    // sub 'ui': a .ts outside a ui/ folder that belongs in the ui layer (sr6/print/view.ts, the view model the tabs render)
+    const layer = sub === 'ui' || /\.(tsx|css)$/.test(path) || /\/ui\//.test(path) ? 'ui' : 'domain'
+    return posix.join('src', mod, layer, sub === 'ui' ? '' : sub || (/\/tabs\//.test(path) ? 'tabs' : ''), name)
   }
   if (path.startsWith(`tests/${mod}/`) || !/^tests\/(?!server\/|fixtures\/)[^/]+\/.*\.tsx?$/.test(path)) return path
   // two tests of one module with the same file name (tests/old/price.test.ts, tests/older/price.test.ts) keep their old folder name

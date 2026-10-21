@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { xmlToCharacter } from '../../../src/ca2/formats/domain/charxml'
-import { currentBuild } from '../../../src/sr6/engine/career'
+import { currentBuild } from '../../../src/sr6/runner-builder/domain/career/career'
 import { SR6_CHAR_NS, sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
-import { sr6Codec } from '../../../src/sr6/ui/repo'
+import { sr6Codec } from '../../../src/sr6/runner-builder/ui/repo'
 import { blankSr6, SR6_ADVANCE_OPS, type Sr6Advance, type Sr6Character, type Sr6LedgerEntry } from '../../../src/sr6/formats/domain/character'
 
 const XSD = readFileSync('public/data/sr6/schema/character.xsd', 'utf8')

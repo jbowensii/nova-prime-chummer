@@ -1,15 +1,15 @@
-// An attribute's card, both games (src/sr6/ui/EntryRef.tsx sr6AttrRow, src/ca2/runner-builder/ui/AnarchyRef.tsx anarchyAttrRow): its natural
+// An attribute's card, both games (src/sr6/runner-builder/ui/EntryRef.tsx sr6AttrRow, src/ca2/runner-builder/ui/AnarchyRef.tsx anarchyAttrRow): its natural
 // and augmented ratings, its maximum, what raises it (the lines the effective value adds up) and the rule's source and
 // page. Made-up runners on the made-up fixtures.
 import { expect, test } from 'vitest'
 import { attrRRSources, derive } from '../../../src/ca2/runner-builder/domain/derive'
 import { blankCharacter } from '../../../src/ca2/formats/domain/file'
 import { anarchyAttrRow } from '../../../src/ca2/runner-builder/ui/AnarchyRef'
-import { augmentBonus, bonusSources } from '../../../src/sr6/engine/budgets'
-import { deriveSr6 } from '../../../src/sr6/engine/derive'
-import { makeProvider } from '../../../src/sr6/engine/providers'
+import { augmentBonus, bonusSources } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
+import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import { blankSr6, type Sr6Attr } from '../../../src/sr6/formats/domain/character'
-import { advanceTarget, sr6AttrRow } from '../../../src/sr6/ui/EntryRef'
+import { advanceTarget, sr6AttrRow } from '../../../src/sr6/runner-builder/ui/EntryRef'
 import { cat } from '../../helpers'
 import { buildOf, fixtureCatalog, GLIM, made } from '../../sr6/catalog/fixture'
 

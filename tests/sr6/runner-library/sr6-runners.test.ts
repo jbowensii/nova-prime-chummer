@@ -1,10 +1,10 @@
-// The SR6 runners page's pure helpers (src/sr6/ui/repo.ts): import refuses an Anarchy runner with where it belongs and
+// The SR6 runners page's pure helpers (src/sr6/runner-builder/ui/repo.ts): import refuses an Anarchy runner with where it belongs and
 // gives a taken id a new one; repair lists its changes; export snapshots every catalog line. All names made up.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { sr6ToXml } from '../../../src/sr6/formats/domain/charxml'
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
-import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../../src/sr6/ui/repo'
+import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../../src/sr6/runner-builder/ui/repo'
 import { missingLabels } from '../../../src/sr6/table-setup/ui/MissingList'
 import { samplesToLoad } from '../../../src/sr6/runner-library/ui/Runners'
 import { fixtureCatalog, made } from '../catalog/fixture'

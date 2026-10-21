@@ -4,11 +4,11 @@
 // them), and the NPC block as it prints.
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
-import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../../engine/npc'
+import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../../runner-builder/domain/creation/npc'
 import type { Sr6Npc } from '../../../formats/domain/character'
-import { NpcBlock } from '../../../print/NpcBlock'
-import { useSr6Editor } from '../../../ui/editor'
-import { Sr6Ref } from '../../../ui/EntryRef'
+import { NpcBlock } from '../../../runner-builder/ui/NpcBlock'
+import { useSr6Editor } from '../../../runner-builder/ui/editor'
+import { Sr6Ref } from '../../../runner-builder/ui/EntryRef'
 
 /** a designed critter's lines the Design tab writes */
 const DESIGNED = new Set(['skills', 'powers', 'weaknesses'])

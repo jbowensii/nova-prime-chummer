@@ -14,9 +14,9 @@ import { OverrideFiles } from '../../../features/catalog-edits/OverrideFiles'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6SampleFix } from '../../formats/domain/types'
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from '../../foundry/ui/Foundry'
-import { groupOf as pickerGroup } from '../../ui/Picker'
+import { groupOf as pickerGroup } from '../../runner-builder/ui/Picker'
 import { entryLabel } from '../../catalog/domain/categories'
-import { sr6Row } from '../../ui/EntryRef'
+import { sr6Row } from '../../runner-builder/ui/EntryRef'
 
 const KINDS = Object.keys(SR6_KINDS) as Sr6Kind[]
 // (samplefix: a book sample runner's printed line corrected, engine/samplefix.ts: the override file carries them too)

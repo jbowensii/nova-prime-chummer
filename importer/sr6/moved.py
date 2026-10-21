@@ -1,6 +1,6 @@
 """Old ids keep loading (owner decision D2). When a re-import renames, moves or re-kinds an entry, its new entry gets an
 `<alias id="<old id>" kind="<old kind>"/>` child: the app's catalog resolves the old id to it (src/sr6/catalog/domain/load.ts),
-and a saved runner's old ids are turned into the new ones on load (src/sr6/engine/migrate.ts).
+and a saved runner's old ids are turned into the new ones on load (src/sr6/runner-builder/domain/career/migrate.ts).
 
 The previous import of the source (its folder, read before this import replaces it) is the record of the old ids. An
 old entry whose (kind, id) the new import no longer has is matched with the new entries this import added (same

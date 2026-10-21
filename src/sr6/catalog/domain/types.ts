@@ -99,7 +99,7 @@ export interface Sr6LifeModuleView {
   choices: { kind: 'mixed'; points: number; options: string[] }[]
   page: number
 }
-/** A catalog grade (kind grades) by its key (src/sr6/engine/grades.ts): factors null when the book prints none. */
+/** A catalog grade (kind grades) by its key (src/sr6/runner-builder/domain/creation/grades.ts): factors null when the book prints none. */
 export interface Sr6GradeView {
   id: string
   key: string

@@ -4,13 +4,13 @@
 // Dark ink on white; cyan and pink only as accents and rules, so it prints on any printer (sheet.css .sr6-neon).
 import type { ReactNode } from 'react'
 import { bdClass, printBackdrop } from '../../../core/ui-kit/Portrait'
-import { priced } from '../../engine/budgets'
+import { priced } from '../../runner-builder/domain/creation/budgets'
 import { MAGIC_KINDS } from '../../catalog/domain/data'
-import { gradeName } from '../../engine/grades'
+import { gradeName } from '../../runner-builder/domain/creation/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName, type Sr6Attr } from '../../formats/domain/character'
-import { adeptDrainLabel, n, useSr6Editor } from '../../ui/editor'
+import { adeptDrainLabel, n, useSr6Editor } from '../../runner-builder/ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
-import { attrShown, band, br, PICKS, poolOn, runnerView } from '../view'
+import { attrShown, band, br, PICKS, poolOn, runnerView } from '../../runner-builder/ui/view'
 import { entryLabel } from '../../catalog/domain/categories'
 
 const H = ({ id, children }: { id: string; children: ReactNode }) => <h2 id={id}>{children}</h2>

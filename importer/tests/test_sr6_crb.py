@@ -862,7 +862,7 @@ class CrbRecipeTest(unittest.TestCase):
 
     def test_the_metatype_size_words_are_the_apps(self):
         """fit.py's troll- and dwarf-sized words are budgets.ts metatypeSize's."""
-        ts = (Path(__file__).parents[2] / "src" / "sr6" / "engine" / "budgets.ts").read_text(encoding="utf8")
+        ts = (Path(__file__).parents[2] / "src" / "sr6" / "runner-builder" / "domain" / "creation" / "budgets.ts").read_text(encoding="utf8")
         body = ts.split("export function metatypeSize", 1)[1].split("\n}", 1)[0]
         lists = [tuple(re.findall(r"'([^']+)'", x)) for x in re.findall(r"\[([^\]]*)\]\.includes", body)]
         self.assertEqual(lists, [archetypes.fit.TROLL_SIZED, archetypes.fit.DWARF_SIZED])

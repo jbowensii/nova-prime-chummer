@@ -5,13 +5,13 @@
 // with Nova Prime Chummer, the date and (printed) the page number. Our own drawing; dark ink, pink frames (sheet.css .sr6-dossier).
 import type { ReactNode } from 'react'
 import { bdClass, printBackdrop } from '../../../core/ui-kit/Portrait'
-import { priced } from '../../engine/budgets'
+import { priced } from '../../runner-builder/domain/creation/budgets'
 import { MAGIC_KINDS } from '../../catalog/domain/data'
-import { gradeName } from '../../engine/grades'
+import { gradeName } from '../../runner-builder/domain/creation/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinName } from '../../formats/domain/character'
-import { adeptDrainLabel, ATTR_NAMES, n, useSr6Editor } from '../../ui/editor'
+import { adeptDrainLabel, ATTR_NAMES, n, useSr6Editor } from '../../runner-builder/ui/editor'
 import { Hexes, type SheetArt } from './BookSheet'
-import { allSkills, attrShown, band, br, PICKS, poolOn, runnerView } from '../view'
+import { allSkills, attrShown, band, br, PICKS, poolOn, runnerView } from '../../runner-builder/ui/view'
 import { entryLabel } from '../../catalog/domain/categories'
 
 function Panel({ id, title, className = '', children }: { id: string; title: string; className?: string; children: ReactNode }) {

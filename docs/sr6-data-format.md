@@ -114,7 +114,7 @@ The rule sections stay as they were (the rules contents still list them).
 Wild Life's two lists of what a critter learns are actions by their section (`category`): each `#### Name` under `###
 Critter Command Actions` (pp. 181-182) and each bold run-in under `## Critter Special Training` (pp. 182-183), with
 their description, no other printed field. Never a runner's: the app offers them only for an owned critter (the
-Critters tab and the Ledger's Teach, `src/sr6/engine/critters.ts` `trainedWhat`, owner 2026-10-16).
+Critters tab and the Ledger's Teach, `src/sr6/runner-builder/domain/assets/critters.ts` `trainedWhat`, owner 2026-10-16).
 
 **Vehicle design** (Double Clutch pp. 150-154; `sections.design_tables`, `design_terms`). Each row of a table with a
 BUILD POINTS column (chassis, powertrain and console types) and of the size class table (first header SIZE CLASS, a
@@ -127,7 +127,7 @@ whichever is lower` (`min(4, Body)`), `the maximum decrease is 2 levels` (maxRev
 1), `Cost Multiplier: x2`; a heading's `(x0.5 BP)` is its multiplier. Improved Handling's second price (3 per level for
 on-road or off-road only) stays in its text; the Designer applies it as a design option's `road`.
 
-The Designer (`src/sr6/engine/design.ts`, owner 2026-10-16) reads them: a chassis, powertrain or console by its category,
+The Designer (`src/sr6/runner-builder/domain/assets/design.ts`, owner 2026-10-16) reads them: a chassis, powertrain or console by its category,
 a quality factor by its `multiplier` (all multiplied together), an option bought in levels by `perLevel` (or a rating, or
 a cost × a word), any other a design modification at its flat `dp`. Price = (the Design Points summed × every multiplier)
 × 1,000¥ + the built-in mods' nuyen (2 Design Points per mod slot); half when built yourself. A table's `special` that
@@ -150,7 +150,7 @@ when exactly one matches by its words (`Ceramic plate armor` is `Ceramic Plate`;
 sentence (`As Nissan Samurai, except …`, `upgradable to rating 3 for 500¥`) is a `<note field="builtin">` as printed.
 They are already paid for (shown as built in, never taken off); each pass replaces the ones the last gave.
 
-**Owned vehicles and drones** (the app: `src/sr6/engine/vehiclemods.ts`, the Vehicles and Drones tabs' Modify panel,
+**Owned vehicles and drones** (the app: `src/sr6/runner-builder/domain/assets/vehiclemods.ts`, the Vehicles and Drones tabs' Modify panel,
 owner 2026-10-16). A `vehicles` entry is a drone by its class (`DRONE_…`) or category (`drone`). A gear entry is a vehicle
 mod by its class (`MOD_CHASSIS`, `MOD_SKIN`, `MOD_HARD`: chassis slots; `MOD_POWER`: powertrain; `MOD_ELEC`: electronics;
 `ACCESSORY/VEHICLE…`, `ACCESSORY/TIRES`: an accessory, no slots) or else its category's words; one with a `hardpoint`
@@ -287,7 +287,7 @@ prints for several bases, is one quality per base (owner): `Ghoul (Human)`, `Gho
 base>`. The gained powers, weaknesses and attacks stay in the description: the printed lists have typos (a missing comma,
 `Induced Dormancy (Lack of Air, (Essence) Minutes` unbalanced) and name critter powers of other books.
 
-**Infected characters in the app** (`src/sr6/engine/infected.ts`, owner decisions 2026-10-16). A runner is Infected while
+**Infected characters in the app** (`src/sr6/runner-builder/domain/creation/infected.ts`, owner decisions 2026-10-16). A runner is Infected while
 it has one Infected type (a quality with `<infected>`): Creation method's Infected yes/no and type selector (shown while
 `infectedAllowed` is on, or the runner has a type) list the types whose `base` is the runner's metatype by name, a metavariant's its parent's (`baseMetatype`, a list by name: Hobgoblin is Ork; a metasapient has none) (the
 Ghoul's one per base), and the non-human vampire for any other metatype through its `<infectedalt base="other">`; the
@@ -705,7 +705,7 @@ setting naming a quality, `builtToughQuality`, matches any level of it).
 `quality` and `pick` ops take the parent id with a rating or level too and store the level's); the line's rating select
 and a quality's or power's level stepper move it to the sibling level (`rate`, `quality`, `powerLevel`). A saved runner
 naming the parent (with `rating`, or a quality's or pick's `level`) is turned into the level's entry once on load
-(`src/sr6/engine/migrate.ts`, recorded in `<migrated>`; a level the family lacks: left as it is, so Review still flags
+(`src/sr6/runner-builder/domain/career/migrate.ts`, recorded in `<migrated>`; a level the family lacks: left as it is, so Review still flags
 it; a career level-up saved before levels were entries, with no `target`: the level it reached, on the line it raised)
 and until then still reads at its rating or level. In career play a quality or power of a family the runner has is an upgrade (the lower level
 replaced, the Karma the difference × `advance.qualityFactor`; the advance's `target` names the line replaced) and the
@@ -889,7 +889,7 @@ importer reads the source's previous import before replacing it and gives each n
 are set aside, else by a maker's name added in front, else by abbreviated words, and only when one new entry matches.
 `kind` is set when the old one was another kind. An old entry's own id aliases go with it, so every old id survives a
 chain of re-imports. The app resolves an old id to the entry (Sr6Catalog.moved, `resolveEntry`), and the runner editor
-turns a saved runner's old ids into the new ones on load (src/sr6/engine/migrate.ts), recording each in `<migrated>`
+turns a saved runner's old ids into the new ones on load (src/sr6/runner-builder/domain/career/migrate.ts), recording each in `<migrated>`
 (docs/sr6-character-format.md).
 
 **Searched.** An issue says how far the importer looked: `searched="book"` (its tables and its text) at import,
@@ -1117,7 +1117,7 @@ re-imports. Its description, if any, is in `edits/texts.xml`. An empty one means
 `samplefixes`, `samplefixes.xsd`): a book sample runner's printed line corrected, the owner's way to set right a value the
 book misprints without touching the importer. Each `<correct item field from to note?>` sets `rating`, `qty` or `grade`
 of the runner's line buying catalog item `item`, while that line still prints `from`. The runner file keeps the book's
-value; the app reads the corrected one everywhere (editor, Your runners, the export: `src/sr6/engine/samplefix.ts`) and
+value; the app reads the corrected one everywhere (editor, Your runners, the export: `src/sr6/runner-builder/domain/creation/samplefix.ts`) and
 Review notes "Earbuds: the book prints rating 4; corrected to 3 by an override" in place of the error. `source` and `page`
 must be the sample's printed ones. Export my edits and Import edits carry them like any edit.
 

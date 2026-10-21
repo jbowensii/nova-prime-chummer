@@ -6,12 +6,12 @@
 import type { ReactNode } from 'react'
 import { bdClass, printBackdrop } from '../../../core/ui-kit/Portrait'
 import type { useSheetArt } from '../../../features/appearance/sheetArt'
-import { priced } from '../../engine/budgets'
+import { priced } from '../../runner-builder/domain/creation/budgets'
 import { MAGIC_KINDS } from '../../catalog/domain/data'
-import { gradeName } from '../../engine/grades'
+import { gradeName } from '../../runner-builder/domain/creation/grades'
 import { CORE_ATTRS, MAGIC_KIND_LABELS, sinKind, sinName, type Sr6Attr } from '../../formats/domain/character'
-import { ATTR_NAMES, n, useSr6Editor } from '../../ui/editor'
-import { AR_BANDS, attrShown, band, br, pickFlags, poolOn, runnerView } from '../view'
+import { ATTR_NAMES, n, useSr6Editor } from '../../runner-builder/ui/editor'
+import { AR_BANDS, attrShown, band, br, pickFlags, poolOn, runnerView } from '../../runner-builder/ui/view'
 import { entryLabel } from '../../catalog/domain/categories'
 
 export type SheetArt = Pick<ReturnType<typeof useSheetArt>, 'layer' | 'vars'>

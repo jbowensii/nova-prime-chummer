@@ -1,6 +1,8 @@
 # Nova Prime Chummer architecture: modules by functionality
 
-Status: **proposed** (2026-10-20), awaiting the owner's approval before any code moves.
+Status: proposed 2026-10-20 and approved; **the app moves are complete** (2026-10-21): every src file is in its module
+folder and the boundary test reads modules from the folders. Still to do: the importer moves and the context files
+(migration plan steps 4 and 5).
 
 The owner's rule: _the split and chunks must be made by functionality, and the software architecture must be modularized
 in a meaningful and logical way._ So each module below owns **one thing the app does for its users**, end to end: its
@@ -15,8 +17,8 @@ claim was re-checked against the code by the orchestrator. The full file-by-file
 ## Why a session gets smaller
 
 A coding session works inside one module: it loads that module's own context file, its code and tests, and only the
-public interfaces of the modules it depends on. Today a session on, say, the SR6 rules check has to read across
-`src/sr6/engine`, `src/sr6/ui`, `src/model` (Anarchy's types), `src/ui` and the server to follow its own code.
+public interfaces of the modules it depends on. Before the moves, a session on, say, the SR6 rules check had to read
+across the old `src/sr6/engine`, `src/sr6/ui`, `src/model` (Anarchy's types), `src/ui` and the server to follow its own code.
 
 ## The modules
 
@@ -77,6 +79,13 @@ Two modules are too big for one session, so they get ordered sub-folders rather 
 `sr6/runner-builder` (creation 149k, review 67k, career 49k, owned critters and vehicles 63k, editor kit 27k) and
 `sr6/book-import` (recipes 156k, effects 124k, extract 120k, the rest under 35k each).
 
+`sr6/runner-builder` today: `domain/creation/` (the build, providers, budgets, actions, attributes, skills, karma, essence,
+magic, derived values, NPC stat blocks, sample fixes), `domain/review/` (`rules.ts`), `domain/career/` (career, finalize,
+house copies, id migration: each needs career), `domain/assets/` (owned critters, critterware, vehicle mods, designs),
+`ui/` (the editor kit: context, Picker, EntryRef, Budgets, the view model `view.ts`) and `ui/tabs/`. Inside `domain/`,
+creation ← review ← career holds and the boundary test enforces it; `assets` sits outside that order (creation's actions
+and purchases use owned critters and vehicle mods, and vehicle mods and designs price through creation's `purchases.ts`).
+
 ## How modules may depend on each other
 
 Each module may import only modules ranked below it, and only through their public interface:
@@ -89,12 +98,14 @@ core/shared (0) → {ca2,sr6}/formats (1) → {ca2,sr6}/catalog (2) → core/ui-
   → compendium pages, runner-library, book-import UI (13) → npcs (14) → {ca2,sr6}/shell (15) → core/app (20)
 ```
 
-Three rules on top of the ranks:
+Four rules on top of the ranks:
 
 1. **The games never import each other.**
 2. **Shared code may read a game's `formats` module only**, never its behaviour.
 3. **The importer depends only on the shared kernel** and is reached by the server over its command line
    (`server/jobs.mjs:41`).
+4. **Inside `sr6/runner-builder/domain`, creation ← review ← career**: creation imports neither review nor career, review
+   not career.
 
 ### Public interfaces (main ones)
 
@@ -107,7 +118,8 @@ Three rules on top of the ranks:
   `currentBuild`, `preview`, `record`, `balances`, `validateCareer`; `migrateSr6Ids`; the editor context; the tabs.
 - `sr6/foundry`: `exportSr6Runner(s)`, `exportSr6Books`, `exportSr6Compendium`, the export schemas. Long term it should
   take a runner snapshot from the builder rather than recompute career, house and derived values itself.
-- `sr6/print`: `runnerView` (the print view model) and the sheets.
+- `sr6/print`: the sheets. They read `runnerView`, the print view model, which lives in `sr6/runner-builder/ui/view.ts`
+  because the builder's tabs render it too and print ranks above the builder.
 - Feature modules: their routes above, plus client helpers (`serverRepo`, `useAutosave`, `arrange`, `ownerGroups`,
   `loadCampaigns`, `CompendiumShell`, `AskButton`).
 
@@ -124,9 +136,9 @@ cycles into the new layout. The fixes are small and change no behaviour:
 | The page header imports features | `src/core/chrome/nav.tsx:7, 12, 13`; `src/core/ui-kit/settings.tsx:6-8` | The app passes the header buttons in through one React context |
 | Reading an Anarchy file runs creation rules | `src/ca2/formats/domain/charxml.ts:8` → `src/ca2/formats/domain/file.ts:138` → `src/ca2/runner-builder/domain/amps.ts:60-73` | Move the three pure SINner lookups into Anarchy formats |
 | SR6's catalog type is defined in table setup | `src/sr6/catalog/domain/types.ts:116`, `creation.ts:37`, `data.ts:8`, `grades.ts:7, 15` | Move `CreationCatalog` to types.ts and `gradeKey` to names.ts |
-| SR6 screens import from each other's pages | `src/sr6/ui/tabs/Ledger.tsx:36`, `tabs/Vehicles.tsx:17` → `Designer.tsx:40`; `tabs/Method.tsx:25` → `Runners.tsx:61`; `Compendiums.tsx:34` → `Npcs.tsx:104` | Move `useSr6Designs`, `missingLabels`, `npcChip` to the modules that own them |
+| SR6 screens import from each other's pages | `src/sr6/runner-builder/ui/tabs/Ledger.tsx:36`, `tabs/Vehicles.tsx:17` → `Designer.tsx:40`; `tabs/Method.tsx:25` → `Runners.tsx:61`; `Compendiums.tsx:34` → `Npcs.tsx:104` | Move `useSr6Designs`, `missingLabels`, `npcChip` to the modules that own them |
 | Importer stages reach into each other's private helpers | `importer/sr6/overrides.py:74` → `resolve.py:295 _add_kid`; `run.py:176`; `categories.py:24`; `sr6/__main__.py:98, 164` | Make those helpers public in the stage that owns them |
-| Career's legality depends on review's code strings | `src/sr6/engine/career.ts:948-965` keeps 19 bare codes from `validateSr6` | Export the set next to `validateSr6`, plus a test that every code is still emitted |
+| Career's legality depends on review's code strings | `src/sr6/runner-builder/domain/career/career.ts:948-965` keeps 19 bare codes from `validateSr6` | Export the set next to `validateSr6`, plus a test that every code is still emitted |
 
 ## Target layout
 
@@ -140,14 +152,16 @@ file goes:
 | `core/<m>`, `features/<f>` | `src/**/<name>` | `src/core/<m>/<name>`, `src/features/<f>/<name>` (flat) |
 | `ca2/<m>`, `sr6/<m>` | a `.tsx` file, or any file under a `ui/` folder | `src/<game>/<m>/ui/<name>` (`ui/tabs/<name>` for a file in a `tabs/` folder) |
 | `ca2/<m>`, `sr6/<m>` | everything else (engine, model, print view models) | `src/<game>/<m>/domain/<name>` |
-| `sr6/runner-builder` | a file with a 4th map column (`creation`, `review`, `career`, `assets`) | `src/sr6/runner-builder/<domain or ui>/<column>/<name>` |
+| `sr6/runner-builder` | a file with a 4th map column (`creation`, `review`, `career`, `assets`, `tabs`) | `src/sr6/runner-builder/<domain or ui>/<column>/<name>` |
+| `sr6/runner-builder` | a `.ts` file with the 4th column `ui` (`view.ts`) | `src/sr6/runner-builder/ui/<name>` |
 | any moved module | `tests/<folder>/**/*.ts` (not `tests/server/`, not `tests/fixtures/`) | `tests/<area>/<m>/<name>` |
 | `core/platform`, `core/archive` | anything | stays |
 
 Also staying: `src/main.tsx` (the Vite entry `index.html` loads), the server, the importer, `public/data`, `e2e/`,
 `tests/server/` (it mirrors the flat server) and `tests/fixtures/` (tests read them by path). Folder mentions such as
-"`src/shared/`" are not rewritten by the tool; check them by hand. Once every src file is in its module folder the
-tool says so, and the boundary test's map lookup can become a folder lookup.
+"`src/shared/`" are not rewritten by the tool; check them by hand. Every src file is now in its module folder, so the
+boundary test reads a file's module from its path (`src/<area>/<module>/…`); the map stays as the documentation of
+which file belongs where, and the tool still reads it.
 
 ## Things the move must not break
 
@@ -174,7 +188,7 @@ Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's b
 3. **Pure moves (about 6 PRs):** `git mv` into `src/core`, `src/features`, `src/ca2`, `src/sr6`, with a scripted rewrite of
    import paths and path mentions; tests move to the matching `tests/` folders. SR6 runner-builder moves last, when no
    SR6 branch is open.
-   _Status: move 1 (`--only core/`), move 2 (`--only features/`), move 3 (`--only ca2/`, all of Anarchy) and move 4 (`--only sr6/ --except sr6/runner-builder`, every SR6 module but the builder) done; tests of one module that share a file name keep their old folder (`tests/ca2/runner-builder/engine/price.test.ts`)._
+   _Status: move 1 (`--only core/`), move 2 (`--only features/`), move 3 (`--only ca2/`, all of Anarchy) and move 4 (`--only sr6/ --except sr6/runner-builder`, every SR6 module but the builder) and move 5 (`--only sr6/runner-builder`, into its sub-folders) done: the app moves are complete; tests of one module that share a file name keep their old folder (`tests/ca2/runner-builder/engine/price.test.ts`)._
 4. **Importer (3 PRs):** public cross-stage helpers; `effects.py` → `importer/sr6/effects/` package; `overrides.py` →
    package. Each behind the CommLink6 gates: the replay (main vs branch, 0 differing rows) and a fresh full import that
    reads 1,079/1,079 effects, 4,474/4,474 completeness and 4,307/4,307 accuracy.

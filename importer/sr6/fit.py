@@ -98,7 +98,7 @@ def resolve(cs, own=()):
     return res
 
 
-# budgets.ts metatypeSize's words (a test keeps the two lists the same)
+# src/sr6/runner-builder/domain/creation/budgets.ts metatypeSize's words (a test keeps the two lists the same)
 TROLL_SIZED = ("troll", "trolls", "cyclops", "fomori", "fomorian", "giant", "minotaur")
 DWARF_SIZED = ("dwarf", "dwarfs", "dwarves", "gnome", "hanuman", "koborokuru", "menehune")
 

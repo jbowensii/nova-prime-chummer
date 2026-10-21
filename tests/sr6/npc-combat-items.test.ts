@@ -8,10 +8,10 @@ import { expect, test } from 'vitest'
 import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { exportNpc, exportSr6Runners } from '../../src/sr6/foundry/domain/export'
 import { matchKey, nameRatio } from '../../src/sr6/catalog/domain/names'
-import { blankSr6Npc, npcCorrections, npcThings, splitThings } from '../../src/sr6/engine/npc'
+import { blankSr6Npc, npcCorrections, npcThings, splitThings } from '../../src/sr6/runner-builder/domain/creation/npc'
 import type { Sr6Npc } from '../../src/sr6/formats/domain/character'
 import { fixtureCatalog, fixtureCreation } from './catalog/fixture'
-import { SAMPLE_OPTS } from './samples'
+import { SAMPLE_OPTS } from './runner-builder/samples'
 
 const c = fixtureCatalog(),
   data = sr6Data(c)

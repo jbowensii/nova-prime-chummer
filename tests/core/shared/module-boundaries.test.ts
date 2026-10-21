@@ -1,6 +1,8 @@
-// The module boundaries of docs/architecture/README.md, checked on today's file layout: each src file belongs to the module
-// docs/architecture/module-map.tsv gives it. Rules: (1) the games (ca2, sr6) never import each other; (2) core and features
-// may import only a game's `formats` module (core/app also its `shell`); (3) a module imports only modules ranked strictly below it (or itself).
+// The module boundaries of docs/architecture/README.md, checked on the file layout: each src file belongs to the module its
+// folders name (src/<area>/<module>/...; src/main.tsx, the Vite entry, is core/app's; docs/architecture/module-map.tsv
+// documents them). Rules: (1) the games (ca2, sr6) never import each other; (2) core and features may import only a game's
+// `formats` module (core/app also its `shell`); (3) a module imports only modules ranked strictly below it (or itself);
+// (4) inside sr6/runner-builder's domain, creation <- review <- career: creation imports neither review nor career, review not career.
 // Today's violations are listed in module-boundaries.allow.json ("from > to", src-relative). The list may only shrink: a new
 // violation fails, and so does an entry that no longer violates. Refactors delete entries; `UPDATE_ALLOW=1 npx vitest run
 // tests/core/shared/module-boundaries.test.ts` rewrites the file after a refactor (review the diff: it must only lose lines).
@@ -44,18 +46,17 @@ const RANK: Record<string, number> = {
 }
 
 const at = (f: string) => relative(ROOT, f).replaceAll('\\', '/')
-const MODULE = new Map(
-  readFileSync(resolve(ROOT, 'docs/architecture/module-map.tsv'), 'utf8')
-    .split(/\r?\n/)
-    .slice(1)
-    .filter(Boolean)
-    .map(l => l.split('\t') as [string, string]),
-)
+const moduleOf = (f: string) => (at(f) === 'src/main.tsx' ? 'core/app' : at(f).split('/').slice(1, 3).join('/'))
 const game = (m: string) => (/^(ca2|sr6)\//.test(m) ? m.slice(0, 3) : '')
+/** sr6/runner-builder's domain sub-folders in dependency order: each imports only those before it (assets is outside the order). */
+const STAGES = ['creation', 'review', 'career']
+const stageOf = (f: string) => STAGES.indexOf(/^src\/sr6\/runner-builder\/domain\/([^/]+)\//.exec(at(f))?.[1] ?? '')
 
-/** Why `from` module may not import `to` module, or '' if it may. */
-function why(from: string, to: string): string {
-  if (from === to) return ''
+/** Why file `f` may not import file `t`, or '' if it may. */
+function why(f: string, t: string): string {
+  const from = moduleOf(f),
+    to = moduleOf(t)
+  if (from === to) return stageOf(f) >= 0 && stageOf(t) > stageOf(f) ? `runner-builder's ${STAGES[stageOf(f)]} may not import its ${STAGES[stageOf(t)]}` : ''
   if (game(from) && game(to) && game(from) !== game(to)) return 'games never import each other'
   if (!game(from) && game(to) && !to.endsWith('/formats') && !(from === 'core/app' && to.endsWith('/shell')))
     return 'core and features may import only a game’s formats'
@@ -65,13 +66,12 @@ function why(from: string, to: string): string {
 const srcFiles = files(SRC)
 const violations = srcFiles
   .flatMap(f => imports(f).map(t => [f, t] as const))
-  .filter(([f, t]) => why(MODULE.get(at(f))!, MODULE.get(at(t))!))
+  .filter(([f, t]) => why(f, t))
   .map(([f, t]) => `${at(f).slice(4)} > ${at(t).slice(4)}`)
   .sort()
 
-test('every src file is in the module map, and every module has a rank', () => {
-  expect(srcFiles.map(at).filter(f => !MODULE.has(f))).toEqual([])
-  expect([...new Set(srcFiles.map(f => MODULE.get(at(f))!))].filter(m => RANK[m] === undefined)).toEqual([])
+test('every src file is in a module folder, and every module has a rank', () => {
+  expect([...new Set(srcFiles.map(moduleOf))].filter(m => RANK[m] === undefined)).toEqual([])
 })
 
 test('module boundary violations only shrink (module-boundaries.allow.json)', () => {
