@@ -106,6 +106,10 @@ export function capacityUsed(e: Sr6Entry | undefined, rating = 1): number {
   return v?.ok && v.n !== null ? v.n : 0
 }
 
+/** An ammunition type fitted to an ammunition line (CRB p. 261: Explosive, APDS, Gel …; priced as a multiple of it): an
+ *  ammotypes entry that is no material (isMaterial) and no ammunition of its own (a Silver Arrow, class AMMUNITION/…). */
+export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMaterial(e) && !/^AMMUNITION\//i.test(e.attrs.class ?? '')
+
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other
  *  semi-precious materials, x10 for gold or other precious materials`): the importer's material add-on, an ammunition
  *  type priced as a multiple of the ammunition it is loaded in (catalog.py variants: its cost formula is `H*N`). */

@@ -131,6 +131,11 @@ export function priced(
       cost = host!.cost * (times * material - 1)
       perLine.add('cost')
       material = 1
+    } else if (host && e?.formulas?.some(f => f.field === 'cost' && /\bH\b/.test(f.expr))) {
+      // a cost formula of the item it goes on (a material's `H*5`) is what the host's line then costs, as `x5` is: the
+      // add-on adds that less the host's own price (host × (N − 1)), never N × host on top
+      cost = read('cost') - host.cost
+      perLine.add('cost')
     } else cost = read('cost')
     avail = read('avail')
     essence = read('essence')

@@ -47,6 +47,15 @@ test('ammo-material: the line costs the factor times as much, its ammunition typ
   expect(priced(pellets({ material: 'crb.fizz-rounds' }), data, cr).cost).toBe(42)
 })
 
+test('ammo-material: a material row fitted as an add-on (its cost `H*N`) makes its line cost N × the host, never host + N × host', () => {
+  const { data, cr } = world(),
+    slug = (id: string): Sr6Purchase => ({ uid: 'm', kind: 'ammotypes', id, qty: 1, accessories: [] })
+  expect(priced(pellets({ accessories: [slug('zz.glow-slugs-tin')] }), data, cr).cost).toBe(126) // (42 × 3; it was 42 + 126)
+  expect(priced(pellets({ accessories: [slug('zz.glow-slugs-moonstone')] }), data, cr).cost).toBe(294) // (42 × 7)
+  // the same as the material option on the line
+  expect(priced(pellets({ material: 'zz.glow-slugs-moonstone' }), data, cr).cost).toBe(294)
+})
+
 test('ammo-material: set on ammunition only, refused elsewhere, and taken off with the plain price back', () => {
   const { data, cr } = world(),
     b = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'mundane' })

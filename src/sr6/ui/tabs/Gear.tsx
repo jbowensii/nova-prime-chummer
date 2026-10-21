@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
 import type { PurchaseKind, Sr6Purchase } from '../../model/character'
-import { entryOf, statusesOf } from '../../engine/budgets'
+import { entryOf, statusesOf, takesMaterial } from '../../engine/budgets'
 import { ratingEdge } from '../../engine/derive'
 import { useSr6Editor } from '../editor'
-import { ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
-import { entryLabel } from '../../engine/categories'
+import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
+import { entryLabel, isAmmoType } from '../../engine/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],
@@ -38,8 +38,16 @@ export function GearTab() {
     return w && `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}`
   }
   const u = d.unarmedDamage
-  // ammunition's material (silver rounds: Bestial Nature p. 36)
-  const material = (x: Sr6Purchase) => <MaterialPick x={x} name={(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))} />
+  // ammunition's material (silver rounds: Bestial Nature p. 36) and, on an ammunition line, its ammunition types (CRB p. 261)
+  const material = (x: Sr6Purchase) => {
+    const name = (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
+    return (
+      <>
+        <MaterialPick x={x} name={name} />
+        {x.kind === 'gear' && takesMaterial(x, data) && <Accessories host={x} name={name} kinds={['ammotypes']} filter={isAmmoType} ammo />}
+      </>
+    )
+  }
   const close = () => {
     setCustom(false)
     setName('')
