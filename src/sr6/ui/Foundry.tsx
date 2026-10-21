@@ -3,7 +3,7 @@
 // Game data (GMs), a compendium from its page.
 import { useState } from 'react'
 import { NonCanon } from '../../ui/bits'
-import { downloadJson, fileDate, runnersStem } from '../../ui/Foundry'
+import { downloadJson, fileDate, runnersStem } from '../../ui/foundryKit'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { exportSr6Books, exportSr6Compendium, exportSr6Runners, type Sr6ExportOpts } from '../engine/export'
