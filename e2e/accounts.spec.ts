@@ -61,7 +61,9 @@ async function newRunner(page: Page, name: string) {
 }
 
 /** Open one of the list's runners, and wait until the editor's own first requests (the Ask the rules status) are done: a
- *  session ended while one is still going is noticed by that one (the sign-in form comes up before the edit is made). */
+ *  session ended while one is still going is noticed by that one (the sign-in form comes up before the edit is made, and the
+ *  edit typed into the covered page is lost). They start in an effect after the editor is shown, so first wait for one to
+ *  have been answered: "no request open" alone is also true before they have started. */
 async function openRunner(page: Page, name: string) {
   const open = new Set<unknown>(),
     done = (r: unknown) => open.delete(r)
@@ -69,8 +71,10 @@ async function openRunner(page: Page, name: string) {
     .on('request', r => open.add(r))
     .on('requestfinished', done)
     .on('requestfailed', done)
+  const asked = page.waitForResponse(r => new URL(r.url()).pathname.endsWith('/api/ask'))
   await page.getByRole('link', { name }).click()
   await expect(page.getByLabel('Street name')).toHaveValue(name)
+  await asked
   await expect.poll(() => open.size).toBe(0)
   page.off('requestfinished', done).off('requestfailed', done)
 }
