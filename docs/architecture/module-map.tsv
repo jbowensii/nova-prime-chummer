@@ -541,7 +541,7 @@ src/ca2/print/ui/Sheet.tsx	ca2/print	4229
 src/ca2/print/ui/book-sheet.css	ca2/print	2543
 src/ca2/print/ui/official-sheet.css	ca2/print	1952
 src/ca2/print/ui/shared.tsx	ca2/print	2493
-src/ca2/print/ui/sheet.css	ca2/print	2580
+src/ca2/print/ui/sheet.css	ca2/print	162
 src/core/shared/effects.ts	core/shared	1166
 src/core/shared/formula.ts	core/shared	3371
 src/core/shared/rules.ts	core/shared	57
@@ -696,6 +696,7 @@ src/features/runner-store/runnerList.ts	features/runner-store	800
 src/ca2/runner-builder/ui/samples.ts	ca2/runner-builder	2387
 src/core/ui-kit/settings.tsx	core/ui-kit	1171
 src/features/appearance/sheetArt.tsx	features/appearance	1647
+src/features/appearance/sheet.css	features/appearance	2453
 src/core/ui-kit/storage.ts	core/ui-kit	394
 src/ca2/runner-builder/ui/tabs/AmpBuilder.tsx	ca2/runner-builder	3308
 src/ca2/runner-builder/ui/tabs/Amps.tsx	ca2/runner-builder	2435

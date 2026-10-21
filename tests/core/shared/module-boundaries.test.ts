@@ -2,6 +2,7 @@
 // folders name (src/<area>/<module>/...; src/main.tsx, the Vite entry, is core/app's; docs/architecture/module-map.tsv
 // documents them). Rules: (1) the games (ca2, sr6) never import each other; (2) core and features may import only a game's
 // `formats` module (core/app also its `shell`); (3) a module imports only modules ranked strictly below it (or itself);
+// Imports of asset files (css, json, ...) count too; an asset belongs to the module of its folder.
 // (4) inside sr6/runner-builder's domain, creation <- review <- career: creation imports neither review nor career, review not career.
 // Today's violations are listed in module-boundaries.allow.json ("from > to", src-relative). The list may only shrink: a new
 // violation fails, and so does an entry that no longer violates. Refactors delete entries; `UPDATE_ALLOW=1 npx vitest run

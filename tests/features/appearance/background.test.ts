@@ -64,7 +64,7 @@ test('the strength slider only fades the art: 100% is the clamped strength above
 
 test('the sheet’s own background art keeps the sheet’s ink readable at every strength, and is off in print unless asked', () => {
   // 0.8.1: the art fades in with the strength under a veil that thins as it rises, and the text blocks keep a wash of paper
-  const sheet = readFileSync('src/ca2/print/ui/sheet.css', 'utf8').replace(/\s+/g, ' '),
+  const sheet = readFileSync('src/features/appearance/sheet.css', 'utf8').replace(/\s+/g, ' '),
     sa = sheet.slice(sheet.indexOf('/* ---- sheet art'))
   const veils = [...sa.matchAll(/rgb\(255 255 255 \/ calc\(\(([\d.]+) - ([\d.]+) \* var\(--art\)\) \* ([\d.]+)\)\)/g)].map(m => [
     Number(m[1]) * Number(m[3]),
@@ -123,7 +123,7 @@ test('the Shadowrun 6 look keeps its text readable too, over the worst art, ligh
       expect(ratio(t(name), t('panel')), `sr6 ${theme} --${name} on the panel`).toBeGreaterThanOrEqual(4.5)
   }
   // the sheet's SR6 inks on paper under the sheet art's strongest showing (0.31 of a black image, flattened: see above)
-  const sheet = readFileSync('src/ca2/print/ui/sheet.css', 'utf8').replace(/\s+/g, ' '),
+  const sheet = readFileSync('src/features/appearance/sheet.css', 'utf8').replace(/\s+/g, ' '),
     sk = Number(sheet.slice(sheet.indexOf('/* ---- sheet art')).match(/filter: contrast\(([\d.]+)\)/)![1])
   const paper = [255, 255, 255].map(v => v * 0.69 + 0.5 * (1 - sk) * 255 * 0.31)
   const s = (n: string) => rgb(sr6.match(new RegExp(`\\.sr6-sheet \\{[^}]*--s-${n}: (#[0-9a-f]{6})`))![1])
