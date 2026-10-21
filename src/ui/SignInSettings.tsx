@@ -1,8 +1,8 @@
 // Settings → Sign-in (admin, server only): Sign in with Authelia (OpenID Connect). The client secret is write-only: the server
 // never sends it back, and a new issuer address drops it (server/oidc.mjs).
 import { useEffect, useState } from 'react'
-import { send, sentence } from './auth'
-import { useRepo } from './repoContext'
+import { send, sentence } from '../core/ui-kit/auth'
+import { useRepo } from '../core/ui-kit/repoContext'
 
 interface Saved {
   issuer: string

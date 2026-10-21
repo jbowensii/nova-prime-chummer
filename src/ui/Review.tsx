@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 import { blankCharacter } from '../engine/file'
 import { toPick } from '../engine/parse'
-import { SOURCE_ID } from '../shared/source'
+import { SOURCE_ID } from '../core/shared/source'
 import { ATTRS, type AmpEntry, type AttrId, type Catalog } from '../model/types'
-import { Modal } from './bits'
-import { api } from './api'
+import { Modal } from '../core/ui-kit/bits'
+import { api } from '../core/ui-kit/api'
 import { BooksHeader, PROVIDER_NAMES, type Book } from './Books'
 import { Editor, type EditorCtx } from './editor'
 import { AmpBuilder } from './tabs/AmpBuilder'
-import { because } from './auth'
+import { because } from '../core/ui-kit/auth'
 
 const STATES: Record<string, string> = { pending: 'To decide', accepted: 'Accepted', edited: 'Edited', dropped: 'Dropped' }
 const KIND: Record<string, string> = {

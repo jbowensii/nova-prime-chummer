@@ -3,10 +3,10 @@
 // Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
 // A runner's Book style, Neon, Hex and Dossier sheets: BookSheet.tsx, NeonSheet.tsx, HexSheet.tsx, DossierSheet.tsx (an NPC
 // prints its block whatever the style).
-import { SR6_PRINT_STYLES } from '../../ui/settings'
-import { bdClass, printBackdrop } from '../../ui/Portrait'
-import { HeaderBars } from '../../ui/nav'
-import { IconButton, IconLink } from '../../ui/icons'
+import { SR6_PRINT_STYLES } from '../../core/ui-kit/settings'
+import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
+import { HeaderBars } from '../../core/chrome/nav'
+import { IconButton, IconLink } from '../../core/ui-kit/icons'
 import { SheetType, usePrintStyle, useSheetArt } from '../../ui/sheetArt'
 import '../../print/sheet.css'
 import './sheet.css'

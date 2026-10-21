@@ -5,10 +5,10 @@ import { BONUS_SWITCHES, SR6_ATTRS, type Bonus, type Sr6Attr } from '../model/ch
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../model/types'
 import type { Sr6Data } from './types'
 import { normName } from './names'
-import { counts, type EffectState } from '../../shared/effects'
+import { counts, type EffectState } from '../../core/shared/effects'
 
 /** Whether a bonus counts in SR6's totals (owner decisions 2026-10-10): the total shown first holds the always-on ones
- *  (the shared rule, src/shared/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
+ *  (the shared rule, src/core/shared/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
  *  ones holding on some tests only (`when`: `Con 6 (9)`, replacing "shown beside, not added"). Never a low-confidence
  *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
 export const sr6Counts = (e: EffectState, on = false) => counts(e, on)

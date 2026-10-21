@@ -4,10 +4,10 @@
 // here, each conflict kept or taken), and only Save edits sends the chosen entries, one by one, through the edits routes
 // (PUT /api/edits/<kind>/<id>, /api/sr6/edits/…), which check each as an edit made in the app.
 import { useState } from 'react'
-import { because } from './auth'
-import { Modal } from './bits'
-import { api } from './api'
-import { esc } from '../shared/xml'
+import { because } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
+import { api } from '../core/ui-kit/api'
+import { esc } from '../core/shared/xml'
 
 export interface OverrideGame {
   /** the edits folder under the site root ("custom/edits/") and the routes' prefix ("edits") */

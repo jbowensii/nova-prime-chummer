@@ -338,7 +338,7 @@ test('an imported source carries its file and checksum', () => {
 
 **Files:**
 - Create: `src/ui/SourceLabel.tsx`
-- Modify: `src/ui/bits.tsx` (Picker gets `label?: ReactNode`), `src/ui/tabs/Amps.tsx`, `src/ui/tabs/Gear.tsx`, `src/print/Sheet.tsx`, `src/ui/tabs/Data.tsx`
+- Modify: `src/core/ui-kit/bits.tsx` (Picker gets `label?: ReactNode`), `src/ui/tabs/Amps.tsx`, `src/ui/tabs/Gear.tsx`, `src/print/Sheet.tsx`, `src/ui/tabs/Data.tsx`
 - Test: `e2e/sources.spec.ts`
 
 **Interfaces:**
@@ -469,7 +469,7 @@ test('an imported source carries its file and checksum', () => {
 
 **Files:**
 - Create: `src/ui/Books.tsx`, `src/ui/AiSettings.tsx`, `src/ui/Review.tsx`, `e2e/books.spec.ts`
-- Modify: `src/ui/App.tsx` (routes `#/books`, `#/books/:id/review`), `src/ui/Library.tsx` (Books link; empty-catalog hint; samples from imports), `src/ui/app.css`
+- Modify: `src/core/app/App.tsx` (routes `#/books`, `#/books/:id/review`), `src/ui/Library.tsx` (Books link; empty-catalog hint; samples from imports), `src/core/ui-kit/app.css`
 - Delete: `public/data/{amps,spells,complexforms,gear,rules}.xml`, the DHSA `<spec>`s in `public/data/skills.xml`, `public/samples/`, `tools/build-samples.mjs`, `tools/daegann-pregens.mjs`, `tests/fixtures/pregens-printed.json`
 - Modify: `docs/book-discrepancies.md` (keep only the rules notes that aren't book data; the per-book tables now live in import reports), `docs/data-format.md`, `README.md`, `docs/deploy-tower04.md`, `DATA_FILES` in `src/engine/load.ts`
 

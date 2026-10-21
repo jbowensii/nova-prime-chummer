@@ -3,7 +3,7 @@
 // one box per line part the kind uses (a designed critter's skills, powers and weaknesses read only: the Design tab writes
 // them), and the NPC block as it prints.
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../engine/npc'
 import type { Sr6Npc } from '../../model/character'
 import { NpcBlock } from '../../print/NpcBlock'

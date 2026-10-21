@@ -5,7 +5,7 @@
 // is offered too, marked: recorded, Review flags it. What a spend or a history line names (an attribute, a skill, the
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useState } from 'react'
-import { GENDER_LIST, GenderList, Modal } from '../../../ui/bits'
+import { GENDER_LIST, GenderList, Modal } from '../../../core/ui-kit/bits'
 import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'

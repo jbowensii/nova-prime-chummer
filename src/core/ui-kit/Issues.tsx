@@ -1,4 +1,4 @@
-// Data issues and formulas on screen, both games (src/shared/formula.ts): the warning badge Game data and the pickers show
+// Data issues and formulas on screen, both games (src/core/shared/formula.ts): the warning badge Game data and the pickers show
 // beside an entry the book leaves a value out of (the field, the note, the page), and the edit dialog's "book: none
 // printed" under a field.
 import { fieldName, formulaText, ISSUE_BOOK, type Formula, type Issue } from '../shared/formula'

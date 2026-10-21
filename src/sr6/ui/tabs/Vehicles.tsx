@@ -5,7 +5,7 @@
 // After finalising the tabs are read only: mods are fitted and taken off on the Ledger. Your designs (the Designer) are
 // bought here too (after finalising: on the Ledger).
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { cargoFactor, diyAllowed, entryOf, isDrone, modKind, priced, seatsOf } from '../../engine/budgets'
 import { boughtDesign, designOf } from '../../engine/design'
 import { entryLabel } from '../../engine/categories'

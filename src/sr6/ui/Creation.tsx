@@ -4,7 +4,7 @@
 // its page (its GMs and the admin choose the server's or their own copy; its players read it). A runner in a campaign with its own settings is built, checked and priced with those (useCampaignRules); every
 // other runner with the server's.
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { canEdit, isAdmin, send, useMe } from '../../ui/auth'
+import { canEdit, isAdmin, send, useMe } from '../../core/ui-kit/auth'
 import { loadCampaigns, type Campaign } from '../../ui/campaignsStore'
 import {
   aboutOf,

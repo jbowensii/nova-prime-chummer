@@ -4,9 +4,9 @@
 // Each game has its own set (Anarchy's at /api/backgrounds, Shadowrun 6's at /api/sr6/backgrounds): a page shows its game's.
 // Server side: server/backgrounds.mjs.
 import { useEffect, useState } from 'react'
-import { problem, send, UNREACHABLE } from './auth'
-import { Modal } from './bits'
-import type { Game } from './game'
+import { problem, send, UNREACHABLE } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
+import type { Game } from '../core/ui-kit/game'
 
 /** Sent after the admin changes the gallery: the page picks again if its image is gone. */
 const CHANGED = 'ca2-backgrounds'

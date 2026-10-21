@@ -5,7 +5,7 @@
 // or something else) show in the picker and on its row, flagged there when the runner lacks one (Review's errors
 // martial.requires and martial.augmentation): a technique is never refused for one.
 import { useState } from 'react'
-import { Modal, Picker } from '../../../ui/bits'
+import { Modal, Picker } from '../../../core/ui-kit/bits'
 import { num } from '../../engine/creation'
 import {
   isSignature,

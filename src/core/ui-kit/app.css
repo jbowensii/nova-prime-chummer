@@ -906,7 +906,7 @@ tr.starting input.note {
   margin-top: 0.3rem;
 }
 
-/* ---- portrait backdrops (src/ui/Portrait.tsx): behind the portrait's transparent parts; --bd is the whole background ---- */
+/* ---- portrait backdrops (src/core/ui-kit/Portrait.tsx): behind the portrait's transparent parts; --bd is the whole background ---- */
 .bd-white {
   --bd: #fff;
 }
@@ -2928,7 +2928,7 @@ table.contacts td.end {
   accent-color: var(--heading);
 }
 
-/* a catalog entry's card on hover, focus or tap (src/ui/EntryHover.tsx), both games */
+/* a catalog entry's card on hover, focus or tap (src/core/ui-kit/EntryHover.tsx), both games */
 .entry-ref {
   position: relative;
   cursor: help;

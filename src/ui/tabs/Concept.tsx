@@ -1,9 +1,9 @@
 import { ATTRS, type Npc } from '../../model/types'
-import { GENDER_LIST, GenderList, NPC_KINDS, NPC_TIERS } from '../bits'
+import { GENDER_LIST, GenderList, NPC_KINDS, NPC_TIERS } from '../../core/ui-kit/bits'
 import { useState } from 'react'
 import { useEditor } from '../editor'
 import { AnarchyRef } from '../AnarchyRef'
-import { BACKDROP_NAMES, Face, PortraitEditor } from '../Portrait'
+import { BACKDROP_NAMES, Face, PortraitEditor } from '../../core/ui-kit/Portrait'
 
 const HINTS = {
   keywords: ['Metatype / social status', 'Origins / home', 'Role / occupation', 'Lifestyle', 'Anything else that defines them'],

@@ -2,12 +2,12 @@
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
 import { useContext, useState, type ReactNode } from 'react'
-import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
+import { HouseChip, Modal, Picker, Stepper } from '../../core/ui-kit/bits'
 import { entryOf, materialOf, priced, takesMaterial } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
-import { formulaOf, formulaText } from '../../shared/formula'
-import { IssueBadges } from '../../ui/Issues'
+import { formulaOf, formulaText } from '../../core/shared/formula'
+import { IssueBadges } from '../../core/ui-kit/Issues'
 import { BONUS_TARGETS, sinName, type Bonus, type PurchaseKind, type Sr6Purchase } from '../model/character'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
 import type { Sr6Data } from '../engine/data'

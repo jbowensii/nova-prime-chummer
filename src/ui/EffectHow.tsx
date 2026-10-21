@@ -1,8 +1,8 @@
-// An effect's own controls (Amp Builder, Gear): how it is turned on and whether it counts (src/shared/effects.ts), and
+// An effect's own controls (Amp Builder, Gear): how it is turned on and whether it counts (src/core/shared/effects.ts), and
 // the Test an Advantage or Disadvantage is on. What the player or GM sets here is theirs: it overrides the book's.
 import { ruleText } from '../engine/amps'
 import { effectName } from '../engine/derive'
-import { applies, EFFECT_SWITCHES, own, type EffectState } from '../shared/effects'
+import { applies, EFFECT_SWITCHES, own, type EffectState } from '../core/shared/effects'
 import type { Build, Catalog, EffectPick } from '../model/types'
 import { ATTRS } from '../model/types'
 

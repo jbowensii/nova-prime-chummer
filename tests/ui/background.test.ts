@@ -3,9 +3,9 @@
 // image (black in light mode, white in dark mode) still leaves the text tokens their contrast on the page color.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { strength } from '../../src/ui/settings'
+import { strength } from '../../src/core/ui-kit/settings'
 
-const css = readFileSync('src/ui/app.css', 'utf8').replace(/\s+/g, ' ')
+const css = readFileSync('src/core/ui-kit/app.css', 'utf8').replace(/\s+/g, ' ')
 const art = css.slice(css.indexOf('/* ---- background art'))
 const block = (sel: string) => css.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
 const token = (b: string, name: string, light?: string): string => {

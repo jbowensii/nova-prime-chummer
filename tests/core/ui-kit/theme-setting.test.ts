@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { applySettings, DEFAULTS, loadSettings, resolveTheme } from '../../src/ui/settings'
+import { applySettings, DEFAULTS, loadSettings, resolveTheme } from '../../../src/core/ui-kit/settings'
 
 const device = (dark: boolean) => vi.stubGlobal('matchMedia', () => ({ matches: dark, addEventListener: () => {} }))
 afterEach(() => {

@@ -8,13 +8,13 @@
 // #/sr6/compendiums[/<id>[/<entry id>]]); Campaigns (#/sr6/campaigns[/<id>]) are Anarchy's pages with game="sr6". SR6
 // is server only (R): with browser storage the runners page says so.
 import { useEffect, useMemo, useState } from 'react'
-import { canEdit, isAdmin, useMe } from '../../ui/auth'
+import { canEdit, isAdmin, useMe } from '../../core/ui-kit/auth'
 import { AiSettings } from '../../ui/AiSettings'
 import { BooksScreen } from '../../ui/Books'
 import { CampaignsScreen } from '../../ui/Campaigns'
 import { listShared, readable } from '../../ui/compendiumStore'
-import { PageHeader } from '../../ui/nav'
-import { RepoContext, type Repo } from '../../ui/repoContext'
+import { PageHeader } from '../../core/chrome/nav'
+import { RepoContext, type Repo } from '../../core/ui-kit/repoContext'
 import { TrashScreen } from '../../ui/Trash'
 import { UsersScreen } from '../../ui/Users'
 import { loadCreation } from '../engine/creation'

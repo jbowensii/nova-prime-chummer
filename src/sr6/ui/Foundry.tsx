@@ -2,7 +2,7 @@
 // export v1 files (docs/sr6-export-format.md). Runners and NPCs from their lists and editors (Anarchy's dialog), book data on
 // Game data (GMs), a compendium from its page.
 import { useState } from 'react'
-import { NonCanon } from '../../ui/bits'
+import { NonCanon } from '../../core/ui-kit/bits'
 import { downloadJson, fileDate, runnersStem } from '../../ui/foundryKit'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'

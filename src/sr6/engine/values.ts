@@ -1,4 +1,4 @@
-import { evalFormula, formulaOf, type Formula, type Vars } from '../../shared/formula'
+import { evalFormula, formulaOf, type Formula, type Vars } from '../../core/shared/formula'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from '../model/types'
 
 // Reads the values the SR6 catalog keeps as printed text (prices, availability, ratings, attack bands) and works them out

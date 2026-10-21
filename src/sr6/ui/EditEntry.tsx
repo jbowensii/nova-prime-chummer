@@ -4,12 +4,12 @@
 // (PUT /api/sr6/edits/<kind>/<id> → `importer sr6 edit set`, checked against the kind's XSD); Restore book version
 // deletes the edit. An empty Description, or the book's text unchanged, keeps the book's text.
 import { useState, type ReactNode } from 'react'
-import { because } from '../../ui/auth'
-import { Modal } from '../../ui/bits'
-import { api } from '../../ui/api'
-import { esc } from '../../shared/xml'
-import { STATE_TEXT } from '../../shared/ui'
-import { FieldNotes } from '../../ui/Issues'
+import { because } from '../../core/ui-kit/auth'
+import { Modal } from '../../core/ui-kit/bits'
+import { api } from '../../core/ui-kit/api'
+import { esc } from '../../core/shared/xml'
+import { STATE_TEXT } from '../../core/shared/ui'
+import { FieldNotes } from '../../core/ui-kit/Issues'
 import { resolveEntry, sr6EntryXml } from '../engine/load'
 import { entryKey } from '../engine/names'
 import { fieldRule } from '../engine/compendium'

@@ -1,8 +1,8 @@
 // The Shadowrun 6 runner model (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): one runner = one
 // <sr6:character> file, read and written by src/sr6/engine/charxml.ts. The build holds what the player spent; budgets,
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
-import { EFFECT_SWITCHES, type EffectSwitch } from '../../shared/effects'
-import { newId, type Identity, type Override } from '../../shared/types'
+import { EFFECT_SWITCHES, type EffectSwitch } from '../../core/shared/effects'
+import { newId, type Identity, type Override } from '../../core/shared/types'
 import type { Sr6Entry, Sr6Kind } from './types'
 
 /** The five creation methods. */
@@ -80,7 +80,7 @@ export interface Bonus {
    *  (augmentBonus leaves it out; setBonus reads it) */
   set?: true
 }
-/** the switch both games' effects share (src/shared/effects.ts) */
+/** the switch both games' effects share (src/core/shared/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
 // (moveWalk, moveSprint and moveHit, the parts of a `a/b/c` movement effect, are made by the engine, never entered)

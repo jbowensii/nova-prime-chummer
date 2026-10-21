@@ -1,7 +1,7 @@
 // What both printed sheets (Sheet.tsx, BookSheet.tsx) take from the runner: amp effect lines, the lists, and the Risk table.
 import { ruleText } from '../engine/amps'
 import { knowledgeList } from '../engine/derive'
-import { bracketed, effectHow } from '../shared/effects'
+import { bracketed, effectHow } from '../core/shared/effects'
 import type { Derived } from '../engine/derive'
 import type { AmpEntry, Build, Catalog } from '../model/types'
 

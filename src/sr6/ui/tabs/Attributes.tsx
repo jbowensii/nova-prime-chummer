@@ -1,7 +1,7 @@
 // Attributes: one row per attribute the runner has (Magic for the awakened, Resonance for the emerged) with points,
 // adjustment and karma steppers, the metatype's range, the natural and augmented ratings, and a mark at the maximum. An
 // attribute's name shows its card on hover, focus or tap (EntryRef.tsx Sr6AttrRef: what raises it, its max, the rule).
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { br } from '../../print/view'
 import { num } from '../../engine/creation'
 import { MAGIC_KINDS } from '../../engine/data'

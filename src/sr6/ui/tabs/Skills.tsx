@@ -2,8 +2,8 @@
 // specialization and an expertise (the catalog's or the player's own words; on a skill without a rank too, Review's
 // skill.specUntrained); then knowledge skills and languages.
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
-import { NameField } from '../../../shared/ui'
+import { Stepper } from '../../../core/ui-kit/bits'
+import { NameField } from '../../../core/shared/ui'
 import { num } from '../../engine/creation'
 import { SR6_ATTRS, type Sr6Knowledge } from '../../model/character'
 import { ATTR_NAMES, useSr6Editor } from '../editor'

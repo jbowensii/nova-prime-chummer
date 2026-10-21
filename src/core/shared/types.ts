@@ -4,7 +4,7 @@ export interface Override {
   path: string
   note: string
 }
-/** Built-in portrait backdrops (src/ui/Portrait.tsx, app.css .bd-*); none = no backdrop, the look before 0.5.4 */
+/** Built-in portrait backdrops (src/core/ui-kit/Portrait.tsx, app.css .bd-*); none = no backdrop, the look before 0.5.4 */
 export const BACKDROPS = ['white', 'grey', 'dark', 'grid', 'halftone', 'neon', 'rain'] as const
 export type Backdrop = (typeof BACKDROPS)[number]
 

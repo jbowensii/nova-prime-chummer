@@ -4,11 +4,11 @@
 // The NPC area's trash (`npcs`: /api/npcs/trash, #/npcs/trash[/<username>]) is the same page for NPCs. Shadowrun 6's
 // (`game` 'sr6': /api/sr6/trash, #/sr6/trash[/<username>]) is the same page for SR6 runners, and `designs` for SR6's vehicle
 // and drone designs (/api/sr6/designs/trash, #/sr6/designs/trash[/<username>]).
-import { PageHeader } from './nav'
-import type { Game } from './game'
+import { PageHeader } from '../core/chrome/nav'
+import type { Game } from '../core/ui-kit/game'
 import { useCallback, useEffect, useState } from 'react'
-import { because, isAdmin, send, useMe } from './auth'
-import { Modal } from './bits'
+import { because, isAdmin, send, useMe } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
 
 export interface TrashItem {
   file: string

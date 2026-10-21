@@ -1,6 +1,6 @@
 // The first screen of a browser that hasn't picked a game yet (App.tsx): two big choices. A pick is remembered here
 // (game.ts) and opens that game's home; the header's switch (nav.tsx) changes it later.
-import { homeOf, storeGame, type Game } from './game'
+import { homeOf, storeGame, type Game } from '../ui-kit/game'
 
 const GAMES: [Game, string, string, string][] = [
   ['sr6', '6th World', 'Shadowrun 6th World', 'The full rules: priority builds, dice pools, Edge and every piece of gear.'],

@@ -1,6 +1,6 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
 // its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
-import type { Formula, Issue } from '../../shared/formula'
+import type { Formula, Issue } from '../../core/shared/formula'
 
 export type Sr6Kind =
   | 'priorities'
@@ -151,7 +151,7 @@ export interface Sr6Entry {
   text: string
   edited?: boolean
   by?: string
-  /** <formula> children: how a field is worked out (src/shared/formula.ts); the attribute stays as printed */
+  /** <formula> children: how a field is worked out (src/core/shared/formula.ts); the attribute stays as printed */
   formulas?: Formula[]
   /** <issue> children: a field the book prints nothing for, or that the importer couldn't read; also a formula that can't
    *  be worked out (load.ts). An edit that sets the field clears its issue (the book's stays in `original`). */

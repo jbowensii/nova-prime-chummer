@@ -1,7 +1,7 @@
 // A runner's open problems for a GM: the counts on the campaign page's runner rows (#/sr6/campaigns/<id>) and the banner
 // at the top of a player's runner. Counts are the unapproved errors and warnings, as Your runners counts its errors.
 import { useEffect, useState } from 'react'
-import type { Violation } from '../../shared/types'
+import type { Violation } from '../../core/shared/types'
 import { CampaignScreen } from '../../ui/Campaigns'
 import { campaignLinks, type Campaign } from '../../ui/campaignsStore'
 import type { CreationRules } from '../engine/creation'

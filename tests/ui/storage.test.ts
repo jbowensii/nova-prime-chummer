@@ -1,5 +1,5 @@
 import { test, expect, vi } from 'vitest'
-import { deleteCharacter, getCharacter, listCharacters, needsExportReminder, saveCharacter } from '../../src/ui/storage'
+import { deleteCharacter, getCharacter, listCharacters, needsExportReminder, saveCharacter } from '../../src/core/ui-kit/storage'
 import { blankCharacter } from '../../src/engine/file'
 
 const testChar = () => {

@@ -1,5 +1,5 @@
 // An Anarchy catalog entry named in the editor (an amp, an item, a skill or its specialization, the metatype, a package,
-// the lifestyle), with its card on hover, focus or tap (src/ui/EntryHover.tsx): the row Game data shows for it
+// the lifestyle), with its card on hover, focus or tap (src/core/ui-kit/EntryHover.tsx): the row Game data shows for it
 // (browseKinds below), made when shown.
 import type { ReactNode } from 'react'
 import { currentBuild } from '../engine/career'
@@ -7,15 +7,15 @@ import { attrRRBracket, attrRRSources } from '../engine/derive'
 import { levelLabel } from '../engine/levels'
 import { hasNoMetatype } from '../engine/npc'
 import { itemPrice } from '../engine/price'
-import { bracketed } from '../shared/effects'
-import { formulaText, type Formula } from '../shared/formula'
+import { bracketed } from '../core/shared/effects'
+import { formulaText, type Formula } from '../core/shared/formula'
 import type { AttrId, Catalog, Character, Item, ItemKind, Ref } from '../model/types'
-import { fmt } from './bits'
+import { fmt } from '../core/ui-kit/bits'
 import type { BrowseKind } from './CatalogBrowser'
 import { EditButton, EditedMark } from './editTrigger'
-import type { BrowseRow } from './types'
+import type { BrowseRow } from '../core/ui-kit/types'
 import { useEditor } from './editor'
-import { EntryHover } from './EntryHover'
+import { EntryHover } from '../core/ui-kit/EntryHover'
 
 const ITEM_KINDS: [ItemKind, string][] = [
   ['weapon', 'Weapons'],
@@ -204,7 +204,7 @@ export function entryOfPath(c: Catalog, ch: Character, path: string): { kind: An
   return sk && { kind: 'skills', id: sk.id, name: sk.name }
 }
 
-/** A picker item's card (src/ui/bits.tsx PickItem). */
+/** A picker item's card (src/core/ui-kit/bits.tsx PickItem). */
 export function anarchyCard(c: Catalog, kind: AnarchyKind, id: string): { card?: () => BrowseRow; cardKind?: string } {
   return has(c, kind, id) ? { card: () => anarchyRow(c, kind, id)!, cardKind: LABEL[kind] } : {}
 }

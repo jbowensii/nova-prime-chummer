@@ -5,7 +5,7 @@ import { changeText, ledgerRunning, makeEarn, makeNote, voidEvent } from '../../
 import { OPTIONAL_RULES, optionOn } from '../../engine/derive'
 import type { AttrId, CareerEvent, Change } from '../../model/types'
 import { AnarchyAttrRef, AnarchyRef } from '../AnarchyRef'
-import { fmt } from '../bits'
+import { fmt } from '../../core/ui-kit/bits'
 import { useEditor } from '../editor'
 
 export function LedgerTab() {

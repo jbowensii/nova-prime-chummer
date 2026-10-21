@@ -11,7 +11,7 @@ import type { Sr6Catalog } from '../../src/sr6/model/types'
 import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
 import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/fixture'
 import { button, change, click, fakeStore, field, mount, pageText, stubFetch } from './dom'
-import { loadSettings, saveSettings } from '../../src/ui/settings'
+import { loadSettings, saveSettings } from '../../src/core/ui-kit/settings'
 
 async function open(ch: Sr6Character, tab: string, c: Sr6Catalog = fixtureCatalog(), cr: CreationRules = fixtureCreation()) {
   const store = fakeStore('sr6/characters', { [ch.id]: sr6ToXml(ch) })

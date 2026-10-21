@@ -1,6 +1,6 @@
-// inBatches (src/ui/bits.tsx): Load book NPCs and Tidy book copies save a few at a time, counting each one done.
+// inBatches (src/core/ui-kit/bits.tsx): Load book NPCs and Tidy book copies save a few at a time, counting each one done.
 import { expect, test } from 'vitest'
-import { inBatches } from '../../src/ui/bits'
+import { inBatches } from '../../../src/core/ui-kit/bits'
 
 test('every item once, never more than `at` at once, a step after each', async () => {
   let running = 0,

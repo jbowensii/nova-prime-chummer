@@ -5,7 +5,7 @@ import { createElement } from 'react'
 import { expect, test } from 'vitest'
 import type { Campaign } from '../../src/ui/campaignsStore'
 import { CampaignScreen, CampaignsScreen } from '../../src/ui/Campaigns'
-import { Me, type User } from '../../src/ui/auth'
+import { Me, type User } from '../../src/core/ui-kit/auth'
 import { button, change, click, field, mount, pageText, stubFetch } from './dom'
 
 const person = (username: string, name: string) => ({ username, name })

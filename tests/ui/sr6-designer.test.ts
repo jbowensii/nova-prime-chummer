@@ -4,7 +4,7 @@
 // the mod built in), Review's "Custom design: needs GM approval" warning and a GM approving it. Made-up parts and prices.
 import { createElement, type ReactElement } from 'react'
 import { expect, test } from 'vitest'
-import { Me, type User } from '../../src/ui/auth'
+import { Me, type User } from '../../src/core/ui-kit/auth'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { boughtDesign } from '../../src/sr6/engine/design'

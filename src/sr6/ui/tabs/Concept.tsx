@@ -1,8 +1,8 @@
 // Concept: who the runner is. Names, portrait and token (the Anarchy dialog), backdrop, background and notes; the metatype
 // is shown here and picked on Creation method (an NPC has none). Still editable once finalized.
 import { useState } from 'react'
-import { GENDER_LIST, GenderList } from '../../../ui/bits'
-import { BACKDROP_NAMES, Face, PortraitEditor } from '../../../ui/Portrait'
+import { GENDER_LIST, GenderList } from '../../../core/ui-kit/bits'
+import { BACKDROP_NAMES, Face, PortraitEditor } from '../../../core/ui-kit/Portrait'
 import { npcCorrections, npcThings } from '../../engine/npc'
 import { sr6EditHref, useSr6Editor } from '../editor'
 import { Sr6Ref } from '../EntryRef'

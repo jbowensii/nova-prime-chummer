@@ -5,10 +5,10 @@
 // Nothing is kept: no history, no browser storage; asking again or closing clears the answer.
 // The answer and sources are model output: rendered as plain text only (React text nodes), never HTML or markdown. A
 // search's links are made by its page from a source's kind and id, only for an entry its catalog holds.
-import { IconButton } from './icons'
+import { IconButton } from '../core/ui-kit/icons'
 import { useEffect, useId, useState, type ReactNode } from 'react'
-import { because, sentence, UNREACHABLE, useMe } from './auth'
-import { Modal } from './bits'
+import { because, sentence, UNREACHABLE, useMe } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
 
 export const MAX_QUESTION = 500 // server/books.mjs MAX_QUESTION
 export type AskGame = 'ca2' | 'sr6'

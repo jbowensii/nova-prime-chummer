@@ -5,8 +5,8 @@
 // book (#/sr6/compendiums/<book source id>) and another GM's compendium are read only, with Copy to… into one of yours
 // (copySr6Entry: the stats, no description). Never Anarchy's: the adapter lists, saves and checks only SR6 compendiums, campaigns and sources.
 import { useEffect, useMemo, useState } from 'react'
-import { because } from '../../ui/auth'
-import { Modal } from '../../ui/bits'
+import { because } from '../../core/ui-kit/auth'
+import { Modal } from '../../core/ui-kit/bits'
 import {
   CompendiumShell,
   CopyButton,
@@ -20,8 +20,8 @@ import {
   type ShellRow,
 } from '../../ui/CompendiumShell'
 import { deleteCompendium } from '../../ui/compendiumStore'
-import { IconButton } from '../../ui/icons'
-import { PageHeader } from '../../ui/nav'
+import { IconButton } from '../../core/ui-kit/icons'
+import { PageHeader } from '../../core/chrome/nav'
 import { blankSr6Entry, COMP_KINDS, copySr6Entry, entryProblem, newEntryId } from '../engine/compendium'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'

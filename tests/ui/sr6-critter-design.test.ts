@@ -5,7 +5,7 @@
 // critters and powers on the made-up fixture.
 import { createElement, type ReactElement } from 'react'
 import { expect, test, vi } from 'vitest'
-import { Me, type User } from '../../src/ui/auth'
+import { Me, type User } from '../../src/core/ui-kit/auth'
 import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { readSr6Compendium, sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import { designCritter } from '../../src/sr6/engine/critterdesign'

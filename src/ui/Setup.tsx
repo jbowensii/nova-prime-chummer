@@ -1,7 +1,7 @@
 // First start: no account exists yet. The setup code from the server log makes the first admin (POST /api/setup),
 // who is signed in straight away. Runners saved before accounts become theirs (server/server.mjs).
 import { useState } from 'react'
-import { PasswordField, send, type User } from './auth'
+import { PasswordField, send, type User } from '../core/ui-kit/auth'
 import { GatePage } from './SignIn'
 
 export function Setup({ onDone }: { onDone: (u: User) => void }) {

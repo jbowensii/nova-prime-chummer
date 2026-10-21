@@ -7,7 +7,7 @@
 // past a limit is a Review warning, never refused. After finalising the tab is read only: the Ledger buys a critter,
 // fits critterware or gear, and bonds a quality.
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { priced } from '../../engine/budgets'
 import { bondKarma, CRITTER_CLASS_LABELS, critterView, isCritterQuality, isTaught, TRAINED_LABELS, trainedName, trainedWhat } from '../../engine/critters'
 import { NPC_STATS } from '../../engine/npc'

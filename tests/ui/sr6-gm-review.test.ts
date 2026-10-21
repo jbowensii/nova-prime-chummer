@@ -3,7 +3,7 @@
 // the player sees it read only). Made-up runner, campaign and accounts over the design fixture catalog.
 import { createElement, type ReactElement } from 'react'
 import { expect, test } from 'vitest'
-import { Me, type User } from '../../src/ui/auth'
+import { Me, type User } from '../../src/core/ui-kit/auth'
 import { sr6ToXml } from '../../src/sr6/engine/charxml'
 import { sr6Data } from '../../src/sr6/engine/data'
 import { boughtDesign } from '../../src/sr6/engine/design'

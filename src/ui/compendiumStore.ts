@@ -3,11 +3,11 @@
 // the NPC store's rev/If-Match rules. Their files join that game's GM catalog as overlays (App.tsx Main, Sr6App.tsx); a
 // player's catalog gets the shared ones (listShared), read only.
 import { compendiumXml, readCompendium } from '../engine/compendium'
-import { type SourceFile } from '../shared/source'
+import { type SourceFile } from '../core/shared/source'
 import type { Compendium } from '../model/types'
-import { track, UNREACHABLE } from './auth'
-import type { Game } from './game'
-import type { SaveResult } from './repoContext'
+import { track, UNREACHABLE } from '../core/ui-kit/auth'
+import type { Game } from '../core/ui-kit/game'
+import type { SaveResult } from '../core/ui-kit/repoContext'
 
 export interface CompendiumRow {
   id: string

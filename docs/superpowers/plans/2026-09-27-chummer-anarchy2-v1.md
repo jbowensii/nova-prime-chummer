@@ -56,7 +56,7 @@ src/engine/validate.ts                validate(catalog, character)
 src/engine/career.ts                  currentBuild, balance, makeEvent
 src/engine/file.ts                    serialize, parseCharacterFile, migrate
 src/engine/index.ts                   re-exports (the only import surface for ui/)
-src/ui/App.tsx  store.ts  library.ts  Library.tsx  SummaryPanel.tsx
+src/core/app/App.tsx  store.ts  library.ts  Library.tsx  SummaryPanel.tsx
 src/ui/tabs/{Concept,Attributes,Skills,Amps,AmpBuilder,Gear,Review,Ledger,Data}.tsx
 src/print/Sheet.tsx  sheet.css
 tools/validate-data.mjs               XSD + reference-integrity check
@@ -158,7 +158,7 @@ export interface Violation { code: string; severity: Severity; path: string;
 
 ### Task 1: Scaffold, types, CI
 
-**Files:** Create `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/ui/App.tsx` (placeholder "Chummer Anarchy 2.0"), `src/model/types.ts` (the full block above), `.github/workflows/ci.yml`, and `tests/engine/smoke.test.ts`.
+**Files:** Create `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/core/app/App.tsx` (placeholder "Chummer Anarchy 2.0"), `src/model/types.ts` (the full block above), `.github/workflows/ci.yml`, and `tests/engine/smoke.test.ts`.
 
 - [ ] **Step 1:** `npm create vite@latest . -- --template react-ts` (keep the existing README and .gitignore). Then `npm i -D vitest jsdom @playwright/test xmllint-wasm`.
 - [ ] **Step 2:** In `vite.config.ts`, add `test: { environment: 'jsdom', include: ['tests/**/*.test.ts'] }` and `base: './'`, so the build works under any path.
@@ -484,7 +484,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 12: Store, library, app frame
 
-**Files:** Create `src/ui/store.ts`, `src/ui/library.ts`, `src/ui/App.tsx`, `src/ui/Library.tsx`, `src/ui/app.css`, and `tests/ui/library.test.ts`.
+**Files:** Create `src/ui/store.ts`, `src/ui/library.ts`, `src/core/app/App.tsx`, `src/ui/Library.tsx`, `src/core/ui-kit/app.css`, and `tests/ui/library.test.ts`.
 
 **Produces:**
 - `library.ts`: `listCharacters(): Character[]`, `saveCharacter(ch)`, `deleteCharacter(id)`, `needsExportReminder(ch, now)`. Each wraps `localStorage` key `ca2.library.v1` in try/catch. On failure it returns `{ ok: false }` and the UI shows the "export now" banner.
@@ -577,7 +577,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 18: Career mode and Ledger
 
-**Files:** Modify `src/ui/tabs/{Attributes,Skills,Gear,Amps}.tsx` and `src/ui/App.tsx`. Create `src/ui/tabs/Ledger.tsx`.
+**Files:** Modify `src/ui/tabs/{Attributes,Skills,Gear,Amps}.tsx` and `src/core/app/App.tsx`. Create `src/ui/tabs/Ledger.tsx`.
 
 - When `ch.finalizedAt` is set, every edit becomes a `make*` event behind a confirm dialog ("Stealth 5 → 6 · <price> · balance after: <balance>"). Direct edits of `build` are disabled. Undo/redo are hidden, and Void on the ledger replaces them.
 - Balance < 0 after an event is allowed but shown red (it raises `budget.over`).

@@ -4,13 +4,13 @@
 // else the game's main kind (startKind). A search box looks across every kind; its results
 // are grouped by kind; above it, on Game data, the game’s AI search (AskSearch: a find searches the browser for it). Needs
 // attention shows only the entries with an issue (a value the book leaves out or the importer
-// couldn't read, src/shared/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
+// couldn't read, src/core/shared/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
 // (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useState } from 'react'
 import { AskSearch, type AskGame } from './AskRules'
-import type { BrowseRow } from './types'
-import { IssueBadges } from './Issues'
-import { Prose } from './Prose'
+import type { BrowseRow } from '../core/ui-kit/types'
+import { IssueBadges } from '../core/ui-kit/Issues'
+import { Prose } from '../core/ui-kit/Prose'
 
 export interface BrowseKind {
   id: string

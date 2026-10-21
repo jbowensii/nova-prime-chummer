@@ -6,12 +6,12 @@
 // opens from the NPC store with tabs Concept, Stat block (a critter's Design too) and Print, and its kind chip where a
 // runner's state badge is.
 import { useEffect, useMemo, useState } from 'react'
-import { canEdit, useMe } from '../../ui/auth'
-import { Brand, StateBadge } from '../../ui/bits'
+import { canEdit, useMe } from '../../core/ui-kit/auth'
+import { Brand, StateBadge } from '../../core/ui-kit/bits'
 import { approveRunner } from '../../ui/campaignsStore'
-import { IconButton } from '../../ui/icons'
-import { HeaderBars } from '../../ui/nav'
-import { Face } from '../../ui/Portrait'
+import { IconButton } from '../../core/ui-kit/icons'
+import { HeaderBars } from '../../core/chrome/nav'
+import { Face } from '../../core/ui-kit/Portrait'
 import { ConflictDialog, SaveLine, useAutosave } from '../../ui/useAutosave'
 import { allBudgets } from '../engine/budgets'
 import { currentBuild, preview, record, validateCareer } from '../engine/career'
@@ -48,7 +48,7 @@ import { DesignTab } from './tabs/Design'
 import { DronesTab, VehiclesTab } from './tabs/Vehicles'
 import { CrittersTab } from './tabs/Critters'
 import { Sr6Sheet } from '../print/Sheet'
-import { TabBoundary } from '../../shared/ui'
+import { TabBoundary } from '../../core/shared/ui'
 import { npcTabs, sr6Tabs } from './tabList'
 
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])

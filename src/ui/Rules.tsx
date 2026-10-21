@@ -2,16 +2,16 @@
 // private texts file. The page is a table of contents; a title opens the rule in a drawer at its own address (#/rules/<id>).
 // The table rules they switch on for their players are on Table setup (TableRules.tsx). Above the contents, the AI search
 // (AskSearch, the rules only): its finds link to their rules.
-import { PageHeader } from './nav'
-import { IconButton } from './icons'
+import { PageHeader } from '../core/chrome/nav'
+import { IconButton } from '../core/ui-kit/icons'
 import { useMemo, useState } from 'react'
 import { isCanon } from '../engine/canon'
 import type { Catalog } from '../model/types'
-import { Modal, NonCanon } from './bits'
+import { Modal, NonCanon } from '../core/ui-kit/bits'
 import { BookSelect } from './CatalogBrowser'
-import { Prose } from './Prose'
+import { Prose } from '../core/ui-kit/Prose'
 import { EditButton, EditedMark, useOpenEdit } from './editTrigger'
-import { isAdmin, useMe } from './auth'
+import { isAdmin, useMe } from '../core/ui-kit/auth'
 import { AskSearch } from './AskRules'
 
 const SHEETS: [string, string][] = [

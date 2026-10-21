@@ -3,14 +3,14 @@
 // and print them; a member sees roster rows), who plays, and the GM's tools. The server enforces every rule; hiding a
 // control here is only convenience. `game`: Shadowrun 6's campaigns are the same pages over /api/sr6/campaigns, linking
 // under #/sr6 (its runners open at #/sr6/c/<id>, its NPCs at #/sr6/n/<id>); a campaign holds only its own game's.
-import { PageHeader } from './nav'
-import { IconButton } from './icons'
+import { PageHeader } from '../core/chrome/nav'
+import { IconButton } from '../core/ui-kit/icons'
 import { useEffect, useId, useState } from 'react'
-import { because, canEdit, send, useMe, type User } from './auth'
+import { because, canEdit, send, useMe, type User } from '../core/ui-kit/auth'
 import { campaignLinks, loadCampaigns, type Campaign, type CampaignRunner, type Person } from './campaignsStore'
 import { AskRules } from './AskRules'
-import { Modal } from './bits'
-import type { Game } from './game'
+import { Modal } from '../core/ui-kit/bits'
+import type { Game } from '../core/ui-kit/game'
 
 const names = (ps: Person[]) => ps.map(p => p.name).join(', ')
 

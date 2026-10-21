@@ -1,7 +1,7 @@
 import { hasNoMetatype } from '../../engine/npc'
 import { attrCost } from '../../engine/price'
 import { ATTRS } from '../../model/types'
-import { fmt, Stepper } from '../bits'
+import { fmt, Stepper } from '../../core/ui-kit/bits'
 import { useEditor } from '../editor'
 import { AnarchyAttrRef } from '../AnarchyRef'
 
