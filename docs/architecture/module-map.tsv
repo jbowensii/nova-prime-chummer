@@ -703,6 +703,7 @@ tests/engine/canon.test.ts	ca2/catalog	1541
 tests/engine/career-more.test.ts	ca2/runner-builder	2924
 tests/engine/career.test.ts	ca2/runner-builder	4313
 tests/engine/charxml-more.test.ts	ca2/formats	2345
+tests/engine/charxml-old-file.test.ts	ca2/formats	1371
 tests/engine/charxml.test.ts	ca2/formats	1956
 tests/engine/compendium-more.test.ts	ca2/compendiums	1279
 tests/engine/compendium.test.ts	ca2/compendiums	1688

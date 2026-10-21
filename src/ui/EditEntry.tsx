@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import { ampCtx, ampFromTemplate, ampRating, blankCharacter, entryXml, fieldName, ISSUE_BOOK, type Issue } from '../engine'
 import type { AmpEntry, AmpTemplate, Catalog, Item, ItemKind, Rule, Source, VehicleBase } from '../model/types'
 import { because, canEdit, useMe } from './auth'
+import { SOURCE_ID } from '../shared/source'
 import { STATE_TEXT } from '../shared/ui'
 import { esc } from '../shared/xml'
 import { Modal } from './bits'
@@ -259,7 +260,7 @@ export function EntryForm({
     }
   }
 
-  const idOk = /^[A-Z][A-Z0-9-]{0,19}$/.test(newSource.id) && !c.sources.has(newSource.id)
+  const idOk = SOURCE_ID.test(newSource.id) && !c.sources.has(newSource.id)
   const sourceOk = !adding || (source === '+' ? idOk && !!newSource.name.trim() : !!source)
   const canSave = !busy && state !== 'orphan' && sourceOk && page >= 1
 
