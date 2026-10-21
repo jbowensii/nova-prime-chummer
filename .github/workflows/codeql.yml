@@ -1,0 +1,32 @@
+# GitHub's CodeQL reads our own code (JavaScript/TypeScript and Python) for common security mistakes. The repository is
+# private without GitHub Code Security, so results are not uploaded to the Security tab: the job keeps the SARIF as an
+# artifact and fails on any error-level result.
+name: CodeQL
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+  schedule: [{ cron: '23 5 * * 1' }]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with: { languages: '${{ matrix.language }}', build-mode: none }
+      - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with: { category: '/language:${{ matrix.language }}', upload: never, output: sarif }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with: { name: 'codeql-${{ matrix.language }}', path: sarif }
+      - name: Fail on error-level findings
+        run: |
+          jq -r '.runs[].results[] | "\(.level // "warning")  \(.ruleId)  \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' sarif/*.sarif | sort | tee findings.txt
+          echo "$(wc -l < findings.txt) findings"
+          ! grep -q '^error' findings.txt
