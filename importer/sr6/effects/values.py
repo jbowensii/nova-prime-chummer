@@ -1011,15 +1011,17 @@ def _negated(low, at):
 
 def _spec_skill(word, text, at):
     """The skill a specialization's word belongs to. One the book prints under several skills (SHARED_SPECS) follows the
-    other specializations in its sentence when they all belong to one of its skills (`disguise or impersonation
-    tests`: Con), else it is SPECS's (a bare `disguise tests`: Stealth)."""
+    other specializations listed with it when they all belong to one of its skills (`disguise or impersonation tests`:
+    Con), else it is SPECS's (a bare `disguise tests`: Stealth). Only the list counts, not any word of the sentence
+    (`disguise tests while acting as a guard`: still Stealth)."""
     shared = SHARED_SPECS.get(word)
     if not shared:
         return SPECS[word]
-    start = max(text.rfind(c, 0, at) for c in ".;") + 1
-    ends = [e for e in (text.find(c, at) for c in ".;") if e >= 0]
-    sentence = text[start : min(ends) if ends else len(text)]
-    others = {SPECS[w] for w in re.findall(r"[a-z-]+", sentence) if w in SPECS and w not in SHARED_SPECS}
+    joint = r"(?:\s*,\s*(?:or |and )?|\s+(?:or|and)\s+)"  # (`a, b, or c`, `a or b`, `a and b`)
+    item = r"[a-z-]+(?:\s+[a-z-]+){0,2}"  # (a list item of up to three words: `to impersonate someone`)
+    before = re.search(rf"(?:\b{item}{joint})+$", text[:at])
+    listed = (before.group(0) if before else "") + re.match(rf"{item}(?:{joint}{item})*", text[at:]).group(0)
+    others = {SPECS[w] for w in re.findall(r"[a-z-]+", listed) if w in SPECS and w not in SHARED_SPECS}
     others &= set(shared)
     return others.pop() if len(others) == 1 else SPECS[word]
 

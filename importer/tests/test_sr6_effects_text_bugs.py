@@ -512,6 +512,15 @@ class DisguiseSkillTest(unittest.TestCase):
             [("skill:stealth", "disguise"), ("skill:stealth", "sneaking"), ("skill:con", "impersonation")],
         )
 
+    def test_a_word_that_is_only_a_specialization_by_chance_does_not_move_disguise(self):
+        from importer.sr6.effects import values
+
+        for text in (
+            "+2 dice on disguise tests while acting as a guard",
+            "+2 dice on disguise tests during a performance",
+        ):
+            self.assertEqual(values.targets(text), [("skill:stealth", "disguise")], text)
+
 
 if __name__ == "__main__":
     unittest.main()
