@@ -55,7 +55,8 @@ SKIP = [
         r"\bgun\s+rack\b|\b(?:weapon|vehicle)\s+cards\b",
     ),
     ("a map", {"ab0aab3359619a5f98752846c7123472ce69f8caedcc43555caca363b7c9c066"}, r"\bmetroplex\s+map\b"),
-    ("fiction", {"86ea992542f37fba6926be5d22c5ab637bb1ef80d1b1088c27f17150f6afffbe"}, r"\benhanced\s+fiction\b"),
+    # Adversary is fiction too, but it prints a mentor spirit and a vehicle: the general recipe reads it (ADV)
+    ("fiction", set(), r"(?s)^(?!.*\badversary\b).*\benhanced\s+fiction\b"),
     (
         "images only",
         {"7ff79db98dbb0fc03cb012f8d2a5648ecb3c5732f02ccd9c29faad78c5b166ea"},

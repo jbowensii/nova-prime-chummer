@@ -28,6 +28,7 @@
   <source id="SO" published="2024-03" cat="CAT28009" publisher="Catalyst Game Labs" canon="true" texts="texts/so.xml"><name>Shadowrun: Smooth Operations</name></source>
   <source id="ED" published="2026-03" cat="CAT28518" publisher="Catalyst Game Labs" canon="true" texts="texts/ed.xml"><name>Shadowrun: Explosive Decompression</name></source> <!-- month guessed -->
   <source id="THN" published="2019-12" cat="CAT28400" publisher="Catalyst Game Labs" canon="true" texts="texts/thn.xml"><name>Shadowrun: 30 Nights</name></source>
+  <source id="ADV" published="2019-01" publisher="Catalyst Game Labs" canon="true" texts="texts/adv.xml"><name>Shadowrun: Adversary</name></source> <!-- enhanced fiction; date guessed -->
   <source id="AOR" published="2020-05" publisher="Catalyst Game Labs" canon="true" texts="texts/aor.xml"><name>Shadowrun: Tales from the UCAS: Age of Rust</name></source>
   <source id="ASN" published="2021-03" cat="CAT28402" publisher="Catalyst Game Labs" canon="true" texts="texts/asn.xml"><name>Shadowrun: Assassin's Night</name></source>
   <source id="BBR" published="2019-11" cat="CAT28010" publisher="Catalyst Game Labs" canon="true" texts="texts/bbr.xml"><name>Shadowrun: Beginner Box: Battle Royale</name></source> <!-- month guessed -->
@@ -42,10 +43,12 @@
   <source id="FBT" published="2024-10" cat="CAT28405" publisher="Catalyst Game Labs" canon="true" texts="texts/fbt.xml"><name>Shadowrun: Final Bets</name></source> <!-- month guessed -->
   <source id="FRS" published="2019-11" cat="CAT28401" publisher="Catalyst Game Labs" canon="true" texts="texts/frs.xml"><name>Shadowrun: Free Seattle</name></source>
   <source id="LHV" published="2024-05" cat="CAT28305" publisher="Catalyst Game Labs" canon="true" texts="texts/lhv.xml"><name>Shadowrun: Lethal Harvest</name></source> <!-- month guessed -->
+  <source id="LACW" published="2026-01" cat="CAT288117S" publisher="Catalyst Game Labs" canon="true" texts="texts/lacw.xml"><name>Shadowrun: Los Alamos: Cicada Whisper</name></source> <!-- month guessed (copyright 2026) -->
   <source id="LASC" published="2026-06" publisher="Catalyst Game Labs" canon="true" texts="texts/lasc.xml"><name>Shadowrun: Los Alamos: The Secret City</name></source> <!-- month guessed -->
   <source id="MGC" published="2025-08" cat="CAT28306" publisher="Catalyst Game Labs" canon="true" texts="texts/mgc.xml"><name>Shadowrun: Margin Calls</name></source> <!-- month guessed -->
   <source id="ML2083-03" published="2025-05" publisher="Catalyst Game Labs" canon="true" texts="texts/ml2083-03.xml"><name>Shadowrun Missions Legends 2083-03: Nile Gambit: City Under the Sand</name></source> <!-- month guessed -->
   <source id="ML2083-04" published="2025-07" publisher="Catalyst Game Labs" canon="true" texts="texts/ml2083-04.xml"><name>Shadowrun Missions Legends 2083-04: Nile Gambit: Cave of Shadows</name></source> <!-- month guessed -->
+  <source id="SRMG" published="2023-01" publisher="Catalyst Game Labs" canon="true" texts="texts/srmg.xml"><name>Shadowrun Sixth World Missions Guide</name></source> <!-- v2.4; month guessed (copyright 2023) -->
   <source id="NAS" published="2019-01" cat="CAT27454" publisher="Catalyst Game Labs" canon="true" texts="texts/nas.xml"><name>Shadowrun: Neo-Anarchist's Streetpedia</name></source>
   <source id="NUV" published="2022-07" cat="CAT28452" publisher="Catalyst Game Labs" canon="true" texts="texts/nuv.xml"><name>Shadowrun: Null Value</name></source>
   <source id="PWP" published="2021-01" cat="CAT28451" publisher="Catalyst Game Labs" canon="true" texts="texts/pwp.xml"><name>Shadowrun: Power Plays</name></source> <!-- month guessed -->
@@ -53,6 +56,7 @@
   <source id="SCO" published="2023-08" cat="CAT28303" publisher="Catalyst Game Labs" canon="true" texts="texts/sco.xml"><name>Shadowrun: Scotophobia</name></source>
   <source id="SHC" published="2022-09" cat="CAT28510" publisher="Catalyst Game Labs" canon="true" texts="texts/shc.xml"><name>Shadowrun: Shadow Cast</name></source> <!-- month guessed -->
   <source id="SIF-NO" published="2023-04" publisher="Catalyst Game Labs" canon="true" texts="texts/sif-no.xml"><name>Shadowrun: Shadows in Focus: New Orleans: Easy Come, Easy Go</name></source> <!-- month guessed -->
+  <source id="SSV" published="2025-01" cat="CAT28804S" publisher="Catalyst Game Labs" canon="true" texts="texts/ssv.xml"><name>Shadowrun: Seoul Survivor</name></source> <!-- month guessed (copyright 2025) -->
   <source id="SHS" published="2023-05" cat="CAT28513" publisher="Catalyst Game Labs" canon="true" texts="texts/shs.xml"><name>Shadowrun: Shoot Straight</name></source> <!-- month guessed -->
   <source id="SLS" published="2020-06" cat="CAT28301" publisher="Catalyst Game Labs" canon="true" texts="texts/sls.xml"><name>Shadowrun: Slip Streams</name></source>
   <source id="SOTA2084" published="2026-02" cat="CAT28519" publisher="Catalyst Game Labs" canon="true" texts="texts/sota2084.xml"><name>Shadowrun: State of the Art 2084</name></source>

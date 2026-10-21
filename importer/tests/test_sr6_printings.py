@@ -344,7 +344,7 @@ class SkippedTest(unittest.TestCase):
             ({"title": "Shadowrun: Gun Rack (Weapon Cards)"}, "", "card deck"),
             ({"title": ""}, "Shadowrun 6e-Rides-Vehicle Cards-CAT28509.pdf", "card deck"),
             ({"title": "about:blank"}, "Shadowrun 6e-Seattle Metroplex Map-Map-none.pdf", "map"),
-            ({"title": ""}, "Shadowrun 6e-Adversary-Enhanced Fiction-none.pdf", "fiction"),
+            ({"title": ""}, "Shadowrun 6e-Made Up Tale-Enhanced Fiction-none.pdf", "fiction"),
             ({"title": ""}, "Shadowrun 6e-Sixth World Gamemaster's Screen-Accessory-CAT28001.pdf", "images only"),
             ({"title": "Firing Squad Errata & FAQ"}, "", "errata"),
             ({"title": ""}, "SR6-Core-Rulebook-Errata-Feb-2020.pdf", "errata"),
@@ -360,6 +360,8 @@ class SkippedTest(unittest.TestCase):
         for meta, name in (
             ({"title": "Shadowrun, Sixth World Core Rulebook"}, "Shadowrun 6e-Sixth World Core Rulebook.pdf"),
             ({"title": "Rides of the Sixth World"}, "made-up.pdf"),
+            # fiction, but it prints a mentor spirit and a vehicle: the general recipe reads it
+            ({"title": ""}, "Shadowrun 6e-Adversary-Enhanced Fiction-none.pdf"),
             ({}, None),
         ):
             self.assertIsNone(skipped(meta, name), (meta, name))
