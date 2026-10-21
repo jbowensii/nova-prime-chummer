@@ -626,6 +626,31 @@
           "description": "A vehicle mod the player installed (half its nuyen price).",
           "const": true
         },
+        "material": {
+          "description": "Ammunition of a material (Bestial Nature p. 36): the material's catalog id and name, how many times as much the line costs (values.cost has it) and what its rounds do, in words.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "name",
+            "times",
+            "effect"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "times": {
+              "type": "number"
+            },
+            "effect": {
+              "type": "string"
+            }
+          }
+        },
         "vehicle": {
           "description": "An owned vehicle or drone: a drone or not, the mods built in (already paid for), its mod slot shifts, the seats taken out for cargo, the Designer design it was bought from.",
           "type": "object",

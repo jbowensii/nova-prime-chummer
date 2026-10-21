@@ -2,11 +2,12 @@
 // electronics, programs and autosofts (at a rating, priced by the book's formula) and other gear (a quantity where lines stack), and a custom item at the player's own price.
 import { useState } from 'react'
 import { Modal } from '../../../ui/bits'
-import type { PurchaseKind } from '../../model/character'
+import type { PurchaseKind, Sr6Purchase } from '../../model/character'
 import { entryOf, statusesOf } from '../../engine/budgets'
 import { ratingEdge } from '../../engine/derive'
 import { useSr6Editor } from '../editor'
-import { ACCESSORY_KINDS, isAccessory, PurchaseSection, social } from '../Picker'
+import { ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
+import { entryLabel } from '../../engine/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],
@@ -37,6 +38,8 @@ export function GearTab() {
     return w && `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}`
   }
   const u = d.unarmedDamage
+  // ammunition's material (silver rounds: Bestial Nature p. 36)
+  const material = (x: Sr6Purchase) => <MaterialPick x={x} name={(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))} />
   const close = () => {
     setCustom(false)
     setName('')
@@ -83,9 +86,11 @@ export function GearTab() {
       />
       <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />
       <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
-      <PurchaseSection kind="gear" title="Other gear" one="other gear" bonuses />
+      <PurchaseSection kind="gear" title="Other gear" one="other gear" bonuses detail={material} />
       {/* an ammunition type a runner bought as gear before the importer filed it apart (src/sr6/engine/migrate.ts) */}
-      {ch.build.purchases.some(x => x.kind === 'ammotypes') && <PurchaseSection kind="ammotypes" title="Ammunition types" one="an ammunition type" />}
+      {ch.build.purchases.some(x => x.kind === 'ammotypes') && (
+        <PurchaseSection kind="ammotypes" title="Ammunition types" one="an ammunition type" detail={material} />
+      )}
       <Modal
         open={custom}
         onClose={close}

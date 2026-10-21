@@ -3,7 +3,7 @@
 // (their DV with the statuses they apply), every skill, languages and knowledge, gear, each SIN's lifestyles and licences,
 // the Awakened flag, the Social Rating, a quality's notes (an Infected type's gains, Stolen Gear's bounty) and the karma and
 // nuyen left (career: the ledger's balances). The styles differ in look only: each shows all of these (owner 2026-10-16).
-import { entryOf, priced, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
+import { entryOf, materialOf, priced, settingQuality, statusesOf, toNuyen } from '../engine/budgets'
 import { balances, stolenLeft } from '../engine/career'
 import { awakenedFlag, runnerInfected } from '../engine/infected'
 import type { PickKind, PurchaseKind, Sr6Character, Sr6CritterQuality, Sr6Licence, Sr6Lifestyle, Sr6Purchase, Sr6Quality, Sr6Sin } from '../model/character'
@@ -77,9 +77,11 @@ export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, 
 export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'cr' | 'd' | 'career'>) {
   const b = ch.build
   const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
+  // (ammunition of a material says so: `Heavy pistol/SMG (silver)`)
   const nameOf = (x: Sr6Purchase) => {
-    const e = entryOf(x, data)
-    return e ? entryLabel(e) : (x.name ?? 'Custom item')
+    const e = entryOf(x, data),
+      m = materialOf(data, x.material)
+    return `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${m ? ` (${m.name})` : ''}`
   }
   const attrsOf = (x: Sr6Purchase) => entryOf(x, data)?.attrs ?? {}
   // a weapon with modes or ammo shoots; the rest (blades, clubs, unarmed extras) are melee
@@ -238,6 +240,12 @@ export function effectNotes(b: Sr6Character['build'], data: Sr6Data): { from: st
   for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     take(entryOf(x, data))
     for (const a of x.accessories) take(entryOf(a, data))
+    // ammunition of a material (purchases.ts materialOf), on the line or on an ammunition type fitted to it
+    for (const y of [x, ...x.accessories]) {
+      const m = materialOf(data, y.material),
+        e = entryOf(y, data)
+      if (m) out.push({ from: e ? entryLabel(e) : (y.name ?? 'Custom item'), text: `of ${m.name} (×${m.times} the price): ${m.effect}.` })
+    }
   }
   return out
 }

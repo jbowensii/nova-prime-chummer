@@ -35,7 +35,19 @@ import { gradeKnown, gradeProblem } from './grades'
 import { makeProvider } from './providers'
 import { chosenRating, ratingRange } from './values'
 import { learned } from './martial'
-import { augmentationRoom, diyAllowed, entryOf, licenceFee, licenceName, noteSkill, qualityChoice, seatsOf, toNuyenMax } from './budgets'
+import {
+  augmentationRoom,
+  diyAllowed,
+  entryOf,
+  licenceFee,
+  licenceName,
+  materialOf,
+  noteSkill,
+  qualityChoice,
+  seatsOf,
+  takesMaterial,
+  toNuyenMax,
+} from './budgets'
 import { mountsOf, shiftProblem } from './vehiclemods'
 import { critterOnly, infectedOff } from './critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from './critters'
@@ -86,6 +98,8 @@ export type Op =
   | { op: 'accessory'; host: string; remove: string }
   /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
   | { op: 'diy'; uid: string; diy: boolean }
+  /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
+  | { op: 'material'; uid: string; material: string | null }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
   | { op: 'mount'; uid: string; mount: string | null }
   /** two mod slots of one category shifted to one of another on a vehicle or drone (Double Clutch p. 120), or the shift at
@@ -588,6 +602,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.diy && !diyAllowed(entryOf(x, data))) return no('no-diy')
       if (op.diy) x.diy = true
       else delete x.diy
+      return OK
+    }
+    case 'material': {
+      const x = allLines(b).find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (op.material === null) delete x.material
+      else if (!takesMaterial(x, data) || !materialOf(data, op.material)) return no('no-material')
+      else x.material = op.material
       return OK
     }
     case 'mount': {

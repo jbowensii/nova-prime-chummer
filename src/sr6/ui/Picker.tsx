@@ -3,7 +3,7 @@
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../ui/bits'
-import { entryOf, priced } from '../engine/budgets'
+import { entryOf, materialOf, priced, takesMaterial } from '../engine/budgets'
 import { num, type CreationRules } from '../engine/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../engine/values'
 import { formulaOf, formulaText } from '../../shared/formula'
@@ -480,6 +480,7 @@ export function Accessories({
             <button aria-label={`Remove ${label} from ${name}`} onClick={() => act({ op: 'accessory', host: host.uid, remove: a.uid })}>
               ×
             </button>
+            <MaterialPick x={a} name={`${own} on ${name}`} />
             {/* what it does to its host (a cyberlimb's Strength), never to the runner */}
             <Bonuses uid={a.uid} name={`${own} on ${name}`} bonuses={a.bonuses} rated={!!a.rating} />
           </span>
@@ -499,6 +500,31 @@ export function Accessories({
         onAdd={p => act({ op: 'accessory', host: host.uid, kind: p.e.kind as PurchaseKind, id: p.e.id, rating: p.rating })}
       />
     </span>
+  )
+}
+
+/** An ammunition line's material (purchases.ts materialOf: Bestial Nature p. 36's copper, silver, gold), chosen or taken
+ *  off; nothing on a line that is no ammunition or when no book with materials is imported. */
+export function MaterialPick({ x, name }: { x: Sr6Purchase; name: string }) {
+  const { data, act } = useSr6Editor()
+  if (!takesMaterial(x, data) || !data.materials.length) return null
+  return (
+    <label className="inline">
+      Material{' '}
+      <select aria-label={`${name}: material`} value={x.material ?? ''} onChange={ev => act({ op: 'material', uid: x.uid, material: ev.target.value || null })}>
+        <option value="">None</option>
+        {data.materials.map(e => {
+          const m = materialOf(data, e.id)
+          return (
+            m && (
+              <option key={e.id} value={e.id}>
+                {m.name} (×{m.times} the price)
+              </option>
+            )
+          )
+        })}
+      </select>
+    </label>
   )
 }
 

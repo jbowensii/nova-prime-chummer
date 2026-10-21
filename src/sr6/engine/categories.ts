@@ -105,3 +105,8 @@ export function capacityUsed(e: Sr6Entry | undefined, rating = 1): number {
   const v = m ? rated(m[1], rating) : null
   return v?.ok && v.n !== null ? v.n : 0
 }
+
+/** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other
+ *  semi-precious materials, x10 for gold or other precious materials`): the importer's material add-on, an ammunition
+ *  type priced as a multiple of the ammunition it is loaded in (catalog.py variants: its cost formula is `H*N`). */
+export const isMaterial = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !!e.formulas?.some(f => f.field === 'cost' && /\bH\b/.test(f.expr))
