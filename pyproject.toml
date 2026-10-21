@@ -7,6 +7,8 @@ target-version = ["py312"]
 [tool.pylint.main]
 py-version = "3.12"
 jobs = 0
+# lxml is a C extension; let pylint import it to see its members
+extension-pkg-allow-list = ["lxml"]
 
 [tool.pylint.format]
 max-line-length = 120
@@ -35,5 +37,7 @@ disable = [
 ]
 
 [tool.pylint.basic]
+# a test's name is its sentence (`test_run_writes_the_samples`); private helpers explain themselves or carry a comment
+no-docstring-rgx = "^(_|test_|setUp|tearDown|.*Tests?$)"
 # short names the readers use throughout: a block, a row, an entry, a match
 good-names = ["b", "e", "i", "j", "k", "m", "n", "p", "r", "s", "t", "x", "y", "_", "bs", "ch", "fx", "id", "ok", "db"]
