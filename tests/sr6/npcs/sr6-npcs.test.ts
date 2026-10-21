@@ -6,7 +6,7 @@ import { bookNpc, bookNpcVersions, byPublication } from '../../../src/sr6/runner
 import type { Sr6Catalog } from '../../../src/sr6/formats/domain/types'
 import { SR6_NPC_KINDS } from '../../../src/sr6/formats/domain/character'
 import { npcChip, npcSection, sr6NpcsHref } from '../../../src/sr6/runner-builder/ui/editor'
-import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcGroups, oldContact, tidyBookCopies } from '../../../src/sr6/npcs/ui/Npcs'
+import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcGroups, oldContact, tidyBookCopies } from '../../../src/sr6/npcs/domain/bookNpcs'
 import { fixtureCatalog } from '../catalog/fixture'
 
 const c = fixtureCatalog()
