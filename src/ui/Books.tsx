@@ -4,7 +4,6 @@
 import { IconLink } from './icons'
 import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
-import { dupeGroups } from '../engine'
 import type { Catalog } from '../model/types'
 import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
 import { Modal, NonCanon } from './bits'
@@ -268,7 +267,18 @@ function DataPack({ reload }: { reload: () => void }) {
   )
 }
 
-export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => void; game?: 'sr6' }) {
+/** dupeGroups: the game's duplicate finder (Anarchy's, src/engine/dupes.ts), so this page imports no game engine. */
+export function BooksScreen({
+  c,
+  reload,
+  game,
+  dupeGroups,
+}: {
+  c?: Catalog
+  reload: () => void
+  game?: 'sr6'
+  dupeGroups?: (c: Catalog) => Map<string, string[]>
+}) {
   const repo = useRepo()
   const sr6 = game === 'sr6',
     bookApi = sr6 ? 'sr6/books' : 'books'
@@ -432,7 +442,7 @@ export function BooksScreen({ c, reload, game }: { c?: Catalog; reload: () => vo
     (books ?? []).flatMap(b => [...(b.state === 'done' && b.source ? [b.source] : []), ...(['done', 'superseded'].includes(b.state) ? (b.extra ?? []) : [])]),
   )
   const dupes =
-    c && !sr6 && report?.book.source
+    c && dupeGroups && !sr6 && report?.book.source
       ? [...dupeGroups(c).values()]
           .map(ids => ids.map(id => c.amps.get(id) ?? c.items.get(id) ?? c.rules.get(id)!).filter(Boolean))
           .filter(g => g.some(e => e.source === report.book.source))

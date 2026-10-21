@@ -139,7 +139,7 @@ for (const { file, kind, doc } of docs) {
 }
 const specIds = new Set()
 for (const { kind, doc } of docs) if (kind === 'skills') for (const s of doc.querySelectorAll('spec')) specIds.add(s.getAttribute('id'))
-// the narrative effect kinds every catalog has (src/engine/amps.ts loadRuleEffects): an effect may name one
+// the narrative effect kinds every catalog has (src/engine/load.ts loadRuleEffects): an effect may name one
 for (const r of JSON.parse(readFileSync(new URL('../src/engine/rule-effects.json', import.meta.url), 'utf8'))) (ids.ampeffects ??= new Set()).add(r.id)
 const has = (kind, id) => ids[kind]?.has(id)
 const need = (file, ok, what) => {

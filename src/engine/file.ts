@@ -1,7 +1,6 @@
 // .ca2.json character files: blank character, serialize, import checks, migrations, snapshots.
-import type { Build, Catalog, Character, ItemEntry, KnowledgeEntry, Npc, StartingGear } from '../model/types'
+import type { AmpEntry, AmpTemplate, Build, Catalog, Character, EffectPick, ItemEntry, KnowledgeEntry, Npc, StartingGear } from '../model/types'
 import { BACKDROPS, newId } from '../model/types'
-import { ampFromTemplate, isSinner, plain, sinnerTemplate } from './amps'
 import { houseSource } from './canon'
 
 export const FORMAT_VERSION = 1
@@ -44,36 +43,43 @@ export function ensureStartingGear(b: Build, finalized = false): void {
   if (b.amps.some(a => isSinner(a)) && !b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
 }
 
-const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
+// ---- the SINner lookups reading a file needs (ensureStartingGear): pure, so reading runs no creation rules ----
+/** case and spacing aside */
+export const plain = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+/** The catalog's SINner quality (Daegann's Shadow Amps), looked up by name: there only when that book is imported. */
+export const sinnerTemplate = (c: Catalog): AmpTemplate | undefined => [...c.amps.values()].find(t => plain(t.name) === 'sinner')
+const effectKey = (es: EffectPick[]) =>
+  es
+    .map(e => `${e.ref}|${e.param ?? ''}|${e.value ?? ''}`)
+    .sort()
+    .join(';')
+/** An amp that is the SINner quality, and still only that: a Quality that is the catalog's SINner entry (by catalog id
+ *  when the catalog is at hand, else its snapshot's name or its own; added by the box or by hand) with that entry's effects, or a
+ *  hand-built Quality named exactly SINner (any case) with no effects at all. Renaming another amp, or adding any
+ *  effect to a SINner (a narrative one too), makes it an amp priced like any other, first-Quality rule included.
+ *  House rule (owner, 0.5.5): a SINner is always 0¥ and never takes the first-Quality slot, however it got there. */
+export function isSinner(a: AmpEntry, c?: Catalog): boolean {
+  if (a.type !== 'quality') return false
+  const bare = a.effects.length === 0
+  if (a.catalogId) {
+    // without the catalog (reading a file): its snapshot, or with none its name
+    const t = c
+      ? a.catalogId === sinnerTemplate(c)?.id
+        ? c.amps.get(a.catalogId)
+        : undefined
+      : plain(a.snapshot?.name ?? a.name) === 'sinner'
+        ? (a.snapshot ?? { effects: [] })
+        : undefined
+    return !!t && (bare || effectKey(a.effects) === effectKey(t.effects))
+  }
+  return (!!a.realSin || plain(a.name) === 'sinner') && bare
+}
+
+export const realSinItem = (): ItemEntry => ({ uid: 'real-sin', kind: 'gear', name: 'Real SIN', starting: 'real-sin' })
 /** The box's state: a Real SIN entry, or a SINner quality however it got there. */
 export const hasRealSin = (b: Build, c?: Catalog) => b.items.some(i => i.starting === 'real-sin') || b.amps.some(a => isSinner(a, c))
 /** SINner qualities the player added by hand: unticking the box removes them too, so the UI asks first. */
 export const handAddedSinner = (b: Build, c?: Catalog) => b.amps.filter(a => !a.realSin && isSinner(a, c))
-
-/** The Concept tab's "Has a real SIN": on adds a free Real SIN entry and, when a book has one and the runner lacks it,
- *  the SINner quality; off removes the entry and every SINner quality. */
-export function setRealSin(c: Catalog, b: Build, on: boolean): void {
-  if (!on) {
-    b.items = b.items.filter(i => i.starting !== 'real-sin')
-    b.amps = b.amps.filter(a => !isSinner(a, c))
-    return
-  }
-  if (!b.items.some(i => i.starting === 'real-sin')) b.items.push(realSinItem())
-  const t = sinnerTemplate(c)
-  if (t && !b.amps.some(a => isSinner(a, c))) {
-    const { amp } = ampFromTemplate(t, () => 'real-sin-amp')
-    b.amps.push({ ...amp, realSin: true })
-  }
-}
-
-/** After every edit: a SINner quality brings its free Real SIN entry, and taking the last one off takes the entry with it
- *  (kept when no book has a SINner, so a runner from before stays as it was). */
-export function syncRealSin(c: Catalog, b: Build): void {
-  const has = b.amps.some(a => isSinner(a, c)),
-    entry = b.items.some(i => i.starting === 'real-sin')
-  if (has && !entry) b.items.push(realSinItem())
-  if (!has && entry && sinnerTemplate(c)) b.items = b.items.filter(i => i.starting !== 'real-sin')
-}
 
 export const serialize = (ch: Character) => JSON.stringify(ch, null, 2) + '\n'
 
