@@ -160,8 +160,7 @@ whose name is most alike, at least 0.75, within its type's kinds when it has a t
 `commlink` tried too). Else, on a weapons, gear or augmentations line, a standard item (`standard`): of its type the
 one with most of its other words, else the type's standard entry (at the printed rating, else lowest rated, then
 cheapest); else the standard item of the category a generic name is; else of the entries its last word names; armor
-printing a Defense is looked for among armor only, and is the standard armor at that Defense when nothing is alike. A
-power is linked by name or by a 75% guess only (one the catalog lacks stays a printed power). A natural attack (its
+printing a Defense is looked for among armor only, and is the standard armor at that Defense when nothing is alike. A power, or a spell on the spells line (the catalog's spells and rituals), is linked by name or by a 75% guess only (one the catalog lacks stays a printed power or spell). A natural attack (its
 skill as category, or on a critter, spirit or sprite one with no category) and a Cybercombat one are linked by name
 only. Ties: the NPC's own book, then the latest printing. A printed level picks that level's entry; a device's or
 implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over

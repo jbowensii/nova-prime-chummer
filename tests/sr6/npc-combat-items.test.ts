@@ -210,6 +210,16 @@ test('npc-combat-items: a name at least 75% alike links, its score kept (owner: 
   ])
 })
 
+test('npc-combat-items: a spells line: its catalog spells by name or a 75% guess, others kept as printed spells', () => {
+  const x = exportNpc(npc('grunt', { spells: 'Glow Ward, Mend Glows, Made-up Hex' }), data, c).items
+  expect(x.map(i => [i.line.printed, i.kind, i.id, i.line.match?.how])).toEqual([
+    ['Glow Ward', 'spells', 'crb.glow-ward', 'exact'],
+    ['Mend Glows', 'spells', 'crb.mend-glow', 'fuzzy'], // (a plural: alike by its match key)
+    ['Made-up Hex', 'spells', undefined, undefined],
+  ])
+  expect(x[0].uid).toBe('line:spells:Glow Ward')
+})
+
 test('npc-combat-items: when in doubt, a grenade is its type’s (owner: "use standard ammo, grenades, etc.")', () => {
   const x = zzItems('grunt', { gear: 'smoke grenade, 2 x stun grenades, grenade' })
   expect(x.map(i => [i.line.printed, i.id, i.qty, i.line.match?.how])).toEqual([

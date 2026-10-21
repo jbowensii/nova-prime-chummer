@@ -248,6 +248,7 @@ const NATURAL = /close combat|unarmed|natural|exotic weapons/i
 /** an attack's printed stats: a bracket, a DV, an attack rating, a damage (`4P`) or range bands (`9/—`) */
 const STAT_SIGN = /\[|\bDV\b|\bAR\b|attack ratings?|\d\s*[PS]\b|\d\s*\/\s*(?:\d|[—–-])/i
 const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack/i
+const SPELL_KINDS: Sr6Kind[] = ['spells', 'rituals']
 const ACCESSORY_KINDS: Sr6Kind[] = ['weapons', 'armor', 'electronics', 'gear', 'augmentations', 'programs']
 const ATTACK_SKILLS = new Set(['close combat', 'exotic weapons', 'firearms', 'athletics'])
 
@@ -607,9 +608,11 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
     powers = POWER_KINDS[being ? 'being' : 'person']
   const out: Sr6NpcThing[] = []
   for (const l of npc.lines) {
-    const power = l.part === 'powers' || l.part === 'optionalPowers',
+    // (a spells line reads as a powers line does: names, linked by name or a 75% guess, else kept as printed)
+    const spell = l.part === 'spells',
+      power = l.part === 'powers' || l.part === 'optionalPowers' || spell,
       attack = l.part === 'weapons' || l.part === 'attacks'
-    const kinds = power ? powers : THING_KINDS[l.part]
+    const kinds = spell ? SPELL_KINDS : power ? powers : THING_KINDS[l.part]
     if (!kinds) continue
     for (const printed of attack ? splitThings(l.text) : top(l.text)) {
       const p = power ? { name: printed, stats: [] } : pieces(printed)
@@ -660,7 +663,9 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         : attack
           ? 'weapons'
           : power
-            ? 'critterpowers'
+            ? spell
+              ? 'spells'
+              : 'critterpowers'
             : l.part === 'augmentations'
               ? 'augmentations'
               : s.values.defense != null

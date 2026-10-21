@@ -77,7 +77,7 @@ test.skipIf(!LIVE)(
         if (i.line.match?.how === 'ammo') continue
         if (i.kind === 'armor') n.armor++
         else if (i.kind === 'augmentations') n.augmentations++
-        else if (i.line.part === 'powers' || i.line.part === 'optionalPowers') {
+        else if (i.line.part === 'powers' || i.line.part === 'optionalPowers' || i.line.part === 'spells') {
           n.powers++
           powers[`${i.kind}${i.id ? '' : ' (built)'}`] = (powers[`${i.kind}${i.id ? '' : ' (built)'}`] ?? 0) + 1
         } else if (i.line.part === 'gear') n.gear++
