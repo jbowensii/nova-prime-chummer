@@ -2,7 +2,7 @@
 // read once into the shapes the providers, budgets and rules use. Names the book prints (a priority row's metatypes, a
 // metatype's traits) are resolved to ids here; what can't be resolved or read is a warning in `problems`, never a guess.
 import { issueNote } from '../../shared/formula'
-import type { Violation } from '../../model/types'
+import type { Violation } from '../../shared/types'
 import type { MagicKind, PickKind, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import { gradeKey } from './grades'

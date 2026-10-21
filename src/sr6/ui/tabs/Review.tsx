@@ -4,7 +4,7 @@
 // to draft only while the ledger holds nothing live to undo.
 import { useRef, useState } from 'react'
 import { resolveEntry } from '../../engine/load'
-import type { Violation } from '../../../model/types'
+import type { Violation } from '../../../shared/types'
 import { Modal } from '../../../ui/bits'
 import { balances, canDraft } from '../../engine/career'
 import { purchaseTab } from '../../engine/purchases'

@@ -2,7 +2,7 @@
 // saved as in /api/sr6/characters and what Export writes. Summary fields sit on the root as Anarchy's
 // (src/engine/charxml.ts), with the writing and reading helpers both games share (src/shared/xml.ts).
 import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../shared/xml'
-import { BACKDROPS, type Backdrop } from '../../model/types'
+import { BACKDROPS, type Backdrop } from '../../shared/types'
 import {
   BONUS_SWITCHES,
   BONUS_TARGETS,

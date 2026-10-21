@@ -1,7 +1,7 @@
 // Where SR6 runners are saved (the server's /api/sr6/characters, server only in S2) and the runners page's file helpers:
 // export (with a snapshot of every catalog line, so the file still reads where the entry is gone), import (an Anarchy
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
-import { newId } from '../../model/types'
+import { newId } from '../../shared/types'
 import { serverRepo, type Codec } from '../../ui/repo'
 import { keepSr6House } from '../engine/house'
 import { resolveEntry } from '../engine/load'

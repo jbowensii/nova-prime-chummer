@@ -2,6 +2,10 @@
 // (docs/data-format.md); Character types mirror the .ca2.json file.
 import type { EffectState } from '../engine/effects'
 import type { Formula, Issue } from '../engine/formula'
+import { BACKDROPS, newId, type Backdrop, type Identity, type Override, type Severity, type Violation } from '../shared/types'
+
+export { BACKDROPS, newId }
+export type { Backdrop, Identity, Override, Severity, Violation }
 
 export type AttrId = 'str' | 'agi' | 'wil' | 'log' | 'cha'
 export const ATTRS: AttrId[] = ['str', 'agi', 'wil', 'log', 'cha']
@@ -320,14 +324,6 @@ export type CareerEvent = { id: string; at: string } & (
   | { type: 'note'; text: string }
   | { type: 'void'; eventId: string; reason: string }
 )
-export interface Override {
-  code: string
-  path: string
-  note: string
-}
-/** Built-in portrait backdrops (src/ui/Portrait.tsx, app.css .bd-*); none = no backdrop, the look before 0.5.4 */
-export const BACKDROPS = ['white', 'grey', 'dark', 'grid', 'halftone', 'neon', 'rain'] as const
-export type Backdrop = (typeof BACKDROPS)[number]
 /** A GM's non-player character (book p.81-82). prime: managed like a runner, with Edge; regular: no Edge, average hits.
  *  A critter or spirit may have no metatype ('') and attributes outside metatype ranges. */
 export interface Npc {
@@ -340,20 +336,7 @@ export interface Character {
   id: string
   /** set: an NPC (character XML <npc>, the root's first child); absent: a runner */
   npc?: Npc
-  identity: {
-    name: string
-    streetName: string
-    metatype: string
-    portrait?: string
-    /** the round token picture (Foundry etc.); absent: the portrait serves as the token */
-    token?: string
-    backdrop?: Backdrop
-    lifestyle?: string
-    /** optional, as the player writes it (both games) */
-    gender?: string
-    background: string
-    notes: string
-  }
+  identity: Identity
   narrative: { keywords: string[]; dispositions: string[]; cues: string[] }
   level: string
   package: string
@@ -398,22 +381,6 @@ export interface Compendium {
   vehicles: VehicleBase[]
   npcs: Character[]
 }
-export type Severity = 'error' | 'warning'
-/** hard: an error no GM can approve (SR6's negative Karma or nuyen: Finalize waits until it's fixed) */
-export interface Violation {
-  code: string
-  severity: Severity
-  path: string
-  message: string
-  source?: string
-  page?: number
-  approved?: boolean
-  hard?: true
-}
-
-/** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
-export const newId = (): string => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-
 /** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
  *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
  *  every runner. */
