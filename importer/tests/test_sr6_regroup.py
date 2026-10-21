@@ -806,7 +806,7 @@ class VariantRunTest(unittest.TestCase):
             f"| {ind}Cold | 1P |",
             "| Lone | 1P |",
         ]
-        got = [(r[0], r.group) for r in regroup._row_groups(lines, [regroup._cells(ln) for ln in lines])]
+        got = [(r[0], r.group) for r in regroup._row_groups(lines, [regroup.table_cells(ln) for ln in lines])]
         self.assertEqual(
             got,
             [

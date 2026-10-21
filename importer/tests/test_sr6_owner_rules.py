@@ -5,7 +5,7 @@ prices in words, an FAQ's Karma statement. Invented books and values only."""
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import catalog, regroup, resolve
+from importer.sr6 import catalog, prose_items, regroup, resolve
 from importer.sr6.recipes import crb, dc
 
 
@@ -38,8 +38,8 @@ class NamesTest(unittest.TestCase):
         )
 
     def test_words(self):
-        self.assertEqual(catalog.number_words("one thousand"), 1000)
-        self.assertEqual(catalog.number_words("two hundred fifty"), 250)
+        self.assertEqual(prose_items.number_words("one thousand"), 1000)
+        self.assertEqual(prose_items.number_words("two hundred fifty"), 250)
         self.assertEqual(catalog.word_stems("webbed hands and feet"), catalog.word_stems("Hand and foot webbing"))
 
     def test_second_box_after_a_sentence(self):
@@ -153,9 +153,11 @@ class UnworkedBooksTest(unittest.TestCase):
     def test_an_item_a_note_prices(self):
         t = "DV is the net hits. Glowmarket fizz spray in a 10-dose can can be purchased for 150¥ and has an availability of 6(I)."
         self.assertEqual(
-            [m.groups() for m in catalog._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")]
+            [m.groups() for m in prose_items._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")]
         )
-        self.assertEqual(list(catalog._PURCHASED.finditer("Zorp eggs can be purchased for 500 nuyen x the Body.")), [])
+        self.assertEqual(
+            list(prose_items._PURCHASED.finditer("Zorp eggs can be purchased for 500 nuyen x the Body.")), []
+        )
 
     def test_abilities_each_entry_grants(self):
         md = "\n".join(
@@ -340,7 +342,7 @@ class FinalDecisionsTest(unittest.TestCase):
     """The owner's final decisions (importer v6): items the prose states, the core rulebook's vocabularies."""
 
     def test_prose_items(self):
-        from importer.sr6.catalog import _band_tier, _skill_choices
+        from importer.sr6.prose_items import _band_tier, _skill_choices
 
         md = "\n".join(
             [

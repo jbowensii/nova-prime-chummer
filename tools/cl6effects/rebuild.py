@@ -57,7 +57,7 @@ def fix_runs(runs, out):
         base = os.path.join(dst, "custom", "sr6")
         for d in glob.glob(os.path.join(base, "imported", "*")):
             src = os.path.basename(d)
-            # (apply keeps the item: effects of its input: strip them so removals show; an add-on's item: effects come from its host's text, catalog.add_ons, not from apply: they stay)
+            # (apply keeps the item: effects of its input: strip them so removals show; an add-on's item: effects come from its host's text, prose_items.add_ons, not from apply: they stay)
             files = {
                 os.path.basename(f): "".join(
                     l if " accessoryOf=" in l else ITEMFX.sub("", l)

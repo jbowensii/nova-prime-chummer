@@ -143,7 +143,7 @@ def alt_names(name):
 # --- reading book.md -------------------------------------------------------------------------------------------
 
 
-def _cells(line):
+def table_cells(line):
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
 
@@ -153,9 +153,9 @@ def md_tables(text):
     lines, out, i = (text or "").splitlines(), [], 0
     while i < len(lines):
         if lines[i].startswith("|") and i + 1 < len(lines) and _SEP.match(lines[i + 1]):
-            header, rows, i = _cells(lines[i]), [], i + 2
+            header, rows, i = table_cells(lines[i]), [], i + 2
             while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
-                rows.append(_cells(lines[i]))
+                rows.append(table_cells(lines[i]))
                 i += 1
             out.append((header, rows))
         else:
@@ -219,7 +219,7 @@ def _row_groups(lines, rows):
     raw = []
     for ln in lines:
         first = ln.strip()[1:-1].split("|")[0].lstrip(" \t")
-        cells = _cells(ln)
+        cells = table_cells(ln)
         raw.append(
             (
                 cells[0],
@@ -321,10 +321,10 @@ def _elements(md):
             i += 1
             # rows run to the next header (a header line has its rule under it)
             while i < len(lines) and lines[i].startswith("|") and not (i + 1 < len(lines) and _SEP.match(lines[i + 1])):
-                rows.append(_cells(lines[i]))
+                rows.append(table_cells(lines[i]))
                 body.append(lines[i])
                 i += 1
-            header, rows = _header_rest(_cells(ln), rows)
+            header, rows = _header_rest(table_cells(ln), rows)
             header = [deinterleave(h) or h for h in header]
             rows = _wrapped_rows(header, [_repair_row(header, r) for r in rows])
             if (more := _text_rows(header, lines, i)) is not None:
@@ -2098,7 +2098,7 @@ def blocks(text):
         meta = json.loads(m.group(2))
         tables = []
         while lines[i].startswith("|"):  # each rendered table is a header, its rule and one row
-            tables.append((_cells(lines[i]), [_cells(lines[i + 2])]))
+            tables.append((table_cells(lines[i]), [table_cells(lines[i + 2])]))
             i += 3
         labels = {}
         while i < len(lines) and lines[i]:

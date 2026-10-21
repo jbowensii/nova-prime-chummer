@@ -12,7 +12,7 @@ import sys
 from dataclasses import replace
 
 from importer.sr6 import catalog
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, norm, table_cells
 
 ID, NAME, PUBLISHER, CANON = "KK", "Krime Katalog", "Catalyst Game Labs", True
 BOOK = "Krime Katalog"
@@ -100,7 +100,7 @@ def _sets_by_header(text):
                 and not (j + 1 < len(lines) and catalog.TABLE_SEP.match(lines[j + 1]))
             ):
                 j += 1
-            h, rows = catalog.table_cells(ln), [catalog.table_cells(r) for r in lines[i + 2 : j]]
+            h, rows = table_cells(ln), [table_cells(r) for r in lines[i + 2 : j]]
             if sum(x.upper() == "COST" for x in h) > 1:
                 return None
             if not _sr5(h):
@@ -181,7 +181,7 @@ def _stat_sets(text):
                 j += 1
             seen = True
             if mode:
-                tabs.append((catalog.table_cells(ln), [catalog.table_cells(r) for r in lines[i + 2 : j]]))
+                tabs.append((table_cells(ln), [table_cells(r) for r in lines[i + 2 : j]]))
             i = j
             continue
         if caps := _captions(ln):

@@ -45,7 +45,7 @@ ENTRY = re.compile(
 )  # (the file's last entry may close the root on its line: an override's)
 _KEEP = re.compile(
     r'<effect [^>]*target="item:[^"]*"[^>]*/>'
-)  # (an add-on's effect read from its host's text: catalog.add_ons)
+)  # (an add-on's effect read from its host's text: prose_items.add_ons)
 _DROP = re.compile(r"<(?:effect|test|link|incompatible|compatible) [^>]*/>")
 
 

@@ -94,7 +94,7 @@ def apply(files, texts_xml, regrouped="", only=None):
         for m in re.finditer(r'<\w+ id="[^"]+"([^>]*)><name>(.*?)</name>', x or ""):
             cat = (re.search(r' category="([^"]*)"', m.group(1)) or [None, ""])[1].casefold()
             categorised.setdefault(f[:-4], {}).setdefault(cat, []).append(_unesc(m.group(2)))
-    # (an item's add-ons the book prices in its text, catalog.add_ons: host id -> the add-ons' names; their effects are theirs)
+    # (an item's add-ons the book prices in its text, prose_items.add_ons: host id -> the add-ons' names; their effects are theirs)
     acc_of = {}
     for m in re.finditer(
         r'<\w+ id="[^"]+"[^>]*? accessoryOf="([^"]+)"[^>]*><name>(.*?)</name>', "".join(f for f in files.values() if f)

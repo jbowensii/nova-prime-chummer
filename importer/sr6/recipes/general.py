@@ -14,7 +14,7 @@ from dataclasses import replace
 
 from importer.sr6.ids import slug
 from importer.sr6 import catalog, lifemodules, sections
-from importer.sr6.regroup import blocks, keys, norm
+from importer.sr6.regroup import blocks, keys, norm, table_cells
 
 # (source id, name, CAT number or "", the PDF title's pattern, phrases the first page holds when the title is missing)
 # The id: a short form of the book's title (a letter first: THN for 30 Nights), as the core rulebook's CRB.
@@ -253,9 +253,9 @@ def _split_shared(lines):
     out, i = [], 0
     while i < len(lines):
         ln = lines[i]
-        cells = catalog.table_cells(ln) if _BAND_LINE.match(ln) else []
+        cells = table_cells(ln) if _BAND_LINE.match(ln) else []
         starts = [n for n, c in enumerate(cells) if c == cells[0]]
-        if len(starts) < 2 or i + 2 >= len(lines) or len(catalog.table_cells(lines[i + 2])) != len(cells):
+        if len(starts) < 2 or i + 2 >= len(lines) or len(table_cells(lines[i + 2])) != len(cells):
             out.append(ln)
             i += 1
             continue
@@ -270,7 +270,7 @@ def _split_shared(lines):
             out.append(ln)
             i += 1
             continue
-        vals, end = catalog.table_cells(lines[i + 2]), i + 3
+        vals, end = table_cells(lines[i + 2]), i + 3
         while end < len(lines) and not lines[end].startswith("#") and not _BAND_LINE.match(lines[end]):
             end += 1
         if end < len(lines) and _BAND_LINE.match(lines[end]) and (g := _name_group(lines, end)):

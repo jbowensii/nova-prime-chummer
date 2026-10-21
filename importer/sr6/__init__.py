@@ -59,6 +59,16 @@ KINDS = {
     "categories": "category",
     "rules": "rule",
 }
+# ordered (a tuple): the loops over it decide which kind's entry comes first (a category, a part name), the same every run
+ROW_KINDS = (
+    "weapons",
+    "armor",
+    "augmentations",
+    "electronics",
+    "gear",
+    "vehicles",
+    "ammotypes",
+)  # need a table row and a category
 # the kinds read from the books' own sections and tables (importer/sr6/sections.py), listed as printed: DISPLAY_KINDS in
 # src/sr6/formats/domain/types.ts
 SECTION_KINDS = (

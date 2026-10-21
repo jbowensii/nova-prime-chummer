@@ -14,7 +14,7 @@ from dataclasses import replace
 
 from importer.sr6.ids import slug
 from importer.sr6 import catalog, search, shapes
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.regroup import blocks, norm, table_cells
 
 ID, NAME, PUBLISHER, CANON = "DC", "Shadowrun: Double Clutch", "Catalyst Game Labs", True
 BOOK = "Double Clutch"
@@ -156,7 +156,7 @@ def _strip(text):
     """The box's text without its stat lines (the header line and the values) and the aircraft table."""
     out, summary = [], False
     for ln in text.splitlines():
-        summary = ln.startswith("|") and (summary or _summary(catalog.table_cells(ln)))
+        summary = ln.startswith("|") and (summary or _summary(table_cells(ln)))
         if not summary and not _value_line(ln) and not re.fullmatch(r"\*\*[A-Z .]+\*\*", ln.strip()):
             out.append(ln)
     return "\n".join(out)
