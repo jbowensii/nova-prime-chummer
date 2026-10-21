@@ -562,9 +562,6 @@ def extract(md, _ctx=None):
                     )
 
             # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
-            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
-            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
-            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
             def read_mod(sec=sec, low=low, effects_lines=effects_lines, grade=grade):
                 ref = (
                     (

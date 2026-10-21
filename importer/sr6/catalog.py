@@ -1116,14 +1116,8 @@ class Catalog:
             b = text_stats(b, HEADERS["npcs" if kind == "contacts" else kind])
         if kind in STAT_KINDS and len(parts := _side_by_side(b)) > 1:
             # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])
         if kind in STAT_KINDS and self.split and len(parts := self.split(b)) > 1:
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
-            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
             # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])  # one stat block, several names
         if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]) and not b.unlisted:

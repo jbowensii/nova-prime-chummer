@@ -1,9 +1,10 @@
+# pylint: disable=line-too-long  # (the docstring is the printed usage text: one command per line)
 """CLI for the SR6 importer (python -m importer sr6 ...).
 python -m importer sr6 run <library/sr6/book-id> --custom <custom/sr6> [--md | --reuse] [--file NAME]
 python -m importer sr6 remove <library/sr6/book-id> --custom <custom/sr6> [--files]
-python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3:
-refused) python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6> python -m importer sr6 ask --custom
-<custom/sr6> --library <library/sr6> [--scope rules]  (as `importer ask`, from SR6's
+python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3: refused)
+python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6>
+python -m importer sr6 ask --custom <custom/sr6> --library <library/sr6> [--scope rules]  (as `importer ask`, from SR6's
     data only, with SR6's AI settings in <library/sr6>/.config)
 python -m importer sr6 regroup <book.md> <regrouped.md>        (with the CRB recipe's aliases and name headers)
 python -m importer sr6 summary <library/sr6/book-id>           (counts per file, report rows by kind with names)
