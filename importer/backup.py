@@ -220,7 +220,7 @@ def _config(zf, info, name, what):
     None when the zip has none; RestoreError when it isn't valid."""
     if info is None:
         return None
-    from importer.datapack import PARSER, _schema  # lxml: only here, backup itself doesn't need it
+    from importer.datapack import PARSER, schema_of  # lxml: only here, backup itself doesn't need it
     from lxml import etree
     if info.file_size > MAX_CONFIG:
         raise RestoreError(f"the backup’s {what} ({info.filename}) is too large")
@@ -228,7 +228,7 @@ def _config(zf, info, name, what):
         doc = etree.fromstring(zf.read(info), PARSER)
     except (etree.XMLSyntaxError, zipfile.BadZipFile, zlib.error, EOFError) as e:
         raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})")
-    schema = _schema(name)
+    schema = schema_of(name)
     if doc.tag != f"{{{CONFIG_NS}}}{name}" or not schema.validate(doc):
         why = schema.error_log.last_error.message if doc.tag == f"{{{CONFIG_NS}}}{name}" else f"its root isn’t <{name}>"
         raise RestoreError(f"the backup’s {what} ({info.filename}) isn’t valid, so nobody could sign in after the restore ({why})")
@@ -251,7 +251,7 @@ def _check_manifest(root, counts, has_keys):
         raise RestoreError("the zip has API keys its backup.xml doesn’t list")
 
 
-def _swap(target, new, keep=()):
+def swap(target, new, keep=()):
     """Move `target`'s contents aside, `new`'s in, then delete the old ones; on a failure put the old ones back.
     `keep` (library's .backups) and `new` itself stay."""
     old = tempfile.mkdtemp(dir=target, prefix=TEMP + "old-")
@@ -296,7 +296,7 @@ def apply(path, dirs, version=None):
         # applied zip may itself sit in library/.backups); a killed process can leave a folder half swapped
         # (its old files in .restore-old-*); the safety backup covers that.
         for folder in FOLDERS:
-            _swap(dirs[folder], news.pop(folder), (".backups",) if folder == "library" else ())
+            swap(dirs[folder], news.pop(folder), (".backups",) if folder == "library" else ())
     finally:
         for new in news.values():
             shutil.rmtree(new, ignore_errors=True)

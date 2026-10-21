@@ -74,7 +74,7 @@ python -m tools.cl6effects --tree . [--base <other tree>] [--runs <saved runs>] 
 Expected on main: `parity: 1079/1079 (100.0%)` (1,027 strict + 42 book-ruled + 10 placeholders), `book-ruled keys that
 no longer fit: 0`, `still open by category: {}` and 0 unmatched drops.
 
-**Rule:** before merging any change to `importer/sr6/effects.py`, `importer/sr6/overrides/*.book.json` or the
+**Rule:** before merging any change to `importer/sr6/effects/`, `importer/sr6/overrides/*.book.json` or the
 reader, run it on main (`--tree` an archive of `origin/main`) and on the branch. Both must read 1,079/1,079 with no
 unmatched drops. If a branch changes a number on purpose (a new Commlink6 row, a new owner ruling), update the two
 JSON files in `tools/cl6effects/` in the same change. `importer/tests/test_cl6effects.py` covers the evaluator on a

@@ -482,7 +482,7 @@ class BackupTest(unittest.TestCase):
                 raise OSError("disk trouble")
             return real(a, b)
         with unittest.mock.patch("importer.backup.os.replace", flaky), self.assertRaises(OSError):
-            backup._swap(dst["custom"], new)
+            backup.swap(dst["custom"], new)
         self.assertEqual({k: v for k, v in tree(dst).items() if backup.TEMP not in k}, before)
 
 

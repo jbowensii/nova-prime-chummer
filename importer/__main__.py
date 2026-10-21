@@ -157,7 +157,7 @@ def _no_core_overrides(files):
     return out, rows
 
 
-def _reserved_sources(custom_dir):
+def reserved_sources(custom_dir):
     """Source ids a recipe, the shipped data, the user's own custom/sources.xml or a house-rule source of the
     edits layer own; an AI import may not take them."""
     ids = {r.ID for r in RECIPES}
@@ -168,7 +168,7 @@ def _reserved_sources(custom_dir):
     return {i.upper() for i in ids if i}
 
 
-def _entry_notes(kind, entry, m):
+def entry_notes(kind, entry, m):
     """propose's checks on one reviewed entry (the user may have edited it): what is wrong, or []."""
     from importer.ai import propose
     notes = [] if (entry.get("id") or "").strip() and (entry.findtext("name") or "").strip() else ["no id or name"]
@@ -188,7 +188,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
     try:
         if not SOURCE_ID.fullmatch(source or "") or not (name or "").strip() or canon not in ("true", "false"):
             raise ValueError("apply-review needs a source id (A-Z, 0-9, -), a name and canon true|false")
-        if source in _reserved_sources(custom_dir) or same_source(book_dir, source):
+        if source in reserved_sources(custom_dir) or same_source(book_dir, source):
             raise ValueError(f"the source id {source} is already used by another book")
         xmlio.write_status(book_dir, "applying")
         from importer.ai import propose  # loads the AI SDK: only for AI work
@@ -198,7 +198,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
             kind = p.get("kind")
             entry = next((e for e in p if e.tag == ("amp" if kind == "amp" else "item")), None)
             if p.get("state") in ("accepted", "edited") and kind in REVIEW_FILES and entry is not None:
-                notes = _entry_notes(kind, entry, m)
+                notes = entry_notes(kind, entry, m)
                 if notes:  # an edit can break what propose checked: the entry stays out, the report says why
                     report.append({"proposal": p.get("id"), "page": p.get("page"), "problem": "; ".join(notes)})
                     continue
@@ -251,7 +251,7 @@ def apply_core_review(book_dir, custom_dir):
             entry.set("source", root.get("source"))
             entry.tail = None
             xml = xmlio.ET.tostring(entry, encoding="unicode")
-            notes = ((_entry_notes(kind, entry, None) if entry.tag == "item" else [] if entry.tag == kind else [f"<{entry.tag}> isn’t a {kind}"])
+            notes = ((entry_notes(kind, entry, None) if entry.tag == "item" else [] if entry.tag == kind else [f"<{entry.tag}> isn’t a {kind}"])
                      + propose.schema_notes(f[:-4], xml))
             if notes:
                 refuse(p, notes)
