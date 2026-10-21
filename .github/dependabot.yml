@@ -1,0 +1,19 @@
+# Dependabot opens a pull request when a dependency has a security fix or a new version (CI then tests it).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      dev-tools: { dependency-type: development }
+  - package-ecosystem: pip
+    directory: /importer
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: monthly }
