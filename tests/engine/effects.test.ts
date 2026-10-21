@@ -1,25 +1,12 @@
 // Effects, Anarchy side (src/shared/effects.ts, amps.ts RULE_EFFECTS, derive.ts): the shared state rules, the narrative
 // effect kinds, what derive counts and shows, the character file and the export. Made-up data only.
 import { describe, expect, test } from 'vitest'
-import {
-  ampParts,
-  ampRating,
-  applies,
-  bracketed,
-  counts,
-  rrNotes,
-  buildCatalog,
-  characterToXml,
-  derive,
-  effectHow,
-  effectLines,
-  exportRunner,
-  own,
-  poolMarks,
-  readEffectState,
-  ruleText,
-  xmlToCharacter,
-} from '../../src/engine'
+import { ampRating, ruleText } from '../../src/engine/amps'
+import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
+import { rrNotes, derive, effectLines, poolMarks } from '../../src/engine/derive'
+import { ampParts, exportRunner } from '../../src/engine/export'
+import { buildCatalog } from '../../src/engine/load'
+import { applies, bracketed, counts, effectHow, own, readEffectState } from '../../src/shared/effects'
 import { blankCharacter } from '../../src/engine/file'
 import type { AmpEntry, Character, EffectPick } from '../../src/model/types'
 import { cat, catFiles } from '../helpers'

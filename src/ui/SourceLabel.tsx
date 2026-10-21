@@ -6,7 +6,8 @@
 //   4. "Edited" when the catalog entry comes from the edits layer (EditEntry.tsx).
 // Entries built in the Amp Builder or as custom items have no book: "Built by you".
 import type { Catalog } from '../model/types'
-import { dupeLabel, isCanonSource } from '../engine'
+import { isCanonSource } from '../engine/canon'
+import { dupeLabel } from '../engine/dupes'
 import { HouseChip, NonCanon } from './bits'
 import { EditedMark } from './editTrigger'
 

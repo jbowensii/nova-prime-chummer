@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { blankCharacter } from '../../src/engine/file'
-import { characterToXml, xmlToCharacter } from '../../src/engine'
+import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
 import { chooseExamples, exampleKey, extraCopies, keyOf, sameRunners, type Example, type Sources } from '../../src/ui/samples'
 import type { Character } from '../../src/model/types'
 

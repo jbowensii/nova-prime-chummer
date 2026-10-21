@@ -3,7 +3,8 @@
 // book or a canon set) and one non-canon version. A library holds one copy per key "<name slug>|canon" or
 // "<name slug>|noncanon", recorded on the copy as sampleKey, so loading again, a re-import with new ids or an old copy
 // of the same character never adds a second one.
-import { characterToXml, parseCharacterFile, xmlToCharacter } from '../engine'
+import { characterToXml, xmlToCharacter } from '../engine/charxml'
+import { parseCharacterFile } from '../engine/file'
 import type { Character } from '../model/types'
 import { unedited } from './runnerList'
 

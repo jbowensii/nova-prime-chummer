@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  appendEvent,
-  balance,
-  derive,
-  forCampaign,
-  keepHouse,
-  logChange,
-  price,
-  rescope,
-  settle as settleLedger,
-  syncRealSin,
-  validate,
-  type TableFlags,
-} from '../engine'
+import { syncRealSin } from '../engine/amps'
+import { appendEvent, balance, logChange, settle as settleLedger } from '../engine/career'
+import { forCampaign } from '../engine/compendium'
+import { derive } from '../engine/derive'
+import { keepHouse } from '../engine/file'
+import { price } from '../engine/price'
+import { rescope } from '../engine/rescope'
+import { validate } from '../engine/validate'
+import { type TableFlags } from '../model/types'
 import { canEdit, useMe } from './auth'
 import { loadTableRules, tableFlags } from './TableRules'
 import type { CareerEvent, Catalog, Character } from '../model/types'
@@ -21,7 +16,7 @@ import { Editor, editHref, homeHref, type EditorCtx } from './editor'
 import { exportCharacter } from './Library'
 import { downloadRunners } from './Foundry'
 import { approveRunner } from './campaignsStore'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 import { ConflictDialog, SaveLine, useAutosave } from './useAutosave'
 import { Receipt } from './Receipt'
 import { AmpsTab } from './tabs/Amps'

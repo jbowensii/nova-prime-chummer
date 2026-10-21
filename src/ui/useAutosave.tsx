@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { newId } from '../model/types'
 import { session, track, useMe } from './auth'
 import { Modal } from './bits'
-import type { Repo } from './repo'
+import type { Repo } from './repoContext'
 
 export type SaveStatus = { state: 'saved'; at?: string } | { state: 'saving' } | { state: 'failed'; error: string } | { state: 'conflict' }
 export type Conflict = { rev: number; file: string; updatedAt?: string }

@@ -5,7 +5,7 @@
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useMemo, useState } from 'react'
-import { isCanon } from '../engine'
+import { isCanon } from '../engine/canon'
 import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { BookSelect } from './CatalogBrowser'

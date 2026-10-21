@@ -2,7 +2,13 @@
 // the lifestyle), with its card on hover, focus or tap (src/ui/EntryHover.tsx): the row Game data shows for it
 // (browseKinds below), made when shown.
 import type { ReactNode } from 'react'
-import { attrRRBracket, attrRRSources, bracketed, currentBuild, formulaText, hasNoMetatype, itemPrice, levelLabel, type Formula } from '../engine'
+import { currentBuild } from '../engine/career'
+import { attrRRBracket, attrRRSources } from '../engine/derive'
+import { levelLabel } from '../engine/levels'
+import { hasNoMetatype } from '../engine/npc'
+import { itemPrice } from '../engine/price'
+import { bracketed } from '../shared/effects'
+import { formulaText, type Formula } from '../shared/formula'
 import type { AttrId, Catalog, Character, Item, ItemKind, Ref } from '../model/types'
 import { fmt } from './bits'
 import type { BrowseKind } from './CatalogBrowser'

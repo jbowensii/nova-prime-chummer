@@ -4,7 +4,7 @@
 // game's (Compendiums.tsx for Anarchy, src/sr6/ui/Compendiums.tsx for SR6). Never mixed: each adapter lists, saves and
 // checks only its own game's compendiums, campaigns and sources.
 import { useEffect, useState, type ReactNode } from 'react'
-import { SOURCE_ID } from '../engine'
+import { SOURCE_ID } from '../shared/source'
 import { because, useMe } from './auth'
 import { Modal } from './bits'
 import { loadCampaigns, type Campaign } from './campaignsStore'
@@ -12,7 +12,7 @@ import type { Stored } from './compendiumStore'
 import type { Game } from './game'
 import { IconButton } from './icons'
 import { PageHeader } from './nav'
-import type { SaveResult } from './repo'
+import type { SaveResult } from './repoContext'
 
 export type Sharing = 'private' | 'campaign' | 'table'
 /** What every game's compendium has. */

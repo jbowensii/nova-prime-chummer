@@ -10,7 +10,7 @@ import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { createServer } from '../../server/server.mjs'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 import type { Compendium } from '../../src/model/types'
 
 vi.setConfig({ testTimeout: 30000 })

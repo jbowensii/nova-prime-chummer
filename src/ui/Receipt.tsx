@@ -1,7 +1,9 @@
 // The fixer's receipt: every nuyen spent, the balance, and the numbers you need at the table.
 import { AnarchyRef } from './AnarchyRef'
 import { useEffect, useRef, useState } from 'react'
-import { activeEvents, bracketed, itemCost, packageGuide, sinceFinalize, voidedIds } from '../engine'
+import { activeEvents, sinceFinalize, voidedIds } from '../engine/career'
+import { itemCost, packageGuide } from '../engine/price'
+import { bracketed } from '../shared/effects'
 import type { Character, Pricing } from '../model/types'
 import { fmt, Line } from './bits'
 import { useEditor } from './editor'

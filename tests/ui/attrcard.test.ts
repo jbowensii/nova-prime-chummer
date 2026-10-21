@@ -2,7 +2,8 @@
 // and augmented ratings, its maximum, what raises it (the lines the effective value adds up) and the rule's source and
 // page. Made-up runners on the made-up fixtures.
 import { expect, test } from 'vitest'
-import { attrRRSources, blankCharacter, derive } from '../../src/engine'
+import { attrRRSources, derive } from '../../src/engine/derive'
+import { blankCharacter } from '../../src/engine/file'
 import { anarchyAttrRow } from '../../src/ui/AnarchyRef'
 import { augmentBonus, bonusSources } from '../../src/sr6/engine/budgets'
 import { deriveSr6 } from '../../src/sr6/engine/derive'

@@ -2,11 +2,12 @@
 // /api/sr6/compendiums (src/sr6/ui/compendiumStore.ts), never mixed. The ones this account can read, saved and deleted with
 // the NPC store's rev/If-Match rules. Their files join that game's GM catalog as overlays (App.tsx Main, Sr6App.tsx); a
 // player's catalog gets the shared ones (listShared), read only.
-import { compendiumXml, readCompendium, type SourceFile } from '../engine'
+import { compendiumXml, readCompendium } from '../engine/compendium'
+import { type SourceFile } from '../shared/source'
 import type { Compendium } from '../model/types'
 import { track, UNREACHABLE } from './auth'
 import type { Game } from './game'
-import type { SaveResult } from './repo'
+import type { SaveResult } from './repoContext'
 
 export interface CompendiumRow {
   id: string

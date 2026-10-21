@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { formulaText, itemCost, itemPrice } from '../../engine'
+import { itemCost, itemPrice } from '../../engine/price'
+import { formulaText } from '../../shared/formula'
 import { IssueBadges } from '../Issues'
 import type { ItemEntry, ItemKind, Pricing } from '../../model/types'
 import { newId } from '../../model/types'

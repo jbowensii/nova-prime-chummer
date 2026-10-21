@@ -6,7 +6,7 @@
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useEffect, useMemo, useState } from 'react'
-import { compendiumSource } from '../engine'
+import { compendiumSource } from '../engine/compendium'
 import type { AmpTemplate, Catalog, Character, Compendium, Item, VehicleBase } from '../model/types'
 import { newId } from '../model/types'
 import { because } from './auth'
@@ -26,7 +26,8 @@ import {
 import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type StoredCompendium } from './compendiumStore'
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { ca2Codec } from '../engine/charxml'
-import { npcRepoFor, useRepo } from './repo'
+import { npcRepoFor } from './repo'
+import { useRepo } from './repoContext'
 import { downloadCompendium } from './Foundry'
 import { SourceLabel } from './SourceLabel'
 

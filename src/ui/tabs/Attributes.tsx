@@ -1,4 +1,5 @@
-import { attrCost, hasNoMetatype } from '../../engine'
+import { hasNoMetatype } from '../../engine/npc'
+import { attrCost } from '../../engine/price'
 import { ATTRS } from '../../model/types'
 import { fmt, Stepper } from '../bits'
 import { useEditor } from '../editor'

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Catalog } from '../model/types'
 import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
 import { Modal, NonCanon } from './bits'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 import { because, isAdmin, useMe } from './auth'
 import { api, sendFile } from './api'
 

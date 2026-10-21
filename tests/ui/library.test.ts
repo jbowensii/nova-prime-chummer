@@ -5,7 +5,9 @@ import type { Character } from '../../src/model/types'
 import { initial } from '../../src/ui/Library'
 import { arrange, ownerGroups, sortKey } from '../../src/ui/runnerList'
 import { ca2Codec } from '../../src/engine/charxml'
-import { rootAttr, serverRepo, type Stored } from '../../src/ui/repo'
+import { serverRepo } from '../../src/ui/repo'
+import { type Stored } from '../../src/ui/repoContext'
+import { rootAttr } from '../../src/shared/xml'
 
 const runner = (streetName: string, name = '', updatedAt = '2026-09-01T00:00:00Z'): Character => {
   const ch = blankCharacter()

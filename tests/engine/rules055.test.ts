@@ -1,6 +1,7 @@
 // 0.5.5 rules fixes and owner decisions (.extract/report/rules-validation.md): made-up catalog and runners only.
 import { test, expect } from 'vitest'
-import { ampRating, effectBlocked, FREE_SINNER, sinnerFree } from '../../src/engine/amps'
+import { ampRating, effectBlocked, sinnerFree } from '../../src/engine/amps'
+import { FREE_SINNER } from '../../src/model/types'
 import { isSinner } from '../../src/engine/file'
 import { derive, vehicleStats } from '../../src/engine/derive'
 import { blankCharacter } from '../../src/engine/file'

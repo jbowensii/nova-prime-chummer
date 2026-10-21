@@ -1,7 +1,10 @@
 // "Book style" printed sheet (Settings → Printed sheet): one page laid out like the rulebook's example character sheet.
 // Grunge paper on the left, a yellow paint-swish panel on the right, all drawn in CSS/SVG; free fonts only.
 import '@fontsource/caveat/700.css'
-import { ampCtx, ampEssence, ampRating, bracketed, effectLines, poolMarks, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating } from '../engine/amps'
+import { ruleHelp } from '../engine/canon'
+import { effectLines, poolMarks } from '../engine/derive'
+import { bracketed } from '../shared/effects'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'
 import { NpcBlock } from '../ui/NpcBlock'

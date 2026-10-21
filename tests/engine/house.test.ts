@@ -5,21 +5,14 @@ import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
-import {
-  blankCharacter,
-  buildCatalog,
-  characterToXml,
-  compendiumXml,
-  derive,
-  exportRunners,
-  forCampaign,
-  keepHouse,
-  price,
-  snapshotEntries,
-  validate,
-  vehicleStats,
-  xmlToCharacter,
-} from '../../src/engine'
+import { characterToXml, xmlToCharacter } from '../../src/engine/charxml'
+import { compendiumXml, forCampaign } from '../../src/engine/compendium'
+import { derive, vehicleStats } from '../../src/engine/derive'
+import { exportRunners } from '../../src/engine/export'
+import { blankCharacter, keepHouse, snapshotEntries } from '../../src/engine/file'
+import { buildCatalog } from '../../src/engine/load'
+import { price } from '../../src/engine/price'
+import { validate } from '../../src/engine/validate'
 import type { Character, Compendium } from '../../src/model/types'
 import { catFiles } from '../helpers'
 

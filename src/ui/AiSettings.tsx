@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api'
 import { BooksHeader, PROVIDER_NAMES } from './Books'
 import { because } from './auth'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 
 interface Opt {
   value: string

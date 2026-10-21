@@ -4,12 +4,10 @@
 // everyone reads custom/table-rules.xml (tablerules.xsd) and players see the ones switched on there, read only.
 import { PageHeader } from './nav'
 import { useEffect, useRef, useState } from 'react'
-import type { Catalog, Rule } from '../model/types'
-import { FREE_SINNER, type TableFlags } from '../engine'
-import { newId } from '../model/types'
+import { FREE_SINNER, newId, type Catalog, type Rule, type TableFlags } from '../model/types'
 import { canEdit, send, useMe } from './auth'
 import { Modal } from './bits'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 import { SourceLabel } from './SourceLabel'
 
 /** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. locked: the
