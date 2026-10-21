@@ -151,8 +151,15 @@ title first), the chapter giving the context. Read with the general reading, not
 - **A mentor spirit printed on its own** (`Advantages` with the `All:`/`Magician:`/`Adept:` lines right under a
   heading that is no entry, Adversary p. 5): that heading is a mentor spirit, its Disadvantages part of its text
   (sections.py).
+- **A priced version in an item's text** (prose_items.variants, every book): `For an additional 500 nuyen, a Type 81
+  can be printed with a custom-fit suppressor, which …` -> `<item> with suppressor`, the item's stats and table, its
+  cost plus that (the effects reader leaves that sentence to the version: the suppressor's Perception threshold is
+  its, not the base pistol's); `… can be upgraded to a “sporting breed” version, with a … body 3 frame for a total base
+  cost of 5000¥` -> `<item> (Sporting breed)`, that cost and the stats the sentence names.
+- **An ammunition type under its own heading** (`Polymer Composite` over `(ammo type)` and `AR –2, Cost Multiplier:
+  x2`): an ammotype, its cost the multiplier, the AR change its effect.
 - Seoul Survivor prints Samsung's drone as `Jind-0` (a zero for the letter O): renamed Samsung Jind-O by the owner's
-  ruling (overrides/ssv.json), the printed name an alias.
+  ruling (overrides/ssv.json, its sporting version too), the printed name an alias.
 
 ## Real-book check (local, nothing committed)
 
