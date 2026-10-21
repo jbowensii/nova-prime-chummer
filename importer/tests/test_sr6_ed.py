@@ -75,11 +75,13 @@ A made-up guard in space.
 
 
 def run_recipe(md=BOOK_MD):
+    """The ED recipe's result for the book markdown `md`."""
     regrouped, _ = regroup.regroup(ed.prepare_md(md), ed.ALIASES, name_headers=ed.NAME_HEADERS)
     return ed.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the entries of `kind` in a recipe result."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

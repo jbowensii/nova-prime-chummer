@@ -48,6 +48,8 @@ PDFDATE = re.compile(r"(?:D:)?((?:19|20)\d\d)(\d\d)(\d\d)")
 
 @dataclass
 class Line:
+    """One line of a book's markdown with its page and heading."""
+
     no: int  # 1-based line number in its file
     page: int  # PDF page
     heading: str  # the last heading at or above this line
@@ -97,6 +99,8 @@ def section(ls, i):
 
 @dataclass
 class Book:
+    """One imported PDF and what it printed."""
+
     run: str
     pdf: str
     label: str
@@ -115,9 +119,11 @@ class Book:
 
     @property
     def order(self):
+        """(date, label): where the book falls in publication order."""
         return self.date, self.label
 
     def md(self, which="book.md"):
+        """The lines of one of the book's markdown files, read once."""
         if which not in self._md:
             p = os.path.join(self.dir, which)
             self._md[which] = lines(Path(p).read_text(encoding="utf8")) if os.path.exists(p) else []
@@ -145,6 +151,7 @@ def pdf_meta(pdf):
     try:
         with pdfplumber.open(pdf) as d:
             m = d.metadata or {}
+    # pylint: disable-next=broad-exception-caught
     except Exception:  # noqa: BLE001 (a PDF the reader can't open has no date)
         return "", ""
 
@@ -234,6 +241,7 @@ def _name_re(name):
 
 
 def norm_line(t):
+    """A line casefolded, with quotes and ampersands normalised, for comparing."""
     return t.casefold().replace("’", "'").replace("&", " and ")
 
 
@@ -260,6 +268,8 @@ def _cat(e):
 
 @dataclass
 class Corpus:
+    """The books of the runs, in publication order, looked up by source."""
+
     books: list  # in publication order
     _by: dict = None
 
@@ -270,6 +280,7 @@ class Corpus:
                 for e in b.entries:
                     for norm in ("n1", "n2"):
                         for k in _keys(e, getattr(match, norm)):
+                            # pylint: disable-next=unsubscriptable-object  # _by was just set to a dict
                             self._by[norm].setdefault(k, []).append((b, e))
         return self._by
 
@@ -284,11 +295,12 @@ class Corpus:
         return sorted(out, key=lambda x: order[id(x[0])])
 
     def entries(self, kinds, names, home=None):
-        """[(book, entry)] in book order: every catalog entry of these kinds printed under one of these names (or under a
-        row naming several: 'A/B'); when nothing prints them whole, a name `X (Y)` printed `Y X` (a brand: `Tonfa (Zoé
-        Heritage)`), else the names without their parentheticals in the home book's printings. With `home` (the object's book, see family()), once the home book catalogues it, another
-        book's entry counts only under the object's own name (not an alias of it: a short alias names other things in
-        other books) and in a kind the home book gives it (a vehicle mod is not the cyberware of the same name)."""
+        """[(book, entry)] in book order: every catalog entry of these kinds printed under one of these names (or under
+        a row naming several: 'A/B'); when nothing prints them whole, a name `X (Y)` printed `Y X` (a brand: `Tonfa (Zoé
+        Heritage)`), else the names without their parentheticals in the home book's printings. With `home` (the object's
+        book, see family()), once the home book catalogues it, another book's entry counts only under the object's own
+        name (not an alias of it: a short alias names other things in other books) and in a kind the home book gives it
+        (a vehicle mod is not the cyberware of the same name)."""
         out = self._find("n1", kinds, names)
         if home is not None and names:  # another book matches on the object's own name, not on an alias of it
             first = {match.n1(p) for p in match.split_names(names[0])}
@@ -360,6 +372,7 @@ class Corpus:
 
 
 def load(runs, sources_xml, meta=pdf_meta):
+    """The corpus of every run under `runs` that imported a book."""
     months = published(sources_xml)
     books = [
         book_of(r, os.path.join(runs, r), months, meta)
@@ -369,5 +382,5 @@ def load(runs, sources_xml, meta=pdf_meta):
     books = sorted(books, key=lambda b: b.order)
     # a formula citing another book's entry (`ref(gear:crb.spell-focus, cost, R)`): resolved over the merged corpus, as
     # the app's merged catalog does (each book's own refs were resolved on loading it)
-    ours._inline_refs([e for b in books for e in b.entries])
+    ours._inline_refs([e for b in books for e in b.entries])  # pylint: disable=protected-access
     return Corpus(books)

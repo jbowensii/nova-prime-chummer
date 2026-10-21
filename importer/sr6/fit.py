@@ -1,8 +1,9 @@
-"""The priorities a book's sample runner (importer/sr6/archetypes.py) was most likely built with: of the 120 ways to give
-the letters A-E to the five columns, the one that overspends least for the build the stat block prints; when even that
-one overspends or leaves Karma or nuyen past the carry-over limits, Sum-to-Ten's assignments too (SWC p.28: any
+"""The priorities a book's sample runner (importer/sr6/archetypes.py) was most likely built with: of the 120 ways to
+give the letters A-E to the five columns, the one that overspends least for the build the stat block prints; when even
+that one overspends or leaves Karma or nuyen past the carry-over limits, Sum-to-Ten's assignments too (SWC p.28: any
 letters whose values add up to at most sumToTenTarget), taken when one overspends less or leaves fewer past them.
-Magic (or Resonance) above the magic priority's rating and Edge go on adjustment points, what's left of those on the metatype's raised attributes; the core attributes on attribute points; skill ranks
+Magic (or Resonance) above the magic priority's rating and Edge go on adjustment points, what's left of those on the
+metatype's raised attributes; the core attributes on attribute points; skill ranks
 on skill points, a specialization on the points still left. Whatever a pool can't hold is bought with karma, the
 cheapest ranks first, and nuyen past the resources with karma turned into nuyen. Assignments are compared on, in
 order: power points past the Magic rating (an adept's), Karma past the starting Karma, the count of leftovers past the
@@ -229,10 +230,13 @@ def spend(need, rows, cs):
     metatype's name), raised (core attributes whose metatype maximum is above the base), magic (kind), attrs (natural
     values; Magic or Resonance as printed, `loss` the points Essence spent took off it), skills ([rank, specializations,
     expertises (optional)]), karma (karma the printed things cost: positive qualities, knowledge past
-    Logic), neg (karma negative qualities give), spells, forms, pp (power points), nuyen (what the things cost), debt (In
-    Debt: the higher rate), left (the printed starting nuyen, or None), toNuyen (the karma turned into nuyen when the
-    block prints it: In Debt's debt; optional)."""
-    n = lambda k: cs.get(k) if isinstance(cs.get(k), float) else 0
+    Logic), neg (karma negative qualities give), spells, forms, pp (power points), nuyen (what the things cost), debt
+    (In Debt: the higher rate), left (the printed starting nuyen, or None), toNuyen (the karma turned into nuyen when
+    the block prints it: In Debt's debt; optional)."""
+
+    def n(k):
+        return cs.get(k) if isinstance(cs.get(k), float) else 0
+
     # the karma it starts with (providers.ts): twice the customization Karma for a prime runner (CRB Hong Kong p.63),
     # Twenty Questions' karma (SWC p.25)
     start = n("startingKarma") * (2 if cs.get("levelPrime") == "true" else 1) + (
@@ -271,7 +275,8 @@ def spend(need, rows, cs):
     for k, w, t in zip(CORE, want, took):
         build[k][0], build[k][2] = w - t, t
         karma += _karma(a.get(k, 1), t, n("karmaAttrPerRank"))
-    # the ranks take the skill points (the cheapest past them bought with karma); a specialization on a skill with points
+    # the ranks take the skill points (the cheapest past them bought with karma); a specialization on a skill with
+    # points
     # takes a point still left, else karma, never dearer than a karma rank (budgets.ts skillSpend)
     ranks, specs, pool = [x[0] for x in need["skills"]], [x[1] for x in need["skills"]], skl.get("skills", 0)
     took = _cheapest(ranks, [0] * len(ranks), max(0, sum(ranks) - pool))
@@ -293,7 +298,8 @@ def spend(need, rows, cs):
             else:
                 karma += n("advance.expertise")
     # the free ones: the priority's rating less what Essence took (CRB Hong Kong p.66) and, a mystic adept's, less the
-    # power points it bought out of its Magic (whole points, what its powers cost; CRB pp. 65-66): magic.ts freeSpellSlots.
+    # power points it bought out of its Magic (whole points, what its powers cost; CRB pp. 65-66): magic.ts
+    # freeSpellSlots.
     # The runner says how many it bought.
     bought = math.ceil(need["pp"]) if kind == "mystic-adept" else 0
     per = n("freeFormsPerResonance" if special == "res" else "freeSpellsPerMagic")
@@ -315,7 +321,8 @@ def spend(need, rows, cs):
     # least past them (nuyen counted in the karma it was, rounded up), then the fewest
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
-    # the house rule's limit on the karma turned (karmaToNuyenCap on: karmaToNuyenMax; budgets.ts toNuyen counts no more)
+    # the house rule's limit on the karma turned (karmaToNuyenCap on: karmaToNuyenMax; budgets.ts toNuyen counts no
+    # more)
     cap = (
         int(cs["karmaToNuyenMax"])
         if cs.get("karmaToNuyenCap") == "true" and isinstance(cs.get("karmaToNuyenMax"), float)
@@ -324,7 +331,9 @@ def spend(need, rows, cs):
     low = math.ceil(short / rate) if short > 0 and rate else 0
     low = low if cap is None else min(low, cap)
     room = start + need["neg"] - karma  # karma left before any turns into nuyen
-    top = lambda k: cs[k] if isinstance(cs.get(k), float) else math.inf  # noqa: E731
+
+    def top(k):
+        return cs[k] if isinstance(cs.get(k), float) else math.inf
 
     def leftover(k):
         nuyen = res.get("nuyen", 0) + k * rate - need["nuyen"]
@@ -372,7 +381,8 @@ def fit(need, priorities, cs):
     when it overspends less or leaves fewer past the limits (owner, 2026-10-19; its build's method "sumtoten").
     priorities: letter -> {letter, metas (name lower-cased -> adjustment points), attributes, skills, magic (kind ->
     rating), nuyen}."""
-    # the letters the runner takes (priorityLetters: a level of play's, street-level's B C C D E), each priced at the row
+    # the letters the runner takes (priorityLetters: a level of play's, street-level's B C C D E), each priced at the
+    # row
     # below it at street level (levelStreet, CRB Hong Kong p.63: E stays E), as providers.ts reads them
     want = cs.get("priorityLetters") or "ABCDE"
     row = (
@@ -385,11 +395,14 @@ def fit(need, priorities, cs):
         out = None
         for letters in assignments:
             got = spend(need, {c: {**row(L), "letter": L} for c, L in zip(COLUMNS, letters)}, cs)
+            # pylint: disable=unsubscriptable-object  # out is a tuple once it is not None
             if got and (out is None or got[0] < out[0]):
                 out = (got[0], {**got[1], "method": method})
+            # pylint: enable=unsubscriptable-object
         return out
 
     got = best(sorted(set(itertools.permutations(want))), "priority")
+    # pylint: disable-next=redefined-outer-name  # a local, not the module's value()
     value, target = {L: cs.get(f"letterValue:{L}") for L in "ABCDE"}, cs.get("sumToTenTarget")
     if (
         (got is None or got[0][:3] > (0, 0, 0))

@@ -14,6 +14,7 @@ from importer.tests.test_sr6_resolve import block
 
 class GoodTest(unittest.TestCase):
     def check(self, field, yes, no):
+        """Assert the field accepts every value in yes and none in no."""
         for v in yes:
             self.assertTrue(search.good(field, v), (field, v))
         for v in no:
@@ -114,6 +115,8 @@ class PdfDateTest(unittest.TestCase):
             open(path, "wb").close()
 
             class Doc:
+                """Stand-in PDF document."""
+
                 metadata = None if isinstance(meta, Exception) else meta
 
                 def __enter__(self):

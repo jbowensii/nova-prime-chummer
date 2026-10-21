@@ -41,13 +41,14 @@ _PRICED = re.compile(
 
 
 def match(meta, md_head):
+    """How well a book fits this recipe: 1.0 by its hash, 0.9 for an Ingentis Athletes title, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
     return 0.9 if re.search(r"ingentis\s+athletes", hay, re.I) else 0.0
 
 
-def kind(chapter, b, parent2):
+def kind(_chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     if b.stats and GROUP in b.section:
         return "npcs", None
@@ -57,7 +58,8 @@ def kind(chapter, b, parent2):
 
 
 def _lines(body):
-    """A stat block's labelled lines, each with the lines wrapped under it (a word hyphenated at a line's end joined)."""
+    """A stat block's labelled lines, each with the lines wrapped under it (a word hyphenated at a line's end
+    joined)."""
     labels, last = {}, None
     for ln in body.splitlines():
         if m := _LABEL.match(ln.strip()):
@@ -150,4 +152,5 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
+    """The Ingentis Athletes book's catalog files, read from its regrouped markdown."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

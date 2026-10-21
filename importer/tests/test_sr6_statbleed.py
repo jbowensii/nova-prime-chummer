@@ -105,6 +105,7 @@ madeup.catalystgamelabs.com
 
 
 def run_recipe(md=BOOK_MD):
+    """(regrouped markdown, recipe result) for the book markdown `md`."""
     regrouped, _ = regroup.regroup(BOOK.prepare_md(md), BOOK.ALIASES, name_headers=BOOK.NAME_HEADERS)
     return regrouped, BOOK.extract(regrouped)
 

@@ -6,6 +6,9 @@ import unittest
 from importer.sr6 import regroup
 from importer.sr6.regroup import blocks, keys, norm, render
 
+# tests read the private helpers they check
+# pylint: disable=protected-access
+
 MD = """<!-- page 10 -->
 # GADGETS
 Gadgets are made-up things.
@@ -86,6 +89,7 @@ class RegroupTest(unittest.TestCase):
         cls.blocks = blocks(cls.text)
 
     def rep(self, kind):
+        """The report rows of one kind."""
         return [r for r in self.report if r["kind"] == kind]
 
     def test_head(self):
@@ -144,7 +148,7 @@ class RegroupTest(unittest.TestCase):
         s = [b for b in self.blocks if b.type == "section" and b.name == "Making Trouble"][0]
         self.assertEqual(
             s.text,
-            "Trouble rules.\n| ROLL | RESULT |\n|---|---|\n| 1 | Nothing |\n| 2 | Sparks |\n" "More trouble text.",
+            "Trouble rules.\n| ROLL | RESULT |\n|---|---|\n| 1 | Nothing |\n| 2 | Sparks |\nMore trouble text.",
         )
         self.assertEqual((s.chapter, s.section, s.level), ("GADGETS", "Making Trouble", 2))
         self.assertEqual(
@@ -292,6 +296,7 @@ class RegroupRulesTest(unittest.TestCase):
         cls.blocks = blocks(cls.text)
 
     def rows(self, name):
+        """The blocks named `name`."""
         return [b for b in self.blocks if b.name == name]
 
     def test_repeated_heading_and_capitalised_caption(self):
@@ -471,6 +476,7 @@ class RealBookShapesTest(unittest.TestCase):
         cls.blocks = blocks(cls.text)
 
     def items(self, name):
+        """The item blocks named `name`."""
         return [b for b in self.blocks if b.name == name and b.type == "item"]
 
     def test_title_over_a_list_named_like_a_heading(self):
@@ -655,12 +661,18 @@ class InterleavedHeaderTest(unittest.TestCase):
         self.assertIsNone(regroup.deinterleave("SPD INT"))
 
     def test_table_header_put_back(self):
-        md = "# CARS\n##### zoomer (Car)\n| HAND | S INP TD | T SO PDP | COST |\n|---|---|---|---|\n| 3 | 9 | 90 | 900¥ |\n"
+        md = (
+            "# CARS\n##### zoomer (Car)\n| HAND | S INP TD | T SO PDP | COST |\n|---|---|---|---|\n| 3 | 9 | 90 | "
+            "900¥ |\n"
+        )
         t = [v for k, _, v in regroup._elements(md) if k == "t"][0]
         self.assertEqual(t.header, ["HAND", "SPD INT", "TOP SPD", "COST"])
 
     def test_lower_case_title_over_a_tag_line_is_an_item(self):
-        md = "<!-- page 4 -->\n# RIDES\n## Odd Rides\nIntro.\n##### blip roller\n(Personal Roller)\nA roller that blips.\n"
+        md = (
+            "<!-- page 4 -->\n# RIDES\n## Odd Rides\nIntro.\n##### blip roller\n(Personal Roller)\nA roller that "
+            "blips.\n"
+        )
         item = _items(regroup.regroup(md)[0])["blip roller"]
         self.assertEqual((item.tags, item.text), ("Personal Roller", "A roller that blips."))
 
@@ -748,7 +760,8 @@ class RowGroupsAndSubTablesTest(unittest.TestCase):
     MD = (
         "<!-- page 9 -->\n# GIZMOS\n## Gizmo Shop\n#### Zorp Gadgets\nZorp gadgets are made up.\n#### zorp gear table\n"
         "##### widgets\n| TYPE | BONDING COST | AVAIL | COST |\n|---|---|---|---|\n| Glow widget | 2 | 3 | 500¥ |\n"
-        "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | 10¥ |\n"
+        "| PLANS | AVAIL | COST |\n|---|---|---|\n| Zap plan | 2 | 100¥ |\n| \u2002Fizz plans |  |  |\n| Small | 1 | "
+        "10¥ |\n"
         "| Large | 2 | 20¥ |\n| Other kit | 3 | 9¥/day |\n"
         "| SUPPLIES | AVAIL | COST |\n|---|---|---|\n| Zorp dust | 1 | 5¥ |\n| Zorp wire | 1 | 5¥ |\n"
         "#### Hire\nHiring is made up.\n#### hire table\n| ITEM | AVAIL | COST |\n|---|---|---|\n| Plans club |  |  |\n"

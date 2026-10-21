@@ -11,6 +11,7 @@ _TEXT_WORDS = 4  # words a line, median, for a side of a table cell to count as 
 
 
 def inside(a, b):
+    """True when box a lies within box b."""
     return b[0] <= a[0] and b[1] <= a[1] and a[2] <= b[2] and a[3] <= b[3]
 
 
@@ -20,6 +21,7 @@ def _in_box(w, b):
 
 
 def in_table(w, table_boxes):
+    """True when the word lies in any of the table boxes."""
     return any(_in_box(w, b) for b in table_boxes)
 
 
@@ -38,7 +40,7 @@ def table_cells(table, words):
         cx, cy = (w["x0"] + w["x1"]) / 2, (w["top"] + w["bottom"]) / 2
         r = max(i for i, t in enumerate(tops) if t <= cy) if cy >= tops[0] else 0
         # the column holding the centre, else the nearest one (a word in a gap between cells)
-        c = min(range(len(grid)), key=lambda i: max(grid[i][0] - cx, 0, cx - grid[i][2]))
+        c = min(range(len(grid)), key=lambda i, cx=cx: max(grid[i][0] - cx, 0, cx - grid[i][2]))
         cells[r][c].append(w)
     rows = [["\n".join(line_text(line) for line in _cell_lines(ws, g)) for ws, g in zip(row, grid)] for row in cells]
     keep = [i for i in range(len(grid)) if any(r[i] for r in rows)]

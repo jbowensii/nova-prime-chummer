@@ -1,4 +1,5 @@
-"""Importer core: what the Anarchy stages and the SR6 stages share (the recipes' Result, the CLI's flag reader and `ask`)."""
+"""Importer core: what the Anarchy stages and the SR6 stages share (the recipes' Result, the CLI's flag reader and
+`ask`)."""
 
 import os
 import sys
@@ -7,6 +8,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Result:
+    """What a recipe reads out of one book."""
+
     files: dict  # overlay file name -> XML text (ids unscoped; xmlio scopes them on write)
     texts: str | None  # kind="texts" XML (same unscoped ids) or None
     samples: list = field(default_factory=list)  # {"file", "xml", "name", "role", "page"}: sample runners
@@ -27,8 +30,8 @@ def flag(argv, name):
 
 
 def cmd_ask(argv, usage, game="ca2"):
-    """A rules question from stdin, answered from the game's data (importer/ask.py) through the provider <library>/.config
-    chooses (SR6: `importer sr6 ask`, with custom/sr6 and library/sr6). --scope rules: the rules only.
+    """A rules question from stdin, answered from the game's data (importer/ask.py) through the provider
+    <library>/.config chooses (SR6: `importer sr6 ask`, with custom/sr6 and library/sr6). --scope rules: the rules only.
     Nothing is written or logged. Exit 3 with the reason on stderr (refused question, provider not set up or failing).
     "called": whether the provider was asked (the server counts those against the daily limit, whatever came back)."""
     library = flag(argv, "--library")
@@ -61,7 +64,8 @@ def cmd_ask(argv, usage, game="ca2"):
         print(e, file=sys.stderr)
         print(json.dumps({"called": called}))
         return 3
-    except Exception as e:  # ProviderError (already redacted), TruncatedReply
+    # ProviderError (already redacted), TruncatedReply; anything else is re-raised below
+    except Exception as e:  # pylint: disable=broad-exception-caught
         from importer.ai import providers
 
         if not isinstance(e, providers.ProviderError):

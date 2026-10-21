@@ -1,3 +1,5 @@
+"""Tests of the importer's run, remove and update-sources steps."""
+
 import os
 import subprocess
 import tempfile
@@ -28,7 +30,8 @@ if (r.errors.length) { console.error(r.errors.map(e => e.message).join('\\n')); 
 
 
 def node(*args):
-    return subprocess.run(["node", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf8")
+    """Run node with `args` in the repo root."""
+    return subprocess.run(["node", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf8", check=False)
 
 
 class XmlioTest(unittest.TestCase):
@@ -224,7 +227,8 @@ class RemoveTest(unittest.TestCase):
 
 class Sr6FolderTest(unittest.TestCase):
     def test_library_sr6_is_never_an_anarchy_book(self):
-        """library/sr6/ holds the Shadowrun 6 area's books (S1): never in custom/imported/sources.xml, never the same source."""
+        """library/sr6/ holds the Shadowrun 6 area's books (S1): never in custom/imported/sources.xml, never the same
+        source."""
         tmp = tempfile.mkdtemp()
         lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
         for b in ("sr6", "b1"):
@@ -238,7 +242,11 @@ class Sr6FolderTest(unittest.TestCase):
             imported="2026-10-02T00:00:00Z",
         )
         update_sources(custom, lib, xmlio.CA2)
-        for call in (lambda: update_sources(custom, lib), lambda: remove(os.path.join(lib, "b1"), custom)):
+        # pylint: disable=no-value-for-parameter,missing-kwoa
+        for call in (
+            lambda: update_sources(custom, lib),
+            lambda: remove(os.path.join(lib, "b1"), custom),
+        ):
             with self.assertRaises(TypeError):  # a game's data root is never defaulted to Anarchy's
                 call()
         self.assertNotIn("MADEUP", Path(custom, "imported", "sources.xml").read_text(encoding="utf8"))

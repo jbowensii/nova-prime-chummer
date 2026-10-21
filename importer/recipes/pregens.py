@@ -16,11 +16,13 @@ ID, NAME, PUBLISHER, CANON = "PREGENS", "SRA2 Pregens v1.0f", "Daegann (Holostre
 TOC = re.compile(r"^\*\*(.+?) \((.+?)\)\s*\.{3,}\s*(\d+)\*\*$", re.M)
 
 
-def match(meta, md_head):
+def match(_meta, md_head):
+    """0.9 when the opening text names the Daegann pregens, else 0.0."""
     return 0.9 if re.search(r"daegann", md_head, re.I) and re.search(r"pregen", md_head, re.I) else 0.0
 
 
-def extract(md, ctx=None):
+def extract(md, _ctx=None):
+    """The pregenerated characters, read from the booklet's pages and table of contents."""
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
     toc = {int(p) + 1: (n.strip(), r.strip()) for n, r, p in TOC.findall(md)}

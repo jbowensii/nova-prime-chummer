@@ -44,10 +44,11 @@ _TOKEN = re.compile(
 
 
 class FormulaError(ValueError):
-    pass
+    """A formula that does not parse."""
 
 
 def tokens(expr):
+    """The tokens of a formula expression."""
     out, i = [], 0
     while i < len(expr):
         if expr[i:].strip() == "":
@@ -88,7 +89,7 @@ def parse(expr):
         if k == "num":
             return ("num", float(v))
         if k == "opt":
-            return ("opt", v[4:])
+            return ("opt", v[4:])  # pylint: disable=unsubscriptable-object  # v is the str of an "opt" token
         if v == "(":
             x = sum_()
             take(")")
@@ -164,6 +165,7 @@ def parse(expr):
 
 
 def valid(expr):
+    """True when `expr` parses as a formula."""
     try:
         parse(expr)
         return True
@@ -171,6 +173,7 @@ def valid(expr):
         return False
 
 
+# pylint: disable-next=redefined-builtin,invalid-name  # the formulas name their variables R, Q, M, B, H; callers pass round="down"
 def evaluate(expr, R=None, Q=None, M=None, B=None, opt=None, ref=None, round=ROUND_UP, H=None):
     """The value of a formula, or None when it needs something not given (a variable, a ref the `ref(target, field,
     rating)` callback can't resolve, a rating outside every band). `/` rounds up, or down with round='down'."""
@@ -644,6 +647,7 @@ def _formula(f, expr, extra, page):
     return "formula", {"field": f, **({"unit": extra["unit"]} if extra.get("unit") else {})}, expr
 
 
+# pylint: disable-next=unused-argument  # `row=` is still accepted: the reader no longer needs the printed row
 def children(kind, attrs, page, row=None, tiered=None, readable=None, options=(), text=""):
     """[(tag, attrs, text)]: the entry's <formula> and <issue> children. tiered: {field: EXPR} the entry's
     band group gives (tier_groups); row: its printed row (a per-unit price's count range); readable(value): True when
@@ -664,9 +668,9 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             and (got := read(v, f) or ((fmt(p), {}) if (p := plain(v, f)) is not None else None))
         ):
             expr, extra = got
-            for oid, name, factor in options:  # a version its section prices apart: a factor
+            for oid, _name, factor in options:  # a version its section prices apart: a factor
                 expr = f"({expr})*(1 {'-' if factor < 1 else '+'} {fmt(abs(factor - 1))}*opt.{oid})"
-            for oid, name, price in adds:  # a part its description prices: added when chosen
+            for oid, _name, price in adds:  # a part its description prices: added when chosen
                 expr = f"{expr} + {fmt(price)}*opt.{oid}"
             out.append(_formula(f, expr, extra, page))
             continue
@@ -722,11 +726,11 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
             if not (attrs.get(f) or "").strip():  # a ranged weapon (attack ratings past Close) needs both
                 out.append(("issue", {"field": f, "code": "missing", "page": page}, note))
     if kind == "vehicles" and sum(1 for f in VEHICLE_STATS if (attrs.get(f) or "").strip()) >= 4:
-        for f in VEHICLE_STATS:
+        for f, label in VEHICLE_STATS.items():
             if not (attrs.get(f) or "").strip():  # a stat line read in part: the field it leaves out
-                out.append(("issue", {"field": f, "code": "missing", "page": page}, f"no {VEHICLE_STATS[f]} printed"))
+                out.append(("issue", {"field": f, "code": "missing", "page": page}, f"no {label} printed"))
     if kind == "weapons" and (
-        m := re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")
+        re.fullmatch(r"\s*\(\s*\d+\s*[–-]\s*\d+\s*\)\s*([PS](?:\([a-z]+\))?)\s*", attrs.get("dv") or "")
     ):
         out.append(("formula", {"field": "dv"}, "R"))  # `(1–10) S`: a DV the rating gives, in its range
     r = attrs.get("rating")

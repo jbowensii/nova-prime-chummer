@@ -7,10 +7,13 @@ import unittest
 
 from importer.sr6 import moved
 
+# pylint: disable=protected-access  # the tests reach into the module's private helpers
+
 HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!-- made up -->\n'
 
 
 def data(kind, *entries):
+    """A data xml string of one kind with the given entries."""
     tag = kind[:-1] if kind.endswith("s") else kind
     body = "".join(f'<{tag} id="{i}"><name>{n}</name>{extra}<text/></{tag}>' for i, n, extra in entries)
     return f'{HEAD}<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}" version="1">{body}</sr6:data>\n'
@@ -18,6 +21,7 @@ def data(kind, *entries):
 
 class MovedTest(unittest.TestCase):
     def prev(self, files):
+        """The previous entries read from files written to a temp folder."""
         d = tempfile.mkdtemp()
         for n, x in files.items():
             with open(os.path.join(d, n), "w", encoding="utf8") as f:
@@ -88,7 +92,7 @@ class MovedTest(unittest.TestCase):
 
     def test_two_candidates_are_no_match(self):
         prev = self.prev({"gear.xml": data("gear", ("zz.tag", "Tag", ""))})
-        out, n = moved.carry(
+        _, n = moved.carry(
             prev, {"gear.xml": data("gear", ("zz.red-tag", "Red Tag", ""), ("zz.blue-tag", "Blue Tag", ""))}
         )
         self.assertEqual(n, 0)

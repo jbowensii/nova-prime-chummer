@@ -34,18 +34,21 @@ class Sr6RunTest(unittest.TestCase):
         self.book = self.new_book("book1")
 
     def new_book(self, name, md=BOOK_MD):
+        """A book folder named `name` in the test library, holding `md`."""
         d = os.path.join(self.lib, name)
         os.makedirs(d)
         Path(d, "book.md").write_text(md, encoding="utf8")
         return d
 
     def cli(self, *args):
+        """Run the sr6 command; (exit code, printed output)."""
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = main(["sr6", *args])
         return code, out.getvalue()
 
     def state(self, book):
+        """The status.xml root of a book folder."""
         return ET.parse(os.path.join(book, "status.xml")).getroot()
 
     def test_run_writes_the_catalog_under_the_sr6_root(self):
@@ -178,13 +181,15 @@ class Sr6RunTest(unittest.TestCase):
         xmlio.write_status(self.book, "done")
         Path(self.custom, "imported", "nb", "samples").mkdir(parents=True)
         Path(self.custom, "imported", "nb", "samples", "nb.tester.xml").write_text(
-            "<c><notes>Qualities not in the catalog: Glim Charm; Hum Ward. Gear not in the catalog: 2 x Zap Lamp (w/ hum).</notes></c>",
+            "<c><notes>Qualities not in the catalog: Glim Charm; Hum Ward. Gear not in the catalog: 2 x Zap Lamp (w/ "
+            "hum).</notes></c>",
             encoding="utf8",
         )
         other = self.new_book("book2")
-        has = lambda *names: SimpleNamespace(
-            extra=[], files={"x.xml": "".join(f"<e><name>{n}</name></e>" for n in names)}
-        )
+
+        def has(*names):
+            return SimpleNamespace(extra=[], files={"x.xml": "".join(f"<e><name>{n}</name></e>" for n in names)})
+
         self.assertEqual(_cited(other, self.custom, has("Glim Charm")), [self.book])
         self.assertEqual(_cited(other, self.custom, has("Zap Lamp (Deluxe)")), [self.book])
         self.assertEqual(_cited(other, self.custom, has("Charming", "Lamp Post")), [])

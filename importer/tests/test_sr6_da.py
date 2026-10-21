@@ -13,6 +13,9 @@ from importer.sr6 import regroup
 from importer.sr6 import shapes
 from importer.sr6.recipes import crb, da, identify
 
+# tests read the private helpers they check
+# pylint: disable=protected-access
+
 BOOK_MD = """<!-- page 1 -->
 <!-- page 3 -->
 CONTENTS
@@ -150,11 +153,13 @@ A made-up back cover.
 
 
 def run_recipe(md=BOOK_MD):
+    """The DA recipe's result for the book markdown `md`."""
     regrouped, _ = regroup.regroup(md, da.ALIASES, name_headers=da.NAME_HEADERS, end_page=184)
     return da.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the entries of `kind` in a recipe result."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

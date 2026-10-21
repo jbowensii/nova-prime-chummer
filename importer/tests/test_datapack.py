@@ -1,3 +1,5 @@
+"""Data pack export, check and import tests."""
+
 import contextlib
 import hashlib
 import io
@@ -14,6 +16,8 @@ from importer import datapack
 from importer.__main__ import main
 from importer.tests.test_run import MINI
 
+# pylint: disable=unspecified-encoding  # the tests write and read back with the same platform default
+
 CORE = os.path.join(MINI, "imported", "core")  # the made-up core files
 
 
@@ -27,6 +31,7 @@ def custom(names=None):
 
 
 def pack(names=None):
+    """Export a data pack zip of the named custom files; its path."""
     p = os.path.join(tempfile.mkdtemp(), "pack.zip")
     datapack.export(custom(names), p, version="9.9.9")
     return p
@@ -59,11 +64,13 @@ def manifest_for(files):
 
 
 def skills():
+    """The bytes of the core skills.xml."""
     return Path(CORE, "skills.xml").read_bytes()
 
 
 class DataPackTest(unittest.TestCase):
-    def assertRefused(self, path, why):
+    def assertRefused(self, path, why):  # pylint: disable=invalid-name  # matches unittest's assert* names
+        """Assert that checking the pack at path is refused with a message containing why."""
         with self.assertRaises(datapack.PackError) as e:
             datapack.check(path)
         self.assertIn(why, str(e.exception))
@@ -268,7 +275,8 @@ class DataPackTest(unittest.TestCase):
         originals = {n: Path(core, n).read_bytes() for n in os.listdir(core)}
         # killed mid-swap: two originals moved aside, one new file already in, the rest still staged
         old, new = os.path.join(core, ".restore-old-x"), os.path.join(core, ".restore-new-y")
-        os.makedirs(old), os.makedirs(new)
+        os.makedirs(old)
+        os.makedirs(new)
         os.replace(os.path.join(core, "skills.xml"), os.path.join(old, "skills.xml"))
         os.replace(os.path.join(core, "levels.xml"), os.path.join(old, "levels.xml"))
         Path(core, "skills.xml").write_text("half-swapped new skills")

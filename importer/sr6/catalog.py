@@ -314,6 +314,7 @@ MATERIAL_ADD_ON = "Ammunition accessory"  # (its category: fits the ammunition k
 
 
 def printed_value(attr, v):
+    """A table cell as the book prints it for `attr`: spaces collapsed, a lone dash or n/a as `—`."""
     v = " ".join(str(v).split())
     if re.fullmatch(r"[-–—]+|n/a", v, re.I):
         return "—"
@@ -535,7 +536,8 @@ def stat_lines(b, names=frozenset()):
     ):  # (a type that is a name of its own, `Silver Bolts`: the item's; a word, `Wooden`: the heading's variant)
         name = r[0] if _cap_name(r[0]) else f"{b.name} ({r[0]})"
         row = {"ITEM": name, **dict(zip(h, r))}
-        # (a table with a name sharing a word with its heading, `Liar's Fetish` under `Liar's Medium`: its rows grouped under it)
+        # (a table with a name sharing a word with its heading, `Liar's Fetish` under `Liar's Medium`: its rows grouped
+        # under it)
         out.append(
             replace(
                 b,
@@ -551,6 +553,8 @@ def stat_lines(b, names=frozenset()):
 
 
 class Catalog:
+    """The entries, texts and report one SR6 book's import collects, and the xml files written from them."""
+
     def __init__(self, source, recipe, book):
         self.source, self.note = source, f"recipe sr6 {recipe}) from {book}"
         self.entries = {k: [] for k in KINDS}
@@ -586,6 +590,7 @@ class Catalog:
         cid=None,
         split=True,
     ):
+        """Add an entry of `kind` (with its children, text and aliases) and give it a unique id."""
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         context = (attrs or {}).pop("_context", ())  # (the headings it is printed under: flags.metamagic)
         if kind == "metamagics":  # who may take it, and whether again (flags.py); `(Adepts Only)` leaves the name
@@ -685,22 +690,27 @@ class Catalog:
             }
         return self._table[1]
 
-    def section(self, f):
+    def section(self, f):  # pylint: disable=inconsistent-return-statements  # (callers ignore the value)
         """Add a sections.py entry, unless the recipe's own reading wrote it already (a quality heading with its Cost
         line; a program of the same type). A heading of a kind this module reads (a sprite power's Range and Duration
         lines) has its fields read as the recipe would."""
-        same = (
-            lambda e: norm(e["name"]) == norm(f.name)
-            and all(e["attrs"].get(k) == f.attrs.get(k) for k in ("type", "group") if f.attrs.get(k))  # noqa: E731
-            and (  # (a path's `Step 1`)
-                not f.attrs.get("category") or slug(e["attrs"].get("category") or "") in ("", slug(f.attrs["category"]))
+
+        def same(e):
+            return (
+                norm(e["name"]) == norm(f.name)
+                and all(e["attrs"].get(k) == f.attrs.get(k) for k in ("type", "group") if f.attrs.get(k))
+                and (  # (a path's `Step 1`)
+                    not f.attrs.get("category")
+                    or slug(e["attrs"].get("category") or "") in ("", slug(f.attrs["category"]))
+                )
             )
-        )
+
         a = dict(f.attrs)
         head, aliases = a.pop("_heading", None), ()
         if head:  # a quality path's step, read under its name without the path's (`Consumed`)
             es = self.entries[f.kind]
-            # the recipe's reading of the same heading under its printed name is this step: one entry, its name the alias
+            # the recipe's reading of the same heading under its printed name is this step: one entry, its name the
+            # alias
             es[:] = [e for e in es if norm(e["name"]) != norm(head) or abs(int(e["page"]) - f.page) > 1]
             aliases = (head,)
             if any(norm(e["name"]) == norm(f.name) and abs(int(e["page"]) - f.page) > 1 for e in es):
@@ -851,6 +861,8 @@ class Catalog:
         A "<VARIANT> COST (CAPACITY)" column gives that variant's price and capacity (`variant:<variant>`), a
         "COST (PER <unit>)" column the cost and its unit (`per`)."""
         cols, out = HEADERS[kind], {}
+        # (a local list, not the imported module)
+        # pylint: disable-next=redefined-outer-name
         tables = ([dict(list(b.row.items())[1:])] if b.row else []) + list(b.stats)
         for t in tables:
             for h, v in t.items():
@@ -941,7 +953,8 @@ class Catalog:
                 (f"{name} ({m.group(4)})", dict(f, cost=m.group(3), per=m.group(4))),
             ]
         if m := re.fullmatch(r"(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)\s*/\s*(\d[\d,.]*\s*¥?)\s+for\s+([a-z]+)", cost, re.I):
-            # (owner, 2026-10-15: `1,000¥ for cyberdeck/5,000¥ for cyberhack`: one item per variant, each with its price)
+            # (owner, 2026-10-15: `1,000¥ for cyberdeck/5,000¥ for cyberhack`: one item per variant, each with its
+            # price)
             return [
                 (f"{name} ({m.group(2).lower()})", dict(f, cost=m.group(1))),
                 (f"{name} ({m.group(4).lower()})", dict(f, cost=m.group(3))),
@@ -963,7 +976,7 @@ class Catalog:
             if len(parts) > 1 and len(names) == len(parts) and all(re.fullmatch(VALUE_PART, p) for p in parts):
                 # (owner, 2026-10-08: A takes each cell's first value, B its second, a cell without a slash is shared;
                 # not a column whose slash is its own format: handling on/off road, seats)
-                def part(k, v, i):
+                def part(k, v, i, parts=parts):
                     ps = v.split("/") if isinstance(v, str) else []
                     own = (
                         k in ("cost", "avail") or k not in SLASH_FORMAT and all(re.fullmatch(VALUE_PART, p) for p in ps)
@@ -974,6 +987,7 @@ class Catalog:
         return [(name, f)]
 
     def missing(self, kind, b, page, field):
+        """Report a field the book prints no value for."""
         self.report.append(
             {"kind": "missing-value", "file": f"{kind}.xml", "name": b.name, "field": field, "page": page}
         )
@@ -981,6 +995,7 @@ class Catalog:
     # --- the priority and metatype tables ---
 
     def table(self, header, rows, page):
+        """Read a table's rows by its header: Priority, metatype ranges or implant grades; others are ignored."""
         first = header[0].upper() if header else ""
         if first == "PRIORITY":
             for r in rows:
@@ -991,7 +1006,7 @@ class Catalog:
                 self.metatype(header, r, page)
         elif first == "GRADE" and any("ESS" in h.upper() for h in header):  # the implant grades table
             for r in rows:
-                self.grade(r[0], {h: c for h, c in zip(header[1:], r[1:])}, page)
+                self.grade(r[0], dict(zip(header[1:], r[1:])), page)
 
     def grade(self, name, cells, page, types=None, replaces=None):
         """An implant grade (`Alphaware | x0.8 | x1.2 | +1`): its Essence and cost multipliers and Availability
@@ -1012,6 +1027,7 @@ class Catalog:
         self.add("grades", name, page, {**attrs, "types": types, "replaces": replaces})
 
     def priority(self, header, row, page):
+        """One row of the Priority table: its letter and what each column gives."""
         letter = (row[0] if row else "").strip()
         if not re.fullmatch(r"[A-E]", letter):
             self.report.append(
@@ -1053,6 +1069,7 @@ class Catalog:
         self.add("priorities", f"Priority {letter}", page, {"letter": letter}, metas + attrs + skills + magic + res)
 
     def metatype(self, header, row, page):
+        """One row of a metatype table, or the racial qualities sub-row under a metatype's row."""
         joined = " ".join(c for c in row if c)
         if m := re.search(r"racial qualit\w*\s*:?\s*(.*)", joined, re.I):  # the sub-row under a metatype's row
             if self.last_meta:
@@ -1098,8 +1115,16 @@ class Catalog:
         if kind in ("contacts", *STAT_KINDS, *BOX_KINDS):
             b = text_stats(b, HEADERS["npcs" if kind == "contacts" else kind])
         if kind in STAT_KINDS and len(parts := _side_by_side(b)) > 1:
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])
         if kind in STAT_KINDS and self.split and len(parts := self.split(b)) > 1:
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
+            # pylint: disable-next=use-a-generator  # (a list: every part is added, all() must not stop at the first False)
             return all([self._entry(kind, cat, p, page, ctx) for p in parts])  # one stat block, several names
         if kind in ROW_KINDS and b.row is not None and not any(list(b.row.values())[1:]) and not b.unlisted:
             return True  # a group heading printed as a row (`Patches` over the patches): no entry
@@ -1211,7 +1236,7 @@ class Catalog:
                 if b.product:
                     e["product"] = b.product
             return True
-        elif kind == "spells":
+        if kind == "spells":
             cat = next((c for c in SPELL_CATEGORIES for k in ctx if c in k.split()), None)
             if not cat:
                 return False  # a rule about spells
@@ -1253,8 +1278,8 @@ class Catalog:
             attrs.update(effects.split_cost(cost))
         elif kind in ("critters", "spirits", "npcs"):
             if kind == "npcs":
-                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing none,
-                # or a recipe's NPCs with no rating (`Group: X`)
+                # `Professional Rating 3: Street Crew`; a recipe's `Professional Rating: <group>` for a book printing
+                # none, or a recipe's NPCs with no rating (`Group: X`)
                 m = re.search(r"professional rating\s*(\d+)?\s*[:–—-]?\s*(.*)", b.section, re.I)
                 g = re.fullmatch(r"group:\s*(.+)", b.section, re.I)
                 attrs = {
@@ -1333,6 +1358,7 @@ class Catalog:
         return (name[: m.start()].strip(), int(m.group(1))) if m else (name, None)
 
     def skill(self, b, page):
+        """Add a skill block's entry; False when the block prints no linked attribute."""
         blob = "; ".join([f"{k}: {v}" for k, v in b.labels.items()] + [b.tags])
         m = re.search(r"attributes?\s*:\s*([A-Za-z]+)", blob, re.I)
         attr = m and m.group(1).lower()[:3]
@@ -1364,7 +1390,7 @@ class Catalog:
         band group's rule needs all its rows."""
         if getattr(self, "_ruled", False):
             return
-        self._ruled = True
+        self._ruled = True  # pylint: disable=attribute-defined-outside-init  # (set once; read by getattr above)
         # a section's statement of a cheaper or dearer version (`open construction versions … at half the listed
         # cost`): an option on the priced items of its section that its heading names
         said = [
@@ -1380,7 +1406,7 @@ class Catalog:
             for e in self.entries["gear"]
             if (e["attrs"].get("energy") or "").strip()
         }
-        sections = {}  # the section prose (rule entries) by place
+        sections = {}  # pylint: disable=redefined-outer-name  # the section prose (rule entries) by place
         for e in self.entries["rules"]:
             sections.setdefault(e["where"], []).append(e.get("text") or "")
         for kind, es in self.entries.items():
@@ -1460,6 +1486,7 @@ class Catalog:
         return out
 
     def xml(self, kind):
+        """The catalog file of one `kind`: every entry collected, as xml."""
         self.rules()
         tag, lines = KINDS[kind], []
         for e in self.entries[kind]:
@@ -1479,6 +1506,7 @@ class Catalog:
         )
 
     def texts_xml(self):
+        """The private texts file: every entry's book text as xml."""
         body = "".join(
             f"  <text of={quoteattr(of)} id={quoteattr(i)}>{escape(_s(t))}</text>\n" for of, i, t in self.texts
         )
@@ -1644,6 +1672,7 @@ def series_models(name, text):
 
 
 def regroup_stem(w):
+    """The stem of a word (formula.word_stem), as the regrouper compares headings."""
     return formula.word_stem(w)
 
 
@@ -1940,8 +1969,9 @@ def spell_features(bs, cat, offset):
 
 
 def read(regrouped, ctx, book):
-    """regrouped: regroup's text, or its blocks. book: the recipe module whose tables drive the reading (ID, NAME, PUBLISHER, CANON, BOOK, PAGE_OFFSET, SECTIONS,
-    SECTION_KINDS, LABEL_SECTIONS, RULE_CHAPTERS, ATTRIBUTE_CHAPTERS, CATALOG_CHAPTERS; optional fix(block, parent2)
+    """regrouped: regroup's text, or its blocks. book: the recipe module whose tables drive the reading (ID, NAME,
+    PUBLISHER, CANON, BOOK, PAGE_OFFSET, SECTIONS, SECTION_KINDS, LABEL_SECTIONS, RULE_CHAPTERS, ATTRIBUTE_CHAPTERS,
+    CATALOG_CHAPTERS; optional fix(block, parent2)
     -> the block as this reading needs it, and kind(chapter, block, parent2) -> (kind, category) in place of
     SECTIONS)."""
     bk = book
@@ -2132,8 +2162,9 @@ def read(regrouped, ctx, book):
 
 def _core(ctx, own=None):
     """The catalogs already imported (custom/sr6/imported/<book>/<kind>.xml; ctx["custom_dir"]: custom/sr6), which
-    another book's sample runners cite (a face printed with a Sixth World Companion quality): kind -> [{id (scoped), name,
-    attrs, children}], the core rulebook's first, then the other books' (not `own`'s) by folder; {} before any is."""
+    another book's sample runners cite (a face printed with a Sixth World Companion quality): kind -> [{id (scoped),
+    name, attrs, children}], the core rulebook's first, then the other books' (not `own`'s) by folder; {} before any
+    is."""
     base = os.path.join((ctx or {}).get("custom_dir") or "", "imported")
     found = (ctx or {}).get("custom_dir") and os.path.isdir(base)
     books = sorted(os.listdir(base), key=lambda b: (b != CORE.lower(), b)) if found else []

@@ -158,10 +158,12 @@ def _amp(a):
 
 
 def system_prompt(m):
+    """The system prompt for reading one part of an Anarchy book, listing the effect ids m allows."""
     effects = "\n".join(
         f"- {i}: {e.findtext('name')}" + (f" (param: {e.get('param')})" if e.get("param") else "")
         for i, e in m["effects"].items()
     )
+    # pylint: disable=line-too-long  # the prompt text is sent as written
     return f"""You read one part of a Shadowrun Anarchy 2.0 sourcebook, converted from PDF to Markdown.
 `<!-- page N -->` marks where printed page N starts. Answer with one JSON object only, matching this JSON Schema:
 {json.dumps(SCHEMA)}
@@ -174,6 +176,7 @@ rr-skill takes a skill id ({" ".join(sorted(m["skills"]))}), rr-attr an attribut
 rr-spec a specialization id ({" ".join(sorted(m["specs"]))}) or "custom:<name>" for one not listed.
 {effects}
 Spell categories: {", ".join(CATEGORIES["spell"])}. Complex form categories: {", ".join(CATEGORIES["complex-form"])}."""
+    # pylint: enable=line-too-long
 
 
 def core_prompt(tables):
@@ -184,7 +187,8 @@ def core_prompt(tables):
     hints = {
         "attributes": f"Attribute ids are {' '.join(crb_core.ATTR_LETTER.values())}.",
         "metatypes": "Each metatype has one range per attribute (attr: str agi wil log cha).",
-        "skills": "attr and alt are attribute ids (str agi wil log cha); spec ids are <skill id>.<spec name in kebab-case>.",
+        "skills": "attr and alt are attribute ids (str agi wil log cha); "
+        "spec ids are <skill id>.<spec name in kebab-case>.",
         "ampeffects": f"Use these ids for the rows they name: {' '.join(e[0] for e in crb_core.EFFECTS)}. "
         "types is the space-separated amp type ids that may take the effect.",
         "packages": "level is the level id the package is for.",
@@ -205,7 +209,8 @@ def _id(v):
 
 
 def schema_notes(table, xml):
-    """[] when `xml` (one entry) is valid in the core file `table`, else why not (the file's schema, as a data pack is checked)."""
+    """[] when `xml` (one entry) is valid in the core file `table`, else why not (the file's schema, as a data pack is
+    checked)."""
     from lxml import etree
     from importer import datapack
 
@@ -256,10 +261,10 @@ def core_refs(rows=(), replacing=()):
 
 
 def ref_notes(table, el, refs):
-    """What a core row names that doesn't exist: attributes (the app's five), a package's level, an effect's amp types and
-    the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id. Also what the
-    schema can't say of nested rows: a range's minimum above its maximum, a skill's specialization id used twice, a
-    specialization with no name or an id that doesn't start and end with a letter or digit."""
+    """What a core row names that doesn't exist: attributes (the app's five), a package's level, an effect's amp types
+    and the effects it requires or excludes, an amp type's required effect. The engine looks all of these up by id. Also
+    what the schema can't say of nested rows: a range's minimum above its maximum, a skill's specialization id used
+    twice, a specialization with no name or an id that doesn't start and end with a letter or digit."""
     from importer.recipes import crb_core
 
     attrs, notes = set(crb_core.ATTR_LETTER.values()), []
@@ -311,7 +316,8 @@ def core_notes(table, el, refs):
 
 def core_entry(table, raw, source, page, seen):
     """(kind, entry id, page, entry XML, notes) for one proposed row of the core table `table`. Only the schema's
-    properties are read (in its order), every value cleaned and escaped; the entry is checked against the table's schema.
+    properties are read (in its order), every value cleaned and escaped; the entry is checked against the table's
+    schema.
     """
     kind, props = CORE_KINDS[f"{table}.xml"], CORE[table]["properties"]
 
@@ -332,9 +338,10 @@ def core_entry(table, raw, source, page, seen):
             attrs["complexForm"] or attrs["spell"]
         )  # as the recipe does: the spell price unless printed
         attrs["refundEffectRemoval"] = "false"  # the app's default (crb_core.DEFAULTS): the book doesn't say
-    rows = lambda k: (
-        [x for x in raw.get(k) if isinstance(x, dict)] if isinstance(raw.get(k), list) else []
-    )  # noqa: E731
+
+    def rows(k):
+        return [x for x in raw.get(k) if isinstance(x, dict)] if isinstance(raw.get(k), list) else []
+
     inner = "" if table == "pricing" else f"<name>{escape(_text(raw.get('name')) or '')}</name>"
     if table == "metatypes":
         from importer.recipes.crb_core import racial_effects  # what the racial quality does, as the recipe reads it
@@ -360,7 +367,8 @@ def core_entry(table, raw, source, page, seen):
 
 
 def core_entries(obj, tables, source, page, seen):
-    """The proposals of one chunk's reply for the core tables `tables`: weapons/armor rows from `items`, the rest per table."""
+    """The proposals of one chunk's reply for the core tables `tables`: weapons/armor rows from `items`, the rest per
+    table."""
     items = {CORE_KINDS[f"{t}.xml"] for t in tables} & {"weapon", "armor"}
     if items:
         yield from (e for e in _entries({"items": obj.get("items")}, source, page, None, seen) if e[0] in items)
@@ -405,7 +413,10 @@ def _el(tag, attrs, inner=""):
 
 def _entries(obj, source, page, m, seen):
     """(kind, entry id, page, entry XML, notes) for each proposed entry of one chunk."""
-    lists = lambda k: [x for x in obj.get(k) if isinstance(x, dict)] if isinstance(obj.get(k), list) else []
+
+    def lists(k):
+        return [x for x in obj.get(k) if isinstance(x, dict)] if isinstance(obj.get(k), list) else []
+
     for raw in lists("amps"):
         a, notes = _amp(raw)
         p, i = _pos(raw.get("page")) or page, _unique(seen, "amp", _slug(a["name"]))
@@ -445,9 +456,8 @@ def _entries(obj, source, page, m, seen):
 
 def _proposal(kind, i, page, xml, notes):
     return (
-        f"  <proposal{xmlio.xml_attrs({'id': f'{kind}.{i}', 'kind': kind, 'state': 'pending', 'page': page})}>\n    {xml}\n"
-        + "".join(f"    <note>{escape(t)}</note>\n" for t in notes)
-        + "  </proposal>\n"
+        f"  <proposal{xmlio.xml_attrs({'id': f'{kind}.{i}', 'kind': kind, 'state': 'pending', 'page': page})}>\n"
+        f"    {xml}\n" + "".join(f"    <note>{escape(t)}</note>\n" for t in notes) + "  </proposal>\n"
     )
 
 
@@ -524,11 +534,17 @@ def propose(book_dir, ask, provider=None, data_dir=None, fresh=False, core=False
                 core_chunks(md, set().union(*unread.values())),
                 (*tables & set(CORE), "items"),
             )
-            entries = lambda obj, page: core_entries(obj, tables, source, page, seen)  # noqa: E731
+
+            def entries(obj, page):
+                return core_entries(obj, tables, source, page, seen)
+
         else:
             m = mechanics(data_dir)
             system, parts, keys = system_prompt(m), chunks(md), KEYS
-            entries = lambda obj, page: _entries(obj, source, page, m, seen)  # noqa: E731
+
+            def entries(obj, page):
+                return _entries(obj, source, page, m, seen)
+
         done, rows, skips, seen = (0, [], [], set()) if fresh else _resume(path, sha, len(parts))
         created = datetime.now(timezone.utc).isoformat(timespec="seconds")
 

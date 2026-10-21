@@ -8,8 +8,13 @@ import os
 import xml.etree.ElementTree as ET
 
 from importer import xmlio
-from importer.edits import MAX_BODY, USERNAME, EditError, parse_edit  # noqa: F401 (MAX_BODY: the CLI's stdin cap)
+
+# MAX_BODY: the CLI's stdin cap
+# pylint: disable-next=unused-import
+from importer.edits import MAX_BODY, USERNAME, EditError, parse_edit  # noqa: F401
 from importer.sr6 import KINDS, NS, ROOT, SCHEMA_DIR
+
+# pylint: disable=redefined-builtin  # `id` is the catalog entry id throughout
 
 
 def _path(custom_dir, name):
@@ -87,7 +92,7 @@ def _xsd_error(kind, entry):
     from lxml import etree
 
     doc = etree.fromstring(
-        f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1">{ET.tostring(entry, encoding="unicode")}</sr6:data>'.encode(
+        f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1">{ET.tostring(entry, encoding="unicode")}</sr6:data>'.encode(  # pylint: disable=line-too-long
             "utf8"
         ),
         etree.XMLParser(resolve_entities=False, no_network=True),
@@ -131,7 +136,7 @@ def set_entry(custom_dir, kind, id, body, by=None):
     book = _sample(custom_dir, id) if kind == "samplefixes" else _imported(custom_dir, entry.tag, id)
     if book is None:
         raise EditError(
-            f'"{id}" isn’t {"an imported sample runner" if kind == "samplefixes" else "in the catalog"}; only imported entries can be edited'
+            f'"{id}" isn’t {"an imported sample runner" if kind == "samplefixes" else "in the catalog"}; only imported entries can be edited'  # pylint: disable=line-too-long
         )
     for k in ("source", "page"):
         if entry.get(k) != book.get(k):

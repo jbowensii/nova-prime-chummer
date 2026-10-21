@@ -1,9 +1,9 @@
 """CLI for the SR6 importer (python -m importer sr6 ...).
 python -m importer sr6 run <library/sr6/book-id> --custom <custom/sr6> [--md | --reuse] [--file NAME]
 python -m importer sr6 remove <library/sr6/book-id> --custom <custom/sr6> [--files]
-python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3: refused)
-python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6>
-python -m importer sr6 ask --custom <custom/sr6> --library <library/sr6> [--scope rules]  (as `importer ask`, from SR6's
+python -m importer sr6 edit set <kind> <id> [--by <username>] --custom <custom/sr6>  (the entry on stdin; exit 3:
+refused) python -m importer sr6 edit remove <kind> <id> --custom <custom/sr6> python -m importer sr6 ask --custom
+<custom/sr6> --library <library/sr6> [--scope rules]  (as `importer ask`, from SR6's
     data only, with SR6's AI settings in <library/sr6>/.config)
 python -m importer sr6 regroup <book.md> <regrouped.md>        (with the CRB recipe's aliases and name headers)
 python -m importer sr6 summary <library/sr6/book-id>           (counts per file, report rows by kind with names)
@@ -24,6 +24,7 @@ USAGE = __doc__.strip()
 
 
 def summary(book_dir, out=None):
+    """Print the state and import report of the book folder to `out`."""
     out = out or sys.stdout
     status = xmlio.ET.parse(os.path.join(book_dir, "status.xml")).getroot()
     imp = xmlio.read_import(book_dir)
@@ -183,6 +184,7 @@ def _cmd_ask(argv):
 
 
 def main(argv=None):
+    """Run the sr6 command named first in `argv`; its exit code."""
     argv = sys.argv[1:] if argv is None else argv
     cmds = {
         "run": _cmd_run,

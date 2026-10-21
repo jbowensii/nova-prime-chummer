@@ -40,8 +40,8 @@ SCHEMA = _obj(
 )
 
 # The core tables a recipe couldn't read (propose --core), one key per core file, each row mirroring its schema's entry:
-# the property names are the XML attribute names (propose.core_entry writes only these, in this order). Weapons and armor
-# rows come as `items`, as above.
+# the property names are the XML attribute names (propose.core_entry writes only these, in this order). Weapons and
+# armor rows come as `items`, as above.
 NUM, NNUM, NBOOL = {"type": "number"}, {"type": ["number", "null"]}, {"type": ["boolean", "null"]}
 PRICES = (
     "attrPoint",
@@ -102,7 +102,8 @@ CORE = {
 
 
 def core_schema(tables):
-    """The JSON for a chunk of the core tables `tables` (file stems): `items` for weapons/armor, else one list per table."""
+    """The JSON for a chunk of the core tables `tables` (file stems): `items` for weapons/armor, else one list per
+    table."""
     props = {t: _list(CORE[t]) for t in sorted(tables) if t in CORE}
     if {"weapons", "armor"} & set(tables):
         props["items"] = SCHEMA["properties"]["items"]

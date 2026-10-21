@@ -111,11 +111,13 @@ A made-up ad.
 
 
 def run_recipe(md=BOOK_MD):
+    """The TS recipe's result for the book markdown `md`."""
     regrouped, _ = regroup.regroup(md, ts.ALIASES, name_headers=ts.NAME_HEADERS, end_page=ts.END_PAGE)
     return ts.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the entries of `kind` in a recipe result."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

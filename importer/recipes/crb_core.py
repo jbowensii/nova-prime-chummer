@@ -22,7 +22,8 @@ CONCEPTS = "GAMECONPTS"  # the GAME CONCEPTS margin tab's letters
 DECOR = re.compile(r"^\*\*(?:\d+|SHADOWRUN|ANARCHY)\*\*$")  # page numbers and running heads
 ATTR_LETTER = {"S": "str", "A": "agi", "W": "wil", "L": "log", "C": "cha"}
 
-# ids the app uses where the book's name would slug differently (the engine, the other recipes and saved runners use these)
+# ids the app uses where the book's name would slug differently (the engine, the other recipes and saved runners use
+# these)
 IDS = {
     "vehicles": {"all-terrain-motorbike": "allterrain-motorbike", "suv-pick-up": "suv", "bus-trailer": "bus"},
     "weapons": {"advanced-close-quarter-weapon": "advanced-close-quarter"},
@@ -44,7 +45,8 @@ SKIP_WEAPONS = {"unarmed"}
 # values the book doesn't state, and why
 DEFAULTS = {
     "complexForm": "spell",  # CRB has no technomancers: a stand-in until the CG's import sets its own price (<prices>)
-    "refundEffectRemoval": "false",  # pre-0.5.5 ledgers only; the app prices a removal as p.84's replacement with nothing
+    # pre-0.5.5 ledgers only; the app prices a removal as p.84's replacement with nothing
+    "refundEffectRemoval": "false",
 }
 
 # Shadow Amp effects (pp.58-63): id, category, the book row (regex on its text), app attributes.
@@ -163,12 +165,12 @@ PAGES = {
 
 
 class Unreadable(Exception):
-    pass
+    """A table the book prints that cannot be read."""
 
 
 def _pages(md):
-    parts = re.split(r"<!-- page (\d+) -->", md)
-    return {int(parts[i]) - crb.PAGE_OFFSET: parts[i + 1] for i in range(1, len(parts), 2)}
+    chunks = re.split(r"<!-- page (\d+) -->", md)
+    return {int(chunks[i]) - crb.PAGE_OFFSET: chunks[i + 1] for i in range(1, len(chunks), 2)}
 
 
 def _lines(pages, a, b, tab=CONCEPTS):
@@ -326,7 +328,8 @@ def amptypes(pages):
 
 
 def vehicles(pages):
-    """The base vehicle and drone types, p.60: "• **Name:** Pilot P, Body B, Handling H, Speed S (flying F), Armor A, mount"."""
+    """The base vehicle and drone types, p.60: "• **Name:** Pilot P, Body B, Handling H, Speed S (flying F), Armor A,
+    mount"."""
     lines = [l for _, l in _lines(pages, 60, 60) if not l.startswith("|")]
     text = join_lines(lines)
     default = re.search(r"weapon mount for (\w+) weapon", text)
@@ -445,6 +448,7 @@ def _types(text, all_types):
 
 
 def ampeffects(pages, types):
+    """The Shadow Amp effect entries, read from the effect rows of CRB p.58 and p.61-63."""
     all_types = [t["id"] for t in types]
     rows = [(p, _text(n), r, t) for p, n, r, t in _effect_rows(pages)]
     awk = [
@@ -487,6 +491,7 @@ def ampeffects(pages, types):
                 ),
                 None,
             )
+            # pylint: disable-next=redefined-outer-name  # local; the module armor() is not used here
             armor, adept = next((o for o in out if o["id"] == "armor-plus"), None), next(
                 (t for t in types if t["id"] == "adept"), None
             )
@@ -588,7 +593,10 @@ def pricing(pages):
                 cur = c.split()[0]
     try:
         attr, skill = rows["Attribute"], rows["Skill"]
-        first = lambda k: str(_num(re.match(r"[\d,]+", rows[k][0])[0]))  # noqa: E731
+
+        def first(k):
+            return str(_num(re.match(r"[\d,]+", rows[k][0])[0]))
+
         return {
             "page": 83,
             "attrPoint": first("Attribute"),
@@ -606,11 +614,12 @@ def pricing(pages):
             "spell": first("Spell"),
         }
     except (KeyError, IndexError, TypeError, StopIteration) as e:
-        raise Unreadable(f"the cost cheat sheet: {e}")
+        raise Unreadable(f"the cost cheat sheet: {e}") from e
 
 
 def levels(pages):
-    """LEVELS OF PLAY, p.85 (the scan starts on p.84, where the section heading can fall): a heading per level, then Nuyen / Attributes / Skills / Risk Reduction bullets."""
+    """LEVELS OF PLAY, p.85 (the scan starts on p.84, where the section heading can fall): a heading per level, then
+    Nuyen / Attributes / Skills / Risk Reduction bullets."""
     lines = _lines(pages, 84, 85)
     i = next((i for i, (_, l) in enumerate(lines) if l == "LEVELS OF PLAY"), None)
     if i is None:
@@ -661,7 +670,10 @@ def packages(pages, lvls):
             if not m:
                 raise Unreadable(f"the {level} {opt} package")
             other = m[6]
-            count = lambda w: (re.search(rf"(\d+) {w}", other) or [0, "0"])[1]  # noqa: E731
+
+            def count(w, other=other):
+                return (re.search(rf"(\d+) {w}", other) or [0, "0"])[1]
+
             out.append(
                 {
                     "id": f"{level}-{opt.lower()}",
@@ -856,7 +868,9 @@ def build(md):
             "attributes",
             "Attributes, CRB p.52.",
             [
-                f'  <attribute{_attrs({"id": a["id"], "abbr": a["abbr"], **_ref(a)})}><name>{escape(a["name"])}</name></attribute>'
+                "  "
+                f'<attribute{_attrs({"id": a["id"], "abbr": a["abbr"], **_ref(a)})}><name>{escape(a["name"])}</name></a'
+                "ttribute>"
                 for a in got["attributes"]
             ],
         )
@@ -865,7 +879,8 @@ def build(md):
             "metatypes",
             "Metatype attribute ranges and starting Edge, CRB p.52.",
             [
-                f'  <metatype{_attrs({"id": m["id"], "edge": m["edge"], **_ref(m)})}>\n    <name>{escape(m["name"])}</name>'
+                f'  <metatype{_attrs({"id": m["id"], "edge": m["edge"], **_ref(m)})}>\n    '
+                f'<name>{escape(m["name"])}</name>'
                 f'<racialQuality>{escape(m["quality"])}</racialQuality>{racial_effects(m["quality"])}\n    '
                 + "".join(f'<range{_attrs({"attr": a, "min": lo, "max": hi})}/>' for a, lo, hi in m["ranges"])
                 + "\n  </metatype>"
@@ -877,7 +892,8 @@ def build(md):
             "skills",
             "Skills, linked Attributes (attr, alt) and specializations, CRB p.53-57.",
             [
-                f'  <skill{_attrs({"id": s["id"], "attr": s["attr"], "alt": s["alt"], "requires": s["requires"], **_ref(s)})}>'
+                "  <skill"
+                f'{_attrs({"id": s["id"], "attr": s["attr"], "alt": s["alt"], "requires": s["requires"], **_ref(s)})}>'
                 f'<name>{escape(s["name"])}</name>\n'
                 + "".join(f'    <spec{_attrs({"id": i, "attr": a})}>{escape(n)}</spec>\n' for i, a, n in s["specs"])
                 + "  </skill>"
@@ -889,7 +905,9 @@ def build(md):
             "amptypes",
             "Shadow Amp types and base ratings, CRB p.58-60.",
             [
-                f'  <amptype{_attrs({"id": t["id"], "base": t["base"], "baseAfterFirst": t["after"], "essence": t["essence"], "requires": t["requires"], **_ref(t)})}>'
+                "  <amptype"
+                f'{_attrs({"id": t["id"], "base": t["base"], "baseAfterFirst": t["after"], "essence": t["essence"], "requires": t["requires"], **_ref(t)})}'  # pylint: disable=line-too-long
+                ">"
                 f'<name>{escape(t["name"])}</name></amptype>'
                 for t in got["amptypes"]
             ],
@@ -899,7 +917,8 @@ def build(md):
             "ampeffects",
             "Shadow Amp effects, CRB p.58 and p.61-63. max = times one Amp may take it.",
             [
-                f'  <effect{_attrs({k: e.get(k) for k in ("id", "category", "rating", "types", "max", "requires", "excludes", "param", "gmApproval")})}'
+                "  <effect"
+                f'{_attrs({k: e.get(k) for k in ("id", "category", "rating", "types", "max", "requires", "excludes", "param", "gmApproval")})}'  # pylint: disable=line-too-long
                 f'{_attrs(_ref(e))}><name>{escape(e["name"])}</name></effect>'
                 for e in got["ampeffects"]
             ],
@@ -909,7 +928,8 @@ def build(md):
             "vehicles",
             "Vehicle and drone chassis (base rating 1), CRB p.60.",
             [
-                f'  <vehicle{_attrs({k: v[k] for k in ("id", "pilot", "body", "handling", "speed")})}{_attrs({"flyingSpeed": v["flying"], "armor": v["armor"], "mount": v["mount"], **_ref(v)})}>'
+                f'  <vehicle{_attrs({k: v[k] for k in ("id", "pilot", "body", "handling", "speed")})}'
+                f'{_attrs({"flyingSpeed": v["flying"], "armor": v["armor"], "mount": v["mount"], **_ref(v)})}>'
                 f'<name>{escape(v["name"])}</name></vehicle>'
                 for v in got["vehicles"]
             ],
@@ -929,7 +949,9 @@ def build(md):
             "levels",
             "Levels of play, CRB p.85. Caps apply during creation only.",
             [
-                f'  <level{_attrs({k: lv[k] for k in ("id", "nuyen", "attrAtMax", "skillCap", "rrAttr", "rrSkill", "rrSpec")})}{_attrs(_ref(lv))}>'
+                "  <level"
+                f'{_attrs({k: lv[k] for k in ("id", "nuyen", "attrAtMax", "skillCap", "rrAttr", "rrSkill", "rrSpec")})}'
+                f"{_attrs(_ref(lv))}>"
                 f'<name>{escape(lv["name"])}</name></level>'
                 for lv in got["levels"]
             ],
@@ -954,7 +976,9 @@ def build(md):
             "packages",
             "Creation packages, CRB p.86. Guides only: nuyen may move between categories.",
             [
-                f'  <package{_attrs({k: pk[k] for k in keys})}{_attrs(_ref(pk))}><name>{escape(pk["name"])}</name></package>'
+                "  "
+                f'<package{_attrs({k: pk[k] for k in keys})}{_attrs(_ref(pk))}><name>{escape(pk["name"])}</name></packa'
+                "ge>"
                 for pk in got["packages"]
             ],
         )
@@ -967,7 +991,9 @@ def build(md):
                 kind,
                 comment,
                 [
-                    f'  <item{_attrs({"id": w["id"], "kind": "weapon" if name == "weapons" else "armor", "specialist": w.get("specialist"), "armor": w.get("armor"), "dv": w.get("dv"), "ranges": w.get("ranges"), "category": w.get("category"), **_ref(w)})}>'
+                    "  <item"
+                    f'{_attrs({"id": w["id"], "kind": "weapon" if name == "weapons" else "armor", "specialist": w.get("specialist"), "armor": w.get("armor"), "dv": w.get("dv"), "ranges": w.get("ranges"), "category": w.get("category"), **_ref(w)})}'  # pylint: disable=line-too-long
+                    ">"
                     f'<name>{escape(w["name"])}</name><text></text></item>'
                     for w in got[name]
                 ],
@@ -978,7 +1004,9 @@ def build(md):
             "lifestyles",
             "Lifestyles, CRB p.166. perRun is added to every run's earnings.",
             [
-                f'  <lifestyle{_attrs({"id": s["id"], "perRun": s["perRun"], **_ref(s)})}><name>{escape(s["name"])}</name><text></text></lifestyle>'
+                "  "
+                f'<lifestyle{_attrs({"id": s["id"], "perRun": s["perRun"], **_ref(s)})}><name>{escape(s["name"])}</name'
+                "><text></text></lifestyle>"
                 for s in got["lifestyles"]
             ],
         )

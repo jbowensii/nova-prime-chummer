@@ -17,6 +17,8 @@ from importer.pdf.columns import find_gutter
 from importer.pdf.lines import LINE_TOLERANCE
 from importer.pdf.markdown import BOLD_FONT, is_bold
 
+# pylint: disable=redefined-outer-name  # words and fonts are module functions whose names locals reuse
+
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
 _CELL_GAP = 6  # pt; header words closer than this are one cell
@@ -36,6 +38,8 @@ _STRIPE_MAX = 60  # pt; a filled rect at most this tall is a header cell or a ro
 
 @dataclass
 class Fonts:
+    """The fonts of one book: body, heading and running-head families and sizes."""
+
     body: str  # family of the body text
     size: float  # body size
     heading: str  # display family
@@ -253,8 +257,8 @@ def baseline_rows(words):
     """Rows by baseline, a word joining the row when its baseline is within LINE_TOLERANCE of the previous one (a label
     set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
     glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
-    else it is a row of its own. (The SR6 layout's words carry their baseline, `base`; the shared converter groups rows by
-    top: importer/pdf/lines.cluster_lines.)"""
+    else it is a row of its own. (The SR6 layout's words carry their baseline, `base`; the shared converter groups rows
+    by top: importer/pdf/lines.cluster_lines.)"""
     if not words:
         return []
     med = statistics.median(w["size"] for w in words)
@@ -481,7 +485,10 @@ def _headers(lines, height, boxes=()):
 
 def _innermost(rects):
     """One rect per x extent, none holding another (a rect behind a whole row holds its cell rects)."""
-    key = lambda r: (r["x0"], r["x1"])
+
+    def key(r):
+        return (r["x0"], r["x1"])
+
     inner = {
         key(r): r
         for r in rects
@@ -610,7 +617,9 @@ def band_tables(words, fonts, rects=(), width=None):
         if hr:
             cells = [[] for _ in hr]
             for w in head:
-                cells[min(range(len(hr)), key=lambda i: max(hr[i]["x0"] - _cx(w), 0, _cx(w) - hr[i]["x1"]))].append(w)
+                cells[
+                    min(range(len(hr)), key=lambda i, hr=hr, w=w: max(hr[i]["x0"] - _cx(w), 0, _cx(w) - hr[i]["x1"]))
+                ].append(w)
             bounds = [hr[0]["x0"]] + [r["x0"] for r in hr[1:]] + [hr[-1]["x1"] + 2]
         else:
             cells = _split_x(head, _CELL_GAP)
@@ -710,7 +719,10 @@ def _table(head, header, bounds, rows_lines, bands, labels):
     every other line joins the nearest anchor by top (a tie goes to the one above). A name wrapped onto two lines
     around values set vertically centred gives two anchors, one of them name-only: it joins the neighbour row whose
     values sit between them. Words of a labelled sub-row (`labels`) all go to the first column."""
-    col = lambda w: 0 if id(w) in labels else max([i for i, b in enumerate(bounds[1:-1], 1) if _cx(w) >= b] or [0])
+
+    def col(w):
+        return 0 if id(w) in labels else max([i for i, b in enumerate(bounds[1:-1], 1) if _cx(w) >= b] or [0])
+
     tops = [ln[0]["top"] for ln in rows_lines]
     banded, loose = defaultdict(list), []
     for i, b in enumerate(bands):
@@ -719,7 +731,7 @@ def _table(head, header, bounds, rows_lines, bands, labels):
     anchors = [i for i in loose if any(col(w) == 0 for w in rows_lines[i])] or loose
     members = defaultdict(list)
     for i in loose:
-        members[min(anchors, key=lambda a: abs(tops[a] - tops[i]))].append(i)
+        members[min(anchors, key=lambda a, i=i: abs(tops[a] - tops[i]))].append(i)
     loose_rows = [
         [tops[a], [tops[i] for i in members[a]], [w for i in members[a] for w in rows_lines[i]]] for a in anchors
     ]
@@ -728,6 +740,7 @@ def _table(head, header, bounds, rows_lines, bands, labels):
         top_k, _, words = loose_rows[k]
         if all(col(w) == 0 for w in words) and len(loose_rows) > 1:
             nxt = loose_rows[k + 1] if k + 1 < len(loose_rows) else None
+            # pylint: disable=unsubscriptable-object,unsupported-assignment-operation  # prv is None only at k == 0, and is tested
             prv = loose_rows[k - 1] if k else None
             if nxt and any(top_k < t < nxt[0] for t in nxt[1]):
                 nxt[2] = words + nxt[2]
@@ -812,7 +825,7 @@ def box_titles(blocks, geo, boxes):
     (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
     its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
     out = []
-    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
+    for (t, k, s), (lv, bottom, size) in zip(blocks, geo):
         if lv and k in ("left", "right"):
             other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
             under = [b for b in boxes if b >= bottom - 1]

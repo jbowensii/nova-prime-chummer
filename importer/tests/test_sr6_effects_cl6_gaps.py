@@ -1,15 +1,16 @@
-"""SR6 effects reader, batch 3 (owner rulings 2026-10-17 evening): the CommLink6 gaps closed by the reader where the book states the
-effect and by marked gen="cl6" override rows where it cannot. Every sentence and name is invented, in the books' structure.
+"""SR6 effects reader, batch 3 (owner rulings 2026-10-17 evening): the CommLink6 gaps closed by the reader where the
+book states the effect and by marked gen="cl6" override rows where it cannot. Every sentence and name is invented, in
+the books' structure.
 """
 
 import json
-import re
 import unittest
 
 from importer.sr6 import effects, overrides
 
 
 def fx(text, kind="qualities", name=None, cls=""):
+    """The effects read from a text, as comparable tuples."""
     return [
         (a["target"], a["op"], a["value"], a.get("switch"), a.get("when"), a.get("spec"))
         for t, a, _ in effects.read(text, kind, name, cls)
@@ -18,6 +19,7 @@ def fx(text, kind="qualities", name=None, cls=""):
 
 
 def file(kind, tag, rows):
+    """A data file's xml for the given rows."""
     return (
         f'<sr6:data kind="{kind}">\n'
         + "".join(f'  <{tag} id="{i}" source="X" page="1"{a}><name>{n}</name>{k}</{tag}>\n' for i, a, n, k in rows)
@@ -28,11 +30,13 @@ def file(kind, tag, rows):
 class SectionCTest(unittest.TestCase):
     def test_a_skills_ranks_added_to_a_test_are_the_value_rank_skill(self):
         got = fx(
-            "A zapper may add their ranks in Zap to their dice pool on a Composure test, but if they do, Edge boosts on that test cost one more."
+            "A zapper may add their ranks in Zap to their dice pool on a Composure test, but if they do, Edge boosts "
+            "on that test cost one more."
         )
         self.assertIn(("derived:composure", "add", "rank:zap", "conditional", "if they do"), [g[:5] for g in got])
         got = fx(
-            "A zapper may add their ranks in Zap to their dice pool on a Judge Intentions test—if they do, they replace one die with a Wild Die."
+            "A zapper may add their ranks in Zap to their dice pool on a Judge Intentions test—if they do, they "
+            "replace one die with a Wild Die."
         )
         self.assertEqual(
             [(g[0], g[1], g[2]) for g in got],
@@ -41,12 +45,14 @@ class SectionCTest(unittest.TestCase):
 
     def test_examples_of_a_known_activity_are_no_tests_or_conditions_but_examples_that_name_the_tests_stay(self):
         got = fx(
-            "You receive one bonus die on tests involving balance, such as scaling, crossing a plank, landing after a jump.",
+            "You receive one bonus die on tests involving balance, such as scaling, crossing a plank, landing after a "
+            "jump.",
             "augmentations",
         )
         self.assertEqual(got, [("skill:athletics", "add", "1", None, None, "Balance")])
         got = fx(
-            "While in use, lenses give bonus Edge to jobs involving very fine detail work such as surgery, repairing circuitry.",
+            "While in use, lenses give bonus Edge to jobs involving very fine detail work such as surgery, repairing "
+            "circuitry.",
             "augmentations",
         )
         self.assertEqual(
@@ -55,7 +61,8 @@ class SectionCTest(unittest.TestCase):
 
     def test_a_threshold_the_entry_sets_and_an_edge_boost_cost_for_a_test(self):
         got = fx(
-            "Users with these eyes reduce the threshold for Surprise tests to 2. If they wear no helmet, Edge boosts cost 1 less on Surprise tests.",
+            "Users with these eyes reduce the threshold for Surprise tests to 2. If they wear no helmet, Edge boosts "
+            "cost 1 less on Surprise tests.",
             "augmentations",
         )
         self.assertEqual(
@@ -64,13 +71,22 @@ class SectionCTest(unittest.TestCase):
         )
 
     def test_two_entries_differing_by_external_and_internal_read_their_own_sentences(self):
-        text = "An external zapper adds a point of Edge to every Perception test. An internal zapper adds a +1 dice pool bonus to Perception tests.\n**Wireless bonus:** +1 Minor Action."
+        text = (
+            "An external zapper adds a point of Edge to every Perception test. An internal zapper adds a +1 dice "
+            "pool bonus to Perception tests.\n**Wireless bonus:** +1 Minor Action."
+        )
         files = {
             "gear.xml": file("gear", "gear", [("ze", "", "Zap Cam External", ""), ("zi", "", "Zap Cam Internal", "")])
         }
-        texts = f'<sr6:data kind="texts">\n  <text of="gear" id="ze">{text}</text>\n  <text of="gear" id="zi">{text}</text>\n</sr6:data>\n'
+        texts = (
+            f'<sr6:data kind="texts">\n  <text of="gear" id="ze">{text}</text>\n  <text of="gear" id="zi">'
+            f"{text}</text>\n</sr6:data>\n"
+        )
         out = effects.apply(files, texts)[0]["gear.xml"]
-        ln = lambda i: next(x for x in out.splitlines() if f'id="{i}"' in x)  # noqa: E731
+
+        def ln(i):
+            return next(x for x in out.splitlines() if f'id="{i}"' in x)
+
         self.assertIn('op="edge"', ln("ze"))
         self.assertNotIn('op="add" value="1" switch="conditional"', ln("ze"))
         self.assertIn('switch="wireless"', ln("ze"))  # (the wireless line stays whole)
@@ -96,14 +112,16 @@ class SectionDEFTest(unittest.TestCase):
 
     def test_a_metamagic_that_raises_the_natural_weapon_raises_the_unarmed_attack(self):
         got = fx(
-            "Add +1 to your natural weapon's Attack Rating per level, and +1 to its damage value for every two levels (round up).",
+            "Add +1 to your natural weapon's Attack Rating per level, and +1 to its damage value for every two levels "
+            "(round up).",
             "metamagics",
         )
         self.assertEqual([(g[0], g[2]) for g in got], [("derived:unarmed-ar", "R"), ("derived:unarmed-dv", "R/2 RU")])
 
     def test_a_modifier_to_tests_involving_a_physical_attribute_is_the_physical_tests(self):
         got = fx(
-            "When exposed to zap gas, a character gets a -2 dice pool modifier on any test involving a physical attribute."
+            "When exposed to zap gas, a character gets a -2 dice pool modifier on any test involving a physical "
+            "attribute."
         )
         self.assertEqual([(g[0], g[2], g[3]) for g in got], [("test:physical", "-2", "conditional")])
 
@@ -138,16 +156,20 @@ class SectionDEFTest(unittest.TestCase):
             "rules.xml": file("rules", "rule", [("zr", ' chapter="C" level="4"', "Zap Step", "")]),
         }
         texts = (
-            '<sr6:data kind="texts">\n  <text of="qualities" id="zq">This is the same as the Zap Step quality in the path above.</text>\n'
-            '  <text of="rules" id="zr">If the decker makes an attack test, they get one bonus Edge point to use on Cracking tests.</text>\n</sr6:data>\n'
+            '<sr6:data kind="texts">\n  <text of="qualities" id="zq">This is the same as the Zap Step quality in the '
+            "path above.</text>\n"
+            '  <text of="rules" id="zr">If the decker makes an attack test, they get one bonus Edge point to use on '
+            "Cracking tests.</text>\n</sr6:data>\n"
         )
         out = effects.apply(files, texts)[0]["qualities.xml"]
         self.assertIn('target="skill:cracking" op="edge"', out)
 
     def test_each_severity_line_has_its_own_modifier(self):
         t = (
-            "**Mild:** You get a -2 dice pool modifier on any test involving a Physical attribute while the zap affects you.\n"
-            "**Severe:** You get a -4 dice pool modifier on any test involving a Physical attribute while the zap affects you."
+            "**Mild:** You get a -2 dice pool modifier on any test involving a Physical attribute while the zap "
+            "affects you.\n"
+            "**Severe:** You get a -4 dice pool modifier on any test involving a Physical attribute while the zap "
+            "affects you."
         )
         got = [(g[0], g[2], g[4]) for g in fx(t)]
         self.assertEqual(
@@ -199,13 +221,23 @@ class ReviewFixesTest(unittest.TestCase):
         )
 
     def test_the_internal_entry_that_does_the_same_keeps_the_sentence_it_repeats(self):
-        text = "An external zapper adds +2 dice to Perception tests. An internal zapper does the same and also adds +1 dice to Stealth tests."
+        text = (
+            "An external zapper adds +2 dice to Perception tests. An internal zapper does the same and also adds "
+            "+1 "
+            "dice to Stealth tests."
+        )
         files = {
             "gear.xml": file("gear", "gear", [("ze", "", "Zap Cam External", ""), ("zi", "", "Zap Cam Internal", "")])
         }
-        texts = f'<sr6:data kind="texts">\n  <text of="gear" id="ze">{text}</text>\n  <text of="gear" id="zi">{text}</text>\n</sr6:data>\n'
+        texts = (
+            f'<sr6:data kind="texts">\n  <text of="gear" id="ze">{text}</text>\n  <text of="gear" id="zi">'
+            f"{text}</text>\n</sr6:data>\n"
+        )
         out = effects.apply(files, texts)[0]["gear.xml"]
-        ln = lambda i: next(x for x in out.splitlines() if f'id="{i}"' in x)  # noqa: E731
+
+        def ln(i):
+            return next(x for x in out.splitlines() if f'id="{i}"' in x)
+
         self.assertIn('target="skill:perception" op="add" value="2"', ln("zi"))
         self.assertIn('target="skill:stealth"', ln("zi"))
         self.assertIn('target="skill:perception" op="add" value="2"', ln("ze"))
@@ -225,6 +257,7 @@ class OverrideRowsTest(unittest.TestCase):
     DIR = overrides.DIR
 
     def rows(self):
+        """The generated Commlink6 rows of every verdict file."""
         return [
             (f.stem, r)
             for f in sorted(self.DIR.glob("*.json"))

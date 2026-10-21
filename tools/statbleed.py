@@ -75,6 +75,7 @@ def scan(folder):
 
 
 def main(argv):
+    """Run the command line `argv`; the exit code."""
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__)
         return 2

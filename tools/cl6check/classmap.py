@@ -2,14 +2,15 @@
 
   python -m tools.cl6check.classmap <category_class_map.csv> <runs dir> [--jar JAR] [--dry]
 
-1. importer/sr6/classes/category_class.json: {kind: {category: class}} from the Eden-class study's category_class_map.csv
+1. importer/sr6/classes/category_class.json: {kind: {category: class}} from the Eden-class study's
+category_class_map.csv
    (.extract/eden-class), the categories with status CLEAR (Commlink6 classes 90% of their matched items alike) and
    the majority class (`majority_cl6`, Commlink6's keys).
 2. importer/sr6/overrides/<src>.json: one row `{"cl6", "kind", "id", "set": {"class"}, "gen": "class"}` for each entry
    of `runs dir` (a folder of `importer sr6 check` runs) that a Commlink6 record matches and whose class the category
    map doesn't give (a mixed category's items, an exception in a clear one). An entry two records class differently,
-   and one no record matches, gets no row: we invent no class. Rows of an earlier run (`gen`) are replaced; the rest of a
-   table is left as it is.
+   and one no record matches, gets no row: we invent no class. Rows of an earlier run (`gen`) are replaced; the rest of
+   a table is left as it is.
 Read-only on the runs; no cl6check report is made."""
 
 import csv
@@ -29,7 +30,9 @@ OVERRIDES = ROOT / "importer" / "sr6" / "overrides"
 def category_map(csv_path):
     """{kind: {category: class}} from the study's csv: CLEAR categories with a Commlink6 class."""
     out = defaultdict(dict)
-    for r in csv.DictReader(open(csv_path, encoding="utf-8-sig")):
+    with open(csv_path, encoding="utf-8-sig") as fh:
+        study = list(csv.DictReader(fh))
+    for r in study:
         if (
             r["status"] == "CLEAR"
             and r["majority_cl6"] not in ("", "itemenhancement")
@@ -40,7 +43,8 @@ def category_map(csv_path):
 
 
 def hand_ids(root=OVERRIDES):
-    """{(src, kind, id)} of the class rows made by hand (no `gen`): the owner's decisions, which a run leaves as they are."""
+    """{(src, kind, id)} of the class rows made by hand (no `gen`): the owner's decisions, which a run leaves as they
+    are."""
     out = set()
     for p in Path(root).glob("*.json"):
         for r in json.loads(p.read_text(encoding="utf8")):
@@ -101,6 +105,7 @@ def write_rows(rows, root=OVERRIDES):
 
 
 def main(argv):
+    """Command line entry: the class map for a book directory and a Commlink6 jar."""
     args = [a for a in argv if not a.startswith("--")]
     jar = argv[argv.index("--jar") + 1] if "--jar" in argv else None
     if len(args) < 2:

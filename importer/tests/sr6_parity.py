@@ -1,10 +1,10 @@
 """Invented sample runners for the parity of the importer's pricing (importer/sr6/fit.py and the costs archetypes.py
-adds up for it) with the app's (src/sr6/runner-builder/domain/creation/budgets.ts, values.ts). Each runner is built from a made-up stat block
-against the made-up fixture catalog (tests/fixtures/sr6/custom, its Stonefolk renamed a troll-sized `Stone Troll`) and
-an invented book (MUP), with the fixture's creation settings. `python -m importer.tests.sr6_parity` prints JSON
-{patch, files, runners}: tests/sr6/book-import/fit-parity.test.ts loads the runner files in the engine and compares its Karma and
-nuyen with fit's (`py`: nuyen the gear costs, karma and nuyen left, karma turned into nuyen). All names and numbers are
-made up."""
+adds up for it) with the app's (src/sr6/runner-builder/domain/creation/budgets.ts, values.ts). Each runner is built from
+a made-up stat block against the made-up fixture catalog (tests/fixtures/sr6/custom, its Stonefolk renamed a troll-sized
+`Stone Troll`) and an invented book (MUP), with the fixture's creation settings. `python -m importer.tests.sr6_parity`
+prints JSON {patch, files, runners}: tests/sr6/book-import/fit-parity.test.ts loads the runner files in the engine and
+compares its Karma and nuyen with fit's (`py`: nuyen the gear costs, karma and nuyen left, karma turned into nuyen). All
+names and numbers are made up."""
 
 import json
 import os
@@ -15,6 +15,9 @@ from unittest import mock
 
 from importer.sr6 import archetypes, catalog, fit
 from importer.sr6.regroup import Block
+
+# tests read the private helpers they check
+# pylint: disable=protected-access
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "sr6", "custom")
@@ -36,10 +39,12 @@ FILES = {
     "gear.xml": _file(
         "gear",
         [
-            '<gear id="mup.glow-stick" source="MUP" page="3" category="survival gear" avail="1" cost="15 each"><name>Glow Stick</name><text/></gear>',
+            '<gear id="mup.glow-stick" source="MUP" page="3" category="survival gear" avail="1" cost="15 '
+            'each"><name>Glow Stick</name><text/></gear>',
             '<gear id="mup.zap-net" source="MUP" page="3" category="tools" rating="1–6" avail="2" cost="Rating × 75">'
             '<name>Zap Net</name><formula field="cost">R*R*20+100</formula><text/></gear>',
-            '<gear id="mup.hum-box" source="MUP" page="4" category="tools" rating="1–4" avail="2" cost="Rating^2 × 60"><name>Hum Box</name><text/></gear>',
+            '<gear id="mup.hum-box" source="MUP" page="4" category="tools" rating="1–4" avail="2" cost="Rating^2 × '
+            '60"><name>Hum Box</name><text/></gear>',
         ],
     ),
     "augmentations.xml": _file(
@@ -52,7 +57,8 @@ FILES = {
     "armor.xml": _file(
         "armor",
         [
-            '<armor id="mup.puff-coat" source="MUP" page="6" category="armor" defense="+3" capacity="4" avail="3" cost="900"><name>Puff Coat</name><text/></armor>',
+            '<armor id="mup.puff-coat" source="MUP" page="6" category="armor" defense="+3" capacity="4" avail="3" '
+            'cost="900"><name>Puff Coat</name><text/></armor>',
         ],
     ),
 }
@@ -61,6 +67,7 @@ STATS = {"B": "4", "A": "3", "R": "3", "S": "4", "W": "3", "L": "2", "I": "3", "
 
 
 def block(name, meta, stats=None, **labels):
+    """A made-up archetype stat block named `name`, with its metadata, stats and labels."""
     return Block(
         "item",
         name,
@@ -137,8 +144,9 @@ RUNNERS = [
             qualities="Knack, Lucky Streak 3",
         ),
     ),
-    # a level of play (the Sixth World Companion's street-level: its letters, B C C D E, and sum-to-ten target in place of
-    # the table's) and a nested rule on (Twenty Questions' karma), another whose parent is off (sum-to-thirteen, Elite's)
+    # a level of play (the Sixth World Companion's street-level: its letters, B C C D E, and sum-to-ten target in place
+    # of the table's) and a nested rule on (Twenty Questions' karma), another whose parent is off (sum-to-thirteen,
+    # Elite's)
     (
         "street-level",
         block(
@@ -166,6 +174,7 @@ def _json(v):
 
 
 def runners():
+    """The runner files the importer builds from the made-up book, for the app to compare."""
     tmp = tempfile.mkdtemp()
     try:
         shutil.copytree(os.path.join(FIXTURE, "imported", "crb"), os.path.join(tmp, "imported", "crb"))
@@ -188,7 +197,10 @@ def runners():
             seen = []
             real = fit.fit
             with mock.patch.object(
-                fit, "fit", side_effect=lambda need, rows, s: seen.append((need, r := real(need, rows, s))) or r
+                fit,
+                "fit",
+                side_effect=lambda need, rows, s, seen=seen, real=real: seen.append((need, r := real(need, rows, s)))
+                or r,
             ):
                 _, xml, report = archetypes.build("MUP", b.name, b, 10, {}, "2026-10-12T00:00:00.000Z", core, cs)
             need, got = seen[-1]

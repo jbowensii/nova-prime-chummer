@@ -23,7 +23,8 @@ CONVERTER_VERSION = "6" + PDF_STEPS_VERSION  # convert(..., sr6=False); 2: bold 
 SR6_CONVERTER_VERSION = "sr6-8" + PDF_STEPS_VERSION  # convert(..., sr6=True), importer/sr6/layout.py; 2: lines by
 # baseline, columns split where the content stream jumps (a gutter narrower than a word space); 3: a second copy of a
 # page's text layer dropped, words split after a ligature joined; 4: the bottom band drops only the running feet's
-# faces (a table's last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break spaces) or
+# faces (a table's last rows and body lines reaching into it stay); 5: a band's first cell marked indented (two no-break
+# spaces) or
 # bold among regular names (an en space): its row groups (layout._first_marks)
 # 6: two stat tables side by side in two columns stay two, running heads dropped by their repetition, a heading under
 # the other column titles the full-width table under it (feat/book-adventures, merged)
@@ -37,8 +38,9 @@ SR6_CONVERTER_VERSION = "sr6-8" + PDF_STEPS_VERSION  # convert(..., sr6=True), i
 
 
 def reusable(book_dir: str, version: str) -> bool:
-    """book.md can stand in for original.pdf: the book's last import (import.xml, which a remove keeps) converted this same
-    file with this converter version. A re-import then skips the conversion (Books → Re-import all: run --reuse)."""
+    """book.md can stand in for original.pdf: the book's last import (import.xml, which a remove keeps) converted this
+    same file with this converter version. A re-import then skips the conversion (Books → Re-import all: run
+    --reuse)."""
     import os
     import xml.etree.ElementTree as ET
 
@@ -65,8 +67,8 @@ def convert(
 ) -> dict:
     """pages: optional 1-based inclusive (first, last) range to convert. sr6: the Shadowrun 6 layout
     (importer/sr6/layout.py: headings by font, header-band tables, margin furniture dropped). levels: the SR6 heading
-    sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings' font
-    family, likewise."""
+    sizes -> levels, when a recipe knows them for this file (else layout.fonts guesses them); heading: the headings'
+    font family, likewise."""
     if sr6:  # (imported here: the Anarchy conversion never loads the SR6 layout)
         from importer.sr6 import layout
     with open(pdf_path, "rb") as f:
@@ -130,7 +132,7 @@ def convert(
                     page.rects,
                     [bbox for bbox, _, _ in bands],
                     page.width,
-                    lambda a, b: column_kind(a, b, mid, tol),
+                    lambda a, b, mid=mid, tol=tol: column_kind(a, b, mid, tol),
                 )
                 boxes = [bbox[1] for bbox, _, _ in bands if column_kind(bbox[0], bbox[2], mid, tol) == "band"]
                 blocks = layout.join_headings(layout.box_titles(layout.box_margin(blocks, xs), geo, boxes), geo)

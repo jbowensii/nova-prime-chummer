@@ -12,6 +12,8 @@ from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, general, identify
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 BOOK = next(b for b in general.RECIPES if b.ID == "THN")
 
 BOOK_MD = """<!-- page 1 -->
@@ -170,11 +172,13 @@ You lost a made-up parcel and made a made-up enemy.
 
 
 def run_recipe(md=BOOK_MD, book=BOOK):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(book.prepare_md(md), book.ALIASES, name_headers=book.NAME_HEADERS)
     return book.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -287,13 +291,15 @@ class GeneralRecipeTest(unittest.TestCase):
             self.assertTrue(schema.validate(doc), f"{name}: {schema.error_log.last_error}")
 
     def test_identify(self):
-        meta = lambda title="": {"sha256": "x", "title": title}
+        def meta(title=""):
+            return {"sha256": "x", "title": title}
+
         self.assertEqual(identify(meta("Shadowrun: 30 Nights (Campaign Book)"), "")[0].ID, "THN")
         self.assertEqual(
             identify(meta(), "# CONTENTS\nChaos Tacos ..... 6\nstate of the world ..... 10\n")[0].ID, "FPT"
         )
         # the conversion guide names the core rulebook: its three phrases win over the core rulebook's loose match
-        guide = "# SHADOWRUN, SIXTH WORLD\n## CHARACTER CONVERSION GUIDE\nMade-up core rulebook words.\n## Using this Guide\n"
+        guide = "# SHADOWRUN, SIXTH WORLD\n## CHARACTER CONVERSION GUIDE\nMade-up core rulebook words.\n## Using this Guide\n"  # pylint: disable=line-too-long
         self.assertGreater(crb.match(meta(), guide), 0)
         self.assertEqual(identify(meta(), guide)[0].ID, "CCG")
         qsr = 'Made-up note: for the Shadowrun Quick-Start Rules.\n**"Help her."** Andrew sent it.\n'

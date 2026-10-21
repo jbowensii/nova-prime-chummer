@@ -55,11 +55,13 @@ A made-up variant that glows.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, ia.ALIASES, name_headers=ia.NAME_HEADERS, end_page=ia.END_PAGE)
     return ia.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: entry} of the `kind` entries of a reading."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

@@ -59,11 +59,13 @@ Made-up back cover.
 
 
 def run_recipe(md=BOOK_MD):
+    """Run the recipe over a book's markdown."""
     regrouped, _ = regroup.regroup(md, jd.ALIASES, name_headers=jd.NAME_HEADERS, end_page=jd.END_PAGE)
     return jd.extract(regrouped)
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

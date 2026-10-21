@@ -1,8 +1,8 @@
-"""Book text as paragraphs (0.9.1). The converter keeps the PDF's line breaks, so a description arrives as a narrow column
-with words split across lines ("gamemas-" / "ter"). reflow() joins the lines of each paragraph and rejoins a word
+"""Book text as paragraphs (0.9.1). The converter keeps the PDF's line breaks, so a description arrives as a narrow
+column with words split across lines ("gamemas-" / "ter"). reflow() joins the lines of each paragraph and rejoins a word
 hyphenated across a line break, keeping real hyphens ("non-player"); blank-line paragraph breaks, list items, markdown
-table rows, headings and "**Label:** value" lines stay on lines of their own. Used on the SR6 texts (importer/sr6/run.py);
-Anarchy's texts are already one line each and are left alone."""
+table rows, headings and "**Label:** value" lines stay on lines of their own. Used on the SR6 texts
+(importer/sr6/run.py); Anarchy's texts are already one line each and are left alone."""
 
 import re
 

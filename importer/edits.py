@@ -10,6 +10,8 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer import CORE_FILES, DATA_DIR, core_dir, xmlio
 
+# pylint: disable=redefined-builtin,dangerous-default-value  # id is a public keyword; TAG is never mutated
+
 TAG = {"amps": "amp", "items": "item", "rules": "rule"}  # edit kind (also texts' of=) → entry tag
 ID = re.compile(r"[a-z0-9][a-z0-9.\-]*")
 POS = re.compile(r"[1-9][0-9]*")
@@ -73,10 +75,12 @@ def _sources(*paths):
 
 
 def house_sources(custom_dir):
+    """The house sources listed in the custom folder's sources.xml."""
     return _sources(_path(custom_dir, "sources.xml"))
 
 
 def listed_sources(custom_dir):
+    """Every source listed across the data, imported and house sources.xml files."""
     return _sources(
         os.path.join(DATA_DIR, "sources.xml"),
         os.path.join(custom_dir, "imported", "sources.xml"),
@@ -283,7 +287,10 @@ def add_source(custom_dir, sid, name, publisher=""):
     root = _root(path)
     rows = [] if root is None else [s for s in root if s.tag == "source"]
     body = "".join(f"  {ET.tostring(s, encoding='unicode').strip()}\n" for s in rows)
-    body += f'  <source id={quoteattr(sid)} publisher={quoteattr(publisher)} canon="false"><name>{escape(name.strip())}</name></source>\n'
+    body += (
+        f'  <source id={quoteattr(sid)} publisher={quoteattr(publisher)} canon="false">'
+        f"<name>{escape(name.strip())}</name></source>\n"
+    )
     xmlio.write_file(
         path,
         xmlio.HEAD + "<!-- House-rule sources created in the app. Written by the importer. -->\n"

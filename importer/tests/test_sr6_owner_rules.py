@@ -8,8 +8,11 @@ import xml.etree.ElementTree as ET
 from importer.sr6 import catalog, prose_items, regroup, resolve
 from importer.sr6.recipes import crb, dc
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 
 def extract(md):
+    """{file: {name: entry}} of the entries the core rulebook reader makes from `md`."""
     text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
     res = crb.extract(text)
     return {k[:-4]: {e.findtext("name"): e for e in ET.fromstring(v)} for k, v in res.files.items()}
@@ -151,7 +154,7 @@ class UnworkedBooksTest(unittest.TestCase):
         self.assertEqual(len(regroup._wrapped_rows(h, foot)), 2)  # (a footnote spread over the cells)
 
     def test_an_item_a_note_prices(self):
-        t = "DV is the net hits. Glowmarket fizz spray in a 10-dose can can be purchased for 150¥ and has an availability of 6(I)."
+        t = "DV is the net hits. Glowmarket fizz spray in a 10-dose can can be purchased for 150¥ and has an availability of 6(I)."  # pylint: disable=line-too-long
         self.assertEqual(
             [m.groups() for m in prose_items._PURCHASED.finditer(t)], [("Glowmarket fizz spray", "150", "6(I)")]
         )
@@ -166,7 +169,7 @@ class UnworkedBooksTest(unittest.TestCase):
                 "# FORCE",
                 "## Zorp Ways and Their Benefits",
                 "##### (20 Karma)",
-                "Adepts follow a way by selecting it as a quality, which gives them the Glow Knack and Fizz Focus abilities.",
+                "Adepts follow a way by selecting it as a quality, which gives them the Glow Knack and Fizz Focus abilities.",  # pylint: disable=line-too-long
                 "### Glow Knack",
                 "Once per scene, glow.",
                 "### Fizz Focus",
@@ -411,7 +414,7 @@ class FinalDecisionsTest(unittest.TestCase):
             [
                 c[1]["kind"]
                 for c in _skill_choices(
-                    "choose one from Zorping, Blooping, or Piloting and a Specialization in the chosen skill as well as an "
+                    "choose one from Zorping, Blooping, or Piloting and a Specialization in the chosen skill as well as an "  # pylint: disable=line-too-long
                     "appropriate Knowledge Skill"
                 )
             ],

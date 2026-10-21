@@ -1,6 +1,6 @@
 """Shadowrun Anarchy 2.0 Alternative Core Rulebook (CRB) -> the core files (crb_core.py: skills, amp effects, pricing …,
-written to custom/imported/core/), spells, Shadow Amps, plain gear and sample runners. The amps and runners are read with
-the core files the book itself gives.
+written to custom/imported/core/), spells, Shadow Amps, plain gear and sample runners. The amps and runners are read
+with the core files the book itself gives.
 
 Layout notes (page ranges, box shapes, converter quirks) are in crb.md next to this file. In short: every
 rules box is a one-cell table titled in capitals; its lines are <br>-separated (a box set in two text
@@ -103,6 +103,7 @@ RANGES = re.compile(r"((?:OK|Dis\.?|[–—-])(?:\s*/\s*(?:OK|Dis\.?|[–—-]))
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the opening text names the alternate core rulebook, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return (
@@ -136,6 +137,7 @@ def spell_rows(md):
             c = CHAIN.match(l) if chaining else None
             s = None if c else start.match(l)
             if c:
+                # pylint: disable-next=unsubscriptable-object  # cur is set by the first start line
                 cur["names"].append(c.group(1).strip())
                 chaining = c.group(2) == " /"
                 l = l[c.end() :].strip()
@@ -268,7 +270,10 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
             rng = (
                 re.sub(r"\s+", "", rm.group(1)).replace("–", "-").replace("—", "-").replace("Dis.", "Dis") if rm else ""
             )
-            item = f'<item kind="weapon"{attr("specialist", "true" if specialist(cost, rating) else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
+            item = (
+                f'<item kind="weapon"{attr("specialist", "true" if specialist(cost, rating) else "")}'
+                f'{attr("dv", dv)}{attr("ranges", rng)}/>'
+            )
             a, b = dv_num(dv.split()[0] if dv else ""), dv_num(bdv)
             if a and b and a[0] == b[0] and a[1] > b[1]:
                 vfx += [("dv-plus", None, None, None)] * (a[1] - b[1])
@@ -306,7 +311,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
                 c not in slug(name),
             ),
         )
-        cb, ch, cs = chassis[vehicle]
+        _cb, ch, cs = chassis[vehicle]
         vfx = [("pilot-plus", None, None, None)] * max(0, p - core()["pilot"][vehicle]) + [
             ("vehicle-armor", None, None, None)
         ] * a
@@ -331,7 +336,7 @@ def build_amp(mapper, name, atype, rating, wtype, cost, text, page):
                 refs.insert(0, pre)
         return fx, narrative, reconcile(fx, narrative, core()["base"][atype], rating)
 
-    fx, narrative, computed = read_amp(mapper, read, rating)
+    fx, _narrative, computed = read_amp(mapper, read, rating)
     return {
         "id": slug(name),
         "name": name,
@@ -538,7 +543,8 @@ def creation_example(text, rules, spell_names):
 def sample_runners(md, spell_names, pdf=None):
     """(samples, report rows): the character creation example box, then each pregen's stat page (the page with the
     SHADOW AMPS header; the story page before it gives the name and role, and the page the runner is cited to).
-    pdf: the book's PDF (pdfplumber), when the import has it: the stat page's dispositions and cues come from its layout.
+    pdf: the book's PDF (pdfplumber), when the import has it: the stat page's dispositions and cues come from its
+    layout.
     """
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
@@ -737,6 +743,7 @@ def extract(md, ctx=None):
     with the core files this book gives; a core table it can't read comes from the core already in place, if any."""
     from importer.recipes import crb_core
 
+    # pylint: disable-next=redefined-outer-name  # local; the core() helper is not used here
     core, core_texts, report = crb_core.build(md)
     with tempfile.TemporaryDirectory() as tmp:
         for name, xml in core.items():
@@ -761,6 +768,7 @@ def extract(md, ctx=None):
     return res
 
 
+# pylint: disable-next=redefined-outer-name  # parameter; the core() helper is not used here
 def _spells_only(md, core, core_texts, report):
     res = _extract(md, report, spells_only=True)
     res.core, res.core_texts = core, core_texts
@@ -842,7 +850,8 @@ def _extract(md, report, spells_only=False, pdf=None):
         report.extend(unpriced_rows(aid, r["page"], r["fx"]))
         amps.append(
             f'  <amp id="{aid}" type="{r["type"]}" printedRating="{r["rating"]}"{attr("vehicle", r["vehicle"])}'
-            f'{attr("mod", "true" if r["mod"] else "")} source="{ID}" page="{r["page"]}"><name>{escape(r["name"])}</name>'
+            f'{attr("mod", "true" if r["mod"] else "")} source="{ID}" page="{r["page"]}">'
+            f'<name>{escape(r["name"])}</name>'
             f'{r["item"]}{fx}<narrative></narrative></amp>'
         )
         if r["text"]:
@@ -866,6 +875,7 @@ def _extract(md, report, spells_only=False, pdf=None):
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
     report += sample_rows
 
+    # pylint: disable-next=redefined-outer-name  # parameter; the module entries is not used here
     def data(kind, comment, entries):
         return (
             '<?xml version="1.0" encoding="UTF-8"?>\n'

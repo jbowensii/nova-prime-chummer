@@ -64,6 +64,7 @@ VEHICLE = ("handling", "accel", "interval", "topSpeed", "body", "armor", "pilot"
 
 
 def fmt(v):
+    """A value as it prints in a report cell."""
     if isinstance(v, float):
         return str(int(v)) if v.is_integer() else f"{v:g}"
     if isinstance(v, tuple):
@@ -80,6 +81,7 @@ def show(d):
 
 
 def close(a, b):
+    """True when two numbers are equal to within rounding."""
     return a is not None and b is not None and abs(a - b) <= 1e-6 * max(1.0, abs(a), abs(b))
 
 
@@ -93,8 +95,8 @@ REF = {}  # "kind:id" -> our entry's attrs (trace.run fills it): a derived item'
 
 
 def _ref(target, field, rating, depth=0):
-    """The value our entry `target` ("augmentations:bs.corrosive-spit") gives `field` at `rating`: its formula's, else its
-    plain printed number; None when unknown."""
+    """The value our entry `target` ("augmentations:bs.corrosive-spit") gives `field` at `rating`: its formula's, else
+    its plain printed number; None when unknown."""
     from importer.sr6 import formula as F
 
     a = REF.get(target)
@@ -111,7 +113,8 @@ def _ref(target, field, rating, depth=0):
 
 def formula_values(a, field, rs):
     """{rating: {values}} our stored formula (the importer's <formula field>, ours.py's `formula:<field>`) gives at
-    each rating: at the top of its qty range (Commlink6 flattens a per-unit price there), or the rating as the count and every choice of its options; None when the entry has none or it needs something unknown (B, ref).
+    each rating: at the top of its qty range (Commlink6 flattens a per-unit price there), or the rating as the count
+    and every choice of its options; None when the entry has none or it needs something unknown (B, ref).
     """
     from importer.sr6 import formula as F
 
@@ -211,7 +214,8 @@ _FEE = r"(?:\d{1,3}(?:,\d{3})+|\d+)\s*¥"
 
 def licence(avail):
     """(the availability without a licence fee, the fee or None): `15,000¥` alone is a licence fee on a freely available
-    item (owner 2026-10-15) -> ("", 15000); `2, 15,000¥` is rating 2 plus the fee -> ("2", 15000); anything else is itself.
+    item (owner 2026-10-15) -> ("", 15000); `2, 15,000¥` is rating 2 plus the fee -> ("2", 15000); anything else is
+    itself.
     """
     m = re.fullmatch(rf"\s*(?:(.+?)\s*,\s+)?({_FEE})\s*", avail or "")
     if not m:
@@ -220,17 +224,19 @@ def licence(avail):
 
 
 def first(n):
+    """A key function: the first n characters of a cell, upper-cased."""
     return lambda s: (s or "")[:n].upper()
 
 
 def first3(s):
+    """The first three letters of a cell, lower-cased."""
     return re.sub(r"[^a-z]", "", (s or "").lower())[:3]
 
 
 def ammo_key(s):
-    """An ammo cell as Commlink6 writes it: the printed `32(d-2)`, `20 (power cell)`, `20(tanks)`, `1 barrel`, `12 x2(c)`
-    all read as `32(d)`, `20(c)`, `20(tank)`, `1(b)`, `12(c)/12(c)`, and `20(c) + Energy` as `20(c)`; spaces and a thousands
-    comma dropped. The printed value stays in the data."""
+    """An ammo cell as Commlink6 writes it: the printed `32(d-2)`, `20 (power cell)`, `20(tanks)`, `1 barrel`, `12
+    x2(c)` all read as `32(d)`, `20(c)`, `20(tank)`, `1(b)`, `12(c)/12(c)`, and `20(c) + Energy` as `20(c)`; spaces and
+    a thousands comma dropped. The printed value stays in the data."""
     t = (s or "").lower()
     t = re.sub(r"(?<=\))\s*\+\s*[a-z][a-z ]*$", "", t)
     t = re.sub(r"\(\s*power\s+cell\s*\)", "(c)", t)
@@ -244,14 +250,15 @@ def ammo_key(s):
 
 
 def printed_word(ours_s):
-    """Whether our cell prints a word (`Missiles Only`, `By Size / Class`, `Unlimited`, `*`) where Commlink6 has a number."""
+    """Whether our cell prints a word (`Missiles Only`, `By Size / Class`, `Unlimited`, `*`) where Commlink6 has a
+    number."""
     t = (ours_s or "").strip()
     return bool(t) and not O.NONE.match(t) and not re.search(r"\d", t)
 
 
 def compare(c, o, sib=()):
-    """(compared fields, [diff]) of record c against our entry o. sib: the entries of our source that are levels of the same
-    item (one entry per level or tier: the rating range is theirs together)."""
+    """(compared fields, [diff]) of record c against our entry o. sib: the entries of our source that are levels of the
+    same item (one entry per level or tier: the rating range is theirs together)."""
     f, a, k = c["fields"], o["attrs"], o["kind"]
     done, diffs = [], []
 
@@ -368,7 +375,10 @@ def compare(c, o, sib=()):
                 ),
             )
     if k == "weapons":
-        nd = lambda s: re.sub(r"[\s()]", "", s or "").upper()
+
+        def nd(s):
+            return re.sub(r"[\s()]", "", s or "").upper()
+
         if f.get("dv") and not f["dv"].startswith("0"):
             add("dv", _str_field("dv", a.get("dv"), f["dv"], nd))
         if f.get("ar"):
@@ -377,7 +387,10 @@ def compare(c, o, sib=()):
             ):  # (Commlink6 has none where the book prints a word)
                 add("ar", _str_field("ar", a.get("ar"), f["ar"], bands))
         if f.get("modes"):
-            nm = lambda s: frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", up_to(s)).upper()) if t)
+
+            def nm(s):
+                return frozenset(t for t in re.split(r"[/,\s]+", re.sub(r"\([^)]*\)", "", up_to(s)).upper()) if t)
+
             add("modes", _str_field("modes", a.get("modes"), f["modes"], nm, tokens=False))
         if f.get("ammo"):
             cl = f["ammo"]
@@ -399,7 +412,10 @@ def compare(c, o, sib=()):
             ),
         )
     if k == "vehicles":
-        ns = lambda s: re.sub(r"[\s*+,]", "", s or "")
+
+        def ns(s):
+            return re.sub(r"[\s*+,]", "", s or "")
+
         for fld in VEHICLE:
             if f.get(fld) not in (None, ""):
                 mine = ns(a.get(fld))
@@ -413,17 +429,27 @@ def compare(c, o, sib=()):
                     continue
                 add(fld, _str_field(fld, a.get(fld), f[fld], ns))
     if k == "spells" and c["tag"] == "spell":
-        rng = lambda s: {"TOUCH": "T", "SELF": "S"}.get(
-            re.sub(r"\s", "", s or "").upper(), re.sub(r"\s", "", s or "").upper()
-        )
+
+        def rng(s):
+            return {"TOUCH": "T", "SELF": "S"}.get(
+                re.sub(r"\s", "", s or "").upper(), re.sub(r"\s", "", s or "").upper()
+            )
+
         add("range", _str_field("range", a.get("range"), SPELL_RANGE.get(f.get("range"), f.get("range")), rng, False))
         add("spell type", _str_field("spell type", a.get("type"), f.get("spell type"), first(1), False))
         add("duration", _str_field("duration", a.get("duration"), f.get("duration"), first(1), False))
-        num = lambda s: (re.findall(r"-?\d+", s or "") or [""])[0]
+
+        def first_int(s):
+            return (re.findall(r"-?\d+", s or "") or [""])[0]
+
         mine = re.findall(r"-?\d+", a.get("dv") or "")  # (a row printing a drain per variant: any of them)
         add(
             "drain",
-            None if num(f.get("drain")) in mine else _str_field("drain", a.get("dv"), f.get("drain"), num, False),
+            (
+                None
+                if first_int(f.get("drain")) in mine
+                else _str_field("drain", a.get("dv"), f.get("drain"), first_int, False)
+            ),
         )
         add(
             "spell category",

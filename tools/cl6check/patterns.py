@@ -171,7 +171,11 @@ def analyse(pairs, extras=(), min_positives=3, top=5):
         chosen, covered, best = [], set(), 0.0
         precise = [c for c in cands if c["precision"] >= MIN_PRECISION]
         while len(chosen) < MAX_RULES:
-            step = max(precise, default=None, key=lambda c: _f1(covered | has[c["rule"]], positive))
+            step = max(
+                precise,
+                default=None,
+                key=lambda c, covered=covered, positive=positive: _f1(covered | has[c["rule"]], positive),
+            )
             if step is None or _f1(covered | has[step["rule"]], positive) <= best:
                 break
             chosen.append(step["rule"])

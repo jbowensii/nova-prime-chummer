@@ -139,11 +139,13 @@ The critter breaks in a made-up way.
 
 
 def run_recipe(md=BOOK_MD):
+    """Regroup the sample book and read it with the recipe."""
     regrouped, _ = regroup.regroup(wl.prepare_md(md), wl.ALIASES, name_headers=wl.NAME_HEADERS)
     return wl.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: element} of the entries in a result's kind file."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

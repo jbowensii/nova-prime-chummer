@@ -9,8 +9,11 @@ from pathlib import Path
 
 from tools.cl6check import corpus, crops, lineage, trace
 
+# pylint: disable=protected-access  # the tests reach into the module's private helpers
+
 
 def put(path, text):
+    """Write text to a file."""
     Path(path).write_text(text, encoding="utf8")
 
 
@@ -72,6 +75,7 @@ CATALOG = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def book(label, date, md=MD, entries=(), **kw):
+    """A corpus book with the markdown and entries."""
     b = corpus.Book(label.lower(), f"{label}.pdf", label, [label.lower()], kw.pop("belongs", label.lower()), date, **kw)
     b._md["book.md"] = corpus.lines(md)
     b.entries = list(entries)
@@ -81,6 +85,7 @@ def book(label, date, md=MD, entries=(), **kw):
 
 
 def entry(name, src="gza", kind="gear", **attrs):
+    """A catalog entry dict for the name."""
     return {
         "src": src,
         "kind": kind,
@@ -93,6 +98,7 @@ def entry(name, src="gza", kind="gear", **attrs):
 
 
 def chains(c, names, kinds=("weapons",)):
+    """The lineage chains observed for the names."""
     return lineage.lineage(lineage.observe(c, set(kinds), names))
 
 
@@ -239,7 +245,7 @@ class LineageTest(unittest.TestCase):
     def test_errata_sentences(self):
         c = corpus.Corpus(
             [
-                book("A", "2020-03", CARD.replace("## zorp", "## zorp widget\n").split("<!-- page 2")[0]),
+                book("A", "2020-03", CARD.replace("## zorp", "## zorp widget\n").split("<!-- page 2", maxsplit=1)[0]),
                 book("Err1", "2020-05", ERRATA, errata=True, belongs="a"),
             ]
         )
@@ -255,6 +261,7 @@ class LineageTest(unittest.TestCase):
 
 class TraceTest(unittest.TestCase):
     def rec(self, **fields):
+        """A record dict with the given fields overriding the defaults."""
         return {
             "book": "a",
             "src": "a",
@@ -511,7 +518,9 @@ class StepThreeTest(unittest.TestCase):
         self.assertIn("c.png", rows[1]["where"])
 
     def test_locate_finds_the_value_beside_the_name(self):
-        w = lambda t, x, y: {"text": t, "x0": x, "x1": x + 20, "top": y, "bottom": y + 8}  # noqa: E731
+        def w(t, x, y):
+            return {"text": t, "x0": x, "x1": x + 20, "top": y, "bottom": y + 8}
+
         words = [
             w("Zorp", 10, 100),
             w("widget", 35, 100),
@@ -531,7 +540,8 @@ class DescriptionTest(unittest.TestCase):
     def test_a_count_in_words_and_a_wrapped_rating_range(self):
         md = (
             "<!-- page 1 -->\n#### Zorp launcher\nIts internal magazines hold up to four bolts.\n"
-            "Zorp launchers are available with ratings from\n1 to 6.\n| WEAPON | COST |\n|---|---|\n| Zorp launcher | 100¥ |\n"
+            "Zorp launchers are available with ratings from\n1 to 6.\n| WEAPON | COST |\n|---|---|\n| Zorp launcher | "
+            "100¥ |\n"
         )
         c = corpus.Corpus(
             [book("A", "2020-03", md, entries=[entry("Zorp launcher", src="a", kind="weapons", cost="100")])]

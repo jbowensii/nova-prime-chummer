@@ -2,8 +2,8 @@
 accessories, as the core rulebook files them), ammunition (gear), armor (and armor modifications), tac-apps, the trauma
 qualities, the security and gang NPCs, the martial art styles and techniques and the rule sections (edge actions,
 maneuvers: no catalog kind of their own), ids unscoped (run scopes them as fs.<slug>), descriptions in the private
-texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes in
-fs.md.
+texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout notes
+in fs.md.
 
 The book prints an item as a heading, its description and a stat box titled with its name (TYPE, DV, ... AVAIL, COST):
 the box becomes the item's row here. A few headers set too close together print as one (`AMMOAVAIL`): they are split,
@@ -47,6 +47,7 @@ _RATING = re.compile(r"professional rating\s*(\d+)", re.I)
 
 
 def match(meta, md_head):
+    """How well a book fits this recipe: 1.0 by its hash, 0.9 for a Firing Squad title, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -75,7 +76,7 @@ def _unmerge(cells):
     return out
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """Merged headers split; an item's stat box (with a price) as its row, named by its heading; an NPC's
     `(Professional Rating N)` tag as the core rulebook's section form."""
     stats = [_unmerge(s) for s in b.stats]
@@ -250,7 +251,10 @@ def _strays(bs):
         for h, rows in catalog.md_tables(b.text):
             if h[0].upper() != "TYPE" or "DR" not in {x.upper() for x in h} or not rows:
                 continue
-            names = lambda t: re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))  # noqa: E731
+
+            def names(t, rows=rows):
+                return re.search(rf"\b{re.escape(norm(rows[0][0]))}\b", norm(t))
+
             if names(b.text.replace(catalog.md_table(h, rows), "")):
                 continue  # its own text names its rows (`Rapid Transit … comes in Basic, Elite …`): its own table
             j = next(
@@ -285,8 +289,13 @@ def _hosted(bs):
     priced rows a name column names (`WEAPON`: Shotgun, Grenade Launcher …): the item keeps its band, each row is an
     item of its own, named as printed and grouped under the item it fits (`Underbarrel Weapon Attachment Mount:
     Shotgun`)."""
-    first = lambda s: next(iter(s), "")  # noqa: E731
-    priced = lambda s: any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL"))  # noqa: E731
+
+    def first(s):
+        return next(iter(s), "")
+
+    def priced(s):
+        return any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL"))
+
     out = []
     for b in bs:
         rest = b.stats[1:]
@@ -313,8 +322,13 @@ def _lists(bs):
     block per row, named by its cell (a TYPE after the box's name). An item's own heading block gives it its text
     and leaves the rules. A named row the chapter printed before as a row of its own (the MEMS section's own list,
     reprinted in the chapter's list of armor modifications) is that row's: no second entry."""
-    first = lambda b: next(iter(b.stats[0]), "") if b.stats else ""
-    priced = lambda s: any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL", "AVAILABILITY"))
+
+    def first(b):
+        return next(iter(b.stats[0]), "") if b.stats else ""
+
+    def priced(s):
+        return any(re.search(r"\d", v) for h, v in s.items() if h.upper() in ("COST", "AVAIL", "AVAILABILITY"))
+
     listed = [
         b
         for b in bs
@@ -326,7 +340,10 @@ def _lists(bs):
         and len({s.get(first(b)) for s in b.stats}) == len(b.stats)
     ]
     have = {(b.chapter, norm(b.name)) for b in bs if b.row is not None}
-    again = lambda b, n: first(b).upper() != "TYPE" and (b.chapter, norm(n)) in have  # noqa: E731
+
+    def again(b, n):
+        return first(b).upper() != "TYPE" and (b.chapter, norm(n)) in have
+
     named = {
         norm(s[first(b)]): s[first(b)]
         for b in listed
@@ -362,8 +379,8 @@ def _lists(bs):
             if again(b, n):
                 continue
             d = descs.get(norm(n))
-            # (a row with no heading of its own, named in the text of a heading that tags a rating range: `Reactive Armor
-            # (Rating 1-4)` over `plates and GelWeave`: that heading's range)
+            # (a row with no heading of its own, named in the text of a heading that tags a rating range: `Reactive
+            # Armor (Rating 1-4)` over `plates and GelWeave`: that heading's range)
             said = next(
                 (x.tags for x in descs.values() if x.tags and re.search(rf"(?i)\b{re.escape(n)}\b", x.text)), ""
             )
@@ -393,7 +410,7 @@ def _pointed(bs):
     its capital: `Steampunk`, not the list's `Armor Jacket`) and that no entry of the chapter has: one item each, named
     as the row prints, grouped under the section."""
     out = list(bs)
-    for i, b in enumerate(bs):
+    for b in bs:
         if norm(b.chapter) != "suit up" or b.level != 3 or not (pages := _STATS_ON.findall(b.text)):
             continue
         said = _squash(b.text)
@@ -435,5 +452,6 @@ def _pointed(bs):
 
 
 def extract(regrouped, ctx=None):
+    """The Firing Squad book's catalog files, read from its regrouped markdown."""
     bs = _lists(_hosted(shapes.configuration_rows(_boxes(_pointed(_strays(blocks(regrouped)))))))
     return catalog.read([x for b in bs for x in shapes.martial_pair(shapes.martial(b))], ctx, sys.modules[__name__])

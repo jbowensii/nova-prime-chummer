@@ -15,7 +15,8 @@ def _tab_regexes(tab):
 
 
 def strip_tab(lines, tab):
-    """Drop the margin tab letters (tab: the letters as printed): lone lines, and a letter glued to a line's start or end."""
+    """Drop the margin tab letters (tab: the letters as printed): lone lines, and a letter glued to a line's start or
+    end."""
     lone, trail, lead = _tab_regexes(tab)
     out = []
     for l in lines:

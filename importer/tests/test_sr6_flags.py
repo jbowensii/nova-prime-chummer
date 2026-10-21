@@ -56,6 +56,7 @@ A made-up knee. **Category:** Grappling
 
 
 def read(kind):
+    """The entries of one kind by name, from the recipe over the sample book."""
     text, _ = regroup.regroup(MD, crb.ALIASES, name_headers=crb.NAME_HEADERS)
     return {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files[f"{kind}.xml"])}
 
@@ -123,7 +124,8 @@ class FlagsTest(unittest.TestCase):
         # the closing line after the last sentence, wrapped and hyphenated, several prerequisites
         self.assertEqual(
             r(
-                "Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a hum lim-\nb."
+                "Hum a lot. **Category:** Mobility, the user\nmust already know Zap Hop. Requires a glow\nimplant or a "
+                "hum lim-\nb."
             ),
             [
                 ("requires", {"kind": "technique"}, "Zap Hop"),
@@ -141,7 +143,8 @@ class FlagsTest(unittest.TestCase):
         )
         self.assertEqual(
             r(
-                "x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both versions of zap hop."
+                "x. **Category:** General, user must have at least 1.5 Essence in glow, user must know\none or both "
+                "versions of zap hop."
             ),
             [
                 ("requires", {"kind": "other"}, "at least 1.5 Essence in glow"),
@@ -151,7 +154,8 @@ class FlagsTest(unittest.TestCase):
         # a usage note, a prerequisite word outside the closing line: none
         self.assertEqual(
             r(
-                "This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used with sticks"
+                "This made-up move requires a Minor Action.\n**Category:** Weapon\n**Restriction:** May only be used "
+                "with sticks"
             ),
             [],
         )

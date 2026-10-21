@@ -5,6 +5,9 @@ import unittest
 
 from importer.sr6 import effects
 
+# tests read the private helpers they check
+# pylint: disable=protected-access
+
 
 def fx(text, kind=None):
     """[(target, op, value, switch, when)] of the effects read from `text`."""
@@ -106,7 +109,8 @@ class LabelsAndSwitchesTest(unittest.TestCase):
 class EdgeTest(unittest.TestCase):
     def test_edge_on_an_attributes_tests(self):
         self.assertEqual(fx("You gain 1 Edge on Logic."), [("test:attr-log", "edge", "1", None, None)])
-        # (the word Edge is not the Edge attribute's tests: `a bonus Edge when making any Logic-based test`, reviewed 2026-10-18)
+        # (the word Edge is not the Edge attribute's tests: `a bonus Edge when making any Logic-based test`, reviewed
+        # 2026-10-18)
         self.assertEqual(fx("+1 to Edge, plus you gain a point of Edge."), [])
         self.assertEqual(
             fx("They gain a bonus Edge when making any Logic-based test."), [("test:attr-log", "edge", "1", None, None)]
@@ -423,7 +427,10 @@ class VariantAndSectionTest(unittest.TestCase):
             ("effect", {"target": t, "op": "add", "value": "1"}, None)
             for t in ("skill:athletics", "attr:choice", "skill:choice", "attr-max:agi", "derived:defense")
         ]
-        got = lambda words: [a["target"] for _, a, _ in effects._resolve_variant(found, words)]
+
+        def got(words):
+            return [a["target"] for _, a, _ in effects._resolve_variant(found, words)]
+
         self.assertEqual(
             got(["Agility"]), ["skill:athletics", "attr:agi", "skill:choice", "attr-max:agi", "derived:defense"]
         )
@@ -462,8 +469,10 @@ class ApplyMoreTest(unittest.TestCase):
         files = {
             "augmentations.xml": '<sr6:data kind="augmentations">\n'
             '  <augmentation id="zh" source="X" page="1" type="bioware"><name>Zap hand webbing</name></augmentation>\n'
-            '  <augmentation id="tzh" source="X" page="2" type="bioware" essence="fifty percent more Essence than the base item">'
-            "<name>Transgenic zap hands and feet</name><cost><formula>ref(augmentations:zh)</formula></cost></augmentation>\n</sr6:data>\n"
+            '  <augmentation id="tzh" source="X" page="2" type="bioware" essence="fifty percent more Essence than the '
+            'base item">'
+            "<name>Transgenic zap hands and feet</name><cost><formula>ref(augmentations:zh)</formula></cost>"
+            "</augmentation>\n</sr6:data>\n"
         }
         out, _ = effects.apply(files, "", "")
         x = out["augmentations.xml"]
@@ -472,9 +481,13 @@ class ApplyMoreTest(unittest.TestCase):
 
     def test_a_grant_cited_to_the_core_book_refers_to_it(self):
         files = {
-            "qualities.xml": '<sr6:data kind="qualities">\n  <quality id="q1" source="X" page="4"><name>Zap Fan</name></quality>\n</sr6:data>\n'
+            "qualities.xml": '<sr6:data kind="qualities">\n  <quality id="q1" source="X" page="4"><name>Zap '
+            "Fan</name></quality>\n</sr6:data>\n"
         }
-        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="q1">You gain the Zap Sense quality (p. 12, SR6).</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="qualities" id="q1">You gain the Zap Sense quality (p. 12, '
+            "SR6).</text>\n</sr6:data>\n"
+        )
         out, _ = effects.apply(files, texts, "")
         self.assertIn(
             '<name>Zap Fan</name><link rel="grants" name="Zap Sense" kind="qualities" ref="crb.zap-sense"/>',
@@ -484,9 +497,12 @@ class ApplyMoreTest(unittest.TestCase):
     def test_a_version_named_picks_its_own_group_member(self):
         files = {
             "augmentations.xml": '<sr6:data kind="augmentations">\n'
-            '  <augmentation id="zz-basic" source="X" page="1" type="bioware" group="Zapsense"><name>Basic</name></augmentation>\n'
-            '  <augmentation id="zz-tactical" source="X" page="1" type="bioware" group="Zapsense"><name>Tactical</name></augmentation>\n'
-            '  <augmentation id="tg" source="X" page="2" type="bioware" essence="fifty percent more Essence than the base item">'
+            '  <augmentation id="zz-basic" source="X" page="1" type="bioware" group="Zapsense"><name>Basic</name>'
+            "</augmentation>\n"
+            '  <augmentation id="zz-tactical" source="X" page="1" type="bioware" '
+            'group="Zapsense"><name>Tactical</name></augmentation>\n'
+            '  <augmentation id="tg" source="X" page="2" type="bioware" essence="fifty percent more Essence than the '
+            'base item">'
             "<name>Transgenic zapsense (Basic)</name></augmentation>\n</sr6:data>\n"
         }
         out, _ = effects.apply(files, "", "")
@@ -515,8 +531,10 @@ class ApplyMoreTest(unittest.TestCase):
         # (the parent prints only a label line; the rule named for the base item is the description of both)
         files = {
             "gear.xml": '<sr6:data kind="gear">\n  <gear id="zb" source="X" page="1"><name>Zap Booster</name></gear>\n'
-            '  <gear id="zb-f" source="X" page="2" rating="1"><name>Zap Booster (Firewall)</name></gear>\n</sr6:data>\n',
-            "rules.xml": '<sr6:data kind="rules">\n  <rule id="r1" source="X" page="1"><name>Zap Booster</name></rule>\n</sr6:data>\n',
+            '  <gear id="zb-f" source="X" page="2" rating="1"><name>Zap Booster '
+            "(Firewall)</name></gear>\n</sr6:data>\n",
+            "rules.xml": '<sr6:data kind="rules">\n  <rule id="r1" source="X" page="1"><name>Zap '
+            "Booster</name></rule>\n</sr6:data>\n",
         }
         texts = (
             '<sr6:data kind="texts">\n  <text of="gear" id="zb">**Cost:** 5</text>\n'
@@ -532,7 +550,8 @@ class ApplyMoreTest(unittest.TestCase):
 
     def test_a_table_row_with_no_name_is_skipped(self):
         files = {
-            "ammotypes.xml": '<sr6:data kind="ammotypes">\n  <ammotype id="zap" source="X" page="5"><name>Zap Slug</name></ammotype>\n</sr6:data>\n'
+            "ammotypes.xml": '<sr6:data kind="ammotypes">\n  <ammotype id="zap" source="X" page="5"><name>Zap '
+            "Slug</name></ammotype>\n</sr6:data>\n"
         }
         regrouped = "| NAME | AR |\n|---|---|\n|  | +1 |\n| Zap Slug | +2 |\n"
         out, _ = effects.apply(files, "", regrouped)

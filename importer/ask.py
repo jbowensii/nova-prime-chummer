@@ -35,6 +35,7 @@ GAMES = {
 
 
 def system(game="ca2"):
+    """The system prompt that restricts the answer to the numbered passages for this game."""
     name, other = GAMES[game]
     return f"""You answer rules questions about the {name} tabletop game for the people playing it.
 Use only the numbered passages you are given: they come from the books and house rules on this game server. Do not use
@@ -90,7 +91,8 @@ def _listed(index, base, custom):
 
 
 def _files(custom, game="ca2"):
-    """The data files in load order: the core files (Anarchy's only), the imported books, the edits layer, the house rules."""
+    """The data files in load order: the core files (Anarchy's only), the imported books, the edits layer, the house
+    rules."""
     try:
         files = [os.path.join(core_dir(), f"{n}.xml") for n in CORE_FILES] if game == "ca2" else []
     except NoCoreData:
@@ -102,8 +104,8 @@ def _files(custom, game="ca2"):
 
 
 def passages(custom, game="ca2"):
-    """[{source, page, title, text, kind, id}] of the game's data (kind: the entry's tag); a later entry with an id replaces
-    an earlier one (edits, house rules)."""
+    """[{source, page, title, text, kind, id}] of the game's data (kind: the entry's tag); a later entry with an id
+    replaces an earlier one (edits, house rules)."""
     texts, by_id = _texts(custom), {}
     if game == "sr6":
         from importer.sr6 import KINDS
@@ -157,7 +159,8 @@ def passages(custom, game="ca2"):
 
 
 def retrieve(question, docs, k=TOP, floor=FLOOR):
-    """The best `k` passages for the question by BM25 (a title counts twice), each scoring at least `floor`, best first."""
+    """The best `k` passages for the question by BM25 (a title counts twice), each scoring at least `floor`, best
+    first."""
     q = set(tokens(question))
     if not q or not docs:
         return []
@@ -177,12 +180,14 @@ def retrieve(question, docs, k=TOP, floor=FLOOR):
 
 
 def cite(p):
+    """A passage's citation: source and page (source alone when it has no page)."""
     return f"{p['source']} p.{p['page']}" if p["page"] else p["source"]
 
 
 def answer(question, custom, ask_ai, game="ca2", scope=None):
     """{answer, sources: [{source, page, title, kind, id}], covered}. `ask_ai(system, user) -> text` is only called when
-    some passage clears the floor. scope "rules": only the rules (and house rules) are searched (the Rules page's search).
+    some passage clears the floor. scope "rules": only the rules (and house rules) are searched (the Rules page's
+    search).
     """
     question = " ".join((question or "").split())
     if not question:

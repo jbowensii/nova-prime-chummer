@@ -1,12 +1,12 @@
-"""Commlink6's own classification on our entries (docs/sr6-data-format.md, the `class` attribute): its TYPE/SUBTYPE keys,
-verbatim. classes/category_class.json ({kind: {category: class}}, made by tools/cl6check/classmap.py from the categories
-whose entries Commlink6 classes alike, 90% or more) gives every entry of such a category its class; one the table doesn't
-reach gets none (we invent no class for what Commlink6 doesn't have), and an entry that has a class already, one the
-per-book override table set, keeps it. The Foundry module translates the keys to Eden's later.
+"""Commlink6's own classification on our entries (docs/sr6-data-format.md, the `class` attribute): its TYPE/SUBTYPE
+keys, verbatim. classes/category_class.json ({kind: {category: class}}, made by tools/cl6check/classmap.py from the
+categories whose entries Commlink6 classes alike, 90% or more) gives every entry of such a category its class; one the
+table doesn't reach gets none (we invent no class for what Commlink6 doesn't have), and an entry that has a class
+already, one the per-book override table set, keeps it. The Foundry module translates the keys to Eden's later.
 classes/section_prefix.json then gives every entry of a source's section, by kind and printed page, one class, whatever
 it had: a deliberate extra (classes/extra_classes.json: not Commlink6's), or Commlink6's own where the rule says so
-(`"commlink6": true`). Body Shop's critter-only chapter is all `CRITTERWARE/AUGMENTATION`, which the app keeps out of the
-player's pickers; the Companion's Infected qualities are `INFECTED` and its Infected optional powers
+(`"commlink6": true`). Body Shop's critter-only chapter is all `CRITTERWARE/AUGMENTATION`, which the app keeps out of
+the player's pickers; the Companion's Infected qualities are `INFECTED` and its Infected optional powers
 `INFECTED/OPTIONAL_POWER`, which the app offers only with the table's infectedAllowed rule on."""
 
 import json
@@ -21,11 +21,13 @@ EXTRA = Path(__file__).with_name("classes") / "extra_classes.json"
 
 
 def table(path=FILE):
+    """The class table read from `path`, else empty."""
     return json.loads(Path(path).read_text(encoding="utf8")) if Path(path).is_file() else {}
 
 
 def extra(path=EXTRA):
-    """{class: reason} of the deliberate extra classes (not Commlink6's): a class of ours that no Commlink6 record has."""
+    """{class: reason} of the deliberate extra classes (not Commlink6's): a class of ours that no Commlink6 record
+    has."""
     return json.loads(Path(path).read_text(encoding="utf8")) if Path(path).is_file() else {}
 
 

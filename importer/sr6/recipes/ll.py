@@ -32,13 +32,14 @@ _PR = re.compile(r"(?im)^professional rating\s*(\d+)\s*$")
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
     return 0.9 if re.search(r"lofwyr.?s\s+legions", hay, re.I) else 0.0
 
 
-def kind(chapter, b, parent2):
+def kind(chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     labels = {k.lower() for k in b.labels}
     if b.type == "section" and b.level == 3 and "professional rating" in norm(b.section):
@@ -90,4 +91,5 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks into a catalog Result."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -6,6 +6,8 @@ import unittest
 from importer import effects as fx
 from importer.tests.test_effects import kinds
 
+# pylint: disable=protected-access
+
 
 class PieceTest(unittest.TestCase):
     def test_the_text_param_is_the_sentence_that_matches(self):
@@ -19,7 +21,8 @@ class PieceTest(unittest.TestCase):
         self.assertEqual(kinds("Fine thing. Recover 1 Edge point.")[0][:2], ("edge-gain", "Recover 1 Edge point"))
 
     def test_a_match_across_the_split_keeps_the_whole_clause(self):
-        # (the clause is split at ": " and "; ", the match spans the colon: no part holds it, so the clause is the param)
+        # (the clause is split at ": " and "; ", the match spans the colon: no part holds it, so the clause is the
+        # param)
         self.assertEqual(fx._piece("Ignore: the Disadvantage", fx._NO_DIS), "Ignore: the Disadvantage")
         self.assertEqual(kinds("Ignore: the Disadvantage.")[0][:2], ("no-disadvantage", "Ignore: the Disadvantage"))
         self.assertEqual(fx._piece("nothing here", fx._NO_DIS), "nothing here")

@@ -33,13 +33,11 @@ def _sha(b):
 
 
 def _data(kind, *rows):
-    return (
-        '<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="%s">%s</sr6:data>\n'
-        % (kind, "".join(rows))
-    )
+    body = "".join(rows)
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}">{body}</sr6:data>\n'  # pylint: disable=line-too-long
 
 
-class PrintingsTest(unittest.TestCase):
+class PrintingsTest(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         tmp = tempfile.mkdtemp()
         self.lib, self.custom = os.path.join(tmp, "library", "sr6"), os.path.join(tmp, "custom", "sr6")
@@ -48,6 +46,7 @@ class PrintingsTest(unittest.TestCase):
         self.addCleanup(patch.stop)
 
     def book(self, name, pdf, md=BOOK_MD):
+        """A made-up book `name` in the library, with a PDF and its text."""
         d = os.path.join(self.lib, name)
         os.makedirs(d)
         Path(d, "book.md").write_text(md, encoding="utf8")
@@ -55,14 +54,17 @@ class PrintingsTest(unittest.TestCase):
         return d
 
     def status(self, d):
+        """(state, text) of a book's status record."""
         s = ET.parse(os.path.join(d, "status.xml")).getroot()
         return s.get("state"), s.text or ""
 
     def weapons(self):
+        """The text of the loaded core weapons file, else empty."""
         p = os.path.join(self.custom, "imported", "crb", "weapons.xml")
         return Path(p).read_text(encoding="utf8") if os.path.exists(p) else ""
 
     def loaded_files(self):
+        """{source id: sha256} of the sources the library has loaded."""
         src = ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()
         return {s.get("id"): s.get("sha256") for s in src}
 
@@ -266,6 +268,7 @@ class PrintingsTest(unittest.TestCase):
         self.assertEqual((self.status(a)[0], self.status(b)[0]), ("done", "done"))
 
     def sources(self):
+        """{source id: element} of the loaded sources."""
         return {s.get("id"): s for s in ET.parse(os.path.join(self.custom, "imported", "sources.xml")).getroot()}
 
     def test_a_city_chapter_is_listed_in_sources_xml_like_its_book_also_from_a_superseded_printing(self):
@@ -309,7 +312,8 @@ class PrintingsTest(unittest.TestCase):
         self.assertIn("CRB-FZ", self.loaded_files())
 
     def test_removing_a_duplicate_city_edition_keeps_the_city_chapter_the_other_copy_loads(self):
-        # the server's merge of one PDF uploaded twice: the duplicate is removed (with its folder), the copy kept stays whole
+        # the server's merge of one PDF uploaded twice: the duplicate is removed (with its folder), the copy kept stays
+        # whole
         a, b = self.book("a", OLD, BOOK_MD + CITY_MD), self.book("b", OLD, BOOK_MD + CITY_MD)
         with mock.patch.dict(crb_city.CITIES, {_sha(OLD): CITY[CITY_SHA]}, clear=True):
             run(a, self.custom, convert_pdf=False)
@@ -379,9 +383,12 @@ class OlderCatalogTest(unittest.TestCase):
         from importer.sr6.run import _catalog
 
         class Broken:
+            """A reader whose extract() always fails."""
+
             ID = "zz"
 
             def extract(self, text, opts):
+                """Always fail, as a reader that can't read its book."""
                 raise ValueError("made-up reader failure")
 
         with tempfile.TemporaryDirectory() as d:

@@ -8,6 +8,8 @@ from pathlib import Path
 from importer.sr6 import edits
 from importer.tests.test_sr6_edits import custom
 
+# pylint: disable=protected-access
+
 
 class MissingOrBrokenFilesTest(unittest.TestCase):
     def test_a_sample_whose_file_is_broken_or_gone_is_not_a_sample(self):

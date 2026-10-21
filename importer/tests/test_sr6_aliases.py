@@ -50,6 +50,7 @@ Sprayers spray.
 
 
 def weapons(res, kind="weapons"):
+    """{name: entry} of the `kind` entries of a reading."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

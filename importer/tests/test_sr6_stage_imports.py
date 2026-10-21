@@ -1,7 +1,7 @@
-"""The importer's modules share only public names: no `from importer… import _private` and no `<imported module>._private`
-across modules (a private helper that another module needs is made public in the module that owns it). A package that is
-one stage (importer/sr6/effects/, importer/sr6/overrides/) shares its private names among its own modules by relative
-imports; the tests (white-box) are not checked."""
+"""The importer's modules share only public names: no `from importer… import _private` and no `<imported
+module>._private` across modules (a private helper that another module needs is made public in the module that owns it).
+A package that is one stage (importer/sr6/effects/, importer/sr6/overrides/) shares its private names among its own
+modules by relative imports; the tests (white-box) are not checked."""
 
 import ast
 import unittest
@@ -24,8 +24,8 @@ def crosses(n, where):
 
 
 def private_imports(src, where):
-    """The imports of private names, and the `<module>._private` reaches through a name such an import binds, in `src`, a
-    module in the directory `where`, that cross a stage."""
+    """The imports of private names, and the `<module>._private` reaches through a name such an import binds, in `src`,
+    a module in the directory `where`, that cross a stage."""
     tree, out, names = ast.parse(src), [], set()
     for n in ast.walk(tree):
         if crosses(n, where):
@@ -47,6 +47,8 @@ def private_imports(src, where):
 
 
 class StageImports(unittest.TestCase):
+    """The importer's modules import no other module's private names."""
+
     def test_no_private_names_cross_modules(self):
         bad = [
             f"{f.relative_to(ROOT)}:{r}"
@@ -66,7 +68,8 @@ class StageImports(unittest.TestCase):
         )  # (a sibling stage's)
         self.assertEqual(private_imports("from .words import _slug\n", fx), [])  # (the package's own)
         self.assertEqual(private_imports("from ..resolve import _z\n", fx), ["1 from ..resolve import _z"])
-        # (an attribute reach through an imported module: from-import, plain import, alias, a dotted chain, a function's own import)
+        # (an attribute reach through an imported module: from-import, plain import, alias, a dotted chain, a function's
+        # own import)
         self.assertEqual(
             private_imports(
                 "from importer import xmlio\nxmlio._attrs({})\nxmlio.__name__\nxmlio.escape('')\n", ROOT / "ai"

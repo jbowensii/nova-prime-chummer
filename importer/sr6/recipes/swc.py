@@ -51,6 +51,7 @@ RULE_CHAPTERS = (
 
 
 def match(meta, md_head):
+    """How well a book matches this recipe, 0 to 1."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -90,9 +91,9 @@ _ALL = ("bod", "agi", "rea", "str", "wil", "log", "int", "cha", "edg")
 
 
 def _metavariants(cat, chunks):
-    """The summary tables (`<X> Variant Attribute Ranges`), in either print: a header of attribute abbreviations (a table
-    header, or a text line), rows `Name 1–7 1–6 …` (or a nameless table row whose name is the next line), and later
-    number-only rows for the same names in the same order: under a header of the rest (`CHA EDG`), else the rows'
+    """The summary tables (`<X> Variant Attribute Ranges`), in either print: a header of attribute abbreviations (a
+    table header, or a text line), rows `Name 1–7 1–6 …` (or a nameless table row whose name is the next line), and
+    later number-only rows for the same names in the same order: under a header of the rest (`CHA EDG`), else the rows'
     missing attributes in order. Each row's `Racial Traits:` line (wrapped) follows it."""
     head, part, rows, last, traits, pending = [], None, [], None, None, None
 
@@ -155,6 +156,7 @@ def _metavariants(cat, chunks):
                 }
             )
             continue
+        # pylint: disable=possibly-used-before-assignment  # every branch that reaches here set attrs
         for a, v in zip(attrs, vals):
             lo, hi = re.findall(r"\d+", v)
             target["ranges"][a] = (int(lo), int(hi))
@@ -181,9 +183,9 @@ _BASE = {"human", "elf", "dwarf", "ork", "troll"}  # the core rulebook's: its pr
 
 
 def _development(cat, rows):
-    """The development tables (`METAVARIANT | … | CUSTOMIZATION KARMA | PRIORITY A | … | PRIORITY E`): each metavariant's
-    adjustment points at the metatype priorities it can be taken at (`N/A`: not at that letter), as its <priority>
-    children. The core rulebook's metatypes' rows are skipped (its priority table has them); a row naming no
+    """The development tables (`METAVARIANT | … | CUSTOMIZATION KARMA | PRIORITY A | … | PRIORITY E`): each
+    metavariant's adjustment points at the metatype priorities it can be taken at (`N/A`: not at that letter), as its
+    <priority> children. The core rulebook's metatypes' rows are skipped (its priority table has them); a row naming no
     metavariant of the book is reported. The karma column is a creation setting (metatypeKarma)."""
     by = {}
     for e in cat.entries["metatypes"]:
@@ -390,8 +392,8 @@ _AWAKENED_PRICE = re.compile(
 )
 # The chapter's rules every Infected quality follows (game numbers, not text): two free physical and two free mental
 # attribute points (p. 104, Creating Infected Characters); Essence and Magic by strain (p. 106, Infection and Magic):
-# Strain II and III set Essence to 5 and give Magic 1, or take 1 from a Magic the character has, its maximum 5 + initiate
-# grade; Strain I (and Ia, treated as I) gives no starting Essence, its maximum Magic Essence + initiate grade.
+# Strain II and III set Essence to 5 and give Magic 1, or take 1 from a Magic the character has, its maximum 5 +
+# initiate grade; Strain I (and Ia, treated as I) gives no starting Essence, its maximum Magic Essence + initiate grade.
 _FREE_POINTS = {"freePhysical": 2, "freeMental": 2}
 _STRAIN = {
     "I": {"magicMax": "ess+initiate-grade"},
@@ -415,8 +417,9 @@ def _split_top(s):
 
 
 def _head_args(item):
-    """`Enhanced Senses (Hearing, p. 12)` -> ("enhanced sense", ["hearing"]): the name's words, each less a plural `s`, and
-    its parenthesis' items less page citations and book names; a trailing `+1` (`Armor +1`) is no part of the name."""
+    """`Enhanced Senses (Hearing, p. 12)` -> ("enhanced sense", ["hearing"]): the name's words, each less a plural `s`,
+    and its parenthesis' items less page citations and book names; a trailing `+1` (`Armor +1`) is no part of the
+    name."""
     head, _, rest = item.partition("(")
     head = re.sub(r"\s*\+\d+\s*$", "", head).strip()
     args = [
@@ -432,9 +435,10 @@ def _words(s):
 
 
 def _optional(cat, e, label, page, rows):
-    """The type's `Optional Powers:` items as the optional-power entries they name (rows: [(head words, qualifier, id)] of
-    the priced list): a row of the item's name and of one of its parenthesis' items (`Enhanced Senses (Hearing, Smell)`:
-    two rows), else the one row of its name (`Magical Guard (self only, …)`). An item naming no row is reported."""
+    """The type's `Optional Powers:` items as the optional-power entries they name (rows: [(head words, qualifier, id)]
+    of the priced list): a row of the item's name and of one of its parenthesis' items (`Enhanced Senses (Hearing,
+    Smell)`: two rows), else the one row of its name (`Magical Guard (self only, …)`). An item naming no row is
+    reported."""
     out = []
     for item in _split_top(label):
         head, args = _head_args(item)
@@ -462,11 +466,12 @@ def _optional(cat, e, label, page, rows):
 
 def _free(cat, e, powers, page, rows):
     """The free Optional Power the type's Gained Powers offer (`Gain one of the Enhanced Senses or Immunities as a free
-    Optional Power`, `Gain either Armor +1, Enhanced Senses (Hearing), or Immunity (Toxins) …`, `Gain one Optional Powers
-    (except Regeneration) for free`): the ones of `rows` (the type's optional powers) it names; [] when it offers none.
-    """
+    Optional Power`, `Gain either Armor +1, Enhanced Senses (Hearing), or Immunity (Toxins) …`, `Gain one Optional
+    Powers (except Regeneration) for free`): the ones of `rows` (the type's optional powers) it names; [] when it offers
+    none."""
     m = re.search(
-        r"\bGain\s+(?:one\s+of\s+the|either|one)\s+(.+?)\s+(?:as\s+a\s+free\s+Optional\s+Power|Optional\s+Powers?\s+for\s+free|for\s+free)",
+        r"\bGain\s+(?:one\s+of\s+the|either|one)\s+(.+?)\s+(?:as\s+a\s+free\s+Optional\s+Power|"
+        r"Optional\s+Powers?\s+for\s+free|for\s+free)",
         powers,
         re.I,
     )
@@ -517,7 +522,8 @@ def _items(s):
 
 
 def _groups(s):
-    """`(6) (replaces Armor (4))` -> ["6", "replaces Armor (4)"]: the outer parentheses' contents (one left open: to the end)."""
+    """`(6) (replaces Armor (4))` -> ["6", "replaces Armor (4)"]: the outer parentheses' contents (one left open: to
+    the end)."""
     out, depth, cur = [], 0, ""
     for ch in s:
         if ch == ")" and depth:
@@ -570,9 +576,9 @@ def _gains(label, tag, own):
 
 
 def _other_base(bs):
-    """A sidebar giving a type for other base metatypes (`NON-HUMAN VAMPIRES`, p. 109: `apply the same attribute modifiers
-    to maximums as per a vampire to a human: +1 BOD, STR, WILL, and +2 REA and CHA … a total cost of 32`): {type words:
-    (karma, {attr: +n}, page)}."""
+    """A sidebar giving a type for other base metatypes (`NON-HUMAN VAMPIRES`, p. 109: `apply the same attribute
+    modifiers to maximums as per a vampire to a human: +1 BOD, STR, WILL, and +2 REA and CHA … a total cost of 32`):
+    {type words: (karma, {attr: +n}, page)}."""
     out = {}
     for b in bs:
         t = re.fullmatch(r"non-? ?human (.+)", norm(b.name))
@@ -684,7 +690,8 @@ _BAND = re.compile(r"^(?:(?:B|A|R|S|W|L|I|C|ESS|M|RES|EDG)\s+){4,}(?:B|A|R|S|W|L
 
 
 def _contact(cat, name, text, page, band=""):
-    """A contact archetype (`Typical Connection Rating: N`) and its stat band (`B A R S …` over its values: text lines, or
+    """A contact archetype (`Typical Connection Rating: N`) and its stat band (`B A R S …` over its values: text lines,
+    or
     `band`, the block's stat table as markdown) as an NPC."""
     s = plain(text)
     m = re.search(r"Typical Connection Rating\s*:\s*(\d+)", s)
@@ -734,7 +741,8 @@ def _vehicle(cat, b, band, page):
 # --- the book ------------------------------------------------------------------------------------------------------
 
 
-def extract(regrouped, ctx=None):
+def extract(regrouped, _ctx=None):
+    """The catalog this recipe reads from a regrouped book."""
     cat = Catalog(ID, "swc", "the Shadowrun Sixth World Companion")
     chapter, group, stack, ranges, dev = None, "", [], [], []
     bs = list(blocks(regrouped))
@@ -788,6 +796,7 @@ def extract(regrouped, ctx=None):
             own = (b.row or {}).get("BASE")
             per_base = [own] + [x for x in bases.get(norm(b.name), ()) if x != own] if own else []
             if len(per_base) > 1:  # (a type the attributes table prints for several base metatypes: one quality each)
+                # pylint: disable=use-a-generator  # a list: every base's quality is read, no short circuit
                 done = any([_qualities(cat, f"{b.name} ({x})", text, page, b) for x in per_base])
             else:
                 done = _qualities(cat, b.name, text, page, b)

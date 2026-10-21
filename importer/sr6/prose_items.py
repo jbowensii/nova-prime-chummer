@@ -32,9 +32,13 @@ _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*(\d+\s*(?:\([A-Z]\))?)\s*,\
 
 # (owner, 2026-10-08) a replacement a section's prose prices, in figures or words: `a replacement instrument costs one
 # thousand nuyen`
-_NUMWORD = r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|hundred|thousand)"
+_NUMWORD = (
+    r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty"
+    r"|hundred|thousand)"
+)
 _REPLACEMENT_COSTS = re.compile(
-    rf"\ba\s+replacement\s+([a-z]+(?:\s+[a-z]+)?)\s+costs\s+([\d,]+|{_NUMWORD}(?:[\s-]+(?:and\s+)?{_NUMWORD})*)\s*(?:¥|nuyen)\b",
+    rf"\ba\s+replacement\s+([a-z]+(?:\s+[a-z]+)?)\s+costs\s+"
+    rf"([\d,]+|{_NUMWORD}(?:[\s-]+(?:and\s+)?{_NUMWORD})*)\s*(?:¥|nuyen)\b",
     re.I,
 )
 _UNITS = {
@@ -127,7 +131,7 @@ def dv_settings(bs, cat, offset):
             cat.add("weapons", f"{e['name']} ({word})", e["page"], attrs, (), "")
 
 
-def run_in_items(bs, cat, offset):
+def run_in_items(bs, cat, _offset):
     """(owner, 2026-10-08) A bold run-in printed between two run-ins that name rows of one group (`**Increased
     Myelination:**` between `**Hyper-Glucagon:**` and `**Myostatin Inhibitor:**`, the rows `Genotype Enhancement
     (Hyper-Glucagon)`, `… (Myostatin Inhibitor)`) is an item of that group the table leaves out: `Genotype Enhancement
@@ -257,7 +261,8 @@ def sentence_items(bs, offset):
                     )
                 )
         if (m := _CLASS_HEADING.fullmatch(b.name.strip())) and norm(m.group(2)) not in seen:
-            # (owner, 2026-10-08) `Unique Qi Focus: Raptor Skull`: an item of a class the core rulebook prices, priced as
+            # (owner, 2026-10-08) `Unique Qi Focus: Raptor Skull`: an item of a class the core rulebook prices, priced
+            # as
             # that class at its own Force; the bonding Karma its text prints (`(Force x 3) Karma`) its own
             name, base = m.group(2).strip(), m.group(1).strip()
             seen.add(norm(name))
@@ -296,7 +301,8 @@ _ADD_ON = re.compile(
 )
 _PER_SPARE = re.compile(r"\b([a-z]+)\s*\(\s*([\d,]+)\s*(?:¥|nuyen)\s+per\s+spare\s*\)")
 _ADDITIONAL = re.compile(r"^\s*(?:an?\s+)?additional\s+([\d,]+)\s*¥?\s*$", re.I)
-# a refill or replacement parts priced in an item's text: `can be completely refilled for 50 nuyen`, `replacement balloons
+# a refill or replacement parts priced in an item's text: `can be completely refilled for 50 nuyen`, `replacement
+# balloons
 # and panels are available as aftermarket accessories for 100 nuyen each`
 _REFILL = re.compile(r"\brefill(?:ed)?\s+for\s+([\d,]+)\s*(?:¥|nuyen)")
 _REPLACEMENT = re.compile(
@@ -443,7 +449,8 @@ MAGIC_TYPES = (
     ("Mystic adept", 66),
     ("Technomancer", 66),
 )
-# (owner, CRB example 6) the licence types Fake License's choice offers: the four its text prints (p. 273) and the common
+# (owner, CRB example 6) the licence types Fake License's choice offers: the four its text prints (p. 273) and the
+# common
 # ones the sample characters' fake SINs carry; any other Licensed (L) item is written in
 LICENCE_TYPES = (
     "Hunting license",
@@ -516,7 +523,10 @@ def _band_tier(rows, header=("RATING", "COST")):
         return None
     cost, avail, legal = [], [], set()
     for r in rows:
-        cell = lambda k: (r[cols[k]] or "") if k in cols and cols[k] < len(r) else ""  # noqa: E731
+
+        def cell(k, r=r):
+            return (r[cols[k]] or "") if k in cols and cols[k] < len(r) else ""
+
         b = re.fullmatch(r"\s*(\d+)\s*[–-]\s*(\d+)\s*", cell("rating"))
         if not b:
             continue

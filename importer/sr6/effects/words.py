@@ -2,6 +2,8 @@
 
 import re
 
+# pylint: disable=line-too-long  # the word tables list one phrase or sentence per line
+
 ATTRIBUTES = {
     "body": "bod",
     "agility": "agi",
@@ -52,85 +54,87 @@ TEST_TYPES = {
     "mental": ("wil", "log", "int", "cha"),
 }
 # words of a specialization -> its skill (CRB's skill chapter): `Athletics (Climbing)`, `climbing tests`
-SPECS = {
-    "climbing": "athletics",
-    "gymnastics": "athletics",
-    "running": "athletics",
-    "swimming": "athletics",
-    "jumping": "athletics",
-    "throwing": "athletics",
-    "flight": "athletics",
-    "balance": "athletics",
-    "sprinting": "athletics",
-    "acting": "con",
-    "disguise": "con",
-    "impersonation": "con",
-    "performance": "con",
-    "etiquette": "influence",
-    "negotiation": "influence",
-    "intimidation": "influence",
-    "instruction": "influence",
-    "leadership": "influence",
-    "lockpicking": "engineering",
-    "gunnery": "engineering",
-    "palming": "stealth",
-    "escape artist": "athletics",
-    "sneaking": "stealth",
-    "camouflage": "stealth",
-    "disguising": "stealth",
-    "navigation": "outdoors",
-    "tracking": "outdoors",
-    "survival": "outdoors",
-    "first aid": "biotech",
-    "medicine": "biotech",
-    "electronic warfare": "cracking",
-    "hacking": "cracking",
-    "blades": "close-combat",
-    "clubs": "close-combat",
-    "unarmed": "close-combat",
-    "unarmed combat": "close-combat",
-    "spellcasting": "sorcery",
-    "counterspelling": "sorcery",
-    "summoning": "conjuring",
-    "summon": "conjuring",
-    "banishing": "conjuring",
-    "alchemy": "enchanting",
-    "artificing": "enchanting",
-    "disenchanting": "enchanting",
-    "compiling": "tasking",
-    "registering": "tasking",
-    "decompiling": "tasking",
-    "ground craft": "piloting",
-    "aircraft": "piloting",
-    "watercraft": "piloting",
-    "visual": "perception",
-    "aural": "perception",
-    "tactile": "perception",
-    "scent": "perception",
-    "taste": "perception",
-    "astral combat": "astral",
-    "assensing": "astral",
-    "repair": "engineering",
-    "jump": "athletics",
-    "climb": "athletics",
-    "swim": "athletics",
-    "lock picking": "engineering",
-    "sleight-of-hand": "stealth",
-    "sleight of hand": "stealth",
-    "cybercombat": "cracking",
-    "hearing": "perception",
-    "sight": "perception",
-    "smell": "perception",
-    "impersonate": "con",
-    "impersonating": "con",
-    "disguising": "con",
-    "pickpocket": "stealth",
-    "picking pockets": "stealth",
-    "falling": "athletics",
-    "flying": "athletics",
-    "sprint": "athletics",
-    "balancing": "athletics",
-}
+SPECS = (
+    {  # pylint: disable=duplicate-key  # "disguising" is listed twice (stealth, then con); the last wins, kept as is
+        "climbing": "athletics",
+        "gymnastics": "athletics",
+        "running": "athletics",
+        "swimming": "athletics",
+        "jumping": "athletics",
+        "throwing": "athletics",
+        "flight": "athletics",
+        "balance": "athletics",
+        "sprinting": "athletics",
+        "acting": "con",
+        "disguise": "con",
+        "impersonation": "con",
+        "performance": "con",
+        "etiquette": "influence",
+        "negotiation": "influence",
+        "intimidation": "influence",
+        "instruction": "influence",
+        "leadership": "influence",
+        "lockpicking": "engineering",
+        "gunnery": "engineering",
+        "palming": "stealth",
+        "escape artist": "athletics",
+        "sneaking": "stealth",
+        "camouflage": "stealth",
+        "disguising": "stealth",
+        "navigation": "outdoors",
+        "tracking": "outdoors",
+        "survival": "outdoors",
+        "first aid": "biotech",
+        "medicine": "biotech",
+        "electronic warfare": "cracking",
+        "hacking": "cracking",
+        "blades": "close-combat",
+        "clubs": "close-combat",
+        "unarmed": "close-combat",
+        "unarmed combat": "close-combat",
+        "spellcasting": "sorcery",
+        "counterspelling": "sorcery",
+        "summoning": "conjuring",
+        "summon": "conjuring",
+        "banishing": "conjuring",
+        "alchemy": "enchanting",
+        "artificing": "enchanting",
+        "disenchanting": "enchanting",
+        "compiling": "tasking",
+        "registering": "tasking",
+        "decompiling": "tasking",
+        "ground craft": "piloting",
+        "aircraft": "piloting",
+        "watercraft": "piloting",
+        "visual": "perception",
+        "aural": "perception",
+        "tactile": "perception",
+        "scent": "perception",
+        "taste": "perception",
+        "astral combat": "astral",
+        "assensing": "astral",
+        "repair": "engineering",
+        "jump": "athletics",
+        "climb": "athletics",
+        "swim": "athletics",
+        "lock picking": "engineering",
+        "sleight-of-hand": "stealth",
+        "sleight of hand": "stealth",
+        "cybercombat": "cracking",
+        "hearing": "perception",
+        "sight": "perception",
+        "smell": "perception",
+        "impersonate": "con",
+        "impersonating": "con",
+        "disguising": "con",
+        "pickpocket": "stealth",
+        "picking pockets": "stealth",
+        "falling": "athletics",
+        "flying": "athletics",
+        "sprint": "athletics",
+        "balancing": "athletics",
+    }
+)
 # what each skill is used for, as the core rulebook's skill descriptions list it (CRB pp. 94-98): an activity a test is
 # named by -> the skill it is a test of (owner decision 2026-10-10: tests named by activity are stored as that skill)
 ACTIVITIES = [
@@ -305,7 +309,8 @@ _CONDITION = re.compile(
     r"(?:individuals|characters|those) (?:going|undergoing) through|in (?:an? |the )?(?:dark|darkness|low light|dim light|cold|hot|bright light)\b)\b",
     re.I,
 )
-# (an action paid to turn it on: `By spending an extra Minor Action`, `Investing a Minor Action`, `the expenditure of a Minor Action`)
+# (an action paid to turn it on: `By spending an extra Minor Action`, `Investing a Minor Action`, `the expenditure of a
+# Minor Action`)
 _SPEND_ACTION = re.compile(
     r"\b(?:spend\w*|invest\w*|expenditure of)(?: an?| one| extra| additional)* (?:minor|major) actions?\b", re.I
 )
@@ -337,13 +342,15 @@ def _norm(s):
 
 def sentences(text, labels=False):
     """The text's sentences, a labelled line (`**Wireless bonus:** …`, `All: …`) and a list line each on its own; with
-    `labels`, (label, sentence, paragraph number) triples, the label holding for the rest of its paragraph (`**Wireless bonus:** … increases
-    to 2. You gain a bonus Minor Action …`)."""
+    `labels`, (label, sentence, paragraph number) triples, the label holding for the rest of its paragraph (`**Wireless
+    bonus:** … increases to 2. You gain a bonus Minor Action …`)."""
     out = []
     for n, para in enumerate(re.split(r"\n(?=\s*(?:[•*]|\*\*[^*]+:\*\*|[A-Z][\w ]{1,30}:\s))|\n\s*\n", text or "")):
         one = _norm(para.replace("**", ""))
-        # (a sentence may open with a quote; a clause after a semicolon is a statement of its own: `+2 to climbing tests;
-        # if both hands and feet have setae, +4`, `Light armor reduces DV by 1; Medium armor by 2`; `Mr. Johnson`: no sentence's end)
+        # (a sentence may open with a quote; a clause after a semicolon is a statement of its own: `+2 to climbing
+        # tests;
+        # if both hands and feet have setae, +4`, `Light armor reduces DV by 1; Medium armor by 2`; `Mr. Johnson`: no
+        # sentence's end)
         ss = [
             s
             for s in re.split(
@@ -365,20 +372,23 @@ _CHOOSE_ONE = re.compile(
     r"\(\s*choose one\s*\)|\bchoose one\b|\bthe choice of [a-z ]{0,25}?(?:skill|attribute)\b|\bselect one skill\b|\bpick one\b|\bone skill of your choice\b",
     re.I,
 )
-# a numeric dice modifier on tests the reader knows no target of (`-1 dice pool modifier to any fine manipulations using the webbed digits`)
+# a numeric dice modifier on tests the reader knows no target of (`-1 dice pool modifier to any fine manipulations using
+# the webbed digits`)
 _DICE_ON = re.compile(
     r"(?<![\w/])(?:(?P<v>[+-]\s?\d+)|(?P<w>an? (?:extra|additional|bonus)|one|two|three))\s*(?:bonus |extra |additional |dice pool |situational )*(?:dice|die|modifier|bonus|penalty)\b"
     r"[^.;]{0,30}?\b(?:on|to|for|when making|during)\s+(?:all |any |every |your |their |the |a |an )*(?P<t>(?:[a-z'-]+ ){0,5}?(?:tests?|rolls?|checks?|actions?|manipulations?)\b[^.;]*?)(?=\s+(?:but|and)\s+[a-z]+\s+(?:an? )?[+-]\s?\d|[.;]|$)",
     re.I,
 )
 _BARE_TEST = re.compile(r"(?:tests?|rolls?|checks?|actions?)\s*$", re.I)
-# a wild die from converting one of the pool's dice (overdrive): `Convert one die on the Sprinting test to a wild die`, `One of these dice must be a wild die`
+# a wild die from converting one of the pool's dice (overdrive): `Convert one die on the Sprinting test to a wild die`,
+# `One of these dice must be a wild die`
 _WILD_CONV = re.compile(
     r",? one of which (?:must be|is) a wild die\b|\bconvert (?:one|a) die(?: (?:on|in|for|of) (?:the |a |an |that |this |your )*(?P<t>[^.;]*?))? to a wild die\b|"
     r"\bone (?:die )?(?:of (?:these|the|those) dice )?(?:must be|is|becomes|may be|can be) a wild die\b|\bone of (?:these|the|those) dice (?:must be|is|becomes) a wild die\b",
     re.I,
 )
-# who gets or loses the Edge when it is not the owner (`the opposing individual gains a point of Edge`, `opponents may not gain or spend Edge`)
+# who gets or loses the Edge when it is not the owner (`the opposing individual gains a point of Edge`, `opponents may
+# not gain or spend Edge`)
 _EDGE_OTHERS = re.compile(
     r"\b(?:the opposing (?:individual|spirit|character|party|side)|opponents?|observers?|attackers?|the target|targets?|spirits|anyone|others|whoever|their opposition|your opposition|"
     r"other (?:characters|individuals|people|runners|players)|(?:a|any) (?:character|individual|person|critter)s?(?= (?:within|who|that|in)\b)|the (?:caster|magician|mage|hacker|decker) (?:of|sustaining|casting) [a-z ]{3,25}|(?:any )?tests? made against you|"
@@ -387,12 +397,15 @@ _EDGE_OTHERS = re.compile(
     r"\bthe users? (?:of (?:this|the) \w+ )?grants? (?:an? )?(?:point of )?(?:situational )?edge\b|"
     r"\btests? against [^,.;]+, they (?:gain|receive)s? (?:an? )?(?:additional )?(?:point of )?(?:situational )?edge\b",
     re.I,
-)  # (a subject and its Edge verb in one clause: the owner is `you`, an imperative, `the magician`, `the spirit` of its own power)
+    # (a subject and its Edge verb in one clause: the owner is `you`, an imperative, `the magician`, `the spirit` of its own
+    # power)
+)
 # `they` after `you` (`you can give them a mean look … they can't gain or spend Edge`): the other party's
 _THEY_EDGE = re.compile(
     r"\b(?:they|them)\b[^.;]{0,60}?\b(?:gains?|can't|cannot|can not|may not|are unable to)\b[^.;]{0,30}\bedge\b", re.I
 )
-# the weapons or fire an item bonus is for (`for all linked smartgun weapons`, `on thrown weapons`, `with Close Combat attacks`, `for Full-Auto`)
+# the weapons or fire an item bonus is for (`for all linked smartgun weapons`, `on thrown weapons`, `with Close Combat
+# attacks`, `for Full-Auto`)
 _ITEM_SCOPE_WORDS = (
     r"(?:thrown|melee|ranged|linked|smartgun|close combat|firearm|edged|bladed|unarmed|cyber-implanted|natural|full-auto|burst|single-shot|semi-automatic|"
     r"projectile|ballistic)\b[^.;,]{0,50}"
@@ -415,7 +428,8 @@ _PRONOUN_TEST = re.compile(
     r"(?:(?:that|this|the|it|them|those|these|such|a|an|same|each|every|any|all)(?: (?:test|tests|roll|rolls|action|actions))?)?",
     re.I,
 )
-# thresholds the entry changes: `reduces any Outdoors (Navigation) test thresholds by 3`, `the threshold of cold survival tests is also decreased by one`,
+# thresholds the entry changes: `reduces any Outdoors (Navigation) test thresholds by 3`, `the threshold of cold
+# survival tests is also decreased by one`,
 # `-1 to threshold for climbing tests`, `Lowers the threshold by -2 for Perception tests to detect ambush`
 _THRESHOLD = re.compile(
     r"\b(?P<d>reduc\w*|lower\w*|decreas\w*|rais\w*|increas\w*)\s+(?:the |any |all |your |their )*(?P<t>[^.;]{0,80}?)\s*thresholds?\b(?P<mid>[^.;]{0,80}?)\s+by\s+(?:a |an )?(?P<v>[+-]?\d+|one|two|three)\b(?P<after>[^.;]{0,120})|"
@@ -426,7 +440,8 @@ _THRESHOLD = re.compile(
     r"(?<![\w/])(?P<s5>[+-]\s?\d+)\s+(?:to|for|on)\s+(?:all |any |the )*(?P<t5>[a-z][a-z ()-]{0,40}?\btests?) thresholds?\b",
     re.I,
 )
-# the words after a test's name that limit it: `tests made in your Home Ground`, `Survival tests in frigid environments`, `social interaction with a member of any union`
+# the words after a test's name that limit it: `tests made in your Home Ground`, `Survival tests in frigid
+# environments`, `social interaction with a member of any union`
 _QUALIFIER = re.compile(
     r"\b(?:tests?|rolls?|checks?|interactions?|actions?|attempts?|encounters?)\s+(?:(?:made|taken|performed|rolled|you (?:make|roll|perform|take))\s+)?"
     r"(?P<q>(?:in|within|at|with|versus|using|relating to|related to|pertaining to|where|that (?:would|could|might|are not|aren't|is not|isn't)|to [a-z]{3,})\b\s*[^.;,]{3,80})",
@@ -478,8 +493,8 @@ _DRUG_WORDS = {
 
 
 def _drug_cut(s):
-    """A drug's `Effect:` line without the story run into it (`… -1 Willpower Chill is a great BTL for those who …`): up to the first capitalized
-    word that starts a sentence of its own, not an attribute, skill or status."""
+    """A drug's `Effect:` line without the story run into it (`… -1 Willpower Chill is a great BTL for those who …`): up
+    to the first capitalized word that starts a sentence of its own, not an attribute, skill or status."""
     s = _DRUG_FLAVOR.sub("", s, count=1)
     for m in re.finditer(
         r"(?<=[a-z0-9)]) (?=[A-Z][\w'’]*(?: [A-Z][\w'’]*){0,2} (?:was|is|were|are|has|had|comes|came|can|will)\b)", s
@@ -495,7 +510,9 @@ def _drug_cut(s):
         ):  # (not `High Pain Tolerance Zapzap is`: a name run into capitalized effect words)
             return s[
                 : m.start()
-            ]  # (a name's story, `Ayao's Will was originally created by …`: its own sentence, the effect ends where it begins)
+                # (a name's story, `Ayao's Will was originally created by …`: its own sentence, the effect ends where it
+                # begins)
+            ]
     for m in re.finditer(
         r"(?<=[a-z0-9)]) (?=([A-Z][a-z]+) (?!(?:spells?|tests?|attacks?|actions?|rolls?|checks?)\b)[a-z]{2,})", s
     ):  # (`resist Manipulation spells`: a spell type, no story)
@@ -517,7 +534,8 @@ _TEST_WORDS = [  # (pattern, target): the test types a phrase names, longest fir
     ),  # (`all tests involving the operation of a vehicle`, Control Rig)
     (_ATTR_TESTS + r"physical attributes?", "test:physical"),
     (_ATTR_TESTS + r"mental attributes?", "test:mental"),
-    # (the defense tests against what is named: astral attacks, direct or indirect combat spells; owner direction 2026-10-17, the pools
+    # (the defense tests against what is named: astral attacks, direct or indirect combat spells; owner direction
+    # 2026-10-17, the pools
     # Commlink6 splits Defense into)
     (
         r"(?:defen[cs]e|defensive) (?:tests?|pools?|dic?e) (?:against|vs\.?|versus) (?:all |any )?astral (?:attacks?|combat)|astral (?:defen[cs]e|defensive) (?:tests?|pools?|dic?e)|astral defen[cs]e(?! rating)|defend(?:ing)? against (?:all |any )?astral (?:attacks?|combat)",
@@ -549,7 +567,8 @@ _TEST_WORDS = [  # (pattern, target): the test types a phrase names, longest fir
         "test:magic-resistance",
     ),
     (r"resist(?:ing|s)? (?:all |any )?[a-z]+(?:-based)? (?:attacks?|damage)", "test:damage-resistance"),
-    # (the two Matrix actions the data knows, CRB pp. 177-178: Edge on a Matrix search, dice for Matrix Perception checks;
+    # (the two Matrix actions the data knows, CRB pp. 177-178: Edge on a Matrix search, dice for Matrix Perception
+    # checks;
     # any other Matrix test stays the family)
     (r"matrix search(?:e?s)?", "action:matrix-search"),
     (r"(?:normal |standard )?matrix perception(?: checks?)?", "action:matrix-perception"),

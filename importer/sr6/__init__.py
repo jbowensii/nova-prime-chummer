@@ -59,7 +59,8 @@ KINDS = {
     "categories": "category",
     "rules": "rule",
 }
-# ordered (a tuple): the loops over it decide which kind's entry comes first (a category, a part name), the same every run
+# ordered (a tuple): the loops over it decide which kind's entry comes first (a category, a part name), the same every
+# run
 ROW_KINDS = (
     "weapons",
     "armor",

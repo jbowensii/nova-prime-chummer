@@ -1,14 +1,16 @@
-"""SR6 effects reader (importer/sr6/effects.py), the whole object (owner direction 2026-10-17): an entry's effects from its
-own block, the links it holds (copy_links), the rules its section or variant states, and the pools the book names apart.
-Every sentence and name is invented, in the books' structure."""
+"""SR6 effects reader (importer/sr6/effects.py), the whole object (owner direction 2026-10-17): an entry's effects from
+its own block, the links it holds (copy_links), the rules its section or variant states, and the pools the book names
+apart. Every sentence and name is invented, in the books' structure."""
 
-import re
 import unittest
 
 from importer.sr6 import effects
 
+# pylint: disable=protected-access
+
 
 def attrs(text, kind=None):
+    """The effect attributes read from `text`."""
     return [a for t, a, _ in effects.read(text, kind) if t == "effect"]
 
 
@@ -22,6 +24,7 @@ def file(kind, tag, rows):
 
 
 def line(xml, eid):
+    """The line of `xml` holding entry `eid`."""
     return next(x for x in xml.splitlines() if f'id="{eid}"' in x)
 
 
@@ -30,7 +33,8 @@ FX = '<effect target="skill:athletics" op="add" value="2"/>'
 
 class SiblingWordsTest(unittest.TestCase):
     def test_a_sentence_opening_with_another_categorys_variant_word_is_not_cut(self):
-        # (`Symbiont (Gain)` of another category must not cut `Gain a +1 …` from a description it has nothing to do with)
+        # (`Symbiont (Gain)` of another category must not cut `Gain a +1 …` from a description it has nothing to do
+        # with)
         files = {
             "augmentations.xml": file(
                 "augmentations",
@@ -41,7 +45,10 @@ class SiblingWordsTest(unittest.TestCase):
                 ],
             )
         }
-        texts = '<sr6:data kind="texts">\n  <text of="augmentations" id="tac">**Tactical:** Gain a +1 dice pool bonus per rating on any defensive tests.</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="augmentations" id="tac">**Tactical:** Gain a +1 dice pool bonus per '
+            "rating on any defensive tests.</text>\n</sr6:data>\n"
+        )
         out, _ = effects.apply(files, texts)
         self.assertIn('target="test:defense"', line(out["augmentations.xml"], "tac"))
 
@@ -66,14 +73,16 @@ class BlockProseTest(unittest.TestCase):
 
     def test_a_label_cut_short_by_the_heading_is_dropped_for_its_whole_printing(self):
         t = effects._block_text(
-            "**Disadvantage:** Cannot gain or spend Edge for\n\nA made-up paragraph of flavor.\n**Disadvantage:** Cannot gain or spend Edge for\nSnoop actions. More words follow here."
+            "**Disadvantage:** Cannot gain or spend Edge for\n\nA made-up paragraph of flavor.\n**Disadvantage:** "
+            "Cannot gain or spend Edge for\nSnoop actions. More words follow here."
         )
         self.assertEqual(t.count("**Disadvantage:**"), 1)
         self.assertIn("Edge for Snoop actions.", t)
 
     def test_a_variant_row_still_reads_its_parents_prose_on_one_line(self):
-        of, intro, prose = effects._sections(
-            '<!-- item {"name": "Zap Thing", "section": "S"} -->\nfirst line of a made-\nup para\nsecond\n<!-- end -->\n'
+        _, _, prose = effects._sections(
+            '<!-- item {"name": "Zap Thing", "section": "S"} -->\nfirst line of a made-\nup para\nsecond\n<!-- end '
+            "-->\n"
         )
         self.assertEqual(
             " ".join(prose["zap thing"].split()).replace("made- up", "madeup"), "first line of a madeup para second"
@@ -83,14 +92,18 @@ class BlockProseTest(unittest.TestCase):
 class OverrideAddedEntriesTest(unittest.TestCase):
     def test_only_the_named_entries_are_read(self):
         files = {"gear.xml": file("gear", "gear", [("a", "", "Alpha", ""), ("b", "", "Beta", "")])}
-        texts = '<sr6:data kind="texts">\n  <text of="gear" id="a">+2 dice on Climbing tests.</text>\n  <text of="gear" id="b">+2 dice on Climbing tests.</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="gear" id="a">+2 dice on Climbing tests.</text>\n  <text of="gear" '
+            'id="b">+2 dice on Climbing tests.</text>\n</sr6:data>\n'
+        )
         out, _ = effects.apply(files, texts, only={("gear", "b")})
         self.assertNotIn("<effect", line(out["gear.xml"], "a"))
         self.assertIn('target="skill:athletics"', line(out["gear.xml"], "b"))
 
     def test_an_entry_closing_the_root_on_its_own_line_is_read_and_keeps_the_root(self):
         files = {
-            "gear.xml": '<sr6:data kind="gear">\n  <gear id="a" source="X" page="1"><name>Alpha</name></gear></sr6:data>'
+            "gear.xml": '<sr6:data kind="gear">\n  <gear id="a" source="X" '
+            'page="1"><name>Alpha</name></gear></sr6:data>'
         }
         texts = '<sr6:data kind="texts">\n  <text of="gear" id="a">+2 dice on Climbing tests.</text>\n</sr6:data>\n'
         out, _ = effects.apply(files, texts)
@@ -131,7 +144,9 @@ class LinkWordsTest(unittest.TestCase):
         )
 
     def test_phrases_that_name_an_entry_the_text_works_as(self):
-        names = lambda t: [a["name"] for _, a, _ in effects.links(t, "qualities")]  # noqa: E731
+        def names(t):
+            return [a["name"] for _, a, _ in effects.links(t, "qualities")]
+
         self.assertEqual(names("This is the same as the Zap Hum quality in the path above."), ["Zap Hum"])
         self.assertEqual(
             names("It functions exactly like the Zap Hum quality (p. 72, SR6), with a twist."), ["Zap Hum"]
@@ -150,7 +165,10 @@ class LinkWordsTest(unittest.TestCase):
             ],
             ["Laser sight", "Smartgun system"],
         )
-        t = "It can function like an off-road tire (with the same modifiers), and also just like a racing tire (again with the same modifiers)."
+        t = (
+            "It can function like an off-road tire (with the same modifiers), and also just like a racing tire (again "
+            "with the same modifiers)."
+        )
         self.assertEqual([a["name"] for _, a, _ in effects.tire_links(t, "gear")], ["Off-Road Tires", "Racing Tires"])
         self.assertEqual(
             [
@@ -165,6 +183,7 @@ class LinkWordsTest(unittest.TestCase):
 
 class CopyLinksTest(unittest.TestCase):
     def srcs(self):
+        """The catalog files of the test's sources, as {source: {file name: xml}}."""
         return {
             "a": {
                 "qualities.xml": file(
@@ -176,7 +195,8 @@ class CopyLinksTest(unittest.TestCase):
                             "a.mine",
                             "",
                             "Zap Mine",
-                            '<effect target="skill:athletics" op="add" value="1"/><link rel="grants" name="Zap Base" kind="qualities" ref="a.base" when="adept"/>',
+                            '<effect target="skill:athletics" op="add" value="1"/><link rel="grants" name="Zap Base" '
+                            'kind="qualities" ref="a.base" when="adept"/>',
                         ),
                         ("a.cross", "", "Zap Cross", '<link rel="as" name="Far Zap" kind="qualities"/>'),
                     ],
@@ -258,7 +278,8 @@ class CopyLinksTest(unittest.TestCase):
                             "a.smart",
                             "",
                             "Zap Smart Tires",
-                            '<link rel="as" name="Zap Off-Road Tires" kind="gear"/><link rel="as" name="Zap Racing Tires" kind="gear"/>',
+                            '<link rel="as" name="Zap Off-Road Tires" kind="gear"/><link rel="as" name="Zap Racing '
+                            'Tires" kind="gear"/>',
                         ),
                     ],
                 )
@@ -343,7 +364,8 @@ class CopyLinksTest(unittest.TestCase):
                             "a.base",
                             "",
                             "Zap Base",
-                            '<effect target="attr:str" op="add" value="R"/><effect target="attr:agi" op="add" value="R^2"/>',
+                            '<effect target="attr:str" op="add" value="R"/><effect target="attr:agi" op="add" '
+                            'value="R^2"/>',
                         ),
                         (
                             "a.mine",
@@ -405,7 +427,8 @@ class SectionAndVariantRulesTest(unittest.TestCase):
             "augmentations.xml": file("augmentations", "augmentation", [("zl", ' type="cyberware"', "Zap Limb", "")])
         }
         regrouped = (
-            '<!-- section {"name": "Cyberlimbs", "section": "Cyberlimbs"} -->\nBasic limbs are installed with all Physical attributes at 2. '
+            '<!-- section {"name": "Cyberlimbs", "section": "Cyberlimbs"} -->\nBasic limbs are installed with all '
+            "Physical attributes at 2. "
             "Each cyberlimb adds one box to the character's Physical Condition Monitor.\n<!-- end -->\n"
             '<!-- item {"name": "Zap Limb", "section": "Cyberlimbs"} -->\n<!-- end -->\n'
         )
@@ -424,9 +447,11 @@ class SectionAndVariantRulesTest(unittest.TestCase):
         }
         regrouped = (
             '<!-- section {"name": "Rockets and Missiles", "section": "Rockets and Missiles"} -->\n'
-            "Missiles are rockets that carry guidance, with sensor packages adding their rating to the attack roll (also reflected in their Attack Rating).\n<!-- end -->\n"
+            "Missiles are rockets that carry guidance, with sensor packages adding their rating to the attack roll "
+            "(also reflected in their Attack Rating).\n<!-- end -->\n"
             '<!-- item {"name": "Zap Rocket", "section": "Rockets and Missiles"} -->\n<!-- end -->\n'
-            '<!-- item {"name": "Missile Variant", "section": "Rockets and Missiles"} -->\n| WEAPON | NOTES |\n|---|---|\n| Missile Variant | +2 to Attack Rating |\n<!-- end -->\n'
+            '<!-- item {"name": "Missile Variant", "section": "Rockets and Missiles"} -->\n| WEAPON | NOTES |\n|---|'
+            "---|\n| Missile Variant | +2 to Attack Rating |\n<!-- end -->\n"
         )
         x = line(effects.apply(files, "", regrouped)[0]["weapons.xml"], "zr")
         self.assertIn(
@@ -473,22 +498,30 @@ class WeakDomainsTest(unittest.TestCase):
         got = {
             a["target"]
             for a in attrs(
-                "Gain 1 point of Armor for each level, which also increases your Defense Rating. Zap Armor is also active on the astral plane."
+                "Gain 1 point of Armor for each level, which also increases your Defense Rating. Zap Armor is also "
+                "active on the astral plane."
             )
         }
         self.assertEqual(got, {"derived:defense", "derived:defense-astral"})
 
     def test_tires_that_give_on_the_road_and_take_off_it_are_the_on_off_pair(self):
-        off = "Fitted for dirt, a zap tire adds +4 Acceleration and +8 Speed Interval off-road. On pavement the same figures turn into penalties (–4 Acceleration, –8 Speed Interval)."
+        off = (
+            "Fitted for dirt, a zap tire adds +4 Acceleration and +8 Speed Interval off-road. On pavement the same "
+            "figures turn into penalties (–4 Acceleration, –8 Speed Interval)."
+        )
         self.assertEqual(effects._road_pairs(off), {"acceleration": "-4/4", "speed-interval": "-8/8"})
-        race = "A zap racing tire gives +4 Acceleration and +8 Speed Interval on-road. Off-road it costs –4 Acceleration and –8 Speed Interval."
+        race = (
+            "A zap racing tire gives +4 Acceleration and +8 Speed Interval on-road. Off-road it costs –4 Acceleration "
+            "and –8 Speed Interval."
+        )
         got = {a["target"]: a["value"] for a in attrs(race, "gear")}
         self.assertEqual(got, {"item:acceleration": "4/-4", "item:speed-interval": "8/-8"})
         self.assertEqual(effects._road_pairs("These tires give +5 Acceleration on the road."), {})
 
     def test_shredders_add_the_vehicles_body(self):
         got = attrs(
-            "Zap treads add the vehicle’s Body to the Attack Rating when ramming small targets, one-half Body if it’s an attack made against a vehicle.",
+            "Zap treads add the vehicle’s Body to the Attack Rating when ramming small targets, one-half Body if it’s "
+            "an attack made against a vehicle.",
             "gear",
         )
         self.assertEqual(
@@ -499,13 +532,19 @@ class WeakDomainsTest(unittest.TestCase):
 
 class ReviewFixesTest(unittest.TestCase):
     def test_an_override_added_entry_keeps_its_own_effects_and_links_and_gains_the_texts_other_targets(self):
-        kids = '<effect target="derived:defense" op="add" value="3"/><link rel="as" kind="augmentations" name="Zap Base" ref="zb"/>'
+        kids = (
+            '<effect target="derived:defense" op="add" value="3"/><link rel="as" kind="augmentations" name="Zap Base" '
+            'ref="zb"/>'
+        )
         files = {
             "augmentations.xml": file(
                 "augmentations", "augmentation", [("zb", "", "Zap Base", ""), ("zt", "", "Transgenic Zap", kids)]
             )
         }
-        texts = '<sr6:data kind="texts">\n  <text of="augmentations" id="zt">+9 to Defense Rating. You gain +2 dice on Climbing tests.</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="augmentations" id="zt">+9 to Defense Rating. You gain +2 dice on '
+            "Climbing tests.</text>\n</sr6:data>\n"
+        )
         out, _ = effects.apply(files, texts, only={("augmentations", "zt")})
         x = line(out["augmentations.xml"], "zt")
         self.assertIn('<effect target="derived:defense" op="add" value="3"/>', x)  # (the override's word for it)
@@ -514,7 +553,9 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertIn('target="skill:athletics" op="add" value="2"', x)
 
     def test_defense_tests_against_astral_attacks_keep_the_plain_pool_unless_the_number_went_to_the_specific_one(self):
-        t = lambda s: [(a["target"], a["value"]) for a in attrs(s)]  # noqa: E731
+        def t(s):
+            return [(a["target"], a["value"]) for a in attrs(s)]
+
         self.assertEqual(t("Gain +1 die on defense tests vs. astral attacks."), [("test:defense-astral", "1")])
         self.assertEqual(
             t("Gain +2 dice on defense tests and +1 die on defense tests against astral attacks."),
@@ -523,13 +564,17 @@ class ReviewFixesTest(unittest.TestCase):
 
     def test_a_see_link_naming_a_whole_book_writes_no_ref(self):
         files = {"qualities.xml": file("qualities", "quality", [("zq", "", "Zapper", "")])}
-        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="zq">Zapper Cost: 8 Karma See Zap Gut, p. 72, Sixth World Zapbook</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="qualities" id="zq">Zapper Cost: 8 Karma See Zap Gut, p. 72, Sixth '
+            "World Zapbook</text>\n</sr6:data>\n"
+        )
         x = line(effects.apply(files, texts)[0]["qualities.xml"], "zq")
         self.assertIn('name="Zap Gut"', x)
         self.assertNotIn("ref=", x)
 
     def test_reader_faults_behind_junk_copies(self):
-        # (a grant on a condition keeps it; a required companion is no grant; `boosts and actions` names no action `and`)
+        # (a grant on a condition keeps it; a required companion is no grant; `boosts and actions` names no action
+        # `and`)
         got = effects.links("Users who reach level five of the Zap quality also gain the Uncouth quality.", "gear")
         self.assertEqual(got[0][1]["when"], "who reach level five of the Zap quality")
         self.assertEqual(
@@ -547,7 +592,8 @@ class ReviewFixesTest(unittest.TestCase):
         got = [
             (a["target"], a["op"], a.get("spec"))
             for a in attrs(
-                "You gain +1 die for any Perception (Hearing) tests. You additionally gain a bonus point of Edge that must be spent on that test; otherwise it is lost."
+                "You gain +1 die for any Perception (Hearing) tests. You additionally gain a bonus point of Edge that "
+                "must be spent on that test; otherwise it is lost."
             )
         ]
         self.assertEqual(got, [("skill:perception", "add", "Hearing"), ("skill:perception", "edge", "Hearing")])
@@ -564,7 +610,8 @@ class ReviewFixesTest(unittest.TestCase):
             "test:attr-mag",
         )
         got = attrs(
-            "You only pay half the required Edge cost for the following:\n• Bootleg Turn (1 Karma)\n• Escape! (2 Edge)\n• Double Down (1,2, or 3 Edge only on Zap [Gunnery] tests)",
+            "You only pay half the required Edge cost for the following:\n• Bootleg Turn (1 Karma)\n• Escape! (2 Edge)"
+            "\n• Double Down (1,2, or 3 Edge only on Zap [Gunnery] tests)",
             "qualities",
         )
         self.assertEqual(
@@ -575,14 +622,17 @@ class ReviewFixesTest(unittest.TestCase):
 
 class BatchTwoTest(unittest.TestCase):
     def fx(self, text, kind="qualities"):
+        """[(target, op, value)] of the effects read from `text`."""
         return [(a["target"], a["op"], a["value"]) for a in attrs(text, kind)]
 
     def test_edge_reading(self):
-        # (a bonus Edge named for the test before it; the next clause's grant; a ban worded `will not be able to gain any`)
+        # (a bonus Edge named for the test before it; the next clause's grant; a ban worded `will not be able to gain
+        # any`)
         self.assertIn(
             ("skill:perception", "edge", "1"),
             self.fx(
-                "Zap eyes give +1 die on Perception tests. They also gain a bonus point of Edge that must be spent on that test; otherwise it is lost."
+                "Zap eyes give +1 die on Perception tests. They also gain a bonus point of Edge that must be spent on "
+                "that test; otherwise it is lost."
             ),
         )
         self.assertEqual(
@@ -591,7 +641,8 @@ class BatchTwoTest(unittest.TestCase):
         )
         self.assertEqual(
             self.fx(
-                "If an adept wins an Opposed Social test, grant the adept Edge on that roll (to be used only on that roll, else it vanishes).",
+                "If an adept wins an Opposed Social test, grant the adept Edge on that roll (to be used only on that "
+                "roll, else it vanishes).",
                 "adeptpowers",
             ),
             [("test:social", "edge", "1")],
@@ -604,7 +655,8 @@ class BatchTwoTest(unittest.TestCase):
 
     def test_edge_cost_lists(self):
         got = attrs(
-            "You pay half the Edge cost for:\n• Zap Turn (1 Karma)\n• Escape! (2 Edge)\n• Double Down only on Piloting tests (1,2, or 3 Edge)",
+            "You pay half the Edge cost for:\n• Zap Turn (1 Karma)\n• Escape! (2 Edge)\n• Double Down only on Piloting "
+            "tests (1,2, or 3 Edge)",
             "qualities",
         )
         self.assertEqual(
@@ -687,14 +739,18 @@ class BatchTwoTest(unittest.TestCase):
     def test_a_power_focus_adds_its_force_to_magic_tests(self):
         self.assertEqual(
             self.fx(
-                "Foci that temporarily increase your effective Magic rating add to your Sorcery dice pools whenever you use that skill.",
+                "Foci that temporarily increase your effective Magic rating add to your Sorcery dice pools whenever "
+                "you use that skill.",
                 "gear",
             ),
             [("test:attr-mag", "add", "R")],
         )  # (one effect: the Sorcery pool is among the tests where Magic is involved)
 
     def test_a_foundation_armor_costs_acceleration_and_top_speed(self):
-        s = "Every two points of zap armor added over the original armor rating reduces the vehicle’s Acceleration by one meter per combat round."
+        s = (
+            "Every two points of zap armor added over the original armor rating reduces the vehicle’s Acceleration by "
+            "one meter per combat round."
+        )
         self.assertEqual(effects._armor_performance(s, "zap armor")[1]["value"], "-R*0.5")
         self.assertEqual(
             effects._armor_performance(
@@ -705,7 +761,10 @@ class BatchTwoTest(unittest.TestCase):
         self.assertIsNone(effects._armor_performance(s, "other armor"))
 
     def test_the_add_ons_effect_is_not_the_hosts(self):
-        t = "**Note:** Zap-brace add-on increases the Near and Medium Attack Ratings by 1. The brace is an after-market part."
+        t = (
+            "**Note:** Zap-brace add-on increases the Near and Medium Attack Ratings by 1. The brace is an "
+            "after-market part."
+        )
         self.assertEqual(effects.less_accessory(t, "Zap Gun zap-brace"), "The brace is an after-market part.")
         files = {
             "weapons.xml": file(
@@ -742,8 +801,10 @@ class BatchTwoTest(unittest.TestCase):
             )
         }
         texts = (
-            '<sr6:data kind="texts">\n  <text of="weapons" id="ll">This accessory can only be used at | Close and Near ranges; hidden.</text>\n'
-            '  <text of="weapons" id="lh">This laser operates across all ranges but needs magnification.</text>\n</sr6:data>\n'
+            '<sr6:data kind="texts">\n  <text of="weapons" id="ll">This accessory can only be used at | Close and Near '
+            "ranges; hidden.</text>\n"
+            '  <text of="weapons" id="lh">This laser operates across all ranges but needs '
+            "magnification.</text>\n</sr6:data>\n"
         )
         out = effects.apply(files, texts)[0]["weapons.xml"]
         self.assertIn('value="1,1,0,0,0"', line(out, "ll"))
@@ -761,7 +822,8 @@ class BatchTwoTest(unittest.TestCase):
             )
         }
         regrouped = (
-            '<!-- section {"name": "Zap Gun Blast Shields", "section": "Zap Gun Blast Shields"} -->\n**Notes:** Small blast shields provide +1 to Defense Rating '
+            '<!-- section {"name": "Zap Gun Blast Shields", "section": "Zap Gun Blast Shields"} -->\n**Notes:** Small '
+            "blast shields provide +1 to Defense Rating "
             "for each shield (max +2). Large blast shields provide +2 (max +4) for each shield.\n<!-- end -->\n"
         )
         out = effects.apply(files, "", regrouped)[0]["weapons.xml"]
@@ -803,6 +865,7 @@ class ReviewFollowUpsTest(unittest.TestCase):
     """The second review's findings (2026-10-17), each a sentence invented in the books' shape."""
 
     def fx(self, text, kind="qualities"):
+        """[(target, op, value)] of the effects read from `text`."""
         return [(a["target"], a["op"], a["value"]) for a in attrs(text, kind)]
 
     def test_natural_weapon_words_are_read_per_sentence_and_a_wielded_weapon_is_not_natural(self):
@@ -819,7 +882,9 @@ class ReviewFollowUpsTest(unittest.TestCase):
         )
 
     def test_a_requirement_is_no_grant_and_the_benefits_of_a_quality_are(self):
-        names = lambda t: [a["name"] for _, a, _ in effects.links(t, "qualities")]  # noqa: E731
+        def names(t):
+            return [a["name"] for _, a, _ in effects.links(t, "qualities")]
+
         self.assertEqual(names("If you do not already have the Zap Hood quality, you cannot take this."), [])
         self.assertEqual(names("Karma 5 if you already have the Zap Home quality."), [])
         self.assertEqual(names("You must have the Zap Hood quality."), [])
@@ -857,7 +922,8 @@ class ReviewFollowUpsTest(unittest.TestCase):
                             "a.mine",
                             "",
                             "Zap Mine",
-                            '<link rel="as" name="Zap Base" kind="qualities" ref="a.base"/><link rel="as" name="Zap Twin" kind="qualities" ref="a.twin"/>',
+                            '<link rel="as" name="Zap Base" kind="qualities" ref="a.base"/><link rel="as" name="Zap '
+                            'Twin" kind="qualities" ref="a.twin"/>',
                         ),
                     ],
                 )
@@ -890,7 +956,8 @@ class ReviewFollowUpsTest(unittest.TestCase):
                             "Zap Base",
                             '<effect target="item:ar" op="add" value="1" switch="conditional" when="on a firearm"/>'
                             '<effect target="item:ar" op="add" value="2" switch="conditional" when="on a blade"/>'
-                            '<effect target="item:ar" op="add" value="3" switch="wireless"/><effect target="item:ar" op="add" value="4"/>',
+                            '<effect target="item:ar" op="add" value="3" switch="wireless"/><effect target="item:ar" '
+                            'op="add" value="4"/>',
                         ),
                         ("a.mine", "", "Zap Mine", '<link rel="as" name="Zap Base" kind="qualities" ref="a.base"/>'),
                     ],
@@ -906,9 +973,11 @@ class ReviewFollowUpsTest(unittest.TestCase):
         )  # (a wireless one and a plain one)
 
     def test_a_condition_that_runs_on_to_the_tests_it_applies_to_is_still_a_condition(self):
-        # (14 words of clause now end in `tests`: `when they use the zap metamagic on Drain Resistance tests` is not just which test)
+        # (14 words of clause now end in `tests`: `when they use the zap metamagic on Drain Resistance tests` is not
+        # just which test)
         a = attrs(
-            "A zap focus adds its Force to the initiate grade when they use the zap metamagic on Drain Resistance tests.",
+            "A zap focus adds its Force to the initiate grade when they use the zap metamagic on Drain Resistance "
+            "tests.",
             "gear",
         )
         self.assertEqual(
@@ -972,7 +1041,8 @@ class ReviewFollowUpsTest(unittest.TestCase):
 
     def test_a_condition_is_not_cut_inside_a_parenthesis_and_does_not_swallow_the_penalty_after_it(self):
         a = attrs(
-            "They gain a point of situational Edge when they try to calm a crowd or defuse a standoff (a single point per attempt, whatever happens next).",
+            "They gain a point of situational Edge when they try to calm a crowd or defuse a standoff (a single point "
+            "per attempt, whatever happens next).",
             "qualities",
         )
         self.assertEqual(a[0]["when"], "when they try to calm a crowd or defuse a standoff")
@@ -984,8 +1054,10 @@ class ReviewFollowUpsTest(unittest.TestCase):
 
     def test_a_distinct_clause_is_never_dropped_as_a_repeat(self):
         t = (
-            "Zap Counterspelling foci add their Force to a Counterspelling attempt, as long as the countered spell shares the focus category. "
-            "Zap Spellcasting foci add their Force to your Spellcasting pool as long as the spell shares the focus category."
+            "Zap Counterspelling foci add their Force to a Counterspelling attempt, as long as the countered spell "
+            "shares the focus category. "
+            "Zap Spellcasting foci add their Force to your Spellcasting pool as long as the spell shares the focus "
+            "category."
         )
         a = [x for x in attrs(t, "gear") if x["target"] == "skill:sorcery"]
         self.assertEqual(
@@ -994,7 +1066,11 @@ class ReviewFollowUpsTest(unittest.TestCase):
         )
 
     def test_a_list_of_tests_before_a_bonus_edge_keeps_every_test_of_the_list(self):
-        t = "When used as part of a Zap (Etiquette) test, users make one of these: a Con (Disguise) test to look different, a Stealth (Sneaking) test to avoid scanners, or a Con (Impersonation) test to pose as someone, gain a point of Edge."
+        t = (
+            "When used as part of a Zap (Etiquette) test, users make one of these: a Con (Disguise) test to look "
+            "different, a Stealth (Sneaking) test to avoid scanners, or a Con (Impersonation) test to pose as someone, "
+            "gain a point of Edge."
+        )
         self.assertEqual(
             sorted((x["target"], x.get("spec")) for x in attrs(t, "gear")),
             [("skill:con", "Disguise, Impersonation"), ("skill:influence", "Etiquette"), ("skill:stealth", "Sneaking")],
@@ -1017,7 +1093,11 @@ class ReviewFollowUpsTest(unittest.TestCase):
 
     def test_a_bonus_to_a_thing_the_reader_does_not_know_takes_no_attribute_from_further_on(self):
         # (Harvester: `+2 to base movement rates … -1 Logic …` read as +2 Logic, Charisma, Sorcery and the unarmed AR)
-        t = "Gained Powers: Sapience, +1 initiative die, +2 to base movement rates Weaknesses: Allergy (Silver), -1 Logic, -1 Charisma Attack: Claws 5P, Attack Rating 10 Notes: a zapper may use (Charisma + 1) x 2 in place of Sorcery + Magic for that spell."
+        t = (
+            "Gained Powers: Sapience, +1 initiative die, +2 to base movement rates Weaknesses: Allergy (Silver), -1 "
+            "Logic, -1 Charisma Attack: Claws 5P, Attack Rating 10 Notes: a zapper may use (Charisma + 1) x 2 in place "
+            "of Sorcery + Magic for that spell."
+        )
         self.assertEqual(
             self.fx(t), [("derived:initiative-dice", "add", "1"), ("attr:log", "add", "-1"), ("attr:cha", "add", "-1")]
         )

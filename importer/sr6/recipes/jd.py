@@ -29,13 +29,14 @@ _LABELS = {"Active Skills": "Skills"}
 
 
 def match(meta, md_head):
+    """How well a book matches this recipe, 0 to 1."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
     return 0.9 if re.search(r"johnson\s*.\s*dex", hay, re.I) else 0.0
 
 
-def kind(chapter, b, parent2):
+def kind(_chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     return ("contacts", None) if b.stats and "Archetype" in b.labels else (None, None)
 
@@ -93,4 +94,5 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
+    """The catalog this recipe reads from a regrouped book."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

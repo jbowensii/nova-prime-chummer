@@ -1,11 +1,13 @@
-"""Anarchy's effects read as general rules (importer/effects.py, the Mapper's tests() and extended readings, item effects,
-references): made-up sentences in the books' phrasing."""
+"""Anarchy's effects read as general rules (importer/effects.py, the Mapper's tests() and extended readings, item
+effects, references): made-up sentences in the books' phrasing."""
 
 import unittest
 from unittest import mock
 
 from importer import effects as fx
 from importer.recipes import amps, dhsa
+
+# pylint: disable=redefined-outer-name  # locals named fx shadow the effects module alias
 
 SPECS = {
     ("perception", "physical"): "perception.physical",
@@ -16,6 +18,7 @@ SPECS = {
 
 
 def kinds(sentence, entry=""):
+    """The (rule, param, value, state) rules read from a sentence."""
     return [(r, p, v, st) for r, p, v, _, st in amps.Mapper(SPECS).rules(sentence, entry)]
 
 
@@ -165,7 +168,9 @@ class MapperTest(unittest.TestCase):
         self.assertEqual(amps.unpriced_rows("made-up-drug", 3, fx)[0]["effects"], "rr-spec:perception.physical")
 
     def test_one_init(self):
-        f = lambda r, p=None: (r, p, None, None)  # noqa: E731
+        def f(r, p=None):
+            return (r, p, None, None)
+
         self.assertEqual(
             amps.one_init([f("init-1"), f("init-realm", "vr"), f("init-1"), f("init-realm", "vr")]),
             [f("init-1"), f("init-realm", "vr")],
@@ -211,7 +216,8 @@ class ItemsAndReferencesTest(unittest.TestCase):
     def test_references(self):
         lines = [
             '  <amp id="cat-sight" type="quality"><name>Cat sight</name><narrative></narrative></amp>',
-            '  <item id="spell-glow" kind="spell"><name>Glow</name><effect ref="advantage" param="influence"/><text></text></item>',
+            '  <item id="spell-glow" kind="spell"><name>Glow</name><effect ref="advantage" param="influence"/><text>'
+            "</text></item>",
             '  <item id="spell-glimmer" kind="spell"><name>Glimmer</name><text></text></item>',
             '  <amp id="puppet" type="quality"><name>Puppet</name><narrative></narrative></amp>',
         ]

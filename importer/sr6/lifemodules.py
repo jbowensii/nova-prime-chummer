@@ -152,6 +152,7 @@ def _module_grants(name, text, page, report):
             continue
         if it.startswith("+"):
             if c := _choice(it, name, page, report):
+                # pylint: disable-next=unsubscriptable-object  # (c is the (points, options) pair, never None here)
                 kids.append(("choice", {"kind": "mixed", "points": c[0], "options": " ".join(c[1])}, None))
             continue
         if m := re.match(r"Resources:\s*\+?([\d,]+)(?:\s*(?:nuyen|¥))?", it):  # (an errata's `Resources: +75,000`)
@@ -202,6 +203,7 @@ def _opening_grants(text):
 
 
 def lifemodule(cat, stage, name, text, page):
+    """The life module entry of a stage (`cat`, `stage`) printed under `name`, with its text and page."""
     req = None
     if m := _ONLY.search(name):
         req, name = REQUIRES.get(m.group(1).lower()), _ONLY.sub("", name).strip()
@@ -283,7 +285,10 @@ def modules(bs):
         if at is not None:
             lines, page, on = lines + [""] + text[at:], page or b.page, True
     out, cur, name, at = [], [], [], 0
-    pg = lambda: getattr(lines[at], "page", 0) or page  # noqa: E731  (the module's title line's page)
+
+    def pg():
+        return getattr(lines[at], "page", 0) or page  # (the module's title line's page)
+
     i = 0
     while i < len(lines):
         s = _unbold(lines[i])

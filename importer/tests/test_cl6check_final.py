@@ -12,6 +12,7 @@ from tools.cl6check import reader
 
 
 def result(cid, name, our_id="", kind="gear", how="exact", diffs=(), src="gz"):
+    """One comparison result row."""
     return {
         "src": src,
         "kind": kind,
@@ -27,10 +28,12 @@ def result(cid, name, our_id="", kind="gear", how="exact", diffs=(), src="gz"):
 
 
 def diff(field, cl6, ours, cls="b", pdf="ours", why="differs"):
+    """One field difference of a result."""
     return {"field": field, "cl6": cl6, "ours": ours, "class": cls, "pdf": pdf, "why": why}
 
 
 def data():
+    """Sample entries and results for the final analysis."""
     entries = [
         {"src": "gz", "kind": "gear", "id": "gz.widget", "name": "Widget", "found": {}, "found_at": {}},
         {
@@ -142,6 +145,8 @@ def data():
 
 
 class FinalAnalysis(unittest.TestCase):
+    """The final analysis lists."""
+
     def test_lists(self):
         l1, l1b, l2, opened = fa.lists(data())
         groups = sorted((x["group"], x["id"]) for x in l1)

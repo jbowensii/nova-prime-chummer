@@ -29,6 +29,7 @@ ROWS = {
 
 
 def need(**kw):
+    """A character-need record for the fit check; keyword arguments override the defaults."""
     base = {
         "meta": "Pixie",
         "raised": set(),
@@ -58,8 +59,8 @@ class FitTest(unittest.TestCase):
 
     def test_the_letters_that_overspend_least(self):
         """A mundane pixie with 6 attribute ranks, 4 skill ranks and 650 nuyen of things: the karma covers what the rows
-        don't (nothing left over), and of the assignments that overspend nothing the one leaving the printed 50 nuyen wins
-        (the first in letter order on a tie)."""
+        don't (nothing left over), and of the assignments that overspend nothing the one leaving the printed 50 nuyen
+        wins (the first in letter order on a tie)."""
         n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 4, "agi": 4, "edg": 1}, skills=[(4, 0)], nuyen=650, left=50)
         got = fit.fit(n, ROWS, CS)
         self.assertEqual(
@@ -79,7 +80,7 @@ class FitTest(unittest.TestCase):
             meta="Gnoll", magic="full", raised={"bod"}, attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "edg": 3, "mag": 4}
         )
         rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "CDABE")}
-        score, got = fit.spend(n, rows, CS)
+        _, got = fit.spend(n, rows, CS)
         self.assertEqual(
             (got["attrs"]["mag"], got["attrs"]["edg"], got["attrs"]["bod"]), ([0, 1, 0], [0, 2, 0], [2, 0, 0])
         )
@@ -102,9 +103,9 @@ class FitTest(unittest.TestCase):
         self.assertEqual((got[0]["bod"][1], got[0]["str"][1]), (3, 0))
 
     def test_past_the_pools_the_cheapest_ranks_are_karma(self):
-        """2 attribute points for 4 ranks: the karma goes on the lowest ratings (CHA 2, then LOG 2), each rank its rating
-        times the per-rank price; a skill past its points likewise; a specialization takes a skill point left over, else
-        karma (never a rank moved to karma to make room: a rank costs at least as much)."""
+        """2 attribute points for 4 ranks: the karma goes on the lowest ratings (CHA 2, then LOG 2), each rank its
+        rating times the per-rank price; a skill past its points likewise; a specialization takes a skill point left
+        over, else karma (never a rank moved to karma to make room: a rank costs at least as much)."""
         n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "log": 2, "cha": 2}, skills=[(3, 1), (1, 1)])
         rows = {c: {"metas": {"pixie": 1}, "attributes": 2, "skills": 3, "letter": "Z"} for c in fit.COLUMNS}
         score, got = fit.spend(n, rows, CS)
@@ -121,8 +122,8 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(n, rows, CS)[0][1], 0)  # 16 + one spec 6: 22
 
     def test_sum_to_ten_when_no_priority_assignment_fits(self):
-        """Letters may repeat under Sum-to-Ten (values from the settings, adding up to at most the target): taken only when
-        every priority assignment overspends and it overspends less; the build says which method."""
+        """Letters may repeat under Sum-to-Ten (values from the settings, adding up to at most the target): taken only
+        when every priority assignment overspends and it overspends less; the build says which method."""
         n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 5, "agi": 5, "rea": 3}, skills=[(5, 0), (5, 0)])
         s10 = {
             **CS,
@@ -199,7 +200,8 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(broke, rows, cs)[1]["karmaToNuyen"], 40)
 
     def test_an_expertise_takes_a_skill_point_left_else_karma(self):
-        """An expertise takes skillPointsExpertise points still left (budgets.ts skillSpend), else its advancement Karma."""
+        """An expertise takes skillPointsExpertise points still left (budgets.ts skillSpend), else its advancement
+        Karma."""
         cs = {**CS, "skillPointsExpertise": 1.0, "advance.expertise": 5.0}
         rows = {c: {"metas": {"pixie": 1}, "attributes": 0, "skills": 5, "letter": "Z"} for c in fit.COLUMNS}
         n = need(skills=[(3, 1, 1)])
@@ -208,8 +210,8 @@ class FitTest(unittest.TestCase):
         self.assertEqual(fit.spend(n, rows, cs)[1]["karmaLeft"], 25)  # no point left for it: 5 Karma
 
     def test_settings_resolved_as_the_app_does(self):
-        """fit.resolve (creation.ts runnerRules): one level of play (a runner's own first), a nested rule whose parent is
-        off left out, a level's values in place of the ones it replaces, a house rule's number (made-up values)."""
+        """fit.resolve (creation.ts runnerRules): one level of play (a runner's own first), a nested rule whose parent
+        is off left out, a level's values in place of the ones it replaces, a house rule's number (made-up values)."""
         cs = {
             "sumToTenTarget": 10.0,
             "levelStreet": "true",

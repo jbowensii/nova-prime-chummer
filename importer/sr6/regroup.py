@@ -30,6 +30,8 @@ _UPPER = re.compile(r"[A-Z]")
 
 @dataclass
 class Block:
+    """One block of a regrouped book: an item row or a section, with its labels and body."""
+
     type: str  # "item" | "section"
     name: str
     chapter: str
@@ -56,6 +58,7 @@ class Block:
 
 
 def norm(name, aliases=None):
+    """A name folded to its comparison key: accents, quotes and punctuation dropped, aliases applied."""
     s = unicodedata.normalize("NFKD", name)
     s = "".join(c for c in s if not unicodedata.combining(c)).lower().replace("&", " and ")
     s = re.sub(r"['‘’\"“”]", "", s)
@@ -144,6 +147,7 @@ def alt_names(name):
 
 
 def table_cells(line):
+    """The stripped cell texts of one markdown table row."""
     return [c.strip() for c in line.strip()[1:-1].split("|")]
 
 
@@ -170,6 +174,7 @@ class _PLine(str):
 
 
 def pline(v, page):
+    """A line of text carrying the page it came from."""
     x = _PLine(v)
     x.page = page
     return x
@@ -338,6 +343,7 @@ def _elements(md):
             if m is not None and len(rows) - m <= 3 and all(not all(c.strip() for c in r) for r in rows[m + 1 :]):
                 notes = [" ".join(" ".join(c.strip() for c in r if c.strip()) for r in rows[m:])]
                 rows = rows[:m]
+            # pylint: disable=unsubscriptable-object  # prev is None only when out is empty, and is tested first
             prev = out[-1] if out else None
             title = out[-2][2][1] if prev and len(out) > 1 and out[-2][0] == "h" else ""
             heads = {k for e in out if e[0] == "h" for k in keys(e[2][1])}
@@ -357,6 +363,7 @@ def _elements(md):
             out += [("x", page, n) for n in notes]  # (its text: a footnote mark in a cell finds it)
         elif m := _HEADING.match(ln):
             level, text = len(m.group(1)), m.group(2).strip()
+            # pylint: disable=unsubscriptable-object  # prev is None only when out is empty, and is tested first
             prev = out[-1] if out else None
             # a box title wrapped onto a second line: `##### Delta Force` + `##### and Support Rigger`
             if (
@@ -644,7 +651,7 @@ def _interleaves(s, a, b):
     if len(s) != len(a) + len(b):
         return False
     ok = {(0, 0)}
-    for k, ch in enumerate(s, 1):
+    for ch in s:
         ok = {(i + 1, j) for i, j in ok if i < len(a) and a[i] == ch} | {
             (i, j + 1) for i, j in ok if j < len(b) and b[j] == ch
         }
@@ -714,8 +721,9 @@ def _repair_row(header, row):
     """A row the converter set with two cells run into one (`SS(1)—/14/20/22/18(4km)`: the mode and the attack
     ratings), every later cell one column to the left and a stray cell at its end: the run-together cell is split
     where both halves fit their columns' shapes (_COLUMN_SHAPES), the later cells move back into place and the stray
-    one goes. Only when every shaped cell then fits; otherwise the row stays as printed. The converse: the Essence run into
-    the name (`Nonconductive 0.2 | 2(L) | 5,000¥ |`, every later cell one column to the left, the last one empty)."""
+    one goes. Only when every shaped cell then fits; otherwise the row stays as printed. The converse: the Essence run
+    into the name (`Nonconductive 0.2 | 2(L) | 5,000¥ |`, every later cell one column to the left, the last one
+    empty)."""
     if (
         len(row) == len(header) > 3
         and "ESS" in header[1].upper()
@@ -861,7 +869,10 @@ def _products(header, rows, line, title="", heads=frozenset()):
         if own and own != title and set(keys(own)) & heads
         else next((b.split(None, 1)[1] for b in names[1:] if len(b.split()) > 1), "")
     )
-    tag = lambda b: b.split()[0] if len(b.split()) > 1 else b  # noqa: E731
+
+    def tag(b):
+        return b.split()[0] if len(b.split()) > 1 else b
+
     out_h = first + extra
     out = []
     for r in rows:
@@ -915,9 +926,11 @@ class _Unit:
     shared: bool = False  # a box holding a description it shares with other boxes
 
     def has_box(self):
+        """True when the block has a stat set or labelled box lines."""
         return bool(self.stats) or self.box_labels
 
     def has_text(self):
+        """True when the block's own body has prose (not just a footnote)."""
         # (a box's footnote isn't, nor the text from the first line set aside after its labelled lines on: _foreign)
         own = itertools.takewhile(lambda b: not getattr(b, "after", False), self.body)
         return any(isinstance(b, str) and not _FOOTNOTE_LINE.match(b) for b in own)
@@ -990,7 +1003,8 @@ def _is_label(level, text):
     if re.fullmatch(r"[a-z]+[A-Z]{2}\w*", text.strip()):
         return False  # (a one-word name set with a lower-case lead: `rEVOlutionary`; not `rEVOlution Arms Raven`)
     if re.match(r"[a-z]\s+[A-Z][a-z]+(?:\s|$)", text.strip()):
-        return False  # (a lone lower-case letter, then a capitalised word: `x Guide Override`, the converter's split of `xGuide`)
+        # (a lone lower-case letter, then a capitalised word: `x Guide Override`, the converter's split of `xGuide`)
+        return False
     return level > 1 and (not first or first.group().islower())
 
 
@@ -1003,7 +1017,10 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
     units.append(cur)
     mode = "text"  # "box": right after a heading, taking tags, tables and labelled lines
     caption = ""  # the last level-4 heading read as a caption (a box titled with part of it is a box: below)
-    head_name = lambda: next((u.name for u in reversed(units) if u.kind == "item"), "")  # noqa: E731
+
+    def head_name():
+        return next((u.name for u in reversed(units) if u.kind == "item"), "")
+
     variant = ""  # the variant line over the next table of a box
     fresh = False  # nothing taken since the item heading (a "(tags)" heading may follow)
     label = None  # (unit, key) of the labelled line still open for a wrapped value
@@ -1126,7 +1143,11 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
             units.append(cur)
             mode, fresh = "box", cur.kind != "box"
         elif kind == "t":
-            fresh, label = False, None
+            fresh, label = (
+                False,
+                None,
+            )
+            # pylint: disable=attribute-defined-outside-init  # set on the block when it is read, not built
             v.section = section
             if (
                 not v.title
@@ -1203,7 +1224,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # a wrapped value, or the next entry of a label printed alone on its line (`**Weapons:**` over one
                 # weapon a line). Unless under stat tables, a capital after an unbroken line starts the text (but a
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
-                # a stat box has no text after its labels.
+                # a stat box has no text after its labels.  # pylint: disable=unpacking-non-sequence  # label is a (targets, key) pair whenever it is set, and is tested first
                 targets, key = label
                 ahead = [
                     e[2]
@@ -1221,6 +1242,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 elif banded and (
                     explained is label or explaining is not label and _foreign(targets[0][key], last, v, ahead)
                 ):
+                    # pylint: disable=attribute-defined-outside-init  # set on the block when it is read, not built
                     label, v.after = None, True  # (the block's text, not its labelled line's: the box goes on)
                     cur.body.append(v)  # (a being's band in its text too: after shadowtalk)
                     continue
@@ -1268,7 +1290,7 @@ def _merge_boxes(units, aliases, report):
         ks = keys(u.name, aliases)
         cands = [d for d in descs if any(k in ks for nm in alt_names(d.name) for k in keys(nm, aliases))]
         if cands:
-            d = min(cands, key=lambda d: abs(d.pos - u.pos))
+            d = min(cands, key=lambda d, u=u: abs(d.pos - u.pos))
             took.setdefault(id(d), (d, []))[1].append(u)
     for d, boxes in took.values():
         if len(boxes) == 1:
@@ -1533,7 +1555,10 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             # (a row of two words or more the book describes anywhere: `Injector Pen`; one word is a variant's:
             # `Synthetic`, `Obvious` name sections of their own too)
             t.rows = _variants(
-                t.rows, lambda n: found(n) or len(n.split()) > 1 and any(k in described for k in keys(n, aliases))
+                t.rows,
+                lambda n, described=described: found(n)
+                or len(n.split()) > 1
+                and any(k in described for k in keys(n, aliases)),
             )
 
     # each row takes the nearest description with its key that no row with the same name took yet; the widest
@@ -1552,7 +1577,7 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             if not cands and getattr(r, "group", ""):  # (a row under a group header: its group's description, shared)
                 cands = [d for d in found(r.group) if d.name and norm(d.name) == norm(r.group)]
                 k = ""
-            d = min(cands, key=lambda d: abs(d.pos - t.pos)) if cands else None
+            d = min(cands, key=lambda d, t=t: abs(d.pos - t.pos)) if cands else None
             if d:
                 if k:
                     taken.add((id(d), k))
@@ -1606,7 +1631,8 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
                 len(ws) >= 2
                 and abs(t.page - d.page) <= 3
                 and re.search(
-                    rf"\b(?:is|are)\s+(?:an?\s+|the\s+)?(?:(?!(?:with|of|for|to|in|on|all|and|or|by|from|as|that)\b)\w+\s+){{0,2}}{row}\b",
+                    rf"\b(?:is|are)\s+(?:an?\s+|the\s+)?(?:(?!(?:with|of|for|to|in|on|all|and|or|by|from|as|that)\b)"
+                    rf"\w+\s+){{0,2}}{row}\b",
                     first,
                 )
             ):
@@ -1637,7 +1663,10 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             continue
         tabs = {id(t) for t, _ in prev.rows} & {id(t) for t, _ in nxt.rows}
         t = next((t for t, _ in prev.rows if id(t) in tabs and id(t) not in own), None)
-        one = lambda w: w[:-1] if w.endswith("s") and not w.endswith("ss") else w  # noqa: E731
+
+        def one(w):
+            return w[:-1] if w.endswith("s") and not w.endswith("ss") else w
+
         dw = {one(w) for w in norm(d.name).split() if len(w) > 3}
         if (
             t is None
@@ -1653,7 +1682,8 @@ def _chapter(units, aliases, name_headers, report, variants=False, later=frozens
             or re.match(r"(?:if|when|to)\b", text)
             or any(re.search(rf"\b{re.escape(one(norm(r[0])))}s?\b", text) for r in t.rows if r and len(norm(r[0])) > 4)
         ):
-            continue  # (a table title, a one-line note, or a rule about the rows its text names: `Skillsoft Subscriptions`)
+            # (a table title, a one-line note, or a rule about the rows its text names: `Skillsoft Subscriptions`)
+            continue
         r = _Row([d.name] + [""] * (len(t.header) - 1))
         r.unlisted = True
         d.rows.append((t, r))
@@ -1718,7 +1748,10 @@ def _rating_groups(rows, first=None):
     and the name-only row goes; `Rating N` rows with no such row are `<first> (Rating N)` (first: the table's first
     header, `Fuse`). A row named in lower case (`w/helmet`) is a variant of the row above; not a model code (`m60`)."""
     out, group, outer, base = [], first, None, None
-    bare = lambda r: bool(r and r[0] and not any(r[1:]) and not _RATING_ROW.match(r[0]))
+
+    def bare(r):
+        return bool(r and r[0] and not any(r[1:]) and not _RATING_ROW.match(r[0]))
+
     for i, r in enumerate(rows):
         if r and r[0][:1].islower() and not re.match(r"[a-z]+-?\d", r[0]) and out and out[-1][0]:
             base = (
@@ -1910,9 +1943,16 @@ def back_cover(md):
     cover's: the cut starts after it."""
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = [(int(n), [ln for ln in t.splitlines() if ln.strip()]) for n, t in zip(parts[1::2], parts[2::2])]
-    content = lambda ls: any(ln.startswith(("#", "|")) or _LABEL.match(ln) for ln in ls)  # noqa: E731
-    furniture = lambda ls: _COVER.search("\n".join(ls)) and not content(ls)  # noqa: E731
-    letters = lambda ls: sum(c.isalpha() for ln in ls for c in ln)  # noqa: E731
+
+    def content(ls):
+        return any(ln.startswith(("#", "|")) or _LABEL.match(ln) for ln in ls)
+
+    def furniture(ls):
+        return _COVER.search("\n".join(ls)) and not content(ls)
+
+    def letters(ls):
+        return sum(c.isalpha() for ln in ls for c in ln)
+
     cover = next((k for k in range(len(pages) - 1, max(len(pages) - 6, -1), -1) if furniture(pages[k][1])), None)
     if cover is None:
         return None
@@ -2056,6 +2096,7 @@ def _md(header, rows):
 
 
 def render(b):
+    """The regrouped markdown of one block: its meta comment, then its body."""
     meta = {
         "name": b.name,
         "chapter": b.chapter,
@@ -2089,6 +2130,7 @@ _START = re.compile(r"<!-- (item|section) (\{.*\}) -->$")
 
 
 def blocks(text):
+    """The blocks of a regrouped book's text, in order."""
     out, lines, i = [], text.splitlines(), 0
     while i < len(lines):
         m = _START.match(lines[i])

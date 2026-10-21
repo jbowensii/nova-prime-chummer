@@ -240,6 +240,7 @@ def _mods(el):
 
 
 def attrdef(el, ident):
+    """(value, table) of the attrdef `ident` of `el`, else (None, None)."""
     a = next((c for c in _own(el, "attrdef") if c.get("id") == ident), None)
     return (a.get("value"), a.get("table")) if a is not None else (None, None)
 
@@ -394,7 +395,8 @@ CLASS_KINDS = {
 }
 
 
-# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another item's)
+# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another
+# item's)
 KIND_TYPES = {
     "weapons": ("WEAPON_",),
     "armor": ("ARMOR",),
@@ -411,8 +413,9 @@ def fits_kind(kind, cls):
 
 
 def cl6_class(tag, attrs):
-    """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a spell, an
-    ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format/classification.md)."""
+    """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a
+    spell, an ammunition type). Our `class` attribute carries the same string
+    (docs/sr6-data-format/classification.md)."""
     t, s = attrs.get("type") or "", attrs.get("subtype") or ""
     if tag == "itemenhancement":
         return ""  # (an enhancement of an item is no item class: it has no type of its own)

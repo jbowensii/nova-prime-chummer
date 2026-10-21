@@ -1,16 +1,18 @@
-"""Makes the structured-data rows of importer/sr6/overrides/<src>.json that the catalog schema models, from cl6-diffs.csv
-and the Commlink6 jar (owner decision 2026-10-13: where we have no data and the books gave us nothing, Commlink6's value):
+"""Makes the structured-data rows of importer/sr6/overrides/<src>.json that the catalog schema models, from
+cl6-diffs.csv and the Commlink6 jar (owner decision 2026-10-13: where we have no data and the books gave us nothing,
+Commlink6's value):
 
   python -m tools.cl6check.familymap <cl6-diffs.csv> [--jar JAR] [--runs <runs dir>] [--variants] [--dry]
 
-Commlink6's records are keyed (src, kind, id) as the comparer does. With --runs (our catalogs) a row names OUR entry's kind and the
-earlier family rows still valid are kept and widened (a row that landed is no longer a csv difference); stale ones go.
+Commlink6's records are keyed (src, kind, id) as the comparer does. With --runs (our catalogs) a row names OUR entry's
+kind and the earlier family rows still valid are kept and widened (a row that landed is no longer a csv difference);
+stale ones go.
 
 - skill/spec: a weapon's `skill` and `spec` attributes (Commlink6's keys in the books' words: `firearms/pistols_light`
   -> `Firearms`, `Pistols Light`);
 - social: an armor's `social` attribute (`–2`, the books' en dash).
-The other families (slots, variants, relevance, flags, modonly, size/ammo: elements and attributes the data schema does not
-have; choices, requires, effects: a Commlink6 modification has no one-to-one `<effect>`) are not written; see
+The other families (slots, variants, relevance, flags, modonly, size/ammo: elements and attributes the data schema does
+not have; choices, requires, effects: a Commlink6 modification has no one-to-one `<effect>`) are not written; see
 docs/reviews. Rows of an earlier run (`gen`: family) are replaced. Names and keys only."""
 
 import csv
@@ -22,8 +24,11 @@ from importer.sr6.overrides import fit
 from tools.cl6check import canon, ours, reader
 from tools.cl6check.valuemap import OVERRIDES
 
+# pylint: disable=protected-access,consider-using-with  # shares canon's private readers; one-shot read
+
 
 def words(key):
+    """A snake_case family key as capitalised words."""
     return " ".join(w.capitalize() for w in key.split("_"))
 
 
@@ -47,7 +52,8 @@ STRUCTURE = ("slots", "variants", "relevance", "flags", "modonly", "size/ammo", 
 
 
 def structure(rec):
-    """({attribute: value}, [kid]) Commlink6's record gives for the item-structure families (docs/sr6-data-format/kinds.md, Item
+    """({attribute: value}, [kid]) Commlink6's record gives for the item-structure families
+    (docs/sr6-data-format/kinds.md, Item
     structure), in the books' words where it has keys (`MILITARY` -> `Military`)."""
     el, attrs = rec["el"], rec["attrs"]
     sets, kids = {}, []
@@ -78,8 +84,12 @@ def structure(rec):
         for f in fl:
             if (f.text or "").strip():
                 kids.append({"tag": "flag", "text": f.text.strip()})
-    # Commlink6's own rule data, kept as it gives it (never applied by the app): its modifications, prerequisites and picks
-    raw = lambda x: {k: v for k, v in x.attrib.items() if k != "uuid"}  # noqa: E731
+
+    # Commlink6's own rule data, kept as it gives it (never applied by the app): its modifications, prerequisites and
+    # picks
+    def raw(x):
+        return {k: v for k, v in x.attrib.items() if k != "uuid"}
+
     for m in canon._mods(el):
         if m.tag in ("valmod", "checkmod", "itemmod", "allowmod") and m.get("type") != "HOOK":
             kids.append({"tag": "modifier", "attrs": {"kind": m.tag, **raw(m)}})
@@ -102,10 +112,10 @@ def structure(rec):
 
 def merge(old, new, idx, src, variants=False):
     """src's table rows: the hand rows and other generators' rows as they are; the family rows of an earlier run kept
-    (a row that landed is no longer a difference in the csv, so the csv alone never has it again) unless no entry of ours
-    has its id any more (a rename), each filed under OUR entry's kind and widened by a new row of the same entry.
-    a row's old values win (they were reviewed). <variant> kids stay where the old row already landed them; elsewhere none
-    on an entry whose name carries a variant (one item per variant) and, until the owner decides (variants=True,
+    (a row that landed is no longer a difference in the csv, so the csv alone never has it again) unless no entry of
+    ours has its id any more (a rename), each filed under OUR entry's kind and widened by a new row of the same entry.
+    a row's old values win (they were reviewed). <variant> kids stay where the old row already landed them; elsewhere
+    none on an entry whose name carries a variant (one item per variant) and, until the owner decides (variants=True,
     `--variants`), none at all."""
     rows, landed, held = {}, set(), ours.kinds(idx)
     filed = {(x["kind"], x["id"]) for x in old if x.get("gen") == "family"}
@@ -143,6 +153,7 @@ def merge(old, new, idx, src, variants=False):
 
 
 def main(argv):
+    """Build the family map from the Commlink6 jar and our catalogs, and write it to the given path."""
     dry = "--dry" in argv
     jar = argv[argv.index("--jar") + 1] if "--jar" in argv else None
     runs = argv[argv.index("--runs") + 1] if "--runs" in argv else None  # (our catalogs: a row names OUR entry's kind)

@@ -4,6 +4,8 @@ import unittest
 
 from importer.sr6 import catalog, formula as F
 
+# pylint: disable=protected-access
+
 
 class GrammarTest(unittest.TestCase):
     def test_arithmetic_and_rounding(self):
@@ -37,6 +39,7 @@ class ReadTest(unittest.TestCase):
     """Printed value styles -> the grammar (invented prices)."""
 
     def check(self, printed, expr, field="cost", **extra):
+        """Assert that `printed` reads to `expr`, with any extra attributes."""
         got = F.read(printed, field)
         self.assertIsNotNone(got, printed)
         self.assertEqual(got[0], expr, printed)
@@ -106,6 +109,7 @@ class ReadTest(unittest.TestCase):
 
 class ChildrenTest(unittest.TestCase):
     def kids(self, kind, attrs, **kw):
+        """The children the formula reader makes for a row of `kind` with `attrs`."""
         return F.children(kind, attrs, 12, **kw)
 
     def test_per_unit_price(self):
@@ -186,6 +190,7 @@ class CellSplitTest(unittest.TestCase):
     """catalog.Catalog.fields on invented rows: two fields in one cell, a thousands point."""
 
     def fields(self, kind, row):
+        """The fields the crb catalog reads from a one-row block of `kind`."""
         from importer.sr6.recipes import crb
         from importer.sr6.regroup import Block
 

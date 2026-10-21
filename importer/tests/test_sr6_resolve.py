@@ -13,6 +13,7 @@ NS = "urn:chummer-sr6:data:1"
 
 
 def block(name, page=10, header=None, row=None, stats=(), text="", labels=None):
+    """A block named `name` with the given header, row, stats and text."""
     return Block("item", name, "Gear", "Gizmos", "", page, header or [], row, list(stats), "", labels or {}, text, 4)
 
 
@@ -66,9 +67,9 @@ class BookCirclesTest(unittest.TestCase):
         self.assertEqual(search.search_book(self.index, catalog.HEADERS, "gear", e, "rating", own), ("1–4", "text", 39))
 
     def test_the_text_of_the_heading_above_an_item(self):
-        sect = lambda name, page, text, level: Block(
-            "item", name, "Gear", "Soft", "", page, [], None, [], "", {}, text, level
-        )  # noqa: E731
+        def sect(name, page, text, level):
+            return Block("item", name, "Gear", "Soft", "", page, [], None, [], "", {}, text, level)
+
         idx = search.Index(
             [
                 sect("Zorpsofts", 50, "All zorpsofts are available in ratings from 1 to 6.", 4),
@@ -80,17 +81,20 @@ class BookCirclesTest(unittest.TestCase):
             catalog.md_tables,
             shapes.RENAME,
         )
-        find = lambda name: search.search_book(
-            idx, catalog.HEADERS, "gear", {"name": name, "page": 50, "attrs": {}}, "rating", ""
-        )  # noqa: E731
+
+        def find(name):
+            return search.search_book(
+                idx, catalog.HEADERS, "gear", {"name": name, "page": 50, "attrs": {}}, "rating", ""
+            )
+
         self.assertEqual(find("Blinksofts"), ("1–6", "text", 49))  # (printed on the page of the heading above)
         self.assertIsNone(find("Dullsofts"))  # (under Plainsofts, whose text prints no range)
         self.assertEqual(search.text_values("rating", ["Clips come in two styles: rating 1 and rating 2."]), {"1–2"})
 
     def test_a_cap_in_the_items_own_section_beats_the_heading_sentence_above(self):
-        sect = lambda name, page, text, level: Block(
-            "item", name, "Gear", "Soft", "", page, [], None, [], "", {}, text, level
-        )  # noqa: E731
+        def sect(name, page, text, level):
+            return Block("item", name, "Gear", "Soft", "", page, [], None, [], "", {}, text, level)
+
         idx = search.Index(
             [
                 sect("Skillsofts", 50, "All skillsofts are available in ratings from 1 to 6.", 4),
@@ -101,9 +105,12 @@ class BookCirclesTest(unittest.TestCase):
             catalog.md_tables,
             shapes.RENAME,
         )
-        find = lambda name: search.search_book(
-            idx, catalog.HEADERS, "gear", {"name": name, "page": 50, "attrs": {}}, "rating", ""
-        )  # noqa: E731
+
+        def find(name):
+            return search.search_book(
+                idx, catalog.HEADERS, "gear", {"name": name, "page": 50, "attrs": {}}, "rating", ""
+            )
+
         self.assertEqual(find("Zorpsofts"), ("1–4", "text", 50))
         self.assertEqual(
             find("Blinksofts"), ("1–6", "text", 49)
@@ -229,10 +236,12 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 entries=[
                     '<gear id="zza.glim" source="ZZA" page="3" category="x" cost="100"><name>Glim</name>'
-                    '<issue field="avail" code="missing" page="3" searched="book">no availability printed</issue></gear>',
+                    '<issue field="avail" code="missing" page="3" searched="book">no availability '
+                    "printed</issue></gear>",
                     '<gear id="zza.cyberprogram-basic" source="ZZA" page="9" category="software" avail="1" cost="60">'
                     "<name>Cyberprogram, basic</name></gear>",
-                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>',
+                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top '
+                    "(Hardened)</name></gear>",
                 ],
             )
             _book(
@@ -243,9 +252,11 @@ class CorpusTest(unittest.TestCase):
                 bname="Shadowrun: Zorp Beta",
                 custom=custom,
                 entries=[
-                    '<gear id="zzb.glim" source="ZZB" page="7" category="x" avail="3(L)" cost="100"><name>Glim</name></gear>',
+                    '<gear id="zzb.glim" source="ZZB" page="7" category="x" avail="3(L)" '
+                    'cost="100"><name>Glim</name></gear>',
                     # (a newer book's row named like a program type, in no software table: no program's class row)
-                    '<gear id="zzb.basic" source="ZZB" page="9" category="Subscription tier" avail="3" cost="200"><name>Basic</name></gear>',
+                    '<gear id="zzb.basic" source="ZZB" page="9" category="Subscription tier" avail="3" '
+                    'cost="200"><name>Basic</name></gear>',
                 ],
             )
             _write(
@@ -253,9 +264,11 @@ class CorpusTest(unittest.TestCase):
                 f'<?xml version="1.0" encoding="UTF-8"?>\n<sr6:data xmlns:sr6="{NS}" kind="programs" version="1">\n'
                 '  <program id="zzb.peek" source="ZZB" page="8" type="basic"><name>Peek</name>'
                 '<issue field="cost" code="missing" page="8" searched="book">no price printed</issue>'
-                '<issue field="avail" code="missing" page="8" searched="book">no availability printed</issue></program>\n'
+                '<issue field="avail" code="missing" page="8" searched="book">no availability '
+                "printed</issue></program>\n"
                 '  <program id="zzb.void" source="ZZB" page="8" type="weird"><name>Void</name>'
-                '<issue field="cost" code="missing" page="8" searched="book">no price printed</issue></program>\n</sr6:data>\n',
+                '<issue field="cost" code="missing" page="8" searched="book">no price '
+                "printed</issue></program>\n</sr6:data>\n",
             )
             _book(
                 lib,
@@ -317,7 +330,8 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 sha="f" * 64,
                 entries=[
-                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'
+                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top '
+                    "(Hardened)</name></gear>"
                 ],
             )
             _book(
@@ -364,9 +378,11 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 sha=sha,
                 entries=[
-                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>',
+                    '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top '
+                    "(Hardened)</name></gear>",
                     '<gear id="zza.sleek" source="ZZA" page="20" category="x" cost="50"><name>Spin Top (Sleek)</name>'
-                    '<issue field="avail" code="missing" page="20" searched="book">no availability printed</issue></gear>',
+                    '<issue field="avail" code="missing" page="20" searched="book">no availability '
+                    "printed</issue></gear>",
                 ],
             )
             _book(
@@ -401,7 +417,8 @@ class CorpusTest(unittest.TestCase):
                         custom=custom,
                         sha=sha,
                         entries=[
-                            '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin Top (Hardened)</name></gear>'
+                            '<gear id="zza.wobble" source="ZZA" page="20" category="x" avail="8" cost="50"><name>Spin '
+                            "Top (Hardened)</name></gear>"
                         ],
                     )
                     resolve.corpus(books, sources={"ZZA": "2019-08"})
@@ -452,12 +469,17 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 kind="augmentations",
                 entries=[
-                    '<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" essence="0.3" avail="9" cost="900">'
-                    '<name>Ziplenses (Rating 2)</name><formula field="cost">tier(R; 2: 900; 3: 1200)</formula></augmentation>',
-                    '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" essence="0.4" avail="12" cost="1200">'
+                    '<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" essence="0.3" avail="9" '
+                    'cost="900">'
+                    '<name>Ziplenses (Rating 2)</name><formula field="cost">tier(R; 2: 900; 3: 1200)'
+                    "</formula></augmentation>",
+                    '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" essence="0.4" avail="12" '
+                    'cost="1200">'
                     "<name>Ziplenses (Rating 3)</name></augmentation>",
-                    '<augmentation id="zza.hummer" source="ZZA" page="41" rating="1-3" avail="Rating x 2" cost="Rating x 500">'
-                    '<name>Hummer</name><formula field="cost">R*500</formula><formula field="avail">R*2</formula></augmentation>',
+                    '<augmentation id="zza.hummer" source="ZZA" page="41" rating="1-3" avail="Rating x 2" cost="Rating '
+                    'x 500">'
+                    '<name>Hummer</name><formula field="cost">R*500</formula><formula '
+                    'field="avail">R*2</formula></augmentation>',
                 ],
             )
             _book(
@@ -520,8 +542,10 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 kind="augmentations",
                 entries=[
-                    '<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" avail="4"><name>Ziplenses (Rating 3)</name></augmentation>',
-                    '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" avail="5"><name>Ziplenses (Rating 4)</name></augmentation>',
+                    '<augmentation id="zza.ziplenses-rating-2" source="ZZA" page="40" avail="4"><name>Ziplenses '
+                    "(Rating 3)</name></augmentation>",
+                    '<augmentation id="zza.ziplenses-rating-3" source="ZZA" page="40" avail="5"><name>Ziplenses '
+                    "(Rating 4)</name></augmentation>",
                 ],
             )
             _book(
@@ -567,9 +591,12 @@ class CorpusTest(unittest.TestCase):
                 md=md,
                 kind="augmentations",
                 entries=[
-                    '<augmentation id="zza.glowsymbionts-mender" source="ZZA" page="10" cost="10"><name>Glowsymbionts (Mender)</name></augmentation>',
-                    '<augmentation id="zza.zorp-zqi" source="ZZA" page="10" cost="20"><name>Zorp Enhancement (ZQI)</name></augmentation>',
-                    '<augmentation id="zza.zorp-alpha-zap" source="ZZA" page="10" cost="30"><name>Zorp Enhancement (Alpha Zap)</name></augmentation>',
+                    '<augmentation id="zza.glowsymbionts-mender" source="ZZA" page="10" cost="10"><name>Glowsymbionts '
+                    "(Mender)</name></augmentation>",
+                    '<augmentation id="zza.zorp-zqi" source="ZZA" page="10" cost="20"><name>Zorp Enhancement (ZQI)'
+                    "</name></augmentation>",
+                    '<augmentation id="zza.zorp-alpha-zap" source="ZZA" page="10" cost="30"><name>Zorp Enhancement '
+                    "(Alpha Zap)</name></augmentation>",
                 ],
             )
             n = resolve.corpus([(os.path.join(lib, "a"), custom)], sources={"ZZA": "2020-01"})
@@ -613,9 +640,12 @@ class CorpusTest(unittest.TestCase):
                 custom=custom,
                 md=md,
                 entries=[
-                    '<gear id="zza.glow-plating" source="ZZA" page="70" category="x" rating="1–6"><name>Glow Plating</name></gear>',
-                    '<gear id="zza.hush-skin-level-1" source="ZZA" page="71" category="x"><name>Hush Skin (Level 1)</name></gear>',
-                    '<gear id="zza.hush-skin-level-2" source="ZZA" page="71" category="x"><name>Hush Skin (Level 2)</name></gear>',
+                    '<gear id="zza.glow-plating" source="ZZA" page="70" category="x" rating="1–6"><name>Glow '
+                    "Plating</name></gear>",
+                    '<gear id="zza.hush-skin-level-1" source="ZZA" page="71" category="x"><name>Hush Skin (Level 1)'
+                    "</name></gear>",
+                    '<gear id="zza.hush-skin-level-2" source="ZZA" page="71" category="x"><name>Hush Skin (Level 2)'
+                    "</name></gear>",
                     '<gear id="zza.zap-plate" source="ZZA" page="72" category="x"><name>Zap Plate</name></gear>',
                 ],
             )

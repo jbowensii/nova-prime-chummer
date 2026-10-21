@@ -1,5 +1,5 @@
-"""run --reuse (Books → Re-import all): a book folder holding only its PDF (and its upload record) imports from scratch; a
-re-import after that keeps book.md when the same file was converted by the same converter, and converts again when the
+"""run --reuse (Books → Re-import all): a book folder holding only its PDF (and its upload record) imports from scratch;
+a re-import after that keeps book.md when the same file was converted by the same converter, and converts again when the
 PDF or the converter changed. Made-up PDF only (minipdf)."""
 
 import io
@@ -19,6 +19,7 @@ from importer.tests.minipdf import two_page_pdf
 
 
 def book_with_pdf_only():
+    """A made-up library book holding only its PDF; (book folder, custom folder)."""
     root = tempfile.mkdtemp()
     book, custom = os.path.join(root, "library", "b1"), os.path.join(root, "custom")
     os.makedirs(book)
@@ -31,6 +32,7 @@ def book_with_pdf_only():
 
 
 def run(book, custom, *flags):
+    """Run the importer's `run` command with `--reuse` on `book`, its output discarded."""
     with redirect_stdout(io.StringIO()):
         return main(["run", book, "--custom", custom, "--reuse", "--file", "made-up.pdf", *flags])
 
@@ -73,6 +75,7 @@ class GamesConvertersTest(unittest.TestCase):
         src = Path(conv.__file__).read_text(encoding="utf8")
         self.assertIn('PDF_STEPS_VERSION = ""', src)
         ns = {}
+        # pylint: disable-next=exec-used  # (runs the converter's own source with the one constant changed)
         exec(compile(src.replace('PDF_STEPS_VERSION = ""', 'PDF_STEPS_VERSION = "+pdf2"'), conv.__file__, "exec"), ns)
         self.assertEqual(
             (ns["CONVERTER_VERSION"], ns["SR6_CONVERTER_VERSION"]),
@@ -82,7 +85,8 @@ class GamesConvertersTest(unittest.TestCase):
     def test_the_anarchy_conversion_never_loads_the_sr6_layout(self):
         root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         script = (
-            "import sys, tempfile, os; from importer.convert import convert; from importer.tests.minipdf import two_page_pdf; "
+            "import sys, tempfile, os; from importer.convert import convert; from importer.tests.minipdf import "
+            "two_page_pdf; "
             "d = tempfile.mkdtemp(); p = os.path.join(d, 'x.pdf'); open(p, 'wb').write(two_page_pdf()); "
             "convert(p, os.path.join(d, 'x.md')); print(sorted(m for m in sys.modules if m.startswith('importer.sr6')))"
         )

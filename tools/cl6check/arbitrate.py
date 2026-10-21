@@ -16,6 +16,8 @@ from tools.cl6check.match import n1, n2
 
 
 class Book:
+    """One book's PDF and its page text, read lazily for the arbitration."""
+
     def __init__(self, book_dir):
         self.pdf_path = os.path.join(book_dir, "original.pdf") if book_dir else None
         self.offset, self.pages = 1, None
@@ -51,7 +53,7 @@ class Book:
                 if 0 <= idx < len(self._plumber.pages):
                     t += self._plumber.pages[idx].extract_text() or ""
                     self._plumber.pages[idx].flush_cache()
-            except Exception:  # noqa: BLE001  (a page that won't read settles nothing)
+            except Exception:  # pylint: disable=broad-exception-caught  # (a page that won't read settles nothing)
                 t = t or ""
         self._text[idx] = t
         return t
@@ -70,18 +72,20 @@ class Book:
                 ]
                 pg.flush_cache()
             return self._words[idx]
-        except Exception:  # noqa: BLE001  (a page that won't read settles nothing)
+        except Exception:  # pylint: disable=broad-exception-caught  # (a page that won't read settles nothing)
             return []
 
     def close(self):
+        """Close the PDF readers the book opened."""
         for d in (self._plumber, self._pdfium):
             try:
                 d and d.close()
-            except Exception:  # noqa: BLE001
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
 
 def norm_line(s):
+    """A line of book text with curly quotes and dashes made plain and thousands separators dropped."""
     s = s.replace("’", "'").replace("–", "-").replace("—", "-").replace("¥", "")
     return re.sub(r"(?<=\d),(?=\d{3})", "", s)
 
@@ -106,7 +110,7 @@ def name_window(book, page, name, extra_pages=()):
         lines = book.page_text(p).splitlines()
         hits = [i for i, ln in enumerate(lines) if k in n1(ln)]
         for i in hits:
-            if len(re.findall(r"\d+", lines[i])) >= 2 and n1(lines[i]).find(k) <= 2:
+            if n1(lines[i]).find(k) <= 2 <= len(re.findall(r"\d+", lines[i])):
                 return norm_line(lines[i])
         if hits and fallback is None and p == pages[0]:
             fallback = norm_line(" ".join(lines[hits[0] : hits[0] + 7]))
@@ -114,8 +118,9 @@ def name_window(book, page, name, extra_pages=()):
 
 
 def stat_box(book, page, name, extra_pages=()):
-    """The text of the AVAIL / COST stat box that floats below an item's heading, in the heading's column (Firing Squad's
-    accessories: the box can sit a long way under the heading, and the box above it in the column is the previous item's):
+    """The text of the AVAIL / COST stat box that floats below an item's heading, in the heading's column (Firing
+    Squad's accessories: the box can sit a long way under the heading, and the box above it in the column is the
+    previous item's):
     "2 140" for a box printing 2 and 140¥; None when the heading or a box below it is not found. The heading is the
     largest print of the item's name on its page, the next or the one before."""
     toks = [t for t in (re.sub(r"[^a-z0-9]", "", x) for x in name.lower().split()) if t][
@@ -133,7 +138,7 @@ def stat_box(book, page, name, extra_pages=()):
             if not ws:
                 continue
             heads = []
-            for i, w in enumerate(ws):
+            for w in ws:
                 at, ok = w, re.sub(r"[^a-z0-9]", "", w["text"].lower()) == toks[0]
                 for t in toks[1:] if ok else ():
                     nxt = [x for x in ws if abs(x["top"] - w["top"]) < 3 and 0 <= x["x0"] - at["x1"] < 12]
@@ -148,7 +153,10 @@ def stat_box(book, page, name, extra_pages=()):
             h = max(heads, key=lambda x: x["size"])
             width = next(x["x0"] for x in ws if x["text"] == "|width")
             right = h["x0"] > width * 0.45
-            col = lambda x: (x["x0"] > width * 0.45) == right  # noqa: E731 (two columns)
+
+            def col(x, width=width, right=right):
+                return (x["x0"] > width * 0.45) == right  # (two columns)
+
             labels = sorted(
                 (x for x in ws if x["text"] == "AVAIL" and x["top"] > h["top"] and col(x)), key=lambda x: x["top"]
             )
@@ -169,6 +177,7 @@ def stat_box(book, page, name, extra_pages=()):
 
 
 def name_on_page(book, page, name):
+    """Whether the start of an entry's name is printed on the book's page."""
     key = n2(name)
     return bool(key) and key[: max(6, min(len(key), 14))] in n1(book.page_text(page))
 
@@ -179,6 +188,7 @@ def _tok(x):
 
 
 def token_in(window, token):
+    """Whether `token` is printed in `window`, standing alone; None when there is nothing to compare."""
     if window is None or token in (None, ""):
         return None
     t = _tok(norm_line(str(token))).strip()
@@ -186,9 +196,10 @@ def token_in(window, token):
 
 
 def load_trace(path):
-    """{(src, cl6 id, field): 'only' | 'demote'} from a trace run's cl6-trace.csv ({} without one): where the trace shows
-    Commlink6's value is no book's ('Commlink6-only field': left out like the other Commlink6-only fields), or is not
-    confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer error).
+    """{(src, cl6 id, field): 'only' | 'demote'} from a trace run's cl6-trace.csv ({} without one): where the trace
+    shows Commlink6's value is no book's ('Commlink6-only field': left out like the other Commlink6-only fields), or is
+    not confirmed on the page (a weak link) or our value is the item's own printed row ('demote': never an importer
+    error).
     """
     import csv
 

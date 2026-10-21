@@ -20,6 +20,7 @@ import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from tools.cl6check import canon, fields, match, ours, reader, report
 from tools.cl6check import optional as package
@@ -94,7 +95,7 @@ def overrides():
     out = []
     for f in sorted(glob.glob(os.path.join(OVERRIDES, "*.json"))):
         src = os.path.basename(f).split(".")[0]
-        out += [(src, r) for r in json.load(open(f, encoding="utf8"))]
+        out += [(src, r) for r in json.loads(Path(f).read_text(encoding="utf8"))]
     return out
 
 
@@ -125,7 +126,7 @@ def gather(jar, ours_dir, pdf=True, printings=None):
     cl6 = [canon.canonical(r) for r in recs]
     mine = ours.load(ours_dir)
     results, _, _ = compare(cl6, mine, pdf=pdf)
-    keep = json.load(open(package.KEEP, encoding="utf8"))
+    keep = json.loads(Path(package.KEEP).read_text(encoding="utf8"))
     return {
         "jar": jar.name,
         "ours": os.path.basename(os.path.normpath(ours_dir)),
@@ -214,7 +215,8 @@ def lists(g):
                 x["id"],
                 x["name"],
                 x["page"],
-                f"Commlink6's Misc. (US) dataset, from {x['product'] or 'no product named'}; none of our books prints it",
+                f"Commlink6's Misc. (US) dataset, from {x['product'] or 'no product named'}; none of our books prints "
+                "it",
             )
         else:
             by_name.append(
@@ -300,7 +302,8 @@ def lists(g):
                 r["id"],
                 r["name"],
                 r["page"],
-                f"a table cell Commlink6 made a record of; the book prints it only in {r['our_id'] or 'a row'}'s column",
+                f"a table cell Commlink6 made a record of; "
+                f"the book prints it only in {r['our_id'] or 'a row'}'s column",
             )
     l1b = []
     for r in g["results"]:
@@ -531,6 +534,7 @@ def lists(g):
 
 
 def totals(l1, l1b, l2, opened):
+    """The counts of each list by group and class, and of the open items."""
     t = {f"list 1: {k}": n for k, n in Counter(x["group"] for x in l1).items()}
     t["list 1: total"] = len(l1)
     t["list 1b: total"] = len(l1b)
@@ -570,6 +574,7 @@ def _table(head, rows):
 
 
 def render(g, l1, l1b, l2, opened, t):
+    """The generated section of the analysis document, from the lists and totals."""
     out = [
         START,
         "",
@@ -690,6 +695,7 @@ def render(g, l1, l1b, l2, opened, t):
 
 
 def main(argv=None):
+    """Write (or with --check, verify) the final analysis document; the exit code."""
     p = argparse.ArgumentParser(
         prog="cl6check.final_analysis", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -715,7 +721,7 @@ def main(argv=None):
     g = gather(jar, a.ours, pdf=not a.no_pdf, printings=a.printings)
     l1, l1b, l2, opened = lists(g)
     t = totals(l1, l1b, l2, opened)
-    text = open(a.doc, encoding="utf8").read() if os.path.exists(a.doc) else f"{START}\n{END}\n"
+    text = Path(a.doc).read_text(encoding="utf8") if os.path.exists(a.doc) else f"{START}\n{END}\n"
     if a.check:
         ok, lines = check(text, t)
         print("\n".join(lines))

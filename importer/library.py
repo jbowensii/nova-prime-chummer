@@ -1,6 +1,6 @@
-"""A library of books (library/<id>/: the PDF, its import records) and what their imports wrote under custom/: removing a
-book, the other books of its source, the sources list. Shared by both games' importers (Anarchy's importer/__main__.py,
-SR6's importer/sr6/run.py); each passes its data root (xmlio.CA2, or SR6's importer.sr6.ROOT)."""
+"""A library of books (library/<id>/: the PDF, its import records) and what their imports wrote under custom/: removing
+a book, the other books of its source, the sources list. Shared by both games' importers (Anarchy's
+importer/__main__.py, SR6's importer/sr6/run.py); each passes its data root (xmlio.CA2, or SR6's importer.sr6.ROOT)."""
 
 import os
 import re
@@ -33,7 +33,8 @@ def remove(book_dir, custom_dir, forget=False, status=True, *, root):
     source's folder, texts and samples; then its import record (`forget`: the whole library/<id>) and,
     unless `status` is False (a caller mid-job), status "removed".
     Rebuilds custom/imported/index.xml and sources.xml. A re-import runs this first, so nothing an
-    earlier import wrote outlives it. root (required, so a game never gets another's by default): the game's data root of the texts and sources files (xmlio.CA2, SR6's).
+    earlier import wrote outlives it. root (required, so a game never gets another's by default): the game's data root
+    of the texts and sources files (xmlio.CA2, SR6's).
     """
     library = os.path.dirname(os.path.normpath(book_dir))
     imp = xmlio.read_import(book_dir)

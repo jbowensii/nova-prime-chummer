@@ -1,3 +1,5 @@
+"""Tests."""
+
 import contextlib
 import io
 import json
@@ -45,7 +47,10 @@ class Stub:
         stub = self
 
         class H(BaseHTTPRequestHandler):
-            def do_POST(self):
+            """Answers every POST from the stub."""
+
+            def do_POST(self):  # pylint: disable=invalid-name  # the http.server handler name
+                """Record the request and answer with the stub's next reply."""
                 n = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(n)) if n else None
                 stub.requests.append(
@@ -76,12 +81,14 @@ class Stub:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def close(self):
+        """Stop the stub server."""
         self.server.shutdown()
         self.server.server_close()
 
 
 class ProvidersTest(unittest.TestCase):
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
@@ -195,7 +202,9 @@ class ProvidersTest(unittest.TestCase):
 
     def test_errors_never_show_the_key(self):
         for code in (401, 400):  # 400: a generic status error whose body echoes the key
-            s = self.stub(lambda p: (code, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
+            s = self.stub(
+                lambda p, code=code: (code, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}})
+            )
             for p in (
                 {"id": "anthropic", "baseUrl": s.url},
                 {"id": "openai", "baseUrl": s.url, "model": "m"},
@@ -271,6 +280,7 @@ class ListModelsTest(unittest.TestCase):
     """Model lists come from the saved address with the saved key; the request only names the provider."""
 
     def library(self, stub_url, key=KEY):
+        """A temp library whose ai-providers config points at the stub."""
         lib = tempfile.mkdtemp()
         config = os.path.join(lib, ".config")
         xmlio.write_file(
@@ -287,6 +297,7 @@ class ListModelsTest(unittest.TestCase):
         return lib
 
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
@@ -412,6 +423,7 @@ class PingTest(unittest.TestCase):
     """The AI settings' Test button: a tiny fixed prompt to the saved provider, answered plainly."""
 
     def library(self, url, key=KEY, model=' model="m-1"', workspace="shadowrun"):
+        """A temp library whose ai-providers config points at the stub."""
         lib = tempfile.mkdtemp()
         config = os.path.join(lib, ".config")
         xmlio.write_file(
@@ -428,6 +440,7 @@ class PingTest(unittest.TestCase):
         return lib
 
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
@@ -577,6 +590,7 @@ PROVIDERS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def write_providers(config, use="openai", url="http://127.0.0.1:1/v1", enabled="true"):
+    """Write an ai-providers config into the library's config folder."""
     xmlio.write_file(os.path.join(config, "ai-providers.xml"), PROVIDERS_XML.format(use=use, url=url, oe=enabled))
 
 
@@ -645,7 +659,10 @@ class SettingsTest(unittest.TestCase):
         )
         AI.set_key(config, "openai", KEY)
         AI.set_key(config, "anthropic", "a-key")
-        same = '<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/><provider id="anthropic" enabled="false"/>'
+        same = (
+            '<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/><provider id="anthropic" '
+            'enabled="false"/>'
+        )
         self.assertEqual(AI.set_settings(config, body.format(same)), [])
         self.assertEqual(AI.read_key(config, "openai"), KEY)
         # the parse differentials that fooled the old regex check: single quotes, a commented-out copy, a char reference
@@ -704,7 +721,10 @@ class SettingsTest(unittest.TestCase):
 
     def test_cli_set_settings(self):
         lib = tempfile.mkdtemp()
-        body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" enabled="true"{}/></ca2:aiproviders>'
+        body = (
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" '
+            'enabled="true"{}/></ca2:aiproviders>'
+        )
         out = io.StringIO()
         with (
             unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))),
@@ -882,11 +902,13 @@ class ProposeTest(unittest.TestCase):
         )
 
     def book(self, md=BOOK, name="b"):
+        """A temp book folder holding the markdown."""
         book = os.path.join(tempfile.mkdtemp(), name)
         xmlio.write_file(os.path.join(book, "book.md"), md)
         return book
 
     def review(self, book):
+        """Validate and return the book's review.xml."""
         path = os.path.join(book, "review.xml")
         r = node(
             "--input-type=module",
@@ -1008,7 +1030,7 @@ class ProposeTest(unittest.TestCase):
         self.assertEqual(P.count_chunks(os.path.join(book, "book.md")), 2)
         calls = []
 
-        def flaky(s, u):
+        def flaky(_s, u):
             calls.append(u)
             if len(calls) == 2:
                 raise AI.ProviderError("rate limited")
@@ -1097,7 +1119,7 @@ class ApplyReviewTest(unittest.TestCase):
             )
 
     def test_accepted_and_edited_proposals_become_the_overlay(self):
-        lib, book, custom, path = self._reviewed()
+        _, book, custom, path = self._reviewed()
         self.assertEqual(self._apply(book, custom), 0)
         imported = os.path.join(custom, "imported")
         amps = Path(imported, "made", "amps.xml").read_text(encoding="utf8")
@@ -1140,7 +1162,7 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(imported, "made", "amps.xml")))
 
     def test_a_second_apply_never_shows_removed_midway(self):
-        lib, book, custom, _ = self._reviewed()
+        _, book, custom, _ = self._reviewed()
         self.assertEqual(self._apply(book, custom), 0)
         seen, write = [], xmlio.write_status
         with unittest.mock.patch.object(xmlio, "write_status", lambda d, s, m="": seen.append(s) or write(d, s, m)):
@@ -1160,7 +1182,7 @@ class ApplyReviewTest(unittest.TestCase):
             self._apply(book, custom, "../x")
 
     def test_entries_failing_the_checks_are_skipped_and_reported(self):
-        lib, book, custom, path = self._reviewed()
+        _, book, custom, path = self._reviewed()
         tree = ET.parse(path)
         root = tree.getroot()
         root.find("proposal[@id='amp.glitter-gland']").set("state", "accepted")  # unknown effect ref "sparkle-boost"
@@ -1187,7 +1209,7 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertIn("2 skipped", ET.parse(os.path.join(book, "status.xml")).getroot().text)
 
     def test_a_source_id_in_the_users_own_sources_is_refused(self):
-        lib, book, custom, _ = self._reviewed()
+        _, book, custom, _ = self._reviewed()
         xmlio.write_file(
             os.path.join(custom, "sources.xml"),
             '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">'

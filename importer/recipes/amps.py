@@ -2,8 +2,8 @@
 ampeffects.xml (Mapper, item_effects, read_amp), pricing them against the core data (core, reconcile), and the
 skill/spec tables and id slugs those readings use.
 
-Used by the CRB (crb, crb_core, crb_npcs), the Anarchy 2.0 Conversion Guide recipe (cg) and the DHSA fan supplement (dhsa),
-and by importer.statblock for the stat-block readers. A canon book's import never includes DHSA content
+Used by the CRB (crb, crb_core, crb_npcs), the Anarchy 2.0 Conversion Guide recipe (cg) and the DHSA fan supplement
+(dhsa), and by importer.statblock for the stat-block readers. A canon book's import never includes DHSA content
 (owner ruling, 2026-10-21), so load_skills here returns only the core skills and specs and what imported books add.
 Imports no recipe and not importer.statblock (statblock imports this module).
 """
@@ -90,7 +90,7 @@ WEAPON_KEYS = [
 
 
 @functools.cache
-def _core(where):
+def _core(_where):
     """Amp effect ratings, amp type base ratings, vehicle chassis (body, handling, speed) and weapon types (dv, ranges)
     from the core files (and what imported books add to effects and types): the rules the recipes price amps with."""
     ratings = {
@@ -106,7 +106,10 @@ def _core(where):
         if e.tag == "effect" and e.get("max")
     }
     base = {t.get("id"): int(t.get("base")) for r in mechanics_roots("amptypes.xml") for t in r if t.tag == "amptype"}
-    root = lambda n: ET.parse(core_file(n)).getroot()  # noqa: E731
+
+    def root(n):
+        return ET.parse(core_file(n)).getroot()
+
     chassis = {
         v.get("id"): (int(v.get("body")), int(v.get("handling")), int(v.get("speed")))
         for v in root("vehicles.xml")
@@ -143,10 +146,12 @@ def core():
 
 
 def effect_rating(ref):
+    """The rating of effect `ref` in the core rules, 0 when it has none."""
     return core()["ratings"].get(ref, 0)
 
 
 def weapon_base(name, sub):
+    """The core weapon row (dv, ranges) of the weapon type the name and sub-heading name, else (None, None)."""
     t = (name + " " + sub).lower()
     weapons = core()["weapons"]
     for keys, wid in WEAPON_KEYS:
@@ -156,6 +161,7 @@ def weapon_base(name, sub):
 
 
 def dv_num(dv):
+    """A DV as ('S', n) for `S+n`, ('N', n) for a plain number, else None."""
     m = re.match(r"S\+(\d+)", dv or "")
     if m:
         return ("S", int(m.group(1)))
@@ -176,6 +182,7 @@ def load_skills(path=None):
 
 
 def slug(s):
+    """`s` as a catalog id."""
     s = (
         s.lower()
         .replace("’", "")
@@ -209,8 +216,8 @@ WHEN_REFS = {"dv-plus", "armor-plus", "mental-armor", "wound-light", "wound-seri
 
 
 def stated(fx, clause, entry=""):
-    """`fx` read from `clause` with how the clause turns them on (importer/effects.py state): a dose's Duration makes them
-    activated; a condition holds back the effects that have no param for it (WHEN_REFS)."""
+    """`fx` read from `clause` with how the clause turns them on (importer/effects.py state): a dose's Duration makes
+    them activated; a condition holds back the effects that have no param for it (WHEN_REFS)."""
     st = rules_fx.state(clause, entry)
     out = []
     for f in fx:
@@ -236,7 +243,8 @@ def fx_xml(fx):
     )
 
 
-# Tests named by activity or type -> the skills they use (CRB's skill chapter, pp.53-57: what each skill covers), every one
+# Tests named by activity or type -> the skills they use (CRB's skill chapter, pp.53-57: what each skill covers), every
+# one
 ACTIVITIES = [
     (
         r"social|persua|convinc|negotiat|bluff|lie\b|lying|seduc|intimidat|etiquette|impersonat|charm|interrogat",
@@ -260,7 +268,7 @@ ACTIVITIES = [
         ("stealth",),
     ),
     (
-        r"perceiv|perception|notic|spot|search|listen|observ|look|see\b|seeing|sens(?:e|ing)|detect|analy[sz]|clue|pattern|read(?:ing)? lips",
+        r"perceiv|perception|notic|spot|search|listen|observ|look|see\b|seeing|sens(?:e|ing)|detect|analy[sz]|clue|pattern|read(?:ing)? lips",  # pylint: disable=line-too-long
         ("perception",),
     ),
     (r"heal|first aid|medic|stabili[sz]|wound|navigat|track|wilderness|surviv|composure|fear|animal", ("survival",)),
@@ -293,6 +301,8 @@ WILDCARD = re.compile(r"choice|choose|chosen|of your|to be determined|depending|
 
 
 class Mapper:
+    """Reads an amp's printed text into the core rules' effects, specs and choices."""
+
     def __init__(self, specs):
         self.specs = specs
         self.unresolved = []
@@ -302,9 +312,9 @@ class Mapper:
 
     def tests(self, phrase):
         """Test ids a phrase names ("Close Combat and Athletics (ranged defense)", "Charisma- and Willpower-based",
-        "Survival (first aid) + Logic", "Intimidation"): skill, spec or attribute ids, "" for every Test. A phrase with a
-        part that names none of them is one Test of its own words, custom:<phrase> (as an RR spec the skills don't have).
-        """
+        "Survival (first aid) + Logic", "Intimidation"): skill, spec or attribute ids, "" for every Test. A phrase with
+        a part that names none of them is one Test of its own words, custom:<phrase> (as an RR spec the skills don't
+        have)."""
         p = re.sub(r"\s*\+\s*(?:strength|agility|willpower|logic|charisma)\b", "", phrase, flags=re.I)
         p = re.sub(
             r"(strength|agility|willpower|logic|charisma)and\b", r"\1 and", p, flags=re.I
@@ -340,6 +350,7 @@ class Mapper:
         return rules_fx.rules(clause, self.tests, entry)
 
     def spec(self, skill, text):
+        """The id of the specialization of `skill` that `text` names (typos and aliases folded), else None."""
         t = re.sub(r"\s*tests?$", "", text.lower().strip().rstrip("."))
         t = t.replace("sprits", "spirits").replace("heatlh", "health")  # typos in the source list
         if (skill, t) in self.specs:
@@ -363,7 +374,7 @@ class Mapper:
         l = l.replace("(Pist.)", "(pistols)").replace("Dés", "Dis")
         low = l.lower()
         m = re.search(
-            r"RR\s*(\d)\s*(?:on )?(?:tests )?associated with a specialization|RR\s*(\d)\s*\(chosen [a-z ]*skill\)|RR\s*(\d)\s*on skill tests \(skill chosen",
+            r"RR\s*(\d)\s*(?:on )?(?:tests )?associated with a specialization|RR\s*(\d)\s*\(chosen [a-z ]*skill\)|RR\s*(\d)\s*on skill tests \(skill chosen",  # pylint: disable=line-too-long
             l,
             re.I,
         )
@@ -381,7 +392,7 @@ class Mapper:
             return [("wound-serious", None, None, None)]
         out = []
         for m in re.finditer(
-            r"RR\s*(\d)\s*(?:on\s+)?([A-Za-z .]+?)\s*(?:\(([^)]*)\))?(?=$|[.,;:]|\s+(?:tests?|when|to|with|against|during|while|if|for|in|on|rr|duration|performed|associated|chosen)\b)",
+            r"RR\s*(\d)\s*(?:on\s+)?([A-Za-z .]+?)\s*(?:\(([^)]*)\))?(?=$|[.,;:]|\s+(?:tests?|when|to|with|against|during|while|if|for|in|on|rr|duration|performed|associated|chosen)\b)",  # pylint: disable=line-too-long
             l,
             re.I,
         ):
@@ -465,7 +476,7 @@ class Mapper:
             return [("init-3", None, None, None)]
         return self.more(l, low)
 
-    def more(self, l, low):
+    def more(self, _l, low):
         """The rated readings added with the narrative effect kinds (extended), else None."""
         if not self.extended:
             return None
@@ -529,18 +540,21 @@ def one_init(fx):
 
 
 def read_amp(mapper, read, rating):
-    """read() -> (fx, narrative, computed rating), with the Mapper's extended readings. When they price the amp as the book
-    does (the narrative effects they replace balanced the printed rating), that reading stands. When they'd overshoot the
-    printed rating (canon), or take a drawback the plain reading doesn't, the amp is priced as read without them and what
-    they read beyond that is added unpriced: the effects apply, at rating 0 (owner, 2026-10-10; `unpriced_rows` lists
-    them for the import report)."""
+    """read() -> (fx, narrative, computed rating), with the Mapper's extended readings. When they price the amp as the
+    book does (the narrative effects they replace balanced the printed rating), that reading stands. When they'd
+    overshoot the printed rating (canon), or take a drawback the plain reading doesn't, the amp is priced as read
+    without them and what they read beyond that is added unpriced: the effects apply, at rating 0 (owner, 2026-10-10;
+    `unpriced_rows` lists them for the import report)."""
     out = read()
     mapper.extended = False
     try:
         base = read()
     finally:
         mapper.extended = True
-    negatives = lambda fx: sum(f[2] or 1 for f in fx if f[0] == "negative")  # noqa: E731
+
+    def negatives(fx):
+        return sum(f[2] or 1 for f in fx if f[0] == "negative")
+
     if out[2] <= rating and negatives(out[0]) <= negatives(base[0]):
         return out
     left = [f[:3] for f in base[0]]
@@ -580,6 +594,7 @@ _INIT_REF = re.compile(
 
 
 def sentences(text):
+    """`text` split into its sentences."""
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z•–-])|\s+[•–]\s+", text or "") if s.strip()]
 
 
@@ -602,10 +617,10 @@ def affects(sentence):
 
 
 def item_effects(mapper, text, sustained=False, spell=False):
-    """An item's effects (a spell, complex form or plain gear) read from its text sentence by sentence: the rated readings
-    (RR, Armor, initiative by reference) and the narrative effect kinds. A sustained spell's or form's are
-    switch="sustained"; a value that depends on hits is low confidence. A spell's or complex form's (`spell`) say who they
-    affect (affects): the caster counts them while sustained, a target's stay on the spell."""
+    """An item's effects (a spell, complex form or plain gear) read from its text sentence by sentence: the rated
+    readings (RR, Armor, initiative by reference) and the narrative effect kinds. A sustained spell's or form's are
+    switch="sustained"; a value that depends on hits is low confidence. A spell's or complex form's (`spell`) say who
+    they affect (affects): the caster counts them while sustained, a target's stay on the spell."""
     fx, last = [], "caster"
     for s in sentences(text):
         st = rules_fx.state(s, text)
@@ -660,18 +675,23 @@ def non_caster(text, fx):
 
 
 def cost_value(cost):
+    """The nuyen in a printed cost (`1,500¥`), else None."""
     m = re.match(r"[+-]?([\d ]+)\s*¥", cost or "")
     return int(m.group(1).replace(" ", "")) if m else None
 
 
 def attr(k, v):
+    """` k="v"` for an XML attribute (escaped), or nothing when v is empty."""
     return f' {k}="{escape(str(v), {chr(34): "&quot;"})}"' if v not in (None, "") else ""
 
 
 def reconcile(fx, narrative, base, rating, negative_ok=False, ratings=None):
-    """Fill the gap between computed and printed rating (see module docstring). Returns computed rating. `ratings`: effect
-    ratings this book defines itself (its implant grades), over the core's."""
-    rate = lambda ref: (ratings or {}).get(ref, effect_rating(ref))  # noqa: E731
+    """Fill the gap between computed and printed rating (see module docstring). Returns computed rating. `ratings`:
+    effect ratings this book defines itself (its implant grades), over the core's."""
+
+    def rate(ref):
+        return (ratings or {}).get(ref, effect_rating(ref))
+
     computed = base + sum(
         (-f[2] if f[0] == "negative" else rate(f[0]) * (f[2] if f[0] == "rcc" and f[2] else 1)) for f in fx
     )

@@ -1,11 +1,15 @@
-"""The SR6 effects reader (importer/sr6/effects.py): general phrasings over made-up text, a table's modifier columns, the
-import's pass over every entry, and the description fixes it relies on (regroup's part headings and page-break
+"""The SR6 effects reader (importer/sr6/effects.py): general phrasings over made-up text, a table's modifier columns,
+the import's pass over every entry, and the description fixes it relies on (regroup's part headings and page-break
 continuations). All invented."""
 
 import re
 import unittest
 
 from importer.sr6 import effects, regroup
+
+# pylint: disable=line-too-long  # the invented book sentences stay one string each
+
+# pylint: disable=protected-access
 
 
 def fx(text, kind=None):
@@ -41,7 +45,9 @@ class ReadTest(unittest.TestCase):
         )
 
     def test_what_an_entry_cant_be_combined_with(self):
-        inc = lambda text, name="Zap Lacing (Tin)": [(t, a) for t, a, _ in effects.incompatibilities(text, name)]
+        def inc(text, name="Zap Lacing (Tin)"):
+            return [(t, a) for t, a, _ in effects.incompatibilities(text, name)]
+
         self.assertEqual(
             inc(
                 "Zap lacing comes in two types—you can only have one installed at a time. Zap lacing is incompatible "
@@ -214,7 +220,9 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(fx("Their Glow is boosted by 2."), [])  # no vocabulary target
 
     def test_links(self):
-        ln = lambda t: [a for _, a, _ in effects.links(t)]
+        def ln(t):
+            return [a for _, a, _ in effects.links(t)]
+
         self.assertEqual(
             ln("Both forms gain the Tough Hide quality. See p. 70, SR6."),
             [{"rel": "grants", "name": "Tough Hide", "kind": "qualities", "book": "crb"}],
@@ -265,7 +273,8 @@ class TableTest(unittest.TestCase):
         )
         self.assertEqual(effects.table(["JACK", "INIT NOTES"], ["Rating 1", "+1"], "augmentations"), [])
 
-        # a table of unarmed values (a made-up lacing): its BODY is Body when resisting physical damage, its DV set or added
+        # a table of unarmed values (a made-up lacing): its BODY is Body when resisting physical damage, its DV set or
+        # added
         lacing = ["LACING", "BODY", "DEFENSE RATING", "UNARMED DV", "UNARMED AR"]
         self.assertEqual(
             [
@@ -326,8 +335,9 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(out["rules.xml"], files["rules.xml"])  # rules hold no effects
 
     def test_a_quality_per_base_reads_its_base_row_and_a_name_s_restriction_sets_no_condition(self):
-        """(owner 2026-10-16) `Grubber (Troll)`: the `Grubber` row whose BASE is Troll, `when` its base; a critter power's
-        `(Self Only)` and a price note `(-10 Karma if …)` are no condition on the sentence's effects (Harvester, Nosferatu).
+        """(owner 2026-10-16) `Grubber (Troll)`: the `Grubber` row whose BASE is Troll, `when` its base; a critter
+        power's `(Self Only)` and a price note `(-10 Karma if …)` are no condition on the sentence's effects (Harvester,
+        Nosferatu).
         """
         files = {
             "qualities.xml": '<sr6:data kind="qualities">\n'
@@ -602,7 +612,8 @@ class DecisionsTest(unittest.TestCase):
 
 
 class RoundThreeTest(unittest.TestCase):
-    """The reader's third round (feat/sr6-effects-2): the phrasings Commlink6 had and we missed, read by general rules."""
+    """The reader's third round (feat/sr6-effects-2): the phrasings Commlink6 had and we missed, read by general
+    rules."""
 
     def test_chosen_targets_maxima_and_actions(self):
         self.assertEqual(

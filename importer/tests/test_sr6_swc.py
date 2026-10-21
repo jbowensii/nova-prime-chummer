@@ -11,6 +11,8 @@ from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, identify, swc
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 BOOK_MD = """<!-- page 1 -->
 <!-- page 3 -->
 # CONTENTS
@@ -143,15 +145,18 @@ Roll made-up dice.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, swc.ALIASES, name_headers=swc.NAME_HEADERS, end_page=swc.END_PAGE)
     return swc.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: entry} of the `kind` entries of a reading."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
 def choices(e):
+    """[(points, options)] of an entry's choices."""
     return [(c.get("points"), c.get("options")) for c in e.iter("choice")]
 
 
@@ -161,6 +166,7 @@ class SwcRecipeTest(unittest.TestCase):
         cls.res = run_recipe()
 
     def rep(self, kind):
+        """The report rows of `kind`."""
         return [r for r in self.res.report if r["kind"] == kind]
 
     def test_opening_modules_from_their_sentences(self):
@@ -214,7 +220,10 @@ class SwcRecipeTest(unittest.TestCase):
 
     def test_metavariants_from_the_text_tables(self):
         mt = entries(self.res, "metatypes")
-        ranges = lambda n: {r.get("attr"): (r.get("min"), r.get("max")) for r in mt[n].iter("range")}
+
+        def ranges(n):
+            return {r.get("attr"): (r.get("min"), r.get("max")) for r in mt[n].iter("range")}
+
         self.assertEqual(
             ranges("Glimmerling"),
             {
@@ -238,7 +247,10 @@ class SwcRecipeTest(unittest.TestCase):
     def test_metavariants_priority_points(self):
         """The development table: a metavariant's adjustment points at each priority it can be taken at; N/A: none."""
         mt = entries(self.res, "metatypes")
-        pts = lambda n: {p.get("letter"): p.get("points") for p in mt[n].iter("priority")}
+
+        def pts(n):
+            return {p.get("letter"): p.get("points") for p in mt[n].iter("priority")}
+
         self.assertEqual(
             pts("Glimmerling"), {"A": "12", "B": "10", "C": "8", "D": "3"}
         )  # `Glimmerlings`: the plural row
@@ -269,8 +281,8 @@ class SwcRecipeTest(unittest.TestCase):
 
     def test_a_priced_quality_table_lists_qualities(self):
         """A block that is only a `QUALITY | KARMA` table: each row a positive quality at its printed price, the name as
-        printed (`(per point)`: per level), the table's title its category, its own id; a row printing no description reads
-        the book's critter power of its name; a price that isn't a number is reported, never guessed."""
+        printed (`(per point)`: per level), the table's title its category, its own id; a row printing no description
+        reads the book's critter power of its name; a price that isn't a number is reported, never guessed."""
         q = entries(self.res, "qualities")
         g, h = q["Glow Burst"], q["Thick Hide (per point)"]
         self.assertEqual(
@@ -406,9 +418,11 @@ class InfectedTest(unittest.TestCase):
         cls.q = entries(cls.res, "qualities")
 
     def kids(self, name, tag):
+        """The `tag` children of the entry `name`, as attributes."""
         return [k.attrib for k in self.q[name] if k.tag == tag]
 
     def optional(self, name):
+        """[(power id, free)] of an entry's optional powers."""
         return [(k["ref"].split(".")[-1], k.get("free")) for k in self.kids(name, "optionalpower")]
 
     def test_a_type_of_several_bases_is_a_quality_per_base(self):
@@ -508,7 +522,7 @@ class InfectedTest(unittest.TestCase):
     def test_gained_items_tolerate_the_book_s_typos(self):
         own = {"glowhide": "glowhide"}
         got = swc._gains(
-            "Hard Hide 1, Glow Ward (2), Grip Tough 2, Glow Sense (Smell, Sight) Glowhides, Hush (self only, p. 12, Street Wyrd), "
+            "Hard Hide 1, Glow Ward (2), Grip Tough 2, Glow Sense (Smell, Sight) Glowhides, Hush (self only, p. 12, Street Wyrd), "  # pylint: disable=line-too-long
             "Shell (6) (replaces Shell (4)), +1 initiative die. Gain one of the Glow Senses as a free Optional Power.",
             "power",
             own,

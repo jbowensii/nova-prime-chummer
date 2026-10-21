@@ -24,9 +24,9 @@ searched for and given the first family that holds Commlink6's value, with its m
 - another column: another column of the object's own row in the winning book;
 - not found.
 
-A misread is not counted against our accuracy. Weak links (another column, a one-field misread, one digit off) are settled by the
-owner's page verdicts (apply_verdicts); one with no verdict goes to not found. `run(corpus, cl6)` returns (rows, counts); `write()` writes the CSV
-(owner only: names and values), `markdown()` the owner's section."""
+A misread is not counted against our accuracy. Weak links (another column, a one-field misread, one digit off) are
+settled by the owner's page verdicts (apply_verdicts); one with no verdict goes to not found. `run(corpus, cl6)` returns
+(rows, counts); `write()` writes the CSV (owner only: names and values), `markdown()` the owner's section."""
 
 import csv
 import os
@@ -148,7 +148,7 @@ def token_re(c, f):
                 rf"(?:bolts?|rounds?|shots?|missiles?|rockets?|grenades?|arrows?|darts?|shells?)\b"
             )
     if f == "ar":
-        parts = [p for p in raw.split(",")]
+        parts = list(raw.split(","))
         while parts and not parts[-1]:
             parts.pop()
         return r"[/\s]*".join(re.escape(p) if p else r"[—–-]" for p in parts)
@@ -196,7 +196,7 @@ def _matches(c, kind, attr, value, f, rating=None):
             tries.append((re.match(r"\s*(\d+)", v) or re.match("", "")).group(0).strip() or v)
     if f == "dv":
         tries.append(v.rstrip("*† "))
-        tries.append(v.split("/")[0].strip())  # '4S/4P': two forms of the weapon, the first
+        tries.append(v.split("/", maxsplit=1)[0].strip())  # '4S/4P': two forms of the weapon, the first
     return "with a note" if any(t != v and _strict(c, kind, attr, t, f, rating) for t in tries) else None
 
 
@@ -360,6 +360,7 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
         if o.line is None or o.kind not in ("row", "block") or o.variant or o.context:
             continue
         for x, label in _neighbours(o.book, o.line):
+            # pylint: disable=protected-access  # the lineage module's helper, shared inside cl6check
             if lineage._own(next(iter(x.cells().values()), ""), names):
                 continue
             cells = lineage.from_row(o.book, x)
@@ -552,6 +553,7 @@ def _class_rows(corpus, chains, kind):
 
 
 def winners_entry(chains, kind):
+    """One kind's winning attribute values from its lineage chains."""
     return {"attrs": {f: w.value for f, ch in chains.items() if (w := lineage.winner(ch))}, "kind": kind}
 
 
@@ -565,7 +567,7 @@ def _matched_names(corpus, cl6):
             by_src.setdefault(lineage.family(c["src"]), []).append(c)
     for fam, recs in by_src.items():
         ents = [e for b in corpus.books if lineage.family(b.belongs) == fam and not b.errata for e in b.entries]
-        for c, hits, how in match.match(recs, ents):
+        for c, hits, _ in match.match(recs, ents):
             if hits:
                 out[id(c)] = sorted({h["name"] for h in hits})
     return out
@@ -633,8 +635,11 @@ def stat_matches(corpus, cl6, missing):
         free, used = pool.get(lineage.family(c["src"]), ([], []))
         got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
     by_id = {id(c): c for c in missing}
+
     # (a tie is within one book family: another book's entry of the same name is another item)
-    key = lambda k, e: (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+    def key(k, e):
+        return (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+
     taken = Counter(key(k, v[1]) for k, v in got.items() if v[0] == "strong")
 
     def part(c, e):
@@ -690,8 +695,8 @@ def run(corpus, cl6, verdicts=None):
             ):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
                 far |= {i for i, x in d.items() if x > min(d.values())}
-        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther page,
-        # the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
+        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther
+        # page, the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
         if (
             str(c["page"]).isdigit()
             and (
@@ -1038,9 +1043,9 @@ ENUM_FIELDS = {
 
 
 def why_not(r):
-    """A not-found difference's kind, for reading the list: a weak link the page did not confirm, Commlink6's value where
-    our text prints none for the field, a Commlink6 term (an enum) the book words otherwise, one digit off, or a value
-    printed nowhere."""
+    """A not-found difference's kind, for reading the list: a weak link the page did not confirm, Commlink6's value
+    where our text prints none for the field, a Commlink6 term (an enum) the book words otherwise, one digit off, or a
+    value printed nowhere."""
     if r.get("verdict"):
         return "checked on the page, not settled" if r["verdict"] != WEAK else WEAK
     if not r["winner"]:
@@ -1094,7 +1099,8 @@ def markdown(rows, n, corpus):
         f" — of a kind we don't model {n['unmodelled kind']}, object found in the corpus {n['objects']}, "
         f"object not found {n['object not found']}.",
         f"- Fields compared with the latest-published value: {n['fields compared']}; equal {n['fields equal']} "
-        f"({100 * n['fields equal'] / max(1, n['fields compared']):.2f}%); with the {mis} Commlink6 misreads not counted "
+        f"({100 * n['fields equal'] / max(1, n['fields compared']):.2f}%); with the {mis} Commlink6 misreads not "
+        f"counted "
         f"against us {100 * (n['fields equal'] + mis) / max(1, n['fields compared']):.2f}%.",
         f"- Records with every field equal: {n['records exact']} of {n['objects']}.",
         f"- Commlink6-only, left out of both counts above: {n['Commlink6-only records']} records no book prints as "
@@ -1124,7 +1130,10 @@ def markdown(rows, n, corpus):
         }.get(f, r".")
         for r in sorted(
             ex,
-            key=lambda r: (not re.search(good, r["where"] + r.get("strength", "")), len(r["cl6"]) + len(r["evidence"])),
+            key=lambda r, good=good: (
+                not re.search(good, r["where"] + r.get("strength", "")),
+                len(r["cl6"]) + len(r["evidence"]),
+            ),
         ):
             if r["src"] not in books:
                 pick.append(r)
@@ -1168,7 +1177,8 @@ def markdown(rows, n, corpus):
     return "\n".join(out)
 
 
-def write(out_dir, rows, n, corpus):
+def write(out_dir, rows, _n, _corpus):
+    """Write the trace rows to out_dir."""
     os.makedirs(out_dir, exist_ok=True)
     keys = [
         "src",

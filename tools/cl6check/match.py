@@ -11,6 +11,7 @@ STOP = {"the", "of", "an", "and", "with", "for", "in"}
 
 
 def n0(s):
+    """The lower-case alphanumeric-only form of a name."""
     return re.sub(r"[^a-z0-9]+", "", (s or "").casefold())
 
 
@@ -18,6 +19,7 @@ ROMAN = {"I": "1", "II": "2", "III": "3", "IV": "4", "V": "5", "VI": "6", "VII":
 
 
 def words(s):
+    """A name as its list of normalised words."""
     # (a numeral printed in capitals after a first word, `Guizhen I`, `Predator VI`: its digit; `Hold-out` is `Holdout`,
     # `SMG` the `submachine gun`: Commlink6 and the books spell them either way)
     s = re.sub(r"(?<=\S )\b(?:I|II|III|IV|V|VI|VII|VIII|IX|X)\b", lambda m: ROMAN[m.group()], s or "")
@@ -37,10 +39,12 @@ SIMILAR = 0.90  # names this alike (difflib ratio of n1) are one item (owner, 20
 
 
 def digits(s):
+    """The digit runs in a string."""
     return re.findall(r"\d+", s)
 
 
 def n1(s):
+    """A name's words joined without spaces."""
     return "".join(words(s))
 
 
@@ -50,10 +54,12 @@ def n2(s):
 
 
 def toks(s):
+    """A name's words as a set, minus the stop words."""
     return frozenset(w for w in words(s) if w not in STOP)
 
 
 def contained(a, b):
+    """Whether one word set sits inside the other on a real (long, non-numeric) word."""
     if not a or not b or a == b:
         return a == b and bool(a)
     small, big = (a, b) if len(a) <= len(b) else (b, a)
@@ -61,6 +67,7 @@ def contained(a, b):
 
 
 def near(p, q, d=1):
+    """Whether two page numbers are within d of each other."""
     try:
         return abs(int(p) - int(q)) <= d
     except (TypeError, ValueError):
@@ -189,13 +196,17 @@ def match(cl6, ours):
         lambda o: [n1(n) for n in _names(o)],
     )
     stage("no-parenthetical", lambda c: [n2(c["name"])], lambda o: [n2(n) for n in _names(o)])
-    # (our nanite rows are two items, `<name> Colony` and `<name> Nanites` (owner 2026-10-14): Commlink6's one record is both)
+
+    # (our nanite rows are two items, `<name> Colony` and `<name> Nanites` (owner 2026-10-14): Commlink6's one record is
+    # both)
     # (`Fizz Swarm Colony` is `Fizz Swarm`; `Therapeutic Nanites (Anti-Rad) Colony` is `Anti-Rad`)
-    nanite = lambda s: (
-        n1(m.group(2) or m.group(1))
-        if (m := re.fullmatch(r"(.+?)(?:\s*\(([^()]+)\))?\s+(?:colony|nanites)", s or "", re.I))
-        else ""
-    )  # noqa: E731
+    def nanite(s):
+        return (
+            n1(m.group(2) or m.group(1))
+            if (m := re.fullmatch(r"(.+?)(?:\s*\(([^()]+)\))?\s+(?:colony|nanites)", s or "", re.I))
+            else ""
+        )
+
     stage(
         "nanite colony and nanites",
         lambda c: [n2(c["name"])],
@@ -212,7 +223,8 @@ def match(cl6, ours):
         lambda c, o: len(toks(c["name"])) > 1 or not c["page"] or near(o["page"], c["page"], 2),
     )
     stage("word-order", lambda c: [toks(c["name"])], lambda o: [toks(n) for n in _names(o)])
-    # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke Rocket`)
+    # (a part of a row printing several names, its words in another order: `Rocket Smoke` in `Smoke/Thermal Smoke
+    # Rocket`)
     stage(
         "split word-order",
         lambda c: [toks(c["name"])],
@@ -349,13 +361,13 @@ def match(cl6, ours):
     for c, f in zip(cl6, found):
         hits, how = f or ([], "")
 
-        def dist(o):
+        def dist(o, c=c):
             try:
                 return abs(int(o["page"]) - int(c["page"]))
             except (TypeError, ValueError):
                 return 0
 
-        out.append((c, sorted(hits, key=lambda o: (o["kind"] != c["kind"], dist(o) > 2, dist(o))), how))
+        out.append((c, sorted(hits, key=lambda o, c=c, dist=dist: (o["kind"] != c["kind"], dist(o) > 2, dist(o))), how))
     return out
 
 
@@ -410,6 +422,7 @@ def _named_words(c, o):
 
 
 def strong(c, o, ok):
+    """Whether the agreeing fields ok (and the page) make c and o a strong match."""
     # (a record whose only stat is its price, a PACK: that price on its own page and its name's words, _named_words)
     return (
         len(ok) >= STRONG_AGREE

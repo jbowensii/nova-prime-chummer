@@ -11,6 +11,8 @@ from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, fs, identify
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 BOOK_MD = """<!-- page 1 -->
 <!-- page 3 -->
 # CONTENTS
@@ -163,11 +165,13 @@ A made-up guard who bashes doors.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
     return fs.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

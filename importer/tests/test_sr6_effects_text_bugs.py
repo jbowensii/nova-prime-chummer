@@ -7,8 +7,13 @@ import unittest
 
 from importer.sr6 import effects
 
+# pylint: disable=line-too-long  # the invented book sentences stay one string each
+
+# pylint: disable=protected-access
+
 
 def attrs(text, kind=None):
+    """The attributes of each effect read from the text."""
     return [a for t, a, _ in effects.read(text, kind) if t == "effect"]
 
 
@@ -22,6 +27,7 @@ def entries(files, texts, tag, regrouped=""):
 
 
 def augs(rows):
+    """An augmentations.xml overlay of the (id, name) rows."""
     return {
         "augmentations.xml": '<sr6:data kind="augmentations">\n'
         + "".join(f'  <augmentation id="{i}" source="X" page="1"><name>{n}</name></augmentation>\n' for i, n in rows)
@@ -30,6 +36,7 @@ def augs(rows):
 
 
 def text_of(of, i, body):
+    """One <text> element of an entry."""
     return f'  <text of="{of}" id="{i}">{body}</text>\n'
 
 
@@ -43,7 +50,8 @@ BLOCK = (
 
 class NestedVariantTest(unittest.TestCase):
     def test_a_variant_ending_in_its_own_parenthesis_gets_its_labels_paragraph(self):
-        # (`Genotype Enhancement (Fear Response Dampener (basic))`: both versions print under `**Fear Response Dampener:**`)
+        # (`Genotype Enhancement (Fear Response Dampener (basic))`: both versions print under `**Fear Response
+        # Dampener:**`)
         rows = [
             ("a-basic", "Zap Boost (Alpha (basic))"),
             ("a-enh", "Zap Boost (Alpha (enhanced))"),
@@ -64,7 +72,8 @@ class NestedVariantTest(unittest.TestCase):
         self.assertNotIn('target="attr:rea"', got["b"])
 
     def test_an_unclaimed_label_is_the_paragraph_of_the_entry_without_one(self):
-        # (`Genotype Enhancement (NDI)`: the book prints its paragraph under `**NDE:**`; `**Treatment time:**` is no paragraph)
+        # (`Genotype Enhancement (NDI)`: the book prints its paragraph under `**NDE:**`; `**Treatment time:**` is no
+        # paragraph)
         rows = [("a", "Zap Boost (Alpha)"), ("b", "Zap Boost (Beta)"), ("g", "Zap Boost (Gamma)")]
         got = entries(
             augs(rows),
@@ -177,7 +186,8 @@ class EdgeGoesToTest(unittest.TestCase):
         self.assertEqual([a["affects"] for a in got if a["op"] == "edge"], ["target"])
 
     def test_a_pronoun_before_the_verb_is_the_clause_before_it(self):
-        # (`If the subject resists your spell, they gain 1 Edge`: `your` is in an earlier clause; `they` are the subject)
+        # (`If the subject resists your spell, they gain 1 Edge`: `your` is in an earlier clause; `they` are the
+        # subject)
         got = attrs("If the subject resists your spell, they gain 1 Edge.", "spells")
         self.assertEqual([a["affects"] for a in got if a["op"] == "edge"], ["target"])
         got = attrs("While the device is under your control, it gains 1 Edge.", "complexforms")
@@ -218,7 +228,8 @@ class RoundTwoReaderTest(unittest.TestCase):
         )
 
     def test_who_a_sentence_is_about(self):
-        # (what pursuers suffer is others'; a bonus when interacting with your target is yours; a spell's net hits on its target)
+        # (what pursuers suffer is others'; a bonus when interacting with your target is yours; a spell's net hits on
+        # its target)
         self.assertEqual(
             [a.get("affects") for a in attrs("Any ground vehicles in pursuit suffer +3 to their Handling.", "gear")],
             ["others"],
@@ -305,7 +316,8 @@ class RoundTwoReaderTest(unittest.TestCase):
         self.assertNotIn("<effect", got["s"])
 
     def test_a_nested_name_and_a_misprinted_label_get_their_own_paragraph_as_description(self):
-        # (Genotype Enhancement (Fear Response Dampener (basic)) kept the whole block's text; (NDI) too, the book printing `**NDE:**`)
+        # (Genotype Enhancement (Fear Response Dampener (basic)) kept the whole block's text; (NDI) too, the book
+        # printing `**NDE:**`)
         rows = [
             ("a1", "Zap Boost (Alpha (basic))"),
             ("a2", "Zap Boost (Alpha (enhanced))"),
@@ -331,7 +343,7 @@ class RoundTwoReaderTest(unittest.TestCase):
             '<!-- section {"name": "Zap Boost"} -->\n**Alpha:** This Alpha text gives a +1 increase to the Reaction attribute.\n**Beta:** This Beta text gives a +1 increase to the Charisma attribute.\n'
             "**Delta:** This Delta text gives a +1 increase to the Strength attribute.\n\n"
         )
-        out, txt = effects.apply(files, texts, regrouped)
+        _, txt = effects.apply(files, texts, regrouped)
         body = {
             m.group(1): m.group(2)
             for m in re.finditer(r'<text of="augmentations" id="([^"]+)">(.*?)</text>', txt, re.S)

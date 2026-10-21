@@ -1,8 +1,8 @@
 """The made-up core fixture (tests/fixtures/mini/custom/imported/core) must stay made up: with the owner's local copies
-present, no fixture file may share more than a small fraction of its (entry, attribute, value) triples with the real one.
-Not counted: ids, sources, item kinds, a package's level and archetype, an effect's prerequisites, exclusions and params
-(the app's vocabulary and structure), a range's attribute, and the value "0" and a range minimum of 1 (the absence of a
-value and the scale's floor)."""
+present, no fixture file may share more than a small fraction of its (entry, attribute, value) triples with the real
+one. Not counted: ids, sources, item kinds, a package's level and archetype, an effect's prerequisites, exclusions and
+params (the app's vocabulary and structure), a range's attribute, and the value "0" and a range minimum of 1 (the
+absence of a value and the scale's floor)."""
 
 import unittest
 import xml.etree.ElementTree as ET

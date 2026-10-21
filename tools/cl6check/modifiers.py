@@ -174,6 +174,7 @@ def path(m):
 
 
 def op(m):
+    """The operation a Commlink6 modifier performs, as the app names it."""
     if m.tag == "checkmod":
         return CHECK_OPS.get(m.get("what") or "DICE", _slug(m.get("what")))
     if m.tag == "itemmod":
@@ -225,12 +226,14 @@ def _in_selmod(ms, m):
 
 # ---------- alignment ----------
 def tokens(s):
+    """The lower-cased words and numbers of `s`, number words as digits."""
     s = (s or "").casefold().replace("−", "-").replace("–", "-").replace("’", "'")
     toks = re.findall(r"[a-z][a-z']*|[+-]?\d+(?:[.,]\d+)?|[+×]", s)
     return [NUMBER_WORDS.get(t, t) for t in toks]
 
 
 def sentences(text):
+    """The sentences of an entry's text."""
     return [s for s in re.split(r"(?<=[.!?:])\s+|\n+", text or "") if s.strip()]
 
 
@@ -328,9 +331,9 @@ def _regex(template, terms):
     for t in template.split():
         if t in ("{T}", "{N}") and t not in seen:
             seen.add(t)
-            parts.append(r"(?P<t>%s)" % alt if t == "{T}" else r"[+-]?(?P<n>\d+(?:[.,]\d+)?)")
+            parts.append(rf"(?P<t>{alt})" if t == "{T}" else r"[+-]?(?P<n>\d+(?:[.,]\d+)?)")
         elif t == "{T}":
-            parts.append(r"(?:%s)" % alt)
+            parts.append(rf"(?:{alt})")
         elif t in ("{N}", "{#}"):
             parts.append(r"[+-]?\d+(?:[.,]\d+)?")
         elif t == "{R}":
@@ -343,6 +346,7 @@ def _regex(template, terms):
 
 
 def family(p):
+    """The first two path parts of a modifier's path, its family."""
     return "/".join(p.split("/")[:2])
 
 
@@ -357,7 +361,6 @@ def analyse(pairs, all_mods, top=(20, 50)):
     total_all = sum(len(x) for x in all_mods)
     fam_total, fam_aligned = Counter(), Counter()
     found = defaultdict(set)  # template → {(pair index, mod index)}
-    tfam = {}
     texted = [(mods, " ".join(tokens(t))) for mods, t in pairs]
     sent_toks = [[tokens(s) for s in sentences(t)] for _, t in pairs]
     for i, (mods, _) in enumerate(pairs):

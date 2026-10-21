@@ -25,6 +25,8 @@ from importer.sr6.recipes import crb, general
 from tools.cl6check import corpus as K
 from tools.cl6check import match
 
+# pylint: disable=protected-access  # the checker reuses the recipes' and the corpus' name helpers
+
 # a table's header cell -> our field name, over every kind (the core recipe's reading; the first kind naming it wins)
 HEADER_FIELD = {}
 for _kind in catalog.HEADERS.values():
@@ -142,7 +144,10 @@ NOT_QUALIFIERS = {
     "Reduce",
     "Its",
 }
-CONNECT = r"\s*(?:\([^)]*\)\s*)?(?:(?:is\s+)?(?:changed\s+)?from\s+\S+\s+to|to\s+be|to|is|are|of|has|:|=)?\s*(?:an?\s+\w+\s+of\s+)?"
+CONNECT = (
+    r"\s*(?:\([^)]*\)\s*)?(?:(?:is\s+)?(?:changed\s+)?from\s+\S+\s+to|to\s+be|to|is|are|of|has|:|=)"
+    r"?\s*(?:an?\s+\w+\s+of\s+)?"
+)
 
 
 _CACHE = {}  # per book: its pages' lines, its errata statements
@@ -150,6 +155,8 @@ _CACHE = {}  # per book: its pages' lines, its errata statements
 
 @dataclass
 class Obs:
+    """One observation of a field's value in a book."""
+
     book: object  # corpus.Book
     field: str
     value: str
@@ -184,6 +191,7 @@ def from_entry(book, e, variant="", errata_book=None):
 
 
 def from_row(book, ln, kind="row", variant=""):
+    """The observations a table row makes, one per column."""
     out = []
     for h, v in ln.cells().items():
         if h == "AMMOAVAIL" and len(v.split()) == 2:  # two columns the converter set as one
@@ -340,7 +348,10 @@ def from_errata(book, names):
     """The values errata statements give the object: the clause naming it (or every clause under a heading naming it),
     the field its words name (carried across 'A to x and B to y'), the value after 'to', 'is', ':' or the field."""
     pats = [p for p in map(K._name_re, names) if p]
-    named = lambda s: any(p.search(K.norm_line(s)) for p in pats)  # noqa: E731
+
+    def named(s):
+        return any(p.search(K.norm_line(s)) for p in pats)
+
     out = []
     for label, text, ln in statements(book):
         own = named(label)
@@ -475,7 +486,6 @@ def observe(corpus, kinds, names, home=None):
                 ):
                     out += from_card(b, idx[ln.no])
             elif ln.cells() and text:
-                h0 = ln.header[0].upper()
                 c0 = next(iter(ln.cells().values()))
                 if _own(c0, names):
                     out += from_row(b, ln)
@@ -534,7 +544,10 @@ def same(a, b):
     va, vb = ours.value(a), ours.value(b)
     if va is not None and vb is not None:
         return va == vb
-    norm = lambda v: re.sub(r"[\s¥]", "", v or "").casefold()  # noqa: E731
+
+    def norm(v):
+        return re.sub(r"[\s¥]", "", v or "").casefold()
+
     return norm(a) == norm(b)
 
 

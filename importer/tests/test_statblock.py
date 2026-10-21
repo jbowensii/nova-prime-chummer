@@ -180,7 +180,10 @@ class CharacterTest(unittest.TestCase):
     def test_amps(self):
         amps = {a["name"]: a for a in self.b["amps"]}
         self.assertNotIn("Natural Low-Light Vision", amps)  # a metatype trait, not an amp
-        fx = lambda n: [(e["ref"], e.get("param"), e.get("value")) for e in amps[n]["effects"]]
+
+        def fx(n):
+            return [(e["ref"], e.get("param"), e.get("value")) for e in amps[n]["effects"]]
+
         # the rules price it 5, the book 4, and the line limits it ("first meeting only"): that limitation is the Negative
         # effect of the difference (CRB p.61), its note the printed line; as printed, Review needs no GM for it
         self.assertEqual(fx("Big Grin"), [("rr-skill", "influence", None), ("negative", None, 1)])
@@ -224,8 +227,9 @@ class CharacterTest(unittest.TestCase):
         )
 
     def test_nothing_is_written_to_explain_or_approve_the_book(self):
-        # what the made-up page prints against the guidelines (Stealth unrated, its own spec, 3/2/2 narrative, amp ratings
-        # the rules price otherwise) is left for Review to show: no override, no approving drawback note, no price
+        # what the made-up page prints against the guidelines (Stealth unrated, its own spec, 3/2/2 narrative, amp
+        # ratings the rules price otherwise) is left for Review to show: no override, no approving drawback note, no
+        # price
         self.assertEqual(self.ch["overrides"], [])
         self.assertFalse([i for i in self.b["items"] if {"note", "price"} & set(i)])
         xml = statblock.character_xml(self.ch)
@@ -282,8 +286,8 @@ class CharacterTest(unittest.TestCase):
         )
 
     def test_an_amp_without_a_printed_item_brings_its_own(self):
-        # the book's Equipment Amps cost the item and the upgrades (CRB p.144): one printed with no gear line is bought with
-        # a gear item of its name, as a catalog amp is in the app; no price, note or marker on it
+        # the book's Equipment Amps cost the item and the upgrades (CRB p.144): one printed with no gear line is bought
+        # with a gear item of its name, as a catalog amp is in the app; no price, note or marker on it
         stat = STAT.replace(
             "**Old Friend** (Contact) **0**",
             "**Pep Pills** (Equipment) **1**\nWakes you up\n**Old Friend** (Contact) **0**",
@@ -373,13 +377,15 @@ class CharacterTest(unittest.TestCase):
             [f[3] for f in statblock.map_amp(grin, rules, mapper, False, catalog=True)[1] if f[0] == "negative"],
             ["book drawback"],
         )
-        # a deck printed as a Quality is a cyberdeck, on a runner as in the catalog: only a deck has Firewall – Attack (CRB p.62)
+        # a deck printed as a Quality is a cyberdeck, on a runner as in the catalog: only a deck has Firewall – Attack
+        # (CRB p.62)
         deck = {"name": "Old deck", "type": "Quality", "rating": 3, "count": 1, "lines": ["Firewall 2 – Attack 1"]}
         self.assertEqual(statblock.map_amp(deck, rules, mapper, False)[0], "cyberdeck")
         self.assertEqual(statblock.map_amp(deck, rules, mapper, False, catalog=True)[0], "cyberdeck")
         # a runner's other printed types stay: an Equipment amp with a deck's stats is gear made an Amp
         self.assertEqual(statblock.map_amp({**deck, "type": "Equipment"}, rules, mapper, False)[0], "equipment")
-        # a runner's drone, as a catalog one: the chassis' own front-facing mount takes the first weapon (CRB p.60, p.241)
+        # a runner's drone, as a catalog one: the chassis' own front-facing mount takes the first weapon (CRB p.60,
+        # p.241)
         mounted = {
             "name": "D",
             "type": "Drone",
@@ -395,14 +401,19 @@ class CharacterTest(unittest.TestCase):
     def test_a_limitation_is_a_negative_effect_only_where_it_explains_the_printed_rating(self):
         rules = statblock.load_rules()
         mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
-        amp = lambda rating, *lines: {
-            "name": "A",
-            "type": "Quality",
-            "rating": rating,
-            "count": 1,
-            "lines": list(lines),
-        }  # noqa: E731
-        neg = lambda a: [f[2] for f in statblock.map_amp(a, rules, mapper, True)[1] if f[0] == "negative"]  # noqa: E731
+
+        def amp(rating, *lines):
+            return {
+                "name": "A",
+                "type": "Quality",
+                "rating": rating,
+                "count": 1,
+                "lines": list(lines),
+            }
+
+        def neg(a):
+            return [f[2] for f in statblock.map_amp(a, rules, mapper, True)[1] if f[0] == "negative"]
+
         self.assertEqual(neg(amp(3, "RR 1 on Influence tests (only at night)")), [2])  # the rules give 2 more
         self.assertEqual(
             neg(amp(5, "RR 1 on Influence tests (only at night)")), []
@@ -446,13 +457,16 @@ class CharacterTest(unittest.TestCase):
     def test_a_weapon_the_chassis_mounts_needs_no_enhanced_mount_on_a_catalog_amp(self):
         rules = statblock.load_rules()
         mapper = statblock.Mapper({**rules["specs"], **statblock.SPEC_NAMES})
-        drone = lambda *lines: statblock.map_amp(
-            {"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": list(lines)},
-            rules,
-            mapper,
-            True,
-            catalog=True,
-        )  # noqa: E731
+
+        def drone(*lines):
+            return statblock.map_amp(
+                {"name": "D", "type": "Drone", "rating": 0, "count": 1, "lines": list(lines)},
+                rules,
+                mapper,
+                True,
+                catalog=True,
+            )
+
         small = "Pilot 5, Body 2, Handling 8, Speed 3, Armor 0"
         self.assertNotIn(
             "weapon-mount", [f[0] for f in drone(small, "Integrated zap SMG")[1]]
@@ -516,12 +530,14 @@ class CharacterTest(unittest.TestCase):
         npc = json.loads(NPC_GOLDEN.with_suffix(".json").read_text(encoding="utf8"))
         npc["identity"].update(portrait="data:image/jpeg;base64,/9j/P", token="data:image/png;base64,iVBO")
         self.assertIn(
-            "\n  <portrait>data:image/jpeg;base64,/9j/P</portrait><token>data:image/png;base64,iVBO</token>\n  <background>",
+            "\n  <portrait>data:image/jpeg;base64,/9j/P</portrait><token>data:image/png;base64,iVBO</token>\n  "
+            "<background>",
             statblock.character_xml(npc),
         )
 
 
 def write_golden():
+    """Regenerate the golden character xml."""
     t = CharacterTest("test_amps")
     t.setUp()
     GOLDEN.parent.mkdir(parents=True, exist_ok=True)
@@ -645,6 +661,7 @@ class RecipeTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 encoding="utf8",
+                check=False,
             )
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
 

@@ -46,16 +46,19 @@ TITLED = re.compile(r"(?:[•\-]\s+)?\*\*(?!\d+\.)([^*]+?):?\*\*:?\s*(.*)")
 
 
 def slug(s):
+    """`s` as a catalog id: lowercase words joined by hyphens, 50 characters at most."""
     s = s.lower().replace("’", "").replace("'", "")
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:50]
 
 
 def sheet_of(md):
+    """The quick-reference sheet the page's title names, else None."""
     m = TITLE_RE.search(md)
     return SHEETS.get(m.group(1).lower()) if m else None
 
 
-def match(meta, md_head):
+def match(_meta, md_head):
+    """How well a book matches a quick-reference sheet: 0.9 when its title names one."""
     return 0.9 if sheet_of(md_head) else 0.0
 
 
@@ -69,10 +72,12 @@ def _subhead(t):
 
 
 def clean(s):
+    """`s` without bold marks and with its whitespace folded."""
     return re.sub(r"\s+", " ", s.replace("**", "")).strip()
 
 
 def extract_sheet(sheet, md):
+    """The rules entries of one quick-reference sheet's text."""
     rules, ids, section, page, cur = [], set(), "", 1, None
 
     def add(title, text):

@@ -54,6 +54,7 @@ class GrammarEdgesTest(unittest.TestCase):
 
 class ReadEdgesTest(unittest.TestCase):
     def check(self, printed, expr, field="cost"):
+        """Assert the printed text reads as expr."""
         self.assertEqual(F.read(printed, field), (expr, {}), printed)
 
     def test_a_range_is_not_a_subtraction(self):
@@ -117,6 +118,7 @@ class TextReadersTest(unittest.TestCase):
 
 class TierGroupsMoreTest(unittest.TestCase):
     def entries(self, c1, c2):
+        """Two tiers of one entry with the given costs."""
         return [
             {"name": "Zap Relay (1-3)", "attrs": {"cost": c1, "category": "x"}, "page": 1},
             {"name": "Zap Relay (4-6)", "attrs": {"cost": c2, "category": "x"}, "page": 1},

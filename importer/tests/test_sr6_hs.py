@@ -109,11 +109,13 @@ A made-up back cover.
 
 
 def run_recipe(md=BOOK_MD):
+    """Run the recipe over a book's markdown."""
     regrouped, _ = regroup.regroup(md, hs.ALIASES, name_headers=hs.NAME_HEADERS, end_page=184)
     return hs.extract(regrouped)
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -131,7 +133,8 @@ class HsRecipeTest(unittest.TestCase):
         self.assertIn("tap that glows", self.texts[("gear", "glow-tap")])
         self.assertEqual((g["Matrix Relay"]["rating"], g["Matrix Relay"]["cost"]), ("1–3", "Rating x 1000"))
         self.assertEqual(g["Glow Buddy"]["category"], "Commlink app")
-        # (a cyberdeck case's printed capacity, cyberdeck/cyberhack; a case priced per variant: the capacity is each item's)
+        # (a cyberdeck case's printed capacity, cyberdeck/cyberhack; a case priced per variant: the capacity is each
+        # item's)
         self.assertEqual(
             (g["Zip Case"]["capacity"], g["Tiny Case"]["capacity"]),
             ("12/4 (includes cyberhack and deck)", "4/Not Available"),

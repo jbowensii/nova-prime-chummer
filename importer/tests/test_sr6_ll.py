@@ -61,11 +61,13 @@ A made-up art of fizzing claws.
 
 
 def run_recipe(md=BOOK_MD):
+    """The LL recipe's result for the book markdown `md`."""
     regrouped, _ = regroup.regroup(md, ll.ALIASES, name_headers=ll.NAME_HEADERS, end_page=ll.END_PAGE)
     return ll.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: entry} of the entries of `kind` in a recipe result."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

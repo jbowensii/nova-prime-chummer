@@ -11,7 +11,7 @@ from dataclasses import replace
 
 from importer.sr6 import catalog
 from importer.sr6.ids import slug
-from importer.sr6.regroup import blocks, keys, norm
+from importer.sr6.regroup import blocks, norm
 
 ID, NAME, PUBLISHER, CANON = "ED", "Shadowrun: Explosive Decompression", "Catalyst Game Labs", True
 BOOK = "Explosive Decompression"
@@ -45,6 +45,7 @@ _RATING = re.compile(r"professional rating\s*(\d+)", re.I)
 
 
 def match(meta, md_head):
+    """How well a book matches Explosive Decompression: 1.0 by its file hash, else 0.9 when its title says so."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"explosive\s+decompression", f"{meta.get('title') or ''}\n{md_head}", re.I) else 0.0
@@ -60,9 +61,16 @@ def prepare_md(md):
     untitled stat table (HAND …, ITEM … with text right above) takes the nearest title above it (up to _TITLE_REACH
     lines) that no table follows and that names no titled table (`EVO II` beside `evo armadillo II`: an art caption)."""
     lines = md.splitlines()
-    heading = lambda ln: re.match(r"(#{4,5}) (.+)$", ln)
-    nxt = lambda i: next((j for j in range(i + 1, len(lines)) if lines[j].strip()), None)
-    prv = lambda i: next((j for j in range(i - 1, -1, -1) if lines[j].strip()), None)
+
+    def heading(ln):
+        return re.match(r"(#{4,5}) (.+)$", ln)
+
+    def nxt(i):
+        return next((j for j in range(i + 1, len(lines)) if lines[j].strip()), None)
+
+    def prv(i):
+        return next((j for j in range(i - 1, -1, -1) if lines[j].strip()), None)
+
     chapter, inside, titled, stray = "", [], [], []
     for i, ln in enumerate(lines):
         if ln.startswith("# "):
@@ -231,7 +239,7 @@ def _vehicle(b):
     return any(h.upper() in ("HAND", "HANDL", "ACCEL") for h in (b.stats[0] if b.stats else b.header))
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """A vehicle's box as its row; an NPC's `(Professional Rating N)` tag as the core rulebook's section form (a named
     character keeps its tag line, `(Female Elf)`, and the book's group UNRATED_NPCS)."""
     if b.stats and _vehicle(b) and b.row is None:
@@ -243,6 +251,7 @@ def fix(b, parent2):
 
 
 def kind(chapter, b, parent2):
+    """(kind, category) of a block: a roster's NPCs, a gear or ships table's row, else (None, None)."""
     if chapter == ROSTERS:
         return ("npcs", None) if b.stats and "B" in {h.upper() for h in b.stats[0]} else (None, None)
     if chapter not in (GEAR, SHIPS) or b.row is None:
@@ -265,4 +274,5 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The entries of the book's regrouped text."""
     return catalog.read(_rosters(_tagged(_described(list(blocks(regrouped))))), ctx, sys.modules[__name__])

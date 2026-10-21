@@ -71,11 +71,13 @@ GROUP_AT = 0.65  # the confidence from which a row's name shows its category
 
 
 def words(s):
+    """The lower-case words of a name."""
     return re.findall(r"[a-z0-9][a-z0-9'-]*|&", (s or "").lower())
 
 
 def singular(w, seen=None):
-    """A word's singular, when the book prints it (`clothes` stays: no `clothe`); without the book's words, word_stem's."""
+    """A word's singular, when the book prints it (`clothes` stays: no `clothe`); without the book's words,
+    word_stem's."""
     s = w[:-1] if len(w) > 5 and w.endswith("ae") else word_stem(w)  # (a Latin plural: `formulae`)
     return s if seen is None or s == w or s in seen else w
 
@@ -134,6 +136,7 @@ class Vocabulary:
             self.pairs.update(zip(low, low[1:]))
 
     def common(self, w):
+        """True when the word is common in the book, or is an acronym."""
         return self.lower[w.lower()] > 0 or w.isupper() and 2 <= len(w) <= 5  # (an acronym: APDS)
 
     def composed(self, part, category):
@@ -153,6 +156,7 @@ class Vocabulary:
 
 
 def core_of(name):
+    """A name without its trailing parenthesis."""
     return re.sub(r"\s*\([^()]*\)\s*$", "", name).strip()
 
 
@@ -340,15 +344,17 @@ def build(cat, texts, row_kinds):
                 p = core_of(e["name"]).lower()
                 if not made[id(e)] and " " not in p:
                     made[id(e)] = [s + p for s in sorted(stems)]
-        # (owner, 2026-10-08) a first column headed by a class (`GRENADES`), not a column word (WEAPON, ITEM, TYPE, GEAR):
-        # its rows are parts of that class, shown `Grenade: Gas`, searched as the prose composes them (`gas grenade`)
+        # (owner, 2026-10-08) a first column headed by a class (`GRENADES`), not a column word (WEAPON, ITEM, TYPE,
+        # GEAR): its rows are parts of that class, shown `Grenade: Gas`, searched as the prose composes them (`gas
+        # grenade`)
         cls = singular(c["head"].lower()) if re.fullmatch(r"[A-Z]+S", c["head"] or "") else ""
         cls = cls if cls and key(cls) == key(c["name"]) else ""
         for e in es:
             core = norm(core_of(e["name"]))
             others = {core} if seen[core] - {(kind, ckey)} else set()
             conf, m = bare_part(e["name"], c["name"], voc, others, hs is not None, cohesion, parts, mk, made[id(e)])
-            # (a bare part only: not a product's own name, `Honda Spirit`, nor one naming the class, `Cybereyes Rating 5`)
+            # (a bare part only: not a product's own name, `Honda Spirit`, nor one naming the class, `Cybereyes Rating
+            # 5`)
             bare = not re.search(r"\s[A-Z0-9]", core_of(e["name"])) and key(cls) not in key(e["name"])
             if cls and bare:
                 conf = 1.0

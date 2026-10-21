@@ -79,11 +79,13 @@ A made-up bopping drone.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(bn.prepare_md(md), bn.ALIASES, name_headers=bn.NAME_HEADERS)
     return bn.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

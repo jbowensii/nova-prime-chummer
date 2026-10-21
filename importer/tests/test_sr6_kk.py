@@ -71,11 +71,13 @@ krime putter: sr6 stats
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the KK recipe."""
     regrouped, _ = regroup.regroup(md, kk.ALIASES, name_headers=kk.NAME_HEADERS)
     return kk.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

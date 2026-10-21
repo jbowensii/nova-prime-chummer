@@ -1,11 +1,13 @@
-"""SR6 catalog ids: the slug of a printed name. Frozen at what the Anarchy recipe's amps.slug gave when SR6 began using it,
-so no SR6 id moves; SR6 code takes it from here and never from an Anarchy recipe (importer/tests/test_sr6_ids.py pins the output).
+"""SR6 catalog ids: the slug of a printed name. Frozen at what the Anarchy recipe's amps.slug gave when SR6 began using
+it, so no SR6 id moves; SR6 code takes it from here and never from an Anarchy recipe (importer/tests/test_sr6_ids.py
+pins the output).
 """
 
 import re
 
 
 def slug(s):
+    """The id form of a name: lower case, accents and punctuation gone, words joined by hyphens."""
     s = (
         s.lower()
         .replace("’", "")

@@ -1,13 +1,17 @@
-"""SR6 effects reader, the final review of the 866-finding round (2026-10-18): Edge clauses with different owners, conditions that stay conditional, a book row
-that replaces the reader's effect, a drug's story. Every sentence and name is invented, in the books' structure."""
+"""SR6 effects reader, the final review of the 866-finding round (2026-10-18): Edge clauses with different owners,
+conditions that stay conditional, a book row that replaces the reader's effect, a drug's story. Every sentence and name
+is invented, in the books' structure."""
 
 import time
 import unittest
 
 from importer.sr6 import effects, overrides
 
+# pylint: disable=protected-access
+
 
 def fx(text, kind="qualities", name=None, cls=""):
+    """[(target, op, value, switch, when, spec, affects)] of the effects read from `text`."""
     return [
         (
             a["target"],
@@ -43,7 +47,8 @@ class EdgeOwnerTest(unittest.TestCase):
 
     def test_clauses_that_offer_an_edge_each_have_their_condition(self):
         got = fx(
-            "Wearing the lens in dim light grants a bonus Edge if foes can't see, grants a bonus Edge against targets who are hidden, and provides "
+            "Wearing the lens in dim light grants a bonus Edge if foes can't see, grants a bonus Edge against targets "
+            "who are hidden, and provides "
             "the ability to relax by spending an extra Minor Action for movement.",
             "gear",
         )
@@ -96,8 +101,10 @@ class DrugStoryTest(unittest.TestCase):
 
     def test_a_possessive_names_story_is_cut_and_a_spell_type_is_no_story(self):
         text = (
-            "drugs & toxins\n• **Vector:** Ingestion\n• **Speed:** 2 combat rounds\n• **Duration:** 10 x 1D6 minutes\n• **Power:** 7\n"
-            "• **Effect:** Gain situational Edge to resist Manipulation spells Zoe’s Zap was first brewed by a small lab. It is ingested for a period."
+            "drugs & toxins\n• **Vector:** Ingestion\n• **Speed:** 2 combat rounds\n• **Duration:** 10 x 1D6 "
+            "minutes\n• **Power:** 7\n"
+            "• **Effect:** Gain situational Edge to resist Manipulation spells Zoe’s Zap was first brewed by a small "
+            "lab. It is ingested for a period."
         )
         got = fx(text, "gear", "Zoe's Zap")
         self.assertEqual(
@@ -141,7 +148,8 @@ class UnderFireTest(unittest.TestCase):
 
 
 class BanScopeTest(unittest.TestCase):
-    """Architecture round: an Edge ban's own limit is its condition, whatever clause of the sentence a condition word is in."""
+    """Architecture round: an Edge ban's own limit is its condition, whatever clause of the sentence a condition word is
+    in."""
 
     def test_the_words_after_the_ban_are_its_condition(self):
         self.assertEqual(
@@ -149,7 +157,8 @@ class BanScopeTest(unittest.TestCase):
             ("test:all", "no-edge", "1", "conditional", "resist the effects of a zap"),
         )
         got = fx(
-            "They may not gain or spend Edge on social tests where they or their crew try to talk down a guard, and they must test whenever they see a zapper."
+            "They may not gain or spend Edge on social tests where they or their crew try to talk down a guard, and "
+            "they must test whenever they see a zapper."
         )
         self.assertEqual((got[0][0], got[0][3]), ("test:social", "conditional"))
         self.assertTrue(got[0][4].startswith("where they or their crew"))  # (not the other clause's whenever)
@@ -172,7 +181,10 @@ class BanScopeTest(unittest.TestCase):
         )  # (what it is for, not the Influence skill)
 
     def test_a_drugs_ban_stays_activated_with_its_limit(self):
-        text = "drugs & toxins\n• **Vector:** Ingestion\n• **Effect:** You cannot gain or spend Edge on any skill tests except Perception. Zoe’s Zap was first brewed by a small lab."
+        text = (
+            "drugs & toxins\n• **Vector:** Ingestion\n• **Effect:** You cannot gain or spend Edge on any skill tests "
+            "except Perception. Zoe’s Zap was first brewed by a small lab."
+        )
         got = fx(text, "gear", "Zoe's Zap")
         self.assertEqual((got[0][3], got[0][4]), ("activated", "except perception"))
 
@@ -182,7 +194,8 @@ class OtherPartyTest(unittest.TestCase):
 
     def test_they_after_you_and_a_caster_of_that_spell(self):
         got = fx(
-            "When a person near you makes a Composure test, you may glare at them, so they can't gain or spend Edge on that test."
+            "When a person near you makes a Composure test, you may glare at them, so they can't gain or spend Edge on "
+            "that test."
         )
         self.assertEqual({g[6] for g in got}, {"others"})
         self.assertEqual(
@@ -194,7 +207,8 @@ class OtherPartyTest(unittest.TestCase):
 
     def test_a_leading_condition_holds_for_both_clauses(self):
         got = fx(
-            "If you join a Teamwork test to help a Social test, nobody can spend Edge, and the opposing character gains a point of Edge."
+            "If you join a Teamwork test to help a Social test, nobody can spend Edge, and the opposing character "
+            "gains a point of Edge."
         )
         self.assertEqual(
             got[0][:7],
@@ -238,7 +252,8 @@ class WirelessLineTest(unittest.TestCase):
     def test_concealability_rating_and_also_adds_its_bonus(self):
         self.assertEqual(
             fx(
-                "**Wireless bonus:** Sensors allow the holster to change color, increasing the Concealability threshold by an additional 1.",
+                "**Wireless bonus:** Sensors allow the holster to change color, increasing the Concealability "
+                "threshold by an additional 1.",
                 "gear",
             )[0][:4],
             ("item:concealability", "add", "1", "wireless"),
@@ -249,7 +264,10 @@ class WirelessLineTest(unittest.TestCase):
             "Zap Booster",
         )
         self.assertEqual(got[0][:4] + (got[0][5],), ("skill:perception", "add", "R", "wireless", "Taste"))
-        text = "Gain +2 dice on Perception tests.\n**Wireless bonus:** The zap coprocessor also adds its bonus to Surprise tests."
+        text = (
+            "Gain +2 dice on Perception tests.\n**Wireless bonus:** The zap coprocessor also adds its bonus to "
+            "Surprise tests."
+        )
         self.assertIn(("test:surprise", "add", "2", "wireless"), [g[:4] for g in fx(text, "gear", "Zap Coprocessor")])
 
     def test_the_rating_of_another_named_item_is_not_this_ones(self):
@@ -260,7 +278,10 @@ class WirelessLineTest(unittest.TestCase):
 
 class BtlSkillsTest(unittest.TestCase):
     def test_a_btl_effect_line_gives_its_skills(self):
-        text = "**Vector:** Slot\n**Effect:** +2 Agility, -1 Charisma, Athletics 2, Engineering 1 (Locksmith +2)\nThe zap chip is loaded with memories."
+        text = (
+            "**Vector:** Slot\n**Effect:** +2 Agility, -1 Charisma, Athletics 2, Engineering 1 (Locksmith +2)\nThe zap "
+            "chip is loaded with memories."
+        )
         got = [(g[0], g[1], g[2], g[3], g[5]) for g in fx(text, "gear", "Zap Chip")]
         self.assertIn(("skill:athletics", "set", "2", "activated", None), got)
         self.assertIn(("skill:engineering", "add", "2", "activated", "Locksmith"), got)
@@ -315,7 +336,8 @@ class GunStatsTest(unittest.TestCase):
 
 
 class LateRulesTest(unittest.TestCase):
-    """Architecture round, the last rules: who a bonus is for, a stat named before its condition, a word that is not a skill, a use-it-or-lose-it clause."""
+    """Architecture round, the last rules: who a bonus is for, a stat named before its condition, a word that is not a
+    skill, a use-it-or-lose-it clause."""
 
     def test_you_gain_is_the_owners_even_with_tests_to_read_your_emotions(self):
         got = fx("When you are resisting Social tests and tests to read your emotions, you gain an Edge point.")
@@ -339,7 +361,8 @@ class LateRulesTest(unittest.TestCase):
 
     def test_use_it_or_lose_it_with_the_edge_named(self):
         got = fx(
-            "You get a bonus Edge on Perception tests to find a sound's source, but if you do not spend the Edge at once, it goes away.",
+            "You get a bonus Edge on Perception tests to find a sound's source, but if you do not spend the Edge at "
+            "once, it goes away.",
             "gear",
         )
         self.assertEqual(got[0][:5], ("skill:perception", "edge", "1", "conditional", "to find a sound's source"))
@@ -352,9 +375,11 @@ class LateRulesTest(unittest.TestCase):
 
 
 class BookRowReplaceTest(unittest.TestCase):
-    """HIGH 1: a book row's effect replaces the reader's of the same target and operation; a drop that finds nothing is reported."""
+    """HIGH 1: a book row's effect replaces the reader's of the same target and operation; a drop that finds nothing is
+    reported."""
 
     def apply(self, rows, xml):
+        """Run the overrides over a qualities file holding `xml`; the file it writes."""
         from importer.sr6 import NS
         import contextlib
         import io
@@ -366,7 +391,8 @@ class BookRowReplaceTest(unittest.TestCase):
     def test_the_readers_conditional_copy_is_not_left_beside_the_books(self):
         xml = (
             '<sr6:data kind="qualities">\n  <quality id="zq" source="X" page="1"><name>Zap</name>'
-            '<effect target="test:magic-resistance" op="edge" value="1" switch="conditional" when="to resist spells"/></quality>\n</sr6:data>\n'
+            '<effect target="test:magic-resistance" op="edge" value="1" switch="conditional" when="to resist '
+            'spells"/></quality>\n</sr6:data>\n'
         )
         row = {
             "cl6": "Zap",
@@ -383,7 +409,8 @@ class BookRowReplaceTest(unittest.TestCase):
 
     def test_an_added_effect_goes_after_the_kinds_own_children_and_before_the_text(self):
         xml = (
-            '<sr6:data kind="qualities">\n  <quality id="zq" source="X" page="1"><name>Zap</name><infected strain="III" base="Elf"/>'
+            '<sr6:data kind="qualities">\n  <quality id="zq" source="X" page="1"><name>Zap</name><infected '
+            'strain="III" base="Elf"/>'
             '<modifier kind="valmod" type="ATTRIBUTE" ref="BODY" value="10" set="MAX"/><text/></quality>\n</sr6:data>\n'
         )
         row = {
@@ -405,17 +432,21 @@ class BookRowReplaceTest(unittest.TestCase):
         import json
 
         for f in glob.glob(str(overrides.DIR / "*.book.json")):
-            for r in json.load(open(f, encoding="utf8")):
+            with open(f, encoding="utf8") as fh:
+                rows = json.load(fh)
+            for r in rows:
                 for d in r.get("drops", []):
                     self.assertTrue(d.get("target") and d.get("op"), (f, r.get("id")))
 
 
 def links(text, kind="qualities"):
+    """The effect links read from `text`."""
     return [a for t, a, _ in effects.links(text, kind)]
 
 
 class BookCorrectionPatternsTest(unittest.TestCase):
-    """The book corrections that were reader mistakes (docs/reviews/sr6-book-corrections-patterns-2026-10-19.md, Tier 1), now rules."""
+    """The book corrections that were reader mistakes (docs/reviews/sr6-book-corrections-patterns-2026-10-19.md, Tier
+    1), now rules."""
 
     def test_initiative_dice_written_nd6_and_one_removed(self):
         self.assertEqual(
@@ -445,7 +476,8 @@ class BookCorrectionPatternsTest(unittest.TestCase):
 
     def test_an_attribute_word_in_another_noun_is_no_attribute_test(self):
         got = fx(
-            "You may use Strength or Agility for any grappling test, and you gain a bonus point of Edge on any grappling test."
+            "You may use Strength or Agility for any grappling test, and you gain a bonus point of Edge on any "
+            "grappling test."
         )
         self.assertEqual([g[:2] for g in got], [("skill:close-combat", "edge")])
         self.assertNotIn(
@@ -519,11 +551,13 @@ class BookCorrectionPatternsTest(unittest.TestCase):
 
 
 class BookCorrectionPatternsTier2Test(unittest.TestCase):
-    """The book corrections that were reader mistakes, Tier 2 (docs/reviews/sr6-reader-tier2-2026-10-19.md), now rules."""
+    """The book corrections that were reader mistakes, Tier 2 (docs/reviews/sr6-reader-tier2-2026-10-19.md), now
+    rules."""
 
     def test_an_activation_sentence_carries_to_the_rest_of_its_paragraph(self):
         got = fx(
-            "This zapware requires a Minor Action to activate the coil. When attempting a Zap test (Athletics + Strength), you jump 2 meters per hit. "
+            "This zapware requires a Minor Action to activate the coil. When attempting a Zap test (Athletics + "
+            "Strength), you jump 2 meters per hit. "
             "They also get +1 die on Jumping tests per level.\n\nThe coil gives +1 die on Perception tests.",
             "augmentations",
         )
@@ -531,7 +565,8 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
             [g[:4] for g in got], [("skill:athletics", "add", "R", "activated"), ("skill:perception", "add", "1", None)]
         )  # (the next paragraph: not)
         got = fx(
-            "**Activation:** Major Action\nThe adept gains +1 die per level to all Zap (Leadership) tests. The adept always gets +1 die on Perception tests.",
+            "**Activation:** Major Action\nThe adept gains +1 die per level to all Zap (Leadership) tests. The adept "
+            "always gets +1 die on Perception tests.",
             "adeptpowers",
         )
         self.assertEqual([g[3] for g in got], ["activated", None])  # (`always`: not)
@@ -606,7 +641,8 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
 
     def test_edge_on_this_test_after_one_skill_test_is_that_skills(self):
         got = fx(
-            "They go unnoticed with a successful Influence (Etiquette) + Charisma (2) test. You gain an Edge on this test if you are dressed for it.",
+            "They go unnoticed with a successful Influence (Etiquette) + Charisma (2) test. You gain an Edge on this "
+            "test if you are dressed for it.",
             "gear",
         )
         self.assertEqual(
@@ -616,7 +652,8 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
     def test_a_third_party_mid_sentence_and_at_least_one_net_hit(self):
         self.assertEqual(
             fx(
-                "This zap makes spotting the user easier, so any observers get a +1 dice pool bonus on Perception tests."
+                "This zap makes spotting the user easier, so any observers get a +1 dice pool bonus on Perception "
+                "tests."
             )[0][6],
             "others",
         )
@@ -630,11 +667,13 @@ class BookCorrectionPatternsTier2Test(unittest.TestCase):
 
 
 class BookCorrectionPatternsTier3Test(unittest.TestCase):
-    """The book corrections that were reader mistakes, Tier 3 (docs/reviews/sr6-reader-tier3-2026-10-19.md), now rules."""
+    """The book corrections that were reader mistakes, Tier 3 (docs/reviews/sr6-reader-tier3-2026-10-19.md), now
+    rules."""
 
     def test_the_condition_is_the_effects_own_clauses(self):
         got = fx(
-            "The zapper grants +1 Reaction, and two additional Minor Actions per round that can only be spent on actions that involve zapping.",
+            "The zapper grants +1 Reaction, and two additional Minor Actions per round that can only be spent on "
+            "actions that involve zapping.",
             "augmentations",
         )
         self.assertEqual(
@@ -652,13 +691,15 @@ class BookCorrectionPatternsTier3Test(unittest.TestCase):
             ],
         )
         got = fx(
-            "The zap pistol's AR increases by +2 and the adept also gains +1 die on Perception tests after a successful Quick Draw action.",
+            "The zap pistol's AR increases by +2 and the adept also gains +1 die on Perception tests after a "
+            "successful Quick Draw action.",
             "adeptpowers",
         )
         self.assertEqual(
             [g[3] for g in got if g[0] == "item:ar"], [None]
         )  # (a second verb of the subject: its own clause)
-        # (kept: a clause before that states nothing, `… when the user sleeps, and the user suffers`; a sentence-initial condition)
+        # (kept: a clause before that states nothing, `… when the user sleeps, and the user suffers`; a sentence-initial
+        # condition)
         self.assertEqual(
             fx("The zap wears off when the user sleeps, and the user suffers -1 Willpower.", "gear")[0][3:5],
             ("conditional", "when the user sleeps"),
@@ -721,10 +762,13 @@ class BookCorrectionPatternsTier3Test(unittest.TestCase):
             fx("You gain a point of Edge when dealing with zappers, and the user gains +1 Reaction.")[0][4],
             "when dealing with zappers",
         )  # (a new clause: no list)
-        # (review of PR #88: the words after the tests are clause-scoped too; a new subject after the list ends it, comma or not)
+        # (review of PR #88: the words after the tests are clause-scoped too; a new subject after the list ends it,
+        # comma or not)
         for s in (
-            "Gain +2 dice on Influence tests with military, security, or law enforcement personnel, and the user gains +1 Reaction.",
-            "Gain +2 dice on Influence tests with military, security, or law enforcement personnel and the user gains +1 Reaction.",
+            "Gain +2 dice on Influence tests with military, security, or law enforcement personnel, and the user gains "
+            "+1 Reaction.",
+            "Gain +2 dice on Influence tests with military, security, or law enforcement personnel and the user gains "
+            "+1 Reaction.",
         ):
             self.assertEqual(
                 fx(s),

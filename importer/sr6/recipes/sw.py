@@ -58,6 +58,7 @@ _PER = re.compile(r"^\s*([\d,]+)\s*¥?\s*/\s*(\w+)\s*$")
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -119,7 +120,7 @@ def prepare(bs):
     bs = list(shapes.boxes(bs))
     out = []
     for i, b in enumerate(bs):
-        ch, sec = norm(b.chapter), norm(b.section)
+        sec = norm(b.section)
         if b.type == "item" and b.level == 5 and norm(b.name) == "game information" and out and not b.stats:
             out[-1] = replace(out[-1], text="\n\n".join(t for t in (out[-1].text.strip(), b.text.strip()) if t))
             continue
@@ -179,9 +180,9 @@ _LABEL_LINE = re.compile(r"^\s*\*\*[^*]+:\*\*")
 
 def _run_in_traditions(b):
     """A level-3 section over a family of traditions (`Traditions of Karma`, `Abrahamic Traditions`) printing each in
-    its prose as a bold run-in (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`, `**Wux-**` + `**ing**`):
-    one tradition a run-in, its text the lines up to the next; [] when the section prints none (it is then one
-    tradition itself, _tradition). A name ending in `tradition(s)` is searched without it too."""
+    its prose as a bold run-in (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`, `**Wux-**` +
+    `**ing**`): one tradition a run-in, its text the lines up to the next; [] when the section prints none (it is then
+    one tradition itself, _tradition). A name ending in `tradition(s)` is searched without it too."""
     if (
         b.type != "section"
         or b.level != 3
@@ -239,7 +240,10 @@ def _two_prices(b):
     if not own:
         text = text[lead.end() :].lstrip()
     parts = [p.strip() for p in b.name.split(",")]
-    initials = lambda n: "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
+
+    def initials(n):
+        return "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
+
     if len(semi := [p.strip() for p in b.name.split(";")]) == 2:
         names = semi  # (a heading listing both: `MagicZap Marble; MagicZap Marble Plus`)
     elif len(parts) == 2 and [initials(p) for p in parts] == [m.group(3).upper(), m.group(6).upper()]:
@@ -277,4 +281,5 @@ def _tradition(bs, i, b):
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks into a catalog Result."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -1,5 +1,5 @@
-"""Join every matched (CL6 record, our entry) pair with the raw CL6 modifications, our <effect>/<modifier> children and text.
-Reads the rebuilt runs; changes nothing."""
+"""Join every matched (CL6 record, our entry) pair with the raw CL6 modifications, our <effect>/<modifier> children and
+text. Reads the rebuilt runs; changes nothing."""
 
 import collections
 import os
@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 
 from tools.cl6check import __main__ as M
 from tools.cl6check import modifiers, ours
+
+# pylint: disable=protected-access  # the pairing reads the importer's entry lists
 
 
 def raw_mods(el):
@@ -34,6 +36,7 @@ def raw_mods(el):
 
 
 def base(n):
+    """The comparable name: without parentheses, casefolded."""
     return re.sub(r"\s*\([^)]*\)\s*", " ", n or "").strip().casefold()
 
 
@@ -69,7 +72,10 @@ def build(cl6, runs):
             g = (e.get("attrs") or {}).get("group")
             if g:
                 bygroup[(e["src"], e["kind"], g)].append(e)
-    kids = lambda el: [dict(k.attrib) | {"_tag": k.tag} for k in el]
+
+    def kids(el):
+        return [dict(k.attrib) | {"_tag": k.tag} for k in el]
+
     rows = []
     for c, o in pairs:
         src, el = o["src"], o.get("el")

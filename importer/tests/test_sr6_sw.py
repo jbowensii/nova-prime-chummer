@@ -116,11 +116,13 @@ A made-up back cover.
 
 
 def run_recipe(md=BOOK_MD):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(md, sw.ALIASES, name_headers=sw.NAME_HEADERS, end_page=169)
     return sw.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

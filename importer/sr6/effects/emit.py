@@ -44,11 +44,12 @@ from .entries import (
 
 
 def apply(files, texts_xml, regrouped="", only=None):
-    """(files, texts): the catalog files (`{name: xml}`, catalog.Catalog.xml's one entry a line) with each entry's effects,
-    tests and links as its text and the book's tables state them (read(), table(), links()), in place of the ones read
-    before (an add-on's effects on its host, read from the host's text, stay); and the texts with a variant's own run-in
-    paragraph added to its description where the book prints it under the parent's heading (`Genotype Enhancement
-    (NeoElastian)`: `**NeoElastian:** …`). only: {(kind, id)} to read only these entries (the ones an override added).
+    """(files, texts): the catalog files (`{name: xml}`, catalog.Catalog.xml's one entry a line) with each entry's
+    effects, tests and links as its text and the book's tables state them (read(), table(), links()), in place of the
+    ones read before (an add-on's effects on its host, read from the host's text, stay); and the texts with a variant's
+    own run-in paragraph added to its description where the book prints it under the parent's heading (`Genotype
+    Enhancement (NeoElastian)`: `**NeoElastian:** …`). only: {(kind, id)} to read only these entries (the ones an
+    override added).
     """
     files = {f: split_entries(x) for f, x in files.items()}
     texts = {}
@@ -87,14 +88,16 @@ def apply(files, texts_xml, regrouped="", only=None):
     rule_texts = [(_key(n), texts.get(("rules", rid), "")) for rid, _, n in rules if not life_module(rid)]
     rule_texts = [(k, t) for k, t in rule_texts if t]
     names = {f[:-4]: [_unesc(n) for n in re.findall(r"<name>(.*?)</name>", x or "")] for f, x in files.items()}
-    # (an entry's category -> its names, per kind: the entries that share a description are one category's, `Endosymbionts
-    # (Gain)` of Symbiont is no sibling of `Awareness (Tactical)`, whose description holds `Gain a +1 dice pool bonus …`)
+    # (an entry's category -> its names, per kind: the entries that share a description are one category's,
+    # `Endosymbionts (Gain)` of Symbiont is no sibling of `Awareness (Tactical)`, whose description holds `Gain a +1
+    # dice pool bonus …`)
     categorised = {}
     for f, x in files.items():
         for m in re.finditer(r'<\w+ id="[^"]+"([^>]*)><name>(.*?)</name>', x or ""):
             cat = (re.search(r' category="([^"]*)"', m.group(1)) or [None, ""])[1].casefold()
             categorised.setdefault(f[:-4], {}).setdefault(cat, []).append(_unesc(m.group(2)))
-    # (an item's add-ons the book prices in its text, prose_items.add_ons: host id -> the add-ons' names; their effects are theirs)
+    # (an item's add-ons the book prices in its text, prose_items.add_ons: host id -> the add-ons' names; their effects
+    # are theirs)
     acc_of = {}
     for m in re.finditer(
         r'<\w+ id="[^"]+"[^>]*? accessoryOf="([^"]+)"[^>]*><name>(.*?)</name>', "".join(f for f in files.values() if f)
@@ -143,9 +146,12 @@ def apply(files, texts_xml, regrouped="", only=None):
                         if not re.match(r"(?i)(?:rating|level|force) \d", w)
                     ]
                     text = _variant_sentences(text, variant_words, others)
-            bare = lambda t: re.sub(
-                r"\*\*[^*\n]+:\*\*[^\n]*", "", t
-            ).strip()  # (the text less its label lines: `**Treatment time:** 2 months`)
+
+            def bare(t):
+                return re.sub(
+                    r"\*\*[^*\n]+:\*\*[^\n]*", "", t
+                ).strip()  # (the text less its label lines: `**Treatment time:** 2 months`)
+
             if (pm := _VARIANT.match(nm)) and len(bare(text)) < 200:
                 base, var = _key(pm.group(1)), _label(
                     pm.group(2)
@@ -161,11 +167,14 @@ def apply(files, texts_xml, regrouped="", only=None):
                         var,
                     )
                 if var not in runins:
-                    # (a label the book misprints, `**NDE:**` for `NDI`: the one paragraph label of the group's block that no row names,
-                    # when this row is the only one of the group without its own; no alias yet, the corpus pass adds it after this)
-                    mine_ = lambda k: [
-                        p for b, p in runins.get(k, ()) if b and (b in base or base in b) and len(p.split()) >= 3
-                    ]
+                    # (a label the book misprints, `**NDE:**` for `NDI`: the one paragraph label of the group's block
+                    # that no row names, when this row is the only one of the group without its own; no alias yet, the
+                    # corpus pass adds it after this)
+                    def mine_(k, base=base):
+                        return [
+                            p for b, p in runins.get(k, ()) if b and (b in base or base in b) and len(p.split()) >= 3
+                        ]
+
                     sibs = {
                         _label(m.group(2))
                         for n in names.get(kind, ())
@@ -185,12 +194,15 @@ def apply(files, texts_xml, regrouped="", only=None):
                     added[(kind, eid)] = text
             ri = runins.get(_key(nm), ())
             if (
-                'value="RCC"' in kids
-            ):  # (a rigger program, an override's `Encryption` for an RCC: the Rigger Programs block's line, not the deck program's)
+                'value="RCC"'
+                in kids
+                # (a rigger program, an override's `Encryption` for an RCC: the Rigger Programs block's line, not the
+                # deck program's)
+            ):
                 ri = [x for x in ri if "rigger" in x[0]] or ri
             if len(bare(text)) < 40 and "(" not in nm and len(ri) and len({b for b, _ in ri}) == 1:
-                # (a row named by a run-in label of one block of the book, `Balance` under the Tail's `**Balance:** …`: that
-                # paragraph is its description)
+                # (a row named by a run-in label of one block of the book, `Balance` under the Tail's `**Balance:** …`:
+                # that paragraph is its description)
                 got = sorted((p for _, p in ri), key=len, reverse=True)
                 if got[0] not in text:
                     text = (text + "\n" + got[0]).strip()
@@ -209,16 +221,18 @@ def apply(files, texts_xml, regrouped="", only=None):
                     )
                 )
             ):
-                # (a maker's laser sight, Firing Squad p. 72: the core rulebook's +1 Attack Rating, at the ranges it can be used at)
-                bands = {b for b in _BANDS} if bm.group(2) else {b for b in _BANDS if b in bm.group(1).casefold()}
+                # (a maker's laser sight, Firing Squad p. 72: the core rulebook's +1 Attack Rating, at the ranges it can
+                # be used at)
+                bands = set(_BANDS) if bm.group(2) else {b for b in _BANDS if b in bm.group(1).casefold()}
                 armor_fx.append(_fx("item:ar", "add", ",".join("1" if b in bands else "0" for b in _BANDS)))
             if (
                 kind == "gear"
                 and (sec := section_of.get(_key(nm)))
                 and re.search(r' class="MOD_SKIN/MOD_ARMOR"', attrs)
             ):
-                # (Foundations, Double Clutch p. 133: the section's own blocks `Acceleration` and `Top Speed` tell what each foundation's armor
-                # does to them, the sentences naming this one: read here, not as text, the sentence's reverse and its numbers are no effect)
+                # (Foundations, Double Clutch p. 133: the section's own blocks `Acceleration` and `Top Speed` tell what
+                # each foundation's armor does to them, the sentences naming this one: read here, not as text, the
+                # sentence's reverse and its numbers are no effect)
                 armor_fx = [
                     fx
                     for stat in ("acceleration", "top speed")
@@ -270,8 +284,8 @@ def apply(files, texts_xml, regrouped="", only=None):
             if (nest := re.search(r"\(([^()]+)\)\)\s*$", nm)) and not re.match(
                 r"(?i)(?:rating|level|force) \d", nest.group(1)
             ):
-                # (`Pathogen Resistance (general)` / `(specific)`, one paragraph for both: the sentences that name the other version are
-                # not this one's)
+                # (`Pathogen Resistance (general)` / `(specific)`, one paragraph for both: the sentences that name the
+                # other version are not this one's)
                 text = _variant_sentences(
                     text,
                     [nest.group(1)],
@@ -294,10 +308,14 @@ def apply(files, texts_xml, regrouped="", only=None):
                 and (rt := next((t for k, t in rule_texts if k == _key(nm) and t not in text), None))
             ):
                 text = (
-                    text + "\n" + rt
-                ).strip()  # (the same, once the entry's own paragraph is in: `the same as the Synchronicity quality in the … path above`)
-            # (two entries named alike but for `External` and `Internal`, one paragraph for both, `SmartCam External`: the sentences that name
-            # the other one are not this one's)
+                    text
+                    + "\n"
+                    + rt
+                    # (the same, once the entry's own paragraph is in: `the same as the Synchronicity quality in the …
+                    # path above`)
+                ).strip()
+            # (two entries named alike but for `External` and `Internal`, one paragraph for both, `SmartCam External`:
+            # the sentences that name the other one are not this one's)
             if (
                 " " in nm
                 and "(" not in nm
@@ -315,7 +333,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                 )
             ):
                 word = nm.rsplit(" ", 1)[1]
-                # (a line at a time: a `**Wireless bonus:**` line stays whole; `An internal SmartCam does the same also grants …` keeps the sentence it repeats)
+                # (a line at a time: a `**Wireless bonus:**` line stays whole; `An internal SmartCam does the same also
+                # grants …` keeps the sentence it repeats)
                 text = "\n".join(
                     (
                         ln
@@ -332,13 +351,15 @@ def apply(files, texts_xml, regrouped="", only=None):
                 + tire_links(text, kind)
             )
             if sm := re.search(
-                r"\b(?:the same (?:[a-z]+ )?(?:bonus|bonuses|effects?|results?) as|functions (?:just )?like|works (?:just )?like)"
+                r"\b(?:the same (?:[a-z]+ )?(?:bonus|bonuses|effects?|results?) as|functions (?:just )?like|works "
+                r"(?:just )?like)"
                 r" (?:the |an? )?([a-z][a-z ]{2,30}?)(?=[,.;)]|$)",
                 _norm(text),
                 re.I,
             ):
-                # (`The character receives the same Stealth bonuses as basic camouflage`, `This functions like the balance
-                # tail`: as the sibling version named, a variant row of the same base or a row of the same run-in block)
+                # (`The character receives the same Stealth bonuses as basic camouflage`, `This functions like the
+                # balance tail`: as the sibling version named, a variant row of the same base or a row of the same
+                # run-in block)
                 sw_, bk = set(_key(sm.group(1)).split()), _key(re.sub(r"\s*\(.*$", "", nm))
                 sibs = [
                     (_key(vm2.group(2)), n)
@@ -386,7 +407,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                 )
             sec = section_of.get(_key(nm)) or section_of.get(_key(re.sub(r"\s*\(.*$", "", nm)))
             if not sec and kind in ITEM_KINDS:
-                # (a table row of a section named for it, `Machine Gun Blast Shield (small)` of `Machine Gun “Blast Shields”`: the section's words all in its name)
+                # (a table row of a section named for it, `Machine Gun Blast Shield (small)` of `Machine Gun “Blast
+                # Shields”`: the section's words all in its name)
                 nw = {w.rstrip("s") for w in re.findall(r"[a-z]+", nm.casefold())}
                 sec = max(
                     (
@@ -401,9 +423,10 @@ def apply(files, texts_xml, regrouped="", only=None):
             if sec and intros.get(sec):
                 found += [x for x in section_effects(intros[sec], text, nm, kind, sec) if x not in found]
             for v in re.findall(r'<variant name="([^"]*)"', kids):
-                # (a variant an entry comes in, `Missile` for a rocket: its own table row, `Missile Variant` with its NOTES `+2 to
-                # Attack Rating`, and the section's sentences about it, `Missiles are rockets that carry … sensor packages adding
-                # their rating to the attack roll`, are effects when it is that variant, CRB p. 264)
+                # (a variant an entry comes in, `Missile` for a rocket: its own table row, `Missile Variant` with its
+                # NOTES `+2 to Attack Rating`, and the section's sentences about it, `Missiles are rockets that carry …
+                # sensor packages adding their rating to the attack roll`, are effects when it is that variant, CRB p.
+                # 264)
                 vk = _key(unesc_v := _unesc(v))
                 if not vk or vk == "base":
                     continue
@@ -417,7 +440,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                         read(s, kind)
                         for s in sentences(intros.get(sec, ""))
                         if re.match(
-                            rf"^\W*{re.escape(vk)}s\s+(?:are|have|has|carry|get|gain|add|provide|grant|use|can|may|must)\b",
+                            rf"^\W*{re.escape(vk)}s\s+(?:are|have|has|carry|get|gain|add|provide|grant|use|can|may|must"
+                            r")\b",
                             s.casefold(),
                         )
                     ]
@@ -467,8 +491,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                         from xml.sax.saxutils import escape
 
                         kids = (
-                            f"<alias>{escape(nm.split(None, 1)[0] + ' ' + base_name[:1].lower() + base_name[1:])}</alias>"
-                            + kids
+                            f"<alias>{escape(nm.split(None, 1)[0] + ' ' + base_name[:1].lower() + base_name[1:])}</alia"
+                            "s>" + kids
                         )
                 else:  # (a base printed as a group header over its versions: the version its name picks, else each)
                     gbase = _key(re.sub(r"\s*\([^()]*\)\s*$", "", nm.split(None, 1)[1]))
@@ -492,7 +516,9 @@ def apply(files, texts_xml, regrouped="", only=None):
                         cited != own_src or not local
                     ):  # (a source's id, `swc`; a book's name or its first word is no id;
                         a["ref"] = (
-                            f"{cited}.{sl}"  # another book's citation wins over this book's entry of the name: the Companion's `See Dermal Deposits, p. 71, SR6.` is the core rulebook's, not itself)
+                            # another book's citation wins over this book's entry of the name: the Companion's `See
+                            # Dermal Deposits, p. 71, SR6.` is the core rulebook's, not itself)
+                            f"{cited}.{sl}"
                         )
                     elif local:
                         a["ref"] = sl
@@ -512,18 +538,22 @@ def apply(files, texts_xml, regrouped="", only=None):
                 if std:
                     found.append(("link", {"rel": "as", "kind": "weapons", "name": std.capitalize()}, None))
             tab = by_name.get(_key(nm), [])
-            based = lambda h: len(h) > 1 and h[1].strip().upper() == "BASE"  # noqa: E731
+
+            def based(h):
+                return len(h) > 1 and h[1].strip().upper() == "BASE"
+
             if not tab and kind == "qualities" and (bm := re.fullmatch(r"(.+?) \(([^()]+)\)", nm)):
-                # (`Ghoul (Dwarf)`: the row `Ghoul` whose BASE is Dwarf, the Companion's Infected Metatype Attributes, p. 109)
+                # (`Ghoul (Dwarf)`: the row `Ghoul` whose BASE is Dwarf, the Companion's Infected Metatype Attributes,
+                # p. 109)
                 tab = [
                     (h, r)
                     for h, r in by_name.get(_key(bm.group(1)), [])
                     if based(h) and _key(r[1]) == _key(bm.group(2))
                 ]
-            # (`Cyberjack (Rating 1)`: the row `Rating 1`; `Bone Lacing (Plastic)`, whose own row is its price's: the row
-            # `Plastic` of the Bone Lacing table)
+            # (`Cyberjack (Rating 1)`: the row `Rating 1`; `Bone Lacing (Plastic)`, whose own row is its price's: the
+            # row `Plastic` of the Bone Lacing table)
             if not any(table(h, r, kind) for h, r in tab) and (pm := re.search(r"\(([^()]+)\)\s*$", nm)):
-                tab = tab + [(h, r) for h, r in by_name.get(_key(pm.group(1)), [])]
+                tab = tab + list(by_name.get(_key(pm.group(1)), []))
             if (
                 kind == "gear"
                 and re.search(r' class="[^"]*INSTRUMENT', attrs)
@@ -536,7 +566,9 @@ def apply(files, texts_xml, regrouped="", only=None):
             ):
                 found.append(
                     _fx("skill:con", "add", im.group(1).lstrip("+"), "conditional", "performance tests")
-                )  # (a musical instrument's `Dice pool effect:`, Neo-Anarchist Streetpedia p. 156: on a Performance test)
+                    # (a musical instrument's `Dice pool effect:`, Neo-Anarchist Streetpedia p. 156: on a Performance
+                    # test)
+                )
             if (
                 kind in ("weapons", "ammotypes")
                 and re.search(r' class="ammotype"', attrs)
@@ -544,7 +576,9 @@ def apply(files, texts_xml, regrouped="", only=None):
             ):
                 found.append(
                     _fx("item:dv", "set", dm.group(1))
-                )  # (an ammo type printing a Damage Value of its own, not a modifier: the weapon's becomes it, Astral Ways p. 128)
+                    # (an ammo type printing a Damage Value of its own, not a modifier: the weapon's becomes it, Astral
+                    # Ways p. 128)
+                )
             if (
                 kind == "ammotypes"
             ):  # (an ammo type's AR and DV: modifiers of the weapon it is loaded in, `–1S(e)`, `–2 to all`)
@@ -552,7 +586,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                 attr_tab = [(["AR", "DV"], [_unesc(at.get("ar", "")), _unesc(at.get("dv", ""))])]
                 tab = attr_tab if any(table(h_, r_, kind) for h_, r_ in attr_tab) else tab or attr_tab
                 if tab is attr_tab and any(table(h_, r_, kind) for h_, r_ in attr_tab):
-                    # (the stat line printed with the ammo type is its modifier: the text's own `**Ar:** +3` and a second table, the SR5 stats printed beside it,
+                    # (the stat line printed with the ammo type is its modifier: the text's own `**Ar:** +3` and a
+                    # second table, the SR5 stats printed beside it,
                     # state it again or other numbers; Krime Katalog)
                     found = [
                         x
@@ -560,15 +595,19 @@ def apply(files, texts_xml, regrouped="", only=None):
                         if not (x[0] == "effect" and x[1]["target"] in ("item:ar", "item:dv") and x[1]["op"] == "add")
                     ]
             for header, row in tab:
-                # (a quality's row of a table by base metatype is that base's, `when` naming it: an Infected type's maxima)
+                # (a quality's row of a table by base metatype is that base's, `when` naming it: an Infected type's
+                # maxima)
                 w = row[1] if based(header) and (len(tab) > 1 or kind == "qualities") else None
                 for t, a, _ in table(header, row, kind):
                     found.append((t, {**a, **({"when": w} if w else {})}, None))
             for header, trows in block_tables.get(_key(nm), ()):  # (a per-rating table under the entry: `R[1,1,2,2]`)
                 found += [x for x in rating_table(header, trows, kind) if x not in found]
             if (
-                kind == "programs"
-            ):  # (a Matrix program's `+2 to Defense Rating` is the Matrix one, CRB p. 184: `Armor`, the hacking program)
+                kind
+                == "programs"
+                # (a Matrix program's `+2 to Defense Rating` is the Matrix one, CRB p. 184: `Armor`, the hacking
+                # program)
+            ):
                 found = [
                     (
                         t,
@@ -599,17 +638,19 @@ def apply(files, texts_xml, regrouped="", only=None):
                 and re.search(r' category="[^"]*\bmod\b', attrs, re.I)
                 and re.search(r' rating="[^"]*\d', attrs)
             ):
-                # (a rated vehicle mod named for the stat it replaces, `Enhanced Sensors`, `Improved Pilot` (DC pp. 141-142:
-                # `Sensors may have a rating from 1 to 9`): the stat becomes its rating)
-                # (named for the stat itself, in the name less its notes: `Reduce Cargo Space` or `Increasing Cargo Space (CF Mod)`
-                # lowers or raises it, its rating is a price cell, `1 per 2 CF`, never the stat's new value)
+                # (a rated vehicle mod named for the stat it replaces, `Enhanced Sensors`, `Improved Pilot` (DC pp.
+                # 141-142: `Sensors may have a rating from 1 to 9`): the stat becomes its rating)
+                # (named for the stat itself, in the name less its notes: `Reduce Cargo Space` or `Increasing Cargo
+                # Space (CF Mod)` lowers or raises it, its rating is a price cell, `1 per 2 CF`, never the stat's new
+                # value)
                 head = re.sub(r"\s*\(.*$", "", nm).casefold()
                 ts = (
                     []
                     if re.match(r"(?:reduc|increas|decreas|expand|extend|enlarg|add|remov|chang)\w*\b", head)
                     else [t for t in targets(head, "vehicles") if t[0].startswith("item:")]
                 )
-                # (Standard Armor, Double Clutch p. 133: `modifies the Armor attribute of the vehicle` one for one: added to it)
+                # (Standard Armor, Double Clutch p. 133: `modifies the Armor attribute of the vehicle` one for one:
+                # added to it)
                 found += [
                     _fx(
                         t,
@@ -625,7 +666,9 @@ def apply(files, texts_xml, regrouped="", only=None):
                 _,
             ) in (
                 found
-            ):  # (a wireless line that brings a bonus to N adds the difference: N less the bonus of the entry's other effect on that target)
+                # (a wireless line that brings a bonus to N adds the difference: N less the bonus of the entry's other
+                # effect on that target)
+            ):
                 if t_ == "effect" and a_.pop("_total", None):
                     base_ = next(
                         (
@@ -642,8 +685,8 @@ def apply(files, texts_xml, regrouped="", only=None):
                         a_["value"] = str(int(a_["value"]) - int(base_))
             kept = _KEEP.findall(kids)
             if only is not None:
-                # (an entry an override added keeps the effects and links the override gave it, Commlink6's word; the text's add the targets
-                # and links the override left)
+                # (an entry an override added keeps the effects and links the override gave it, Commlink6's word; the
+                # text's add the targets and links the override left)
                 mine_fx, mine_ln = _FX.findall(kids), _LNK.findall(kids)
                 set_ = {_attrs(x).get("target") for x in mine_fx}
                 named = {(_attrs(x).get("name") or "").casefold() for x in mine_ln}
@@ -661,7 +704,8 @@ def apply(files, texts_xml, regrouped="", only=None):
             kids = kids + new if cut < 0 else kids[:cut] + new + kids[cut:]
             attrs += split_rating(nm, attrs, kids, names.get(kind, ()))
             lines.append(
-                f'{ind}<{tag} id="{eid}"{attrs}><name>{name}</name>{kids}</{tag}>{"</sr6:data>" if ln.rstrip().endswith("</sr6:data>") else ""}\n'
+                f'{ind}<{tag} id="{eid}"{attrs}><name>{name}</name>{kids}</{tag}>'
+                f'{"</sr6:data>" if ln.rstrip().endswith("</sr6:data>") else ""}\n'
             )
         out[fname] = "".join(lines)
     if added and texts_xml:
@@ -715,9 +759,10 @@ def _num(x):
 
 
 def _at_level(v, n):
-    """An effect value counted per rating at level n, in the forms the app reads (src/sr6/catalog/domain/effects.ts effectValue): `R`, `-R`,
-    `R*2`, `2*R`, `R-1`, `R*2-2`, `R[1,1,2]`, each side of an on-road/off-road pair `R/-R`; a value with no rating as it is
-    (`2`, `edg/2`, `hits`); None for a rating in any other form."""
+    """An effect value counted per rating at level n, in the forms the app reads (src/sr6/catalog/domain/effects.ts
+    effectValue): `R`, `-R`,
+    `R*2`, `2*R`, `R-1`, `R*2-2`, `R[1,1,2]`, each side of an on-road/off-road pair `R/-R`; a value with no rating as it
+    is (`2`, `edg/2`, `hits`); None for a rating in any other form."""
     s = (v or "").replace(" ", "")
     if (
         "/" in s
@@ -743,8 +788,8 @@ def _at_level(v, n):
     return None
 
 
-# the classes whose section or variant rules the core rulebook states for every item of them (a rule carries `rule="<its heading>"`):
-# the same class in another book has them too; ponytail: two classes verified, add another when it is
+# the classes whose section or variant rules the core rulebook states for every item of them (a rule carries `rule="<its
+# heading>"`): the same class in another book has them too; ponytail: two classes verified, add another when it is
 CLASS_RULES = {"CYBERWARE/CYBER_LIMBS", "AMMUNITION/ROCKETS"}
 _PARTIAL_LIMB = re.compile(
     r"\b(?:forearm|hand|lower leg|foot|feet|partial)\b", re.I
@@ -752,8 +797,8 @@ _PARTIAL_LIMB = re.compile(
 
 
 def _mentions(text, target):
-    """Whether an entry's own text speaks of what the effect on `target` is about (`condition monitor`, a limb's attributes, Attack
-    Rating …): a rule for the class does not fill in what the entry itself states."""
+    """Whether an entry's own text speaks of what the effect on `target` is about (`condition monitor`, a limb's
+    attributes, Attack Rating …): a rule for the class does not fill in what the entry itself states."""
     tail = target.split(":", 1)[-1]
     if tail.endswith("-monitor"):
         return bool(re.search(r"condition monitor|\bboxes\b", text, re.I))
@@ -768,12 +813,12 @@ def copy_links(sources, texts=None):
     """The entries whose effects change when each link (`grants`, `as`) copies the linked entry's effects into the entry
     (owner direction 2026-10-17): {(source, file name): xml} of the changed files from `sources`, {source: {file name:
     xml}} (the catalog as on disk, ids scoped, one entry a line); texts: {source: {(kind, id): description}}, when the
-    entries' own words matter (a class rule fills in nothing the entry's text speaks of). An effect the entry holds for the
-    same target, op and specialization is its own and stays (the book's word for the entry wins); `when` of the link goes on
-    the copies; a copy is `from` the linked id; the link is `copied`, for the app and the Foundry module not to follow it
-    again. A `grants` link is counted at its `level` (the lowest when it names none: `R` is that level); a link whose entry
-    is not found, or one of whose effects cannot be given at that level, is left unmarked and copies nothing (the app
-    follows it). Run again, it starts from the entries' own effects."""
+    entries' own words matter (a class rule fills in nothing the entry's text speaks of). An effect the entry holds for
+    the same target, op and specialization is its own and stays (the book's word for the entry wins); `when` of the link
+    goes on the copies; a copy is `from` the linked id; the link is `copied`, for the app and the Foundry module not to
+    follow it again. A `grants` link is counted at its `level` (the lowest when it names none: `R` is that level); a
+    link whose entry is not found, or one of whose effects cannot be given at that level, is left unmarked and copies
+    nothing (the app follows it). Run again, it starts from the entries' own effects."""
     texts = texts or {}
     ents, by_id, by_name, by_file = [], {}, {}, {}
     for src, files in sources.items():
@@ -803,7 +848,8 @@ def copy_links(sources, texts=None):
         c = [
             x for x in by_id.get(link.get("ref", ""), []) if not link.get("kind") or x["kind"] == link["kind"]
         ] or by_name.get((link.get("kind", ""), _key(link["name"])), [])
-        # (the entry's own kind first, then its own book, then one that has effects: `Armor` a critter power's is the critter power)
+        # (the entry's own kind first, then its own book, then one that has effects: `Armor` a critter power's is the
+        # critter power)
         c = sorted(
             (x for x in c if x is not e),
             key=lambda x: (x["kind"] != (link.get("kind") or e["kind"]), x["src"] != e["src"], not x["own"]),
@@ -851,8 +897,8 @@ def copy_links(sources, texts=None):
             for a in got:
                 if (a["target"], a["op"], a.get("spec")) in mine:
                     continue
-                # (an on-road/off-road pair that two links both give, Smart Tires working as off-road and racing tires: the better
-                # of each side, the tire that suits the road it is on)
+                # (an on-road/off-road pair that two links both give, Smart Tires working as off-road and racing tires:
+                # the better of each side, the tire that suits the road it is on)
                 same = next(
                     (
                         c
@@ -875,10 +921,13 @@ def copy_links(sources, texts=None):
                 ):
                     copies.append(
                         {**a, "from": t["id"]}
-                    )  # (the first link's copy of each condition and switch: two links reading alike are not twice; a firearm's and a melee weapon's stay, a wireless one and a plain one)
+                        # (the first link's copy of each condition and switch: two links reading alike are not twice; a
+                        # firearm's and a melee weapon's stay, a wireless one and a plain one)
+                    )
         if e["cls"] in CLASS_RULES and not (e["cls"] == "CYBERWARE/CYBER_LIMBS" and _PARTIAL_LIMB.search(e["name"])):
-            # (a rule the core rulebook states for all items of a class, a section's or a variant's: the same class in another book has
-            # it too unless it states its own or its text speaks of it, the Foamtek rocket's `Missile` or the Additional Cyberarm's
+            # (a rule the core rulebook states for all items of a class, a section's or a variant's: the same class in
+            # another book has it too unless it states its own or its text speaks of it, the Foamtek rocket's `Missile`
+            # or the Additional Cyberarm's
             # attributes, CRB pp. 265, 288; `from` names the rule)
             have = {(a["target"], a["op"], a.get("spec"), a.get("when")) for a in e["own"] + copies}
             words = (texts.get(e["src"]) or {}).get((e["kind"], e["id"]), "")
@@ -905,7 +954,7 @@ def copy_links(sources, texts=None):
                     out.append(ln)
                     continue
                 e, (ind, tag, eid, attrs, name, kids) = by[m.group(3)], m.groups()
-                links = _LNK.findall(kids)
+                links = _LNK.findall(kids)  # pylint: disable=redefined-outer-name  # (the local list, not the reader)
                 kids = _FX.sub(lambda x: "" if ' from="' in x.group(0) else x.group(0), kids)
                 for old, l in zip(links, e["links"]):
                     new = {k: v for k, v in l.items() if k != "copied"}

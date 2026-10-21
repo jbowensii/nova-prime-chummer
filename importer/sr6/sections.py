@@ -68,7 +68,8 @@ RUNIN_KINDS = [
     ("critterpowers", re.compile(r"\b(?:drake|sprite|critter|dracogenesis)\s+powers\b|\bsprite\s+commands\b", re.I)),
     ("programs", re.compile(r"\b(?:cyber)?programs?\b|\bautosofts\b|\bapps\b|\be-softs?\b", re.I)),
     ("qualities", re.compile(r"^(?:new\s+)?(?:positive|negative)\s+qualities$", re.I)),
-    # (`Critter Special Training`, Wild Life p. 182: what a critter can be trained in, beside its Critter Command Actions)
+    # (`Critter Special Training`, Wild Life p. 182: what a critter can be trained in, beside its Critter Command
+    # Actions)
     (
         "actions",
         re.compile(
@@ -149,6 +150,8 @@ def _singular(name):
 
 @dataclass
 class Found:
+    """A catalog entry read from a block: its kind, name, page and attributes."""
+
     kind: str
     name: str
     page: int
@@ -190,7 +193,8 @@ def forms(text):
 
 
 def _action_attrs(name, chain, tags="", text=""):
-    """(clean name, attributes) of an action: its type from the section words, timing, Edge cost and companion action."""
+    """(clean name, attributes) of an action: its type from the section words, timing, Edge cost and companion
+    action."""
     a = {}
     m = _TIMING.search(name)
     if m:
@@ -240,8 +244,10 @@ class Reader:
         self.granted = {}  # a granted list's noun (`power`) -> (its category, the most of it one may have, or None)
 
     def feed(self, b, page):
+        """Read one block into the entries it yields, tracking the chapter and heading stack it sits in."""
         if b.chapter != self.chapter:
             self.chapter, self.stack, self.path, self.prefixed = b.chapter, [], None, set()
+            # pylint: disable-next=attribute-defined-outside-init  # (set when a chapter starts)
             self.packs = False  # a chapter printing PACK headings: a heading over a `(N nuyen)` line there is a pack
         out, lv = [], b.level or 0
         heading = lv > 0
@@ -279,6 +285,7 @@ class Reader:
         if heading:
             out += self._heading(b, page, chain, parent)
             if PACK_WORD.search(b.name):
+                # pylint: disable-next=attribute-defined-outside-init  # (set when a chapter starts)
                 self.packs = True
             if not out:
                 out += packs(b, page, parent, self.packs)
@@ -295,7 +302,7 @@ class Reader:
         if rk and not out:  # (a heading that is an entry itself: its bold lines are its own)
             out += self._runins(b, page, rk, chain + [b.name])
         elif not rk and not out:  # `**2 Edge: Black Thumb**`: an Edge action wherever it is printed
-            out += [f for f in self._runins(b, page, "actions", chain + [b.name], _EDGE_FIRST)]
+            out += self._runins(b, page, "actions", chain + [b.name], _EDGE_FIRST)
         if heading:
             # a Matrix action's test line set as a heading of its own under it: its parent heading is the action
             if MATRIX_TEST.search(b.name) and self.stack and not self.stack[-1][3]:
@@ -475,7 +482,7 @@ class Reader:
             b,
         )
 
-    def _bought_as_quality(self, b, page, chain):
+    def _bought_as_quality(self, b, page, _chain):
         """A heading under a section whose text says its entries are taken as a quality, at the price its tag prints
         (`Adept Ways` (20 Karma): "… by selecting it as a quality"): an entry is a heading named with the section's own
         noun (`Artisan's Way` under `Adept Ways`), a positive quality at that price."""
@@ -560,10 +567,10 @@ class Reader:
             b,
         )
 
-    def _priced_heading(self, b, page, chain):
-        """A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive quality at that price; the
-        choices its text offers from the granted lists read before it (`Select two powers … and one characteristic …`)
-        are its <choice>s (kind quality, the list's category, count; max: the most the list allows)."""
+    def _priced_heading(self, b, page, _chain):
+        """A heading printing its price in Karma (`Returned Soldier (12 Karma)`) is a positive quality at that price;
+        the choices its text offers from the granted lists read before it (`Select two powers … and one characteristic
+        …`) are its <choice>s (kind quality, the list's category, count; max: the most the list allows)."""
         m = re.fullmatch(r"(.+?)\s*\((\d+)\s*Karma\)", b.name.strip(), re.I)
         if not m or not m.group(1)[:1].isupper():
             return None
@@ -901,8 +908,8 @@ def karma_list(s):
 
 def karma_steps(line):
     """The prices a quality's price line lists as its choices (`7 or 12 Karma`, `3,6, or 9 Karma`, `Common: 12 Karma;
-    Uncommon: 9 Karma`): `7 12`, the karmaSteps it is bought at (Bilko Contacts, Seattle p. 327); None for one price or a
-    range (`2 to 20 Karma`, every value between)."""
+    Uncommon: 9 Karma`): `7 12`, the karmaSteps it is bought at (Bilko Contacts, Seattle p. 327); None for one price or
+    a range (`2 to 20 Karma`, every value between)."""
     if re.search(r"\d\s*(?:to|[–—-])\s*\d", line or "", re.I):
         return None
     ks = sorted(set(karma_list(line)))
@@ -960,7 +967,8 @@ def is_path(f, template=frozenset()):
 
 
 def _granted(name, body):
-    """The step grants a quality printed elsewhere: `gain the Home Ground quality`, `the Home Ground quality (p. 72)`."""
+    """The step grants a quality printed elsewhere: `gain the Home Ground quality`, `the Home Ground quality (p.
+    72)`."""
     one = " ".join((body or "").split())
     n = re.escape(name)
     return bool(
@@ -1289,8 +1297,8 @@ def _joined(text):
 
 
 def packs(b, page, parent, chapter_has_packs):
-    """The packs a block prints: the block itself when its heading names a PACK or sits under a `… PACKs` heading (or in a
-    chapter of them) over a `(N nuyen)` line; else each `**Name** (w/ contents): **N nuyen**` paragraph, or
+    """The packs a block prints: the block itself when its heading names a PACK or sits under a `… PACKs` heading (or in
+    a chapter of them) over a `(N nuyen)` line; else each `**Name** (w/ contents): **N nuyen**` paragraph, or
     `Pilot Rating N: N nuyen` line, of a block under a `… PACKs` heading."""
     lines = _joined(b.text)
     first = next((ln for ln in lines if ln), "")
@@ -1352,8 +1360,8 @@ def packs(b, page, parent, chapter_has_packs):
 
 
 def _told_apart(out):
-    """Packs printed under one name with other contents (two `Ares Predator VI` PACKs): the first keeps the name, a later
-    one is named by its first item the first lacks (`Ares Predator VI (concealable holster)`)."""
+    """Packs printed under one name with other contents (two `Ares Predator VI` PACKs): the first keeps the name, a
+    later one is named by its first item the first lacks (`Ares Predator VI (concealable holster)`)."""
     first = {}
     for f in out:
         items = [re.sub(r"^w/\s*", "", x).strip() for _, _, x in f.children]

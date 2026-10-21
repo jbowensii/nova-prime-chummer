@@ -7,6 +7,8 @@ import xml.etree.ElementTree as ET
 from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 MD = """<!-- page 40 -->
 # GAME CONCEPTS
 ## Timing and Actions
@@ -135,13 +137,14 @@ Zorp adaptation, glow paint.
 """
 
 
-class SectionKindsTest(unittest.TestCase):
+class SectionKindsTest(unittest.TestCase):  # pylint: disable=too-many-public-methods
     @classmethod
     def setUpClass(cls):
         text, _ = regroup.regroup(MD, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         cls.res = crb.extract(text)
 
     def kind(self, k):
+        """{name: entry} of the `k` entries of the reading."""
         return {e.findtext("name"): e for e in ET.fromstring(self.res.files[f"{k}.xml"])}
 
     def test_actions(self):
@@ -257,9 +260,9 @@ Fizz rounds fizz.
         self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
 
     def test_vehicle_design_tables_and_terms(self):
-        """The design tables' printed columns (chassis, powertrain, console, size class) and each option's, modification's
-        and quality factor's terms (cost per level, maximum, multiplier), as printed; a weakness heading's entries are
-        critter powers marked as weaknesses."""
+        """The design tables' printed columns (chassis, powertrain, console, size class) and each option's,
+        modification's and quality factor's terms (cost per level, maximum, multiplier), as printed; a weakness
+        heading's entries are critter powers marked as weaknesses."""
         md = """<!-- page 150 -->
 # BUILD IT
 ## General Design
@@ -352,9 +355,10 @@ The critter gets soggy, made up.
                 "special": "0",
             },
         )
-        terms = lambda n: {
-            k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)
-        }  # noqa: E731
+
+        def terms(n):
+            return {k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)}
+
         self.assertEqual(terms("Improved Fizz"), {"dp": "6", "perLevel": "true", "max": "3"})
         self.assertEqual(terms("Improved Glow"), {"dp": "1", "perLevel": "true", "max": "2 x Body"})
         self.assertEqual(terms("Improved Hum"), {"dp": "3", "perLevel": "true", "max": "min(2, Body)"})
@@ -554,7 +558,10 @@ A gift of humming.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
         self.assertEqual(
             (names("critterpowers"), names("metamagics"), names("sprites")),
             (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]),
@@ -608,7 +615,10 @@ You glow.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
         self.assertEqual(
             (names("actions"), names("critterpowers")),
             (["Called Shot: Glow Fire", "Called Shot: Zap Point"], ["Fizz Ken"]),
@@ -635,7 +645,10 @@ You glow.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
         self.assertEqual(names("echoes"), ["Fizz Link", "Glow Mind"])
         self.assertEqual(names("programs"), ["Glow Pilot"])
 
@@ -711,6 +724,7 @@ Riggers can use some programs. See the **Programs** section (p. 40) for more det
         cls.res = crb.extract(text)
 
     def kind(self, k):
+        """[(name, type, page)] of the `k` entries of the reading."""
         return [(e.findtext("name"), e.get("type"), e.get("page")) for e in ET.fromstring(self.res.files[f"{k}.xml"])]
 
     def test_a_heading_named_as_one_of_its_sections_forms_is_an_action(self):

@@ -17,18 +17,20 @@ import sys
 
 from importer.sr6 import catalog
 from importer.sr6.recipes import crb_city
-from importer.sr6.catalog import NAME_HEADERS  # noqa: F401  (the recipe's own: regroup reads it)
+from importer.sr6.catalog import NAME_HEADERS  # pylint: disable=unused-import  # (the recipe's own: regroup reads it)
 
 ID, NAME, PUBLISHER, CANON = "CRB", "Shadowrun, Sixth World Core Rulebook", "Catalyst Game Labs", True
 SHA256 = (
     "15067e02c99c750f30cd94de95bbcc3c08497a2cf637a53d206761ef0cea18e3",  # the owner's 2019 printing
-    # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin (2023)
+    # the City Editions (the same pages 1-321, then a chapter on the city): Hong Kong (2025), Seattle (2021), Berlin
+    # (2023)
     "7c3a1cfdcd80f9a5ef6a7f4b3fb115b4a699e1fd48810683b33af2a06ccb05a6",
     "d44bc23010d8f0c6a9b67a8f9646e293a35240d467c544dbcfe1cfe294c7fec5",
     "6ebaedbde953f3bebe3c51ceab0dd265f924d0c1dc1a7c815d26b7471a124c6f",
 )
-# the printings, each with the month it was published (sources.xml's CRB, CRB-SEA, CRB-BER, CRB-HK): of several imported,
-# the CURRENT one (the owner: the Current Printing, whatever a City Edition is dated) is loaded, else the one published last (run.py), and a printing whose PDF carries no date is dated by it (resolve.py: an
+# the printings, each with the month it was published (sources.xml's CRB, CRB-SEA, CRB-BER, CRB-HK): of several
+# imported, the CURRENT one (the owner: the Current Printing, whatever a City Edition is dated) is loaded, else the one
+# published last (run.py), and a printing whose PDF carries no date is dated by it (resolve.py: an
 # errata older than the printing never overrides it); each City Edition's city chapter is a source of its own and loads
 # from its own printing regardless
 PRINTINGS = {
@@ -39,7 +41,9 @@ PRINTINGS = {
 }
 CURRENT = (
     SHA256[0],
-)  # the printings that outrank every other (recipes.printing): values come from the Current Printing, the City Editions only fill what it leaves out
+    # the printings that outrank every other (recipes.printing): values come from the Current Printing, the City
+    # Editions only fill what it leaves out
+)
 # heading sizes -> levels (layout.fonts' guess takes the Hong Kong and Berlin chapters' 27 pt titles for a level)
 HEADING_LEVELS = {60.0: 1, 21.0: 2, 15.0: 3, 13.0: 4, 9.0: 5}
 PAGE_OFFSET = 1  # printed page = PDF page - 1
@@ -134,6 +138,7 @@ BOOK = "the Shadowrun 6 core rulebook"
 
 
 def match(meta, md_head):
+    """How well a book fits this recipe: 1.0 by its hash, 0.9 for the Sixth World Core Rulebook, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"

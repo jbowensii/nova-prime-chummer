@@ -4,12 +4,12 @@
 Layout (printed pages, no book text): each block is a horizontal band of a two-column page, from its name (16 pt, left
 column) to the next name. The left column has the attribute table (STR AGI WIL LOG CHA, the human row first, then
 "4 (orks) 3 (dwarfs)…" rows under the columns they change; a spirit prints "Minor / Regular / Major" and "2/3/4" values)
-and the skills ("• Skill <avg> (<rank>+<attr initial>, RR n)", "◊ Spec …", "[with <amp> …]" pools); the right column (and
-whatever the left one has room for) the Shadow Amps ("• Name (type): effects", under "SHADOW AMPS", "CHOOSE n SHADOW AMP",
-"AWAKENED + CHOOSE 1 …"), SPELLS, WEAPONS ("• Name DV n (orks …) [ranges]", "CHOOSE 1 WEAPON"), EQUIPMENT ("• Name (Armor
-n)") and WOUND THRESHOLDS ("• Low fighting spirit", thresholds). A band without an attribute table is a critter's
-description (the facing page has its block); lines above a page's first name continue the last block. Margin tab
-letters (the outer 30 pt) and the running header and page number (18 pt and up) are dropped.
+and the skills ("• Skill <avg> (<rank>+<attr initial>, RR n)", "◊ Spec …", "[with <amp> …]" pools); the right column
+(and whatever the left one has room for) the Shadow Amps ("• Name (type): effects", under "SHADOW AMPS", "CHOOSE n
+SHADOW AMP", "AWAKENED + CHOOSE 1 …"), SPELLS, WEAPONS ("• Name DV n (orks …) [ranges]", "CHOOSE 1 WEAPON"), EQUIPMENT
+("• Name (Armor n)") and WOUND THRESHOLDS ("• Low fighting spirit", thresholds). A band without an attribute table is a
+critter's description (the facing page has its block); lines above a page's first name continue the last block. Margin
+tab letters (the outer 30 pt) and the running header and page number (18 pt and up) are dropped.
 
 Rules: the human row (the other metatypes' values go to the notes); "choose n" imports the first n options (the rest
 go to the notes, as do a toxic spirit's own powers); a spirit imports once per Force column (Minor, Regular, Major);
@@ -70,10 +70,10 @@ def _lines(words):
 
 
 def _table(lines):
-    """The attribute table's rows rewritten by column: "STR 3 | AGI 2 | …", then "STR 4 (orks) | WIL 3 (dwarfs) …". A value
-    belongs to the label nearest its centre (a column's value may sit a little off)."""
+    """The attribute table's rows rewritten by column: "STR 3 | AGI 2 | …", then "STR 4 (orks) | WIL 3 (dwarfs) …". A
+    value belongs to the label nearest its centre (a column's value may sit a little off)."""
     out, cols = [], None
-    for top, text, ws in lines:
+    for _top, text, ws in lines:
         if text.split() == list(LABELS):
             cols = [(w["x0"] + w["x1"]) / 2 for w in ws]
             out.append(text)
@@ -85,7 +85,7 @@ def _table(lines):
         cells = []
         for w in ws:
             if re.fullmatch(r"[\d/]+", w["text"]):
-                col = min(range(5), key=lambda i: abs(cols[i] - (w["x0"] + w["x1"]) / 2))
+                col = min(range(5), key=lambda i, w=w: abs(cols[i] - (w["x0"] + w["x1"]) / 2))
                 cells.append([LABELS[col], w["text"]])
             elif cells:
                 cells[-1].append(w["text"])
@@ -146,8 +146,9 @@ def _name(s):
 
 
 def _choose(heading):
-    """How many options a section heading takes: None = all; "CHOOSE 1" 1; "AWAKENED + CHOOSE 1" 2 (the named one and one
-    more); "CHOOSE 1 VEHICLE + 1" 2; "CHOOSE 1 VEHICLE OR 2 DRONE" 1 (one bullet). A spirit's "1/2/2" is its Force's by now.
+    """How many options a section heading takes: None = all; "CHOOSE 1" 1; "AWAKENED + CHOOSE 1" 2 (the named one and
+    one more); "CHOOSE 1 VEHICLE + 1" 2; "CHOOSE 1 VEHICLE OR 2 DRONE" 1 (one bullet). A spirit's "1/2/2" is its Force's
+    by now.
     """
     if "CHOOSE" not in heading:
         return None
@@ -334,6 +335,7 @@ def characters(page, raw_name, lines, rules, spell_ids, updated, taken):
             if page < CRITTERS_FROM
             else "spirit" if forced or re.search(r"materiali[sz]|manifest", text, re.I) else "critter"
         )
+        # pylint: disable-next=invalid-sequence-index  # (force is None only if not forced)
         full = f"{name} ({FORCES[force]})" if forced else name
         base = sid = f"crb.npc-{slug(full)}"
         n = 2
@@ -396,7 +398,7 @@ def npcs(pages, rules, spell_ids, updated):
     for page, raw, lines in blocks(pages):
         try:
             got, rows = characters(page, raw, lines, rules, spell_ids, updated, out)
-        except Exception as e:  # noqa: BLE001  one bad block never stops the rest
+        except Exception as e:  # pylint: disable=broad-exception-caught  # one bad block never stops the rest
             got, rows = [], [
                 {"kind": "npc-failed", "name": _name(raw), "page": page, "problem": f"{type(e).__name__}: {e}"}
             ]

@@ -491,6 +491,7 @@ class AmpsTest(unittest.TestCase):
         cls.amps = {a.get("id"): a for a in ET.fromstring(cls.res.files["amps.xml"])}
 
     def fx(self, aid):
+        """[ref[:param]] of the effects of the amp `aid`."""
         return [
             f.get("ref")
             + (f":{f.get('param')}" if f.get("param") else "")
@@ -834,7 +835,7 @@ class AmpsParityTest(unittest.TestCase):
                 i,
             )
             self.assertEqual(n.find("name").text.casefold() == o.find("name").text.casefold(), i not in RENAMED, i)
-            for f, known in (("page", AMP_PAGES), ("type", AMP_TYPES)):
+            for f, _known in (("page", AMP_PAGES), ("type", AMP_TYPES)):
                 if n.get(f) != o.get(f):
                     diffs.setdefault(f, {})[i] = (o.get(f), n.get(f))
             if _fx(n) != _fx(o):
@@ -938,10 +939,10 @@ class OptionalRulesTest(unittest.TestCase):
         self.assertEqual(
             self.texts,
             {
-                "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
-                "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "
+                "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",  # pylint: disable=line-too-long
+                "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "  # pylint: disable=line-too-long
                 "It makes them sturdier in an invented way.",
-                "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",
+                "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",  # pylint: disable=line-too-long
             },
         )
 

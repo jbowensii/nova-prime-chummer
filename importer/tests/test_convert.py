@@ -1,3 +1,5 @@
+"""Tests for the book converter."""
+
 import os
 import tempfile
 import unittest
@@ -25,9 +27,11 @@ from importer.tests.minipdf import (
 def _convert_to_lines(pdf_bytes, tmp_name):
     d = tempfile.mkdtemp()
     pdf, md = os.path.join(d, f"{tmp_name}.pdf"), os.path.join(d, f"{tmp_name}.md")
-    open(pdf, "wb").write(pdf_bytes)
+    with open(pdf, "wb") as f:
+        f.write(pdf_bytes)
     meta = convert(pdf, md)
-    text = open(md, encoding="utf8").read()
+    with open(md, encoding="utf8") as f:
+        text = f.read()
     lines = [ln for ln in text.splitlines() if ln.strip() and not ln.startswith("<!--")]
     return meta, text, lines
 

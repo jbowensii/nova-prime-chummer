@@ -1,5 +1,5 @@
-"""SR6 No Future recipe (importer/sr6/recipes/nf.py) on a made-up book.md in the converter's sr6 shape (the book's: small
-gear tables under lower-case titles, some with Fifth Edition range columns; qualities under level-3 headings).
+"""SR6 No Future recipe (importer/sr6/recipes/nf.py) on a made-up book.md in the converter's sr6 shape (the book's:
+small gear tables under lower-case titles, some with Fifth Edition range columns; qualities under level-3 headings).
 Every name, number and line is invented."""
 
 import os
@@ -76,11 +76,13 @@ A made-up adventure.
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the NF recipe."""
     regrouped, _ = regroup.regroup(md, nf.ALIASES, name_headers=nf.NAME_HEADERS, end_page=nf.END_PAGE)
     return nf.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

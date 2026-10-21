@@ -1,8 +1,9 @@
-"""Makes the field-value rows of importer/sr6/overrides/<src>.json from cl6-diffs.csv (the owner's rule: a value the book
-and the reviewers could not confirm is Commlink6's):
+"""Makes the field-value rows of importer/sr6/overrides/<src>.json from cl6-diffs.csv (the owner's rule: a value the
+book and the reviewers could not confirm is Commlink6's):
 
-  python -m tools.cl6check.valuemap <cl6-diffs.csv> [<cl6-diffs.csv of a run on the result> ...] [--runs <runs dir>] [--dry]
-  python -m tools.cl6check.valuemap --refile <runs dir>      (only files the existing value rows under our entry's kind)
+  python -m tools.cl6check.valuemap <cl6-diffs.csv> [<cl6-diffs.csv of a run on the result> ...] [--runs <runs dir>]
+  [--dry] python -m tools.cl6check.valuemap --refile <runs dir>      (only files the existing value rows under our
+  entry's kind)
 
 --runs: our catalogs; a row's "kind" is then the kind file OUR entry is in (the override only looks there first)
 
@@ -12,8 +13,8 @@ Every `counted` field difference (class a, b or c) becomes an id row `{"cl6", "k
   confirmed it, 100% certain, from the PDF page;
 - value_keep.json lists it under "hold": left for the owner (a per-rating item, a variant's value ...), with why;
 - its field has no safe mapping (reported).
-Rows of an earlier run (`gen`: value) are replaced; the rest of a table is left as it is. Names and numbers only: no book
-text. A per-rating Commlink6 value ("R1 500, R2 1000 …") becomes `Rating x N` when it is linear, else the value at
+Rows of an earlier run (`gen`: value) are replaced; the rest of a table is left as it is. Names and numbers only: no
+book text. A per-rating Commlink6 value ("R1 500, R2 1000 …") becomes `Rating x N` when it is linear, else the value at
 rating 1 with a `tier(R; 1: a; 2: b …)` formula."""
 
 import csv
@@ -97,7 +98,7 @@ def per_rating(s):
 LEVEL = re.compile(r"-(?:level-|rating-)?(\d+)$")
 
 
-def numeric(field, s, ours, level=None):
+def numeric(field, s, _ours, level=None):
     """(attribute value, formula or None) for a numeric field. A level's own entry (one item per level: `wired-
     reflexes-2`) takes Commlink6's value at its level, plainly."""
     pr = per_rating(s)
@@ -106,7 +107,10 @@ def numeric(field, s, ours, level=None):
     if not pr:
         return s.replace(",", "") if field != "dv" else s, None
     v = {r: float(x.replace(",", "")) for r, x in pr.items()}
-    fmt = lambda f: str(int(f)) if float(f).is_integer() else f"{f:g}"
+
+    def fmt(f):
+        return str(int(f)) if float(f).is_integer() else f"{f:g}"
+
     if v.get(1) and all(abs(x - r * v[1]) < 1e-9 for r, x in v.items()):
         return f"Rating x {fmt(v[1])}", f"R * {fmt(v[1])}"
     return fmt(v[min(v)]), "tier(R; " + "; ".join(f"{r}: {fmt(x)}" for r, x in sorted(v.items())) + ")"
@@ -133,7 +137,7 @@ def row_values(items):
         by.pop("rating")  # (a level's entry has its one rating: by design, left as it is)
     sets, forms, bad = {}, {}, []
     for field, x in by.items():
-        cl6, ours = x["cl6"], x["ours"]
+        cl6, ours = x["cl6"], x["ours"]  # pylint: disable=redefined-outer-name  # the entry's value, not the module
         if field in ("avail", "legality"):
             continue
         if field == "ar":
@@ -177,8 +181,8 @@ def row_values(items):
 
 
 def refile(runs, root=OVERRIDES):
-    """The value rows of every table filed under OUR entry's kind (rows landed by an earlier run are no csv difference any
-    more, so a regeneration would lose them): {src: rows changed}."""
+    """The value rows of every table filed under OUR entry's kind (rows landed by an earlier run are no csv difference
+    any more, so a regeneration would lose them): {src: rows changed}."""
     mine, done = ours.kinds(ours.index(runs)), {}
     for p in sorted(Path(root).glob("*.json")):
         rows = json.loads(p.read_text(encoding="utf8"))
@@ -199,11 +203,13 @@ def refile(runs, root=OVERRIDES):
 
 
 def replace_value_rows(old, rows):
-    """A table's rows with its earlier value rows replaced by `rows`; every other row (class, family, errata, owner) stays."""
+    """A table's rows with its earlier value rows replaced by `rows`; every other row (class, family, errata, owner)
+    stays."""
     return [r for r in old if r.get("gen") != "value"] + rows
 
 
 def main(argv):
+    """Run the value-map command line."""
     if "--refile" in argv:
         print("value rows refiled:", refile(argv[argv.index("--refile") + 1]))
         return
@@ -219,11 +225,12 @@ def main(argv):
         (v["src"], v["kind"], v["our_id"], v["field"]) for v in keep.get("verdicts", [])
     }  # (the owner ruled ours right)
     groups, conflicts, seen = defaultdict(dict), set(), defaultdict(set)
-    for (
-        path
-    ) in (
+    for path in (
         paths
-    ):  # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's legality)
+        # (a later csv, made after the rows of an earlier one, adds what the first could not see: an availability's
+        # legality)
+    ):
+        # pylint: disable=consider-using-with  # read to the end
         for r in csv.DictReader(open(path, encoding="utf-8-sig", newline="")):
             if (
                 r["row"] != "field"
@@ -242,7 +249,8 @@ def main(argv):
     for key in conflicts:
         groups[key[:3]].pop(key[3], None)
     print(
-        f"{len(conflicts)} fields left alone: two Commlink6 records match one entry and disagree: {sorted(conflicts)[:6]} ..."
+        f"{len(conflicts)} fields left alone: two Commlink6 records match one entry and disagree: "
+        f"{sorted(conflicts)[:6]} ..."
     )
     groups = {k: list(v.values()) for k, v in groups.items() if v}
     new, unmapped = defaultdict(list), []

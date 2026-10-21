@@ -108,13 +108,14 @@ _RANGE = re.compile(r"\s*\(\d+-\d+\)$")  # a name's rating range: `ProCam (1-12)
 
 
 def match(meta, md_head):
+    """How well a book matches No Future: 1.0 by its file hash, else 0.9 when its title says so."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
     return 0.9 if re.search(r"\bno\s+future\b", hay, re.I) and re.search(r"shadowrun", hay, re.I) else 0.0
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """A catalog row in the core rulebook's headers: the range columns joined to ATTACK RATINGS, a grenade's blast
     columns to its DV, the rest renamed (or, when it has no attribute, to the text)."""
     if b.row is None or not b.header or b.header[0].upper() not in TABLES:
@@ -191,4 +192,5 @@ def _prep(bs):
 
 
 def extract(regrouped, ctx=None):
+    """The entries of the book's regrouped text."""
     return catalog.read(_prep(list(blocks(regrouped))), ctx, sys.modules[__name__])

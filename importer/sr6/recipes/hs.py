@@ -2,8 +2,8 @@
 cyberdeck cases, components and modifications, data taps, tag bombs, commlink hacks, coding tools, commlink apps,
 agents, cyberkits, codemods: electronics and gear), cyberprograms, complex forms, echoes, sprites, qualities, the
 matrix security NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms,
-virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
-only regrouped.md with the core rulebook's reading (catalog.read); the book's own shapes through
+virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private
+texts. Reads only regrouped.md with the core rulebook's reading (catalog.read); the book's own shapes through
 importer/sr6/shapes.py. Layout notes in hs.md."""
 
 import re
@@ -76,6 +76,7 @@ _PR_NAME = re.compile(r"^(.+?)\s*\(Professional Rating\s*(\d+)\)\s*$", re.I)
 
 
 def match(meta, md_head):
+    """How well a book fits this recipe: 1.0 by its hash, 0.9 for a Hack & Slash title, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -202,4 +203,5 @@ def _row_name(b, rated):
 
 
 def extract(regrouped, ctx=None):
+    """The Hack & Slash book's catalog files, read from its regrouped markdown."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

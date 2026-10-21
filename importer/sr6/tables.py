@@ -25,6 +25,7 @@ PRICE = {"AVAIL", "AVAILABILITY", "COST", "PRICE"}
 
 
 def columns(header):
+    """The upper-cased header cells of a table, with markers dropped."""
     return {" ".join(h.upper().rstrip("*†").split()) for h in header if h}
 
 

@@ -19,8 +19,8 @@ character XML) and the report rows. Rules, applied the same way to every block:
     (printedRating), and where the rules give another, Review says so (and the report row has status "mismatch").
     Readings of what the page prints: a printed limitation ("only", "first interaction", a drug's comedown) where the
     rules price the amp up to 5 above the printed rating is that Negative effect (CRB p.61; as the book prints it, it
-    needs no GM approval: owner, 2026-10-11); a vehicle's or drone's own front-facing mount takes its first weapon (p.60, p.241); a shamanic mask is the
-    Awakened amp's -1 (p.169).
+    needs no GM approval: owner, 2026-10-11); a vehicle's or drone's own front-facing mount takes its first weapon
+    (p.60, p.241); a shamanic mask is the Awakened amp's -1 (p.169).
   - Items as printed: every printed armor, weapon and gear entry (the free starting gear is the app's own, added when
     the runner loads), read as the page means them: an armor row "(+1)" / "(2+1)" is an add-on over the row above
     (`over`), a branded commlink where the list has no plain one is the free commlink (`starting`), and gear an implant
@@ -192,7 +192,10 @@ def _join_wrapped(lines):
     """Effect lines: one that starts lowercase continues the line before."""
     out = []
     for t in lines:
-        (out.__setitem__(-1, out[-1] + " " + t) if out and t[:1].islower() else out.append(t))
+        if out and t[:1].islower():
+            out[-1] += " " + t
+        else:
+            out.append(t)
     return out
 
 
@@ -255,7 +258,7 @@ def parse_statblock(md_page):
     for t in parts["ARMOR"]:
         m = ARMOR_ROW.match(t)
         if m:
-            name, l, s, inc = m.groups()
+            name, l, *_ = m.groups()
             k = re.match(r"(.*?)\s*\(([+\d]+)\)$", name)
             armor.append({"name": k.group(1) if k else name, "armor": k.group(2) if k else None, "l": int(l)})
 
@@ -446,10 +449,10 @@ def crb_statblock(md_page):
 
 
 def pdf_narrative(page):
-    """{"dispositions", "cues"} as a core rulebook stat page lays them out (a pdfplumber page), or {} when it has neither
-    heading. The Markdown loses where one wraps: a disposition or a cue may take two lines, and a cue two sentences
-    ("There's always a way. I just need …"). On the page each item starts a new slot, further below the line above it
-    than a wrapped line is; so a line more than 1.15 of its type size below the last starts the next item."""
+    """{"dispositions", "cues"} as a core rulebook stat page lays them out (a pdfplumber page), or {} when it has
+    neither heading. The Markdown loses where one wraps: a disposition or a cue may take two lines, and a cue two
+    sentences ("There's always a way. I just need …"). On the page each item starts a new slot, further below the line
+    above it than a wrapped line is; so a line more than 1.15 of its type size below the last starts the next item."""
     chars = sorted((c for c in page.chars if c["x0"] > page.width * 0.62), key=lambda c: c["top"])
     lines = []  # [top, size, chars]: a slightly tilted line's pieces sit a few points apart
     for c in chars:
@@ -534,6 +537,7 @@ def _awakened(line):
 
 
 def amp_rating(rules, atype, fx, first_quality=True):
+    """An amp's rating: its type's base (a later Quality takes the `after` base) plus its effects' ratings."""
     t = rules["types"].get(atype, {"base": 0, "after": 0})
     base = t["base"] if atype != "quality" or first_quality else t["after"]
     eff = rules["effects"]
@@ -547,6 +551,7 @@ def amp_rating(rules, atype, fx, first_quality=True):
 
 
 def amp_essence(rules, atype, fx):
+    """An amp's Essence cost: its type's base plus its effects', never below 0; 0 for a type with none."""
     base = rules["types"].get(atype, {}).get("essence", 0)
     return max(0, base + sum(rules["effects"][f[0]]["essence"] for f in fx if f[0] in rules["effects"])) if base else 0
 
@@ -590,15 +595,16 @@ def _chassis(amp, rules):
 
 
 def map_amp(amp, rules, mapper, first_quality, catalog=False):
-    """-> (type, effects, narrative lines, vehicle, computed rating). A runner's amp as printed: no effect added, dropped
-    or retyped to meet the printed rating. catalog: a catalog amp the sheets print (crb.sheet_amps) is priced as the
-    book prints it, as the DHSA catalog is (docs/book-discrepancies.md): an effect its type can't take stays text, the
-    chassis' own mount takes its first weapon, and the rating meets the printed one (_catalog_price)."""
+    """-> (type, effects, narrative lines, vehicle, computed rating). A runner's amp as printed: no effect added,
+    dropped or retyped to meet the printed rating. catalog: a catalog amp the sheets print (crb.sheet_amps) is priced as
+    the book prints it, as the DHSA catalog is (docs/book-discrepancies.md): an effect its type can't take stays text,
+    the chassis' own mount takes its first weapon, and the rating meets the printed one (_catalog_price)."""
     printed = amp["type"].lower()
     lines = [re.sub(r"\bwepaons\b", "weapons", ln) for ln in amp["lines"]]  # a typo in the booklet
     lines = [re.sub(r"\bRanged weapon\b(?!s)", "Ranged Weapons", ln, flags=re.I) for ln in lines]
     atype = AMP_TYPES.get(printed) or ("vehicle" if VEHICLE.search(printed) else None)
-    # a deck's stats (Firewall – Attack) on an amp printed as a Quality or no type: a cyberdeck, the one amp type with them
+    # a deck's stats (Firewall – Attack) on an amp printed as a Quality or no type: a cyberdeck, the one amp type with
+    # them
     # (CRB p.62); a Quality is a trait, never a device. A runner's other types keep their printed type.
     if (catalog or atype in (None, "quality")) and any(
         re.search(r"Firewall \d\s*[–-]\s*Attack \d", ln) for ln in lines
@@ -610,7 +616,10 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
             # a shamanic mask: -1 on the Awakened amp (CRB p.169; DHSA p.3 prices it -5,000¥), where a book imported it
             mask = "shamanic mask" in ln.lower() and "awk-shamanic-mask" in rules["effects"]
             got = _fx("awk-shamanic-mask") if mask else _awakened(ln)
-            (fx.extend(got) if got else loose.append(ln))
+            if got:
+                fx.extend(got)
+            else:
+                loose.append(ln)
         if not fx and "adept" in amp["name"].lower():
             fx = _fx("awk-adept")
     else:
@@ -622,8 +631,12 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
                 )  # on a runner, an effect the type can't take is kept: Review flags it
                 if e and catalog:
                     e = [f for f in e if atype in rules["effects"].get(f[0], {}).get("types", [])] or None
-                # how the line turns them on (a dose's Duration: activated): the sheet's bracketed total (owner, 2026-10-10)
-                (unmapped.append(seg) if e is None else got.extend(stated(e, seg, "; ".join(lines))))
+                # how the line turns them on (a dose's Duration: activated): the sheet's bracketed total (owner,
+                # 2026-10-10)
+                if e is None:
+                    unmapped.append(seg)
+                else:
+                    got.extend(stated(e, seg, "; ".join(lines)))
             fx += got
             if unmapped:
                 loose.append(ln if not got else " – ".join(unmapped))
@@ -667,7 +680,8 @@ def map_amp(amp, rules, mapper, first_quality, catalog=False):
     gap = amp_rating(rules, atype, fx, first_quality) - amp["rating"] if amp["rating"] is not None else 0
     if not catalog and limit and 0 < gap <= 5:
         # the rules price a runner's amp above its printed rating and a printed line limits it: that limitation is a
-        # Negative effect of the difference (CRB p.61, -1 to -5), as printed. Review accepts it while the amp rates as the
+        # Negative effect of the difference (CRB p.61, -1 to -5), as printed. Review accepts it while the amp rates as
+        # the
         # book prints it (owner, 2026-10-11); changed since, or a player's own, the GM approves it (p.61)
         fx = fx + _fx("negative", value=gap, note=limit.strip())
     return atype, fx, loose, vehicle, amp_rating(rules, atype, fx, first_quality)
@@ -678,7 +692,10 @@ def _catalog_price(amp, rules, atype, fx, loose, first_quality):
     many as the gap; printed lower and a line limits the effect ("only", "first interaction"): a Negative "book
     drawback"; "Astral perception & projection" on an Awakened amp priced one lower: perception only; a "(Quality)"
     priced as Equipment (foci): Equipment. Never on a runner's amp."""
-    rate = lambda t, f: amp_rating(rules, t, f, first_quality)  # noqa: E731
+
+    def rate(t, f):
+        return amp_rating(rules, t, f, first_quality)
+
     want = amp["rating"]
     if atype == "awakened" and rate(atype, fx) == want + 1 and "awk-astral-projection" in (f[0] for f in fx):
         fx = [("awk-astral-perception", None, None, None) if f[0] == "awk-astral-projection" else f for f in fx]
@@ -704,11 +721,13 @@ def _num(x):
 
 
 def weapon_id(rules, kind):
+    """The catalog id of the weapon type `kind` names (aliases and hyphens folded), else None."""
     k = kind.lower()
     return rules["weapons"].get(WEAPON_ALIASES.get(k, k).replace("-", " ")) or rules["weapons"].get(k)
 
 
 def norm(s):
+    """`s` lowercased with every run of other characters turned into one space."""
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
@@ -720,11 +739,14 @@ def catalog_id(name, ids):
     return ids.get(n) or (hits[0] if len(hits) == 1 else None)
 
 
-def to_character(block, rules, sid, name, role, origin, background, updated, spell_ids=None, page=None):
+def to_character(
+    block, rules, sid, name, role, origin, background, updated, spell_ids=None, page=None
+):  # pylint: disable=unused-argument  # role: the callers pass it by name
     """-> (character dict in the .ca2.json shape, report rows). spell_ids (normalized name -> catalog id) links the
-    spells to the book's catalog; one that doesn't resolve is reported. Each amp keeps its printed rating on its snapshot
-    (source `origin`, `page`): Review compares it with the rules' rating. No overrides: what the book prints against a
-    guideline shows on Review as it would for any runner. An NPC block's amps carry rating None (none printed)."""
+    spells to the book's catalog; one that doesn't resolve is reported. Each amp keeps its printed rating on its
+    snapshot (source `origin`, `page`): Review compares it with the rules' rating. No overrides: what the book prints
+    against a guideline shows on Review as it would for any runner. An NPC block's amps carry rating None (none
+    printed)."""
     mapper = Mapper({**rules["specs"], **SPEC_NAMES})
 
     def spec_id(skill, text):
@@ -860,6 +882,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         if r["armor"] is None:
             continue
         parts = [int(x) for x in r["armor"].split("+") if x]
+        # pylint: disable=unsubscriptable-object  # prev is None only until the first armor row is worn
         v = (prev[2] if prev and r["armor"].startswith("+") else 0) + sum(parts)
         # "(+1)", or "(2+1)" after the armor of 2: an add-on worn over that armor (a ballistic mask, a rigger cocoon),
         # bought for its own points (DHSA p.14 prices a ballistic mask +1 at 2,500¥); worn, it counts on top of it
@@ -925,8 +948,10 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
             item("gear", n, starting="commlink" if n == named else None)
 
     # An Equipment amp is on a printed item (CRB p.60): the item of its name (the same name, one name in the other, else
-    # the most shared words). None printed: the amp brings its own, as the book's Equipment Amps do ("their cost includes
-    # the price of the weapon as well as Amp upgrades", CRB p.144; the gear, drug and focus Amps alike) and as a catalog amp
+    # the most shared words). None printed: the amp brings its own, as the book's Equipment Amps do ("their cost
+    # includes
+    # the price of the weapon as well as Amp upgrades", CRB p.144; the gear, drug and focus Amps alike) and as a catalog
+    # amp
     # does in the app (engine/amps.ts ampFromTemplate): a gear item of its name, bought with it.
     def words(s):
         return {w.rstrip("s") for w in norm(s).replace("-", " ").split() if len(w) >= 4 and w not in LINK_STOP}
@@ -935,7 +960,7 @@ def to_character(block, rules, sid, name, role, origin, background, updated, spe
         taken = {x.get("linkedItem") for x in amps}
         free = [i for i in items if i["kind"] in ("gear", "weapon", "armor") and i["uid"] not in taken]
         n = norm(a["name"])
-        shared = max(free, key=lambda i: len(words(i["name"]) & words(a["name"])), default=None)
+        shared = max(free, key=lambda i, a=a: len(words(i["name"]) & words(a["name"])), default=None)
         hit = (
             next((i for i in free if norm(i["name"]) == n), None)
             or next((i for i in free if n in norm(i["name"]) or norm(i["name"]) in n), None)
@@ -1062,52 +1087,72 @@ def _text(name, s):
 
 
 def character_xml(ch):
-    """Byte for byte what characterToXml writes (formatVersion 1), for a character (or NPC) without career or item snapshots;
-    an amp's snapshot is the printed amp: its type, name, printed rating, source and page
+    """Byte for byte what characterToXml writes (formatVersion 1), for a character (or NPC) without career or item
+    snapshots; an amp's snapshot is the printed amp: its type, name, printed rating, source and page
     (tests/ca2/runner-builder/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
-    fx = lambda e: _el(
-        "effect",
-        {
-            k: e.get(k)
-            for k in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")
-        },
-    )
-    snap = (
-        lambda t: "<snapshot>"
-        + _el(
-            "amp",
-            {k: t.get(k) for k in ("id", "type", "printedRating", "vehicle", "source", "page")},
-            _text("name", t["name"]) + "<narrative></narrative>",
+
+    def fx(e):
+        return _el(
+            "effect",
+            {
+                k: e.get(k)
+                for k in (
+                    "ref",
+                    "param",
+                    "value",
+                    "note",
+                    "unpriced",
+                    "switch",
+                    "when",
+                    "confidence",
+                    "from",
+                    "affects",
+                )
+            },
         )
-        + "</snapshot>"
-    )
-    amp = lambda a: _el(
-        "amp",
-        {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
-        _text("narrative", a.get("narrative"))
-        + "".join(map(fx, a["effects"]))
-        + (snap(a["snapshot"]) if a.get("snapshot") else ""),
-    )
-    item = lambda i: _el(
-        "item",
-        {
-            k: i.get(k)
-            for k in (
-                "uid",
-                "kind",
-                "name",
-                "catalogId",
-                "specialist",
-                "armor",
-                "dv",
-                "ranges",
-                "price",
-                "starting",
-                "over",
+
+    def snap(t):
+        return (
+            "<snapshot>"
+            + _el(
+                "amp",
+                {k: t.get(k) for k in ("id", "type", "printedRating", "vehicle", "source", "page")},
+                _text("name", t["name"]) + "<narrative></narrative>",
             )
-        },
-    )
+            + "</snapshot>"
+        )
+
+    def amp(a):
+        return _el(
+            "amp",
+            {k: a.get(k) for k in ("uid", "type", "name", "catalogId", "linkedItem", "vehicle")},
+            _text("narrative", a.get("narrative"))
+            + "".join(map(fx, a["effects"]))
+            + (snap(a["snapshot"]) if a.get("snapshot") else ""),
+        )
+
+    def item(i):
+        return _el(
+            "item",
+            {
+                k: i.get(k)
+                for k in (
+                    "uid",
+                    "kind",
+                    "name",
+                    "catalogId",
+                    "specialist",
+                    "armor",
+                    "dv",
+                    "ranges",
+                    "price",
+                    "starting",
+                    "over",
+                )
+            },
+        )
+
     npc = ch.get("npc")
     body = [
         *([_el("npc", {k: npc.get(k) for k in ("kind", "tier", "fightingSpirit")})] if npc else []),

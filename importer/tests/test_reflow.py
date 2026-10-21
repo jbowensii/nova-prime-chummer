@@ -6,6 +6,8 @@ from importer.reflow import reflow, vocabulary
 
 
 class Reflow(unittest.TestCase):
+    """Joining the lines of a paragraph."""
+
     def test_joins_the_lines_of_a_paragraph_and_keeps_paragraph_breaks(self):
         self.assertEqual(
             reflow("The zap gun hums\nwhen it is\nready.\n\nA second\nparagraph."),

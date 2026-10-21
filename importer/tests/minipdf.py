@@ -153,7 +153,7 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
         b"<< /Type /Catalog /Pages %d 0 R >>" % pages_id,
         b"<< /Type /Pages /Kids [%s] /Count %d >>" % (b" ".join(b"%d 0 R" % pid for pid in page_ids), n_pages),
     ]
-    for page_id, content_id in zip(page_ids, content_ids):
+    for _, content_id in zip(page_ids, content_ids):
         objects.append(
             (
                 b"<< /Type /Page /Parent %d 0 R /MediaBox [0 0 612 792] "
@@ -484,10 +484,14 @@ BT /F2 6 Tf 220 600 Td (COST) Tj ET
 # Two text columns 1.5 pt apart (less than a word space: no whitespace gutter), the left one written first in the
 # content stream: 41 Times-Roman glyphs of width 500 at 10.5 pt end at 72 + 215.25. Under the left column, a line
 # opening with a tiny glyph raised 4 pt, then a bold label set at 9 pt and its value at 10.5, 0.5 pt lower.
-SR6_TIGHT_OPS = "".join(
-    f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4)
-) + "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\nBT /F2 9 Tf 80 644 Td (Points:) Tj ET\n" "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n" + "".join(
-    f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4)
+SR6_TIGHT_OPS = (
+    "".join(f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4))
+    + (
+        "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\n"
+        "BT /F2 9 Tf 80 644 Td (Points:) Tj ET\n"
+        "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n"
+    )
+    + "".join(f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4))
 )
 
 
@@ -505,8 +509,8 @@ def sr6_layout_pdf() -> bytes:
 def _doubled_layer(dx, dy, hd):
     return (
         f"BT /F4 13 Tf {72 + hd} {700 + hd} Td (Arrow Kill Drill) Tj ET\n"
-        f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj ET\n"
-        + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5)
+        f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj "
+        "ET\n" + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5)
     )
 
 
@@ -576,4 +580,5 @@ SR6_MAGAZINE_OPS = [
 
 
 def sr6_magazine_pdf() -> bytes:
+    """The bytes of a made-up SR6 magazine PDF."""
     return _build_pdf(SR6_MAGAZINE_OPS)

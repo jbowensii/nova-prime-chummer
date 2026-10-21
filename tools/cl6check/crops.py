@@ -34,7 +34,7 @@ def locate(words, name, value):
         for v in vals:
             dy, dx = abs((v["top"] + v["bottom"]) / 2 - (a["top"] + a["bottom"]) / 2), v["x0"] - a["x0"]
             score = dy * 3 + (abs(dx) * 0.05 if dx >= 0 else 200 + abs(dx))
-            if best is None or score < best[0]:
+            if best is None or score < best[0]:  # pylint: disable=unsubscriptable-object  # best is a tuple here
                 best = (score, a, v)
     if best is None or best[0] > 400:
         return None

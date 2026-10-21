@@ -1,3 +1,5 @@
+"""The Matrix quick-reference recipe (importer/recipes/qref.py) on a made-up book."""
+
 import os
 import tempfile
 import unittest
@@ -71,7 +73,8 @@ class QrefTest(unittest.TestCase):
         self.assertEqual(list(res.files), ["rules-matrix.xml"])
         xml = res.files["rules-matrix.xml"]
         self.assertIn(
-            '<rule id="matrix-vr-hot-sim" sheet="matrix" section="Connection Modes" effects="vr-hot" source="QREF" page="1">',
+            '<rule id="matrix-vr-hot-sim" sheet="matrix" section="Connection Modes" effects="vr-hot" source="QREF" '
+            'page="1">',
             xml,
         )
         self.assertIn('<text of="rules" id="matrix-bricking">damages a device.', res.texts)

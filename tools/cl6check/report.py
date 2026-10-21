@@ -12,8 +12,12 @@ from collections import Counter, defaultdict
 from tools.cl6check import canon
 from tools.cl6check.match import words
 
+# pylint: disable=invalid-name,consider-using-with,line-too-long
+# (L is the report's list of Markdown lines; one-shot file reads; each table row is one f-string)
+
 
 def pct(n, d):
+    """Percentage of n in d to 2 places, None when d is 0."""
     return round(100.0 * n / d, 2) if d else None
 
 
@@ -45,6 +49,7 @@ class BookText:
 
 
 def key(s):
+    """The normalised word key of a name."""
     return " ".join(words(s))
 
 
@@ -213,6 +218,7 @@ def metrics(results, extras, excluded, meta):
 
 
 def group(rows, k):
+    """{value of field k: [rows]} of the rows."""
     out = defaultdict(list)
     for r in rows:
         out[r[k]].append(r)
@@ -242,6 +248,7 @@ def deltas(cur, base):
 
 # ---------- writing ----------
 def write(out_dir, m, results, extras, base=None):
+    """Write the metrics JSON, the row CSVs and the Markdown report into out_dir."""
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "cl6-metrics.json"), "w", encoding="utf8") as f:
         json.dump(m, f, indent=1, ensure_ascii=False)
@@ -339,9 +346,10 @@ def _d(path, dl):
 
 
 def markdown(m, dl=None):
+    """The Markdown report of the metrics m (with deltas against a baseline when dl is given)."""
     c, a = m["completeness"], m["accuracy"]
     L = [
-        f"# cl6check: our SR6 imports against Commlink6",
+        "# cl6check: our SR6 imports against Commlink6",
         "",
         f"Jar `{m['meta']['jar']}`; ours `{m['meta']['ours']}`; {m['meta']['when']}."
         + (f" Deltas against the baseline of {m['meta'].get('baseline_when', '?')}." if dl is not None else ""),

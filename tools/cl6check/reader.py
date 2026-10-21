@@ -150,7 +150,9 @@ def read(jar, listing=None):
             suffix = {f: f.rsplit("/", 1)[1][:-11].removeprefix(book).lstrip("_") for f in own}  # core_seattle: seattle
             for n in sorted(x for x in names if x.startswith(f"{ROOT}{book}/data/") and x.endswith(".xml")):
                 stem = n.rsplit("/", 1)[1][:-4]
-                files = sorted(own, key=lambda f: not (suffix[f] and stem.endswith("_" + suffix[f])))
+                files = sorted(
+                    own, key=lambda f, suffix=suffix, stem=stem: not (suffix[f] and stem.endswith("_" + suffix[f]))
+                )
                 try:
                     root = ET.fromstring(z.read(n))
                 except ET.ParseError:

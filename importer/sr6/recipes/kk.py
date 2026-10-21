@@ -55,6 +55,7 @@ def prepare_md(md):
 
 
 def match(meta, md_head):
+    """How well a book matches this recipe, 0 to 1."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -104,6 +105,7 @@ def _sets_by_header(text):
             if sum(x.upper() == "COST" for x in h) > 1:
                 return None
             if not _sr5(h):
+                # pylint: disable=unsubscriptable-object  # cur is tested for None first
                 if cur is not None and len(rows) == 1 and len(cur[1]) == 1:
                     cur = (cur[0] + h, [cur[1][0] + rows[0]])
                 else:
@@ -365,7 +367,7 @@ def _prep(bs, report):
     return [b for b in out if id(b) not in used]
 
 
-def kind(chapter, b, parent2):
+def kind(_chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     head = b.header[0] if b.header else ""
     if b.row is None:
@@ -379,6 +381,7 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The catalog this recipe reads from a regrouped book."""
     report = []
     res = catalog.read(_prep(list(blocks(regrouped)), report), ctx, sys.modules[__name__])
     res.report += report  # a stat set that doesn't read

@@ -2,7 +2,12 @@
 
 import re
 
-SKILLS = "astral athletics biotech close-combat con conjuring cracking electronics enchanting engineering exotic-weapons firearms influence outdoors perception piloting sorcery stealth tasking".split()
+# pylint: disable=invalid-name  # R, A, B: the short names of the CL6 value shapes being compared
+
+SKILLS = (
+    "astral athletics biotech close-combat con conjuring cracking electronics enchanting engineering exotic-weapons "
+    "firearms influence outdoors perception piloting sorcery stealth tasking"
+).split()
 ABBR = {
     "BODY": "bod",
     "AGILITY": "agi",
@@ -41,6 +46,7 @@ SKILL_ATTR = {
 
 
 def skills_of(attrs):
+    """{skill:<id>} of the skills keyed to any of the attributes."""
     return {"skill:" + k for k, a in SKILL_ATTR.items() if a in attrs}
 
 
@@ -136,6 +142,7 @@ CHECK_KIND = {
 
 
 def nv(v):
+    """A value with the rating token folded to r, no spaces, case-folded."""
     return re.sub(r"\$(RATING|LEVEL|FORCE)", "r", (v or "")).replace("+", "").replace(" ", "").casefold()
 
 
@@ -245,6 +252,7 @@ def our_atoms(e):
 
 
 def vclass(v):
+    """The class of an effect value: number, rating, or rating-scaled form."""
     v = nv(v)
     if v == "":
         return ("",)

@@ -1,22 +1,25 @@
 """Anarchy's effects read from a book clause as general rules (sibling of importer/sr6/effects.py): the narrative effect
 kinds (CRB p.59) and how an effect is turned on. Vocabulary only (the game's own words: Advantage, Edge, wound
-modifiers, Risk), never an entry's name. The kinds are the engine's RULE_EFFECTS (src/ca2/runner-builder/domain/amps.ts): rating 0, so an
-amp's rating stays the book's (its narrative effects keep pricing it); what they say is machine-readable.
+modifiers, Risk), never an entry's name. The kinds are the engine's RULE_EFFECTS
+(src/ca2/runner-builder/domain/amps.ts): rating 0, so an amp's rating stays the book's (its narrative effects keep
+pricing it); what they say is machine-readable.
 
 rules(clause, tests) -> [(ref, param, value, note, state)]:
 - `Advantage on <Test>` (`for/in exchange for 1 Edge` -> edge-advantage), `Disadvantage on <Test>` on the character;
   one it inflicts on someone else (`the target`, `anyone`, `inflicts`) -> inflict-disadvantage
 - `ignore/negate/eliminate … Disadvantage`, `without … Disadvantage`, a vision (`Low-Light Vision`) -> no-disadvantage
 - `ignore (Light Wound) wound modifiers/penalties` -> ignore-wounds; `must take a High or Extreme Risk` -> forced-risk;
-  `N risk dice minimum` -> min-risk-dice; `social armor N`, `Matrix armor +N`; `an additional Complex form` -> sustain-form
+  `N risk dice minimum` -> min-risk-dice; `social armor N`, `Matrix armor +N`; `an additional Complex form` ->
+  sustain-form
 - `gain/recover 1 Edge` -> edge-gain; any other `… for/in exchange for 1 Edge` -> edge-effect; `Allows …` -> allow-test
 - `last point of Essence counts double` -> essence-implant; `ignore the loss of one Essence point` -> essence-magic
 - `suffers a Serious Wound` (a drug's aftermath) -> self-wound; `immunity against …` -> immunity
 
 state(clause, entry): `switch` activated for an entry with a `Duration:` (a drug's dose) or a clause that activates;
-`when` for a clause's condition (`when …`, `while …`, `at night`, `once the effects fade away`; a parenthesis is not one);
-`confidence="low"` for a value that depends on hits. Tests come from the caller's `tests(phrase)`: skill, spec or attribute
-ids, `custom:<words>`, or "" (every Test)."""
+`when` for a clause's condition (`when …`, `while …`, `at night`, `once the effects fade away`; a parenthesis is not
+one);
+`confidence="low"` for a value that depends on hits. Tests come from the caller's `tests(phrase)`: skill, spec or
+attribute ids, `custom:<words>`, or "" (every Test)."""
 
 import re
 
@@ -32,7 +35,10 @@ _EDGE_SWITCH = re.compile(
     r"(?:\s+to\s+activate\s+(?:its|these|the(?:ir)?)\s+effects?)?\.?$",
     re.I,
 )
-_TEST_END = r"(?=\s*(?:tests?\b|rolls?\b|$|[.;,]|\s+(?:when|while|if|to|in exchange|for 1|for one|against|during|until|once|on|concerning|using)\b))"
+_TEST_END = (
+    r"(?=\s*(?:tests?\b|rolls?\b|$|[.;,]|\s+(?:when|while|if|to|in exchange|for 1|for "
+    r"one|against|during|until|once|on|concerning|using)\b))"
+)
 _ADV = re.compile(
     rf"\badvantage\s+(?:on|in|to|for)\s+(?!exchange\b|1\b|one\b)(?:all\s+|any\s+|every\s+|a\s+|an\s+|their\s+|the\s+)?"
     rf"(?P<test>[^.;:]*?){_TEST_END}",
@@ -50,7 +56,8 @@ _DIS_OTHER = re.compile(
     re.I,
 )
 _NO_DIS = re.compile(
-    r"(?<!n't\s)(?<!n’t\s)(?<!not\s)\b(?:ignor\w*|negat\w*|eliminat\w*|cancel\w*|avoid\w*|without\s+(?:\w+\s+){0,3}?suffering|without|"
+    r"(?<!n't\s)(?<!n’t\s)(?<!not\s)\b(?:ignor\w*|negat\w*|eliminat\w*|cancel\w*|avoid\w*|without\s+(?:\w+\s+){0,"
+    r"3}?suffering|without|"
     r"suffers?\s+no)\b[^.;,]*?\bdisadvantages?\b",
     re.I,
 )
@@ -84,14 +91,16 @@ _SELF_WOUND = re.compile(
 )
 _IMMUNE = re.compile(r"\bimmun(?:e|ity)\s+(?:against|to)\s+([^.;]+)", re.I)
 _ALLOWS = re.compile(
-    r"^(?:it\s+|this\s+)?allows?\b\s*(?:(?:you|the\s+(?:user|caster|character|player|pilot)|users?|a\s+(?:user|character))\s+)?(?:to\s+)?",
+    r"^(?:it\s+|this\s+)?allows?\b\s*(?:(?:you|the\s+(?:user|caster|character|player|pilot)|users?|a\s+(?:user|characte"
+    r"r))\s+)?(?:to\s+)?",
     re.I,
 )
 _ESS_IMPLANT = re.compile(r"\blast\s+point\s+of\s+essence\s+counts\s+double\b", re.I)
 _ESS_MAGIC = re.compile(r"\bignore\s+the\s+loss\s+of\s+one\s+essence\s+point\b", re.I)
 
 _COND = re.compile(
-    r"\b(?:when(?:ever)?|while|if|unless|as long as|involving|related to|during the (?:following|next)|at night|in darkness|once the effects fade away|"
+    r"\b(?:when(?:ever)?|while|if|unless|as long as|involving|related to|during the (?:following|next)|at night|in "
+    r"darkness|once the effects fade away|"
     r"once the effects dissipate|against\s+(?:targets?|vehicles|unarmored|unarmoured)|when using)\b",
     re.I,
 )
@@ -116,8 +125,8 @@ def _piece(clause, rx):
 
 
 def when(clause):
-    """The condition a clause sets, as printed from its first condition word (`when analyzing clues`), else None. Words in
-    parentheses are an aside, not a condition."""
+    """The condition a clause sets, as printed from its first condition word (`when analyzing clues`), else None. Words
+    in parentheses are an aside, not a condition."""
     c = _PAREN.sub(" ", clause)
     m = _COND.search(c)
     return _clean(c[m.start() :])[:120] or None if m else None
@@ -138,7 +147,8 @@ def state(clause, entry=""):
 
 
 def rules(clause, tests, entry=""):
-    """[(ref, param, value, note, state)]: the narrative effect kinds `clause` states, in the order printed, each once."""
+    """[(ref, param, value, note, state)]: the narrative effect kinds `clause` states, in the order printed, each
+    once."""
     c = clause.strip()
     if not c or _EDGE_SWITCH.match(_clean(c)):
         return []

@@ -17,7 +17,10 @@ def _split_bold(w):
     cs = w.get("chars") or []
     k = next((i for i, c in enumerate(cs) if c["text"] in "—–"), 0)
     a, b = cs[:k], cs[k:]
-    letters = lambda part: [c for c in part if c["text"].isalnum()]
+
+    def letters(part):
+        return [c for c in part if c["text"].isalnum()]
+
     if (
         not k
         or not letters(a)
@@ -60,8 +63,12 @@ def line_text(line, split=False):
 
 
 def table_md(rows):
+    """The markdown lines of a table's rows."""
+
     # (an SR6 band's first-cell marks, leading no-break and en spaces, stay: layout._first_marks)
-    keep = lambda c: (re.match(r"[  ]*", c).group() if c.strip() else "") + c.strip()  # noqa: E731
+    def keep(c):
+        return (re.match(r"[  ]*", c).group() if c.strip() else "") + c.strip()
+
     rows = [[keep((c or "").replace("\n", "<br>")) for c in r] for r in rows if any(r)]
     if not rows:
         return []

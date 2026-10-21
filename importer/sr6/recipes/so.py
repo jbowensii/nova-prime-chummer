@@ -63,6 +63,7 @@ _TAG = re.compile(r"\(([A-Z][^()]*)\)")  # `(Health)`, `(Anchored)`: a tag line 
 
 
 def match(meta, md_head):
+    """How well a book matches this recipe, 0 to 1."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"smooth\s+operations", f"{meta.get('title') or ''}\n{md_head}", re.I) else 0.0
@@ -77,12 +78,16 @@ def _gear_texts(bs):
     for i, b in enumerate(bs):
         if b.row is None or norm(b.chapter) != GEAR:
             continue
-        rating = lambda x: next((v for h, v in x.row.items() if h.upper() == "RATING" and v), "")
+
+        def rating(x):
+            return next((v for h, v in x.row.items() if h.upper() == "RATING" and v), "")
+
         if b.name:
             base = (i, b.name)
         elif base and rating(b):
+            # pylint: disable=unpacking-non-sequence  # base is an (index, name) pair once set, and is tested first
             j, n = base
-            for k in {j, i}:
+            for k in {j, i}:  # pylint: disable=use-sequence-for-iteration  # the set drops a repeated index
                 if bs[k].name in (n, ""):
                     nm = f"{n} (Rating {rating(bs[k])})"
                     bs[k] = replace(bs[k], name=nm, row={**bs[k].row, bs[k].header[0]: nm})
@@ -153,6 +158,7 @@ def fix(b, parent2):
 
 
 def kind(chapter, b, parent2):
+    """The catalog kind and class of a block in this chapter, or (None, None)."""
     p2, labels = norm(parent2), {k.lower() for k in b.labels}
     if chapter == QUALITIES:
         if b.type == "section" and b.level == 3 and labels & {"cost", "bonus"}:
@@ -183,5 +189,6 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The catalog this recipe reads from a regrouped book."""
     bs = _gear_texts(list(blocks(regrouped)))
     return catalog.read(bs, ctx, sys.modules[__name__])

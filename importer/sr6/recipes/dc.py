@@ -76,6 +76,7 @@ _CAPS = re.compile(r"[A-Z .#/]+")
 
 
 def match(meta, md_head):
+    """How well a book matches Double Clutch: 1.0 by its file hash, else 0.9 when its title says so."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -295,7 +296,7 @@ def _prep(bs, report):
                     row = {
                         "GEAR": f"{b.name} ({word.title()})",
                         "RATING": rows[0][0],
-                        **{k: v for k, v in zip(h[1:], rows[0][1:])},
+                        **dict(zip(h[1:], rows[0][1:])),
                     }
                     out.append(replace(b, name=row["GEAR"], header=list(row), row=row, stats=[]))
                 continue
@@ -333,8 +334,8 @@ _SIZE_HEAD = re.compile(r"^#####\s+(Mini|Small|Standard|Medium|Large|Huge)\s*$")
 
 
 def prepare_md(md):
-    """A level-5 heading naming only a size (`##### Small` under `##### Pop-Out Concealment`) named with the heading over
-    it before regroup pairs headings with catalog rows (else it takes the drone rack table's `Small` row)."""
+    """A level-5 heading naming only a size (`##### Small` under `##### Pop-Out Concealment`) named with the heading
+    over it before regroup pairs headings with catalog rows (else it takes the drone rack table's `Small` row)."""
     lines, base = md.splitlines(), None
     for i, ln in enumerate(lines):
         if m := _SIZE_HEAD.match(ln):
@@ -405,7 +406,7 @@ def _summary_rows(bs):
     return out
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """Headers renamed to the core rulebook's (a column it has no attribute for goes to the text)."""
     if b.row is None:
         return b
@@ -462,8 +463,8 @@ _SOFT = re.compile(r"^•\s*\*\*([^*]+)\*\*\s*(?:\(([^()]*)\))?\s*$")
 
 def _autosofts(bs, cat):
     """The skills sold as autosofts (Skills Available in Autosoft Format: bulleted `**Skill** (specialization)` lines,
-    their ratings in the prose, `rating from one to nine`): programs of type autosoft, unpriced (the core rulebook prices
-    autosofts by rating). A skill whose own line sets its ratings (Language 1, 3, 5; Knowledge 3) has those."""
+    their ratings in the prose, `rating from one to nine`): programs of type autosoft, unpriced (the core rulebook
+    prices autosofts by rating). A skill whose own line sets its ratings (Language 1, 3, 5; Knowledge 3) has those."""
     for b in bs:
         if norm(b.name) != "skills available in autosoft format":
             continue
@@ -489,6 +490,7 @@ def _autosofts(bs, cat):
 
 
 def extract(regrouped, ctx=None):
+    """The entries of the book's regrouped text, and report rows for the vehicle boxes whose values don't read."""
     report, bs = [], list(blocks(regrouped))
     res = catalog.read(_prep(bs, report), ctx, sys.modules[__name__])
     res.report += report  # a vehicle box whose values don't read

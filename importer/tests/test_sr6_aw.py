@@ -119,11 +119,13 @@ A made-up metamagic.
 
 
 def run_recipe(md=BOOK_MD):
+    """Regroup the sample book and read it with the recipe."""
     regrouped, _ = regroup.regroup(md, aw.ALIASES, name_headers=aw.NAME_HEADERS, end_page=aw.END_PAGE)
     return aw.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the entries in a result's kind file."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

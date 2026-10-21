@@ -1,8 +1,8 @@
-"""rebuild.py <importer tree> <saved runs dir> <out dir>: a copy of the saved import runs whose imported/<src>/*.xml and texts/<src>.xml are
-re-written by <tree>'s importer (effects.apply, the overrides, the classes, the "cl6"/"book" correction rows, effects.copy_links), the way
-importer/sr6/run.py _read does it. library/ dirs are links to the saved runs'. Run as a script (its own process per tree): it imports <tree>'s
-`importer` package and nothing from tools/, so a tree older than this tool works. The overrides' stderr warnings stay on stderr.
-"""
+"""rebuild.py <importer tree> <saved runs dir> <out dir>: a copy of the saved import runs whose imported/<src>/*.xml and
+texts/<src>.xml are re-written by <tree>'s importer (effects.apply, the overrides, the classes, the "cl6"/"book"
+correction rows, effects.copy_links), the way importer/sr6/run.py _read does it. library/ dirs are links to the saved
+runs'. Run as a script (its own process per tree): it imports <tree>'s `importer` package and nothing from tools/, so a
+tree older than this tool works. The overrides' stderr warnings stay on stderr."""
 
 import glob
 import os
@@ -15,11 +15,25 @@ ITEMFX = re.compile(r'<effect [^>]*target="item:[^"]*"[^>]*/>')
 TEXT = re.compile(r'<text of="([^"]+)" id="([^"]+)">(.*?)</text>', re.S)
 
 
+def _read(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _write(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(text)
+
+
 def link(src, dst):
+    """Link `dst` to the saved run `src`: a junction on Windows, a symlink elsewhere."""
     if sys.platform == "win32":
         # (a junction needs no privilege; mklink wants backslashes)
         p = subprocess.run(
-            ["cmd", "/c", "mklink", "/J", os.path.abspath(dst), os.path.abspath(src)], capture_output=True, text=True
+            ["cmd", "/c", "mklink", "/J", os.path.abspath(dst), os.path.abspath(src)],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if p.returncode:
             sys.exit(f"mklink failed for {dst}: {p.stdout}{p.stderr}")
@@ -28,6 +42,7 @@ def link(src, dst):
 
 
 def fix_runs(runs, out):
+    """Re-write the imported books and texts of each saved run in `runs` into `out`."""
     from importer.sr6 import classes, effects, overrides
     from importer.sr6.ids import slug
 
@@ -53,25 +68,26 @@ def fix_runs(runs, out):
         reg_p = os.path.join(lib, "sr6", "book1", "regrouped.md")
         if not os.path.exists(reg_p):
             continue
-        reg = open(reg_p, encoding="utf-8").read()
+        reg = _read(reg_p)
         base = os.path.join(dst, "custom", "sr6")
         for d in glob.glob(os.path.join(base, "imported", "*")):
             src = os.path.basename(d)
-            # (apply keeps the item: effects of its input: strip them so removals show; an add-on's item: effects come from its host's text, prose_items.add_ons, not from apply: they stay)
+            # (apply keeps the item: effects of its input: strip them so removals show; an add-on's item: effects come
+            # from its host's text, prose_items.add_ons, not from apply: they stay)
             files = {
                 os.path.basename(f): "".join(
-                    l if " accessoryOf=" in l else ITEMFX.sub("", l)
-                    for l in open(f, encoding="utf-8").read().splitlines(keepends=True)
+                    l if " accessoryOf=" in l else ITEMFX.sub("", l) for l in _read(f).splitlines(keepends=True)
                 )
                 for f in glob.glob(d + "/*.xml")
             }
             tp = os.path.join(base, "texts", src + ".xml")
-            texts = open(tp, encoding="utf-8").read() if os.path.exists(tp) else ""
+            texts = _read(tp) if os.path.exists(tp) else ""
             tx = {(m.group(1), m.group(2)): m.group(3) for m in TEXT.finditer(texts)}
             rt = [t for (k, i), t in tx.items() if k == "rules" and len(t) >= 60]
 
             def unadd(
                 m,
+                rt=rt,
             ):  # (undo the rule texts the saved run wrote into other entries, so the rule-name fallback runs again)
                 t = m.group(3)
                 if m.group(1) != "rules":
@@ -81,8 +97,10 @@ def fix_runs(runs, out):
                 return f'<text of="{m.group(1)}" id="{m.group(2)}">{t}</text>'
 
             texts = TEXT.sub(unadd, texts)
-            # (the real _read order, run.py _read: apply() over every entry, then the overrides, the classes and the override texts, then
-            # apply(only=added) for the entries an override added; the saved output has them already, so they are taken out first)
+            # (the real _read order, run.py _read: apply() over every entry, then the overrides, the classes and the
+            # override texts, then
+            # apply(only=added) for the entries an override added; the saved output has them already, so they are taken
+            # out first)
             added = set()
             for r in overrides.table(src):
                 if "add" in r:
@@ -94,7 +112,10 @@ def fix_runs(runs, out):
             ]
             kept = (
                 {}
-            )  # (an entry an override added, as saved: its family kids and prerequisites stay, its effects are read again below)
+                # (an entry an override added, as saved: its family kids and prerequisites stay, its effects are read
+                # again
+                # below)
+            )
             for kind, eid in sorted(added):
                 fn = kind + ".xml"
                 if fn in files:
@@ -117,12 +138,13 @@ def fix_runs(runs, out):
             if now - have:
                 o, t2 = effects.apply(o, t2, reg, only=now - have)
             for fn, x in o.items():
-                open(os.path.join(d, fn), "w", encoding="utf-8", newline="").write(x)
+                _write(os.path.join(d, fn), x)
             if os.path.exists(tp):
-                open(tp, "w", encoding="utf-8", newline="").write(t2)
+                _write(tp, t2)
 
 
 def sources(run):
+    """The imported source folders of a saved run."""
     return [d for d in glob.glob(os.path.join(run, "custom", "sr6", "imported", "*")) if os.path.isdir(d)]
 
 
@@ -138,10 +160,10 @@ def cl6_rows(out):
         rows = [dict(r, id=f"{src}.{r['id']}") for r in overrides.table(src) if r.get("gen") in ("cl6", "book")]
         if not rows:
             continue
-        files = {os.path.basename(f): open(f, encoding="utf-8").read() for f in glob.glob(d + "/*.xml")}
+        files = {os.path.basename(f): _read(f) for f in glob.glob(d + "/*.xml")}
         for name, xml in overrides.apply(src, files, rows).items():
             if xml != files.get(name):
-                open(os.path.join(d, name), "w", encoding="utf-8", newline="").write(xml)
+                _write(os.path.join(d, name), xml)
                 n += 1
     print("cl6 rows: files changed", n)
 
@@ -155,16 +177,12 @@ def link_pass(out):
         for src in srcs:
             p = os.path.join(run, "custom", "sr6", "texts", src + ".xml")
             if os.path.exists(p):
-                res[src] = {
-                    (m.group(1), m.group(2)): m.group(3) for m in TEXT.finditer(open(p, encoding="utf-8").read())
-                }
+                res[src] = {(m.group(1), m.group(2)): m.group(3) for m in TEXT.finditer(_read(p))}
         return res
 
     def load(run):
         return {
-            os.path.basename(d): {
-                os.path.basename(f): open(f, encoding="utf-8").read() for f in glob.glob(d + "/*.xml")
-            }
+            os.path.basename(d): {os.path.basename(f): _read(f) for f in glob.glob(d + "/*.xml")}
             for d in sources(run)
             if os.path.basename(d) != "samples"
         }
@@ -182,16 +200,14 @@ def link_pass(out):
             continue
         for (src, fn), xml in effects.copy_links({**canon, **mine}, load_texts(r, mine)).items():
             if src in mine:
-                open(os.path.join(r, "custom", "sr6", "imported", src, fn), "w", encoding="utf-8", newline="").write(
-                    xml
-                )
+                _write(os.path.join(r, "custom", "sr6", "imported", src, fn), xml)
                 n += 1
     print("linkpass: files changed", n)
 
 
 if __name__ == "__main__":
-    tree, runs, out = sys.argv[1:4]
+    tree, runs_dir, out_dir = sys.argv[1:4]
     sys.path.insert(0, tree)
-    fix_runs(runs, out)
-    cl6_rows(out)
-    link_pass(out)
+    fix_runs(runs_dir, out_dir)
+    cl6_rows(out_dir)
+    link_pass(out_dir)

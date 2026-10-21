@@ -1,7 +1,8 @@
-"""The gaps the live import of 2026-10-20 showed and the per-book runs did not (docs/reviews/sr6-cl6-comparison-2026-10-20.md):
-the effects of the structure an override gives an existing entry, a citation of another book linking to the entry itself,
-the cross-book fill's rating range and its same-name items of another kind of thing, a renamed printing's override rows, an
-errata's life module that the book already has. Every name and number is invented, in the books' structure."""
+"""The gaps the live import of 2026-10-20 showed and the per-book runs did not
+(docs/reviews/sr6-cl6-comparison-2026-10-20.md): the effects of the structure an override gives an existing entry, a
+citation of another book linking to the entry itself, the cross-book fill's rating range and its same-name items of
+another kind of thing, a renamed printing's override rows, an errata's life module that the book already has. Every name
+and number is invented, in the books' structure."""
 
 import os
 import tempfile
@@ -20,6 +21,7 @@ def file(kind, tag, rows):
 
 
 def line(xml, eid):
+    """The line of `xml` that holds the entry `eid`."""
     return next(x for x in xml.splitlines() if f'id="{eid}"' in x)
 
 
@@ -79,11 +81,12 @@ class OverrideShapeIsReadTest(unittest.TestCase):
 
 
 class CitedBookLinkTest(unittest.TestCase):
-    """Fix 2: `See X, p. NN, SR6.` in a book that has an entry of that name links to the core rulebook's, never to itself."""
+    """Fix 2: `See X, p. NN, SR6.` in a book that has an entry of that name links to the core rulebook's, never to
+    itself."""
 
     def test_a_citation_of_another_book_wins_over_the_books_own_id(self):
         files = {"qualities.xml": file("qualities", "quality", [("zap-skin", ' karma="7"', "Zap Skin", "")])}
-        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="zap-skin">Cost: 7 Karma\nSee Zap Skin, p. 71, SR6.</text>\n</sr6:data>\n'
+        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="zap-skin">Cost: 7 Karma\nSee Zap Skin, p. 71, SR6.</text>\n</sr6:data>\n'  # pylint: disable=line-too-long
         x = line(effects.apply(files, texts)[0]["qualities.xml"], "zap-skin")
         self.assertIn('ref="crb.zap-skin"', x)
 
@@ -95,12 +98,12 @@ class CitedBookLinkTest(unittest.TestCase):
                 [("zap-hide", "", "Zap Hide", ""), ("zap-skin", ' source="CRB"', "Zap Skin", "")],
             ).replace(' source="ZZ" page="1" source="CRB"', ' source="CRB" page="1"')
         }
-        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="zap-skin">Cost: 7 Karma\nSee Zap Hide, p. 71, SR6.</text>\n</sr6:data>\n'
+        texts = '<sr6:data kind="texts">\n  <text of="qualities" id="zap-skin">Cost: 7 Karma\nSee Zap Hide, p. 71, SR6.</text>\n</sr6:data>\n'  # pylint: disable=line-too-long
         x = line(effects.apply(files, texts)[0]["qualities.xml"], "zap-skin")
         self.assertIn('ref="zap-hide"', x)
 
 
-def _book(lib, custom, name, src, entries, date):
+def _book(lib, custom, name, src, entries, _date):
     """A done import of `src` in library `lib`: its catalog files (entries: {file: xml}) and its import record."""
     from importer import xmlio
 
@@ -119,7 +122,7 @@ class CorpusFillTest(unittest.TestCase):
     """Fixes 3 and 4: the cross-book fill (resolve.corpus)."""
 
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with  # cleaned up in tearDown
         self.lib, self.custom = os.path.join(self.tmp.name, "library"), os.path.join(self.tmp.name, "custom")
 
     def tearDown(self):
@@ -135,11 +138,11 @@ class CorpusFillTest(unittest.TestCase):
 
     def test_a_per_rating_price_comes_with_its_rating_range(self):
         mine = {
-            "programs.xml": f'<sr6:data xmlns:sr6="{NS}" kind="programs">\n  <program id="aa.zap-soft" source="AA" page="9" type="e-soft"><name>Zap Soft</name>'
+            "programs.xml": f'<sr6:data xmlns:sr6="{NS}" kind="programs">\n  <program id="aa.zap-soft" source="AA" page="9" type="e-soft"><name>Zap Soft</name>'  # pylint: disable=line-too-long
             '<issue field="cost" code="missing" page="9">no price printed</issue></program>\n</sr6:data>\n'
         }
         theirs = {
-            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.autosoft" source="BB" page="5" category="Software" cost="Rating x 500" rating="1–9">'
+            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.autosoft" source="BB" page="5" category="Software" cost="Rating x 500" rating="1–9">'  # pylint: disable=line-too-long
             '<name>Autosoft</name><formula field="cost">R*500</formula></gear>\n</sr6:data>\n'
         }
         x = self._corpus(mine, theirs)
@@ -149,11 +152,11 @@ class CorpusFillTest(unittest.TestCase):
 
     def test_a_same_name_item_of_another_kind_of_thing_fills_nothing(self):
         mine = {
-            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="aa.zap-gear" source="AA" page="9" category="Preparation" class="MAGICAL/ALCHEMICAL">'
-            '<name>Zap Gear</name><issue field="avail" code="missing" page="9">no availability printed</issue></gear>\n</sr6:data>\n'
+            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="aa.zap-gear" source="AA" page="9" category="Preparation" class="MAGICAL/ALCHEMICAL">'  # pylint: disable=line-too-long
+            '<name>Zap Gear</name><issue field="avail" code="missing" page="9">no availability printed</issue></gear>\n</sr6:data>\n'  # pylint: disable=line-too-long
         }
         theirs = {
-            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.zap-gear" source="BB" page="5" category="Survival gear" avail="1" class="SURVIVAL/SURVIVAL_GEAR">'
+            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.zap-gear" source="BB" page="5" category="Survival gear" avail="1" class="SURVIVAL/SURVIVAL_GEAR">'  # pylint: disable=line-too-long
             "<name>Zap gear</name></gear>\n</sr6:data>\n"
         }
         x = self._corpus(mine, theirs)
@@ -162,20 +165,20 @@ class CorpusFillTest(unittest.TestCase):
 
     def test_a_same_name_item_of_the_same_class_still_fills(self):
         mine = {
-            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="aa.zap-gear" source="AA" page="9" category="Tools" class="SURVIVAL/OTHER">'
-            '<name>Zap Gear</name><issue field="avail" code="missing" page="9">no availability printed</issue></gear>\n</sr6:data>\n'
+            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="aa.zap-gear" source="AA" page="9" category="Tools" class="SURVIVAL/OTHER">'  # pylint: disable=line-too-long
+            '<name>Zap Gear</name><issue field="avail" code="missing" page="9">no availability printed</issue></gear>\n</sr6:data>\n'  # pylint: disable=line-too-long
         }
         theirs = {
-            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.zap-gear" source="BB" page="5" category="Survival gear" avail="1" class="SURVIVAL/SURVIVAL_GEAR">'
+            "gear.xml": f'<sr6:data xmlns:sr6="{NS}" kind="gear">\n  <gear id="bb.zap-gear" source="BB" page="5" category="Survival gear" avail="1" class="SURVIVAL/SURVIVAL_GEAR">'  # pylint: disable=line-too-long
             "<name>Zap gear</name></gear>\n</sr6:data>\n"
         }
         self.assertIn('avail="1"', self._corpus(mine, theirs))
 
 
 class CurrentPrintingRowsTest(unittest.TestCase):
-    """Fix 5: the core rulebook's Current Printing files the Uzi as `uzi-iv` (the City Editions' `Uzi V`, `uzi-v`): its family
-    row is keyed to that id too, so a library that loads only the Current Printing gives it its skill, specialization and slots.
-    """
+    """Fix 5: the core rulebook's Current Printing files the Uzi as `uzi-iv` (the City Editions' `Uzi V`, `uzi-v`): its
+    family row is keyed to that id too, so a library that loads only the Current Printing gives it its skill,
+    specialization and slots."""
 
     def test_the_current_printings_uzi_takes_its_family_row(self):
         from importer.sr6 import overrides
@@ -188,7 +191,8 @@ class CurrentPrintingRowsTest(unittest.TestCase):
 
 
 class ErrataModuleTest(unittest.TestCase):
-    """Fix 6: an errata's life module the book's catalog already has under its name less the `Event:` kicker is not added again."""
+    """Fix 6: an errata's life module the book's catalog already has under its name less the `Event:` kicker is not
+    added again."""
 
     def test_an_event_kicker_is_no_second_module(self):
         from importer.tests.test_sr6_resolve import _book as rbook
@@ -213,7 +217,7 @@ class ErrataModuleTest(unittest.TestCase):
                 custom=custom,
                 kind="lifemodules",
                 entries=[
-                    '<lifemodule id="zza.you-had-a-zap-week" source="ZZA" page="3" stage="adult"><name>You had a Zap Week</name></lifemodule>'
+                    '<lifemodule id="zza.you-had-a-zap-week" source="ZZA" page="3" stage="adult"><name>You had a Zap Week</name></lifemodule>'  # pylint: disable=line-too-long
                 ],
             )
             rbook(

@@ -10,6 +10,8 @@ from importer.sr6 import categories as C
 from importer.sr6 import moved, regroup
 from importer.sr6.recipes import crb, da
 
+# pylint: disable=protected-access
+
 GEAR_MD = """<!-- page 251 -->
 # GEAR
 Gear intro.
@@ -62,6 +64,7 @@ A made-up back cover.
 
 
 def files(res):
+    """{file stem: parsed XML} of the result's files."""
     return {k[:-4]: ET.fromstring(x) for k, x in res.files.items()}
 
 
@@ -96,6 +99,7 @@ class CategoriesTest(unittest.TestCase):
         cls.f = files(cls.res)
 
     def entry(self, kind, name, category=None):
+        """The first entry of that kind and name (and category, when given)."""
         return next(
             e
             for e in self.f[kind]
@@ -139,7 +143,7 @@ class CategoriesTest(unittest.TestCase):
             ("gear", "crb.armor-2"): (["Armor"], [], moved._cat("glowware-enhancements")),
         }
         xml = ET.tostring(self.f["gear"], encoding="unicode").replace(' id="', ' id="crb.')
-        out, n = moved.carry(prev, {"gear.xml": xml})
+        out, _ = moved.carry(prev, {"gear.xml": xml})
         glow = next(e for e in ET.fromstring(out["gear.xml"]) if e.get("category") == "Glowware enhancement")
         self.assertEqual([a.get("id") for a in glow.findall("alias") if a.get("id")], ["crb.armor-2"])
 

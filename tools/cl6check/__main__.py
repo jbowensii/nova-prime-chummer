@@ -11,7 +11,8 @@ python -m tools.cl6check import --library <books file> <out dir> [--md-from <run
     the production import: every book in one library (<out>/library/sr6/<run name>, one <out>/custom/sr6), one after
     the other in the file's order, as the server's upload and Re-import all run them (`importer sr6 run`), with the
     steps only a library has: the cross-book fill, the printings of a book, the errata, the links across books.
-    --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this converter.
+    --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this
+    converter.
 python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
     the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
     (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
@@ -26,6 +27,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from tools.cl6check import arbitrate, canon, fields, match, modifiers, ours, patterns, reader, report
 from tools.cl6check import optional as optional_package
@@ -38,9 +40,9 @@ RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")
 
 
 def _same(fam, cl, h, shared, keep=()):
-    """Whether our entry h holds family `fam` as Commlink6's record does. variants: equal too when the entry's name carries
-    one of Commlink6's variant names (one item per variant, the owner's rule). slots: when Commlink6 makes two records of
-    the item (`shared`), each record's set is a part of ours."""
+    """Whether our entry h holds family `fam` as Commlink6's record does. variants: equal too when the entry's name
+    carries one of Commlink6's variant names (one item per variant, the owner's rule). slots: when Commlink6 makes two
+    records of the item (`shared`), each record's set is a part of ours."""
     mine = h["families"].get(fam)
     if mine == cl:
         return True
@@ -49,7 +51,9 @@ def _same(fam, cl, h, shared, keep=()):
         h["kind"],
         h["id"],
         fam,
-    ) in keep:  # (the owner keeps ours: value_keep.json, field `variants` for an install/option tag, `social` for a printed `Rating`)
+        # (the owner keeps ours: value_keep.json, field `variants` for an install/option tag, `social` for a printed
+        # `Rating`)
+    ) in keep:
         return True
     if fam == "variants":  # (or the entry's name carries the variant)
         return ours.carries(h["name"], cl)
@@ -152,11 +156,17 @@ def compare(
                 owners[id(h)] += 1
         for c, hits, how in found:
             first, hits = hits, _levels(c, hits, entries)
+
             # several entries (a parent and its variant rows): compare the one that agrees most, nearest first on a tie
-            sib = lambda h: (
-                stems[h["kind"], LEVEL.sub("", h["id"])] if len(stems[h["kind"], LEVEL.sub("", h["id"])]) > 1 else ()
-            )  # noqa: E731
-            o = min(hits, key=lambda h: len(fields.compare(c, h, sib(h))[1])) if hits else None
+            # pylint: disable-next=dangerous-default-value  # stems is bound per iteration and never changed by sib
+            def sib(h, stems=stems):
+                return (
+                    stems[h["kind"], LEVEL.sub("", h["id"])]
+                    if len(stems[h["kind"], LEVEL.sub("", h["id"])]) > 1
+                    else ()
+                )
+
+            o = min(hits, key=lambda h, c=c, sib=sib: len(fields.compare(c, h, sib(h))[1])) if hits else None
             r = {k: c[k] for k in ("book", "src", "kind", "modelled", "tag", "id", "name", "page")} | {
                 "matched": bool(hits) or how == "optional package",
                 "how": how if hits or how == "optional package" else "",
@@ -200,7 +210,8 @@ def compare(
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))
                     if t == "unprinted" and not d["why"].startswith("ours empty"):
-                        t = None  # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
+                        # an unprinted Commlink6 value only excuses an empty field of ours, not a different printed one
+                        t = None
                     if (
                         t and d["class"] == "a"
                     ):  # the trace says the book never printed Commlink6's value: not our error
@@ -210,8 +221,9 @@ def compare(
                         or (c["src"], k, c["id"], c["name"], o["id"], d["field"], d["cl6"], d["ours"]) in verdicts
                         for k in (c["kind"], o["kind"])
                     ):
-                        # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after the trace,
-                        # which can make a row c; a `verdicts` row only while both values are the ones ruled on)
+                        # (the owner keeps ours: value_keep.json, keyed by the csv's kind = Commlink6's, or ours; after
+                        # the trace, which can make a row c; a `verdicts` row only while both values are the ones ruled
+                        # on)
                         d["class"], d["pdf"] = "b", "ours"
                         d.pop("cl6only", None)
             elif how != "optional package":
@@ -224,9 +236,9 @@ def compare(
 
 
 def _settle_classes(results, accept, sections=None, extra=None):
-    """Two records matching one entry can class it two ways: the one whose class is a type of the entry's kind is the one
-    compared (a rocket launcher is `WEAPON_SPECIAL/LAUNCHERS`, not the `AMMUNITION/ROCKETS` of its rocket); a record the
-    owner accepts (class_accept.json) counts equal."""
+    """Two records matching one entry can class it two ways: the one whose class is a type of the entry's kind is the
+    one compared (a rocket launcher is `WEAPON_SPECIAL/LAUNCHERS`, not the `AMMUNITION/ROCKETS` of its rocket); a record
+    the owner accepts (class_accept.json) counts equal."""
     by = defaultdict(list)
     for r in results:
         if r["matched"] and "class" in r["families"] and r["our_id"]:
@@ -252,7 +264,8 @@ def _settle_classes(results, accept, sections=None, extra=None):
                 for x in rules
             )
         ):
-            # a section's deliberate extra class (CRITTERWARE/AUGMENTATION, not Commlink6's): accepted whatever Commlink6's is
+            # a section's deliberate extra class (CRITTERWARE/AUGMENTATION, not Commlink6's): accepted whatever
+            # Commlink6's is
             r["families"]["class"] = True
             r["class_via"] = "section class"
         elif (
@@ -264,7 +277,8 @@ def _settle_classes(results, accept, sections=None, extra=None):
 
 def run_imports(books_file, out, jobs):
     """`python -m importer sr6 check` for every `<run>|<pdf>` line, in parallel, into <out>/<run>."""
-    lines = [ln.strip().split("|", 1) for ln in open(books_file, encoding="utf8") if "|" in ln]
+    with open(books_file, encoding="utf8") as fh:
+        lines = [ln.strip().split("|", 1) for ln in fh if "|" in ln]
 
     def one(item):
         name, pdf = item
@@ -290,7 +304,8 @@ def run_library(books_file, out, md_from=None):
     PDF, so `run --reuse` skips a conversion of the same PDF by the same converter."""
     import shutil
 
-    lines = [ln.strip().split("|", 1) for ln in open(books_file, encoding="utf8") if "|" in ln]
+    with open(books_file, encoding="utf8") as fh:
+        lines = [ln.strip().split("|", 1) for ln in fh if "|" in ln]
     lib, custom = os.path.join(out, "library", "sr6"), os.path.join(out, "custom", "sr6")
     # only ever clear a folder this command made: new/empty, or with its own import.log (never an app's data folder)
     if os.path.isdir(out) and os.listdir(out) and not os.path.isfile(os.path.join(out, "import.log")):
@@ -334,6 +349,7 @@ def run_library(books_file, out, md_from=None):
 
 
 def main(argv=None):
+    """Run a cl6check command; its exit code."""
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["trace"]:
         from tools.cl6check import corpus, trace
@@ -350,7 +366,7 @@ def main(argv=None):
             return 0
         recs, _ = reader.read(jar)
         c = corpus.load(a.runs, os.path.join(REPO, "public", "data", "sr6", "sources.xml"))
-        verdicts = json.load(open(a.verdicts, encoding="utf8")) if a.verdicts else None
+        verdicts = json.loads(Path(a.verdicts).read_text(encoding="utf8")) if a.verdicts else None
         rows, n = trace.run(c, [canon.canonical(r) for r in recs], verdicts)
         trace.write(a.out, rows, n, c)
         with open(os.path.join(a.out, "cl6-trace.md"), "w", encoding="utf8") as f:
@@ -399,7 +415,11 @@ def main(argv=None):
     )
     when = datetime.datetime.now().isoformat(timespec="seconds")
     base_path = a.baseline or os.path.join(a.out, "baseline.json")
-    base = json.load(open(base_path, encoding="utf8")) if os.path.exists(base_path) and not a.save_baseline else None
+    base = (
+        json.loads(Path(base_path).read_text(encoding="utf8"))
+        if os.path.exists(base_path) and not a.save_baseline
+        else None
+    )
     meta = {"jar": jar.name, "ours": os.path.abspath(a.ours), "when": when, "pdf": not a.no_pdf}
     if base:
         meta["baseline_when"] = base["meta"]["when"]

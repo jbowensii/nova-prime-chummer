@@ -74,8 +74,8 @@ def table(header, row, kind):
             )  # (`+2 (BF/FA Modes Only)`: the modes it is for)
         v = _stat_mod(v or "") if t in ("item:ar", "item:dv") else _norm(v or "")
         if c == "body" and "unarmed dv" in h and re.fullmatch(r"\+\d+", v):
-            # (a table of unarmed values, the bone lacing table, CRB Hong Kong p. 286: its BODY is extra Body when resisting
-            # physical damage, as its text says)
+            # (a table of unarmed values, the bone lacing table, CRB Hong Kong p. 286: its BODY is extra Body when
+            # resisting physical damage, as its text says)
             out.append(
                 _fx("test:damage-resistance", "add", v.lstrip("+"), "conditional", "when resisting physical damage")
             )
@@ -135,8 +135,8 @@ def accessory(text, thing):
 
 
 def less_accessory(text, thing):
-    """`text` less the sentences accessory() reads for the add-on `thing` (`Arm-brace add-on increases the Near and Medium Attack Ratings
-    by 1`): they are the add-on's effects, not the item's own."""
+    """`text` less the sentences accessory() reads for the add-on `thing` (`Arm-brace add-on increases the Near and
+    Medium Attack Ratings by 1`): they are the add-on's effects, not the item's own."""
     word = (thing.split() or [""])[-1].lower()
     if not word:
         return text

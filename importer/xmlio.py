@@ -12,7 +12,7 @@ NS = "urn:chummer-anarchy2:data:1"
 WINDOWS = os.name == "nt"
 HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
 ILLEGAL = re.compile(
-    "[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF)))
+    f"[^\t\n\r\x20-{chr(0xD7FF)}{chr(0xE000)}-{chr(0xFFFD)}{chr(0x10000)}-{chr(0x10FFFF)}]"
 )  # not in XML 1.0
 # (tag, attribute) pairs that name an entry of the imported file set ("*" = any tag); only values that
 # are ids of that set get scoped. <effect ref>, amp type and amp vehicle point at base ampeffects, amptypes
@@ -40,26 +40,30 @@ TAG = re.compile(r"<([A-Za-z][\w:.-]*)([^>]*)>")
 ATTR = re.compile(r'(?<=\s)([\w:.-]+)="([^"]*)"')
 
 
-# a game's data root, (prefix, namespace): the texts and sources files are written under <{prefix}:data xmlns:{prefix}=…>
-# (SR6's: importer.sr6.ROOT); outside Anarchy's, scope() scopes every tag's ids (UNSCOPED_TAGS is Anarchy's)
+# a game's data root, (prefix, namespace): the texts and sources files are written under <{prefix}:data
+# xmlns:{prefix}=…> (SR6's: importer.sr6.ROOT); outside Anarchy's, scope() scopes every tag's ids (UNSCOPED_TAGS is
+# Anarchy's)
 CA2 = ("ca2", NS)
 
 
 def data_root(kind, root=CA2):
+    """The opening and closing tags of a catalog data file of `kind`."""
     prefix, ns = root
     return f'<{prefix}:data xmlns:{prefix}="{ns}" kind="{kind}" version="1">\n', f"</{prefix}:data>\n"
 
 
 def write_file(path, text):
+    """Write `text` to `path` through a temp file, waiting while the server holds the old one."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf8", newline="\n") as f:
         f.write(text)
-    # Windows refuses to replace a file the server is reading at that moment (it polls status.xml): wait and try again, as
-    # server/common.mjs writeAtomic does. Elsewhere replace() never fails this way and the loop runs once.
+    # Windows refuses to replace a file the server is reading at that moment (it polls status.xml): wait and try again,
+    # as server/common.mjs writeAtomic does. Elsewhere replace() never fails this way and the loop runs once.
     for i in range(20):
         try:
-            return os.replace(tmp, path)
+            os.replace(tmp, path)
+            break
         except PermissionError:
             if i == 19 or not WINDOWS:
                 raise
@@ -67,6 +71,7 @@ def write_file(path, text):
 
 
 def top_ids(xml):
+    """The ids of the top-level entries of `xml`, removals left out."""
     return {el.get("id") for el in ET.fromstring(xml.encode("utf8")) if el.get("id") and not el.tag.endswith("remove")}
 
 
@@ -96,12 +101,12 @@ def scope(xml, source, ids, root=CA2):
     return TAG.sub(tag, xml)
 
 
-def write_overlay(dir, name, xml, ids=None):
+def write_overlay(folder, name, xml, ids=None):
     """Write custom/imported/<source>/<name>; the folder name is the source. `ids` is the file set's
     entry ids (default: this file's), so cross-file references are scoped too."""
     write_file(
-        os.path.join(dir, name),
-        scope(xml, os.path.basename(os.path.normpath(dir)), top_ids(xml) if ids is None else ids),
+        os.path.join(folder, name),
+        scope(xml, os.path.basename(os.path.normpath(folder)), top_ids(xml) if ids is None else ids),
     )
 
 
@@ -125,10 +130,12 @@ def merged_texts(path, entries, drop=(), root=CA2):
 
 
 def write_texts(path, entries):
+    """Merge `entries` into the texts file at `path` and write it."""
     write_file(path, merged_texts(path, entries))
 
 
 def texts_entries(xml):
+    """[(of, id, text)] of a texts file."""
     return [(t.get("of"), t.get("id"), t.text or "") for t in ET.fromstring(xml.encode("utf8"))]
 
 
@@ -137,10 +144,12 @@ def _now():
 
 
 def xml_attrs(d):
+    """` name="value"` for each attribute that is set."""
     return "".join(f" {k}={quoteattr(str(v))}" for k, v in d.items() if v is not None)
 
 
 def write_status(book_dir, state, message=""):
+    """Write the book folder's status.xml with its state and message."""
     write_file(
         os.path.join(book_dir, "status.xml"),
         HEAD + f'<status state="{state}" updated="{_now()}">{escape(ILLEGAL.sub("", message))}</status>\n',
@@ -154,13 +163,15 @@ def read_state(book_dir):
 
 
 def read_import(book_dir):
+    """The import.xml root of a book folder, or None."""
     p = os.path.join(book_dir, "import.xml")
     return ET.parse(p).getroot() if os.path.exists(p) else None
 
 
 def write_import(book_dir, report=(), files=None, extras=(), **attrs):
     """library/<id>/import.xml: recipe, source, file, sha256, dates, counts per file, report rows; `extras`: the further
-    sources the book holds (an SR6 City Edition's city chapter), each an <extra id name publisher canon/> for sources.xml.
+    sources the book holds (an SR6 City Edition's city chapter), each an <extra id name publisher canon/> for
+    sources.xml.
     """
     rows = "".join(f"    <row{xml_attrs(r)}/>\n" for r in report)
     counts = "".join(f"    <file{xml_attrs({'name': n, 'entries': c})}/>\n" for n, c in (files or {}).items())
@@ -173,7 +184,8 @@ def write_import(book_dir, report=(), files=None, extras=(), **attrs):
 
 
 def update_index(custom_dir):
-    """custom/imported/index.xml: every imported/<source>/*.xml (samples/ excluded; core/ is loaded as the core data)."""
+    """custom/imported/index.xml: every imported/<source>/*.xml (samples/ excluded; core/ is loaded as the core
+    data)."""
     root = os.path.join(custom_dir, "imported")
     hrefs = sorted(
         f"{s}/{f}"

@@ -106,11 +106,13 @@ Made-up fiction.
 
 
 def run_recipe(md=BOOK_MD):
+    """Run the recipe over a book's markdown."""
     regrouped, _ = regroup.regroup(md, so.ALIASES, name_headers=so.NAME_HEADERS, end_page=so.END_PAGE)
     return so.extract(regrouped)
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -150,7 +152,8 @@ class SoRecipeTest(unittest.TestCase):
         self.assertNotIn("Game Information", r)
 
     def test_clothing_is_armor_with_its_printed_social_rating(self):
-        # (owner 2026-10-15: the clothing table's rows are armor entries, the SOCIAL RATING column their `social` as printed)
+        # (owner 2026-10-15: the clothing table's rows are armor entries, the SOCIAL RATING column their `social` as
+        # printed)
         a, g = entries(self.res, "armor"), entries(self.res, "gear")
         self.assertEqual([k for k in ("Fuzzy Suit", "Rag Wrap", "Plain Tee") if k in g], [])
         self.assertEqual(
@@ -179,7 +182,8 @@ class SoRecipeTest(unittest.TestCase):
             for kind, tag, name in (("skills", "skill", "Con"), ("metatypes", "metatype", "Elf")):
                 with open(os.path.join(custom, "imported", "crb", f"{kind}.xml"), "w", encoding="utf8") as f:
                     f.write(
-                        f'<sr6:data xmlns:sr6="{sr6.NS}" kind="{kind}" version="1"><{tag} id="crb.{name.lower()}" source="CRB" '
+                        f'<sr6:data xmlns:sr6="{sr6.NS}" kind="{kind}" version="1"><{tag} id="crb.{name.lower()}" '
+                        f'source="CRB" '
                         f'page="9"><name>{name}</name></{tag}></sr6:data>'
                     )
             regrouped, _ = regroup.regroup(BOOK_MD, so.ALIASES, name_headers=so.NAME_HEADERS, end_page=so.END_PAGE)
@@ -214,13 +218,16 @@ class SoRecipeTest(unittest.TestCase):
             write(
                 "crb",
                 "qualities",
-                '<quality id="crb.pointy-ears" source="CRB" page="9" kind="positive" karma="5"><name>Pointy Ears</name></quality>'
-                '<quality id="crb.allergy" source="CRB" page="9" kind="negative" karma="2" karmaMax="30"><name>Allergy</name></quality>',
+                '<quality id="crb.pointy-ears" source="CRB" page="9" kind="positive" karma="5"><name>Pointy Ears</name>'
+                "</quality>"
+                '<quality id="crb.allergy" source="CRB" page="9" kind="negative" karma="2" karmaMax="30"><name>'
+                "Allergy</name></quality>",
             )
             write(
                 "zz",
                 "qualities",
-                '<quality id="zz.odd-charm" source="ZZ" page="4" kind="positive" karma="4"><name>Odd Charm</name></quality>',
+                '<quality id="zz.odd-charm" source="ZZ" page="4" kind="positive" karma="4"><name>Odd Charm</name>'
+                "</quality>",
             )
             regrouped, _ = regroup.regroup(BOOK_MD, so.ALIASES, name_headers=so.NAME_HEADERS, end_page=so.END_PAGE)
             face = ET.fromstring(so.extract(regrouped, {"custom_dir": custom}).samples[0]["xml"])

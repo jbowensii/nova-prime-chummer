@@ -15,6 +15,8 @@ from tools.cl6check import __main__ as cli
 from tools.cl6check import canon, fields, match, modifiers, ours, patterns, reader, report
 from tools.cl6check import optional as optional_package
 
+# pylint: disable=protected-access,consider-using-with  # one-shot reads of files the test just wrote
+
 R = reader.ROOT
 
 
@@ -29,6 +31,7 @@ def jar(files):
 
 
 def rec(xml, name="Zorp", page="10", variants=None, book="gizmo"):
+    """A Commlink6 record built from an XML snippet."""
     el = reader.normalise(ET.fromstring(xml))
     return {
         "book": book,
@@ -45,6 +48,7 @@ def rec(xml, name="Zorp", page="10", variants=None, book="gizmo"):
 
 
 def entry(name, kind="gear", page="10", **attrs):
+    """One of our catalog entries, with the given attributes."""
     e = ET.Element("x", attrs)
     return {
         "src": "gz",
@@ -80,7 +84,7 @@ class ReaderTest(unittest.TestCase):
         os.remove(self.path)
 
     def test_text_is_keyed_by_prefix_and_id(self):
-        recs, excluded = reader.read(self.path)
+        recs, _ = reader.read(self.path)
         by = {(r["tag"], r["id"]): r for r in recs}
         self.assertEqual((by["npc", "sage"]["name"], by["npc", "sage"]["page"]), ("Sage Thug", "3"))
         self.assertEqual((by["tradition", "sage"]["name"], by["tradition", "sage"]["page"]), ("Sage Way", "7"))
@@ -99,7 +103,7 @@ class ReaderTest(unittest.TestCase):
     def test_spelling_variants(self):
         el = reader.normalise(
             ET.fromstring(
-                '<m><valmod type="glide" ref="SKILL" val="2" multi="Y"/>' '<valmod ref="choice" neg="FALSE"/></m>'
+                '<m><valmod type="glide" ref="SKILL" val="2" multi="Y"/><valmod ref="choice" neg="FALSE"/></m>'
             )
         )
         a, b = el[0].attrib, el[1].attrib
@@ -153,7 +157,9 @@ class CanonTest(unittest.TestCase):
         self.assertIn("Zorp Big", c["aliases"])
 
     def test_commlink6_only_records(self):
-        only = lambda x: canon.canonical(rec(x))["cl6only"]
+        def only(x):
+            return canon.canonical(rec(x))["cl6only"]
+
         self.assertTrue(only('<item id="z" type="ACCESSORY" avail="99" price="0" modonly="true"/>'))
         self.assertFalse(only('<item id="z" type="ACCESSORY" avail="4" price="0" modonly="true"/>'))
         self.assertFalse(only('<item id="z" type="ACCESSORY" modonly="true"/>'))
@@ -185,12 +191,17 @@ class OursTest(unittest.TestCase):
         self.assertEqual(ours.families(e)["slots"], frozenset({("fits", "top"), ("fits", "under")}))
 
     def test_kind_flags_and_social_dashes(self):
-        fl = lambda kind, **a: ours.families(ET.Element("x", a), kind).get("flags")
+        def fl(kind, **a):
+            return ours.families(ET.Element("x", a), kind).get("flags")
+
         self.assertEqual(fl("augmentations"), frozenset({"augmentation"}))
         self.assertEqual(fl("electronics"), frozenset({"matrix_device"}))
         self.assertEqual(fl("gear", category="Attribute codemod"), frozenset({"codemod"}))
         self.assertIsNone(fl("gear", category="Tools"))
-        soc = lambda kind, **a: ours.families(ET.Element("x", a), kind)["social"]
+
+        def soc(kind, **a):
+            return ours.families(ET.Element("x", a), kind)["social"]
+
         self.assertEqual(soc("armor", social="–2"), soc("armor", social="-2"))  # (the printed en dash)
         self.assertEqual(soc("armor", social="—"), soc("armor"))  # (a dash, or no column: 0)
         self.assertEqual(soc("armor"), (str(canon.cl6_value("0")),))
@@ -211,7 +222,6 @@ class OursTest(unittest.TestCase):
             self.assertTrue(got["gz"].book_dir.endswith(os.path.join("a_run", "library", "sr6", "book1")))
 
     def test_the_newest_printing_wins_whatever_the_run_names(self):
-        from unittest import mock
         from importer.sr6.recipes import crb
         from tools.cl6check import corpus
 
@@ -230,8 +240,11 @@ class OursTest(unittest.TestCase):
                 "b_current": "2019-08-25",
                 "c_seattle": "2021-09-01",
             }  # (the Current Printing's PDF is the oldest)
-            meta = lambda p: (dates[p.split(os.sep)[-5]], "")  # noqa: E731
-            with mock.patch.object(corpus, "pdf_meta", meta):
+
+            def meta(p):
+                return (dates[p.split(os.sep)[-5]], "")
+
+            with unittest.mock.patch.object(corpus, "pdf_meta", meta):
                 self.assertEqual([e["name"] for e in ours.load(d)["gz"].entries], ["b_current"])
                 os.remove(
                     os.path.join(d, "b_current", "library", "sr6", "book1", "import.xml")
@@ -243,6 +256,7 @@ class OursTest(unittest.TestCase):
 
 class FieldsTest(unittest.TestCase):
     def cmp(self, xml, **attrs):
+        """Compare a Commlink6 record against our entry."""
         c = canon.canonical(rec(xml))
         return fields.compare(c, entry("Zorp", **attrs))
 
@@ -266,11 +280,12 @@ class FieldsTest(unittest.TestCase):
 
     def test_legality_apart_and_shifted_columns(self):
         x = '<item id="z" type="TOOLS" price="10" avail="4L"/>'
-        compared, d = self.cmp(x, cost="10", avail="4(I)")
+        d = self.cmp(x, cost="10", avail="4(I)")[1]
         self.assertEqual([(y["field"], y["cl6"]) for y in d], [("legality", "L")])
         d = self.cmp(x, cost="10", avail="2500")[1]
         self.assertEqual(d[0]["why"], "ours holds a price (columns shifted)")
-        # (owner 2026-10-15) nuyen alone under AVAIL is a licence fee on a freely available item: no avail or legality diff;
+        # (owner 2026-10-15) nuyen alone under AVAIL is a licence fee on a freely available item: no avail or legality
+        # diff;
         # `4(I), 2,500¥` is rating 4 plus the fee, compared on the 4(I)
         self.assertEqual(self.cmp(x, cost="10", avail="2,500¥")[1], [])
         self.assertEqual(fields.licence("4(I), 2,500¥"), ("4(I)", 2500.0))
@@ -283,21 +298,25 @@ class FieldsTest(unittest.TestCase):
     def test_a_quality_s_awakened_price_matches_the_second_record(self):
         """(owner 2026-10-16) one quality, its price when Awakened a <karmaif>: both of Commlink6's records (mundane,
         awakened) agree on karma."""
-        karma = lambda k, **a: [
-            d
-            for d in fields.compare(
-                canon.canonical(rec(f'<quality id="z" karma="{k}" pos="true"/>')), entry("Zorp", kind="qualities", **a)
-            )[1]
-            if d["field"] == "karma"
-        ]
+
+        def karma(k, **a):
+            return [
+                d
+                for d in fields.compare(
+                    canon.canonical(rec(f'<quality id="z" karma="{k}" pos="true"/>')),
+                    entry("Zorp", kind="qualities", **a),
+                )[1]
+                if d["field"] == "karma"
+            ]
+
         self.assertEqual(karma(54, karma="54", karmaIf="44"), [])
         self.assertEqual(karma(44, karma="54", karmaIf="44"), [])
         self.assertEqual(len(karma(44, karma="54")), 1)
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "qualities.xml"), "w", encoding="utf8") as f:
                 f.write(
-                    '<d kind="qualities"><quality id="gz.zorp" source="GZ" page="1" kind="positive" karma="54"><name>Zorp</name>'
-                    '<karmaif flag="awakened" value="44"/></quality></d>'
+                    '<d kind="qualities"><quality id="gz.zorp" source="GZ" page="1" kind="positive" karma="54">'
+                    '<name>Zorp</name><karmaif flag="awakened" value="44"/></quality></d>'
                 )
             self.assertEqual(ours._entries(d, "gz")[0]["attrs"]["karmaIf"], "44")
 
@@ -357,7 +376,9 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(got["Nothing like it"], ("", []))
 
     def test_one_nanite_record_is_both_of_our_items(self):
-        c = lambda name: {"name": name, "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}  # noqa: E731
+        def c(name):
+            return {"name": name, "page": "10", "kind": "gear", "pool": ("gear",), "aliases": []}
+
         nano = {"category": "Colony & nanite"}
         mine = [
             entry("Fizz Swarm Colony", **nano),
@@ -415,7 +436,10 @@ class PatternsTest(unittest.TestCase):
         """Six invented entries: every widget-table entry carries the flag but one, one gizmo does too. The table rule
         wins with precision 1 and recall 3/4; a pair of features is tried as one rule; extras the rule set tags are
         counted."""
-        mk = lambda cat, *w: patterns.features({"kind": "gear", "name": " ".join(w), "attrs": {"category": cat}})
+
+        def mk(cat, *w):
+            return patterns.features({"kind": "gear", "name": " ".join(w), "attrs": {"category": cat}})
+
         data = [
             ({"flag:wobble"}, mk("widgets", "zap")),
             ({"flag:wobble"}, mk("widgets", "zip")),
@@ -556,13 +580,17 @@ class InlineRefsTest(unittest.TestCase):
 
 class SettleTest(unittest.TestCase):
     class Book:  # a one-page stand-in for the PDF
+        """One-page stand-in for the PDF."""
+
         def __init__(self, text):
             self.text = text
 
-        def page_text(self, p):
+        def page_text(self, _p):
+            """The text of any page."""
             return self.text
 
     def settle(self, text, **diff):
+        """Arbitrate a difference against a one-page book."""
         from tools.cl6check import arbitrate
 
         return arbitrate.settle(self.Book(text), {"page": 1, "name": "Milk"}, {"page": 1}, diff)
@@ -725,6 +753,7 @@ class ClassFamilyTest(unittest.TestCase):
 
 class ClassTieBreakTest(unittest.TestCase):
     def run_compare(self, records, entries, accept=None):
+        """Run the comparer over the records and entries."""
         from types import SimpleNamespace
 
         recs = [canon.canonical(rec(x, name=n)) | {"src": "gz"} for x, n in records]

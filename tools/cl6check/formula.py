@@ -3,7 +3,8 @@
 and check whether Commlink6's flattened numbers are that expression at some rating, size or count (step 4).
 
 The expression grammar is the one the storage design proposes (cl6-examples.md, step 4): numbers; the variables
-`rating`, `qty` (a count: CF, sensor types, darts, …) and `magic`/`force`; + - * /; `ceil()`, `floor()`, `min()`, `max()`;
+`rating`, `qty` (a count: CF, sensor types, darts, …) and `magic`/`force`; + - * /; `ceil()`, `floor()`, `min()`,
+`max()`;
 `base` (the price of the item it modifies or copies). `read()` returns (expression, variable) or None; `evaluate()`
 computes it; `flattened()` returns the binding that reproduces Commlink6's values, or None."""
 
@@ -70,7 +71,8 @@ def _read(text):
 
 
 def evaluate(expr, env, div="ceil"):
-    """The value of an expression for the variables in env; '/' rounds up (the engine's rated()) or down (div='floor')."""
+    """The value of an expression for the variables in env; '/' rounds up (the engine's rated()) or down
+    (div='floor')."""
     tree = ast.parse(expr, mode="eval")
 
     def ev(n):
@@ -112,7 +114,9 @@ def _close(a, b):
     return a is not None and b is not None and abs(a - b) <= 1e-6 * max(1.0, abs(a), abs(b))
 
 
-def flattened(text, cl6, qty=None, base=None):
+def flattened(
+    text, cl6, qty=None, base=None
+):  # pylint: disable=unused-argument  # base is part of the documented signature
     """How Commlink6's values cl6 ({rating or None: number}) come from the printed formula text: a short proof string
     ('rating 1..6: 200 * rating (floor /)'), or None. qty: the counts to try for a per-unit price (a printed range
     such as Space 1–9 gives its top); base: {rating or None: the base item's price} for a formula with `base`."""

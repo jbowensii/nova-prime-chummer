@@ -1,4 +1,5 @@
-"""The effects reader's entries: a book section split into entries, their rating tables, variants and section effects."""
+"""The effects reader's entries: a book section split into entries, their rating tables, variants and section
+effects."""
 
 import re
 
@@ -121,8 +122,8 @@ _VARIANT = re.compile(
 
 
 def _label(variant):
-    """The run-in label key of a variant: `Fear Response Dampener` for `Fear Response Dampener (basic)`, the book printing
-    one paragraph for both."""
+    """The run-in label key of a variant: `Fear Response Dampener` for `Fear Response Dampener (basic)`, the book
+    printing one paragraph for both."""
     return _key(re.sub(r"\s*\([^()]*\)$", "", variant))
 
 
@@ -209,15 +210,16 @@ def _variant_part(text, name, siblings):
     first = next(at for at, k in labels if k in sib or k == me)
     start = labels[mine[0]][0]
     end = next((at for at, k in labels[mine[0] + 1 :] if k in sib), len(text))
-    # (the paragraphs after the last variant's, `**Cyberware overdrive:**`, `**Wireless bonus:**`, are every variant's: Cybertails)
+    # (the paragraphs after the last variant's, `**Cyberware overdrive:**`, `**Wireless bonus:**`, are every variant's:
+    # Cybertails)
     last = max(at for at, k in labels if k in sib or k == me)
     shared = next((at for at, k in labels if at > last and re.search(r"\b(?:overdrive|wireless)\b", k)), None)
     return (text[:first] + text[start:end] + (text[shared:] if shared is not None and end <= shared else "")).strip()
 
 
 def _runins(regrouped):
-    """{label key: [(block name key, paragraph)]}: every bold run-in paragraph of the book (`**NeoElastian:** A metahuman
-    body …`), with the block it is printed in."""
+    """{label key: [(block name key, paragraph)]}: every bold run-in paragraph of the book (`**NeoElastian:** A
+    metahuman body …`), with the block it is printed in."""
     out, block, cur = {}, "", None
     order, loose, subs = (
         [],
@@ -284,16 +286,20 @@ def _sections(regrouped):
             intro[cur].append(ln.strip())
         elif item is not None and not ln.startswith(("|", "#")) and (ln.strip() or prose[item] and prose[item][-1]):
             prose[item].append(ln.strip())
-    join = lambda v: re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(v)).strip()
-    # (a block's prose keeps its lines and its blank ones, for _block_text: a mentor spirit's `**Magician:**` role lines read by their labels)
+
+    def join(v):
+        return re.sub(r"(?<=[a-z])- (?=[a-z])", "", " ".join(v)).strip()
+
+    # (a block's prose keeps its lines and its blank ones, for _block_text: a mentor spirit's `**Magician:**` role lines
+    # read by their labels)
     return of, {k: join(v) for k, v in intro.items()}, {k: "\n".join(v).strip() for k, v in prose.items() if any(v)}
 
 
 def _block_text(prose):
-    """An entry's description from its book block's prose (`_sections`), where the entry has none of its own: the paragraphs
-    (a bold label line holds a wrapped sentence's lines, `**Disadvantage:** Cannot gain … for` / `Snoop actions.`), less the
-    fluff after a mentor spirit's `Similar Archetypes` line and a label line the heading cut short (printed whole below).
-    """
+    """An entry's description from its book block's prose (`_sections`), where the entry has none of its own: the
+    paragraphs (a bold label line holds a wrapped sentence's lines, `**Disadvantage:** Cannot gain … for` / `Snoop
+    actions.`), less the fluff after a mentor spirit's `Similar Archetypes` line and a label line the heading cut short
+    (printed whole below)."""
     lines = []
     for ln in reflow(prose.split("**Similar Archetypes:**")[0]).split("\n"):
         if (
@@ -331,8 +337,8 @@ def _variant_sentences(text, mine, others, label=None):
 
 
 _FAMILY = {
-    "attr": lambda w: ATTRIBUTES.get(w),
-    "attr-max": lambda w: ATTRIBUTES.get(w),
+    "attr": lambda w: ATTRIBUTES.get(w),  # pylint: disable=unnecessary-lambda  # looked up when called
+    "attr-max": lambda w: ATTRIBUTES.get(w),  # pylint: disable=unnecessary-lambda  # looked up when called
     "matrix": lambda w: MATRIX.get(w) or MATRIX.get(w + " attribute"),
     "skill": lambda w: w.replace(" ", "-") if w in SKILLS else None,
     "skill-max": lambda w: w.replace(" ", "-") if w in SKILLS else None,
@@ -346,8 +352,8 @@ _VARIANT_FAMILY = {
 
 
 def _resolve_variant(found, words):
-    """A variant row's effects (owner decision 2026-10-10: a choice the row makes): `<family>:choice` becomes the member the
-    variant's words name (`(Firewall)`: matrix:firewall; `(Agility)`: attr:agi); a variant named for a target family
+    """A variant row's effects (owner decision 2026-10-10: a choice the row makes): `<family>:choice` becomes the member
+    the variant's words name (`(Firewall)`: matrix:firewall; `(Agility)`: attr:agi); a variant named for a target family
     (`(attribute)`, `(skill)`) keeps that family's effects only."""
     fam = next((f for w in words for f in [_VARIANT_FAMILY.get(_key(w))] if f), None)
     out = []
@@ -416,15 +422,19 @@ def section_effects(intro, text, name, kind, section=""):
             k for k in kinds for w in ws if k == w or len(w) >= 4 and k.endswith(w)
         }  # (`limbs` of the section `Cyberlimbs`)
         if not nouns:
-            continue  # (about the section's items, `Each cyberlimb` under Cyberlimbs, `Missiles are …`; not `Each point of nanite volume`)
+            # (about the section's items, `Each cyberlimb` under Cyberlimbs, `Missiles are …`; not `Each point of nanite
+            # volume`)
+            continue
         if not re.match(r"^\W*(?:each|every|all|any)\b", s.casefold()):
-            # (owner decision 10, 2026-10-11: a sentence about the section's items as a class, its plural noun the subject:
+            # (owner decision 10, 2026-10-11: a sentence about the section's items as a class, its plural noun the
+            # subject:
             # `Missiles are rockets …` under Rockets and Missiles is the missiles' rule, not a rocket's; `This genotype
             # enhancement offsets …` is one item's)
             sm = re.match(_PLURAL_SUBJECT, s.casefold())
             if not sm or nouns < kinds and not nouns & {w.rstrip("s") for w in base.split()}:
                 continue
-            # (`Small blast shields provide +1 … Large blast shields provide +2`: the words before the noun, the version, must be in the item's name)
+            # (`Small blast shields provide +1 … Large blast shields provide +2`: the words before the noun, the
+            # version, must be in the item's name)
             if (
                 versions
                 and not {w.rstrip("s") for w in sm.group(1).split()[:-1]}
@@ -432,7 +442,8 @@ def section_effects(intro, text, name, kind, section=""):
             ):
                 continue
         if lm := re.search(r"\binstalled with all physical attributes at (\d+)\b", s.casefold()):
-            # (CRB p. 288: a basic cyberlimb's own attributes, the new target `limb-attr:<abbr>`: the limb's, never the runner's)
+            # (CRB p. 288: a basic cyberlimb's own attributes, the new target `limb-attr:<abbr>`: the limb's, never the
+            # runner's)
             out += [
                 (t, {**a, "rule": section or "class"}, None)
                 for t, a, _ in (_fx(f"limb-attr:{x}", "set", lm.group(1)) for x in ("bod", "agi", "rea", "str"))
@@ -446,7 +457,8 @@ def section_effects(intro, text, name, kind, section=""):
                 what := next(iter(re.findall(r"\bto ([a-z ]+? rating)\b", " ".join(sentences(intro)).casefold())), None)
             )
         ):
-            # (`Large blast shields provide +2 (max +4) for each shield installed`: of the `Defense Rating` the sentence before names)
+            # (`Large blast shields provide +2 (max +4) for each shield installed`: of the `Defense Rating` the sentence
+            # before names)
             got = read(re.sub(r"\b(provides? [+-]?\d+)", rf"\1 to {what}", s, count=1, flags=re.I), kind)
         for t, a, _ in got:
             if t != "effect":
@@ -457,7 +469,8 @@ def section_effects(intro, text, name, kind, section=""):
                 for x in own
             ):
                 continue  # (`This arm does not add a box`: excepted)
-            # (a rule of the section's class: copy_links gives it to the same class in other books; not a sub-class's sentence this item
+            # (a rule of the section's class: copy_links gives it to the same class in other books; not a sub-class's
+            # sentence this item
             # is the very one of, `Missiles are …` for the `Missile Variant` row)
             out.append(
                 (

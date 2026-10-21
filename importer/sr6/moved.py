@@ -1,6 +1,7 @@
 """Old ids keep loading (owner decision D2). When a re-import renames, moves or re-kinds an entry, its new entry gets an
-`<alias id="<old id>" kind="<old kind>"/>` child: the app's catalog resolves the old id to it (src/sr6/catalog/domain/load.ts),
-and a saved runner's old ids are turned into the new ones on load (src/sr6/runner-builder/domain/career/migrate.ts).
+`<alias id="<old id>" kind="<old kind>"/>` child: the app's catalog resolves the old id to it
+(src/sr6/catalog/domain/load.ts), and a saved runner's old ids are turned into the new ones on load
+(src/sr6/runner-builder/domain/career/migrate.ts).
 
 The previous import of the source (its folder, read before this import replaces it) is the record of the old ids. An
 old entry whose (kind, id) the new import no longer has is matched with the new entries this import added (same
@@ -16,8 +17,8 @@ one match wins:
    the first;
 5. the new name starts with the old one's words (a name now printed whole: `Ordo` -> `Ordo Field Operative`); several
    such (the old item split into its variants, `Silver Bullets` -> `(copper)`, `(silver)`, `(gold)`): the first;
-6. a row renamed: the same kind, page and printed values, a word of four letters or more shared (`Anthroform Arms and Legs (Level 1)` read under a sidebar's
-   heading -> `Life Safety System (Level 1)`);
+6. a row renamed: the same kind, page and printed values, a word of four letters or more shared (`Anthroform Arms and
+   Legs (Level 1)` read under a sidebar's heading -> `Life Safety System (Level 1)`);
 7. a level renamed with its heading: the same kind, page and qualifier (`Ejection Seat (Version 2 (…))` ->
    `Extreme Interior Security (Version 2 (…))`);
 8. re-kinded to an entry of another kind the old import had too (`Burning Down Divinity`, an action, now a rule);
@@ -43,6 +44,7 @@ NANITE_OLD = (("(colony template)", "colony"), ("(pre-built)", "nanites"))  # Bo
 
 
 def words(name):
+    """The comparable words of an entry name: casefolded, singular, without a rating range."""
     name = name.casefold()
     for o, n in NANITE_OLD:  # `X (colony template)` is now `X Colony`, `X (pre-built)` is `X Nanites`
         name = name.replace(o, n)
@@ -74,14 +76,15 @@ _SAME = ("page", "avail", "cost", "slots", "essence", "rating", "capacity", "dv"
 
 
 def _slashed(name):
-    """`Sinister/dexter coprocessor` -> [`Sinister coprocessor`, `dexter coprocessor`]; [] for no one-word slash pair."""
+    """`Sinister/dexter coprocessor` -> [`Sinister coprocessor`, `dexter coprocessor`]; [] for no one-word slash
+    pair."""
     m = re.fullmatch(r"(.*?)\b(\w+)/(\w+)\b(.*)", name or "")
     return [f"{m.group(1)}{m.group(2)}{m.group(4)}", f"{m.group(1)}{m.group(3)}{m.group(4)}"] if m else []
 
 
 def _sig(el):
-    """A row's printed values on its page (a renamed row keeps them: `Anthroform Arms and Legs (Level 1)`, read under the
-    wrong heading, is `Life Safety System (Level 1)`), or None when it prints fewer than two."""
+    """A row's printed values on its page (a renamed row keeps them: `Anthroform Arms and Legs (Level 1)`, read under
+    the wrong heading, is `Life Safety System (Level 1)`), or None when it prints fewer than two."""
     vals = tuple(el.get(a) or "" for a in _SAME)
     return vals if vals[0] and sum(1 for v in vals[1:] if v) >= 2 else None
 

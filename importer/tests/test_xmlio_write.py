@@ -1,4 +1,5 @@
-"""xmlio.write_file survives Windows refusing the rename while the server is reading the destination (a status.xml poll)."""
+"""xmlio.write_file survives Windows refusing the rename while the server is reading the destination (a status.xml
+poll)."""
 
 import os
 import tempfile
@@ -7,8 +8,12 @@ from unittest import mock
 
 from importer import xmlio
 
+# pylint: disable=consider-using-with  # one-shot read of a file the test just wrote
+
 
 class WriteFileRetry(unittest.TestCase):
+    """Writing a file again after the rename is refused."""
+
     def test_rename_refused_twice_then_works(self):
         real, calls = os.replace, []
 

@@ -11,6 +11,8 @@ from importer.sr6.recipes import general
 from importer.sr6.regroup import Block
 from importer.tests.minipdf import sr6_magazine_pdf
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 
 class MagazineLayoutTest(unittest.TestCase):
     @classmethod
@@ -149,8 +151,11 @@ class EffectsTest(unittest.TestCase):
             effects.read("Increase your Edge by 1."),
             [("effect", {"target": "attr:edg", "op": "add", "value": "1"}, None)],
         )
+
         # how a conditional one is turned on: wireless, sustained, activated, else conditional; none on an always-on one
-        sw = lambda t: [a.get("switch") for _, a, _ in effects.read(t)]
+        def sw(t):
+            return [a.get("switch") for _, a, _ in effects.read(t)]
+
         self.assertEqual(sw("Wireless bonus: +1 to Quux and +1 to Agility."), ["wireless"])
         self.assertEqual(sw("While sustained, +2 to Body."), ["sustained"])
         self.assertEqual(sw("At will, +1 to Reaction."), ["activated"])
@@ -216,7 +221,7 @@ class GameInformationShapesTest(unittest.TestCase):
         grades = _b(
             "Grades",
             3,
-            "| GRADE | ESS COST | AVAIL | COST |\n|---|---|---|---|\n| Alpha | x0.8 | +1 | x1.2 |\n| Beta | x0.7 | +2 | x1.5 |",
+            "| GRADE | ESS COST | AVAIL | COST |\n|---|---|---|---|\n| Alpha | x0.8 | +1 | x1.2 |\n| Beta | x0.7 | +2 | x1.5 |",  # pylint: disable=line-too-long
         )
         self.assertEqual(catalog.stat_lines(grades), [grades])  # (a rule table: no variants)
 
@@ -321,6 +326,7 @@ class VariantGroupTest(unittest.TestCase):
     )
 
     def names(self, variants):
+        """The names of the entries in the made-up text read with `variants`."""
         from importer.sr6 import regroup
 
         text, _ = regroup.regroup(self.MD, {}, name_headers={"SPY GEAR"}, variants=variants)

@@ -6,6 +6,8 @@ import unittest
 from importer.sr6 import fit
 from importer.tests.test_sr6_fit import CS, ROWS, need
 
+# pylint: disable=protected-access
+
 
 class ValueMoreTest(unittest.TestCase):
     def test_powers_sums_and_leftovers(self):
@@ -54,7 +56,8 @@ class SpendMoreTest(unittest.TestCase):
         )  # (never less than the gear needs)
 
     def test_the_house_rule_limits_the_karma_turned_into_nuyen(self):
-        """karmaToNuyenCap on: no more than karmaToNuyenMax, printed or needed (budgets.ts counts no more); off: no limit."""
+        """karmaToNuyenCap on: no more than karmaToNuyenMax, printed or needed (budgets.ts counts no more); off: no
+        limit."""
         n = need(attrs={**{k: 1 for k in fit.CORE}, "bod": 3, "edg": 1}, nuyen=450)
         capped = {**CS, "karmaToNuyenCap": "true", "karmaToNuyenMax": 3.0}
         self.assertEqual([fit.fit(x, ROWS, capped)["karmaToNuyen"] for x in (n, {**n, "toNuyen": 5})], [3, 3])

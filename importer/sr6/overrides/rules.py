@@ -76,6 +76,7 @@ NO_TEXT = {"description", "desc", "text", "summary"}  # (descriptions come from 
 
 
 def check(rows):
+    """Raise ValueError for an override row that is malformed or sets a description field."""
     for r in rows:
         if bad := NO_TEXT & {k.lower() for k in r.get("set", {})}:
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
@@ -115,13 +116,15 @@ def check(rows):
             and all(isinstance(d, dict) and d.get("target") and set(d) <= EFFECT_KEYS for d in r["drops"])
         ):
             raise ValueError(
-                f"override of {r.get('id')}: drops are a book row's list of the effects to take out (each names its target, {sorted(EFFECT_KEYS)})"
+                f"override of {r.get('id')}: drops are a book row's list of the effects to take out "
+                f"(each names its target, {sorted(EFFECT_KEYS)})"
             )
         if "keep" in r and not (r.get("gen") == "book" and isinstance(r["keep"], bool)):
             raise ValueError(f"override of {r.get('id')}: keep is a book row's true or false")
         if not all(isinstance(a, dict) and a.get("target") for a in r.get("effects", [])):
             raise ValueError(
-                f"override of {r.get('id')}: each effect names its target (it replaces the entry's effect of that target)"
+                f"override of {r.get('id')}: each effect names its target "
+                "(it replaces the entry's effect of that target)"
             )
         for a in r.get("effects", []):
             if a.get("op") and a["op"] not in EFFECT_OPS:

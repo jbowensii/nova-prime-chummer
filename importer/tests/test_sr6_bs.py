@@ -144,11 +144,13 @@ Made-up index ....... p. 30
 
 
 def run_recipe(md=BOOK_MD):
+    """Run the recipe over a book's markdown."""
     regrouped, _ = regroup.regroup(md, bs.ALIASES, name_headers=bs.NAME_HEADERS, end_page=180, variants=bs.VARIANT_ROWS)
     return bs.extract(regrouped)
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

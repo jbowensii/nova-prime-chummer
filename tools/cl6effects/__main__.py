@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long  # this docstring is the --help text, printed as written
 """Effects parity replay: rebuild the saved import runs with a tree's importer, then count how many of Commlink6's modifications our
 effects carry (strict match, book-ruled, accepted placeholder). Run it on main and on a branch before merging a change to
 importer/sr6/effects.py or importer/sr6/overrides/*.book.json; both must read 1,079/1,079 with no unmatched drops. See docs/cl6check.md.
@@ -21,12 +22,14 @@ import sys
 from pathlib import Path
 from xml.sax.saxutils import unescape
 
+# pylint: disable=consider-using-with  # one-shot reads in a short-lived script
+
 REPO = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from tools.cl6check import canon, reader  # noqa: E402
-from tools.cl6effects import evaluate, pairs  # noqa: E402
+from tools.cl6check import canon, reader  # noqa: E402  # pylint: disable=wrong-import-position
+from tools.cl6effects import evaluate, pairs  # noqa: E402  # pylint: disable=wrong-import-position
 
 
 def rebuild(tree, runs, out):
@@ -38,6 +41,7 @@ def rebuild(tree, runs, out):
         text=True,
         encoding="utf-8",
         errors="replace",
+        check=False,
     )
     sys.stdout.write(p.stdout)
     if p.returncode:
@@ -46,18 +50,24 @@ def rebuild(tree, runs, out):
 
 
 def measure(recs, out):
+    """Evaluate the records against the effects we built; (tally, per-row evaluations)."""
     rows, idx = pairs.build([canon.canonical(r) for r in recs], str(out))
     ev = evaluate.eval_all(rows, idx)
     return evaluate.tally(ev), ev
 
 
 def sig(e):
+    """The comparable signature of one evaluation: final status, status, our effects."""
     return (e["final"] if "final" in e else e["status"], e["status"], tuple(sorted(e.get("ours", []))))
 
 
 def differing(ev_base, ev_tree):
-    """Every CL6 row (entry, effect) whose status differs between the two runs -> [(row, base statuses, tree statuses)]."""
-    key = lambda e: (tuple(e["pair"]), e["sig"], str(e.get("value")), e.get("bucket"))
+    """Every CL6 row (entry, effect) whose status differs between the two runs -> [(row, base statuses, tree
+    statuses)]."""
+
+    def key(e):
+        return (tuple(e["pair"]), e["sig"], str(e.get("value")), e.get("bucket"))
+
     a, b = collections.defaultdict(list), collections.defaultdict(list)
     for e in ev_base:
         a[key(e)].append(sig(e))
@@ -82,7 +92,8 @@ def book_rows(tree):
 
 
 def entry_effects(out, stem, kind, eid):
-    """The (target, op, value) of every effect the rebuilt runs carry on entry `stem.eid` of file `kind` (any run), or None when no run has the entry."""
+    """The (target, op, value) of every effect the rebuilt runs carry on entry `stem.eid` of file `kind` (any run), or
+    None when no run has the entry."""
     found, fx = False, set()
     for f in glob.glob(os.path.join(out, "*", "custom", "sr6", "imported", stem, kind + ".xml")):
         m = re.search(
@@ -99,7 +110,8 @@ def entry_effects(out, stem, kind, eid):
 
 
 def retired(base, tree, out):
-    """Correction rows `base` has and `tree` has not, whose effects are missing from the tree's rebuilt output -> [(key, missing effects, why)]."""
+    """Correction rows `base` has and `tree` has not, whose effects are missing from the tree's rebuilt output -> [(key,
+    missing effects, why)]."""
     gone = {k: r for k, r in book_rows(base).items() if k not in book_rows(tree)}
     res = []
     for (stem, kind, eid), r in sorted(gone.items()):
@@ -112,6 +124,7 @@ def retired(base, tree, out):
 
 
 def report(label, t, warns):
+    """Print one labelled tally and its override warnings."""
     print(f"== {label}")
     for l in evaluate.lines(t):
         print("  " + l)
@@ -119,6 +132,7 @@ def report(label, t, warns):
 
 
 def main(argv=None):
+    """Command line: measure the effects of fresh or rebuilt imports against Commlink6."""
     p = argparse.ArgumentParser(
         prog="cl6effects", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -184,7 +198,8 @@ def main(argv=None):
             print(f"  {k[0]} | {k[1]} | CL6 {k[2]}\n    base: {before}\n    tree: {after}")
         miss, n = retired(done["base"][0], done["tree"][0], done["tree"][1])
         print(
-            f"== correction rows (gen=book) only the base has: {n}; with effects missing from the tree's import: {len(miss)}"
+            f"== correction rows (gen=book) only the base has: {n}; "
+            f"with effects missing from the tree's import: {len(miss)}"
         )
         for key, effects, why, nothere in miss:
             print(f"  {'/'.join(key)}{' (entry absent)' if nothere else ''}: missing {effects}\n    {why}")

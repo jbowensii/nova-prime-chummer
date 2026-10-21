@@ -119,7 +119,8 @@ DHSA_SPECS = [
 
 
 def dhsa_skills():
-    """load_skills plus DHSA's own specs: the reading for the DHSA recipe only (a canon book's import never has them)."""
+    """load_skills plus DHSA's own specs: the reading for the DHSA recipe only (a canon book's import never has
+    them)."""
     skills, specs = load_skills()
     specs.update({(sk, name.lower()): f"{sk}.{s}" for sk, s, _, _, name in DHSA_SPECS})
     return skills, specs
@@ -208,12 +209,13 @@ def rows(md):
     return out
 
 
-def match(meta, md_head):
+def match(_meta, md_head):
+    """How well a book's head fits this recipe: 0.9 for Daegann's Shadow Amps Base, else 0.0."""
     return 0.9 if re.search(r"daegann", md_head, re.I) and re.search(r"shadow amps base", md_head, re.I) else 0.0
 
 
-# an effect given by reference: "like an elf", "acts exactly the same way as a mana bolt", "treat this ability as a Detect
-# Magic spell" name another entry (or a metatype) whose effects this one has
+# an effect given by reference: "like an elf", "acts exactly the same way as a mana bolt", "treat this ability as a
+# Detect Magic spell" name another entry (or a metatype) whose effects this one has
 REFERENCE = re.compile(
     r"\b(?:identical to|(?:exactly )?the same (?:way )?as|as per|(?P<like>like)|treat (?:this|it) (?:ability )?as)\s+"
     r"(?:an?\s+|the\s+)?(?P<name>[A-Za-z][\w' -]{2,40}?)(?=\s*(?:[.,;:(]|$|\s+(?:spell|amp|quality|casted|with)\b))",
@@ -265,7 +267,7 @@ def core_metatypes():
     """[(id, name, effects XML)] of the core metatypes in use, for link_references ("like an elf")."""
     try:
         root = ET.parse(core_file("metatypes.xml")).getroot()
-    except Exception:  # no core yet
+    except Exception:  # pylint: disable=broad-exception-caught  # no core yet
         return []
     return [
         (m.get("id"), m.findtext("name") or "", fx_xml(Mapper({}).rules(m.findtext("racialQuality") or "")))
@@ -275,13 +277,15 @@ def core_metatypes():
 
 
 def clean_name(name):
+    """An Amp row's name without the footnote or note text a wrapped table cell ran into."""
     name = re.split(
         r"\s+\*\s|\s+Note:|\s\* The|\s\* These|\s\* Contacts|\s\* Loas|\s\* Anthropomorphic|\s\* An anthro", name
     )[0]
     return re.sub(r"\s+", " ", name).strip(" *")
 
 
-def merge_wrapped(rows):
+def merge_wrapped(rows):  # pylint: disable=redefined-outer-name  # (the rows being joined, not the reader)
+    """The rows with a name that wrapped onto the next table line joined back into one row."""
     out = []
     for r in rows:
         if not r["type"] and not r["cost"] and out and out[-1]["section"] == r["section"]:
@@ -293,6 +297,7 @@ def merge_wrapped(rows):
 
 
 def printed(rtype):
+    """The Amp rating a type column prints (`Amp +2` is 2), or None when it prints none."""
     m = re.match(r"Amp\s*([+-]?\d+)", rtype or "")
     return int(m.group(1)) if m else None
 
@@ -305,7 +310,8 @@ _MAX_PLUS = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(\d+)", re.I)
 _MAX_OPEN = re.compile(r"\bmax(?:imum)?(?:\s+improvement)?\s*\+\s*(?!\d)\w+", re.I)
 _UP_TO_LEVEL = re.compile(r"\bup to level (\d+)", re.I)
 _PER_POINT = re.compile(r"increased by 1 \(max \+(\d+)\) for an? (?:additional|extra) Amp point", re.I)
-# "Improves home-automation host's Firewall by +1 (max rating 5)", its table printing each lifestyle's "Firewall rating is 2"
+# "Improves home-automation host's Firewall by +1 (max rating 5)", its table printing each lifestyle's "Firewall rating
+# is 2"
 _MAX_RATING = re.compile(r"\b(\w+) by \+1 \(max rating (\d+)\)", re.I)
 
 
@@ -350,9 +356,9 @@ def level_id(family, level):
 
 
 def alternative_rules(md):
-    """[(id, name, page, text)]: the book's alternative rules, the seeds of the app's Table rules (a GM switches them on; off by
-    default). One so far: the footnote under the LIFESTYLES table, lifestyle Amps in place of the core rulebook's lifestyle
-    rules, with the page it is printed on."""
+    """[(id, name, page, text)]: the book's alternative rules, the seeds of the app's Table rules (a GM switches them
+    on; off by default). One so far: the footnote under the LIFESTYLES table, lifestyle Amps in place of the core
+    rulebook's lifestyle rules, with the page it is printed on."""
     out, page, lines = [], 0, md.splitlines()
     for i, line in enumerate(lines):
         m = re.match(r"<!-- page (\d+) -->", line)
@@ -370,7 +376,8 @@ def alternative_rules(md):
     return out
 
 
-def extract(md, ctx=None):
+def extract(md, _ctx=None):
+    """The files the DHSA recipe reads from the book's markdown: its Amps, lifestyles, rules and their effects."""
     rs = rows(md)
     for r in rs:  # DHSA v3.2 mixes '-' and '–' in headings; v3.4 uses '–'
         r["section"] = r["section"].replace(" - ", " – ")
@@ -408,9 +415,11 @@ def extract(md, ctx=None):
 
     def amp_xml(aid, atype, rating, page, name, item, fx, narrative, vehicle=None, mod=False, family=None, level=None):
         amps.append(
-            f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""}'
+            f'  <amp id="{aid}" type="{atype}" printedRating="{rating}"'
+            f'{attr("vehicle", vehicle)}{" mod=\"true\"" if mod else ""}'
             f'{attr("family", family)}{attr("level", level)} source="{ID}" page="{page}">'
-            f'<name>{escape(name)}</name>{item}{fx_xml(fx)}<narrative>{private("amps", aid, " ".join(narrative))}</narrative></amp>'
+            f'<name>{escape(name)}</name>{item}{fx_xml(fx)}<narrative>{private("amps", aid, " ".join(narrative))}</narr'
+            "ative></amp>"
         )
 
     def emit(aid, atype, rating, page, name, item, fx, narrative, rng, vehicle=None, mod=False):
@@ -438,14 +447,15 @@ def extract(md, ctx=None):
                     (n - rating) // max(1, effect_rating("narrative"))
                 )
                 level, fx_n, rating_n, name_n = n, fx + more, n, f"{name} {n}"
-            # the lowest level keeps the entry's id (its edits and the runners holding it stay on it), the others are new
+            # the lowest level keeps the entry's id (its edits and the runners holding it stay on it), the others are
+            # new
             lid = aid if n == rng[0] else uid(level_id(aid, level))
             amp_xml(lid, atype, rating_n, page, name_n, item, fx_n, narrative, vehicle, mod, family=aid, level=level)
         report.append({"kind": "levels", "id": aid, "page": page, "levels": f"{rng[0]}-{rng[1]}"})
 
     def map_lines(lines):
-        """(effects, narrative lines): a line's rated effects (with how it turns them on), else the line stays narrative and
-        adds the narrative effect kinds it states (rating 0)."""
+        """(effects, narrative lines): a line's rated effects (with how it turns them on), else the line stays narrative
+        and adds the narrative effect kinds it states (rating 0)."""
         fx, narrative, kinds, entry = [], [], [], " ".join(lines)
         for line in lines:
             if line.strip() in ("", "-") or line.lower().startswith("choose"):
@@ -471,19 +481,26 @@ def extract(md, ctx=None):
             prev = dict(r)
             spell_rows.append(prev)
         elif prev and not r["type"] and len(r["name"]) < 40:
+            # (prev is None only before the first row, which the guard above excludes)
+            # pylint: disable=unsubscriptable-object,unsupported-assignment-operation
             prev["effects"] = prev["effects"] + r["effects"]
             spell_rows.append({**r, "type": prev["type"], "cost": prev["cost"], "shared": prev})
+            # pylint: enable=unsubscriptable-object,unsupported-assignment-operation
     for r in spell_rows:
         base = r.get("shared", r)
         name = clean_name(r["name"])
         text = f'{base["type"]}. Threshold/target: {base["cost"]}. ' + " ".join(base["effects"])
         sid = uid("spell-" + slug(name))
         spells.append(
-            f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{ID}" page="{r["page"]}">'
-            f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(base["effects"]), "S" in base["type"], spell=True))}<text>{private("items", sid, text[:300])}</text></item>'
+            f'  <item id="{sid}" kind="spell" category="{escape(base["type"].split()[0].lower())}" source="{ID}" '
+            f'page="{r["page"]}">'
+            f"<name>{escape(name)}</name>"
+            f'{fx_xml(item_effects(mapper, " ".join(base["effects"]), "S" in base["type"], spell=True))}<text>'
+            f'{private("items", sid, text[:300])}</text></item>'
         )
 
-    # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules): type = duration, cost = threshold
+    # ---- complex forms (technomancers; DHSA, following the Conversion Guide's rules): type = duration, cost =
+    # threshold
     for r in rs:
         if r["section"] != "RESONANCE – COMPLEX FORMS" or not re.fullmatch(r"I/S|S|I|P", r["type"]):
             continue
@@ -491,8 +508,11 @@ def extract(md, ctx=None):
         cid = uid("cf-" + slug(name))
         text = f"{dur}. Threshold: {r['cost']}. " + " ".join(r["effects"])
         forms.append(
-            f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" source="{ID}" page="{r["page"]}">'
-            f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(r["effects"]), "S" in dur, spell=True))}<text>{private("items", cid, text[:300])}</text></item>'
+            f'  <item id="{cid}" kind="complex-form" category="{"sustained" if "S" in dur else "instant"}" '
+            f'source="{ID}" page="{r["page"]}">'
+            f"<name>{escape(name)}</name>"
+            f'{fx_xml(item_effects(mapper, " ".join(r["effects"]), "S" in dur, spell=True))}<text>'
+            f'{private("items", cid, text[:300])}</text></item>'
         )
 
     # ---- contacts: rated templates (CONTACTS section)
@@ -541,7 +561,11 @@ def extract(md, ctx=None):
                         }
                     )
 
-            def read_mod():
+            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
+            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
+            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
+            # pylint: disable-next=dangerous-default-value  # (the loop's list bound at the def, not a shared default)
+            def read_mod(sec=sec, low=low, effects_lines=effects_lines, grade=grade):
                 ref = (
                     (
                         next((v for k, v in VEHICLE_MOD_NAMES if k in low), None)
@@ -601,10 +625,13 @@ def extract(md, ctx=None):
             ):
                 gid = uid("gear-" + slug(name))
                 gear.append(
-                    f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{ID}" page="{page}">'
-                    f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(effects_lines)))}<text>{private("items", gid, " ".join(effects_lines)[:240])}</text></item>'
+                    f'  <item id="{gid}" kind="gear" category="{escape(r["subsection"].title())}" source="{ID}" '
+                    f'page="{page}">'
+                    f'<name>{escape(name)}</name>{fx_xml(item_effects(mapper, " ".join(effects_lines)))}<text>'
+                    f'{private("items", gid, " ".join(effects_lines)[:240])}</text></item>'
                 )
-                # gear whose rating "can be increased by 1 (max +N) for an additional Amp point": its levels are Equipment amps
+                # gear whose rating "can be increased by 1 (max +N) for an additional Amp point": its levels are
+                # Equipment amps
                 rng = level_range(" ".join(effects_lines), 0, False)
                 if isinstance(rng, tuple):
                     emit(
@@ -632,7 +659,11 @@ def extract(md, ctx=None):
                 dv = parts[1].strip() if len(parts) > 1 else ""
                 rng = effects_lines.pop(0) if effects_lines and re.match(r"^[-–A-Za-zé ]+/", effects_lines[0]) else ""
                 rng = rng.replace(" ", "").replace("–", "-").replace("Dés", "Dis")
-                item = f'<item kind="weapon"{attr("specialist", "true" if specialist(cost, rating) else "")}{attr("dv", dv)}{attr("ranges", rng)}/>'
+                item = (
+                    '<item kind="weapon"'
+                    f'{attr("specialist", "true" if specialist(cost, rating) else "")}{attr("dv", dv)}'
+                    f'{attr("ranges", rng)}/>'
+                )
                 bdv, brng = weapon_base(name, r["subsection"])
                 a, b = dv_num(dv.split()[0] if dv else ""), dv_num(bdv)
                 if a and b and a[0] == b[0] and a[1] > b[1]:
@@ -658,9 +689,11 @@ def extract(md, ctx=None):
                 chassis = core()["chassis"]
                 vehicle = min(
                     chassis,
-                    key=lambda c: abs(chassis[c][0] - b) * 3 + abs(chassis[c][1] - h) + abs(chassis[c][2] - ground),
+                    key=lambda c, chassis=chassis, b=b, h=h, ground=ground: (
+                        abs(chassis[c][0] - b) * 3 + abs(chassis[c][1] - h) + abs(chassis[c][2] - ground)
+                    ),
                 )
-                cb, ch, cs = chassis[vehicle]
+                _, ch, cs = chassis[vehicle]
                 vfx = [("pilot-plus", None, None, None)] * max(0, p - core()["pilot"][vehicle]) + [
                     ("vehicle-armor", None, None, None)
                 ] * a
@@ -675,7 +708,7 @@ def extract(md, ctx=None):
                 ("attack-plus", None, None, None)
             ] * int(deck.group(2))
 
-        def read():
+        def read(vfx=vfx, effects_lines=effects_lines, atype=atype):
             fx, narrative = map_lines(effects_lines)
             fx = vfx + fx
             refs = [f[0] for f in fx]
@@ -732,7 +765,8 @@ def extract(md, ctx=None):
             f'<spec id="{sk}.{s}" attr="{a}" source="{ID}" page="{p}">{escape(n)}</spec>'
         )
     skill_xml = [
-        f'  <skill id="{sk}" attr="{skills[sk][1]}" source="{ID}" page="{p}"><name>{escape(skills[sk][0])}</name>{"".join(sp)}</skill>'
+        f'  <skill id="{sk}" attr="{skills[sk][1]}" source="{ID}" page="{p}"><name>{escape(skills[sk][0])}</name>'
+        f'{"".join(sp)}</skill>'
         for sk, (p, sp) in added.items()
     ]
     report += [{"kind": "unresolved-spec", "spec": s} for s in sorted(set(mapper.unresolved))]
@@ -746,7 +780,8 @@ def extract(md, ctx=None):
     def data(kind, comment, entries):
         return (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
-            f"<!-- {comment} Generated by the importer (recipe dhsa) from Daegann's Holostreets Shadow Amps Expanded List. -->\n"
+            f"<!-- {comment} Generated by the importer (recipe dhsa) from Daegann's Holostreets Shadow Amps Expanded "
+            "List. -->\n"
             f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">\n'
             + "\n".join(entries)
             + "\n</ca2:data>\n"
@@ -778,7 +813,8 @@ def extract(md, ctx=None):
             [
                 f'  <effect id="{g["id"]}" category="grade" rating="{g["rating"]}" types="{g["types"]}" max="1"'
                 + "".join(f' excludes="{o["id"]}"' for o in grades if o["types"] == g["types"] and o is not g)
-                + f' essence="{g["essence"]:g}" source="{ID}" page="{g["page"]}"><name>{escape(g["name"])}</name></effect>'
+                + f' essence="{g["essence"]:g}" source="{ID}" page="{g["page"]}"><name>{escape(g["name"])}</name>'
+                "</effect>"
                 for g in grades
             ],
         )

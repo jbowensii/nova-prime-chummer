@@ -137,6 +137,7 @@ POINT ALLOCATION
 
 
 def by_id(xml):
+    """{id: element} of the entries in `xml`."""
     return {e.get("id"): e for e in ET.fromstring(xml)}
 
 
@@ -151,7 +152,8 @@ class CoreTablesTest(unittest.TestCase):
         self.assertEqual([(r["kind"], r["file"]) for r in self.report], [("core-unread", "ampeffects.xml")])
 
     def test_owner_decisions_on_two_effects(self):
-        # owner, 2026-10-10: weapon focus has no max (the table prints none); mental armor isn't a general effect, only the
+        # owner, 2026-10-10: weapon focus has no max (the table prints none); mental armor isn't a general effect, only
+        # the
         # Astral Armor adept power and a cyberdeck's Biofeedback filter carry it
         fx = {e[0]: e[3] for e in crb_core.EFFECTS}
         self.assertNotIn("once", fx["weapon-focus"])
@@ -160,7 +162,7 @@ class CoreTablesTest(unittest.TestCase):
     def test_a_shamanic_mask_is_read_where_the_book_says_it(self):
         # a made-up box page: the sentence wrapped and hyphenated across <br> lines
         page = {
-            170: "| Made-up text. A shamanic mask is con-<br>sidered a negative effect and reduces the rating of the<br>"
+            170: "| Made-up text. A shamanic mask is con-<br>sidered a negative effect and reduces the rating of the<br>"  # pylint: disable=line-too-long
             "Awakened Amp by 2 (made up). |"
         }
         self.assertEqual(crb_core.shamanic_mask(page), (170, 2))
@@ -364,8 +366,8 @@ class ExtractTest(unittest.TestCase):
         head = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="ampeffects" version="1">'
         files = {
             "ampeffects.xml": head
-            + '<effect id="rr-attr" category="x" rating="1" types="quality" source="X" page="1"><name>Cheap</name></effect>'
-            '<effect id="made-up-grade" category="grade" rating="1" types="cyberware" source="X" page="1"><name>New</name></effect></ca2:data>',
+            + '<effect id="rr-attr" category="x" rating="1" types="quality" source="X" page="1"><name>Cheap</name></effect>'  # pylint: disable=line-too-long
+            '<effect id="made-up-grade" category="grade" rating="1" types="cyberware" source="X" page="1"><name>New</name></effect></ca2:data>',  # pylint: disable=line-too-long
             "amps.xml": "<untouched/>",
         }
         out, rows = _no_core_overrides(files)
@@ -633,9 +635,9 @@ class AiFallbackTest(unittest.TestCase):
             self.assertEqual([r["proposal"] for r in skipped], ["level.big-time"])
             self.assertIn({"kind": "unresolved-spec", "spec": "made-up"}, rows)
             self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
-            # a Re-import starts with remove, which writes the record afresh: no table is still listed as read by AI (the
+            # a Re-import starts with remove, which writes the record afresh: no table is still listed as read by AI
+            # (the
             # recipe's run then reports only what it couldn't read this time)
-            from importer import xmlio
             from importer.__main__ import remove
 
             remove(book, custom, status=False, root=xmlio.CA2)
@@ -648,7 +650,10 @@ class AiFallbackTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             book, custom = self._book(tmp, [("levels.xml", 3), ("pricing.xml", 5)]), os.path.join(tmp, "custom")
-            self.REPLIES = {**self.REPLIES, "5": {"pricing": self.REPLIES["5"]["pricing"] * 2}}
+            self.REPLIES = {  # pylint: disable=invalid-name
+                **self.REPLIES,
+                "5": {"pricing": self.REPLIES["5"]["pricing"] * 2},
+            }  # pylint: disable=invalid-name
             P.propose(book, self._ask([]), core=True)
             root = ET.parse(os.path.join(book, "review.xml")).getroot()
             for p in root.findall("proposal"):
@@ -669,8 +674,8 @@ class AiFallbackTest(unittest.TestCase):
             self.assertEqual([r["file"] for r in rows if r.get("kind") == "core-ai"], ["pricing.xml"])
 
     def _round_trip(self, core_dir):
-        """Every entry of the core files in `core_dir`, as the model would send it, comes back as the same entry: the JSON
-        shapes hold every attribute the tables use."""
+        """Every entry of the core files in `core_dir`, as the model would send it, comes back as the same entry: the
+        JSON shapes hold every attribute the tables use."""
         from importer import use_core
         from importer.ai import propose as P
         from importer.ai.schema import CORE
@@ -690,7 +695,7 @@ class AiFallbackTest(unittest.TestCase):
                     "specs": [{**s.attrib, "name": s.text} for s in el.iter("spec")],
                 }
                 with use_core(str(core_dir)):  # the ids it names resolve against the same core files
-                    kind, i, _, xml, notes = P.core_entry(table, raw, el.get("source"), 1, set())
+                    _, i, _, xml, notes = P.core_entry(table, raw, el.get("source"), 1, set())
                 back = ET.fromstring(xml)
                 self.assertEqual((notes, back.tag, back.attrib), ([], el.tag, el.attrib), f"{table} {i}")
                 self.assertEqual(
@@ -708,13 +713,15 @@ class AiFallbackTest(unittest.TestCase):
 
     def test_ids_a_row_names_are_checked_on_propose_and_enforced_on_apply(self):
         """The schema can't check the ids a row names: the review notes them, and apply leaves such a row out, including
-        one the user's edit broke. Invented rows; the made-up core files are in place (a levels table not being replaced).
-        """
+        one the user's edit broke. Invented rows; the made-up core files are in place (a levels table not being
+        replaced)."""
         from importer import xmlio
         from importer.__main__ import apply_core_review
         from importer.ai import propose as P
 
-        spec = lambda a: [{"id": "sneak.quiet", "attr": a, "name": "Quiet"}]  # noqa: E731
+        def spec(a):
+            return [{"id": "sneak.quiet", "attr": a, "name": "Quiet"}]
+
         ranges = [{"attr": a, "min": 1, "max": 6} for a in ("str", "agi", "wil", "log", "cha")]
         self.REPLIES = {
             "3": {
@@ -897,8 +904,12 @@ class AiFallbackTest(unittest.TestCase):
                     "metatype.sprite": [],
                 },
             )
-            # the review screen's edits: the ranges and specs fixed, a spec added; the sprite's range and haggle's spec broken
-            edit = lambda i: next(e for e in root.find(f"proposal[@id='{i}']") if e.tag != "note")  # noqa: E731
+
+            # the review screen's edits: the ranges and specs fixed, a spec added; the sprite's range and haggle's spec
+            # broken
+            def edit(i):
+                return next(e for e in root.find(f"proposal[@id='{i}']") if e.tag != "note")
+
             for p in root.findall("proposal"):
                 p.set("state", "edited")
             edit("metatype.gnome").find("range[@attr='str']").attrib.update(min="1", max="3")
@@ -959,7 +970,7 @@ class AiFallbackTest(unittest.TestCase):
         self.assertIn("spirit", refs["amptypes"])
         self.assertIn("emerged", refs["amptypes"])  # a made-up book's addition
         el = ET.fromstring(
-            '<effect id="fx" category="c" rating="1" types="spirit ghost" requires="fx-2" source="CRB" page="1"><name>F</name></effect>'
+            '<effect id="fx" category="c" rating="1" types="spirit ghost" requires="fx-2" source="CRB" page="1"><name>F</name></effect>'  # pylint: disable=line-too-long
         )
         self.assertEqual(
             P.ref_notes("ampeffects", el, refs),
@@ -1004,7 +1015,8 @@ KNOWN = {
     # the owner's copy shortens the row's wording; the recipe keeps the row as printed (compared by length, so no book
     # wording is committed here)
     ("ampeffects.xml", "init-1", "name"): "row as printed",
-    # owner decisions (2026-10-10) the local copies predate: no max on weapon focus (none printed); mental armor only on what
+    # owner decisions (2026-10-10) the local copies predate: no max on weapon focus (none printed); mental armor only on
+    # what
     # the book prints with it, the Astral Armor power and a deck's Biofeedback filter
     ("ampeffects.xml", "weapon-focus", "max"): ("1", None),
     ("ampeffects.xml", "mental-armor", "types"): (
@@ -1047,7 +1059,8 @@ def entry(e):
 
 
 def differences(files, source="CRB"):
-    """{(file, id, key): (local copy, recipe)} over the local copies' entries citing `source`, plus entries only one has."""
+    """{(file, id, key): (local copy, recipe)} over the local copies' entries citing `source`, plus entries only one
+    has."""
     out = {}
     for name, xml in files.items():
         local = {i: e for i, e in by_id(Path(DATA_DIR, name).read_bytes()).items() if e.get("source") == source}
@@ -1116,7 +1129,8 @@ CG_BOOK, DHSA_BOOK = ROOT / ".extract/private/library/cg/book.md", ROOT / ".extr
     "the owner's local core copies and converted CG/DHSA are not present",
 )
 class BookMechanicsAnswerKeyTest(unittest.TestCase):
-    """The owner's copies also hold the CG's Tasking and Emerged and DHSA's implant grades: those books' recipes add them."""
+    """The owner's copies also hold the CG's Tasking and Emerged and DHSA's implant grades: those books' recipes add
+    them."""
 
     def test_cg_and_dhsa_add_their_entries(self):
         c, d = cg.extract(CG_BOOK.read_text(encoding="utf8")), dhsa.extract(DHSA_BOOK.read_text(encoding="utf8"))

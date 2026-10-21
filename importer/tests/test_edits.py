@@ -1,3 +1,5 @@
+"""Tests of the edit files: parse, check, apply."""
+
 import io
 import os
 import shutil
@@ -28,6 +30,7 @@ def custom():
 
 
 def read(d, name):
+    """The root element of the edit file `name` in `d`."""
     return ET.parse(os.path.join(d, "edits", name)).getroot()
 
 
@@ -80,7 +83,7 @@ class EditsTest(unittest.TestCase):
 
     def test_new_entry_needs_a_house_rule_source(self):
         d = custom()
-        new = '<item id="house.lucky-charm" kind="gear" source="HOUSE" page="1"><name>Lucky Charm</name><text></text></item>'
+        new = '<item id="house.lucky-charm" kind="gear" source="HOUSE" page="1"><name>Lucky Charm</name><text></text></item>'  # pylint: disable=line-too-long
         with self.assertRaisesRegex(edits.EditError, "house-rule source"):
             edits.set_entry(d, "items", "house.lucky-charm", new)
         edits.add_source(d, "HOUSE", "Our table")
@@ -112,7 +115,7 @@ class EditsTest(unittest.TestCase):
             (
                 "items",
                 "test.nano-tape",
-                '<item id="test.nano-tape" kind="armor" source="TEST" page="9">' "<name>Nano Tape</name><text/></item>",
+                '<item id="test.nano-tape" kind="armor" source="TEST" page="9"><name>Nano Tape</name><text/></item>',
                 "armor rating",
             ),
             (

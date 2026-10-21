@@ -9,7 +9,6 @@ import re
 import sys
 from dataclasses import replace
 
-from importer.sr6.ids import slug
 from importer.sr6 import catalog, shapes
 from importer.sr6.regroup import blocks, norm
 
@@ -46,13 +45,14 @@ _PREFIX = re.compile(r"^New ([^:]+):\s*(.+)$")
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
     return 0.9 if re.search(r"deadly\s+arts", hay, re.I) else 0.0
 
 
-def kind(chapter, b, parent2):
+def kind(_chapter, b, parent2):
     """(kind, category) of a block, else (None, None)."""
     p2, sec, labels = norm(parent2), norm(b.section), {k.lower() for k in b.labels}
     if b.row is not None:
@@ -130,7 +130,10 @@ def _swap_avail(bs):
             tables.setdefault((b.label, tuple(b.row)), []).append(b)
     swap = {}
     for (_, head), rows in tables.items():
-        filled = lambda h: [r.row[h].strip() for r in rows if r.row[h].strip() not in ("", "-", "—", "–")]  # noqa: E731
+
+        def filled(h, rows=rows):
+            return [r.row[h].strip() for r in rows if r.row[h].strip() not in ("", "-", "—", "–")]
+
         a = head.index("AVAIL")
         if not filled("AVAIL") or any(_LEGAL.search(v) for v in filled("AVAIL")):
             continue
@@ -188,4 +191,5 @@ def prepare(bs):
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks into a catalog Result."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

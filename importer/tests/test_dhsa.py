@@ -43,6 +43,7 @@ Prose after the footnote.
 
 
 def row(page, section, sub, name, type_, cost, effects):
+    """A made-up row of the DHSA row dump."""
     return {
         "page": page,
         "section": section,
@@ -137,6 +138,7 @@ class LevelsTest(unittest.TestCase):
         cls.amps = {a.get("id"): a for a in ET.fromstring(cls.res.files["amps.xml"])}
 
     def got(self, family):
+        """[(id, ...)] of the entries of `family` in the reading."""
         return [
             (
                 a.get("id"),
@@ -171,7 +173,8 @@ class LevelsTest(unittest.TestCase):
             [("hop", "Hop 2", "2", "2")] + [(f"hop-level-{n}", f"Hop {n}", str(n), str(n)) for n in range(3, 7)],
         )
         self.assertEqual(self.got("hop")[-1][4], ["narrative", "narrative"])
-        # the lowest level keeps the entry's id (owner, 2026-10-11: edits, runners and links on it stay), the others are new
+        # the lowest level keeps the entry's id (owner, 2026-10-11: edits, runners and links on it stay), the others are
+        # new
 
     def test_per_amp_point_sentences_add_up(self):
         self.assertEqual(
@@ -245,9 +248,10 @@ class LevelsTest(unittest.TestCase):
             (nc.find("name").text, nc.get("printedRating"), nc.get("type")),
             ("Calm Down (non-caster)", "10", "equipment"),
         )
-        rated = lambda a: [
-            e.get("ref") for e in a.iter("effect") if e.get("ref") != "narrative"
-        ]  # noqa: E731 (balancing aside)
+
+        def rated(a):  # balancing aside
+            return [e.get("ref") for e in a.iter("effect") if e.get("ref") != "narrative"]
+
         self.assertEqual((rated(caster), rated(nc)), (["rr-attr", "sustain-spell"], ["rr-attr"]))
 
 
@@ -333,6 +337,7 @@ KNOWN_EXTRA = {
 
 # entries the old tool didn't split by level: one per family, by its name without the level ("Freefall 2" → "Freefall")
 def entries(xml):
+    """{(name, family): count} of the entries in `xml`."""
     out = Counter()
     for e in ET.fromstring(xml):
         name, fam = e.find("name").text, e.get("family")
@@ -356,8 +361,8 @@ class AlternativeRulesBookTest(unittest.TestCase):
     LOCAL_CORE and BOOK.exists() and ORACLE.exists(), "owner's core copies, converted DHSA book and oracle not present"
 )
 class ParityTest(unittest.TestCase):
-    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump, priced with the
-    owner's real core data."""
+    """Entries by (type, name) against the catalogs the old tools/dhsa_to_xml.py wrote from a PDF row dump, priced with
+    the owner's real core data."""
 
     @classmethod
     def setUpClass(cls):

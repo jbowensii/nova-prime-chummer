@@ -132,11 +132,13 @@ Zippo Scoot ........ p. 19
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the DC recipe."""
     regrouped, _ = regroup.regroup(md, dc.ALIASES, name_headers=dc.NAME_HEADERS, end_page=183)
     return dc.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

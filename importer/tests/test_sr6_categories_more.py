@@ -6,6 +6,8 @@ import unittest
 
 from importer.sr6 import categories as C
 
+# pylint: disable=protected-access
+
 
 class TitleTest(unittest.TestCase):
     def test_joining_words_at_either_end_are_dropped(self):
@@ -45,16 +47,19 @@ class ComposedNamesTest(unittest.TestCase):
 
 
 class _Cat:
-    """The parts of the book's catalog build() uses: its tables, its rows by kind and the category records it is given."""
+    """The parts of the book's catalog build() uses: its tables, its rows by kind and the category records it is
+    given."""
 
     def __init__(self, tables, entries):
         self.tables, self.entries, self.added = tables, entries, []
 
-    def add(self, kind, name, page, attrs, kids, text, cid=None):
+    def add(self, kind, name, _page, attrs, kids, _text, cid=None):
+        """Record the entry the builder adds."""
         self.added.append((kind, name, attrs, kids, cid))
 
 
 def row(name, tab, category):
+    """A catalog row with the given tab and category."""
     return {"name": name, "attrs": {"category": category}, "page": 1, "aliases": [], "children": [], "tab": tab}
 
 
@@ -82,7 +87,7 @@ class BuildTest(unittest.TestCase):
 
     def test_a_row_with_no_category_name_makes_no_record(self):
         cat = _Cat({2: {"title": "", "section": "", "header": ["ITEM"], "page": 1}}, {"gear": [row("Widget", 2, "")]})
-        verdicts, groups = C.build(cat, [], ["gear"])
+        verdicts, _groups = C.build(cat, [], ["gear"])
         self.assertEqual([(v[1], v[2], v[3]) for v in verdicts], [(None, "low", "no title")])
         self.assertEqual(cat.added, [])
         self.assertNotIn("group", cat.entries["gear"][0]["attrs"])

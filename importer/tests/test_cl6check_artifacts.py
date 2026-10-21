@@ -1,5 +1,5 @@
-"""cl6check comparer artifacts (2026-10-15 triage): differences that were the comparer's, not the data's. Invented names and
-numbers only."""
+"""cl6check comparer artifacts (2026-10-15 triage): differences that were the comparer's, not the data's. Invented names
+and numbers only."""
 
 import os
 import unittest
@@ -9,8 +9,11 @@ from importer.tests.test_cl6check import entry, rec
 from tools.cl6check import __main__ as cli
 from tools.cl6check import arbitrate, canon, fields, ours
 
+# pylint: disable=protected-access  # tests reach into the module internals they cover
+
 
 def cmp(c, kind="weapons", **attrs):
+    """The comparer's verdict on candidate `c` against a made-up entry of `kind` with `attrs`."""
     return fields.compare(c, entry("Zorp", kind=kind, **attrs))
 
 
@@ -109,11 +112,11 @@ class FamilyArtifactTest(unittest.TestCase):
 
     def test_a_record_that_a_neighbouring_level_agrees_with_more_is_compared_with_that_level(self):
         # (the book's levels 5 and 6 are Commlink6's 6 and 7: values line up one level down)
-        cl6 = lambda n, price: canon.canonical(
-            rec(f'<item id="c{n}" type="TOOLS" price="{price}"/>', name=f"Eyes, Advanced Rating {n}")
-        ) | {
-            "src": "gz"
-        }  # noqa: E731
+        def cl6(n, price):
+            return canon.canonical(
+                rec(f'<item id="c{n}" type="TOOLS" price="{price}"/>', name=f"Eyes, Advanced Rating {n}")
+            ) | {"src": "gz"}
+
         mine = [entry("Eyes (Rating 5)", kind="gear", cost="100"), entry("Eyes (Rating 6)", kind="gear", cost="200")]
         got = [
             [h["name"] for h in cli._levels(c, [mine[1 - i]], mine)] for i, c in enumerate((cl6(6, 100), cl6(7, 200)))
@@ -125,14 +128,18 @@ class FamilyArtifactTest(unittest.TestCase):
 
 class StatBoxTest(unittest.TestCase):
     class Book:  # a one-page stand-in: pdfplumber-like words, the column split at x 306
+        """A one-page book of made-up words."""
+
         def __init__(self, words):
             self.w = words + [{"text": "|width", "x0": 612, "x1": 612, "top": 0, "size": 0}]
 
         def words(self, p):
+            """The made-up words of page 5, else none."""
             return self.w if p == 5 else []
 
     @staticmethod
     def w(text, x, top, size=9.0):
+        """A made-up word at (x, top) with the width of its letters."""
         return {"text": text, "x0": x, "x1": x + 6 * len(text), "top": top, "size": size}
 
     def test_the_box_below_the_heading_in_its_column_is_the_items_and_the_one_above_is_the_previous_items(self):
@@ -181,7 +188,10 @@ class StatBoxTest(unittest.TestCase):
 
     def test_settle_turns_a_neighbours_value_into_the_pdf_printing_ours(self):
         class B(self.Book):
-            def page_text(self, p):
+            """A page whose text holds the neighbour's value."""
+
+            def page_text(self, _p):
+                """The page text, with the neighbour's value near the name."""
                 return "Foregrip 3 250"  # (the window around the name holds the neighbour's 250)
 
         book = B(
@@ -204,7 +214,9 @@ class KeepAndFillTest(unittest.TestCase):
         self.assertTrue(cli._same("variants", frozenset({"b"}), h, False, keep={("gz", "gear", "gz.a", "variants")}))
 
     def test_an_older_printing_fills_the_newer_ones_gaps_only(self):
-        e = lambda i, issues=(), **a: {"kind": "gear", "id": i, "attrs": a, "issues": list(issues)}  # noqa: E731
+        def e(i, issues=(), **a):
+            return {"kind": "gear", "id": i, "attrs": a, "issues": list(issues)}
+
         new = SimpleNamespace(entries=[e("gz.a", [("cost", "unread")], cost="", avail="2")], texts={})
         old = SimpleNamespace(
             entries=[e("gz.a", cost="100", avail="9"), e("gz.b", cost="5")], texts={"gz.b": "Old text."}

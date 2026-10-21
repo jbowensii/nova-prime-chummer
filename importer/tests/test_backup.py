@@ -1,3 +1,5 @@
+"""Backing up and restoring the custom folders (importer/backup.py) on invented files."""
+
 import contextlib
 import io
 import os
@@ -5,7 +7,6 @@ import stat
 import tempfile
 import unittest
 from unittest import mock
-import unittest.mock
 import zipfile
 from pathlib import Path
 
@@ -28,7 +29,8 @@ def state(root, extra=""):
         "library/book-1/original.pdf": "%PDF-1.4 made up " * 100,
         "library/book-1/book.md": f"# Made-up book{extra}",
         "library/book-1/status.xml": '<status state="done"/>',
-        "library/backgrounds/backgrounds.xml": f"<backgrounds>{extra}</backgrounds>",  # the background art goes with library/
+        # the background art goes with library/
+        "library/backgrounds/backgrounds.xml": f"<backgrounds>{extra}</backgrounds>",
         "library/backgrounds/0123456789ab.png": "made-up image bytes",
         "library/.config/ai-providers.xml": "<aiproviders/>",
         "library/.config/ai-keys.xml": f"<aikeys>secret{extra}</aikeys>",
@@ -80,18 +82,19 @@ def bad_zip(entries, manifest=True, attrs=None):
     return p
 
 
-class BackupTest(unittest.TestCase):
+class BackupTest(unittest.TestCase):  # pylint: disable=too-many-public-methods  # (one test per behaviour)
     def test_a_swaps_temp_folders_never_travel_in_a_backup(self):
-        """A backup made while a data pack swaps would carry core/.restore-old-*; restored, `recover` would put those stale
-        tables back over the live ones. The backup skips them at any depth, and check refuses a zip that has them."""
+        """A backup made while a data pack swaps would carry core/.restore-old-*; restored, `recover` would put those
+        stale tables back over the live ones. The backup skips them at any depth, and check refuses a zip that has
+        them."""
         from importer import datapack
 
         root = tempfile.mkdtemp()
         dirs = state(root)
         core = os.path.join(dirs["custom"], "imported", "core")
         os.makedirs(os.path.join(core, ".restore-old-abc"))
-        Path(core, "skills.xml").write_text("current")
-        Path(core, ".restore-old-abc", "skills.xml").write_text("STALE")
+        Path(core, "skills.xml").write_text("current", encoding="utf8")
+        Path(core, ".restore-old-abc", "skills.xml").write_text("STALE", encoding="utf8")
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out)
         with zipfile.ZipFile(out) as zf:
@@ -101,7 +104,9 @@ class BackupTest(unittest.TestCase):
         restored = {f: os.path.join(root, "restored", f) for f in backup.FOLDERS}
         backup.apply(out, restored)
         datapack.recover(os.path.join(restored["custom"], "imported", "core"))
-        self.assertEqual(Path(restored["custom"], "imported", "core", "skills.xml").read_text(), "current")
+        self.assertEqual(
+            Path(restored["custom"], "imported", "core", "skills.xml").read_text(encoding="utf8"), "current"
+        )
         planted = bad_zip({"custom/imported/core/.restore-old-abc/skills.xml": b"STALE"})
         with self.assertRaises(backup.RestoreError) as e:
             backup.check(planted)
@@ -206,7 +211,7 @@ class BackupTest(unittest.TestCase):
             "trailing space": bad_zip({"characters/.. /x.xml": b"x"}),
             "forbidden character": bad_zip({"characters/a?.xml": b"x"}),
         }
-        Path(cases["not a zip"]).write_text("hello")
+        Path(cases["not a zip"]).write_text("hello", encoding="utf8")
         dup = bad_zip({"characters/x.xml": b"x"})
         with zipfile.ZipFile(dup, "a") as zf, self.assertWarns(UserWarning):
             zf.writestr("characters/x.xml", b"y")
@@ -272,7 +277,8 @@ class BackupTest(unittest.TestCase):
         self.assertIn("19990101T000000_000000Z.zip", os.listdir(backups))
 
     def test_a_zips_session_and_recovery_files_are_never_restored(self):
-        """A zip made elsewhere (or edited) carrying sessions.xml or reset.xml: a standing recovery code must not land."""
+        """A zip made elsewhere (or edited) carrying sessions.xml or reset.xml: a standing recovery code must not
+        land."""
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root, " new"), state(dst_root, " old")
         for never in ("sessions.xml", "reset.xml", "device-key.xml", "oidc-key.xml"):
@@ -314,10 +320,13 @@ class BackupTest(unittest.TestCase):
 
         src_root, dst_root = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = state(src_root), state(dst_root)
-        row = lambda p, url: f'<provider id="{p}" enabled="true" baseUrl="{url}"/>'  # noqa: E731
-        settings = (
-            lambda *rows: f'<ca2:aiproviders xmlns:ca2="{providers.NS}" version="1">{"".join(rows)}</ca2:aiproviders>'
-        )  # noqa: E731
+
+        def row(p, url):
+            return f'<provider id="{p}" enabled="true" baseUrl="{url}"/>'
+
+        def settings(*rows):
+            return f'<ca2:aiproviders xmlns:ca2="{providers.NS}" version="1">{"".join(rows)}</ca2:aiproviders>'
+
         Path(src["library"], ".config", "ai-providers.xml").write_text(
             settings(row("openai", "https://evil.example/v1"), row("gemini", "https://g.example")), encoding="utf8"
         )
@@ -343,7 +352,8 @@ class BackupTest(unittest.TestCase):
         self.assertEqual([p for p in providers.PROVIDER_IDS if providers.read_key(cfg, p)], [])
 
     def _accounts(self, dirs, issuer=None, secret=None, users=2):
-        """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no file)."""
+        """users.xml with `users` accounts; auth.xml naming `issuer` and auth-secret.xml given for `secret` (None: no
+        file)."""
         cfg = os.path.join(dirs["library"], ".config")
         ns = 'xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"'
         rows = "".join(
@@ -356,7 +366,8 @@ class BackupTest(unittest.TestCase):
             (
                 "auth.xml",
                 issuer is not None
-                and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" tokenAuth="client_secret_basic"/></ca2:auth>',
+                and f'<ca2:auth {ns}><oidc enabled="true" issuer="{issuer}" client="c" '
+                'tokenAuth="client_secret_basic"/></ca2:auth>',
             ),
             (
                 "auth-secret.xml",
@@ -443,8 +454,8 @@ class BackupTest(unittest.TestCase):
             backup.check(out)
 
     def test_accounts_and_sign_in_settings_must_be_valid(self):
-        """users.xml and auth.xml are checked against users.xsd and auth.xsd: one the server can't read would leave nobody
-        able to sign in (and so nobody able to restore the safety backup)."""
+        """users.xml and auth.xml are checked against users.xsd and auth.xsd: one the server can't read would leave
+        nobody able to sign in (and so nobody able to restore the safety backup)."""
         root = tempfile.mkdtemp()
         dirs = state(root)
         cfg = self._accounts(dirs, "https://auth.example")
@@ -457,7 +468,8 @@ class BackupTest(unittest.TestCase):
                 f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="boss" method="password" '
                 'enabled="true" created="2026-09-28T00:00:00Z"/></ca2:users>',  # no such role
                 f'<ca2:users {ns}><user id="000000000001" username="x1" name="X" role="admin" method="password" '
-                'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" p="1"/></user></ca2:users>',
+                'enabled="true" created="2026-09-28T00:00:00Z"><password algorithm="scrypt" N="2" r="1" '
+                'p="1"/></user></ca2:users>',
                 f"<ca2:sessions {ns}/>",
             ],  # another root users.xsd allows
             "auth.xml": [f'<ca2:auth {ns}><oidc issuer="x"/></ca2:auth>', "<auth/>"],
@@ -536,10 +548,12 @@ class BackupTest(unittest.TestCase):
     def test_backup_skips_special_files(self):
         root = tempfile.mkdtemp()
         dirs = state(root)
+        # pylint: disable-next=no-member  # (POSIX only; skipped elsewhere)
         os.mkfifo(os.path.join(dirs["characters"], "pipe"))
         out = os.path.join(root, "b.zip")
         backup.backup(dirs, out)
-        self.assertNotIn("characters/pipe", zipfile.ZipFile(out).namelist())
+        with zipfile.ZipFile(out) as z:
+            self.assertNotIn("characters/pipe", z.namelist())
 
     def test_refused_zip_changes_nothing(self):
         root = tempfile.mkdtemp()

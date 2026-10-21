@@ -18,6 +18,7 @@ print(" ".join(e["id"] for e in c.entries["categories"]))
 
 
 def categories_under(seed):
+    """The categories a fresh interpreter lists under hash seed `seed`."""
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     env = {**os.environ, "PYTHONHASHSEED": str(seed)}
     return subprocess.run(

@@ -82,6 +82,7 @@ CITY = {SHA: ("CRB-FZ", "Made-Up Core Rulebook: City Edition Fizzburg", "FIZZBUR
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 

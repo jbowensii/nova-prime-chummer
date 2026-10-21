@@ -305,8 +305,8 @@ def _box_named(b):
 
 
 def _spell_box(b):
-    """A spell box printing its category under TYPE and its type under DV (`TYPE Illusion | RANGE LOS | DV P | DURATION S
-    | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
+    """A spell box printing its category under TYPE and its type under DV (`TYPE Illusion | RANGE LOS | DV P | DURATION
+    S | DRAIN 4`, Dealers of Death): the core rulebook's form, TYPE the type, DV the drain, the category in the section
     (`Illusion spells`: the catalog's spell category)."""
     s = {h.upper(): (h, v) for h, v in (b.stats[0].items() if b.stats else ())}
     if (
@@ -431,11 +431,12 @@ class Book:
     CATALOG_CHAPTERS = ()
     ARCHETYPES = "\0"  # no sample runners
 
-    def __init__(self, id, name, cat, title, phrases):
-        self.ID, self.NAME, self.CAT, self.TITLE, self.PHRASES = id, name, cat, re.compile(title, re.I), phrases
+    def __init__(self, book_id, name, cat, title, phrases):
+        # pylint: disable=invalid-name  # the recipe interface names its attributes ID, NAME, BOOK ...
+        self.ID, self.NAME, self.CAT, self.TITLE, self.PHRASES = book_id, name, cat, re.compile(title, re.I), phrases
         self.BOOK = self.UNRATED_NPCS = re.sub(r"^Shadowrun(?:, Sixth World)?:\s*", "", name)
-        if id in FAN:
-            self.PUBLISHER, self.CANON = FAN[id], False
+        if book_id in FAN:
+            self.PUBLISHER, self.CANON = FAN[book_id], False
 
     def __repr__(self):
         return f"<general recipe {self.ID}>"
@@ -459,7 +460,10 @@ class Book:
         (`(Professional Rating 4), Human`) as one tag. A kicker set small over a heading (`Part of the Family:` over
         `Deserted`, `Event:` over a life module's title) is one heading with it, at the heading's level."""
         lines = _weapon_bands(_kickers(_split_shared(md.splitlines())))
-        bare = lambda s: re.sub(r"^#{4,5} ", "", s.strip())
+
+        def bare(s):
+            return re.sub(r"^#{4,5} ", "", s.strip())
+
         for i, ln in enumerate(lines):
             if not _BAND_LINE.match(ln):
                 continue
@@ -492,7 +496,7 @@ class Book:
             lines[k] = f"##### {name}" + (f"\n##### {own}" if own and tag is None else "")
         return "\n".join(lines) + "\n"
 
-    def fix(self, b, parent2):
+    def fix(self, b, _parent2):
         """An item's priced stat box as its row, named by its heading; a stat block's `(Professional Rating N)` (a tag
         line, in its name or the text's first line) as the core rulebook's section form; a box title in lower case
         with a capital. A heading whose text holds a being's bands is that being (an item); a block with no chapter
@@ -537,7 +541,8 @@ class Book:
                 b = replace(b, name=name)
         return b
 
-    def kind(self, chapter, b, parent2):
+    def kind(self, _chapter, b, _parent2):
+        """The (kind, subkind) a block files under, or (None, None) when it is no entry."""
         labels = {k.lower() for k in b.labels}
         if (
             not b.stats
@@ -598,8 +603,10 @@ class Book:
         return [replace(b, name=n) for n in names]
 
     def extract(self, regrouped, ctx=None):
+        """The book's catalog read from its blocks, noting the names the book prints twice."""
         bs = list(blocks(regrouped)) if isinstance(regrouped, str) else list(regrouped)
         names = {norm(b.name): b.name for b in bs if b.name}.values()  # each printed name once
+        # pylint: disable-next=attribute-defined-outside-init  # set per extract(), read by the hooks it calls
         self._clash = {n for n, c in Counter(norm(x) for name in names for x in _slash_names(name)).items() if c > 1}
         sections.Reader.toxins = True  # (the adventure books' toxins have no price table: read from their lines)
         try:

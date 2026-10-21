@@ -14,7 +14,9 @@ from .schema import allowed, fit
 
 UNMATCHED_DROPS = (
     []
-)  # (the book rows' drops that took out nothing, [(entry id, drop)]: a row written against a reader that has changed since; tests and tools/ check it stays empty)
+    # (the book rows' drops that took out nothing, [(entry id, drop)]: a row written against a reader that has changed
+    # since; tests and tools/ check it stays empty)
+)
 
 
 def dump(old, root):
@@ -26,7 +28,8 @@ def dump(old, root):
 
 
 def _add(out, name, r, source):
-    """Create row r's entry in out[name] (the kind's file, made when the book has none); a no-op when its id is there."""
+    """Create row r's entry in out[name] (the kind's file, made when the book has none); a no-op when its id is
+    there."""
     from lxml import etree
 
     from importer.sr6 import KINDS, NS
@@ -56,8 +59,9 @@ def _add(out, name, r, source):
 
 
 def _refile(out, rows):
-    """The id rows with `kind` the file that holds the id: a row filed under Commlink6's kind (gear for a weapon accessory)
-    goes to the one other kind file with the id; an id in none or in several stays as it is (reported by the caller)."""
+    """The id rows with `kind` the file that holds the id: a row filed under Commlink6's kind (gear for a weapon
+    accessory) goes to the one other kind file with the id; an id in none or in several stays as it is (reported by the
+    caller)."""
     from lxml import etree
 
     from importer.sr6 import KINDS
@@ -95,7 +99,8 @@ def _refile(out, rows):
         done.append(r)
     if ambiguous:
         print(
-            f"override: {len(ambiguous)} id rows name an id several kind files hold, left unfiled ({'; '.join(ambiguous[:4])})",
+            f"override: {len(ambiguous)} id rows name an id several kind files hold, "
+            f"left unfiled ({'; '.join(ambiguous[:4])})",
             file=sys.stderr,
         )
     return done
@@ -145,8 +150,11 @@ def _set_by_id(out, rows):
                     else:
                         e.set(k, str(v))
                 for d in drops.get(name, {}).get(
-                    e.get("id"), []
-                ):  # (a book row takes out the effect it names: those attributes equal, the others it leaves out absent)
+                    e.get("id"),
+                    [],
+                    # (a book row takes out the effect it names: those attributes equal, the others it leaves
+                    # out absent)
+                ):
                     gone = [
                         c
                         for c in e
@@ -172,7 +180,9 @@ def _set_by_id(out, rows):
                 ]:
                     e.remove(
                         c
-                    )  # (a book row's effects replace the reader's of the same target and operation, as a Commlink6 row's do, unless the row says `keep`)
+                        # (a book row's effects replace the reader's of the same target and operation, as a
+                        # Commlink6 row's do, unless the row says `keep`)
+                    )
                 for a in book:  # (replaces the same target's effect, or the one "replaces" names)
                     if not a.get("book"):
                         for c in [
@@ -188,9 +198,13 @@ def _set_by_id(out, rows):
                         attrs.pop(
                             "gen", None
                         )  # (the reader's own effect, restated so the replacement leaves it: no mark)
-                    same = lambda c: c.tag == "effect" and all(
-                        c.get(k) == attrs.get(k) for k in ("target", "op", "value", "when", "switch", "spec", "affects")
-                    )  # noqa: E731
+
+                    def same(c, attrs=attrs):
+                        return c.tag == "effect" and all(
+                            c.get(k) == attrs.get(k)
+                            for k in ("target", "op", "value", "when", "switch", "spec", "affects")
+                        )
+
                     if any(same(c) for c in e):
                         continue  # (applied again, or the replaced effect gone: the effect is there once)
                     c = etree.Element("effect", attrs)
@@ -239,7 +253,8 @@ def _set_by_id(out, rows):
         out[name] = dump(out[name], root)
     if missing:
         print(
-            f"override: {len(missing)} id rows found no entry ({', '.join(missing[:6])}{' ...' if len(missing) > 6 else ''})",
+            f"override: {len(missing)} id rows found no entry "
+            f"({', '.join(missing[:6])}{' ...' if len(missing) > 6 else ''})",
             file=sys.stderr,
         )
 
@@ -272,8 +287,8 @@ def _find(root, eid):
 
 
 def _ops(out, rows):
-    """The remove, merge, rename and move_kind rows applied, in that order (a merge before the move that files its target
-    as a weapon). A row whose entry isn't there is reported once, nothing guessed."""
+    """The remove, merge, rename and move_kind rows applied, in that order (a merge before the move that files its
+    target as a weapon). A row whose entry isn't there is reported once, nothing guessed."""
     from lxml import etree
 
     from importer.sr6 import KINDS

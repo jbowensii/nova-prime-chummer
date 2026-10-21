@@ -9,6 +9,7 @@ from tools.cl6effects import evaluate
 
 
 def row(mod, kids):
+    """A pair row holding the given mod and its kids."""
     mod = {"_ctx": "", "_sel": False, **mod}
     return {
         "siblings": [],
@@ -18,10 +19,13 @@ def row(mod, kids):
 
 
 def eff(**a):
+    """An effect element with the given attributes."""
     return {"_tag": "effect", **a}
 
 
 class Evaluate(unittest.TestCase):
+    """Evaluating our effects against CL6 mods."""
+
     MOD = {"_tag": "checkmod", "type": "SKILL", "ref": "athletics", "what": "DICE", "value": "2"}
 
     def test_values(self):
@@ -47,15 +51,19 @@ class Evaluate(unittest.TestCase):
 
 
 class Replay(unittest.TestCase):
+    """Replaying evaluations between two runs."""
+
     def test_differing_reports_only_changed_rows(self):
-        mk = lambda status: {
-            "pair": ("crb", "x", "item"),
-            "sig": "s",
-            "value": "1",
-            "bucket": "feature",
-            "status": status,
-            "final": status,
-        }
+        def mk(status):
+            return {
+                "pair": ("crb", "x", "item"),
+                "sig": "s",
+                "value": "1",
+                "bucket": "feature",
+                "status": status,
+                "final": status,
+            }
+
         keep = {
             "pair": ("crb", "y", "item"),
             "sig": "s",
@@ -73,7 +81,8 @@ class Replay(unittest.TestCase):
             os.makedirs(d)
             with open(os.path.join(d, "gear.xml"), "w", encoding="utf-8") as f:
                 f.write(
-                    '<sr6:data>\n  <item id="crb.x">\n    <effect target="skill:athletics" op="add" value="2"/>\n  </item>\n</sr6:data>\n'
+                    '<sr6:data>\n  <item id="crb.x">\n    <effect target="skill:athletics" op="add" value="2"/>\n'
+                    "  </item>\n</sr6:data>\n"
                 )
             self.assertEqual(replay.entry_effects(out, "crb", "gear", "x"), {("skill:athletics", "add", "2")})
             self.assertIsNone(replay.entry_effects(out, "crb", "gear", "nope"))

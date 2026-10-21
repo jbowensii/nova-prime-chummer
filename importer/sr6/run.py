@@ -27,7 +27,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
     try:
         xmlio.write_status(book_dir, "converting")
         if convert_pdf:
-            # a printing a recipe knows by its fingerprint may come with its heading sizes and font (the guess can miss them)
+            # a printing a recipe knows by its fingerprint may come with its heading sizes and font (the guess can miss
+            # them)
             sha = hashlib.sha256(Path(pdf).read_bytes()).hexdigest()
             known = next((r for r in RECIPES if sha in r.SHA256), None)
             meta = convert(
@@ -57,7 +58,8 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
             return None
 
         xmlio.write_status(book_dir, "extracting")
-        # several printings of the book: the one ranking last (printing(): the book's Current Printing, else the one published last) is loaded, the others listed as superseded
+        # several printings of the book: the one ranking last (printing(): the book's Current Printing, else the one
+        # published last) is loaded, the others listed as superseded
         mine, src0 = printing(meta["sha256"]), getattr(
             recipe, "ID", ""
         )  # (ponytail: only the core rulebook has printings, and its source id is its recipe's ID)
@@ -196,7 +198,8 @@ def _read(recipe, md, custom_dir, olds=()):
 
 
 def _shape(r):
-    """An override row less its effects and drops (None when nothing else is left): what it gives an entry's structure."""
+    """An override row less its effects and drops (None when nothing else is left): what it gives an entry's
+    structure."""
     r = {k: v for k, v in r.items() if k not in ("effects", "drops")}
     return r if "id" not in r or any(k in r for k in overrides.OPS) or r.get("set") or r.get("kids") else None
 
@@ -209,7 +212,10 @@ def read_effects(src, files, texts, regrouped, rows=None):
     has (the live import of 2026-10-20). An entry an override added is read apart, after the others and keeping the
     effects its row gave it (effects.apply only=). rows: the book's override rows (default its tables)."""
     rows, files = overrides.table(src) if rows is None else rows, dict(files)
-    ids = lambda fs: {(n[:-4], i) for n, x in fs.items() if x for i in xmlio.top_ids(x)}  # noqa: E731
+
+    def ids(fs):
+        return {(n[:-4], i) for n, x in fs.items() if x for i in xmlio.top_ids(x)}
+
     have = ids(files)
     shape = [s for s in map(_shape, rows) if s]
     files = classes.apply(
@@ -221,7 +227,9 @@ def read_effects(src, files, texts, regrouped, rows=None):
     added = ids(files) - have
     aside = (
         {}
-    )  # (the added entries, out of the first read: the book's own entries are read as the book prints them, beside each other)
+        # (the added entries, out of the first read: the book's own entries are read as the book prints them, beside
+        # each other)
+    )
     for n in {k + ".xml" for k, _ in added}:
         keep = []
         for ln in effects.split_entries(files[n]).splitlines(keepends=True):
@@ -252,7 +260,8 @@ def _catalog(recipe, book_dir, custom_dir):
     try:
         r = _read(recipe, Path(path).read_text(encoding="utf8"), custom_dir)[0] if os.path.exists(path) else None
         return (r.files, r.texts or "") if r else ({}, "")
-    except Exception:  # noqa: BLE001 (an older printing that no longer reads gives nothing)
+    # pylint: disable-next=broad-exception-caught  # (an older printing that no longer reads gives nothing)
+    except Exception:
         return {}, ""
 
 
@@ -268,7 +277,9 @@ def older_printings(files, olds, prefix=""):
 
     from importer.sr6.resolve import add_kid, kids
 
-    parse = lambda xml: etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))  # noqa: E731
+    def parse(xml):
+        return etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))
+
     index = {}
     for label, of in olds:
         for name, xml in of.items():
@@ -350,11 +361,12 @@ def _dump(root):
 
 
 def same_ids(files, texts, olds):
-    """An item this printing files under another id than an older printing does takes the older one's, so a saved runner,
-    an override row and the app's catalog keep naming it (the id of a name another category of the file has already
-    carries its category: the Current Printing, without the Formula row `Ritual Spellcasting`, files the focus of that
-    name as `ritual-spellcasting`, the later printings as `foci.ritual-spellcasting`). The item is found by name and
-    category in the same file, when both are unique there. Returns (files, texts); the entry's text goes with its id."""
+    """An item this printing files under another id than an older printing does takes the older one's, so a saved
+    runner, an override row and the app's catalog keep naming it (the id of a name another category of the file has
+    already carries its category: the Current Printing, without the Formula row `Ritual Spellcasting`, files the focus
+    of that name as `ritual-spellcasting`, the later printings as `foci.ritual-spellcasting`). The item is found by name
+    and category in the same file, when both are unique there. Returns (files, texts); the entry's text goes with its
+    id."""
     older = {}  # (file, key) -> the ids older printings give it, newest first
     for _, of, _ in olds:
         for name, xml in of.items():
@@ -375,9 +387,7 @@ def same_ids(files, texts, olds):
             old, new = e.get("id"), ids[0]
             e.set("id", new)
             used.add(new)
-            texts = re.sub(
-                r'(<text of="%s" id=)"%s"' % (re.escape(name[:-4]), re.escape(old)), r'\1"%s"' % new, texts or ""
-            )
+            texts = re.sub(rf'(<text of="{re.escape(name[:-4])}" id=)"{re.escape(old)}"', rf'\1"{new}"', texts or "")
             changed = True
         if changed:
             out[name] = _dump(root)
@@ -397,13 +407,19 @@ def older_extras(files, texts, olds, report=None, prefix=""):
         root = _parse(files[name])
         mine = [e for e in root if isinstance(e.tag, str) and e.get("id")]
         theirs = [(label, e) for label, of, _ in olds for e in _entries(of.get(name))]
-        uid = lambda e: e.get("id")[len(prefix) :] if e.get("id").startswith(prefix) else e.get("id")  # noqa: E731
+
+        def uid(e):
+            return e.get("id")[len(prefix) :] if e.get("id").startswith(prefix) else e.get("id")
+
         printed = {e.get("id") for _, e in theirs} | {_key(e) for _, e in theirs if e.get("category")}
         lonely = [
             e for e in mine if uid(e) not in printed and not (e.get("category") and _key(e) in printed)
         ]  # (only this printing has them)
         ids, keys = {uid(e) for e in mine}, {_key(e) for e in mine if e.get("category")}
-        value = lambda e: {k: v for k, v in e.attrib.items() if k not in IDENTITY}  # noqa: E731
+
+        def value(e):
+            return {k: v for k, v in e.attrib.items() if k not in IDENTITY}
+
         for label, e in theirs:
             if (
                 e.get("id") in ids
@@ -424,7 +440,8 @@ def older_extras(files, texts, olds, report=None, prefix=""):
     if added:
         said = {label: {(of, i): t for of, i, t in xmlio.texts_entries(tx)} for label, _, tx in olds if tx}
         more = "".join(
-            f"  <text of={quoteattr(n[:-4])} id={quoteattr(e.get('id'))}>{escape(said[label][n[:-4], e.get('id')])}</text>\n"
+            f"  <text of={quoteattr(n[:-4])} id={quoteattr(e.get('id'))}>{escape(said[label][n[:-4], e.get('id')])}</te"
+            "xt>\n"
             for n, e, label in added
             if (n[:-4], e.get("id")) in said.get(label, ())
         )
@@ -448,11 +465,15 @@ def older_extras(files, texts, olds, report=None, prefix=""):
 
 def _fills(out_dir, src, files):
     """Whether this printing's catalog (`files`, ids unscoped) prints a valid value of a field the loaded printing's
-    catalog (out_dir, on disk) leaves open or took from a printing (which may be older than this one), or an entry it lacks.
+    catalog (out_dir, on disk) leaves open or took from a printing (which may be older than this one), or an entry it
+    lacks.
     """
-    reopen = lambda x: re.sub(
-        r'<found field="([^"]+)" how="printing"[^>]*>[^<]*</found>', r'<issue field="\1" code="missing"/>', x
-    )  # noqa: E731
+
+    def reopen(x):
+        return re.sub(
+            r'<found field="([^"]+)" how="printing"[^>]*>[^<]*</found>', r'<issue field="\1" code="missing"/>', x
+        )
+
     disk = {
         n: reopen(Path(out_dir, n).read_text(encoding="utf8"))
         for n in files
@@ -470,14 +491,14 @@ def _corpus(book_dir, custom_dir):
     applied to its own book. A failure there leaves this import as it is (its issues stay open)."""
     try:
         resolve.library(os.path.dirname(os.path.normpath(book_dir)), custom_dir)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"corpus pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
 def _links(custom_dir):
-    """The last pass (effects.copy_links): every entry holding a link takes the linked entry's effects, whichever book the
-    linked entry is in, so it runs over all the sources on disk after any book is imported or removed. A failure leaves
-    the entries as they are (each with its link, which the app still follows)."""
+    """The last pass (effects.copy_links): every entry holding a link takes the linked entry's effects, whichever book
+    the linked entry is in, so it runs over all the sources on disk after any book is imported or removed. A failure
+    leaves the entries as they are (each with its link, which the app still follows)."""
     root = os.path.join(custom_dir, "imported")
     try:
         srcs = (
@@ -503,7 +524,7 @@ def _links(custom_dir):
         }
         for (s, f), xml in effects.copy_links(srcs, said).items():
             xmlio.write_file(os.path.join(root, s, f), xml)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"links pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
@@ -517,7 +538,7 @@ def _pdf_title(pdf):
     try:
         with pdfplumber.open(pdf) as d:
             return (d.metadata or {}).get("Title", "") or ""
-    except Exception:  # noqa: BLE001 (an unreadable PDF has no title)
+    except Exception:  # pylint: disable=broad-exception-caught  # (an unreadable PDF has no title)
         return ""
 
 
@@ -531,6 +552,8 @@ def _cited(book_dir, custom_dir, res):
         for xml in x.files.values():
             names |= {regroup.norm(re.split(r"\s*\(", n)[0]) for n in re.findall(r"<name>([^<]*)</name>", xml)}
     names.discard("")
+    # (the library folder's path, not the imported module)
+    # pylint: disable-next=redefined-outer-name
     library, me, out = os.path.dirname(os.path.normpath(book_dir)), os.path.normpath(book_dir), []
     for b in sorted(os.listdir(library)):
         d = os.path.join(library, b)
@@ -552,6 +575,8 @@ def _cited(book_dir, custom_dir, res):
 
 def _same_source(book_dir, src):
     """The library's other books imported as `src`: [(printing or None, dir, state)]."""
+    # (the library folder's path, not the imported module)
+    # pylint: disable-next=redefined-outer-name
     library, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
     out = []
     for b in os.listdir(library):
@@ -594,9 +619,9 @@ def _drop(custom_dir, src):
 
 def remove(book_dir, custom_dir, forget=False):
     """The library's remove (importer/library.py) under the sr6:data root: it rewrites the samples list too (SR6 has no
-    npcs list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the newest
-    superseded one is imported again (from its book.md) and loaded. A further source another book also holds (the same
-    PDF uploaded twice) stays."""
+    npcs list). The book's further sources (import.xml extra) go with it. The loaded printing of a book removed, the
+    newest superseded one is imported again (from its book.md) and loaded. A further source another book also holds (the
+    same PDF uploaded twice) stays."""
     imp = xmlio.read_import(book_dir)
     src, loaded = (imp.get("source") if imp is not None else None), xmlio.read_state(book_dir) == "done"
     shelf, me = os.path.dirname(os.path.normpath(book_dir)), os.path.basename(os.path.normpath(book_dir))
@@ -617,6 +642,6 @@ def remove(book_dir, custom_dir, forget=False):
     if nxt and not any(st == "done" for _, _, st in others):
         try:
             run(nxt[1], custom_dir, convert_pdf=False)
-        except Exception:  # noqa: BLE001  (its own status says why; this book is removed)
+        except Exception:  # pylint: disable=broad-exception-caught  # (its own status says why; this book is removed)
             pass
     _links(custom_dir)  # (the entries that took the removed book's effects, and the books that cite it)

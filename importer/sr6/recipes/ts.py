@@ -56,6 +56,7 @@ _DV = re.compile(r"(.*\S)\s+(\d+[PS]\S*)")  # a TYPE cell holding the DV too: `S
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the title or opening text names the book, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -86,7 +87,7 @@ def _vehicle(text):
     cells = {
         h: v for t in {id(t): t for t in (hand[0], pilot[0])}.values() if len(t[1]) == 1 for h, v in zip(t[0], t[1][0])
     }
-    return {VEHICLE[h]: cells[h] for h in VEHICLE} if set(cells) == set(VEHICLE) else None
+    return {field: cells[h] for h, field in VEHICLE.items()} if set(cells) == set(VEHICLE) else None
 
 
 def band(text):
@@ -205,7 +206,7 @@ def _row(b, name, cells, text):
     return replace(b, name=name, header=list(row), row=row, stats=[], text=text)
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """Gear columns with no attribute (an ammunition's DV and attack ratings, a drug's power) go to the text; armor's
     SOCIAL is its social attribute (catalog.HEADERS)."""
     if b.row is None or norm(b.chapter) != GEAR or (k := _kind(b)[0]) in ("weapons", "vehicles"):
@@ -261,6 +262,7 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The book's catalog files and report, read from its regrouped blocks."""
     report = []
     res = catalog.read(_prep(list(blocks(regrouped)), report), ctx, sys.modules[__name__])
     res.report += report  # a box whose values don't read

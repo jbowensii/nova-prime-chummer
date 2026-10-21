@@ -46,6 +46,7 @@ _BAND = {"B", "BOD", "A", "AGI"}
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the title or opening text names the book, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -103,7 +104,10 @@ def _critters(bs):
     for b in bs:
         if b.type == "section" and b.level == 3:
             secs.setdefault((b.chapter, norm(b.name)), b)
-    owner = lambda b: next((k for k in ((b.chapter, norm(b.name)), (b.chapter, norm(b.section))) if k in secs), None)
+
+    def owner(b):
+        return next((k for k in ((b.chapter, norm(b.name)), (b.chapter, norm(b.section))) if k in secs), None)
+
     boxed = {owner(b) for b in bs if b.type == "item" and _being(b)}
     out, taken = [], set()
     for b in bs:
@@ -125,7 +129,7 @@ def _critters(bs):
 _weak = set()  # the book's weaknesses, set by extract()
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """A power's band read from its text, its WEAKNESS cell set when the stat blocks list it as a weakness."""
     if b.type == "section" and b.level == 3 and norm(b.chapter) == POWERS and _power_band(b):
         b = catalog.text_stats(b, catalog.HEADERS["critterpowers"])
@@ -134,7 +138,8 @@ def fix(b, parent2):
     return b
 
 
-def kind(chapter, b, parent2):
+def kind(chapter, b, _parent2):
+    """The (kind, slug) a block files under, or (None, None) when it is no entry."""
     if b.type == "section":
         return ("critterpowers", None) if b.level == 3 and chapter == POWERS and b.stats else (None, None)
     if _being(b):
@@ -147,6 +152,7 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """The critters and critter powers of the book's blocks."""
     bs = _critters(blocks(regrouped))
     _weak.clear()
     _weak.update(_weaknesses(bs))  # ponytail: module state, fine for the one-book-at-a-time importer

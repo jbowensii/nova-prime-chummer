@@ -38,7 +38,7 @@ def split_at(row, x, tol=0):
             return [row]
         k = max(gaps)[2]  # by position: a jump's strip can fall inside a word set closer than the strip
         return [row[:k], row[k:]]
-    elif any(w["x0"] < x + GUTTER_HALF and w["x1"] > x - GUTTER_HALF for w in row):
+    if any(w["x0"] < x + GUTTER_HALF and w["x1"] > x - GUTTER_HALF for w in row):
         return [row]
     return [part for part in ([w for w in row if w["x1"] <= x], [w for w in row if w["x0"] >= x]) if part]
 
@@ -112,7 +112,8 @@ def _rivers(rows, lo, hi):
             start = i
         elif not ok and start is not None:
             c = xs[0] + (start + i - 1) // 2
-            # (both sides hold a real share of the rows: a short sidebar beside a long column is a gap in a row, not a river)
+            # (both sides hold a real share of the rows: a short sidebar beside a long column is a gap in a row, not a
+            # river)
             if i - start >= 2 * GUTTER_HALF and all(
                 sum(side(row, c) for row in rows) >= _RIVER_MIN_SHARE * len(rows)
                 for side in (lambda r, c: r[-1]["x1"] <= c, lambda r, c: r[0]["x0"] >= c)

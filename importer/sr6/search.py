@@ -5,8 +5,9 @@ corpus, and the errata; the owner, phase 2C):
    for `Laser microphone`) and has a column for the field: a summary table, a gear list in another chapter, a
    comparison table, the implant table that prices an implant weapon;
 2. text: a sentence of the same book that prints the field's value with its word (`ratings 1 to 6`, `Availability
-   4`, `costs 500¥`): the item's own description first, then the text under a heading of its name, then the text of the heading it is printed under (`All
-   skillsofts are available in ratings from 1 to 6` over `Activesofts`), then any sentence naming it.
+   4`, `costs 500¥`): the item's own description first, then the text under a heading of its name, then the text of the
+   heading it is printed under (`All skillsofts are available in ratings from 1 to 6` over `Activesofts`), then any
+   sentence naming it.
 
 Several different values found in one circle is no value (the issue stays). Nothing here names an item: the readers
 are the books' column headers and value words."""
@@ -20,7 +21,8 @@ TEXT = {
     "rating": [
         (
             re.compile(
-                r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)\s*(?:ratings?\s+)?(\d+)\b",
+                r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)"
+                r"\s*(?:ratings?\s+)?(\d+)\b",
                 re.I,
             ),
             "range",
@@ -28,7 +30,8 @@ TEXT = {
         (re.compile(r"\b(?:maximum|max\.?)\s+rating\s*(?:is\s+|of\s+)?(\d+)\b", re.I), "max"),
         (
             re.compile(
-                r"\b(?:cannot|can\s+not|may\s+not)\s+(?:go\s+)?(?:above|over|exceed|beyond)\s+(?:a\s+)?rating\s+(?:of\s+)?(\d+)\b",
+                r"\b(?:cannot|can\s+not|may\s+not)\s+(?:go\s+)?(?:above|over|exceed|beyond)\s+(?:a\s+)"
+                r"?rating\s+(?:of\s+)?(\d+)\b",
                 re.I,
             ),
             "max",
@@ -58,6 +61,7 @@ _DASH = re.compile(r"\s*(?:[—–-]+|n/a)[*†]?\s*", re.I)
 
 
 def norm(s):
+    """`s` lower-cased and without accents, quotes and punctuation, for matching names."""
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c)).lower().replace("&", " and ")
     s = re.sub(r"['‘’\"“”]", "", s)
@@ -113,6 +117,7 @@ def good(field, v):
 
 
 def clean(v, field):
+    """A table cell `v` cleaned for `field`: spaces collapsed, a cost without thousands commas or the nuyen sign."""
     v = " ".join((v or "").split())
     if field == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
@@ -124,6 +129,7 @@ def clean(v, field):
 
 
 def sentences(text):
+    """The sentences of a book text, hyphenated line breaks joined."""
     t = re.sub(r"(\w)-\n(\w)", r"\1\2", text or "")
     t = " ".join(t.split())
     return [s for s in re.split(r"(?<=[.!?])\s+(?=[A-Z•(])", t) if s]

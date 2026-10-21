@@ -7,6 +7,8 @@ import unittest
 from importer import statblock
 from importer.tests.test_statblock import STAT
 
+# pylint: disable=protected-access
+
 
 class LineEffectsTest(unittest.TestCase):
     @classmethod
@@ -15,6 +17,7 @@ class LineEffectsTest(unittest.TestCase):
         cls.mapper = statblock.Mapper({**cls.rules["specs"], **statblock.SPEC_NAMES})
 
     def refs(self, line, atype="quality"):
+        """The ids of the effects a line maps to, or None when it maps to none."""
         got = statblock._line_effects(line, atype, self.mapper)
         return got if got is None else [f[0] for f in got]
 
@@ -83,6 +86,7 @@ class MapAmpMoreTest(unittest.TestCase):
         cls.mapper = statblock.Mapper({**cls.rules["specs"], **statblock.SPEC_NAMES})
 
     def amp(self, name, atype, rating, lines):
+        """A Shadow Amp row of the given type and rating."""
         return {"name": name, "type": atype, "rating": rating, "count": 1, "lines": lines}
 
     def test_a_hot_sim_line_brings_the_cold_one_it_builds_on(self):
@@ -94,7 +98,8 @@ class MapAmpMoreTest(unittest.TestCase):
         self.assertEqual(([f[0] for f in got[1]], got[2]), (["awk-adept"], ["Mumble"]))
 
     def test_a_catalog_quality_that_prices_as_equipment(self):
-        # (sustain-spell: 1 over the type's base; a later Quality starts at 2, Equipment at 1: the printed rating 2 is Equipment's)
+        # (sustain-spell: 1 over the type's base; a later Quality starts at 2, Equipment at 1: the printed rating 2 is
+        # Equipment's)
         sust = self.amp("Sust", "Quality", 2, ["Sustain up to 1 additional spells"])
         self.assertEqual(statblock.map_amp(sust, self.rules, self.mapper, True, catalog=True)[0], "quality")
         self.assertEqual(statblock.map_amp(sust, self.rules, self.mapper, False, catalog=True)[0], "equipment")

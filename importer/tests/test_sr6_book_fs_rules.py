@@ -11,13 +11,17 @@ from importer.sr6 import shapes
 from importer.sr6.recipes import crb, fs
 from tools.cl6check import fields, match
 
+# pylint: disable=protected-access
+
 
 def run_fs(md):
+    """Regroup `md` the way the FS recipe reads it and extract it."""
     regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
     return fs.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: (attributes, children)} of the `kind` file the extraction wrote."""
     return {
         e.findtext("name"): (e.attrib, [(c.tag, dict(c.attrib), c.text) for c in e])
         for e in ET.fromstring(res.files[f"{kind}.xml"])

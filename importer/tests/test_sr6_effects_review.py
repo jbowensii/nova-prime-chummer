@@ -1,12 +1,16 @@
-"""SR6 effects reader, the complete effects review (owner-approved 2026-10-18): the reader's rules by the review's root-cause families, and the
-marked gen="book" rows for what no rule says. Every sentence and name is invented, in the books' structure."""
+"""SR6 effects reader, the complete effects review (owner-approved 2026-10-18): the reader's rules by the review's
+root-cause families, and the marked gen="book" rows for what no rule says. Every sentence and name is invented, in the
+books' structure."""
 
 import unittest
 
 from importer.sr6 import effects, overrides
 
+# pylint: disable=protected-access
+
 
 def fx(text, kind="qualities", name=None, cls=""):
+    """[(target, op, value, switch, when, spec, affects)] of the effects read from `text`."""
     return [
         (a["target"], a["op"], a["value"], a.get("switch"), a.get("when"), a.get("spec"), a.get("affects"))
         for t, a, _ in effects.read(text, kind, name, cls)
@@ -15,6 +19,7 @@ def fx(text, kind="qualities", name=None, cls=""):
 
 
 def file(kind, tag, rows):
+    """A catalog file of `rows`, one entry a line."""
     return (
         f'<sr6:data kind="{kind}">\n'
         + "".join(f'  <{tag} id="{i}" source="X" page="1"{a}><name>{n}</name>{k}</{tag}>\n' for i, a, n, k in rows)
@@ -23,7 +28,8 @@ def file(kind, tag, rows):
 
 
 class MissingConditionTest(unittest.TestCase):
-    """Family 1: the words after a test's name limit the effect; family 2: a cut-off or flavor fragment is no condition."""
+    """Family 1: the words after a test's name limit the effect; family 2: a cut-off or flavor fragment is no
+    condition."""
 
     def test_the_words_after_the_test_limit_it(self):
         self.assertEqual(
@@ -104,7 +110,8 @@ class WrongPartyTest(unittest.TestCase):
 
     def test_a_drug_effect_line_is_the_users_and_cut_before_its_story(self):
         got = fx(
-            "**Vector:** Slot\n**Effect:** +1 Charisma, -1 Willpower\nChill is a great BTL for those who suffer from anxiety.",
+            "**Vector:** Slot\n**Effect:** +1 Charisma, -1 Willpower\nChill is a great BTL for those who suffer from "
+            "anxiety.",
             "gear",
         )
         self.assertEqual(
@@ -113,12 +120,15 @@ class WrongPartyTest(unittest.TestCase):
 
 
 class VariantBleedTest(unittest.TestCase):
-    """Family 4: a variant takes its own paragraph, not its siblings'; a table note is the model's it names; an ammo type's printed stats are its own."""
+    """Family 4: a variant takes its own paragraph, not its siblings'; a table note is the model's it names; an ammo
+    type's printed stats are its own."""
 
     def test_a_label_with_a_prefix_or_a_suffix_is_the_variants(self):
         text = (
-            "The zap symbionts come in kinds.\n**Zap-Booster:** reduces any Fatigue status by two levels.\n**Zap-Mender:** The user gains +1 Body for the test.\n"
-            "**Cyberware overdrive:** Gain +2 dice on a test made using the symbiont. One of these dice must be a wild die."
+            "The zap symbionts come in kinds.\n**Zap-Booster:** reduces any Fatigue status by two "
+            "levels.\n**Zap-Mender:** The user gains +1 Body for the test.\n"
+            "**Cyberware overdrive:** Gain +2 dice on a test made using the symbiont. One of these dice must be a wild "
+            "die."
         )
         part = effects._variant_part(
             text, "Zapsymbionts (Booster)", ["Zapsymbionts (Booster)", "Zapsymbionts (Mender)"]
@@ -129,7 +139,10 @@ class VariantBleedTest(unittest.TestCase):
         part = effects._variant_part(text, "Zapsymbionts (Mender)", ["Zapsymbionts (Booster)", "Zapsymbionts (Mender)"])
         self.assertIn("overdrive", part)
         self.assertNotIn("Fatigue", part)
-        tails = "**Swimming tail:** a swimming tail grants +2 dice for Athletics (Swimming) tests.\n**Bite tail:** nothing.\n**Cyberware overdrive:** Gain +2 dice on a test.\n"
+        tails = (
+            "**Swimming tail:** a swimming tail grants +2 dice for Athletics (Swimming) tests.\n**Bite tail:** "
+            "nothing.\n**Cyberware overdrive:** Gain +2 dice on a test.\n"
+        )
         self.assertIn(
             "swimming tail", effects._variant_part(tails, "Tails (Swimming)", ["Tails (Swimming)", "Tails (Bite)"])
         )
@@ -143,9 +156,13 @@ class VariantBleedTest(unittest.TestCase):
 
     def test_an_ammo_types_printed_stats_are_its_effects_once(self):
         files = {
-            "ammotypes.xml": '<sr6:data kind="ammotypes">\n  <ammotype id="za" source="X" page="1" ar="+2" dv="+1" class="ammotype"><name>Zap Shot</name></ammotype>\n</sr6:data>\n'
+            "ammotypes.xml": '<sr6:data kind="ammotypes">\n  <ammotype id="za" source="X" page="1" ar="+2" dv="+1" '
+            'class="ammotype"><name>Zap Shot</name></ammotype>\n</sr6:data>\n'
         }
-        texts = '<sr6:data kind="texts">\n  <text of="ammotypes" id="za">**Ar:** +2 | **Dv:** +1 | A story.</text>\n</sr6:data>\n'
+        texts = (
+            '<sr6:data kind="texts">\n  <text of="ammotypes" id="za">**Ar:** +2 | **Dv:** +1 | A '
+            "story.</text>\n</sr6:data>\n"
+        )
         out = effects.apply(files, texts)[0]["ammotypes.xml"]
         self.assertEqual(out.count('target="item:ar"'), 1)
         self.assertEqual(out.count('target="item:dv"'), 1)
@@ -168,7 +185,10 @@ class WirelessTest(unittest.TestCase):
         self.assertEqual(got[0][3], "conditional")
 
     def test_a_wireless_total_is_the_difference_from_the_base(self):
-        text = "This sight increases the weapon's Attack Rating by 1.\n**Wireless bonus:** The bonus to the Attack Rating increases to 2."
+        text = (
+            "This sight increases the weapon's Attack Rating by 1.\n**Wireless bonus:** The bonus to the Attack Rating "
+            "increases to 2."
+        )
         files = {"weapons.xml": file("weapons", "weapon", [("zs", ' category="Weapon accessory"', "Zap Sight", "")])}
         texts = f'<sr6:data kind="texts">\n  <text of="weapons" id="zs">{text}</text>\n</sr6:data>\n'
         out = effects.apply(files, texts)[0]["weapons.xml"]
@@ -185,13 +205,15 @@ class ChooseOneTest(unittest.TestCase):
             ("skill:choice", "edge-cost", "-1"),
         )
         got = fx(
-            "Zappers may swap in a wild die on rolls made for Biotech, Cracking, or Piloting (the choice of one skill is permanent)."
+            "Zappers may swap in a wild die on rolls made for Biotech, Cracking, or Piloting (the choice of one skill "
+            "is permanent)."
         )
         self.assertEqual([g[:3] for g in got], [("skill:choice", "wild-die", "1")])
 
     def test_the_choice_of_a_drain_attribute_names_no_test(self):
         got = fx(
-            "Zappers may resist adept drain with any physical attribute instead of Body, and swap in a wild die on Athletics rolls "
+            "Zappers may resist adept drain with any physical attribute instead of Body, and swap in a wild die on "
+            "Athletics rolls "
             "(the choice of physical attribute for drain is permanent)."
         )
         self.assertEqual(
@@ -229,7 +251,8 @@ class NumberTest(unittest.TestCase):
 
     def test_each_point_of_essence_loss_is_a_formula_shown(self):
         got = fx(
-            "Each point of your Essence loss (round up) gives a -1 dice pool penalty to tests that involve Charisma or Logic."
+            "Each point of your Essence loss (round up) gives a -1 dice pool penalty to tests that involve Charisma or "
+            "Logic."
         )
         self.assertEqual(
             [(g[0], g[2], g[3]) for g in got],
@@ -278,7 +301,8 @@ class MissingClauseTest(unittest.TestCase):
 
     def test_overdrive_dice_and_the_wild_die(self):
         got = fx(
-            "**Cyberware overdrive:** Gain +2 dice on a test made using the zaptail. One of these dice must be a wild die.",
+            "**Cyberware overdrive:** Gain +2 dice on a test made using the zaptail. One of these dice must be a wild "
+            "die.",
             "augmentations",
         )
         self.assertEqual(
@@ -286,7 +310,8 @@ class MissingClauseTest(unittest.TestCase):
             [("test:other", "add", "activated"), ("test:other", "wild-die", "activated")],
         )
         got = fx(
-            "**Cyberware overdrive:** Reduce the threshold for an Athletics (Swimming) test by 1. Convert one die to a wild die.",
+            "**Cyberware overdrive:** Reduce the threshold for an Athletics (Swimming) test by 1. Convert one die to a "
+            "wild die.",
             "augmentations",
         )
         self.assertEqual(
@@ -301,7 +326,10 @@ class MissingClauseTest(unittest.TestCase):
         self.assertEqual({(g[0], g[1]) for g in got}, {("test:defense", "add"), ("test:defense", "wild-die")})
 
     def test_the_sentence_after_a_run_in_label_keeps_it(self):
-        text = "A tail.\n**Thagomizer tail:** It does DV 4P.\n**Cyberware overdrive:** Gain +2 dice on a test\nmade using the tail. One of these dice must be a wild die."
+        text = (
+            "A tail.\n**Thagomizer tail:** It does DV 4P.\n**Cyberware overdrive:** Gain +2 dice on a test\nmade using "
+            "the tail. One of these dice must be a wild die."
+        )
         got = [
             (a["op"], a.get("switch"))
             for t, a, _ in effects.read(text, "augmentations", "Tails (Thagomizer)")
@@ -374,7 +402,8 @@ class MissingClauseTest(unittest.TestCase):
     def test_the_vehicle_operation_tests_and_a_link_that_only_checks(self):
         self.assertEqual(
             fx(
-                "When you are jumped in, you gain a bonus point of Edge on all tests involving the operation of a vehicle.",
+                "When you are jumped in, you gain a bonus point of Edge on all tests involving the operation of a "
+                "vehicle.",
                 "augmentations",
             )[0][:5],
             ("test:vehicle", "edge", "1", "conditional", "when you are jumped in"),
@@ -415,15 +444,17 @@ class NewTargetsTest(unittest.TestCase):
 
 
 class BookRowTest(unittest.TestCase):
-    """A gen="book" row: drops name exactly the effects they take out; effects are not added twice; a link kid is allowed."""
+    """A gen="book" row: drops name exactly the effects they take out; effects are not added twice; a link kid is
+    allowed."""
 
     def apply(self, rows, xml):
+        """Run the overrides over a qualities file holding `xml`; the file it writes."""
         from importer.sr6 import NS
         import contextlib
         import io
 
         xml = xml if "xmlns:sr6" in xml else xml.replace("<sr6:data ", f'<sr6:data xmlns:sr6="{NS}" ', 1)
-        self.err = io.StringIO()
+        self.err = io.StringIO()  # pylint: disable=attribute-defined-outside-init  # the tests read it after apply()
         with contextlib.redirect_stderr(self.err):
             return overrides.apply("x", {"qualities.xml": xml}, rows)["qualities.xml"]
 
@@ -436,7 +467,8 @@ class BookRowTest(unittest.TestCase):
                     "zq",
                     "",
                     "Zap Quality",
-                    '<effect target="test:all" op="no-edge" value="1"/><effect target="test:all" op="no-edge" value="1" switch="conditional" when="while zapped"/>',
+                    '<effect target="test:all" op="no-edge" value="1"/><effect target="test:all" op="no-edge" '
+                    'value="1" switch="conditional" when="while zapped"/>',
                 )
             ],
         )
@@ -460,7 +492,10 @@ class BookRowTest(unittest.TestCase):
         self.assertEqual(out2.count('target="test:all"'), 1)  # (applied again: the same)
 
     def test_a_book_effect_replaces_the_readers_of_the_same_target_and_operation(self):
-        reader = '<effect target="test:magic-resistance" op="add" value="R" switch="conditional" when="to resist spells"/><effect target="skill:con" op="edge" value="1"/>'
+        reader = (
+            '<effect target="test:magic-resistance" op="add" value="R" switch="conditional" when="to resist '
+            'spells"/><effect target="skill:con" op="edge" value="1"/>'
+        )
         xml = file(
             "qualities",
             "quality",

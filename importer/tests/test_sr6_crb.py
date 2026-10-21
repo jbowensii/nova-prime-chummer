@@ -14,6 +14,8 @@ from importer import sr6
 from importer.sr6 import archetypes, catalog, regroup
 from importer.sr6.recipes import crb, identify
 
+# pylint: disable=protected-access,redefined-outer-name  # the tests reach into private helpers; locals reuse `entries`
+
 BOOK_MD = """<!-- page 1 -->
 Made-up cover. Shadowrun, Sixth World Core Rulebook (invented test book)
 <!-- page 3 -->
@@ -380,20 +382,23 @@ ALIASES = {"zapp rifle": "zap rifle"}  # a made-up spelling difference
 
 
 def run_recipe(md=BOOK_MD):
+    """Run the recipe over a book's markdown."""
     regrouped, report = regroup.regroup(md, ALIASES, name_headers=crb.NAME_HEADERS, end_page=crb.END_PAGE)
     return crb.extract(regrouped), report
 
 
 def entries(res, kind):
+    """The result's entries of one kind."""
     return {e.findtext("name"): e for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
-class CrbRecipeTest(unittest.TestCase):
+class CrbRecipeTest(unittest.TestCase):  # pylint: disable=too-many-public-methods  # one test class per book
     @classmethod
     def setUpClass(cls):
         cls.res, cls.regroup_report = run_recipe()
 
     def rep(self, kind):
+        """The report rows of one kind."""
         return [r for r in self.res.report if r["kind"] == kind]
 
     def test_every_kind_has_its_entry(self):
@@ -680,8 +685,8 @@ class CrbRecipeTest(unittest.TestCase):
             (g.get("id"), g.get("streetName"), g.get("metatype"), b.get("magic")),
             ("crb.glow-runner", "Glow Runner", "crb.glimmerkin", "adept"),
         )
-        # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and E;
-        # B to D print nothing, so no priority assignment holds it within the karma; Sum-to-Ten's letters (which may
+        # the priorities fitted (importer/sr6/fit.py): this book's rows hold the adept only at A and Glimmerkin at A and
+        # E; B to D print nothing, so no priority assignment holds it within the karma; Sum-to-Ten's letters (which may
         # repeat) do better, attributes at A as well as magic, and still overspend, so the prime runner's doubled Karma
         # (CRB Hong Kong p.63, levelPrime) is assumed: the skill and the nuyen with karma (D's rows print nothing); its
         # contacts take more points than Charisma x 6, so the Sixth World Companion's expanded contacts (p.161) too
@@ -858,11 +863,14 @@ class CrbRecipeTest(unittest.TestCase):
         )  # none named
 
     def test_what_a_sample_line_is_printed_with(self):
-        """A weapon's `w/` list: accessories fitted to it (a count its quantity; one its text names left out), ammunition
-        as the row of its kind (per 10 rounds) and grenades as lines of their own, each per weapon on the line; a
-        gadget's enhancements found among the line's kinds (Smooth Operations drops the `w/`), an unrated one at the
-        rating its Capacity needs; a commlink's accessories (made-up catalog)."""
-        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": a.pop("text", "")}  # noqa: E731
+        """A weapon's `w/` list: accessories fitted to it (a count its quantity; one its text names left out),
+        ammunition as the row of its kind (per 10 rounds) and grenades as lines of their own, each per weapon on the
+        line; a gadget's enhancements found among the line's kinds (Smooth Operations drops the `w/`), an unrated one at
+        the rating its Capacity needs; a commlink's accessories (made-up catalog)."""
+
+        def e(i, n, **a):
+            return {"id": i, "name": n, "attrs": a, "children": [], "text": a.pop("text", "")}
+
         idx = archetypes._Index(
             {
                 "weapons": [
@@ -896,7 +904,8 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertIn('<purchase uid="g7a4" kind="weapons" id="nb.spare-clip" name="Spare clip" qty="6"/>', line)
         self.assertNotIn("nb.glow-sight", line)  # (the Zapper's text names it: built in)
         self.assertIn(
-            '<purchase uid="g7x5" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="6" note="30 rounds fizzy ammo"/>',
+            '<purchase uid="g7x5" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="6" note="30 rounds fizzy '
+            'ammo"/>',
             line,
         )
         self.assertIn(
@@ -954,7 +963,10 @@ class CrbRecipeTest(unittest.TestCase):
         accessory printed with other words (`arm slide`, `small smugglers compartment`) is the one whose every word it
         prints; a limb's Agility or Strength above the user's natural (base 2) is that many Attribute increases
         (made-up catalog)."""
-        e = lambda i, n, **a: {"id": i, "name": n, "attrs": a, "children": [], "text": ""}  # noqa: E731
+
+        def e(i, n, **a):
+            return {"id": i, "name": n, "attrs": a, "children": [], "text": ""}
+
         idx = archetypes._Index(
             {
                 "weapons": [e("zapper", "Zapper", category="Heavy pistol", cost="300")],
@@ -979,7 +991,8 @@ class CrbRecipeTest(unittest.TestCase):
             idx, ["weapons"], "Zapper", 1, [], {}, note="Zapper [Heavy Pistol, w/ 20 rounds fizzy ammo]"
         )
         self.assertIn(
-            '<purchase uid="g1x2" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="2" note="20 rounds fizzy ammo">'
+            '<purchase uid="g1x2" kind="gear" id="nb.hp-ammo" name="Heavy Pistol/SMG" qty="2" note="20 rounds fizzy '
+            'ammo">'
             '<purchase uid="g1x2t1" kind="ammotypes" id="nb.fizzy" name="Fizzy" qty="1"/></purchase>',
             line,
         )
@@ -1043,7 +1056,7 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual([s.get("rating") for s in ET.fromstring(xml).iter("sin")], ["3"])
         self.assertEqual((seen["nuyen"], seen["toNuyen"], seen["karma"]), (7500, 3, 1))  # 13 contact points of 12
 
-        """A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text)."""
+        # A quality whose text says it doesn't count toward the six at creation is marked uncounted (made-up text).
         from importer.sr6 import flags
 
         self.assertEqual(
@@ -1057,9 +1070,9 @@ class CrbRecipeTest(unittest.TestCase):
         self.assertEqual(flags.uncounted("The limit of six qualities at character creation still applies."), {})
 
     def test_sample_overrides_replace_printed_text_and_note_it(self):
-        """A row of overrides/samples/<book>.json replaces a printed line's text (or appends to a line) and puts its note
-        on that sample only; text the book no longer prints is reported on stderr and its note left out (made-up rows).
-        """
+        """A row of overrides/samples/<book>.json replaces a printed line's text (or appends to a line) and puts its
+        note on that sample only; text the book no longer prints is reported on stderr and its note left out (made-up
+        rows)."""
         import contextlib
         import io
         import json
@@ -1089,7 +1102,9 @@ class CrbRecipeTest(unittest.TestCase):
         quality with levels keeps its printed level (made-up catalog)."""
         from types import SimpleNamespace
 
-        q = lambda i, n, **a: {"id": i, "name": n, "attrs": {"kind": "positive", "karma": "8", **a}}
+        def q(i, n, **a):
+            return {"id": i, "name": n, "attrs": {"kind": "positive", "karma": "8", **a}}
+
         entries = {
             "metatypes": [{"id": "glim", "name": "Glim", "attrs": {}, "children": []}],
             "qualities": [q("stubborn-shell", "Stubborn Shell"), q("lucky", "Lucky", perLevel="true", maxLevel="3")],
@@ -1105,9 +1120,9 @@ class CrbRecipeTest(unittest.TestCase):
         )
 
     def test_a_rank_printed_without_brackets_is_the_natural_rank(self):
-        """`Con 7` with a voice modulator at rating 3, the skill cap 6: Con 7 as printed (an error on the runner, not read
-        away); the modulator's dice stay on its line for the tests they hold on (`when`), nothing noted (made-up catalog
-        and settings)."""
+        """`Con 7` with a voice modulator at rating 3, the skill cap 6: Con 7 as printed (an error on the runner, not
+        read away); the modulator's dice stay on its line for the tests they hold on (`when`), nothing noted (made-up
+        catalog and settings)."""
         from types import SimpleNamespace
 
         entries = {
@@ -1136,7 +1151,10 @@ class CrbRecipeTest(unittest.TestCase):
     def test_a_near_name_finds_one_entry(self):
         """A maker before the name, a garment word swapped, an initialism, a variant in parentheses: the one entry left;
         two words shared at least, else none (made-up catalog)."""
-        e = lambda i, n: {"id": i, "name": n, "attrs": {}}  # noqa: E731
+
+        def e(i, n):
+            return {"id": i, "name": n, "attrs": {}}
+
         idx = archetypes._Index(
             {
                 "armor": [
@@ -1150,7 +1168,10 @@ class CrbRecipeTest(unittest.TestCase):
             },
             "nb",
         )
-        near = lambda n, p=(): (h := idx.near(["armor"], n, p)) and h[1]  # noqa: E731
+
+        def near(n, p=()):
+            return (h := idx.near(["armor"], n, p)) and h[1]
+
         self.assertEqual(
             [near("QX Zig Line", ["sticky", "deluxe"]), near("Fop o.T. Blue Moon Cape"), near("Acme Glimmer Shield")],
             ["nb.zd", "nb.ft", "nb.gs"],
@@ -1160,8 +1181,8 @@ class CrbRecipeTest(unittest.TestCase):
 
     def test_what_is_fitted_to_a_host_with_capacity(self):
         """`Zing ears (rating 2; w/ hum filter 2, buzz link, fizz)`: each one found is the host's accessory at its
-        rating and adds its cost; one the host's text says it has (a buzz link) and one not in the catalog are left to the
-        note (made-up catalog)."""
+        rating and adds its cost; one the host's text says it has (a buzz link) and one not in the catalog are left to
+        the note (made-up catalog)."""
         from types import SimpleNamespace
 
         entries = {
@@ -1247,7 +1268,8 @@ class CrbRecipeTest(unittest.TestCase):
         )
 
     def test_the_armor_worn_is_the_one_that_makes_the_printed_defense_rating(self):
-        """Body 3, Defense Rating 5 printed: the +2 armor is worn, not the higher +3 one; no Defense Rating printed: the highest."""
+        """Body 3, Defense Rating 5 printed: the +2 armor is worn, not the higher +3 one; no Defense Rating printed:
+        the highest."""
         from types import SimpleNamespace
 
         entries = {
@@ -1257,27 +1279,31 @@ class CrbRecipeTest(unittest.TestCase):
                 {"id": "thick", "name": "Thick Coat", "attrs": {"defense": "+3", "cost": "10"}},
             ],
         }
-        worn = lambda stats: {
-            x.get("id"): x.get("worn")
-            for x in ET.fromstring(
-                archetypes.build(  # noqa: E731
-                    "NB",
-                    "Tester",
-                    SimpleNamespace(label="metatype: Glim", stats=stats, labels={"Gear": "Thin Wrap, Thick Coat"}),
-                    9,
-                    entries,
-                    "2026-10-09T00:00:00.000Z",
-                    cs={},
-                )[1]
-            ).iter("purchase")
-        }
+
+        def worn(stats):
+            return {
+                x.get("id"): x.get("worn")
+                for x in ET.fromstring(
+                    archetypes.build(  # noqa: E731
+                        "NB",
+                        "Tester",
+                        SimpleNamespace(label="metatype: Glim", stats=stats, labels={"Gear": "Thin Wrap, Thick Coat"}),
+                        9,
+                        entries,
+                        "2026-10-09T00:00:00.000Z",
+                        cs={},
+                    )[1]
+                ).iter("purchase")
+            }
+
         self.assertEqual(worn([{"B": "3"}, {"DR": "5"}]), {"nb.thin": "true", "nb.thick": None})
         self.assertEqual(worn([{"B": "3"}]), {"nb.thin": None, "nb.thick": "true"})
 
     def test_an_always_on_bonus_is_folded_into_the_printed_number(self):
-        """(owner, 2026-10-10) `Zap 4` with a reflex recorder (always on): natural Zap 3, noted; `Lurk 4(5)` with one: the
-        brackets hold it, natural 4; `A 5` with muscle toner 2: natural 3; `R 3(4)` with wired reflexes 1 (switchable):
-        natural 3; `Gab 7` with a voice modulator (wireless, conditional): 7 (made-up catalog and skills)."""
+        """(owner, 2026-10-10) `Zap 4` with a reflex recorder (always on): natural Zap 3, noted; `Lurk 4(5)` with one:
+        the brackets hold it, natural 4; `A 5` with muscle toner 2: natural 3; `R 3(4)` with wired reflexes 1
+        (switchable): natural 3; `Gab 7` with a voice modulator (wireless, conditional): 7 (made-up catalog and
+        skills)."""
         from types import SimpleNamespace
 
         entries = {
@@ -1295,7 +1321,8 @@ class CrbRecipeTest(unittest.TestCase):
             stats=[{"A": "5", "R": "3(4)"}],
             labels={
                 "Active Skills": "Zap 4, Lurk 4(5), Gab 7",
-                "Augmentations": "reflex recorder (Zap & Lurk), muscle toner 2, wired reflexes 1, voice modulator (rating 3)",
+                "Augmentations": "reflex recorder (Zap & Lurk), muscle toner 2, wired reflexes 1, voice modulator "
+                "(rating 3)",
             },
         )
         _, xml, _ = archetypes.build("NB", "Tester", b, 9, entries, "2026-10-09T00:00:00.000Z", cs={"skillCap": 6.0})
@@ -1317,7 +1344,10 @@ class CrbRecipeTest(unittest.TestCase):
         """A level printed with a quality finds an entry that comes in levels (not a path step of the same name); a
         rating printed with an item never finds an entry named for another rating; a `+3` is the specialization made
         an expertise (made-up catalogs)."""
-        q = lambda i, n, **a: {"id": i, "name": n, "attrs": a}
+
+        def q(i, n, **a):
+            return {"id": i, "name": n, "attrs": a}
+
         own = {"qualities": [q("craving", "Craving")]}  # a path's one-level step, exact
         core = {
             "qualities": [
@@ -1342,12 +1372,15 @@ class CrbRecipeTest(unittest.TestCase):
         """An item printed at a rating with a word the catalog's name lacks takes the row of that rating (not rating
         1's), and is priced by the entry's formula as the app prices it, not its printed first-row value (made-up)."""
         tier = ("formula", {"field": "cost"}, "tier(R; 1: 100; 2: 300; 3: 900)")
-        row = lambda r: {
-            "id": f"zap-jack-rating-{r}",
-            "name": f"Zap jack (Rating {r})",
-            "attrs": {"cost": "100"},
-            "children": [tier],
-        }
+
+        def row(r):
+            return {
+                "id": f"zap-jack-rating-{r}",
+                "name": f"Zap jack (Rating {r})",
+                "attrs": {"cost": "100"},
+                "children": [tier],
+            }
+
         idx = archetypes._Index({"augmentations": [row(1), row(3)]}, "NB")
         line, _, cost = archetypes._purchase(idx, ["augmentations"], "zap jack MPI (rating 3)", 1, [], {})
         self.assertIn('id="nb.zap-jack-rating-3"', line)
@@ -1419,7 +1452,10 @@ class CodeAliasTest(unittest.TestCase):
 
     def test_a_split_name_the_book_never_prints_takes_its_printed_short_form(self):
         class Index:  # the book's sentences (invented): the short form only
+            """A stub index of the book's printed sentences."""
+
             def mentions(self, name):
+                """The printed mentions of a name in the stub index."""
                 return [(9, "a Zorp Blaster [Pistol]")] if name.lower() == "zorp blaster" else []
 
         self.assertEqual(catalog.printed_short("Zorp Mark Blaster", Index()), ["Zorp Blaster"])

@@ -1,7 +1,7 @@
-"""SR6 recipe registry. A recipe module has ID, NAME, PUBLISHER, CANON, ALIASES, NAME_HEADERS, match(meta, md_head) -> 0..1
-and extract(regrouped, ctx=None) -> importer.recipes.Result (files: <kind>.xml -> XML, ids unscoped; texts). identify()
-picks the best match at or above THRESHOLD; a book none matches fails, unless skipped() knows it has nothing to import.
-"""
+"""SR6 recipe registry. A recipe module has ID, NAME, PUBLISHER, CANON, ALIASES, NAME_HEADERS, match(meta, md_head) ->
+0..1 and extract(regrouped, ctx=None) -> importer.recipes.Result (files: <kind>.xml -> XML, ids unscoped; texts).
+identify() picks the best match at or above THRESHOLD; a book none matches fails, unless skipped() knows it has nothing
+to import."""
 
 import re
 
@@ -14,6 +14,7 @@ RECIPES += general.RECIPES  # the books with no recipe of their own: one each, l
 
 
 def identify(meta, md_head):
+    """The best-matching recipe for a book and its score, or (None, score) under the threshold."""
     best, score = max(((m, m.match(meta, md_head)) for m in RECIPES), key=lambda x: x[1])
     return (best, score) if score >= THRESHOLD else (None, score)
 
@@ -37,7 +38,8 @@ def current(sha):
 
 
 def published(sha):
-    """The month (YYYY-MM) a known printing was published, or None (printing()'s rank leaves it out for a CURRENT one)."""
+    """The month (YYYY-MM) a known printing was published, or None (printing()'s rank leaves it out for a CURRENT
+    one)."""
     p = printing(sha)
     return p[0][1] if p else None
 

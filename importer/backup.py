@@ -64,6 +64,7 @@ class RestoreError(Exception):
 
 
 def app_version(version=None):
+    """The app version: the one given, else package.json's."""
     if version:
         return version
     try:
@@ -124,9 +125,11 @@ def backup(dirs, out, keys=False, version=None):
             rows = "".join(f'  <folder name="{f}" files="{n}" bytes="{b}"/>\n' for f, (n, b) in counts.items())
             manifest = (
                 xmlio.HEAD + f'<backup format="1" app={quoteattr(app_version(version))} '
-                f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}" keys="{"yes" if keys else "no"}" '
+                f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}" '
+                f'keys="{"yes" if keys else "no"}" '
                 f'{"" if users is None else f"users={quoteattr(str(users))} "}authSecret="{"yes" if secret else "no"}" '
-                f'files="{sum(n for n, _ in counts.values())}" bytes="{sum(b for _, b in counts.values())}">\n{rows}</backup>\n'
+                f'files="{sum(n for n, _ in counts.values())}" bytes="{sum(b for _, b in counts.values())}">\n'
+                f"{rows}</backup>\n"
             )
             zf.writestr("backup.xml", manifest)
         os.chmod(tmp, 0o600)
@@ -142,11 +145,12 @@ def _count_users(f):
     try:
         return sum(1 for _, el in ET.iterparse(f) if el.tag == "user")
     except (ET.ParseError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-        raise RestoreError(f"the backup’s accounts file ({USERS}) can’t be read ({e})")
+        raise RestoreError(f"the backup’s accounts file ({USERS}) can’t be read ({e})") from e
 
 
 def unsafe_entry(info):
-    """The checks any uploaded zip's entry gets (backups, data packs): a link, a device, encryption, a zip bomb; or None."""
+    """The checks any uploaded zip's entry gets (backups, data packs): a link, a device, encryption, a zip bomb; or
+    None."""
     kind = stat.S_IFMT(info.external_attr >> 16)
     if kind == stat.S_IFLNK:
         return "has a symbolic link"
@@ -187,7 +191,7 @@ def check(path):
     try:
         zf = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as e:
-        raise RestoreError(f"this isn’t a readable zip file ({e})")
+        raise RestoreError(f"this isn’t a readable zip file ({e})") from e
     with zf:
         infos, names, total = zf.infolist(), set(), 0
         if len(infos) > MAX_ENTRIES:
@@ -228,7 +232,7 @@ def check(path):
         try:
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
-            raise RestoreError(f"backup.xml can’t be read ({e})")
+            raise RestoreError(f"backup.xml can’t be read ({e})") from e
         _check_manifest(root, counts, any(k.casefold() in files for k in ALL_KEYS))
         # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
         byname = {i.filename.casefold(): i for i in infos}
@@ -241,8 +245,8 @@ def check(path):
 
 
 def _config(zf, info, name, what):
-    """A library/.config file of the zip (users.xml, auth.xml) checked against its schema (users.xsd, auth.xsd): its root,
-    None when the zip has none; RestoreError when it isn't valid."""
+    """A library/.config file of the zip (users.xml, auth.xml) checked against its schema (users.xsd, auth.xsd): its
+    root, None when the zip has none; RestoreError when it isn't valid."""
     if info is None:
         return None
     from importer.datapack import PARSER, schema_of  # lxml: only here, backup itself doesn't need it
@@ -253,7 +257,7 @@ def _config(zf, info, name, what):
     try:
         doc = etree.fromstring(zf.read(info), PARSER)
     except (etree.XMLSyntaxError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-        raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})")
+        raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})") from e
     schema = schema_of(name)
     if doc.tag != f"{{{CONFIG_NS}}}{name}" or not schema.validate(doc):
         why = schema.error_log.last_error.message if doc.tag == f"{{{CONFIG_NS}}}{name}" else f"its root isn’t <{name}>"
@@ -275,9 +279,10 @@ def _check_manifest(root, counts, has_keys):
     try:
         datetime.fromisoformat(root.get("created") or "")
         got = {f.get("name"): [int(f.get("files")), int(f.get("bytes"))] for f in root.findall("folder")}
-        int(root.get("files")), int(root.get("bytes"))
-    except (TypeError, ValueError):
-        raise bad
+        int(root.get("files"))
+        int(root.get("bytes"))
+    except (TypeError, ValueError) as exc:
+        raise bad from exc
     if len(root) != 3 or got != counts:
         raise RestoreError("backup.xml doesn’t match the files in the zip")
     if has_keys and root.get("keys") != "yes":
@@ -306,7 +311,8 @@ def swap(target, new, keep=()):
         os.rmdir(old)
         raise
     os.rmdir(new)
-    # committed: renamed before it's deleted, so a swap killed while deleting isn't read as one to roll back (datapack.recover)
+    # committed: renamed before it's deleted, so a swap killed while deleting isn't read as one to roll back
+    # (datapack.recover)
     done = os.path.join(target, os.path.basename(old).replace(TEMP + "old-", TEMP + "done-", 1))
     os.replace(old, done)
     shutil.rmtree(done, ignore_errors=True)
@@ -324,7 +330,7 @@ def apply(path, dirs, version=None):
         try:
             _extract(path, dirs, news)
         except (OSError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-            raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})")
+            raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})") from e
         # ponytail: the zip is closed before the swap (Windows can't move a folder holding an open file, and the
         # applied zip may itself sit in library/.backups); a killed process can leave a folder half swapped
         # (its old files in .restore-old-*); the safety backup covers that.

@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from types import SimpleNamespace
 
-from importer.convert import convert
 import pdfplumber
 
+from importer.convert import convert
 from importer.sr6.layout import BOLD, INDENT, Fonts, _first_marks, _is_furniture, furniture, one_layer, rejoin_ligatures
 from importer.tests.minipdf import sr6_doubled_pdf, sr6_layout_pdf
 
@@ -65,7 +65,9 @@ class Sr6LayoutTest(unittest.TestCase):
         self.assertFalse(_is_furniture(340, 200, card))
 
     def test_first_cell_marks_indent_and_bold(self):
-        w = lambda x, font="Sans-Regular": [{"x0": x, "chars": [{"fontname": "ABC+" + font, "text": "Z"}]}]
+        def w(x, font="Sans-Regular"):
+            return [{"x0": x, "chars": [{"fontname": "ABC+" + font, "text": "Z"}]}]
+
         # a flush-left column: the rows set 9 pt in are indented; a bold name among regular ones is marked
         self.assertEqual(
             _first_marks([w(100), w(100), w(109), w(109), w(100, "Sans-Bold"), w(109)]),
@@ -76,14 +78,17 @@ class Sr6LayoutTest(unittest.TestCase):
 
     def test_a_table_row_in_the_bottom_band_stays(self):
         page = SimpleNamespace(width=612, height=792)
-        w = lambda text, top, font, size: {
-            "text": text,
-            "x0": 300,
-            "top": top,
-            "size": size,
-            "upright": True,
-            "chars": [{"fontname": "ABC+" + font}],
-        }
+
+        def w(text, top, font, size):
+            return {
+                "text": text,
+                "x0": 300,
+                "top": top,
+                "size": size,
+                "upright": True,
+                "chars": [{"fontname": "ABC+" + font}],
+            }
+
         words = [w("Fizz", 700, "Sans-Regular", 7), w("Zen", 770, "Sans-Regular", 7), w("17", 775, "Disp-Regular", 9)]
         fonts = Fonts("Serif", 10.5, "Disp", {}, frozenset({("Disp", 9.0)}))  # the running feet: 9 pt display face
         self.assertEqual([x["text"] for x in furniture(page, words, fonts)], ["Fizz", "Zen"])
@@ -342,7 +347,7 @@ class WordsLineByLineTest(unittest.TestCase):
             self._char("E", 1.5, 16, 4),
             self._char("F", 5.5, 16, 5),
         ]
-        kw = dict(extra_attrs=["size"], keep_blank_chars=False, return_chars=True)
+        kw = {"extra_attrs": ["size"], "keep_blank_chars": False, "return_chars": True}
         self.assertNotEqual(sorted(w["text"] for w in pdfplumber.utils.extract_words(cs, **kw)), ["AB", "CD", "EF"])
         got = words(cs, **kw)
         self.assertEqual(sorted(w["text"] for w in got), ["AB", "CD", "EF"])
@@ -355,15 +360,17 @@ class StaggeredColumnsTest(unittest.TestCase):
 
     @staticmethod
     def _rows():
-        w = lambda x0, x1, top: {
-            "x0": x0,
-            "x1": x1,
-            "top": top,
-            "bottom": top + 8,
-            "size": 8,
-            "text": "w",
-            "chars": [{}],
-        }
+        def w(x0, x1, top):
+            return {
+                "x0": x0,
+                "x1": x1,
+                "top": top,
+                "bottom": top + 8,
+                "size": 8,
+                "text": "w",
+                "chars": [{}],
+            }
+
         rows = [[w(90, 199, 39), w(344, 558, 39)]]  # a heading over the left column, beside the right one's first line
         for k in range(1, 6):
             rows += [[w(331, 558, 39 + 12 * k + 3)], [w(90, 318, 39 + 12 * k + 6)]]
@@ -385,14 +392,16 @@ class StaggeredColumnsTest(unittest.TestCase):
         from importer.pdf.columns import find_gutter
         from importer.sr6.layout import GUTTER_TOL
 
-        w = lambda x0, x1, top: {
-            "x0": x0,
-            "x1": x1,
-            "top": top,
-            "bottom": top + 8,
-            "size": 8,
-            "text": "w",
-            "chars": [{}],
-        }
+        def w(x0, x1, top):
+            return {
+                "x0": x0,
+                "x1": x1,
+                "top": top,
+                "bottom": top + 8,
+                "size": 8,
+                "text": "w",
+                "chars": [{}],
+            }
+
         rows = [[w(90 + 12 * (k % 2), 540 - 30 * (k % 3), 39 + 12 * k)] for k in range(12)]
         self.assertIsNone(find_gutter(rows, 612, tol=GUTTER_TOL))

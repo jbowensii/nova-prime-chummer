@@ -3,7 +3,8 @@
 `load(path)` takes a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs (each with custom/sr6 and
 library/sr6/book1), and returns {source id: Source}. A source printed by several runs (the core rulebook in each city
 edition) is read from the run whose printing is newest (the Current Printing, else the PDF's date; ties: first in name
-order). Values stay as printed; `value()` reads them at a rating the way the app's engine does (src/sr6/catalog/domain/values.ts rated()).
+order). Values stay as printed; `value()` reads them at a rating the way the app's engine does
+(src/sr6/catalog/domain/values.ts rated()).
 """
 
 import math
@@ -23,6 +24,8 @@ LEGAL = re.compile(r"\s*(?:\(([LIF])\)|([LIF]))\s*$")
 
 @dataclass
 class Source:
+    """One source book's entries, with its book folder and description texts."""
+
     src: str
     entries: list = field(default_factory=list)
     book_dir: str | None = None  # library/sr6/<book>: import.xml, book.md, regrouped.md, original.pdf
@@ -209,7 +212,7 @@ def _entries(src_dir, src):
             attrs = dict(e.attrib)
             for f in e.findall("formula"):  # the importer's rule for a field, beside its printed value: formula:<field>
                 expr = (f.text or "").strip()
-                opts = ",".join(sorted({m for m in re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr)}))
+                opts = ",".join(sorted(set(re.findall(r"opt\.([a-z0-9][a-z0-9.-]*[a-z0-9])", expr))))
                 attrs[f"formula:{f.get('field')}"] = "|".join(
                     [expr]
                     + [f"{k}={f.get(k)}" for k in ("unit", "round") if f.get(k)]
@@ -303,17 +306,19 @@ def _printed(base):
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(base)))), "library", "sr6", "book1"
     )
     md, imp = os.path.join(lib, "book.md"), os.path.join(lib, "import.xml")
+    # pylint: disable=consider-using-with  # read once
     year = corpus.printed_year(corpus.lines(open(md, encoding="utf8").read())) if os.path.exists(md) else None
     sha = ET.parse(imp).getroot().get("sha256", "") if os.path.exists(imp) else ""
     date = corpus.resolve_date(*corpus.pdf_meta(os.path.join(lib, "original.pdf")), year, "")[0]
+    # pylint: disable=protected-access  # the corpus module's helper, shared inside cl6check
     return corpus._printing(sha) == "", date
 
 
 def _fill(new, old):
-    """The owner's rule, the latest printing wins and older ones only fill gaps: an entry (kind, id) `new` lacks is taken
-    from `old`; a field `new` left open (an issue of its own) takes `old`'s printed value when `old` has no issue on it.
-    ponytail: the importer's own merge (importer/sr6/run.py older_printings) also carries formulas and notes; this reads
-    the printed attribute only."""
+    """The owner's rule, the latest printing wins and older ones only fill gaps: an entry (kind, id) `new` lacks is
+    taken from `old`; a field `new` left open (an issue of its own) takes `old`'s printed value when `old` has no issue
+    on it. ponytail: the importer's own merge (importer/sr6/run.py older_printings) also carries formulas and notes;
+    this reads the printed attribute only."""
     have = {(e["kind"], e["id"]): e for e in new.entries}
     for o in old.entries:
         e = have.get((o["kind"], o["id"]))
@@ -367,17 +372,20 @@ def kinds(idx):
     return out
 
 
-def kind_of(kinds, src, oid, kind):
-    """The kind an override row for entry `oid` of `src` names: `kind` when that file holds the id, else the one file that
-    does; None when none does (the row is stale); `kind` again when several do (the importer reports it)."""
+def kind_of(
+    kinds, src, oid, kind
+):  # pylint: disable=redefined-outer-name  # the parameter shadows the kinds() function
+    """The kind an override row for entry `oid` of `src` names: `kind` when that file holds the id, else the one file
+    that does; None when none does (the row is stale); `kind` again when several do (the importer reports it)."""
     have = kinds.get((src, oid), [])
     return kind if kind in have or len(have) > 1 else (have[0] if have else None)
 
 
 def carries(name, variants):
-    """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item per
-    variant (the owner's rule), so it has no variant list of its own."""
-    # (a nanite row is `<name> Colony` or `<name> Nanites`: Commlink6's `Colony Template` and `Pre-Built`, owner 2026-10-14)
+    """Whether an entry's name holds one of Commlink6's variant names (`Setae (hands or feet)`): the entry is one item
+    per variant (the owner's rule), so it has no variant list of its own."""
+    # (a nanite row is `<name> Colony` or `<name> Nanites`: Commlink6's `Colony Template` and `Pre-Built`, owner
+    # 2026-10-14)
     name = re.sub(r"(?i)\bnanites$", "(pre-built)", re.sub(r"(?i)\bcolony$", "(colony template)", name or ""))
     n = f"-{_norm(name)}-"
     return any(_norm(v) and f"-{_norm(v)}-" in n for v in variants)

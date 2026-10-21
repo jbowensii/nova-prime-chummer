@@ -1,4 +1,5 @@
-"""What a catalog kind's schema allows an override to write: allowed() reads it, fit() takes the rest out of the id rows."""
+"""What a catalog kind's schema allows an override to write: allowed() reads it, fit() takes the rest out of the id
+rows."""
 
 import os
 import sys
@@ -7,8 +8,8 @@ from functools import lru_cache
 
 @lru_cache(maxsize=None)
 def allowed(kind):
-    """The attributes the entry of catalog kind `kind` may carry (its schema's, read from public/data/sr6/schema), or None
-    for a kind with no schema. An override or a generator writes no attribute outside this set."""
+    """The attributes the entry of catalog kind `kind` may carry (its schema's, read from public/data/sr6/schema), or
+    None for a kind with no schema. An override or a generator writes no attribute outside this set."""
     from lxml import etree
 
     from importer.sr6 import KINDS, SCHEMA_DIR
@@ -51,7 +52,7 @@ def fit(rows):
         bad = [k for k in r.get("set", {}) if ok is not None and k not in ok]
         if bad:
             print(
-                f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped",
+                f"override {r.get('cl6') or r.get('id')}: {r['kind']}.xml has no {', '.join(bad)} on its entries, skipped",  # pylint: disable=line-too-long
                 file=sys.stderr,
             )
             r = {

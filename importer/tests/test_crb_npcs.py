@@ -1,7 +1,7 @@
-"""The core rulebook's NPC chapter (importer/recipes/crb_npcs.py) on made-up stat blocks in its layout: a two-column page
-of horizontal bands (a 16 pt name, the attribute table and skills on the left, amps, weapons, equipment and wounds on the
-right), margin tab letters, a page number, a description band with no table, and a block running over to the next page.
-Every name and number here is invented."""
+"""The core rulebook's NPC chapter (importer/recipes/crb_npcs.py) on made-up stat blocks in its layout: a two-column
+page of horizontal bands (a 16 pt name, the attribute table and skills on the left, amps, weapons, equipment and wounds
+on the right), margin tab letters, a page number, a description band with no table, and a block running over to the next
+page. Every name and number here is invented."""
 
 import io
 import os
@@ -158,6 +158,7 @@ class BlockTest(unittest.TestCase):
         cls.rules = statblock.load_rules()
 
     def chars(self, page, name, lines):
+        """The characters read from a page, with their parsed xml."""
         got, _ = crb_npcs.characters(page, name, lines, self.rules, {}, "2026-10-02T00:00:00.000Z", [])
         return got, [ET.fromstring(g["xml"]) for g in got]
 
@@ -249,6 +250,8 @@ class BlockTest(unittest.TestCase):
 
     def test_a_block_that_fails_is_reported_and_the_rest_import(self):
         class Page:  # stands in for a pdfplumber page: its bands are all npcs() reads
+            """A stub page whose bands are the lines to read."""
+
             bands = [("MADE-UP NEWT", NEWT), ("MADE-UP BROKEN", ["STR AGI WIL LOG CHA", None])]  # a line it can't read
 
         orig = crb_npcs.page_bands
@@ -265,8 +268,8 @@ class BlockTest(unittest.TestCase):
 
 
 class RunTest(unittest.TestCase):
-    """run() writes a recipe's NPCs to custom/imported/<source>/npcs/ and lists them in custom/imported/npcs.xml, keeping
-    other sources' rows; remove() takes the source's rows out again."""
+    """run() writes a recipe's NPCs to custom/imported/<source>/npcs/ and lists them in custom/imported/npcs.xml,
+    keeping other sources' rows; remove() takes the source's rows out again."""
 
     def test_run_writes_and_remove_drops_the_npcs(self):
         from importer.__main__ import remove, run

@@ -11,6 +11,10 @@ from importer.sr6.recipes import fs
 from importer.tests.test_cl6check import entry
 from tools.cl6check import canon, match
 
+# tests read the private helpers they check
+# a test's local names (got, rows, entry) shadow the module's helpers on purpose
+# pylint: disable=protected-access,redefined-outer-name
+
 BRANDS = """<!-- page 10 -->
 # WEAPONS RACK
 ## Melee Weapons
@@ -37,6 +41,7 @@ Another made-up Zed item.
 
 
 def weapons(md):
+    """{weapon name: (attributes, [alias texts])} of the weapons the Firing Squad reader makes from `md`."""
     regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
     xml = fs.extract(regrouped).files["weapons.xml"]
     return {e.findtext("name"): (e.attrib, [a.text for a in e.findall("alias")]) for e in ET.fromstring(xml.encode())}
@@ -114,10 +119,12 @@ class OverridesTest(unittest.TestCase):
 
 
 def cl6(name, page="10", kind="gear", **more):
+    """A Commlink6 record: its name, page, kind and aliases, plus any extra fields."""
     return {"name": name, "page": page, "kind": kind, "pool": (kind,), "aliases": canon.aliases(name, {}), **more}
 
 
 def got(records, mine):
+    """{record name: (how it matched, [names of the entries it matched])} of Commlink6 `records` against `mine`."""
     return {c["name"]: (how, [o["name"] for o in hits]) for c, hits, how in match.match(records, mine)}
 
 
@@ -205,7 +212,6 @@ class AddTest(unittest.TestCase):
                 overrides.apply("zz", {}, [{**self.ROW, "add": bad}])
 
     def test_every_added_entry_of_the_real_tables_is_schema_valid(self):
-        from pathlib import Path
         from lxml import etree
 
         schemas = Path(__file__).resolve().parents[2] / "public" / "data" / "sr6" / "schema"
@@ -253,7 +259,10 @@ class ActionAndPolearmRowsTest(unittest.TestCase):
 
 class TextFromTest(unittest.TestCase):
     FILES = {"rules.xml": '<d kind="rules"><rule id="zz-heading" page="1"><name>Zork a Thing</name></rule></d>'}
-    TEXTS = '<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n  <text of="rules" id="zz-heading">Invented body.\n• item one</text>\n</sr6:data>\n'
+    TEXTS = (
+        '<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n  <text of="rules" '
+        'id="zz-heading">Invented body.\n• item one</text>\n</sr6:data>\n'
+    )
     ROW = {
         "cl6": "Zork Thing",
         "kind": "actions",
@@ -319,7 +328,8 @@ class ClassTest(unittest.TestCase):
         '<gear id="zz.c" source="ZZ" page="1" category="Other"><name>C</name></gear></d>\n'
     )
     CATS = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n<d kind="categories"><category id="zz.gear.zorp" source="ZZ" page="1" of="gear">'
+        '<?xml version="1.0" encoding="UTF-8"?>\n<d kind="categories"><category id="zz.gear.zorp" source="ZZ" page="1" '
+        'of="gear">'
         "<name>Zorp</name></category></d>\n"
     )
     MAP = {"gear": {"Zorp": "TOOLS/TOOLS"}}
@@ -382,7 +392,6 @@ class ClassTest(unittest.TestCase):
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
 
     def test_class_validates_on_an_entry_of_every_kind_that_carries_one(self):
-        from pathlib import Path
         from lxml import etree
 
         schemas = Path(__file__).resolve().parents[2] / "public" / "data" / "sr6" / "schema"
@@ -410,7 +419,8 @@ class ClassTest(unittest.TestCase):
         }
         for kind, tag in tags.items():
             xml = (
-                f'<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}" version="1"><{tag} id="zz.a" source="ZZ" page="1" '
+                f'<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}" version="1"><{tag} id="zz.a" source="ZZ" '
+                'page="1" '
                 f'{need[kind]} class="TYPE/SUB_TYPE"><name>A</name></{tag}></sr6:data>'
             )
             xsd = etree.XMLSchema(etree.parse(str(schemas / f"{kind}.xsd")))
@@ -480,7 +490,8 @@ class ConsensusClassRowsTest(unittest.TestCase):
             for r in overrides.table(p.stem)
             if "id" in r and "set" in r and not r.get("gen")
         }
-        rows = list(csv.DictReader(open(self.CSV, encoding="utf-8-sig")))
+        with open(self.CSV, encoding="utf-8-sig") as fh:
+            rows = list(csv.DictReader(fh))
         self.assertEqual(len(rows), 287)
         missing = [
             r["our_id"] for r in rows if have.get((r["src"], r["kind"], r["our_id"][len(r["src"]) + 1 :])) != r["class"]
@@ -502,7 +513,8 @@ class SectionClassTest(unittest.TestCase):
     XML = (
         '<?xml version="1.0" encoding="UTF-8"?>\n<d kind="gear">'
         '<gear id="zz.in" source="ZZ" page="10" category="Zorp"><name>In</name></gear>'
-        '<gear id="zz.had" source="ZZ" page="20" category="Zorp" class="BIOWARE/BIOWARE_STANDARD"><name>Had</name></gear>'
+        '<gear id="zz.had" source="ZZ" page="20" category="Zorp" class="BIOWARE/BIOWARE_STANDARD"><name>Had</name>'
+        "</gear>"
         '<gear id="zz.none" source="ZZ" page="15" category="Other"><name>None</name></gear>'
         '<gear id="zz.out" source="ZZ" page="21" category="Zorp"><name>Out</name></gear></d>\n'
     )
@@ -525,7 +537,6 @@ class SectionClassTest(unittest.TestCase):
         self.assertEqual(other, {"gear.xml": self.XML})
 
     def test_the_shipped_section_rule_and_its_extra_class_agree(self):
-        import json
         import re
         from importer.sr6 import classes
 
@@ -547,8 +558,8 @@ class SectionClassTest(unittest.TestCase):
 
     def test_cl6check_accepts_a_section_class_whatever_commlink6s_is(self):
         from types import SimpleNamespace
-        from importer.tests.test_cl6check import rec, entry
-        from tools.cl6check import __main__ as cli, canon
+        from importer.tests.test_cl6check import rec
+        from tools.cl6check import __main__ as cli
 
         a = canon.canonical(
             rec('<item id="aaa" type="BIOWARE" subtype="BIOWARE_STANDARD"/>', name="Beast Eye", book="bs")
@@ -569,25 +580,30 @@ class SectionClassTest(unittest.TestCase):
 class StructureOpsTest(unittest.TestCase):
     GEAR = (
         '<?xml version="1.0" encoding="UTF-8"?>\n<!-- Generated by the importer. -->\n<d kind="gear">'
-        '<gear id="zz.a" source="ZZ" page="1" category="Branded weapon" avail="4" cost="9" capacity="2" class="WEAPON_CLOSE_COMBAT/CLUBS"><name>Alpha</name><alias>Old</alias></gear>'
+        '<gear id="zz.a" source="ZZ" page="1" category="Branded weapon" avail="4" cost="9" capacity="2" '
+        'class="WEAPON_CLOSE_COMBAT/CLUBS"><name>Alpha</name><alias>Old</alias></gear>'
         '<gear id="zz.b" source="ZZ" page="1" category="Tool"><name>Beta</name></gear>'
         '<gear id="zz.dup" source="ZZ" page="1" category="Tool"><name>Dup</name><alias>Dupe</alias></gear></d>\n'
     )
     WEAPONS = (
         '<?xml version="1.0" encoding="UTF-8"?>\n<d kind="weapons">'
-        '<weapon id="zz.a" source="ZZ" page="1" category="New powered weapon" type="Chain" dv="4P" ar="9/—/—/—/—" avail="7" class="X/Y"><name>Alpha</name></weapon>'
+        '<weapon id="zz.a" source="ZZ" page="1" category="New powered weapon" type="Chain" dv="4P" ar="9/—/—/—/—" '
+        'avail="7" class="X/Y"><name>Alpha</name></weapon>'
         '<weapon id="zz.w" source="ZZ" page="2" category="Blade"><name>W</name></weapon></d>\n'
     )
     TEXTS = (
-        '<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n  <text of="gear" id="zz.dup">Invented.</text>\n'
+        '<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:x" kind="texts" version="1">\n  <text of="gear" '
+        'id="zz.dup">Invented.</text>\n'
         '  <text of="gear" id="zz.b">Kept.</text>\n</sr6:data>\n'
     )
 
     def run_ops(self, rows, files=None):
+        """Apply override `rows` to the invented book's gear and weapons files (or `files`)."""
         return overrides.apply("zz", files or {"gear.xml": self.GEAR, "weapons.xml": self.WEAPONS}, rows)
 
     @staticmethod
     def ids(xml):
+        """[(id, name)] of each entry in an xml string."""
         return [(e.get("id"), e.findtext("name")) for e in ET.fromstring(xml.encode())]
 
     def test_remove_deletes_the_entry_and_its_text_and_is_idempotent_and_logs_a_missing_id(self):
@@ -661,9 +677,7 @@ class StructureOpsTest(unittest.TestCase):
                 self.run_ops([bad])
 
     def test_the_decisions_are_in_the_tables_and_every_class_is_known(self):
-        import json as j
-
-        extra = j.loads((overrides.DIR.parent / "classes" / "extra_classes.json").read_text(encoding="utf8"))
+        extra = json.loads((overrides.DIR.parent / "classes" / "extra_classes.json").read_text(encoding="utf8"))
         for k in (
             "CRITTERWARE/AUGMENTATION",
             "CRITTERWARE/GEAR",
@@ -681,7 +695,7 @@ class StructureOpsTest(unittest.TestCase):
             "WEAPON_LASER/ASSAULT_CANNON",
         ):
             self.assertIn(k, extra)
-        t = lambda s: overrides.table(s)  # noqa: E731
+        t = overrides.table
         self.assertEqual(sum(1 for r in t("lhv") if "move_kind" in r), 14)
         self.assertEqual(sum(1 for r in t("lhv") if "merge" in r), 4)
         self.assertEqual(
@@ -711,7 +725,6 @@ class StructureOpsTest(unittest.TestCase):
 
 class LatestDecisionsTest(unittest.TestCase):
     def test_the_whole_critter_chapter_is_one_class_and_the_chainblade_duplicate_goes(self):
-        import json as j
         from importer.sr6 import classes
 
         self.assertNotIn("CRITTERWARE/CYBER_BODYWARE", classes.extra())
@@ -725,7 +738,8 @@ class LatestDecisionsTest(unittest.TestCase):
             [],
         )
         xml = (
-            '<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="bs.x" source="BS" page="140" type="cyberware" category="Odd" '
+            '<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="bs.x" source="BS" page="140" '
+            'type="cyberware" category="Odd" '
             'class="CRITTERWARE/CYBER_BODYWARE"><name>X</name></augmentation></d>\n'
         )
         out = classes.apply({"augmentations.xml": xml}, {}, "bs")["augmentations.xml"]  # (the shipped section rule)
@@ -747,7 +761,8 @@ class LatestDecisionsTest(unittest.TestCase):
 class ArmorToGearMoveTest(unittest.TestCase):
     def test_move_kind_files_an_armor_entry_as_gear_dropping_the_armor_only_attributes(self):
         armor = (
-            '<?xml version="1.0"?>\n<d kind="armor"><armor id="zz.suit" source="ZZ" page="78" category="Spacesuit" defense="—" social="+1" '
+            '<?xml version="1.0"?>\n<d kind="armor"><armor id="zz.suit" source="ZZ" page="78" category="Spacesuit" '
+            'defense="—" social="+1" '
             'capacity="2" avail="3" cost="1000" class="SURVIVAL/SURVIVAL_GEAR"><name>Suit</name></armor></d>\n'
         )
         rows = [{"cl6": "Suit", "move_kind": {"id": "zz.suit", "from": "armor", "to": "gear"}}]
@@ -794,8 +809,10 @@ class ArmorToGearMoveTest(unittest.TestCase):
 
 class ValueRowTest(unittest.TestCase):
     GEAR = (
-        '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.lamp" source="ZZ" page="5" avail="2" cost="Rating x 10" rating="1-3">'
-        '<name>Lamp</name><formula field="cost">R * 10</formula><issue field="avail" code="missing">x</issue><text/></gear></d>\n'
+        '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.lamp" source="ZZ" page="5" avail="2" cost="Rating x 10" '
+        'rating="1-3">'
+        '<name>Lamp</name><formula field="cost">R * 10</formula><issue field="avail" '
+        'code="missing">x</issue><text/></gear></d>\n'
     )
 
     def test_a_value_row_sets_the_value_and_drops_what_described_the_old_one(self):
@@ -821,7 +838,10 @@ class ValueRowTest(unittest.TestCase):
 
 class RefileTest(unittest.TestCase):
     GEAR = '<d kind="gear"><gear id="zz.lamp"><name>Lamp</name></gear><gear id="zz.both"><name>B</name></gear></d>'
-    WEAPONS = '<d kind="weapons"><weapon id="zz.gun"><name>Gun</name></weapon><weapon id="zz.both"><name>B</name></weapon></d>'
+    WEAPONS = (
+        '<d kind="weapons"><weapon id="zz.gun"><name>Gun</name></weapon><weapon '
+        'id="zz.both"><name>B</name></weapon></d>'
+    )
 
     def test_a_row_filed_under_the_wrong_kind_lands_on_the_one_file_holding_the_id(self):
         rows = [
@@ -903,7 +923,9 @@ class ValueMapTest(unittest.TestCase):
     def test_numbers_formulas_and_legality(self):
         from tools.cl6check import valuemap as V
 
-        row = lambda f, cl6, ours="", **k: {"field": f, "cl6": cl6, "ours": ours, "our_id": k.get("id", "zz.thing")}
+        def row(f, cl6, ours="", **k):
+            return {"field": f, "cl6": cl6, "ours": ours, "our_id": k.get("id", "zz.thing")}
+
         self.assertEqual(V.numeric("cost", "R1 500, R2 1000, R3 1500", "")[0:2], ("Rating x 500", "R * 500"))
         self.assertEqual(V.numeric("cost", "R1 500, R2 900", "")[1], "tier(R; 1: 500; 2: 900)")
         self.assertEqual(V.numeric("cost", "R1 500, R2 900", "", 2), ("900", None))  # (a level's own entry)
@@ -994,10 +1016,17 @@ class StructureKidsTest(unittest.TestCase):
 
 
 class SchemaAttrsTest(unittest.TestCase):
-    """An override writes no attribute the kind's schema lacks: it is skipped (one stderr line per row), never invalid xml."""
+    """An override writes no attribute the kind's schema lacks: it is skipped (one stderr line per row), never invalid
+    xml."""
 
-    RULES = '<?xml version="1.0"?>\n<d kind="rules"><rule id="zz.launch" source="ZZ" page="5" chapter="C" level="2"><name>Launch</name></rule></d>\n'
-    GEAR = '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.coat" source="ZZ" page="6" category="Zed"><name>Coat</name></gear></d>\n'
+    RULES = (
+        '<?xml version="1.0"?>\n<d kind="rules"><rule id="zz.launch" source="ZZ" page="5" chapter="C" '
+        'level="2"><name>Launch</name></rule></d>\n'
+    )
+    GEAR = (
+        '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.coat" source="ZZ" page="6" '
+        'category="Zed"><name>Coat</name></gear></d>\n'
+    )
 
     def test_allowed_is_the_schemas(self):
         self.assertNotIn("class", overrides.allowed("rules"))
@@ -1064,7 +1093,8 @@ class SchemaAttrsTest(unittest.TestCase):
 
 
 class OwnerNameBugRowsTest(unittest.TestCase):
-    """The 2026-10-15 owner decisions: three values take Commlink6's (a row each), the ones the book prints stay ours (value_keep.json)."""
+    """The 2026-10-15 owner decisions: three values take Commlink6's (a row each), the ones the book prints stay ours
+    (value_keep.json)."""
 
     FILES = {
         "swc": ("qualities", "quality", "ghoul-dwarf", 'karma="27"', "karma"),
@@ -1075,7 +1105,10 @@ class OwnerNameBugRowsTest(unittest.TestCase):
 
     def test_the_three_value_rows_land(self):
         for src, (kind, tag, iid, attr, name) in self.FILES.items():
-            xml = f'<?xml version="1.0"?>\n<d kind="{kind}"><{tag} id="{iid}" source="ZZ" page="1" {attr}><name>X</name></{tag}></d>\n'
+            xml = (
+                f'<?xml version="1.0"?>\n<d kind="{kind}"><{tag} id="{iid}" source="ZZ" page="1" '
+                f"{attr}><name>X</name></{tag}></d>\n"
+            )
             got = ET.fromstring(overrides.apply(src, {f"{kind}.xml": xml})[f"{kind}.xml"].encode())[0]
             self.assertEqual(got.get(name), self.WANT[src], src)
 
@@ -1100,15 +1133,16 @@ class OwnerNameBugRowsTest(unittest.TestCase):
 
 
 class OwnerInfectedRowsTest(unittest.TestCase):
-    """The 2026-10-16 decisions in the per-book tables: the Ghoul per base metatype, the Companion's Armor optional power with
-    no description, the Silencer's exclusion, and what cl6check keeps for them (value_keep.json)."""
+    """The 2026-10-16 decisions in the per-book tables: the Ghoul per base metatype, the Companion's Armor optional
+    power with no description, the Silencer's exclusion, and what cl6check keeps for them (value_keep.json)."""
 
     def test_each_ghoul_takes_29_karma_and_its_own_metatype(self):
         bases = ("human", "dwarf", "elf", "ork", "troll")
         xml = (
             '<?xml version="1.0"?>\n<d kind="qualities">'
             + "".join(
-                f'<quality id="ghoul-{b}" source="ZZ" page="1" kind="positive" karma="27"><name>Ghoul ({b.title()})</name></quality>'
+                f'<quality id="ghoul-{b}" source="ZZ" page="1" kind="positive" karma="27"><name>Ghoul '
+                f"({b.title()})</name></quality>"
                 for b in bases
             )
             + "</d>\n"
@@ -1157,11 +1191,13 @@ class OwnerInfectedRowsTest(unittest.TestCase):
 
 
 class OwnerClassCRowsTest(unittest.TestCase):
-    """The 2026-10-15 class c decisions: three transgenic skins, the Sim module row as two items, the printed values kept."""
+    """The 2026-10-15 class c decisions: three transgenic skins, the Sim module row as two items, the printed values
+    kept."""
 
     def test_transgenic_chameleon_skin_is_two_items_and_rhino_skin_a_third(self):
         xml = (
-            '<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="transgenic-chameleon-skin" source="BS" page="101" avail="6" '
+            '<?xml version="1.0"?>\n<d kind="augmentations"><augmentation id="transgenic-chameleon-skin" source="BS" '
+            'page="101" avail="6" '
             'essence="0.15" cost="2100"><name>Transgenic chameleon skin</name></augmentation></d>\n'
         )
         root = ET.fromstring(overrides.apply("bs", {"augmentations.xml": xml})["augmentations.xml"].encode())
@@ -1229,12 +1265,15 @@ class OwnerVariantSplitsTest(unittest.TestCase):
     def test_fs_pouch_shield_and_medkit_rows(self):
         armor = (
             '<?xml version="1.0"?>\n<d kind="armor">'
-            '<armor id="concealable-ammo-pouch" source="FS" page="55" capacity="[3]" avail="2(L)" cost="100"><name>Concealable ammo pouch</name></armor>'
-            '<armor id="modular-equipment-mounting-system-mems-mems-medkit-pouch" source="FS" page="48" capacity="[2-3]" avail="2" cost="200">'
+            '<armor id="concealable-ammo-pouch" source="FS" page="55" capacity="[3]" avail="2(L)" '
+            'cost="100"><name>Concealable ammo pouch</name></armor>'
+            '<armor id="modular-equipment-mounting-system-mems-mems-medkit-pouch" source="FS" page="48" '
+            'capacity="[2-3]" avail="2" cost="200">'
             "<name>MEMS Medkit Pouch</name></armor></d>\n"
         )
         weapons = (
-            '<?xml version="1.0"?>\n<d kind="weapons"><weapon id="machine-gun-blast-shields" source="FS" page="73" avail="4(I)" cost="250">'
+            '<?xml version="1.0"?>\n<d kind="weapons"><weapon id="machine-gun-blast-shields" source="FS" page="73" '
+            'avail="4(I)" cost="250">'
             '<name>Machine Gun Blast Shields</name><effect target="derived:defense" op="add" value="1"/></weapon></d>\n'
         )
         out = overrides.apply("fs", {"armor.xml": armor, "weapons.xml": weapons})
@@ -1263,8 +1302,10 @@ class OwnerVariantSplitsTest(unittest.TestCase):
 
     def test_sim_module_names_of_commlink6_hot_name_is_an_alias_of_the_hot_sim_item(self):
         gear = (
-            '<?xml version="1.0"?>\n<d kind="gear"><gear id="sim-module" source="CRB" page="268" cost="100"><name>Sim module</name></gear>'
-            '<gear id="sim-module-w-hot-sim" source="CRB" page="268" cost="250"><name>Sim module w/ Hot sim</name></gear></d>\n'
+            '<?xml version="1.0"?>\n<d kind="gear"><gear id="sim-module" source="CRB" page="268" cost="100"><name>Sim '
+            "module</name></gear>"
+            '<gear id="sim-module-w-hot-sim" source="CRB" page="268" cost="250"><name>Sim module w/ Hot '
+            "sim</name></gear></d>\n"
         )
         got = {
             e.get("id"): [a.text for a in e.findall("alias")]
@@ -1288,18 +1329,22 @@ class OwnerVariantSplitsTest(unittest.TestCase):
 
 
 class ErrataRowsTest(unittest.TestCase):
-    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides/): an errata's values win over Commlink6's and the book's."""
+    """`"gen": "errata"` id rows (hand-written, importer/sr6/overrides/): an errata's values win over Commlink6's and
+    the book's."""
 
     XML = (
         '<?xml version="1.0"?>\n<d kind="augmentations">'
-        '<augmentation id="zz-eyes-5" source="ZZ" page="9" rating="5" avail="15" cost="900"><name>Zeyes (Rating 5)</name>'
+        '<augmentation id="zz-eyes-5" source="ZZ" page="9" rating="5" avail="15" cost="900"><name>Zeyes (Rating '
+        "5)</name>"
         '<formula field="avail">tier(R; 5: 15; 6: 18)</formula><issue field="cost" code="ambiguous"/></augmentation>'
         '<augmentation id="zz-hum" source="ZZ" page="9" rating="1-3" avail="(Rating x 6)"><name>Hum</name>'
-        '<formula field="avail">(R*6)</formula><effect target="item:concealability" op="add" value="-2"/><slot id="s"/></augmentation>'
+        '<formula field="avail">(R*6)</formula><effect target="item:concealability" op="add" value="-2"/><slot '
+        'id="s"/></augmentation>'
         '<augmentation id="zz-gone" source="ZZ" page="9"><name>Gone</name></augmentation></d>\n'
     )
 
     def apply(self, rows):
+        """{id: entry} of the augmentations file after the override `rows`."""
         out = overrides.apply("zz", {"augmentations.xml": self.XML}, rows)["augmentations.xml"]
         return {e.get("id"): e for e in ET.fromstring(out.encode())}
 
@@ -1429,10 +1474,12 @@ class ErrataRowsTest(unittest.TestCase):
 
 
 class OwnerRowsTest(unittest.TestCase):
-    """`"gen": "owner"` id rows (owner 2026-10-16): a kid with "replaces" takes the place of the entry's child it names."""
+    """`"gen": "owner"` id rows (owner 2026-10-16): a kid with "replaces" takes the place of the entry's child it
+    names."""
 
     XML = (
-        '<?xml version="1.0"?>\n<d kind="qualities"><quality id="zz-glower" source="ZZ" page="9" karma="20"><name>Glower</name>'
+        '<?xml version="1.0"?>\n<d kind="qualities"><quality id="zz-glower" source="ZZ" page="9" '
+        'karma="20"><name>Glower</name>'
         '<power name="Glow"/><power name="Dusk" rating="2"/><weakness name="Dusk"/><text/></quality></d>\n'
     )
     ROW = {
@@ -1444,6 +1491,7 @@ class OwnerRowsTest(unittest.TestCase):
     }
 
     def apply(self, rows):
+        """The quality entry after the override `rows`."""
         out = overrides.apply("zz", {"qualities.xml": self.XML}, overrides.check(rows))["qualities.xml"]
         return ET.fromstring(out.encode()).find("quality")
 
@@ -1499,11 +1547,14 @@ class OwnerRowsTest(unittest.TestCase):
 
 
 class SplitRowsTest(unittest.TestCase):
-    """`"split"` rows (owner 2026-10-16, multi-record): a row the book prints once for several things becomes one item each."""
+    """`"split"` rows (owner 2026-10-16, multi-record): a row the book prints once for several things becomes one item
+    each."""
 
     XML = (
-        '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz-kit" source="ZZ" page="9" avail="4(I)" cost="250 + Base Cost">'
-        '<name>Zz Kit</name><alias>Old name</alias><alias id="zz.older" kind="gear"/><issue field="cost" code="ambiguous">priced off</issue>'
+        '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz-kit" source="ZZ" page="9" avail="4(I)" cost="250 + Base '
+        'Cost">'
+        '<name>Zz Kit</name><alias>Old name</alias><alias id="zz.older" kind="gear"/><issue field="cost" '
+        'code="ambiguous">priced off</issue>'
         '<effect target="item:concealability" op="add" value="-2"/></gear></d>\n'
     )
     ROW = {
@@ -1520,7 +1571,10 @@ class SplitRowsTest(unittest.TestCase):
             {"id": "zz-kit-b", "name": "Zz Kit (B)", "set": {"cost": "270"}},
         ],
     }
-    TEXTS = '<sr6:data xmlns:sr6="urn:zz" kind="texts">\n  <text of="gear" id="zz-kit">One printed block.</text>\n</sr6:data>\n'
+    TEXTS = (
+        '<sr6:data xmlns:sr6="urn:zz" kind="texts">\n  <text of="gear" id="zz-kit">One printed '
+        "block.</text>\n</sr6:data>\n"
+    )
 
     def test_one_copy_per_part_with_its_own_value_and_the_printed_rule_as_a_note(self):
         out = overrides.apply("zz", {"gear.xml": self.XML}, [self.ROW])["gear.xml"]
@@ -1612,9 +1666,11 @@ class SplitRowsTest(unittest.TestCase):
 
 
 class SlotStructureRowsTest(unittest.TestCase):
-    """Owner 2026-10-15: Commlink6's slots/fits for seven entries; a mount column does not add a fit beside an entry's own."""
+    """Owner 2026-10-15: Commlink6's slots/fits for seven entries; a mount column does not add a fit beside an entry's
+    own."""
 
     def kids(self, src, kind, eid):
+        """[(tag, attributes)] of the family child rows the override table in `src` holds for one kind and id."""
         return [
             (k["tag"], k["attrs"])
             for r in overrides.table(src)
@@ -1638,7 +1694,9 @@ class SlotStructureRowsTest(unittest.TestCase):
     def test_a_mount_column_is_a_fit_only_when_the_entry_has_no_slot_of_its_own(self):
         from tools.cl6check import ours
 
-        fam = lambda xml: ours.families(ET.fromstring(xml))["slots"]
+        def fam(xml):
+            return ours.families(ET.fromstring(xml))["slots"]
+
         self.assertEqual(
             fam('<weapon mount="Under"><slot id="vehicle-hardpoint"/></weapon>'), {("slot", "vehicle-hardpoint")}
         )

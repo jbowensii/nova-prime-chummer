@@ -20,7 +20,8 @@ GUN = (
     'avail="2" cost="{cost}"><name>Zap Gun</name><text/></weapon>'
 )
 LUCK = (
-    '<quality id="crb.lucky-streak" source="CRB" page="70" kind="positive" karma="{karma}" perLevel="true" maxLevel="3">'
+    '<quality id="crb.lucky-streak" source="CRB" page="70" kind="positive" karma="{karma}" perLevel="true" '
+    'maxLevel="3">'
     "<name>Lucky Streak</name><text/></quality>"
 )
 
@@ -34,10 +35,12 @@ def custom():
 
 
 def read(d, name):
+    """The parsed edit file."""
     return ET.parse(os.path.join(d, "edits", name)).getroot()
 
 
 def edit(entry, desc=None):
+    """An edit xml string for the entry, with an optional description."""
     return f"<edit>{entry}{'' if desc is None else f'<description>{desc}</description>'}</edit>"
 
 
@@ -71,13 +74,15 @@ class Sr6EditsTest(unittest.TestCase):
         with open(os.path.join(d, "imported", "crb", "samples", "crb.tester.xml"), "w", encoding="utf8") as f:
             f.write(
                 '<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="1" id="crb.tester">'
-                '<printed source="CRB" page="9"><value key="dr" value="5"/></printed><build method="priority" magic="mundane"/></sr6:character>'
+                '<printed source="CRB" page="9"><value key="dr" value="5"/></printed><build method="priority" '
+                'magic="mundane"/></sr6:character>'
             )
         with open(os.path.join(d, "imported", "samples.xml"), "w", encoding="utf8") as f:
             f.write('<samples><sample source="CRB" name="Tester" href="crb/samples/crb.tester.xml"/></samples>')
         fix = (
             '<samplefix id="crb.tester" source="CRB" page="{page}"><name>Tester</name>'
-            '<correct item="crb.glow-eyes" field="rating" from="4" to="3" note="owner&apos;s correction"/><text/></samplefix>'
+            '<correct item="crb.glow-eyes" field="rating" from="4" to="3" note="owner&apos;s correction"/><text/>'
+            "</samplefix>"
         )
         edits.set_entry(
             d, "samplefixes", "crb.tester", edit(fix.format(page="9"), "Owner&apos;s correction."), by="kim"
@@ -118,9 +123,9 @@ class Sr6EditsTest(unittest.TestCase):
             ),
             ("weapons", "crb.zap-gun", "<edit><weapon", "well-formed"),
         ]
-        for kind, id, body, why in cases:
+        for kind, entry_id, body, why in cases:
             with self.subTest(why=why), self.assertRaises(edits.EditError) as e:
-                edits.set_entry(d, kind, id, body)
+                edits.set_entry(d, kind, entry_id, body)
             self.assertIn(why, str(e.exception))
         with self.assertRaisesRegex(edits.EditError, "username"):
             edits.set_entry(d, "weapons", "crb.zap-gun", edit(GUN.format(cost="1")), by="Bad User")

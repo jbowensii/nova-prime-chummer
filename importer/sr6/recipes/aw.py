@@ -62,6 +62,7 @@ _QUALITY = re.compile(r"(Positive|Negative)\b[^:]*\bQuality:\s*(.+)", re.I)
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the title or opening text names the book, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -173,7 +174,7 @@ def _prep(bs, report):
     ]
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """Printed headers renamed to the core rulebook's (a column with no attribute to the text); an NPC's
     `(Professional Rating N)` tag as the core rulebook's section form; a spell's category in its label."""
     if (m := _RATING.search(b.tags)) and b.row is None:
@@ -248,6 +249,7 @@ def _vehicles(bs):
 
 
 def extract(regrouped, ctx=None):
+    """The book's catalog files and report, read from its regrouped blocks."""
     report = []
     res = catalog.read(_vehicles(_prep(list(blocks(regrouped)), report)), ctx, sys.modules[__name__])
     res.report += report  # a being whose band doesn't read

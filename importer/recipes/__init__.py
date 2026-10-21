@@ -7,11 +7,13 @@ from importer.core import Result  # noqa: F401  (the recipes' result: importer/c
 THRESHOLD = 0.6
 
 
-from importer.recipes import cg, crb, dhsa, pregens, qref  # noqa: E402  (recipes import Result from here)
+# (recipes import Result from here)
+from importer.recipes import cg, crb, dhsa, pregens, qref  # noqa: E402  # pylint: disable=wrong-import-position
 
 RECIPES = [qref, dhsa, pregens, crb, cg]
 
 
 def identify(meta, md_head):
+    """The best-matching recipe and its score, or (None, score) below the threshold."""
     best, score = max(((m, m.match(meta, md_head)) for m in RECIPES), key=lambda x: x[1])
     return (best, score) if score >= THRESHOLD else (None, score)

@@ -5,6 +5,8 @@ import re
 from .words import NUMBERS, ROLES, STANDARD_ADDONS, _norm, sentences
 from .values import _negated
 
+# pylint: disable=line-too-long  # the link regexes stay one literal each, byte-identical
+
 _LINK_RX = [
     # (a bracket holding a comma is the grant's condition: `the Allergy (pollutants, mild) quality`)
     (
@@ -50,7 +52,8 @@ _LINK_RX = [
         "grants",
     ),
     (re.compile(r"^(?P<n>[A-Z][\w’'-]*(?:\s+[A-Z(][\w’'()-]*)*) (?P<k>power|quality) for free\b"), "grants"),
-    # (the Companion's quality that is another's: `This is the same as the X quality in …`, `function exactly like the X quality
+    # (the Companion's quality that is another's: `This is the same as the X quality in …`, `function exactly like the X
+    # quality
     # (p. 72, SR6)`; Companion p. 71 `Characters with the Beak quality also have the Tough Gut benefits`)
     (
         re.compile(
@@ -72,8 +75,8 @@ _PRICE = re.compile(r"^(?:cost|bonus|karma cost)\s*:\s*[\d,]+\s*karma(?:\s*\(?pe
 
 def see_links(text, kind, name):
     """The entry a text that only points to another one works as (Companion p. 71: `Dermal Deposits`, `Cost: 7 Karma` /
-    `See Dermal Deposits, p. 71, SR6.`; `See p. 76, SR6.` names the entry's own name in that book): <link rel="as">, none when
-    the text says more than the price and the citation."""
+    `See Dermal Deposits, p. 71, SR6.`; `See p. 76, SR6.` names the entry's own name in that book): <link rel="as">,
+    none when the text says more than the price and the citation."""
     t = _norm((text or "").replace("**", ""))
     own = re.sub(r"\s*\(.*$", "", name).strip()  # (the text may open with the entry's own name and its price line)
     t = _PRICE.sub("", re.sub(r"^" + re.escape(own) + r"\b[\s:]*", "", t, flags=re.I))
@@ -115,8 +118,9 @@ _SYSTEM_AS = re.compile(r"\bworks? in (?:exactly )?the same way as the (?P<n>[a-
 
 
 def tire_links(text, kind):
-    """Tires that work as other tires `(with the same modifiers)` (Double Clutch p. 123, Smart Tires) and a mod that works as
-    another `in exactly the same way as the multi-terrain suspension (static) system` (p. 126): <link rel="as"> to each.
+    """Tires that work as other tires `(with the same modifiers)` (Double Clutch p. 123, Smart Tires) and a mod that
+    works as another `in exactly the same way as the multi-terrain suspension (static) system` (p. 126): <link rel="as">
+    to each.
     """
     out = []
     for m in _TIRE_AS.finditer(_norm(text)):
@@ -246,7 +250,7 @@ def incompatibilities(text, name=""):
     return uniq
 
 
-def links(text, kind=None):
+def links(text, _kind=None):
     """<link rel kind name [level]> for each entry the text grants or says this one works as."""
     out = []
     ss = sentences(text)
@@ -287,9 +291,13 @@ def links(text, kind=None):
                     s[: m.start()],
                     re.I,
                 ):
-                    continue  # (`if you do not already have the Hooder quality`, `3 Karma if you already have X`: what it asks of the character, no grant)
+                    # (`if you do not already have the Hooder quality`, `3 Karma if you already have X`: what it asks of
+                    # the character, no grant)
+                    continue
                 if rel == "as" and re.match(r"\s*,?\s*except\b", s[m.end() :]):
-                    continue  # (`functions in the same way as Armor, except that it only protects on the astral plane`: not Armor's effects)
+                    # (`functions in the same way as Armor, except that it only protects on the astral plane`: not
+                    # Armor's effects)
+                    continue
                 k = _LINK_KIND.get((m.groupdict().get("k") or "").casefold()) or (
                     "gear" if "implanted version" in m.group(0).casefold() else None
                 )  # (the enhancement is a gear entry)

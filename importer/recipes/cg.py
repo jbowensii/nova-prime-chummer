@@ -1,7 +1,7 @@
 """Shadowrun Anarchy 2.0 Conversion Guide v1.1 -> technomancer complex forms (items), a rules
 reference (rules-technomancers.xml), the Tasking skill and Emerged amp type (skills.xml, amptypes.xml), and the
-complex-form price (pricing.xml, a partial <prices> overlay). The SR6/SRA conversion chapters (tests, NPCs, attributes) are
-out of scope; only the Technomancers section is imported (controller ruling, Task 9d).
+complex-form price (pricing.xml, a partial <prices> overlay). The SR6/SRA conversion chapters (tests, NPCs, attributes)
+are out of scope; only the Technomancers section is imported (controller ruling, Task 9d).
 
 Reads the converter's Markdown. The book's margin tab (the vertical "SHADOWRUN & ANARCHY" spelled
 down the page edge) glues onto real lines the same way CRB's does: lone one-letter lines, and a
@@ -60,6 +60,7 @@ NEW_FORM = re.compile(r"^([A-Z][a-z]+(?:\s(?:of|[a-z]+)){0,2})\s+([IS])\s+(.+)$"
 
 
 def match(meta, md_head):
+    """How well a book's head fits this recipe: 1.0 by its hash, 0.9 for Other Editions of Shadowrun, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"other editions", md_head, re.I) and re.search(r"shadowrun", md_head, re.I) else 0.0
@@ -99,6 +100,7 @@ def extract_rules(lines):
     for page, l in lines:
         h = _match_head(l)
         if h:
+            # pylint: disable-next=unsubscriptable-object  # (cur is None only before the first heading)
             if cur and cur["text"]:
                 rules.append(cur)
             cur = {"title": h.title(), "page": page, "text": []}
@@ -178,7 +180,8 @@ def mechanics(lines):
     emerged = next(((p, m[1]) for p, l in lines if (m := re.search(r"Emerged Shadow Amp \(rank (\d+)", l))), None)
     skills = (
         [
-            f'  <skill id="tasking" attr="{TASKING_ATTR}" requires="emerged" source="{ID}" page="{tasking}"><name>Tasking</name>'
+            f'  <skill id="tasking" attr="{TASKING_ATTR}" requires="emerged" source="{ID}" '
+            f'page="{tasking}"><name>Tasking</name>'
             + "".join(f'<spec id="tasking.{i}" attr="{TASKING_ATTR}">{n}</spec>' for i, n in TASKING_SPECS)
             + "</skill>"
         ]
@@ -187,7 +190,8 @@ def mechanics(lines):
     )
     types = (
         [
-            f'  <amptype id="emerged" base="{emerged[1]}" essence="0" source="{ID}" page="{emerged[0]}"><name>Emerged</name></amptype>'
+            f'  <amptype id="emerged" base="{emerged[1]}" essence="0" source="{ID}" '
+            f'page="{emerged[0]}"><name>Emerged</name></amptype>'
         ]
         if emerged
         else []
@@ -199,11 +203,13 @@ COST = re.compile(r"Complex forms cost ([\d,]+)\s*¥")
 
 
 def complex_form_price(lines):
-    """(page, nuyen) of the book's complex-form price ("Complex forms cost N¥ to learn"), or None when it isn't printed."""
+    """(page, nuyen) of the book's complex-form price ("Complex forms cost N¥ to learn"), or None when it isn't
+    printed."""
     return next(((p, int(m[1].replace(",", ""))) for p, l in lines if (m := COST.search(l))), None)
 
 
-def extract(md, ctx=None):
+def extract(md, _ctx=None):
+    """The files the CG recipe reads from the book's markdown: its rules, complex forms and skill rows."""
     lines = clean_lines(md)
     rules, forms = extract_rules(lines), extract_forms(lines)
     skill_rows, type_rows = mechanics(lines)
@@ -224,7 +230,8 @@ def extract(md, ctx=None):
         text = f'{f["type"]}. {f["text"]}'.strip()
         items.append(
             f'  <item id="{fid}" kind="complex-form" category="{category}" source="{ID}" page="{f["page"]}">'
-            f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S", spell=True))}<text></text></item>'
+            f'<name>{escape(f["name"])}</name>{fx_xml(item_effects(mapper, f["text"], f["type"] == "S", spell=True))}<t'
+            "ext></text></item>"
         )
         texts.append(f'  <text of="items" id="{fid}">{escape(text)}</text>')
 

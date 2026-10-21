@@ -1,8 +1,8 @@
-"""The core rulebook's City Editions (Seattle, Berlin, Hong Kong): each prints the 2019 book's pages, then a city chapter
-after the reference tables. The CRB recipe reads the book (crb.py); this reads the city chapter as a source of its own
-(CRB-SEA, CRB-BER, CRB-HK; crb.extra -> Result.extra): its qualities, contacts (each with its NPC), gear, vehicles and
-weapons, and its rule sections (the plot hooks, the city's reputation and heat modifiers). The fiction and the city
-overview are left out (CITIES: the pages read). Layout notes in crb.md."""
+"""The core rulebook's City Editions (Seattle, Berlin, Hong Kong): each prints the 2019 book's pages, then a city
+chapter after the reference tables. The CRB recipe reads the book (crb.py); this reads the city chapter as a source of
+its own (CRB-SEA, CRB-BER, CRB-HK; crb.extra -> Result.extra): its qualities, contacts (each with its NPC), gear,
+vehicles and weapons, and its rule sections (the plot hooks, the city's reputation and heat modifiers). The fiction and
+the city overview are left out (CITIES: the pages read). Layout notes in crb.md."""
 
 import re
 from dataclasses import replace
@@ -272,7 +272,7 @@ def _prep(bs, report):
     return [b for b in out if id(b) not in used or b.type != "section"]
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """Printed headers renamed to the core rulebook's (a column with no attribute to the text); a price's thousands
     printed with dots (`32.000¥`, Berlin's) without them."""
     if b.row is None:
@@ -290,7 +290,7 @@ def fix(b, parent2):
     return replace(b, row=row, header=list(row), labels=labels)
 
 
-def kind(chapter, b, parent2):
+def kind(_chapter, b, _parent2):
     """(kind, category) of a block, else (None, None): a rule section."""
     labels = {k.lower(): v for k, v in b.labels.items()}
     if b.row is None and b.section == "contact":

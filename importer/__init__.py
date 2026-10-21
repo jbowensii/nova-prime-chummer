@@ -1,3 +1,5 @@
+"""The importer: reads books into the app's data files and finds the data folders it writes to."""
+
 import contextlib
 import os
 import xml.etree.ElementTree as ET
@@ -26,7 +28,7 @@ _override, _custom = [], []
 
 
 class NoCoreData(RuntimeError):
-    pass
+    """Raised when the core data files are in neither the custom folder nor the shipped data."""
 
 
 @contextlib.contextmanager
@@ -70,7 +72,8 @@ def core_dir():
 
 
 def find_core_file(name):
-    """`name` from the first core folder that has it (use_core's, CA2_CORE_DIR, <custom>/imported/core, DATA_DIR), or None."""
+    """`name` from the first core folder that has it (use_core's, CA2_CORE_DIR, <custom>/imported/core, DATA_DIR), or
+    None."""
     custom = custom_dir()
     for d in (
         *_override[-1:],
@@ -84,6 +87,7 @@ def find_core_file(name):
 
 
 def core_file(name):
+    """The path of the core file `name`."""
     return os.path.join(core_dir(), name)
 
 

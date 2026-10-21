@@ -15,7 +15,8 @@ NAME_COL = re.compile(
     r"(?:^|\s)(?:NAME|ITEM|GEAR|APP|MODS?|MODIFICATIONS?|COMPONENT|TAP|ABUSE|HACKS|CODEMODS?|IC|"
     r"LIBRARY|CASE TYPE|FOCUS|FOCI|PREPARATION|DRUG|TOOL|WEAPON|FEATURE|ENHANCEMENT)$"
 )
-# headers printed in short or run together -> the core rulebook's (a tuple: two headers, the value split at its last space)
+# headers printed in short or run together -> the core rulebook's (a tuple: two headers, the value split at its last
+# space)
 RENAME = {
     "SPD INT": "SPEED INTERVAL",
     "SPD INTERVAL": "SPEED INTERVAL",
@@ -52,6 +53,7 @@ DEVICE = {
 
 
 def words(name):
+    """A name as a set of singularised words."""
     return {w[:-1] if w.endswith("s") and len(w) > 3 else w for w in norm(name).split()}
 
 
@@ -97,11 +99,14 @@ def rows(stats, known=frozenset()):
     name column continues the item above it (`ARMOR | PILOT …` under `NAME | HAND …`). A named row with at most one
     other cell beside full rows is a name wrapped onto two rows (`Ruhrmetall` over `SF-10 …`): it joins the row whose
     joined name is a heading's (`known`: norm keys), else the row below when one of its cells breaks off (`50(c) or`),
-    else the row above. A row named in parentheses or lower case (`(when link fired)`) is a variant of the one above; a model code
-    (`m60`) is not."""
+    else the row above. A row named in parentheses or lower case (`(when link fired)`) is a variant of the one above; a
+    model code (`m60`) is not."""
     rs = [cells(s) for s in stats]
     col = name_col(rs)
-    named = lambda r: col is not None and next(iter(r), "") == col and bool(r[col].strip())
+
+    def named(r):
+        return col is not None and next(iter(r), "") == col and bool(r[col].strip())
+
     out, i = [], 0
     while i < len(rs):
         r = rs[i]
@@ -200,6 +205,7 @@ def _alias(name, head):
 
 
 def priced(c):
+    """Whether a table's header cells name a price or vehicle column."""
     return bool({h.upper() for h in c} & (PRICE | VEHICLE))
 
 
@@ -262,7 +268,7 @@ def configurations(b, items, col, described, lower=frozenset()):
         return None
     if any(described(n, peek=True)[2] for n in names):
         return None  # a row with a description of its own is an item of its own
-    text, labels, head = described(b.name)
+    text, labels, _ = described(b.name)
     maker, product = maker_split(b.name)
     body = "\n\n".join(t for t in (text.strip(), b.text.strip()) if t)
     return [
@@ -350,7 +356,7 @@ def boxes(bs):
             col is not None
             and col.upper() not in ("TYPE", "SIZE", "CLASS")
             and len(items) > 1
-            and (cfg := configurations(b, items, col, lambda n, peek=False: described(i, b, n, peek), lower))
+            and (cfg := configurations(b, items, col, lambda n, peek=False, i=i, b=b: described(i, b, n, peek), lower))
         ):
             out += cfg
             continue
@@ -441,19 +447,19 @@ def configuration_rows(bs):
     price of their own (AVAIL and COST a dash: it comes with the item), or that a box names a `configuration` or `mode`
     (`Shotgun configuration` under the Krime Thumper), are the shapes the one item takes (the Dassault Alpenstock's
     `Spear (Blade)`, `Knife (Blade)`): each an entry of its own with its printed stats, named `<item> (<row>
-    configuration)`, its printed `Name (Type)` an alias, `configOf` the item (Block.config_of), never priced apart. regroup may
-    have paired such a row with the item's heading (its label): it goes after the item of that name."""
+    configuration)`, its printed `Name (Type)` an alias, `configOf` the item (Block.config_of), never priced apart.
+    regroup may have paired such a row with the item's heading (its label): it goes after the item of that name."""
 
     def unpriced(s):
         return any(h.upper() == "COST" for h in s) and all(
             _DASH_CELL.fullmatch(v or "") for h, v in s.items() if h.upper() in ("AVAIL", "AVAILABILITY", "COST")
         )
 
-    def priced(s):
+    def priced(s):  # pylint: disable=redefined-outer-name  # a local helper, not the module's priced(c)
         return any(re.search(r"\d", v or "") for h, v in s.items() if h.upper() == "COST")
 
     def entry(item, row):
-        cells = list(row.items())
+        cells = list(row.items())  # pylint: disable=redefined-outer-name  # a local, not the module's cells(d)
         printed = " ".join(cells[0][1].split())
         m = re.fullmatch(r"(.+?)\s*\(([^()]+)\)", printed)
         n, kind = (m.group(1), m.group(2)) if m else (printed, "")
@@ -610,7 +616,7 @@ def vehicle_band(text):
             continue
         out = dict(zip(cols, vals))
         before = "\n".join(lines[:n])
-        for h, rows in reversed(_md_tables(before)):
+        for h, rows in reversed(_md_tables(before)):  # pylint: disable=redefined-outer-name  # a local, not rows()
             heads = [VEHICLE_COLUMNS.get(" ".join(x.upper().split())) for x in h]
             if rows and all(heads) and not set(heads) & set(out):
                 out = {**dict(zip(heads, rows[0])), **out}
@@ -624,7 +630,7 @@ def _md_tables(text):
     while i < len(ls):
         if ls[i].startswith("|") and i + 1 < len(ls) and re.match(r"\|(?:-+\|)+$", ls[i + 1]):
             h = [c.strip() for c in ls[i].strip()[1:-1].split("|")]
-            rows, i = [], i + 2
+            rows, i = [], i + 2  # pylint: disable=redefined-outer-name  # a local, not rows()
             while i < len(ls) and ls[i].startswith("|"):
                 rows.append([c.strip() for c in ls[i].strip()[1:-1].split("|")])
                 i += 1

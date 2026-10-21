@@ -3,8 +3,8 @@ the book's metatype-like option, a positive quality from its minimum base cost) 
 (qualities named `<add-on> (Shifter add-on)`), the Animalism powers (metamagics: one a grade of animalism, as
 metamagics are one a grade of initiation), the shifter gear (armor, gear, ammunition, drones) and the rule sections,
 ids unscoped (run scopes them as bn.<slug>), descriptions in the private texts. Reads only regrouped.md
-(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout notes
-in bn.md. A line or value that doesn't read is reported, never guessed."""
+(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout
+notes in bn.md. A line or value that doesn't read is reported, never guessed."""
 
 import re
 import sys
@@ -36,6 +36,7 @@ GEAR = "shifter gear"
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"bestial\s+nature", f"{meta.get('title') or ''}\n{md_head}", re.I) else 0.0
@@ -135,6 +136,7 @@ def fix(b, parent2):
 
 
 def kind(chapter, b, parent2):
+    """(catalog, category) a block files under; (None, None) when it is no entry."""
     sec, p2 = norm(b.section), norm(parent2)
     if chapter == SHIFTER[0] and b.type == "item" and b.level == 4:
         if sec == SHIFTER[1] and norm(b.name).startswith("shifter "):
@@ -156,6 +158,7 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks (and its drones) into a catalog Result."""
     bs, report = _drones(list(blocks(regrouped)))
     res = catalog.read(bs, ctx, sys.modules[__name__])
     res.report += report

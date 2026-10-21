@@ -1,4 +1,5 @@
-"""Evaluates every matched (CL6 modification, our entry) pair: does our entry carry the same effect? Pure: rows in, statuses out."""
+"""Evaluates every matched (CL6 modification, our entry) pair: does our entry carry the same effect? Pure: rows in,
+statuses out."""
 
 import json
 import os
@@ -6,7 +7,9 @@ import re
 from collections import Counter, defaultdict
 
 from tools.cl6effects import xlate as X
-from tools.cl6effects.xlate import GROUPS, SKILLS, ABBR, ATTR_REF, ITEM_REF, CHECK_KIND, skills_of, _slug
+from tools.cl6effects.xlate import GROUPS, ABBR, CHECK_KIND, _slug
+
+# pylint: disable=invalid-name  # short names from the Commlink6 tables: R, A, BR, PH, IDX, X_sig
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # (3a: each CL6 Speciality Tires variant is our own tire entry)
@@ -30,8 +33,8 @@ def _eval(expr, rating):
     e = e.replace("+", "+").lstrip("+")
     if re.fullmatch(r"[-+*/().\d]+", e or "x"):
         try:
-            return float(eval(e, {"__builtins__": {}}))
-        except Exception:
+            return float(eval(e, {"__builtins__": {}}))  # pylint: disable=eval-used  # e is digits and operators only
+        except Exception:  # pylint: disable=broad-exception-caught  # any arithmetic failure is no value
             return None
     return None
 
@@ -67,7 +70,8 @@ def pv(v, rating=1):
 
 
 def vcmp(cl, our, kind="", apply="", r0=1):
-    """-> 'eq' | 'eq-rating1' | 'blank' | 'unverified' | 'differ'. r0: the rating the first comparison is made at (a variant `tactical2` is rating 2)."""
+    """-> 'eq' | 'eq-rating1' | 'blank' | 'unverified' | 'differ'. r0: the rating the first comparison is made at (a
+    variant `tactical2` is rating 2)."""
     if kind in ("no-edge", "no-edge-gain", "wild-die", "other"):
         return "eq"
     a1, b1 = pv(cl, r0), pv(our, r0)
@@ -92,13 +96,13 @@ def _same(a, b, apply=""):
     if a == b:
         return True
     if a[0] == "list" and b[0] == "n":
-        vals = [v for v in a[1]]
+        vals = list(a[1])
         if all(v == b[1] for v in vals if v != "x"):
             return True
         if vals[0] == b[1] and all(v in (0, "x") for v in vals[1:]):  # (`a,0,0,0,0` is `a`: the close band only)
             return True
     if a[0] == "n" and b[0] == "list":
-        return _same(b, a, apply)
+        return _same(b, a, apply)  # pylint: disable=arguments-out-of-order  # the symmetric case, swapped on purpose
     if a[0] == "slash" and b[0] == "n" and len(set(a[1])) == 1 and a[1][0] == b[1]:
         return True
     if (
@@ -112,6 +116,7 @@ def _same(a, b, apply=""):
 
 # ---------------------------------------------------------------- atoms
 def cl6_atoms4(m, rec_class=""):
+    """The comparable atoms of one Commlink6 effect row, with its kind."""
     t, ty, ref, st, wh, ap = (
         m["_tag"],
         m.get("type", ""),
@@ -121,8 +126,6 @@ def cl6_atoms4(m, rec_class=""):
         m.get("apply", ""),
     )
     R = ref.upper() if ty in ("ATTRIBUTE", "ITEM_ATTRIBUTE", "RESISTANCE") else ref
-    alt = set()
-    note = ""
     if (
         t == "checkmod"
         and ty == "SKILLSPECIALIZATION"
@@ -259,6 +262,7 @@ def cl6_atoms4(m, rec_class=""):
 
 
 def our_atoms4(e):
+    """The comparable atoms of one of our effects, with its kind."""
     A, k = X.our_atoms(e)
     if e.get("op") == "edge-cost-set":
         k = "edge-cost-set"
@@ -268,6 +272,7 @@ def our_atoms4(e):
 
 
 def eval_all(rows, IDX):
+    """Compare every row's Commlink6 effects with ours; the verdict per row."""
     out = []
     for r in rows:
         oe = [k for k in r["our"]["kids"] if k["_tag"] == "effect"]
@@ -303,7 +308,7 @@ def eval_all(rows, IDX):
                 rec["status"] = "not-a-variable: " + res[1]
                 out.append(rec)
                 continue
-            A, k, q, extra = res
+            A, k, _, extra = res
             A = set(A)
             if extra.get("needs"):
                 rec["status"] = "needs-new-target: " + extra["needs"]
@@ -318,9 +323,12 @@ def eval_all(rows, IDX):
                     pass
                 else:
                     toks = [t for t in re.split(r"[^a-z]+", vid) if len(t) >= 3]
-                    flat = lambda n: re.sub(
-                        r"[^a-z]", "", n.casefold().replace("aluminium", "aluminum").replace("extender", "expander")
-                    )
+
+                    def flat(n):
+                        return re.sub(
+                            r"[^a-z]", "", n.casefold().replace("aluminium", "aluminum").replace("extender", "expander")
+                        )
+
                     sel = [
                         kids
                         for nm, kids in sib_kids.items()
@@ -351,7 +359,7 @@ def eval_all(rows, IDX):
             cond = bool(m.get("cond")) or ctx.startswith("mode:")
             rec["atoms"] = sorted(A)
             rec["kind"] = k
-            cov, cov_flags = set(), []
+            cov = set()
             touched_fx = []
             touched = set()
             used = []
@@ -423,7 +431,8 @@ def eval_all(rows, IDX):
                         and e.get("switch") in ("wireless", "conditional")
                         and re.fullmatch(r"-?\d+", e.get("value", ""))
                     ):
-                        # (effects review 2026-10-18: a wireless line that brings a bonus to N is the difference, base + it = CL6's total)
+                        # (effects review 2026-10-18: a wireless line that brings a bonus to N is the difference, base +
+                        # it = CL6's total)
                         for b in pool:
                             if (
                                 b is not e
@@ -486,6 +495,7 @@ def eval_all(rows, IDX):
 
 
 def X_sig(m):
+    """A one-line signature of an effect row, for grouping."""
     return (
         f'{m["_tag"]} {m.get("type","")} {m.get("ref","")}'
         + (f' set={m["set"]}' if m.get("set") else "")
@@ -500,13 +510,18 @@ def _load(name):
 
 
 def tally(ev):
-    """Classify the feature-bucket variables of `ev` -> dict: var, ok, ruled, placeholders, open (lists of eval rows), stale (book-ruled keys that fit nothing).
-    Each variable row gets "final": match | book-ruled | placeholder | open."""
+    """Classify the feature-bucket variables of `ev` -> dict: var, ok, ruled, placeholders, open (lists of eval rows),
+    stale (book-ruled keys that fit nothing). Each variable row gets "final": match | book-ruled | placeholder |
+    open."""
     var = [e for e in ev if e["bucket"] == "feature" and not e["status"].startswith("not-a-variable")]
     ok = [e for e in var if e["status"].startswith("match")]
     BR = {(tuple(r["pair"]), r["sig"], r["cl6"], tuple(sorted(r["ours"]))): r for r in _load("bookruled.json")}
-    key = lambda e: (tuple(e["pair"]), e["sig"], e["value"], tuple(sorted(e.get("ours", []))))
-    # (a book-ruled row counts only when the entry carries an effect of the book's at all, any target, or the row says the book gives none)
+
+    def key(e):
+        return (tuple(e["pair"]), e["sig"], e["value"], tuple(sorted(e.get("ours", []))))
+
+    # (a book-ruled row counts only when the entry carries an effect of the book's at all, any target, or the row says
+    # the book gives none)
     ruled = [
         e
         for e in var
@@ -536,8 +551,12 @@ def tally(ev):
 
 
 def lines(t):
+    """The report lines for a result table: counts and percentages."""
     n, ok, r, p = len(t["var"]), len(t["ok"]), len(t["ruled"]), len(t["placeholders"])
-    pct = lambda x: f"{100 * x / n:.1f}%" if n else "n/a"
+
+    def pct(x):
+        return f"{100 * x / n:.1f}%" if n else "n/a"
+
     return [
         f"variables: {n}, matched strictly: {ok} ({pct(ok)})",
         f"book-ruled (counted separately): {r}; book-ruled keys that no longer fit: {t['stale']}",

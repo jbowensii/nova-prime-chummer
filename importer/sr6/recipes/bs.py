@@ -5,8 +5,8 @@ grades, cybermancy: no catalog kind of their own), ids unscoped (run scopes them
 private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout
 notes in bs.md.
 
-The book prints its gear as the core rulebook does: descriptions under level-4 headings, priced in a titled catalog table
-(CYBERWARE, BIOWARE, GENEWARE …) at the end of the section. A line or value that doesn't read is reported, never
+The book prints its gear as the core rulebook does: descriptions under level-4 headings, priced in a titled catalog
+table (CYBERWARE, BIOWARE, GENEWARE …) at the end of the section. A line or value that doesn't read is reported, never
 guessed."""
 
 import re
@@ -72,6 +72,7 @@ _QUALITY = re.compile(r"(?:optional\s+)?(positive|negative)\s+quality:\s*", re.I
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the title or opening text names the book, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -82,7 +83,7 @@ def _head(b):
     return (b.header[0] if b.header else "").upper()
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """The first chapter named; headers renamed to the core rulebook's (a column it has no attribute for goes to the
     text); a geneware or transgenic table's first header (`GENEWARE Corrective Applications`, `TYPE`) read as bioware;
     a `Negative Quality: X` box as quality X."""
@@ -123,7 +124,7 @@ def fix(b, parent2):
     return b
 
 
-def kind(chapter, b, parent2):
+def kind(chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     labels = {k.lower(): v for k, v in b.labels.items()}
     if b.type == "section":
@@ -249,9 +250,9 @@ def _grades(bs, cat):
     Essence and cost multipliers and Availability modifier read from the prose (`x1.1 Essence cost, x 0.5 nuyen cost,
     and the –1 Availability`, `adds ten percent to the base Essence cost`, `0.4 Essence multiplier`), the types one
     can only be applied to. A grade whose Essence factor doesn't read is reported (missing-value); one with no cost
-    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too. A grade the section's text says another
-    is redefined as (`the used grade—is redefined here as omega grade`) is that grade's `replaces` (the later book wins:
-    the app offers it instead)."""
+    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too. A grade the section's text says
+    another is redefined as (`the used grade—is redefined here as omega grade`) is that grade's `replaces` (the later
+    book wins: the app offers it instead)."""
     on, redefined = False, {}
     for b in bs:
         if b.type == "section" and b.level <= 2:
@@ -298,6 +299,7 @@ def _grades(bs, cat):
 
 
 def extract(regrouped, ctx=None):
+    """The book's catalog files and report, read from its regrouped blocks."""
     bs = _prep(list(blocks(regrouped)))
     res = catalog.read(bs, ctx, sys.modules[__name__])
     cat = catalog.Catalog(ID, ID.lower(), BOOK)
