@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { BOOK_ID, attr, esc, readOr, rootTag, unesc, writeAtomic } from './common.mjs'
 
 const KEEP = ['done', 'skipped', 'superseded'] // an import that went through (of one file's entries, the newest of these stays)
-// the core files (as src/engine/load.ts CORE_FILES, importer/__init__.py CORE_FILES)
+// the core files (as src/ca2/catalog/domain/load.ts CORE_FILES, importer/__init__.py CORE_FILES)
 const CORE_FILES = [
   'ampeffects',
   'amptypes',

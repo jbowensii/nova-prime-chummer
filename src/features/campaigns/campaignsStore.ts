@@ -2,7 +2,7 @@
 // load and change campaigns (server/campaigns.mjs). The pages are in Campaigns.tsx.
 import { send, type User } from '../../core/ui-kit/auth'
 import type { Game } from '../../core/ui-kit/game'
-import type { Override } from '../../model/types'
+import type { Override } from '../../ca2/formats/domain/types'
 
 export interface Person {
   username?: string

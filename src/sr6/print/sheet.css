@@ -1,4 +1,4 @@
-/* The SR6 sheet: src/print/sheet.css's paper, blocks and page-break rules, plus what only SR6 has. */
+/* The SR6 sheet: src/ca2/print/ui/sheet.css's paper, blocks and page-break rules, plus what only SR6 has. */
 .sr6-sheet .s-attrs i {
   font-style: normal;
   font-size: 9pt;
@@ -51,7 +51,7 @@
   color: var(--s-ink);
 }
 
-/* ---- shared by Book style, Neon, Hex and Dossier: always paper, the sheet art's veil (src/print/sheet.css) under the boxes ---- */
+/* ---- shared by Book style, Neon, Hex and Dossier: always paper, the sheet art's veil (src/ca2/print/ui/sheet.css) under the boxes ---- */
 .sr6-book,
 .sr6-neon,
 .sr6-hex,

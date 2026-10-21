@@ -2,7 +2,7 @@
 // image covers it. No backdrop = the look before backdrops existed. The print sheet swaps a dark one for white (ink).
 import { useEffect, useRef, useState } from 'react'
 import { Modal } from './bits'
-import { BACKDROPS, type Backdrop, type Character } from '../../model/types'
+import { BACKDROPS, type Backdrop, type Character } from '../../ca2/formats/domain/types'
 
 export const BACKDROP_NAMES: Record<Backdrop, string> = {
   white: 'White',

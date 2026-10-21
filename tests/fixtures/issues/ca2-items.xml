@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Made-up Anarchy items with a formula and an issue (tests/engine/issues.test.ts, e2e/issues-formulas.spec.ts). -->
+<!-- Made-up Anarchy items with a formula and an issue (tests/ca2/catalog/issues.test.ts, e2e/issues-formulas.spec.ts). -->
 <ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="gear" version="1">
   <item id="test.flash-pack" kind="gear" source="TEST" page="11" category="tools"><name>Flash Pack</name><formula field="cost">B * 3</formula><text></text></item>
   <item id="test.odd-blade" kind="weapon" source="TEST" page="12" ranges="OK/-/-/-"><name>Odd Blade</name><issue field="dv" code="missing" page="12">no damage printed</issue><text></text></item>

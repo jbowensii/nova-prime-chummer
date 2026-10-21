@@ -1,6 +1,6 @@
 // Where runners are saved: the Nova Prime Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
-import type { Character } from '../../model/types'
+import type { Character } from '../../ca2/formats/domain/types'
 import { rootAttr } from '../../core/shared/xml'
 import type { Codec } from '../../core/shared/types'
 import { deleteCharacter, listCharacters, NPC_KEY } from '../../core/ui-kit/storage'

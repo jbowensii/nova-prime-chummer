@@ -26,7 +26,7 @@
 
 ### Task 1: Core data from the CRB import; tests off the real data
 
-**Files:** `.gitignore`, `git rm --cached` the 12 core files (keep them on disk); `importer/recipes/crb*` (core catalogs), `importer/tests/`; `src/engine/load.ts` (load `imported/core/`, missing-core state); `tests/fixtures/mini/` (invented core files); engine/server/e2e tests switched to the fixture or guarded; setup screen for missing core data; server start-up re-import when core missing and a CRB is in the Library; CI/Docker check that the image has no core data.
+**Files:** `.gitignore`, `git rm --cached` the 12 core files (keep them on disk); `importer/recipes/crb*` (core catalogs), `importer/tests/`; `src/ca2/catalog/domain/load.ts` (load `imported/core/`, missing-core state); `tests/fixtures/mini/` (invented core files); engine/server/e2e tests switched to the fixture or guarded; setup screen for missing core data; server start-up re-import when core missing and a CRB is in the Library; CI/Docker check that the image has no core data.
 
 - [ ] Recipe writes `custom/imported/core/{ampeffects,amptypes,armor,attributes,levels,lifestyles,metatypes,packages,pricing,skills,vehicles,weapons}.xml` (+ summaries into `texts/crb.xml`), AI fallback for unreadable tables, book-silent values as documented defaults.
 - [ ] Answer-key test: with the local copies present, recipe output equals them (names/attributes; text separately); skipped otherwise.

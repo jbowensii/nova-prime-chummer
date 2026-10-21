@@ -4,7 +4,7 @@ One JSON file that other tools read; the first is the Foundry VTT importer modul
 (`jbowensii/chummer-anarchy2-foundry`). It is separate from the runner's own XML file
 (`docs/character-format.md`), which stays the format the app stores. The schema is
 `public/data/schema/export.schema.json` (JSON Schema draft 2020-12, `$id` `urn:chummer-anarchy2:export:1`).
-The producer is `src/engine/export.ts`.
+The producer is `src/ca2/foundry/domain/export.ts`.
 Shadowrun 6 has a separate format, SR6 export v1: see `docs/sr6-export-format.md`.
 
 Two kinds, told apart by `kind`:

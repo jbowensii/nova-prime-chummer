@@ -16,7 +16,7 @@ const TYPES = ['image/png', 'image/jpeg', 'image/webp'],
 const route = (game: Game) => (game === 'sr6' ? 'sr6/backgrounds' : 'backgrounds')
 const src = (game: Game, id: string) => `./api/${route(game)}/${id}`
 
-/** This page load's pick per game, shared by the page layer and the character sheet's (src/print/Sheet.tsx). */
+/** This page load's pick per game, shared by the page layer and the character sheet's (src/ca2/print/ui/Sheet.tsx). */
 const picked: Record<Game, string | null> = { ca2: null, sr6: null }
 export function useArtId(game: Game) {
   const [got, setGot] = useState({ game, id: picked[game] })

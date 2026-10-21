@@ -4,7 +4,7 @@
 import { IconLink } from '../../core/ui-kit/icons'
 import { PageHeader } from '../../core/chrome/nav'
 import { useEffect, useRef, useState } from 'react'
-import type { Catalog } from '../../model/types'
+import type { Catalog } from '../../ca2/formats/domain/types'
 import { SR6_KINDS, type Sr6Kind } from '../../sr6/model/types'
 import { Modal, NonCanon } from '../../core/ui-kit/bits'
 import { useRepo } from '../../core/ui-kit/repoContext'
@@ -267,7 +267,7 @@ function DataPack({ reload }: { reload: () => void }) {
   )
 }
 
-/** dupeGroups: the game's duplicate finder (Anarchy's, src/engine/dupes.ts), so this page imports no game engine. */
+/** dupeGroups: the game's duplicate finder (Anarchy's, src/ca2/catalog/domain/dupes.ts), so this page imports no game engine. */
 export function BooksScreen({
   c,
   reload,

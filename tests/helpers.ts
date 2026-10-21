@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildCatalog, collectFiles, CORE_FILES, type SourceFile } from '../src/engine/load'
-import { migrate } from '../src/engine/file'
-import type { Catalog, Character } from '../src/model/types'
+import { buildCatalog, collectFiles, CORE_FILES, type SourceFile } from '../src/ca2/catalog/domain/load'
+import { migrate } from '../src/ca2/formats/domain/file'
+import type { Catalog, Character } from '../src/ca2/formats/domain/types'
 
 const dir = (d: string, overlay: boolean): SourceFile[] =>
   readdirSync(d)
@@ -67,7 +67,7 @@ const loadBooks = (): Catalog | null => {
 }
 
 /** Full catalog (the owner's local core copies + real book content) from the owner's private imports; null in CI
- * and for anyone without their own books and core copies. See tests/books/_gate.ts. */
+ * and for anyone without their own books and core copies. See tests/ca2/catalog/_gate.ts. */
 export const books: Catalog | null = loadBooks()
 
 export const sample = (name: string): Character => migrate(JSON.parse(readFileSync(join(BOOKS_DIR, 'samples', `${name}.ca2.json`), 'utf8')))

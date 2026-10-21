@@ -798,7 +798,7 @@ def sample(block, rules, src, name, role, page, background, updated, taken, spel
             [{**r, "page": page} for r in rows])
 
 
-# ---------------------------------------------------------------- character XML (src/engine/charxml.ts)
+# ---------------------------------------------------------------- character XML (src/ca2/formats/domain/charxml.ts)
 
 CHAR_NS = "urn:chummer-anarchy2:character:1"
 
@@ -819,7 +819,7 @@ def _text(name, s):
 def character_xml(ch):
     """Byte for byte what characterToXml writes (formatVersion 1), for a character (or NPC) without career or item snapshots;
     an amp's snapshot is the printed amp: its type, name, printed rating, source and page
-    (tests/engine/pregen-sample.test.ts holds both writers to the same file)."""
+    (tests/ca2/runner-builder/pregen-sample.test.ts holds both writers to the same file)."""
     b = ch["build"]
     fx = lambda e: _el("effect", {k: e.get(k) for k in ("ref", "param", "value", "note", "unpriced", "switch", "when", "confidence", "from", "affects")})
     snap = lambda t: "<snapshot>" + _el("amp", {k: t.get(k) for k in ("id", "type", "printedRating", "vehicle", "source", "page")},

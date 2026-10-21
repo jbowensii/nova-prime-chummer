@@ -1,5 +1,5 @@
 // The printable SR6 sheet (#/sr6/c/<id>/print): the Anarchy print page's toolbar (Back, Print, Sheet type, Background)
-// and paper (src/print/sheet.css: its page-break rules, art veil and print styles) with the SR6 runner's blocks.
+// and paper (src/ca2/print/ui/sheet.css: its page-break rules, art veil and print styles) with the SR6 runner's blocks.
 // Browser "Save as PDF" makes the PDF. An NPC prints its header, its NPC block (NpcBlock.tsx), background and notes.
 // A runner's Book style, Neon, Hex and Dossier sheets: BookSheet.tsx, NeonSheet.tsx, HexSheet.tsx, DossierSheet.tsx (an NPC
 // prints its block whatever the style).
@@ -8,7 +8,7 @@ import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
 import { HeaderBars } from '../../core/chrome/nav'
 import { IconButton, IconLink } from '../../core/ui-kit/icons'
 import { SheetType, usePrintStyle, useSheetArt } from '../../features/appearance/sheetArt'
-import '../../print/sheet.css'
+import '../../ca2/print/ui/sheet.css'
 import './sheet.css'
 import { entryOf, priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'

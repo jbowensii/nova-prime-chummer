@@ -1,0 +1,70 @@
+// The engine must reproduce every number the books print for their pregens (CRB p.88-111,
+// Daegann's pregen booklet):
+// amp ratings, dice pools, wound thresholds and Essence. A printed amp rating the rules
+// can't reproduce must be listed in docs/book-discrepancies.md (Pregens table).
+import { readFileSync } from 'node:fs'
+import { describe, test, expect } from 'vitest'
+import { ampCtx, ampRating } from '../../../src/ca2/runner-builder/domain/amps'
+import { derive } from '../../../src/ca2/runner-builder/domain/derive'
+import { price } from '../../../src/ca2/runner-builder/domain/price'
+import { validate } from '../../../src/ca2/runner-builder/domain/validate'
+import { bookFile, books, sample } from '../../helpers'
+import { describeBooks } from '../catalog/_gate'
+
+type Printed = Record<
+  string,
+  {
+    page: number
+    source?: string
+    essence: number
+    thresholds: Record<string, number>
+    amps: Record<string, number>
+    pools: { skill: string; spec: string | null; attr: string; dp: number }[]
+  }
+>
+const printed: Printed = books ? JSON.parse(readFileSync(bookFile('pregens-printed.json'), 'utf8')) : {}
+const listed = books
+  ? new Set([...readFileSync(bookFile('book-discrepancies.md'), 'utf8').matchAll(/^\| ([a-z0-9-]+) \| (amp-\d+) \|/gm)].map(m => `${m[1]}/${m[2]}`))
+  : new Set<string>()
+
+// wrapped in an outer describeBooks so the file still has a (skipped) suite when there's nothing to enumerate
+describeBooks('pregens', () =>
+  describe.each(Object.keys(printed))('%s', id => {
+    const ch = sample(id)
+    const p = printed[id]
+    const d = derive(books!, ch)
+
+    test('every catalog reference resolves', () => {
+      expect(validate(books!, ch).filter(v => v.code === 'ref.unknown')).toEqual([])
+    })
+
+    test(`amp ratings match ${p.source ?? 'CRB'} p.${p.page}`, () => {
+      const b = ch.build
+      const wrong = b.amps
+        .filter(a => !listed.has(`${id}/${a.uid}`) && ampRating(books!, a, ampCtx(b, a)) !== p.amps[a.uid])
+        .map(a => `${a.name}: printed ${p.amps[a.uid]}, computed ${ampRating(books!, a, ampCtx(b, a))}`)
+      expect(wrong).toEqual([])
+    })
+
+    test('dice pools match', () => {
+      const wrong = p.pools
+        .filter(x => !d.pools.some(q => q.skill === x.skill && (q.spec ?? null) === x.spec && q.attr === x.attr && q.dp === x.dp))
+        .map(
+          x =>
+            `${x.spec ?? x.skill}@${x.attr}: printed ${x.dp}, computed ${d.pools.find(q => q.skill === x.skill && (q.spec ?? null) === x.spec && q.attr === x.attr)?.dp}`,
+        )
+      expect(wrong).toEqual([])
+    })
+
+    test('thresholds and Essence match', () => {
+      for (const [k, v] of Object.entries(p.thresholds)) expect((d.thresholds as Record<string, number[] | undefined>)[k]?.[0], k).toBe(v)
+      expect(d.essence).toBe(p.essence)
+    })
+
+    test('price is reported (the book does not say pregens are exactly on budget)', () => {
+      const b = price(books!, ch)
+      expect(b.total).toBeGreaterThan(0)
+      console.info(`${id}: ${b.total.toLocaleString('en-US')} of ${b.budget.toLocaleString('en-US')}`)
+    })
+  }),
+)

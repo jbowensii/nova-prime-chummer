@@ -1,6 +1,6 @@
 // Shadowrun 6 runner <-> XML (docs/sr6-character-format.md, public/data/sr6/schema/character.xsd): the file a runner is
 // saved as in /api/sr6/characters and what Export writes. Summary fields sit on the root as Anarchy's
-// (src/engine/charxml.ts), with the writing and reading helpers both games share (src/core/shared/xml.ts).
+// (src/ca2/formats/domain/charxml.ts), with the writing and reading helpers both games share (src/core/shared/xml.ts).
 import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '../../core/shared/xml'
 import { BACKDROPS, type Backdrop } from '../../core/shared/types'
 import {

@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
-// The core files (src/engine/load.ts CORE_FILES) come from the core rulebook's import or a data pack. The owner's local
+// The core files (src/ca2/catalog/domain/load.ts CORE_FILES) come from the core rulebook's import or a data pack. The owner's local
 // copies in public/data serve `npm run dev`; a build never ships them.
 const CORE_FILES = [
   'ampeffects',

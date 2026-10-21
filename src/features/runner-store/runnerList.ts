@@ -1,6 +1,6 @@
 // The runner list's helpers, shared by both games' runner and NPC lists: order and search, other accounts' groups, and
 // whether a copy is still as loaded.
-import type { Character } from '../../model/types'
+import type { Character } from '../../ca2/formats/domain/types'
 import type { Stored, Unreadable } from '../../core/ui-kit/repoContext'
 
 export type SortBy = 'az' | 'za' | 'recent'

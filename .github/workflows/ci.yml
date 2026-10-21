@@ -47,7 +47,7 @@ jobs:
       # the server reads the app version backups record from /app/VERSION
       - run: docker run --rm nova-prime-chummer grep -Eq '^[0-9]+[.][0-9]+[.][0-9]+' /app/VERSION
       # no core data in the image: the core rulebook's import (or a data pack) builds it on the server. Checks names and
-      # contents: no file named like a core file (src/engine/load.ts CORE_FILES), and no file holding core entries
+      # contents: no file named like a core file (src/ca2/catalog/domain/load.ts CORE_FILES), and no file holding core entries
       - run: >-
           docker run --rm nova-prime-chummer sh -c 'found=$(find /app -name "*.xml" | grep -E
           "/(ampeffects|amptypes|armor|attributes|levels|lifestyles|metatypes|packages|pricing|skills|vehicles|weapons)[.]xml$";

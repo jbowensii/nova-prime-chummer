@@ -1,6 +1,6 @@
 """Anarchy's effects read from a book clause as general rules (sibling of importer/sr6/effects.py): the narrative effect
 kinds (CRB p.59) and how an effect is turned on. Vocabulary only (the game's own words: Advantage, Edge, wound
-modifiers, Risk), never an entry's name. The kinds are the engine's RULE_EFFECTS (src/engine/amps.ts): rating 0, so an
+modifiers, Risk), never an entry's name. The kinds are the engine's RULE_EFFECTS (src/ca2/runner-builder/domain/amps.ts): rating 0, so an
 amp's rating stays the book's (its narrative effects keep pricing it); what they say is machine-readable.
 
 rules(clause, tests) -> [(ref, param, value, note, state)]:

@@ -4,7 +4,7 @@
 
 **Goal:** Chummer downloads runners and book data as "Chummer Anarchy export v1" JSON for the Foundry importer module.
 
-**Architecture:** A pure engine module `src/engine/export.ts` turns a runner (its current build and the engine's own
+**Architecture:** A pure engine module `src/ca2/foundry/domain/export.ts` turns a runner (its current build and the engine's own
 numbers) and the catalog's books into plain objects; a JSON Schema and a format document define the file; the UI adds
 three download points (runner editor, runner list dialog, Game data for GMs). No server change.
 
@@ -30,9 +30,9 @@ module plans (runners 0.1.0, book data 0.2.0) are written after this ships, agai
 ### Task 1: Runner export (engine)
 
 **Files:**
-- Create: `src/engine/export.ts`
+- Create: `src/ca2/foundry/domain/export.ts`
 - Modify: `src/engine/index.ts` (add `export * from './export'`)
-- Test: `tests/engine/export.test.ts`
+- Test: `tests/ca2/foundry/export.test.ts`
 
 **Interfaces:**
 - Consumes: `derive`, `ampRating`, `ampCtx`, `ampEssence`, `balance`, `price`, `activeEvents`, `changeText`, `itemCost`, `isCanonSource`, `DEVICE_TYPES` (all in `src/engine`).
@@ -47,7 +47,7 @@ module plans (runners 0.1.0, book data 0.2.0) are written after this ships, agai
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// tests/engine/export.test.ts
+// tests/ca2/foundry/export.test.ts
 // Chummer Anarchy export v1: runners as the engine sees them (made-up books in tests/fixtures/mini).
 import { describe, expect, test } from 'vitest'
 import { derive } from '../../src/engine/derive'
@@ -110,13 +110,13 @@ describe('export: runners', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/engine/export.test.ts`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts`
 Expected: FAIL, "Failed to resolve import ../../src/engine/export"
 
 - [ ] **Step 3: Write the implementation**
 
 ```ts
-// src/engine/export.ts
+// src/ca2/foundry/domain/export.ts
 // Chummer Anarchy export v1 (docs/export-format.md; schema public/data/schema/export.schema.json): runners and book
 // data as JSON for other tools, first the Foundry importer module (jbowensii/chummer-anarchy2-foundry). Every number is
 // the engine's own (derive, ampRating, balance), from the runner's current build. Pure: no DOM.
@@ -265,13 +265,13 @@ Then add to `src/engine/index.ts`: `export * from './export'`.
 
 - [ ] **Step 4: Run tests and typecheck**
 
-Run: `npx vitest run tests/engine/export.test.ts && npx tsc -b`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts && npx tsc -b`
 Expected: 6 passed, no type errors. If `activeEvents` event types don't narrow (`e.run`, `e.text`, `e.changes`), cast per branch the way `career.ts` does; don't widen the types.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/engine/export.ts src/engine/index.ts tests/engine/export.test.ts
+git add src/ca2/foundry/domain/export.ts src/engine/index.ts tests/ca2/foundry/export.test.ts
 git commit -m "export: runners as Chummer Anarchy export v1 (engine)"
 ```
 
@@ -280,15 +280,15 @@ git commit -m "export: runners as Chummer Anarchy export v1 (engine)"
 ### Task 2: Book-data export (engine)
 
 **Files:**
-- Modify: `src/engine/export.ts` (replace the placeholder `ExportBook`, add `exportBooks`)
-- Test: `tests/engine/export.test.ts` (add a `describe`)
+- Modify: `src/ca2/foundry/domain/export.ts` (replace the placeholder `ExportBook`, add `exportBooks`)
+- Test: `tests/ca2/foundry/export.test.ts` (add a `describe`)
 
 **Interfaces:**
 - Consumes: Task 1's `ampParts`, `parseRanges`, `envelope`, `ExportOpts`; `ampFromTemplate`, `ampRating` from `./amps`.
 - Produces: `exportBooks(c: Catalog, sources: string[], tableRules: { name: string; text: string }[], o: ExportOpts): ExportFile`; `ExportBook`:
   `{ source: {id,name,publisher,canon}, amps: BookAmp[], items: BookItem[], vehicles: VehicleBase-like[], skills: {id,name,attr,alt?,specs[]}[], specs: {skill,id,name,attr}[], rules: {id,sheet,section,title,page,text?}[] }`
 
-- [ ] **Step 1: Write the failing test** (append to `tests/engine/export.test.ts`)
+- [ ] **Step 1: Write the failing test** (append to `tests/ca2/foundry/export.test.ts`)
 
 ```ts
 import { exportBooks } from '../../src/engine/export'
@@ -321,10 +321,10 @@ describe('export: books', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `npx vitest run tests/engine/export.test.ts -t books`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts -t books`
 Expected: FAIL, "exportBooks is not exported"
 
-- [ ] **Step 3: Implement** (in `src/engine/export.ts`: replace the placeholder `ExportBook` and add below `exportRunners`)
+- [ ] **Step 3: Implement** (in `src/ca2/foundry/domain/export.ts`: replace the placeholder `ExportBook` and add below `exportRunners`)
 
 ```ts
 export interface ExportBook {
@@ -381,13 +381,13 @@ Add `ampFromTemplate` to the `./amps` import. Note the test "descriptions off" c
 
 - [ ] **Step 4: Run tests and typecheck**
 
-Run: `npx vitest run tests/engine/export.test.ts && npx tsc -b`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts && npx tsc -b`
 Expected: 9 passed. If the mini fixtures have no rules under `TEST`, point the rules test at the source that has them (`grep -l "<rule " tests/fixtures/mini/custom/imported/*/*.xml`) and keep the assertion.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/engine/export.ts tests/engine/export.test.ts
+git add src/ca2/foundry/domain/export.ts tests/ca2/foundry/export.test.ts
 git commit -m "export: book data as Chummer Anarchy export v1 (engine)"
 ```
 
@@ -397,7 +397,7 @@ git commit -m "export: book data as Chummer Anarchy export v1 (engine)"
 
 **Files:**
 - Create: `public/data/schema/export.schema.json`, `docs/export-format.md`
-- Modify: `package.json` (devDependency `ajv`), `tests/engine/export.test.ts`
+- Modify: `package.json` (devDependency `ajv`), `tests/ca2/foundry/export.test.ts`
 
 **Interfaces:**
 - Consumes: `exportRunners`, `exportBooks`.
@@ -430,7 +430,7 @@ describe('export: the schema', () => {
 
 - [ ] **Step 3: Run to verify it fails**
 
-Run: `npx vitest run tests/engine/export.test.ts -t schema`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts -t schema`
 Expected: FAIL, ENOENT on `export.schema.json`
 
 - [ ] **Step 4: Write the schema**
@@ -502,13 +502,13 @@ Cover, in the style of `docs/character-format.md`: purpose and the two kinds; fi
 
 - [ ] **Step 6: Run tests**
 
-Run: `npx vitest run tests/engine/export.test.ts && npm run check`
+Run: `npx vitest run tests/ca2/foundry/export.test.ts && npm run check`
 Expected: 11 export tests pass; the full check passes.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add public/data/schema/export.schema.json docs/export-format.md package.json package-lock.json tests/engine/export.test.ts
+git add public/data/schema/export.schema.json docs/export-format.md package.json package-lock.json tests/ca2/foundry/export.test.ts
 git commit -m "export: the v1 schema and format document"
 ```
 
@@ -517,8 +517,8 @@ git commit -m "export: the v1 schema and format document"
 ### Task 4: Download runners (editor button and runner-list dialog)
 
 **Files:**
-- Create: `src/ui/Foundry.tsx`
-- Modify: `src/ui/EditorView.tsx:235` (button beside "Export file"), `src/ui/Library.tsx` (header button + dialog)
+- Create: `src/ca2/foundry/ui/Foundry.tsx`
+- Modify: `src/ca2/shell/ui/EditorView.tsx:235` (button beside "Export file"), `src/ca2/runner-library/ui/Library.tsx` (header button + dialog)
 - Test: `e2e/foundry.spec.ts`
 
 **Interfaces:**
@@ -573,7 +573,7 @@ test('several runners download together from the runner list', async ({ page }) 
 Run: `npm run build && npx playwright test e2e/foundry.spec.ts --reporter=line`
 Expected: FAIL, no button "Export for Foundry"
 
-- [ ] **Step 3: Write `src/ui/Foundry.tsx`**
+- [ ] **Step 3: Write `src/ca2/foundry/ui/Foundry.tsx`**
 
 ```tsx
 // Export for the Foundry importer module (jbowensii/chummer-anarchy2-foundry): Chummer Anarchy export v1 files
@@ -633,7 +633,7 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
 
 - [ ] **Step 4: Wire it in**
 
-`src/ui/EditorView.tsx`, after the "Export file" button (line 235):
+`src/ca2/shell/ui/EditorView.tsx`, after the "Export file" button (line 235):
 
 ```tsx
         <button className="btn quiet" onClick={() => downloadRunners(c, [ch])}>Export for Foundry</button>
@@ -641,7 +641,7 @@ export function ExportRunnersDialog({ c, runners, campaigns, open, onClose }: {
 
 with `import { downloadRunners } from './Foundry'`.
 
-`src/ui/Library.tsx`: add `const [foundry, setFoundry] = useState(false)` beside the other state; in the header after "Import file"'s hidden input:
+`src/ca2/runner-library/ui/Library.tsx`: add `const [foundry, setFoundry] = useState(false)` beside the other state; in the header after "Import file"'s hidden input:
 
 ```tsx
           <button className="btn quiet" onClick={() => setFoundry(true)} disabled={!list?.length}>Export for Foundry…</button>
@@ -663,7 +663,7 @@ Expected: 2 passed.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/ui/Foundry.tsx src/ui/EditorView.tsx src/ui/Library.tsx e2e/foundry.spec.ts
+git add src/ca2/foundry/ui/Foundry.tsx src/ca2/shell/ui/EditorView.tsx src/ca2/runner-library/ui/Library.tsx e2e/foundry.spec.ts
 git commit -m "export: download runners for Foundry (editor, runner list)"
 ```
 
@@ -672,7 +672,7 @@ git commit -m "export: download runners for Foundry (editor, runner list)"
 ### Task 5: Download book data (Game data, GMs only)
 
 **Files:**
-- Modify: `src/ui/Foundry.tsx` (add `ExportBooksPanel`), `src/ui/tabs/Data.tsx` (render it for staff; fix the stale "each runner can be set to flag it (Concept tab)" sentence: 0.5.7 moved that to the GM's Rules page), `src/ui/TableRules.tsx` (export `tableRulesForExport`)
+- Modify: `src/ca2/foundry/ui/Foundry.tsx` (add `ExportBooksPanel`), `src/ca2/game-data/ui/tabs/Data.tsx` (render it for staff; fix the stale "each runner can be set to flag it (Concept tab)" sentence: 0.5.7 moved that to the GM's Rules page), `src/ca2/table-rules/ui/TableRules.tsx` (export `tableRulesForExport`)
 - Test: `e2e/foundry.spec.ts` (two tests)
 
 **Interfaces:**
@@ -722,7 +722,7 @@ Expected: the GM test FAILS (no region); the player test passes already (that's 
 
 - [ ] **Step 3: Implement**
 
-`src/ui/TableRules.tsx`, below `tableFlags`:
+`src/ca2/table-rules/ui/TableRules.tsx`, below `tableFlags`:
 
 ```ts
 /** The rules switched on, as the export writes them (the app's own switches aren't rules). */
@@ -731,7 +731,7 @@ export const tableRulesForExport = (c: Catalog, saved: TableRule[]) => saved.fil
     : c.rules.has(r.id) ? [{ name: c.rules.get(r.id)!.title, text: c.rules.get(r.id)!.text }] : [])
 ```
 
-`src/ui/Foundry.tsx`, add:
+`src/ca2/foundry/ui/Foundry.tsx`, add:
 
 ```tsx
 import { exportBooks } from '../engine'
@@ -773,7 +773,7 @@ export function ExportBooksPanel({ c }: { c: Catalog }) {
 }
 ```
 
-`src/ui/tabs/Data.tsx`: `import { canEdit, useMe } from '../auth'` (merge with the existing `AccountMenu` import) and `import { ExportBooksPanel } from '../Foundry'`; in `DataScreen` add `const me = useMe()` and, right after the Sources table's closing `</div>`, `{canEdit(me) && <ExportBooksPanel c={c} />}`. Replace "each runner can be set to flag it (Concept tab)" with "the GM can flag it at their table (Rules page)".
+`src/ca2/game-data/ui/tabs/Data.tsx`: `import { canEdit, useMe } from '../auth'` (merge with the existing `AccountMenu` import) and `import { ExportBooksPanel } from '../Foundry'`; in `DataScreen` add `const me = useMe()` and, right after the Sources table's closing `</div>`, `{canEdit(me) && <ExportBooksPanel c={c} />}`. Replace "each runner can be set to flag it (Concept tab)" with "the GM can flag it at their table (Rules page)".
 
 - [ ] **Step 4: Run the tests**
 
@@ -783,7 +783,7 @@ Expected: all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/ui/Foundry.tsx src/ui/tabs/Data.tsx src/ui/TableRules.tsx e2e/foundry.spec.ts e2e/tablerules.spec.ts
+git add src/ca2/foundry/ui/Foundry.tsx src/ca2/game-data/ui/tabs/Data.tsx src/ca2/table-rules/ui/TableRules.tsx e2e/foundry.spec.ts e2e/tablerules.spec.ts
 git commit -m "export: book data for Foundry on Game data (GMs)"
 ```
 

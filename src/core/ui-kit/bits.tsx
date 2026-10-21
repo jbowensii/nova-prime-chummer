@@ -1,6 +1,6 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { Npc } from '../../model/types'
+import type { Npc } from '../../ca2/formats/domain/types'
 import type { BrowseRow } from './types'
 import { EntryHover } from './EntryHover'
 

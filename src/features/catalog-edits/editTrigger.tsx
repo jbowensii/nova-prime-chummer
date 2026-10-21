@@ -1,7 +1,7 @@
 // The catalog-edit trigger both games share (spec §2): the context a page reads to open the edit form, and the Edit button,
 // "Edited" mark and edit-state label built on it. The dialog itself (CatalogEdits) stays with Anarchy (EditEntry.tsx).
 import { createContext, useContext } from 'react'
-import type { AmpTemplate, Catalog, Item, Rule } from '../../model/types'
+import type { AmpTemplate, Catalog, Item, Rule } from '../../ca2/formats/domain/types'
 import { useMe } from '../../core/ui-kit/auth'
 
 export type EditKind = 'amps' | 'items' | 'rules'

@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { compendiumXml } from '../../../src/engine/compendium'
-import type { Compendium } from '../../../src/model/types'
+import { compendiumXml } from '../../../src/ca2/formats/domain/compendium'
+import type { Compendium } from '../../../src/ca2/formats/domain/types'
 import { deleteCompendium, listCompendiums, readable, saveCompendium } from '../../../src/features/compendiums/compendiumStore'
 
 // made-up compendiums; fetch is mocked

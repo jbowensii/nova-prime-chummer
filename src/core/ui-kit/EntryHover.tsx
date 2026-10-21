@@ -2,7 +2,7 @@
 // line of gear, a spell, a Review or budget line), hovering it, focusing it or tapping it shows the entry as Game data
 // shows it (src/features/catalog-browser/CatalogBrowser.tsx's BrowseRow: its values, effects, formulas, source and page, issues, edits and
 // description), so a misprint can be checked against the book where it is used. Escape closes it. Each game maps its
-// entries to a BrowseRow once (src/ui/tabs/Data.tsx anarchyRow, src/sr6/ui/Data.tsx sr6Row).
+// entries to a BrowseRow once (src/ca2/game-data/ui/tabs/Data.tsx anarchyRow, src/sr6/ui/Data.tsx sr6Row).
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { BrowseRow, CardEffect } from './types'
