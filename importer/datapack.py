@@ -22,7 +22,7 @@ from xml.sax.saxutils import quoteattr
 from lxml import etree
 
 from importer import CORE_FILES, DATA_DIR, xmlio
-from importer.backup import TEMP, _swap, app_version, unsafe_entry
+from importer.backup import TEMP, app_version, swap, unsafe_entry
 
 MANIFEST = "datapack.xml"
 NAMES = {f"core/{n}.xml" for n in CORE_FILES}
@@ -66,7 +66,7 @@ def export(custom, out, version=None):
 
 
 @functools.cache
-def _schema(name):
+def schema_of(name):
     return etree.XMLSchema(etree.parse(os.path.join(DATA_DIR, "schema", f"{name}.xsd")))
 
 
@@ -90,8 +90,8 @@ def _parse(name, b):
 
 
 def _valid(name, root, schema):
-    if not _schema(schema).validate(root):
-        e = _schema(schema).error_log.last_error
+    if not schema_of(schema).validate(root):
+        e = schema_of(schema).error_log.last_error
         raise PackError(f"{name} doesn’t match its schema (line {e.line}: {e.message})")
 
 
@@ -171,7 +171,7 @@ def import_pack(path, custom):
         for n, b in files.items():
             with open(os.path.join(new, n), "wb") as f:
                 f.write(b)
-        _swap(core, new, keep=[n for n in os.listdir(core) if n not in files])  # only the pack's files change
+        swap(core, new, keep=[n for n in os.listdir(core) if n not in files])  # only the pack's files change
     except BaseException:
         shutil.rmtree(new, ignore_errors=True)
         raise

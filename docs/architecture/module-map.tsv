@@ -167,7 +167,15 @@ importer/sr6/classes/extra_classes.json	sr6/book-corrections	481
 importer/sr6/classes/section_prefix.json	sr6/book-corrections	325
 importer/sr6/crb_aliases.json	sr6/book-corrections	390
 importer/sr6/edits.py	sr6/game-data	1723
-importer/sr6/effects.py	sr6/book-import	69058
+importer/sr6/effects/__init__.py	sr6/book-import	1310
+importer/sr6/effects/citations.py	sr6/book-import	3345
+importer/sr6/effects/emit.py	sr6/book-import	10713
+importer/sr6/effects/entries.py	sr6/book-import	5447
+importer/sr6/effects/reader.py	sr6/book-import	9812
+importer/sr6/effects/rules.py	sr6/book-import	20108
+importer/sr6/effects/tables.py	sr6/book-import	1451
+importer/sr6/effects/values.py	sr6/book-import	11272
+importer/sr6/effects/words.py	sr6/book-import	6552
 importer/sr6/fit.py	sr6/book-import	4847
 importer/sr6/flags.py	sr6/book-import	2409
 importer/sr6/formula.py	sr6/book-import	8542

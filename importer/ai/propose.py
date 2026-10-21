@@ -173,7 +173,7 @@ def schema_notes(table, xml):
         root = etree.fromstring(f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{table}" version="1">{xml}</ca2:data>'.encode("utf8"))
     except etree.XMLSyntaxError as e:
         return [f"isn’t readable XML ({e})"]
-    s = datapack._schema("items" if table in ("weapons", "armor") else table)
+    s = datapack.schema_of("items" if table in ("weapons", "armor") else table)
     return [] if s.validate(root) else [f"doesn’t fit the {table} table: {s.error_log.last_error.message}"]
 
 

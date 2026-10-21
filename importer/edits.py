@@ -115,15 +115,15 @@ def _shape(entry):
 
 def _refs(entry):
     """The propose/apply-review checks (validate-data.mjs's reference rules) for one entry."""
-    from importer.__main__ import _entry_notes
+    from importer.__main__ import entry_notes
     from importer.ai import propose
     m = propose.mechanics()
     if entry.tag == "amp":
         vehicles = {v.get("id") for v in ET.parse(os.path.join(core_dir(), "vehicles.xml")).getroot()}
         bad = [f'unknown vehicle "{entry.get("vehicle")}"'] if entry.get("vehicle") and entry.get("vehicle") not in vehicles else []
-        return _entry_notes("amp", entry, m) + bad
+        return entry_notes("amp", entry, m) + bad
     if entry.tag == "item":
-        return _entry_notes(entry.get("kind"), entry, m)
+        return entry_notes(entry.get("kind"), entry, m)
     notes = [] if (entry.findtext("title") or "").strip() else ["no title"]
     return notes + [f'unknown effect "{e}"' for e in (entry.get("effects") or "").split() if e not in m["effects"]]
 
@@ -226,10 +226,10 @@ def remove_entry(custom_dir, kind, id):
 
 def add_source(custom_dir, sid, name, publisher=""):
     """Add a house-rule source (canon="false") to custom/edits/sources.xml; the id must be new everywhere."""
-    from importer.__main__ import SOURCE_ID, _reserved_sources
+    from importer.__main__ import SOURCE_ID, reserved_sources
     if not SOURCE_ID.fullmatch(sid or "") or not (name or "").strip():
         raise EditError("a house-rule source needs an id (A-Z, 0-9 and dashes, starting with a letter) and a name")
-    taken = _reserved_sources(custom_dir) | {i.upper() for i in listed_sources(custom_dir)}
+    taken = reserved_sources(custom_dir) | {i.upper() for i in listed_sources(custom_dir)}
     if sid in taken:
         raise EditError(f"the source id {sid} is already used; pick another")
     path = _path(custom_dir, "sources.xml")
