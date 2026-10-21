@@ -7,7 +7,7 @@
 //
 // The numbers each option and modification changes are the book's rules (pp. 151-153), by the part's name: the catalog
 // keeps each part's cost and maximum, not its effect. A part the app has no rule for counts its Design Points only.
-import { newId } from '../../model/types'
+import { newId } from '../../shared/types'
 import type { Sr6Character, Sr6Design, Sr6Purchase } from '../model/character'
 import type { Sr6Entry, Sr6Part } from '../model/types'
 import { entryLabel } from './categories'

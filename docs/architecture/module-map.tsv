@@ -526,6 +526,7 @@ src/shared/effects.ts	core/shared	1166
 src/shared/formula.ts	core/shared	3371
 src/shared/rules.ts	core/shared	57
 src/shared/source.ts	core/shared	105
+src/shared/types.ts	core/shared	380
 src/shared/ui.tsx	core/shared	753
 src/shared/xml.ts	core/shared	1199
 src/sr6/engine/actions.ts	sr6/runner-builder	12959

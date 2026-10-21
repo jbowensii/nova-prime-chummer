@@ -5,7 +5,7 @@
 // (the Karma prices group doubles as the career prices, plus the Advancement group); an unset price refuses its spend
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
-import { newId, type Violation } from '../../model/types'
+import { newId, type Violation } from '../../shared/types'
 import {
   itemLicence,
   licenceRating,

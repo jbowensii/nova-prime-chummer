@@ -5,7 +5,7 @@
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
 import { canFinalize } from '../../shared/rules'
-import type { Severity, Violation } from '../../model/types'
+import type { Severity, Violation } from '../../shared/types'
 import {
   CORE_ATTRS,
   CP_POOLS,

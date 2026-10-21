@@ -2,7 +2,7 @@
 // <sr6:character> file, read and written by src/sr6/engine/charxml.ts. The build holds what the player spent; budgets,
 // rules and derived values are computed from it (src/sr6/engine/*), never stored.
 import { EFFECT_SWITCHES, type EffectSwitch } from '../../shared/effects'
-import { newId, type Character, type Override } from '../../model/types'
+import { newId, type Identity, type Override } from '../../shared/types'
 import type { Sr6Entry, Sr6Kind } from './types'
 
 /** The five creation methods. */
@@ -505,7 +505,7 @@ export interface Sr6Printed {
 export interface Sr6Character {
   formatVersion: 1
   id: string
-  identity: Character['identity']
+  identity: Identity
   build: Sr6Build
   finalizedAt?: string
   final?: { karma: number; nuyen: number }
