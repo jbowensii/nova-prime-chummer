@@ -14,7 +14,7 @@ import { builtinText, modsOf, mountsOf, shiftProblem, SLOT_KINDS, type Meter } f
 import type { SlotKind, Sr6Purchase } from '../../model/character'
 import type { Sr6Entry, Sr6Kind } from '../../model/types'
 import { n, reasonText, useSr6Editor } from '../editor'
-import { useSr6Designs } from '../Designer'
+import { useSr6Designs } from '../repo'
 import { CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
 
 const STATS: [string, string][] = [

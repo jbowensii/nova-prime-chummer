@@ -1868,6 +1868,30 @@ const nameOf = (c: Ctx, x: Sr6Purchase) => {
   return e ? entryLabel(e) : (x.name ?? x.id ?? 'Custom item')
 }
 
+/** The validateSr6 violations a finalized runner still gets (validateCareer, src/sr6/engine/career.ts): the rest are
+ *  creation-only. tests/sr6/career-keep.test.ts fails when a code here is no longer emitted. */
+export const CAREER_KEEP = new Set([
+  'awakened.override',
+  'catalog.missing',
+  'essence.positive',
+  'sin.placeholder',
+  'skill.specUntrained',
+  'skill.expertiseSpec',
+  'skill.expertiseRank',
+  'skill.restricted',
+  'magic.spellsAllowed',
+  'magic.metamagicUser',
+  'martial.category',
+  'martial.requires',
+  'martial.augmentation',
+  'gear.grade',
+  'catalog.accessoryHost',
+  'licence.none',
+  'vehicle.mods',
+  'vehicle.design',
+  'critter.rules',
+])
+
 /** Every broken creation rule on `ch`, the catalog's own problems, and a warning per unset setting a rule needed; approved
  *  from the GM's overrides (code and path). */
 export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Violation[] {

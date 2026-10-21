@@ -21,8 +21,8 @@ import {
   readSettingsFile,
   rulesFrom,
   str,
-  type CreationCatalog,
 } from '../../src/sr6/engine/creation'
+import type { CreationCatalog } from '../../src/sr6/engine/types'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/engine/load'
 
 const FIXTURE = 'tests/fixtures/sr6/custom'

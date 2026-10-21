@@ -5,7 +5,8 @@ import { expect, test } from 'vitest'
 import { sr6ToXml } from '../../src/sr6/engine/charxml'
 import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
 import { readSr6Import, readSr6NpcImport, repairSr6, snapshotSr6 } from '../../src/sr6/ui/repo'
-import { missingLabels, samplesToLoad } from '../../src/sr6/ui/Runners'
+import { missingLabels } from '../../src/sr6/ui/MissingList'
+import { samplesToLoad } from '../../src/sr6/ui/Runners'
 import { fixtureCatalog, made } from '../sr6/fixture'
 
 const CA2 =

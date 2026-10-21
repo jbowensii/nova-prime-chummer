@@ -80,3 +80,11 @@ export function quickRatio(a: string, b: string): number {
 
 /** An entry's key across kinds (catalog.original, .moved, .levels). */
 export const entryKey = (kind: Sr6Kind, id: string) => `${kind}/${id}`
+
+/** A catalog grade's key: its name in lower case without "ware" or "grade" (Omega Grade: omega, Exoware: exo). */
+export const gradeKey = (name: string) =>
+  normName(name)
+    .replace(/\s+grade$/, '')
+    .replace(/ware$/, '')
+    .trim()
+    .replace(/\s+/g, '-')
