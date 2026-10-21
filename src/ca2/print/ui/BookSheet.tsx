@@ -13,6 +13,7 @@ import { HeaderBars } from '../../../core/chrome/nav'
 import { IconButton, IconLink } from '../../../core/ui-kit/icons'
 import { ampLines, cells, lists, RISK, switchedBoxes } from './shared'
 import { SheetType, useSheetArt } from '../../../features/appearance/sheetArt'
+import '../../../features/appearance/sheet.css'
 import './sheet.css'
 import './book-sheet.css'
 
