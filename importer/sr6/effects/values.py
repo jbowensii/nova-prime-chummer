@@ -11,6 +11,7 @@ from .words import (
     MATRIX,
     NUMBERS,
     SKILLS,
+    SHARED_SPECS,
     SPECS,
     SPELL_CATEGORIES,
     VEHICLE_KINDS,
@@ -142,7 +143,7 @@ def targets(phrase, kind=None):
             )
             and len(re.findall(r"[a-z-]+", t.group(1))) <= 6
         ):
-            add(f"skill:{SPECS[m.group(1)]}", m.start(), m.end(), m.group(1))
+            add(f"skill:{_spec_skill(m.group(1), p, m.start())}", m.start(), m.end(), m.group(1))
     for m in re.finditer(r"\b(" + "|".join(sorted(MATRIX, key=len, reverse=True)) + r")\b", p):
         add(f"matrix:{MATRIX[m.group(1)]}", m.start(), m.end())
     for m in re.finditer(
@@ -984,7 +985,7 @@ def _activity(phrase):
     out = {}
     for rx, skill in ACTIVITIES:  # (the skill each activity is a test of, from the book's skill descriptions)
         for mm in re.finditer(rf"\b(?:{rx})\b", _mask_not_a_skill(words)):
-            spec = mm.group(0) if SPECS.get(mm.group(0)) == skill else None
+            spec = mm.group(0) if skill in SHARED_SPECS.get(mm.group(0), (SPECS.get(mm.group(0)),)) else None
             got = out.setdefault((f"skill:{skill}", spec), [])
             phrase = re.sub(
                 r"\s+(?:or|and)$",
@@ -1006,6 +1007,23 @@ def _val(v, s, at=None):
 def _negated(low, at):
     """Whether the clause before `at` denies it (`does not add`, `nor do they add`)."""
     return bool(re.search(r"\b(?:not|nor|never|n't)\b[^.;,]{0,25}$", low[:at]))
+
+
+def _spec_skill(word, text, at):
+    """The skill a specialization's word belongs to. One the book prints under several skills (SHARED_SPECS) follows the
+    other specializations listed with it when they all belong to one of its skills (`disguise or impersonation tests`:
+    Con), else it is SPECS's (a bare `disguise tests`: Stealth). Only the list counts, not any word of the sentence
+    (`disguise tests while acting as a guard`: still Stealth)."""
+    shared = SHARED_SPECS.get(word)
+    if not shared:
+        return SPECS[word]
+    joint = r"(?:\s*,\s*(?:or |and )?|\s+(?:or|and)\s+)"  # (`a, b, or c`, `a or b`, `a and b`)
+    item = r"[a-z-]+(?:\s+[a-z-]+){0,2}"  # (a list item of up to three words: `to impersonate someone`)
+    before = re.search(rf"(?:\b{item}{joint})+$", text[:at])
+    listed = (before.group(0) if before else "") + re.match(rf"{item}(?:{joint}{item})*", text[at:]).group(0)
+    others = {SPECS[w] for w in re.findall(r"[a-z-]+", listed) if w in SPECS and w not in SHARED_SPECS}
+    others &= set(shared)
+    return others.pop() if len(others) == 1 else SPECS[word]
 
 
 def _spec(target, words):
