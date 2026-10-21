@@ -1,4 +1,4 @@
-// Build the Shadowrun 6 catalog from its XML files (docs/sr6-data-format.md), apart from Anarchy's: every file must be an
+// Build the Shadowrun 6 catalog from its XML files (docs/sr6-data-format/kinds.md), apart from Anarchy's: every file must be an
 // <sr6:data kind="…"> in SR6's namespace, so an Anarchy file is refused. Load order (collectSr6Files): the shipped
 // sources, the imported sources, the imported books' files (custom/sr6/imported/index.xml), the private texts each source
 // names, the edits layer (custom/sr6/edits/edits.xml, texts.xml), then the GMs' compendiums this account can read (`extra`,

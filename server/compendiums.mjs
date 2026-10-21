@@ -1,7 +1,7 @@
 // Compendiums: a GM's own entries and NPCs in one data-format file of their game, one store per game (server.mjs makes two):
 //   Anarchy: <ca2:data kind="compendium"> (docs/data-format.md) in characters/.compendiums/<owner>/<id>.xml (+ .trash/) at
 //            /api/compendiums*
-//   SR6:     <sr6:data kind="compendium"> (docs/sr6-data-format.md) in characters/sr6/.compendiums/<owner>/<id>.xml at
+//   SR6:     <sr6:data kind="compendium"> (docs/sr6-data-format/compendiums.md) in characters/sr6/.compendiums/<owner>/<id>.xml at
 //            /api/sr6/compendiums* (api() strips /sr6; the routes below are the same)
 // Editors and the admin only but /shared: need() gives players 403 on every other route, and a request that waited for the
 // lock checks the role again. Each store takes only its own game's root and refuses a body naming the other game's namespaces anywhere (an

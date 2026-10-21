@@ -1,5 +1,5 @@
 // An SR6 catalog entry as XML and back: the element a data file, an edit, a compendium and a runner file's <snapshot> or
-// <house> hold (docs/sr6-data-format.md).
+// <house> hold (docs/sr6-data-format/kinds.md).
 import { esc, escAttr } from '../../../core/shared/xml'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from './types'
 import { formulaXml, readFormulasAndIssues } from '../../../core/shared/formula'

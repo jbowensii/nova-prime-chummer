@@ -209,6 +209,18 @@ npm run coverage       # test coverage
 
 Docs live in [docs/](docs/): data, character and export formats for each game, the design system, sign-in and hosting ([hosting-auth.md](docs/hosting-auth.md)), and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)).
 
+### Working on one module
+
+The code is split into modules by what they do for the user (`docs/architecture/README.md`). Each module folder has a
+short `CLAUDE.md`: what it owns, its public names, what it imports, its test command and what not to touch. Start there,
+then read only that module and the public interface of what it imports. The importer and the CommLink6 tools have theirs
+in `importer/CLAUDE.md`, `importer/sr6/CLAUDE.md` and `tools/cl6check/CLAUDE.md`.
+
+### Releases
+
+A feature PR does not bump the version in `package.json` or edit `CHANGELOG.md`. One release PR does both and is tagged
+after merge (`docs/architecture/README.md`, "Release ownership").
+
 ### Code map
 
 - `server/books.mjs`: the server's route table (its header lists every route) and the map of the modules behind it.

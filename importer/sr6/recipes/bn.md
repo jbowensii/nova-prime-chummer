@@ -32,7 +32,7 @@ page = PDF page (`PAGE_OFFSET` 0).
 
 - `Rating x N¥`, `N¥ + (Rating x N¥)`, capacity `Rating`. Issues: shifter add-on qualities print no Karma
   (`missing karma`), barding prints no rating range.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Real-book check (local, nothing committed)
 

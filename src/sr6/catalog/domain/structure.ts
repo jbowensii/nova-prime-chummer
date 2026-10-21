@@ -1,4 +1,4 @@
-// An item's structure as Commlink6 gives it (docs/sr6-data-format.md, Item structure): the slots it offers and fits, its
+// An item's structure as Commlink6 gives it (docs/sr6-data-format/item-structure.md, Item structure): the slots it offers and fits, its
 // variants, the topics it is relevant to, kind flags, and the add-on and size attributes. Read from the entry's parts and
 // attributes; no rule reads them yet (the pickers and the Foundry export may).
 import type { Sr6Entry } from '../../formats/domain/types'

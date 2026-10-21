@@ -192,9 +192,19 @@ Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's b
 4. **Importer (3 PRs):** public cross-stage helpers; `effects.py` → `importer/sr6/effects/` package; `overrides.py` →
    package. Each behind the CommLink6 gates: the replay (main vs branch, 0 differing rows) and a fresh full import that
    reads 1,079/1,079 effects, 4,474/4,474 completeness and 4,307/4,307 accuracy.
-5. **Docs and context files:** each module gets a short `CLAUDE.md` in its folder (what it owns, its interface, its test
-   command, what not to touch, the other game's look-alike file names); `docs/sr6-data-format.md` splits by section;
-   one release owner edits CHANGELOG and the version.
+5. **Docs and context files:** _done._ Each module has a short `CLAUDE.md` in its folder (what it owns, its public
+   interface, what it imports today, its test command, what not to touch, the other game's look-alike file names), and the
+   importer and CommLink6 tools have `importer/CLAUDE.md`, `importer/sr6/CLAUDE.md` and `tools/cl6check/CLAUDE.md`.
+   `tests/core/shared/context-files.test.ts` keeps them honest: every module folder has one, and every public name it
+   lists is still exported. `docs/sr6-data-format.md` is now an index of `docs/sr6-data-format/<section>.md`. Releases
+   have one owner (below).
+
+## Release ownership
+
+A feature PR does **not** bump the version in `package.json` and does **not** edit `CHANGELOG.md`. One release PR does
+both: it sets the version, writes the `CHANGELOG.md` entry for everything merged since the last tag
+(`git log --oneline <last tag>..origin/main`), and is tagged after merge. That keeps parallel PRs from conflicting on the
+same two lines, and keeps the changelog from drifting behind the version (0.17.0 shipped without an entry until this step).
 
 ## Not done, on purpose
 

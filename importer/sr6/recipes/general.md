@@ -47,7 +47,7 @@ Every page's text drawn twice in some (Final Bets, Scotophobia, …): the conver
 
 - The few priced tables: `Rating x N¥`, Essence `Rating x .N` -> `R*N`; `N¥/NV` -> `Q*N`, unit NV.
 - Issues: items a book lists with no avail or price (`missing`), words in an avail cell (`unreadable`).
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Table shapes and value styles (importer v2)
 
@@ -127,7 +127,7 @@ title first), the chapter giving the context. Read with the general reading, not
   text naming the section): Karma-0 qualities, `granted`, category `Returned Soldier power` / `Returned Soldier
   characteristic` (a characteristic is a drawback: negative); a heading priced in Karma (`Returned Soldier (12
   Karma)`) is a quality whose text's `Select two powers … and one characteristic …` are its choices; the prose's
-  effects and tests (`effects.py`). See docs/sr6-data-format.md, Qualities granted and chosen.
+  effects and tests (`effects.py`). See docs/sr6-data-format/kinds.md, Qualities granted and chosen.
 
 ## Real-book check (local, nothing committed)
 

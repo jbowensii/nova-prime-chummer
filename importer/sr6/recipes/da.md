@@ -69,7 +69,7 @@ repaired when its cells fit their columns (below); one that doesn't keeps its sh
   clip`) or the section's prose (`come with power clips`); the power supply table's ENERGY column is the gear's
   `energy`. A weapon naming no supply gets none. `20(c) + Energy` (railguns) keeps its printed ammo.
 - Mounts and launchers priced by Size take the SIZE column's range as their rating.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Sections read as kinds (importer v3, sections.py)
 

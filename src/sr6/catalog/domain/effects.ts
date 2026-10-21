@@ -1,5 +1,5 @@
 // A catalog entry's effects (the <effect> and <link> parts importer/sr6/effects.py reads from the book's text and tables;
-// docs/sr6-data-format.md "Effects") as the engine uses them: the bonuses it applies, the test types it shows on every
+// docs/sr6-data-format/kinds.md "Effects") as the engine uses them: the bonuses it applies, the test types it shows on every
 // pool they cover, and the entries an entry grants or works as (owner decisions 2026-10-10).
 import { BONUS_SWITCHES, SR6_ATTRS, type Bonus, type Sr6Attr } from '../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind, Sr6Part } from '../../formats/domain/types'

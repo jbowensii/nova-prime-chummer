@@ -1,5 +1,37 @@
 # Release notes
 
+## 0.17.0 — 2026-10-16
+
+Shadowrun 6 gets a vehicle, drone and critter builder, playable Infected characters, per-SIN licences, and data much closer to Commlink6.
+
+**Admins, after updating:**
+- **Books → Re-import all** to get the new data (Double Clutch design tables, Wild Life critter tables, the Infected rules,
+  the core rulebook's Current Printing handling). Nothing else needs a re-import.
+- The Docker image is no longer also published under the old `chummer-anarchy2` name.
+
+**Shadowrun 6**
+- **Vehicles and drones**: separate Vehicles and Drones tabs, owned vehicles' and drones' modifications, mounts and
+  autosofts, and a Designer section to design your own (stored by the server, GM approval, bought from Vehicles, Drones or
+  the Ledger).
+- **Critters**: a runner can own critters (Critters tab, training and special training priced from Wild Life, career Ledger
+  spends, shown on every sheet style), and the GM has a critter editor in NPCs & Critters.
+- **Foundry**: vehicles, drones and critters export as Eden Vehicle and Critter actors.
+- **GM review**: runner problems show on the campaign page and as a banner on the runner; Approved by GM is a checkbox.
+- **Infected** (Sixth World Companion, off by default behind a setting): each Infected quality's rules are data, an Infected
+  runner is playable, and a metavariant uses its parent metatype. The Awakened flag is derived (with why) and can be overridden.
+- **Licences** belong to one SIN; an owned item whose Availability prints a fee shows as licensed, with a non-blocking
+  heads-up and never enforced. Stolen Gear works as the No Future errata has it.
+- Every printed sheet style shows the same data, including a weapon's bonus damage.
+- Name and import fixes: sub-row parent names, cost-in-avail critter cyberlimbs, P-ICE prices, import artifacts, and
+  several multi-record items split per printed value (Swindler Stick, Manadyne, skates).
+
+**Data quality (Commlink6 parity)**
+- The core rulebook's Current Printing outranks the City Editions; older printings only fill gaps and keep ids stable.
+- No Future's errata wins over older values; Smooth Operations clothing imports as armor; owner-ruled values (Hack & Slash
+  cyberdeck cases and others) are applied.
+- Override rows can split one printed row into one item per part, and never write an attribute a kind's schema lacks.
+- Completeness against Commlink6 is 100%, with 99.93% accuracy on printed values.
+
 ## 0.16.0 — 2026-10-14
 
 Shadowrun 6 data gets closer to Commlink6, the system of record, and three new rule options arrive.

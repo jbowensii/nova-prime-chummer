@@ -1,5 +1,5 @@
 // The Shadowrun 6 catalog's kinds: one data file per kind (custom/sr6/imported/<source>/<kind>.xml), each entry under
-// its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format.md.
+// its tag. The same map is SR6_KINDS in server/games.mjs and KINDS in importer/sr6/__init__.py. docs/sr6-data-format/kinds.md.
 import type { Formula, Issue } from '../../../core/shared/formula'
 
 export type Sr6Kind =

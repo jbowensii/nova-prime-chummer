@@ -1,6 +1,6 @@
 // A GM's SR6 compendium: one SR6 data-format file, <sr6:data kind="compendium">, holding entries of the compendium kinds
 // (COMP_KINDS, under their SR6 tags, common.xsd's types) that all cite the compendium's own source, plus NPCs as embedded
-// <sr6:character> (docs/sr6-data-format.md "Compendiums", public/data/sr6/schema/compendium.xsd). Never the other game's:
+// <sr6:character> (docs/sr6-data-format/compendiums.md "Compendiums", public/data/sr6/schema/compendium.xsd). Never the other game's:
 // an Anarchy compendium or runner is refused. The server stores it at /api/sr6/compendiums (server/compendiums.mjs).
 import { escAttr } from '../../../core/shared/xml'
 import { SOURCE_ID } from '../../../core/shared/source'

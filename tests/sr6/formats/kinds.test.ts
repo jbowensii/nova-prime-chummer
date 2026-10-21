@@ -1,5 +1,5 @@
 // @vitest-environment node
-// The SR6 catalog kinds (docs/sr6-data-format.md): the server's and the client's kind -> tag maps agree, every kind has
+// The SR6 catalog kinds (docs/sr6-data-format/kinds.md): the server's and the client's kind -> tag maps agree, every kind has
 // its XSD, and tools/validate-data.mjs checks an SR6 custom folder (--sr6=) against SR6's schemas. Made-up fixture.
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'

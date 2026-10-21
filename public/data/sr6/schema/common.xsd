@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Shared types for every Shadowrun 6 (SR6) data file: the entry types of each kind, so the per-kind schemas and the
      edits layer (edits.xsd) share them. Values are kept as printed, as strings; only counts, points, karma, levels and
-     pages are integers. See docs/sr6-data-format.md. -->
+     pages are integers. See docs/sr6-data-format/kinds.md. -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns:sr6="urn:chummer-sr6:data:1"
            targetNamespace="urn:chummer-sr6:data:1"
@@ -116,7 +116,7 @@
              name switch="wireless"/> -->
         <xs:element name="incompatible" type="sr6:Incompatible"/>
         <xs:element name="compatible" type="sr6:Compatible"/>
-        <!-- Commlink6's structure for an item (docs/sr6-data-format.md, Item structure): a slot the item offers (id; value:
+        <!-- Commlink6's structure for an item (docs/sr6-data-format/item-structure.md, Item structure): a slot the item offers (id; value:
              how many, a formula like the cost), a slot it fits, the variants it comes in (by name), the topics it is
              relevant to (a pick list's filters), and kind flags. Data for the pickers and the Foundry export; no rule reads
              them yet -->
@@ -384,7 +384,7 @@
     <xs:attribute name="untrained" type="sr6:Bool" use="required"/>
   </xs:complexType>
 
-  <!-- an entry's effects (importer/sr6/effects.py, docs/sr6-data-format.md "Effects"): what its prose or the book's
+  <!-- an entry's effects (importer/sr6/effects.py, docs/sr6-data-format/kinds.md "Effects"): what its prose or the book's
        tables state, as a target (attr:<abbr>, attr-max:<abbr>, skill:<id>, test:<type>, derived:<name>, matrix:<name>,
        item:<field> (on an add-on: the item it fits; `item:ar` a value a band "0,1,1,0,0"), action:<name>,
        resource:<name>), an operation and a value (a number; R: x the line's rating or level; R*N; or a formula over
@@ -502,7 +502,7 @@
   <xs:complexType name="Quality">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
-      <!-- an Infected quality's rules (Sixth World Companion pp. 104-114, docs/sr6-data-format.md, Infected characters):
+      <!-- an Infected quality's rules (Sixth World Companion pp. 104-114, docs/sr6-data-format/kinds.md, Infected characters):
            <infected> its strain and base metatype; <infectedalt> its terms for another base metatype (the non-human
            vampire); <optionalpower> an optional power it may buy (ref: the optional power's quality id; free: one its free
            pick may take); <power> and <weakness> what it gains (sr6:Gained); <karmaif> its Karma when a character flag holds
@@ -969,7 +969,7 @@
   </xs:complexType>
 
   <!-- the kinds read from the books' own sections and tables, displayed as printed (no rules engine yet):
-       docs/sr6-data-format.md, "Kinds read from sections" -->
+       docs/sr6-data-format/kinds.md, "Kinds read from sections" -->
   <!-- an entry of a kind with no attributes of its own beyond how the book groups it -->
   <xs:complexType name="Tagged">
     <xs:complexContent><xs:extension base="sr6:Entry">

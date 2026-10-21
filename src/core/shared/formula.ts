@@ -1,4 +1,4 @@
-// Book formulas and data issues, both games (docs/sr6-data-format.md and docs/data-format.md, "Formulas and issues").
+// Book formulas and data issues, both games (docs/sr6-data-format/formulas-and-issues.md and docs/data-format.md, "Formulas and issues").
 // A catalog entry may carry <formula field="cost" round="up">R * 200</formula>: how the field is worked out, beside the
 // value as printed; and <issue field="avail" code="missing" page="91">note</issue>: a field the book prints nothing for,
 // or something the importer couldn't read. The formula is read here by a small parser (never eval):

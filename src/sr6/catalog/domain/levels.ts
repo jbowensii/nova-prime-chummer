@@ -6,7 +6,7 @@
 // the entry lists (pickers and Game data list the levels) but stays reachable by id in Sr6Catalog.levels: formula
 // ref()s and a saved runner's lines naming it still read, and migrate.ts turns those lines into the level's id. The
 // expansion runs once at the end of buildSr6Catalog, after the edits layer, so an edit on the parent reaches every
-// level; an edit keyed by a child id is kept as that level. docs/sr6-data-format.md, "Levels".
+// level; an edit keyed by a child id is kept as that level. docs/sr6-data-format/kinds.md, "Levels".
 import type { Sr6Catalog, Sr6Entry, Sr6Family, Sr6Kind, Sr6Part } from '../../formats/domain/types'
 import { bonusValue, effectValue } from './effects'
 import { entryKey } from './names'

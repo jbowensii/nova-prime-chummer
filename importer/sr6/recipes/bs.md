@@ -43,7 +43,7 @@ Structure only, no book text. The owner's PDF (SHA-256 in `bs.py`): 194 pages, p
 - Issues: rows printing `*` (a footnote: the single cybereye is priced from the core cybereyes) are `unreadable`;
   rated rows with no range `missing rating`; the colony/kit products printed two to a row keep the first, the
   second product's avail and price unread.
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 - **A price per unit in the description.** A row with a plain price whose description prices it per length
   (`per ten centimeters`, with a minimum and maximum): `Q*N`, unit `10 cm` (the minimum and maximum stay in the text)
   (`formula.text_unit`).

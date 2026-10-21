@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Schema for kind="compendium": a GM's own SR6 collection, stored by the server in
-     characters/sr6/.compendiums/<owner>/<id>.xml. See docs/sr6-data-format.md "Compendiums". Entries are the compendium
+     characters/sr6/.compendiums/<owner>/<id>.xml. See docs/sr6-data-format/compendiums.md "Compendiums". Entries are the compendium
      kinds (COMP_KINDS in src/sr6/engine/compendium.ts) under their SR6 tags; every entry cites the root's source (the app
      checks) and carries its own text; an embedded NPC is an SR6 character file's root element (character.xsd) with an
      <npc> block (the app checks). Never an Anarchy runner or entry. -->

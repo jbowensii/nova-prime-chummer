@@ -39,7 +39,7 @@ compares them without spaces, and rule section names keep them.
 
 - Vehicle seats `2+2`, `1/3` -> `2 + 2`. `N¥ per dose`, `Rating x N¥ per dose` -> `Q*N`, `Q*(R*N)`.
 - Issues: an injector rig's row with no price printed (`missing`).
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Commlink6 check (importer v4)
 

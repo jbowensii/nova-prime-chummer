@@ -1,7 +1,7 @@
 // A vehicle or drone design (Double Clutch "Build Your Dream", pp. 150-155; owner 2026-10-16, BUILDER Q1-Q4, Q6, Q8, and
 // the DESIGNER decisions, cited so): the catalog's vehicledesign parts (a chassis, a powertrain and a console from their
 // tables, the size class table, the options, design modifications and quality factors, each with its printed terms:
-// docs/sr6-data-format.md), worked out into the vehicle's stats, its Design Point Value, price and Availability. Where
+// docs/sr6-data-format/kinds.md), worked out into the vehicle's stats, its Design Point Value, price and Availability. Where
 // the book's tables and formulas and its worked examples disagree, the tables and formulas (owner Q3). A maximum passed
 // is a warning, never refused.
 //

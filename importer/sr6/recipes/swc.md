@@ -40,7 +40,7 @@ recipe reads both.
 ## Formula styles and issues (importer v2)
 
 - No price formulas. Issues: two qualities print no Karma (`missing karma`).
-  (`<formula>` and `<issue>`: docs/sr6-data-format.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
+  (`<formula>` and `<issue>`: docs/sr6-data-format/formulas-and-issues.md, `importer/sr6/formula.py`; the printed attribute stays as printed.)
 
 ## Table shapes and value styles (importer v2)
 

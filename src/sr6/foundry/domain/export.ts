@@ -96,7 +96,7 @@ export type Sr6ExportBonus = ({ target: Exclude<Bonus['target'], 'skill'>; value
   affects?: Bonus['affects']
 }
 /** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
- *  operations and values docs/sr6-data-format.md "Effects" lists): low: read with low confidence (shown, never applied);
+ *  operations and values docs/sr6-data-format/kinds.md "Effects" lists): low: read with low confidence (shown, never applied);
  *  switch: how it is turned on; when: the condition's words; spec: the specialization it is limited to; affects: a spell's
  *  or complex form's, on its caster or its target(s) (never counted on the caster). A reader applies the always-on `add`
  *  ones it has a field for (Eden: an Active Effect), the switchable ones as an effect the player turns on, and shows the
