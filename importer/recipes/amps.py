@@ -2,7 +2,7 @@
 ampeffects.xml (Mapper, item_effects, read_amp), pricing them against the core data (core, reconcile), and the
 skill/spec tables and id slugs those readings use.
 
-Used by the CRB (crb, crb_core, crb_npcs), the Cyberpunk-style CG recipe (cg) and the DHSA fan supplement (dhsa),
+Used by the CRB (crb, crb_core, crb_npcs), the Anarchy 2.0 Conversion Guide recipe (cg) and the DHSA fan supplement (dhsa),
 and by importer.statblock for the stat-block readers. A canon book's import never includes DHSA content
 (owner ruling, 2026-10-21), so load_skills here returns only the core skills and specs and what imported books add.
 Imports no recipe and not importer.statblock (statblock imports this module).

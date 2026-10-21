@@ -942,7 +942,7 @@ def _names_class(header, first):
 _VARIANT_LINE = re.compile(r"[a-z][a-z-]*(?: [a-z][a-z-]*){0,2}")
 # a table's title set as a plain line right over it: lower case, one to three words (`sprayers`)
 _SET_TITLE = re.compile(r"[a-z][a-z-]+(?: [a-z][a-z-]+){0,2}")
-# a line pricing the item over it (`Availability 6, Cost 5,000¥`; catalog._PRICE_LINE reads it)
+# a line pricing the item over it (`Availability 6, Cost 5,000¥`; prose_items._PRICE_LINE reads it)
 _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*\d+\s*(?:\([A-Z]\))?\s*,\s*Cost:?\s*[\d,]+\s*¥\s*$")
 
 
