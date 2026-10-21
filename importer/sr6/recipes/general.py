@@ -52,7 +52,23 @@ BOOKS = [
     ("FBT", "Shadowrun: Final Bets", "CAT28405", r"\bfinal\s+bets\b", ("Social Rituals", "SHADOWS OF PARIS")),
     ("FRS", "Shadowrun: Free Seattle", "CAT28401", r"\bfree\s+seattle\b", ("The cost of Doing", "seattle in the")),
     ("LHV", "Shadowrun: Lethal Harvest", "CAT28305", r"\blethal\s+harvest\b", ("All or Nothing", "Disian Shadow War")),
-    ("LASC", "Shadowrun: Los Alamos: The Secret City", "", r"\blos\s+alamos\b", ("LOS ALAMOS", "THE SECRET CITY")),
+    # fiction, but it prints a mentor spirit and a vehicle (the owner, 2026-10-21)
+    ("ADV", "Shadowrun: Adversary", "", r"^(?:shadowrun:\s*)?adversary\b", ("BY RUSSELL ZIMMERMAN ENHANCED FICTION",)),
+    (
+        "LACW",
+        "Shadowrun: Los Alamos: Cicada Whisper",
+        "CAT288117S",
+        r"\bcicada\s+whisper\b",
+        ("north america scenario", "cicada whisper"),
+    ),
+    # the Secret City: a title naming Los Alamos but not Cicada Whisper's
+    (
+        "LASC",
+        "Shadowrun: Los Alamos: The Secret City",
+        "",
+        r"\blos\s+alamos\b(?!.*\bcicada\b)",
+        ("LOS ALAMOS", "THE SECRET CITY"),
+    ),
     ("MGC", "Shadowrun: Margin Calls", "CAT28306", r"\bmargin\s+calls\b", ("Wind and Fire", "winners & losers")),
     (
         "ML2083-03",
@@ -67,6 +83,14 @@ BOOKS = [
         "",
         r"cave\s+of\s+shadows",
         ("LEGENDS 2083-04", "Nile gambit"),
+    ),
+    # three phrases (0.95): its contents name the Sixth World Companion, whose recipe reads 0.9 there
+    (
+        "SRMG",
+        "Shadowrun Sixth World Missions Guide",
+        "",
+        r"\bmissions\s+guide\b",
+        ("Sixth World Missions Guide", "SRM Guide Committee", "Missions Coordinator"),
     ),
     (
         "NAS",
@@ -98,6 +122,13 @@ BOOKS = [
         "",
         r"easy\s+come,?\s+easy\s+go",
         ("shadows in focus", "easy come, easy go"),
+    ),
+    (
+        "SSV",
+        "Shadowrun: Seoul Survivor",
+        "CAT28804S",
+        r"\bseoul\s+survivor\b",
+        ("Republic of Korea Data Download", "seoul survivor"),
     ),
     ("SHS", "Shadowrun: Shoot Straight", "CAT28513", r"\bshoot\s+straight\b", ("Branching Out", "Running the Shadows")),
     (
