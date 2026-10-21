@@ -1,5 +1,37 @@
 # Release notes
 
+## 0.18.0 — 2026-10-21
+
+Shadowrun 6 NPCs and critters carry their gear as items, four new books import, and the code is reorganized by what it
+does, with security scanning, coverage floors and performance checks in CI.
+
+**Admins, after updating:**
+- **Books → Re-import all.** The reader fixes, the owner's rulings and the four new books reach the data only through a
+  re-import. Then re-import NPCs, critters and templates.
+
+**Shadowrun 6**
+- **NPCs and critters** carry their weapons, attacks, armor, gear and powers as items, and their stat lines take no
+  text from outside the stat block.
+- **Ammunition of a material** (silver and others) on any ammo line.
+- **New books:** Seoul Survivor, Los Alamos: Cicada Whisper, the Sixth World Missions Guide and Adversary are read on
+  import. Cicada Whisper is no longer mistaken for Los Alamos: The Secret City.
+- **Reader:** clause-scoped conditions, whole lists, Edge when casting, columns set a few points apart, the six
+  book-correction patterns as rules, set effects (movement, unarmed AR/DV), and "Disguise" follows the skill the text
+  names or lists with it, else Stealth.
+- **Samples** charge what the archetypes print and fit Sum-to-Ten on leftovers.
+
+**Anarchy**
+- Canon books never pull in fan-supplement content: the Conversion Guide and the core rulebook's stat blocks no longer
+  add Daegann's Holostreets skill specializations.
+
+**Under the hood**
+- The app is split into modules by capability (core, shared features, Anarchy, SR6), with a boundary test and a short
+  guide per module.
+- Python: Black formatting and pylint (10/10) in CI; the importer has docstrings throughout.
+- Security: Dependabot, CodeQL and npm/pip audits in CI; Vite, Pillow, pdfplumber and pdfminer upgraded past their
+  known advisories.
+- Test coverage floors (app 80% of lines, importer 89%) and performance timing checks in CI.
+
 ## 0.17.0 — 2026-10-16
 
 Shadowrun 6 gets a vehicle, drone and critter builder, playable Infected characters, per-SIN licences, and data much closer to Commlink6.
