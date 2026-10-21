@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Modal } from '../../core/ui-kit/bits'
 import type { Campaign } from '../campaigns/campaignsStore'
-import type { Character } from '../../model/types'
+import type { Character } from '../../ca2/formats/domain/types'
 
 export const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD
 /** A file name's lead: one runner or NPC's street name (else name) as a slug, so several downloads tell apart; several

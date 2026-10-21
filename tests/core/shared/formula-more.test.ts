@@ -1,7 +1,7 @@
 // The formula parser's error messages and limits (src/core/shared/formula.ts): each way a formula is refused says why, with the
 // position; unicode minus and times read; deep nesting stops; a result that is no number is no price.
 import { describe, expect, it } from 'vitest'
-import { evalFormula, fieldName, parseFormula, type Formula } from '../../../src/engine/formula'
+import { evalFormula, fieldName, parseFormula, type Formula } from '../../../src/ca2/formats/domain/formula'
 
 const f = (expr: string, more: Partial<Formula> = {}): Formula => ({ field: 'cost', expr, ...more })
 const err = (expr: string) => evalFormula(f(expr), { R: 1 }).error

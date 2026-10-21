@@ -40,7 +40,7 @@ function toSource(el: Element, origin: Sr6Source['origin']): Sr6Source {
   }
 }
 
-/** As src/engine/load.ts mergeSource: an imported book the app also ships stays the shipped description, plus the
+/** As src/ca2/catalog/domain/load.ts mergeSource: an imported book the app also ships stays the shipped description, plus the
  * upload's file and checksum. */
 function mergeSource(prev: Sr6Source | undefined, s: Sr6Source): Sr6Source {
   if (!prev) return s

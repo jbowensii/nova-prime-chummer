@@ -4,7 +4,7 @@
 
 **Goal:** Chummer's book export carries sections for every rule, the books' pregen characters, metatypes and every skill/spec; the Foundry importer organises rules as one journal per topic per book, and adds Characters and Metatypes compendiums, never building an empty one.
 
-**Architecture:** Part A changes Chummer's pure export (`src/engine/export.ts`), its schema/doc, and the Game data panel (which fetches the books' sample characters). Additions are optional v1 fields (format stays version 1, as `docs/export-format.md` allows). Part B changes the module's pure book translator (`scripts/lib/books.js`), the pack list (`scripts/foundry/books.js`), the window counts, and Quench.
+**Architecture:** Part A changes Chummer's pure export (`src/ca2/foundry/domain/export.ts`), its schema/doc, and the Game data panel (which fetches the books' sample characters). Additions are optional v1 fields (format stays version 1, as `docs/export-format.md` allows). Part B changes the module's pure book translator (`scripts/lib/books.js`), the pack list (`scripts/foundry/books.js`), the window counts, and Quench.
 
 **Tech Stack:** as before (Chummer: TS/React/Vitest/Playwright/ajv; module: plain ES modules, Foundry V14, Vitest, Quench).
 
@@ -27,11 +27,11 @@
 ## Part A — Chummer 0.6.2
 
 ### Task A1: Export sections, metatypes, every skill (engine + schema + doc)
-**Files:** `src/engine/export.ts`, `public/data/schema/export.schema.json`, `docs/export-format.md`, `tests/engine/export.test.ts`
+**Files:** `src/ca2/foundry/domain/export.ts`, `public/data/schema/export.schema.json`, `docs/export-format.md`, `tests/ca2/foundry/export.test.ts`
 - [ ] Tests first: a mini-fixture rule with no section exports `section` = its sheet's display name and `sheetName`; a book with metatypes exports them (mini fixtures: check `tests/fixtures/mini/custom/imported/core/metatypes.xml` sources; add a made-up metatype to a test catalog if none has the book's source); every skill of the book with all its specs; the schema accepts files with and without the new optional fields; the doc example still validates. RED → implement (`sheetDisplayName(sheet)` exported helper) → GREEN; `npm run check`; commit "Export: rule sections, metatypes".
 
 ### Task A2: Export the books' sample characters
-**Files:** `src/engine/export.ts` (`exportBooks(c, sources, tableRules, opts, characters?: Record<sourceId, Character[]>)`), `src/ui/Foundry.tsx` (ExportBooksPanel loads `custom/imported/samples.xml`, reads each ticked book's sample files with the existing reader — reuse/extract `exampleList`/`readCharacterFile` from `src/ui/Library.tsx` rather than duplicating — and passes them), schema (`book.characters`: array of the runner def), doc, tests (engine unit test with a made-up character; e2e on the Game data panel: the mini fixture PREGENS book's sample comes out under that book's `characters`).
+**Files:** `src/ca2/foundry/domain/export.ts` (`exportBooks(c, sources, tableRules, opts, characters?: Record<sourceId, Character[]>)`), `src/ca2/foundry/ui/Foundry.tsx` (ExportBooksPanel loads `custom/imported/samples.xml`, reads each ticked book's sample files with the existing reader — reuse/extract `exampleList`/`readCharacterFile` from `src/ca2/runner-library/ui/Library.tsx` rather than duplicating — and passes them), schema (`book.characters`: array of the runner def), doc, tests (engine unit test with a made-up character; e2e on the Game data panel: the mini fixture PREGENS book's sample comes out under that book's `characters`).
 - [ ] RED → GREEN; a sample that fails to read is skipped and listed in the panel (not fatal); commit "Export: the books' sample characters".
 
 ### Task A3: Docs, version 0.6.2

@@ -3,8 +3,8 @@
 // runner to another account and deleting. Made-up accounts.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
-import { characterToXml } from '../../../src/engine/charxml'
-import { blankCharacter } from '../../../src/engine/file'
+import { characterToXml } from '../../../src/ca2/formats/domain/charxml'
+import { blankCharacter } from '../../../src/ca2/formats/domain/file'
 import { UsersScreen } from '../../../src/features/accounts/Users'
 import { button, change, click, field, mount, pageText, stubFetch } from '../../ui/dom'
 

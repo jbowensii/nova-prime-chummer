@@ -321,12 +321,12 @@ class CharacterTest(unittest.TestCase):
         self.assertEqual(statblock.character_xml(self.ch), GOLDEN.read_text(encoding="utf8"))
 
     def test_character_xml_of_an_npc_matches_the_apps(self):
-        # tests/engine/pregen-sample.test.ts holds the app's writer to the same file
+        # tests/ca2/runner-builder/pregen-sample.test.ts holds the app's writer to the same file
         npc = json.loads(NPC_GOLDEN.with_suffix(".json").read_text(encoding="utf8"))
         self.assertEqual(statblock.character_xml(npc), NPC_GOLDEN.read_text(encoding="utf8"))
 
     def test_character_xml_writes_a_token_after_the_portrait_as_the_app_does(self):
-        # tests/engine/pregen-sample.test.ts expects the same line from the app's writer
+        # tests/ca2/runner-builder/pregen-sample.test.ts expects the same line from the app's writer
         npc = json.loads(NPC_GOLDEN.with_suffix(".json").read_text(encoding="utf8"))
         npc["identity"].update(portrait="data:image/jpeg;base64,/9j/P", token="data:image/png;base64,iVBO")
         self.assertIn("\n  <portrait>data:image/jpeg;base64,/9j/P</portrait><token>data:image/png;base64,iVBO</token>\n  <background>",

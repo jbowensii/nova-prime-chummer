@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
-import { compendiumXml } from '../../src/engine/compendium'
+import { compendiumXml } from '../../src/ca2/formats/domain/compendium'
 import { type SourceFile } from '../../src/core/shared/source'
 import { xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'

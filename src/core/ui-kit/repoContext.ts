@@ -1,7 +1,7 @@
 // The runner repo contract (Stored, Repo, ...), the browser (localStorage) repo, and the React context the screens read it from.
 // The server repo, which the context is switched to when the server hosts the app, is repo.ts (runner-store).
 import { createContext, useContext } from 'react'
-import type { Character } from '../../model/types'
+import type { Character } from '../../ca2/formats/domain/types'
 import { deleteCharacter, getCharacter, listCharacters, saveCharacter } from './storage'
 
 /** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */

@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
-import { compendiumXml } from '../../src/engine/compendium'
+import { compendiumXml } from '../../src/ca2/formats/domain/compendium'
 import {
   blankSr6Entry,
   COMP_KINDS,

@@ -1,6 +1,6 @@
 import { test, expect, vi } from 'vitest'
 import { deleteCharacter, getCharacter, listCharacters, needsExportReminder, saveCharacter } from '../../../src/core/ui-kit/storage'
-import { blankCharacter } from '../../../src/engine/file'
+import { blankCharacter } from '../../../src/ca2/formats/domain/file'
 
 const testChar = () => {
   const ch = blankCharacter()

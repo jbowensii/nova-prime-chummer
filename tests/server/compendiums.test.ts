@@ -12,8 +12,8 @@ import { createServer } from '../../server/server.mjs'
 import { usersFile } from '../../server/auth.mjs'
 // @ts-expect-error plain JS module
 import { findPython } from '../../tools/python.mjs'
-import { compendiumXml } from '../../src/engine/compendium'
-import type { Compendium } from '../../src/model/types'
+import { compendiumXml } from '../../src/ca2/formats/domain/compendium'
+import type { Compendium } from '../../src/ca2/formats/domain/types'
 
 vi.setConfig({ testTimeout: 30000 })
 const PW = { ada: 'ada-password-1', eve: 'eve-password-1', ed: 'ed-password-12', gil: 'gil-password-1', pat: 'pat-password-1' }

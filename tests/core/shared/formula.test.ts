@@ -1,6 +1,6 @@
 // The shared formula parser (src/core/shared/formula.ts), with made-up formulas.
 import { describe, expect, it } from 'vitest'
-import { evalFormula, formulaText, issueNote, parseFormula, type Formula, type RefLookup } from '../../../src/engine/formula'
+import { evalFormula, formulaText, issueNote, parseFormula, type Formula, type RefLookup } from '../../../src/ca2/formats/domain/formula'
 
 const f = (expr: string, more: Partial<Formula> = {}): Formula => ({ field: 'cost', expr, ...more })
 const n = (expr: string, vars = {}, ref?: RefLookup, more: Partial<Formula> = {}) => evalFormula(f(expr, more), vars, ref).n

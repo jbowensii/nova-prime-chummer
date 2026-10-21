@@ -3,7 +3,7 @@
 // categories across the top, its entries; the book a filter: CatalogBrowser.tsx), then the sources and the Foundry export
 // folded away (each opens with a click; the export also from its icon in row 1 of the header, beside the game switch, for
 // those who may export), the catalog edits, the problems and what a game adds. Each game passes its own rows
-// (src/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
+// (src/ca2/game-data/ui/tabs/Data.tsx, src/sr6/ui/Data.tsx).
 import { useEffect, type ReactNode } from 'react'
 import { CatalogBrowser, type Book, type BrowseKind } from './CatalogBrowser'
 import { STATE_TEXT } from '../../core/shared/ui'

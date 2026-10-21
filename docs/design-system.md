@@ -4,7 +4,7 @@ The app is styled after the published *Shadowrun: Anarchy 2.0 Alternative
 Core Rulebook* v1.8 PDF. Everything here was observed in that PDF: colors
 were read from its vector fills and text colors, fonts from its embedded font
 list, and layout from rendered pages (cover, p.61, 83, 88, 144). The CSS
-(`src/core/ui-kit/app.css`, `src/print/sheet.css`) follows this document.
+(`src/core/ui-kit/app.css`, `src/ca2/print/ui/sheet.css`) follows this document.
 
 ## What the book looks like
 

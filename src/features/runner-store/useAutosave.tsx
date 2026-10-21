@@ -2,7 +2,7 @@
 // request at a time, the latest state queued), flush on leave (keepalive), ask before a link drops an unsaved change,
 // the "Saved elsewhere" conflict, and undo/redo.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { newId } from '../../model/types'
+import { newId } from '../../ca2/formats/domain/types'
 import { session, track, useMe } from '../../core/ui-kit/auth'
 import { Modal } from '../../core/ui-kit/bits'
 import type { Repo } from '../../core/ui-kit/repoContext'

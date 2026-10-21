@@ -24,7 +24,7 @@
 
 ### Task 1: Edits layer — Python writer and engine loading
 
-**Files:** create `importer/edits.py`, `importer/tests/test_edits.py`, `public/data/schema/edits.xsd` (if the data schemas can't validate an edits file directly); modify `importer/__main__.py` (CLI `edit set|remove`, `edit add-source`), `src/engine/load.ts`, `src/model/types.ts`, `tests/engine/edits.test.ts`, the fixture under `tests/fixtures/mini/custom/edits/`.
+**Files:** create `importer/edits.py`, `importer/tests/test_edits.py`, `public/data/schema/edits.xsd` (if the data schemas can't validate an edits file directly); modify `importer/__main__.py` (CLI `edit set|remove`, `edit add-source`), `src/ca2/catalog/domain/load.ts`, `src/ca2/formats/domain/types.ts`, `tests/ca2/catalog/edits.test.ts`, the fixture under `tests/fixtures/mini/custom/edits/`.
 
 - [ ] `edit set <kind> <id> --custom <dir>` reads one entry (data-format XML) + optional `<description>` on stdin; validates with the same rules as propose/apply-review (`_entry_notes`) and the XSD; for an existing catalog id keeps the id, for a new entry requires a house-rule source that exists in custom/edits/sources.xml; writes custom/edits/edits.xml and texts.xml atomically (replace by id).
 - [ ] `edit remove <kind> <id>` drops the entry and its description.
@@ -34,7 +34,7 @@
 
 ### Task 2: Edits API and UI
 
-**Files:** modify `server/books.mjs` (or a new `server/edits.mjs` mounted by server.mjs), `tests/server/*.test.ts`, stub worker; create `src/ui/EditEntry.tsx`; modify `src/ui/tabs/AmpBuilder.tsx` (catalog mode), `src/ui/tabs/Data.tsx`, `src/ui/Rules.tsx`, pickers in `src/ui/tabs/Amps.tsx`/`Gear.tsx`, `src/ui/SourceLabel.tsx`; `e2e/edits.spec.ts`.
+**Files:** modify `server/books.mjs` (or a new `server/edits.mjs` mounted by server.mjs), `tests/server/*.test.ts`, stub worker; create `src/ca2/game-data/ui/EditEntry.tsx`; modify `src/ca2/runner-builder/ui/tabs/AmpBuilder.tsx` (catalog mode), `src/ca2/game-data/ui/tabs/Data.tsx`, `src/ca2/game-data/ui/Rules.tsx`, pickers in `src/ca2/runner-builder/ui/tabs/Amps.tsx`/`Gear.tsx`, `src/ca2/table-rules/ui/SourceLabel.tsx`; `e2e/edits.spec.ts`.
 
 - [ ] Routes: `PUT /api/edits/:kind/:id`, `DELETE /api/edits/:kind/:id`, `POST /api/edits/sources`, `GET /api/edits` (list of edited ids) — kind and id validated, body size cap, serialized with other writers, 400 with the Python reason.
 - [ ] UI: Edit button on catalog entries (pickers' detail, Game data lists, Rules page); amps in Amp Builder catalog mode; items/rules in a form with a Description box; "Edited" mark next to the source label; "Restore book version"; "Add entry" with a house-rule source picker/creator. The catalog reloads after a save.

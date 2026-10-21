@@ -36,11 +36,11 @@
 | `importer/tests/*.py` | `unittest` tests; fixtures generated at test time |
 | `server/books.mjs` | Books API, upload streaming, job queue, AI settings, review endpoints |
 | `server/server.mjs` | Mount `/api/books*`, `/api/ai*`, `/api/review*`; serve `custom/imported` via `/custom/` |
-| `src/engine/load.ts` | Load `custom/imported/index.xml` + sources files; scope imported ids |
-| `src/engine/dupes.ts` | Duplicate grouping and labels |
+| `src/ca2/catalog/domain/load.ts` | Load `custom/imported/index.xml` + sources files; scope imported ids |
+| `src/ca2/catalog/domain/dupes.ts` | Duplicate grouping and labels |
 | `src/engine/migrate.ts` (new) or `file.ts` | Map unscoped `catalogId`s on load |
-| `src/features/book-library/Books.tsx`, `src/ui/Review.tsx`, `src/features/ai-assist/AiSettings.tsx` | Books page, review queue, AI settings |
-| `src/ui/SourceLabel.tsx` | Source title / badge / "Built by you" |
+| `src/features/book-library/Books.tsx`, `src/ca2/book-import/ui/Review.tsx`, `src/features/ai-assist/AiSettings.tsx` | Books page, review queue, AI settings |
+| `src/ca2/table-rules/ui/SourceLabel.tsx` | Source title / badge / "Built by you" |
 | `public/data/schema/{aikeys,aiproviders,import,review,status}.xsd` | Schemas for the new XML files |
 | `tests/fixtures/mini/` | Made-up catalog + imported overlay for engine and e2e tests |
 
@@ -53,8 +53,8 @@ Moves the tests off the shipped book catalogs before those are removed (Task 12)
 **Files:**
 - Create: `tests/fixtures/mini/amps.xml`, `tests/fixtures/mini/items.xml`, `tests/fixtures/mini/rules.xml`, `tests/fixtures/mini/imported/index.xml`, `tests/fixtures/mini/imported/sources.xml`, `tests/fixtures/mini/imported/test/amps.xml`
 - Modify: `tests/helpers.ts`
-- Move: `tests/engine/pregens.test.ts`, `tests/data/catalog.test.ts`, `tests/engine/canon.test.ts` parts that name book entries → `tests/books/`
-- Create: `tests/books/_gate.ts`
+- Move: `tests/engine/pregens.test.ts`, `tests/ca2/catalog/data/catalog.test.ts`, `tests/ca2/formats/canon.test.ts` parts that name book entries → `tests/books/`
+- Create: `tests/ca2/catalog/_gate.ts`
 
 **Interfaces:**
 - Produces: `cat` (engine catalog = shipped mechanics + `tests/fixtures/mini`), `books: Catalog | null` (full catalog from `BOOKS_DIR` or `.extract/private/custom`), `describeBooks` (a `describe` that skips with a reason when `books` is null).
@@ -94,7 +94,7 @@ export const sample = (name: string): Character =>
 
 (`loadDir` reads `imported/index.xml` and each listed file plus `texts/*.xml` in the same order `loadCatalog` uses; implement it next to `cat`.)
 
-- [ ] **Step 4: Gate the book tests.** `tests/books/_gate.ts`:
+- [ ] **Step 4: Gate the book tests.** `tests/ca2/catalog/_gate.ts`:
 
 ```ts
 import { describe } from 'vitest'
@@ -276,8 +276,8 @@ class QrefTest(unittest.TestCase):
 ### Task 4: Engine loads imported books: sources files, scoped ids, duplicates
 
 **Files:**
-- Modify: `src/engine/load.ts`, `src/model/types.ts`, `src/engine/canon.ts`
-- Create: `src/engine/dupes.ts`, `tests/engine/imported.test.ts`
+- Modify: `src/ca2/catalog/domain/load.ts`, `src/ca2/formats/domain/types.ts`, `src/ca2/formats/domain/canon.ts`
+- Create: `src/ca2/catalog/domain/dupes.ts`, `tests/ca2/catalog/imported.test.ts`
 - Modify: `public/data/schema/sources.xsd` (optional `file`, `sha256`, `imported`), `tools/validate-data.mjs` (validate `custom/imported/*` and the three sources files)
 
 **Interfaces:**
@@ -323,7 +323,7 @@ test('an imported source carries its file and checksum', () => {
 ### Task 5: Runners referencing old unscoped ids
 
 **Files:**
-- Modify: `src/engine/file.ts` (or the migrate step used by `parseCharacterFile` / `xmlToCharacter`), `tests/engine/imported.test.ts`
+- Modify: `src/ca2/formats/domain/file.ts` (or the migrate step used by `parseCharacterFile` / `xmlToCharacter`), `tests/ca2/catalog/imported.test.ts`
 
 **Interfaces:**
 - Produces: `rescope(c: Catalog, ch: Character): Character` — for each amp/item with a `catalogId` not in the catalog, find `<source>.<catalogId>` where `<source>` is the snapshot's `source` (lower case); fall back to any scoped match with the same normalized name and type. Called by the editor when a runner is opened (not by the file parser, which has no catalog).
@@ -337,8 +337,8 @@ test('an imported source carries its file and checksum', () => {
 ### Task 6: Source labels everywhere
 
 **Files:**
-- Create: `src/ui/SourceLabel.tsx`
-- Modify: `src/core/ui-kit/bits.tsx` (Picker gets `label?: ReactNode`), `src/ui/tabs/Amps.tsx`, `src/ui/tabs/Gear.tsx`, `src/print/Sheet.tsx`, `src/ui/tabs/Data.tsx`
+- Create: `src/ca2/table-rules/ui/SourceLabel.tsx`
+- Modify: `src/core/ui-kit/bits.tsx` (Picker gets `label?: ReactNode`), `src/ca2/runner-builder/ui/tabs/Amps.tsx`, `src/ca2/runner-builder/ui/tabs/Gear.tsx`, `src/ca2/print/ui/Sheet.tsx`, `src/ca2/game-data/ui/tabs/Data.tsx`
 - Test: `e2e/sources.spec.ts`
 
 **Interfaces:**
@@ -364,7 +364,7 @@ test('an imported source carries its file and checksum', () => {
 - [ ] **Step 1: Row reader test.** A made-up Markdown table in the DHSA layout (`|**Name**|Amp 2|10 000¥*|RR 1 Influence (Animals).|`) → `rows()` yields `{page, section, subsection, name, type, cost, effects, added}` exactly like today's `dhsa34.json` rows.
 - [ ] **Step 2: Parity test (book test, gated):** when the owner's `library/dhsa/book.md` exists, run the recipe and compare counts with the report's last line today: `amps 554 (mods 84), spells 77, complex forms 31, gear 41`, mismatches 21. Differences must be listed and explained before moving on.
 - [ ] **Step 3: Implement**: `rows()` parses pipe tables under the section/subsection headings, carrying `page` from the page markers; everything after that is the existing `build()` code with `private()` writing to the texts result and `cite()` always returning `DHSA` + DHSA page (the 148 core-book reprints are DHSA entries now — spec §6).
-- [ ] **Step 4: Loader merge for skill additions:** an imported `skills.xml` whose `<skill id>` matches an existing skill appends its `<spec>`s instead of replacing the skill. Test in `tests/engine/imported.test.ts`.
+- [ ] **Step 4: Loader merge for skill additions:** an imported `skills.xml` whose `<skill id>` matches an existing skill appends its `<spec>`s instead of replacing the skill. Test in `tests/ca2/catalog/imported.test.ts`.
 - [ ] **Step 5: Commit** `importer: DHSA recipe reads the converted Markdown`.
 
 ---
@@ -373,7 +373,7 @@ test('an imported source carries its file and checksum', () => {
 
 **Files:**
 - Create: `importer/recipes/pregens.py`, `importer/statblock.py`, `importer/tests/test_statblock.py`
-- Modify: `src/ui/Library.tsx` (samples come from `custom/imported/samples/index.xml`), `server/books.mjs` later serves them
+- Modify: `src/ca2/runner-library/ui/Library.tsx` (samples come from `custom/imported/samples/index.xml`), `server/books.mjs` later serves them
 - Delete (Task 12): `tools/daegann-pregens.mjs`, `tools/build-samples.mjs`, `public/samples/*`
 
 **Interfaces:**
@@ -468,10 +468,10 @@ test('an imported source carries its file and checksum', () => {
 ### Task 12: UI — Books page, AI settings, review; remove shipped catalogs
 
 **Files:**
-- Create: `src/features/book-library/Books.tsx`, `src/features/ai-assist/AiSettings.tsx`, `src/ui/Review.tsx`, `e2e/books.spec.ts`
-- Modify: `src/core/app/App.tsx` (routes `#/books`, `#/books/:id/review`), `src/ui/Library.tsx` (Books link; empty-catalog hint; samples from imports), `src/core/ui-kit/app.css`
+- Create: `src/features/book-library/Books.tsx`, `src/features/ai-assist/AiSettings.tsx`, `src/ca2/book-import/ui/Review.tsx`, `e2e/books.spec.ts`
+- Modify: `src/core/app/App.tsx` (routes `#/books`, `#/books/:id/review`), `src/ca2/runner-library/ui/Library.tsx` (Books link; empty-catalog hint; samples from imports), `src/core/ui-kit/app.css`
 - Delete: `public/data/{amps,spells,complexforms,gear,rules}.xml`, the DHSA `<spec>`s in `public/data/skills.xml`, `public/samples/`, `tools/build-samples.mjs`, `tools/daegann-pregens.mjs`, `tests/fixtures/pregens-printed.json`
-- Modify: `docs/book-discrepancies.md` (keep only the rules notes that aren't book data; the per-book tables now live in import reports), `docs/data-format.md`, `README.md`, `docs/deploy-tower04.md`, `DATA_FILES` in `src/engine/load.ts`
+- Modify: `docs/book-discrepancies.md` (keep only the rules notes that aren't book data; the per-book tables now live in import reports), `docs/data-format.md`, `README.md`, `docs/deploy-tower04.md`, `DATA_FILES` in `src/ca2/catalog/domain/load.ts`
 
 **Interfaces:**
 - Books page: upload (drop zone + file input, progress from `status.xml` polling every 2 s), supported books from shipped `sources.xml` (imported / not yet), imported books table (source label, recipe, date, counts, report link, Re-import, Remove with "also delete the PDF and text" checkbox), a "Needs AI" state with a button "Extract with AI" that first shows "This sends the book’s text to {provider}. Continue?".

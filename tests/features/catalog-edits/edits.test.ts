@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
-import { buildCatalog } from '../../../src/engine/load'
-import { toAmp, toItem, toRule } from '../../../src/engine/parse'
-import { entryXml } from '../../../src/engine/compendium'
+import { buildCatalog } from '../../../src/ca2/catalog/domain/load'
+import { toAmp, toItem, toRule } from '../../../src/ca2/formats/domain/parse'
+import { entryXml } from '../../../src/ca2/formats/domain/compendium'
 import { editState } from '../../../src/features/catalog-edits/editTrigger'
 import { cat, catFiles } from '../../helpers'
 

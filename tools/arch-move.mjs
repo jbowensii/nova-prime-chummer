@@ -15,15 +15,26 @@ import { fileURLToPath } from 'node:url'
 const STAY = new Set(['src/main.tsx'])
 
 /** Where a file of `mod` belongs. `sub` is the map's optional 4th column (e.g. sr6/runner-builder's creation, review, career, assets). */
-export function target(path, mod, sub = '') {
+export function target(path, mod, sub = '', clash = false) {
   if (STAY.has(path) || /^core\/(platform|archive)$/.test(mod) || !/^(core|features|ca2|sr6)\//.test(mod)) return path
   const name = posix.basename(path)
   if (path.startsWith('src/')) {
     if (!/^(ca2|sr6)\//.test(mod)) return `src/${mod}/${name}`
-    const layer = /\.tsx$/.test(path) || /\/ui\//.test(path) ? 'ui' : 'domain'
+    const layer = /\.(tsx|css)$/.test(path) || /\/ui\//.test(path) ? 'ui' : 'domain'
     return posix.join('src', mod, layer, sub || (/\/tabs\//.test(path) ? 'tabs' : ''), name)
   }
-  return /^tests\/(?!server\/|fixtures\/)[^/]+\/.*\.tsx?$/.test(path) ? `tests/${mod}/${name}` : path
+  if (path.startsWith(`tests/${mod}/`) || !/^tests\/(?!server\/|fixtures\/)[^/]+\/.*\.tsx?$/.test(path)) return path
+  // two tests of one module with the same file name (tests/old/price.test.ts, tests/older/price.test.ts) keep their old folder name
+  return clash ? `tests/${mod}/${path.split('/')[1]}/${name}` : `tests/${mod}/${name}`
+}
+
+/** Paths (tests only) whose file name another test of the same module shares. */
+export function clashes(rows) {
+  const seen = new Map()
+  for (const [path, mod] of rows)
+    if (/^tests\/(?!server\/|fixtures\/)[^/]+\/.*\.tsx?$/.test(path))
+      seen.set(`${mod}/${posix.basename(path)}`, (seen.get(`${mod}/${posix.basename(path)}`) ?? 0) + 1)
+  return new Set(rows.filter(([path, mod]) => seen.get(`${mod}/${posix.basename(path)}`) > 1).map(([path]) => path))
 }
 
 const SUFFIXES = ['', '.ts', '.tsx', '.d.ts', '/index.ts', '/index.tsx', '.mjs', '.js']
@@ -63,9 +74,10 @@ function main() {
     .filter(Boolean)
     .map(l => l.split('\t'))
   const moves = new Map()
+  const clash = clashes(rows)
   for (const [path, mod, , sub] of rows) {
     if (!mod.startsWith(only) || !tracked.has(path)) continue
-    const to = target(path, mod, sub)
+    const to = target(path, mod, sub, clash.has(path))
     if (to === path) continue
     if (tracked.has(to) || [...moves.values()].includes(to)) throw new Error(`${path} -> ${to}: the target is taken`)
     moves.set(path, to)
@@ -109,7 +121,7 @@ function main() {
   }
   // the folders the moves emptied (rmdirSync refuses a folder that still holds anything)
   for (const d of new Set([...moves.keys()].map(p => posix.dirname(p)))) if (existsSync(at(d)) && !readdirSync(at(d)).length) rmdirSync(at(d))
-  if (!rows.some(([p, m, , s]) => p.startsWith('src/') && !moves.has(p) && target(p, m, s) !== p))
+  if (!rows.some(([p, m, , s]) => p.startsWith('src/') && !moves.has(p) && target(p, m, s, clash.has(p)) !== p))
     console.log('every src file is in its module folder: moduleOf in tests/core/shared/module-boundaries.test.ts may now read the folder')
 }
 

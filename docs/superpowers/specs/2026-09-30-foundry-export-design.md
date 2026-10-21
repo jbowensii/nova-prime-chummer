@@ -80,7 +80,7 @@ text? }`. Descriptions only when included.
 
 ## 3. Chummer (0.6.0)
 
-- **Engine** `src/engine/export.ts` (pure, no DOM): `exportRunners(c, chs, opts)` and `exportBooks(c, sources,
+- **Engine** `src/ca2/foundry/domain/export.ts` (pure, no DOM): `exportRunners(c, chs, opts)` and `exportBooks(c, sources,
   opts)` return the objects above. Unit-tested against the schema and the made-up books in
   `tests/fixtures/mini`.
 - **UI**
@@ -160,7 +160,7 @@ text? }`. Descriptions only when included.
 
 ## 6. Testing
 
-- Chummer: `tests/engine/export.test.ts` (schema-valid output, descriptions on/off, current build of a
+- Chummer: `tests/ca2/foundry/export.test.ts` (schema-valid output, descriptions on/off, current build of a
   finalized runner, numbers equal to `derive`), an e2e test per button (download contents; the book export is
   hidden for a player).
 - Module: translator unit tests with Vitest outside Foundry, on CI; Quench batches inside Foundry ("file

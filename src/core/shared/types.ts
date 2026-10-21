@@ -1,4 +1,4 @@
-// Types and values both games share (architecture step 2); src/model/types.ts re-exports them for Anarchy.
+// Types and values both games share (architecture step 2); src/ca2/formats/domain/types.ts re-exports them for Anarchy.
 export interface Override {
   code: string
   path: string

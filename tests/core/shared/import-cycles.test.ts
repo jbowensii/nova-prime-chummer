@@ -1,6 +1,6 @@
 // No import cycle in src, type imports included (as `npx madge --circular --extensions ts,tsx src` reports them): every
 // import or re-export of a src module counts, `import type` and `export type` too. Shared types live in the model and types modules
-// (src/model/types.ts, src/sr6/model/*, src/sr6/engine/types.ts, src/core/ui-kit/types.ts) so the modules using them don't loop.
+// (src/ca2/formats/domain/types.ts, src/sr6/model/*, src/sr6/engine/types.ts, src/core/ui-kit/types.ts) so the modules using them don't loop.
 // @vitest-environment node
 import { join, relative } from 'node:path'
 import { expect, test } from 'vitest'
@@ -42,8 +42,10 @@ test('src has no import cycle, type imports included', () => {
 })
 
 test('the engines and models import nothing from a UI folder', () => {
-  const layer = ['engine', 'model', 'sr6/engine', 'sr6/model'].flatMap(d => files(join(SRC, d)))
-  const ui = (f: string) => /^(ui|sr6\/ui|core\/(ui-kit|chrome|app))\//.test(relative(SRC, f).replaceAll('\\', '/'))
+  const rel = (f: string) => relative(SRC, f).replaceAll('\\', '/')
+  const domain = files(join(SRC, 'ca2')).filter(f => /^ca2\/[^/]+\/domain\//.test(rel(f)))
+  const layer = [...domain, ...['sr6/engine', 'sr6/model'].flatMap(d => files(join(SRC, d)))]
+  const ui = (f: string) => /^(ca2\/[^/]+\/ui|sr6\/ui|core\/(ui-kit|chrome|app))\//.test(rel(f))
   expect(
     layer.flatMap(f =>
       imports(f)
@@ -53,12 +55,12 @@ test('the engines and models import nothing from a UI folder', () => {
   ).toEqual([])
 })
 
-test('Shadowrun 6 imports nothing from Anarchy’s engine: what both games use lives in src/core/shared', () => {
+test('Shadowrun 6 imports nothing from Anarchy (src/ca2): what both games use lives in src/core/shared', () => {
   const at = (f: string) => relative(SRC, f).replaceAll('\\', '/')
   expect(
     files(join(SRC, 'sr6')).flatMap(f =>
       imports(f)
-        .filter(t => at(t).startsWith('engine/'))
+        .filter(t => at(t).startsWith('ca2/'))
         .map(t => `${at(f)} > ${at(t)}`),
     ),
   ).toEqual([])

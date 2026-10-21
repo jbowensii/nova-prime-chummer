@@ -8,8 +8,8 @@ import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 // @ts-expect-error plain JS module
 import { createServer, restoredCopy } from '../../server/server.mjs'
-import { characterToXml } from '../../src/engine/charxml'
-import { blankCharacter } from '../../src/engine/file'
+import { characterToXml } from '../../src/ca2/formats/domain/charxml'
+import { blankCharacter } from '../../src/ca2/formats/domain/file'
 // @ts-expect-error plain JS module
 import { usersFile } from '../../server/auth.mjs'
 

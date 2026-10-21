@@ -166,7 +166,7 @@ prices complex forms at its `spell` price, dropping the Conversion Guide's.
 
 #### The narrative effect kinds
 
-Every catalog also has the narrative effect kinds (CRB p.59, `src/engine/rule-effects.json`; the loader adds each one a
+Every catalog also has the narrative effect kinds (CRB p.59, `src/ca2/catalog/domain/rule-effects.json`; the loader adds each one a
 data file doesn't define itself): what a narrative effect does, machine-readable, at rating 0. The book prices narrative
 effects with the amp's base rating and its "Additional narrative effect"s, which stay; a kind only says what one does.
 `tools/validate-data.mjs` knows them too.
@@ -291,7 +291,7 @@ one another, each with its own rating and effects (positive or negative levels a
   more "Additional narrative effect" (a sense) added in the Amp Builder, priced by the rating like any amp (15,000¥ at
   3, +5,000¥ each). Additional plates "max +Body" (DHSA p.50): the add-on is applied once per point, and the Amp
   Builder offers no add-on or effect that would take a vehicle's Armor above its Body (nor any past an effect's max or
-  a deck's Firewall 5: `overCap`, `effectBlocked` in `src/engine/amps.ts`).
+  a deck's Firewall 5: `overCap`, `effectBlocked` in `src/ca2/runner-builder/domain/amps.ts`).
 - A version the book prints for some characters is its own entry: "Note: Rating 10 (52,500¥) for characters unable to
   cast spells" (Psyché, CRB p.150, DHSA p.26) is `<id>-non-caster`, "Psyché (non-caster)", at that rating without the
   effects only a caster uses (the sustained spell).

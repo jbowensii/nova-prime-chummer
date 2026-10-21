@@ -46,19 +46,19 @@ public/data/{levels,metatypes,attributes,skills,pricing,amptypes,ampeffects,
              packages,vehicles,gear,weapons,armor,spells,amps}.xml
 public/custom/index.xml               overlay file list (empty by default)
 public/samples/*.ca2.json             book characters (Lightning + 12 pregens)
-src/model/types.ts                    Catalog + Character types (the shared vocabulary)
-src/engine/load.ts                    fetch + parse XML → Catalog; overlay merge
-src/engine/parse.ts                   XML element → typed record, one fn per kind
-src/engine/price.ts                   attrCost, skillCost, price(build), packageGuide
-src/engine/amps.ts                    ampRating, ampEssence, ampChangeCost
-src/engine/derive.ts                  derive(catalog, character)
-src/engine/validate.ts                validate(catalog, character)
-src/engine/career.ts                  currentBuild, balance, makeEvent
-src/engine/file.ts                    serialize, parseCharacterFile, migrate
+src/ca2/formats/domain/types.ts                    Catalog + Character types (the shared vocabulary)
+src/ca2/catalog/domain/load.ts                    fetch + parse XML → Catalog; overlay merge
+src/ca2/formats/domain/parse.ts                   XML element → typed record, one fn per kind
+src/ca2/runner-builder/domain/price.ts                   attrCost, skillCost, price(build), packageGuide
+src/ca2/runner-builder/domain/amps.ts                    ampRating, ampEssence, ampChangeCost
+src/ca2/runner-builder/domain/derive.ts                  derive(catalog, character)
+src/ca2/runner-builder/domain/validate.ts                validate(catalog, character)
+src/ca2/runner-builder/domain/career.ts                  currentBuild, balance, makeEvent
+src/ca2/formats/domain/file.ts                    serialize, parseCharacterFile, migrate
 src/engine/index.ts                   re-exports (the only import surface for ui/)
 src/core/app/App.tsx  store.ts  library.ts  Library.tsx  SummaryPanel.tsx
 src/ui/tabs/{Concept,Attributes,Skills,Amps,AmpBuilder,Gear,Review,Ledger,Data}.tsx
-src/print/Sheet.tsx  sheet.css
+src/ca2/print/ui/Sheet.tsx  sheet.css
 tools/validate-data.mjs               XSD + reference-integrity check
 tools/extract-*.mjs                   one-off extractors (kept for re-runs)
 tests/engine/*.test.ts  tests/data/*.test.ts  tests/fixtures/*
@@ -73,7 +73,7 @@ Dockerfile  nginx.conf  .dockerignore  unraid/chummer-anarchy2.xml
 ## Shared vocabulary (defined in Task 1, used everywhere)
 
 ```ts
-// src/model/types.ts
+// src/ca2/formats/domain/types.ts
 export type AttrId = 'str' | 'agi' | 'wil' | 'log' | 'cha';
 export const ATTRS: AttrId[] = ['str', 'agi', 'wil', 'log', 'cha'];
 export interface Ref { id: string; source: string; page: number }
@@ -158,12 +158,12 @@ export interface Violation { code: string; severity: Severity; path: string;
 
 ### Task 1: Scaffold, types, CI
 
-**Files:** Create `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/core/app/App.tsx` (placeholder "Chummer Anarchy 2.0"), `src/model/types.ts` (the full block above), `.github/workflows/ci.yml`, and `tests/engine/smoke.test.ts`.
+**Files:** Create `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/core/app/App.tsx` (placeholder "Chummer Anarchy 2.0"), `src/ca2/formats/domain/types.ts` (the full block above), `.github/workflows/ci.yml`, and `tests/ca2/catalog/smoke.test.ts`.
 
 - [ ] **Step 1:** `npm create vite@latest . -- --template react-ts` (keep the existing README and .gitignore). Then `npm i -D vitest jsdom @playwright/test xmllint-wasm`.
 - [ ] **Step 2:** In `vite.config.ts`, add `test: { environment: 'jsdom', include: ['tests/**/*.test.ts'] }` and `base: './'`, so the build works under any path.
 - [ ] **Step 3:** Scripts: `"test": "vitest run"`, `"validate:data": "node tools/validate-data.mjs"`, `"e2e": "playwright test"`, `"check": "tsc -b && npm run validate:data && npm test"`.
-- [ ] **Step 4:** Write `tests/engine/smoke.test.ts` asserting `new DOMParser()` exists and `ATTRS.length === 5`. Run `npm test`: it passes.
+- [ ] **Step 4:** Write `tests/ca2/catalog/smoke.test.ts` asserting `new DOMParser()` exists and `ATTRS.length === 5`. Run `npm test`: it passes.
 - [ ] **Step 5:** `ci.yml`: on push and PR, run Node 22, `npm ci`, `npm run check`, `npx playwright install --with-deps chromium`, `npm run build`, `npm run e2e`.
 - [ ] **Step 6:** Commit `Scaffold Vite React TS app, shared types, CI`.
 
@@ -189,7 +189,7 @@ Content: the values come from the core rulebook; see docs/data-format.md, "Core 
 
 ### Task 3: Catalog content: gear, weapons, armor, spells, prebuilt amps
 
-**Files:** Create `tools/extract-crb.mjs`, `tools/extract-dhsa.mjs`, the schemas `public/data/schema/{items,amps}.xsd`, the data files `public/data/{gear,weapons,armor,spells,amps}.xml`, and `tests/data/catalog.test.ts`.
+**Files:** Create `tools/extract-crb.mjs`, `tools/extract-dhsa.mjs`, the schemas `public/data/schema/{items,amps}.xsd`, the data files `public/data/{gear,weapons,armor,spells,amps}.xml`, and `tests/ca2/catalog/data/catalog.test.ts`.
 
 **Sources:**
 - CRB markdown sections: *Weapons* (line ~6651), *Weapon Amps* (~6731), *Armor* (~6862), *Armor Amps* (~6901), *Drugs/Toxins* (~6923–7090), *Cyberware* (~7093–7360), *Bioware* (~7360), *Medkits* (~7406), *Contacts* (~7560), *Lifestyle* (~7638), *Mentor spirits* (~7906), spells (~8174–8394), foci (~8599), *Adept powers* (~8673), cyberdecks and programs (~9437), drones and vehicles (~10405+), and the infiltration and con-artist gear lists (~6441, ~6557).
@@ -202,7 +202,7 @@ Content: the values come from the core rulebook; see docs/data-format.md, "Core 
 - [ ] **Step 1:** Write `extract-crb.mjs`. It slices each section by line range, parses the markdown tables and bullet lists (the lines are `|…|` rows or `**Name** (Type, cost)` bullets), and prints a draft XML to stdout. Run it and redirect to the files.
 - [ ] **Step 2:** Write `extract-dhsa.mjs` (spawning a Python PyMuPDF helper), which drafts the additional amps.
 - [ ] **Step 3:** Hand-review every file against the source. Fix names, specialist flags and armor values, and decompose the amps. Unmapped oddities go in `docs/book-discrepancies.md`.
-- [ ] **Step 4:** Write `tests/data/catalog.test.ts`. It loads each XML with `DOMParser` and asserts:
+- [ ] **Step 4:** Write `tests/ca2/catalog/data/catalog.test.ts`. It loads each XML with `DOMParser` and asserts:
   - ≥ 1 entry per kind;
   - every weapon has `specialist` set to true or absent;
   - every armor has `armor ≥ 1`;
@@ -213,7 +213,7 @@ Content: the values come from the core rulebook; see docs/data-format.md, "Core 
 
 ### Task 4: Loader and overlay merge
 
-**Files:** Create `src/engine/parse.ts`, `src/engine/load.ts`, `tests/engine/load.test.ts`, and `tests/fixtures/custom-example/{index.xml,levels.xml}`.
+**Files:** Create `src/ca2/formats/domain/parse.ts`, `src/ca2/catalog/domain/load.ts`, `tests/ca2/catalog/load.test.ts`, and `tests/fixtures/custom-example/{index.xml,levels.xml}`.
 
 **Produces:**
 - `parseDataFile(xml: string, file: string, overlay: boolean): { kind: string; entries: Element[]; removals: string[]; error?: LoadError }`
@@ -263,7 +263,7 @@ Content: the values come from the core rulebook; see docs/data-format.md, "Core 
 
 ### Task 5: Pricing and package guides
 
-**Files:** Create `src/engine/price.ts` and `tests/engine/price.test.ts`.
+**Files:** Create `src/ca2/runner-builder/domain/price.ts` and `tests/ca2/runner-builder/engine/price.test.ts`.
 
 **Produces:**
 - `attrCost(p: Pricing, from: number, to: number, max: number): number`
@@ -307,7 +307,7 @@ Rules:
 
 ### Task 6: Amp rating, Essence, change cost
 
-**Files:** Create `src/engine/amps.ts` and `tests/engine/amps.test.ts`.
+**Files:** Create `src/ca2/runner-builder/domain/amps.ts` and `tests/ca2/runner-builder/engine/amps.test.ts`.
 
 **Produces:**
 - `ampRating(c: Catalog, amp: AmpEntry, ctx: { isFirstQuality: boolean }): number`
@@ -329,7 +329,7 @@ Rules:
 
 ### Task 7: Derived values
 
-**Files:** Create `src/engine/derive.ts` and `tests/engine/derive.test.ts`.
+**Files:** Create `src/ca2/runner-builder/domain/derive.ts` and `tests/ca2/runner-builder/engine/derive.test.ts`.
 
 **Produces:** `derive(c: Catalog, ch: Character): Derived` where
 
@@ -378,7 +378,7 @@ Rules:
 
 ### Task 8: Validation
 
-**Files:** Create `src/engine/validate.ts` and `tests/engine/validate.test.ts`.
+**Files:** Create `src/ca2/runner-builder/domain/validate.ts` and `tests/ca2/runner-builder/engine/validate.test.ts`.
 
 **Produces:** `validate(c: Catalog, ch: Character): Violation[]`. Each violation gets `approved: true` when `ch.overrides` has the same `code` and `path`. `canFinalize(v: Violation[]): boolean` = no unapproved error.
 
@@ -413,7 +413,7 @@ The codes (all from spec §5.6). Paths look like `attributes.str`, `skills.steal
 
 ### Task 9: Career events
 
-**Files:** Create `src/engine/career.ts` and `tests/engine/career.test.ts`.
+**Files:** Create `src/ca2/runner-builder/domain/career.ts` and `tests/ca2/runner-builder/engine/career.test.ts`.
 
 **Produces:**
 - `currentBuild(ch): Build` — applies the non-voided events to a deep copy of `ch.build`.
@@ -437,7 +437,7 @@ The codes (all from spec §5.6). Paths look like `attributes.str`, `skills.steal
 
 ### Task 10: Character file I/O
 
-**Files:** Create `src/engine/file.ts` and `tests/engine/file.test.ts`.
+**Files:** Create `src/ca2/formats/domain/file.ts` and `tests/ca2/formats/file.test.ts`.
 
 **Produces:**
 - `blankCharacter(level = 'runner', metatype = 'human'): Character`
@@ -484,7 +484,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 12: Store, library, app frame
 
-**Files:** Create `src/ui/store.ts`, `src/ui/library.ts`, `src/core/app/App.tsx`, `src/ui/Library.tsx`, `src/core/ui-kit/app.css`, and `tests/ui/library.test.ts`.
+**Files:** Create `src/ui/store.ts`, `src/ui/library.ts`, `src/core/app/App.tsx`, `src/ca2/runner-library/ui/Library.tsx`, `src/core/ui-kit/app.css`, and `tests/ca2/runner-library/library.test.ts`.
 
 **Produces:**
 - `library.ts`: `listCharacters(): Character[]`, `saveCharacter(ch)`, `deleteCharacter(id)`, `needsExportReminder(ch, now)`. Each wraps `localStorage` key `ca2.library.v1` in try/catch. On failure it returns `{ ok: false }` and the UI shows the "export now" banner.
@@ -498,7 +498,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 13: Summary panel and Concept tab
 
-**Files:** Create `src/ui/SummaryPanel.tsx` and `src/ui/tabs/Concept.tsx`.
+**Files:** Create `src/ui/SummaryPanel.tsx` and `src/ca2/runner-builder/ui/tabs/Concept.tsx`.
 
 - `SummaryPanel` reads `price()`, `derive()`, `validate()` and `balance()` (in career mode). It shows:
   - nuyen spent/remaining (red when negative);
@@ -516,7 +516,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 14: Attributes and Skills tabs
 
-**Files:** Create `src/ui/tabs/Attributes.tsx` and `src/ui/tabs/Skills.tsx`.
+**Files:** Create `src/ca2/runner-builder/ui/tabs/Attributes.tsx` and `src/ca2/runner-builder/ui/tabs/Skills.tsx`.
 
 - Attributes: a row per attribute with − / value / +, `min–max`, and "next point: <price>" (from `attrCost(p, v, v+1, max)`). There's an at-max counter "1 / 1". Buttons are disabled only at the hard metatype bounds; level-cap problems show as violations, not disabled buttons.
 - Skills: the 14 rows with a rating stepper (0–8), the linked attribute, the DP and RR from `derive().pools`, and "next point" cost. Spec chips come from `skill.specs`, plus "custom…" (stored as `custom:Name`). The knowledge list has add and remove, with a note listing the automatic knowledge from `derive().knowledge`.
@@ -525,7 +525,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 15: Gear and Spells tab
 
-**Files:** Create `src/ui/tabs/Gear.tsx`.
+**Files:** Create `src/ca2/runner-builder/ui/tabs/Gear.tsx`.
 
 - Four sections: Armor, Weapons, Equipment and Spells. Each has a catalog picker (searchable by name/category, showing source+page and the one-line text) and "Custom…" (name, kind, specialist flag, armor, GM price).
 - Choose main armor and alternate armor.
@@ -536,7 +536,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 16: Review tab and Finalize
 
-**Files:** Create `src/ui/tabs/Review.tsx`.
+**Files:** Create `src/ca2/runner-builder/ui/tabs/Review.tsx`.
 
 - Lists `validate()`, grouped errors first. Each row shows the message, "CRB p.N", a **Fix** link (navigates to the tab that owns the path), and **GM approve** (a note prompt, which adds an `Override`) or **Revoke**.
 - **Finalize** is enabled when `canFinalize`. It confirms, then calls `finalize(ch)`, which switches the app to career mode.
@@ -547,11 +547,11 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 17: Amps tab and Amp Builder dialog
 
-**Files:** Create `src/ui/tabs/Amps.tsx`, `src/ui/tabs/AmpBuilder.tsx`, and `tests/ui/ampBuilder.test.ts`.
+**Files:** Create `src/ca2/runner-builder/ui/tabs/Amps.tsx`, `src/ca2/runner-builder/ui/tabs/AmpBuilder.tsx`, and `tests/ui/ampBuilder.test.ts`.
 
 **Consumes:** `ampRating`, `ampEssence`, `ampChangeCost`, and `validate`, filtered to `amps.<uid>`.
 
-**Produces:** `legalEffects(c, amp): { effect: AmpEffect; allowed: boolean; reason?: string }[]`, a pure helper in `src/engine/amps.ts` (engine, because it's a rule). `allowed` is false when:
+**Produces:** `legalEffects(c, amp): { effect: AmpEffect; allowed: boolean; reason?: string }[]`, a pure helper in `src/ca2/runner-builder/domain/amps.ts` (engine, because it's a rule). `allowed` is false when:
 - the type isn't in `effect.types`;
 - the count is ≥ `max`;
 - `requires` is unmet;
@@ -577,7 +577,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 18: Career mode and Ledger
 
-**Files:** Modify `src/ui/tabs/{Attributes,Skills,Gear,Amps}.tsx` and `src/core/app/App.tsx`. Create `src/ui/tabs/Ledger.tsx`.
+**Files:** Modify `src/ui/tabs/{Attributes,Skills,Gear,Amps}.tsx` and `src/core/app/App.tsx`. Create `src/ca2/runner-builder/ui/tabs/Ledger.tsx`.
 
 - When `ch.finalizedAt` is set, every edit becomes a `make*` event behind a confirm dialog ("Stealth 5 → 6 · <price> · balance after: <balance>"). Direct edits of `build` are disabled. Undo/redo are hidden, and Void on the ledger replaces them.
 - Balance < 0 after an event is allowed but shown red (it raises `budget.over`).
@@ -589,7 +589,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 19: Print sheet
 
-**Files:** Create `src/print/Sheet.tsx` and `src/print/sheet.css`. Add route `#/c/<id>/print`.
+**Files:** Create `src/ca2/print/ui/Sheet.tsx` and `src/ca2/print/ui/sheet.css`. Add route `#/c/<id>/print`.
 
 - The sections, in the official sheet's order:
   1. Header with street name
@@ -610,7 +610,7 @@ theme with a light option. It must work at 1280px and down to 768px.
 
 ### Task 20: Data screen and Playwright smoke
 
-**Files:** Create `src/ui/tabs/Data.tsx`, `playwright.config.ts`, and `e2e/smoke.spec.ts`.
+**Files:** Create `src/ca2/game-data/ui/tabs/Data.tsx`, `playwright.config.ts`, and `e2e/smoke.spec.ts`.
 
 - Data screen: a table of `catalog.files` (file, kind, entries, base/overlay) and `catalog.errors` (file:line message), plus a link to `docs/data-format.md` on GitHub.
 - `playwright.config.ts`: `webServer: { command: 'npm run preview -- --port 4173', port: 4173 }`.

@@ -2,7 +2,7 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
 // @ts-expect-error: a plain .mjs tool, no types
-import { respec, target } from '../tools/arch-move.mjs'
+import { clashes, respec, target } from '../tools/arch-move.mjs'
 
 test('the target rule', () => {
   expect(target('src/ui/nav.tsx', 'core/chrome')).toBe('src/core/chrome/nav.tsx')
@@ -11,6 +11,7 @@ test('the target rule', () => {
   expect(target('src/sr6/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
   expect(target('src/sr6/engine/budgets.ts', 'sr6/runner-builder', 'creation')).toBe('src/sr6/runner-builder/domain/creation/budgets.ts')
   expect(target('src/print/sheet.tsx', 'ca2/print')).toBe('src/ca2/print/ui/sheet.tsx')
+  expect(target('src/ca2/print/ui/sheet.css', 'ca2/print')).toBe('src/ca2/print/ui/sheet.css')
   expect(target('tests/sr6/fixture.ts', 'sr6/catalog')).toBe('tests/sr6/catalog/fixture.ts')
   for (const [p, m] of [
     ['src/main.tsx', 'core/app'],
@@ -22,6 +23,18 @@ test('the target rule', () => {
     expect(target(p, m)).toBe(p)
   // re-runnable: a moved file is already at its target
   expect(target('src/sr6/runner-builder/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
+})
+
+test('same-named tests of one module keep their old folder, and a rerun leaves them', () => {
+  const rows = [
+    ['tests/old/price.test.ts', 'ca2/x'],
+    ['tests/older/price.test.ts', 'ca2/x'],
+    ['tests/ui/a.test.ts', 'ca2/x'],
+  ]
+  const c = clashes(rows)
+  expect(target('tests/older/price.test.ts', 'ca2/x', '', c.has('tests/older/price.test.ts'))).toBe('tests/ca2/x/older/price.test.ts')
+  expect(target('tests/ui/a.test.ts', 'ca2/x', '', c.has('tests/ui/a.test.ts'))).toBe('tests/ca2/x/a.test.ts')
+  expect(target('tests/ca2/x/older/price.test.ts', 'ca2/x', '', true)).toBe('tests/ca2/x/older/price.test.ts')
 })
 
 test('specifiers follow the moved file and the moved importer', () => {

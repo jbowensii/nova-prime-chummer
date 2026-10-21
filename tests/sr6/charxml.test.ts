@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
-import { xmlToCharacter } from '../../src/engine/charxml'
+import { xmlToCharacter } from '../../src/ca2/formats/domain/charxml'
 import { currentBuild } from '../../src/sr6/engine/career'
 import { SR6_CHAR_NS, sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
 import { sr6Codec } from '../../src/sr6/ui/repo'

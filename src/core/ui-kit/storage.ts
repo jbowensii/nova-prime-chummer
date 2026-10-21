@@ -1,7 +1,7 @@
 // The character library lives in this browser's localStorage. It is a convenience:
 // the .ca2.json export is the durable copy, so every call tolerates storage failing.
-import type { Character } from '../../model/types'
-import { migrate } from '../../engine/file'
+import type { Character } from '../../ca2/formats/domain/types'
+import { migrate } from '../../ca2/formats/domain/file'
 
 const KEY = 'ca2.library.v1'
 /** NPCs in browser mode: a key of their own, so the runner list never sees them */
