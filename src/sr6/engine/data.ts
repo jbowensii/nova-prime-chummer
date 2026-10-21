@@ -1,8 +1,8 @@
 // Typed views over the SR6 catalog for the creation engine: the generic S1 entries (attributes and parts as printed)
 // read once into the shapes the providers, budgets and rules use. Names the book prints (a priority row's metatypes, a
 // metatype's traits) are resolved to ids here; what can't be resolved or read is a warning in `problems`, never a guess.
-import { issueNote } from '../../shared/formula'
-import type { Violation } from '../../shared/types'
+import { issueNote } from '../../core/shared/formula'
+import type { Violation } from '../../core/shared/types'
 import type { MagicKind, PickKind, Letter } from '../model/character'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind } from '../model/types'
 import { MAX_RATING, rated } from './values'

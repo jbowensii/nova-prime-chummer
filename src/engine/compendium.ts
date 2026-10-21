@@ -3,13 +3,13 @@
 // public/data/schema/compendium.xsd). The loader adds its entries to the catalog like a house-rule overlay.
 import type { AmpTemplate, Catalog, Character, Compendium, EffectPick, Item, Rule, Source, VehicleBase } from '../model/types'
 import { effectStateAttrs } from './effects'
-import { esc, escAttr } from '../shared/xml'
-import { SOURCE_ID } from '../shared/source'
+import { esc, escAttr } from '../core/shared/xml'
+import { SOURCE_ID } from '../core/shared/source'
 import { characterToXml, xmlToCharacter } from './charxml'
 import { toAmp, toItem, toVehicle } from './parse'
 
 const DATA_NS = 'urn:chummer-anarchy2:data:1'
-// a source id's form: both games' (src/shared/source.ts)
+// a source id's form: both games' (src/core/shared/source.ts)
 export { SOURCE_ID }
 const SHARING = ['private', 'campaign', 'table'] as const
 
@@ -126,7 +126,7 @@ export function readCompendium(xml: string): { ok: true; compendium: Compendium 
 
 // ---- players' runners (phase 3) ----
 /** The catalog a runner in `campaign` sees: the entries of compendiums shared with another campaign left out (a player's
- *  catalog holds the compendiums of every campaign they play in, src/ui/App.tsx). The same catalog when there are none. */
+ *  catalog holds the compendiums of every campaign they play in, src/core/app/App.tsx). The same catalog when there are none. */
 export function forCampaign(c: Catalog, campaign: string | undefined): Catalog {
   const other = new Set([...c.sources.values()].filter(s => s.compendium?.campaign && s.compendium.campaign !== campaign).map(s => s.id))
   if (!other.size) return c

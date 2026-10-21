@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import type { Codec } from '../../src/shared/types'
+import type { Codec } from '../../src/core/shared/types'
 import { serverRepo } from '../../src/ui/repo'
-import { rootAttr } from '../../src/shared/xml'
+import { rootAttr } from '../../src/core/shared/xml'
 
 // a toy game: <toy:doc id=".." name=".."/>; "bad" in the file makes it unreadable
 interface Toy {

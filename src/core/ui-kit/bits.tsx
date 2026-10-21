@@ -1,6 +1,6 @@
 // Small shared UI pieces: money format, stepper, catalog picker, dialog, receipt line.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { Npc } from '../model/types'
+import type { Npc } from '../../model/types'
 import type { BrowseRow } from './types'
 import { EntryHover } from './EntryHover'
 
@@ -81,7 +81,7 @@ export interface PickItem {
   search?: string
   action?: ReactNode
   disabled?: boolean
-  /** its catalog entry's card (src/ui/EntryHover.tsx), shown on hover and while the item has focus */
+  /** its catalog entry's card (src/core/ui-kit/EntryHover.tsx), shown on hover and while the item has focus */
   card?: () => BrowseRow
   cardKind?: string
 }

@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { NATIVE_HELP } from '../TableRules'
 import { knowledgeList, poolMarks, rrNotes, type KnowledgeRow } from '../../engine/derive'
 import { skillCost } from '../../engine/price'
-import { bracketed } from '../../shared/effects'
+import { bracketed } from '../../core/shared/effects'
 import type { Build, Catalog, KnowledgeEntry } from '../../model/types'
 import { newId } from '../../model/types'
-import { fmt, Stepper } from '../bits'
+import { fmt, Stepper } from '../../core/ui-kit/bits'
 import { useEditor } from '../editor'
 import { AnarchyRef } from '../AnarchyRef'
-import { NameField } from '../../shared/ui'
+import { NameField } from '../../core/shared/ui'
 
 /** Lowering a skill below 4 turns its renamed free entry into a paid one: the question to ask first, or null when
  *  nothing gets paid (an entry still named after the skill just goes away with the slot). */

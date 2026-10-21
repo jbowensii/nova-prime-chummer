@@ -1,7 +1,7 @@
 // Gear: weapons (attack ratings, accessories from the accessory categories), armor (worn, the Defense and Social Ratings it gives),
 // electronics, programs and autosofts (at a rating, priced by the book's formula) and other gear (a quantity where lines stack), and a custom item at the player's own price.
 import { useState } from 'react'
-import { Modal } from '../../../ui/bits'
+import { Modal } from '../../../core/ui-kit/bits'
 import type { PurchaseKind, Sr6Purchase } from '../../model/character'
 import { entryOf, statusesOf, takesMaterial } from '../../engine/budgets'
 import { ratingEdge } from '../../engine/derive'

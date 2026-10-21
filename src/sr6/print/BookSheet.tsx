@@ -4,7 +4,7 @@
 // and colours (the SR6 theme's cyan and pink, sheet.css), no art or text from the PDF. Short boxes keep a few blank
 // ruled rows to write in, as the printed sheet does.
 import type { ReactNode } from 'react'
-import { bdClass, printBackdrop } from '../../ui/Portrait'
+import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
 import type { useSheetArt } from '../../ui/sheetArt'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'

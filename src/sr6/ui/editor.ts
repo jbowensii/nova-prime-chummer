@@ -2,7 +2,7 @@
 // (provider, budgets, violations, derived values). Tabs change the runner through edit (the build), act (an engine step:
 // its refusal comes back as a sentence) or update (identity, notes, the character-level setters).
 import { createContext, useContext } from 'react'
-import type { Override, Violation } from '../../shared/types'
+import type { Override, Violation } from '../../core/shared/types'
 import { apply, type Op } from '../engine/actions'
 import type { Sr6Budgets } from '../engine/budgets'
 import type { Preview, Typed } from '../engine/career'

@@ -1,8 +1,8 @@
 // The sign-in page (also shown over the app when a session ends; "Sign in with Authelia" when Settings → Sign-in turned it on)
 // and the recovery page (#/setup/reset), which takes the one-time code `node server/users.mjs reset <username>` prints.
 import { useEffect, useState, type ReactNode } from 'react'
-import { fetchMe, PasswordField, send, takeLinkNote, type User } from './auth'
-import { Brand } from './bits'
+import { fetchMe, PasswordField, send, takeLinkNote, type User } from '../core/ui-kit/auth'
+import { Brand } from '../core/ui-kit/bits'
 
 /** A page with one form: the brand, a title, the fields, one error line (role=alert). */
 export function GatePage({

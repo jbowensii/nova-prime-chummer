@@ -7,7 +7,7 @@
 // entries by id after the imports and before the house rules; the replaced entries stay in c.original. A GM's compendium
 // (kind="compendium", an extra overlay) adds its entries under its own house source.
 import type { AmpEffect, AttrId, Catalog, EffectParam, Pricing, Source } from '../model/types'
-import type { SourceFile } from '../shared/source'
+import type { SourceFile } from '../core/shared/source'
 import {
   parseDataFile,
   toAmp,
@@ -66,7 +66,7 @@ export function loadRuleEffects(c: Catalog) {
   for (const { text: _, ...e } of RULE_EFFECTS) if (!c.ampEffects.has(e.id)) c.ampEffects.set(e.id, { ...e, types, source: 'CRB', page: 59 })
 }
 
-// a data file as the loaders get it: both games' (src/shared/source.ts)
+// a data file as the loaders get it: both games' (src/core/shared/source.ts)
 export type { SourceFile }
 
 const IMPORTED = 'custom/imported/'

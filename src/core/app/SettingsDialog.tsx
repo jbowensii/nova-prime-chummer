@@ -2,13 +2,13 @@
 // under Books), Background art, Sign-in and Backup. It composes feature panels, so it lives in the app shell; App.tsx hands it
 // to the header (nav.tsx HeaderBarsContext). The per-browser store is settings.tsx.
 import { useState } from 'react'
-import { isAdmin, useMe } from './auth'
-import { BackupSettings } from './Backup'
-import { BackgroundSettings } from './Background'
-import { Modal } from './bits'
-import { IconButton } from './icons'
-import { SignInSettings } from './SignInSettings'
-import { loadSettings, PRINT_STYLES, saveSettings, SR6_PRINT_STYLES, type Settings } from './settings'
+import { isAdmin, useMe } from '../ui-kit/auth'
+import { BackupSettings } from '../../ui/Backup'
+import { BackgroundSettings } from '../../ui/Background'
+import { Modal } from '../ui-kit/bits'
+import { IconButton } from '../ui-kit/icons'
+import { SignInSettings } from '../../ui/SignInSettings'
+import { loadSettings, PRINT_STYLES, saveSettings, SR6_PRINT_STYLES, type Settings } from '../ui-kit/settings'
 
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
   {

@@ -9,7 +9,7 @@ import type { Budget } from '../engine/budgets'
 import { MAGIC_KIND_LABELS, SR6_METHOD_LABELS } from '../model/character'
 import { n, sr6EditHref, useSr6Editor } from './editor'
 import { Sr6Ref } from './EntryRef'
-import { SidePanel } from '../../shared/ui'
+import { SidePanel } from '../../core/shared/ui'
 
 /** What's left of a budget in a sentence: "3 left of 24", or overspent "over by 2 (of 24)" (in the error colour unless
  *  `fine`: a Karma build's spells past the free ones are bought with Karma). */

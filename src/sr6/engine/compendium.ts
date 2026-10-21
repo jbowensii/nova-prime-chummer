@@ -2,8 +2,8 @@
 // (COMP_KINDS, under their SR6 tags, common.xsd's types) that all cite the compendium's own source, plus NPCs as embedded
 // <sr6:character> (docs/sr6-data-format.md "Compendiums", public/data/sr6/schema/compendium.xsd). Never the other game's:
 // an Anarchy compendium or runner is refused. The server stores it at /api/sr6/compendiums (server/compendiums.mjs).
-import { escAttr } from '../../shared/xml'
-import { SOURCE_ID } from '../../shared/source'
+import { escAttr } from '../../core/shared/xml'
+import { SOURCE_ID } from '../../core/shared/source'
 import type { Sr6Catalog, Sr6Entry, Sr6Kind, Sr6Source } from '../model/types'
 import type { Sr6Character, Sr6Compendium } from '../model/character'
 import { AUG_TYPES, SR6_KINDS } from '../model/types'

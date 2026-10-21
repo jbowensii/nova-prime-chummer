@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { GAME_KEY, gameOf, homeOf, storedGame, storeGame } from '../../src/ui/game'
+import { GAME_KEY, gameOf, homeOf, storedGame, storeGame } from '../../../src/core/ui-kit/game'
 
 afterEach(() => {
   vi.restoreAllMocks()

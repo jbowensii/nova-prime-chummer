@@ -6,14 +6,14 @@ import { ATTRS } from '../model/types'
 import { effectStateAttrs, readEffectState } from './effects'
 import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
-import type { Codec } from '../shared/types'
-import { BAD_XML_CHAR, attrs, badCharAt, each, el, esc, escAttr, kid, kids, need, readDoc, text, type ReadOpts } from '../shared/xml'
+import type { Codec } from '../core/shared/types'
+import { BAD_XML_CHAR, attrs, badCharAt, each, el, esc, escAttr, kid, kids, need, readDoc, text, type ReadOpts } from '../core/shared/xml'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
 /** The Shadowrun 6 runner's (src/sr6/engine/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
 const SR6_NS = 'urn:chummer-sr6:character:1'
 
-// what XML 1.0 can't hold, the escapers, the writing and reading helpers (shared by both games: src/shared/xml.ts)
+// what XML 1.0 can't hold, the escapers, the writing and reading helpers (shared by both games: src/core/shared/xml.ts)
 export { BAD_XML_CHAR, esc, escAttr, attrs, el, text, kids, kid, badCharAt, each, need, readDoc, type ReadOpts }
 
 // ---- catalog snapshots, written in the data files' own format ----

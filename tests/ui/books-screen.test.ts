@@ -7,7 +7,7 @@ import type { Book } from '../../src/ui/Books'
 import { BooksScreen } from '../../src/ui/Books'
 import { ca2Codec } from '../../src/engine/charxml'
 import { serverRepo } from '../../src/ui/repo'
-import { RepoContext } from '../../src/ui/repoContext'
+import { RepoContext } from '../../src/core/ui-kit/repoContext'
 import { cat } from '../helpers'
 import { button, change, click, mount, pageText, stubFetch } from './dom'
 

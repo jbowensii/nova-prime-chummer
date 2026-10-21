@@ -2,7 +2,7 @@
 // fresh id instead of being refused as "changed elsewhere".
 import { expect, test } from 'vitest'
 import { saveAsNew } from '../../src/ui/repo'
-import { type SaveResult } from '../../src/ui/repoContext'
+import { type SaveResult } from '../../src/core/ui-kit/repoContext'
 
 const store = (taken: string[]) => {
   const saved: string[] = []

@@ -119,14 +119,35 @@ cycles into the new layout. The fixes are small and change no behaviour:
 
 | Problem | Evidence | Fix |
 |---|---|---|
-| SR6 borrows Anarchy's types | `src/sr6/model/character.ts:5, 508`; `src/shared/rules.ts:2`; `src/model/types.ts:323, 329, 338, 401-415` | Move the shared types to `src/core/shared/types.ts`, re-exported from the old file |
+| SR6 borrows Anarchy's types | `src/sr6/model/character.ts:5, 508`; `src/core/shared/rules.ts:2`; `src/model/types.ts:323, 329, 338, 401-415` | Move the shared types to `src/core/shared/types.ts`, re-exported from the old file |
 | Shell helpers live in Anarchy screens | `src/ui/repo.ts:80-83`, `src/ui/Library.tsx:198, 216`, `src/ui/Foundry.tsx:12-52`, `src/ui/samples.ts:104` | Move them to runner-store and foundry-kit; `serverRepo` takes its file format as an argument |
-| The page header imports features | `src/ui/nav.tsx:7, 12, 13`; `src/ui/settings.tsx:6-8` | The app passes the header buttons in through one React context |
+| The page header imports features | `src/core/chrome/nav.tsx:7, 12, 13`; `src/core/ui-kit/settings.tsx:6-8` | The app passes the header buttons in through one React context |
 | Reading an Anarchy file runs creation rules | `src/engine/charxml.ts:8` → `src/engine/file.ts:138` → `src/engine/amps.ts:60-73` | Move the three pure SINner lookups into Anarchy formats |
 | SR6's catalog type is defined in table setup | `src/sr6/engine/types.ts:116`, `creation.ts:37`, `data.ts:8`, `grades.ts:7, 15` | Move `CreationCatalog` to types.ts and `gradeKey` to names.ts |
 | SR6 screens import from each other's pages | `src/sr6/ui/tabs/Ledger.tsx:36`, `tabs/Vehicles.tsx:17` → `Designer.tsx:40`; `tabs/Method.tsx:25` → `Runners.tsx:61`; `Compendiums.tsx:34` → `Npcs.tsx:104` | Move `useSr6Designs`, `missingLabels`, `npcChip` to the modules that own them |
 | Importer stages reach into each other's private helpers | `importer/sr6/overrides.py:74` → `resolve.py:295 _add_kid`; `run.py:176`; `categories.py:24`; `sr6/__main__.py:98, 164` | Make those helpers public in the stage that owns them |
 | Career's legality depends on review's code strings | `src/sr6/engine/career.ts:948-965` keeps 19 bare codes from `validateSr6` | Export the set next to `validateSr6`, plus a test that every code is still emitted |
+
+## Target layout
+
+`node tools/arch-move.mjs --only <module prefix> [--dry-run]` moves files by `module-map.tsv` with `git mv`, rewrites
+the relative imports that point at them (or from them), rewrites their exact repo paths in tracked text (comments,
+docs, the map itself; not `CHANGELOG.md` or `docs/reviews/`, which record their day), and is safe to run again. Where a
+file goes:
+
+| Module | File | Goes to |
+|---|---|---|
+| `core/<m>`, `features/<f>` | `src/**/<name>` | `src/core/<m>/<name>`, `src/features/<f>/<name>` (flat) |
+| `ca2/<m>`, `sr6/<m>` | a `.tsx` file, or any file under a `ui/` folder | `src/<game>/<m>/ui/<name>` (`ui/tabs/<name>` for a file in a `tabs/` folder) |
+| `ca2/<m>`, `sr6/<m>` | everything else (engine, model, print view models) | `src/<game>/<m>/domain/<name>` |
+| `sr6/runner-builder` | a file with a 4th map column (`creation`, `review`, `career`, `assets`) | `src/sr6/runner-builder/<domain or ui>/<column>/<name>` |
+| any moved module | `tests/<folder>/**/*.ts` (not `tests/server/`, not `tests/fixtures/`) | `tests/<area>/<m>/<name>` |
+| `core/platform`, `core/archive` | anything | stays |
+
+Also staying: `src/main.tsx` (the Vite entry `index.html` loads), the server, the importer, `public/data`, `e2e/`,
+`tests/server/` (it mirrors the flat server) and `tests/fixtures/` (tests read them by path). Folder mentions such as
+"`src/shared/`" are not rewritten by the tool; check them by hand. Once every src file is in its module folder the
+tool says so, and the boundary test's map lookup can become a folder lookup.
 
 ## Things the move must not break
 
@@ -145,7 +166,7 @@ cycles into the new layout. The fixes are small and change no behaviour:
 
 Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's browser tests.
 
-1. **Boundary test.** Extend `tests/ui/import-cycles.test.ts` with the module ranks and the three rules above, starting
+1. **Boundary test.** Extend `tests/core/shared/import-cycles.test.ts` with the module ranks and the three rules above, starting
    from an allowlist of today's offending imports that may only shrink. Plus the route-role test.
 2. **Refactors, no behaviour change (8 PRs):** the fixes in the table above, one concern per PR. Done when the boundary
    test's allowlist is empty.
@@ -153,6 +174,7 @@ Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's b
 3. **Pure moves (about 6 PRs):** `git mv` into `src/core`, `src/features`, `src/ca2`, `src/sr6`, with a scripted rewrite of
    import paths and path mentions; tests move to the matching `tests/` folders. SR6 runner-builder moves last, when no
    SR6 branch is open.
+   _Status: move 1 (`--only core/`: core/shared, core/ui-kit, core/chrome, core/app) done._
 4. **Importer (3 PRs):** public cross-stage helpers; `effects.py` → `importer/sr6/effects/` package; `overrides.py` →
    package. Each behind the CommLink6 gates: the replay (main vs branch, 0 differing rows) and a fresh full import that
    reads 1,079/1,079 effects, 4,474/4,474 completeness and 4,307/4,307 accuracy.

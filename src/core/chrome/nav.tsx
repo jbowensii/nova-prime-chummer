@@ -4,10 +4,10 @@
 // (App.tsx sends them home anyway). On the Shadowrun 6 pages (#/sr6/...) the menu is SR6's and Ask asks SR6's own AI
 // (its books, its settings; shown once the admin sets it up).
 import { Children, createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from 'react'
-import { AccountMenu, canEdit, isAdmin, useMe } from './auth'
-import { Brand } from './bits'
-import { homeOf, storeGame } from './game'
-import { IconLink, type IconName } from './icons'
+import { AccountMenu, canEdit, isAdmin, useMe } from '../ui-kit/auth'
+import { Brand } from '../ui-kit/bits'
+import { homeOf, storeGame } from '../ui-kit/game'
+import { IconLink, type IconName } from '../ui-kit/icons'
 
 /** What the app shell (App.tsx) supplies to every header: whether the server is in use, and the feature buttons (Ask, Settings)
  *  that sit in row 1. This file imports no feature; without a provider the header just has neither button. */

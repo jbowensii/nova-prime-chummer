@@ -1,8 +1,8 @@
 // Game data (everyone), in the layout both games share (src/ui/GameData.tsx): the catalog browser by kind with the book a
 // filter (CatalogBrowser), the sources, the Foundry export, the catalog edits, the files that didn't load and those that did.
 import type { Catalog } from '../../model/types'
-import { canEdit, useMe } from '../auth'
-import { NonCanon } from '../bits'
+import { canEdit, useMe } from '../../core/ui-kit/auth'
+import { NonCanon } from '../../core/ui-kit/bits'
 import { GameDataPage } from '../GameData'
 import { EditButton, editState, useOpenEdit, type EditKind } from '../editTrigger'
 import { browseKinds } from '../AnarchyRef'

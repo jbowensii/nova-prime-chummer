@@ -3,10 +3,10 @@
 // each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
 import { useMemo, useState } from 'react'
-import { canEdit, isAdmin, useMe } from '../../ui/auth'
-import { NonCanon } from '../../ui/bits'
+import { canEdit, isAdmin, useMe } from '../../core/ui-kit/auth'
+import { NonCanon } from '../../core/ui-kit/bits'
 import { GameDataPage } from '../../ui/GameData'
-import { useRepo } from '../../ui/repoContext'
+import { useRepo } from '../../core/ui-kit/repoContext'
 import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { catalogFind, resolveEntry, SR6_NS, sr6EntryXml } from '../engine/load'
 import { entryKey } from '../engine/names'

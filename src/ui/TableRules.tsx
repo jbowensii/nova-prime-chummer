@@ -2,12 +2,12 @@
 // sheet="optional", e.g. the core rulebook's); the GM adds house rules of their own. The GM switches them on and off on the
 // Table setup page (#/table; admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role);
 // everyone reads custom/table-rules.xml (tablerules.xsd) and players see the ones switched on there, read only.
-import { PageHeader } from './nav'
+import { PageHeader } from '../core/chrome/nav'
 import { useEffect, useRef, useState } from 'react'
 import { FREE_SINNER, newId, type Catalog, type Rule, type TableFlags } from '../model/types'
-import { canEdit, send, useMe } from './auth'
-import { Modal } from './bits'
-import { useRepo } from './repoContext'
+import { canEdit, send, useMe } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
+import { useRepo } from '../core/ui-kit/repoContext'
 import { SourceLabel } from './SourceLabel'
 
 /** A row of custom/table-rules.xml: a book's optional rule by its id, or a house rule with its own name and text. locked: the

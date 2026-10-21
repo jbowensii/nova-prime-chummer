@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { PageHeader } from './nav'
-import { IconButton, IconLink } from './icons'
+import { PageHeader } from '../core/chrome/nav'
+import { IconButton, IconLink } from '../core/ui-kit/icons'
 import { isCanonSource } from '../engine/canon'
 import { balance } from '../engine/career'
 import { characterToXml, xmlToCharacter } from '../engine/charxml'
 import { blankCharacter, snapshotEntries } from '../engine/file'
 import type { Catalog, Character } from '../model/types'
 import { newId } from '../model/types'
-import { because, canEdit, isAdmin, savesSettled, send, useMe } from './auth'
-import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from './bits'
+import { because, canEdit, isAdmin, savesSettled, send, useMe } from '../core/ui-kit/auth'
+import { Modal, NonCanon, OverspentChip, StateBadge, UserDefined } from '../core/ui-kit/bits'
 import { saveAsNew } from './repo'
-import { useRepo, type Stored, type Unreadable } from './repoContext'
+import { useRepo, type Stored, type Unreadable } from '../core/ui-kit/repoContext'
 import { arrange, ownerGroups, type SortBy } from './runnerList'
 import { loadTrash } from './Trash'
-import { needsExportReminder } from './storage'
+import { needsExportReminder } from '../core/ui-kit/storage'
 import { joined, loadCampaigns, type Campaign } from './campaignsStore'
 import { bookSamples, chooseExamples, extraCopies, keyOf, sameRunners, readCharacterFile, readSample, type Example, type Sources } from './samples'
-import { Face } from './Portrait'
+import { Face } from '../core/ui-kit/Portrait'
 import { downloadRunners } from './Foundry'
 import { ExportRunnersDialog } from './foundryKit'
 
@@ -190,7 +190,7 @@ async function exampleList(sources: Sources, server: boolean): Promise<{ rows: E
 const SORT_KEY = 'ca2.library.sort'
 const shownName = (ch: Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
-export { initial } from './Portrait'
+export { initial } from '../core/ui-kit/Portrait'
 
 export function Library({ c }: { c: Catalog }) {
   const repo = useRepo()

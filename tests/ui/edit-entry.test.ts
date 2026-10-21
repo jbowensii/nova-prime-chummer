@@ -8,7 +8,7 @@ import { CatalogEdits, EntryForm } from '../../src/ui/EditEntry'
 import { EditButton } from '../../src/ui/editTrigger'
 import { ca2Codec } from '../../src/engine/charxml'
 import { serverRepo } from '../../src/ui/repo'
-import { RepoContext } from '../../src/ui/repoContext'
+import { RepoContext } from '../../src/core/ui-kit/repoContext'
 import { cat } from '../helpers'
 import { button, change, click, field, hasButton, mount, pageText, stubFetch } from './dom'
 

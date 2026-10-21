@@ -1,13 +1,13 @@
 // Users (admin): every account, add one, edit name/username/email/role/sign-in method, disable or enable, reset a password, move
 // runners (either game's) to another account, delete (only with no runners). The server refuses anything that would leave no
 // enabled admin; its reason is shown as it comes. `game` 'sr6': the page opened from the Shadowrun 6 side (its Trash links).
-import { PageHeader } from './nav'
-import { IconButton } from './icons'
+import { PageHeader } from '../core/chrome/nav'
+import { IconButton } from '../core/ui-kit/icons'
 import { useEffect, useState } from 'react'
-import { Modal } from './bits'
-import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
-import type { Game } from './game'
-import { rootAttr } from '../shared/xml'
+import { Modal } from '../core/ui-kit/bits'
+import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from '../core/ui-kit/auth'
+import type { Game } from '../core/ui-kit/game'
+import { rootAttr } from '../core/shared/xml'
 
 type Account = User & { runners: number }
 type Dialog = { at: 'add' } | { at: 'edit' | 'reset' | 'delete' | 'move'; u: Account }

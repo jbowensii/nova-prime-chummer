@@ -1,6 +1,6 @@
 // What both games' Foundry exports share: file names, the .json download, and the runner-picking export dialog.
 import { useState } from 'react'
-import { Modal } from './bits'
+import { Modal } from '../core/ui-kit/bits'
 import type { Campaign } from './campaignsStore'
 import type { Character } from '../model/types'
 

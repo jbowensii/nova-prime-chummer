@@ -1,15 +1,15 @@
 // Books: upload PDFs, see what each import produced, re-import or remove, and send unknown books to the AI
 // (server/books.mjs). Progress comes from each book's status.xml, polled every 2 s while anything runs. game="sr6": the
 // Shadowrun 6 area's books (/api/sr6/books*), with no AI, review, data pack or dupes.
-import { IconLink } from './icons'
-import { PageHeader } from './nav'
+import { IconLink } from '../core/ui-kit/icons'
+import { PageHeader } from '../core/chrome/nav'
 import { useEffect, useRef, useState } from 'react'
 import type { Catalog } from '../model/types'
 import { SR6_KINDS, type Sr6Kind } from '../sr6/model/types'
-import { Modal, NonCanon } from './bits'
-import { useRepo } from './repoContext'
-import { because, isAdmin, useMe } from './auth'
-import { api, sendFile } from './api'
+import { Modal, NonCanon } from '../core/ui-kit/bits'
+import { useRepo } from '../core/ui-kit/repoContext'
+import { because, isAdmin, useMe } from '../core/ui-kit/auth'
+import { api, sendFile } from '../core/ui-kit/api'
 
 export interface Book {
   id: string

@@ -1,11 +1,11 @@
 // Where runners are saved: the Nova Prime Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
 import type { Character } from '../model/types'
-import { rootAttr } from '../shared/xml'
-import type { Codec } from '../shared/types'
-import { deleteCharacter, listCharacters, NPC_KEY } from './storage'
-import { track, UNREACHABLE } from './auth'
-import { browserRepo, browserStore, type Repo, type SaveResult, type Stored, type Unreadable } from './repoContext'
+import { rootAttr } from '../core/shared/xml'
+import type { Codec } from '../core/shared/types'
+import { deleteCharacter, listCharacters, NPC_KEY } from '../core/ui-kit/storage'
+import { track, UNREACHABLE } from '../core/ui-kit/auth'
+import { browserRepo, browserStore, type Repo, type SaveResult, type Stored, type Unreadable } from '../core/ui-kit/repoContext'
 
 /** An imported file saved as new: when its id turns out taken after all (the list hadn't loaded yet, or another tab saved
  *  one), once more under a fresh id. Both games' runner and NPC lists. */

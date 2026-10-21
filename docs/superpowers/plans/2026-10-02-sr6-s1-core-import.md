@@ -246,8 +246,8 @@
   - Save → `PUT sr6/edits/<kind>/<id>` with `<edit>${sr6EntryXml(e)}<description>…</description></edit>`.
   - "Restore book version" → `DELETE`, then `onSaved()` reloads.
   - Server refusals show in the dialog.
-- `src/ui/nav.tsx`: the SR6 menu becomes Your runners, Books (admin), Rules, Game data, with the current page from the second segment.
-- `src/ui/app.css` (design-system tokens only).
+- `src/core/chrome/nav.tsx`: the SR6 menu becomes Your runners, Books (admin), Rules, Game data, with the current page from the second segment.
+- `src/core/ui-kit/app.css` (design-system tokens only).
 - `e2e/sr6.spec.ts` (new; own server and data folder like `e2e/games.spec.ts`, an admin, an editor and a player).
 - [ ] e2e first:
   - Admin: switch to SR6 → Books → upload a PDF (stub) → done with "recipe crb", the counts and a Report naming the unpaired row. Game data shows source CRB with the counts per kind. The browser finds an invented weapon. Rules finds an invented rule and shows its text.

@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
-import { GAME_KEY } from '../src/ui/game'
+import { GAME_KEY } from '../src/core/ui-kit/game'
 export { GAME_KEY }
 
 export const STATE = join(process.env.CA2_E2E_DIR!, 'e2e-state.json')

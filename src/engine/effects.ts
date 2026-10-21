@@ -1,2 +1,2 @@
-// Effect switches, conditions and confidence: both games' (src/shared/effects.ts), here for Anarchy's modules.
-export * from '../shared/effects'
+// Effect switches, conditions and confidence: both games' (src/core/shared/effects.ts), here for Anarchy's modules.
+export * from '../core/shared/effects'

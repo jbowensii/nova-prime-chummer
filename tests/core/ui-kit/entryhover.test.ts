@@ -1,12 +1,12 @@
-// A catalog entry's card on hover, focus or tap (src/ui/EntryHover.tsx, both games) and an SR6 entry's effects as the card
+// A catalog entry's card on hover, focus or tap (src/core/ui-kit/EntryHover.tsx, both games) and an SR6 entry's effects as the card
 // shows them (src/sr6/ui/EntryRef.tsx effectsOf). Made-up entries.
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, test } from 'vitest'
-import { EntryHover } from '../../src/ui/EntryHover'
-import type { BrowseRow } from '../../src/ui/types'
-import { effectsOf } from '../../src/sr6/ui/EntryRef'
-import type { Sr6Entry } from '../../src/sr6/model/types'
+import { EntryHover } from '../../../src/core/ui-kit/EntryHover'
+import type { BrowseRow } from '../../../src/core/ui-kit/types'
+import { effectsOf } from '../../../src/sr6/ui/EntryRef'
+import type { Sr6Entry } from '../../../src/sr6/model/types'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root | null = null

@@ -3,12 +3,12 @@
 // title opens the rule in a drawer at its own address (#/sr6/rules/<id>). The creation rules are on Table setup (Creation.tsx).
 // Above the contents, SR6’s AI search (AskSearch, the rules only): its finds link to their rules.
 import { useMemo, useState } from 'react'
-import { isAdmin, useMe } from '../../ui/auth'
+import { isAdmin, useMe } from '../../core/ui-kit/auth'
 import { AskSearch } from '../../ui/AskRules'
-import { Modal } from '../../ui/bits'
+import { Modal } from '../../core/ui-kit/bits'
 import { BookSelect } from '../../ui/CatalogBrowser'
-import { PageHeader } from '../../ui/nav'
-import { Prose } from '../../ui/Prose'
+import { PageHeader } from '../../core/chrome/nav'
+import { Prose } from '../../core/ui-kit/Prose'
 import type { Sr6Catalog, Sr6Entry } from '../model/types'
 
 /** The rules in reading order: chapters as the book has them, each section followed by its subsections. */

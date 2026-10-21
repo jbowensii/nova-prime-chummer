@@ -3,9 +3,9 @@
 // the "Saved elsewhere" conflict, and undo/redo.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { newId } from '../model/types'
-import { session, track, useMe } from './auth'
-import { Modal } from './bits'
-import type { Repo } from './repoContext'
+import { session, track, useMe } from '../core/ui-kit/auth'
+import { Modal } from '../core/ui-kit/bits'
+import type { Repo } from '../core/ui-kit/repoContext'
 
 export type SaveStatus = { state: 'saved'; at?: string } | { state: 'saving' } | { state: 'failed'; error: string } | { state: 'conflict' }
 export type Conflict = { rev: number; file: string; updatedAt?: string }

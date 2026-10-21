@@ -20,7 +20,7 @@ import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/acti
 import { flag, num, str } from '../../engine/creation'
 import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../engine/data'
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { awakenedFlag, boughtKind, infectedTypes, runnerInfected, type InfectedType } from '../../engine/infected'
 import { missingLabels, MissingList } from '../MissingList'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'

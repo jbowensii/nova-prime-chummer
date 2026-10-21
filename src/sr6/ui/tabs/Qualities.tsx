@@ -2,7 +2,7 @@
 // each with its note: the attribute or skill a quality naming its choice is for), a picker for each side (a quality naming
 // its choice may be taken again, for another), and the net karma line against the cap.
 import { useState } from 'react'
-import { Modal, Picker, Stepper } from '../../../ui/bits'
+import { Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma, qualityPrice, settingQuality, toNuyen } from '../../engine/budgets'
 import { stolenLeft } from '../../engine/career'
 import { flag, num } from '../../engine/creation'

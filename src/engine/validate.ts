@@ -375,4 +375,4 @@ function rawRR(b: Character['build']) {
   return { skill, spec }
 }
 
-export { canFinalize } from '../shared/rules'
+export { canFinalize } from '../core/shared/rules'

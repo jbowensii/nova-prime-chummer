@@ -2,7 +2,7 @@
 // "Edited" mark and edit-state label built on it. The dialog itself (CatalogEdits) stays with Anarchy (EditEntry.tsx).
 import { createContext, useContext } from 'react'
 import type { AmpTemplate, Catalog, Item, Rule } from '../model/types'
-import { useMe } from './auth'
+import { useMe } from '../core/ui-kit/auth'
 
 export type EditKind = 'amps' | 'items' | 'rules'
 export type Target = { kind: EditKind; id?: string } // no id: add an entry

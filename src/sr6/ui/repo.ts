@@ -2,9 +2,9 @@
 // export (with a snapshot of every catalog line, so the file still reads where the entry is gone), import (an Anarchy
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
 import { useEffect, useState } from 'react'
-import { useMe } from '../../ui/auth'
-import { newId } from '../../shared/types'
-import type { Codec } from '../../shared/types'
+import { useMe } from '../../core/ui-kit/auth'
+import { newId } from '../../core/shared/types'
+import type { Codec } from '../../core/shared/types'
 import { serverRepo } from '../../ui/repo'
 import { keepSr6House } from '../engine/house'
 import { resolveEntry } from '../engine/load'

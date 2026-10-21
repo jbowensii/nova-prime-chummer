@@ -2,7 +2,7 @@
 // (docs/data-format.md); Character types mirror the .ca2.json file.
 import type { EffectState } from '../engine/effects'
 import type { Formula, Issue } from '../engine/formula'
-import { BACKDROPS, newId, type Backdrop, type Identity, type Override, type Severity, type Violation } from '../shared/types'
+import { BACKDROPS, newId, type Backdrop, type Identity, type Override, type Severity, type Violation } from '../core/shared/types'
 
 export { BACKDROPS, newId }
 export type { Backdrop, Identity, Override, Severity, Violation }
@@ -114,7 +114,7 @@ export interface AmpTemplate extends Ref {
    *  times it is taken; may be negative) */
   family?: string
   level?: number
-  /** <formula> and <issue> children (src/shared/formula.ts): how a field is worked out, what the book left out */
+  /** <formula> and <issue> children (src/core/shared/formula.ts): how a field is worked out, what the book left out */
   formulas?: Formula[]
   issues?: Issue[]
 }
@@ -156,7 +156,7 @@ export interface Item extends Ref {
   edited?: boolean
   /** what it does, read from its text by the importer (a spell's Advantage, a drug's Disadvantage): engine/derive.ts */
   effects?: EffectPick[]
-  /** <formula> and <issue> children (src/shared/formula.ts); a cost formula prices the item (price.ts itemCost) */
+  /** <formula> and <issue> children (src/core/shared/formula.ts); a cost formula prices the item (price.ts itemCost) */
   formulas?: Formula[]
   issues?: Issue[]
 }
@@ -220,7 +220,7 @@ export interface Catalog {
 
 // ---- character ----
 /** An effect: an Amp effect table id (rated), or one of the narrative effect kinds (RULE_EFFECTS, rating 0: what a
- *  narrative effect does), with how it is turned on and whether it counts (src/shared/effects.ts). */
+ *  narrative effect does), with how it is turned on and whether it counts (src/core/shared/effects.ts). */
 export interface EffectPick extends EffectState {
   ref: string
   param?: string

@@ -2,10 +2,10 @@
 // sheet type picked in this browser. Both games' sheets use it.
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { artSrc, useArtId, useArtIds } from './Background'
-import { DEFAULTS, loadSettings, PRINT_STYLES, saveSettings, type Settings } from './settings'
-import { Modal } from './bits'
-import type { Game } from './game'
-import { IconButton } from './icons'
+import { DEFAULTS, loadSettings, PRINT_STYLES, saveSettings, type Settings } from '../core/ui-kit/settings'
+import { Modal } from '../core/ui-kit/bits'
+import type { Game } from '../core/ui-kit/game'
+import { IconButton } from '../core/ui-kit/icons'
 
 /** The sheet's strength until the player sets one: a clear but quiet image (100% is near full strength, sheet.css). */
 export const SHEET_ART_DEFAULT = 60

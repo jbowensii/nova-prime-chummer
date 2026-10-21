@@ -6,11 +6,11 @@ import { ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, ov
 import { ruleHelp } from '../../engine/canon'
 import { vehicleStats } from '../../engine/derive'
 import { levelsOf } from '../../engine/levels'
-import { applies } from '../../shared/effects'
+import { applies } from '../../core/shared/effects'
 import { EffectHow, TestSelect } from '../EffectHow'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'
-import { fmt, signed } from '../bits'
+import { fmt, signed } from '../../core/ui-kit/bits'
 import { useEditor } from '../editor'
 
 export function AmpBuilder({

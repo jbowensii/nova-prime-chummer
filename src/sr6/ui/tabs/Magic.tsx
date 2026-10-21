@@ -5,7 +5,7 @@
 // magic.spellsAllowed, adept.ppBudget, magic.metamagicUser). A spell shows whether its test is opposed and
 // whether its threshold counts Essence. Every pick can carry the player's bonuses.
 import { useState } from 'react'
-import { Modal, Picker, Stepper } from '../../../ui/bits'
+import { Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { flag, num, str } from '../../engine/creation'
 import { noteAttr, noteSkill, powerCost, qualityChoice } from '../../engine/budgets'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../engine/data'

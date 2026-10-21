@@ -5,7 +5,7 @@
 // stays: Use derived takes it back); sanity warnings that never stop anything (src/sr6/engine/critterdesign.ts). The
 // skills, powers and weaknesses lines are generated from here; the Stat block tab keeps the rest.
 import { useState } from 'react'
-import { Stepper } from '../../../ui/bits'
+import { Stepper } from '../../../core/ui-kit/bits'
 import { CRITTER_ATTRS, critterDerived, critterWarnings, DERIVED, designCritter, redesign } from '../../engine/critterdesign'
 import { firstNumber } from '../../engine/critters'
 import type { Sr6CritterPower, Sr6Npc } from '../../model/character'

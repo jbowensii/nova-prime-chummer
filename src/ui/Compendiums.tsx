@@ -3,14 +3,14 @@
 // compendiums. The list, details, routing, entry table and Copy to… are the shell both games share (CompendiumShell.tsx);
 // here: Anarchy's adapter, rows and pages. A compendium's entries are saved into its file (compendiumStore.ts) with the
 // catalog's own entry form.
-import { PageHeader } from './nav'
-import { IconButton } from './icons'
+import { PageHeader } from '../core/chrome/nav'
+import { IconButton } from '../core/ui-kit/icons'
 import { useEffect, useMemo, useState } from 'react'
 import { compendiumSource } from '../engine/compendium'
 import type { AmpTemplate, Catalog, Character, Compendium, Item, VehicleBase } from '../model/types'
 import { newId } from '../model/types'
-import { because } from './auth'
-import { Modal, NpcChips } from './bits'
+import { because } from '../core/ui-kit/auth'
+import { Modal, NpcChips } from '../core/ui-kit/bits'
 import {
   CompendiumShell,
   CopyButton,
@@ -27,7 +27,7 @@ import { deleteCompendium, listCompendiums, parseRows, saveCompendium, type Stor
 import { EntryForm, NOUN, nameOf, slug, type Entry, type FormKind } from './EditEntry'
 import { ca2Codec } from '../engine/charxml'
 import { npcRepoFor } from './repo'
-import { useRepo } from './repoContext'
+import { useRepo } from '../core/ui-kit/repoContext'
 import { downloadCompendium } from './Foundry'
 import { SourceLabel } from './SourceLabel'
 

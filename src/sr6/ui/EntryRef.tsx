@@ -1,14 +1,14 @@
-// An SR6 catalog entry as one row (Game data's browser and the editor's hover card, src/ui/EntryHover.tsx): its printed
+// An SR6 catalog entry as one row (Game data's browser and the editor's hover card, src/core/ui-kit/EntryHover.tsx): its printed
 // values, its formulas with their values over its ratings, its cell notes and other names, its effects (applied, or shown
 // only: switchable, conditional or read with low confidence), source and page, issues, and an Edited or House mark.
 import type { ReactNode } from 'react'
 import { EditedMark } from '../../ui/editTrigger'
-import type { BrowseRow, CardEffect } from '../../ui/types'
-import { EntryHover } from '../../ui/EntryHover'
+import type { BrowseRow, CardEffect } from '../../core/ui-kit/types'
+import { EntryHover } from '../../core/ui-kit/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'
 import { catalogFind, resolveEntry } from '../engine/load'
 import { formulaRange, type Find } from '../engine/values'
-import { formulaOf, formulaText } from '../../shared/formula'
+import { formulaOf, formulaText } from '../../core/shared/formula'
 import { type Sr6Advance, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../model/character'
 import { effectState, effectText } from '../engine/effects'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../model/types'
@@ -96,7 +96,7 @@ export function entryOfPath(ch: Sr6Character, path: string): { kind: Sr6Kind; id
   return head === 'skills' ? { kind: 'skills', id: key } : undefined
 }
 
-/** A picker item's card (src/ui/bits.tsx PickItem): the entry's row, made when shown. */
+/** A picker item's card (src/core/ui-kit/bits.tsx PickItem): the entry's row, made when shown. */
 export function cardOf(c: Sr6Catalog, kind: Sr6Kind, id: string): { card?: () => BrowseRow; cardKind?: string } {
   const e = resolveEntry(c, kind, id)
   return e ? { card: () => sr6Row(c, e), cardKind: SR6_KINDS[kind].label } : {}

@@ -1,4 +1,4 @@
-// A catalog entry's card where the editor names it (src/ui/EntryHover.tsx), both games: hover shows it, focus shows it and
+// A catalog entry's card where the editor names it (src/core/ui-kit/EntryHover.tsx), both games: hover shows it, focus shows it and
 // Escape closes it, a tap toggles it; a picker's item shows its card on hover and while it has focus. Shadowrun 6 on the
 // made-up SR6 fixture (its own server, as sr6-accessories.spec.ts); Anarchy on the default made-up core data.
 import { test, expect, type Page } from '@playwright/test'

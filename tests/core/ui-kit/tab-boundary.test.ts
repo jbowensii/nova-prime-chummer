@@ -1,8 +1,8 @@
-// A tab that throws while drawing shows a way back instead of a blank page (src/shared/ui.tsx TabBoundary).
+// A tab that throws while drawing shows a way back instead of a blank page (src/core/shared/ui.tsx TabBoundary).
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, test, vi } from 'vitest'
-import { TabBoundary } from '../../src/shared/ui'
+import { TabBoundary } from '../../../src/core/shared/ui'
 
 test('a tab that throws: a message and a reload button, the page still there', async () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true

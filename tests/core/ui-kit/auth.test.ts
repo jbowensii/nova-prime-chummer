@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { because, canEdit, isAdmin, problem, sentence, session, signOut, track, type User } from '../../src/ui/auth'
+import { because, canEdit, isAdmin, problem, sentence, session, signOut, track, type User } from '../../../src/core/ui-kit/auth'
 
 const as = (role: User['role']) => ({ role }) as User
 

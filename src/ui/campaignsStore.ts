@@ -1,7 +1,7 @@
 // The campaigns store both games share: a campaign's shape, the game's campaign API paths and page links, and the calls that
 // load and change campaigns (server/campaigns.mjs). The pages are in Campaigns.tsx.
-import { send, type User } from './auth'
-import type { Game } from './game'
+import { send, type User } from '../core/ui-kit/auth'
+import type { Game } from '../core/ui-kit/game'
 import type { Override } from '../model/types'
 
 export interface Person {

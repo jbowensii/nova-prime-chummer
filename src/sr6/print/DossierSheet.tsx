@@ -4,7 +4,7 @@
 // melee) and armor with the Defense Rating. Then augmentations, gear, contacts, IDs, magic and vehicles. A footer: created
 // with Nova Prime Chummer, the date and (printed) the page number. Our own drawing; dark ink, pink frames (sheet.css .sr6-dossier).
 import type { ReactNode } from 'react'
-import { bdClass, printBackdrop } from '../../ui/Portrait'
+import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'

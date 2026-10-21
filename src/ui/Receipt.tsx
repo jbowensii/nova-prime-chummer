@@ -3,11 +3,11 @@ import { AnarchyRef } from './AnarchyRef'
 import { useEffect, useRef, useState } from 'react'
 import { activeEvents, sinceFinalize, voidedIds } from '../engine/career'
 import { itemCost, packageGuide } from '../engine/price'
-import { bracketed } from '../shared/effects'
+import { bracketed } from '../core/shared/effects'
 import type { Character, Pricing } from '../model/types'
-import { fmt, Line } from './bits'
+import { fmt, Line } from '../core/ui-kit/bits'
 import { useEditor } from './editor'
-import { SidePanel } from '../shared/ui'
+import { SidePanel } from '../core/shared/ui'
 
 /** "+2,500¥: Ares Predator added; −2,500¥: Fake SIN removed": what the last change to the items cost or gave back. */
 export function itemChange(pricing: Pricing, before: Character['build']['items'], after: Character['build']['items']): string {

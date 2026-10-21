@@ -4,7 +4,7 @@
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest). A prerequisite
 // the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
-import { newId } from '../../shared/types'
+import { newId } from '../../core/shared/types'
 import {
   CONTACT_TYPES,
   CORE_ATTRS,

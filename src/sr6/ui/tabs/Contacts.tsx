@@ -6,8 +6,8 @@
 // A placeholder SIN (an older file's lifestyle with no SIN) shows as Unnamed SIN until named or given a kind. Once
 // finalized the tab is read only: SINs and lifestyles are bought on the Ledger tab.
 import { useState, type ReactNode } from 'react'
-import { GENDER_LIST, GenderList, Stepper } from '../../../ui/bits'
-import { NameField } from '../../../shared/ui'
+import { GENDER_LIST, GenderList, Stepper } from '../../../core/ui-kit/bits'
+import { NameField } from '../../../core/shared/ui'
 import { licenceFee, nuyenPerKarma, purchaseName, settingQuality, toNuyenMax } from '../../engine/budgets'
 import { licenceItem, licenceRatingText } from '../../print/view'
 import { bookValue, dataFind } from '../../engine/values'

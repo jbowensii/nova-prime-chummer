@@ -6,7 +6,7 @@
 // RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
 import { MAGIC_KIND_LABELS, LETTERS, SR6_METHODS, SR6_METHOD_LABELS, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
-import { SOURCE_ID } from '../../shared/source'
+import { SOURCE_ID } from '../../core/shared/source'
 import type { CreationCatalog } from './types'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'

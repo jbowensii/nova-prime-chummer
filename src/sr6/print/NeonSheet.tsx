@@ -3,7 +3,7 @@
 // (the best dice pools up front, every skill, weapons, armor and ware, magic or resonance, matrix, gear, vehicles).
 // Dark ink on white; cyan and pink only as accents and rules, so it prints on any printer (sheet.css .sr6-neon).
 import type { ReactNode } from 'react'
-import { bdClass, printBackdrop } from '../../ui/Portrait'
+import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'

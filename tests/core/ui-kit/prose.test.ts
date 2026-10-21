@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { blocks, runs } from '../../src/ui/Prose'
+import { blocks, runs } from '../../../src/core/ui-kit/Prose'
 
-// src/ui/Prose.tsx on made-up text: the book text's blocks and its bold and italic runs (no raw HTML anywhere)
+// src/core/ui-kit/Prose.tsx on made-up text: the book text's blocks and its bold and italic runs (no raw HTML anywhere)
 describe('Prose', () => {
   it('reads **bold** and *italic*; a lone asterisk stays', () => {
     expect(runs('A **zap** gun, *very* loud, 2 * 3')).toEqual([
