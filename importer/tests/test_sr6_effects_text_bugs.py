@@ -485,10 +485,6 @@ class RoundThreeTest(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DisguiseSkillTest(unittest.TestCase):
     """Disguise is a specialization of both Con and Stealth (CRB): the skill the text names keeps it; a bare Disguise
     test is Stealth (owner ruling 2026-10-21). Made-up sentences."""
@@ -515,3 +511,7 @@ class DisguiseSkillTest(unittest.TestCase):
             values.targets("+2 dice on disguise, sneaking, or impersonation tests"),
             [("skill:stealth", "disguise"), ("skill:stealth", "sneaking"), ("skill:con", "impersonation")],
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
