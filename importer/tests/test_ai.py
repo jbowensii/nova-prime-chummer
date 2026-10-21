@@ -1,3 +1,5 @@
+"""Tests."""
+
 import contextlib
 import io
 import json
@@ -19,11 +21,22 @@ from importer.ai.schema import SCHEMA
 from importer.tests.test_run import MINI, SCHEMA as XSD_DIR, XSD_CHECK, node
 
 KEY = "sk-test-SECRET-123"
-ANTHROPIC_MSG = {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5",
-                 "content": [{"type": "text", "text": '{"amps": []}'}], "stop_reason": "end_turn",
-                 "stop_sequence": None, "usage": {"input_tokens": 1, "output_tokens": 1}}
-WORKSPACES = {"workspaces": [{"id": 1, "name": "Shadowrun", "slug": "shadowrun", "openAiTemp": 0.7, "threads": []},
-                             {"id": 2, "name": "Anarchy Two Point Oh", "slug": "anarchy-two-point-oh", "threads": []}]}
+ANTHROPIC_MSG = {
+    "id": "msg_1",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-opus-5",
+    "content": [{"type": "text", "text": '{"amps": []}'}],
+    "stop_reason": "end_turn",
+    "stop_sequence": None,
+    "usage": {"input_tokens": 1, "output_tokens": 1},
+}
+WORKSPACES = {
+    "workspaces": [
+        {"id": 1, "name": "Shadowrun", "slug": "shadowrun", "openAiTemp": 0.7, "threads": []},
+        {"id": 2, "name": "Anarchy Two Point Oh", "slug": "anarchy-two-point-oh", "threads": []},
+    ]
+}
 
 
 class Stub:
@@ -34,10 +47,20 @@ class Stub:
         stub = self
 
         class H(BaseHTTPRequestHandler):
-            def do_POST(self):
+            """Answers every POST from the stub."""
+
+            def do_POST(self):  # pylint: disable=invalid-name  # the http.server handler name
+                """Record the request and answer with the stub's next reply."""
                 n = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(n)) if n else None
-                stub.requests.append({"method": self.command, "path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "body": body})
+                stub.requests.append(
+                    {
+                        "method": self.command,
+                        "path": self.path,
+                        "headers": {k.lower(): v for k, v in self.headers.items()},
+                        "body": body,
+                    }
+                )
                 code, out, *extra = reply(self.path)
                 data = json.dumps(out).encode()
                 self.send_response(code)
@@ -58,12 +81,14 @@ class Stub:
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def close(self):
+        """Stop the stub server."""
         self.server.shutdown()
         self.server.server_close()
 
 
 class ProvidersTest(unittest.TestCase):
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
@@ -76,7 +101,9 @@ class ProvidersTest(unittest.TestCase):
         self.assertEqual(r["path"], "/v1/chat/completions")
         self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
         self.assertEqual(r["body"]["model"], "llama3.1")
-        self.assertEqual(r["body"]["messages"], [{"role": "system", "content": "sys"}, {"role": "user", "content": "usr"}])
+        self.assertEqual(
+            r["body"]["messages"], [{"role": "system", "content": "sys"}, {"role": "user", "content": "usr"}]
+        )
         self.assertEqual(r["body"]["response_format"], {"type": "json_object"})
 
     def test_openai_without_key_sends_no_authorization(self):  # Ollama, LM Studio
@@ -103,7 +130,9 @@ class ProvidersTest(unittest.TestCase):
         r = s.requests[1]
         self.assertEqual(r["path"], "/api/v1/workspace/shadowrun/chat")
         self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
-        self.assertEqual({k: v for k, v in r["body"].items() if k != "sessionId"}, {"message": "sys\n\nusr", "mode": "chat"})
+        self.assertEqual(
+            {k: v for k, v in r["body"].items() if k != "sessionId"}, {"message": "sys\n\nusr", "mode": "chat"}
+        )
         # a fresh session per call: no earlier question's history (another user's) joins this one
         AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "shadowrun"}, KEY, "sys", "usr")
         ids = [q["body"]["sessionId"] for q in s.requests if q["path"].endswith("/chat")]
@@ -111,16 +140,23 @@ class ProvidersTest(unittest.TestCase):
         self.assertRegex(ids[0], r"^ca2-[0-9a-f]{32}$")
 
     def test_a_capped_call_leaves_room_for_thinking_and_is_not_retried(self):
-        replies = {"/v1/chat/completions": {"choices": [{"message": {"content": "x"}}]},
-                   "/v1beta/models/g:generateContent": {"candidates": [{"content": {"parts": [{"text": "x"}]}}]}}
-        s = self.stub(lambda p: (200, replies[p]) if p in replies else (500, {"error": {"type": "api_error", "message": "boom"}}))
+        replies = {
+            "/v1/chat/completions": {"choices": [{"message": {"content": "x"}}]},
+            "/v1beta/models/g:generateContent": {"candidates": [{"content": {"parts": [{"text": "x"}]}}]},
+        }
+        s = self.stub(
+            lambda p: (200, replies[p]) if p in replies else (500, {"error": {"type": "api_error", "message": "boom"}})
+        )
         AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u", max_tokens=800, timeout=5)
         AI.complete({"id": "gemini", "baseUrl": s.url, "model": "g"}, KEY, "s", "u", max_tokens=800, timeout=5)
         body = {r["path"]: r["body"] for r in s.requests}
         self.assertEqual(body["/v1/chat/completions"]["max_completion_tokens"], 800 * AI.OPENAI_CAP)
         self.assertNotIn("max_tokens", body["/v1/chat/completions"])
         gc = body["/v1beta/models/g:generateContent"]["generationConfig"]
-        self.assertEqual((gc["maxOutputTokens"], gc["thinkingConfig"]), (800 + 2 * AI.GEMINI_THINKING, {"thinkingBudget": AI.GEMINI_THINKING}))
+        self.assertEqual(
+            (gc["maxOutputTokens"], gc["thinkingConfig"]),
+            (800 + 2 * AI.GEMINI_THINKING, {"thinkingBudget": AI.GEMINI_THINKING}),
+        )
         with self.assertRaises(AI.ProviderError):  # Anthropic with a timeout: one request, no SDK retries
             AI.complete({"id": "anthropic", "baseUrl": s.url}, KEY, "s", "u", max_tokens=800, timeout=5)
         self.assertEqual(len([r for r in s.requests if r["path"].startswith("/v1/messages")]), 1)
@@ -148,20 +184,33 @@ class ProvidersTest(unittest.TestCase):
             AI.complete({"id": "anthropic", "baseUrl": s.url}, KEY, "s", "u")
 
     def test_truncated_replies(self):
-        replies = {"/v1/messages?beta=true": {**ANTHROPIC_MSG, "stop_reason": "max_tokens"},
-                   "/v1/chat/completions": {"choices": [{"message": {"content": '{"amps": ['}, "finish_reason": "length"}]},
-                   "/v1beta/models/g:generateContent": {"candidates": [{"content": {"parts": [{"text": "{"}]}, "finishReason": "MAX_TOKENS"}]}}
+        replies = {
+            "/v1/messages?beta=true": {**ANTHROPIC_MSG, "stop_reason": "max_tokens"},
+            "/v1/chat/completions": {"choices": [{"message": {"content": '{"amps": ['}, "finish_reason": "length"}]},
+            "/v1beta/models/g:generateContent": {
+                "candidates": [{"content": {"parts": [{"text": "{"}]}, "finishReason": "MAX_TOKENS"}]
+            },
+        }
         s = self.stub(lambda p: (200, replies[p]))
-        for p in ({"id": "anthropic", "baseUrl": s.url}, {"id": "openai", "baseUrl": s.url + "/v1", "model": "m"},
-                  {"id": "gemini", "baseUrl": s.url, "model": "g"}):
+        for p in (
+            {"id": "anthropic", "baseUrl": s.url},
+            {"id": "openai", "baseUrl": s.url + "/v1", "model": "m"},
+            {"id": "gemini", "baseUrl": s.url, "model": "g"},
+        ):
             with self.assertRaisesRegex(AI.TruncatedReply, "cut off", msg=p["id"]):
                 AI.complete(p, KEY, "s", "u")
 
     def test_errors_never_show_the_key(self):
         for code in (401, 400):  # 400: a generic status error whose body echoes the key
-            s = self.stub(lambda p: (code, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}}))
-            for p in ({"id": "anthropic", "baseUrl": s.url}, {"id": "openai", "baseUrl": s.url, "model": "m"},
-                      {"id": "gemini", "baseUrl": s.url, "model": "g"}, {"id": "anythingllm", "baseUrl": s.url, "workspace": "w"}):
+            s = self.stub(
+                lambda p, code=code: (code, {"error": {"type": "invalid_request_error", "message": f"bad key {KEY}"}})
+            )
+            for p in (
+                {"id": "anthropic", "baseUrl": s.url},
+                {"id": "openai", "baseUrl": s.url, "model": "m"},
+                {"id": "gemini", "baseUrl": s.url, "model": "g"},
+                {"id": "anythingllm", "baseUrl": s.url, "workspace": "w"},
+            ):
                 with self.assertRaises(AI.ProviderError) as cm:
                     AI.complete(p, KEY, "s", "u")
                 self.assertNotIn(KEY, str(cm.exception), p["id"])
@@ -174,8 +223,10 @@ class ProvidersTest(unittest.TestCase):
     def test_a_redirect_never_carries_the_key_elsewhere(self):
         elsewhere = self.stub(lambda p: (200, {"data": [], "choices": [{"message": {"content": "x"}}]}))
         s = self.stub(lambda p: (302, {}, {"Location": elsewhere.url + p}))
-        for call in (lambda: AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u"),
-                     lambda: AI.complete({"id": "gemini", "baseUrl": s.url, "model": "g"}, KEY, "s", "u")):
+        for call in (
+            lambda: AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u"),
+            lambda: AI.complete({"id": "gemini", "baseUrl": s.url, "model": "g"}, KEY, "s", "u"),
+        ):
             with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):
                 call()
         self.assertEqual(len(s.requests), 2)
@@ -185,25 +236,39 @@ class ProvidersTest(unittest.TestCase):
         s = self.stub(lambda p: (200, WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": "hi"}))
         p = {"id": "anythingllm", "baseUrl": s.url, "workspace": "  anarchy two POINT oh "}
         self.assertEqual([AI.complete(p, KEY, "s", "u") for _ in range(3)], ["hi"] * 3)
-        self.assertEqual([r["path"] for r in s.requests], ["/api/v1/workspaces"] + ["/api/v1/workspace/anarchy-two-point-oh/chat"] * 3)
+        self.assertEqual(
+            [r["path"] for r in s.requests],
+            ["/api/v1/workspaces"] + ["/api/v1/workspace/anarchy-two-point-oh/chat"] * 3,
+        )
 
     def test_anythingllm_unknown_workspace_names_the_ones_there(self):
         s = self.stub(lambda p: (200, WORKSPACES))
         with self.assertRaises(AI.ProviderError) as cm:
             AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "Shadowrun Anarchy 2.0"}, KEY, "s", "u")
-        self.assertEqual(str(cm.exception), "Workspace “Shadowrun Anarchy 2.0” isn’t on this AnythingLLM server. "
-                                            "Its workspaces: Shadowrun, Anarchy Two Point Oh.")
+        self.assertEqual(
+            str(cm.exception),
+            "Workspace “Shadowrun Anarchy 2.0” isn’t on this AnythingLLM server. "
+            "Its workspaces: Shadowrun, Anarchy Two Point Oh.",
+        )
         self.assertEqual([r["path"] for r in s.requests], ["/api/v1/workspaces"])  # no chat to a guessed workspace
 
     def test_anythingllm_400_not_a_valid_workspace_reads_plainly(self):
         def reply(p):  # the workspace went away after the list was read
             if p == "/api/v1/workspaces":
                 return 200, WORKSPACES
-            return 400, {"id": "x", "type": "abort", "textResponse": None, "error": f"Workspace shadowrun is not a valid workspace. {KEY}"}
+            return 400, {
+                "id": "x",
+                "type": "abort",
+                "textResponse": None,
+                "error": f"Workspace shadowrun is not a valid workspace. {KEY}",
+            }
+
         s = self.stub(reply)
         with self.assertRaises(AI.ProviderError) as cm:
             AI.complete({"id": "anythingllm", "baseUrl": s.url, "workspace": "shadowrun"}, KEY, "s", "u")
-        self.assertIn("Workspace “shadowrun” isn’t on this AnythingLLM server. Its workspaces: Shadowrun,", str(cm.exception))
+        self.assertIn(
+            "Workspace “shadowrun” isn’t on this AnythingLLM server. Its workspaces: Shadowrun,", str(cm.exception)
+        )
         self.assertNotIn(KEY, str(cm.exception))
 
     def test_unknown_provider(self):
@@ -215,33 +280,42 @@ class ListModelsTest(unittest.TestCase):
     """Model lists come from the saved address with the saved key; the request only names the provider."""
 
     def library(self, stub_url, key=KEY):
+        """A temp library whose ai-providers config points at the stub."""
         lib = tempfile.mkdtemp()
         config = os.path.join(lib, ".config")
-        xmlio.write_file(os.path.join(config, "ai-providers.xml"),
-                         '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
-                         f'<provider id="anthropic" enabled="true" baseUrl="{stub_url}"/>'
-                         f'<provider id="openai" enabled="true" baseUrl="{stub_url}/v1"/>'
-                         f'<provider id="gemini" enabled="true" baseUrl="{stub_url}"/>'
-                         f'<provider id="anythingllm" enabled="true" baseUrl="{stub_url}" workspace="w"/></ca2:aiproviders>')
+        xmlio.write_file(
+            os.path.join(config, "ai-providers.xml"),
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
+            f'<provider id="anthropic" enabled="true" baseUrl="{stub_url}"/>'
+            f'<provider id="openai" enabled="true" baseUrl="{stub_url}/v1"/>'
+            f'<provider id="gemini" enabled="true" baseUrl="{stub_url}"/>'
+            f'<provider id="anythingllm" enabled="true" baseUrl="{stub_url}" workspace="w"/></ca2:aiproviders>',
+        )
         for p in AI.PROVIDER_IDS:
             if key:
                 AI.set_key(config, p, key)
         return lib
 
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
 
     def test_anythingllm_lists_workspaces_as_slug_tab_name(self):
         s = self.stub(lambda p: (200, WORKSPACES))
-        self.assertEqual(AI.list_models("anythingllm", self.library(s.url)), ["anarchy-two-point-oh\tAnarchy Two Point Oh", "shadowrun\tShadowrun"])
+        self.assertEqual(
+            AI.list_models("anythingllm", self.library(s.url)),
+            ["anarchy-two-point-oh\tAnarchy Two Point Oh", "shadowrun\tShadowrun"],
+        )
         r = s.requests[0]
         self.assertEqual((r["method"], r["path"]), ("GET", "/api/v1/workspaces"))
         self.assertEqual(r["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_openai_lists_data_ids_with_the_bearer_key(self):
-        s = self.stub(lambda p: (200, {"object": "list", "data": [{"id": "gpt-5"}, {"id": "gpt-4.1"}, {"id": "gpt-5"}]}))
+        s = self.stub(
+            lambda p: (200, {"object": "list", "data": [{"id": "gpt-5"}, {"id": "gpt-4.1"}, {"id": "gpt-5"}]})
+        )
         self.assertEqual(AI.list_models("openai", self.library(s.url)), ["gpt-4.1", "gpt-5"])
         r = s.requests[0]
         self.assertEqual((r["method"], r["path"]), ("GET", "/v1/models"))
@@ -253,10 +327,21 @@ class ListModelsTest(unittest.TestCase):
         self.assertNotIn("authorization", s.requests[0]["headers"])
 
     def test_gemini_keeps_generate_content_models_and_sends_the_key_in_a_header(self):
-        s = self.stub(lambda p: (200, {"models": [
-            {"name": "models/gemini-2.5-pro", "supportedGenerationMethods": ["generateContent", "countTokens"]},
-            {"name": "models/text-embedding-004", "supportedGenerationMethods": ["embedContent"]},
-            {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]}]}))
+        s = self.stub(
+            lambda p: (
+                200,
+                {
+                    "models": [
+                        {
+                            "name": "models/gemini-2.5-pro",
+                            "supportedGenerationMethods": ["generateContent", "countTokens"],
+                        },
+                        {"name": "models/text-embedding-004", "supportedGenerationMethods": ["embedContent"]},
+                        {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+                    ]
+                },
+            )
+        )
         self.assertEqual(AI.list_models("gemini", self.library(s.url)), ["gemini-2.5-flash", "gemini-2.5-pro"])
         r = s.requests[0]
         self.assertEqual((r["method"], r["path"]), ("GET", "/v1beta/models?pageSize=1000"))
@@ -264,11 +349,34 @@ class ListModelsTest(unittest.TestCase):
         self.assertNotIn(KEY, r["path"])
 
     def test_anthropic_pages_through_the_sdk(self):
-        pages = {"/v1/models": {"data": [{"id": "claude-opus-5", "type": "model", "display_name": "Opus", "created_at": "2026-01-01T00:00:00Z"}],
-                                "has_more": True, "first_id": "claude-opus-5", "last_id": "claude-opus-5"},
-                 "/v1/models?after_id=claude-opus-5": {"data": [{"id": "claude-haiku-4-5", "type": "model", "display_name": "Haiku",
-                                                                 "created_at": "2025-01-01T00:00:00Z"}],
-                                                        "has_more": False, "first_id": "claude-haiku-4-5", "last_id": "claude-haiku-4-5"}}
+        pages = {
+            "/v1/models": {
+                "data": [
+                    {
+                        "id": "claude-opus-5",
+                        "type": "model",
+                        "display_name": "Opus",
+                        "created_at": "2026-01-01T00:00:00Z",
+                    }
+                ],
+                "has_more": True,
+                "first_id": "claude-opus-5",
+                "last_id": "claude-opus-5",
+            },
+            "/v1/models?after_id=claude-opus-5": {
+                "data": [
+                    {
+                        "id": "claude-haiku-4-5",
+                        "type": "model",
+                        "display_name": "Haiku",
+                        "created_at": "2025-01-01T00:00:00Z",
+                    }
+                ],
+                "has_more": False,
+                "first_id": "claude-haiku-4-5",
+                "last_id": "claude-haiku-4-5",
+            },
+        }
         s = self.stub(lambda p: (200, pages[p]))
         self.assertEqual(AI.list_models("anthropic", self.library(s.url)), ["claude-haiku-4-5", "claude-opus-5"])
         self.assertEqual([r["headers"]["x-api-key"] for r in s.requests], [KEY, KEY])
@@ -315,46 +423,84 @@ class PingTest(unittest.TestCase):
     """The AI settings' Test button: a tiny fixed prompt to the saved provider, answered plainly."""
 
     def library(self, url, key=KEY, model=' model="m-1"', workspace="shadowrun"):
+        """A temp library whose ai-providers config points at the stub."""
         lib = tempfile.mkdtemp()
         config = os.path.join(lib, ".config")
-        xmlio.write_file(os.path.join(config, "ai-providers.xml"),
-                         '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
-                         f'<provider id="anthropic" enabled="true" baseUrl="{url}"{model}/>'
-                         f'<provider id="openai" enabled="true" baseUrl="{url}/v1"{model}/>'
-                         f'<provider id="gemini" enabled="true" baseUrl="{url}"{model}/>'
-                         f'<provider id="anythingllm" enabled="true" baseUrl="{url}" workspace="{workspace}"/></ca2:aiproviders>')
+        xmlio.write_file(
+            os.path.join(config, "ai-providers.xml"),
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1">'
+            f'<provider id="anthropic" enabled="true" baseUrl="{url}"{model}/>'
+            f'<provider id="openai" enabled="true" baseUrl="{url}/v1"{model}/>'
+            f'<provider id="gemini" enabled="true" baseUrl="{url}"{model}/>'
+            f'<provider id="anythingllm" enabled="true" baseUrl="{url}" workspace="{workspace}"/></ca2:aiproviders>',
+        )
         for p in AI.PROVIDER_IDS:
             if key:
                 AI.set_key(config, p, key)
         return lib
 
     def stub(self, reply):
+        """A stub server that answers with the reply; closed on cleanup."""
         s = Stub(reply)
         self.addCleanup(s.close)
         return s
 
     def test_each_provider_gets_the_fixed_prompt_and_answers(self):
-        replies = {"/v1/messages": ANTHROPIC_MSG | {"content": [{"type": "text", "text": "OK"}]},
-                   "/v1/chat/completions": {"choices": [{"message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}]},
-                   "/v1beta/models/m-1:generateContent": {"candidates": [{"content": {"parts": [{"text": "OK"}]}, "finishReason": "STOP"}]},
-                   "/api/v1/workspaces": WORKSPACES,
-                   "/api/v1/workspace/shadowrun/chat": {"id": "c1", "type": "textResponse", "textResponse": "OK", "sources": [], "close": True, "error": None}}
+        replies = {
+            "/v1/messages": ANTHROPIC_MSG | {"content": [{"type": "text", "text": "OK"}]},
+            "/v1/chat/completions": {
+                "choices": [{"message": {"role": "assistant", "content": "OK"}, "finish_reason": "stop"}]
+            },
+            "/v1beta/models/m-1:generateContent": {
+                "candidates": [{"content": {"parts": [{"text": "OK"}]}, "finishReason": "STOP"}]
+            },
+            "/api/v1/workspaces": WORKSPACES,
+            "/api/v1/workspace/shadowrun/chat": {
+                "id": "c1",
+                "type": "textResponse",
+                "textResponse": "OK",
+                "sources": [],
+                "close": True,
+                "error": None,
+            },
+        }
         s = self.stub(lambda p: (200, replies[p]))
         lib = self.library(s.url)
         got = {p: AI.ping(p, lib) for p in AI.PROVIDER_IDS}
-        self.assertEqual(got, {"anthropic": ("m-1", "OK"), "openai": ("m-1", "OK"), "gemini": ("m-1", "OK"), "anythingllm": ("workspace shadowrun", "OK")})
+        self.assertEqual(
+            got,
+            {
+                "anthropic": ("m-1", "OK"),
+                "openai": ("m-1", "OK"),
+                "gemini": ("m-1", "OK"),
+                "anythingllm": ("workspace shadowrun", "OK"),
+            },
+        )
         by = {r["path"]: r for r in s.requests}
-        self.assertEqual(by["/v1/messages"]["body"], {"model": "m-1", "max_tokens": 16, "messages": [{"role": "user", "content": AI.PING}]})
+        self.assertEqual(
+            by["/v1/messages"]["body"],
+            {"model": "m-1", "max_tokens": 16, "messages": [{"role": "user", "content": AI.PING}]},
+        )
         self.assertEqual(by["/v1/messages"]["headers"]["x-api-key"], KEY)
-        self.assertEqual(by["/v1/chat/completions"]["body"], {"model": "m-1", "messages": [{"role": "user", "content": AI.PING}]})
+        self.assertEqual(
+            by["/v1/chat/completions"]["body"], {"model": "m-1", "messages": [{"role": "user", "content": AI.PING}]}
+        )
         self.assertEqual(by["/v1/chat/completions"]["headers"]["authorization"], f"Bearer {KEY}")
         self.assertEqual(by["/v1beta/models/m-1:generateContent"]["headers"]["x-goog-api-key"], KEY)
-        self.assertEqual({k: v for k, v in by["/api/v1/workspace/shadowrun/chat"]["body"].items() if k != "sessionId"}, {"message": AI.PING, "mode": "chat"})
+        self.assertEqual(
+            {k: v for k, v in by["/api/v1/workspace/shadowrun/chat"]["body"].items() if k != "sessionId"},
+            {"message": AI.PING, "mode": "chat"},
+        )
         self.assertEqual(by["/api/v1/workspace/shadowrun/chat"]["headers"]["authorization"], f"Bearer {KEY}")
 
     def test_common_failures_read_plainly_and_never_show_the_key(self):
-        for code, why in ((401, "didn’t accept the API key"), (403, "didn’t accept the API key"), (404, "wasn’t found"),
-                          (429, "rate limiting"), (503, "had an error on its side")):
+        for code, why in (
+            (401, "didn’t accept the API key"),
+            (403, "didn’t accept the API key"),
+            (404, "wasn’t found"),
+            (429, "rate limiting"),
+            (503, "had an error on its side"),
+        ):
             s = self.stub(lambda p, code=code: (code, {"error": {"type": "x", "message": f"nope {KEY}"}}))
             lib = self.library(s.url)
             for p in AI.PROVIDER_IDS:
@@ -367,7 +513,12 @@ class PingTest(unittest.TestCase):
             AI.ping("openai", self.library("http://127.0.0.1:1"))
 
     def test_anythingllm_error_field_and_missing_settings(self):
-        s = self.stub(lambda p: (200, WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": None, "error": "No workspace found"}))
+        s = self.stub(
+            lambda p: (
+                200,
+                WORKSPACES if p == "/api/v1/workspaces" else {"textResponse": None, "error": "No workspace found"},
+            )
+        )
         with self.assertRaisesRegex(AI.ProviderError, "AnythingLLM answered: No workspace found"):
             AI.ping("anythingllm", self.library(s.url))
         with self.assertRaisesRegex(AI.ProviderError, "save this provider’s settings first"):
@@ -393,12 +544,26 @@ class PingTest(unittest.TestCase):
         self.assertEqual(elsewhere.requests, [])
 
     def test_model_and_workspace_stay_one_path_segment(self):
-        s = self.stub(lambda p: (200, {"candidates": [{"content": {"parts": [{"text": "OK"}]}}], "textResponse": "OK",
-                                       "workspaces": [{"name": "Admin", "slug": "../admin"}]}))
+        s = self.stub(
+            lambda p: (
+                200,
+                {
+                    "candidates": [{"content": {"parts": [{"text": "OK"}]}}],
+                    "textResponse": "OK",
+                    "workspaces": [{"name": "Admin", "slug": "../admin"}],
+                },
+            )
+        )
         AI.ping("gemini", self.library(s.url, model=' model="../../evil?x=1"'))
         AI.ping("anythingllm", self.library(s.url, workspace="Admin"))
-        self.assertEqual([r["path"] for r in s.requests],
-                         ["/v1beta/models/..%2F..%2Fevil%3Fx%3D1:generateContent", "/api/v1/workspaces", "/api/v1/workspace/..%2Fadmin/chat"])
+        self.assertEqual(
+            [r["path"] for r in s.requests],
+            [
+                "/v1beta/models/..%2F..%2Fevil%3Fx%3D1:generateContent",
+                "/api/v1/workspaces",
+                "/api/v1/workspace/..%2Fadmin/chat",
+            ],
+        )
 
     def test_cli_prints_json_or_the_reason(self):
         s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "OK"}}]}))
@@ -425,6 +590,7 @@ PROVIDERS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 def write_providers(config, use="openai", url="http://127.0.0.1:1/v1", enabled="true"):
+    """Write an ai-providers config into the library's config folder."""
     xmlio.write_file(os.path.join(config, "ai-providers.xml"), PROVIDERS_XML.format(use=use, url=url, oe=enabled))
 
 
@@ -443,7 +609,14 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(os.listdir(config), ["ai-keys.xml"])  # no temp file left behind
         if os.name == "posix":
             self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
-        r = node("--input-type=module", "-e", XSD_CHECK, path, os.path.join(XSD_DIR, "aikeys.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            path,
+            os.path.join(XSD_DIR, "aikeys.xsd"),
+            os.path.join(XSD_DIR, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_providers_file_matches_xsd_and_reads(self):
@@ -452,8 +625,14 @@ class SettingsTest(unittest.TestCase):
         use, providers = AI.read_providers(config)
         self.assertEqual(use, "openai")
         self.assertEqual(providers["anythingllm"]["workspace"], "shadowrun")
-        r = node("--input-type=module", "-e", XSD_CHECK, os.path.join(config, "ai-providers.xml"),
-                 os.path.join(XSD_DIR, "aiproviders.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            os.path.join(config, "ai-providers.xml"),
+            os.path.join(XSD_DIR, "aiproviders.xsd"),
+            os.path.join(XSD_DIR, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_call_reads_the_key_at_call_time(self):
@@ -469,17 +648,29 @@ class SettingsTest(unittest.TestCase):
 
     def test_set_settings_clears_the_key_when_the_address_changes(self):
         config = tempfile.mkdtemp()
-        body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai">{}</ca2:aiproviders>'
-        self.assertEqual(AI.set_settings(config, body.format('<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/>')), [])
+        body = (
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="openai">{}</ca2:aiproviders>'
+        )
+        self.assertEqual(
+            AI.set_settings(
+                config, body.format('<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/>')
+            ),
+            [],
+        )
         AI.set_key(config, "openai", KEY)
         AI.set_key(config, "anthropic", "a-key")
-        same = '<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/><provider id="anthropic" enabled="false"/>'
+        same = (
+            '<provider id="openai" enabled="true" baseUrl="https://api.openai.com/v1"/><provider id="anthropic" '
+            'enabled="false"/>'
+        )
         self.assertEqual(AI.set_settings(config, body.format(same)), [])
         self.assertEqual(AI.read_key(config, "openai"), KEY)
         # the parse differentials that fooled the old regex check: single quotes, a commented-out copy, a char reference
-        for evil in ["<provider id=\"openai\" enabled=\"true\" baseUrl='https://evil.example'/>"
-                     '<!-- <provider id="openai" baseUrl="https://api.openai.com/v1"/> -->',
-                     '<provider id="&#111;penai" enabled="true" baseUrl="https://evil.example"/>']:
+        for evil in [
+            '<provider id="openai" enabled="true" baseUrl=\'https://evil.example\'/>'
+            '<!-- <provider id="openai" baseUrl="https://api.openai.com/v1"/> -->',
+            '<provider id="&#111;penai" enabled="true" baseUrl="https://evil.example"/>',
+        ]:
             AI.set_settings(config, body.format(same))
             AI.set_key(config, "openai", KEY)
             self.assertEqual(AI.set_settings(config, body.format(evil)), ["openai"])
@@ -488,26 +679,38 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(AI.read_key(config, "anthropic"), "a-key")
         AI.set_key(config, "openai", KEY)  # dropping the address (back to the default host) is a change too
         self.assertEqual(AI.set_settings(config, body.format('<provider id="openai" enabled="true"/>')), ["openai"])
-        r = node("--input-type=module", "-e", XSD_CHECK, os.path.join(config, "ai-providers.xml"),
-                 os.path.join(XSD_DIR, "aiproviders.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            os.path.join(config, "ai-providers.xml"),
+            os.path.join(XSD_DIR, "aiproviders.xsd"),
+            os.path.join(XSD_DIR, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_set_settings_refuses_what_the_app_never_writes(self):
         config = tempfile.mkdtemp()
         ok = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"{}>{}</ca2:aiproviders>'
-        for root, rows in [("", '<provider id="openai" enabled="true"/><provider id="openai" enabled="true" baseUrl="https://x"/>'),
-                           ("", '<provider id="evil" enabled="true"/>'),
-                           ("", '<provider id="openai" enabled="yes"/>'),
-                           ("", '<provider id="openai" enabled="true" apiBase="https://x"/>'),
-                           ("", '<key provider="openai">k</key>'),
-                           ("", '<provider id="openai" enabled="true">text</provider>'),
-                           ("", '<provider id="openai" enabled="true" baseUrl="file:///etc/passwd"/>'),
-                           ("", '<provider id="openai" enabled="true" baseUrl="http:///no-host"/>'),
-                           (' use="evil"', ""), (' version="0"', "")]:
+        for root, rows in [
+            ("", '<provider id="openai" enabled="true"/><provider id="openai" enabled="true" baseUrl="https://x"/>'),
+            ("", '<provider id="evil" enabled="true"/>'),
+            ("", '<provider id="openai" enabled="yes"/>'),
+            ("", '<provider id="openai" enabled="true" apiBase="https://x"/>'),
+            ("", '<key provider="openai">k</key>'),
+            ("", '<provider id="openai" enabled="true">text</provider>'),
+            ("", '<provider id="openai" enabled="true" baseUrl="file:///etc/passwd"/>'),
+            ("", '<provider id="openai" enabled="true" baseUrl="http:///no-host"/>'),
+            (' use="evil"', ""),
+            (' version="0"', ""),
+        ]:
             with self.assertRaises(AI.SettingsError, msg=rows or root):
                 AI.set_settings(config, ok.format(root, rows).replace('version="1" version="0"', 'version="0"'))
-        for bad in ['<!DOCTYPE x [<!ENTITY a "b">]><ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"/>',
-                    '<aiproviders version="1"/>', "<not xml"]:
+        for bad in [
+            '<!DOCTYPE x [<!ENTITY a "b">]><ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"/>',
+            '<aiproviders version="1"/>',
+            "<not xml",
+        ]:
             with self.assertRaises(AI.SettingsError, msg=bad):
                 AI.set_settings(config, bad)
         self.assertFalse(os.path.exists(os.path.join(config, "ai-providers.xml")))
@@ -518,12 +721,23 @@ class SettingsTest(unittest.TestCase):
 
     def test_cli_set_settings(self):
         lib = tempfile.mkdtemp()
-        body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" enabled="true"{}/></ca2:aiproviders>'
+        body = (
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" '
+            'enabled="true"{}/></ca2:aiproviders>'
+        )
         out = io.StringIO()
-        with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))), contextlib.redirect_stdout(out):
+        with (
+            unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))),
+            contextlib.redirect_stdout(out),
+        ):
             self.assertEqual(main(["set-settings", "--library", lib]), 0)
         AI.set_key(os.path.join(lib, ".config"), "gemini", KEY)
-        with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format(' baseUrl="https://x"').encode()))), contextlib.redirect_stdout(out):
+        with (
+            unittest.mock.patch(
+                "sys.stdin", io.TextIOWrapper(io.BytesIO(body.format(' baseUrl="https://x"').encode()))
+            ),
+            contextlib.redirect_stdout(out),
+        ):
             self.assertEqual(main(["set-settings", "--library", lib]), 0)
         self.assertIn('<result cleared="gemini" />', out.getvalue())
         err = io.StringIO()
@@ -550,13 +764,35 @@ A spoon that stirs your thoughts.
 
 TWO_AMPS = {
     "amps": [
-        {"name": "Neural Spoon", "type": "cyberware", "printedRating": 2, "page": 2,
-         "effects": [{"ref": "rr-spec", "param": "athletics.climbing", "value": None, "note": None},
-                     {"ref": "rr-spec", "param": "custom:stirring", "value": None, "note": None}]},
-        {"name": "Glitter Gland", "type": "bioware", "printedRating": None, "page": 3,
-         "effects": [{"ref": "sparkle-boost", "param": None, "value": None, "note": None}]},
+        {
+            "name": "Neural Spoon",
+            "type": "cyberware",
+            "printedRating": 2,
+            "page": 2,
+            "effects": [
+                {"ref": "rr-spec", "param": "athletics.climbing", "value": None, "note": None},
+                {"ref": "rr-spec", "param": "custom:stirring", "value": None, "note": None},
+            ],
+        },
+        {
+            "name": "Glitter Gland",
+            "type": "bioware",
+            "printedRating": None,
+            "page": 3,
+            "effects": [{"ref": "sparkle-boost", "param": None, "value": None, "note": None}],
+        },
     ],
-    "items": [{"name": "Tin Spoon", "kind": "gear", "category": "Kitchen", "page": 2, "dv": None, "armor": None, "ranges": None}],
+    "items": [
+        {
+            "name": "Tin Spoon",
+            "kind": "gear",
+            "category": "Kitchen",
+            "page": 2,
+            "dv": None,
+            "armor": None,
+            "ranges": None,
+        }
+    ],
     "spells": [{"name": "Stir", "category": "manipulation", "page": 2}],
     "complexForms": [],
 }
@@ -590,42 +826,98 @@ class ProposeTest(unittest.TestCase):
         path = os.path.join(book, "review.xml")
         root = ET.parse(path).getroot()
         props = root.findall("proposal")
-        self.assertEqual([(p.get("id"), p.get("kind"), p.get("state"), p.get("page")) for p in props],
-                         [("amp.neural-spoon", "amp", "pending", "2"), ("amp.glitter-gland", "amp", "pending", "3"),
-                          ("gear.gear-tin-spoon", "gear", "pending", "2"), ("spell.spell-stir", "spell", "pending", "2")])
+        self.assertEqual(
+            [(p.get("id"), p.get("kind"), p.get("state"), p.get("page")) for p in props],
+            [
+                ("amp.neural-spoon", "amp", "pending", "2"),
+                ("amp.glitter-gland", "amp", "pending", "3"),
+                ("gear.gear-tin-spoon", "gear", "pending", "2"),
+                ("spell.spell-stir", "spell", "pending", "2"),
+            ],
+        )
         self.assertEqual(props[0].findall("note"), [])
         self.assertEqual([n.text for n in props[1].findall("note")], ['unknown effect ref "sparkle-boost"'])
         amp = props[0].find("amp")
-        self.assertEqual((amp.get("id"), amp.get("type"), amp.get("printedRating"), amp.get("source")),
-                         ("neural-spoon", "cyberware", "2", "MADE-UP"))
+        self.assertEqual(
+            (amp.get("id"), amp.get("type"), amp.get("printedRating"), amp.get("source")),
+            ("neural-spoon", "cyberware", "2", "MADE-UP"),
+        )
         self.assertEqual([e.get("param") for e in amp.findall("effect")], ["athletics.climbing", "custom:stirring"])
         self.assertEqual(xmlio.ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "review")
         # review.xml matches its XSD; each proposed entry is valid data for its kind
-        r = node("--input-type=module", "-e", XSD_CHECK, path, os.path.join(XSD_DIR, "review.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            path,
+            os.path.join(XSD_DIR, "review.xsd"),
+            os.path.join(XSD_DIR, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
-        for p, kind, xsd in ((props[0], "amps", "amps.xsd"), (props[2], "gear", "items.xsd"), (props[3], "spells", "items.xsd")):
+        for p, kind, xsd in (
+            (props[0], "amps", "amps.xsd"),
+            (props[2], "gear", "items.xsd"),
+            (props[3], "spells", "items.xsd"),
+        ):
             f = os.path.join(book, f"check-{kind}.xml")
-            xmlio.write_file(f, f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">'
-                             + ET.tostring(p[0], encoding="unicode") + "</ca2:data>")
-            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(XSD_DIR, xsd), os.path.join(XSD_DIR, "common.xsd"))
+            xmlio.write_file(
+                f,
+                f'<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="{kind}" version="1">'
+                + ET.tostring(p[0], encoding="unicode")
+                + "</ca2:data>",
+            )
+            r = node(
+                "--input-type=module",
+                "-e",
+                XSD_CHECK,
+                f,
+                os.path.join(XSD_DIR, xsd),
+                os.path.join(XSD_DIR, "common.xsd"),
+            )
             self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_validation_rules(self):
         m = P.mechanics()
-        notes = P.amp_notes({"type": "nope", "effects": [
-            {"ref": "rr-spec", "param": "athletics.nope"}, {"ref": "rr-skill", "param": "nope"},
-            {"ref": "rr-attr", "param": "nope"}, {"ref": "rr-attr", "param": "str"}, {"ref": "rr-spec", "param": None}]}, m)
-        self.assertEqual(notes, ['unknown amp type "nope"', 'unknown specialization "athletics.nope" for rr-spec',
-                                 'unknown skill "nope" for rr-skill', 'unknown attribute "nope" for rr-attr'])
+        notes = P.amp_notes(
+            {
+                "type": "nope",
+                "effects": [
+                    {"ref": "rr-spec", "param": "athletics.nope"},
+                    {"ref": "rr-skill", "param": "nope"},
+                    {"ref": "rr-attr", "param": "nope"},
+                    {"ref": "rr-attr", "param": "str"},
+                    {"ref": "rr-spec", "param": None},
+                ],
+            },
+            m,
+        )
+        self.assertEqual(
+            notes,
+            [
+                'unknown amp type "nope"',
+                'unknown specialization "athletics.nope" for rr-spec',
+                'unknown skill "nope" for rr-skill',
+                'unknown attribute "nope" for rr-attr',
+            ],
+        )
 
     def book(self, md=BOOK, name="b"):
+        """A temp book folder holding the markdown."""
         book = os.path.join(tempfile.mkdtemp(), name)
         xmlio.write_file(os.path.join(book, "book.md"), md)
         return book
 
     def review(self, book):
+        """Validate and return the book's review.xml."""
         path = os.path.join(book, "review.xml")
-        r = node("--input-type=module", "-e", XSD_CHECK, path, os.path.join(XSD_DIR, "review.xsd"), os.path.join(XSD_DIR, "common.xsd"))
+        r = node(
+            "--input-type=module",
+            "-e",
+            XSD_CHECK,
+            path,
+            os.path.join(XSD_DIR, "review.xsd"),
+            os.path.join(XSD_DIR, "common.xsd"),
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
         return ET.parse(path).getroot()
 
@@ -634,8 +926,10 @@ class ProposeTest(unittest.TestCase):
         self.assertEqual(P.parse('Here: {"x": {"y": 1}} and {"spells": []}'), {"spells": []})
 
     def test_unusable_and_cut_off_replies_are_skipped_with_a_note(self):
-        for ask, why in ((lambda s, u: '{"answer": "none"}', "no JSON with amps"),
-                         (lambda s, u: (_ for _ in ()).throw(AI.TruncatedReply("the reply was cut off")), "cut off")):
+        for ask, why in (
+            (lambda s, u: '{"answer": "none"}', "no JSON with amps"),
+            (lambda s, u: (_ for _ in ()).throw(AI.TruncatedReply("the reply was cut off")), "cut off"),
+        ):
             book = self.book()
             P.propose(book, ask)
             root = self.review(book)
@@ -644,38 +938,77 @@ class ProposeTest(unittest.TestCase):
             self.assertEqual((root.get("parts"), root.get("done")), ("1", "1"))
 
     def test_hostile_model_values_stay_inert(self):
-        hostile = {"items": [
-            {"name": "R&D <kit>", "kind": 'gear" state="accepted', "category": "A&B", "page": 2},
-            {"name": "Null kind", "kind": None, "page": 2},
-            {"name": ["a", "list"], "kind": ["weapon"], "page": "7", "dv": {"x": 1}},
-            {"name": "Ctl\x00\x1b chars\x08", "kind": "armor", "armor": True, "page": 2}],
+        hostile = {
+            "items": [
+                {"name": "R&D <kit>", "kind": 'gear" state="accepted', "category": "A&B", "page": 2},
+                {"name": "Null kind", "kind": None, "page": 2},
+                {"name": ["a", "list"], "kind": ["weapon"], "page": "7", "dv": {"x": 1}},
+                {"name": "Ctl\x00\x1b chars\x08", "kind": "armor", "armor": True, "page": 2},
+            ],
             "spells": [{"name": "Odd", "category": "cooking", "page": 2}],
             "complexForms": [{"name": "Hum", "category": "instant", "page": 2}],
-            "amps": [{"name": "Bad shapes", "type": "cyberware", "printedRating": True, "page": 2, "effects": "rr-spec"},
-                     {"name": "Mixed", "type": "cyberware", "printedRating": "3", "page": 2,
-                      "effects": [1, {"ref": ["rr-spec"], "param": {"p": 1}}, {"ref": "rr-attr", "param": 5}]}]}
+            "amps": [
+                {"name": "Bad shapes", "type": "cyberware", "printedRating": True, "page": 2, "effects": "rr-spec"},
+                {
+                    "name": "Mixed",
+                    "type": "cyberware",
+                    "printedRating": "3",
+                    "page": 2,
+                    "effects": [1, {"ref": ["rr-spec"], "param": {"p": 1}}, {"ref": "rr-attr", "param": 5}],
+                },
+            ],
+        }
         book = self.book()
         P.propose(book, lambda s, u: json.dumps(hostile))
         root = self.review(book)
         props = {p.get("id"): p for p in root.findall("proposal")}
-        self.assertEqual(sorted(props), ["amp.bad-shapes", "amp.mixed", "armor.ctl-chars", "complex-form.cf-hum",
-                                         "gear.gear-null-kind", "gear.gear-r-d-kit", "gear.gear-unnamed", "spell.spell-odd"])
+        self.assertEqual(
+            sorted(props),
+            [
+                "amp.bad-shapes",
+                "amp.mixed",
+                "armor.ctl-chars",
+                "complex-form.cf-hum",
+                "gear.gear-null-kind",
+                "gear.gear-r-d-kit",
+                "gear.gear-unnamed",
+                "spell.spell-odd",
+            ],
+        )
         self.assertTrue(all(p.get("state") == "pending" for p in props.values()))
         rd = props["gear.gear-r-d-kit"]
-        self.assertEqual((rd.get("kind"), rd[0].get("kind"), rd[0].findtext("name"), rd[0].get("category")), ("gear", "gear", "R&D <kit>", "A&B"))
-        self.assertEqual([n.text for n in rd.findall("note")], ['unknown item kind "gear" state="accepted"; proposed as gear'])
-        self.assertEqual([n.text for n in props["gear.gear-null-kind"].findall("note")], ['unknown item kind "None"; proposed as gear'])
+        self.assertEqual(
+            (rd.get("kind"), rd[0].get("kind"), rd[0].findtext("name"), rd[0].get("category")),
+            ("gear", "gear", "R&D <kit>", "A&B"),
+        )
+        self.assertEqual(
+            [n.text for n in rd.findall("note")], ['unknown item kind "gear" state="accepted"; proposed as gear']
+        )
+        self.assertEqual(
+            [n.text for n in props["gear.gear-null-kind"].findall("note")],
+            ['unknown item kind "None"; proposed as gear'],
+        )
         lst = props["gear.gear-unnamed"]
         self.assertEqual((lst.get("page"), lst[0].get("dv")), ("1", None))  # page "7" is text: the part's first page
         self.assertEqual(props["armor.ctl-chars"][0].findtext("name"), "Ctl chars")
         self.assertIsNone(props["armor.ctl-chars"][0].get("armor"))
-        self.assertEqual([n.text for n in props["spell.spell-odd"].findall("note")], ['unknown spell category "cooking"'])
+        self.assertEqual(
+            [n.text for n in props["spell.spell-odd"].findall("note")], ['unknown spell category "cooking"']
+        )
         self.assertEqual(props["complex-form.cf-hum"].findall("note"), [])
-        self.assertEqual([n.text for n in props["amp.bad-shapes"].findall("note")],
-                         ["effects isn’t a list; dropped", 'printedRating "True" isn’t a whole number; dropped'])
-        self.assertEqual([n.text for n in props["amp.mixed"].findall("note")],
-                         ["an effect isn’t an object; dropped", 'printedRating "3" isn’t a whole number; dropped',
-                          'unknown effect ref "None"', 'unknown attribute "5" for rr-attr'])
+        self.assertEqual(
+            [n.text for n in props["amp.bad-shapes"].findall("note")],
+            ["effects isn’t a list; dropped", 'printedRating "True" isn’t a whole number; dropped'],
+        )
+        self.assertEqual(
+            [n.text for n in props["amp.mixed"].findall("note")],
+            [
+                "an effect isn’t an object; dropped",
+                'printedRating "3" isn’t a whole number; dropped',
+                'unknown effect ref "None"',
+                'unknown attribute "5" for rr-attr',
+            ],
+        )
 
     def test_a_finished_review_is_kept_unless_fresh(self):
         book = self.book()
@@ -697,11 +1030,12 @@ class ProposeTest(unittest.TestCase):
         self.assertEqual(P.count_chunks(os.path.join(book, "book.md")), 2)
         calls = []
 
-        def flaky(s, u):
+        def flaky(_s, u):
             calls.append(u)
             if len(calls) == 2:
                 raise AI.ProviderError("rate limited")
             return json.dumps(TWO_AMPS)
+
         with self.assertRaises(AI.ProviderError):
             P.propose(book, flaky)
         root = self.review(book)
@@ -723,6 +1057,7 @@ class ProposeTest(unittest.TestCase):
 
         def ask(s, u):
             raise AI.ProviderError("rate limited")
+
         with self.assertRaises(AI.ProviderError):
             P.propose(book, ask)
         st = ET.parse(os.path.join(book, "status.xml")).getroot()
@@ -768,10 +1103,23 @@ class ApplyReviewTest(unittest.TestCase):
 
     def _apply(self, book, custom, source="MADE"):
         with contextlib.redirect_stdout(io.StringIO()):
-            return main(["apply-review", book, "--custom", custom, "--source", source, "--name", "Made-up Gear", "--canon", "false"])
+            return main(
+                [
+                    "apply-review",
+                    book,
+                    "--custom",
+                    custom,
+                    "--source",
+                    source,
+                    "--name",
+                    "Made-up Gear",
+                    "--canon",
+                    "false",
+                ]
+            )
 
     def test_accepted_and_edited_proposals_become_the_overlay(self):
-        lib, book, custom, path = self._reviewed()
+        _, book, custom, path = self._reviewed()
         self.assertEqual(self._apply(book, custom), 0)
         imported = os.path.join(custom, "imported")
         amps = Path(imported, "made", "amps.xml").read_text(encoding="utf8")
@@ -782,14 +1130,27 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(imported, "made", "spells.xml")))  # still pending
         self.assertIn("made/amps.xml", Path(imported, "index.xml").read_text(encoding="utf8"))
         src = ET.parse(os.path.join(imported, "sources.xml")).getroot()[0]
-        self.assertEqual((src.get("id"), src.get("canon"), src.findtext("name"), src.get("file")), ("MADE", "false", "Made-up Gear", "made-up.pdf"))
+        self.assertEqual(
+            (src.get("id"), src.get("canon"), src.findtext("name"), src.get("file")),
+            ("MADE", "false", "Made-up Gear", "made-up.pdf"),
+        )
         imp = ET.parse(os.path.join(book, "import.xml")).getroot()
         self.assertEqual((imp.get("recipe"), imp.get("source")), ("ai", "MADE"))
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "done")
         r = node("tools/validate-data.mjs", MINI, imported)  # the made-up core files, then the overlay
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        for f, xsd in [(os.path.join(imported, "sources.xml"), "sources.xsd"), (os.path.join(book, "import.xml"), "import.xsd")]:
-            r = node("--input-type=module", "-e", XSD_CHECK, f, os.path.join(XSD_DIR, xsd), os.path.join(XSD_DIR, "common.xsd"))
+        for f, xsd in [
+            (os.path.join(imported, "sources.xml"), "sources.xsd"),
+            (os.path.join(book, "import.xml"), "import.xsd"),
+        ]:
+            r = node(
+                "--input-type=module",
+                "-e",
+                XSD_CHECK,
+                f,
+                os.path.join(XSD_DIR, xsd),
+                os.path.join(XSD_DIR, "common.xsd"),
+            )
             self.assertEqual(r.returncode, 0, f"{f}: {r.stderr}")
 
         # a second apply replaces the first: the gear dropped now, its file goes
@@ -801,7 +1162,7 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(imported, "made", "amps.xml")))
 
     def test_a_second_apply_never_shows_removed_midway(self):
-        lib, book, custom, _ = self._reviewed()
+        _, book, custom, _ = self._reviewed()
         self.assertEqual(self._apply(book, custom), 0)
         seen, write = [], xmlio.write_status
         with unittest.mock.patch.object(xmlio, "write_status", lambda d, s, m="": seen.append(s) or write(d, s, m)):
@@ -810,7 +1171,9 @@ class ApplyReviewTest(unittest.TestCase):
 
     def test_a_source_id_another_book_uses_is_refused(self):
         lib, book, custom, _ = self._reviewed()
-        xmlio.write_import(os.path.join(lib, "other"), file="o.pdf", sha256="cd", converter="6", pages=1, score="1.00", source="CRB")
+        xmlio.write_import(
+            os.path.join(lib, "other"), file="o.pdf", sha256="cd", converter="6", pages=1, score="1.00", source="CRB"
+        )
         with self.assertRaises(ValueError):
             self._apply(book, custom, "CRB")
         self.assertEqual(ET.parse(os.path.join(book, "status.xml")).getroot().get("state"), "failed")
@@ -819,7 +1182,7 @@ class ApplyReviewTest(unittest.TestCase):
             self._apply(book, custom, "../x")
 
     def test_entries_failing_the_checks_are_skipped_and_reported(self):
-        lib, book, custom, path = self._reviewed()
+        _, book, custom, path = self._reviewed()
         tree = ET.parse(path)
         root = tree.getroot()
         root.find("proposal[@id='amp.glitter-gland']").set("state", "accepted")  # unknown effect ref "sparkle-boost"
@@ -832,15 +1195,26 @@ class ApplyReviewTest(unittest.TestCase):
         self.assertIn("made.neural-spoon", amps)
         self.assertNotIn("glitter", amps)
         self.assertFalse(os.path.exists(os.path.join(custom, "imported", "made", "spells.xml")))
-        rows = {r.get("proposal"): r.get("problem") for r in ET.parse(os.path.join(book, "import.xml")).getroot().iter("row")}
-        self.assertEqual(rows, {"amp.glitter-gland": 'unknown effect ref "sparkle-boost"',
-                                "spell.spell-stir": 'unknown spell category "cooking"'})
+        rows = {
+            r.get("proposal"): r.get("problem")
+            for r in ET.parse(os.path.join(book, "import.xml")).getroot().iter("row")
+        }
+        self.assertEqual(
+            rows,
+            {
+                "amp.glitter-gland": 'unknown effect ref "sparkle-boost"',
+                "spell.spell-stir": 'unknown spell category "cooking"',
+            },
+        )
         self.assertIn("2 skipped", ET.parse(os.path.join(book, "status.xml")).getroot().text)
 
     def test_a_source_id_in_the_users_own_sources_is_refused(self):
-        lib, book, custom, _ = self._reviewed()
-        xmlio.write_file(os.path.join(custom, "sources.xml"), '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">'
-                         '<source id="HOUSE" publisher="Me" canon="false"><name>House rules</name></source></ca2:data>')
+        _, book, custom, _ = self._reviewed()
+        xmlio.write_file(
+            os.path.join(custom, "sources.xml"),
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="sources" version="1">'
+            '<source id="HOUSE" publisher="Me" canon="false"><name>House rules</name></source></ca2:data>',
+        )
         with self.assertRaises(ValueError):
             self._apply(book, custom, "HOUSE")
 

@@ -1,4 +1,6 @@
-"""xmlio.write_file survives Windows refusing the rename while the server is reading the destination (a status.xml poll)."""
+"""xmlio.write_file survives Windows refusing the rename while the server is reading the destination (a status.xml
+poll)."""
+
 import os
 import tempfile
 import unittest
@@ -6,8 +8,12 @@ from unittest import mock
 
 from importer import xmlio
 
+# pylint: disable=consider-using-with  # one-shot read of a file the test just wrote
+
 
 class WriteFileRetry(unittest.TestCase):
+    """Writing a file again after the rename is refused."""
+
     def test_rename_refused_twice_then_works(self):
         real, calls = os.replace, []
 
@@ -17,15 +23,21 @@ class WriteFileRetry(unittest.TestCase):
                 raise PermissionError(5, "Access is denied")
             real(a, b)
 
-        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", True), mock.patch.object(xmlio.os, "replace", flaky):
+        with (
+            tempfile.TemporaryDirectory() as d,
+            mock.patch.object(xmlio, "WINDOWS", True),
+            mock.patch.object(xmlio.os, "replace", flaky),
+        ):
             p = os.path.join(d, "status.xml")
             xmlio.write_file(p, "x")
             self.assertEqual(open(p, encoding="utf8").read(), "x")
         self.assertEqual(len(calls), 3)
 
     def test_other_systems_do_not_retry(self):
-        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", False), mock.patch.object(
-            xmlio.os, "replace", side_effect=PermissionError
+        with (
+            tempfile.TemporaryDirectory() as d,
+            mock.patch.object(xmlio, "WINDOWS", False),
+            mock.patch.object(xmlio.os, "replace", side_effect=PermissionError),
         ):
             with self.assertRaises(PermissionError):
                 xmlio.write_file(os.path.join(d, "a.xml"), "x")

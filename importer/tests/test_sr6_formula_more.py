@@ -1,5 +1,6 @@
 """More of the SR6 formula grammar and readers (importer/sr6/formula.py): the refusals, the values that cannot be worked
 out, and the readers' edge cases. Every value and name here is invented."""
+
 import unittest
 
 from importer.sr6 import formula as F
@@ -7,9 +8,14 @@ from importer.sr6 import formula as F
 
 class GrammarEdgesTest(unittest.TestCase):
     def test_what_the_parser_refuses(self):
-        for bad, why in (("tier(R; R: 5)", "a band starts with a number"), ("ref(gear:x, 5)", "ref() needs a field name"),
-                         ("ceil(R, 2)", "ceil takes one"), ("floor(R, 2)", "floor takes one"), ("min(R)", "min takes two"),
-                         ("max(R, 1, 2)", "max takes two")):
+        for bad, why in (
+            ("tier(R; R: 5)", "a band starts with a number"),
+            ("ref(gear:x, 5)", "ref() needs a field name"),
+            ("ceil(R, 2)", "ceil takes one"),
+            ("floor(R, 2)", "floor takes one"),
+            ("min(R)", "min takes two"),
+            ("max(R, 1, 2)", "max takes two"),
+        ):
             with self.assertRaises(F.FormulaError, msg=why):
                 F.parse(bad)
             self.assertFalse(F.valid(bad), bad)
@@ -28,6 +34,7 @@ class GrammarEdgesTest(unittest.TestCase):
         def look(target, field, rating):
             seen.append((target, field, rating))
             return 7.0
+
         self.assertEqual(F.evaluate("ref(gear:zz.widget, cost, R*2) + 1", R=2, ref=look), 8)
         self.assertEqual(seen, [("gear:zz.widget", "cost", 4.0)])
 
@@ -47,6 +54,7 @@ class GrammarEdgesTest(unittest.TestCase):
 
 class ReadEdgesTest(unittest.TestCase):
     def check(self, printed, expr, field="cost"):
+        """Assert the printed text reads as expr."""
         self.assertEqual(F.read(printed, field), (expr, {}), printed)
 
     def test_a_range_is_not_a_subtraction(self):
@@ -77,12 +85,16 @@ class TierTest(unittest.TestCase):
         self.assertEqual(F.tier([(1, 3, "R*5"), (4, 6, "R*5")]), "R*5")
 
     def test_bands_in_order_with_a_single_rating_and_an_open_end(self):
-        self.assertEqual(F.tier([(9, 9, "7000"), (1, 3, "R*100"), (10, None, "R*1000")]), "tier(R; 1-3: R*100; 9: 7000; 10+: R*1000)")
+        self.assertEqual(
+            F.tier([(9, 9, "7000"), (1, 3, "R*100"), (10, None, "R*1000")]), "tier(R; 1-3: R*100; 9: 7000; 10+: R*1000)"
+        )
 
 
 class TextReadersTest(unittest.TestCase):
     def test_a_unit_the_description_names(self):
-        self.assertEqual(F.text_unit("The cost is per ten centimeters (minimum 10 cm, maximum 1 meter)."), ("10 cm", "1-10"))
+        self.assertEqual(
+            F.text_unit("The cost is per ten centimeters (minimum 10 cm, maximum 1 meter)."), ("10 cm", "1-10")
+        )
         self.assertIsNone(F.text_unit("The cost is per seven centimeters."))  # (a count it has no word for)
         self.assertIsNone(F.text_unit("No unit is named."))
 
@@ -92,15 +104,25 @@ class TextReadersTest(unittest.TestCase):
     def test_energy_shots_need_a_use_and_a_supply(self):
         supplies = {"power backpack": "pb", "power clip": "pc"}
         self.assertIsNone(F.energy_ammo("A zap gun.", "", supplies))  # (no use stated)
-        self.assertIsNone(F.energy_ammo("Uses 2 energy per shot. Includes power backpack.", "", {"power clip": "pc"}))  # (no such supply)
-        self.assertEqual(F.energy_ammo("Uses 2 energy per shot. Includes power backpack.", "", supplies), "ref(gear:pb, energy)/2")
-        self.assertEqual(F.energy_ammo("Uses 2 energy per shot.", "Zap guns come with power clips.", supplies), "ref(gear:pc, energy)/2")
+        self.assertIsNone(
+            F.energy_ammo("Uses 2 energy per shot. Includes power backpack.", "", {"power clip": "pc"})
+        )  # (no such supply)
+        self.assertEqual(
+            F.energy_ammo("Uses 2 energy per shot. Includes power backpack.", "", supplies), "ref(gear:pb, energy)/2"
+        )
+        self.assertEqual(
+            F.energy_ammo("Uses 2 energy per shot.", "Zap guns come with power clips.", supplies),
+            "ref(gear:pc, energy)/2",
+        )
 
 
 class TierGroupsMoreTest(unittest.TestCase):
     def entries(self, c1, c2):
-        return [{"name": "Zap Relay (1-3)", "attrs": {"cost": c1, "category": "x"}, "page": 1},
-                {"name": "Zap Relay (4-6)", "attrs": {"cost": c2, "category": "x"}, "page": 1}]
+        """Two tiers of one entry with the given costs."""
+        return [
+            {"name": "Zap Relay (1-3)", "attrs": {"cost": c1, "category": "x"}, "page": 1},
+            {"name": "Zap Relay (4-6)", "attrs": {"cost": c2, "category": "x"}, "page": 1},
+        ]
 
     def test_rows_priced_per_unit_are_not_banded(self):
         # (a unit in the price is the row's own, not a band's)

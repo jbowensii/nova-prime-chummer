@@ -1,5 +1,6 @@
 """SR6 import run, remove and CLI (importer/sr6/run.py, importer/sr6/__main__.py) on the made-up book.md of
 test_sr6_crb, with --md (no PDF)."""
+
 import contextlib
 import io
 import os
@@ -24,25 +25,30 @@ def _read(*p):
 class Sr6RunTest(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.mkdtemp()
-        patch = unittest.mock.patch.object(overrides, "DIR", Path(tmp, "no-overrides"))  # (the real tables add entries to invented books)
+        patch = unittest.mock.patch.object(
+            overrides, "DIR", Path(tmp, "no-overrides")
+        )  # (the real tables add entries to invented books)
         patch.start()
         self.addCleanup(patch.stop)
         self.lib, self.custom = os.path.join(tmp, "library", "sr6"), os.path.join(tmp, "custom", "sr6")
         self.book = self.new_book("book1")
 
     def new_book(self, name, md=BOOK_MD):
+        """A book folder named `name` in the test library, holding `md`."""
         d = os.path.join(self.lib, name)
         os.makedirs(d)
         Path(d, "book.md").write_text(md, encoding="utf8")
         return d
 
     def cli(self, *args):
+        """Run the sr6 command; (exit code, printed output)."""
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = main(["sr6", *args])
         return code, out.getvalue()
 
     def state(self, book):
+        """The status.xml root of a book folder."""
         return ET.parse(os.path.join(book, "status.xml")).getroot()
 
     def test_run_writes_the_catalog_under_the_sr6_root(self):
@@ -63,9 +69,13 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual((src.tag, src[0].get("id"), src[0].get("texts")), (f"{{{NS}}}data", "CRB", "texts/crb.xml"))
         self.assertEqual(validate(self.custom), [])  # the sample runners and their list too
         lst = ET.parse(os.path.join(self.custom, "imported", "samples.xml")).getroot()
-        self.assertEqual([(x.get("source"), x.get("href"), x.get("name"), x.get("role")) for x in lst],
-                         [("CRB", "crb/samples/crb.glow-runner.xml", "Glow Runner", "Archetype"),
-                          ("CRB", "crb/samples/crb.bit-whisperer.xml", "Bit Whisperer", "Archetype")])
+        self.assertEqual(
+            [(x.get("source"), x.get("href"), x.get("name"), x.get("role")) for x in lst],
+            [
+                ("CRB", "crb/samples/crb.glow-runner.xml", "Glow Runner", "Archetype"),
+                ("CRB", "crb/samples/crb.bit-whisperer.xml", "Bit Whisperer", "Archetype"),
+            ],
+        )
         self.assertIn('metatype="crb.glimmerkin"', _read(crb, "samples", "crb.glow-runner.xml"))
         self.assertNotIn("samples", _read(self.custom, "imported", "index.xml"))  # never a catalog file
         self.assertTrue(os.path.isfile(os.path.join(self.book, "regrouped.md")))
@@ -77,22 +87,33 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual({f.get("name"): f.get("entries") for f in imp.iter("file")}["weapons.xml"], "5")
 
     def test_texts_are_reflowed_into_paragraphs(self):
-        md = BOOK_MD.replace("Trouble rules text.\n", "Trouble rules text for the gamemas-\nter and every non-\nplayer, in a\n"
-                                                      "narrow column.\n\n**Bold** stays.\n")
+        md = BOOK_MD.replace(
+            "Trouble rules text.\n",
+            "Trouble rules text for the gamemas-\nter and every non-\nplayer, in a\n"
+            "narrow column.\n\n**Bold** stays.\n",
+        )
         self.assertNotEqual(md, BOOK_MD)
         self.cli("run", self.new_book("book2", md), "--custom", self.custom, "--md")
         texts = {t.get("id"): t.text for t in ET.parse(os.path.join(self.custom, "texts", "crb.xml")).getroot()}
-        self.assertTrue(texts["crb.making-trouble"].startswith(
-            "Trouble rules text for the gamemaster and every non-player, in a narrow column.\n\n**Bold** stays."), texts["crb.making-trouble"])
+        self.assertTrue(
+            texts["crb.making-trouble"].startswith(
+                "Trouble rules text for the gamemaster and every non-player, in a narrow column.\n\n**Bold** stays."
+            ),
+            texts["crb.making-trouble"],
+        )
 
     def test_anarchy_texts_keep_their_root(self):
-        self.assertIn('<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts"',
-                      xmlio.merged_texts(os.path.join(self.custom, "none.xml"), [("spells", "x", "t")]))
+        self.assertIn(
+            '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="texts"',
+            xmlio.merged_texts(os.path.join(self.custom, "none.xml"), [("spells", "x", "t")]),
+        )
 
     def test_no_recipe_fails(self):
         other = self.new_book("other", "<!-- page 1 -->\n# Some Other Game\nText.\n")
         self.assertIsNone(run(other, self.custom, convert_pdf=False))
-        self.assertEqual((self.state(other).get("state"), self.state(other).text), ("failed", "no SR6 recipe matched this book"))
+        self.assertEqual(
+            (self.state(other).get("state"), self.state(other).text), ("failed", "no SR6 recipe matched this book")
+        )
         self.assertFalse(os.path.exists(os.path.join(self.custom, "imported")))
 
     def test_a_recipe_finding_nothing_fails(self):
@@ -126,11 +147,14 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("state: done", out)
         self.assertRegex(out, r"weapons\.xml\s+5")
-        self.assertIn("unpaired-row: 14", out)  # rows with no description of their own (the made-up alias isn't the book's)
+        self.assertIn(
+            "unpaired-row: 14", out
+        )  # rows with no description of their own (the made-up alias isn't the book's)
         self.assertIn("name=Lost Blaster", out)
 
     def test_check_command_on_a_made_up_pdf(self):
         from importer.tests.minipdf import sr6_layout_pdf
+
         pdf = os.path.join(self.lib, "made-up.pdf")
         Path(pdf).write_bytes(sr6_layout_pdf())
         scratch = os.path.join(self.lib, "scratch")
@@ -147,20 +171,25 @@ class Sr6RunTest(unittest.TestCase):
         self.assertIn("unpaired-row=14", out)
         self.assertTrue(_read(out_md).startswith("<!-- regrouped v1 -->"))
 
-
     def test_a_book_whose_samples_cite_this_import_is_read_again(self):
         """A done book whose sample runner notes `Glim Charm` and `2 x Zap Lamp (w/ hum)` not in the catalog: an import
         bringing either reads it again; one bringing neither, or the book itself, doesn't (made-up names)."""
         from types import SimpleNamespace
         from importer.sr6.run import _cited
+
         xmlio.write_import(self.book, source="NB")
         xmlio.write_status(self.book, "done")
         Path(self.custom, "imported", "nb", "samples").mkdir(parents=True)
         Path(self.custom, "imported", "nb", "samples", "nb.tester.xml").write_text(
-            "<c><notes>Qualities not in the catalog: Glim Charm; Hum Ward. Gear not in the catalog: 2 x Zap Lamp (w/ hum).</notes></c>",
-            encoding="utf8")
+            "<c><notes>Qualities not in the catalog: Glim Charm; Hum Ward. Gear not in the catalog: 2 x Zap Lamp (w/ "
+            "hum).</notes></c>",
+            encoding="utf8",
+        )
         other = self.new_book("book2")
-        has = lambda *names: SimpleNamespace(extra=[], files={"x.xml": "".join(f"<e><name>{n}</name></e>" for n in names)})
+
+        def has(*names):
+            return SimpleNamespace(extra=[], files={"x.xml": "".join(f"<e><name>{n}</name></e>" for n in names)})
+
         self.assertEqual(_cited(other, self.custom, has("Glim Charm")), [self.book])
         self.assertEqual(_cited(other, self.custom, has("Zap Lamp (Deluxe)")), [self.book])
         self.assertEqual(_cited(other, self.custom, has("Charming", "Lamp Post")), [])

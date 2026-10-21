@@ -1,6 +1,7 @@
 """SR6 Deadly Arts recipe (importer/sr6/recipes/da.py, shapes.py) on a made-up book.md in the converter's sr6 shape (the
 book's: several weapons in one box, a name wrapped onto a second row, a vehicle's box under its heading, a spell's band
 under a section titled with its category, martial art lines in plain text). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -11,6 +12,9 @@ from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6 import shapes
 from importer.sr6.recipes import crb, da, identify
+
+# tests read the private helpers they check
+# pylint: disable=protected-access
 
 BOOK_MD = """<!-- page 1 -->
 <!-- page 3 -->
@@ -149,11 +153,13 @@ A made-up back cover.
 
 
 def run_recipe(md=BOOK_MD):
+    """The DA recipe's result for the book markdown `md`."""
     regrouped, _ = regroup.regroup(md, da.ALIASES, name_headers=da.NAME_HEADERS, end_page=184)
     return da.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the entries of `kind` in a recipe result."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -166,18 +172,35 @@ class DaRecipeTest(unittest.TestCase):
     def test_weapons_one_a_row_wrapped_names_joined(self):
         w = entries(self.res, "weapons")
         self.assertEqual(set(w), {"Fizz Popper", "Ruhrzap SF-1", "Ruhrzap SF-1 (when overcharged)"})
-        self.assertEqual({k: w["Fizz Popper"][k] for k in ("category", "type", "dv", "modes", "ammo", "avail", "cost")},
-                         {"category": "Zap gun", "type": "Pistol", "dv": "3P", "modes": "SA", "ammo": "10(c)",
-                          "avail": "2(L)", "cost": "300"})
+        self.assertEqual(
+            {k: w["Fizz Popper"][k] for k in ("category", "type", "dv", "modes", "ammo", "avail", "cost")},
+            {
+                "category": "Zap gun",
+                "type": "Pistol",
+                "dv": "3P",
+                "modes": "SA",
+                "ammo": "10(c)",
+                "avail": "2(L)",
+                "cost": "300",
+            },
+        )
         self.assertEqual((w["Ruhrzap SF-1"]["ammo"], w["Ruhrzap SF-1"]["cost"]), ("50(c) or 100(belt)", "7600"))
         self.assertIn("long name", self.texts[("weapons", "ruhrzap-sf-1")])
         self.assertNotIn("Fizz Popper", entries(self.res, "rules"))  # its heading is the weapon's text
 
     def test_vehicle_box_under_its_heading(self):
         v = entries(self.res, "vehicles")["Made Walker “Stompy”"]
-        self.assertEqual({k: v[k] for k in ("category", "handling", "interval", "topSpeed", "seats", "cost")},
-                         {"category": "Walking vehicles", "handling": "2/2", "interval": "20", "topSpeed": "70",
-                          "seats": "1", "cost": "73500"})
+        self.assertEqual(
+            {k: v[k] for k in ("category", "handling", "interval", "topSpeed", "seats", "cost")},
+            {
+                "category": "Walking vehicles",
+                "handling": "2/2",
+                "interval": "20",
+                "topSpeed": "70",
+                "seats": "1",
+                "cost": "73500",
+            },
+        )
 
     def test_martial_arts(self):
         s = entries(self.res, "martialarts")["Glow Stick Style"]
@@ -198,25 +221,40 @@ class DaRecipeTest(unittest.TestCase):
 
     def test_rows_wrap_and_bands(self):
         stats = [{"NAME": "Ultra", "AMMO": "30(c)", "COST": "5¥"}, {"NAME": "Max", "AMMO": "", "COST": ""}]
-        self.assertEqual(shapes.rows([{"NAME": "Ultra", "TYPE": "A", "DV": "2P", "AMMO": "30(c)", "COST": "5¥"},
-                                      {"NAME": "Max", "TYPE": "", "DV": "", "AMMO": "60(c)", "COST": ""}]),
-                         [{"NAME": "Ultra Max", "TYPE": "A", "DV": "2P", "AMMO": "30(c) 60(c)", "COST": "5¥"}])
+        self.assertEqual(
+            shapes.rows(
+                [
+                    {"NAME": "Ultra", "TYPE": "A", "DV": "2P", "AMMO": "30(c)", "COST": "5¥"},
+                    {"NAME": "Max", "TYPE": "", "DV": "", "AMMO": "60(c)", "COST": ""},
+                ]
+            ),
+            [{"NAME": "Ultra Max", "TYPE": "A", "DV": "2P", "AMMO": "30(c) 60(c)", "COST": "5¥"}],
+        )
         self.assertEqual(len(shapes.rows(stats)), 2)  # three columns: no wrap
         self.assertIsNone(shapes.rows([{"A": "1", "B": "2"}, {"A": "3", "B": "4"}]))  # unnamed rows: a rule's table
 
     def test_products_side_by_side_and_ammunition_types(self):
         g = entries(self.res, "gear")
         # a band line naming two products over a table printing its prices twice: a row a product
-        self.assertEqual({k: g["Z25"][k] for k in ("category", "avail", "cost", "per")},
-                         {"category": "Made ammunition", "avail": "3(I)", "cost": "130", "per": "10"})
+        self.assertEqual(
+            {k: g["Z25"][k] for k in ("category", "avail", "cost", "per")},
+            {"category": "Made ammunition", "avail": "3(I)", "cost": "130", "per": "10"},
+        )
         self.assertEqual((g["Z25 (ZAP Made Shell)"]["avail"], g["Z25 (ZAP Made Shell)"]["cost"]), ("5(I)", "450"))
-        al = {e.findtext("name"): [a.text for a in e.findall("alias")] for e in ET.fromstring(self.res.files["gear.xml"])}
+        al = {
+            e.findtext("name"): [a.text for a in e.findall("alias")] for e in ET.fromstring(self.res.files["gear.xml"])
+        }
         self.assertIn("Made Shell Z25", al["Z25"])  # (the class a later band names, as a search name)
         self.assertIn("Made Shell Z25 ZAP", al["Z25 (ZAP Made Shell)"])
         # the title's class when the book heads it (`Autocannon Ammunition` under `Autocannons`)
         h = ["SIZE", "AVAIL", "COST PER 10", "BLAST PROFILE", "AVAIL", "COST PER 10"]
-        _, rows = regroup._products(h, [["B60", "8(I)", "2,500¥", "12P(2m)", "6(I)", "7,500¥"]],
-                                    "regular HEX Assault Cannon", "Autocannon Ammunition", {"autocannon"})
+        _, rows = regroup._products(
+            h,
+            [["B60", "8(I)", "2,500¥", "12P(2m)", "6(I)", "7,500¥"]],
+            "regular HEX Assault Cannon",
+            "Autocannon Ammunition",
+            {"autocannon"},
+        )
         self.assertEqual([r.aliases for r in rows], [("Autocannon B60",), ("Autocannon B60 HEX",)])
         self.assertIn("Z1", g)
         self.assertNotIn("Z1 (ZAP Made Shell)", g)  # (dashes only: no such product)
@@ -229,8 +267,9 @@ class DaRecipeTest(unittest.TestCase):
     def test_box_variants_text_lists_and_drugs(self):
         v = entries(self.res, "vehicles")
         # a lower-case line over each of a box's bands names that band's variant
-        self.assertEqual((v["Made Rail Train (Engine car)"]["cost"], v["Made Rail Train (Caboose car)"]["cost"]),
-                         ("645000", "27000"))
+        self.assertEqual(
+            (v["Made Rail Train (Engine car)"]["cost"], v["Made Rail Train (Caboose car)"]["cost"]), ("645000", "27000")
+        )
         g = entries(self.res, "gear")
         # a priced NAME table in a rule heading's text: its rows are items, the heading their title
         self.assertEqual((g["Smart Dart"]["avail"], g["Smart Dart"]["cost"]), ("6(I)", "4500"))
@@ -240,13 +279,17 @@ class DaRecipeTest(unittest.TestCase):
         # an item priced in a sentence: an ammunition type by its multiplier, a focus as the core rulebook's
         self.assertEqual(entries(self.res, "ammotypes")["Made zap ammo"]["cost"], "x2")
         glow = next(e for e in ET.fromstring(self.res.files["gear.xml"]) if e.findtext("name") == "Glow Focus")
-        self.assertEqual([(f.get("field"), f.text) for f in glow.findall("formula")],
-                         [(k, f"ref(gear:crb.spell-focus, {k}, R)") for k in ("cost", "avail", "karma")])
+        self.assertEqual(
+            [(f.get("field"), f.text) for f in glow.findall("formula")],
+            [(k, f"ref(gear:crb.spell-focus, {k}, R)") for k in ("cost", "avail", "karma")],
+        )
         # the book's misplaced header (AVAIL over the sensor column): read by the values' shapes
         self.assertEqual((g["Zip Rocket"]["avail"], g["Zop Missile"]["avail"]), ("5(I)", "7(I)"))
         # the table's range and guidance columns stay on the gear rows (they were dropped)
-        self.assertEqual([(g[n].get("range"), g[n].get("pilot"), g[n].get("sensor")) for n in ("Zip Rocket", "Zop Missile")],
-                         [("1 km", "0", "0"), ("2 km", "3", "2")])
+        self.assertEqual(
+            [(g[n].get("range"), g[n].get("pilot"), g[n].get("sensor")) for n in ("Zip Rocket", "Zop Missile")],
+            [("1 km", "0", "0"), ("2 km", "3", "2")],
+        )
         self.assertEqual(g["Smart Dart"]["range"], "1 km")
 
     def test_files_validate(self):

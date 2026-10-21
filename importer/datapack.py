@@ -4,10 +4,12 @@ the book. A pack never holds descriptions (texts/), PDFs or keys: only the 12 co
   export  datapack.xml (datapack.xsd: app version, date, each file's name, size and SHA-256) plus core/<name>.xml for
           each core file present; the manifest lists which.
   check   refuses anything but datapack.xml and core/<core file>.xml, an unsafe or oversized entry, a manifest that
-          doesn't match the files (list, sizes, hashes), and a core file its schema refuses; returns the manifest and bytes.
+          doesn't match the files (list, sizes, hashes), and a core file its schema refuses; returns the manifest and
+          bytes.
   import  check, then the pack's files replace custom/imported/core/'s in one swap (all or none); files the pack
           doesn't hold are kept.
 """
+
 import functools
 import hashlib
 import os
@@ -26,7 +28,7 @@ from importer.backup import TEMP, app_version, swap, unsafe_entry
 
 MANIFEST = "datapack.xml"
 NAMES = {f"core/{n}.xml" for n in CORE_FILES}
-MAX_FILE = 16 * 1024 ** 2  # a core file; the real ones are well under 1 MB
+MAX_FILE = 16 * 1024**2  # a core file; the real ones are well under 1 MB
 MAX_MANIFEST = 64 * 1024
 ITEMS = ("weapons", "armor")  # kinds items.xsd holds (tools/validate-data.mjs schemaFor)
 PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
@@ -48,9 +50,13 @@ def export(custom, out, version=None):
     if not names:
         raise PackError("there is no core data to put in a pack. Import the core rulebook first")
     data = {n: Path(core, n).read_bytes() for n in names}
-    rows = "".join(f'  <file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>\n' for n, b in data.items())
-    manifest = (xmlio.HEAD + f'<datapack format="1" app={quoteattr(app_version(version))} '
-                f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}">\n{rows}</datapack>\n')
+    rows = "".join(
+        f'  <file name="{n}" bytes="{len(b)}" sha256="{hashlib.sha256(b).hexdigest()}"/>\n' for n, b in data.items()
+    )
+    manifest = (
+        xmlio.HEAD + f'<datapack format="1" app={quoteattr(app_version(version))} '
+        f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}">\n{rows}</datapack>\n'
+    )
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(out)), prefix=".datapack.", suffix=".tmp")
     os.close(fd)
     try:
@@ -67,6 +73,7 @@ def export(custom, out, version=None):
 
 @functools.cache
 def schema_of(name):
+    """The compiled xml schema `name`.xsd of the shipped data."""
     return etree.XMLSchema(etree.parse(os.path.join(DATA_DIR, "schema", f"{name}.xsd")))
 
 
@@ -75,12 +82,12 @@ def _parse(name, b):
     document, so no encoding hides one)."""
     try:
         b.decode("utf-8")
-    except UnicodeDecodeError:
-        raise PackError(f"{name} isn’t UTF-8, which every file the app writes is")
+    except UnicodeDecodeError as e:
+        raise PackError(f"{name} isn’t UTF-8, which every file the app writes is") from e
     try:
         el = etree.fromstring(b, PARSER)
     except etree.XMLSyntaxError as e:
-        raise PackError(f"{name} isn’t readable XML ({e})")
+        raise PackError(f"{name} isn’t readable XML ({e})") from e
     info = el.getroottree().docinfo
     if (info.encoding or "UTF-8").upper() not in ("UTF-8", "UTF8"):
         raise PackError(f"{name} isn’t UTF-8, which every file the app writes is")
@@ -100,7 +107,7 @@ def check(path):
     try:
         zf = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as e:
-        raise PackError(f"this isn’t a readable zip file ({e})")
+        raise PackError(f"this isn’t a readable zip file ({e})") from e
     with zf:
         seen = []
         for info in zf.infolist():
@@ -108,7 +115,10 @@ def check(path):
             if name == "core/":
                 continue
             if name != MANIFEST and name not in NAMES:
-                raise PackError(f"the pack has a file a data pack can’t hold: {name} (only datapack.xml and the core files in core/)")
+                raise PackError(
+                    f"the pack has a file a data pack can’t hold: {name} (only datapack.xml and the core files in "
+                    "core/)"
+                )
             problem = unsafe_entry(info)
             if problem:
                 raise PackError(f"the pack {problem}: {name}")
@@ -122,7 +132,7 @@ def check(path):
         try:
             data = {n: zf.read(n) for n in seen}
         except (OSError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-            raise PackError(f"the pack couldn’t be unpacked ({type(e).__name__}: {e})")
+            raise PackError(f"the pack couldn’t be unpacked ({type(e).__name__}: {e})") from e
     root = _parse(MANIFEST, data[MANIFEST])
     if root.tag != "datapack":
         raise PackError("datapack.xml isn’t a data pack manifest")

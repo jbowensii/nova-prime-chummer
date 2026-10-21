@@ -1,5 +1,6 @@
 """The importer reads a book the same way in every process: a table holding rows of several kinds gets its categories
 in one order whatever Python's string hash seed (catalog.ROW_KINDS is ordered). Invented names only."""
+
 import os
 import subprocess
 import sys
@@ -17,10 +18,12 @@ print(" ".join(e["id"] for e in c.entries["categories"]))
 
 
 def categories_under(seed):
+    """The categories a fresh interpreter lists under hash seed `seed`."""
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     env = {**os.environ, "PYTHONHASHSEED": str(seed)}
-    return subprocess.run([sys.executable, "-c", SCRIPT], cwd=root, env=env, capture_output=True, text=True,
-                          check=True).stdout.split()
+    return subprocess.run(
+        [sys.executable, "-c", SCRIPT], cwd=root, env=env, capture_output=True, text=True, check=True
+    ).stdout.split()
 
 
 class HashSeedTest(unittest.TestCase):

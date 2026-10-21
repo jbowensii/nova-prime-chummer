@@ -1,5 +1,6 @@
 """CRB recipe: spells from made-up boxes in the converter's shape, and (gated) parity with the oracle
 captured before the importer existed."""
+
 import unittest
 from collections import Counter
 import xml.etree.ElementTree as ET
@@ -34,20 +35,25 @@ Prose that names the Glimmer Sight spell in passing.
 class SpellsTest(unittest.TestCase):
     def setUp(self):
         self.res = crb.extract(MD)
-        self.items = [(e.get("id"), e.get("kind"), e.get("category"), e.get("source"), e.get("page"), e.find("name").text)
-                      for e in ET.fromstring(self.res.files["spells.xml"])]
+        self.items = [
+            (e.get("id"), e.get("kind"), e.get("category"), e.get("source"), e.get("page"), e.find("name").text)
+            for e in ET.fromstring(self.res.files["spells.xml"])
+        ]
 
     def test_spells(self):
-        self.assertEqual(self.items, [
-            ("spell-glimmer-sight", "spell", "detection", "CRB", "10", "Glimmer Sight"),
-            ("spell-know-weather", "spell", "detection", "CRB", "10", "Know Weather"),
-            ("spell-odd-hunch", "spell", "detection", "CRB", "10", "Odd Hunch"),
-            ("spell-frost-kiss", "spell", "combat", "CRB", "11", "Frost Kiss"),
-            ("spell-ember-kiss", "spell", "combat", "CRB", "11", "Ember Kiss"),
-            ("spell-zap", "spell", "combat", "CRB", "11", "Zap"),
-            ("spell-big-zap", "spell", "combat", "CRB", "11", "Big Zap"),
-            ("spell-small-zap", "spell", "combat", "CRB", "11", "Small zap"),
-        ])
+        self.assertEqual(
+            self.items,
+            [
+                ("spell-glimmer-sight", "spell", "detection", "CRB", "10", "Glimmer Sight"),
+                ("spell-know-weather", "spell", "detection", "CRB", "10", "Know Weather"),
+                ("spell-odd-hunch", "spell", "detection", "CRB", "10", "Odd Hunch"),
+                ("spell-frost-kiss", "spell", "combat", "CRB", "11", "Frost Kiss"),
+                ("spell-ember-kiss", "spell", "combat", "CRB", "11", "Ember Kiss"),
+                ("spell-zap", "spell", "combat", "CRB", "11", "Zap"),
+                ("spell-big-zap", "spell", "combat", "CRB", "11", "Big Zap"),
+                ("spell-small-zap", "spell", "combat", "CRB", "11", "Small zap"),
+            ],
+        )
 
     def test_overlay_keeps_texts_out(self):
         for e in ET.fromstring(self.res.files["spells.xml"]):
@@ -55,29 +61,42 @@ class SpellsTest(unittest.TestCase):
 
     def test_texts_hold_the_row_without_margin_letters(self):
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
-        self.assertEqual(texts["spell-know-weather"],
-                         "Detection 4 Tells the caster tomorrow’s weather. (enhancement, S) more notes here.")
+        self.assertEqual(
+            texts["spell-know-weather"],
+            "Detection 4 Tells the caster tomorrow’s weather. (enhancement, S) more notes here.",
+        )
         self.assertEqual(texts["spell-odd-hunch"], "Detection 0 Hits determine nothing. (enhancement, S)")
         self.assertEqual(texts["spell-ember-kiss"], texts["spell-frost-kiss"])  # a group shares its row
 
     def test_source(self):
-        self.assertEqual(self.res.source, {"id": "CRB", "name": crb.NAME, "publisher": "Catalyst Game Labs", "canon": True})
+        self.assertEqual(
+            self.res.source, {"id": "CRB", "name": crb.NAME, "publisher": "Catalyst Game Labs", "canon": True}
+        )
 
 
 class FurnitureTest(unittest.TestCase):
     def test_real_words_survive(self):
-        lines = ["Oracle of the made-up kind", "Lore about nothing", "A spell of invented use", "I made this up",
-                 "Detection 4 An invented note", "Eerie hum"]
+        lines = [
+            "Oracle of the made-up kind",
+            "Lore about nothing",
+            "A spell of invented use",
+            "I made this up",
+            "Detection 4 An invented note",
+            "Eerie hum",
+        ]
         self.assertEqual(strip_tab(lines, crb.TAB), lines)
 
     def test_tab_letters_go(self):
-        self.assertEqual(strip_tab(["W", "d Odd Hunch Detection 0", "A * Made-up footnote", "Some notes N"], crb.TAB),
-                         ["Odd Hunch Detection 0", "* Made-up footnote", "Some notes"])
-
+        self.assertEqual(
+            strip_tab(["W", "d Odd Hunch Detection 0", "A * Made-up footnote", "Some notes N"], crb.TAB),
+            ["Odd Hunch Detection 0", "* Made-up footnote", "Some notes"],
+        )
 
     def test_other_chapters_tabs(self):
-        self.assertEqual(strip_tab(["I Tests; more", "I made this", "v", "u **Name:** words"], "vIrTuALWOd"),
-                         ["Tests; more", "I made this", "**Name:** words"])
+        self.assertEqual(
+            strip_tab(["I Tests; more", "I made this", "v", "u **Name:** words"], "vIrTuALWOd"),
+            ["Tests; more", "I made this", "**Name:** words"],
+        )
 
 
 # Invented Amps and gear, laid out as the converter (v5) prints the CRB's equipment boxes: a one-cell table
@@ -228,71 +247,156 @@ class PregensTest(unittest.TestCase):
         b = self.block
         self.assertEqual(b["attributes"], {"cha": 2, "log": 3, "wil": 2, "agi": 4, "str": 3})
         self.assertEqual(b["knowledge"], ["Made-up lore", "Toy trains"])
-        self.assertEqual([(s["name"], s["rating"], s["attr"], s["dp"], [(x["name"], x["plus2"], x["attr"], x["dp"]) for x in s["specs"]])
-                          for s in b["skills"]], [
-            ("Athletics", 2, "str", 5, [("Dodging", True, "wil", 6)]),
-            ("Close Combat", 1, "str", 4, [("Grappling", True, "str", 6)]),
-            ("Engineering", 3, "log", 6, [("Welding", False, "agi", 7)]),
-            ("Stealth", 2, "agi", 6, [("Lock work", True, "log", 7), ("Lock work", True, "agi", 8)]),
-            ("Piloting", 5, "agi", 9, []),
-        ])
-        self.assertEqual([(a["name"], a["type"], a["ess"], a["rating"], a["count"], a["lines"]) for a in b["amps"]], [
-            ("Toy Jack", "cyberware", 1.25, 7, 1, ["Head socket", "Cold-sim and hot-sim VR"]),
-            ("Toy Arm with a Heavy pistol", "cyberware", 1.25, 7, 1, ["Integrated heavy pistol", "RR 1 on Ranged Weapons (handguns) Tests"]),
-            ("Rusty Sedan", "vehicle", None, 4, 1, ["Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1", "Gun on the roof"]),
-            ("Buzz Copter", "drones", None, 7, 2, ["Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0"]),
-            ("Old Pal, fixer", "contact", None, 4, 1, ["RR 1 on Network (gutter) Tests"]),
-            ("Jolt", "equipment", None, 3, 1, ["Chip: DV +1 in melee", "RR 1 on Close Combat Tests", "Disadvantage on all their other Tests"]),
-        ])
-        self.assertEqual([(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
-                         [("Unarmed", None, "3", 1), ("Wrench", "club", "5", 2), ("Zap Pistol", "heavy pistol", "5", 1),
-                          ("Submachine Gun", None, "5", 2)])
+        self.assertEqual(
+            [
+                (
+                    s["name"],
+                    s["rating"],
+                    s["attr"],
+                    s["dp"],
+                    [(x["name"], x["plus2"], x["attr"], x["dp"]) for x in s["specs"]],
+                )
+                for s in b["skills"]
+            ],
+            [
+                ("Athletics", 2, "str", 5, [("Dodging", True, "wil", 6)]),
+                ("Close Combat", 1, "str", 4, [("Grappling", True, "str", 6)]),
+                ("Engineering", 3, "log", 6, [("Welding", False, "agi", 7)]),
+                ("Stealth", 2, "agi", 6, [("Lock work", True, "log", 7), ("Lock work", True, "agi", 8)]),
+                ("Piloting", 5, "agi", 9, []),
+            ],
+        )
+        self.assertEqual(
+            [(a["name"], a["type"], a["ess"], a["rating"], a["count"], a["lines"]) for a in b["amps"]],
+            [
+                ("Toy Jack", "cyberware", 1.25, 7, 1, ["Head socket", "Cold-sim and hot-sim VR"]),
+                (
+                    "Toy Arm with a Heavy pistol",
+                    "cyberware",
+                    1.25,
+                    7,
+                    1,
+                    ["Integrated heavy pistol", "RR 1 on Ranged Weapons (handguns) Tests"],
+                ),
+                (
+                    "Rusty Sedan",
+                    "vehicle",
+                    None,
+                    4,
+                    1,
+                    ["Sedan: Pilot 5, Body 7, Handling 3, Speed 3, Armor 1", "Gun on the roof"],
+                ),
+                ("Buzz Copter", "drones", None, 7, 2, ["Flying Drone: Pilot 5, Body 2, Handling 8, Speed 6, Armor 0"]),
+                ("Old Pal, fixer", "contact", None, 4, 1, ["RR 1 on Network (gutter) Tests"]),
+                (
+                    "Jolt",
+                    "equipment",
+                    None,
+                    3,
+                    1,
+                    ["Chip: DV +1 in melee", "RR 1 on Close Combat Tests", "Disadvantage on all their other Tests"],
+                ),
+            ],
+        )
+        self.assertEqual(
+            [(w["name"], w["kind"], w["dv"], w["count"]) for w in b["weapons"]],
+            [
+                ("Unarmed", None, "3", 1),
+                ("Wrench", "club", "5", 2),
+                ("Zap Pistol", "heavy pistol", "5", 1),
+                ("Submachine Gun", None, "5", 2),
+            ],
+        )
         self.assertEqual(b["spells"], ["Zap", "Fizz"])
-        self.assertEqual([(r["name"], r["armor"], r["l"]) for r in b["armor"]],
-                         [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "2", 5), ("Mental", None, 2)])
+        self.assertEqual(
+            [(r["name"], r["armor"], r["l"]) for r in b["armor"]],
+            [("No armor", None, 3), ("Padded Coat", "3", 6), ("Clothes", "2", 5), ("Mental", None, 2)],
+        )
         self.assertEqual(b["equipment"], ["Fake SIN", "Commlink", "Toolkit"])
-        self.assertEqual((b["keywords"], b["dispositions"], b["cues"]),
-                         (["Troll", "Test city / downtown"], ["Grumpy"], ["I fix it.", "You pay for it."]))
+        self.assertEqual(
+            (b["keywords"], b["dispositions"], b["cues"]),
+            (["Troll", "Test city / downtown"], ["Grumpy"], ["I fix it.", "You pay for it."]),
+        )
 
     def test_samples(self):
-        self.assertEqual([(s["file"], s["name"], s["role"], s["page"]) for s in self.res.samples], [
-            ("crb.spark.xml", "Spark", "Character creation example", 85),
-            ("crb.test-rigger.xml", "Test Rigger", "Made-up rigger, male troll", 88),
-        ])
+        self.assertEqual(
+            [(s["file"], s["name"], s["role"], s["page"]) for s in self.res.samples],
+            [
+                ("crb.spark.xml", "Spark", "Character creation example", 85),
+                ("crb.test-rigger.xml", "Test Rigger", "Made-up rigger, male troll", 88),
+            ],
+        )
         root = self.xml["crb.test-rigger.xml"]
-        self.assertEqual((root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll"))
-        self.assertEqual(root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"})
+        self.assertEqual(
+            (root.get("id"), root.get("origin"), root.get("metatype")), ("crb.test-rigger", "CRB", "troll")
+        )
+        self.assertEqual(
+            root.find("build/attributes").attrib, {"str": "3", "agi": "4", "wil": "2", "log": "3", "cha": "2"}
+        )
         # the first takes the free slot of the one skill at 4+ (Piloting 5, CRB p.58); the second is paid
-        self.assertEqual([(k.text, k.get("from")) for k in root.iter("knowledge")], [("Made-up lore", "skill:piloting"), ("Toy trains", None)])
+        self.assertEqual(
+            [(k.text, k.get("from")) for k in root.iter("knowledge")],
+            [("Made-up lore", "skill:piloting"), ("Toy trains", None)],
+        )
         # a pair is two items; a weapon printed without a type is named by it; spells link to the book's catalog
-        self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"], [
-            ("armor", "Padded Coat", "armored-clothes-coat"), ("armor", "Clothes", "armored-clothes"),  # the made-up ratings 3 and 2
-            ("weapon", "Wrench", "long-weapon"), ("weapon", "Wrench", "long-weapon"), ("weapon", "Zap Pistol", "heavy-pistol"),
-            ("weapon", "Submachine Gun", "submachine-gun"), ("weapon", "Submachine Gun", "submachine-gun"),
-            ("spell", "Zap", "crb.spell-zap"), ("spell", "Fizz", None)])
+        self.assertEqual(
+            [(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item") if i.get("kind") != "gear"],
+            [
+                ("armor", "Padded Coat", "armored-clothes-coat"),
+                ("armor", "Clothes", "armored-clothes"),  # the made-up ratings 3 and 2
+                ("weapon", "Wrench", "long-weapon"),
+                ("weapon", "Wrench", "long-weapon"),
+                ("weapon", "Zap Pistol", "heavy-pistol"),
+                ("weapon", "Submachine Gun", "submachine-gun"),
+                ("weapon", "Submachine Gun", "submachine-gun"),
+                ("spell", "Zap", "crb.spell-zap"),
+                ("spell", "Fizz", None),
+            ],
+        )
 
     def test_amps(self):
         def fx(root):
-            return {a.get("name"): ([e.get("ref") + (f":{e.get('param')}" if e.get("param") else "") for e in a.iter("effect")], a.get("vehicle"))
-                    for a in root.find("build").findall("amp")}  # not the snapshots' printed amps
-        self.assertEqual(fx(self.xml["crb.test-rigger.xml"]), {
-            "Toy Jack": (["vr-cold", "vr-hot"], None),
-            "Toy Arm with a Heavy pistol": (["rr-spec:ranged-weapons.pistols"], None),  # "Integrated heavy pistol" stays text
-            "Rusty Sedan": (["vehicle-armor"], "sedan"),
-            "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
-            "Old Pal, fixer": (["rr-spec:network.street"], None),
-            # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61)
-            "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage", "negative"], None),
-        })
+            return {
+                a.get("name"): (
+                    [e.get("ref") + (f":{e.get('param')}" if e.get("param") else "") for e in a.iter("effect")],
+                    a.get("vehicle"),
+                )
+                for a in root.find("build").findall("amp")
+            }  # not the snapshots' printed amps
+
+        self.assertEqual(
+            fx(self.xml["crb.test-rigger.xml"]),
+            {
+                "Toy Jack": (["vr-cold", "vr-hot"], None),
+                "Toy Arm with a Heavy pistol": (
+                    ["rr-spec:ranged-weapons.pistols"],
+                    None,
+                ),  # "Integrated heavy pistol" stays text
+                "Rusty Sedan": (["vehicle-armor"], "sedan"),
+                "Buzz Copter": (["flying", "extra-drone"], "small-drone"),
+                "Old Pal, fixer": (["rr-spec:network.street"], None),
+                # its printed limitation, a Disadvantage, is the Negative effect the printed rating took off (CRB p.61)
+                "Jolt": (["dv-plus", "rr-skill:close-combat", "disadvantage", "negative"], None),
+            },
+        )
         # the printed ratings, on the snapshots
-        self.assertEqual([(a.get("printedRating"), a.get("source"), a.get("page")) for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
-                          for a in a][:2], [("7", "CRB", "88"), ("7", "CRB", "88")])
-        self.assertEqual(fx(self.xml["crb.spark.xml"]), {
-            "Awakened": (["awk-sorcery", "awk-astral-projection"], None),
-            "Owl mentor spirit": (["rr-spec:sorcery.illusion-spells"], None),
-            "Sustaining focus": (["sustain-spell"], None),
-            "Old Pal, made-up fixer": (["rr-spec:network.street"], None),
-        })
+        self.assertEqual(
+            [
+                (a.get("printedRating"), a.get("source"), a.get("page"))
+                for a in self.xml["crb.test-rigger.xml"].iter("snapshot")
+                for a in a
+            ][:2],
+            [("7", "CRB", "88"), ("7", "CRB", "88")],
+        )
+        self.assertEqual(
+            fx(self.xml["crb.spark.xml"]),
+            {
+                "Awakened": (["awk-sorcery", "awk-astral-projection"], None),
+                "Owl mentor spirit": (["rr-spec:sorcery.illusion-spells"], None),
+                "Sustaining focus": (["sustain-spell"], None),
+                "Old Pal, made-up fixer": (["rr-spec:network.street"], None),
+            },
+        )
 
     def test_sheet_only_amps(self):
         # an amp no box prints (by type and name) joins the catalog from its sheet, with the sample's effects; the
@@ -300,49 +404,82 @@ class PregensTest(unittest.TestCase):
         # reaches the overlay
         res = crb.extract(AMPS_MD + PREGEN_MD)
         amps = {a.get("id"): a for a in ET.fromstring(res.files["amps.xml"]) if a.get("page") in ("85", "88")}
-        self.assertEqual([(i, a.get("type"), a.get("printedRating"), a.get("page"), a.get("source"), a.get("vehicle"))
-                          for i, a in amps.items()], [
-            ("sustaining-focus", "equipment", "2", "85", "CRB", None),
-            ("toy-jack", "cyberware", "7", "88", "CRB", None),
-            ("toy-arm-with-a-heavy-pistol", "cyberware", "7", "88", "CRB", None),
-            ("rusty-sedan", "vehicle", "4", "88", "CRB", "sedan"),
-            ("buzz-copter", "vehicle", "7", "88", "CRB", "small-drone"),
-            ("jolt", "equipment", "3", "88", "CRB", None)])
+        self.assertEqual(
+            [
+                (i, a.get("type"), a.get("printedRating"), a.get("page"), a.get("source"), a.get("vehicle"))
+                for i, a in amps.items()
+            ],
+            [
+                ("sustaining-focus", "equipment", "2", "85", "CRB", None),
+                ("toy-jack", "cyberware", "7", "88", "CRB", None),
+                ("toy-arm-with-a-heavy-pistol", "cyberware", "7", "88", "CRB", None),
+                ("rusty-sedan", "vehicle", "4", "88", "CRB", "sedan"),
+                ("buzz-copter", "vehicle", "7", "88", "CRB", "small-drone"),
+                ("jolt", "equipment", "3", "88", "CRB", None),
+            ],
+        )
         arm = amps["toy-arm-with-a-heavy-pistol"]
-        self.assertEqual([(f.get("ref"), f.get("param"), f.get("note")) for f in arm.findall("effect")],
-                         [("rr-spec", "ranged-weapons.pistols", None), ("narrative", None, "balances printed rating")])
+        self.assertEqual(
+            [(f.get("ref"), f.get("param"), f.get("note")) for f in arm.findall("effect")],
+            [("rr-spec", "ranged-weapons.pistols", None), ("narrative", None, "balances printed rating")],
+        )
         self.assertIsNone(arm.find("narrative").text)
         self.assertIn('<text of="amps" id="toy-jack">Head socket; Cold-sim and hot-sim VR</text>', res.texts)
         # the same words in another order or number are the box's amp
-        rows = [{"type": "cyberware", "name": "Jacks toy", "id": "jacks-toy"}, {"type": "vehicle", "name": "Rusty Sedan Deluxe", "id": "x"}]
+        rows = [
+            {"type": "cyberware", "name": "Jacks toy", "id": "jacks-toy"},
+            {"type": "vehicle", "name": "Rusty Sedan Deluxe", "id": "x"},
+        ]
         got = crb.sheet_amps([(88, self.block)], rows, statblock.load_rules())
         self.assertEqual([a["id"] for a in got], ["toy-arm-with-a-heavy-pistol", "buzz-copter", "jolt"])
 
     def test_creation_example(self):
         root = self.xml["crb.spark.xml"]
-        self.assertEqual((root.get("metatype"), [k.text for k in root.iter("keyword")], [d.text for d in root.iter("disposition")]),
-                         ("elf", ["Elf", "Test mage", "Low lifestyle"], ["Quiet", "Bold", "Kind"]))
-        self.assertEqual(root.find("build/attributes").attrib, {"str": "2", "agi": "3", "wil": "4", "log": "2", "cha": "3"})
-        self.assertEqual([(s.get("id"), s.get("rating"), [x.text for x in s]) for s in root.iter("skill")], [
-            ("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])])
-        self.assertEqual([(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")], [
-            ("armor", "Armor jacket", "armored-clothes-coat"), ("weapon", "Traditional knife", "short-weapon"),
-            ("spell", "Glimmer", "crb.spell-glimmer-sight"), ("spell", "Zap", "crb.spell-zap"), ("gear", "Reagents", None),
-            ("gear", "Sustaining focus", None)])
+        self.assertEqual(
+            (root.get("metatype"), [k.text for k in root.iter("keyword")], [d.text for d in root.iter("disposition")]),
+            ("elf", ["Elf", "Test mage", "Low lifestyle"], ["Quiet", "Bold", "Kind"]),
+        )
+        self.assertEqual(
+            root.find("build/attributes").attrib, {"str": "2", "agi": "3", "wil": "4", "log": "2", "cha": "3"}
+        )
+        self.assertEqual(
+            [(s.get("id"), s.get("rating"), [x.text for x in s]) for s in root.iter("skill")],
+            [("sorcery", "5", ["sorcery.illusion-spells"]), ("stealth", "4", []), ("network", "2", ["network.street"])],
+        )
+        self.assertEqual(
+            [(i.get("kind"), i.get("name"), i.get("catalogId")) for i in root.iter("item")],
+            [
+                ("armor", "Armor jacket", "armored-clothes-coat"),
+                ("weapon", "Traditional knife", "short-weapon"),
+                ("spell", "Glimmer", "crb.spell-glimmer-sight"),
+                ("spell", "Zap", "crb.spell-zap"),
+                ("gear", "Reagents", None),
+                ("gear", "Sustaining focus", None),
+            ],
+        )
         # the focus amp's item isn't printed: the amp brings its own (CRB p.144), as a catalog amp does
-        self.assertEqual(next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"), "it-6")
+        self.assertEqual(
+            next(a for a in root.find("build").findall("amp") if a.get("name") == "Sustaining focus").get("linkedItem"),
+            "it-6",
+        )
 
     def test_every_printed_number_is_a_report_row(self):
         rows = [r for r in self.res.report if r.get("sample")]
         self.assertEqual({r["sample"] for r in rows}, {"crb.spark", "crb.test-rigger"})
         self.assertEqual({r["kind"] for r in rows if r["sample"] == "crb.spark"}, {"amp"})  # the prose prints no pools
-        self.assertEqual([(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
-                         [("amp", "amp-2", 7),  # as printed, the rules rate it otherwise
-                          ("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
-                          ("unmatched-item", "Fizz", None)])  # not in the book's spell boxes
+        self.assertEqual(
+            [(r["kind"], r.get("key") or r.get("name"), r.get("printed")) for r in rows if r["status"] != "ok"],
+            [
+                ("amp", "amp-2", 7),  # as printed, the rules rate it otherwise
+                ("pool", "stealth.lockpicking@log", 7),  # Stealth's LOG isn't the spec's attribute
+                ("unmatched-item", "Fizz", None),
+            ],
+        )  # not in the book's spell boxes
         self.assertEqual(sum(r["kind"] == "pool" for r in rows), 10)
-        self.assertEqual([(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],
-                         [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 5), ("mental", 2)])
+        self.assertEqual(
+            [(r["key"], r["printed"]) for r in rows if r["kind"] == "threshold"],
+            [("physicalNone", 3), ("physicalMain", 6), ("physicalAlt", 5), ("mental", 2)],
+        )
         self.assertEqual([(r["printed"], r["computed"]) for r in rows if r["kind"] == "essence"], [(3.5, 3.5)])
         self.assertEqual({r["page"] for r in rows}, {85, 88})
 
@@ -354,49 +491,72 @@ class AmpsTest(unittest.TestCase):
         cls.amps = {a.get("id"): a for a in ET.fromstring(cls.res.files["amps.xml"])}
 
     def fx(self, aid):
-        return [f.get("ref") + (f":{f.get('param')}" if f.get("param") else "") + (f"={f.get('value')}" if f.get("value") else "")
-                for f in self.amps[aid].findall("effect")]
+        """[ref[:param]] of the effects of the amp `aid`."""
+        return [
+            f.get("ref")
+            + (f":{f.get('param')}" if f.get("param") else "")
+            + (f"={f.get('value')}" if f.get("value") else "")
+            for f in self.amps[aid].findall("effect")
+        ]
 
     def test_entries(self):
-        self.assertEqual([(i, a.get("type"), a.get("printedRating"), a.get("page"), a.find("name").text) for i, a in self.amps.items()], [
-            ("zoom-goggles", "equipment", "9", "138", "Zoom goggles"),
-            ("zapper-x-taser", "equipment", "7", "138", "Zapper X (Taser)"),
-            ("buzz-blade", "equipment", "3", "138", "Buzz blade"),
-            ("padded-vest", "equipment", "4", "138", "Padded vest"),
-            ("brain-box", "cyberware", "10", "155", "Brain box"),
-            ("jack-plug", "cyberware", "5", "155", "Jack plug"),
-            ("fence", "contact", "4", "155", "Fence"),
-            ("night-clerk", "contact", "7", "155", "Night clerk"),
-            ("owl-mentor-spirit-night-wisdom", "quality", "7", "174", "Owl Mentor Spirit Night Wisdom"),
-            ("glow-fist", "adept", "6", "174", "Glow Fist"),
-            ("mod-echo", "cyberdeck", "2", "210", "Echo"),
-            ("toy-deck", "cyberdeck", "11", "210", "Toy deck"),
-            ("hover-sled", "vehicle", "8", "238", "Hover sled"),
-            ("sports-car", "vehicle", "2", "238", "Sports Car"),
-            ("nurse-bot", "vehicle", "6", "238", "Nurse bot"),
-            ("tiny-scout", "vehicle", "2", "238", "Tiny Scout"),
-        ])
+        self.assertEqual(
+            [
+                (i, a.get("type"), a.get("printedRating"), a.get("page"), a.find("name").text)
+                for i, a in self.amps.items()
+            ],
+            [
+                ("zoom-goggles", "equipment", "9", "138", "Zoom goggles"),
+                ("zapper-x-taser", "equipment", "7", "138", "Zapper X (Taser)"),
+                ("buzz-blade", "equipment", "3", "138", "Buzz blade"),
+                ("padded-vest", "equipment", "4", "138", "Padded vest"),
+                ("brain-box", "cyberware", "10", "155", "Brain box"),
+                ("jack-plug", "cyberware", "5", "155", "Jack plug"),
+                ("fence", "contact", "4", "155", "Fence"),
+                ("night-clerk", "contact", "7", "155", "Night clerk"),
+                ("owl-mentor-spirit-night-wisdom", "quality", "7", "174", "Owl Mentor Spirit Night Wisdom"),
+                ("glow-fist", "adept", "6", "174", "Glow Fist"),
+                ("mod-echo", "cyberdeck", "2", "210", "Echo"),
+                ("toy-deck", "cyberdeck", "11", "210", "Toy deck"),
+                ("hover-sled", "vehicle", "8", "238", "Hover sled"),
+                ("sports-car", "vehicle", "2", "238", "Sports Car"),
+                ("nurse-bot", "vehicle", "6", "238", "Nurse bot"),
+                ("tiny-scout", "vehicle", "2", "238", "Tiny Scout"),
+            ],
+        )
         self.assertEqual(self.amps["mod-echo"].get("mod"), "true")
 
     def test_effects_reproduce_the_printed_rating(self):
-        self.assertEqual({i: self.fx(i) for i in self.amps}, {
-            "zoom-goggles": ["rr-spec:perception.physical", "rr-spec:stealth.physical-sneaking", "no-disadvantage:Night vision", "narrative"],
-            "zapper-x-taser": ["dv-plus", "range-improve:OK/Dis/-/- -> OK/OK/Dis/-", "rr-spec:ranged-weapons.pistols"],
-            "buzz-blade": ["narrative"],
-            "padded-vest": ["rr-spec:influence.etiquette"],
-            "brain-box": ["rr-attr:log"],
-            "jack-plug": ["vr-cold", "vcr"],
-            "fence": ["rr-spec:network.street"],
-            "night-clerk": ["rr-spec:network.street", "rr-spec:network.criminal"],
-            "owl-mentor-spirit-night-wisdom": ["rr-spec", "rr-spec"],
-            "glow-fist": ["dv-plus", "dv-plus"],
-            "mod-echo": ["narrative"],
-            "toy-deck": ["firewall-plus", "attack-plus", "attack-plus", "rr-spec:cracking.brute-force"],
-            "hover-sled": ["vehicle-armor", "vehicle-armor", "flying"],
-            "sports-car": [],
-            "nurse-bot": ["pilot-plus", "pilot-plus"],
-            "tiny-scout": [],
-        })
+        self.assertEqual(
+            {i: self.fx(i) for i in self.amps},
+            {
+                "zoom-goggles": [
+                    "rr-spec:perception.physical",
+                    "rr-spec:stealth.physical-sneaking",
+                    "no-disadvantage:Night vision",
+                    "narrative",
+                ],
+                "zapper-x-taser": [
+                    "dv-plus",
+                    "range-improve:OK/Dis/-/- -> OK/OK/Dis/-",
+                    "rr-spec:ranged-weapons.pistols",
+                ],
+                "buzz-blade": ["narrative"],
+                "padded-vest": ["rr-spec:influence.etiquette"],
+                "brain-box": ["rr-attr:log"],
+                "jack-plug": ["vr-cold", "vcr"],
+                "fence": ["rr-spec:network.street"],
+                "night-clerk": ["rr-spec:network.street", "rr-spec:network.criminal"],
+                "owl-mentor-spirit-night-wisdom": ["rr-spec", "rr-spec"],
+                "glow-fist": ["dv-plus", "dv-plus"],
+                "mod-echo": ["narrative"],
+                "toy-deck": ["firewall-plus", "attack-plus", "attack-plus", "rr-spec:cracking.brute-force"],
+                "hover-sled": ["vehicle-armor", "vehicle-armor", "flying"],
+                "sports-car": [],
+                "nurse-bot": ["pilot-plus", "pilot-plus"],
+                "tiny-scout": [],
+            },
+        )
         self.assertEqual([r for r in self.res.report if r["kind"] == "rating-mismatch"], [])
 
     def test_items_and_chassis(self):
@@ -405,19 +565,34 @@ class AmpsTest(unittest.TestCase):
         self.assertEqual(item["buzz-blade"], {"kind": "weapon", "dv": "6", "ranges": "OK/-/Dis/-"})
         self.assertEqual(item["padded-vest"], {"kind": "armor", "armor": "2"})
         self.assertEqual(item["zoom-goggles"], {"kind": "gear"})
-        self.assertEqual({i: a.get("vehicle") for i, a in self.amps.items() if a.get("vehicle")},
-                         {"hover-sled": "chopper", "sports-car": "sports-car", "nurse-bot": "small-drone", "tiny-scout": "microdrone"})
+        self.assertEqual(
+            {i: a.get("vehicle") for i, a in self.amps.items() if a.get("vehicle")},
+            {
+                "hover-sled": "chopper",
+                "sports-car": "sports-car",
+                "nurse-bot": "small-drone",
+                "tiny-scout": "microdrone",
+            },
+        )
 
     def test_gear(self):
-        self.assertEqual([(g.get("id"), g.get("kind"), g.get("page"), g.find("name").text) for g in ET.fromstring(self.res.files["gear.xml"])], [
-            ("gear-glow-stick", "gear", "138", "Glow stick"),
-            ("gear-sleepdust", "gear", "138", "Sleepdust"),
-            ("gear-nod", "gear", "138", "Nod"),
-        ])
+        self.assertEqual(
+            [
+                (g.get("id"), g.get("kind"), g.get("page"), g.find("name").text)
+                for g in ET.fromstring(self.res.files["gear.xml"])
+            ],
+            [
+                ("gear-glow-stick", "gear", "138", "Glow stick"),
+                ("gear-sleepdust", "gear", "138", "Sleepdust"),
+                ("gear-nod", "gear", "138", "Nod"),
+            ],
+        )
 
     def test_texts_hold_the_entry_without_furniture(self):
         texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts)}
-        self.assertEqual(texts["zoom-goggles"], "RR 1 on Perception (watching) and Stealth (physical) Tests; night vision.")
+        self.assertEqual(
+            texts["zoom-goggles"], "RR 1 on Perception (watching) and Stealth (physical) Tests; night vision."
+        )
         self.assertEqual(texts["jack-plug"], "Socket for a cable; cold-sim VR; lets you jump into vehicles.")
         self.assertEqual(texts["gear-glow-stick"], "makes a dim light.")
         for a in self.amps.values():
@@ -444,8 +619,11 @@ ORACLE = ROOT / ".extract/private/oracle/spells.xml"
 #   Control Thoughts (184); the recipe cites the box (182, 182, 183);
 # - the old catalog wrote "Magic fingers"; the box prints "Magic Fingers";
 # - Elemental Aura is in the CRB v1.8 manipulation box; the old catalog listed it as DHSA only.
-KNOWN_PAGES = {"spell-increase-reflexes": ("179", "182"), "spell-heal": ("184", "182"),
-               "spell-control-thoughts": ("184", "183")}
+KNOWN_PAGES = {
+    "spell-increase-reflexes": ("179", "182"),
+    "spell-heal": ("184", "182"),
+    "spell-control-thoughts": ("184", "183"),
+}
 KNOWN_NAMES = {"spell-magic-fingers": ("Magic fingers", "Magic Fingers")}
 KNOWN_EXTRA = {"spell-elemental-aura"}
 
@@ -460,6 +638,7 @@ class IdentifyBooksTest(unittest.TestCase):
 
     def test_each_book_has_one_recipe(self):
         from importer.recipes import RECIPES, THRESHOLD
+
         books = sorted(p for p in LIBRARY.glob("*/book.md"))
         self.assertGreaterEqual(len(books), 3)
         for b in books:
@@ -513,7 +692,8 @@ RENAMED = {
     "artemis-industries-nightwing-personal-glider-wing": "artemis-industries-nightwing",
     "barrett-model-122-anti-materiel-rifle": "barrett-model-122-sniper-rifle",
     "bear-mentor-spirit-strength-protection": "bear-mentor-spirit-protection-strength",
-    "berserker-btl": "berserker", "casanova-btl": "casanova",
+    "berserker-btl": "berserker",
+    "casanova-btl": "casanova",
     "chrysler-nissan-pursuit-v-small-drone-wheeled": "chrysler-nissan-pursuit-v",
     "cyberspace-design-quadrotor-small-flying-drone-rotor": "cyberspace-design-quadrotor",
     "dragonslayer-mentor-spirit-heroism-adventure": "dragonslayer-mentor-spirit-adventure-heroism",
@@ -532,7 +712,8 @@ RENAMED = {
     "steel-lynx-large-drone-wheeled-on-legs": "steel-lynx",
     "weapon-focus-katana": "weapon-focus-sword",
     "yamaha-pulsar-tasers": "yamaha-pulsar-taser",
-    "gear-stim-patch": "gear-stim-patches", "gear-trauma-patch": "gear-trauma-patches",
+    "gear-stim-patch": "gear-stim-patches",
+    "gear-trauma-patch": "gear-trauma-patches",
 }
 # - not rulebook entries (owner's rule: an oracle amp the rulebook doesn't print stays non-canon; these are
 #   Daegann's editing and import as DHSA entries only): the three flying drones are the base microdrone, small
@@ -540,22 +721,49 @@ RENAMED = {
 #   names only describe NPCs' drones); the deck Attack/Firewall and vehicle Flying add-ons are rows of the
 #   SHADOW AMP EFFECTS table (pp.61-63), shipped as the effects attack-plus, firewall-plus and flying.
 #   (Concealment was here too: the rulebook prints it only on Hercules' pregen sheet, p.88; see sheet_amps.)
-UNREACHABLE = {"flying-microdrone", "small-flying-drone", "medium-flying-drones", "mod-attack", "mod-firewall", "mod-flying"}
+UNREACHABLE = {
+    "flying-microdrone",
+    "small-flying-drone",
+    "medium-flying-drones",
+    "mod-attack",
+    "mod-firewall",
+    "mod-flying",
+}
 # - page: the box, not a prose mention (Actioneer on p.149, bioware muscle on p.159, the patches on p.160;
 #   every mentor spirit is in the p.174 box); Concealment: the Hercules pregen sheet (p.88).
-AMP_PAGES = {"actioneer-business-suit": ("148", "149"), "concealment": ("143", "88"), "muscle-replacement-2": ("158", "159"),
-             "gear-stim-patch": ("158", "160"), "gear-trauma-patch": ("158", "160"),
-             **{f"{m}-mentor-spirit-{a}": ("175", "174") for m, a in (
-                 ("coyote", "deceit-mischief"), ("dog", "friendship-loyalty"), ("raccoon", "cat-burglar"),
-                 ("thunderbird", "anger-war"), ("wolf", "community-hunt"), ("dragonslayer", "heroism-adventure"))}}
+AMP_PAGES = {
+    "actioneer-business-suit": ("148", "149"),
+    "concealment": ("143", "88"),
+    "muscle-replacement-2": ("158", "159"),
+    "gear-stim-patch": ("158", "160"),
+    "gear-trauma-patch": ("158", "160"),
+    **{
+        f"{m}-mentor-spirit-{a}": ("175", "174")
+        for m, a in (
+            ("coyote", "deceit-mischief"),
+            ("dog", "friendship-loyalty"),
+            ("raccoon", "cat-burglar"),
+            ("thunderbird", "anger-war"),
+            ("wolf", "community-hunt"),
+            ("dragonslayer", "heroism-adventure"),
+        )
+    },
+}
 # - v1.8 prints the autonomous medkits as Drone Amps (DHSA: equipment); their Pilot now explains the rating.
-AMP_TYPES = {"crashcart-essential-autonomous-medkit": ("equipment", "vehicle"),
-             "docwagon-pro-autonomous-medkit": ("equipment", "vehicle")}
+AMP_TYPES = {
+    "crashcart-essential-autonomous-medkit": ("equipment", "vehicle"),
+    "docwagon-pro-autonomous-medkit": ("equipment", "vehicle"),
+}
 # - effects (new effects pinned, as (ref, param, value)): the old reader missed the Red Dog's 5 vehicles
 #   (read 3), counted "combat" as a club ("bat") for the lethal-toxin knife and couldn't map Novacoke's RRs;
 #   DHSA gives the Ingram RR on pistols (v1.8: submachine guns); the medkits above (their Pilot ratings).
 AMP_EFFECTS = {
-    "ares-red-dog-series": [("firewall-plus", "", ""), ("firewall-plus", "", ""), ("rcc", "", "5"), ("rr-skill", "piloting", "")],
+    "ares-red-dog-series": [
+        ("firewall-plus", "", ""),
+        ("firewall-plus", "", ""),
+        ("rcc", "", "5"),
+        ("rr-skill", "piloting", ""),
+    ],
     "combat-knife-coated-with-a-lethal-toxin": [("dv-plus", "", ""), ("dv-plus", "", "")],
     "novacoke": [("negative", "", "2"), ("rr-attr", "cha", ""), ("rr-spec", "perception.social", "")],
     "ingram-smartgun-smg": [("narrative", "", ""), ("rr-spec", "ranged-weapons.submachine-guns", "")],
@@ -574,15 +782,25 @@ AMP_ITEMS = {
 # base vehicles, more weapons, drugs and drones): counted by type, no names. Of these, 22 are printed only on the
 # pregen sheets (adept 2, cyberdeck 1, cyberware 5, equipment 5, quality 4, vehicle 5).
 # equipment: 10 since Psyche (non-caster), its own entry (owner, 2026-10-11)
-EXTRA_BY_TYPE = {"adept": 2, "bioware": 1, "contact": 16, "cyberdeck": 2, "cyberware": 20, "equipment": 10, "quality": 5,
-                 "vehicle": 15}
+EXTRA_BY_TYPE = {
+    "adept": 2,
+    "bioware": 1,
+    "contact": 16,
+    "cyberdeck": 2,
+    "cyberware": 20,
+    "equipment": 10,
+    "quality": 5,
+    "vehicle": 15,
+}
 
 
 def _fx(e):
     return sorted((f.get("ref"), f.get("param") or "", f.get("value") or "") for f in e.findall("effect"))
 
 
-@unittest.skipUnless(BOOK.exists() and (AMPS_ORACLE / "amps.xml").exists(), "owner's converted CRB book and oracle not present")
+@unittest.skipUnless(
+    BOOK.exists() and (AMPS_ORACLE / "amps.xml").exists(), "owner's converted CRB book and oracle not present"
+)
 class AmpsParityTest(unittest.TestCase):
     """The 148 source="CRB" amps and 13 gear items of today's catalog: type, printed rating, effects, page."""
 
@@ -590,14 +808,20 @@ class AmpsParityTest(unittest.TestCase):
     def setUpClass(cls):
         res = crb.extract(BOOK.read_text(encoding="utf8"))
         cls.new = {e.get("id"): e for f in ("amps.xml", "gear.xml") for e in ET.fromstring(res.files[f])}
-        cls.old = {e.get("id"): e for f in ("amps.xml", "gear.xml") for e in ET.parse(AMPS_ORACLE / f).getroot()
-                   if e.get("source") == "CRB"}
+        cls.old = {
+            e.get("id"): e
+            for f in ("amps.xml", "gear.xml")
+            for e in ET.parse(AMPS_ORACLE / f).getroot()
+            if e.get("source") == "CRB"
+        }
         cls.report = res.report
 
     def test_every_oracle_entry_is_found(self):
         self.assertEqual(len(self.old), 161)
         missing = set(self.old) - set(self.new) - set(RENAMED) - UNREACHABLE
-        self.assertEqual((missing, set(RENAMED.values()) - set(self.new), UNREACHABLE & set(self.new)), (set(), set(), set()))
+        self.assertEqual(
+            (missing, set(RENAMED.values()) - set(self.new), UNREACHABLE & set(self.new)), (set(), set(), set())
+        )
 
     def test_fields(self):
         diffs = {}
@@ -605,10 +829,13 @@ class AmpsParityTest(unittest.TestCase):
             if i in UNREACHABLE:
                 continue
             n = self.new[RENAMED.get(i, i)]
-            self.assertEqual((n.tag, n.get("printedRating"), n.get("mod"), n.get("source")),
-                             (o.tag, o.get("printedRating"), o.get("mod"), "CRB"), i)
+            self.assertEqual(
+                (n.tag, n.get("printedRating"), n.get("mod"), n.get("source")),
+                (o.tag, o.get("printedRating"), o.get("mod"), "CRB"),
+                i,
+            )
             self.assertEqual(n.find("name").text.casefold() == o.find("name").text.casefold(), i not in RENAMED, i)
-            for f, known in (("page", AMP_PAGES), ("type", AMP_TYPES)):
+            for f, _known in (("page", AMP_PAGES), ("type", AMP_TYPES)):
                 if n.get(f) != o.get(f):
                     diffs.setdefault(f, {})[i] = (o.get(f), n.get(f))
             if _fx(n) != _fx(o):
@@ -619,18 +846,26 @@ class AmpsParityTest(unittest.TestCase):
         self.assertEqual(diffs, {"page": AMP_PAGES, "type": AMP_TYPES, "effects": AMP_EFFECTS, "items": AMP_ITEMS})
 
     def test_extras(self):
-        extra = Counter(e.get("type") or e.get("kind") for i, e in self.new.items()
-                        if i not in self.old and i not in RENAMED.values())
+        extra = Counter(
+            e.get("type") or e.get("kind")
+            for i, e in self.new.items()
+            if i not in self.old and i not in RENAMED.values()
+        )
         self.assertEqual(dict(extra), EXTRA_BY_TYPE)
 
     def test_report(self):
         # the whip's printed rating is 1 for DV 7 (+2 over the base): the old catalog listed it as a book
         # discrepancy too; the jet-ski has no boat chassis; Luna's tattoo focus prints 13 for effects worth 10 (the
         # sample runner reports it too). The RCC's "choose 1 specialization" stays open.
-        self.assertEqual(sorted((r["kind"], r.get("id") or r.get("spec")) for r in self.report if not r.get("sample")),
-                         [("rating-mismatch", "jet-ski"), ("rating-mismatch", "monofilament-whip"),
-                          ("rating-mismatch", "mystic-tattoo-focus"),
-                          ("unresolved-spec", "piloting (choose 1 specialization)")])
+        self.assertEqual(
+            sorted((r["kind"], r.get("id") or r.get("spec")) for r in self.report if not r.get("sample")),
+            [
+                ("rating-mismatch", "jet-ski"),
+                ("rating-mismatch", "monofilament-whip"),
+                ("rating-mismatch", "mystic-tattoo-focus"),
+                ("unresolved-spec", "piloting (choose 1 specialization)"),
+            ],
+        )
 
 
 if __name__ == "__main__":
@@ -669,32 +904,62 @@ class OptionalRulesTest(unittest.TestCase):
         self.texts = {t.get("id"): t.text for t in ET.fromstring(self.res.texts) if t.get("of") == "rules"}
 
     def test_rules(self):
-        self.assertEqual([(r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text) for r in self.rules], [
-            ("optional-extended-social-tests", "optional", "CRB", "139", "Extended social tests"),
-            ("optional-vehicle-damage-for-all", "optional", "CRB", "68", "Vehicle and drone damage for characters, critters and devices"),
-            ("optional-planning-pool", "optional", "CRB", "80", "Planning pool or personal Edge"),  # not found: the known page
-            ("optional-darker-and-more-lethal", "optional", "CRB", "69",
-             "Darker and more lethal (worsening wound effects, longer natural healing)"),  # not found: the known page
-            ("optional-alternative-risk", "optional", "CRB", "72", "Alternative risk rules"),
-        ])
+        self.assertEqual(
+            [(r.get("id"), r.get("sheet"), r.get("source"), r.get("page"), r.find("title").text) for r in self.rules],
+            [
+                ("optional-extended-social-tests", "optional", "CRB", "139", "Extended social tests"),
+                (
+                    "optional-vehicle-damage-for-all",
+                    "optional",
+                    "CRB",
+                    "68",
+                    "Vehicle and drone damage for characters, critters and devices",
+                ),
+                (
+                    "optional-planning-pool",
+                    "optional",
+                    "CRB",
+                    "80",
+                    "Planning pool or personal Edge",
+                ),  # not found: the known page
+                (
+                    "optional-darker-and-more-lethal",
+                    "optional",
+                    "CRB",
+                    "69",
+                    "Darker and more lethal (worsening wound effects, longer natural healing)",
+                ),  # not found: the known page
+                ("optional-alternative-risk", "optional", "CRB", "72", "Alternative risk rules"),
+            ],
+        )
         for r in self.rules:
             self.assertEqual(r.find("text").text or "", "")
 
     def test_texts(self):
-        self.assertEqual(self.texts, {
-            "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",
-            "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "
-                                               "It makes them sturdier in an invented way.",
-            "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",
-        })
+        self.assertEqual(
+            self.texts,
+            {
+                "optional-extended-social-tests": "Invented social duels go on for a while. Each side marks made-up social damage.",  # pylint: disable=line-too-long
+                "optional-vehicle-damage-for-all": "Tables may optionally borrow the rules for vehicles for made-up folks too. "  # pylint: disable=line-too-long
+                "It makes them sturdier in an invented way.",
+                "optional-alternative-risk": "Made-up special dice replace the risky ones. Nobody glitches in this invented way.",  # pylint: disable=line-too-long
+            },
+        )
 
 
 @unittest.skipUnless(BOOK.exists(), "owner's converted CRB book not present")
 class OptionalRulesBookTest(unittest.TestCase):
     def test_all_found(self):
         rules = crb.optional_rules(BOOK.read_text(encoding="utf8"))
-        self.assertEqual([(r[0], r[2]) for r in rules], [("optional-extended-social-tests", 139),
-                                                         ("optional-vehicle-damage-for-all", 68), ("optional-planning-pool", 80),
-                                                         ("optional-darker-and-more-lethal", 69), ("optional-alternative-risk", 72)])
+        self.assertEqual(
+            [(r[0], r[2]) for r in rules],
+            [
+                ("optional-extended-social-tests", 139),
+                ("optional-vehicle-damage-for-all", 68),
+                ("optional-planning-pool", 80),
+                ("optional-darker-and-more-lethal", 69),
+                ("optional-alternative-risk", 72),
+            ],
+        )
         for r in rules:
             self.assertGreater(len(r[3]), 100, r[0])

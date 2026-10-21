@@ -1,5 +1,6 @@
 """More of Anarchy's edits layer (importer/edits.py): ids and numbers it refuses, an unknown kind, a broken file in the
 catalog. Made-up entries, on a copy of the made-up fixture."""
+
 import os
 import unittest
 from pathlib import Path
@@ -11,16 +12,41 @@ from importer.tests.test_edits import AMP, custom
 class RefusalsMoreTest(unittest.TestCase):
     def test_more_invalid_entries_are_refused_with_a_reason(self):
         d = custom()
-        cases = [("amps", "Test.Keen-Eye", AMP.replace("test.keen-eye", "Test.Keen-Eye"), 'id "Test.Keen-Eye" isn’t an id'),
-                 ("amps", "test.keen-eye", AMP.replace('printedRating="3"', 'printedRating="x"'), 'printedRating "x" isn’t a whole number'),
-                 ("items", "test.nano-tape", '<item id="test.nano-tape" kind="potion" source="TEST" page="9"><name>Nano Tape</name><text/></item>',
-                  'item kind "potion" isn’t one of'),
-                 ("amps", "test.keen-eye", AMP.replace("<narrative>", '<item kind="spell"/><narrative>'), "<item> kind must be gear, weapon or armor"),
-                 ("amps", "test.keen-eye", AMP.replace('ref="rr-spec" ', ""), "an <effect> has no ref id"),
-                 ("amps", "test.keen-eye", AMP.replace('param="perception.physical"', 'param="perception.physical" value="0"'),
-                  'effect value "0" isn’t a whole number above 0'),
-                 ("amps", "test.keen-eye", AMP.replace("<narrative>", "<x/><narrative>"), "its elements must be"),
-                 ("amps", "test.keen-eye", AMP.replace("<effect", '<effect bogus="1"', 1), 'unknown attribute "bogus" on <effect>')]
+        cases = [
+            ("amps", "Test.Keen-Eye", AMP.replace("test.keen-eye", "Test.Keen-Eye"), 'id "Test.Keen-Eye" isn’t an id'),
+            (
+                "amps",
+                "test.keen-eye",
+                AMP.replace('printedRating="3"', 'printedRating="x"'),
+                'printedRating "x" isn’t a whole number',
+            ),
+            (
+                "items",
+                "test.nano-tape",
+                '<item id="test.nano-tape" kind="potion" source="TEST" page="9"><name>Nano Tape</name><text/></item>',
+                'item kind "potion" isn’t one of',
+            ),
+            (
+                "amps",
+                "test.keen-eye",
+                AMP.replace("<narrative>", '<item kind="spell"/><narrative>'),
+                "<item> kind must be gear, weapon or armor",
+            ),
+            ("amps", "test.keen-eye", AMP.replace('ref="rr-spec" ', ""), "an <effect> has no ref id"),
+            (
+                "amps",
+                "test.keen-eye",
+                AMP.replace('param="perception.physical"', 'param="perception.physical" value="0"'),
+                'effect value "0" isn’t a whole number above 0',
+            ),
+            ("amps", "test.keen-eye", AMP.replace("<narrative>", "<x/><narrative>"), "its elements must be"),
+            (
+                "amps",
+                "test.keen-eye",
+                AMP.replace("<effect", '<effect bogus="1"', 1),
+                'unknown attribute "bogus" on <effect>',
+            ),
+        ]
         for kind, i, body, reason in cases:
             with self.subTest(reason=reason), self.assertRaises(edits.EditError) as e:
                 edits.set_entry(d, kind, i, body)

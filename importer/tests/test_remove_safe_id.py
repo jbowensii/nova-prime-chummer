@@ -1,5 +1,6 @@
 """Removing a book never deletes outside custom/imported when its import.xml has been tampered with (a source id
 or an extra source id that is a path, e.g. from a hand-edited backup)."""
+
 import os
 import tempfile
 import unittest
@@ -7,17 +8,19 @@ import unittest
 from importer import __main__ as anarchy, library, xmlio
 from importer.sr6 import run as sr6
 
+# pylint: disable=protected-access
+
 
 class RemoveSafeIdTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with  # cleaned up in tearDown
         root = self.tmp.name
         self.custom = os.path.join(root, "data", "custom")
         self.book = os.path.join(root, "data", "library", "book1")
         self.victim = os.path.join(root, "data", "victim")
         for d in (os.path.join(self.custom, "imported"), self.book, self.victim):
             os.makedirs(d)
-        with open(os.path.join(self.victim, "keep.txt"), "w") as f:
+        with open(os.path.join(self.victim, "keep.txt"), "w", encoding="utf8") as f:
             f.write("keep")
 
     def tearDown(self):

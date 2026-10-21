@@ -1,6 +1,7 @@
 """SR6 general recipe (importer/sr6/recipes/general.py) on a made-up book.md in the converter's sr6 shape (a cast
 chapter with stat blocks titled in body type, a contact with its band under its description, a priced box, a list of
 places, a quality, life modules in body type). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -10,6 +11,8 @@ from lxml import etree
 from importer import sr6
 from importer.sr6 import regroup
 from importer.sr6.recipes import crb, general, identify
+
+# pylint: disable=protected-access  # tests reach into the module internals they cover
 
 BOOK = next(b for b in general.RECIPES if b.ID == "THN")
 
@@ -169,11 +172,13 @@ You lost a made-up parcel and made a made-up enemy.
 
 
 def run_recipe(md=BOOK_MD, book=BOOK):
+    """The reading of the made-up book `md`."""
     regrouped, _ = regroup.regroup(book.prepare_md(md), book.ALIASES, name_headers=book.NAME_HEADERS)
     return book.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` entries of a reading."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -192,8 +197,9 @@ class GeneralRecipeTest(unittest.TestCase):
 
     def test_npcs(self):
         n = entries(self.res, "npcs")
-        self.assertEqual((n["Fizz Trooper"]["rating"], n["Fizz Trooper"]["group"], n["Fizz Trooper"]["dr"]),
-                         ("3", "Grunts", "7"))
+        self.assertEqual(
+            (n["Fizz Trooper"]["rating"], n["Fizz Trooper"]["group"], n["Fizz Trooper"]["dr"]), ("3", "Grunts", "7")
+        )
         g = n["Glow Hacker"]  # a second R is Resonance
         self.assertEqual((g["rating"], g["rea"], g["res"]), ("4", "3", "6"))
 
@@ -204,27 +210,49 @@ class GeneralRecipeTest(unittest.TestCase):
         g, m = n["Fizz Guard"], n["Fizz Mage"]
         self.assertEqual((g["rating"], g["bod"], g["ess"], g.get("mag"), g["dr"]), ("5", "4", "5.5", None, "9"))
         self.assertEqual((m["rating"], m["bod"], m["ess"], m["mag"], m["dr"]), ("6", "3", "6", "5", "9"))
-        lines = {e.findtext("name"): [p.text for p in e if p.tag == "skills"] for e in ET.fromstring(self.res.files["npcs.xml"])}
+        lines = {
+            e.findtext("name"): [p.text for p in e if p.tag == "skills"]
+            for e in ET.fromstring(self.res.files["npcs.xml"])
+        }
         self.assertEqual(lines["Fizz Guard"], lines["Fizz Mage"])
 
     def test_one_stat_block_for_several_names(self):
         n = entries(self.res, "npcs")
         p, q = n["Glow Priest"], n["Glow Priestess"]  # `Priest/priestess`: one NPC a name, the same stats
-        self.assertEqual({k: v for k, v in p.items() if k not in ("id",)}, {k: v for k, v in q.items() if k not in ("id",)})
+        self.assertEqual(
+            {k: v for k, v in p.items() if k not in ("id",)}, {k: v for k, v in q.items() if k not in ("id",)}
+        )
         # names one of them shares with another block's (`Grey Watcher`) aren't split
         self.assertLessEqual({"Grey Watcher/Seeker", "Grey Watcher/Decker"}, set(n))
         self.assertNotIn("Grey Watcher", n)
 
     def test_slash_names(self):
-        self.assertEqual([general._slash_names(n) for n in ("Fake Ho uncho/Mamo", "Glow Agent/Corp Fixer", "UCAS/Fake Border",
-                                                            "Fake Gun, marksman/sniper", "Rating 1/2")],
-                         [["Fake Ho uncho", "Fake Mamo"], ["Glow Agent", "Corp Fixer"], ["UCAS Border", "Fake Border"],
-                          ["Fake Gun, marksman", "Fake Gun, sniper"], ["Rating 1/2"]])
+        self.assertEqual(
+            [
+                general._slash_names(n)
+                for n in (
+                    "Fake Ho uncho/Mamo",
+                    "Glow Agent/Corp Fixer",
+                    "UCAS/Fake Border",
+                    "Fake Gun, marksman/sniper",
+                    "Rating 1/2",
+                )
+            ],
+            [
+                ["Fake Ho uncho", "Fake Mamo"],
+                ["Glow Agent", "Corp Fixer"],
+                ["UCAS Border", "Fake Border"],
+                ["Fake Gun, marksman", "Fake Gun, sniper"],
+                ["Rating 1/2"],
+            ],
+        )
 
     def test_a_box_printing_several_beings(self):
         """A lower-case box title right over a band after a labelled line or a weapon's stats names the next being."""
         n = entries(self.res, "npcs")
-        self.assertEqual((n["Fizz Chimera"]["bod"], n["Puff Chimera"]["bod"], n["Puff Chimera"]["agi"]), ("5", "4", "6"))
+        self.assertEqual(
+            (n["Fizz Chimera"]["bod"], n["Puff Chimera"]["bod"], n["Puff Chimera"]["agi"]), ("5", "4", "6")
+        )
 
     def test_contact_with_its_band_under_its_description(self):
         self.assertIn("Mira Madeup", entries(self.res, "contacts"))
@@ -263,14 +291,18 @@ class GeneralRecipeTest(unittest.TestCase):
             self.assertTrue(schema.validate(doc), f"{name}: {schema.error_log.last_error}")
 
     def test_identify(self):
-        meta = lambda title="": {"sha256": "x", "title": title}
+        def meta(title=""):
+            return {"sha256": "x", "title": title}
+
         self.assertEqual(identify(meta("Shadowrun: 30 Nights (Campaign Book)"), "")[0].ID, "THN")
-        self.assertEqual(identify(meta(), "# CONTENTS\nChaos Tacos ..... 6\nstate of the world ..... 10\n")[0].ID, "FPT")
+        self.assertEqual(
+            identify(meta(), "# CONTENTS\nChaos Tacos ..... 6\nstate of the world ..... 10\n")[0].ID, "FPT"
+        )
         # the conversion guide names the core rulebook: its three phrases win over the core rulebook's loose match
-        guide = "# SHADOWRUN, SIXTH WORLD\n## CHARACTER CONVERSION GUIDE\nMade-up core rulebook words.\n## Using this Guide\n"
+        guide = "# SHADOWRUN, SIXTH WORLD\n## CHARACTER CONVERSION GUIDE\nMade-up core rulebook words.\n## Using this Guide\n"  # pylint: disable=line-too-long
         self.assertGreater(crb.match(meta(), guide), 0)
         self.assertEqual(identify(meta(), guide)[0].ID, "CCG")
-        qsr = "Made-up note: for the Shadowrun Quick-Start Rules.\n**\"Help her.\"** Andrew sent it.\n"
+        qsr = 'Made-up note: for the Shadowrun Quick-Start Rules.\n**"Help her."** Andrew sent it.\n'
         self.assertEqual(identify(meta(), qsr)[0].ID, "EOLSQ")
         self.assertEqual(identify(meta(), qsr.replace("Quick-Start Rules", "rules"))[0].ID, "EOLS")
         self.assertIsNone(identify(meta(), "# Something else entirely")[0])

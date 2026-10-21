@@ -1,6 +1,7 @@
 """Old ids keep loading (owner decision D2). When a re-import renames, moves or re-kinds an entry, its new entry gets an
-`<alias id="<old id>" kind="<old kind>"/>` child: the app's catalog resolves the old id to it (src/sr6/catalog/domain/load.ts),
-and a saved runner's old ids are turned into the new ones on load (src/sr6/runner-builder/domain/career/migrate.ts).
+`<alias id="<old id>" kind="<old kind>"/>` child: the app's catalog resolves the old id to it
+(src/sr6/catalog/domain/load.ts), and a saved runner's old ids are turned into the new ones on load
+(src/sr6/runner-builder/domain/career/migrate.ts).
 
 The previous import of the source (its folder, read before this import replaces it) is the record of the old ids. An
 old entry whose (kind, id) the new import no longer has is matched with the new entries this import added (same
@@ -16,8 +17,8 @@ one match wins:
    the first;
 5. the new name starts with the old one's words (a name now printed whole: `Ordo` -> `Ordo Field Operative`); several
    such (the old item split into its variants, `Silver Bullets` -> `(copper)`, `(silver)`, `(gold)`): the first;
-6. a row renamed: the same kind, page and printed values, a word of four letters or more shared (`Anthroform Arms and Legs (Level 1)` read under a sidebar's
-   heading -> `Life Safety System (Level 1)`);
+6. a row renamed: the same kind, page and printed values, a word of four letters or more shared (`Anthroform Arms and
+   Legs (Level 1)` read under a sidebar's heading -> `Life Safety System (Level 1)`);
 7. a level renamed with its heading: the same kind, page and qualifier (`Ejection Seat (Version 2 (…))` ->
    `Extreme Interior Security (Version 2 (…))`);
 8. re-kinded to an entry of another kind the old import had too (`Burning Down Divinity`, an action, now a rule);
@@ -28,6 +29,7 @@ A tier matching several new entries keeps those of the old entry's category, whe
 cyberlimb accessories and in another accessory category: two items, the second id now naming its category; a category
 renamed with its title, `cyberlimb-accessories` -> `Cyberlimb accessory`, compares by its words).
 An old entry's own id aliases go with it, so a chain of re-imports keeps every old id."""
+
 import os
 import re
 
@@ -42,6 +44,7 @@ NANITE_OLD = (("(colony template)", "colony"), ("(pre-built)", "nanites"))  # Bo
 
 
 def words(name):
+    """The comparable words of an entry name: casefolded, singular, without a rating range."""
     name = name.casefold()
     for o, n in NANITE_OLD:  # `X (colony template)` is now `X Colony`, `X (pre-built)` is `X Nanites`
         name = name.replace(o, n)
@@ -56,27 +59,32 @@ def _abbrev(old, new):
     for w in new:
         if i >= len(old) or not w.startswith(old[i]):
             return False
-        rest, i = w[len(old[i]):], i + 1
+        rest, i = w[len(old[i]) :], i + 1
         while rest and i < len(old) and rest.startswith(old[i]):
-            rest, i = rest[len(old[i]):], i + 1
+            rest, i = rest[len(old[i]) :], i + 1
     return i == len(old) and old != new
 
 
-TIERS = (lambda o, n: o == n, lambda o, n: len(n) > len(o) and n[-len(o):] == o, _abbrev,
-         lambda o, n: len(o) > len(n) and o[:len(n)] == n,
-         lambda o, n: len(n) > len(o) and n[:len(o)] == o)  # (5. a name now printed whole: `Ordo` -> `Ordo Field Operative`)
+TIERS = (
+    lambda o, n: o == n,
+    lambda o, n: len(n) > len(o) and n[-len(o) :] == o,
+    _abbrev,
+    lambda o, n: len(o) > len(n) and o[: len(n)] == n,
+    lambda o, n: len(n) > len(o) and n[: len(o)] == o,
+)  # (5. a name now printed whole: `Ordo` -> `Ordo Field Operative`)
 _SAME = ("page", "avail", "cost", "slots", "essence", "rating", "capacity", "dv", "ar")  # what a renamed row keeps
 
 
 def _slashed(name):
-    """`Sinister/dexter coprocessor` -> [`Sinister coprocessor`, `dexter coprocessor`]; [] for no one-word slash pair."""
+    """`Sinister/dexter coprocessor` -> [`Sinister coprocessor`, `dexter coprocessor`]; [] for no one-word slash
+    pair."""
     m = re.fullmatch(r"(.*?)\b(\w+)/(\w+)\b(.*)", name or "")
     return [f"{m.group(1)}{m.group(2)}{m.group(4)}", f"{m.group(1)}{m.group(3)}{m.group(4)}"] if m else []
 
 
 def _sig(el):
-    """A row's printed values on its page (a renamed row keeps them: `Anthroform Arms and Legs (Level 1)`, read under the
-    wrong heading, is `Life Safety System (Level 1)`), or None when it prints fewer than two."""
+    """A row's printed values on its page (a renamed row keeps them: `Anthroform Arms and Legs (Level 1)`, read under
+    the wrong heading, is `Life Safety System (Level 1)`), or None when it prints fewer than two."""
     vals = tuple(el.get(a) or "" for a in _SAME)
     return vals if vals[0] and sum(1 for v in vals[1:] if v) >= 2 else None
 
@@ -115,8 +123,13 @@ def previous(folder):
         except etree.XMLSyntaxError:
             continue
         for el in els:
-            out[(kind, el.get("id"))] = (_names(el), [(a.get("kind") or kind, a.get("id")) for a in el.findall("alias")
-                                                     if a.get("id")], _cat(el.get("category")), _sig(el), el.get("page"))
+            out[(kind, el.get("id"))] = (
+                _names(el),
+                [(a.get("kind") or kind, a.get("id")) for a in el.findall("alias") if a.get("id")],
+                _cat(el.get("category")),
+                _sig(el),
+                el.get("page"),
+            )
     return out
 
 
@@ -151,27 +164,49 @@ def carry(prev, files):
                 parts = [words(p) for p in split if words(p)]
                 found = [next((k for k, _, nws in added if p in nws), None) for p in parts]
                 target = found[0] if len(parts) > 1 and all(found) else None
-            if target is None:  # 5b. the old name split into its variants (`Silver Bullets` -> `(copper)`, …): the first
-                hits = [k for k, _, nws in added if any(len(n) > len(o) and n[:len(o)] == o for o in ows for n in nws)]
+            if (
+                target is None
+            ):  # 5b. the old name split into its variants (`Silver Bullets` -> `(copper)`, …): the first
+                hits = [k for k, _, nws in added if any(len(n) > len(o) and n[: len(o)] == o for o in ows for n in nws)]
                 target = hits[0] if len(hits) > 1 else None
             if target is None and sig:  # 6. a row renamed, its printed values and page the same, a word shared
                 long = {w for o in ows for w in o if len(w) >= 4}
-                hits = {k for k, el, nws in added if k[0] == old[0] and _sig(el) == sig and long & {w for n in nws for w in n}}
+                hits = {
+                    k
+                    for k, el, nws in added
+                    if k[0] == old[0] and _sig(el) == sig and long & {w for n in nws for w in n}
+                }
                 target = hits.pop() if len(hits) == 1 else None
             if target is None and (q := _qualifier(names[0])):  # 7. a level renamed with its heading: `(Version 2 (…))`
-                hits = {k for k, el, _ in added if k[0] == old[0] and el.get("page") == page
-                        and _qualifier(el.findtext("name")) == q}
+                hits = {
+                    k
+                    for k, el, _ in added
+                    if k[0] == old[0] and el.get("page") == page and _qualifier(el.findtext("name")) == q
+                }
                 target = hits.pop() if len(hits) == 1 else None
             if target is None and page:  # 9. a name now printed whole around it, on its page (`De` -> `Saul De Haro`)
-                hits = {k for k, el, nws in added if k[0] == old[0] and el.get("page") == page
-                        and any(o and set(o) <= set(n) for o in ows for n in nws)}
+                hits = {
+                    k
+                    for k, el, nws in added
+                    if k[0] == old[0]
+                    and el.get("page") == page
+                    and any(o and set(o) <= set(n) for o in ows for n in nws)
+                }
                 target = hits.pop() if len(hits) == 1 else None
             if target is None:  # 8a. merged into an entry the old import had too, its name now that one's alias (a
                 # path step read twice, `Obsession: Consumed` and `Consumed`, now one entry)
-                hits = {k for k, el in new.items() if k[0] == old[0] and any(words(n) in ows for n in _names(el)[1:] if words(n))}
+                hits = {
+                    k
+                    for k, el in new.items()
+                    if k[0] == old[0] and any(words(n) in ows for n in _names(el)[1:] if words(n))
+                }
                 target = hits.pop() if len(hits) == 1 else None
             if target is None:  # 8. re-kinded to an entry the old import had too (an action read as a rule now)
-                hits = {k for k, el in new.items() if k[0] != old[0] and any(words(n) in ows for n in _names(el) if words(n))}
+                hits = {
+                    k
+                    for k, el in new.items()
+                    if k[0] != old[0] and any(words(n) in ows for n in _names(el) if words(n))
+                }
                 target = hits.pop() if len(hits) == 1 else None
             if target is None:
                 continue
@@ -194,7 +229,7 @@ def carry(prev, files):
     out = {}
     for name, x in files.items():
         if any(a.get("id") for a in trees[name].iter("alias")):
-            head = x[:re.search(r"<(?![?!])", x).start()]  # the declaration and the comments before the root
+            head = x[: re.search(r"<(?![?!])", x).start()]  # the declaration and the comments before the root
             out[name] = head + etree.tostring(trees[name], encoding="unicode") + "\n"
         else:
             out[name] = x

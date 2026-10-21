@@ -1,17 +1,22 @@
-"""Book text as paragraphs (0.9.1). The converter keeps the PDF's line breaks, so a description arrives as a narrow column
-with words split across lines ("gamemas-" / "ter"). reflow() joins the lines of each paragraph and rejoins a word
+"""Book text as paragraphs (0.9.1). The converter keeps the PDF's line breaks, so a description arrives as a narrow
+column with words split across lines ("gamemas-" / "ter"). reflow() joins the lines of each paragraph and rejoins a word
 hyphenated across a line break, keeping real hyphens ("non-player"); blank-line paragraph breaks, list items, markdown
-table rows, headings and "**Label:** value" lines stay on lines of their own. Used on the SR6 texts (importer/sr6/run.py);
-Anarchy's texts are already one line each and are left alone."""
+table rows, headings and "**Label:** value" lines stay on lines of their own. Used on the SR6 texts
+(importer/sr6/run.py); Anarchy's texts are already one line each and are left alone."""
+
 import re
 
 _LIST = re.compile(r"(?:[-*•▪◦–]|\d{1,2}[.)])\s")
 _FIELD = re.compile(r"\*\*[^*\n]+(?::\*\*|\*\*:)")
 _WORD = re.compile(r"[A-Za-z]+(?:-[A-Za-z]+)*")
-_BROKEN = re.compile(r"(?<![A-Za-z-])([A-Za-z]+)-$")  # a word and its hyphen at the end of the line (not "--", not " -")
+_BROKEN = re.compile(
+    r"(?<![A-Za-z-])([A-Za-z]+)-$"
+)  # a word and its hyphen at the end of the line (not "--", not " -")
 # first halves that take a real hyphen: "non-player", "self-aware", "well-known", "two-handed"…
-KEEP = frozenset("""non self ex all half cross well semi anti co quasi pre post multi counter ultra meta full high low long short
-mid off one two three four five six seven eight nine ten first second third twenty thirty forty fifty hundred""".split())
+KEEP = frozenset(
+    """non self ex all half cross well semi anti co quasi pre post multi counter ultra meta full high low long short
+mid off one two three four five six seven eight nine ten first second third twenty thirty forty fifty hundred""".split()
+)
 
 
 def vocabulary(texts):

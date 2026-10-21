@@ -1,10 +1,13 @@
 """The kinds a book prints as sections (importer/sr6/sections.py): headings under a section naming the kind, bold
 run-ins, `Kind: Name` headings, a quality path's steps. Invented book only."""
+
 import unittest
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import regroup, sections
 from importer.sr6.recipes import crb
+
+# pylint: disable=protected-access  # tests reach into the module internals they cover
 
 MD = """<!-- page 40 -->
 # GAME CONCEPTS
@@ -134,13 +137,14 @@ Zorp adaptation, glow paint.
 """
 
 
-class SectionKindsTest(unittest.TestCase):
+class SectionKindsTest(unittest.TestCase):  # pylint: disable=too-many-public-methods
     @classmethod
     def setUpClass(cls):
         text, _ = regroup.regroup(MD, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         cls.res = crb.extract(text)
 
     def kind(self, k):
+        """{name: entry} of the `k` entries of the reading."""
         return {e.findtext("name"): e for e in ET.fromstring(self.res.files[f"{k}.xml"])}
 
     def test_actions(self):
@@ -164,12 +168,13 @@ class SectionKindsTest(unittest.TestCase):
         p = self.kind("qualitypaths")["Long Road"]
         self.assertEqual([s.text for s in p.findall("step")], ["Step 1: First Mile", "Step 2: Last Mile"])
 
-
     def test_packs(self):
         text, _ = regroup.regroup(PACKS, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         p = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["packs.xml"])}
-        self.assertEqual((p["Starter Zorp"].get("cost"), [i.text for i in p["Starter Zorp"].findall("item")]),
-                         ("2500", ["Glow stick (rating 2)", "fizz tape (10)"]))
+        self.assertEqual(
+            (p["Starter Zorp"].get("cost"), [i.text for i in p["Starter Zorp"].findall("item")]),
+            ("2500", ["Glow stick (rating 2)", "fizz tape (10)"]),
+        )
         self.assertEqual((p["Zap Pistol"].get("cost"), p["Zap Pistol"].get("category")), ("1175", "Zappers"))
         self.assertEqual([i.text for i in p["Zap Pistol"].findall("item")], ["zap sight", "10 zap darts"])
         self.assertEqual(p["Big Zapper"].get("cost"), "2015")
@@ -181,21 +186,38 @@ class SectionKindsTest(unittest.TestCase):
         # after the price)
         self.assertEqual(p["Fizz Goggles"].get("cost"), "1325")
         self.assertEqual(p["Glow Sub"].get("cost"), "4800")
-        self.assertEqual((p["Zorp's Darling"].get("cost"), p["Zorp's Darling"].get("category")),
-                         ("16000", "Zorp Upgrade PACKs"))
+        self.assertEqual(
+            (p["Zorp's Darling"].get("cost"), p["Zorp's Darling"].get("category")), ("16000", "Zorp Upgrade PACKs")
+        )
 
     def test_drawbacks_and_a_quality_printed_in_its_own_shape(self):
-        md = "\n".join([
-            "<!-- page 20 -->", "# Zorps", "### The Costs",
-            "• **Metahuman Quality:** Playing a zorp requires the Zorp positive quality.",
-            "• **Wobbly Knees:** Zorps gain the Wob-", "bly Knees quality when glowing.",
-            "• **Glow Eyes:** Anyone who sees a zorp glow", "remembers them.",
-            "# FIZZCORP", "## Game Information", "### fIZZy", "You fizz.", "**Cost:** 3 Karma",
-            "**Game Effect:** You may fizz once a scene.", "### Fizz Rules", "Fizzing is a rule.", ""])
+        md = "\n".join(
+            [
+                "<!-- page 20 -->",
+                "# Zorps",
+                "### The Costs",
+                "• **Metahuman Quality:** Playing a zorp requires the Zorp positive quality.",
+                "• **Wobbly Knees:** Zorps gain the Wob-",
+                "bly Knees quality when glowing.",
+                "• **Glow Eyes:** Anyone who sees a zorp glow",
+                "remembers them.",
+                "# FIZZCORP",
+                "## Game Information",
+                "### fIZZy",
+                "You fizz.",
+                "**Cost:** 3 Karma",
+                "**Game Effect:** You may fizz once a scene.",
+                "### Fizz Rules",
+                "Fizzing is a rule.",
+                "",
+            ]
+        )
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
-        self.assertEqual({k: q["Glow Eyes"].get(k) for k in ("kind", "karma", "granted", "category")},
-                         {"kind": "negative", "karma": "0", "granted": "true", "category": "Zorp drawback"})
+        self.assertEqual(
+            {k: q["Glow Eyes"].get(k) for k in ("kind", "karma", "granted", "category")},
+            {"kind": "negative", "karma": "0", "granted": "true", "category": "Zorp drawback"},
+        )
         self.assertNotIn("Wobbly Knees", q)  # (an existing quality it hands out)
         self.assertNotIn("Metahuman Quality", q)
         self.assertEqual((q["fIZZy"]["kind"], q["fIZZy"]["karma"]), ("positive", "3"))
@@ -238,9 +260,9 @@ Fizz rounds fizz.
         self.assertEqual({k: a["Fizz Rounds"][k] for k in ("ar", "dv", "cost")}, {"ar": "+1", "dv": "-1", "cost": "x2"})
 
     def test_vehicle_design_tables_and_terms(self):
-        """The design tables' printed columns (chassis, powertrain, console, size class) and each option's, modification's
-        and quality factor's terms (cost per level, maximum, multiplier), as printed; a weakness heading's entries are
-        critter powers marked as weaknesses."""
+        """The design tables' printed columns (chassis, powertrain, console, size class) and each option's,
+        modification's and quality factor's terms (cost per level, maximum, multiplier), as printed; a weakness
+        heading's entries are critter powers marked as weaknesses."""
         md = """<!-- page 150 -->
 # BUILD IT
 ## General Design
@@ -292,23 +314,60 @@ The critter gets soggy, made up.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         res = crb.extract(text)
-        d = {e.findtext("name"): {k: v for k, v in e.attrib.items() if k not in ("id", "source", "page")}
-             for e in ET.fromstring(res.files["vehicledesign.xml"])}
-        self.assertEqual(d["Size Class 7"], {"category": "size class", "length": "6 – 9 m", "weight": "3,500 kg", "cargo": "5 CF"})
-        self.assertEqual(d["Hopper"], {"category": "powertrain type", "accel": "12", "interval": "18", "topSpeed": "90",
-                                       "bp": "11", "special": "-3 handling"})
-        self.assertEqual(d["Plain"], {"category": "console type", "pilot": "1", "sensor": "2", "bp": "4", "special": "9"})
-        self.assertEqual(d["Bare"], {"category": "console type", "pilot": "1", "bp": "3"})  # (an empty cell: no attribute)
+        d = {
+            e.findtext("name"): {k: v for k, v in e.attrib.items() if k not in ("id", "source", "page")}
+            for e in ET.fromstring(res.files["vehicledesign.xml"])
+        }
+        self.assertEqual(
+            d["Size Class 7"], {"category": "size class", "length": "6 – 9 m", "weight": "3,500 kg", "cargo": "5 CF"}
+        )
+        self.assertEqual(
+            d["Hopper"],
+            {
+                "category": "powertrain type",
+                "accel": "12",
+                "interval": "18",
+                "topSpeed": "90",
+                "bp": "11",
+                "special": "-3 handling",
+            },
+        )
+        self.assertEqual(
+            d["Plain"], {"category": "console type", "pilot": "1", "sensor": "2", "bp": "4", "special": "9"}
+        )
+        self.assertEqual(
+            d["Bare"], {"category": "console type", "pilot": "1", "bp": "3"}
+        )  # (an empty cell: no attribute)
         self.assertNotIn("Size Class 8", d)  # (a row with no name or too few cells: none)
-        self.assertEqual(sections.design_terms("Odd Engines", "Cost: Hot +12, Cold –8"), {})  # (a cost list naming none)
-        self.assertEqual(d["Zoomer"], {"category": "chassis type", "body": "6", "armor": "3", "handling": "4", "seats": "3",
-                                       "bp": "5", "sizeClass": "5", "special": "0"})
-        terms = lambda n: {k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)}  # noqa: E731
+        self.assertEqual(
+            sections.design_terms("Odd Engines", "Cost: Hot +12, Cold –8"), {}
+        )  # (a cost list naming none)
+        self.assertEqual(
+            d["Zoomer"],
+            {
+                "category": "chassis type",
+                "body": "6",
+                "armor": "3",
+                "handling": "4",
+                "seats": "3",
+                "bp": "5",
+                "sizeClass": "5",
+                "special": "0",
+            },
+        )
+
+        def terms(n):
+            return {k: d[n].get(k) for k in ("dp", "perLevel", "max", "maxReverse", "multiplier") if d[n].get(k)}
+
         self.assertEqual(terms("Improved Fizz"), {"dp": "6", "perLevel": "true", "max": "3"})
         self.assertEqual(terms("Improved Glow"), {"dp": "1", "perLevel": "true", "max": "2 x Body"})
         self.assertEqual(terms("Improved Hum"), {"dp": "3", "perLevel": "true", "max": "min(2, Body)"})
-        self.assertEqual(terms("Improved Bulk"), {"dp": "2", "perLevel": "true", "max": "Size Class 20", "maxReverse": "3"})
-        self.assertEqual((terms("Hot"), terms("Cold Engines")), ({"dp": "+12"}, {"dp": "-8"}))  # (`Hot/Cold Engines`: as split_names names them)
+        self.assertEqual(
+            terms("Improved Bulk"), {"dp": "2", "perLevel": "true", "max": "Size Class 20", "maxReverse": "3"}
+        )
+        self.assertEqual(
+            (terms("Hot"), terms("Cold Engines")), ({"dp": "+12"}, {"dp": "-8"})
+        )  # (`Hot/Cold Engines`: as split_names names them)
         self.assertEqual(terms("Slow Drive"), {"dp": "-15"})
         self.assertEqual(terms("Sparkly"), {"multiplier": "x4", "max": "1"})
         p = {e.findtext("name"): e.get("weakness") for e in ET.fromstring(res.files["critterpowers.xml"])}
@@ -334,8 +393,10 @@ A worm that zaps.
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         res = crb.extract(text)
         q = {e.findtext("name"): e for e in ET.fromstring(res.files["qualitysets.xml"])}["Zorpling"]
-        self.assertEqual((q.get("karma"), q.get("metatypes"), [x.text for x in q.findall("quality")]),
-                         ("12", "Elf, human", ["Glow Skin", "Fizz Ears (Long)", "Odd Hair"]))
+        self.assertEqual(
+            (q.get("karma"), q.get("metatypes"), [x.text for x in q.findall("quality")]),
+            ("12", "Elf, human", ["Glow Skin", "Fizz Ears (Long)", "Odd Hair"]),
+        )
         f = [e.findtext("name") for e in ET.fromstring(res.files["spellfeatures.xml"])]
         self.assertEqual(f, ["Glowing", "Humming"])
         a = {e.findtext("name"): e for e in ET.fromstring(res.files["actions.xml"])}
@@ -375,15 +436,23 @@ You gain the Glow Fan quality at half its cost.
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         res = ET.fromstring(crb.extract(text).files["qualities.xml"])
         q = {e.findtext("name"): e.attrib for e in res}
-        self.assertEqual({n: (q[n]["kind"], q[n].get("karma")) for n in ("Glow Fan", "Fizz Soul", "Zap Nose", "Sore Feet")},
-                         {"Glow Fan": ("positive", "2"), "Fizz Soul": ("positive", "10"), "Zap Nose": ("negative", "4"),
-                          "Sore Feet": ("negative", "5")})
+        self.assertEqual(
+            {n: (q[n]["kind"], q[n].get("karma")) for n in ("Glow Fan", "Fizz Soul", "Zap Nose", "Sore Feet")},
+            {
+                "Glow Fan": ("positive", "2"),
+                "Fizz Soul": ("positive", "10"),
+                "Zap Nose": ("negative", "4"),
+                "Sore Feet": ("negative", "5"),
+            },
+        )
         self.assertNotIn("Starting point", q)
         # unpriced steps: named as steps they are qualities (a nuyen Cost line: positive; nothing: negative, an
         # issue saying so); a bare heading (a quality the step grants) is not; a bare `Step 3` is the path's quality
         # under its printed name, the path its group (owner decision 2026-10-07)
-        self.assertEqual({n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
-                         {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"})
+        self.assertEqual(
+            {n: q[n]["kind"] for n in ("Blisters", "Calluses", "Rest Stop")},
+            {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"},
+        )
         issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
         self.assertIn("kind", issues["Blisters"])
         self.assertNotIn("kind", issues["Rest Stop"])
@@ -405,8 +474,10 @@ Followers fizz.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         q = {e.findtext("name"): e.attrib for e in ET.fromstring(crb.extract(text).files["qualities.xml"])}
-        self.assertEqual({n: (a["kind"], a["karma"]) for n, a in q.items()},
-                         {"Glower's Path": ("positive", "15"), "Fizzing Path": ("positive", "15")})
+        self.assertEqual(
+            {n: (a["kind"], a["karma"]) for n, a in q.items()},
+            {"Glower's Path": ("positive", "15"), "Fizzing Path": ("positive", "15")},
+        )
 
     def test_items_a_section_derives_by_a_rule(self):
         md = """<!-- page 90 -->
@@ -426,15 +497,25 @@ Bioware: glow glands (bright ones), fizz fins, wobble ears.
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         aug = {e.findtext("name"): e for e in ET.fromstring(crb.extract(text).files["augmentations.xml"])}
         g = aug["Zorpgenic glow glands"]
-        self.assertEqual({f.get("field"): f.text for f in g.findall("formula")},
-                         {"essence": "ref(augmentations:crb.glow-gland, essence)*1.5", "cost": "ref(augmentations:crb.glow-gland, cost)*0.7"})
+        self.assertEqual(
+            {f.get("field"): f.text for f in g.findall("formula")},
+            {
+                "essence": "ref(augmentations:crb.glow-gland, essence)*1.5",
+                "cost": "ref(augmentations:crb.glow-gland, cost)*0.7",
+            },
+        )
         self.assertEqual((g.get("avail"), g.get("type")), ("4", "bioware"))
         w = aug["Zorpgenic wobble ears"]  # no base item printed: the rule, as an ambiguous issue
-        self.assertEqual({(i.get("field"), i.get("code")) for i in w.findall("issue")}, {("essence", "ambiguous"), ("cost", "ambiguous"), ("avail", "missing")})
+        self.assertEqual(
+            {(i.get("field"), i.get("code")) for i in w.findall("issue")},
+            {("essence", "ambiguous"), ("cost", "ambiguous"), ("avail", "missing")},
+        )
         # `A and B` of two-word halves is two items; a parenthetical listing several adds them; a comma set inside the
         # closing parenthesis is the list's; `webbed hands and feet` stays one
-        self.assertEqual(sections._listed("glow glands and fizz spray (zap spit and fangs,) hum venoms, webbed hands and feet."),
-                         ["glow glands", "fizz spray", "hum venoms", "webbed hands and feet", "zap spit", "fangs"])
+        self.assertEqual(
+            sections._listed("glow glands and fizz spray (zap spit and fangs,) hum venoms, webbed hands and feet."),
+            ["glow glands", "fizz spray", "hum venoms", "webbed hands and feet", "zap spit", "fangs"],
+        )
 
     def test_kinds_of_a_class_priced_by_its_row(self):
         md = """<!-- page 155 -->
@@ -477,9 +558,14 @@ A gift of humming.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
-        self.assertEqual((names("critterpowers"), names("metamagics"), names("sprites")),
-                         (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]))
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
+        self.assertEqual(
+            (names("critterpowers"), names("metamagics"), names("sprites")),
+            (["Glow Shift"], ["Fizz Way", "Hum Gift"], ["Wobble Sprite"]),
+        )
         users = {e.findtext("name"): e.get("user") for e in ET.fromstring(files["metamagics.xml"])}
         self.assertEqual(users, {"Fizz Way": "adept", "Hum Gift": None})  # (`Adept Metamagics`: flags.metamagic)
 
@@ -529,9 +615,14 @@ You glow.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
-        self.assertEqual((names("actions"), names("critterpowers")),
-                         (["Called Shot: Glow Fire", "Called Shot: Zap Point"], ["Fizz Ken"]))
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
+        self.assertEqual(
+            (names("actions"), names("critterpowers")),
+            (["Called Shot: Glow Fire", "Called Shot: Zap Point"], ["Fizz Ken"]),
+        )
 
     def test_a_title_that_only_mentions_a_kind_names_none(self):
         """The kind's words must head the heading: `New Echoes` lists echoes; a book or group titled `Echoes of …`
@@ -554,7 +645,10 @@ You glow.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        names = lambda k: sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))  # noqa: E731
+
+        def names(k):
+            return sorted(e.findtext("name") for e in ET.fromstring(files[f"{k}.xml"]))
+
         self.assertEqual(names("echoes"), ["Fizz Link", "Glow Mind"])
         self.assertEqual(names("programs"), ["Glow Pilot"])
 
@@ -573,8 +667,10 @@ Made-up bonuses.
 """
         text, _ = regroup.regroup(md, crb.ALIASES, name_headers=crb.NAME_HEADERS)
         files = crb.extract(text).files
-        self.assertEqual(sorted(e.findtext("name") for e in ET.fromstring(files["martialtechniques.xml"])),
-                         ["Glow Grip", "Spin Kick"])
+        self.assertEqual(
+            sorted(e.findtext("name") for e in ET.fromstring(files["martialtechniques.xml"])),
+            ["Glow Grip", "Spin Kick"],
+        )
 
     def test_a_path_needs_steps_and_a_name_of_its_own(self):
         """A heading under a Quality Paths section is a path only with steps under it and a name of its own: the
@@ -596,6 +692,7 @@ if __name__ == "__main__":
 class FormsAndReprintsTest(unittest.TestCase):
     """A heading the section above names as one of its forms is an action (owner, 2026-10-07); a run-in list that
     points to the page where its entries are defined reprints them (no second entry). Invented book."""
+
     MD = """<!-- page 41 -->
 # MATRIX
 ## Programs
@@ -627,14 +724,17 @@ Riggers can use some programs. See the **Programs** section (p. 40) for more det
         cls.res = crb.extract(text)
 
     def kind(self, k):
+        """[(name, type, page)] of the `k` entries of the reading."""
         return [(e.findtext("name"), e.get("type"), e.get("page")) for e in ET.fromstring(self.res.files[f"{k}.xml"])]
 
     def test_a_heading_named_as_one_of_its_sections_forms_is_an_action(self):
         got = {n: t for n, t, _ in self.kind("actions")}
         # (owner, 2026-10-08: a form naming no action type takes its sibling's; a heading opening `Spend a Minor Action
         # to …` is an action too, by the core recipe's rule)
-        self.assertEqual({n: got.get(n) for n in ("Glow Guard", "Unglowing", "Glow Trick")},
-                         {"Glow Guard": "major", "Unglowing": "major", "Glow Trick": "minor"})
+        self.assertEqual(
+            {n: got.get(n) for n in ("Glow Guard", "Unglowing", "Glow Trick")},
+            {"Glow Guard": "major", "Unglowing": "major", "Glow Trick": "minor"},
+        )
 
     def test_a_list_pointing_to_its_entries_page_reprints_them(self):
         got = self.kind("programs")

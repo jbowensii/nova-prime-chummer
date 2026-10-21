@@ -12,6 +12,7 @@
 The folders are Docker volume mount points: they can't be renamed and a sibling folder sits on another
 filesystem, so the new contents are extracted into a temp folder inside each target and swapped in by renames there.
 """
+
 import contextlib
 import json
 import os
@@ -34,17 +35,21 @@ ALL_KEYS = (KEYS, SR6_KEYS)
 USERS = "library/.config/users.xml"  # the accounts (server/auth.mjs); counted in the manifest
 AUTH = "library/.config/auth.xml"  # the sign-in settings (server/oidc.mjs)
 CONFIG_NS = "urn:chummer-anarchy2:config:1"
-MAX_CONFIG = 16 * 1024 ** 2
+MAX_CONFIG = 16 * 1024**2
 # the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
 AUTH_SECRET = "library/.config/auth-secret.xml"
 # never in a backup or restored: session hashes (a restore ends every session), a pending recovery code's hash and the
 # known-device cookie key (server/auth.mjs) and the Authelia state cookie key (server/oidc.mjs)
-NEVER = {"library/.config/sessions.xml", "library/.config/reset.xml", "library/.config/device-key.xml",
-         "library/.config/oidc-key.xml"}
+NEVER = {
+    "library/.config/sessions.xml",
+    "library/.config/reset.xml",
+    "library/.config/device-key.xml",
+    "library/.config/oidc-key.xml",
+}
 NEVER_KEPT = ("device-key.xml", "oidc-key.xml")  # of those, the ones a restore keeps from the server
-MAX_TOTAL = 20 * 1024 ** 3
-MAX_RATIO, RATIO_FROM = 200, 1024 ** 2  # zip-bomb guard: files over 1 MB may not expand more than 200 times
-MAX_MANIFEST = 1024 ** 2
+MAX_TOTAL = 20 * 1024**3
+MAX_RATIO, RATIO_FROM = 200, 1024**2  # zip-bomb guard: files over 1 MB may not expand more than 200 times
+MAX_MANIFEST = 1024**2
 MAX_ENTRIES = 200_000
 # Windows can't hold these names; a zip made elsewhere could still carry them
 RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"{p}{i}" for p in ("COM", "LPT") for i in range(1, 10))}
@@ -59,10 +64,13 @@ class RestoreError(Exception):
 
 
 def app_version(version=None):
+    """The app version: the one given, else package.json's."""
     if version:
         return version
     try:
-        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "package.json"), encoding="utf8") as f:
+        with open(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "package.json"), encoding="utf8"
+        ) as f:
             return json.load(f).get("version") or "unknown"
     except (OSError, ValueError):
         return "unknown"
@@ -74,11 +82,18 @@ def _files(folder, root, keys):
         rel = os.path.relpath(dirpath, root).replace(os.sep, "/")
         rel = "" if rel == "." else rel + "/"
         # a swap's temp folders at any depth (a data pack's are in custom/imported/core): never backed up
-        dirs[:] = [d for d in dirs if not d.startswith(TEMP) and not (not rel and folder == "library" and d == ".backups")]
+        dirs[:] = [
+            d for d in dirs if not d.startswith(TEMP) and not (not rel and folder == "library" and d == ".backups")
+        ]
         dirs.sort()
         for f in sorted(files):
             path, name = os.path.join(dirpath, f), f"{folder}/{rel}{f}"
-            if f.endswith(".tmp") or not stat.S_ISREG(os.lstat(path).st_mode) or (name in (*ALL_KEYS, AUTH_SECRET) and not keys) or name in NEVER:
+            if (
+                f.endswith(".tmp")
+                or not stat.S_ISREG(os.lstat(path).st_mode)
+                or (name in (*ALL_KEYS, AUTH_SECRET) and not keys)
+                or name in NEVER
+            ):
                 continue  # links, FIFOs and devices are never backed up
             yield path, name
 
@@ -94,19 +109,28 @@ def backup(dirs, out, keys=False, version=None):
             for folder in FOLDERS:
                 n = size = 0
                 for path, name in _files(folder, dirs[folder], keys):
-                    zf.write(path, name, zipfile.ZIP_STORED if name.lower().endswith(".pdf") else None)  # streamed in chunks
+                    zf.write(
+                        path, name, zipfile.ZIP_STORED if name.lower().endswith(".pdf") else None
+                    )  # streamed in chunks
                     n, size = n + 1, size + zf.getinfo(name).file_size
                     if name == USERS:
                         users = None
-                        with open(path, "rb") as f, contextlib.suppress(RestoreError):  # still backed up; check refuses it
+                        with (
+                            open(path, "rb") as f,
+                            contextlib.suppress(RestoreError),
+                        ):  # still backed up; check refuses it
                             users = _count_users(f)
                     secret = secret or name == AUTH_SECRET
                 counts[folder] = (n, size)
             rows = "".join(f'  <folder name="{f}" files="{n}" bytes="{b}"/>\n' for f, (n, b) in counts.items())
-            manifest = (xmlio.HEAD + f'<backup format="1" app={quoteattr(app_version(version))} '
-                        f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}" keys="{"yes" if keys else "no"}" '
-                        f'{"" if users is None else f"users={quoteattr(str(users))} "}authSecret="{"yes" if secret else "no"}" '
-                        f'files="{sum(n for n, _ in counts.values())}" bytes="{sum(b for _, b in counts.values())}">\n{rows}</backup>\n')
+            manifest = (
+                xmlio.HEAD + f'<backup format="1" app={quoteattr(app_version(version))} '
+                f'created="{datetime.now(timezone.utc).isoformat(timespec="seconds")}" '
+                f'keys="{"yes" if keys else "no"}" '
+                f'{"" if users is None else f"users={quoteattr(str(users))} "}authSecret="{"yes" if secret else "no"}" '
+                f'files="{sum(n for n, _ in counts.values())}" bytes="{sum(b for _, b in counts.values())}">\n'
+                f"{rows}</backup>\n"
+            )
             zf.writestr("backup.xml", manifest)
         os.chmod(tmp, 0o600)
         os.replace(tmp, out)
@@ -121,11 +145,12 @@ def _count_users(f):
     try:
         return sum(1 for _, el in ET.iterparse(f) if el.tag == "user")
     except (ET.ParseError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-        raise RestoreError(f"the backup’s accounts file ({USERS}) can’t be read ({e})")
+        raise RestoreError(f"the backup’s accounts file ({USERS}) can’t be read ({e})") from e
 
 
 def unsafe_entry(info):
-    """The checks any uploaded zip's entry gets (backups, data packs): a link, a device, encryption, a zip bomb; or None."""
+    """The checks any uploaded zip's entry gets (backups, data packs): a link, a device, encryption, a zip bomb; or
+    None."""
     kind = stat.S_IFMT(info.external_attr >> 16)
     if kind == stat.S_IFLNK:
         return "has a symbolic link"
@@ -154,7 +179,9 @@ def _entry_problem(info):
         return "has files outside characters/, custom/ and library/"
     if parts[:2] == ["library", ".backups"]:
         return "has library/.backups"
-    if any(p.startswith(TEMP) for p in parts):  # a swap's leftovers: restored, recover would put them back over live files
+    if any(
+        p.startswith(TEMP) for p in parts
+    ):  # a swap's leftovers: restored, recover would put them back over live files
         return "has a restore or data pack temp folder (.restore-…)"
     return None
 
@@ -164,13 +191,15 @@ def check(path):
     try:
         zf = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as e:
-        raise RestoreError(f"this isn’t a readable zip file ({e})")
+        raise RestoreError(f"this isn’t a readable zip file ({e})") from e
     with zf:
         infos, names, total = zf.infolist(), set(), 0
         if len(infos) > MAX_ENTRIES:
             raise RestoreError(f"the zip has more than {MAX_ENTRIES:,} files")
         counts = {f: [0, 0] for f in FOLDERS}
-        files, folders = set(), {k.rsplit("/", 1)[0].casefold() for k in ALL_KEYS}  # the keys' folders must stay folders
+        files, folders = set(), {
+            k.rsplit("/", 1)[0].casefold() for k in ALL_KEYS
+        }  # the keys' folders must stay folders
         for info in infos:
             problem = _entry_problem(info)
             if problem:
@@ -203,7 +232,7 @@ def check(path):
         try:
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
-            raise RestoreError(f"backup.xml can’t be read ({e})")
+            raise RestoreError(f"backup.xml can’t be read ({e})") from e
         _check_manifest(root, counts, any(k.casefold() in files for k in ALL_KEYS))
         # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
         byname = {i.filename.casefold(): i for i in infos}
@@ -216,35 +245,44 @@ def check(path):
 
 
 def _config(zf, info, name, what):
-    """A library/.config file of the zip (users.xml, auth.xml) checked against its schema (users.xsd, auth.xsd): its root,
-    None when the zip has none; RestoreError when it isn't valid."""
+    """A library/.config file of the zip (users.xml, auth.xml) checked against its schema (users.xsd, auth.xsd): its
+    root, None when the zip has none; RestoreError when it isn't valid."""
     if info is None:
         return None
     from importer.datapack import PARSER, schema_of  # lxml: only here, backup itself doesn't need it
     from lxml import etree
+
     if info.file_size > MAX_CONFIG:
         raise RestoreError(f"the backup’s {what} ({info.filename}) is too large")
     try:
         doc = etree.fromstring(zf.read(info), PARSER)
     except (etree.XMLSyntaxError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-        raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})")
+        raise RestoreError(f"the backup’s {what} ({info.filename}) can’t be read ({e})") from e
     schema = schema_of(name)
     if doc.tag != f"{{{CONFIG_NS}}}{name}" or not schema.validate(doc):
         why = schema.error_log.last_error.message if doc.tag == f"{{{CONFIG_NS}}}{name}" else f"its root isn’t <{name}>"
-        raise RestoreError(f"the backup’s {what} ({info.filename}) isn’t valid, so nobody could sign in after the restore ({why})")
+        raise RestoreError(
+            f"the backup’s {what} ({info.filename}) isn’t valid, so nobody could sign in after the restore ({why})"
+        )
     return doc
 
 
 def _check_manifest(root, counts, has_keys):
     bad = RestoreError("backup.xml isn’t a valid backup manifest")
-    if root.tag != "backup" or root.get("format") != "1" or not root.get("app") or root.get("keys") not in ("yes", "no"):
+    if (
+        root.tag != "backup"
+        or root.get("format") != "1"
+        or not root.get("app")
+        or root.get("keys") not in ("yes", "no")
+    ):
         raise bad
     try:
         datetime.fromisoformat(root.get("created") or "")
         got = {f.get("name"): [int(f.get("files")), int(f.get("bytes"))] for f in root.findall("folder")}
-        int(root.get("files")), int(root.get("bytes"))
-    except (TypeError, ValueError):
-        raise bad
+        int(root.get("files"))
+        int(root.get("bytes"))
+    except (TypeError, ValueError) as exc:
+        raise bad from exc
     if len(root) != 3 or got != counts:
         raise RestoreError("backup.xml doesn’t match the files in the zip")
     if has_keys and root.get("keys") != "yes":
@@ -273,7 +311,8 @@ def swap(target, new, keep=()):
         os.rmdir(old)
         raise
     os.rmdir(new)
-    # committed: renamed before it's deleted, so a swap killed while deleting isn't read as one to roll back (datapack.recover)
+    # committed: renamed before it's deleted, so a swap killed while deleting isn't read as one to roll back
+    # (datapack.recover)
     done = os.path.join(target, os.path.basename(old).replace(TEMP + "old-", TEMP + "done-", 1))
     os.replace(old, done)
     shutil.rmtree(done, ignore_errors=True)
@@ -291,7 +330,7 @@ def apply(path, dirs, version=None):
         try:
             _extract(path, dirs, news)
         except (OSError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-            raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})")
+            raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})") from e
         # ponytail: the zip is closed before the swap (Windows can't move a folder holding an open file, and the
         # applied zip may itself sit in library/.backups); a killed process can leave a folder half swapped
         # (its old files in .restore-old-*); the safety backup covers that.
@@ -314,7 +353,7 @@ def _extract(path, dirs, news):
             for info in zf.infolist():
                 if not info.filename.startswith(folder + "/") or info.filename in NEVER:
                     continue  # a zip's session or recovery-code file never lands on the server
-                dst = os.path.join(new, *info.filename[len(folder) + 1:].split("/"))
+                dst = os.path.join(new, *info.filename[len(folder) + 1 :].split("/"))
                 if info.is_dir():
                     os.makedirs(dst, exist_ok=True)
                     continue
@@ -322,12 +361,15 @@ def _extract(path, dirs, news):
                 with zf.open(info) as src, open(dst, "wb") as out:
                     shutil.copyfileobj(src, out, 1024 * 1024)
     for sub in ("", "sr6"):  # each game's .config: Anarchy's, then SR6's AI settings and keys (library/sr6/.config)
-        _keep_config(os.path.join(news["library"], sub, ".config"), os.path.join(dirs["library"], sub, ".config"), game=not sub)
+        _keep_config(
+            os.path.join(news["library"], sub, ".config"), os.path.join(dirs["library"], sub, ".config"), game=not sub
+        )
 
 
 def _keep_config(new, old, game):
     """The server's own .config files a zip without them keeps (game: Anarchy's, which also holds the cookie keys and
     the Authelia secret; else only the AI keys)."""
+
     def keep(name):
         """This server's copy of a .config file the zip doesn't bring; True when there was one."""
         if not os.path.isfile(os.path.join(old, name)) or os.path.exists(os.path.join(new, name)):
@@ -335,13 +377,19 @@ def _keep_config(new, old, game):
         os.makedirs(new, exist_ok=True)
         shutil.copy2(os.path.join(old, name), os.path.join(new, name))
         return True
-    for name in NEVER_KEPT if game else ():  # the server's own cookie keys: never in a backup, so they stay (made anew only when missing)
+
+    for name in (
+        NEVER_KEPT if game else ()
+    ):  # the server's own cookie keys: never in a backup, so they stay (made anew only when missing)
         keep(name)
     if keep("ai-keys.xml"):  # a backup without keys keeps the server's keys ...
         # ... except where the restored settings send a provider to another address (the rule saving settings keeps)
         from importer.ai import providers  # here: it needs the AI clients, which backup and check don't
+
         providers.clear_moved_keys(new, providers.saved_providers(old) or {}, providers.saved_providers(new))
-    if game and keep("auth-secret.xml"):  # likewise the Authelia client secret, only for the issuer it was given for (server/oidc.mjs)
+    if game and keep(
+        "auth-secret.xml"
+    ):  # likewise the Authelia client secret, only for the issuer it was given for (server/oidc.mjs)
         secret = _root(os.path.join(new, "auth-secret.xml"))
         if not _issuer(new) or secret is None or secret.get("issuer") != _issuer(new):
             os.remove(os.path.join(new, "auth-secret.xml"))
