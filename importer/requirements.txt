@@ -1,5 +1,5 @@
 # The importer's direct packages; requirements.lock pins the whole tree with hashes (how to recompile it: its top).
 pdfplumber==0.11.10
 pypdfium2==5.14.0
-anthropic==1.8.0
+anthropic==1.15.0
 lxml==6.1.0
