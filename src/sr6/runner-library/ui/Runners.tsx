@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, isAdmin, savesSettled, send, useMe } from '../../../core/ui-kit/auth'
 import { joined, loadCampaigns, type Campaign } from '../../../features/campaigns/campaignsStore'
 import { Modal, StateBadge } from '../../../core/ui-kit/bits'
+import { downloadFile } from '../../../core/ui-kit/download'
 import { IconButton, IconLink } from '../../../core/ui-kit/icons'
 import { arrange, ownerGroups, type SortBy } from '../../../features/runner-store/runnerList'
 import { PageHeader } from '../../../core/chrome/nav'
@@ -233,11 +234,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     }
     void refresh()
   }
-  const download = (u: Unreadable) => {
-    const url = URL.createObjectURL(new Blob([u.xml], { type: 'application/xml' }))
-    Object.assign(document.createElement('a'), { href: url, download: u.file }).click()
-    URL.revokeObjectURL(url)
-  }
+  const download = (u: Unreadable) => downloadFile(u.file, u.xml, 'application/xml')
   const tryRepair = (u: Unreadable) => {
     const r = repairSr6(u.xml)
     if (!r.ok) return setMsg(`${u.name} can’t be repaired here: ${r.reason} Download the file to keep it.`)
