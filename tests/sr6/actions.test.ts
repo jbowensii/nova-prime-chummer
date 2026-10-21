@@ -5,8 +5,8 @@ import { apply, reconcile, setMagic, setMetatype, setMethod, setPriority, type O
 import { nuyenBudget, priced } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made, STONE } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Character, type Sr6Method } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made, STONE } from './catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
 function runner(o: { method?: Sr6Method; letters?: string; metatype?: string; magic?: MagicKind; over?: Over } = {}) {

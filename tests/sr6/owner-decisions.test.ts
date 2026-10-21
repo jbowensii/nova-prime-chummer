@@ -4,15 +4,15 @@
 import { expect, test } from 'vitest'
 import { apply, type Op } from '../../src/sr6/engine/actions'
 import { allBudgets, augmentationRoom, cargoFactor, magicCap, metatypeSize } from '../../src/sr6/engine/budgets'
-import { exportSr6Runner } from '../../src/sr6/engine/export'
-import { aboutOf, runnerRules, type CreationRules, type CreationValue } from '../../src/sr6/engine/creation'
-import { qualityFitsMetatype, qualityMetatypes, sr6Data, type Sr6Data } from '../../src/sr6/engine/data'
+import { exportSr6Runner } from '../../src/sr6/foundry/domain/export'
+import { aboutOf, runnerRules, type CreationRules, type CreationValue } from '../../src/sr6/table-setup/domain/creation'
+import { qualityFitsMetatype, qualityMetatypes, sr6Data, type Sr6Data } from '../../src/sr6/catalog/domain/data'
 import { gradesFor } from '../../src/sr6/engine/grades'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Entry } from '../../src/sr6/model/types'
-import { buildOf, fixtureCatalog, fixtureCreation, STONE } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import type { Sr6Entry } from '../../src/sr6/formats/domain/types'
+import { buildOf, fixtureCatalog, fixtureCreation, STONE } from './catalog/fixture'
 
 const doc = (kind: string, rows: string) => `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="${kind}" version="1">${rows}</sr6:data>`
 // invented entries: two metatypes the posers' words name, two posers with invented descriptions, an exotic skill, ware

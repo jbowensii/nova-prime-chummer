@@ -8,7 +8,7 @@ ROOT = ("sr6", NS)  # its data root (importer/xmlio.py: the texts and sources fi
 # public/data/sr6/schema in the repo, $CA2_DATA_DIR/sr6/schema in the image
 SCHEMA_DIR = os.path.join(DATA_DIR, "sr6", "schema")
 # catalog kind (its file, custom/sr6/imported/<source>/<kind>.xml) -> entry tag, in the catalog's order. The same map is
-# SR6_KINDS in server/games.mjs and src/sr6/model/types.ts.
+# SR6_KINDS in server/games.mjs and src/sr6/formats/domain/types.ts.
 KINDS = {
     "priorities": "priority",
     "metatypes": "metatype",
@@ -59,7 +59,7 @@ KINDS = {
     "rules": "rule",
 }
 # the kinds read from the books' own sections and tables (importer/sr6/sections.py), listed as printed: DISPLAY_KINDS in
-# src/sr6/model/types.ts
+# src/sr6/formats/domain/types.ts
 SECTION_KINDS = ("actions", "packs", "vehicledesign", "ammotypes", "mentorspirits", "datastructures", "qualitypaths",
                  "spellfeatures", "contacttypes", "qualitysets", "licencetypes", "magictypes", "ruleoptions", "senses",
                  "trueelements")

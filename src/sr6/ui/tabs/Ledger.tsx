@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../core/ui-kit/bits'
 import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../engine/budgets'
 import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../engine/career'
-import { MAGIC_KINDS, metamagicFits, picksFor } from '../../engine/data'
+import { MAGIC_KINDS, metamagicFits, picksFor } from '../../catalog/domain/data'
 import {
   CORE_ATTRS,
   MAGIC_KIND_LABELS,
@@ -24,12 +24,12 @@ import {
   type Sr6Attr,
   type Sr6LedgerEntry,
   type Sr6Purchase,
-} from '../../model/character'
-import type { Sr6Entry, Sr6Kind } from '../../model/types'
+} from '../../formats/domain/character'
+import type { Sr6Entry, Sr6Kind } from '../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { CatalogPicker, isAccessory, type PickedItem } from '../Picker'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
-import { entryLabel } from '../../engine/categories'
+import { entryLabel } from '../../catalog/domain/categories'
 import { signatureOf, styleName, techniqueFits } from '../../engine/martial'
 import { awakenedFlag } from '../../engine/infected'
 import { boughtDesign } from '../../engine/design'

@@ -2,10 +2,10 @@
 // SR6 Forge validation test's idea re-expressed with invented numbers, plus the Review data (pages, unset settings,
 // entries gone from the catalog, approvals).
 import { expect, test } from 'vitest'
-import { blankSr6, type MagicKind, type PurchaseKind, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
+import { blankSr6, type MagicKind, type PurchaseKind, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
 import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
-import { runnerRules } from '../../src/sr6/engine/creation'
-import { buildOf, GLIM, made, STONE } from './fixture'
+import { runnerRules } from '../../src/sr6/table-setup/domain/creation'
+import { buildOf, GLIM, made, STONE } from './catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
 /** A legal priority runner: Stonefolk at A, attributes C (13), magic D, skills B (23), resources E (8,200¥). */

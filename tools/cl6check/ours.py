@@ -3,7 +3,7 @@
 `load(path)` takes a custom/sr6 folder, or a folder of `python -m importer sr6 check` runs (each with custom/sr6 and
 library/sr6/book1), and returns {source id: Source}. A source printed by several runs (the core rulebook in each city
 edition) is read from the run whose printing is newest (the Current Printing, else the PDF's date; ties: first in name
-order). Values stay as printed; `value()` reads them at a rating the way the app's engine does (src/sr6/engine/values.ts rated())."""
+order). Values stay as printed; `value()` reads them at a rating the way the app's engine does (src/sr6/catalog/domain/values.ts rated())."""
 import math
 import os
 import re

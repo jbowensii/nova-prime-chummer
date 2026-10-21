@@ -1,7 +1,7 @@
 """The SR6 edits layer: catalog entries changed in the app, kept apart from the imported books so a re-import never
 touches them. custom/sr6/edits/edits.xml holds the full edited entries (kind="edits", each with by="<username>"),
 texts.xml their edited descriptions (of=<kind>). S1 edits existing entries only: no new entries, no house sources.
-The client's loader (src/sr6/engine/load.ts) applies them after the imported books."""
+The client's loader (src/sr6/catalog/domain/load.ts) applies them after the imported books."""
 import functools
 import os
 import xml.etree.ElementTree as ET

@@ -6,12 +6,12 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { balances, canDraft, currentBuild, earn, ledgerRows, note, preview, record, validateCareer, voidableIds, voidEntry } from '../../src/sr6/engine/career'
-import { xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
 import { draftAgain, finalizeSr6 } from '../../src/sr6/engine/finalize'
 import { allBudgets, attrRating } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { blankSr6, type MagicKind, type Sr6Advance, type Sr6Attr, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Advance, type Sr6Attr, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const NOW = '2026-10-06T10:00:00.000Z'
 /** A finalized karma-build Glimmerkin (every core attribute and Edge 1, Magic or Resonance 1) with `karma` and `nuyen`. */

@@ -4,10 +4,10 @@ import { expect, test } from 'vitest'
 import { apply, type Op } from '../../src/sr6/engine/actions'
 import { priced } from '../../src/sr6/engine/budgets'
 import { gradeFactor, gradeFits, gradeName, gradesFor } from '../../src/sr6/engine/grades'
-import { gradeKey } from '../../src/sr6/engine/names'
+import { gradeKey } from '../../src/sr6/catalog/domain/names'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const cyber = () => made().data.entry('augmentations', 'crb.glow-eyes')!
 const bio = () => made().data.entry('augmentations', 'crb.spring-tendons')!

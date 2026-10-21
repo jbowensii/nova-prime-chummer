@@ -5,8 +5,8 @@ import { allBudgets } from '../../src/sr6/engine/budgets'
 import { preview } from '../../src/sr6/engine/career'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 function runner(magic: MagicKind = 'mundane'): Sr6Character {
   const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// The Shadowrun 6 look (src/sr6/ui/theme.css): every #/sr6 page carries it (data-game="sr6": Montserrat neon-cyan headings,
+// The Shadowrun 6 look (src/sr6/shell/ui/theme.css): every #/sr6 page carries it (data-game="sr6": Montserrat neon-cyan headings,
 // the book page's colors, light and dark, the "SHADOWRUN 6 // …" folio); Anarchy's pages keep theirs exactly; the game
 // picker mixes both (each card in its own game's look).
 const look = (page: Page) =>

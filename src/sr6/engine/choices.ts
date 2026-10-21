@@ -1,7 +1,7 @@
 // What a pick's or quality's note names: the attribute or skill a quality's choice is (`Exceptional (Attribute)`).
-import { SR6_ATTRS, type Sr6Attr } from '../model/character'
-import type { Sr6Data } from './data'
-import { normName } from './names'
+import { SR6_ATTRS, type Sr6Attr } from '../formats/domain/character'
+import type { Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 
 const ATTR_WORDS: Record<string, Sr6Attr> = {
   body: 'bod',

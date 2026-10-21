@@ -1,7 +1,7 @@
 // The compendium pages both games share (#/compendiums, #/sr6/compendiums): the list (yours, shared with you, the books),
 // New compendium / Details, the id routing, the entry table and Copy to…. A game hands in one adapter (CompGame: its
 // store, its catalog's sources, its citation) plus its own compendium and book pages; the entry rows and forms stay the
-// game's (Compendiums.tsx for Anarchy, src/sr6/ui/Compendiums.tsx for SR6). Never mixed: each adapter lists, saves and
+// game's (Compendiums.tsx for Anarchy, src/sr6/compendiums/ui/Compendiums.tsx for SR6). Never mixed: each adapter lists, saves and
 // checks only its own game's compendiums, campaigns and sources.
 import { useEffect, useState, type ReactNode } from 'react'
 import { SOURCE_ID } from '../../core/shared/source'

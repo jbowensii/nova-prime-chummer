@@ -3,8 +3,8 @@
 // that takes none, a body part installed three times, the grade caps. Invented runners on the made-up fixture.
 import { expect, test } from 'vitest'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type MagicKind, type Sr6Build, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made, STONE } from './fixture'
+import { blankSr6, type MagicKind, type Sr6Build, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made, STONE } from './catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
 function runner(o: { letters?: string; magic?: MagicKind; metatype?: string; method?: Sr6Build['method'] } = {}): Sr6Character {

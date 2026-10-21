@@ -1,6 +1,6 @@
 // Made-up vehicle design parts and vehicle mods for the Designer's tests (engine and UI): invented names and numbers.
-import { sr6Data } from '../../src/sr6/engine/data'
-import { fixtureCatalog, fixtureCreation } from './fixture'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { fixtureCatalog, fixtureCreation } from './catalog/fixture'
 
 export const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
 const at = 'source="ZZ" page="150"'

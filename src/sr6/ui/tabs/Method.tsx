@@ -15,19 +15,19 @@ import {
   type MagicKind,
   type PriorityColumn,
   type Sr6Method,
-} from '../../model/character'
+} from '../../formats/domain/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../engine/actions'
-import { flag, num, str } from '../../engine/creation'
-import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../engine/data'
+import { flag, num, str } from '../../table-setup/domain/creation'
+import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../catalog/domain/data'
 import { useState } from 'react'
 import { Stepper } from '../../../core/ui-kit/bits'
 import { awakenedFlag, boughtKind, infectedTypes, runnerInfected, type InfectedType } from '../../engine/infected'
-import { missingLabels, MissingList } from '../MissingList'
+import { missingLabels, MissingList } from '../../table-setup/ui/MissingList'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { RunnerRules } from '../RunnerRules'
 import { Sr6Ref } from '../EntryRef'
-import type { Sr6Attr } from '../../model/character'
+import type { Sr6Attr } from '../../formats/domain/character'
 
 const COLUMN_LABELS: Record<PriorityColumn, string> = {
   metatype: 'Metatype',

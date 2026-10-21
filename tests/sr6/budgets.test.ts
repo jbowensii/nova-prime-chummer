@@ -1,12 +1,12 @@
 // Itemized creation budgets (src/sr6/engine/budgets.ts) on the made-up fixture and its invented creation rules: each SR6
 // Forge budget test's idea re-expressed with invented numbers (karma 40, 3 karma per attribute rank, 1,500¥ per karma…).
 import { expect, test } from 'vitest'
-import type { MagicKind, PurchaseKind, Sr6Build, Sr6Purchase } from '../../src/sr6/model/character'
+import type { MagicKind, PurchaseKind, Sr6Build, Sr6Purchase } from '../../src/sr6/formats/domain/character'
 import { allBudgets, attrRating, augmentBonus, augmentedRating, nuyenPerKarma, priced, skillRank } from '../../src/sr6/engine/budgets'
 import { apply } from '../../src/sr6/engine/actions'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { buildOf, fixtureCatalog, GLIM, made, STONE } from './fixture'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { buildOf, fixtureCatalog, GLIM, made, STONE } from './catalog/fixture'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 
 type Over = Parameters<typeof made>[0]
 /** A priority runner: Glimmerkin at C, attributes A (22), magic B, skills D (11), resources A (420,000¥). */

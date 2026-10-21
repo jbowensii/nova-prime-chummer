@@ -10,7 +10,7 @@ import type { Codec } from '../../../core/shared/types'
 import { BAD_XML_CHAR, attrs, badCharAt, each, el, esc, escAttr, kid, kids, need, readDoc, text, type ReadOpts } from '../../../core/shared/xml'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
-/** The Shadowrun 6 runner's (src/sr6/engine/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
+/** The Shadowrun 6 runner's (src/sr6/formats/domain/charxml.ts SR6_CHAR_NS): refused here, saying where it belongs. */
 const SR6_NS = 'urn:chummer-sr6:character:1'
 
 // what XML 1.0 can't hold, the escapers, the writing and reading helpers (shared by both games: src/core/shared/xml.ts)

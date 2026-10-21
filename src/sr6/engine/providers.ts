@@ -2,9 +2,9 @@
 // adjustment and nuyen budgets, legal metatypes and magic kinds come from. Table values come from the catalog
 // (Sr6Data: priority rows, life modules), prose numbers from the creation rules (num(cr, …)); an unset setting counts 0
 // for its pool (rules.ts warns about it), nothing is guessed here.
-import { LETTERS, SR6_ATTRS, type Letter, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../model/character'
-import { flag, num, str, type CreationRules } from './creation'
-import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from './data'
+import { LETTERS, SR6_ATTRS, type Letter, type MagicKind, type Sr6Attr, type Sr6Build, type Sr6Method } from '../formats/domain/character'
+import { flag, num, str, type CreationRules } from '../table-setup/domain/creation'
+import { MAGIC_KINDS, type Grant, type Sr6Data, type Sr6LifeModuleView, type Sr6MetatypeView } from '../catalog/domain/data'
 import { boughtKind, infectedMagic } from './infected'
 
 export interface Pool {

@@ -5,11 +5,11 @@
 import { expect, test } from 'vitest'
 import { ratingEdge, specFits, weaponSkill } from '../../src/sr6/engine/derive'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { bonusSources, bracketNotes } from '../../src/sr6/engine/bonuses'
-import type { CreationValue } from '../../src/sr6/engine/creation'
-import { blankSr6, type Bonus, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import type { CreationValue } from '../../src/sr6/table-setup/domain/creation'
+import { blankSr6, type Bonus, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 const MORE: Record<string, string> = {
   'crb/skills.xml': `<skill id="crb.zapping" source="CRB" page="95" attr="agi" untrained="true"><name>Zapping</name><spec>Zappers</spec><spec>Fizzers</spec><text/></skill>

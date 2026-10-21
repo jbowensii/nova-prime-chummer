@@ -1,13 +1,13 @@
 // The Foundry module's samples (chummer-sr6-foundry samples/test-*.json), all made up: the fixture catalog plus three
 // invented books (MUS, every kind; MUX, only what Eden doesn't use; MUR, the runner's other things), a finalized mystic
-// adept, a grunt and a GM compendium. tests/sr6/export.test.ts exports them; WRITE_SR6_SAMPLES=<dir> writes the files.
-import { blankBuild, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/model/types'
-import type { Sr6Compendium } from '../../src/sr6/model/character'
-import { sr6Data } from '../../src/sr6/engine/data'
+// adept, a grunt and a GM compendium. tests/sr6/foundry/export.test.ts exports them; WRITE_SR6_SAMPLES=<dir> writes the files.
+import { blankBuild, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import type { Sr6Entry, Sr6Kind, Sr6Part } from '../../src/sr6/formats/domain/types'
+import type { Sr6Compendium } from '../../src/sr6/formats/domain/character'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { npcFromEntry } from '../../src/sr6/engine/npc'
-import { fixtureCatalog, fixtureCreation } from './fixture'
+import { fixtureCatalog, fixtureCreation } from './catalog/fixture'
 
 export const SAMPLE_OPTS = { descriptions: true, now: '2026-10-04T09:00:00.000Z', appVersion: '0.9.0' }
 /** 1×1 pictures, so a Foundry upload of them works */

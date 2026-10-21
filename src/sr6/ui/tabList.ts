@@ -1,6 +1,6 @@
 // The SR6 editor's tabs (EditorView's tab bar, Review's links to them, the page title in Sr6App)
-import { MAGIC_KINDS } from '../engine/data'
-import type { MagicKind } from '../model/character'
+import { MAGIC_KINDS } from '../catalog/domain/data'
+import type { MagicKind } from '../formats/domain/character'
 
 /** Every tab; Magic only shows for an awakened or emerged runner, titled Resonance for a technomancer, and Ledger only in
  *  career (sr6Tabs). */

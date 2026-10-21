@@ -6,7 +6,7 @@
 // martial.requires and martial.augmentation): a technique is never refused for one.
 import { useState } from 'react'
 import { Modal, Picker } from '../../../core/ui-kit/bits'
-import { num } from '../../engine/creation'
+import { num } from '../../table-setup/domain/creation'
 import {
   isSignature,
   learned,
@@ -18,7 +18,7 @@ import {
   techniqueKarma,
   techniqueName,
 } from '../../engine/martial'
-import type { Sr6Entry } from '../../model/types'
+import type { Sr6Entry } from '../../formats/domain/types'
 import { n, useSr6Editor } from '../editor'
 import { House } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'

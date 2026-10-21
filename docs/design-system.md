@@ -103,7 +103,7 @@ code change.
 ## The Shadowrun 6 look
 
 Every `#/sr6/...` page has `data-game="sr6"` on the root (App.tsx; the game picker has `"pick"`, Anarchy `"ca2"`), and
-`src/sr6/ui/theme.css` maps the tokens above to neon colors, mostly cyan (the owner's call, 0.9.7: the earlier magenta
+`src/sr6/shell/ui/theme.css` maps the tokens above to neon colors, mostly cyan (the owner's call, 0.9.7: the earlier magenta
 was too much pink): cyan for titles, outlines and the accent (`--yellow` is the accent token), neon pink second (the
 hatched heading rules, the current tab, hovers and focus), violet as a third, neon green for OK, orange for warnings and
 red for errors. Light is cool paper `#f6fafc` with deep cyan `#005c6b` and pink `#a8006a` (dark enough to read over the

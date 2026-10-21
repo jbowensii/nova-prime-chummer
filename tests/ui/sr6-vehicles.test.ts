@@ -5,12 +5,12 @@
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
 import { currentBuild } from '../../src/sr6/engine/career'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Catalog } from '../../src/sr6/model/types'
-import { Sr6EditorView } from '../../src/sr6/ui/EditorView'
-import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/fixture'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import type { Sr6Catalog } from '../../src/sr6/formats/domain/types'
+import { Sr6EditorView } from '../../src/sr6/shell/ui/EditorView'
+import { fixtureCatalog, fixtureCreation, GLIM } from '../sr6/catalog/fixture'
 import { button, change, click, fakeStore, field, mount, option, pageText, stubFetch } from './dom'
 
 const dialog = () => document.querySelector('dialog[open]')!

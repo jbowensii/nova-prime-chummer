@@ -95,8 +95,8 @@ test('the sheet’s own background art keeps the sheet’s ink readable at every
 })
 
 test('the Shadowrun 6 look keeps its text readable too, over the worst art, light and dark, on screen and on the sheet', () => {
-  // src/sr6/ui/theme.css: its tokens over app.css's (the art's veil and filter are app.css's, shared)
-  const sr6 = readFileSync('src/sr6/ui/theme.css', 'utf8').replace(/\s+/g, ' ')
+  // src/sr6/shell/ui/theme.css: its tokens over app.css's (the art's veil and filter are app.css's, shared)
+  const sr6 = readFileSync('src/sr6/shell/ui/theme.css', 'utf8').replace(/\s+/g, ' ')
   const sblock = (sel: string) => sr6.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
   const cover = Math.min(...[...art.matchAll(/var\(--bg\) (\d+)%/g)].map(m => Number(m[1]) / 100))
   const k = Number(art.match(/filter: contrast\(([\d.]+)\)/)![1])

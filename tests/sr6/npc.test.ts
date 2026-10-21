@@ -1,6 +1,6 @@
 // SR6 NPC stat blocks (src/sr6/engine/npc.ts): copied from the made-up fixture's catalog entries and read at a rating.
 import { expect, test } from 'vitest'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
 import {
   blankSr6Npc,
   bookNpc,
@@ -14,9 +14,9 @@ import {
   npcValues,
   poolText,
 } from '../../src/sr6/engine/npc'
-import type { Sr6Character } from '../../src/sr6/model/character'
-import type { Sr6Kind } from '../../src/sr6/model/types'
-import { fixtureCatalog, made } from './fixture'
+import type { Sr6Character } from '../../src/sr6/formats/domain/character'
+import type { Sr6Kind } from '../../src/sr6/formats/domain/types'
+import { fixtureCatalog, made } from './catalog/fixture'
 
 const c = fixtureCatalog(),
   { data } = made()

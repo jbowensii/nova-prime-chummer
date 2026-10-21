@@ -16,8 +16,8 @@ import {
   sensitiveFactor,
 } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { buildOf, GLIM, made } from './fixture'
-import type { Sr6Purchase } from '../../src/sr6/model/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
+import type { Sr6Purchase } from '../../src/sr6/formats/domain/character'
 
 const world = (b: ReturnType<typeof buildOf>, over?: Parameters<typeof made>[0]) => {
   const { data, cr } = made(over)

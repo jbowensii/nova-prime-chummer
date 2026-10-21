@@ -2,7 +2,7 @@
 adds up for it) with the app's (src/sr6/engine/budgets.ts, values.ts). Each runner is built from a made-up stat block
 against the made-up fixture catalog (tests/fixtures/sr6/custom, its Stonefolk renamed a troll-sized `Stone Troll`) and
 an invented book (MUP), with the fixture's creation settings. `python -m importer.tests.sr6_parity` prints JSON
-{patch, files, runners}: tests/sr6/fit-parity.test.ts loads the runner files in the engine and compares its Karma and
+{patch, files, runners}: tests/sr6/book-import/fit-parity.test.ts loads the runner files in the engine and compares its Karma and
 nuyen with fit's (`py`: nuyen the gear costs, karma and nuyen left, karma turned into nuyen). All names and numbers are
 made up."""
 import json

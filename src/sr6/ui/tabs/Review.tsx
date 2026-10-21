@@ -3,7 +3,7 @@
 // (validateCareer, already in the context), the derived values of the runner as it stands, the ledger's balances, and Back
 // to draft only while the ledger holds nothing live to undo.
 import { useRef, useState } from 'react'
-import { resolveEntry } from '../../engine/load'
+import { resolveEntry } from '../../catalog/domain/load'
 import type { Violation } from '../../../core/shared/types'
 import { Modal } from '../../../core/ui-kit/bits'
 import { balances, canDraft } from '../../engine/career'

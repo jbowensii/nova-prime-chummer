@@ -1376,7 +1376,7 @@ dialog .actions {
 }
 
 /* rules reference */
-/* Rules: a table of contents; a title opens the rule in a drawer (Rules.tsx, src/sr6/ui/Rules.tsx) */
+/* Rules: a table of contents; a title opens the rule in a drawer (Rules.tsx, src/sr6/game-data/ui/Rules.tsx) */
 .rule-toc {
   list-style: none;
   margin: 0;
@@ -2777,7 +2777,7 @@ table.data tr.group td {
   color: inherit;
   text-decoration: none;
 }
-/* SR6 NPC block (the Stat block tab's preview; src/sr6/print/sheet.css has its print look) and the stat editor */
+/* SR6 NPC block (the Stat block tab's preview; src/sr6/print/ui/sheet.css has its print look) and the stat editor */
 .sr6-npc h3 {
   margin: 0;
 }

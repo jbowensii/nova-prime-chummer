@@ -1,12 +1,12 @@
 // Old catalog ids (owner decision D2): an entry's <alias id kind> in the made-up fixture resolves its old id, and a saved
 // runner's old ids are turned into the new ones once, each recorded.
 import { expect, test } from 'vitest'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { resolveEntry } from '../../src/sr6/engine/load'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { resolveEntry } from '../../src/sr6/catalog/domain/load'
 import { migrateSr6Ids } from '../../src/sr6/engine/migrate'
-import { blankBuild, type Sr6Character } from '../../src/sr6/model/character'
-import { fixtureCatalog } from './fixture'
+import { blankBuild, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { fixtureCatalog } from './catalog/fixture'
 
 const c = fixtureCatalog()
 const runner = (over: Partial<Sr6Character['build']> = {}): Sr6Character => ({

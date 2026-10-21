@@ -16,8 +16,8 @@ import {
   voidEntry,
 } from '../../src/sr6/engine/career'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { blankBuild, blankSr6, type MagicKind, type Sr6Advance, type Sr6Character, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankBuild, blankSr6, type MagicKind, type Sr6Advance, type Sr6Character, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const NOW = '2026-10-06T10:00:00.000Z'
 function runner(o: { magic?: MagicKind; karma?: number; nuyen?: number } = {}): Sr6Character {

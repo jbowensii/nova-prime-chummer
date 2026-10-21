@@ -8,12 +8,12 @@ import { apply } from '../../src/sr6/engine/actions'
 import { licenceName, priced } from '../../src/sr6/engine/purchases'
 import { allBudgets } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
-import { availNote } from '../../src/sr6/engine/values'
+import { availNote } from '../../src/sr6/catalog/domain/values'
 import { balances, currentBuild, preview, record, voidEntry } from '../../src/sr6/engine/career'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
 import { priceAt } from '../../src/sr6/ui/Picker'
-import { blankSr6, type Sr6Build, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6, type Sr6Build, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 test('a pure licence fee is listed in words and earns a warning; a rating plus a fee shows both', () => {
   expect(availNote('15,000¥')).toEqual({

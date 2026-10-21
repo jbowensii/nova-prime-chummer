@@ -6,12 +6,12 @@ import { validateXML } from 'xmllint-wasm'
 import { expect, test } from 'vitest'
 import { apply } from '../../src/sr6/engine/actions'
 import { materialOf, priced } from '../../src/sr6/engine/budgets'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { exportSr6Runners } from '../../src/sr6/engine/export'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { exportSr6Runners } from '../../src/sr6/foundry/domain/export'
 import { effectNotes } from '../../src/sr6/print/view'
-import { blankSr6, type Sr6Purchase } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import { blankSr6, type Sr6Purchase } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 // (as the importer writes a material row, catalog.py variants: an ammunition type priced `H*N`)
 const MATERIALS = {

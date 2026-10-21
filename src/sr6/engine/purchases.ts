@@ -1,14 +1,14 @@
 // A purchase line: its catalog entry, rating, fitted accessories and price (cost, Availability, Essence), and the limits on
 // what a runner may install or carry (augmentation families, vehicle seats and cargo, foci).
-import type { PurchaseKind, Sr6Build, Sr6Purchase } from '../model/character'
-import type { Sr6Entry } from '../model/types'
-import { flag, type CreationRules } from './creation'
-import type { Sr6Data } from './data'
-import { normName } from './names'
+import type { PurchaseKind, Sr6Build, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Entry } from '../formats/domain/types'
+import { flag, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data } from '../catalog/domain/data'
+import { normName } from '../catalog/domain/names'
 import { gradeFactor, type GradeFactor } from './grades'
 import { fieldName } from '../../core/shared/formula'
-import { availability, bookValue, dataFind, ratingRange } from './values'
-import { capacityUsed, isMaterial } from './categories'
+import { availability, bookValue, dataFind, ratingRange } from '../catalog/domain/values'
+import { capacityUsed, isMaterial } from '../catalog/domain/categories'
 import { qualityChoice } from './choices'
 import { critterPrice, critterStat, critterValue } from './critters'
 

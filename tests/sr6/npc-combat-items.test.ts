@@ -5,12 +5,12 @@
 import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
-import { sr6Data } from '../../src/sr6/engine/data'
-import { exportNpc, exportSr6Runners } from '../../src/sr6/engine/export'
-import { matchKey, nameRatio } from '../../src/sr6/engine/names'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
+import { exportNpc, exportSr6Runners } from '../../src/sr6/foundry/domain/export'
+import { matchKey, nameRatio } from '../../src/sr6/catalog/domain/names'
 import { blankSr6Npc, npcCorrections, npcThings, splitThings } from '../../src/sr6/engine/npc'
-import type { Sr6Npc } from '../../src/sr6/model/character'
-import { fixtureCatalog, fixtureCreation } from './fixture'
+import type { Sr6Npc } from '../../src/sr6/formats/domain/character'
+import { fixtureCatalog, fixtureCreation } from './catalog/fixture'
 import { SAMPLE_OPTS } from './samples'
 
 const c = fixtureCatalog(),

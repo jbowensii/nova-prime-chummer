@@ -2,8 +2,8 @@
 // the derived lines, the skills with their pools and every other line as printed. A value the evaluator can't read shows
 // as printed with a warning mark.
 import { NPC_STATS, npcHeadline, npcParts, npcPools, npcValues, poolText } from '../engine/npc'
-import type { Sr6Data } from '../engine/data'
-import type { Sr6Npc } from '../model/character'
+import type { Sr6Data } from '../catalog/domain/data'
+import type { Sr6Npc } from '../formats/domain/character'
 
 const DERIVED = ['init', 'dr', 'actions', 'cm', 'move']
 

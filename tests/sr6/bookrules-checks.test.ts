@@ -7,13 +7,13 @@
 import { expect, test } from 'vitest'
 import { allBudgets, skillSpend } from '../../src/sr6/engine/budgets'
 import { preview } from '../../src/sr6/engine/career'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import type { CreationValue } from '../../src/sr6/engine/creation'
-import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import type { CreationValue } from '../../src/sr6/table-setup/domain/creation'
+import { blankSr6, type MagicKind, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 const MORE: Record<string, string> = {
   'crb/skills.xml': `<skill id="crb.exotic-weapons" source="CRB" page="95" attr="agi" untrained="false"><name>Exotic Weapons</name><text/></skill>

@@ -2,17 +2,17 @@
 // @vitest-environment node
 import { expect, test } from 'vitest'
 // @ts-expect-error: a plain .mjs tool, no types
-import { clashes, respec, target } from '../tools/arch-move.mjs'
+import { clashes, respec, selected, target } from '../tools/arch-move.mjs'
 
 test('the target rule', () => {
   expect(target('src/ui/nav.tsx', 'core/chrome')).toBe('src/core/chrome/nav.tsx')
   expect(target('src/features/runner-store/repo.ts', 'features/runner-store')).toBe('src/features/runner-store/repo.ts')
-  expect(target('src/sr6/engine/data.ts', 'sr6/catalog')).toBe('src/sr6/catalog/domain/data.ts')
+  expect(target('src/sr6/catalog/domain/data.ts', 'sr6/catalog')).toBe('src/sr6/catalog/domain/data.ts')
   expect(target('src/sr6/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
   expect(target('src/sr6/engine/budgets.ts', 'sr6/runner-builder', 'creation')).toBe('src/sr6/runner-builder/domain/creation/budgets.ts')
   expect(target('src/print/sheet.tsx', 'ca2/print')).toBe('src/ca2/print/ui/sheet.tsx')
   expect(target('src/ca2/print/ui/sheet.css', 'ca2/print')).toBe('src/ca2/print/ui/sheet.css')
-  expect(target('tests/sr6/fixture.ts', 'sr6/catalog')).toBe('tests/sr6/catalog/fixture.ts')
+  expect(target('tests/sr6/catalog/fixture.ts', 'sr6/catalog')).toBe('tests/sr6/catalog/fixture.ts')
   for (const [p, m] of [
     ['src/main.tsx', 'core/app'],
     ['tests/server/games.test.ts', 'core/shared'],
@@ -50,4 +50,11 @@ test('specifiers follow the moved file and the moved importer', () => {
   expect(respec('tests/ui/a.test.ts', '../../src/sr6/engine', moves, tracked)).toBe('../../../src/sr6/engine')
   expect(respec('src/ui/x.ts', './nowhere', moves, tracked)).toBeUndefined()
   expect(respec('src/sr6/engine/index.ts', '../../ui/x', moves, tracked)).toBeUndefined()
+})
+
+test('--except leaves one module of the batch behind', () => {
+  expect(selected('sr6/catalog', 'sr6/', 'sr6/runner-builder')).toBe(true)
+  expect(selected('sr6/runner-builder', 'sr6/', 'sr6/runner-builder')).toBe(false)
+  expect(selected('sr6/runner-builder', 'sr6/')).toBe(true)
+  expect(selected('ca2/print', 'sr6/')).toBe(false)
 })

@@ -8,10 +8,10 @@ import { powerCost } from '../../src/sr6/engine/budgets'
 import { careerPowerPoints, preview } from '../../src/sr6/engine/career'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { deriveSr6 } from '../../src/sr6/engine/derive'
-import { sr6Data } from '../../src/sr6/engine/data'
+import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './fixture'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from './catalog/fixture'
 
 function setup() {
   const data = sr6Data(

@@ -1,10 +1,10 @@
 // A hand-edited runner file's negative numbers (src/sr6/engine/rules.ts value.negative): the file still reads, Review
 // flags each one, and no GM can approve it, so a crafted negative can't turn an overspend into a refund and Finalize.
 import { expect, test } from 'vitest'
-import { sr6ToXml, xmlToSr6 } from '../../src/sr6/engine/charxml'
+import { sr6ToXml, xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
 import { canFinalizeSr6, validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { buildOf, made, STONE } from './fixture'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { buildOf, made, STONE } from './catalog/fixture'
 
 function runner(): Sr6Character {
   const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')

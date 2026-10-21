@@ -1,9 +1,9 @@
 // The karma budget: qualities, karma ranks, magic, contacts and the karma turned into nuyen.
-import { MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Build, type Sr6Quality } from '../model/character'
-import { flag, n0, num, str, type CreationRules } from './creation'
-import type { Sr6Data, Sr6QualityView } from './data'
+import { MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Build, type Sr6Quality } from '../formats/domain/character'
+import { flag, n0, num, str, type CreationRules } from '../table-setup/domain/creation'
+import type { Sr6Data, Sr6QualityView } from '../catalog/domain/data'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
-import { rated } from './values'
+import { rated } from '../catalog/domain/values'
 import { martialKarma } from './martial'
 import { entryOf, isFocus, ratingOf } from './purchases'
 import { attrRating } from './attributes'

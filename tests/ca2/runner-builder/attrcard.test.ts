@@ -8,10 +8,10 @@ import { anarchyAttrRow } from '../../../src/ca2/runner-builder/ui/AnarchyRef'
 import { augmentBonus, bonusSources } from '../../../src/sr6/engine/budgets'
 import { deriveSr6 } from '../../../src/sr6/engine/derive'
 import { makeProvider } from '../../../src/sr6/engine/providers'
-import { blankSr6, type Sr6Attr } from '../../../src/sr6/model/character'
+import { blankSr6, type Sr6Attr } from '../../../src/sr6/formats/domain/character'
 import { advanceTarget, sr6AttrRow } from '../../../src/sr6/ui/EntryRef'
 import { cat } from '../../helpers'
-import { buildOf, fixtureCatalog, GLIM, made } from '../../sr6/fixture'
+import { buildOf, fixtureCatalog, GLIM, made } from '../../sr6/catalog/fixture'
 
 function sr6Runner() {
   const ch = blankSr6('priority', 'r1', '2026-10-10T00:00:00Z')

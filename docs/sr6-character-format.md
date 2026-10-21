@@ -2,7 +2,7 @@
 
 A Shadowrun 6 runner is one XML file, apart from Anarchy's: the server stores it in `characters/sr6/<username>/`
 (`/api/sr6/characters`), and **Export** on the SR6 runners page downloads it. The schema is
-`public/data/sr6/schema/character.xsd` (namespace `urn:chummer-sr6:character:1`); `src/sr6/engine/charxml.ts` reads and
+`public/data/sr6/schema/character.xsd` (namespace `urn:chummer-sr6:character:1`); `src/sr6/formats/domain/charxml.ts` reads and
 writes it. Each game refuses the other's file and says where it belongs.
 
 The file holds what the player chose and spent, never totals: budgets, rule checks and derived values (monitors, Defense
@@ -265,7 +265,7 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
   Professional Rating, Force or Level; `group` a grunt's.
 - `<stat key value>`: a printed value (key `a`–`z`, at most 20 letters; value at most 80 characters, e.g. `F+1`).
 - `<line part>`: `skills`, `powers`, `optionalPowers`, `spells`, `weaknesses`, `attacks`, `augmentations`, `gear` or `weapons`.
-- A critter the GM designs (the Design tab, `src/sr6/engine/critterdesign.ts`) has `designed="true"`, its
+- A critter the GM designs (the Design tab, `src/sr6/npcs/domain/critterdesign.ts`) has `designed="true"`, its
   initiative dice in `dice`, and after its lines `<power id? name level? note?>` and `<weakness id? name level? note?>`
   (catalog critter powers by id; none: not in the catalog) and `<skill id? name rank spec?>`. Its `skills`, `powers`
   and `weaknesses` lines are generated from them; its `cm`, `dr` and `init` stats are derived unless the GM typed

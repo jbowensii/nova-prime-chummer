@@ -2,9 +2,9 @@
 // docs/sr6-data-format.md): a value the book misprints (the Face's earbuds at rating 4, CRB p. 85) is set right for the
 // app's numbers while the runner file keeps the book's. Applied wherever a runner is read (the editor, Your runners, the
 // export); Review notes each correction instead of the error.
-import type { SampleCorrection, Sr6Character, Sr6Purchase } from '../model/character'
-import type { Sr6Catalog } from '../model/types'
-import { atLevel, familyOf, levelOf } from './levels'
+import type { SampleCorrection, Sr6Character, Sr6Purchase } from '../formats/domain/character'
+import type { Sr6Catalog } from '../formats/domain/types'
+import { atLevel, familyOf, levelOf } from '../catalog/domain/levels'
 
 /** The sample id a runner was loaded from (`CRB|crb.face` -> `crb.face`), or undefined. */
 const sampleOf = (ch: Pick<Sr6Character, 'sampleKey'>) => ch.sampleKey?.split('|')[1]

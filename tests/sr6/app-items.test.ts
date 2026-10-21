@@ -7,10 +7,10 @@ import { apply } from '../../src/sr6/engine/actions'
 import { allBudgets, nuyenPerKarma, statusesOf, toNuyen } from '../../src/sr6/engine/budgets'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6, type Sr6Character } from '../../src/sr6/model/character'
-import { gainedEntry, sr6Data } from '../../src/sr6/engine/data'
+import { blankSr6, type Sr6Character } from '../../src/sr6/formats/domain/character'
+import { gainedEntry, sr6Data } from '../../src/sr6/catalog/domain/data'
 import { infectedOf } from '../../src/sr6/engine/infected'
-import { buildOf, fixtureCatalog, GLIM, made } from './fixture'
+import { buildOf, fixtureCatalog, GLIM, made } from './catalog/fixture'
 
 const NOW = '2026-10-16T10:00:00.000Z'
 /** A finalized karma-build Glimmerkin with 100 karma and 5,000¥. */

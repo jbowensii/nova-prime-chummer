@@ -6,8 +6,8 @@ import { allBudgets } from '../../src/sr6/engine/budgets'
 import { draftAgain, finalizeSr6 } from '../../src/sr6/engine/finalize'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { buildOf, made, STONE } from './fixture'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { buildOf, made, STONE } from './catalog/fixture'
 
 const NOW = '2026-10-03T12:00:00.000Z'
 function setup() {

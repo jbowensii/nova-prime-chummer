@@ -3,11 +3,11 @@
 // listed first), through runnerRules so the engine never sees the other; Review notes a runner's choice set aside.
 // Made-up fixture, invented values.
 import { expect, test } from 'vitest'
-import { applyDeps, blockedBy, mergeRules, nested, runnerRules, type CreationRules, type CreationValue } from '../../src/sr6/engine/creation'
+import { applyDeps, blockedBy, mergeRules, nested, runnerRules, type CreationRules, type CreationValue } from '../../src/sr6/table-setup/domain/creation'
 import { makeProvider } from '../../src/sr6/engine/providers'
 import { validateSr6 } from '../../src/sr6/engine/rules'
-import { blankSr6 } from '../../src/sr6/model/character'
-import { buildOf, GLIM, made } from './fixture'
+import { blankSr6 } from '../../src/sr6/formats/domain/character'
+import { buildOf, GLIM, made } from './catalog/fixture'
 
 const rules = (r: Record<string, CreationValue>) => made({ rules: r })
 const vals = (cr: CreationRules, ...keys: string[]) => keys.map(k => cr.get(k)?.value)
