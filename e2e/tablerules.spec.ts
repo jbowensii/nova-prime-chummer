@@ -191,16 +191,21 @@ test('the same switch twice during a slow save ends as the last click; a failed 
   const haggles = gm.getByRole('switch', { name: 'Long haggles' }),
     streets = gm.getByRole('switch', { name: 'Quieter streets' })
   await expect(haggles).not.toBeChecked()
-  let n = 0
+  let n = 0,
+    done = 0
   await page.route('**/api/table-rules', async r => {
     if (n++ === 0) await new Promise(ok => setTimeout(ok, 800))
-    await r.continue()
+    await r.fulfill({ response: await r.fetch() }) // the server has the save once this returns
+    done++
   })
   await haggles.click() // on (slow)
   await haggles.click() // off again, after the first
   await haggles.click() // on: the last click
+  // "Long haggles is on." is also what the first save says, so it can't tell the last save is done: wait for all three (one per
+  // click, in order) before reloading, or the reload can cut the last one off and leave the rule as the second click saved it
+  await expect.poll(() => done).toBe(3)
   await expect(gm.getByRole('status')).toHaveText('Long haggles is on.')
-  expect(n).toBeGreaterThanOrEqual(2) // queued clicks may be sent as one save of the latest state
+  expect(n).toBe(3)
   await page.unroute('**/api/table-rules')
   await page.reload()
   await expect(haggles).toBeChecked()

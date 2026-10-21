@@ -315,6 +315,8 @@ test('someone else signing in in another tab: this page’s change is refused, n
   await other.goto('/')
   await menu(other, 'Pat Player').click()
   await other.getByRole('button', { name: 'Sign out' }).click()
+  // signing out ends in a reload of the tab: wait for the signed-out page it lands on, or the next goto is aborted by it
+  await expect(other.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await signIn(other, 'ada', PW.ada)
   const put = page.waitForResponse(r => r.request().method() === 'PUT')
   await page.getByLabel('Street name').fill('Pat Other Tab')
