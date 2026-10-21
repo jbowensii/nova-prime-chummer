@@ -2,9 +2,10 @@
 cyberdeck cases, components and modifications, data taps, tag bombs, commlink hacks, coding tools, commlink apps,
 agents, cyberkits, codemods: electronics and gear), cyberprograms, complex forms, echoes, sprites, qualities, the
 matrix security NPCs, a vehicle and a weapon, and the rule sections (hosts, IC, foundations, resonance realms,
-virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private texts. Reads
-only regrouped.md with the core rulebook's reading (catalog.read); the book's own shapes through
+virtual life: no catalog kind of their own), ids unscoped (run scopes them as hs.<slug>), descriptions in the private
+texts. Reads only regrouped.md with the core rulebook's reading (catalog.read); the book's own shapes through
 importer/sr6/shapes.py. Layout notes in hs.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -21,17 +22,48 @@ PAGE_OFFSET = 1  # printed page = PDF page - 1
 END_PAGE = 185  # PDF page: the back cover
 ALIASES = {}
 # first header cells that make a table a catalog in regroup (its rows are items)
-NAME_HEADERS = frozenset({"ITEM", "RATING", "APP", "CODING LIBRARY", "AGENT RATING", "COMMLINK HACKS", "MATRIX RELAY", "DATA TAP",
-                          "TAG ABUSE", "CASE TYPE", "CASE MODIFICATION", "INTERNAL COMPONENT", "COMPONENT",
-                          "ATTRIBUTE CODEMODS", "CORE CODEMODS", "PROCESSOR CODEMODS", "INPUT / OUTPUT CODEMODS",
-                          "DIGITAL WEAPON CODEMODS"})
+NAME_HEADERS = frozenset(
+    {
+        "ITEM",
+        "RATING",
+        "APP",
+        "CODING LIBRARY",
+        "AGENT RATING",
+        "COMMLINK HACKS",
+        "MATRIX RELAY",
+        "DATA TAP",
+        "TAG ABUSE",
+        "CASE TYPE",
+        "CASE MODIFICATION",
+        "INTERNAL COMPONENT",
+        "COMPONENT",
+        "ATTRIBUTE CODEMODS",
+        "CORE CODEMODS",
+        "PROCESSOR CODEMODS",
+        "INPUT / OUTPUT CODEMODS",
+        "DIGITAL WEAPON CODEMODS",
+    }
+)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"qualities", "sprites"}
 LABEL_SECTIONS = {}  # (the echoes, programs and critter powers listed as run-ins: sections.py reads them in every book)
-RULE_CHAPTERS = ("wild and free", "field guide to hacking", "gadgets and gizmos", "elegant architecture",
-                 "digital toolbox", "techno tools", "points of sprite", "quality hacking", "union forever",
-                 "virtual life", "at the base", "infinite memory", "know your enemy", "matrix business")
+RULE_CHAPTERS = (
+    "wild and free",
+    "field guide to hacking",
+    "gadgets and gizmos",
+    "elegant architecture",
+    "digital toolbox",
+    "techno tools",
+    "points of sprite",
+    "quality hacking",
+    "union forever",
+    "virtual life",
+    "at the base",
+    "infinite memory",
+    "know your enemy",
+    "matrix business",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
 _GENERIC = {"ITEM", "NAME", "APP", "GEAR", "COMPONENT"}  # a first header naming no category
@@ -44,6 +76,7 @@ _PR_NAME = re.compile(r"^(.+?)\s*\(Professional Rating\s*(\d+)\)\s*$", re.I)
 
 
 def match(meta, md_head):
+    """How well a book fits this recipe: 1.0 by its hash, 0.9 for a Hack & Slash title, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -69,8 +102,11 @@ def kind(chapter, b, parent2):
         return k, cat or k
     if b.type == "section" and b.level == 3 and {"cost", "bonus"} & labels and "quality hacking" in chapter:
         return "qualities", "negative" if "bonus" in labels else "positive"
-    if b.type == "item" and {"cost", "bonus"} & labels and ("qualit" in sec or "qualit" in norm(b.name)
-                                                           or "quality hacking" in chapter):
+    if (
+        b.type == "item"
+        and {"cost", "bonus"} & labels
+        and ("qualit" in sec or "qualit" in norm(b.name) or "quality hacking" in chapter)
+    ):
         return "qualities", "negative" if "bonus" in labels else "positive"
     if b.type == "item" and any(k.startswith("fade") for k in labels):
         return "complexforms", None
@@ -101,8 +137,9 @@ def prepare(bs):
                 for item, r in zip([b for b in bs if b.label == "dataterms"], rs):
                     idx = bs.index(item)
                     extra = dict(zip(h, r))
-                    bs[idx] = replace(item, row={**item.row, **extra},
-                                      header=list(item.row) + [c for c in h if c not in item.row])
+                    bs[idx] = replace(
+                        item, row={**item.row, **extra}, header=list(item.row) + [c for c in h if c not in item.row]
+                    )
                 break
     bs = shapes.boxes(bs)
     rated = {}  # (chapter, name) -> rows of that name
@@ -117,8 +154,11 @@ def prepare(bs):
             labels.update({parts[i].strip(): parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)})
         b = replace(b, labels=labels)
         if m := _FADE.search(b.text):
-            b = replace(b, labels={**b.labels, "Fade Value": m.group(1), "Duration": m.group(2)},
-                        text=(b.text[:m.start()] + b.text[m.end():]).strip())
+            b = replace(
+                b,
+                labels={**b.labels, "Fade Value": m.group(1), "Duration": m.group(2)},
+                text=(b.text[: m.start()] + b.text[m.end() :]).strip(),
+            )
         if b.type == "section" and (m := _PR_NAME.match(b.tags)):
             pr = (norm(m.group(1)), m.group(1), m.group(2))  # the next box of this name is this NPC
         if b.stats and not b.row and pr and norm(b.name) == pr[0]:
@@ -130,16 +170,18 @@ def prepare(bs):
             b = catalog.text_stats(replace(b, type="item", level=4), catalog.HEADERS["sprites"])
         if b.row is not None:
             b = _row_name(b, rated)
-            if (m := _RECHARGE.match(b.row.get("COST (RECHARGE)", ""))):  # a cyberkit's price and its recharge's
-                row = {("COST" if h == "COST (RECHARGE)" else h): (m.group(1) if h == "COST (RECHARGE)" else v)
-                       for h, v in b.row.items()}
+            if m := _RECHARGE.match(b.row.get("COST (RECHARGE)", "")):  # a cyberkit's price and its recharge's
+                row = {
+                    ("COST" if h == "COST (RECHARGE)" else h): (m.group(1) if h == "COST (RECHARGE)" else v)
+                    for h, v in b.row.items()
+                }
                 b = replace(b, row={**row, "RECHARGE": m.group(2)}, header=[*row, "RECHARGE"])
             key = (norm(b.name), tuple(b.row.values()))
             if key in seen:
                 continue  # a row printed twice (two tables run together)
             seen.add(key)
         if b.name.startswith("Complex Form: "):
-            b = replace(b, name=b.name[len("Complex Form: "):])
+            b = replace(b, name=b.name[len("Complex Form: ") :])
         if m := re.match(r"^(.+?)\s*\(((?:Positive|Negative) Quality)\)$", b.name):
             b = replace(b, name=m.group(1), tags=m.group(2))  # (its kind a tag: sections.KIND_SUFFIX)
         out.append(b)
@@ -161,4 +203,5 @@ def _row_name(b, rated):
 
 
 def extract(regrouped, ctx=None):
+    """The Hack & Slash book's catalog files, read from its regrouped markdown."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

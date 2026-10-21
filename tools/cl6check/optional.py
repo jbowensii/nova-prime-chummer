@@ -1,6 +1,7 @@
 """Commlink6 records the analysis counts as matched without a catalog entry (optional_package.json): `optional` ones
 are differences we ship as an optional data package (docs/sr6-cl6-optional-package.md), `relocated` ones are in our
 catalog under another source than Commlink6 cites."""
+
 import json
 from pathlib import Path
 
@@ -10,9 +11,12 @@ HAVE = Path(__file__).with_name("relocated.json")
 
 
 def load(path=FILE):
+    """The optional and relocated rows of the file at `path`, each keyed by (source, Commlink6 id)."""
     d = json.loads(Path(path).read_text(encoding="utf8"))
-    return ({(r["src"], r["cl6_id"]): r for r in d.get("optional", [])},
-            {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])})
+    return (
+        {(r["src"], r["cl6_id"]): r for r in d.get("optional", [])},
+        {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])},
+    )
 
 
 def load_accept(path=ACCEPT):
@@ -32,8 +36,10 @@ KEEP = Path(__file__).with_name("value_keep.json")
 
 
 def load_keep(path=KEEP):
-    """{(src, kind, our id, field)} of the field values the PDF's text layer shows as printed (value_keep.json `keep`: the
-    owner's 2026-10-14 check of the 361 reviewed rows): a difference from Commlink6 there is a verified printed one, class b."""
+    """{(src, kind, our id, field)} of the field values the PDF's text layer shows as printed (value_keep.json `keep`:
+    the owner's 2026-10-14 check of the 361 reviewed rows): a difference from Commlink6 there is a verified printed one,
+    class b.
+    """
     d = json.loads(Path(path).read_text(encoding="utf8"))
     return {tuple(k[:4]) for k in d.get("keep", [])}
 
@@ -42,8 +48,8 @@ VERDICT = ("src", "kind", "cl6_id", "cl6_name", "our_id", "field", "cl6", "ours"
 
 
 def load_verdicts(path=KEEP):
-    """{(src, kind, cl6_id, cl6_name, our_id, field, cl6, ours)} of the owner's verdicts that ours is right where the book
-    is cited (value_keep.json `verdicts`, each with its page and reason): that difference is class b while both values stay
-    the ones ruled on; a change to either makes it a new difference, settled again."""
+    """{(src, kind, cl6_id, cl6_name, our_id, field, cl6, ours)} of the owner's verdicts that ours is right where the
+    book is cited (value_keep.json `verdicts`, each with its page and reason): that difference is class b while both
+    values stay the ones ruled on; a change to either makes it a new difference, settled again."""
     d = json.loads(Path(path).read_text(encoding="utf8"))
     return {tuple(v[k] for k in VERDICT) for v in d.get("verdicts", [])}

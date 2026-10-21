@@ -5,6 +5,7 @@ name's first word (same line first), from pdfplumber's words. `crop(pdf, page, n
 of the page with pypdfium2 (a row and a row and a half above and below, for the neighbours) and saves it as a PNG.
 `sheet(crops, out)` stacks labelled crops into one image to read at once. No OCR: a person (or Claude) reads the
 image and records a verdict in the owner's verdicts file (trace.py)."""
+
 import re
 
 SCALE = 4  # 288 dpi
@@ -33,7 +34,7 @@ def locate(words, name, value):
         for v in vals:
             dy, dx = abs((v["top"] + v["bottom"]) / 2 - (a["top"] + a["bottom"]) / 2), v["x0"] - a["x0"]
             score = dy * 3 + (abs(dx) * 0.05 if dx >= 0 else 200 + abs(dx))
-            if best is None or score < best[0]:
+            if best is None or score < best[0]:  # pylint: disable=unsubscriptable-object  # best is a tuple here
                 best = (score, a, v)
     if best is None or best[0] > 400:
         return None
@@ -46,6 +47,7 @@ def crop(pdf, page, name, value, out, pad_rows=1.5, pages=(0, 1, -1)):
     neighbours. Returns (page, bbox) or None."""
     import pdfplumber
     import pypdfium2 as pdfium
+
     with pdfplumber.open(pdf) as d:
         for off in pages:
             p = page + off
@@ -60,8 +62,12 @@ def crop(pdf, page, name, value, out, pad_rows=1.5, pages=(0, 1, -1)):
             return None
     x0, top, x1, bottom = box
     row = max(8.0, bottom - top)
-    band = (max(0, x0 - 20), max(0, top - row * pad_rows - 4), min(width, max(x1 + 60, x0 + 320)),
-            bottom + row * pad_rows + 4)
+    band = (
+        max(0, x0 - 20),
+        max(0, top - row * pad_rows - 4),
+        min(width, max(x1 + 60, x0 + 320)),
+        bottom + row * pad_rows + 4,
+    )
     doc = pdfium.PdfDocument(pdf)
     img = doc[p - 1].render(scale=SCALE).to_pil()
     img.crop(tuple(int(c * SCALE) for c in band)).save(out)
@@ -72,6 +78,7 @@ def crop(pdf, page, name, value, out, pad_rows=1.5, pages=(0, 1, -1)):
 def sheet(items, out, width=1400):
     """Stack [(label, png path)] into one image, each crop under its label."""
     from PIL import Image, ImageDraw
+
     tiles = []
     for label, path in items:
         im = Image.open(path)

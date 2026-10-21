@@ -105,13 +105,14 @@ BT /F1 10 Tf 340 730 Td (Side1) Tj ET
 # indented to x=320. Clean x-gap and 2+ lines per side, but the two sides
 # never share a vertical band, so it is one column read top to bottom.
 # Two body lines follow the block so a false split would reorder them.
-BULLETS_INDENT_OPS = "".join(
-    f"BT /F1 10 Tf 72 {750 - 20 * i} Td (- Bullet {i}) Tj ET\n" for i in range(6)
-) + """BT /F1 10 Tf 320 610 Td (Indented one) Tj ET
+BULLETS_INDENT_OPS = (
+    "".join(f"BT /F1 10 Tf 72 {750 - 20 * i} Td (- Bullet {i}) Tj ET\n" for i in range(6))
+    + """BT /F1 10 Tf 320 610 Td (Indented one) Tj ET
 BT /F1 10 Tf 320 590 Td (Indented two) Tj ET
 BT /F1 10 Tf 72 570 Td (After one) Tj ET
 BT /F1 10 Tf 72 550 Td (After two) Tj ET
 """
+)
 
 # Word x positions per line (10pt Helvetica, 4-letter words ~22pt wide).
 # Lines 0-2 share a 30pt gap at x~217..247; lines 3-7 have a word over it.
@@ -150,10 +151,9 @@ def _build_pdf(pages_ops: list[str]) -> bytes:
 
     objects = [
         b"<< /Type /Catalog /Pages %d 0 R >>" % pages_id,
-        b"<< /Type /Pages /Kids [%s] /Count %d >>"
-        % (b" ".join(b"%d 0 R" % pid for pid in page_ids), n_pages),
+        b"<< /Type /Pages /Kids [%s] /Count %d >>" % (b" ".join(b"%d 0 R" % pid for pid in page_ids), n_pages),
     ]
-    for page_id, content_id in zip(page_ids, content_ids):
+    for _, content_id in zip(page_ids, content_ids):
         objects.append(
             (
                 b"<< /Type /Page /Parent %d 0 R /MediaBox [0 0 612 792] "
@@ -297,7 +297,9 @@ _BOX_RULES = """72 700 m 472 700 l S
 BT /F1 10 Tf 80 685 Td (MADE UP BOX) Tj ET
 """
 BOXED_COLUMNS_OPS = _BOX_RULES + "".join(
-    f"BT /F1 10 Tf {x} {665 - 15 * i} Td ({side} words on line {i}) Tj ET\n" for x, side in ((80, "left"), (280, "right")) for i in range(5)
+    f"BT /F1 10 Tf {x} {665 - 15 * i} Td ({side} words on line {i}) Tj ET\n"
+    for x, side in ((80, "left"), (280, "right"))
+    for i in range(5)
 )
 # A box holding a label/value list: labels at x=80, one-word values at x=420, five rows. Nothing
 # crosses the gap, but the values aren't running text: rows stay rows.
@@ -307,9 +309,11 @@ BOXED_LABELS_OPS = _BOX_RULES + "".join(
 )
 # The same box with a table row under the text that runs across the gutter (1 line in 11, under the
 # page-level 10% crossing allowance): rows stay rows.
-BOXED_TABLE_OPS = BOXED_COLUMNS_OPS + """BT /F1 10 Tf 80 575 Td (Row label that runs long enough to cross the middle) Tj ET
+BOXED_TABLE_OPS = (
+    BOXED_COLUMNS_OPS + """BT /F1 10 Tf 80 575 Td (Row label that runs long enough to cross the middle) Tj ET
 BT /F1 10 Tf 420 575 Td (7) Tj ET
 """
+)
 
 
 def boxed_columns_pdf() -> bytes:
@@ -404,29 +408,50 @@ def _sr6_cell(x, y, text, font="F1"):
 # striped one-cell sub-heading and a last plain row. Then text in two columns, a full-width heading and a sidebar in
 # two columns whose gutter sits 10 pt right of the body's (no one strip is clear in both).
 _SR6_LEFT = "lorem lorem lorem lorem lorem lorem lorem "  # 7 x (2333 + 250) / 1000 x 10.5 = 189.84 pt, then 'aN'
-SR6_GRID_OPS = ("0.9 g 72 690 78 16 re f 150 690 80 16 re f 230 690 100 16 re f\n"
-                "72 660 78 16 re f 150 660 80 16 re f 230 660 100 16 re f\n"
-                "72 630 258 15 re f 72 600 258 15 re f 0 g\n"
-                + _sr6_cell(162, 701.5, "UNIT", "F2") + _sr6_cell(80, 697, "THING", "F2")
-                + _sr6_cell(275, 697, "NOTES", "F2") + _sr6_cell(162, 692.5, "PRICE", "F2")
-                + _sr6_cell(80, 681, "Widget") + _sr6_cell(170, 681, "5") + _sr6_cell(233, 681, "a small note")
-                + _sr6_cell(80, 671, "Big Long") + _sr6_cell(80, 664, "Widget") + _sr6_cell(170, 667.5, "8")
-                + _sr6_cell(233, 667.5, "a big note")
-                + _sr6_cell(80, 651, "Gizmo") + _sr6_cell(170, 651, "7") + _sr6_cell(233, 651, "b note")
-                + "BT /F2 7 Tf 80 635 Td (Extras:) Tj /F1 7 Tf ( spare parts) Tj ET\n"
-                + _sr6_cell(80, 621, "Doohickey") + _sr6_cell(170, 621, "9") + _sr6_cell(233, 621, "c note")
-                + _sr6_cell(80, 605, "Spare Kit", "F2")
-                + _sr6_cell(80, 590, "Sprocket") + _sr6_cell(170, 590, "2") + _sr6_cell(233, 590, "d note")
-                + "".join(f"BT /F3 10.5 Tf 90.16 {540 - 13 * i} Td ({_SR6_LEFT}a{i}) Tj ET\n"
-                          f"BT /F3 10.5 Tf 304 {540 - 13 * i} Td (b{i} lorem lorem lorem lorem) Tj ET\n" for i in range(4))
-                + "BT /F4 13 Tf 72 470 Td (A Sidebar Title Across The Two Text Columns) Tj ET\n"
-                + "".join(f"BT /F3 10.5 Tf 100.16 {450 - 13 * i} Td ({_SR6_LEFT}c{i}) Tj ET\n"
-                          f"BT /F3 10.5 Tf 314 {450 - 13 * i} Td (d{i} lorem lorem lorem lorem) Tj ET\n" for i in range(4)))
+SR6_GRID_OPS = (
+    "0.9 g 72 690 78 16 re f 150 690 80 16 re f 230 690 100 16 re f\n"
+    "72 660 78 16 re f 150 660 80 16 re f 230 660 100 16 re f\n"
+    "72 630 258 15 re f 72 600 258 15 re f 0 g\n"
+    + _sr6_cell(162, 701.5, "UNIT", "F2")
+    + _sr6_cell(80, 697, "THING", "F2")
+    + _sr6_cell(275, 697, "NOTES", "F2")
+    + _sr6_cell(162, 692.5, "PRICE", "F2")
+    + _sr6_cell(80, 681, "Widget")
+    + _sr6_cell(170, 681, "5")
+    + _sr6_cell(233, 681, "a small note")
+    + _sr6_cell(80, 671, "Big Long")
+    + _sr6_cell(80, 664, "Widget")
+    + _sr6_cell(170, 667.5, "8")
+    + _sr6_cell(233, 667.5, "a big note")
+    + _sr6_cell(80, 651, "Gizmo")
+    + _sr6_cell(170, 651, "7")
+    + _sr6_cell(233, 651, "b note")
+    + "BT /F2 7 Tf 80 635 Td (Extras:) Tj /F1 7 Tf ( spare parts) Tj ET\n"
+    + _sr6_cell(80, 621, "Doohickey")
+    + _sr6_cell(170, 621, "9")
+    + _sr6_cell(233, 621, "c note")
+    + _sr6_cell(80, 605, "Spare Kit", "F2")
+    + _sr6_cell(80, 590, "Sprocket")
+    + _sr6_cell(170, 590, "2")
+    + _sr6_cell(233, 590, "d note")
+    + "".join(
+        f"BT /F3 10.5 Tf 90.16 {540 - 13 * i} Td ({_SR6_LEFT}a{i}) Tj ET\n"
+        f"BT /F3 10.5 Tf 304 {540 - 13 * i} Td (b{i} lorem lorem lorem lorem) Tj ET\n"
+        for i in range(4)
+    )
+    + "BT /F4 13 Tf 72 470 Td (A Sidebar Title Across The Two Text Columns) Tj ET\n"
+    + "".join(
+        f"BT /F3 10.5 Tf 100.16 {450 - 13 * i} Td ({_SR6_LEFT}c{i}) Tj ET\n"
+        f"BT /F3 10.5 Tf 314 {450 - 13 * i} Td (d{i} lorem lorem lorem lorem) Tj ET\n"
+        for i in range(4)
+    )
+)
 
 
 # Lookalikes that are no tables: a numbered list with bold run-in lead-ins, and a stat-box label alone in its column
 # (prose beside it in the other). Then a table whose header is set a point smaller than its rows.
-SR6_LOOKALIKE_OPS = ("""BT /F2 8 Tf 72 700 Td (1.) Tj ET
+SR6_LOOKALIKE_OPS = (
+    """BT /F2 8 Tf 72 700 Td (1.) Tj ET
 BT /F2 8 Tf 90 700 Td (Easy thing to do for a made up person) Tj ET
 BT /F2 8 Tf 90 690 Td (and talking.) Tj /F1 8 Tf ( More plain words) Tj ET
 BT /F1 7 Tf 72 650 Td (Quick Step 2,) Tj ET
@@ -441,20 +466,33 @@ BT /F1 7 Tf 150 490 Td (Tingle) Tj ET
 BT /F2 6 Tf 72 600 Td (TONIC IS:) Tj ET
 BT /F2 6 Tf 150 600 Td (AVAIL) Tj ET
 BT /F2 6 Tf 220 600 Td (COST) Tj ET
-""" + _sr6_cell(72, 590, "Fizz Pop") + _sr6_cell(150, 590, "2(L)") + _sr6_cell(220, 590, "20")
-                     + _sr6_cell(72, 580, "Glow Juice") + _sr6_cell(150, 580, "4") + _sr6_cell(220, 580, "75/")
-                     + _sr6_cell(220, 572, "80")
-                     + _sr6_cell(72, 562, "Zing-") + _sr6_cell(72, 555, "Zang") + _sr6_cell(150, 558.5, "1")
-                     + _sr6_cell(220, 558.5, "5"))
+"""
+    + _sr6_cell(72, 590, "Fizz Pop")
+    + _sr6_cell(150, 590, "2(L)")
+    + _sr6_cell(220, 590, "20")
+    + _sr6_cell(72, 580, "Glow Juice")
+    + _sr6_cell(150, 580, "4")
+    + _sr6_cell(220, 580, "75/")
+    + _sr6_cell(220, 572, "80")
+    + _sr6_cell(72, 562, "Zing-")
+    + _sr6_cell(72, 555, "Zang")
+    + _sr6_cell(150, 558.5, "1")
+    + _sr6_cell(220, 558.5, "5")
+)
 
 
 # Two text columns 1.5 pt apart (less than a word space: no whitespace gutter), the left one written first in the
 # content stream: 41 Times-Roman glyphs of width 500 at 10.5 pt end at 72 + 215.25. Under the left column, a line
 # opening with a tiny glyph raised 4 pt, then a bold label set at 9 pt and its value at 10.5, 0.5 pt lower.
-SR6_TIGHT_OPS = ("".join(f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4))
-                 + "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\nBT /F2 9 Tf 80 644 Td (Points:) Tj ET\n"
-                 "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n"
-                 + "".join(f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4)))
+SR6_TIGHT_OPS = (
+    "".join(f"BT /F3 10.5 Tf 72 {700 - 14 * i} Td ({'o' * 40}{i}) Tj ET\n" for i in range(4))
+    + (
+        "BT /F1 3.8 Tf 72 648 Td (\267) Tj ET\n"
+        "BT /F2 9 Tf 80 644 Td (Points:) Tj ET\n"
+        "BT /F3 10.5 Tf 118 643.5 Td (2) Tj ET\n"
+    )
+    + "".join(f"BT /F3 10.5 Tf 288.75 {700 - 14 * i} Td (right{i} words) Tj ET\n" for i in range(4))
+)
 
 
 def sr6_layout_pdf() -> bytes:
@@ -469,14 +507,18 @@ def sr6_layout_pdf() -> bytes:
 # Genuine double letters (Arrow, Kill) and a line whose words split after a ligature. Then a page drawn once with a
 # faux-bold heading (drawn twice in a row, 0.3 pt apart). All made up.
 def _doubled_layer(dx, dy, hd):
-    return (f"BT /F4 13 Tf {72 + hd} {700 + hd} Td (Arrow Kill Drill) Tj ET\n"
-            f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj ET\n"
-            + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5))
+    return (
+        f"BT /F4 13 Tf {72 + hd} {700 + hd} Td (Arrow Kill Drill) Tj ET\n"
+        f"BT /F2 10.5 Tf {72 + hd} {682 - hd} Td (Bold Lead:) Tj /F3 10.5 Tf ( the fi rst offi ce was diffi cult) Tj "
+        "ET\n" + _sr6_lines(72 + dx, 664 + dy, "Plain words for the doubled page, line", 5)
+    )
 
 
 SR6_DOUBLED_OPS = _doubled_layer(0, 0, 0) + _doubled_layer(0.01, -0.01, 2) + "BT /F3 10.5 Tf 300 20 Td (9) Tj ET\n"
-SR6_FAUX_BOLD_OPS = ("BT /F4 13 Tf 72 700 Td (Faux Bold Heading) Tj ET\nBT /F4 13 Tf 72.3 700 Td (Faux Bold Heading) Tj ET\n"
-                     + _sr6_lines(72, 680, "Plain words for the single page, line", 5))
+SR6_FAUX_BOLD_OPS = (
+    "BT /F4 13 Tf 72 700 Td (Faux Bold Heading) Tj ET\nBT /F4 13 Tf 72.3 700 Td (Faux Bold Heading) Tj ET\n"
+    + _sr6_lines(72, 680, "Plain words for the single page, line", 5)
+)
 
 
 def sr6_doubled_pdf() -> bytes:
@@ -497,24 +539,40 @@ def _magazine_head(n):
 
 def _box(y):
     line = "box words run across both of the columns on this page " * 2
-    return ("BT /F4 13 Tf 60 470 Td (Box Title) Tj ET\n"
-            + "".join(f"BT /F3 10.5 Tf 60 {y - 14 * i} Td ({line}{i}) Tj ET\n" for i in range(6)))
+    return "BT /F4 13 Tf 60 470 Td (Box Title) Tj ET\n" + "".join(
+        f"BT /F3 10.5 Tf 60 {y - 14 * i} Td ({line}{i}) Tj ET\n" for i in range(6)
+    )
 
 
 SR6_MAGAZINE_OPS = [
-    _magazine_head(1) + "BT /F4 40 Tf 72 650 Td (CHAPTER ONE) Tj ET\n" + _sr6_lines(72, 620, "Opening words of the book", 6),
-    _magazine_head(2) + "BT /F4 21 Tf 90 690 Td (Game Information) Tj ET\n"
-    + _sr6_lines(90, 670, "Left words", 2) + "BT /F4 15 Tf 90 642 Td (POSITIVE QUALITIES) Tj ET\n"
-    + "BT /F4 13 Tf 90 628 Td (Cool Thing) Tj ET\n" + _sr6_lines(90, 614, "Cool words", 3)
-    + "BT /F4 13 Tf 330 663 Td (Other Thing) Tj ET\n" + _sr6_lines(330, 642, "Right words", 6) + _box(450),
-    _magazine_head(3) + "BT /F4 9 Tf 72 704 Td (Kicker Part:) Tj ET\nBT /F4 13 Tf 72 690 Td (Third Thing) Tj ET\n" + _sr6_lines(72, 670, "Third words", 4),
-    _magazine_head(4) + "BT /F4 13 Tf 72 690 Td (Fourth Thing) Tj ET\n" + _sr6_lines(72, 670, "Fourth words", 4)
+    _magazine_head(1)
+    + "BT /F4 40 Tf 72 650 Td (CHAPTER ONE) Tj ET\n"
+    + _sr6_lines(72, 620, "Opening words of the book", 6),
+    _magazine_head(2)
+    + "BT /F4 21 Tf 90 690 Td (Game Information) Tj ET\n"
+    + _sr6_lines(90, 670, "Left words", 2)
+    + "BT /F4 15 Tf 90 642 Td (POSITIVE QUALITIES) Tj ET\n"
+    + "BT /F4 13 Tf 90 628 Td (Cool Thing) Tj ET\n"
+    + _sr6_lines(90, 614, "Cool words", 3)
+    + "BT /F4 13 Tf 330 663 Td (Other Thing) Tj ET\n"
+    + _sr6_lines(330, 642, "Right words", 6)
+    + _box(450),
+    _magazine_head(3)
+    + "BT /F4 9 Tf 72 704 Td (Kicker Part:) Tj ET\nBT /F4 13 Tf 72 690 Td (Third Thing) Tj ET\n"
+    + _sr6_lines(72, 670, "Third words", 4),
+    _magazine_head(4)
+    + "BT /F4 13 Tf 72 690 Td (Fourth Thing) Tj ET\n"
+    + _sr6_lines(72, 670, "Fourth words", 4)
     + "".join(_sr6_cell(x, 600, t, "F2") for x, t in ((140, "HAND"), (180, "ACCEL"), (220, "BOD"), (250, "COST")))
     + "".join(_sr6_cell(x, 590, t) for x, t in ((140, "3/4"), (180, "9"), (220, "6"), (250, "900")))
     + "".join(_sr6_cell(x, 608, t, "F2") for x, t in ((320, "PILOT"), (360, "SEAT"), (400, "AVAIL"), (440, "COST")))
     + "".join(_sr6_cell(x, 598, t) for x, t in ((320, "2"), (360, "1"), (400, "3"), (440, "700"))),
-    _magazine_head(5) + "".join(f"BT /F3 10.5 Tf 90 {690 - 14 * i} Td (Fifth left words {i}) Tj ET\n"
-                                f"BT /F3 10.5 Tf 330 {690 - 14 * i} Td (Fifth right words {i}) Tj ET\n" for i in range(5))
+    _magazine_head(5)
+    + "".join(
+        f"BT /F3 10.5 Tf 90 {690 - 14 * i} Td (Fifth left words {i}) Tj ET\n"
+        f"BT /F3 10.5 Tf 330 {690 - 14 * i} Td (Fifth right words {i}) Tj ET\n"
+        for i in range(5)
+    )
     + "BT /F4 13 Tf 90 600 Td (Boxed Gadget) Tj ET\n"
     + "".join(_sr6_cell(x, 585, t, "F2") for x, t in ((90, "SIZE"), (200, "MODE"), (330, "AVAIL"), (450, "COST")))
     + "".join(_sr6_cell(x, 575, t) for x, t in ((90, "1-6"), (200, "SA"), (330, "4"), (450, "900"))),
@@ -522,4 +580,5 @@ SR6_MAGAZINE_OPS = [
 
 
 def sr6_magazine_pdf() -> bytes:
+    """The bytes of a made-up SR6 magazine PDF."""
     return _build_pdf(SR6_MAGAZINE_OPS)

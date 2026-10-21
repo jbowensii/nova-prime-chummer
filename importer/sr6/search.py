@@ -5,11 +5,13 @@ corpus, and the errata; the owner, phase 2C):
    for `Laser microphone`) and has a column for the field: a summary table, a gear list in another chapter, a
    comparison table, the implant table that prices an implant weapon;
 2. text: a sentence of the same book that prints the field's value with its word (`ratings 1 to 6`, `Availability
-   4`, `costs 500¥`): the item's own description first, then the text under a heading of its name, then the text of the heading it is printed under (`All
-   skillsofts are available in ratings from 1 to 6` over `Activesofts`), then any sentence naming it.
+   4`, `costs 500¥`): the item's own description first, then the text under a heading of its name, then the text of the
+   heading it is printed under (`All skillsofts are available in ratings from 1 to 6` over `Activesofts`), then any
+   sentence naming it.
 
 Several different values found in one circle is no value (the issue stays). Nothing here names an item: the readers
 are the books' column headers and value words."""
+
 import re
 import unicodedata
 
@@ -17,13 +19,34 @@ import unicodedata
 _NUM = r"\d[\d,]*(?:\.\d+)?"
 TEXT = {
     "rating": [
-        (re.compile(r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)\s*(?:ratings?\s+)?(\d+)\b", re.I), "range"),
+        (
+            re.compile(
+                r"\bratings?\s*(?:of\s+|from\s+|between\s+|range\s+from\s+)?(\d+)\s*(?:–|-|to|through|and)"
+                r"\s*(?:ratings?\s+)?(\d+)\b",
+                re.I,
+            ),
+            "range",
+        ),
         (re.compile(r"\b(?:maximum|max\.?)\s+rating\s*(?:is\s+|of\s+)?(\d+)\b", re.I), "max"),
-        (re.compile(r"\b(?:cannot|can\s+not|may\s+not)\s+(?:go\s+)?(?:above|over|exceed|beyond)\s+(?:a\s+)?rating\s+(?:of\s+)?(\d+)\b", re.I), "max"),
+        (
+            re.compile(
+                r"\b(?:cannot|can\s+not|may\s+not)\s+(?:go\s+)?(?:above|over|exceed|beyond)\s+(?:a\s+)"
+                r"?rating\s+(?:of\s+)?(\d+)\b",
+                re.I,
+            ),
+            "max",
+        ),
         (re.compile(r"\bratings?\s+up\s+to\s+(\d+)\b|\bup\s+to\s+(?:a\s+)?rating\s+(?:of\s+)?(\d+)\b", re.I), "max"),
     ],
-    "avail": [(re.compile(r"\bavailability\s*(?:of\s+|is\s+|:\s*)?(\d+\s*(?:\(\s*[LIF]\s*\)|[LIF]\b)?)(?![\d¥,])", re.I), "one")],
-    "cost": [(re.compile(r"\b(?:costs?|priced\s+at|price\s+(?:is|of))\s*:?\s*(" + _NUM + r")\s*(?:¥|nuyen)", re.I), "one")],
+    "avail": [
+        (
+            re.compile(r"\bavailability\s*(?:of\s+|is\s+|:\s*)?(\d+\s*(?:\(\s*[LIF]\s*\)|[LIF]\b)?)(?![\d¥,])", re.I),
+            "one",
+        )
+    ],
+    "cost": [
+        (re.compile(r"\b(?:costs?|priced\s+at|price\s+(?:is|of))\s*:?\s*(" + _NUM + r")\s*(?:¥|nuyen)", re.I), "one")
+    ],
     # (a negative quality's own text may say `Gain N Karma`; a sentence buying one off prices its removal: _BUY_OFF)
     "karma": [(re.compile(r"\b(?:costs?|bonus\s+of|for|^gain)\s*:?\s*(\d+)\s+karma\b", re.I), "one")],
     "essence": [(re.compile(r"\bessence(?:\s+cost)?\s*(?:of\s+|is\s+|:\s*)(\d*\.\d+|\d+)\b", re.I), "one")],
@@ -38,6 +61,7 @@ _DASH = re.compile(r"\s*(?:[—–-]+|n/a)[*†]?\s*", re.I)
 
 
 def norm(s):
+    """`s` lower-cased and without accents, quotes and punctuation, for matching names."""
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c)).lower().replace("&", " and ")
     s = re.sub(r"['‘’\"“”]", "", s)
@@ -65,9 +89,16 @@ def good(field, v):
     if not v or _DASH.fullmatch(v):
         return False
     if field == "avail":
-        return bool(re.fullmatch(r"\+?" + _AVAIL.pattern, v) or re.fullmatch(r"\(?rating\)?\s*(?:\(\s*[LIF]\s*\)|[LIF])?", v, re.I))
+        return bool(
+            re.fullmatch(r"\+?" + _AVAIL.pattern, v)
+            or re.fullmatch(r"\(?rating\)?\s*(?:\(\s*[LIF]\s*\)|[LIF])?", v, re.I)
+        )
     if field == "cost":
-        return bool(re.fullmatch(r"\+?\s*" + _NUM + r"\s*¥?|(?:rating|capacity|force|level)\s*[x×*]\s*" + _NUM + r"\s*¥?", v, re.I))
+        return bool(
+            re.fullmatch(
+                r"\+?\s*" + _NUM + r"\s*¥?|(?:rating|capacity|force|level)\s*[x×*]\s*" + _NUM + r"\s*¥?", v, re.I
+            )
+        )
     if field == "rating":
         return bool(_RANGE.fullmatch(v) or re.fullmatch(r"\d+", v))
     if field == "capacity" and _RANGE.fullmatch(v):
@@ -86,6 +117,7 @@ def good(field, v):
 
 
 def clean(v, field):
+    """A table cell `v` cleaned for `field`: spaces collapsed, a cost without thousands commas or the nuyen sign."""
     v = " ".join((v or "").split())
     if field == "cost":
         v = re.sub(r"(?<=\d),(?=\d{3})", "", v).replace("¥", "").strip()
@@ -97,6 +129,7 @@ def clean(v, field):
 
 
 def sentences(text):
+    """The sentences of a book text, hyphenated line breaks joined."""
     t = re.sub(r"(\w)-\n(\w)", r"\1\2", text or "")
     t = " ".join(t.split())
     return [s for s in re.split(r"(?<=[.!?])\s+(?=[A-Z•(])", t) if s]
@@ -156,7 +189,9 @@ class Index:
                 self.rows += [(page, n, cells) for n in dict.fromkeys(x for x in (first, b.name) if x)]
             for s in b.stats:
                 hs = list(s)
-                named = hs and not re.search(r"\b(?:DV|AR|AVAIL|COST|RATING|ESSENCE|DEFENSE|HANDLING|SEATS)\b", up(hs[0]))
+                named = hs and not re.search(
+                    r"\b(?:DV|AR|AVAIL|COST|RATING|ESSENCE|DEFENSE|HANDLING|SEATS)\b", up(hs[0])
+                )
                 if named and s[hs[0]].strip():
                     self.rows.append((page, s[hs[0]], {up(h): s[h] for h in hs[1:]}))
                 else:
@@ -198,8 +233,11 @@ class Index:
             self._sents = [(p, s, " " + norm(s) + " ", b) for p, b, t in self.paras for s in sentences(t)]
         n = " " + norm(name) + " "
         plural = n[:-1] + "s "
-        return [(p, s) for p, s, ns, b in self._sents
-                if len(n) > 4 and (n in ns or plural in ns or names_item(b, name) and norm(b) == norm(name))]
+        return [
+            (p, s)
+            for p, s, ns, b in self._sents
+            if len(n) > 4 and (n in ns or plural in ns or names_item(b, name) and norm(b) == norm(name))
+        ]
 
 
 def _kind_row(kind, cells):
@@ -212,8 +250,13 @@ def same_row(index, headers, kind, entry, field, value):
     """{field: value} of the other columns of the one row that gave `value` for `field` (a row naming the item):
     the gaps it fills too. {} when several rows gave it."""
     cols = columns(headers, kind, field)
-    rows = [cells for _, row, cells in index.rows if any(names_item(row, n) for n in [entry["name"], *entry.get("aliases", ())])
-            and _kind_row(kind, cells) and any(clean(cells.get(h, ""), field) == value for h in cols)]
+    rows = [
+        cells
+        for _, row, cells in index.rows
+        if any(names_item(row, n) for n in [entry["name"], *entry.get("aliases", ())])
+        and _kind_row(kind, cells)
+        and any(clean(cells.get(h, ""), field) == value for h in cols)
+    ]
     if len(rows) != 1:
         return {}
     out = {}
@@ -251,7 +294,9 @@ def search_book(index, headers, kind, entry, field, own_text):
         return next(iter(own)), "text", entry["page"]
     if own:
         return None
-    if (head := index.under(names)) and len(vals := text_values(field, sentences(head[1]))) == 1:  # (a table row's item: the text under the heading of its name)
+    if (head := index.under(names)) and len(
+        vals := text_values(field, sentences(head[1]))
+    ) == 1:  # (a table row's item: the text under the heading of its name)
         return next(iter(vals)), "text", head[0]
     above = next((index.parents[norm(n)] for n in names if norm(n) in index.parents), None)
     if above and len(vals := text_values(field, sentences(above[1]))) == 1:

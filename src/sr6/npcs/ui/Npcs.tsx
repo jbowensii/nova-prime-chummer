@@ -19,7 +19,7 @@ import { inBatches, Modal, Working, type Busy } from '../../../core/ui-kit/bits'
 import { loadCampaigns, type Campaign } from '../../../features/campaigns/campaignsStore'
 import { ExportRunnersDialog } from '../../../features/foundry-kit/foundryKit'
 import { IconButton, IconLink } from '../../../core/ui-kit/icons'
-import { arrange, ownerGroups, type SortBy, unedited } from '../../../features/runner-store/runnerList'
+import { arrange, ownerGroups, type SortBy } from '../../../features/runner-store/runnerList'
 import { PageHeader } from '../../../core/chrome/nav'
 import { Face } from '../../../core/ui-kit/Portrait'
 import type { Stored as StoredComp } from '../../../features/compendiums/compendiumStore'
@@ -31,18 +31,10 @@ import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { critterAsEntry } from '../../formats/domain/compendium'
 import { designCritter } from '../domain/critterdesign'
-import {
-  blankSr6Npc,
-  bookNpc,
-  bookNpcKey,
-  bookNpcVersions,
-  NPC_KINDS,
-  npcFromEntry,
-  npcKindOf,
-  type BookNpcVersion,
-} from '../../runner-builder/domain/creation/npc'
-import { SR6_NPC_KINDS, type Sr6Character, type Sr6NpcKind } from '../../formats/domain/character'
-import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
+import { atRating, bookNpcsToLoad, byRating, gruntRatings, nameOf, npcGroups, oldContact, tidyBookCopies, versionsOf } from '../domain/bookNpcs'
+import { blankSr6Npc, bookNpc, NPC_KINDS, npcFromEntry, npcKindOf } from '../../runner-builder/domain/creation/npc'
+import { type Sr6Character, type Sr6NpcKind } from '../../formats/domain/character'
+import type { Sr6Catalog } from '../../formats/domain/types'
 import type { Sr6Compendium } from '../../formats/domain/character'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows, saveSr6Compendium } from '../../compendiums/ui/compendiumStore'
 import { npcChip, npcSection, sr6NpcHref } from '../../runner-builder/ui/editor'
@@ -55,82 +47,8 @@ const SECTIONS: Record<Section, { label: string; href: string; kinds: Sr6NpcKind
   npcs: { label: 'NPCs', href: '#/sr6/npcs', kinds: ['grunt', 'contact'], noun: 'NPC' },
   critters: { label: 'Critters', href: '#/sr6/npcs/critters', kinds: ['critter', 'spirit', 'sprite'], noun: 'critter' },
 }
-const nameOf = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed NPC'
-
-/** The book NPCs' versions (bookNpcVersions); a compendium's (a source of origin user) never: those are moved, not copied. */
-const versionsOf = (entries: Sr6Entry[], sources: Sr6Catalog['sources']) =>
-  bookNpcVersions(
-    entries.filter(e => sources.get(e.source)?.origin !== 'user'),
-    sources,
-  )
-
-/** The book NPCs Load book NPCs adds, each with the name it loads under: per version, its earliest printing, unless the
- *  book key of one of its printings is the sampleKey of one of `mine` (a renamed copy counts). */
-export function bookNpcsToLoad(entries: Sr6Entry[], mine: Sr6Character[], sources: Sr6Catalog['sources']): { e: Sr6Entry; name: string }[] {
-  const have = new Set(mine.map(ch => ch.sampleKey))
-  return versionsOf(entries, sources)
-    .filter(v => !v.entries.some(e => have.has(bookNpcKey(e))))
-    .map(v => ({ e: v.entries[0], name: v.name }))
-}
-
-/** Tidy book copies: among `mine`'s untouched book copies (a book key the catalog has, unedited since loaded: saved once),
- *  one per version stays, the copy of its earliest printing (then the oldest); the others go to the NPC trash. The one
- *  that stays is renamed when its name isn't its version's ("Fuzzbeast #2"). NPCs the GM made or changed never count. */
-export function tidyBookCopies(mine: Stored<Sr6Character>[], entries: Sr6Entry[], sources: Sr6Catalog['sources']) {
-  const at = new Map(versionsOf(entries, sources).flatMap(v => v.entries.map((e, i) => [bookNpcKey(e), { v, i }] as const)))
-  const copies = new Map<BookNpcVersion, { s: Stored<Sr6Character>; i: number }[]>()
-  for (const s of mine) {
-    const a = s.ch.sampleKey ? at.get(s.ch.sampleKey) : undefined
-    if (a && unedited(s.ch, s.rev)) copies.set(a.v, [...(copies.get(a.v) ?? []), { s, i: a.i }])
-  }
-  const trash: Stored<Sr6Character>[] = [],
-    rename: { s: Stored<Sr6Character>; name: string }[] = []
-  for (const [v, cs] of copies) {
-    const [keep, ...extra] = cs.sort((a, b) => a.i - b.i || a.s.ch.updatedAt.localeCompare(b.s.ch.updatedAt))
-    trash.push(...extra.map(x => x.s))
-    if (nameOf(keep.s.ch) !== v.name) rename.push({ s: keep.s, name: v.name })
-  }
-  return { trash, rename }
-}
-
 /** Where a book copy came from: "WL p.112". */
 const fromOf = (ch: Sr6Character) => (ch.npc?.from ? `${ch.npc.from.source} p.${ch.npc.from.page}` : (ch.sampleKey?.split('|')[0] ?? ''))
-
-/** A copy of a book sample contact that 0.9.0 loaded as a grunt of group Contact. */
-export const oldContact = (ch: Sr6Character) => !!ch.sampleKey && ch.npc?.kind === 'grunt' && ch.npc.group === 'Contact' && ch.npc.rating == null
-
-/** Grunts by Professional Rating, lowest first; null (none printed) last. */
-export function byRating(entries: Sr6Entry[]): [number | null, Sr6Entry[]][] {
-  const groups = new Map<number | null, Sr6Entry[]>()
-  for (const e of entries) {
-    const r = Number(e.attrs.rating) || null
-    groups.set(r, [...(groups.get(r) ?? []), e])
-  }
-  return [...groups].sort(([a], [b]) => (a ?? Infinity) - (b ?? Infinity))
-}
-
-/** The list's groups, in kind order then rating (none last), each keeping the list's order: "Grunts, Professional Rating 2",
- *  "Contacts", "Critters", "Spirits, Force 4", "Sprites, Level 3". */
-export function npcGroups<T extends { ch: Sr6Character }>(rows: T[]): [string, T[]][] {
-  const groups = new Map<string, { at: number; r: number; rows: T[] }>()
-  for (const x of rows) {
-    const npc = x.ch.npc,
-      kind = npc?.kind ?? 'grunt',
-      k = NPC_KINDS[kind],
-      r = npc?.rating
-    const label = `${k.label}s${k.rating ? (r != null ? `, ${k.rating.label} ${r}` : `, no ${k.rating.label}`) : ''}`
-    const g = groups.get(label) ?? { at: SR6_NPC_KINDS.indexOf(kind), r: r ?? Infinity, rows: [] }
-    groups.set(label, { ...g, rows: [...g.rows, x] })
-  }
-  return [...groups].sort(([, a], [, b]) => a.at - b.at || a.r - b.r).map(([label, g]) => [label, g.rows])
-}
-
-/** The Professional Ratings the grunts in the list have, lowest first (the picker beside the search). */
-export const gruntRatings = (rows: { ch: Sr6Character }[]) =>
-  [...new Set(rows.flatMap(({ ch }) => (ch.npc?.kind === 'grunt' && ch.npc.rating != null ? [ch.npc.rating] : [])))].sort((a, b) => a - b)
-/** The rows at a Professional Rating ('': all of them); a rating leaves out whatever has none (contacts, critters). */
-export const atRating = <T extends { ch: Sr6Character }>(rows: T[], pr: string): T[] =>
-  pr === '' ? rows : rows.filter(({ ch }) => ch.npc?.rating === Number(pr) && ch.npc.kind === 'grunt')
 
 export function Sr6Npcs({
   c,

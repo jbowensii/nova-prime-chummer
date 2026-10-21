@@ -1,5 +1,6 @@
 """The rules the Firing Squad round added (general first, then the FS recipe's), each on made-up lines. Every name,
 number and line here is invented."""
+
 import os
 import tempfile
 import unittest
@@ -10,15 +11,21 @@ from importer.sr6 import shapes
 from importer.sr6.recipes import crb, fs
 from tools.cl6check import fields, match
 
+# pylint: disable=protected-access
+
 
 def run_fs(md):
+    """Regroup `md` the way the FS recipe reads it and extract it."""
     regrouped, _ = regroup.regroup(md, fs.ALIASES, name_headers=fs.NAME_HEADERS, end_page=150)
     return fs.extract(regrouped)
 
 
 def entries(res, kind):
-    return {e.findtext("name"): (e.attrib, [(c.tag, dict(c.attrib), c.text) for c in e])
-            for e in ET.fromstring(res.files[f"{kind}.xml"])}
+    """{name: (attributes, children)} of the `kind` file the extraction wrote."""
+    return {
+        e.findtext("name"): (e.attrib, [(c.tag, dict(c.attrib), c.text) for c in e])
+        for e in ET.fromstring(res.files[f"{kind}.xml"])
+    }
 
 
 BOOK_MD = """<!-- page 10 -->
@@ -101,7 +108,9 @@ class FsRoundRulesTest(unittest.TestCase):
         the brand's items, named `Qux Retro <row>`, searched as `Retro <row>` and `Qux <row>`, the brand their maker;
         the generic `Bonk Stick` of its own heading stays apart (its own id and stats)."""
         a, kids = self.w["Qux Retro Bonk Stick"]
-        self.assertEqual((a["id"], a["maker"], a["dv"], a["cost"]), ("qux-retro-bonk-stick", "Qux Retro Line", "2S", "125"))
+        self.assertEqual(
+            (a["id"], a["maker"], a["dv"], a["cost"]), ("qux-retro-bonk-stick", "Qux Retro Line", "2S", "125")
+        )
         self.assertEqual([t for c, _, t in kids if c == "alias"], ["Retro Bonk Stick", "Qux Bonk Stick"])
         self.assertEqual((self.w["Bonk Stick"][0]["dv"], self.w["Bonk Stick"][0]["cost"]), ("3S", "75"))
         self.assertNotIn("This attack rating used meters † Max", " ".join(self.w))  # (a garbled footnote row)
@@ -121,7 +130,9 @@ class FsRoundRulesTest(unittest.TestCase):
         self.assertEqual((a["modes"], a["cost"]), ("SA/BF", "5200"))  # (the mark's footnote is its note)
         self.assertIn(("note", {"field": "modes"}, "Wide Burst adds 1 DV"), kids)
         h = self.w["Huff"][0]
-        self.assertEqual((h["type"], h["modes"], h["dv"]), ("Machine Gun", "SA/BF/FA", "5P"))  # (a row set on two lines)
+        self.assertEqual(
+            (h["type"], h["modes"], h["dv"]), ("Machine Gun", "SA/BF/FA", "5P")
+        )  # (a row set on two lines)
 
     def test_sections_a_sibling_set_too_deep_and_a_new_quality(self):
         acts = entries(self.res, "actions")
@@ -166,8 +177,10 @@ class FsRecipeHintsTest(unittest.TestCase):
         self.assertEqual((armor["Dazzle Coat"][0]["group"], armor["Dazzle Coat"][0]["cost"]), ("Glim House", "4500"))
         self.assertNotIn("Armor Vest", armor)  # (the list's other rows: its text doesn't name them)
         w = entries(res, "weapons")
-        self.assertEqual((w["Under Rail Mount"][0]["cost"], w["Zap Gun"][0]["group"], w["Blip Gun"][0]["cost"]),
-                         ("500", "Under Rail Mount", "800"))
+        self.assertEqual(
+            (w["Under Rail Mount"][0]["cost"], w["Zap Gun"][0]["group"], w["Blip Gun"][0]["cost"]),
+            ("500", "Under Rail Mount", "800"),
+        )
 
 
 ADDON_MD = """<!-- page 10 -->
@@ -212,6 +225,7 @@ A made-up name printed with a letter three times.
 
 class AddOnsTest(unittest.TestCase):
     """Supplies and accessories an item's text prices (owner, 2026-10-08), and a letter printed three times."""
+
     @classmethod
     def setUpClass(cls):
         cls.res = run_fs(ADDON_MD)
@@ -225,15 +239,23 @@ class AddOnsTest(unittest.TestCase):
 
     def test_refills_replacement_parts_and_a_price_line(self):
         got = {n: (self.g[n][0]["cost"], self.g[n][0]["supplyOf"]) for n in self.g if n.startswith("Fizz Sprayer ")}
-        self.assertEqual(got, {"Fizz Sprayer refill": ("15", "fizz-sprayer"), "Fizz Sprayer nozzle set": ("5", "fizz-sprayer"),
-                               "Fizz Sprayer replacement tank": ("20", "fizz-sprayer"),
-                               "Fizz Sprayer replacement glow lamp": ("20", "fizz-sprayer")})
+        self.assertEqual(
+            got,
+            {
+                "Fizz Sprayer refill": ("15", "fizz-sprayer"),
+                "Fizz Sprayer nozzle set": ("5", "fizz-sprayer"),
+                "Fizz Sprayer replacement tank": ("20", "fizz-sprayer"),
+                "Fizz Sprayer replacement glow lamp": ("20", "fizz-sprayer"),
+            },
+        )
         self.assertEqual((self.g["Zorp lore"][0]["avail"], self.g["Zorp lore"][0]["cost"]), ("3", "1200"))
 
     def test_accessories_and_their_effects(self):
         a, kids = self.w["Zorp Zapper steady grip-brace"]
         self.assertEqual((a["accessoryOf"], a["cost"], a["category"]), ("zorp-zapper", "60", "Weapon accessory"))
-        self.assertEqual([x for c, x, _ in kids if c == "effect"], [{"target": "item:ar", "op": "add", "value": "0,0,2,2,0"}])
+        self.assertEqual(
+            [x for c, x, _ in kids if c == "effect"], [{"target": "item:ar", "op": "add", "value": "0,0,2,2,0"}]
+        )
         self.assertEqual(self.w["Zorp Zapper glow scope"][0]["cost"], "30")
 
     def test_an_additional_price_is_an_accessory_of_its_box(self):
@@ -253,7 +275,14 @@ class SmallRulesTest(unittest.TestCase):
         self.assertEqual(formula.read("75¥ (per individual zap)]"), ("Q*75", {"unit": "individual zap", "each": True}))
         self.assertEqual(formula.read("additional 100¥"), ("B + 100", {}))
         kids = formula.children("weapons", {"cost": "75 (per individual zap)"}, 3)
-        self.assertIn(("issue", {"field": "qty", "code": "missing", "page": 3}, "the most one buys (individual zap) isn't printed"), kids)
+        self.assertIn(
+            (
+                "issue",
+                {"field": "qty", "code": "missing", "page": 3},
+                "the most one buys (individual zap) isn't printed",
+            ),
+            kids,
+        )
         self.assertTrue(catalog._MULTIPLE.match("x2¥"))
 
     def test_group_names_keep_their_capitals(self):
@@ -261,38 +290,61 @@ class SmallRulesTest(unittest.TestCase):
         self.assertEqual(catalog.group_name("Zap patches"), "Zap patch")
 
     def test_a_style_heading_naming_two(self):
-        b = regroup.Block("item", "Zap Fu and Blip Fu", "HONING YOUR EDGE", "Martial Arts", "", 9,
-                          labels={"Signature Technique": "Zip Kick (Blip Fu)/Zap Punch (Zap Fu)"})
-        self.assertEqual([(x.name, x.labels["Signature Technique"]) for x in shapes.martial_pair(b)],
-                         [("Zap Fu", "Zap Punch"), ("Blip Fu", "Zip Kick")])
+        b = regroup.Block(
+            "item",
+            "Zap Fu and Blip Fu",
+            "HONING YOUR EDGE",
+            "Martial Arts",
+            "",
+            9,
+            labels={"Signature Technique": "Zip Kick (Blip Fu)/Zap Punch (Zap Fu)"},
+        )
+        self.assertEqual(
+            [(x.name, x.labels["Signature Technique"]) for x in shapes.martial_pair(b)],
+            [("Zap Fu", "Zap Punch"), ("Blip Fu", "Zip Kick")],
+        )
 
     def test_a_step_granting_a_quality_described_under_it(self):
         r, out = sections.Reader(), []
         md = [("## Quality Paths", 2), ("### Made Path", 3), ("#### Step 1: Glum or Perky", 4), ("##### Glum", 5)]
         for name, lv in md:
             text = "Receive the Glum quality." if lv == 4 else "Made-up glumness."
-            out += r.feed(regroup.Block("section" if lv < 4 else "item", name.lstrip("# "), "VIOLENT ENDS", "", "", 9,
-                                        text=text, level=lv), 9)
+            out += r.feed(
+                regroup.Block(
+                    "section" if lv < 4 else "item", name.lstrip("# "), "VIOLENT ENDS", "", "", 9, text=text, level=lv
+                ),
+                9,
+            )
         self.assertEqual(sorted(f.name for f in out if f.kind == "qualities"), ["Glum", "Perky"])
 
     def test_cl6check(self):
         self.assertEqual(fields.bands("10/9/3†/—/—"), fields.bands("10,9,3,,"))
-        self.assertIn("ZQ Glow Coat", match.initials({"name": "Glow Coat", "aliases": [], "attrs": {"group": "Zip Quux"}}))
-        ours = [{"name": "Glow Coat", "aliases": [], "attrs": {}, "kind": "armor", "page": 3},
-                {"name": "Qux Retro Glow Coat", "aliases": [], "attrs": {}, "kind": "armor", "page": 4}]
-        hit = match.match([{"name": "Glow Coat (Qux Retro)", "aliases": [], "page": 3, "kind": "armor", "pool": ("armor",)}], ours)
+        self.assertIn(
+            "ZQ Glow Coat", match.initials({"name": "Glow Coat", "aliases": [], "attrs": {"group": "Zip Quux"}})
+        )
+        ours = [
+            {"name": "Glow Coat", "aliases": [], "attrs": {}, "kind": "armor", "page": 3},
+            {"name": "Qux Retro Glow Coat", "aliases": [], "attrs": {}, "kind": "armor", "page": 4},
+        ]
+        hit = match.match(
+            [{"name": "Glow Coat (Qux Retro)", "aliases": [], "page": 3, "kind": "armor", "pool": ("armor",)}], ours
+        )
         self.assertEqual([o["name"] for o in hit[0][1]], ["Qux Retro Glow Coat"])
 
     def test_old_ids_of_a_split_heading_and_a_qualifier_read_as_a_field(self):
         head = '<?xml version="1.0" encoding="UTF-8"?>\n'
+
         def data(kind, *es):
             body = "".join(f'<{kind[:-1]} id="{i}"><name>{n}</name></{kind[:-1]}>' for i, n in es)
             return f'{head}<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="{kind}" version="1">{body}</sr6:data>\n'
+
         d = tempfile.mkdtemp()
         with open(os.path.join(d, "weapons.xml"), "w", encoding="utf8") as f:
             f.write(data("weapons", ("zz.zap-and-blip", "Zap and Blip"), ("zz.bonk-gun-cannon", "Bonk Gun (Cannon)")))
-        out, n = moved.carry(moved.previous(d), {"weapons.xml": data("weapons", ("zz.zap", "Zap"), ("zz.blip", "Blip"),
-                                                                     ("zz.bonk-gun", "Bonk Gun"))})
+        out, n = moved.carry(
+            moved.previous(d),
+            {"weapons.xml": data("weapons", ("zz.zap", "Zap"), ("zz.blip", "Blip"), ("zz.bonk-gun", "Bonk Gun"))},
+        )
         self.assertEqual(n, 2)
         self.assertIn('<name>Zap</name><alias id="zz.zap-and-blip"/>', out["weapons.xml"])
         self.assertIn('<name>Bonk Gun</name><alias id="zz.bonk-gun-cannon"/>', out["weapons.xml"])

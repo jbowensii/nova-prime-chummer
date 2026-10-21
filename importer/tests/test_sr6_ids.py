@@ -1,7 +1,8 @@
-"""importer/sr6/ids.py slug: frozen output (an SR6 id must never move), and the same as dhsa.slug today."""
+"""importer/sr6/ids.py slug: frozen output (an SR6 id must never move), and the same as amps.slug today."""
+
 import unittest
 
-from importer.recipes import dhsa
+from importer.recipes import amps
 from importer.sr6.ids import slug
 
 FROZEN = {
@@ -18,4 +19,4 @@ FROZEN = {
 class SlugTest(unittest.TestCase):
     def test_frozen(self):
         self.assertEqual({k: slug(k) for k in FROZEN}, FROZEN)
-        self.assertEqual({k: dhsa.slug(k) for k in FROZEN}, FROZEN)  # nothing moved when SR6 took its own copy
+        self.assertEqual({k: amps.slug(k) for k in FROZEN}, FROZEN)  # nothing moved when SR6 took its own copy

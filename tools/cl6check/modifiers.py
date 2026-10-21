@@ -8,30 +8,139 @@ matched item when the sentence names its target (the game's own words for it) an
 "Rating"/"level" for a per-rating value). The aligned window, with the target, number and rating replaced by slots,
 is a template; each template is scored by how often it fires on our descriptions and finds a real modifier (precision)
 and how many of its family's modifiers it reproduces (recall). Vocabulary only, never item names."""
+
 import re
 from collections import Counter, defaultdict
 
-PRIMARY = {"BODY", "AGILITY", "REACTION", "STRENGTH", "WILLPOWER", "LOGIC", "INTUITION", "CHARISMA", "EDGE", "MAGIC",
-           "RESONANCE", "ESSENCE"}
-DERIVED = (("INITIATIVE", "initiative"), ("MONITOR", "condition-monitor"), ("DEFENSE_RATING", "defense-rating"),
-           ("DEFENSE_POOL", "roll"), ("RESIST", "roll"), ("DAMAGE_REDUCTION", "damage-reduction"),
-           ("ATTACK_RATING", "attack-rating"), ("MINOR_ACTION", "actions"), ("MOVEMENT", "movement"),
-           ("ESSENCE", "essence"), ("COMPOSURE", "roll"), ("JUDGE_INTENTIONS", "roll"), ("MEMORY", "roll"),
-           ("LIFT", "roll"), ("DAMAGE_OVERFLOW", "condition-monitor"), ("POWER_POINTS", "points"))
+PRIMARY = {
+    "BODY",
+    "AGILITY",
+    "REACTION",
+    "STRENGTH",
+    "WILLPOWER",
+    "LOGIC",
+    "INTUITION",
+    "CHARISMA",
+    "EDGE",
+    "MAGIC",
+    "RESONANCE",
+    "ESSENCE",
+}
+DERIVED = (
+    ("INITIATIVE", "initiative"),
+    ("MONITOR", "condition-monitor"),
+    ("DEFENSE_RATING", "defense-rating"),
+    ("DEFENSE_POOL", "roll"),
+    ("RESIST", "roll"),
+    ("DAMAGE_REDUCTION", "damage-reduction"),
+    ("ATTACK_RATING", "attack-rating"),
+    ("MINOR_ACTION", "actions"),
+    ("MOVEMENT", "movement"),
+    ("ESSENCE", "essence"),
+    ("COMPOSURE", "roll"),
+    ("JUDGE_INTENTIONS", "roll"),
+    ("MEMORY", "roll"),
+    ("LIFT", "roll"),
+    ("DAMAGE_OVERFLOW", "condition-monitor"),
+    ("POWER_POINTS", "points"),
+)
 OPS = {"MAX": "max", "MIN": "min", "NATURAL": "+natural", "AUGMENTED": "+", "ARTIFICIAL": "artificial"}
 CHECK_OPS = {"DICE": "+dice", "HIT": "+hits", "EDGE": "+edge", "EDGE_BOOST": "edge-cost"}
 # the game's words for a target where its id isn't them (a vocabulary, the same in every book)
-SYNONYMS = {"damage": ("damage", "dv"), "dice": ("dice", "die"), "monitor": ("monitor", "box", "boxes"),
-            "close_combat": ("close combat",), "pool": ("pool", "test"), "attack_rating": ("attack rating", "ar")}
+SYNONYMS = {
+    "damage": ("damage", "dv"),
+    "dice": ("dice", "die"),
+    "monitor": ("monitor", "box", "boxes"),
+    "close_combat": ("close combat",),
+    "pool": ("pool", "test"),
+    "attack_rating": ("attack rating", "ar"),
+}
 STRUCTURE = {"item/slot", "item/includes"}  # the slots and includes families: structure, not stated effects
-HEADS = {"test", "tests", "attribute", "skill", "dice", "die", "pool", "rating", "bonus", "modifier", "boxes", "box",
-         "edge", "hits", "points", "initiative", "level", "levels"}
-GRAMMAR = HEADS | {"to", "on", "for", "all", "any", "by", "of", "the", "a", "an", "your", "their", "its", "with", "in",
-                   "and", "or", "per", "each", "plus", "+", "gain", "gains", "receive", "receives", "increase",
-                   "increases", "increased", "add", "adds", "grant", "grants", "provide", "provides", "situational",
-                   "attributes", "skills", "threshold", "reduce", "reduces", "as", "follows", "quality", "power",
-                   "critter", "physical", "stun", "condition", "monitor", "defense", "damage", "armor", "limit",
-                   "minus", "penalty", "up", "maximum", "max", "when", "against", "resist", "resistance", "made"}
+HEADS = {
+    "test",
+    "tests",
+    "attribute",
+    "skill",
+    "dice",
+    "die",
+    "pool",
+    "rating",
+    "bonus",
+    "modifier",
+    "boxes",
+    "box",
+    "edge",
+    "hits",
+    "points",
+    "initiative",
+    "level",
+    "levels",
+}
+GRAMMAR = HEADS | {
+    "to",
+    "on",
+    "for",
+    "all",
+    "any",
+    "by",
+    "of",
+    "the",
+    "a",
+    "an",
+    "your",
+    "their",
+    "its",
+    "with",
+    "in",
+    "and",
+    "or",
+    "per",
+    "each",
+    "plus",
+    "+",
+    "gain",
+    "gains",
+    "receive",
+    "receives",
+    "increase",
+    "increases",
+    "increased",
+    "add",
+    "adds",
+    "grant",
+    "grants",
+    "provide",
+    "provides",
+    "situational",
+    "attributes",
+    "skills",
+    "threshold",
+    "reduce",
+    "reduces",
+    "as",
+    "follows",
+    "quality",
+    "power",
+    "critter",
+    "physical",
+    "stun",
+    "condition",
+    "monitor",
+    "defense",
+    "damage",
+    "armor",
+    "limit",
+    "minus",
+    "penalty",
+    "up",
+    "maximum",
+    "max",
+    "when",
+    "against",
+    "resist",
+    "resistance",
+    "made",
+}
 NUMBER_WORDS = {w: str(i) for i, w in enumerate(("zero", "one", "two", "three", "four", "five", "six"))}
 UNSTATED = {"embed", "decision", "relevancemod"}  # pre-installed gear, its answers, UI tags: not modifiers of play
 
@@ -65,6 +174,7 @@ def path(m):
 
 
 def op(m):
+    """The operation a Commlink6 modifier performs, as the app names it."""
     if m.tag == "checkmod":
         return CHECK_OPS.get(m.get("what") or "DICE", _slug(m.get("what")))
     if m.tag == "itemmod":
@@ -85,13 +195,28 @@ def modifiers(el):
             for m in ms.iter():
                 if m.tag in UNSTATED or m.tag in ("modifications", "selmod"):
                     continue
-                c = [x for x in (cond, "choice" if _in_selmod(ms, m) else "",
-                                 "situational" if m.get("cond") else "",
-                                 f"mode:{m.get('mode').lower()}" if m.get("mode") else "") if x]
+                c = [
+                    x
+                    for x in (
+                        cond,
+                        "choice" if _in_selmod(ms, m) else "",
+                        "situational" if m.get("cond") else "",
+                        f"mode:{m.get('mode').lower()}" if m.get("mode") else "",
+                    )
+                    if x
+                ]
                 v = m.get("value") or ""
-                out.append({"path": "/".join(x for x in path(m) if x), "op": op(m), "value": v,
-                            "rated": bool(re.search(r"\$(RATING|LEVEL|FORCE)", v)), "cond": c, "ref": m.get("ref") or "",
-                            "type": m.get("type") or ""})
+                out.append(
+                    {
+                        "path": "/".join(x for x in path(m) if x),
+                        "op": op(m),
+                        "value": v,
+                        "rated": bool(re.search(r"\$(RATING|LEVEL|FORCE)", v)),
+                        "cond": c,
+                        "ref": m.get("ref") or "",
+                        "type": m.get("type") or "",
+                    }
+                )
     return out
 
 
@@ -101,12 +226,14 @@ def _in_selmod(ms, m):
 
 # ---------- alignment ----------
 def tokens(s):
+    """The lower-cased words and numbers of `s`, number words as digits."""
     s = (s or "").casefold().replace("−", "-").replace("–", "-").replace("’", "'")
     toks = re.findall(r"[a-z][a-z']*|[+-]?\d+(?:[.,]\d+)?|[+×]", s)
     return [NUMBER_WORDS.get(t, t) for t in toks]
 
 
 def sentences(text):
+    """The sentences of an entry's text."""
     return [s for s in re.split(r"(?<=[.!?:])\s+|\n+", text or "") if s.strip()]
 
 
@@ -129,7 +256,7 @@ def _find(toks, alts):
     for alt in alts:
         a = alt.split()
         for i in range(len(toks) - len(a) + 1):
-            if all(toks[i + k].startswith(a[k][:max(4, len(a[k]) - 1)]) for k in range(len(a))):
+            if all(toks[i + k].startswith(a[k][: max(4, len(a[k]) - 1)]) for k in range(len(a))):
                 return i, len(a)
     return -1, 0
 
@@ -177,8 +304,9 @@ def align(mod, toks):
     # the skeleton: slots and grammar words kept; a content word next to the target joins it, any other becomes *
     out = []
     for k in range(lo, hi):
-        x = slot.get(k) or ("{#}" if re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", toks[k]) else
-                            toks[k] if toks[k] in GRAMMAR else "*")
+        x = slot.get(k) or (
+            "{#}" if re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", toks[k]) else toks[k] if toks[k] in GRAMMAR else "*"
+        )
         if x == "*" and (slot.get(k - 1) == "{T}" or slot.get(k + 1) == "{T}"):
             x = "{T}"
         if not (x in ("{T}", "*") and out and out[-1] == x):
@@ -192,7 +320,7 @@ def align(mod, toks):
 
 def _term(groups):
     """A target's words as a regex fragment (each word by its stem, as _find matches it)."""
-    return " ".join(re.escape(g[0].split()[0][:max(4, len(g[0].split()[0]) - 1)]) + r"\S*" for g in groups)
+    return " ".join(re.escape(g[0].split()[0][: max(4, len(g[0].split()[0]) - 1)]) + r"\S*" for g in groups)
 
 
 def _regex(template, terms):
@@ -203,9 +331,9 @@ def _regex(template, terms):
     for t in template.split():
         if t in ("{T}", "{N}") and t not in seen:
             seen.add(t)
-            parts.append(r"(?P<t>%s)" % alt if t == "{T}" else r"[+-]?(?P<n>\d+(?:[.,]\d+)?)")
+            parts.append(rf"(?P<t>{alt})" if t == "{T}" else r"[+-]?(?P<n>\d+(?:[.,]\d+)?)")
         elif t == "{T}":
-            parts.append(r"(?:%s)" % alt)
+            parts.append(rf"(?:{alt})")
         elif t in ("{N}", "{#}"):
             parts.append(r"[+-]?\d+(?:[.,]\d+)?")
         elif t == "{R}":
@@ -218,6 +346,7 @@ def _regex(template, terms):
 
 
 def family(p):
+    """The first two path parts of a modifier's path, its family."""
     return "/".join(p.split("/")[:2])
 
 
@@ -232,7 +361,6 @@ def analyse(pairs, all_mods, top=(20, 50)):
     total_all = sum(len(x) for x in all_mods)
     fam_total, fam_aligned = Counter(), Counter()
     found = defaultdict(set)  # template → {(pair index, mod index)}
-    tfam = {}
     texted = [(mods, " ".join(tokens(t))) for mods, t in pairs]
     sent_toks = [[tokens(s) for s in sentences(t)] for _, t in pairs]
     for i, (mods, _) in enumerate(pairs):
@@ -265,29 +393,57 @@ def analyse(pairs, all_mods, top=(20, 50)):
                 fires += 1
                 cap = hit.group("t").split() if "t" in rx.groupindex else []
                 n = hit.group("n") if "n" in rx.groupindex else None
-                got = {(i, j) for j, m in enumerate(mods) if family(m["path"]) == fam and keywords(m)
-                       and all(_find(cap, g)[0] >= 0 for g in keywords(m)) and (n is None or _number(m["value"]) == n)}
+                got = {
+                    (i, j)
+                    for j, m in enumerate(mods)
+                    if family(m["path"]) == fam
+                    and keywords(m)
+                    and all(_find(cap, g)[0] >= 0 for g in keywords(m))
+                    and (n is None or _number(m["value"]) == n)
+                }
                 tp += bool(got)
                 repro |= got
-        scored.append({"family": fam, "template": t, "seeds": len(seeds), "fires": fires,
-                       "precision": round(tp / fires, 3) if fires else 0.0,
-                       "recall": round(len(repro) / fam_total[fam], 3) if fam_total[fam] else 0.0, "_repro": repro})
+        scored.append(
+            {
+                "family": fam,
+                "template": t,
+                "seeds": len(seeds),
+                "fires": fires,
+                "precision": round(tp / fires, 3) if fires else 0.0,
+                "recall": round(len(repro) / fam_total[fam], 3) if fam_total[fam] else 0.0,
+                "_repro": repro,
+            }
+        )
     scored.sort(key=lambda x: (-len(x["_repro"]), -x["precision"], x["template"]))
     matched_total = sum(fam_total.values())
     cover = {}
     for k in top:
         got = set().union(*(x["_repro"] for x in scored[:k])) if scored else set()
-        cover[f"top{k}"] = {"reproduced": len(got), "of_matched": matched_total, "pct_matched": _pct(len(got), matched_total),
-                            "of_all": total_all, "pct_all": _pct(len(got), total_all)}
-    return {"modifiers_total": total_all, "on_matched_with_text": matched_total,
-            "aligned": sum(fam_aligned.values()), "aligned_pct": _pct(sum(fam_aligned.values()), matched_total),
-            "by_family": {f: {"modifiers": n, "aligned": fam_aligned[f], "pct": _pct(fam_aligned[f], n)}
-                          for f, n in fam_total.most_common()},
-            "templates": [{k: v for k, v in x.items() if k != "_repro"} | {"reproduced": len(x["_repro"])}
-                          for x in scored[:60]],
-            "coverage": cover,
-            "vocabulary": {p: {"n": sum(c.values()), "specific": dict(c.most_common(12))}
-                           for p, c in sorted(vocab.items(), key=lambda x: -sum(x[1].values()))}}
+        cover[f"top{k}"] = {
+            "reproduced": len(got),
+            "of_matched": matched_total,
+            "pct_matched": _pct(len(got), matched_total),
+            "of_all": total_all,
+            "pct_all": _pct(len(got), total_all),
+        }
+    return {
+        "modifiers_total": total_all,
+        "on_matched_with_text": matched_total,
+        "aligned": sum(fam_aligned.values()),
+        "aligned_pct": _pct(sum(fam_aligned.values()), matched_total),
+        "by_family": {
+            f: {"modifiers": n, "aligned": fam_aligned[f], "pct": _pct(fam_aligned[f], n)}
+            for f, n in fam_total.most_common()
+        },
+        "templates": [
+            {k: v for k, v in x.items() if k != "_repro"} | {"reproduced": len(x["_repro"])} for x in scored[:60]
+        ],
+        "coverage": cover,
+        "vocabulary": {
+            p: {"n": sum(c.values()), "specific": dict(c.most_common(12))}
+            for p, c in sorted(vocab.items(), key=lambda x: -sum(x[1].values()))
+        },
+    }
 
 
 def _pct(n, d):
@@ -297,9 +453,11 @@ def _pct(n, d):
 def run(cl6, pairs, sources):
     """Over every canonical record (the vocabulary) and the matched (record, entry) pairs whose entry has a
     description."""
+
     def text(o):
         s = sources.get(o["src"])
         return s.texts.get(o["id"], "") if s else ""
+
     data = [([m for m in modifiers(c["el"]) if family(m["path"]) not in STRUCTURE], text(o)) for c, o in pairs]
     out = analyse([d for d in data if d[0] and d[1]], [modifiers(c["el"]) for c in cl6])
     out["on_matched"] = sum(len(d[0]) for d in data)  # with or without a description of ours

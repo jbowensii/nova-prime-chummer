@@ -1,6 +1,7 @@
 """SR6 Krime Katalog recipe (importer/sr6/recipes/kk.py) on a made-up book.md in the converter's sr6 shape (the book's:
 an item a page, its Fifth and Sixth Edition stats side by side under one caption, the running head read as a chapter
 heading on every page). Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -70,11 +71,13 @@ krime putter: sr6 stats
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the KK recipe."""
     regrouped, _ = regroup.regroup(md, kk.ALIASES, name_headers=kk.NAME_HEADERS)
     return kk.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -85,9 +88,21 @@ class KkRecipeTest(unittest.TestCase):
 
     def test_weapons_read_from_the_sr6_half(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Krime Popper"], {"id": "krime-popper", "source": "KK", "page": "3", "category": "Firearms",
-                                             "dv": "3P", "modes": "SA", "ar": "7/7/—/—/—", "ammo": "9(c)",
-                                             "avail": "2(L)", "cost": "150"})
+        self.assertEqual(
+            w["Krime Popper"],
+            {
+                "id": "krime-popper",
+                "source": "KK",
+                "page": "3",
+                "category": "Firearms",
+                "dv": "3P",
+                "modes": "SA",
+                "ar": "7/7/—/—/—",
+                "ammo": "9(c)",
+                "avail": "2(L)",
+                "cost": "150",
+            },
+        )
         self.assertEqual((w["Krime Twin"]["cost"], w["Krime Twin (GL)"]["dv"]), ("900", "As Grenade"))
 
     def test_ammo_rows_joined_and_vehicle_across_pages(self):
@@ -96,10 +111,14 @@ class KkRecipeTest(unittest.TestCase):
         self.assertEqual(g["Krime Glow Slugs Extra Bright"]["cost"], "x3")
         texts = {(t.get("of"), t.get("id")): t.text for t in ET.fromstring(self.res.texts)}
         self.assertIn("slugs that glow", texts[("ammotypes", "krime-glow-slugs-extra-bright")])
-        self.assertTrue(g["Krime Glow Slugs Extra Bright"].get("ar") == "+2"
-                        or "**Ar:** +2" in texts[("ammotypes", "krime-glow-slugs-extra-bright")])
+        self.assertTrue(
+            g["Krime Glow Slugs Extra Bright"].get("ar") == "+2"
+            or "**Ar:** +2" in texts[("ammotypes", "krime-glow-slugs-extra-bright")]
+        )
         v = entries(self.res, "vehicles")["Krime Putter Car"]  # the SR5 table on its page, the SR6 one on the next
-        self.assertEqual((v["handling"], v["interval"], v["armor"], v["seats"], v["cost"]), ("2/4", "10", "2", "2", "9000"))
+        self.assertEqual(
+            (v["handling"], v["interval"], v["armor"], v["seats"], v["cost"]), ("2/4", "10", "2", "2", "9000")
+        )
 
     def test_files_validate(self):
         for name, xml in list(self.res.files.items()) + [("texts", self.res.texts)]:
@@ -147,4 +166,6 @@ krime buzzer: sr6 stats
 class SplitBoxesTest(unittest.TestCase):
     def test_the_sr6_box_after_the_sr5_box(self):
         w = entries(run_recipe(SPLIT_MD), "weapons")
-        self.assertEqual({n: (w[n]["dv"], w[n]["cost"]) for n in w}, {"Krime Zapper": ("3P", "160"), "Krime Buzzer": ("4P", "950")})
+        self.assertEqual(
+            {n: (w[n]["dv"], w[n]["cost"]) for n in w}, {"Krime Zapper": ("3P", "160"), "Krime Buzzer": ("4P", "950")}
+        )

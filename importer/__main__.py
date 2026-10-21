@@ -1,28 +1,30 @@
+# pylint: disable=line-too-long  # the usage text in the docstring is printed as written
 """CLI for the importer package.
-  python -m importer convert <pdf> <md> [--pages A-B]
-  python -m importer run <library/book-id> --custom <custom dir> [--md | --reuse] [--file NAME]
-  python -m importer propose <library/book-id> --library <library dir> [--dry-run] [--fresh] [--core]
-  python -m importer remove <library/book-id> --custom <custom dir> [--files]
-  python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
-  python -m importer apply-review <library/book-id> --custom <custom dir> --core   (a review of unread core tables)
-  python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
-  python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
-  python -m importer list-models <provider> --library <library dir>  (one model id per line, AnythingLLM: slug<TAB>name; exit 3: the reason on stderr)
-  python -m importer test-ai <provider> --library <library dir>  (a tiny fixed prompt: {"model", "reply", "ms"} JSON; exit 3: the reason on stderr)
-  python -m importer ask --custom D --library D [--scope rules]   (the question on stdin, 500 characters at most: {"answer", "sources", "covered", "called"} JSON;
-                                                  exit 3: the reason on stderr and {"called"} on stdout)
-  python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
-  python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
-  python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
-  python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
-  python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
-  python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
-  python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
-  python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
-  python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
-  python -m importer datapack recover --custom D          (puts back what a killed import had moved aside)
-  python -m importer sr6 run|remove|regroup|summary|check ...  (Shadowrun 6 books: python -m importer sr6 for its usage)
+python -m importer convert <pdf> <md> [--pages A-B]
+python -m importer run <library/book-id> --custom <custom dir> [--md | --reuse] [--file NAME]
+python -m importer propose <library/book-id> --library <library dir> [--dry-run] [--fresh] [--core]
+python -m importer remove <library/book-id> --custom <custom dir> [--files]
+python -m importer apply-review <library/book-id> --custom <custom dir> --source ID --name NAME --canon true|false
+python -m importer apply-review <library/book-id> --custom <custom dir> --core   (a review of unread core tables)
+python -m importer set-key <library dir> <provider>      (the key on stdin; empty removes it)
+python -m importer set-settings --library <library dir>  (ai-providers.xml on stdin; exit 3: refused)
+python -m importer list-models <provider> --library <library dir>  (one model id per line, AnythingLLM: slug<TAB>name; exit 3: the reason on stderr)
+python -m importer test-ai <provider> --library <library dir>  (a tiny fixed prompt: {"model", "reply", "ms"} JSON; exit 3: the reason on stderr)
+python -m importer ask --custom D --library D [--scope rules]   (the question on stdin, 500 characters at most: {"answer", "sources", "covered", "called"} JSON;
+                                                exit 3: the reason on stderr and {"called"} on stdout)
+python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
+python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
+python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
+python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
+python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
+python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
+python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
+python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
+python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
+python -m importer datapack recover --custom D          (puts back what a killed import had moved aside)
+python -m importer sr6 run|remove|regroup|summary|check ...  (Shadowrun 6 books: python -m importer sr6 for its usage)
 """
+
 import contextlib
 import hashlib
 import os
@@ -40,13 +42,20 @@ from importer.recipes import RECIPES, identify
 
 USAGE = __doc__.strip()
 # overlay file per review.xml proposal kind: (file name, data kind)
-REVIEW_FILES = {"amp": ("amps.xml", "amps"), "gear": ("gear.xml", "gear"), "weapon": ("weapons.xml", "weapons"),
-                "armor": ("armor.xml", "armor"), "spell": ("spells.xml", "spells"), "complex-form": ("complexforms.xml", "complexforms")}
+REVIEW_FILES = {
+    "amp": ("amps.xml", "amps"),
+    "gear": ("gear.xml", "gear"),
+    "weapon": ("weapons.xml", "weapons"),
+    "armor": ("armor.xml", "armor"),
+    "spell": ("spells.xml", "spells"),
+    "complex-form": ("complexforms.xml", "complexforms"),
+}
 SOURCE_ID = re.compile(r"[A-Z][A-Z0-9-]{0,19}")
 PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
 
 
-# what the sample runners are read with besides their own book (statblock.load_rules): the core and these, as books add them
+# what the sample runners are read with besides their own book (statblock.load_rules): the core and these, as books add
+# them
 READER_FILES = {"skills.xml", "amptypes.xml", "ampeffects.xml"}
 
 
@@ -78,17 +87,28 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, reread=True):
 
         xmlio.write_status(book_dir, "extracting")
         out_dir = os.path.join(custom_dir, "imported", recipe.ID.lower())
-        res = recipe.extract(md, {"previous_dir": out_dir, "pdf": pdf})  # the previous import, still in place; the book's PDF
+        res = recipe.extract(
+            md, {"previous_dir": out_dir, "pdf": pdf}
+        )  # the previous import, still in place; the book's PDF
         src = res.source["id"]
         res.files, refused = _no_core_overrides(res.files)
         res.report += refused
         ids = set().union(*(xmlio.top_ids(x) for x in res.files.values()))
         texts_path = os.path.join(custom_dir, "texts", f"{src.lower()}.xml")
-        # merge texts and the samples list first: a corrupt texts or samples file fails the import before any overlay is replaced
-        texts = (xmlio.merged_texts(texts_path, (xmlio.texts_entries(xmlio.scope(res.texts, src, ids)) if res.texts else []) + res.core_texts)
-                 if res.texts or res.core_texts else None)
+        # merge texts and the samples list first: a corrupt texts or samples file fails the import before any overlay is
+        # replaced
+        texts = (
+            xmlio.merged_texts(
+                texts_path,
+                (xmlio.texts_entries(xmlio.scope(res.texts, src, ids)) if res.texts else []) + res.core_texts,
+            )
+            if res.texts or res.core_texts
+            else None
+        )
         samples_path = os.path.join(custom_dir, "imported", "samples.xml")
-        samples = xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
+        samples = (
+            xmlio.merged_samples(custom_dir, src, res.samples) if res.samples or os.path.exists(samples_path) else None
+        )
         npcs_path = os.path.join(custom_dir, "imported", "npcs.xml")
         npcs = xmlio.merged_npcs(custom_dir, src, res.npcs) if res.npcs or os.path.exists(npcs_path) else None
         for name, xml in res.core.items():  # the rules engine's core files (the CRB's), ids unscoped
@@ -105,11 +125,19 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, reread=True):
             xmlio.write_file(os.path.join(out_dir, "npcs", n["file"]), n["xml"])
         if npcs:
             xmlio.write_file(npcs_path, npcs)
-        xmlio.write_import(book_dir, report=res.report, files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
-                           recipe=recipe.__name__.rsplit(".", 1)[1], score=f"{score:.2f}", source=src,
-                           name=res.source["name"], publisher=res.source["publisher"],
-                           canon=str(res.source["canon"]).lower(),
-                           imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
+        xmlio.write_import(
+            book_dir,
+            report=res.report,
+            files={n: len(xmlio.top_ids(x)) for n, x in res.files.items()},
+            recipe=recipe.__name__.rsplit(".", 1)[1],
+            score=f"{score:.2f}",
+            source=src,
+            name=res.source["name"],
+            publisher=res.source["publisher"],
+            canon=str(res.source["canon"]).lower(),
+            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            **rec,
+        )
         xmlio.update_index(custom_dir)
         update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), xmlio.CA2)
         xmlio.write_status(book_dir, "done")
@@ -130,8 +158,13 @@ def _reread_samples(book_dir, custom_dir):
         d = os.path.join(library, b)
         imp = xmlio.read_import(d) if b != me and b.lower() != "sr6" and os.path.isdir(d) else None
         src = imp.get("source") if imp is not None else None
-        if (src and SAFE_SOURCE_ID.fullmatch(src) and xmlio.read_state(d) == "done" and os.path.isfile(os.path.join(d, "book.md"))
-                and os.path.isdir(os.path.join(custom_dir, "imported", src.lower(), "samples"))):
+        if (
+            src
+            and SAFE_SOURCE_ID.fullmatch(src)
+            and xmlio.read_state(d) == "done"
+            and os.path.isfile(os.path.join(d, "book.md"))
+            and os.path.isdir(os.path.join(custom_dir, "imported", src.lower(), "samples"))
+        ):
             with contextlib.suppress(Exception):
                 run(d, custom_dir, convert_pdf=False, reread=False)
 
@@ -142,7 +175,8 @@ def _no_core_overrides(files):
     out, rows = dict(files), []
     for name in ("amptypes.xml", "ampeffects.xml"):
         path = find_core_file(name)
-        # the owner's local dev copies (DATA_DIR) aren't a server's core: comparing with them would drop what a book adds
+        # the owner's local dev copies (DATA_DIR) aren't a server's core: comparing with them would drop what a book
+        # adds
         # (DHSA's implant grades) when it's imported before the core rulebook, and the rulebook's core then lacks them
         if name not in out or not path or os.path.dirname(os.path.abspath(path)) == os.path.abspath(DATA_DIR):
             continue
@@ -151,7 +185,14 @@ def _no_core_overrides(files):
         clash = [e for e in root if e.get("id") in core]
         for e in clash:
             root.remove(e)
-            rows.append({"kind": "core-override", "file": name, "id": e.get("id"), "problem": "a book can’t replace a core entry"})
+            rows.append(
+                {
+                    "kind": "core-override",
+                    "file": name,
+                    "id": e.get("id"),
+                    "problem": "a book can’t replace a core entry",
+                }
+            )
         if clash:
             out[name] = xmlio.HEAD + xmlio.ET.tostring(root, encoding="unicode") + "\n"
     return out, rows
@@ -161,8 +202,11 @@ def reserved_sources(custom_dir):
     """Source ids a recipe, the shipped data, the user's own custom/sources.xml or a house-rule source of the
     edits layer own; an AI import may not take them."""
     ids = {r.ID for r in RECIPES}
-    for path in (os.path.join(DATA_DIR, "sources.xml"), os.path.join(custom_dir, "sources.xml"),
-                 os.path.join(custom_dir, "edits", "sources.xml")):
+    for path in (
+        os.path.join(DATA_DIR, "sources.xml"),
+        os.path.join(custom_dir, "sources.xml"),
+        os.path.join(custom_dir, "edits", "sources.xml"),
+    ):
         if os.path.exists(path):
             ids |= {s.get("id") for s in xmlio.ET.parse(path).getroot()}
     return {i.upper() for i in ids if i}
@@ -171,6 +215,7 @@ def reserved_sources(custom_dir):
 def entry_notes(kind, entry, m):
     """propose's checks on one reviewed entry (the user may have edited it): what is wrong, or []."""
     from importer.ai import propose
+
     notes = [] if (entry.get("id") or "").strip() and (entry.findtext("name") or "").strip() else ["no id or name"]
     if kind == "amp":
         effects = [{"ref": e.get("ref"), "param": e.get("param")} for e in entry.findall("effect")]
@@ -192,6 +237,7 @@ def apply_review(book_dir, custom_dir, source, name, canon):
             raise ValueError(f"the source id {source} is already used by another book")
         xmlio.write_status(book_dir, "applying")
         from importer.ai import propose  # loads the AI SDK: only for AI work
+
         m = propose.mechanics()
         rows, report = {}, []
         for p in xmlio.ET.parse(os.path.join(book_dir, "review.xml")).getroot().findall("proposal"):
@@ -205,19 +251,32 @@ def apply_review(book_dir, custom_dir, source, name, canon):
                 entry.set("source", source)
                 entry.tail = None
                 rows.setdefault(REVIEW_FILES[kind], []).append("  " + xmlio.ET.tostring(entry, encoding="unicode"))
-        files = {f: xmlio.HEAD + "<!-- AI proposals accepted on the review screen. Generated by the importer. -->\n"
-                 f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{kind}" version="1">\n' + "\n".join(r) + "\n</ca2:data>\n"
-                 for (f, kind), r in rows.items()}
+        files = {
+            f: xmlio.HEAD + "<!-- AI proposals accepted on the review screen. Generated by the importer. -->\n"
+            f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{kind}" version="1">\n' + "\n".join(r) + "\n</ca2:data>\n"
+            for (f, kind), r in rows.items()
+        }
         old = xmlio.read_import(book_dir)
         rec = {k: old.get(k) for k in ("file", "sha256", "converter", "pages", "score")} if old is not None else {}
-        remove(book_dir, custom_dir, status=False, root=xmlio.CA2)  # a second apply replaces the first; the book stays applying
+        remove(
+            book_dir, custom_dir, status=False, root=xmlio.CA2
+        )  # a second apply replaces the first; the book stays applying
         out_dir = os.path.join(custom_dir, "imported", source.lower())
         ids = set().union(*(xmlio.top_ids(x) for x in files.values()))
         for f, xml in files.items():
             xmlio.write_overlay(out_dir, f, xml, ids)
-        xmlio.write_import(book_dir, report=report, files={f: len(xmlio.top_ids(x)) for f, x in files.items()}, recipe="ai", source=source,
-                           name=name.strip(), publisher="", canon=canon,
-                           imported=datetime.now(timezone.utc).isoformat(timespec="seconds"), **rec)
+        xmlio.write_import(
+            book_dir,
+            report=report,
+            files={f: len(xmlio.top_ids(x)) for f, x in files.items()},
+            recipe="ai",
+            source=source,
+            name=name.strip(),
+            publisher="",
+            canon=canon,
+            imported=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            **rec,
+        )
         os.makedirs(os.path.join(custom_dir, "imported"), exist_ok=True)
         xmlio.update_index(custom_dir)
         update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), xmlio.CA2)
@@ -234,6 +293,7 @@ def apply_core_review(book_dir, custom_dir):
     it). The import record drops those tables' core-unread rows and lists each as core-ai: read by AI, to check."""
     try:
         from importer.ai import propose
+
         xmlio.write_status(book_dir, "applying")
         root = xmlio.ET.parse(os.path.join(book_dir, "review.xml")).getroot()
         if root.get("core") != "true":
@@ -242,6 +302,7 @@ def apply_core_review(book_dir, custom_dir):
 
         def refuse(p, notes):
             report.append({"proposal": p.get("id"), "page": p.get("page"), "problem": "; ".join(notes)})
+
         for p in root.findall("proposal"):  # each accepted row on its own: its tag and schema
             kind = p.get("kind")
             entry = next((e for e in p if e.tag != "note"), None)
@@ -251,14 +312,19 @@ def apply_core_review(book_dir, custom_dir):
             entry.set("source", root.get("source"))
             entry.tail = None
             xml = xmlio.ET.tostring(entry, encoding="unicode")
-            notes = ((entry_notes(kind, entry, None) if entry.tag == "item" else [] if entry.tag == kind else [f"<{entry.tag}> isn’t a {kind}"])
-                     + propose.schema_notes(f[:-4], xml))
+            notes = (
+                entry_notes(kind, entry, None)
+                if entry.tag == "item"
+                else [] if entry.tag == kind else [f"<{entry.tag}> isn’t a {kind}"]
+            ) + propose.schema_notes(f[:-4], xml)
             if notes:
                 refuse(p, notes)
             else:
                 ok.append((p, f, entry, xml))
         # then what they name: the ids in place, where a table being replaced counts only its accepted rows
-        refs = propose.core_refs([f"{p.get('kind')}.{e.get('id')}" for p, _, e, _ in ok], replacing={f[:-4] for _, f, _, _ in ok})
+        refs = propose.core_refs(
+            [f"{p.get('kind')}.{e.get('id')}" for p, _, e, _ in ok], replacing={f[:-4] for _, f, _, _ in ok}
+        )
         for p, f, entry, xml in ok:
             table = f[:-4]
             notes = propose.core_notes(table, entry, refs) if entry.tag != "item" else []
@@ -269,13 +335,29 @@ def apply_core_review(book_dir, custom_dir):
                 continue
             files.setdefault(f, []).append("  " + xml)
         for f, rows in files.items():
-            xmlio.write_file(os.path.join(custom_dir, "imported", "core", f), xmlio.HEAD + "<!-- AI proposals accepted on the review "
-                             f'screen for a table the recipe couldn’t read. Generated by the importer. -->\n<ca2:data xmlns:ca2="{xmlio.NS}" '
-                             f'kind="{f[:-4]}" version="1">\n' + "\n".join(rows) + "\n</ca2:data>\n")
+            xmlio.write_file(
+                os.path.join(custom_dir, "imported", "core", f),
+                xmlio.HEAD + "<!-- AI proposals accepted on the review "
+                f"screen for a table the recipe couldn’t read. Generated by the importer. -->\n<ca2:data "
+                f'xmlns:ca2="{xmlio.NS}" '
+                f'kind="{f[:-4]}" version="1">\n' + "\n".join(rows) + "\n</ca2:data>\n",
+            )
         imp = xmlio.read_import(book_dir)
-        keep = [r.attrib for r in imp.iter("row") if not (r.get("kind") in ("core-unread", "core-ai") and r.get("file") in files)]
-        ai = [{"kind": "core-ai", "file": f, "entries": len(rows), "problem": "read by AI: check it against the book"} for f, rows in sorted(files.items())]
-        xmlio.write_import(book_dir, report=keep + ai + report, files={f.get("name"): f.get("entries") for f in imp.iter("file")}, **imp.attrib)
+        keep = [
+            r.attrib
+            for r in imp.iter("row")
+            if not (r.get("kind") in ("core-unread", "core-ai") and r.get("file") in files)
+        ]
+        ai = [
+            {"kind": "core-ai", "file": f, "entries": len(rows), "problem": "read by AI: check it against the book"}
+            for f, rows in sorted(files.items())
+        ]
+        xmlio.write_import(
+            book_dir,
+            report=keep + ai + report,
+            files={f.get("name"): f.get("entries") for f in imp.iter("file")},
+            **imp.attrib,
+        )
         skipped = f", {len(report)} skipped (see the report)" if report else ""
         xmlio.write_status(book_dir, "done", f"{sum(map(len, files.values()))} rows added to the core data{skipped}")
     except Exception as e:
@@ -316,6 +398,7 @@ def _cmd_run(argv):
 def _cmd_propose(argv):
     """AI proposals for a needs-ai book into its review.xml, through the provider library/.config chooses."""
     from importer.ai import propose, providers, schema  # the anthropic SDK only loads for AI work
+
     dry, fresh, core = "--dry-run" in argv, "--fresh" in argv, "--core" in argv
     argv = [a for a in argv if a not in ("--dry-run", "--fresh", "--core")]
     if len(argv) != 3 or argv[1] != "--library":
@@ -325,8 +408,15 @@ def _cmd_propose(argv):
     use = providers.read_providers(config)[0] if os.path.exists(os.path.join(config, "ai-providers.xml")) else None
     if dry:  # how many requests, and to whom, before the user confirms sending the book
         md = os.path.join(argv[0], "book.md")
-        n = (len(propose.core_chunks(Path(md).read_text(encoding="utf8"), set().union(*propose.core_unread(argv[0]).values())))
-             if core else propose.count_chunks(md))
+        n = (
+            len(
+                propose.core_chunks(
+                    Path(md).read_text(encoding="utf8"), set().union(*propose.core_unread(argv[0]).values())
+                )
+            )
+            if core
+            else propose.count_chunks(md)
+        )
         print(f"<result parts={quoteattr(str(n))} provider={quoteattr(use or '')} />")
         return 0
     shape = schema.core_schema({f[:-4] for f in propose.core_unread(argv[0])}) if core else schema.SCHEMA
@@ -361,6 +451,7 @@ def _cmd_set_key(argv):
         print(USAGE, file=sys.stderr)
         return 2
     from importer.ai import providers
+
     providers.set_key(os.path.join(argv[0], ".config"), argv[1], sys.stdin.read())
     return 0
 
@@ -372,8 +463,11 @@ def _cmd_set_settings(argv):
         print(USAGE, file=sys.stderr)
         return 2
     from importer.ai import providers
+
     try:
-        cleared = providers.set_settings(os.path.join(argv[1], ".config"), sys.stdin.buffer.read().decode("utf8", "replace"))
+        cleared = providers.set_settings(
+            os.path.join(argv[1], ".config"), sys.stdin.buffer.read().decode("utf8", "replace")
+        )
     except providers.SettingsError as e:
         print(e, file=sys.stderr)
         return 3
@@ -387,6 +481,7 @@ def _cmd_list_models(argv):
         print(USAGE, file=sys.stderr)
         return 2
     from importer.ai import providers
+
     try:
         ids = providers.list_models(argv[0], argv[2])
     except providers.ProviderError as e:
@@ -397,13 +492,15 @@ def _cmd_list_models(argv):
 
 
 def _cmd_test_ai(argv):
-    """Is the provider connected? A tiny fixed prompt with the saved settings and key; exit 3 with the reason on stderr."""
+    """Is the provider connected? A tiny fixed prompt with the saved settings and key; exit 3 with the reason on
+    stderr."""
     if len(argv) != 3 or argv[0] not in PROVIDER_IDS or argv[1] != "--library":
         print(USAGE, file=sys.stderr)
         return 2
     import json
     import time
     from importer.ai import providers
+
     start = time.monotonic()
     try:
         model, reply = providers.ping(argv[0], argv[2])
@@ -421,9 +518,16 @@ def _cmd_ask(argv):
 def _cmd_edit(argv):
     """The edits layer (importer/edits.py). A refused edit exits 3 with the reason on stderr."""
     from importer import edits
+
     sub, custom = (argv[0] if argv else None), flag(argv, "--custom")
     by = flag(argv, "--by") if sub == "set" else None
-    if not custom or (sub == "set" and len(argv) != (7 if by else 5)) or (sub == "remove" and len(argv) != 5)             or sub not in ("set", "remove", "add-source") or len(argv) < 2:
+    if (
+        not custom
+        or (sub == "set" and len(argv) != (7 if by else 5))
+        or (sub == "remove" and len(argv) != 5)
+        or sub not in ("set", "remove", "add-source")
+        or len(argv) < 2
+    ):
         print(USAGE, file=sys.stderr)
         return 2
     try:
@@ -448,6 +552,7 @@ def _dirs(argv):
 
 def _cmd_backup(argv):
     from importer import backup
+
     dirs, out = _dirs(argv), flag(argv, "--out")
     if not dirs or not out:
         print(USAGE, file=sys.stderr)
@@ -458,6 +563,7 @@ def _cmd_backup(argv):
 
 def _cmd_restore(argv):
     from importer import backup
+
     zip_path, dirs = flag(argv, "--check") or flag(argv, "--apply"), _dirs(argv)
     if not zip_path or ("--apply" in argv and not dirs):
         print(USAGE, file=sys.stderr)
@@ -476,11 +582,16 @@ def _cmd_restore(argv):
 
 def _cmd_datapack(argv):
     from importer import datapack  # lxml: only for data packs
+
     sub, custom, out = (argv[0] if argv else None), flag(argv, "--custom"), flag(argv, "--out")
     if sub == "recover" and custom:
         datapack.recover(os.path.join(custom, "imported", "core"))
         return 0
-    if not ((sub == "export" and custom and out) or (sub == "check" and len(argv) == 2) or (sub == "import" and len(argv) == 4 and custom)):
+    if not (
+        (sub == "export" and custom and out)
+        or (sub == "check" and len(argv) == 2)
+        or (sub == "import" and len(argv) == 4 and custom)
+    ):
         print(USAGE, file=sys.stderr)
         return 2
     try:
@@ -497,14 +608,28 @@ def _cmd_datapack(argv):
 
 
 def main(argv=None):
+    """Run the importer command line; returns the exit code."""
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["sr6"]:  # the Shadowrun 6 importer: its own commands, no Anarchy core data
         from importer.sr6.__main__ import main as sr6_main
+
         return sr6_main(argv[1:])
-    cmds = {"convert": _cmd_convert, "run": _cmd_run, "propose": _cmd_propose, "remove": _cmd_remove,
-            "apply-review": _cmd_apply_review, "set-key": _cmd_set_key,
-            "set-settings": _cmd_set_settings, "list-models": _cmd_list_models, "test-ai": _cmd_test_ai, "ask": _cmd_ask, "edit": _cmd_edit,
-            "backup": _cmd_backup, "restore": _cmd_restore, "datapack": _cmd_datapack}
+    cmds = {
+        "convert": _cmd_convert,
+        "run": _cmd_run,
+        "propose": _cmd_propose,
+        "remove": _cmd_remove,
+        "apply-review": _cmd_apply_review,
+        "set-key": _cmd_set_key,
+        "set-settings": _cmd_set_settings,
+        "list-models": _cmd_list_models,
+        "test-ai": _cmd_test_ai,
+        "ask": _cmd_ask,
+        "edit": _cmd_edit,
+        "backup": _cmd_backup,
+        "restore": _cmd_restore,
+        "datapack": _cmd_datapack,
+    }
     if not argv or argv[0] not in cmds:
         print(USAGE, file=sys.stderr)
         return 2

@@ -7,6 +7,7 @@ feature) and F1. The features are general, never item names: kind, category (the
 a bracketed capacity (an add-on's cost), which columns the row prints, words of the name, the category and the
 description, the skills the description names, and Commlink6's subtype (ours once the subtype family lands). A
 greedy union of precise rules then gives a small rule set per tag."""
+
 import math
 import re
 from collections import Counter, defaultdict
@@ -14,12 +15,82 @@ from collections import Counter, defaultdict
 from tools.cl6check import canon
 from tools.cl6check.match import words
 
-STOP = {"the", "and", "for", "with", "that", "this", "from", "your", "their", "they", "them", "have", "has", "are",
-        "was", "were", "can", "will", "into", "its", "it's", "also", "any", "one", "two", "who", "which", "when",
-        "than", "then", "there", "these", "those", "such", "more", "most", "other", "only", "each", "some", "but",
-        "not", "all", "his", "her", "what", "while", "been", "being", "you", "use", "used", "using", "may", "make"}
-COLUMNS = ("rating", "essence", "capacity", "mount", "programs", "array", "slots", "per", "karma", "dv", "ar", "ammo",
-           "defense", "handling", "fade", "drain", "activation")
+STOP = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "that",
+    "this",
+    "from",
+    "your",
+    "their",
+    "they",
+    "them",
+    "have",
+    "has",
+    "are",
+    "was",
+    "were",
+    "can",
+    "will",
+    "into",
+    "its",
+    "it's",
+    "also",
+    "any",
+    "one",
+    "two",
+    "who",
+    "which",
+    "when",
+    "than",
+    "then",
+    "there",
+    "these",
+    "those",
+    "such",
+    "more",
+    "most",
+    "other",
+    "only",
+    "each",
+    "some",
+    "but",
+    "not",
+    "all",
+    "his",
+    "her",
+    "what",
+    "while",
+    "been",
+    "being",
+    "you",
+    "use",
+    "used",
+    "using",
+    "may",
+    "make",
+}
+COLUMNS = (
+    "rating",
+    "essence",
+    "capacity",
+    "mount",
+    "programs",
+    "array",
+    "slots",
+    "per",
+    "karma",
+    "dv",
+    "ar",
+    "ammo",
+    "defense",
+    "handling",
+    "fade",
+    "drain",
+    "activation",
+)
 NONE = re.compile(r"^\s*[—–-]?\s*$")
 MAX_RULES = 4
 MIN_PRECISION = 0.75
@@ -55,8 +126,14 @@ def features(o, text="", skills=(), cl6_subtype=None):
 def _score(tp, fp, fn):
     p = tp / (tp + fp) if tp + fp else 0.0
     r = tp / (tp + fn) if tp + fn else 0.0
-    return {"tp": tp, "fp": fp, "fn": fn, "precision": round(p, 3), "recall": round(r, 3),
-            "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0}
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precision": round(p, 3),
+        "recall": round(r, 3),
+        "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0,
+    }
 
 
 def analyse(pairs, extras=(), min_positives=3, top=5):
@@ -83,7 +160,7 @@ def analyse(pairs, extras=(), min_positives=3, top=5):
         # ponytail: pairs of the top 25 only; a deeper search if the singles and pairs plateau below the targets
         wide = sorted(cands, key=lambda c: (-c["recall"], c["rule"]))[:25]
         for i, x in enumerate(wide):
-            for y in wide[i + 1:]:
+            for y in wide[i + 1 :]:
                 idx = has[x["rule"]] & has[y["rule"]]
                 tp = len(idx & positive)
                 if tp >= floor and len(idx) < min(len(has[x["rule"]]), len(has[y["rule"]])):
@@ -94,14 +171,21 @@ def analyse(pairs, extras=(), min_positives=3, top=5):
         chosen, covered, best = [], set(), 0.0
         precise = [c for c in cands if c["precision"] >= MIN_PRECISION]
         while len(chosen) < MAX_RULES:
-            step = max(precise, default=None, key=lambda c: _f1(covered | has[c["rule"]], positive))
+            step = max(
+                precise,
+                default=None,
+                key=lambda c, covered=covered, positive=positive: _f1(covered | has[c["rule"]], positive),
+            )
             if step is None or _f1(covered | has[step["rule"]], positive) <= best:
                 break
             chosen.append(step["rule"])
             covered |= has[step["rule"]]
             best = _f1(covered, positive)
             precise.remove(step)
-        rule_set = {"rules": chosen, **_score(len(covered & positive), len(covered - positive), p - len(covered & positive))}
+        rule_set = {
+            "rules": chosen,
+            **_score(len(covered & positive), len(covered - positive), p - len(covered & positive)),
+        }
         rule_set["tags_extras"] = sum(1 for fs in extras if any(fires(r, fs) for r in chosen))
         out[tag] = {"positives": p, "records": n, "top": cands[:top], "set": rule_set}
     return out
@@ -126,12 +210,24 @@ def addon(c):
 
 def run(pairs, extras, sources):
     """Patterns over the compare step's matched (record, entry) pairs and our unmatched entries."""
-    skills = sorted({e["name"].casefold() for s in sources.values() for e in s.entries if e["kind"] == "skills"
-                     and len(e["name"]) >= 3})
+    skills = sorted(
+        {
+            e["name"].casefold()
+            for s in sources.values()
+            for e in s.entries
+            if e["kind"] == "skills" and len(e["name"]) >= 3
+        }
+    )
 
     def text(o):
         s = sources.get(o["src"])
         return s.texts.get(o["id"], "") if s else ""
-    data = [(canon.labels(c["families"]) | addon(c), features(o, text(o), skills, (c["families"].get("subtype") or [None])[0]))
-            for c, o in pairs]
+
+    data = [
+        (
+            canon.labels(c["families"]) | addon(c),
+            features(o, text(o), skills, (c["families"].get("subtype") or [None])[0]),
+        )
+        for c, o in pairs
+    ]
     return analyse(data, [features(o, text(o), skills) for o in extras])

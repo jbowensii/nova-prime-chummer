@@ -3,8 +3,9 @@ the book's metatype-like option, a positive quality from its minimum base cost) 
 (qualities named `<add-on> (Shifter add-on)`), the Animalism powers (metamagics: one a grade of animalism, as
 metamagics are one a grade of initiation), the shifter gear (armor, gear, ammunition, drones) and the rule sections,
 ids unscoped (run scopes them as bn.<slug>), descriptions in the private texts. Reads only regrouped.md
-(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout notes
-in bn.md. A line or value that doesn't read is reported, never guessed."""
+(importer/sr6/regroup.py), after prepare_md() cleans book.md, with the core rulebook's reading (catalog.read); layout
+notes in bn.md. A line or value that doesn't read is reported, never guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -35,13 +36,16 @@ GEAR = "shifter gear"
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     return 0.9 if re.search(r"bestial\s+nature", f"{meta.get('title') or ''}\n{md_head}", re.I) else 0.0
 
 
 _RUNNING = re.compile(r"(#+ )?(BESTIAL NATURE|\d{1,2})|\*\*PAGE\*\*")  # each page's running head, number and tab
-_SPLIT = re.compile(r"(?<![\w'’])([A-Z][A-Za-z]{0,3}) ([A-Za-z][a-z]*)\b")  # `Sh ifter`, `SI Ns`: a heading's word kerned apart
+_SPLIT = re.compile(
+    r"(?<![\w'’])([A-Z][A-Za-z]{0,3}) ([A-Za-z][a-z]*)\b"
+)  # `Sh ifter`, `SI Ns`: a heading's word kerned apart
 
 
 def prepare_md(md):
@@ -55,6 +59,7 @@ def prepare_md(md):
     def join(m):
         a, b = m.groups()
         return a + b if (a + b).lower() in words or b.lower() not in words else m.group(0)
+
     return "\n".join(_SPLIT.sub(join, ln) if ln.startswith("#") else ln for ln in lines) + "\n"
 
 
@@ -74,8 +79,15 @@ def _drones(bs):
                 tables.append(s)
                 holders.add(id(b))
     if len(drones) != len(tables):
-        return bs, [{"kind": "unmapped", "name": "; ".join(d.name for d in drones), "chapter": GEAR,
-                     "label": f"{len(drones)} drones, {len(tables)} vehicle tables", "page": drones[0].page if drones else 0}]
+        return bs, [
+            {
+                "kind": "unmapped",
+                "name": "; ".join(d.name for d in drones),
+                "chapter": GEAR,
+                "label": f"{len(drones)} drones, {len(tables)} vehicle tables",
+                "page": drones[0].page if drones else 0,
+            }
+        ]
     own = {id(d): t for d, t in zip(drones, tables)}
     out = []
     for b in bs:
@@ -86,8 +98,14 @@ def _drones(bs):
             if b.type == "item" and not b.stats and any(norm(d.name) == norm(b.name) for d in drones):
                 continue  # a drone's box or its heading printed again over its table: the drone has it
         if norm(b.chapter) == GEAR:
-            b = replace(b, text="\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))
-                        if "| HAND |" in b.text else b.text)
+            b = replace(
+                b,
+                text=(
+                    "\n".join(ln for ln in b.text.splitlines() if not ln.startswith("|"))
+                    if "| HAND |" in b.text
+                    else b.text
+                ),
+            )
         out.append(b)
     return out, []
 
@@ -107,14 +125,18 @@ def fix(b, parent2):
     elif norm(b.section) in ADD_ONS and b.level == 4:
         lines = b.text.splitlines()
         plain = [m for ln in lines if (m := _PLAIN_LABEL.fullmatch(ln.strip()))]
-        b = replace(b, labels={**{m.group(1): m.group(2) for m in plain}, **b.labels},
-                    text="\n".join(ln for ln in lines if not _PLAIN_LABEL.fullmatch(ln.strip())))
+        b = replace(
+            b,
+            labels={**{m.group(1): m.group(2) for m in plain}, **b.labels},
+            text="\n".join(ln for ln in lines if not _PLAIN_LABEL.fullmatch(ln.strip())),
+        )
         if b.labels:
             b = replace(b, name=re.sub(r"^(.*?)(\s*\(1 to \d+\))?$", r"\1 (Shifter add-on)\2", b.name))
     return b
 
 
 def kind(chapter, b, parent2):
+    """(catalog, category) a block files under; (None, None) when it is no entry."""
     sec, p2 = norm(b.section), norm(parent2)
     if chapter == SHIFTER[0] and b.type == "item" and b.level == 4:
         if sec == SHIFTER[1] and norm(b.name).startswith("shifter "):
@@ -136,6 +158,7 @@ def kind(chapter, b, parent2):
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks (and its drones) into a catalog Result."""
     bs, report = _drones(list(blocks(regrouped)))
     res = catalog.read(bs, ctx, sys.modules[__name__])
     res.report += report

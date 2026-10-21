@@ -1,8 +1,9 @@
 """The made-up core fixture (tests/fixtures/mini/custom/imported/core) must stay made up: with the owner's local copies
-present, no fixture file may share more than a small fraction of its (entry, attribute, value) triples with the real one.
-Not counted: ids, sources, item kinds, a package's level and archetype, an effect's prerequisites, exclusions and params
-(the app's vocabulary and structure), a range's attribute, and the value "0" and a range minimum of 1 (the absence of a
-value and the scale's floor)."""
+present, no fixture file may share more than a small fraction of its (entry, attribute, value) triples with the real
+one. Not counted: ids, sources, item kinds, a package's level and archetype, an effect's prerequisites, exclusions and
+params (the app's vocabulary and structure), a range's attribute, and the value "0" and a range minimum of 1 (the
+absence of a value and the scale's floor)."""
+
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -24,8 +25,11 @@ def triples(path):
             if c.tag == "text":
                 continue
             key = c.get("id") or c.get("attr") or c.tag
-            out |= {(i, f"{c.tag} {key} {k}", v) for k, v in c.attrib.items()
-                    if k != "id" and v != "0" and not (c.tag == "range" and (k == "attr" or k == "min" and v == "1"))}
+            out |= {
+                (i, f"{c.tag} {key} {k}", v)
+                for k, v in c.attrib.items()
+                if k != "id" and v != "0" and not (c.tag == "range" and (k == "attr" or k == "min" and v == "1"))
+            }
             if (c.text or "").strip():
                 out.add((i, f"{c.tag} {key}", c.text.strip()))
     return out

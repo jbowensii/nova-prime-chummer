@@ -1,6 +1,7 @@
-"""SR6 No Future recipe (importer/sr6/recipes/nf.py) on a made-up book.md in the converter's sr6 shape (the book's: small
-gear tables under lower-case titles, some with Fifth Edition range columns; qualities under level-3 headings).
+"""SR6 No Future recipe (importer/sr6/recipes/nf.py) on a made-up book.md in the converter's sr6 shape (the book's:
+small gear tables under lower-case titles, some with Fifth Edition range columns; qualities under level-3 headings).
 Every name, number and line is invented."""
+
 import os
 import unittest
 import xml.etree.ElementTree as ET
@@ -75,11 +76,13 @@ A made-up adventure.
 
 
 def run_recipe(md=BOOK_MD):
+    """Extract the book text `md` with the NF recipe."""
     regrouped, _ = regroup.regroup(md, nf.ALIASES, name_headers=nf.NAME_HEADERS, end_page=nf.END_PAGE)
     return nf.extract(regrouped)
 
 
 def entries(res, kind):
+    """{name: attributes} of the `kind` file the extraction wrote."""
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
@@ -92,9 +95,19 @@ class NfRecipeTest(unittest.TestCase):
 
     def test_weapons(self):
         w = entries(self.res, "weapons")
-        self.assertEqual(w["Spin Top (Hardened)"], {"id": "spin-top-hardened", "source": "NF", "page": "156",
-                                                    "category": "Exotic weapons", "dv": "2S", "ar": "7/—/—/—/—",
-                                                    "avail": "8", "cost": "400"})
+        self.assertEqual(
+            w["Spin Top (Hardened)"],
+            {
+                "id": "spin-top-hardened",
+                "source": "NF",
+                "page": "156",
+                "category": "Exotic weapons",
+                "dv": "2S",
+                "ar": "7/—/—/—/—",
+                "avail": "8",
+                "cost": "400",
+            },
+        )
         # the printed Fifth Edition availability: the errata PDF corrects it in the corpus pass (resolve.py)
         self.assertEqual((w["Spin Top (Bladed)"]["ar"], w["Spin Top (Bladed)"]["avail"]), ("7/2/—/—/—", "12R"))
         self.assertEqual(w["Glow Stick"]["category"], "Clubs")
@@ -105,15 +118,21 @@ class NfRecipeTest(unittest.TestCase):
 
     def test_augmentations(self):
         a = entries(self.res, "augmentations")
-        self.assertEqual((a["Cybereyes (Rating 7)"]["type"], a["Cybereyes (Rating 7)"]["capacity"]), ("cyberware", "18"))
-        self.assertEqual((a["Hum Box"]["rating"], a["Hum Box (Hacked)"]["rating"], a["Hum Box (Hacked)"]["cost"]),
-                         ("1–4", "1–4", "Rating x 2000"))
+        self.assertEqual(
+            (a["Cybereyes (Rating 7)"]["type"], a["Cybereyes (Rating 7)"]["capacity"]), ("cyberware", "18")
+        )
+        self.assertEqual(
+            (a["Hum Box"]["rating"], a["Hum Box (Hacked)"]["rating"], a["Hum Box (Hacked)"]["cost"]),
+            ("1–4", "1–4", "Rating x 2000"),
+        )
 
     def test_qualities(self):
         q = entries(self.res, "qualities")
         self.assertEqual((q["Bright Spark"]["kind"], q["Bright Spark"]["karma"]), ("positive", "6"))
-        self.assertEqual({k: q["Hot Goods"][k] for k in ("kind", "karma", "perLevel", "maxLevel")},
-                         {"kind": "negative", "karma": "1", "perLevel": "true", "maxLevel": "9"})
+        self.assertEqual(
+            {k: q["Hot Goods"][k] for k in ("kind", "karma", "perLevel", "maxLevel")},
+            {"kind": "negative", "karma": "1", "perLevel": "true", "maxLevel": "9"},
+        )
 
     def test_rules(self):
         r = entries(self.res, "rules")

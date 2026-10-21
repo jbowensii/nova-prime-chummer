@@ -4,6 +4,7 @@ initiate's and the adept's), traditions, preparations and a focus (gear), spirit
 mentor spirits, blood magic, mana ebbs: no catalog kind of their own), ids unscoped (run scopes them as sw.<slug>),
 descriptions in the private texts. Reads only regrouped.md with the core rulebook's reading (catalog.read); its few
 boxes through importer/sr6/shapes.py. Layout notes in sw.md."""
+
 import re
 import sys
 from dataclasses import replace
@@ -24,22 +25,40 @@ NAME_HEADERS = frozenset()
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = {"adeptpowers", "metamagics", "traditions"}
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("state of the arts", "the tome of now", "elements of magic", "a congress of spirits", "force and grace",
-                 "imbuing magic", "seeing and believing", "rungs of power", "conclaves and covens", "toil and trouble",
-                 "appendix")
+RULE_CHAPTERS = (
+    "state of the arts",
+    "the tome of now",
+    "elements of magic",
+    "a congress of spirits",
+    "force and grace",
+    "imbuing magic",
+    "seeing and believing",
+    "rungs of power",
+    "conclaves and covens",
+    "toil and trouble",
+    "appendix",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = ()
 SPELL_CATEGORIES = ("combat", "detection", "health", "illusion", "manipulation")
-METAMAGIC_GROUPS = ("astral metaplanar studies", "practical conjuration", "apotropaic magic", "school of enchanting",
-                    "applied thaumaturgy")
+METAMAGIC_GROUPS = (
+    "astral metaplanar studies",
+    "practical conjuration",
+    "apotropaic magic",
+    "school of enchanting",
+    "applied thaumaturgy",
+)
 _LEVELS = re.compile(r"(\d+)\s+levels?\s+maximum", re.I)
 _NEW = re.compile(r"^New Metamagic:\s*(.+)$")
-_TWO = re.compile(r"^\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*;\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*$")
+_TWO = re.compile(
+    r"^\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*;\s*([\d,]+)\s*¥?\s*(?:/\s*(\w+))?\s*\(([^()]+)\)\s*$"
+)
 _TAGS = re.compile(r"(?:\([^()]*\)\s*)+")
 _PER = re.compile(r"^\s*([\d,]+)\s*¥?\s*/\s*(\w+)\s*$")
 
 
 def match(meta, md_head):
+    """How well this recipe fits the book: 1.0 by hash, 0.9 by title or opening text, else 0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -55,13 +74,18 @@ def kind(chapter, b, parent2):
     p2, sec, labels = norm(parent2), norm(b.section), {k.lower() for k in b.labels}
     if b.row is not None:
         head = {h.upper() for h in b.header}
-        return ("gear", "preparations") if "preparations" in sec else ("gear", shapes.category(b, parent2) or "gear") \
-            if head & shapes.PRICE else (None, None)
+        return (
+            ("gear", "preparations")
+            if "preparations" in sec
+            else ("gear", shapes.category(b, parent2) or "gear") if head & shapes.PRICE else (None, None)
+        )
     if b.type == "section":
         if b.level == 3 and "force and grace" in chapter and "cost" in labels and "activation" in labels:
             return "adeptpowers", None
         if b.level == 3 and (p2 == "adept metamagics" or _NEW.match(b.name)):
-            return ("metamagics", None) if p2 != "adept metamagics" or "finding your way" != norm(b.name) else (None, None)
+            return (
+                ("metamagics", None) if p2 != "adept metamagics" or "finding your way" != norm(b.name) else (None, None)
+            )
         if b.tags == "tradition":
             return "traditions", None
         return None, None
@@ -75,9 +99,14 @@ def kind(chapter, b, parent2):
         return "critterpowers", None
     if "rungs of power" in chapter and b.level == 4 and sec in METAMAGIC_GROUPS and b.text.strip() and not b.stats:
         return "metamagics", None
-    if ("a congress of spirits" in chapter or "toil and trouble" in chapter) and (b.stats or "B | A | R" in b.text) \
-            and ("skills" in labels or "powers" in labels):
-        return "spirits", "blood" if "blood" in norm(b.name) else "insect" if "toil and trouble" in chapter else "spirit"
+    if (
+        ("a congress of spirits" in chapter or "toil and trouble" in chapter)
+        and (b.stats or "B | A | R" in b.text)
+        and ("skills" in labels or "powers" in labels)
+    ):
+        return "spirits", (
+            "blood" if "blood" in norm(b.name) else "insect" if "toil and trouble" in chapter else "spirit"
+        )
     return None, None
 
 
@@ -91,13 +120,19 @@ def prepare(bs):
     bs = list(shapes.boxes(bs))
     out = []
     for i, b in enumerate(bs):
-        ch, sec = norm(b.chapter), norm(b.section)
+        sec = norm(b.section)
         if b.type == "item" and b.level == 5 and norm(b.name) == "game information" and out and not b.stats:
             out[-1] = replace(out[-1], text="\n\n".join(t for t in (out[-1].text.strip(), b.text.strip()) if t))
             continue
         prev = out[-1] if out else None
-        if b.type == "item" and _TAGS.fullmatch(b.name) and prev is not None and prev.type == "item" \
-                and not prev.text.strip() and not prev.stats:  # `Energy Drain` over `(Karma) (Free)`
+        if (
+            b.type == "item"
+            and _TAGS.fullmatch(b.name)
+            and prev is not None
+            and prev.type == "item"
+            and not prev.text.strip()
+            and not prev.stats
+        ):  # `Energy Drain` over `(Karma) (Free)`
             *more, tags = re.findall(r"\(([^()]*)\)", b.name)
             out[-1] = replace(b, name=" ".join([prev.name] + [f"({m})" for m in more]), tags=tags, level=prev.level)
             continue
@@ -114,8 +149,12 @@ def prepare(bs):
         if b.tags.lower().startswith(("bonus:", "cost:")) and not b.labels:
             k, _, v = b.tags.partition(":")
             m = _LEVELS.search(v)
-            b = replace(b, labels={k.strip().title(): v.strip(" ,")}, tags="",
-                        name=f"{b.name} (1 to {m.group(1)})" if m else b.name)
+            b = replace(
+                b,
+                labels={k.strip().title(): v.strip(" ,")},
+                tags="",
+                name=f"{b.name} (1 to {m.group(1)})" if m else b.name,
+            )
         if "preparations" in sec and b.type == "item" and b.level == 4 and (cost := b.labels.get("Cost")):
             row = {"ITEM": b.name, "COST": cost}
             b = replace(b, row=row, header=list(row), labels={k: v for k, v in b.labels.items() if k != "Cost"})
@@ -124,8 +163,8 @@ def prepare(bs):
         if (m := _NEW.match(b.name)) and b.level > 3:
             b = replace(b, name=m.group(1))  # (a level-3 `New Metamagic: X` is the sections reader's: PREFIX)
         if b.stats and norm(b.name).endswith(" stats"):  # `Blood Spirit Stats`
-            b = replace(b, name=b.name[:-len(" stats")].strip())
-        if (runs := _run_in_traditions(b)):  # the traditions a family section prints as bold run-ins
+            b = replace(b, name=b.name[: -len(" stats")].strip())
+        if runs := _run_in_traditions(b):  # the traditions a family section prints as bold run-ins
             out.append(b)
             out += runs
             continue
@@ -141,11 +180,15 @@ _LABEL_LINE = re.compile(r"^\s*\*\*[^*]+:\*\*")
 
 def _run_in_traditions(b):
     """A level-3 section over a family of traditions (`Traditions of Karma`, `Abrahamic Traditions`) printing each in
-    its prose as a bold run-in (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`, `**Wux-**` + `**ing**`):
-    one tradition a run-in, its text the lines up to the next; [] when the section prints none (it is then one
-    tradition itself, _tradition). A name ending in `tradition(s)` is searched without it too."""
-    if b.type != "section" or b.level != 3 or "seeing and believing" not in norm(b.chapter) \
-            or not re.search(r"\btraditions\b", b.name, re.I):
+    its prose as a bold run-in (`The **Aztec tradition** is …`, `**Path of**` + `**the Wheel**`, `**Wux-**` +
+    `**ing**`): one tradition a run-in, its text the lines up to the next; [] when the section prints none (it is then
+    one tradition itself, _tradition). A name ending in `tradition(s)` is searched without it too."""
+    if (
+        b.type != "section"
+        or b.level != 3
+        or "seeing and believing" not in norm(b.chapter)
+        or not re.search(r"\btraditions\b", b.name, re.I)
+    ):
         return []
     lines, hits, used = b.text.splitlines(), [], set()
     for i, ln in enumerate(lines):
@@ -164,12 +207,23 @@ def _run_in_traditions(b):
                 hits.append((i, name[:1].upper() + name[1:]))
     out = []
     for k, (i, name) in enumerate(hits):
-        end = next((j for j, _ in hits[k + 1:] if j > i), len(lines))
+        end = next((j for j, _ in hits[k + 1 :] if j > i), len(lines))
         bare = re.sub(r"\s+traditions?$", "", name, flags=re.I)
-        out.append(replace(b, type="item", level=4, name=name, text="\n".join(lines[i:end]), tags="tradition",
-                           labels={}, stats=[], row=None, header=[],
-                           aliases=[a for a in dict.fromkeys([bare, re.sub(r"(?i)traditions$", "tradition", name)])
-                                    if a != name]))
+        out.append(
+            replace(
+                b,
+                type="item",
+                level=4,
+                name=name,
+                text="\n".join(lines[i:end]),
+                tags="tradition",
+                labels={},
+                stats=[],
+                row=None,
+                header=[],
+                aliases=[a for a in dict.fromkeys([bare, re.sub(r"(?i)traditions$", "tradition", name)]) if a != name],
+            )
+        )
     return out
 
 
@@ -184,9 +238,12 @@ def _two_prices(b):
     if not m:
         return []
     if not own:
-        text = text[lead.end():].lstrip()
+        text = text[lead.end() :].lstrip()
     parts = [p.strip() for p in b.name.split(",")]
-    initials = lambda n: "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
+
+    def initials(n):
+        return "".join(w[0] for w in re.findall(r"[A-Za-z]+", n)).upper()
+
     if len(semi := [p.strip() for p in b.name.split(";")]) == 2:
         names = semi  # (a heading listing both: `MagicZap Marble; MagicZap Marble Plus`)
     elif len(parts) == 2 and [initials(p) for p in parts] == [m.group(3).upper(), m.group(6).upper()]:
@@ -194,9 +251,17 @@ def _two_prices(b):
     else:
         names = [b.name, f"{b.name} ({m.group(6)})"]
     rest = {k: v for k, v in b.labels.items() if k != "Cost"}
-    return [replace(b, name=n, text=text, row={"ITEM": n, "COST": f"{price} per {unit}" if unit else price}, header=["ITEM", "COST"],
-                    labels=rest)
-            for n, price, unit in ((names[0], m.group(1), m.group(2)), (names[1], m.group(4), m.group(5)))]
+    return [
+        replace(
+            b,
+            name=n,
+            text=text,
+            row={"ITEM": n, "COST": f"{price} per {unit}" if unit else price},
+            header=["ITEM", "COST"],
+            labels=rest,
+        )
+        for n, price, unit in ((names[0], m.group(1), m.group(2)), (names[1], m.group(4), m.group(5)))
+    ]
 
 
 def _tradition(bs, i, b):
@@ -208,10 +273,13 @@ def _tradition(bs, i, b):
     if b.type == "item" and b.level == 4:  # (a lower-case title is a box: the recommended qualities)
         return bool(b.text.strip()) and b.name[:1].isupper() and not ({"cost", "bonus"} & {k.lower() for k in b.labels})
     if b.type == "section" and b.level == 3 and "tradition" in norm(b.name):
-        nxt = next((d for d in bs[i + 1:] if d.type == "section" or d.level == 4 and "qualit" not in norm(d.name)), None)
+        nxt = next(
+            (d for d in bs[i + 1 :] if d.type == "section" or d.level == 4 and "qualit" not in norm(d.name)), None
+        )
         return nxt is None or nxt.type == "section"
     return False
 
 
 def extract(regrouped, ctx=None):
+    """Read the book's regrouped blocks into a catalog Result."""
     return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])

@@ -5,9 +5,10 @@ grades, cybermancy: no catalog kind of their own), ids unscoped (run scopes them
 private texts. Reads only regrouped.md (importer/sr6/regroup.py) with the core rulebook's reading (catalog.read); layout
 notes in bs.md.
 
-The book prints its gear as the core rulebook does: descriptions under level-4 headings, priced in a titled catalog table
-(CYBERWARE, BIOWARE, GENEWARE …) at the end of the section. A line or value that doesn't read is reported, never
+The book prints its gear as the core rulebook does: descriptions under level-4 headings, priced in a titled catalog
+table (CYBERWARE, BIOWARE, GENEWARE …) at the end of the section. A line or value that doesn't read is reported, never
 guessed."""
+
 import re
 import sys
 from dataclasses import replace
@@ -25,15 +26,40 @@ CONTENTS_END = 7  # PDF page: the first chapter (its title no heading) starts he
 FIRST_CHAPTER = "Augmentations, Essence, and the Meaning of Life"
 ALIASES = {}
 # first header cells that make a table a catalog (its rows are items even when no description pairs)
-NAME_HEADERS = frozenset({"CYBERWARE", "BIOWARE", "SYMBIONT", "DEVICE", "ITEM", "DRUG", "AUGMENTATION", "CYBERLIMB",
-                          "ACCESSORY", "EXOFRAME", "MODULE", "TYPE", "MELEE WEAPONS", "WEAPONS", "GENEWARE CORRECTIVE APPLICATIONS",
-                          "GENEWARE PHENOTYPE ALTERATION", "ITEM COSMETIC/COVERT NANITES"})
+NAME_HEADERS = frozenset(
+    {
+        "CYBERWARE",
+        "BIOWARE",
+        "SYMBIONT",
+        "DEVICE",
+        "ITEM",
+        "DRUG",
+        "AUGMENTATION",
+        "CYBERLIMB",
+        "ACCESSORY",
+        "EXOFRAME",
+        "MODULE",
+        "TYPE",
+        "MELEE WEAPONS",
+        "WEAPONS",
+        "GENEWARE CORRECTIVE APPLICATIONS",
+        "GENEWARE PHENOTYPE ALTERATION",
+        "ITEM COSMETIC/COVERT NANITES",
+    }
+)
 
 SECTIONS = []  # kind() maps the blocks
 SECTION_KINDS = set()
 LABEL_SECTIONS = {}
-RULE_CHAPTERS = ("augmentations essence", "chrome life", "building your body", "changing the code", "quick hitters",
-                 "taming the wild", "edge of essence")
+RULE_CHAPTERS = (
+    "augmentations essence",
+    "chrome life",
+    "building your body",
+    "changing the code",
+    "quick hitters",
+    "taming the wild",
+    "edge of essence",
+)
 ATTRIBUTE_CHAPTERS = ()
 CATALOG_CHAPTERS = RULE_CHAPTERS
 # printed headers -> the core rulebook's (catalog.HEADERS)
@@ -46,6 +72,7 @@ _QUALITY = re.compile(r"(?:optional\s+)?(positive|negative)\s+quality:\s*", re.I
 
 
 def match(meta, md_head):
+    """1.0 on a known file hash, 0.9 when the title or opening text names the book, else 0.0."""
     if meta.get("sha256") in SHA256:
         return 1.0
     hay = f"{meta.get('title') or ''}\n{md_head}"
@@ -56,7 +83,7 @@ def _head(b):
     return (b.header[0] if b.header else "").upper()
 
 
-def fix(b, parent2):
+def fix(b, _parent2):
     """The first chapter named; headers renamed to the core rulebook's (a column it has no attribute for goes to the
     text); a geneware or transgenic table's first header (`GENEWARE Corrective Applications`, `TYPE`) read as bioware;
     a `Negative Quality: X` box as quality X."""
@@ -74,20 +101,30 @@ def fix(b, parent2):
             else:
                 out[h] = v
         return out
+
     row = ren(b.row, True) if b.row is not None else None
-    b = replace(b, row=row, header=list(row) if row is not None else b.header, stats=[ren(s) for s in b.stats],
-                labels=labels)
+    b = replace(
+        b, row=row, header=list(row) if row is not None else b.header, stats=[ren(s) for s in b.stats], labels=labels
+    )
     head = _head(b)
-    if row is not None and (head.startswith("GENEWARE") or head == "SYMBIONT" or head == "TYPE" and norm(b.chapter) ==
-                            "changing the code" or head == "AUGMENTATION" and "genetic" in b.label.lower()):
+    if row is not None and (
+        head.startswith("GENEWARE")
+        or head == "SYMBIONT"
+        or head == "TYPE"
+        and norm(b.chapter) == "changing the code"
+        or head == "AUGMENTATION"
+        and "genetic" in b.label.lower()
+    ):
         name = f"BIOWARE {b.header[0]}"
-        b = replace(b, header=[name] + b.header[1:], row={name if i == 0 else h: v for i, (h, v) in enumerate(row.items())})
+        b = replace(
+            b, header=[name] + b.header[1:], row={name if i == 0 else h: v for i, (h, v) in enumerate(row.items())}
+        )
     if (m := _QUALITY.match(b.name)) and b.type == "item":
-        b = replace(b, name=b.name[m.end():], tags=f"{m.group(1).lower()} quality")
+        b = replace(b, name=b.name[m.end() :], tags=f"{m.group(1).lower()} quality")
     return b
 
 
-def kind(chapter, b, parent2):
+def kind(chapter, b, _parent2):
     """(kind, category) of a block, else (None, None)."""
     labels = {k.lower(): v for k, v in b.labels.items()}
     if b.type == "section":
@@ -140,25 +177,54 @@ def _prep(bs):
             stats = [s for s in ({h: v for h, v in s.items() if h not in extra} for s in b.stats) if any(s.values())]
             b = replace(b, stats=stats)
             if extra[0].upper() == "EQUIPMENT" and any(beside.values()):
-                out.append(replace(b, name=beside[extra[0]], header=extra, row=beside, stats=[], labels={}, text="",
-                                   label=b.name))
-        if b.type == "item" and b.label and b.label.lower().endswith("table") and b.stats and _being(b.stats[0]) \
-                and prev is not None and prev.type == "item" and not prev.stats and prev.row is None:
+                out.append(
+                    replace(
+                        b, name=beside[extra[0]], header=extra, row=beside, stats=[], labels={}, text="", label=b.name
+                    )
+                )
+        if (
+            b.type == "item"
+            and b.label
+            and b.label.lower().endswith("table")
+            and b.stats
+            and _being(b.stats[0])
+            and prev is not None
+            and prev.type == "item"
+            and not prev.stats
+            and prev.row is None
+        ):
             out[-1] = replace(b, name=prev.name, label="", text="\n\n".join(t for t in (prev.text, b.text) if t))
             continue
         if b.type == "item" and b.row is None and (m := _PRICE_TAG.fullmatch(b.tags)):
-            head = next((p.name for p in reversed(out) if p.type == "item" and not p.stats and not p.tags and p.row is None), "")
+            head = next(
+                (p.name for p in reversed(out) if p.type == "item" and not p.stats and not p.tags and p.row is None), ""
+            )
             row = {"CYBERWARE": f"{head} ({b.name})" if head else b.name, "AVAIL": m.group(2), "COST": m.group(1)}
-            b = replace(b, name=row["CYBERWARE"], header=list(row), row=row, tags="",
-                        labels={**b.labels, **{k: v for s in b.stats for k, v in s.items()}}, stats=[])
+            b = replace(
+                b,
+                name=row["CYBERWARE"],
+                header=list(row),
+                row=row,
+                tags="",
+                labels={**b.labels, **{k: v for s in b.stats for k, v in s.items()}},
+                stats=[],
+            )
         labels = {k.lower(): v for k, v in b.labels.items()}
         if b.type == "item" and b.row is None and "vector" in labels and "cost" in labels:
             row = {"DRUG": b.name, "AVAIL": labels.get("availability", ""), "COST": labels["cost"]}
-            b = replace(b, header=list(row), row=row, label="drugs",
-                        labels={k: v for k, v in b.labels.items() if k.lower() not in ("availability", "cost")})
+            b = replace(
+                b,
+                header=list(row),
+                row=row,
+                label="drugs",
+                labels={k: v for k, v in b.labels.items() if k.lower() not in ("availability", "cost")},
+            )
         if b.row is not None and "COLONY AVAIL" in b.row:
             r, name = b.row, b.name
-            for v, a, c in (("Colony", "COLONY AVAIL", "TEMPLATES COST"), ("Nanites", "PRE-BUILT AVAIL", "NANITES COST")):
+            for v, a, c in (
+                ("Colony", "COLONY AVAIL", "TEMPLATES COST"),
+                ("Nanites", "PRE-BUILT AVAIL", "NANITES COST"),
+            ):
                 row = {"ITEM": f"{name} {v}", "AVAIL": r.get(a, ""), "COST": r.get(c, "")}
                 out.append(replace(b, name=row["ITEM"], header=list(row), row=row))
             continue
@@ -170,7 +236,9 @@ def _prep(bs):
 
 _NUM = r"(\d+(?:\.\d+)?)"
 _WORDS = {"five": 5, "ten": 10, "fifteen": 15, "twenty": 20, "twenty-five": 25, "thirty": 30, "fifty": 50}
-_G_ESS = re.compile(rf"x\s*{_NUM}\s*essence|{_NUM}\s*essence\s+multiplier|adds\s+([\w-]+)\s+percent\s+to\s+the\s+base\s+essence", re.I)
+_G_ESS = re.compile(
+    rf"x\s*{_NUM}\s*essence|{_NUM}\s*essence\s+multiplier|adds\s+([\w-]+)\s+percent\s+to\s+the\s+base\s+essence", re.I
+)
 _G_COST = re.compile(rf"x\s*{_NUM}\s*nuyen|nuyen\s+cost\s+is\s+multiplied\s+by\s+{_NUM}", re.I)
 _G_AVAIL = re.compile(r"([–−+-])\s*(\d+)\s+availability", re.I)
 _G_REDEFINED = re.compile(r"\bthe\s+(\w+)\s+grade\W+is\s+redefined\s+here\s+as\s+(\w+)(?:[\s-]+grade)?", re.I)
@@ -182,9 +250,9 @@ def _grades(bs, cat):
     Essence and cost multipliers and Availability modifier read from the prose (`x1.1 Essence cost, x 0.5 nuyen cost,
     and the –1 Availability`, `adds ten percent to the base Essence cost`, `0.4 Essence multiplier`), the types one
     can only be applied to. A grade whose Essence factor doesn't read is reported (missing-value); one with no cost
-    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too. A grade the section's text says another
-    is redefined as (`the used grade—is redefined here as omega grade`) is that grade's `replaces` (the later book wins:
-    the app offers it instead)."""
+    (gammaware) is kept, but the app doesn't offer it. The sections stay rules too. A grade the section's text says
+    another is redefined as (`the used grade—is redefined here as omega grade`) is that grade's `replaces` (the later
+    book wins: the app offers it instead)."""
     on, redefined = False, {}
     for b in bs:
         if b.type == "section" and b.level <= 2:
@@ -198,12 +266,22 @@ def _grades(bs, cat):
         t = " ".join(re.sub(r"-\n(?=[a-z])", "", b.text).split())
         page = max(1, b.page - PAGE_OFFSET)
         if not (m := _G_ESS.search(t)):
-            cat.report.append({"kind": "missing-value", "file": "grades.xml", "name": b.name, "field": "essence", "page": page})
+            cat.report.append(
+                {"kind": "missing-value", "file": "grades.xml", "name": b.name, "field": "essence", "page": page}
+            )
             continue
         pct = m.group(3) and (_WORDS.get(m.group(3).lower()) or (int(m.group(3)) if m.group(3).isdigit() else None))
         if m.group(3) and pct is None:
-            cat.report.append({"kind": "book-value", "file": "grades.xml", "name": b.name, "field": "essence",
-                               "value": m.group(0), "page": page})
+            cat.report.append(
+                {
+                    "kind": "book-value",
+                    "file": "grades.xml",
+                    "name": b.name,
+                    "field": "essence",
+                    "value": m.group(0),
+                    "page": page,
+                }
+            )
             continue
         cells = {"ESS": m.group(1) or m.group(2) or f"{1 + pct / 100:g}"}
         if c := _G_COST.search(t):
@@ -211,10 +289,17 @@ def _grades(bs, cat):
         if a := _G_AVAIL.search(t):
             cells["AVAIL"] = a.group(1) + a.group(2)
         only = _G_ONLY.search(t)
-        cat.grade(b.name, cells, page, only and only.group(1).lower(), replaces=redefined.get(norm(re.sub(r"\s+grade$", "", b.name, flags=re.I))))
+        cat.grade(
+            b.name,
+            cells,
+            page,
+            only and only.group(1).lower(),
+            replaces=redefined.get(norm(re.sub(r"\s+grade$", "", b.name, flags=re.I))),
+        )
 
 
 def extract(regrouped, ctx=None):
+    """The book's catalog files and report, read from its regrouped blocks."""
     bs = _prep(list(blocks(regrouped)))
     res = catalog.read(bs, ctx, sys.modules[__name__])
     cat = catalog.Catalog(ID, ID.lower(), BOOK)

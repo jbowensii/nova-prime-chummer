@@ -3,38 +3,97 @@ rating (price, availability and essence formulas, per-rating tables) and the str
 
 The same shape comes out of ours.py for our catalog entries, so fields.py compares like with like. Nothing here
 names an item: the maps are Commlink6's record types and item types onto our catalog kinds."""
+
 import re
 
 # our catalog kinds each Commlink6 record type may match (the first is the kind it is reported under)
 ITEM_KINDS = ("weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles", "grades")
 TAG_KINDS = {
-    "item": ITEM_KINDS, "itemenhancement": ITEM_KINDS, "focus": ITEM_KINDS,
-    "spell": ("spells",), "ritual": ("rituals",), "power": ("adeptpowers",), "complexform": ("complexforms",),
-    "quality": ("qualities",), "metatype": ("metatypes", "critters"), "draketype": ("metatypes", "critters", "qualities"),
-    "critterpower": ("critterpowers",), "metaecho": ("metamagics", "echoes", "critterpowers"),
-    "martialart": ("martialarts",), "technique": ("martialtechniques",), "lifestyle": ("lifestyles",),
-    "tradition": ("traditions",), "lifemod": ("lifemodules",), "skill": ("skills",),
+    "item": ITEM_KINDS,
+    "itemenhancement": ITEM_KINDS,
+    "focus": ITEM_KINDS,
+    "spell": ("spells",),
+    "ritual": ("rituals",),
+    "power": ("adeptpowers",),
+    "complexform": ("complexforms",),
+    "quality": ("qualities",),
+    "metatype": ("metatypes", "critters"),
+    "draketype": ("metatypes", "critters", "qualities"),
+    "critterpower": ("critterpowers",),
+    "metaecho": ("metamagics", "echoes", "critterpowers"),
+    "martialart": ("martialarts",),
+    "technique": ("martialtechniques",),
+    "lifestyle": ("lifestyles",),
+    "tradition": ("traditions",),
+    "lifemod": ("lifemodules",),
+    "skill": ("skills",),
     "npc": ("npcs", "critters", "spirits", "sprites", "contacts"),
 }
 # record types (and item types) that were the gap plan's K1 kinds, each now a catalog kind of ours (read from the books'
 # sections and tables, displayed as printed); a type missing here is unmodelled
-SECTION_KINDS = {"action": "actions", "ammotype": "ammotypes", "mentorspirit": "mentorspirits",
-              "contacttype": "contacttypes", "qpath": "qualitypaths", "licensetype": "licencetypes",
-              "set": "qualitysets", "datastructure": "datastructures", "trueelement": "trueelements",
-              "feature": "spellfeatures", "sense": "senses", "interpretation": "ruleoptions", "magicreson": "magictypes",
-              "designmod": "vehicledesign", "designopt": "vehicledesign", "chassistype": "vehicledesign",
-              "powertrain": "vehicledesign", "consoletype": "vehicledesign", "qualityfactor": "vehicledesign"}
+SECTION_KINDS = {
+    "action": "actions",
+    "ammotype": "ammotypes",
+    "mentorspirit": "mentorspirits",
+    "contacttype": "contacttypes",
+    "qpath": "qualitypaths",
+    "licensetype": "licencetypes",
+    "set": "qualitysets",
+    "datastructure": "datastructures",
+    "trueelement": "trueelements",
+    "feature": "spellfeatures",
+    "sense": "senses",
+    "interpretation": "ruleoptions",
+    "magicreson": "magictypes",
+    "designmod": "vehicledesign",
+    "designopt": "vehicledesign",
+    "chassistype": "vehicledesign",
+    "powertrain": "vehicledesign",
+    "consoletype": "vehicledesign",
+    "qualityfactor": "vehicledesign",
+}
 # Commlink6's book folder → our source id; the core rulebook's city chapters are files ending _seattle / _berlin
-BOOK_SOURCE = {"core": "crb", "astral_ways": "aw", "bestial_nature": "bn", "body_shop": "bs", "collapsing_now": "cln",
-               "companion": "swc", "deadly_arts": "da", "dealers_of_death": "dod", "double_clutch": "dc",
-               "emerald": "emc", "firing_squad": "fs", "hack_slash": "hs", "kechibi": "tkc", "krime": "kk",
-               "lofwyr": "ll", "no_future": "nf", "power_plays": "pwp", "shadow_cast": "shc",
-               "sif_new_orleans": "sif-no", "slip_streams": "sls", "smooth_operations": "so", "street_wyrd": "sw",
-               "tarnished_star": "ts"}
+BOOK_SOURCE = {
+    "core": "crb",
+    "astral_ways": "aw",
+    "bestial_nature": "bn",
+    "body_shop": "bs",
+    "collapsing_now": "cln",
+    "companion": "swc",
+    "deadly_arts": "da",
+    "dealers_of_death": "dod",
+    "double_clutch": "dc",
+    "emerald": "emc",
+    "firing_squad": "fs",
+    "hack_slash": "hs",
+    "kechibi": "tkc",
+    "krime": "kk",
+    "lofwyr": "ll",
+    "no_future": "nf",
+    "power_plays": "pwp",
+    "shadow_cast": "shc",
+    "sif_new_orleans": "sif-no",
+    "slip_streams": "sls",
+    "smooth_operations": "so",
+    "street_wyrd": "sw",
+    "tarnished_star": "ts",
+}
 CITY = {"_seattle": "crb-sea", "_berlin": "crb-ber"}
 AUGMENT_TYPES = {"CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"}
-FAMILIES = ("class", "skill/spec", "social", "size/ammo", "variants", "slots", "effects", "choices", "requires",
-            "relevance", "flags", "modonly")
+FAMILIES = (
+    "class",
+    "skill/spec",
+    "social",
+    "size/ammo",
+    "variants",
+    "slots",
+    "effects",
+    "choices",
+    "requires",
+    "relevance",
+    "flags",
+    "modonly",
+)
 RATING_REFS = {"RATING", "LEVEL", "FORCE"}
 NONE = re.compile(r"^\s*[—–-]?\s*$")
 
@@ -69,7 +128,8 @@ def kind_of(tag, attrs):
         return "gear", True
     if tag == "npc":
         return {"SPIRIT": "spirits", "SPRITE": "sprites", "CRITTER_AWAKENED": "critters", "CONTACT": "contacts"}.get(
-            attrs.get("type"), "npcs"), True
+            attrs.get("type"), "npcs"
+        ), True
     if tag == "metaecho":
         return ("echoes" if attrs.get("type") == "ECHO" else "metamagics"), True
     if tag in ("itemenhancement", "focus"):
@@ -180,6 +240,7 @@ def _mods(el):
 
 
 def attrdef(el, ident):
+    """(value, table) of the attrdef `ident` of `el`, else (None, None)."""
     a = next((c for c in _own(el, "attrdef") if c.get("id") == ident), None)
     return (a.get("value"), a.get("table")) if a is not None else (None, None)
 
@@ -215,23 +276,41 @@ def families(el, attrs, variants):
         out["variants"] = frozenset(_norm(variants.get(v.get("id"), v.get("id"))) for v in vs)
     mods = _mods(el)
     slots = {("slot", _norm(m.get("ref"))) for m in mods if m.tag in ("valmod", "itemmod") and m.get("type") == "HOOK"}
-    slots |= {("fits", _norm(u.get("slot"))) for u in _own(el, "usage") if u.get("mode") == "EMBEDDED" and u.get("slot")}
+    slots |= {
+        ("fits", _norm(u.get("slot"))) for u in _own(el, "usage") if u.get("mode") == "EMBEDDED" and u.get("slot")
+    }
     if slots:
         out["slots"] = frozenset(slots)
-    eff = sorted(effect_key(m) for m in mods if m.tag in ("valmod", "checkmod", "itemmod", "allowmod")
-                 and m.get("type") not in ("HOOK", "GEAR"))
+    eff = sorted(
+        effect_key(m)
+        for m in mods
+        if m.tag in ("valmod", "checkmod", "itemmod", "allowmod") and m.get("type") not in ("HOOK", "GEAR")
+    )
     if eff:
         out["effects"] = tuple(eff)
-    ch = sorted(_norm(c.get("type")) for cs in _own(el, "choices") for c in cs if c.tag == "choice"
-                and (c.get("ref") or "").upper() not in RATING_REFS)
+    ch = sorted(
+        _norm(c.get("type"))
+        for cs in _own(el, "choices")
+        for c in cs
+        if c.tag == "choice" and (c.get("ref") or "").upper() not in RATING_REFS
+    )
     if ch:
         out["choices"] = tuple(ch)
-    req = sorted((_norm(r.get("type")), _norm(r.get("ref"))) for rq in _own(el, "requires") for r in rq.iter()
-                 if r.tag in ("datareq", "valuereq"))
+    req = sorted(
+        (_norm(r.get("type")), _norm(r.get("ref")))
+        for rq in _own(el, "requires")
+        for r in rq.iter()
+        if r.tag in ("datareq", "valuereq")
+    )
     if req:
         out["requires"] = tuple(req)
-    out.update(ui_families([m.get("topic") for m in mods if m.tag == "relevancemod"],
-                           [f.text for fl in _own(el, "flags") for f in fl], attrs.get("modonly") == "true"))
+    out.update(
+        ui_families(
+            [m.get("topic") for m in mods if m.tag == "relevancemod"],
+            [f.text for fl in _own(el, "flags") for f in fl],
+            attrs.get("modonly") == "true",
+        )
+    )
     return out
 
 
@@ -252,8 +331,11 @@ def ui_families(topics, flags, modonly):
 
 def labels(fams):
     """The UI tags of a record as one set of labels: relevance:magical, flag:augmentation, modonly."""
-    return ({f"relevance:{t}" for t in fams.get("relevance", ())} | {f"flag:{f}" for f in fams.get("flags", ())}
-            | ({"modonly"} if "modonly" in fams else set()))
+    return (
+        {f"relevance:{t}" for t in fams.get("relevance", ())}
+        | {f"flag:{f}" for f in fams.get("flags", ())}
+        | ({"modonly"} if "modonly" in fams else set())
+    )
 
 
 def effect_key(m):
@@ -277,8 +359,10 @@ def aliases(name, variants):
     return sorted(out - {name})
 
 
-PSEUDO = re.compile(r"(?i)(?:(?:SS|SA|BF|FA)\s*\(\s*\d+(?:\s*[-–]\s*\d+)?\s*\)|(?:Pilot|Sensor)\s+\d+|[\d.,]+\s*km"
-                    r"|Uses\s+\d+\s+Energy\s+per\s+shot|Crew\s+Served\s*\(\s*\d+\s*\))$")
+PSEUDO = re.compile(
+    r"(?i)(?:(?:SS|SA|BF|FA)\s*\(\s*\d+(?:\s*[-–]\s*\d+)?\s*\)|(?:Pilot|Sensor)\s+\d+|[\d.,]+\s*km"
+    r"|Uses\s+\d+\s+Energy\s+per\s+shot|Crew\s+Served\s*\(\s*\d+\s*\))$"
+)
 
 
 def cl6_only(kind, name, a, tag):
@@ -291,16 +375,36 @@ def cl6_only(kind, name, a, tag):
     # (2)`): guarded by being a gear row it prices at nothing (no price, or 0)
     if tag in ("item", "itemenhancement") and a.get("price") in (None, "", "0") and PSEUDO.match(name.strip()):
         return True
-    return tag in ("item", "itemenhancement") and a.get("price") == "0" and (
-        (a.get("avail") or "").startswith("99") or "(see " in name)
+    return (
+        tag in ("item", "itemenhancement")
+        and a.get("price") == "0"
+        and ((a.get("avail") or "").startswith("99") or "(see " in name)
+    )
 
 
-CLASS_KINDS = {"weapons", "armor", "augmentations", "electronics", "gear", "vehicles", "programs", "spells", "ammotypes"}
+CLASS_KINDS = {
+    "weapons",
+    "armor",
+    "augmentations",
+    "electronics",
+    "gear",
+    "vehicles",
+    "programs",
+    "spells",
+    "ammotypes",
+}
 
 
-# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another item's)
-KIND_TYPES = {"weapons": ("WEAPON_",), "armor": ("ARMOR",), "augmentations": ("CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"),
-              "vehicles": ("VEHICLES", "DRONE"), "programs": ("SOFTWARE",), "electronics": ("ELECTRONICS", "CYBERDECK")}
+# the Commlink6 class types an entry of our kind is classed under (a record of another type matched to it is another
+# item's)
+KIND_TYPES = {
+    "weapons": ("WEAPON_",),
+    "armor": ("ARMOR",),
+    "augmentations": ("CYBERWARE", "BIOWARE", "GENEWARE", "NANOWARE"),
+    "vehicles": ("VEHICLES", "DRONE"),
+    "programs": ("SOFTWARE",),
+    "electronics": ("ELECTRONICS", "CYBERDECK"),
+}
 
 
 def fits_kind(kind, cls):
@@ -309,8 +413,9 @@ def fits_kind(kind, cls):
 
 
 def cl6_class(tag, attrs):
-    """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a spell, an
-    ammunition type). Our `class` attribute carries the same string (docs/sr6-data-format/classification.md)."""
+    """Commlink6's own classification of a record, in its keys: TYPE/SUBTYPE, TYPE alone, else the record's tag (a
+    spell, an ammunition type). Our `class` attribute carries the same string
+    (docs/sr6-data-format/classification.md)."""
     t, s = attrs.get("type") or "", attrs.get("subtype") or ""
     if tag == "itemenhancement":
         return ""  # (an enhancement of an item is no item class: it has no type of its own)
@@ -333,7 +438,9 @@ def canonical(rec):
         pe, pt = attrdef(el, "PRICE")
         if pe is None:
             pe = a.get("price") or a.get("cost")
-        f["cost"] = {r: (None if v in NOT_FOR_SALE else v) for r, v in per_rating(pe, pt, ratings).items()}  # (a price that says so compares nothing)
+        f["cost"] = {
+            r: (None if v in NOT_FOR_SALE else v) for r, v in per_rating(pe, pt, ratings).items()
+        }  # (a price that says so compares nothing)
         f["cost_raw"] = pe
         f["cost_variants"] = _variant_values(el, "PRICE")
         f["avail_variants"] = [float(v[0]) for v in map(_avail, _variant_values(el, "AVAILABILITY", raw=True)) if v]
@@ -345,8 +452,9 @@ def canonical(rec):
         f["avail"] = {r: x for r, x in ((r, _avail(x)) for r, x in av.items()) if x}
         ee, et = attrdef(el, "ESSENCECOST")
         if ee is None:
-            ee = next((u.get("value") for u in _own(el, "usage") if u.get("mode") == "IMPLANTED" and u.get("value")),
-                      None)
+            ee = next(
+                (u.get("value") for u in _own(el, "usage") if u.get("mode") == "IMPLANTED" and u.get("value")), None
+            )
         f["essence"] = per_rating(ee, et, ratings)
         used = next((u.get("value") for u in _own(el, "usage") if u.get("mode") == "EMBEDDED" and u.get("value")), None)
         f["capacity_used"] = per_rating(used, None, ratings)
@@ -360,12 +468,28 @@ def canonical(rec):
         f["defense"] = ar.get("rating")
     v = next(iter(_own(el, "vehicle")), None)
     if v is not None:
-        for ours, cl in (("handling", "han"), ("accel", "acc"), ("interval", "spdi"), ("topSpeed", "tspd"),
-                         ("body", "bod"), ("armor", "arm"), ("pilot", "pil"), ("sensor", "sen"), ("seats", "sea")):
+        for ours, cl in (
+            ("handling", "han"),
+            ("accel", "acc"),
+            ("interval", "spdi"),
+            ("topSpeed", "tspd"),
+            ("body", "bod"),
+            ("armor", "arm"),
+            ("pilot", "pil"),
+            ("sensor", "sen"),
+            ("seats", "sea"),
+        ):
             f[ours] = v.get(cl)
     if tag == "spell":
-        f.update({"range": a.get("range"), "spell type": a.get("type"), "duration": a.get("dur"),
-                  "drain": a.get("drain"), "spell category": a.get("cat")})
+        f.update(
+            {
+                "range": a.get("range"),
+                "spell type": a.get("type"),
+                "duration": a.get("dur"),
+                "drain": a.get("drain"),
+                "spell category": a.get("cat"),
+            }
+        )
     elif tag == "power":
         f.update({"pp cost": a.get("cost"), "per level": a.get("hasLevel"), "activation": a.get("act")})
     elif tag == "complexform":
@@ -375,20 +499,42 @@ def canonical(rec):
     elif tag == "ritual":
         f["threshold"] = a.get("thr")
     elif tag == "critterpower":
-        f.update({"power type": a.get("type"), "action": a.get("action"), "range": a.get("range"),
-                  "duration": a.get("dur")})
+        f.update(
+            {"power type": a.get("type"), "action": a.get("action"), "range": a.get("range"), "duration": a.get("dur")}
+        )
     elif tag == "skill":
         f["attribute"] = a.get("attr")
-    return {"book": rec["book"], "src": source_of(rec["book"], rec["file"]), "file": rec["file"], "tag": tag, "id": rec["id"], "name": rec["name"],
-            "page": rec["page"], "kind": kind, "modelled": modelled, "pool": (TAG_KINDS.get(tag, ()) if kind not in SECTION_KINDS.values() and kind != "packs"
-                     # (an ammunition type, no fields of its own: the book may print it as ammunition sold by count, gear,
-                     # or as a row of a weapons table, `Ballista Bolt, High Explosive`)
-                     else ("ammotypes", "gear", "weapons") if kind == "ammotypes" else (kind,)) if modelled else (),
-            "aliases": aliases(rec["name"], rec["variants"]), "fields": {k: x for k, x in f.items() if x},
-            "families": families(el, a, rec["variants"]) | (
-                {"class": (cl6_class(tag, a).casefold(),)} if kind in CLASS_KINDS and modelled and cl6_class(tag, a) else {}), "el": el,
-            "cl6_class": cl6_class(tag, a),
-            "cl6only": cl6_only(kind, rec["name"], a, tag)}
+    return {
+        "book": rec["book"],
+        "src": source_of(rec["book"], rec["file"]),
+        "file": rec["file"],
+        "tag": tag,
+        "id": rec["id"],
+        "name": rec["name"],
+        "page": rec["page"],
+        "kind": kind,
+        "modelled": modelled,
+        "pool": (
+            (
+                TAG_KINDS.get(tag, ())
+                if kind not in SECTION_KINDS.values() and kind != "packs"
+                # (an ammunition type, no fields of its own: the book may print it as ammunition sold by count, gear,
+                # or as a row of a weapons table, `Ballista Bolt, High Explosive`)
+                else ("ammotypes", "gear", "weapons") if kind == "ammotypes" else (kind,)
+            )
+            if modelled
+            else ()
+        ),
+        "aliases": aliases(rec["name"], rec["variants"]),
+        "fields": {k: x for k, x in f.items() if x},
+        "families": families(el, a, rec["variants"])
+        | (
+            {"class": (cl6_class(tag, a).casefold(),)} if kind in CLASS_KINDS and modelled and cl6_class(tag, a) else {}
+        ),
+        "el": el,
+        "cl6_class": cl6_class(tag, a),
+        "cl6only": cl6_only(kind, rec["name"], a, tag),
+    }
 
 
 def _variant_values(el, ident, raw=False):

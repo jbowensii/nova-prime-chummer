@@ -5,6 +5,7 @@ anchor). The table of contents ("**Name (Role) ..... N**") gives the name as pri
 importer.statblock does the reading and building; the samples are written as character XML to
 custom/imported/pregens/samples/pregens.<name>.xml and every printed number goes to the report.
 """
+
 import re
 from datetime import datetime, timezone
 
@@ -15,11 +16,13 @@ ID, NAME, PUBLISHER, CANON = "PREGENS", "SRA2 Pregens v1.0f", "Daegann (Holostre
 TOC = re.compile(r"^\*\*(.+?) \((.+?)\)\s*\.{3,}\s*(\d+)\*\*$", re.M)
 
 
-def match(meta, md_head):
+def match(_meta, md_head):
+    """0.9 when the opening text names the Daegann pregens, else 0.0."""
     return 0.9 if re.search(r"daegann", md_head, re.I) and re.search(r"pregen", md_head, re.I) else 0.0
 
 
-def extract(md, ctx=None):
+def extract(md, _ctx=None):
+    """The pregenerated characters, read from the booklet's pages and table of contents."""
     parts = re.split(r"<!-- page (\d+) -->", md)
     pages = {int(parts[i]): parts[i + 1] for i in range(1, len(parts), 2)}
     toc = {int(p) + 1: (n.strip(), r.strip()) for n, r, p in TOC.findall(md)}
@@ -30,15 +33,21 @@ def extract(md, ctx=None):
         if not re.search(r"^SKILLS RATING", text, re.M):
             continue
         name, role = toc.get(page) or _story_title(pages.get(page - 1, ""))
-        s, rows = statblock.sample(statblock.parse_statblock(text), rules, ID, name, role, page,
-                                   f"{role}. {NAME} p.{page}.", updated, samples)
+        s, rows = statblock.sample(
+            statblock.parse_statblock(text), rules, ID, name, role, page, f"{role}. {NAME} p.{page}.", updated, samples
+        )
         samples.append(s)
         report += rows
-    return Result(files={}, texts=None, samples=samples, report=report,
-                  source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON})
+    return Result(
+        files={},
+        texts=None,
+        samples=samples,
+        report=report,
+        source={"id": ID, "name": NAME, "publisher": PUBLISHER, "canon": CANON},
+    )
 
 
 def _story_title(text):
-    """"# TEST FACE" / "(MADE-UP FACE)" on the story page, when the contents don't list the runner."""
+    """ "# TEST FACE" / "(MADE-UP FACE)" on the story page, when the contents don't list the runner."""
     m = re.search(r"^# (.+)\n\((.+)\)", text, re.M)
     return (m.group(1).title(), m.group(2).capitalize()) if m else ("Runner", "")

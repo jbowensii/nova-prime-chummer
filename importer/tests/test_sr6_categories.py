@@ -2,12 +2,15 @@
 the hosts they fit, the rows whose names need their category (group, composed search names), a name repeated in
 another category, a product's configurations (shapes.configurations) and footnote marks. Every name, number and line
 is invented."""
+
 import unittest
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import categories as C
 from importer.sr6 import moved, regroup
 from importer.sr6.recipes import crb, da
+
+# pylint: disable=protected-access
 
 GEAR_MD = """<!-- page 251 -->
 # GEAR
@@ -61,6 +64,7 @@ A made-up back cover.
 
 
 def files(res):
+    """{file stem: parsed XML} of the result's files."""
     return {k[:-4]: ET.fromstring(x) for k, x in res.files.items()}
 
 
@@ -95,7 +99,12 @@ class CategoriesTest(unittest.TestCase):
         cls.f = files(cls.res)
 
     def entry(self, kind, name, category=None):
-        return next(e for e in self.f[kind] if e.findtext("name") == name and (category is None or e.get("category") == category))
+        """The first entry of that kind and name (and category, when given)."""
+        return next(
+            e
+            for e in self.f[kind]
+            if e.findtext("name") == name and (category is None or e.get("category") == category)
+        )
 
     def test_rows_carry_their_tables_category(self):
         arm = self.entry("gear", "Arm (synthetic)")
@@ -117,8 +126,9 @@ class CategoriesTest(unittest.TestCase):
         glow = cats["Glowware enhancement"]
         self.assertIsNone(glow.get("fits"))  # no glowware table: an issue, not a guess
         self.assertEqual([(i.get("field"), i.get("code")) for i in glow.findall("issue")], [("fits", "missing")])
-        self.assertIn(("category", "accessory table with no matching host"),
-                      [(r["kind"], r.get("why")) for r in self.res.report])
+        self.assertIn(
+            ("category", "accessory table with no matching host"), [(r["kind"], r.get("why")) for r in self.res.report]
+        )
 
     def test_a_name_in_another_category_is_another_item(self):
         a1, a2 = self.entry("gear", "Armor", "Zorplimb accessory"), self.entry("gear", "Armor", "Glowware enhancement")
@@ -128,10 +138,12 @@ class CategoriesTest(unittest.TestCase):
     def test_an_old_id_follows_its_category(self):
         """The import before had the two Armors as `armor` and `armor-2`: the old second id now finds the glowware
         one by its category."""
-        prev = {("gear", "crb.armor"): (["Armor"], [], moved._cat("zorplimb-accessories")),
-                ("gear", "crb.armor-2"): (["Armor"], [], moved._cat("glowware-enhancements"))}
+        prev = {
+            ("gear", "crb.armor"): (["Armor"], [], moved._cat("zorplimb-accessories")),
+            ("gear", "crb.armor-2"): (["Armor"], [], moved._cat("glowware-enhancements")),
+        }
         xml = ET.tostring(self.f["gear"], encoding="unicode").replace(' id="', ' id="crb.')
-        out, n = moved.carry(prev, {"gear.xml": xml})
+        out, _ = moved.carry(prev, {"gear.xml": xml})
         glow = next(e for e in ET.fromstring(out["gear.xml"]) if e.get("category") == "Glowware enhancement")
         self.assertEqual([a.get("id") for a in glow.findall("alias") if a.get("id")], ["crb.armor-2"])
 
@@ -141,12 +153,15 @@ class GeneralTableReaderTest(unittest.TestCase):
 
     def test_kinds_by_columns(self):
         from importer.sr6 import tables as T
+
         self.assertEqual(T.kind_of(["ITEM", "HANDL", "ACCEL", "BODY", "AVAIL", "COST"]), "vehicles")
         self.assertEqual(T.kind_of(["ITEM", "ESSENCE", "AVAIL", "COST"]), "augmentations")
         self.assertEqual(T.kind_of(["WEAPON", "DV", "ATTACK RATING", "AVAIL", "COST"]), "weapons")
         self.assertEqual(T.kind_of(["ITEM", "DEFENSE RATING", "AVAIL", "COST"]), "armor")
         self.assertEqual(T.kind_of(["ITEM", "AVAIL", "COST"], "glow armor jackets"), "armor")  # its category's word
-        self.assertEqual(T.kind_of(["ITEM", "AVAIL", "COST"], "armor modifications"), "gear")  # (an accessory: no host's kind)
+        self.assertEqual(
+            T.kind_of(["ITEM", "AVAIL", "COST"], "armor modifications"), "gear"
+        )  # (an accessory: no host's kind)
         self.assertIsNone(T.kind_of(["SITUATION", "DICE POOL MODIFIER"]))  # a rules table
         self.assertIsNone(T.kind_of(["THRESHOLD", "RESULT"]))
 
@@ -164,13 +179,25 @@ class ConfigurationsTest(unittest.TestCase):
     def test_rows_of_one_product(self):
         self.assertEqual(set(self.w), {"Knife", "Spear"})
         s = self.w["Spear"]
-        self.assertEqual({k: s.get(k) for k in ("category", "maker", "group", "type", "skill", "spec", "ar", "cost")},
-                         {"category": "Glimmer Folding Polearm", "maker": "Zapco Weapons", "group": "Glimmer Folding Polearm",
-                          "type": "Blade", "skill": "Close Combat", "spec": "Blades", "ar": "10/6/—/—/—", "cost": "1000"})
+        self.assertEqual(
+            {k: s.get(k) for k in ("category", "maker", "group", "type", "skill", "spec", "ar", "cost")},
+            {
+                "category": "Glimmer Folding Polearm",
+                "maker": "Zapco Weapons",
+                "group": "Glimmer Folding Polearm",
+                "type": "Blade",
+                "skill": "Close Combat",
+                "spec": "Blades",
+                "ar": "10/6/—/—/—",
+                "cost": "1000",
+            },
+        )
         self.assertEqual(self.w["Knife"].get("cost"), "900")
 
     def test_footnote_and_wireless_bonus(self):
-        self.assertEqual([(n.get("field"), n.text) for n in self.w["Spear"].findall("note")], [("ar", "Made-up range note")])
+        self.assertEqual(
+            [(n.get("field"), n.text) for n in self.w["Spear"].findall("note")], [("ar", "Made-up range note")]
+        )
         self.assertEqual(self.w["Knife"].findall("note"), [])
         for n in ("knife", "spear"):
             self.assertIn("made-up wireless bonus", self.texts[("weapons", n)])

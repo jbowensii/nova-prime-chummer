@@ -24,9 +24,10 @@ searched for and given the first family that holds Commlink6's value, with its m
 - another column: another column of the object's own row in the winning book;
 - not found.
 
-A misread is not counted against our accuracy. Weak links (another column, a one-field misread, one digit off) are settled by the
-owner's page verdicts (apply_verdicts); one with no verdict goes to not found. `run(corpus, cl6)` returns (rows, counts); `write()` writes the CSV
-(owner only: names and values), `markdown()` the owner's section."""
+A misread is not counted against our accuracy. Weak links (another column, a one-field misread, one digit off) are
+settled by the owner's page verdicts (apply_verdicts); one with no verdict goes to not found. `run(corpus, cl6)` returns
+(rows, counts); `write()` writes the CSV (owner only: names and values), `markdown()` the owner's section."""
+
 import csv
 import os
 import re
@@ -35,21 +36,71 @@ from collections import Counter
 from tools.cl6check import corpus as K
 from tools.cl6check import fields, lineage, match, ours
 
-FAMILIES = ("own row", "older printing or superseded", "errata sentence", "section default", "conversion error",
-            "Commlink6 misread", "another book", "description sentence", "per-rating or variant row", "heading",
-            "another column", "not found")
-ATTR = {"legality": "avail", "spell type": "type", "drain": "dv", "spell category": "category", "pp cost": "cost",
-        "per level": "perLevel", "power type": "type", "positive": "kind", "attribute": "attr"}
-CUE = {"cost": r"¥|nuyen|\bcost", "avail": r"avail", "legality": r"avail|legal|illegal|restricted|forbidden",
-       "rating": r"rating", "essence": r"essence", "capacity": r"capacity|\[", "karma": r"karma", "dv": r"\bDV\b|damage",
-       "ar": r"attack|\bAR\b|/", "modes": r"mode|\b(?:SS|SA|BF|FA)\b", "ammo": r"ammo|\(c\)|\(m\)|\(d\)|\(b\)|magazine|clip|hold|load",
-       "range": r"range", "duration": r"duration", "action": r"action", "power type": r"type", "spell type": r"type",
-       "drain": r"drain", "fade": r"fade", "threshold": r"threshold", "activation": r"activation|action",
-       "pp cost": r"\bpp\b|power points?", "defense": r"defense|\bDR\b", "seats": r"seat"}
-ENUM = {"LINE_OF_SIGHT": r"line of sight|\bLOS\b", "LINE_OF_SIGHT_AREA": r"\bLOS\s*\(A\)", "TOUCH": r"\btouch\b|\bT\b",
-        "SELF": r"\bself\b", "INSTANTANEOUS": r"\binstant", "SUSTAINED": r"\bsustained\b", "PERMANENT": r"\bpermanent\b",
-        "ALWAYS": r"\balways\b", "AUTO": r"\bauto(?:matic)?\b", "MAJOR": r"\bmajor\b", "MINOR": r"\bminor\b",
-        "MANA": r"\bmana\b", "PHYSICAL": r"\bphysical\b"}
+FAMILIES = (
+    "own row",
+    "older printing or superseded",
+    "errata sentence",
+    "section default",
+    "conversion error",
+    "Commlink6 misread",
+    "another book",
+    "description sentence",
+    "per-rating or variant row",
+    "heading",
+    "another column",
+    "not found",
+)
+ATTR = {
+    "legality": "avail",
+    "spell type": "type",
+    "drain": "dv",
+    "spell category": "category",
+    "pp cost": "cost",
+    "per level": "perLevel",
+    "power type": "type",
+    "positive": "kind",
+    "attribute": "attr",
+}
+CUE = {
+    "cost": r"¥|nuyen|\bcost",
+    "avail": r"avail",
+    "legality": r"avail|legal|illegal|restricted|forbidden",
+    "rating": r"rating",
+    "essence": r"essence",
+    "capacity": r"capacity|\[",
+    "karma": r"karma",
+    "dv": r"\bDV\b|damage",
+    "ar": r"attack|\bAR\b|/",
+    "modes": r"mode|\b(?:SS|SA|BF|FA)\b",
+    "ammo": r"ammo|\(c\)|\(m\)|\(d\)|\(b\)|magazine|clip|hold|load",
+    "range": r"range",
+    "duration": r"duration",
+    "action": r"action",
+    "power type": r"type",
+    "spell type": r"type",
+    "drain": r"drain",
+    "fade": r"fade",
+    "threshold": r"threshold",
+    "activation": r"activation|action",
+    "pp cost": r"\bpp\b|power points?",
+    "defense": r"defense|\bDR\b",
+    "seats": r"seat",
+}
+ENUM = {
+    "LINE_OF_SIGHT": r"line of sight|\bLOS\b",
+    "LINE_OF_SIGHT_AREA": r"\bLOS\s*\(A\)",
+    "TOUCH": r"\btouch\b|\bT\b",
+    "SELF": r"\bself\b",
+    "INSTANTANEOUS": r"\binstant",
+    "SUSTAINED": r"\bsustained\b",
+    "PERMANENT": r"\bpermanent\b",
+    "ALWAYS": r"\balways\b",
+    "AUTO": r"\bauto(?:matic)?\b",
+    "MAJOR": r"\bmajor\b",
+    "MINOR": r"\bminor\b",
+    "MANA": r"\bmana\b",
+    "PHYSICAL": r"\bphysical\b",
+}
 
 
 def _num(s):
@@ -67,8 +118,10 @@ def token_re(c, f):
     fl = c["fields"]
     if f == "rating" and fl.get("rating"):
         lo, hi = fl["rating"]
-        return (rf"\b{lo}\s*(?:–|-|to|and)\s*{hi}\b|maximum rating (?:is |of )?{hi}\b|ratings? up to {hi}\b"
-                rf"|max(?:imum)? rating[^.]{{0,20}}\b{hi}\b")
+        return (
+            rf"\b{lo}\s*(?:–|-|to|and)\s*{hi}\b|maximum rating (?:is |of )?{hi}\b|ratings? up to {hi}\b"
+            rf"|max(?:imum)? rating[^.]{{0,20}}\b{hi}\b"
+        )
     if f in ("cost", "essence") and fl.get(f):
         v = next(iter(fl[f].values()))
         if isinstance(v, float) and v:
@@ -90,10 +143,12 @@ def token_re(c, f):
         if m:
             n = int(m.group(1))
             word = WORDS[n] if n < len(WORDS) else str(n)
-            return (rf"(?<![\w]){re.escape(raw)}(?![\w])|\b(?:{n}|{word})\s+(?:\w+\s+)?"
-                    rf"(?:bolts?|rounds?|shots?|missiles?|rockets?|grenades?|arrows?|darts?|shells?)\b")
+            return (
+                rf"(?<![\w]){re.escape(raw)}(?![\w])|\b(?:{n}|{word})\s+(?:\w+\s+)?"
+                rf"(?:bolts?|rounds?|shots?|missiles?|rockets?|grenades?|arrows?|darts?|shells?)\b"
+            )
     if f == "ar":
-        parts = [p for p in raw.split(",")]
+        parts = list(raw.split(","))
         while parts and not parts[-1]:
             parts.pop()
         return r"[/\s]*".join(re.escape(p) if p else r"[—–-]" for p in parts)
@@ -141,7 +196,7 @@ def _matches(c, kind, attr, value, f, rating=None):
             tries.append((re.match(r"\s*(\d+)", v) or re.match("", "")).group(0).strip() or v)
     if f == "dv":
         tries.append(v.rstrip("*† "))
-        tries.append(v.split("/")[0].strip())  # '4S/4P': two forms of the weapon, the first
+        tries.append(v.split("/", maxsplit=1)[0].strip())  # '4S/4P': two forms of the weapon, the first
     return "with a note" if any(t != v and _strict(c, kind, attr, t, f, rating) for t in tries) else None
 
 
@@ -158,8 +213,9 @@ def _rating_of(o):
 def _per_rating(c, f, chain, fam=None):
     """The rows or entries printing the object at each rating ('Cyberjack Rating 3', a 'Rating 3' row of its stat
     block) that hold Commlink6's per-rating values: [Obs], or [] unless at least two ratings agree and none differs."""
-    cl = c["fields"].get(f) or (c["fields"].get("capacity_offered") or c["fields"].get("capacity_used")
-                                 if f == "capacity" else None)
+    cl = c["fields"].get(f) or (
+        c["fields"].get("capacity_offered") or c["fields"].get("capacity_used") if f == "capacity" else None
+    )
     if not isinstance(cl, dict) or len(cl) < 2:
         return []
     agree, differ = [], 0
@@ -167,7 +223,9 @@ def _per_rating(c, f, chain, fam=None):
         m = _rating_of(o)
         if not m or int(m.group(1)) not in cl or (fam and lineage.family(o.book.belongs) != fam):
             continue
-        want, got = cl[int(m.group(1))], ours.value(o.value) if f != "avail" else ours.value(re.sub(r"\D*$", "", o.value))
+        want, got = cl[int(m.group(1))], (
+            ours.value(o.value) if f != "avail" else ours.value(re.sub(r"\D*$", "", o.value))
+        )
         want = want[0] if isinstance(want, tuple) else want
         if got is not None and fields.close(float(want), got):
             agree.append(o)
@@ -214,18 +272,30 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
     fam = lineage.family(c["src"])
     big = next(iter((c["fields"].get(f) or {None: 0}).values()), 0) if f == "cost" else 0
     if isinstance(big, float) and big >= 999999 and (win is None or ours.NONE.match(win.value or "")):
-        return "own row", (f"{win.book.label} {win.where} " if win else "") + "(a dash; Commlink6's not-for-sale number)", \
-            win.value if win else ""
+        return (
+            "own row",
+            (f"{win.book.label} {win.where} " if win else "") + "(a dash; Commlink6's not-for-sale number)",
+            win.value if win else "",
+        )
     if win is not None and _matches(c, kind, attr, win.value, f, rating):
         return "own row", f"{win.book.label} {win.where} (printed with a note: '{win.value}')", win.value
     one = c["fields"].get(f)
-    if win is not None and f in NUMERIC and isinstance(one, dict) and len({str(x) for x in one.values()}) == 1 \
-            and re.search(r"(?i)rating", win.value):
+    if (
+        win is not None
+        and f in NUMERIC
+        and isinstance(one, dict)
+        and len({str(x) for x in one.values()}) == 1
+        and re.search(r"(?i)rating", win.value)
+    ):
         v1 = ours.value(win.value, 1)
         want = next(iter(one.values()))
         want = want[0] if isinstance(want, tuple) else want
         if v1 is not None and fields.close(float(want), v1):
-            return "per-rating or variant row", f"{win.book.label} {win.where} (Commlink6 keeps the Rating 1 value)", win.value
+            return (
+                "per-rating or variant row",
+                f"{win.book.label} {win.where} (Commlink6 keeps the Rating 1 value)",
+                win.value,
+            )
     if f == "rating" and c["fields"].get("rating"):
         # rows, entries or stat blocks printed per rating ('Rating 3' headings, 'Cyberjack Rating 6'): the top one is
         # Commlink6's maximum
@@ -234,29 +304,49 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
             for o in ch:
                 if lineage.family(o.book.belongs) != fam:
                     continue
-                m = _rating_of(o) or (re.search(r"(?i)\brating\s*(\d+)\b", o.line.heading) if o.line is not None else None)
+                m = _rating_of(o) or (
+                    re.search(r"(?i)\brating\s*(\d+)\b", o.line.heading) if o.line is not None else None
+                )
                 if m:
                     seen.setdefault(int(m.group(1)), o)
         hi = c["fields"]["rating"][1]
         if seen and max(seen) == hi and len(seen) >= 2:
             o = seen[hi]
-            return "per-rating or variant row", f"{o.book.label} {o.where} (ratings {min(seen)}–{hi} printed one by one)", f"Rating {hi}"
+            return (
+                "per-rating or variant row",
+                f"{o.book.label} {o.where} (ratings {min(seen)}–{hi} printed one by one)",
+                f"Rating {hi}",
+            )
     rows = _per_rating(c, f, chain, fam)
     if rows:
-        return ("per-rating or variant row", f"{rows[0].book.label} {rows[0].where} and {len(rows) - 1} more rating rows",
-                "; ".join(f"{o.label or o.variant}: {o.value}" for o in rows[:3]))
+        return (
+            "per-rating or variant row",
+            f"{rows[0].book.label} {rows[0].where} and {len(rows) - 1} more rating rows",
+            "; ".join(f"{o.label or o.variant}: {o.value}" for o in rows[:3]),
+        )
     hits = [o for o in chain if o is not win and _matches(c, kind, attr, o.value, f, rating)]
 
     def first(pred):
         return next((o for o in hits if pred(o)), None)
+
     for name, pred in (
-            ("errata sentence", lambda o: o.kind == "errata"),
-            ("section default", lambda o: o.kind == "section"),
-            ("per-rating or variant row", lambda o: win is not None and o.book is win.book and o.kind == "catalog"
-             and win.kind == "catalog" and o.where != win.where),  # two entries of one book: two variants
-            ("own row", lambda o: win is not None and o.book is win.book and not o.variant and not o.context),
-            ("older printing or superseded", lambda o: not o.variant and not o.context and lineage.family(o.book.belongs) == fam),
-            ("another book", lambda o: not o.variant)):
+        ("errata sentence", lambda o: o.kind == "errata"),
+        ("section default", lambda o: o.kind == "section"),
+        (
+            "per-rating or variant row",
+            lambda o: win is not None
+            and o.book is win.book
+            and o.kind == "catalog"
+            and win.kind == "catalog"
+            and o.where != win.where,
+        ),  # two entries of one book: two variants
+        ("own row", lambda o: win is not None and o.book is win.book and not o.variant and not o.context),
+        (
+            "older printing or superseded",
+            lambda o: not o.variant and not o.context and lineage.family(o.book.belongs) == fam,
+        ),
+        ("another book", lambda o: not o.variant),
+    ):
         o = first(pred)
         if o:
             ctx = " (context: " + ("NPC line" if o.kind == "bracket" else "quick-start") + ")" if o.context else ""
@@ -270,6 +360,7 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
         if o.line is None or o.kind not in ("row", "block") or o.variant or o.context:
             continue
         for x, label in _neighbours(o.book, o.line):
+            # pylint: disable=protected-access  # the lineage module's helper, shared inside cl6check
             if lineage._own(next(iter(x.cells().values()), ""), names):
                 continue
             cells = lineage.from_row(o.book, x)
@@ -278,10 +369,19 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
                 continue
             # one small value matching a neighbour is chance; two differing fields from that row, or one distinctive
             # value, is not
-            others = sum(1 for g in differ if g != f and g != "legality" and
-                         any(n.field == ATTR.get(g, g) and _matches(c, kind, n.field, n.value, g, rating) for n in cells))
+            others = sum(
+                1
+                for g in differ
+                if g != f
+                and g != "legality"
+                and any(n.field == ATTR.get(g, g) and _matches(c, kind, n.field, n.value, g, rating) for n in cells)
+            )
             if others or _distinctive(f, hit.value):
-                return "Commlink6 misread", f"{o.book.label} book.md L{x.no} p.{x.page} {label} [{x.heading}]", hit.value
+                return (
+                    "Commlink6 misread",
+                    f"{o.book.label} book.md L{x.no} p.{x.page} {label} [{x.heading}]",
+                    hit.value,
+                )
     tok = d.get("cl6_tok") or ""
     for o in chain:
         if not o.variant and tok and _swapped(tok, ours.value(o.value) and fields.fmt(ours.value(o.value)) or ""):
@@ -293,7 +393,11 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
         heads, prose = _text(corpus, names, books)
         for b, ln in heads:
             if pat.search(ln.text):
-                return "heading", f"{b.label} book.md L{ln.no} p.{ln.page} [{ln.text.strip('# ')[:60]}]", pat.search(ln.text).group(0)
+                return (
+                    "heading",
+                    f"{b.label} book.md L{ln.no} p.{ln.page} [{ln.text.strip('# ')[:60]}]",
+                    pat.search(ln.text).group(0),
+                )
         before = {}
         for b, ln in prose:
             ls = b.md()
@@ -307,14 +411,26 @@ def classify(corpus, c, kind, chains, d, names, differ=()):
     for b, ln, word in _class_rows(corpus, chains, kind):
         for n in lineage.from_row(b, ln):
             if n.field == attr and _matches(c, kind, attr, n.value, f, rating):
-                return "another book", f"{b.label} book.md L{ln.no} p.{ln.page} class row '{word}' [{ln.heading}]", n.value
+                return (
+                    "another book",
+                    f"{b.label} book.md L{ln.no} p.{ln.page} class row '{word}' [{ln.heading}]",
+                    n.value,
+                )
     if win is not None:
-        rows = {id(x.line) for ch in chains.values() for x in ch
-                if x.book is win.book and x.line is not None and x.kind in ("row", "block", "card") and not x.variant}
+        rows = {
+            id(x.line)
+            for ch in chains.values()
+            for x in ch
+            if x.book is win.book and x.line is not None and x.kind in ("row", "block", "card") and not x.variant
+        }
         for ch in chains.values():
             for x in ch:
-                if id(x.line) in rows and x.field != attr and not ours.NONE.match(x.value or "") \
-                        and _matches(c, kind, attr, x.value, f, rating):
+                if (
+                    id(x.line) in rows
+                    and x.field != attr
+                    and not ours.NONE.match(x.value or "")
+                    and _matches(c, kind, attr, x.value, f, rating)
+                ):
                     return "another column", f"{win.book.label} {x.where} column {x.field}", x.value
     return "not found", "", ""
 
@@ -333,6 +449,7 @@ def _text(corpus, names, books):
             return
         seen.add((id(b), x.no))
         (heads if x.level else prose).append((b, x))
+
     for b, ln in corpus.mentions(names):
         if b.context or id(b) not in books:
             continue
@@ -344,16 +461,18 @@ def _text(corpus, names, books):
                 add(b, x)
             parent = next((k for k in range(i - 1, -1, -1) if 0 < ls[k].level < ln.level), None)
             if parent is not None:
-                for x in ls[parent + 1:i]:
+                for x in ls[parent + 1 : i]:
                     if x.level:
                         break
                     add(b, x)
         else:
-            for x in ls[max(0, i - 2):i + 3]:  # the sentence around the name, wrapped over lines
+            for x in ls[max(0, i - 2) : i + 3]:  # the sentence around the name, wrapped over lines
                 if not x.level:
                     add(b, x)
-        if not ln.level and TITLE.match(ln.text):  # a run-in title ('**Name:** …', a line that is the name): its paragraph
-            for x in ls[i + 1:i + 26]:
+        if not ln.level and TITLE.match(
+            ln.text
+        ):  # a run-in title ('**Name:** …', a line that is the name): its paragraph
+            for x in ls[i + 1 : i + 26]:
                 if x.level or TITLE.match(x.text):
                     break
                 add(b, x)
@@ -367,9 +486,34 @@ def _distinctive(f, v):
     return (f == "cost" and n is not None and n >= 100) or f in ("ar", "ammo")
 
 
-GENERIC = {"armor", "weapon", "weapons", "gear", "melee", "firearm", "firearms", "clothing", "electronics", "vehicle",
-           "vehicles", "drone", "drones", "launcher", "launchers", "exotic", "blades", "clubs", "accessory", "accessories",
-           "body armor", "ammo", "ammunition", "tools", "misc", "other"}
+GENERIC = {
+    "armor",
+    "weapon",
+    "weapons",
+    "gear",
+    "melee",
+    "firearm",
+    "firearms",
+    "clothing",
+    "electronics",
+    "vehicle",
+    "vehicles",
+    "drone",
+    "drones",
+    "launcher",
+    "launchers",
+    "exotic",
+    "blades",
+    "clubs",
+    "accessory",
+    "accessories",
+    "body armor",
+    "ammo",
+    "ammunition",
+    "tools",
+    "misc",
+    "other",
+}
 
 
 CLASS_KINDS = {"programs": r"program|soft"}  # the kinds a book prices by class ('<Kind>, <class>')
@@ -378,8 +522,11 @@ CLASS_KINDS = {"programs": r"program|soft"}  # the kinds a book prices by class 
 def _class_rows(corpus, chains, kind):
     """(book, row, word): table rows (any book) whose short first cell names the object's printed type or category
     ('<Kind>, <class>' for an item of that class): a price set for the whole class."""
-    words = {str(o.value).strip().casefold() for o in chains.get("type", []) + chains.get("category", [])
-             if o.kind == "catalog" and not o.variant and o.value and len(str(o.value).split()) <= 2}
+    words = {
+        str(o.value).strip().casefold()
+        for o in chains.get("type", []) + chains.get("category", [])
+        if o.kind == "catalog" and not o.variant and o.value and len(str(o.value).split()) <= 2
+    }
     words = {w for w in words if len(w) >= 4 and re.fullmatch(r"[a-z][a-z -]+", w) and w not in GENERIC}
     if not words or kind not in CLASS_KINDS:
         return []
@@ -395,13 +542,18 @@ def _class_rows(corpus, chains, kind):
                 ln = b.md()[i]
                 cells = ln.cells()
                 c0 = next(iter(cells.values()), "")
-                if cells and len(c0.split()) <= 4 and re.search(rf"\b{re.escape(w)}\b", c0, re.I) \
-                        and re.search(CLASS_KINDS[kind], c0, re.I):
+                if (
+                    cells
+                    and len(c0.split()) <= 4
+                    and re.search(rf"\b{re.escape(w)}\b", c0, re.I)
+                    and re.search(CLASS_KINDS[kind], c0, re.I)
+                ):
                     out.append((b, ln, c0))
     return out
 
 
 def winners_entry(chains, kind):
+    """One kind's winning attribute values from its lineage chains."""
     return {"attrs": {f: w.value for f, ch in chains.items() if (w := lineage.winner(ch))}, "kind": kind}
 
 
@@ -415,7 +567,7 @@ def _matched_names(corpus, cl6):
             by_src.setdefault(lineage.family(c["src"]), []).append(c)
     for fam, recs in by_src.items():
         ents = [e for b in corpus.books if lineage.family(b.belongs) == fam and not b.errata for e in b.entries]
-        for c, hits, how in match.match(recs, ents):
+        for c, hits, _ in match.match(recs, ents):
             if hits:
                 out[id(c)] = sorted({h["name"] for h in hits})
     return out
@@ -427,8 +579,9 @@ def _closer_variant(corpus, c, kinds, names, done, diffs):
     or None. A record matches a parent and its variant rows; its fields compare against the one that agrees most."""
     home = lineage.family(c["src"])
     own = {match.n1(n) for n in names}  # (none printed under the name itself: its qualified rows are the variants)
-    vs = corpus.variants(kinds, names, home) or [(b, e) for b, e in corpus.entries(kinds, names, home)
-                                                 if match.n1(e["name"]) not in own]
+    vs = corpus.variants(kinds, names, home) or [
+        (b, e) for b, e in corpus.entries(kinds, names, home) if match.n1(e["name"]) not in own
+    ]
     # (and the entry printing the record's own name, when Commlink6's aliases name another row too: its `Dodge Rampart`
     # lists `Dodge Rampart LEV`)
     vs += [(b, e) for b, e in corpus.entries(kinds, [c["name"]], home) if match.n0(e["name"]) == match.n0(c["name"])]
@@ -455,13 +608,19 @@ def _unmatched(corpus, cl6):
             by_src.setdefault(lineage.family(c["src"]), []).append(c)
     out = {}
     for fam, recs in by_src.items():
-        ents = [e for b in corpus.books if lineage.family(b.belongs) == fam and not b.errata and not b.context
-                for e in b.entries]
+        ents = [
+            e
+            for b in corpus.books
+            if lineage.family(b.belongs) == fam and not b.errata and not b.context
+            for e in b.entries
+        ]
         for _, hits, _ in match.match(recs, ents):
             used.update(match.n1(h["name"]) for h in hits)
         names = {match.n1(n) for c in recs for n in (c["name"], *c["aliases"])}
-        out[fam] = ([e for e in ents if match.n1(e["name"]) not in used | names],
-                    [e for e in ents if match.n1(e["name"]) in used | names])
+        out[fam] = (
+            [e for e in ents if match.n1(e["name"]) not in used | names],
+            [e for e in ents if match.n1(e["name"]) in used | names],
+        )
     return out
 
 
@@ -476,8 +635,11 @@ def stat_matches(corpus, cl6, missing):
         free, used = pool.get(lineage.family(c["src"]), ([], []))
         got[id(c)] = match.by_stats(c, [e for e in free if e["kind"] in kinds], [e for e in used if e["kind"] in kinds])
     by_id = {id(c): c for c in missing}
+
     # (a tie is within one book family: another book's entry of the same name is another item)
-    key = lambda k, e: (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+    def key(k, e):
+        return (lineage.family(by_id[k]["src"]), match.n1(e["name"]))
+
     taken = Counter(key(k, v[1]) for k, v in got.items() if v[0] == "strong")
 
     def part(c, e):
@@ -485,6 +647,7 @@ def stat_matches(corpus, cl6, missing):
         parts = [p for p in match.split_names(e["name"]) if p != e["name"]]
         hits = {p for p in parts for w in match.toks(c["name"]) if len(w) >= 4 and w in match.toks(p)}
         return next(iter(hits)) if len(hits) == 1 else None
+
     parts = Counter((key(k, v[1]), part(by_id[k], v[1])) for k, v in got.items() if v[0] == "strong")
     for k, v in got.items():
         if v[0] == "strong" and taken[key(k, v[1])] > 1:
@@ -520,25 +683,49 @@ def run(corpus, cl6, verdicts=None):
             # (a record named with its rating: the row printing that name, `X Rating 1`, not `X Rating 2`, which
             # words() reads alike; or the row printing that rating, `Cybereyes (Rating 6)` for `Cybereyes, Advanced
             # Rating 6`)
-            if rated and 0 < len(ex := {e["id"] for e in es if re.search(rf"(?i)\brating\s*{rated.group(1)}\b", e["name"])}
-                                 or {e["id"] for e in es if match.n0(e["name"]) in exact}) < len(es):
+            if rated and 0 < len(
+                ex := {e["id"] for e in es if re.search(rf"(?i)\brating\s*{rated.group(1)}\b", e["name"])}
+                or {e["id"] for e in es if match.n0(e["name"]) in exact}
+            ) < len(es):
                 far |= {e["id"] for e in es if e["id"] not in ex}
-            elif len({e["page"] for e in es}) > 1 and str(c["page"]).isdigit() and all(str(e["page"]).isdigit() for e in es):
+            elif (
+                len({e["page"] for e in es}) > 1
+                and str(c["page"]).isdigit()
+                and all(str(e["page"]).isdigit() for e in es)
+            ):
                 d = {e["id"]: abs(int(e["page"]) - int(c["page"])) for e in es}
                 far |= {i for i, x in d.items() if x > min(d.values())}
-        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther page,
-        # the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
-        if str(c["page"]).isdigit() and (mine := [abs(int(e["page"]) - int(c["page"])) for _, e in ents
-                                                   if e["kind"] == c["kind"] and str(e["page"]).isdigit()]) \
-                and min(mine) <= 1:
-            other = {(e["kind"], e["id"]) for _, e in ents if e["kind"] != c["kind"] and str(e["page"]).isdigit()
-                     and abs(int(e["page"]) - int(c["page"])) > 2}  # (by kind and id: kinds share ids, `crb.shotgun`)
+        # (an entry of the record's own kind on its page is the record; another kind's row of the name on a farther
+        # page, the core rulebook's `Heavy pistol/SMG` magazine for its `Heavy pistol` implant weapon, is another thing)
+        if (
+            str(c["page"]).isdigit()
+            and (
+                mine := [
+                    abs(int(e["page"]) - int(c["page"]))
+                    for _, e in ents
+                    if e["kind"] == c["kind"] and str(e["page"]).isdigit()
+                ]
+            )
+            and min(mine) <= 1
+        ):
+            other = {
+                (e["kind"], e["id"])
+                for _, e in ents
+                if e["kind"] != c["kind"] and str(e["page"]).isdigit() and abs(int(e["page"]) - int(c["page"])) > 2
+            }  # (by kind and id: kinds share ids, `crb.shotgun`)
             ents = [(b, e) for b, e in ents if (e["kind"], e["id"]) not in other]
-            obs = [o for o in obs if (m := re.search(r"/(\w+) id=(\S+) ", o.where)) is None or m.group(1, 2) not in other]
+            obs = [
+                o for o in obs if (m := re.search(r"/(\w+) id=(\S+) ", o.where)) is None or m.group(1, 2) not in other
+            ]
             # (and a card titled with more than its name is another thing: Gun Rack's `Narcoject Hornet` dart pistol
             # for the toxin `Narcoject`)
-            obs = [o for o in obs if o.kind != "card" or (m := re.search(r"card \[(.*)\]$", o.where)) is None
-                   or match.n0(m.group(1)) in exact]
+            obs = [
+                o
+                for o in obs
+                if o.kind != "card"
+                or (m := re.search(r"card \[(.*)\]$", o.where)) is None
+                or match.n0(m.group(1)) in exact
+            ]
         if far:
             ents = [(b, e) for b, e in ents if e["id"] not in far]
             obs = [o for o in obs if (m := re.search(r"\bid=(\S+) ", o.where)) is None or m.group(1) not in far]
@@ -551,8 +738,18 @@ def run(corpus, cl6, verdicts=None):
         n["records"] += 1
         if c.get("cl6only"):
             n["Commlink6-only records"] += 1
-            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                         "field": "", "family": "Commlink6-only record", "where": ""})
+            rows.append(
+                {
+                    "src": c["src"],
+                    "id": c["id"],
+                    "name": c["name"],
+                    "page": c["page"],
+                    "kind": c["kind"],
+                    "field": "",
+                    "family": "Commlink6-only record",
+                    "where": "",
+                }
+            )
             continue
         if not c["modelled"]:
             n["unmodelled kind"] += 1
@@ -563,36 +760,67 @@ def run(corpus, cl6, verdicts=None):
         if rv.get("family") == "Commlink6-only record":
             v = rv
             n["Commlink6-only records"] += 1
-            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                         "field": "", "family": "Commlink6-only record", "where": v.get("note") or "the owner's verdict"})
+            rows.append(
+                {
+                    "src": c["src"],
+                    "id": c["id"],
+                    "name": c["name"],
+                    "page": c["page"],
+                    "kind": c["kind"],
+                    "field": "",
+                    "family": "Commlink6-only record",
+                    "where": v.get("note") or "the owner's verdict",
+                }
+            )
             continue
         names = [c["name"], *c["aliases"]]
         # the owner's rename (a verdict naming the printed entry Commlink6's record is: `Ritual formula` is the
         # formulae table's `Ritual Spellcasting`)
         names += [x for x in [rv.get("rename")] if x]
         home = lineage.family(c["src"])
-        if not any(lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)):
+        if not any(
+            lineage.family(b.belongs) == home for b, _ in corpus.entries(set(c["pool"]) or {c["kind"]}, names, home)
+        ):
             names += [x for x in matched.get(id(c), []) if x not in names]  # its own book prints it another way
         found, ents, obs = lookup(c, names)
         if not found and len(c["name"].split()) > 2:
             # the record's name is a search name our entry prints, with the maker the entry's name opens with in front
             # (`Volkswagen Krime IV+`: the Volkswagen Superkombi IV's printed `Krime IV+`)
             maker, rest = c["name"].split(None, 1)
-            more = [a for b, e in corpus.entries(set(c["pool"]) or {c["kind"]}, [rest], home)
-                    if lineage.family(b.belongs) == home and e["name"].split()[:1] == [maker]
-                    for a in e["aliases"] if match.n1(a) == match.n1(rest)]
+            more = [
+                a
+                for b, e in corpus.entries(set(c["pool"]) or {c["kind"]}, [rest], home)
+                if lineage.family(b.belongs) == home and e["name"].split()[:1] == [maker]
+                for a in e["aliases"]
+                if match.n1(a) == match.n1(rest)
+            ]
             if more:
                 names = [*names, *dict.fromkeys(more)]
                 found, ents, obs = lookup(c, names)
         # (an entry of ours under the object's name is the object, even one printing no field: a mentor spirit)
         if not found:
             printed = corpus.mentions(names)
-            if not printed and any(match.bundled(c["name"], e) for b in corpus.books if lineage.family(b.belongs) == home
-                                   and not b.errata for e in b.entries if e["kind"] in (set(c["pool"]) or {c["kind"]})):
+            if not printed and any(
+                match.bundled(c["name"], e)
+                for b in corpus.books
+                if lineage.family(b.belongs) == home and not b.errata
+                for e in b.entries
+                if e["kind"] in (set(c["pool"]) or {c["kind"]})
+            ):
                 # a listing Commlink6 composed of a product's rows (`Cougar Polearm (Small)`): no book's item
                 n["Commlink6-only records"] += 1
-                rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                             "field": "", "family": "Commlink6-only record", "where": "composed from a product's rows"})
+                rows.append(
+                    {
+                        "src": c["src"],
+                        "id": c["id"],
+                        "name": c["name"],
+                        "page": c["page"],
+                        "kind": c["kind"],
+                        "field": "",
+                        "family": "Commlink6-only record",
+                        "where": "composed from a product's rows",
+                    }
+                )
                 continue
             missing.append((c, names, printed))
             continue
@@ -602,26 +830,55 @@ def run(corpus, cl6, verdicts=None):
         verdict, o, det = stats[id(c)]
         if verdict == "strong":
             n["renamed by stats"] += 1
-            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                         "field": "", "family": "renamed by stats", "where": o["name"], "agree": det})
+            rows.append(
+                {
+                    "src": c["src"],
+                    "id": c["id"],
+                    "name": c["name"],
+                    "page": c["page"],
+                    "kind": c["kind"],
+                    "field": "",
+                    "family": "renamed by stats",
+                    "where": o["name"],
+                    "agree": det,
+                }
+            )
             names = [*names, o["name"]]
             todo.append((c, names, *lookup(c, names)[1:], o))
             continue
         n["object not found"] += 1
         n["stat match, weak"] += bool(det)
-        rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": c["kind"],
-                     "field": "", "family": "object not found",
-                     "where": "name printed in text" if printed else "name nowhere in text",
-                     "stat": [{"verdict": "tie" if sum(match.strong(c, e, ok) for e, ok, _ in det) > 1 else "weak",
-                               "name": e["name"], "page": e["page"], "agree": ok, "conflict": bad}
-                              for e, ok, bad in det]})
+        rows.append(
+            {
+                "src": c["src"],
+                "id": c["id"],
+                "name": c["name"],
+                "page": c["page"],
+                "kind": c["kind"],
+                "field": "",
+                "family": "object not found",
+                "where": "name printed in text" if printed else "name nowhere in text",
+                "stat": [
+                    {
+                        "verdict": "tie" if sum(match.strong(c, e, ok) for e, ok, _ in det) > 1 else "weak",
+                        "name": e["name"],
+                        "page": e["page"],
+                        "agree": ok,
+                        "conflict": bad,
+                    }
+                    for e, ok, bad in det
+                ],
+            }
+        )
     for c, names, ents, obs, renamed in todo:
         kinds = set(c["pool"]) or {c["kind"]}
         n["objects"] += 1
         kind = renamed["kind"] if renamed else next((e["kind"] for _, e in ents if e["kind"] in kinds), c["kind"])
         chains = lineage.lineage(obs)
         # a rename is compared with the entry its stats matched: another table's row may print the same short name
-        done, diffs = fields.compare(c, {"attrs": renamed["attrs"], "kind": kind} if renamed else winners_entry(chains, kind))
+        done, diffs = fields.compare(
+            c, {"attrs": renamed["attrs"], "kind": kind} if renamed else winners_entry(chains, kind)
+        )
         if diffs and not renamed and (v := _closer_variant(corpus, c, kinds, names, done, diffs)) is not None:
             diffs = v  # the variant row of ours that agrees most (`Widget (Large)` for Commlink6's one `Widget`)
             n["compared with a variant row"] += 1
@@ -629,8 +886,11 @@ def run(corpus, cl6, verdicts=None):
             # (the book printing each rating as a row of its own, `Cyberkit (Rating 2)` … `(Rating 6)`: the range those
             # rows cover is the record's one rated item)
             lo, hi = c["fields"]["rating"]
-            got = {int(m.group(1)) for _, e in corpus.entries(kinds, names, lineage.family(c["src"]))
-                   if (m := re.search(r"(?i)\b(?:rating|level)\s*(\d+)\b", e["name"]))}
+            got = {
+                int(m.group(1))
+                for _, e in corpus.entries(kinds, names, lineage.family(c["src"]))
+                if (m := re.search(r"(?i)\b(?:rating|level)\s*(\d+)\b", e["name"]))
+            }
             if got and min(got) <= lo and max(got) >= hi:
                 diffs = [d for d in diffs if d["field"] != "rating"]
         n["fields compared"] += len(done)
@@ -639,26 +899,58 @@ def run(corpus, cl6, verdicts=None):
         differ = {d["field"] for d in diffs}
         for fld in done:
             w = lineage.winner(chains.get(ATTR.get(fld, fld), []))
-            if w is not None and any(o.invalid and o.book.order > w.book.order for o in chains.get(ATTR.get(fld, fld), [])):
+            if w is not None and any(
+                o.invalid and o.book.order > w.book.order for o in chains.get(ATTR.get(fld, fld), [])
+            ):
                 n["later value not SR6, passed over"] += 1  # (an SR5 leftover printed later: lineage.winner)
             if fld not in differ and w is not None:  # where the equal values come from
-                src = ("errata" if w.book.errata else "card" if w.kind == "card" else "section default"
-                       if w.kind == "section" else
-                       "home book" if lineage.family(w.book.belongs) == lineage.family(c["src"]) else "another book")
+                src = (
+                    "errata"
+                    if w.book.errata
+                    else (
+                        "card"
+                        if w.kind == "card"
+                        else (
+                            "section default"
+                            if w.kind == "section"
+                            else (
+                                "home book"
+                                if lineage.family(w.book.belongs) == lineage.family(c["src"])
+                                else "another book"
+                            )
+                        )
+                    )
+                )
                 n[f"equal via {src}"] += 1
         for d in diffs:
             fam, where, ev = classify(corpus, c, kind, chains, d, names, differ)
             w = lineage.winner(chains.get(ATTR.get(d["field"], d["field"]), []))
-            rows.append({"src": c["src"], "id": c["id"], "name": c["name"], "page": c["page"], "kind": kind,
-                         "field": d["field"], "cl6": d["cl6"], "winner": w.value if w else "",
-                         "winner_where": f"{w.book.label} {w.where}" if w else "", "family": fam, "where": where,
-                         "evidence": ev})
+            rows.append(
+                {
+                    "src": c["src"],
+                    "id": c["id"],
+                    "name": c["name"],
+                    "page": c["page"],
+                    "kind": kind,
+                    "field": d["field"],
+                    "cl6": d["cl6"],
+                    "winner": w.value if w else "",
+                    "winner_where": f"{w.book.label} {w.where}" if w else "",
+                    "family": fam,
+                    "where": where,
+                    "evidence": ev,
+                }
+            )
     # a misread is stronger when several of a record's fields come from the same neighbouring row
-    by = Counter((r["id"], r["src"], r["where"]) for r in rows if r.get("family") == "Commlink6 misread" and "row" in r["where"])
+    by = Counter(
+        (r["id"], r["src"], r["where"]) for r in rows if r.get("family") == "Commlink6 misread" and "row" in r["where"]
+    )
     for r in rows:
         if r.get("family") == "Commlink6 misread":
             k = by.get((r["id"], r["src"], r["where"]), 0)
-            r["strength"] = "digit swap" if "digit swap" in r["where"] else f"{k} field{'s' if k > 1 else ''} from that row"
+            r["strength"] = (
+                "digit swap" if "digit swap" in r["where"] else f"{k} field{'s' if k > 1 else ''} from that row"
+            )
     apply_verdicts(rows, verdicts or {})
     # a field no book prints is Commlink6's own: out of the fields compared, counted on its own line. Either no reading
     # of ours holds it and no text near the object holds Commlink6's value, or ours is a readable value and Commlink6's
@@ -675,18 +967,32 @@ def run(corpus, cl6, verdicts=None):
         return not any(re.search(rf"(?<![\d,.]){re.escape(t)}(?![\d,.])", text[fam]) for t in toks)
 
     def invented(r):
-        return (r["family"] == "not found" and not r.get("verdict") and why_not(r) == "a different value, printed nowhere"
-                and not re.search(r"\bR\d", r["cl6"]) and not re.search(r"[*?]", r["winner"])
-                and (r["field"] == "legality" or ours.value(r["winner"]) is not None) and nowhere(r))
+        return (
+            r["family"] == "not found"
+            and not r.get("verdict")
+            and why_not(r) == "a different value, printed nowhere"
+            and not re.search(r"\bR\d", r["cl6"])
+            and not re.search(r"[*?]", r["winner"])
+            and (r["field"] == "legality" or ours.value(r["winner"]) is not None)
+            and nowhere(r)
+        )
+
     for r in rows:
         if r["field"]:
             left[(r["src"], r["id"])] += 1
             # Commlink6's price 0 for an item the book prices (owner, 2026-10-07), and a field the owner's verdict calls
             # Commlink6's own: out of the fields compared
-            zero = r["field"] == "cost" and re.fullmatch(r"0(?:\.0+)?", str(r["cl6"]).strip()) \
+            zero = (
+                r["field"] == "cost"
+                and re.fullmatch(r"0(?:\.0+)?", str(r["cl6"]).strip())
                 and ours.value(r["winner"]) not in (None, 0)
-            if r["family"] == "Commlink6-only field" or zero or r["family"] == "not found" and (
-                    not r["winner"] and not r.get("verdict") or r["winner"] and invented(r)):
+            )
+            if (
+                r["family"] == "Commlink6-only field"
+                or zero
+                or r["family"] == "not found"
+                and (not r["winner"] and not r.get("verdict") or r["winner"] and invented(r))
+            ):
                 r["family"] = "Commlink6-only field"
                 n["fields compared"] -= 1
                 n["Commlink6-only fields"] += 1
@@ -701,8 +1007,11 @@ WEAK = "weak link, not confirmed on the page"
 def weak(r):
     """A link the page must confirm: another column, a misread backed by one field of the neighbouring row, or a
     value one digit off ours."""
-    return (r["family"] == "another column" or (r["family"] == "Commlink6 misread" and r.get("strength", "").startswith("1 "))
-            or (r["family"] == "not found" and why_not(r) == "one digit off"))
+    return (
+        r["family"] == "another column"
+        or (r["family"] == "Commlink6 misread" and r.get("strength", "").startswith("1 "))
+        or (r["family"] == "not found" and why_not(r) == "one digit off")
+    )
 
 
 def apply_verdicts(rows, verdicts):
@@ -720,14 +1029,23 @@ def apply_verdicts(rows, verdicts):
             r["family"], r["verdict"] = "not found", WEAK
 
 
-ENUM_FIELDS = {"range", "duration", "action", "power type", "spell type", "spell category", "activation", "positive",
-               "attribute"}
+ENUM_FIELDS = {
+    "range",
+    "duration",
+    "action",
+    "power type",
+    "spell type",
+    "spell category",
+    "activation",
+    "positive",
+    "attribute",
+}
 
 
 def why_not(r):
-    """A not-found difference's kind, for reading the list: a weak link the page did not confirm, Commlink6's value where
-    our text prints none for the field, a Commlink6 term (an enum) the book words otherwise, one digit off, or a value
-    printed nowhere."""
+    """A not-found difference's kind, for reading the list: a weak link the page did not confirm, Commlink6's value
+    where our text prints none for the field, a Commlink6 term (an enum) the book words otherwise, one digit off, or a
+    value printed nowhere."""
     if r.get("verdict"):
         return "checked on the page, not settled" if r["verdict"] != WEAK else WEAK
     if not r["winner"]:
@@ -742,7 +1060,7 @@ def why_not(r):
 
 def _cell(v, n=28):
     v = re.sub(r"\s+", " ", str(v or "")).replace("|", "/")
-    return v if len(v) <= n else v[:n - 1] + "…"
+    return v if len(v) <= n else v[: n - 1] + "…"
 
 
 def markdown(rows, n, corpus):
@@ -752,31 +1070,51 @@ def markdown(rows, n, corpus):
     fam = Counter(r["family"] for r in diffs)
     mis = fam["Commlink6 misread"]
     out = ["## Phase 1 full run: every Commlink6 object traced", ""]
-    out += ["### Book dates (from the PDFs)", "",
-            "Each book's date is its PDF's own: the metadata modification date, else its creation date, when it falls in "
-            "the year of the book's © line or the year after; else the © year with sources.xml's month; else "
-            "sources.xml. Books sort by that date; errata no longer win ties.", "",
-            "| date | from | sources.xml | book |", "|---|---|---|---|"]
-    out += [f"| {b.date} | {b.how} | {b.src_month or '—'} | {b.label}{' (errata)' if b.errata else ''}"
-            f"{' (context only)' if b.context else ''} |" for b in corpus.books]
+    out += [
+        "### Book dates (from the PDFs)",
+        "",
+        "Each book's date is its PDF's own: the metadata modification date, else its creation date, when it falls in "
+        "the year of the book's © line or the year after; else the © year with sources.xml's month; else "
+        "sources.xml. Books sort by that date; errata no longer win ties.",
+        "",
+        "| date | from | sources.xml | book |",
+        "|---|---|---|---|",
+    ]
+    out += [
+        f"| {b.date} | {b.how} | {b.src_month or '—'} | {b.label}{' (errata)' if b.errata else ''}"
+        f"{' (context only)' if b.context else ''} |"
+        for b in corpus.books
+    ]
     dis = corpus.disagreements()
-    out += ["", f"**Where the PDF's date and sources.xml disagree ({len(dis)}):** " +
-            "; ".join(f"{b.label}: PDF {d}, sources.xml {sm}" for b, d, how, sm in dis), ""]
-    out += ["### Counts", "",
-            f"- Commlink6 records: {n['records']}"
-            f" — of a kind we don't model {n['unmodelled kind']}, object found in the corpus {n['objects']}, "
-            f"object not found {n['object not found']}.",
-            f"- Fields compared with the latest-published value: {n['fields compared']}; equal {n['fields equal']} "
-            f"({100 * n['fields equal'] / max(1, n['fields compared']):.2f}%); with the {mis} Commlink6 misreads not counted "
-            f"against us {100 * (n['fields equal'] + mis) / max(1, n['fields compared']):.2f}%.",
-            f"- Records with every field equal: {n['records exact']} of {n['objects']}.",
-            f"- Commlink6-only, left out of both counts above: {n['Commlink6-only records']} records no book prints as "
-            f"an item (rule settings, retired records, option rows priced at zero and not for sale) and "
-            f"{n['Commlink6-only fields']} fields no book prints (no reading of ours holds one, and no text holds "
-            f"Commlink6's value).",
-            "- Where the equal values' winners come from: " + ", ".join(
-                f"{k[10:]} {v}" for k, v in sorted(n.items()) if k.startswith("equal via ")) + ".",
-            f"- Differences: {len(diffs)}.", "", "| family | differences |", "|---|---:|"]
+    out += [
+        "",
+        f"**Where the PDF's date and sources.xml disagree ({len(dis)}):** "
+        + "; ".join(f"{b.label}: PDF {d}, sources.xml {sm}" for b, d, how, sm in dis),
+        "",
+    ]
+    out += [
+        "### Counts",
+        "",
+        f"- Commlink6 records: {n['records']}"
+        f" — of a kind we don't model {n['unmodelled kind']}, object found in the corpus {n['objects']}, "
+        f"object not found {n['object not found']}.",
+        f"- Fields compared with the latest-published value: {n['fields compared']}; equal {n['fields equal']} "
+        f"({100 * n['fields equal'] / max(1, n['fields compared']):.2f}%); with the {mis} Commlink6 misreads not "
+        f"counted "
+        f"against us {100 * (n['fields equal'] + mis) / max(1, n['fields compared']):.2f}%.",
+        f"- Records with every field equal: {n['records exact']} of {n['objects']}.",
+        f"- Commlink6-only, left out of both counts above: {n['Commlink6-only records']} records no book prints as "
+        f"an item (rule settings, retired records, option rows priced at zero and not for sale) and "
+        f"{n['Commlink6-only fields']} fields no book prints (no reading of ours holds one, and no text holds "
+        f"Commlink6's value).",
+        "- Where the equal values' winners come from: "
+        + ", ".join(f"{k[10:]} {v}" for k, v in sorted(n.items()) if k.startswith("equal via "))
+        + ".",
+        f"- Differences: {len(diffs)}.",
+        "",
+        "| family | differences |",
+        "|---|---:|",
+    ]
     out += [f"| {f} | {fam[f]} |" for f in FAMILIES]
     out += ["", "### Two examples per family", ""]
     for f in FAMILIES:
@@ -784,39 +1122,81 @@ def markdown(rows, n, corpus):
             continue
         ex = [r for r in diffs if r["family"] == f]
         pick, books = [], set()
-        good = {"Commlink6 misread": r"2 fields|digit swap", "older printing or superseded": r"printing",
-                "another book": r"class row|card", "own row": r"book\.md"}.get(f, r".")
-        for r in sorted(ex, key=lambda r: (not re.search(good, r["where"] + r.get("strength", "")),
-                                           len(r["cl6"]) + len(r["evidence"]))):
+        good = {
+            "Commlink6 misread": r"2 fields|digit swap",
+            "older printing or superseded": r"printing",
+            "another book": r"class row|card",
+            "own row": r"book\.md",
+        }.get(f, r".")
+        for r in sorted(
+            ex,
+            key=lambda r, good=good: (
+                not re.search(good, r["where"] + r.get("strength", "")),
+                len(r["cl6"]) + len(r["evidence"]),
+            ),
+        ):
             if r["src"] not in books:
                 pick.append(r)
                 books.add(r["src"])
             if len(pick) == 2:
                 break
         out.append(f"**{f}** ({fam[f]})")
-        out += [f"- {r['src']} {r['name']} ({r['field']}): Commlink6 `{_cell(r['cl6'], 20)}`, latest published "
-                f"`{_cell(r['winner'], 20)}`; found `{_cell(r['evidence'], 24)}` at {r['where']}" for r in pick]
+        out += [
+            f"- {r['src']} {r['name']} ({r['field']}): Commlink6 `{_cell(r['cl6'], 20)}`, latest published "
+            f"`{_cell(r['winner'], 20)}`; found `{_cell(r['evidence'], 24)}` at {r['where']}"
+            for r in pick
+        ]
         out.append("")
     nf = [r for r in diffs if r["family"] == "not found"]
     sub = Counter(why_not(r) for r in nf)
-    out += [f"### Not found after the full search: all {len(nf)}", "",
-            "By kind: " + "; ".join(f"{k} {v}" for k, v in sub.most_common()) + ".", "",
-            "| book | name | field | Commlink6 | latest published (where) | kind |", "|---|---|---|---|---|---|"]
+    out += [
+        f"### Not found after the full search: all {len(nf)}",
+        "",
+        "By kind: " + "; ".join(f"{k} {v}" for k, v in sub.most_common()) + ".",
+        "",
+        "| book | name | field | Commlink6 | latest published (where) | kind |",
+        "|---|---|---|---|---|---|",
+    ]
     for r in sorted(nf, key=lambda r: (why_not(r), r["src"], r["field"], r["name"])):
-        out.append(f"| {r['src']} | {_cell(r['name'], 36)} | {r['field']} | {_cell(r['cl6'], 24)} | "
-                   f"{_cell(r['winner'], 20)} ({_cell(r['winner_where'], 46)}) | {why_not(r)} |")
+        out.append(
+            f"| {r['src']} | {_cell(r['name'], 36)} | {r['field']} | {_cell(r['cl6'], 24)} | "
+            f"{_cell(r['winner'], 20)} ({_cell(r['winner_where'], 46)}) | {why_not(r)} |"
+        )
     on = [r for r in rows if r["family"] == "object not found"]
-    out += ["", f"### Objects not found ({len(on)})", "",
-            "Commlink6 records of a kind we model for which no book in the corpus has a catalog entry or a row: "
-            + "; ".join(f"{k} {v}" for k, v in Counter(r["where"] for r in on).most_common()) + ". By book: "
-            + ", ".join(f"{k} {v}" for k, v in Counter(r["src"] for r in on).most_common()) + ".", ""]
+    out += [
+        "",
+        f"### Objects not found ({len(on)})",
+        "",
+        "Commlink6 records of a kind we model for which no book in the corpus has a catalog entry or a row: "
+        + "; ".join(f"{k} {v}" for k, v in Counter(r["where"] for r in on).most_common())
+        + ". By book: "
+        + ", ".join(f"{k} {v}" for k, v in Counter(r["src"] for r in on).most_common())
+        + ".",
+        "",
+    ]
     return "\n".join(out)
 
 
-def write(out_dir, rows, n, corpus):
+def write(out_dir, rows, _n, _corpus):
+    """Write the trace rows to out_dir."""
     os.makedirs(out_dir, exist_ok=True)
-    keys = ["src", "id", "name", "page", "kind", "field", "cl6", "winner", "winner_where", "family", "where", "evidence",
-            "strength", "verdict", "crop"]
+    keys = [
+        "src",
+        "id",
+        "name",
+        "page",
+        "kind",
+        "field",
+        "cl6",
+        "winner",
+        "winner_where",
+        "family",
+        "where",
+        "evidence",
+        "strength",
+        "verdict",
+        "crop",
+    ]
     with open(os.path.join(out_dir, "cl6-trace.csv"), "w", encoding="utf-8-sig", newline="") as fh:
         w = csv.DictWriter(fh, keys, extrasaction="ignore")
         w.writeheader()

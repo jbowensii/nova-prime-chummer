@@ -4,6 +4,7 @@ A Shadowrun 6 book sets its body in one serif, its headings in one display famil
 tables in a small sans family with a bold/black header row and no ruling lines. pdfplumber's lattice finder can't see
 such a table, so `band_tables` reads it by x position: the header row's cells are the columns, and the regular words
 below it fall into them. Layout facts only; nothing here comes from a book's text."""
+
 import bisect
 import re
 import statistics
@@ -15,6 +16,8 @@ import pdfplumber
 from importer.pdf.columns import find_gutter
 from importer.pdf.lines import LINE_TOLERANCE
 from importer.pdf.markdown import BOLD_FONT, is_bold
+
+# pylint: disable=redefined-outer-name  # words and fonts are module functions whose names locals reuse
 
 _LEVEL_TOL = 0.3  # pt, or _LEVEL_REL of the size if larger (a chapter title set at 58 or 63 next to the usual 60)
 _LEVEL_REL = 0.05
@@ -35,6 +38,8 @@ _STRIPE_MAX = 60  # pt; a filled rect at most this tall is a header cell or a ro
 
 @dataclass
 class Fonts:
+    """The fonts of one book: body, heading and running-head families and sizes."""
+
     body: str  # family of the body text
     size: float  # body size
     heading: str  # display family
@@ -81,14 +86,22 @@ def furniture(page, words, fonts=None):
     With the book's fonts, a word in the bottom band set in a face the running feet don't use stays: a table's last
     rows reaching into the band (the core rulebook's drug list)."""
     running = fonts.running if fonts else frozenset()
-    head = {id(w) for k, ws in _top_lines(words, lambda w: w["chars"][0]["fontname"], lambda w: w["text"]).items()
-            if _running_key(*k, (w["text"] for w in ws)) in running for w in ws}
+    head = {
+        id(w)
+        for k, ws in _top_lines(words, lambda w: w["chars"][0]["fontname"], lambda w: w["text"]).items()
+        if _running_key(*k, (w["text"] for w in ws)) in running
+        for w in ws
+    }
 
     def keep(w):
         if not _is_furniture(w["x0"], w["top"], page):
             return True
-        return (bool(fonts and fonts.foot) and not _is_furniture(w["x0"], 0, page)
-                and (_word_family(w), round(w["size"], 1)) not in fonts.foot)
+        return (
+            bool(fonts and fonts.foot)
+            and not _is_furniture(w["x0"], 0, page)
+            and (_word_family(w), round(w["size"], 1)) not in fonts.foot
+        )
+
     return [w for w in words if keep(w) and (page.width >= _CARD or w["upright"]) and id(w) not in head]
 
 
@@ -116,8 +129,12 @@ def fonts(pdf, min_pages=None) -> Fonts:
                 chars[key] += 1
                 pages[key].add(n)
         for c in page.chars:  # the bottom band's faces
-            if c["text"].strip() and page.width >= _CARD and _is_furniture(c["x0"], c["top"], page) \
-                    and not _is_furniture(c["x0"], 0, page):
+            if (
+                c["text"].strip()
+                and page.width >= _CARD
+                and _is_furniture(c["x0"], c["top"], page)
+                and not _is_furniture(c["x0"], 0, page)
+            ):
                 feet[(family(c["fontname"]), round(c["size"], 1))].add(n)
         page.flush_cache()
     # the running feet's faces: in the bottom band on one page in ten at least (a table row reaching it is rare)
@@ -136,9 +153,14 @@ def fonts(pdf, min_pages=None) -> Fonts:
     heading = max(big, key=big.get) if big else ""
     # (a book of more than 10 pages: a size printed on its cover alone is no level)
     cover = len(pdf.pages) > 10
-    sizes = sorted((s for (fam, s), p in pages.items() if fam == heading and s > size * 0.8 and len(p) >= min_pages
-                    and not (cover and p == {0})),
-                   reverse=True)[:5]
+    sizes = sorted(
+        (
+            s
+            for (fam, s), p in pages.items()
+            if fam == heading and s > size * 0.8 and len(p) >= min_pages and not (cover and p == {0})
+        ),
+        reverse=True,
+    )[:5]
     return Fonts(body, size, heading, {s: i + 1 for i, s in enumerate(sizes)}, foot, running)
 
 
@@ -151,8 +173,13 @@ def _near(grid, c, tol):
     """Chars in `grid` (one_layer's) with c's glyph, font and size within `tol` pt of it."""
     k, x, y = (c["text"], c["fontname"], round(c["size"], 1)), round(c["x0"]), round(c["top"])
     r = int(tol) + 1
-    return [(j, d) for dx in range(-r, r + 1) for dy in range(-r, r + 1) for j, d in grid.get((k, x + dx, y + dy), ())
-            if abs(d["x0"] - c["x0"]) <= tol and abs(d["top"] - c["top"]) <= tol]
+    return [
+        (j, d)
+        for dx in range(-r, r + 1)
+        for dy in range(-r, r + 1)
+        for j, d in grid.get((k, x + dx, y + dy), ())
+        if abs(d["x0"] - c["x0"]) <= tol and abs(d["top"] - c["top"]) <= tol
+    ]
 
 
 def one_layer(chars):
@@ -166,7 +193,9 @@ def one_layer(chars):
     an earlier one (within _LAYER_TOL)."""
     grid = {}
     for i, c in enumerate(chars):
-        grid.setdefault(((c["text"], c["fontname"], round(c["size"], 1)), round(c["x0"]), round(c["top"])), []).append((i, c))
+        grid.setdefault(((c["text"], c["fontname"], round(c["size"], 1)), round(c["x0"]), round(c["top"])), []).append(
+            (i, c)
+        )
     run, start = 0, None
     for i, c in enumerate(chars):
         run = run + 1 if any(i - j >= _LAYER_RUN for j, _ in _near(grid, c, _LAYER_TOL)) else 0
@@ -201,13 +230,22 @@ def words(chars, **kw):
         if last is not None and chars[k]["top"] - last > _TOP_CHAIN:
             g += 1
         shift[k], last = g * _TOP_APART, chars[k]["top"]
-    moved = [{**c, "top": c["top"] + d, "bottom": c["bottom"] + d, "doctop": c.get("doctop", c["top"]) + d, "_k": k}
-             for k, (c, d) in enumerate(zip(chars, shift))]
+    moved = [
+        {**c, "top": c["top"] + d, "bottom": c["bottom"] + d, "doctop": c.get("doctop", c["top"]) + d, "_k": k}
+        for k, (c, d) in enumerate(zip(chars, shift))
+    ]
     out = []
     for w in pdfplumber.utils.extract_words(moved, **kw):
         cs = [chars[c["_k"]] for c in w["chars"]]
-        out.append({**w, "chars": cs, "top": min(c["top"] for c in cs), "bottom": max(c["bottom"] for c in cs),
-                    "doctop": min(c.get("doctop", c["top"]) for c in cs)})
+        out.append(
+            {
+                **w,
+                "chars": cs,
+                "top": min(c["top"] for c in cs),
+                "bottom": max(c["bottom"] for c in cs),
+                "doctop": min(c.get("doctop", c["top"]) for c in cs),
+            }
+        )
     return out
 
 
@@ -219,8 +257,8 @@ def baseline_rows(words):
     """Rows by baseline, a word joining the row when its baseline is within LINE_TOLERANCE of the previous one (a label
     set smaller than its value sits a little off its baseline, and the other column's lines may sit in between). A tiny
     glyph joins the row of the nearest word up to _TINY_REACH beside it whose baseline is within half that word's size,
-    else it is a row of its own. (The SR6 layout's words carry their baseline, `base`; the shared converter groups rows by
-    top: importer/pdf/lines.cluster_lines.)"""
+    else it is a row of its own. (The SR6 layout's words carry their baseline, `base`; the shared converter groups rows
+    by top: importer/pdf/lines.cluster_lines.)"""
     if not words:
         return []
     med = statistics.median(w["size"] for w in words)
@@ -235,8 +273,12 @@ def baseline_rows(words):
     if cur:
         rows.append(cur)
     for t in tiny:
-        near = [(abs(w["base"] - t["base"]), i) for i, r in enumerate(rows) for w in r
-                if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2]
+        near = [
+            (abs(w["base"] - t["base"]), i)
+            for i, r in enumerate(rows)
+            for w in r
+            if max(w["x0"] - t["x1"], t["x0"] - w["x1"]) <= _TINY_REACH and abs(w["base"] - t["base"]) <= w["size"] / 2
+        ]
         if near:
             rows[min(near)[1]].append(t)
         else:
@@ -258,8 +300,11 @@ def sidebar_marks(lines, rects, tables, width, kind):
     for r in rects:
         if not r.get("fill") or r["bottom"] - r["top"] <= _STRIPE_MAX or r["x1"] - r["x0"] > _BOX_WIDE * width:
             continue
-        inside = sorted(ln for ln in lines if r["x0"] - 1 <= (ln[1] + ln[2]) / 2 <= r["x1"] + 1
-                        and r["top"] - 1 <= ln[0] <= r["bottom"])
+        inside = sorted(
+            ln
+            for ln in lines
+            if r["x0"] - 1 <= (ln[1] + ln[2]) / 2 <= r["x1"] + 1 and r["top"] - 1 <= ln[0] <= r["bottom"]
+        )
         if len(inside) < 3 or not any(ln[3] for ln in inside[:2]):
             continue
         if any(r["x0"] - 1 <= t[0] and t[2] <= r["x1"] + 1 and r["top"] - 1 <= t[1] <= r["bottom"] for t in tables):
@@ -281,10 +326,12 @@ def rejoin_ligatures(text):
 
     def join(m):
         left, right = m.groups()
-        risky = left.endswith("ff") or m.string[m.start() - 1:m.start()] == "-"
-        ok = left.lower() not in words and (not risky or right == "-" or right not in words
-                                            or (left + right).lower() in words)
+        risky = left.endswith("ff") or m.string[m.start() - 1 : m.start()] == "-"
+        ok = left.lower() not in words and (
+            not risky or right == "-" or right not in words or (left + right).lower() in words
+        )
         return left + right if ok else m.group(0)
+
     return _LIGATURE.sub(join, _LIGATURE.sub(join, text))
 
 
@@ -298,8 +345,14 @@ def heading_level(line, fonts) -> int:
         return 0
     levels = [_level(w["size"], fonts) for w in line]
     # a one- or two-letter word set smaller than the rest (the small `x` of `xGUIDE OVERRIDE`) doesn't unmake it
-    levels = [lv for w, lv in zip(line, levels) if lv or len(w["text"]) > 2 or not any(levels)
-              or w["size"] > max(v["size"] for v in line if _level(v["size"], fonts))]
+    levels = [
+        lv
+        for w, lv in zip(line, levels)
+        if lv
+        or len(w["text"]) > 2
+        or not any(levels)
+        or w["size"] > max(v["size"] for v in line if _level(v["size"], fonts))
+    ]
     return 0 if not levels or 0 in levels else min(levels)
 
 
@@ -339,8 +392,9 @@ def _opens_with_label(line):
 
 def _is_head_bold(w):
     """Bold, or a sign with no letters or digits set in a bold face (a header's `#`)."""
-    return is_bold(w) or (not any(c["text"].isalnum() for c in w["chars"])
-                          and all(BOLD_FONT.search(c["fontname"]) for c in w["chars"]))
+    return is_bold(w) or (
+        not any(c["text"].isalnum() for c in w["chars"]) and all(BOLD_FONT.search(c["fontname"]) for c in w["chars"])
+    )
 
 
 def _side_by_side(words):
@@ -352,7 +406,7 @@ def _side_by_side(words):
     n = len(cells)
     for p in range(2, n // 2 + 1):
         if n % p == 0 and all(texts[i] == texts[i % p] for i in range(n)):
-            return [[w for c in cells[i:i + p] for w in c] for i in range(0, n, p)]
+            return [[w for c in cells[i : i + p] for w in c] for i in range(0, n, p)]
     return [words]
 
 
@@ -366,15 +420,24 @@ def _headers(lines, height, boxes=()):
     for line in lines:
         # a header line sharing its baseline with the other text column's labelled line (`DR … MOVE` | `Powers: …`):
         # only its part before that label
-        cut = next((i for i in range(1, len(line)) if line[i]["x0"] - line[i - 1]["x1"] > _COLUMN_GAP
-                    and _opens_with_label(line[i:])), None)
+        cut = next(
+            (
+                i
+                for i in range(1, len(line))
+                if line[i]["x0"] - line[i - 1]["x1"] > _COLUMN_GAP and _opens_with_label(line[i:])
+            ),
+            None,
+        )
         line = line[:cut]
         bold = [w for w in line if _is_head_bold(w)]
         if not (len(bold) >= 2 or len(line) == len(bold) == 1) or _opens_with_label(line):
             continue
         # a bold row name with its values on the line (`**Krime Sprayer** 6P SS …`): a row, no header
-        if _is_head_bold(line[0]) and sum(not _is_head_bold(w) for w in line) >= 2 \
-                and len(_split_x(bold, _CELL_GAP)) == 1:
+        if (
+            _is_head_bold(line[0])
+            and sum(not _is_head_bold(w) for w in line) >= 2
+            and len(_split_x(bold, _CELL_GAP)) == 1
+        ):
             continue
         # a bold run-in of prose (a numbered list's lead-in) is no header: header cells are a few words each
         if max(len(c) for c in _split_x(bold, _CELL_GAP)) > _CELL_WORDS:
@@ -389,16 +452,29 @@ def _headers(lines, height, boxes=()):
             # apart: only a label of a cell or two stacks beside another line)
             # nor a header whose column already has a value on this line (a box beside it starts its rows here)
             values = [w for w in line if not _is_head_bold(w)]
-            prev = next((h for h in groups if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
-                         and not any(min(v["x0"] for v in h) - _CELL_GAP <= _cx(w) <= max(v["x1"] for v in h) + _CELL_GAP
-                                     for w in values)
-                         and len({_box_of(w, boxes) for w in g + h} - {None}) <= 1
-                         and min(w["x0"] for w in h) - _STACK_PAD < x1 and x0 < max(w["x1"] for w in h) + _STACK_PAD
-                         and all(abs(g[0]["top"] - w["top"]) > LINE_TOLERANCE for w in h)
-                         and (x0 < max(w["x1"] for w in h) and min(w["x0"] for w in h) < x1
-                              or (n := min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP)))) == 1
-                              or n == 2 and max(x0 - max(w["x1"] for w in h), min(w["x0"] for w in h) - x1) < _COLUMN_GAP)),
-                        None)  # (a lone label stacks; two cells only near: not another column's header)
+            prev = next(
+                (
+                    h
+                    for h in groups
+                    if g[0]["top"] - max(w["top"] for w in h) <= _HEADER_STACK * height
+                    and not any(
+                        min(v["x0"] for v in h) - _CELL_GAP <= _cx(w) <= max(v["x1"] for v in h) + _CELL_GAP
+                        for w in values
+                    )
+                    and len({_box_of(w, boxes) for w in g + h} - {None}) <= 1
+                    and min(w["x0"] for w in h) - _STACK_PAD < x1
+                    and x0 < max(w["x1"] for w in h) + _STACK_PAD
+                    and all(abs(g[0]["top"] - w["top"]) > LINE_TOLERANCE for w in h)
+                    and (
+                        x0 < max(w["x1"] for w in h)
+                        and min(w["x0"] for w in h) < x1
+                        or (n := min(len(_split_x(g, _CELL_GAP)), len(_split_x(h, _CELL_GAP)))) == 1
+                        or n == 2
+                        and max(x0 - max(w["x1"] for w in h), min(w["x0"] for w in h) - x1) < _COLUMN_GAP
+                    )
+                ),
+                None,
+            )  # (a lone label stacks; two cells only near: not another column's header)
             if prev is not None:
                 prev += g
             else:
@@ -409,9 +485,15 @@ def _headers(lines, height, boxes=()):
 
 def _innermost(rects):
     """One rect per x extent, none holding another (a rect behind a whole row holds its cell rects)."""
-    key = lambda r: (r["x0"], r["x1"])
-    inner = {key(r): r for r in rects
-             if not any(r["x0"] <= o["x0"] and o["x1"] <= r["x1"] and key(o) != key(r) for o in rects)}
+
+    def key(r):
+        return (r["x0"], r["x1"])
+
+    inner = {
+        key(r): r
+        for r in rects
+        if not any(r["x0"] <= o["x0"] and o["x1"] <= r["x1"] and key(o) != key(r) for o in rects)
+    }
     return sorted(inner.values(), key=lambda r: r["x0"])
 
 
@@ -421,13 +503,21 @@ def _cell_rects(head, rects, below):
     rects behind the header words when there are >= 2 and every header word sits in one. A header in one rect across
     the table or in none (a title over a grid) takes the cells of the first stripe row within `below` pt under it."""
     t, b = min(w["top"] for w in head), max(w["bottom"] for w in head)
-    hr = _innermost([r for r in rects if r["top"] - 1 <= t and b <= r["bottom"] + 1
-                     and any(r["x0"] <= _cx(w) <= r["x1"] for w in head)])
+    hr = _innermost(
+        [
+            r
+            for r in rects
+            if r["top"] - 1 <= t and b <= r["bottom"] + 1 and any(r["x0"] <= _cx(w) <= r["x1"] for w in head)
+        ]
+    )
     if len(hr) >= 2 and all(any(r["x0"] <= _cx(w) <= r["x1"] for r in hr) for w in head):
         return hr, hr[0]["bottom"]
     if len(hr) < 2:
-        x0, x1, edge = (hr[0]["x0"], hr[0]["x1"], hr[0]["bottom"]) if hr else (
-            min(w["x0"] for w in head), max(w["x1"] for w in head), b)
+        x0, x1, edge = (
+            (hr[0]["x0"], hr[0]["x1"], hr[0]["bottom"])
+            if hr
+            else (min(w["x0"] for w in head), max(w["x1"] for w in head), b)
+        )
         grid = [r for r in rects if edge - 1 <= r["top"] <= edge + below]
         under = [r for r in grid if r["x0"] < x1 and x0 < r["x1"]]
         if under:  # the first stripe row under the header: the cells touching the one(s) under it
@@ -463,8 +553,9 @@ _BASE_APART = 1  # pt; one table row's cells share a baseline; two text columns'
 
 def _box_of(w, boxes):
     """The index of the box background (a filled rect taller than a stripe) holding the word's centre, else None."""
-    return next((i for i, b in enumerate(boxes) if b["x0"] <= _cx(w) <= b["x1"] and b["top"] <= w["top"] <= b["bottom"]),
-                None)
+    return next(
+        (i for i, b in enumerate(boxes) if b["x0"] <= _cx(w) <= b["x1"] and b["top"] <= w["top"] <= b["bottom"]), None
+    )
 
 
 def _column_parts(line, boxes=(), mid=None):
@@ -483,8 +574,15 @@ def _column_parts(line, boxes=(), mid=None):
         # (by baseline only between two runs of cells: a two-line header's lone words, a wrapped name over a row's
         # values centred beside it, sit a few points apart too)
         across = mid is not None and v["x1"] <= mid + GUTTER_TOL and w["x0"] >= mid - GUTTER_TOL
-        if gap > 2 * _CELL_GAP and (a is not None and b is not None and a != b or across and abs(v["base"] - w["base"]) > _BASE_APART
-                                    and len(_split_x(parts[-1], _CELL_GAP)) > 1 and len(_split_x(line[i:], _CELL_GAP)) > 1):
+        if gap > 2 * _CELL_GAP and (
+            a is not None
+            and b is not None
+            and a != b
+            or across
+            and abs(v["base"] - w["base"]) > _BASE_APART
+            and len(_split_x(parts[-1], _CELL_GAP)) > 1
+            and len(_split_x(line[i:], _CELL_GAP)) > 1
+        ):
             parts.append([w])
         else:
             parts[-1].append(w)
@@ -519,15 +617,20 @@ def band_tables(words, fonts, rects=(), width=None):
         if hr:
             cells = [[] for _ in hr]
             for w in head:
-                cells[min(range(len(hr)), key=lambda i: max(hr[i]["x0"] - _cx(w), 0, _cx(w) - hr[i]["x1"]))].append(w)
+                cells[
+                    min(range(len(hr)), key=lambda i, hr=hr, w=w: max(hr[i]["x0"] - _cx(w), 0, _cx(w) - hr[i]["x1"]))
+                ].append(w)
             bounds = [hr[0]["x0"]] + [r["x0"] for r in hr[1:]] + [hr[-1]["x1"] + 2]
         else:
             cells = _split_x(head, _CELL_GAP)
             ends = [max(w["x1"] for w in c) for c in cells]
             # the last column reaches right for long values, but never into another header's columns
-            reach = min([w["x0"] - 2 for h in heads if h is not head for w in h if w["x0"] > ends[-1]]
-                        + [ends[-1] + _LAST_PAD])
-            bounds = [cells[0][0]["x0"] - _FIRST_PAD] + [(e + c[0]["x0"]) / 2 for e, c in zip(ends, cells[1:])] + [reach]
+            reach = min(
+                [w["x0"] - 2 for h in heads if h is not head for w in h if w["x0"] > ends[-1]] + [ends[-1] + _LAST_PAD]
+            )
+            bounds = (
+                [cells[0][0]["x0"] - _FIRST_PAD] + [(e + c[0]["x0"]) / 2 for e, c in zip(ends, cells[1:])] + [reach]
+            )
         if len(cells) < 2:  # a one-cell header is a title or a sub-heading row, never a table of its own
             continue
         lo, hi = bounds[0], bounds[-1]
@@ -536,11 +639,20 @@ def band_tables(words, fonts, rects=(), width=None):
         last_bottom = max([w["bottom"] for w in head] + ([edge] if hr else []))
         size = None  # the rows' size, from the first row (a header may be set a point smaller)
         # a one-cell header inside a table of >= 2 columns is a sub-heading row of it (a category in its first column)
-        subs = [h for h in heads if len(cells) >= 2 and id(h) in single and h is not head
-                and all(lo <= _cx(w) <= hi for w in h)]
+        subs = [
+            h
+            for h in heads
+            if len(cells) >= 2 and id(h) in single and h is not head and all(lo <= _cx(w) <= hi for w in h)
+        ]
         sub_ids = {id(w) for h in subs for w in h}
-        later_heads = [min(w["top"] for w in h) for h in heads if h is not head and all(h is not u for u in subs)
-                       and min(w["top"] for w in h) > last and any(lo <= _cx(w) <= hi for w in h)]
+        later_heads = [
+            min(w["top"] for w in h)
+            for h in heads
+            if h is not head
+            and all(h is not u for u in subs)
+            and min(w["top"] for w in h) > last
+            and any(lo <= _cx(w) <= hi for w in h)
+        ]
         rows_lines, labels, pending = [], set(), None
         for full in lines:
             line = [w for w in full if lo <= _cx(w) <= hi and (id(w) not in head_ids or id(w) in sub_ids)]
@@ -549,11 +661,13 @@ def band_tables(words, fonts, rects=(), width=None):
             t = line[0]["top"]
             size = statistics.median(w["size"] for w in line) if size is None else size
             left = [w["x1"] for w in full if w["x1"] <= line[0]["x0"]]
-            if (t - last > _ROW_GAP * pitch
-                    or (left and line[0]["x0"] - max(left) <= 2 * _CELL_GAP)  # a line running on left of the table
-                    or any(abs(w["size"] - size) > _SIZE_TOL for w in line)  # a footnote under the table
-                    or any(h <= t + 1 for h in later_heads)
-                    or any(lo <= _cx(w) <= under and last_bottom - 1 < w["top"] <= t + 1 for w in other)):
+            if (
+                t - last > _ROW_GAP * pitch
+                or (left and line[0]["x0"] - max(left) <= 2 * _CELL_GAP)  # a line running on left of the table
+                or any(abs(w["size"] - size) > _SIZE_TOL for w in line)  # a footnote under the table
+                or any(h <= t + 1 for h in later_heads)
+                or any(lo <= _cx(w) <= under and last_bottom - 1 < w["top"] <= t + 1 for w in other)
+            ):
                 break
             # a labelled line (`Racial Qualities: ...`) and the lines that wrap it are a sub-row when a row follows;
             # with none after (a stat box's `Skills:`), they stay text
@@ -579,9 +693,15 @@ def band_tables(words, fonts, rects=(), width=None):
         edges = []
         if hr:
             bottom = max(w["bottom"] for w in rows_lines[-1])
-            edges = sorted({edge} | {e for r in rects if edge - 1 < r["top"] < bottom
-                                                and lo - _FIRST_PAD <= _cx(r) <= hi + _FIRST_PAD
-                                                for e in (r["top"], r["bottom"])})
+            edges = sorted(
+                {edge}
+                | {
+                    e
+                    for r in rects
+                    if edge - 1 < r["top"] < bottom and lo - _FIRST_PAD <= _cx(r) <= hi + _FIRST_PAD
+                    for e in (r["top"], r["bottom"])
+                }
+            )
         bands = [bisect.bisect(edges, (ln[0]["top"] + ln[0]["bottom"]) / 2) for ln in rows_lines]
         # with stripes, the rows alternate shaded and plain: the lines after the last stripe are one plain row
         bands = [b if b < len(edges) or len(edges) > 1 else None for b in bands]
@@ -599,7 +719,10 @@ def _table(head, header, bounds, rows_lines, bands, labels):
     every other line joins the nearest anchor by top (a tie goes to the one above). A name wrapped onto two lines
     around values set vertically centred gives two anchors, one of them name-only: it joins the neighbour row whose
     values sit between them. Words of a labelled sub-row (`labels`) all go to the first column."""
-    col = lambda w: 0 if id(w) in labels else max([i for i, b in enumerate(bounds[1:-1], 1) if _cx(w) >= b] or [0])
+
+    def col(w):
+        return 0 if id(w) in labels else max([i for i, b in enumerate(bounds[1:-1], 1) if _cx(w) >= b] or [0])
+
     tops = [ln[0]["top"] for ln in rows_lines]
     banded, loose = defaultdict(list), []
     for i, b in enumerate(bands):
@@ -608,14 +731,16 @@ def _table(head, header, bounds, rows_lines, bands, labels):
     anchors = [i for i in loose if any(col(w) == 0 for w in rows_lines[i])] or loose
     members = defaultdict(list)
     for i in loose:
-        members[min(anchors, key=lambda a: abs(tops[a] - tops[i]))].append(i)
-    loose_rows = [[tops[a], [tops[i] for i in members[a]], [w for i in members[a] for w in rows_lines[i]]]
-                  for a in anchors]
+        members[min(anchors, key=lambda a, i=i: abs(tops[a] - tops[i]))].append(i)
+    loose_rows = [
+        [tops[a], [tops[i] for i in members[a]], [w for i in members[a] for w in rows_lines[i]]] for a in anchors
+    ]
     k = 0
     while k < len(loose_rows):
         top_k, _, words = loose_rows[k]
         if all(col(w) == 0 for w in words) and len(loose_rows) > 1:
             nxt = loose_rows[k + 1] if k + 1 < len(loose_rows) else None
+            # pylint: disable=unsubscriptable-object,unsupported-assignment-operation  # prv is None only at k == 0, and is tested
             prv = loose_rows[k - 1] if k else None
             if nxt and any(top_k < t < nxt[0] for t in nxt[1]):
                 nxt[2] = words + nxt[2]
@@ -628,8 +753,12 @@ def _table(head, header, bounds, rows_lines, bands, labels):
         k += 1
     rows = sorted(rows + loose_rows, key=lambda r: r[0])
     used = head + [w for ln in rows_lines for w in ln]
-    bbox = (min(w["x0"] for w in used), min(w["top"] for w in head), max(w["x1"] for w in used),
-            max(w["bottom"] for w in used))
+    bbox = (
+        min(w["x0"] for w in used),
+        min(w["top"] for w in head),
+        max(w["x1"] for w in used),
+        max(w["bottom"] for w in used),
+    )
     cells = [[_text([w for w in r[2] if col(w) == c]) for c in range(len(header))] for r in rows]
     for cs, mark in zip(cells, _first_marks([[w for w in r[2] if col(w) == 0] for r in rows])):
         cs[0] = mark + cs[0] if cs[0] else cs[0]
@@ -657,8 +786,11 @@ def _first_marks(firsts):
     flush = len(edges) <= 3 and len(known) > len(edges)  # (a centred column: an edge for almost every name)
     bold = [bool(f) and all(is_bold(w) for w in f) for f in firsts]
     some_bold = any(bold) and not all(b for b, f in zip(bold, firsts) if f)
-    return [(INDENT if flush and x is not None and _INDENT_MIN <= x - base <= _INDENT_MAX else "")
-            + (BOLD if some_bold and b else "") for x, b in zip(xs, bold)]
+    return [
+        (INDENT if flush and x is not None and _INDENT_MIN <= x - base <= _INDENT_MAX else "")
+        + (BOLD if some_bold and b else "")
+        for x, b in zip(xs, bold)
+    ]
 
 
 _BOX_MARGIN = 4  # pt; a line starting this far left of the left column's lines
@@ -674,8 +806,18 @@ def box_margin(blocks, xs):
     if not col or not box or not right:
         return blocks
     edge = col[len(col) // 2] - _BOX_MARGIN
-    return [(t, "band" if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box)
-             and not min(right) <= t <= max(right) else k, s) for (t, k, s), x in zip(blocks, xs)]
+    return [
+        (
+            t,
+            (
+                "band"
+                if k == "left" and x < edge and any(abs(x - b) <= 2 for b in box) and not min(right) <= t <= max(right)
+                else k
+            ),
+            s,
+        )
+        for (t, k, s), x in zip(blocks, xs)
+    ]
 
 
 def box_titles(blocks, geo, boxes):
@@ -683,12 +825,17 @@ def box_titles(blocks, geo, boxes):
     (`boxes`: their tops) is that table's title: a band, read with its table after both columns (not at the end of
     its column, the other column's text between them). blocks: (top, kind, text), geo: (level, bottom, size)."""
     out = []
-    for i, ((t, k, s), (lv, bottom, size)) in enumerate(zip(blocks, geo)):
+    for (t, k, s), (lv, bottom, size) in zip(blocks, geo):
         if lv and k in ("left", "right"):
             other = [tt for tt, kk, _ in blocks if kk == ("right" if k == "left" else "left")]
             under = [b for b in boxes if b >= bottom - 1]
-            if other and t > max(other) and under and min(under) - bottom < 2 * size \
-                    and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k):
+            if (
+                other
+                and t > max(other)
+                and under
+                and min(under) - bottom < 2 * size
+                and not any(t < tt < min(under) for tt, kk, _ in blocks if kk == k)
+            ):
                 k = "band"
         out.append((t, k, s))
     return out
