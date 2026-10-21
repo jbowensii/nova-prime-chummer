@@ -272,13 +272,13 @@ def core_entry(table, raw, source, page, seen):
     if table == "metatypes":
         from importer.recipes.crb_core import racial_effects  # what the racial quality does, as the recipe reads it
         inner += f"<racialQuality>{escape(_text(raw.get('racialQuality')) or '')}</racialQuality>" + racial_effects(_text(raw.get('racialQuality')) or '') + "".join(
-            "<range" + xmlio._attrs({k: _text(r.get(k)) for k in ("attr", "min", "max")}) + "/>" for r in rows("ranges"))
+            "<range" + xmlio.xml_attrs({k: _text(r.get(k)) for k in ("attr", "min", "max")}) + "/>" for r in rows("ranges"))
     if table == "skills":
         inner += "".join(_el("spec", {"id": _id(s.get("id")), "attr": _text(s.get("attr"))}, escape(_text(s.get("name")) or ""))
                          for s in rows("specs"))
     if table == "lifestyles":
         inner += "<text></text>"
-    xml = f"<{kind}{xmlio._attrs(attrs)}/>" if table == "pricing" else _el(kind, attrs, inner)
+    xml = f"<{kind}{xmlio.xml_attrs(attrs)}/>" if table == "pricing" else _el(kind, attrs, inner)
     notes = schema_notes(table, xml)
     return kind, i, p, xml, notes + core_notes(table, ET.fromstring(xml), core_refs(seen))
 
@@ -324,7 +324,7 @@ def _unique(seen, kind, i):
 
 
 def _el(tag, attrs, inner=""):
-    return f"<{tag}{xmlio._attrs(attrs)}>{inner}</{tag}>"
+    return f"<{tag}{xmlio.xml_attrs(attrs)}>{inner}</{tag}>"
 
 
 def _entries(obj, source, page, m, seen):
@@ -333,7 +333,7 @@ def _entries(obj, source, page, m, seen):
     for raw in lists("amps"):
         a, notes = _amp(raw)
         p, i = _pos(raw.get("page")) or page, _unique(seen, "amp", _slug(a["name"]))
-        effects = "".join("<effect" + xmlio._attrs(e) + "/>" for e in a["effects"])
+        effects = "".join("<effect" + xmlio.xml_attrs(e) + "/>" for e in a["effects"])
         xml = _el("amp", {"id": i, "type": a["type"], "printedRating": a["printedRating"], "source": source, "page": p},
                   f"<name>{escape(a['name'] or '')}</name>{effects}<narrative></narrative>")
         yield "amp", i, p, xml, notes + amp_notes(a, m)
@@ -354,7 +354,7 @@ def _entries(obj, source, page, m, seen):
 
 
 def _proposal(kind, i, page, xml, notes):
-    return (f"  <proposal{xmlio._attrs({'id': f'{kind}.{i}', 'kind': kind, 'state': 'pending', 'page': page})}>\n    {xml}\n"
+    return (f"  <proposal{xmlio.xml_attrs({'id': f'{kind}.{i}', 'kind': kind, 'state': 'pending', 'page': page})}>\n    {xml}\n"
             + "".join(f"    <note>{escape(t)}</note>\n" for t in notes) + "  </proposal>\n")
 
 
@@ -435,7 +435,7 @@ def propose(book_dir, ask, provider=None, data_dir=None, fresh=False, core=False
             attrs = {"book": book, "source": source, "core": "true" if core else None, "provider": provider, "created": created,
                      "bookSha256": sha, "parts": len(parts), "done": n}
             xmlio.write_file(path, xmlio.HEAD + "<!-- PRIVATE: proposals from a book. Do not commit. -->\n"
-                             f"<review{xmlio._attrs(attrs)}>\n{''.join(skips)}{''.join(rows)}</review>\n")
+                             f"<review{xmlio.xml_attrs(attrs)}>\n{''.join(skips)}{''.join(rows)}</review>\n")
 
         for n in range(done + 1, len(parts) + 1):
             chunk = parts[n - 1]

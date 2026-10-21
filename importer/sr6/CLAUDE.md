@@ -4,13 +4,15 @@ Turns an SR6 book PDF into catalog entries under `custom/sr6`. Stages, in order:
 -> regroup (`regroup.py`) -> extract (`recipes/`, `classes/`, `shapes.py`, `tables.py`) -> effects (`effects.py`) ->
 resolve (`resolve.py`) -> links; `run.py` runs them, `__main__.py` is the CLI (`python -m importer sr6 ...`, usage in
 its docstring). The owner's rulings and book corrections live in `overrides/*.json` and `overrides/*.book.json` (about
-270k tokens of JSON: search them, do not read them whole).
+270k tokens of JSON: search them, do not read them whole); the package `overrides/` (`__init__.py`: the row format,
+`table`, `apply`, `texts`; `rules.py`: `check`; `schema.py`: `allowed`, `fit`; `xmlops.py`: the rows applied to the
+xml, `dump`) loads and applies them. `effects/` is a package the same way (its modules listed in its `__init__.py`).
 
 - **Owns:** `importer/sr6/**`, `importer/tests/` (the SR6 and CL6 tests), `tools/cl6check/` and `tools/cl6effects/`
   (see `tools/cl6check/CLAUDE.md`).
 - **Public interface:** the CLI; `importer.sr6.classes`, `.effects`, `.overrides` (imported by name by
   `tools/cl6effects/rebuild.py:27` from older base trees: keep the names). A stage reaches another through its public
-  helpers, not a leading-underscore one.
+  helpers, not a leading-underscore one (no `from … import _x`, no `module._x`: `importer/tests/test_sr6_stage_imports.py`).
 - **Depends on:** only the shared importer part (`importer/xmlio.py`, `importer/convert.py`) and `public/data` schemas.
 - **Test:** `npm run test:py`; one file `python -m unittest importer.tests.test_cl6effects`.
 - **CommLink6 gates (`docs/cl6check.md`)**, required for any change to the reader, overrides, `run.py`, `resolve.py` or

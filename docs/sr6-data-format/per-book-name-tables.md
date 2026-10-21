@@ -4,7 +4,7 @@ Part of the [Shadowrun 6 data format](../sr6-data-format.md).
 
 A last resort for the few names Commlink6 gives an item that no rule derives (`Hermeticsm` for the Street Wyrd tradition
 `Classical Hermeticism`). Each recipe has its own table, empty when its file is absent; the importer applies it after the
-book is read (`importer/sr6/overrides.py`, called from `run._read`), so an older printing's catalog gets it too. A row is
+book is read (`importer/sr6/overrides/`, called from `run._read`), so an older printing's catalog gets it too. A row is
 `{"cl6": "<Commlink6's name>", "kind": "<catalog file>", "ours": ["<our printed name>", ...], "set": {"<attribute>":
 "<value>"}}`: the Commlink6 name becomes an `<alias>` (a name only) of each entry named in `ours`, and `set`, optional,
 sets an attribute to a value taken from Commlink6. A description is never an override: descriptions come from the book's

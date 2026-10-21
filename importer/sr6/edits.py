@@ -82,7 +82,7 @@ def _edits_xml(entries):
     for e in entries:
         e.tail = None
         rows.append("  " + ET.tostring(e, encoding="unicode") + "\n")
-    start, end = xmlio._root("edits", ROOT)
+    start, end = xmlio.data_root("edits", ROOT)
     return xmlio.HEAD + "<!-- Catalog entries edited in the app. Written by the importer. -->\n" + start + "".join(rows) + end
 
 

@@ -155,7 +155,7 @@ class _PLine(str):
     page = 0
 
 
-def _pline(v, page):
+def pline(v, page):
     x = _PLine(v)
     x.page = page
     return x
@@ -886,7 +886,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
         kind, page, v = els[i]
         i += 1
         if kind == "x":
-            v = _pline(v, page)
+            v = pline(v, page)
         if kind == "h":
             level, text = v
             label = None
@@ -1004,7 +1004,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
         else:
             fresh = False
             if bm := _BOLD_FIELD.fullmatch(v.strip()):  # (`**Activation: Passive**`: a field and its value in one bold)
-                v = _pline(f"{bm.group(1) or ''}**{bm.group(2)}:** {bm.group(3).strip()}", getattr(v, "page", 0))
+                v = pline(f"{bm.group(1) or ''}**{bm.group(2)}:** {bm.group(3).strip()}", getattr(v, "page", 0))
             m = _LABEL.match(v)
             if m:
                 key, value = m.group(2).strip(), m.group(3).strip()

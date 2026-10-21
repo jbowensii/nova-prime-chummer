@@ -237,4 +237,4 @@ def modules(bs):
 
 def _paged(b):
     """Block b's text lines, each keeping the PDF page it is printed on (regroup's page breaks)."""
-    return [regroup._pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]
+    return [regroup.pline(ln, regroup.line_page(b, k)) for k, ln in enumerate((b.text or "").splitlines())]

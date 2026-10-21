@@ -3,7 +3,6 @@ effect and by marked gen="cl6" override rows where it cannot. Every sentence and
 import json
 import re
 import unittest
-from pathlib import Path
 
 from importer.sr6 import effects, overrides
 
@@ -132,7 +131,7 @@ class ReviewFixesTest(unittest.TestCase):
 
 
 class OverrideRowsTest(unittest.TestCase):
-    DIR = Path(overrides.__file__).parent / "overrides"
+    DIR = overrides.DIR
 
     def rows(self):
         return [(f.stem, r) for f in sorted(self.DIR.glob("*.json")) for r in json.loads(f.read_text(encoding="utf8")) if r.get("gen") == "cl6"]
