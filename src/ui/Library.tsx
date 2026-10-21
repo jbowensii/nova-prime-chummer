@@ -13,7 +13,8 @@ import { needsExportReminder } from './storage'
 import { joined, loadCampaigns, type Campaign } from './campaignsStore'
 import { bookSamples, chooseExamples, extraCopies, keyOf, sameRunners, readCharacterFile, readSample, type Example, type Sources } from './samples'
 import { Face } from './Portrait'
-import { downloadRunners, ExportRunnersDialog } from './Foundry'
+import { downloadRunners } from './Foundry'
+import { ExportRunnersDialog } from './foundryKit'
 
 /** Download the runner as an XML file (same format as the files on the server). Returns it stamped as exported. */
 export function exportCharacter(c: Catalog, ch: Character): Character {

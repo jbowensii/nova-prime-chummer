@@ -1,7 +1,7 @@
 // The SR6 Export for Foundry helpers (src/sr6/ui/Foundry.tsx): file names on the local date, the export options.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { runnersStem } from '../../src/ui/Foundry'
+import { runnersStem } from '../../src/ui/foundryKit'
 import { sr6BooksFileName, sr6CompendiumFileName, sr6ExportOpts, sr6RunnersFileName } from '../../src/sr6/ui/Foundry'
 
 test('file names: the local date, .sr6foundry.json', () => {

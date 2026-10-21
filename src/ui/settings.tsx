@@ -3,7 +3,7 @@
 
 /** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
 /** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its own
- *  strength (print/shared.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
+ *  strength (ui/sheetArt.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
 /** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
  *  (each game has its own art; print/shared.tsx useSheetArt) */
 export interface Settings {
