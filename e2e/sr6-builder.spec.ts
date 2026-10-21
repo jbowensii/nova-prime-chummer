@@ -1017,13 +1017,21 @@ test('Ada moves Pat’s SR6 runners to herself and deletes Pat; Users stays on t
   await move.click()
   await expect(dlg.getByLabel('Runner').locator('option', { hasText: 'Zip Spark' }).first()).toHaveText('Zip Spark (Shadowrun 6)')
   await dlg.getByRole('button', { name: 'Close' }).click()
-  while (await move.count()) {
+  // the table's Runners count for Pat drops only once the list has been fetched again after a move; the Move button (and the
+  // status line) are still there until then, so wait on the count, not on the button, before deciding there is another to move
+  const left = page
+    .getByRole('row', { name: /Pat Player/ })
+    .locator('td.num')
+    .first()
+  for (let n = Number(await left.textContent()); n > 0; n--) {
     await move.click()
     await dlg.getByLabel('Move to').selectOption({ label: 'Ada Admin (ada)' })
     await dlg.getByRole('button', { name: 'Move runner' }).click()
     await expect(page.getByRole('status').filter({ hasText: /^Moved .* to Ada Admin\.$/ })).toBeVisible()
     await expect(dlg).toBeHidden()
+    await expect(left).toHaveText(String(n - 1))
   }
+  await expect(move).toHaveCount(0)
   await page.getByRole('button', { name: 'Delete Pat Player' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Delete account' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Deleted Pat Player’s account.' })).toBeVisible()
