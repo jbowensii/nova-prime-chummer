@@ -2,11 +2,13 @@
 Every file is written to a temp name and renamed, so a reader never sees half a file."""
 import os
 import re
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from xml.sax.saxutils import escape, quoteattr
 
 NS = "urn:chummer-anarchy2:data:1"
+WINDOWS = os.name == "nt"
 HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
 ILLEGAL = re.compile("[^\t\n\r\x20-%s%s-%s%s-%s]" % tuple(map(chr, (0xD7FF, 0xE000, 0xFFFD, 0x10000, 0x10FFFF))))  # not in XML 1.0
 # (tag, attribute) pairs that name an entry of the imported file set ("*" = any tag); only values that
@@ -40,7 +42,15 @@ def write_file(path, text):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf8", newline="\n") as f:
         f.write(text)
-    os.replace(tmp, path)
+    # Windows refuses to replace a file the server is reading at that moment (it polls status.xml): wait and try again, as
+    # server/common.mjs writeAtomic does. Elsewhere replace() never fails this way and the loop runs once.
+    for i in range(20):
+        try:
+            return os.replace(tmp, path)
+        except PermissionError:
+            if i == 19 or not WINDOWS:
+                raise
+            time.sleep(0.01 * (i + 1))
 
 
 def top_ids(xml):
