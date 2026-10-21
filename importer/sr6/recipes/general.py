@@ -175,6 +175,9 @@ _CRITTER_ONLY = {
     "bioware",
     "living persona",
 }
+# a person's own lines: a block printing natural attacks (`Attack:`, `Attacks:`) and no `Weapons:` is an animal's, its
+# barding or cyberware in Gear or Augmentations (Cicada Whisper's Koshari Horse), unless it prints one of these
+_PERSON_ONLY = {"adept powers", "optional adept powers", "complex forms", "spells", "living persona"}
 
 
 def _being(b):
@@ -537,6 +540,28 @@ def _slash_names(name):
     return [left, " ".join(head[:k] + [right])]
 
 
+_JOINING = {"de", "of", "the", "da", "la", "le", "van", "von", "du", "and", "y"}
+
+
+def _uncapped(name):
+    """A being's name printed in capitals (`OFFICE CLERK`, `DR. KINSEY TRUJILLO`, `SAUL DE HARO`) in the book's mixed
+    case: a word of four letters or more, or one ending in a point, capitalized; a joining word in lower case after the
+    first; a shorter word as printed (`HTR`). A name with no word of four letters is an acronym's (`CPU`): as printed.
+    """
+    words = name.split()
+    if not any(len(re.sub(r"[^A-Za-z]", "", w)) >= 4 for w in words):
+        return name
+    out = []
+    for i, w in enumerate(words):
+        if i and w.lower() in _JOINING:
+            out.append(w.lower())
+        elif len(re.sub(r"[^A-Za-z]", "", w)) >= 4 or w.endswith("."):
+            out.append(w[:1] + w[1:].lower())
+        else:
+            out.append(w)
+    return " ".join(out)
+
+
 def _contact(b):
     return any(re.match(r"connection(\s+rating)?$", k, re.I) for k in b.labels)
 
@@ -657,7 +682,7 @@ class Book:
             name = (
                 " ".join(w[:1].upper() + w[1:] for w in name.split())
                 if name == name.lower()
-                else name[:1].upper() + name[1:]
+                else _uncapped(name) if name == name.upper() else name[:1].upper() + name[1:]
             )
             if m:
                 text = b.text.replace(first, "", 1).strip() if _RATING.fullmatch(first.strip()) else b.text
@@ -688,7 +713,13 @@ class Book:
         if _being(b):
             if _contact(b):
                 return "contacts", None
-            if not _RATING.search(b.section) and "powers" in labels and not labels & _CRITTER_ONLY:
+            if not _RATING.search(b.section) and (
+                "powers" in labels
+                and not labels & _CRITTER_ONLY
+                or labels & {"attack", "attacks"}
+                and "weapons" not in labels
+                and not labels & _PERSON_ONLY
+            ):
                 return "critters", "critter"
             return "npcs", None
         if b.stats and {"RANGE", "DURATION"} <= {h.upper() for h in b.stats[0]}:

@@ -364,6 +364,29 @@ Small Zorg 1–5 1–7 1–5 1–4
 1–6 1–6 1–6 1–7 1–6 1–6
 **Racial Qualities:** Hide (Self), Low-Light Vision
 **Average Height:** 1 M
+<!-- page 13 -->
+## Made-up Riders
+### Dusty Pony
+A made-up pony in made-up barding.
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 7 | 2 | 3 | 6 | 2 | 2 | 4 | 2 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 9 | 7/1 | A1, I2 | 12 | 10/20/+4 |
+**Skills:** Athletics 6, Perception 3
+**Gear:** Made-up saddle (+2)
+**Attack:** Kick [DV 3S, AR 10/–/–/–/–]
+### PAPER PUSHER
+A made-up clerk.
+| B | A | R | S | W | L | I | C | ESS |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 2 | 2 | 2 | 2 | 3 | 3 | 3 | 6 |
+| DR | I/ID | AC | CM | MOVE |
+|---|---|---|---|---|
+| 2 | 5/1 | A1, I2 | 9 | 10/15/+1 |
+**Skills:** Con 2, Electronics 3
+**Gear:** Made-up commlink
 <!-- page 14 -->
 # Grumble
 Grumble is a made-up mentor spirit who grumbles.
@@ -427,6 +450,12 @@ class GeneralShapesTest(unittest.TestCase):
     def test_ammo_type(self):
         a = entries(self.res, "ammotypes")["Fizz Rounds"]
         self.assertEqual((a["cost"], a["ar"]), ("x3", "–1"))
+
+    def test_an_animal_in_barding_is_a_critter_and_a_name_in_capitals_reads_mixed(self):
+        self.assertIn("Dusty Pony", entries(self.res, "critters"))  # (natural attacks, no Weapons: its Gear is barding)
+        self.assertIn("Paper Pusher", entries(self.res, "npcs"))  # (printed `PAPER PUSHER`)
+        self.assertEqual(general._uncapped("SAUL DE HARO"), "Saul de Haro")
+        self.assertEqual(general._uncapped("CPU"), "CPU")  # (an acronym: as printed)
 
     def test_mentor_spirit_on_its_own(self):
         self.assertIn("Grumble", entries(self.res, "mentorspirits"))

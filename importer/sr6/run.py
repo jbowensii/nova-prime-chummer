@@ -118,7 +118,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
                 else None
             )
             files, _ = moved.carry(prev, {n: xmlio.scope(x, src, ids, ROOT) for n, x in res.files.items()})
-            _prune(out_dir, set(files), {x["file"] for x in res.samples})
+            _prune(book_dir, out_dir, src, old, set(files), {x["file"] for x in res.samples})
             for name, xml in files.items():
                 xmlio.write_file(os.path.join(out_dir, name), xml)
             if texts:
@@ -609,15 +609,24 @@ def _write_extra(custom_dir, res, prev=None):
         xmlio.write_file(path, _texts(path, res.texts, src, ids))
 
 
-def _prune(out_dir, names, samples):
-    """The last import's files this one no longer writes (an NPC, critter or sample runner list a reader change leaves
-    out): they go, so a book read again holds only what this reading found. Only the importer's own files (every
-    .xml in the source's folder and its samples/ folder is one: moved.previous)."""
-    for folder, keep in ((out_dir, names), (os.path.join(out_dir, "samples"), samples)):
-        if os.path.isdir(folder):
-            for f in os.listdir(folder):
-                if f.endswith(".xml") and f not in keep and os.path.isfile(os.path.join(folder, f)):
-                    os.remove(os.path.join(folder, f))
+def _prune(book_dir, out_dir, src, old, names, samples):
+    """The files this book's last import wrote (its import.xml's <files>, `old`) that this one no longer writes (an
+    NPC or critter list a reader change leaves out): they go, so a book read again holds only what this reading found.
+    Never a file another book of the same source lists (the Beginner Box's instruction sheet reads as Battle Royale,
+    BBR, and writes into its folder: Battle Royale's npcs.xml is not the sheet's to remove), as library.remove keeps
+    them. The source's sample runners (samples/) are this book's only when no other book holds the source: then a
+    runner this reading no longer writes goes too."""
+    others = library.same_source(book_dir, src)
+    shared = {f.get("name") for o in others for f in o.iter("file")}
+    mine = {os.path.basename(f.get("name") or "") for f in old.iter("file")} if old is not None else set()
+    for f in sorted(mine - set(names) - shared):
+        if f.endswith(".xml") and os.path.isfile(os.path.join(out_dir, f)):
+            os.remove(os.path.join(out_dir, f))
+    folder = os.path.join(out_dir, "samples")
+    if not others and os.path.isdir(folder):
+        for f in os.listdir(folder):
+            if f.endswith(".xml") and f not in samples and os.path.isfile(os.path.join(folder, f)):
+                os.remove(os.path.join(folder, f))
 
 
 def _drop(custom_dir, src):

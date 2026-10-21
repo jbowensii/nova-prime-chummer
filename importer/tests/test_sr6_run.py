@@ -89,8 +89,17 @@ class Sr6RunTest(unittest.TestCase):
     def test_a_book_read_again_drops_what_this_reading_no_longer_finds(self):
         self.assertEqual(self.cli("run", self.book, "--custom", self.custom, "--md")[0], 0)
         crb = os.path.join(self.custom, "imported", "crb")
-        # (a kind file and a sample runner the last reading wrote that this one does not)
+
+        def wrote(book, name):  # (the book's import record lists a file its last reading wrote)
+            p = Path(book, "import.xml")
+            p.write_text(
+                p.read_text(encoding="utf8").replace("<files>", f'<files>\n    <file name="{name}" entries="1"/>'),
+                encoding="utf8",
+            )
+
+        # a kind file and a sample runner the last reading wrote that this one does not: they go
         Path(crb, "lifemodules.xml").write_text("<old/>", encoding="utf8")
+        wrote(self.book, "lifemodules.xml")
         Path(crb, "samples", "crb.gone-runner.xml").write_text("<old/>", encoding="utf8")
         self.assertEqual(self.cli("run", self.book, "--custom", self.custom, "--md")[0], 0)
         self.assertFalse(os.path.exists(os.path.join(crb, "lifemodules.xml")))
@@ -98,6 +107,18 @@ class Sr6RunTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(crb, "weapons.xml")))
         self.assertTrue(os.path.isfile(os.path.join(crb, "samples", "crb.glow-runner.xml")))
         self.assertEqual(validate(self.custom), [])
+        # a file this book never wrote, and one another book of the same source writes, stay (a booklet that reads
+        # as its box's adventure writes into the same folder: the adventure's NPCs are not its to remove)
+        Path(crb, "spirits.xml").write_text("<theirs/>", encoding="utf8")
+        Path(crb, "lifemodules.xml").write_text("<theirs/>", encoding="utf8")
+        other = self.new_book("book2")
+        xmlio.write_import(
+            other, files={"lifemodules.xml": 1}, source="CRB", file="booklet.pdf", sha256="0" * 64, name="Booklet"
+        )
+        wrote(self.book, "lifemodules.xml")
+        self.assertEqual(self.cli("run", self.book, "--custom", self.custom, "--md")[0], 0)
+        self.assertTrue(os.path.isfile(os.path.join(crb, "spirits.xml")))
+        self.assertTrue(os.path.isfile(os.path.join(crb, "lifemodules.xml")))
 
     def test_texts_are_reflowed_into_paragraphs(self):
         md = BOOK_MD.replace(

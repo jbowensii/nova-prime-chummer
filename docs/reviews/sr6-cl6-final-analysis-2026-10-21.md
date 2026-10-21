@@ -1,176 +1,31 @@
-# SR6 ⇄ CommLink6: the final analysis — 2026-10-20
+# SR6 ⇄ CommLink6: the final analysis — 2026-10-21
 
-The owner asked for this last. It holds two lists and a plan:
-
-1. everything in CommLink6 that none of our 74 source books prints;
-2. every change we made to CommLink6's data, with the reason for each one;
-3. a plan for a CommLink6 data module.
-
-The overrides were made because the books print them, not to reach 100%. List 2 shows where each one comes from.
-
-The lists and every count below come from `python -m tools.cl6check.final_analysis`. It reads the CommLink6 jar
-(`commlink6-1.14.0-complete.jar`), the production import of all 74 books (`.extract/cl6check-runs28`: main 538d4915,
-`cl6check import --library`), the per-book runs for the older core rulebook printings (`.extract/cl6check-runs26`), and
-the owner's files (`tools/cl6check/value_keep.json`, `relocated.json`, `optional_package.json`, `class_accept.json`,
-`tools/cl6effects/bookruled.json`, `cl6placeholder.json`, `importer/sr6/overrides/*.json`). To rebuild it:
+The two lists of [the 10-20 final analysis](sr6-cl6-final-analysis-2026-10-20.md), regenerated on the 10-21
+production import of all 78 books (the 74 plus Seoul Survivor, the Sixth World Missions Guide, Adversary and Los
+Alamos: Cicada Whisper; `.extract/cl6check-runs30`, PR #137). How the lists are built, the classes and the plan are
+in that document and unchanged. The comparison numbers are in
+[sr6-cl6-comparison-2026-10-21.md](sr6-cl6-comparison-2026-10-21.md).
 
 ```
-python -m tools.cl6check.final_analysis --ours .extract/cl6check-runs28 --printings .extract/cl6check-runs26
-python -m tools.cl6check.final_analysis --ours .extract/cl6check-runs28 --printings .extract/cl6check-runs26 --check
+python -m tools.cl6check.final_analysis --ours .extract/cl6check-runs30 --printings .extract/cl6check-runs26 --doc docs/reviews/sr6-cl6-final-analysis-2026-10-21.md
+python -m tools.cl6check.final_analysis --ours .extract/cl6check-runs30 --printings .extract/cl6check-runs26 --doc docs/reviews/sr6-cl6-final-analysis-2026-10-21.md --check
 ```
 
-`--check` recomputes every count and prints `counts reconcile: ok` when they match the totals table below. It takes
-about a minute.
+## What changed since 10-20
 
-## In plain English
-
-- **CommLink6 has 915 records that none of our books prints.** None of them is a book item we left out. Here is what
-  they are:
-  - **300** come from 10 German-only books (State of the Art 2081–2083, Berlin 2080, Feuerläufer, Alpen and others).
-    These have no English edition.
-  - **311** are German-rules copies of records we already have from the English books.
-  - **201** have no English name at all: 158 Companion life modules, 25 priority-table rows, 15 Astral Ways true
-    elements and 3 others. We read these from the English books themselves.
-  - **5** are records CommLink6 retired itself ("Depreciated").
-  - **4** are CommLink6's rule settings. The app has them as its rule presets.
-  - **70** are CommLink6's own inventions:
-    - 21 constructs (the optional package);
-    - 16 option rows priced at 0 or marked not for sale;
-    - 33 table cells it turned into records (`SS(1-2)`, `16 km`, `Pilot 5`).
-  - **24** come from CommLink6's "Miscellaneous (US)" dataset: Seoul Survivor 14, Shadowrun Missions Guide 4, SR6 forum
-    posts 4, Adversary 2.
-- **CommLink6 also has 296 field values that no book prints** (list 1b). Most are powers' action, range, duration
-  and type (151) and availabilities (89).
-- **We changed CommLink6's data in 516 places.** Each one has a reason:
-  - **312 field values** where the book prints ours:
-    - 266 the printed page shows;
-    - 40 the owner ruled on (2026-10-17), each with its page;
-    - 5 where the Current Printing differs from the City Edition CommLink6 follows;
-    - 1 erratum.
-  - **49 structure differences** the owner kept as ours (variants, social rating, prerequisites).
-  - **50 effects**: 40 book-ruled and 10 CommLink6 placeholders.
-  - **3 classes.**
-  - **101 relocations**: the record is in our data under the book's own name, or in the book that prints it.
-  - **1 retired record kept** (the latest Firing Squad still prints it).
-- **The data module (section 3):** offer the 21 constructs, and move the 19 option rows and German-named ammo out of the
-  book catalog into the module. Ask whether the owner owns Seoul Survivor, the Missions Guide or Adversary. If he
-  does, import them as books. If not, put their 20 records in the module. Leave out everything else: the German
-  books, the German copies, the records with no English name, the retired records and the table cells.
-- **Things only the owner can settle** are listed at the end: 76 open items, plus 4 findings about the tools.
-
-## How the lists are built
-
-- **List 1** comes from three places:
-  - every jar record that `tools/cl6check/reader.py` leaves out (German-rules copies, no English name, retired);
-  - the jar's books the reader skips (the German-only `de_*` books and `other_us`). A `other_us` record that one of our
-    books prints under the same name (or one its entry carries as an alias) is listed for the owner to confirm, not in list 1 (Age of Rust's Buzzard Transit);
-  - every English record the comparison matches only through the optional package, a `gen="cl6only"` row, a rule
-    preset, or as a table cell.
-
-  Every other English record (4,397 of the jar's 4,474) is matched to an entry of ours from a book.
-- **List 1b** holds the field differences that cl6check leaves out as CommLink6-only: the book prints neither value.
-- **List 2** holds every class-b field difference cl6check finds on the production import, and every row of the owner's
-  files that makes ours differ from CommLink6. Each row gets one class:
-  - **owner ruling**: a `value_keep.json` verdict (2026-10-17, with its page and reason), an effects ruling
-    (2026-10-18), an owner relocation, or an owner structure keep;
-  - **errata**: the value came from an errata (`<found how="errata">` or a `gen="errata"` row);
-  - **latest printing**: an older core rulebook printing's own import agrees with CommLink6 on that field, and the
-    Current Printing prints ours;
-  - **book prints ours**: the page prints our value. Either the owner checked the page text (value_keep.json `keep`,
-    2026-10-14) or cl6check's PDF check reads it on the page.
-- **Override rows that bring ours to CommLink6's data are not changes to CommLink6.** There are 2,009 family rows,
-  751 class rows, 88 value rows, 53 effect rows and 30 owner rows. They are counted in the table at the end of the
-  generated part.
-
-## 3. The CommLink6 data module: plan (a recommendation, no code)
-
-### What to offer
-
-| Content | Records | Offer? | Why |
-|---|---:|---|---|
-| Optional-package constructs: the drake types, Krime Rave Complete, Reduce Seating, Machinist console, Matrix Signal Scanner, Cougar Polearm ×2, Transgenic hearing, Nissan Spurs, Ritual formula, Nartaki 2, the fuel/gas ammo ×3, Krime Spare Drum, Inu with better suit, MEMS Scabbard, AAA zone | 21 | **Yes** | They are items a builder can use. The owner already decided to ship them as `commlink6-sr6-optional` (2026-10-13, docs/sr6-cl6-optional-package.md). |
-| Option rows we now carry **in the book catalog** as `gen="cl6only"`: Adapters ×4, Crew Served ×3, Uses N Energy ×6, M-TOC Fob, AR Interface, Mil-Spec Weapon Mount | 16 | **Yes, and move them** | No book prints them as items, but today they sit under CRB/DA as if a book did. |
-| German-named Dealers of Death ammo (`Pfeile`, `Druckluftkartusche`, `Kalte Munition`), also `gen="cl6only"` in the book catalog | 3 | **Move them; offer with English names only if the owner wants** | Same as the row above, and no English book names them. |
-| Misc. (US): Seoul Survivor 14, Missions Guide 4, Adversary 2 | 20 | **Import as books if the owner owns them; else offer** | These are published products. A book import is the normal, accurate path. |
-| Misc. (US): SR6 forum "items forgotten in Double Clutch" (hitches) | 4 | **Offer, flagged house content** | Forum posts, not a book. |
-| CommLink6's values for fields no book prints (list 1b) | 296 values | **Later, as an opt-in fill layer** | It only fills an empty field and never replaces a printed one. This needs a loader feature (see step 7). |
-| German-only books | 300 | No | No English edition, German names, not among the owner's books. |
-| German-rules copies | 311 | No | Copies of records we have from the English books. |
-| No English name (life modules, priority rows, true elements) | 201 | No | German-only text of content we import from the English books. |
-| Retired records | 5 | No | CommLink6 itself replaced them. |
-| Table cells made records | 33 | No | They are values on our rows already. |
-| Rule options | 4 | No | They are the app's rule presets already. |
-
-### How it would ship
-
-- **One optional pack, outside the book import.** It goes in its own folder (for example
-  `custom/sr6/modules/commlink6/`) with its own `index.xml` and `sources.xml`. It is never part of
-  `custom/sr6/imported/`. cl6check and cl6effects read only `imported/`, so the SR6 accuracy numbers can't move. A test
-  should keep it that way.
-- **Built from the owner's jar, never committed.** The repo holds no CommLink6 data (docs/cl6check.md). The pack is
-  generated on the owner's machine from the jar, the way cl6check reads it on every run. A new tool
-  (`python -m tools.cl6check module --out <folder>`) would read the record list (`optional_package.json`, extended with
-  the moved rows) and write the pack. It is deployed to tower04 with the rest of `custom/`.
-- **Format: the normal SR6 catalog XML** (docs/sr6-data-format.md: `sr6:data` per kind, the same schemas). It has one
-  source, `CL6`, with `canon="false"` and publisher "CommLink6 (Genesis data)". The app already treats a non-canon source
-  as house content (compendium.ts, the export's `canon`). Each entry keeps the book and page CommLink6 cites in an
-  optional `cites` attribute (for example `DA p47`). That attribute needs a one-line `common.xsd` addition. Names are
-  English only.
-- **Flagged and off by default.** A Table setup switch (`cl6Extras`, default off) loads the pack after `imported/` and
-  before `edits/`. A runner who takes a CL6 item records source `CL6`, so the sheet and the export show it as
-  non-book.
-
-### Steps
-
-1. The owner approves the table above, and answers the Misc. (US) question.
-2. Extend `optional_package.json` with the 16 option rows and the 3 German-named ammo rows. Then remove their
-   `gen="cl6only"` rows from `importer/sr6/overrides/{crb,da,dod}.json`. Before removing them, check that no family or
-   effect row points at those ids. cl6check keeps counting them as matched through the package, so completeness stays
-   the same.
-3. Add the `cites` attribute to `common.xsd`, and a `CL6` source with `canon="false"`.
-4. Write the generator from the jar to the pack folder, with a test on an invented jar, as `test_cl6check.py` does.
-5. Add the loader and the Table setup switch, with a test that cl6check's `ours.load` never reads the module folder.
-6. Generate the pack, deploy it to tower04 and check it in the builder.
-7. Later, only if the owner wants it: a fill layer for the list 1b values. This is a new `<fill kind id field value/>`
-   overlay that the loader applies only to an empty field.
-
-The 30 `gen="owner"` rows took CommLink6's rating ranges where the book prints none (2026-10-17). They are list 1b
-values that already sit in the book catalog. If the owner wants the book catalog to hold only what the books print, they
-move to the fill layer in step 7. Today they are owner rulings, and they are not changed here.
-
-## Open items and findings for the owner
-
-The generated table at the end lists the 76 open items:
-- 7 hold rows: 5 still differ, 2 no longer do and can go;
-- 68 `keep` rows that no longer settle any difference (harmless, can be pruned);
-- 1 Misc. (US) record to confirm (Buzzard Transit = Age of Rust's).
-
-Findings about the tools:
-
-1. **Fixed in this PR: cl6check counted two records twice.** The jar has 4,474 English records, but earlier reports
-   read 4,476. The Cougar Polearm (Small) and (Large) were in both `optional_package.json` (`optional`) and
-   `relocated.json`, and `compare()` made a result for each.
-   - The pair now stays only in the optional package. CommLink6 composed each record from several of the book's rows
-     (docs/cl6check.md, `match.bundled`), and the relocation pointed at one of them, `da.knife`.
-   - `compare()` now refuses a record that is in both lists.
-   - Re-measured on runs28: completeness 4,474/4,474, owned pages 4,422/4,422, accuracy 4,050/4,307 strict and
-     4,307/4,307 with class b, class a 0. Effects stay at 1,079/1,079.
-
-   Items 2–4 are not fixed here; each is an owner call.
-2. **The `latest printing` class rests on the per-book runs of 2026-10-19** (runs26, made before PRs #91/#92). The 5
-   rows it finds are the Control Rig price, Ultrasound sensor price, Mirrored Persona duration, and Fairlight Excalibur
-   and Shiawase Cyber-6 availability. In each one the Berlin City Edition prints CommLink6's value. They are worth a
-   look by eye.
-3. **The effects class is read from each ruling's own note.** A note that names the owner or the effects review counts
-   as an owner ruling; any other note counts as "book prints ours".
-4. **Of the 266 field rows classed "book prints ours", 265 rest on the owner's 2026-10-14 check of the page text**
-   (value_keep.json `keep`). One rests only on cl6check's automatic PDF check. The `why` column says which is which.
-
-The generated part follows.
+- **List 1: 915 → 891.** CommLink6's 24 "Misc. (US)" records are all ours now. 20 are read from the books (Seoul
+  Survivor 14, Missions Guide 4, Adversary 2) under the books' own names, with CommLink6's names as aliases. The 4
+  hitches (a forum post, no book) are CommLink6-only entries (`gen="cl6only"`, dc.json). The analysis matches a
+  Misc. (US) record by an entry's name or alias, a book of ours printing it (not list 1).
+- **Section 3's question is settled:** Seoul Survivor, the Missions Guide and Adversary are in the owner's library
+  and are imported as books (the owner, 2026-10-21), so no data module is needed for their 20 records.
+- **Open items: 76 → 100.** The 24 new rows are one per Misc. (US) record, "a book of ours prints it by name or
+  alias: confirm"; the owner directed these (2026-10-21), so each needs only a yes.
+- **List 2 is unchanged: 516.**
 
 <!-- final_analysis: generated from here -->
 
-Generated by `python -m tools.cl6check.final_analysis` from `commlink6-1.14.0-complete.jar` and the import `cl6check-runs29`, the older core rulebook printings from `cl6check-runs26`. Do not edit by hand: re-run it.
+Generated by `python -m tools.cl6check.final_analysis` from `commlink6-1.14.0-complete.jar` and the import `cl6check-runs30`, the older core rulebook printings from `cl6check-runs26`. Do not edit by hand: re-run it.
 
 ### Totals
 
