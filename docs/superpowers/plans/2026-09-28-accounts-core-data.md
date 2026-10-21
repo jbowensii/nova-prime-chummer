@@ -48,7 +48,7 @@
 
 ### Task 4: Accounts UI
 
-**Files:** `src/ui/SignIn.tsx`, `Setup.tsx`, `Users.tsx`, account menu, read-only runner view, role-based hiding; e2e `e2e/accounts.spec.ts`; existing e2e sign in first (fixture admin).
+**Files:** `src/features/accounts/SignIn.tsx`, `Setup.tsx`, `Users.tsx`, account menu, read-only runner view, role-based hiding; e2e `e2e/accounts.spec.ts`; existing e2e sign in first (fixture admin).
 
 - [ ] Accounts spec §6; screenshots light/dark/phone checked.
 

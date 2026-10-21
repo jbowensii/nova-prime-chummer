@@ -51,7 +51,7 @@
 
 ### Task 4: Backup API and UI
 
-**Files:** modify server (routes), tests, stub worker; create `src/ui/Backup.tsx` (in Settings); `e2e/backup.spec.ts`.
+**Files:** modify server (routes), tests, stub worker; create `src/features/backup/Backup.tsx` (in Settings); `e2e/backup.spec.ts`.
 
 - [ ] `POST /api/backup[?keys=1]` makes the zip (one at a time) → token, `GET /api/backup/:token` streams it (Content-Disposition with date), temp removed afterwards; `POST /api/restore?preview=1` streams the upload to a temp file (cap 20 GB, zip magic check) and returns a token + manifest; `POST /api/restore/:token` applies (refused while a job runs; one at a time), then re-runs the startup sweep. Tokens expire and are single use; temp files cleaned.
 - [ ] UI: Settings → Backup: Download backup (+ Include my API keys), Restore from backup (pick file → preview counts and date → confirm "Replace everything on the server" → done → reload).

@@ -1,16 +1,16 @@
-// SR6 Game data (everyone), in the layout both games share (src/ui/GameData.tsx): the catalog browser by kind with the book
+// SR6 Game data (everyone), in the layout both games share (src/features/catalog-browser/GameData.tsx): the catalog browser by kind with the book
 // a filter (CatalogBrowser), the sources, the Foundry export, the catalog edits (editors:
 // each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
 import { useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../core/ui-kit/auth'
 import { NonCanon } from '../../core/ui-kit/bits'
-import { GameDataPage } from '../../ui/GameData'
+import { GameDataPage } from '../../features/catalog-browser/GameData'
 import { useRepo } from '../../core/ui-kit/repoContext'
 import type { Sr6Data as Sr6DataView } from '../engine/data'
 import { catalogFind, resolveEntry, SR6_NS, sr6EntryXml } from '../engine/load'
 import { entryKey } from '../engine/names'
-import { OverrideFiles } from '../../ui/OverrideFiles'
+import { OverrideFiles } from '../../features/catalog-edits/OverrideFiles'
 import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6SampleFix } from '../model/types'
 import { Sr6EditEntry } from './EditEntry'
 import { Sr6ExportBooksPanel } from './Foundry'

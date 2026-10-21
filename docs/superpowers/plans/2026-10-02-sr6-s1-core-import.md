@@ -228,7 +228,7 @@
 
 ### Task 9: SR6 Books, Rules and Game data pages
 **Files:**
-- `src/ui/Books.tsx` (`BooksScreen({ c, reload, game })` with `c?: Catalog` and `game?: 'sr6'`):
+- `src/features/book-library/Books.tsx` (`BooksScreen({ c, reload, game })` with `c?: Catalog` and `game?: 'sr6'`):
   - The API base is `sr6/books`, and uploads go through `sendFile('sr6/books', …)`.
   - For SR6 it hides the AI settings link, DataPack, the AI buttons and the "Also in other books" dupes.
   - `supportedBooks(path)` reads `data/sr6/sources.xml`, the intro says "Upload the Shadowrun 6 core rulebook PDF you own", and source titles come from `b.name`. Anarchy renders unchanged.

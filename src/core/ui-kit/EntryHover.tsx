@@ -1,6 +1,6 @@
 // A catalog entry's card on hover (both games, 0.11.4): wherever the editor names a catalog entry (a quality, a skill, a
 // line of gear, a spell, a Review or budget line), hovering it, focusing it or tapping it shows the entry as Game data
-// shows it (src/ui/CatalogBrowser.tsx's BrowseRow: its values, effects, formulas, source and page, issues, edits and
+// shows it (src/features/catalog-browser/CatalogBrowser.tsx's BrowseRow: its values, effects, formulas, source and page, issues, edits and
 // description), so a misprint can be checked against the book where it is used. Escape closes it. Each game maps its
 // entries to a BrowseRow once (src/ui/tabs/Data.tsx anarchyRow, src/sr6/ui/Data.tsx sr6Row).
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'

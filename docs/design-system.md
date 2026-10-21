@@ -113,4 +113,4 @@ instead, `server/defaults/sr6-circuit.webp`, added once to the SR6 gallery, whic
 upload. Headings are Montserrat (the book's wide geometric caps), body text stays Crimson Pro.
 Decoration is our own drawing (hatched heading rules, rounded outlined panels, the "SECTION // SUB" folio, the circuit
 board art); no book art. Anarchy's rules are never touched: every SR6 rule is scoped to `[data-game]` or `.sr6-*`.
-tests/ui/background.test.ts checks the SR6 tokens' contrast over the worst background art too.
+tests/features/appearance/background.test.ts checks the SR6 tokens' contrast over the worst background art too.

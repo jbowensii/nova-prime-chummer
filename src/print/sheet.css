@@ -293,7 +293,7 @@
    --art: the strength, 0–1 (--art-screen on screen, --art-print in print). The art (contrast .7) fades in with it under a
    veil that thins as it rises: white at 93%→35% in the middle, 82%→25% at the edges, so 100% shows the image nearly whole.
    The text blocks keep a wash of paper behind them (up to 60%), so the ink stays readable over any image;
-   tests/ui/background.test.ts checks the sheet's ink against the worst image at every strength. */
+   tests/features/appearance/background.test.ts checks the sheet's ink against the worst image at every strength. */
 .sheet,
 .book-sheet {
   --art: var(--art-screen, 0);

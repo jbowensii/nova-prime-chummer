@@ -2,7 +2,7 @@
 // values, its formulas with their values over its ratings, its cell notes and other names, its effects (applied, or shown
 // only: switchable, conditional or read with low confidence), source and page, issues, and an Edited or House mark.
 import type { ReactNode } from 'react'
-import { EditedMark } from '../../ui/editTrigger'
+import { EditedMark } from '../../features/catalog-edits/editTrigger'
 import type { BrowseRow, CardEffect } from '../../core/ui-kit/types'
 import { EntryHover } from '../../core/ui-kit/EntryHover'
 import { entryLabel, entrySearch } from '../engine/categories'

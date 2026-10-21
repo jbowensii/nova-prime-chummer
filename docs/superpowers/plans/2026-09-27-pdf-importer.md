@@ -39,7 +39,7 @@
 | `src/engine/load.ts` | Load `custom/imported/index.xml` + sources files; scope imported ids |
 | `src/engine/dupes.ts` | Duplicate grouping and labels |
 | `src/engine/migrate.ts` (new) or `file.ts` | Map unscoped `catalogId`s on load |
-| `src/ui/Books.tsx`, `src/ui/Review.tsx`, `src/ui/AiSettings.tsx` | Books page, review queue, AI settings |
+| `src/features/book-library/Books.tsx`, `src/ui/Review.tsx`, `src/features/ai-assist/AiSettings.tsx` | Books page, review queue, AI settings |
 | `src/ui/SourceLabel.tsx` | Source title / badge / "Built by you" |
 | `public/data/schema/{aikeys,aiproviders,import,review,status}.xsd` | Schemas for the new XML files |
 | `tests/fixtures/mini/` | Made-up catalog + imported overlay for engine and e2e tests |
@@ -468,7 +468,7 @@ test('an imported source carries its file and checksum', () => {
 ### Task 12: UI — Books page, AI settings, review; remove shipped catalogs
 
 **Files:**
-- Create: `src/ui/Books.tsx`, `src/ui/AiSettings.tsx`, `src/ui/Review.tsx`, `e2e/books.spec.ts`
+- Create: `src/features/book-library/Books.tsx`, `src/features/ai-assist/AiSettings.tsx`, `src/ui/Review.tsx`, `e2e/books.spec.ts`
 - Modify: `src/core/app/App.tsx` (routes `#/books`, `#/books/:id/review`), `src/ui/Library.tsx` (Books link; empty-catalog hint; samples from imports), `src/core/ui-kit/app.css`
 - Delete: `public/data/{amps,spells,complexforms,gear,rules}.xml`, the DHSA `<spec>`s in `public/data/skills.xml`, `public/samples/`, `tools/build-samples.mjs`, `tools/daegann-pregens.mjs`, `tests/fixtures/pregens-printed.json`
 - Modify: `docs/book-discrepancies.md` (keep only the rules notes that aren't book data; the per-book tables now live in import reports), `docs/data-format.md`, `README.md`, `docs/deploy-tower04.md`, `DATA_FILES` in `src/engine/load.ts`

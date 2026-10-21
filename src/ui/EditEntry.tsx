@@ -18,7 +18,7 @@ import { api } from '../core/ui-kit/api'
 import { Editor, type EditorCtx } from './editor'
 import { useRepo } from '../core/ui-kit/repoContext'
 import { AmpBuilder } from './tabs/AmpBuilder'
-import { EditCatalog, OpenEdit, editState, type EditKind, type Target } from './editTrigger'
+import { EditCatalog, OpenEdit, editState, type EditKind, type Target } from '../features/catalog-edits/editTrigger'
 
 /** What the entry form makes: the edits layer's kinds, and (a compendium's) vehicles. */
 export type FormKind = EditKind | 'vehicles'

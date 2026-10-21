@@ -6,7 +6,7 @@ import { respec, target } from '../tools/arch-move.mjs'
 
 test('the target rule', () => {
   expect(target('src/ui/nav.tsx', 'core/chrome')).toBe('src/core/chrome/nav.tsx')
-  expect(target('src/ui/repo.ts', 'features/runner-store')).toBe('src/features/runner-store/repo.ts')
+  expect(target('src/features/runner-store/repo.ts', 'features/runner-store')).toBe('src/features/runner-store/repo.ts')
   expect(target('src/sr6/engine/data.ts', 'sr6/catalog')).toBe('src/sr6/catalog/domain/data.ts')
   expect(target('src/sr6/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
   expect(target('src/sr6/engine/budgets.ts', 'sr6/runner-builder', 'creation')).toBe('src/sr6/runner-builder/domain/creation/budgets.ts')

@@ -8,11 +8,11 @@ import { useMemo, useState } from 'react'
 import { isCanon } from '../engine/canon'
 import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from '../core/ui-kit/bits'
-import { BookSelect } from './CatalogBrowser'
+import { BookSelect } from '../features/catalog-browser/CatalogBrowser'
 import { Prose } from '../core/ui-kit/Prose'
-import { EditButton, EditedMark, useOpenEdit } from './editTrigger'
+import { EditButton, EditedMark, useOpenEdit } from '../features/catalog-edits/editTrigger'
 import { isAdmin, useMe } from '../core/ui-kit/auth'
-import { AskSearch } from './AskRules'
+import { AskSearch } from '../features/ai-assist/AskRules'
 
 const SHEETS: [string, string][] = [
   ['base', 'Base rules'],

@@ -5,7 +5,7 @@
 // ruled rows to write in, as the printed sheet does.
 import type { ReactNode } from 'react'
 import { bdClass, printBackdrop } from '../../core/ui-kit/Portrait'
-import type { useSheetArt } from '../../ui/sheetArt'
+import type { useSheetArt } from '../../features/appearance/sheetArt'
 import { priced } from '../engine/budgets'
 import { MAGIC_KINDS } from '../engine/data'
 import { gradeName } from '../engine/grades'

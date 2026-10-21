@@ -18,7 +18,7 @@ export interface HeaderBarsValue {
 }
 export const HeaderBarsContext = createContext<HeaderBarsValue>({ server: false })
 
-/** The Foundry export's fold on Game data (src/ui/GameData.tsx) */
+/** The Foundry export's fold on Game data (src/features/catalog-browser/GameData.tsx) */
 export const FOUNDRY = 'foundry-export'
 /** Unfold the Foundry export and bring it into view (its header link; a page opened at …/data/foundry). */
 export function showFoundry() {

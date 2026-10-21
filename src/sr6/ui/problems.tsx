@@ -2,8 +2,8 @@
 // at the top of a player's runner. Counts are the unapproved errors and warnings, as Your runners counts its errors.
 import { useEffect, useState } from 'react'
 import type { Violation } from '../../core/shared/types'
-import { CampaignScreen } from '../../ui/Campaigns'
-import { campaignLinks, type Campaign } from '../../ui/campaignsStore'
+import { CampaignScreen } from '../../features/campaigns/Campaigns'
+import { campaignLinks, type Campaign } from '../../features/campaigns/campaignsStore'
 import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { validateCareer } from '../engine/career'
