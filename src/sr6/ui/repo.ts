@@ -1,6 +1,8 @@
 // Where SR6 runners are saved (the server's /api/sr6/characters, server only in S2) and the runners page's file helpers:
 // export (with a snapshot of every catalog line, so the file still reads where the entry is gone), import (an Anarchy
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
+import { useEffect, useState } from 'react'
+import { useMe } from '../../ui/auth'
 import { newId } from '../../shared/types'
 import type { Codec } from '../../shared/types'
 import { serverRepo } from '../../ui/repo'
@@ -83,4 +85,19 @@ export function repairSr6(xml: string): { ok: true; ch: Sr6Character; changes: s
   const changes: string[] = []
   const r = xmlToSr6(xml, { repair: changes })
   return r.ok ? { ok: true, ch: r.character, changes } : r
+}
+
+/** Your own designs (for buying one on a runner): none while they load or when the server can't list them. */
+export function useSr6Designs(): Sr6Character[] {
+  const me = useMe()
+  const [list, setList] = useState<Sr6Character[]>([])
+  useEffect(() => {
+    sr6DesignRepo()
+      .list()
+      .then(
+        r => setList(r.filter(s => s.ch.design && (!s.owner || s.owner === me?.username)).map(s => s.ch)),
+        () => setList([]),
+      )
+  }, [me?.username])
+  return list
 }

@@ -31,7 +31,7 @@ import type { Sr6Compendium } from '../model/character'
 import { listSr6Compendiums, moveNpcOut, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
 import { Sr6EntryFields } from './EditEntry'
 import { downloadSr6Compendium } from './Foundry'
-import { npcChip } from './Npcs'
+import { npcChip } from './editor'
 import { sr6NpcRepo } from './repo'
 
 /** One listed entry or NPC. */

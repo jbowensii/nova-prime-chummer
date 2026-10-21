@@ -6,7 +6,7 @@
 // built yourself; and the live totals
 // (src/sr6/engine/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
 // design is approved (a GM may tick or untick it); a player's, bought by a runner, is a Review warning a GM approves.
-// A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs.
+// A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs (src/sr6/ui/repo.ts).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { because, canEdit, useMe } from '../../ui/auth'
 import { Brand, Modal, Stepper } from '../../ui/bits'
@@ -35,21 +35,6 @@ const partsOf = (c: Sr6Catalog, p: DesignPart) =>
   [...c.entries.vehicledesign.values()].filter(e => designPart(e) === p).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
 /** A drone chassis (`Drone, Small`). */
 const droneChassis = (e: Sr6Entry) => /drone/i.test(e.name)
-
-/** Your own designs (for buying one on a runner): none while they load or when the server can't list them. */
-export function useSr6Designs(): Sr6Character[] {
-  const me = useMe()
-  const [list, setList] = useState<Sr6Character[]>([])
-  useEffect(() => {
-    sr6DesignRepo()
-      .list()
-      .then(
-        r => setList(r.filter(s => s.ch.design && (!s.owner || s.owner === me?.username)).map(s => s.ch)),
-        () => setList([]),
-      )
-  }, [me?.username])
-  return list
-}
 
 /** The design list (#/sr6/designs). */
 export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {

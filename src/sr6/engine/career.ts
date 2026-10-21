@@ -43,7 +43,7 @@ import { cite, flag, num, type CreationRules } from './creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from './data'
 import { gradeProblem } from './grades'
 import { makeProvider, type Provider } from './providers'
-import { validateSr6 } from './rules'
+import { CAREER_KEEP, validateSr6 } from './rules'
 import { bookValue, dataFind, ratingRange } from './values'
 import { entryLabel } from './categories'
 import { critterOnly, infectedOff, infectedQuality } from './critterware'
@@ -941,26 +941,5 @@ export function validateCareer(data: Sr6Data, cr: CreationRules, ch: Sr6Characte
         ...cite(cr, 'stolenGearQuality'),
       })
   }
-  const keep = new Set([
-    'awakened.override',
-    'catalog.missing',
-    'essence.positive',
-    'sin.placeholder',
-    'skill.specUntrained',
-    'skill.expertiseSpec',
-    'skill.expertiseRank',
-    'skill.restricted',
-    'magic.spellsAllowed',
-    'magic.metamagicUser',
-    'martial.category',
-    'martial.requires',
-    'martial.augmentation',
-    'gear.grade',
-    'catalog.accessoryHost',
-    'licence.none',
-    'vehicle.mods',
-    'vehicle.design',
-    'critter.rules',
-  ])
-  return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => keep.has(v.code))]
+  return [...out, ...validateSr6(data, cr, { ...ch, build: b }).filter(v => CAREER_KEEP.has(v.code))]
 }
