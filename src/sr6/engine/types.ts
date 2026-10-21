@@ -3,7 +3,6 @@
 import type { Violation } from '../../shared/types'
 import type { Letter, MagicKind, Sr6Attr } from '../model/character'
 import type { Sr6Entry, Sr6Family, Sr6Kind } from '../model/types'
-import type { CreationCatalog } from './creation'
 
 export type RangeAttr = Exclude<Sr6Attr, 'mag' | 'res'>
 export type Grant = 'attributePoints' | 'skillPoints' | 'adjustmentPoints' | 'nuyen' | 'contactPoints' | 'knowledgeSkills'
@@ -112,6 +111,12 @@ export interface Sr6GradeView {
   page: number
   /** the grade a later book redefines as this one (Body Shop's omega: used): offered instead of it */
   replaces?: string
+}
+/** What expandKeys and missingFor read from the catalog (src/sr6/engine/data.ts's Sr6Data has this shape). */
+export interface CreationCatalog {
+  priorities: Partial<Record<Letter, unknown>>
+  metatypes: Record<string, { id: string; name: string }>
+  lifemodules: Record<string, { stage: string }>
 }
 export interface Sr6Data extends CreationCatalog {
   priorities: Partial<Record<Letter, Sr6PriorityRow>>

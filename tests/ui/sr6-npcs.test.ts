@@ -5,8 +5,8 @@ import { blankSr6Npc, npcFromEntry } from '../../src/sr6/engine/npc'
 import { bookNpc, bookNpcVersions, byPublication } from '../../src/sr6/engine/npc'
 import type { Sr6Catalog } from '../../src/sr6/model/types'
 import { SR6_NPC_KINDS } from '../../src/sr6/model/character'
-import { npcSection, sr6NpcsHref } from '../../src/sr6/ui/editor'
-import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcChip, npcGroups, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
+import { npcChip, npcSection, sr6NpcsHref } from '../../src/sr6/ui/editor'
+import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcGroups, oldContact, tidyBookCopies } from '../../src/sr6/ui/Npcs'
 import { fixtureCatalog } from '../sr6/fixture'
 
 const c = fixtureCatalog()

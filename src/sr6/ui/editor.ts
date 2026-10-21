@@ -9,6 +9,7 @@ import type { Preview, Typed } from '../engine/career'
 import { CREATION_KEYS, type CreationRules, type RuleLock } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import type { Sr6Derived } from '../engine/derive'
+import { NPC_KINDS } from '../engine/npc'
 import type { Provider } from '../engine/providers'
 import type { Sr6Advance, Sr6Attr, Sr6Build, Sr6Character, Sr6Npc } from '../model/character'
 import type { Sr6Catalog } from '../model/types'
@@ -182,4 +183,11 @@ export function runAct(ch: Sr6Character, op: Op, data: Sr6Data, cr: CreationRule
   const next = structuredClone(ch)
   const r = apply(next.build, op, data, cr)
   return r.ok ? { ch: next } : { error: reasonText(r.reason) }
+}
+
+/** The row chip: "Grunt PR 2", "Spirit F 4", "Sprite L 3", "Critter", "Contact". */
+export function npcChip(npc: Sr6Npc): string {
+  const k = NPC_KINDS[npc.kind],
+    short = k.rating?.letter ?? (k.rating ? 'PR' : '')
+  return npc.rating != null && short ? `${k.label} ${short} ${npc.rating}` : k.label
 }

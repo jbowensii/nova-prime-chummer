@@ -5,7 +5,9 @@
 // give it its own (server/campaigns.mjs), which its runners use instead, and a runner may choose the optional ones in
 // RUNNER_RULE_KEYS. A method whose settings are unset can't be picked (missingFor), and a rule whose setting is unset is
 // skipped. Formulas stay in code.
-import { MAGIC_KIND_LABELS, LETTERS, SR6_METHODS, SR6_METHOD_LABELS, type Letter, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
+import { MAGIC_KIND_LABELS, LETTERS, SR6_METHODS, SR6_METHOD_LABELS, type MagicKind, type RunnerRule, type Sr6Method } from '../model/character'
+import { SOURCE_ID } from '../../shared/source'
+import type { CreationCatalog } from './types'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
 /** The most transhumanist grades the Sixth World Companion's Transhumanism allows (p. 146) */
@@ -32,12 +34,6 @@ export interface CreationKey {
   type: CreationType
   group: string
   methods: Sr6Method[] | 'all'
-}
-/** What expandKeys and missingFor read from the catalog (src/sr6/engine/data.ts's Sr6Data has this shape). */
-export interface CreationCatalog {
-  priorities: Partial<Record<Letter, unknown>>
-  metatypes: Record<string, { id: string; name: string }>
-  lifemodules: Record<string, { stage: string }>
 }
 
 /** The groups, in the order the creation rules form shows them. */
@@ -922,7 +918,7 @@ export function readSettingsFile(xml: string, name: string): { rules: CreationRu
       errors.push(`${key}: the value is longer than 200 characters.`)
       continue
     }
-    if (source !== undefined && !/^[A-Z][A-Z0-9-]{0,19}$/.test(source)) {
+    if (source !== undefined && !SOURCE_ID.test(source)) {
       errors.push(`${key}: the source “${source}” isn’t a book id such as CRB; left out.`)
       source = undefined
     }

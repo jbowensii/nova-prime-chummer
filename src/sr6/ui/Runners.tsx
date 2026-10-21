@@ -14,7 +14,7 @@ import { PageHeader } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'
 import { saveAsNew, type Stored, type Unreadable } from '../../ui/repo'
 import { loadTrash } from '../../ui/Trash'
-import { expandKeys, missingFor, type CreationRules } from '../engine/creation'
+import type { CreationRules } from '../engine/creation'
 import type { Sr6Data } from '../engine/data'
 import { ExportRunnersDialog } from '../../ui/Foundry'
 import { validateSr6 } from '../engine/rules'
@@ -26,6 +26,7 @@ import { rulesForRunner } from './Creation'
 import { withSampleFixes } from '../engine/samplefix'
 import { SR6_FINAL_TIP } from './editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
+import { MissingList, missingLabels } from './MissingList'
 import { exportSr6, readSr6Import, repairSr6, sr6Repo } from './repo'
 
 const SORT_KEY = 'ca2.sr6.library.sort'
@@ -55,15 +56,6 @@ export async function sr6Samples(): Promise<{ url: string; name: string; key: st
 export function samplesToLoad<T extends { key: string }>(rows: T[], mine: Sr6Character[]): T[] {
   const have = new Set(mine.map(ch => ch.sampleKey))
   return rows.filter(r => !have.has(r.key))
-}
-
-/** What `method` still needs, in the Game data form's words. */
-export function missingLabels(method: Sr6Method, cr: CreationRules, data: Sr6Data): string[] {
-  const labels = new Map(expandKeys(data).map(k => [k.key, k.label]))
-  // the Karma build option's own label is a long sentence that starts with the method's name: say the reason short
-  return missingFor(method, cr, data).map(k =>
-    k === 'karmaBuildMethod' ? 'the option is switched off' : k === 'restrictMethods' ? 'the table doesn’t allow it' : (labels.get(k) ?? k),
-  )
 }
 
 export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {
@@ -566,23 +558,5 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         about={SR6_FOUNDRY_ABOUT}
       />
     </main>
-  )
-}
-
-/** Each method that can't be picked yet, with the settings it still needs. */
-export function MissingList({ missing }: { missing: Record<Sr6Method, string[]> }) {
-  const blocked = SR6_METHODS.filter(m => missing[m].length)
-  if (!blocked.length) return null
-  return (
-    <div className="missing">
-      <p className="muted">These need creation settings first (Table setup → Creation rules):</p>
-      <ul>
-        {blocked.map(m => (
-          <li key={m}>
-            <b>{SR6_METHOD_LABELS[m]}</b>: {missing[m].join(', ')}
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }

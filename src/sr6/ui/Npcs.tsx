@@ -31,11 +31,11 @@ import type { Sr6Data } from '../engine/data'
 import { critterAsEntry } from '../engine/compendium'
 import { designCritter } from '../engine/critterdesign'
 import { blankSr6Npc, bookNpc, bookNpcKey, bookNpcVersions, NPC_KINDS, npcFromEntry, npcKindOf, type BookNpcVersion } from '../engine/npc'
-import { SR6_NPC_KINDS, type Sr6Character, type Sr6Npc, type Sr6NpcKind } from '../model/character'
+import { SR6_NPC_KINDS, type Sr6Character, type Sr6NpcKind } from '../model/character'
 import type { Sr6Catalog, Sr6Entry } from '../model/types'
 import type { Sr6Compendium } from '../model/character'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
-import { npcSection, sr6NpcHref } from './editor'
+import { npcChip, npcSection, sr6NpcHref } from './editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from './Foundry'
 import { exportSr6, readSr6NpcImport, sr6NpcRepo } from './repo'
 
@@ -97,13 +97,6 @@ export function byRating(entries: Sr6Entry[]): [number | null, Sr6Entry[]][] {
     groups.set(r, [...(groups.get(r) ?? []), e])
   }
   return [...groups].sort(([a], [b]) => (a ?? Infinity) - (b ?? Infinity))
-}
-
-/** The row chip: "Grunt PR 2", "Spirit F 4", "Sprite L 3", "Critter", "Contact". */
-export function npcChip(npc: Sr6Npc): string {
-  const k = NPC_KINDS[npc.kind],
-    short = k.rating?.letter ?? (k.rating ? 'PR' : '')
-  return npc.rating != null && short ? `${k.label} ${short} ${npc.rating}` : k.label
 }
 
 /** The list's groups, in kind order then rating (none last), each keeping the list's order: "Grunts, Professional Rating 2",

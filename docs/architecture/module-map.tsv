@@ -590,6 +590,7 @@ src/sr6/ui/EditEntry.tsx	sr6/game-data	2237
 src/sr6/ui/EditorView.tsx	sr6/shell	3476
 src/sr6/ui/EntryRef.tsx	sr6/runner-builder	2594
 src/sr6/ui/Foundry.tsx	sr6/foundry	1237
+src/sr6/ui/MissingList.tsx	sr6/table-setup	375
 src/sr6/ui/Npcs.tsx	sr6/npcs	9575
 src/sr6/ui/Picker.tsx	sr6/runner-builder	7742
 src/sr6/ui/RuleSections.tsx	sr6/table-setup	1378
@@ -884,6 +885,7 @@ tests/sr6/categories.test.ts	sr6/catalog	1595
 tests/sr6/charxml-more.test.ts	sr6/formats	3402
 tests/sr6/charxml.test.ts	sr6/formats	5569
 tests/sr6/compendium.test.ts	sr6/compendiums	4064
+tests/sr6/career-keep.test.ts	sr6/runner-builder	207
 tests/sr6/creation.test.ts	sr6/table-setup	3987
 tests/sr6/critterdesign.test.ts	sr6/npcs	2168
 tests/sr6/critters.test.ts	sr6/runner-builder	10041

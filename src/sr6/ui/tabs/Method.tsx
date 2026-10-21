@@ -22,7 +22,7 @@ import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6P
 import { useState } from 'react'
 import { Stepper } from '../../../ui/bits'
 import { awakenedFlag, boughtKind, infectedTypes, runnerInfected, type InfectedType } from '../../engine/infected'
-import { missingLabels, MissingList } from '../Runners'
+import { missingLabels, MissingList } from '../MissingList'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { RunnerRules } from '../RunnerRules'
