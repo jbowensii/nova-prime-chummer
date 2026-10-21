@@ -44,11 +44,9 @@ test('src has no import cycle, type imports included', () => {
 test('the engines and models import nothing from a UI folder', () => {
   const rel = (f: string) => relative(SRC, f).replaceAll('\\', '/')
   const domain = ['ca2', 'sr6'].flatMap(g => files(join(SRC, g)).filter(f => new RegExp(`^${g}/[^/]+/domain/`).test(rel(f))))
-  // ponytail: sr6/engine is runner-builder's domain until it moves (move 5); drop it then
-  const layer = [...domain, ...files(join(SRC, 'sr6/engine'))]
-  const ui = (f: string) => /^((ca2|sr6)\/[^/]+\/ui|sr6\/ui|core\/(ui-kit|chrome|app))\//.test(rel(f))
+  const ui = (f: string) => /^((ca2|sr6)\/[^/]+\/ui|core\/(ui-kit|chrome|app))\//.test(rel(f))
   expect(
-    layer.flatMap(f =>
+    domain.flatMap(f =>
       imports(f)
         .filter(ui)
         .map(t => `${relative(SRC, f)} > ${relative(SRC, t)}`.replaceAll('\\', '/')),

@@ -6,10 +6,10 @@ import type { Sr6Build } from '../../../src/sr6/formats/domain/character'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
 import type { Sr6Part } from '../../../src/sr6/formats/domain/types'
-import { attrMax, augmentBonus, bracketNotes, conditionalBonuses, notesText } from '../../../src/sr6/engine/budgets'
-import { deriveSr6 } from '../../../src/sr6/engine/derive'
+import { attrMax, augmentBonus, bracketNotes, conditionalBonuses, notesText } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { bonusValue, effectBonuses, effectText, effectValue, testSkills } from '../../../src/sr6/catalog/domain/effects'
-import { effectNotes } from '../../../src/sr6/print/view'
+import { effectNotes } from '../../../src/sr6/runner-builder/ui/view'
 import { buildOf, GLIM, made } from './fixture'
 
 const fx = (target: string, op: string, value: string, more: Record<string, string> = {}): Sr6Part => ({

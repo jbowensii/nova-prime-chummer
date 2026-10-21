@@ -8,8 +8,12 @@ test('the target rule', () => {
   expect(target('src/ui/nav.tsx', 'core/chrome')).toBe('src/core/chrome/nav.tsx')
   expect(target('src/features/runner-store/repo.ts', 'features/runner-store')).toBe('src/features/runner-store/repo.ts')
   expect(target('src/sr6/catalog/domain/data.ts', 'sr6/catalog')).toBe('src/sr6/catalog/domain/data.ts')
-  expect(target('src/sr6/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
-  expect(target('src/sr6/engine/budgets.ts', 'sr6/runner-builder', 'creation')).toBe('src/sr6/runner-builder/domain/creation/budgets.ts')
+  expect(target('src/sr6/runner-builder/ui/tabs/Ledger.tsx', 'sr6/runner-builder')).toBe('src/sr6/runner-builder/ui/tabs/Ledger.tsx')
+  expect(target('src/sr6/runner-builder/domain/creation/budgets.ts', 'sr6/runner-builder', 'creation')).toBe(
+    'src/sr6/runner-builder/domain/creation/budgets.ts',
+  )
+  expect(target('src/sr6/runner-builder/ui/view.ts', 'sr6/runner-builder', 'ui')).toBe('src/sr6/runner-builder/ui/view.ts')
+  expect(target('src/sr6/runner-builder/ui/view.ts', 'sr6/runner-builder', 'ui')).toBe('src/sr6/runner-builder/ui/view.ts')
   expect(target('src/print/sheet.tsx', 'ca2/print')).toBe('src/ca2/print/ui/sheet.tsx')
   expect(target('src/ca2/print/ui/sheet.css', 'ca2/print')).toBe('src/ca2/print/ui/sheet.css')
   expect(target('tests/sr6/catalog/fixture.ts', 'sr6/catalog')).toBe('tests/sr6/catalog/fixture.ts')

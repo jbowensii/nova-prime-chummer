@@ -4,7 +4,7 @@
 import { act, createElement } from 'react'
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
-import { npcFromEntry } from '../../../src/sr6/engine/npc'
+import { npcFromEntry } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import { Sr6EditorView } from '../../../src/sr6/shell/ui/EditorView'
 import { Sr6Npcs } from '../../../src/sr6/npcs/ui/Npcs'
 import { fixtureCatalog, made } from '../catalog/fixture'

@@ -3,17 +3,17 @@
 // the parent stays reachable by id and name, an edit on it reaches every level, a saved runner's lines move to the
 // level's entry, and the career spends move between levels. Invented numbers throughout.
 import { expect, test } from 'vitest'
-import { apply } from '../../../src/sr6/engine/actions'
-import { augmentBonus, priced } from '../../../src/sr6/engine/budgets'
-import { currentBuild, preview, record } from '../../../src/sr6/engine/career'
+import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
+import { augmentBonus, priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { currentBuild, preview, record } from '../../../src/sr6/runner-builder/domain/career/career'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { effectBonuses } from '../../../src/sr6/catalog/domain/effects'
 import { exportSr6Runner } from '../../../src/sr6/foundry/domain/export'
 import { resolveEntry } from '../../../src/sr6/catalog/domain/load'
-import { migrateSr6Ids } from '../../../src/sr6/engine/migrate'
-import { withSampleFixes } from '../../../src/sr6/engine/samplefix'
+import { migrateSr6Ids } from '../../../src/sr6/runner-builder/domain/career/migrate'
+import { withSampleFixes } from '../../../src/sr6/runner-builder/domain/creation/samplefix'
 import { ratingRange } from '../../../src/sr6/catalog/domain/values'
-import { validateSr6 } from '../../../src/sr6/engine/rules'
+import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { blankBuild, blankSr6, type Sr6Advance, type Sr6Character } from '../../../src/sr6/formats/domain/character'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM, made } from './fixture'
 

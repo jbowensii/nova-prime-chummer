@@ -7,11 +7,11 @@
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
 import { CRITTER_ATTRS, critterDerived, critterWarnings, DERIVED, designCritter, redesign } from '../../domain/critterdesign'
-import { firstNumber } from '../../../engine/critters'
+import { firstNumber } from '../../../runner-builder/domain/assets/critters'
 import type { Sr6CritterPower, Sr6Npc } from '../../../formats/domain/character'
-import { useSr6Editor } from '../../../ui/editor'
-import { Sr6Ref } from '../../../ui/EntryRef'
-import { CatalogPicker } from '../../../ui/Picker'
+import { useSr6Editor } from '../../../runner-builder/ui/editor'
+import { Sr6Ref } from '../../../runner-builder/ui/EntryRef'
+import { CatalogPicker } from '../../../runner-builder/ui/Picker'
 
 const DERIVED_LABELS: Record<(typeof DERIVED)[number], [string, string]> = {
   cm: ['Condition monitor', 'the table’s monitor base + Body ÷ its divisor, rounded up (CRB Hong Kong p. 38)'],

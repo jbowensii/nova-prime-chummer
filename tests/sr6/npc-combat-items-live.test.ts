@@ -9,7 +9,7 @@ import { xmlToSr6 } from '../../src/sr6/formats/domain/charxml'
 import { sr6Data } from '../../src/sr6/catalog/domain/data'
 import { exportNpc } from '../../src/sr6/foundry/domain/export'
 import { buildSr6Catalog, collectSr6Files } from '../../src/sr6/catalog/domain/load'
-import { splitThings } from '../../src/sr6/engine/npc'
+import { splitThings } from '../../src/sr6/runner-builder/domain/creation/npc'
 
 const LIVE = process.env.SR6_LIVE
 

@@ -6,14 +6,14 @@ import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
 import { designCritter, redesign } from '../../../src/sr6/npcs/domain/critterdesign'
-import { boughtDesign } from '../../../src/sr6/engine/design'
+import { boughtDesign } from '../../../src/sr6/runner-builder/domain/assets/design'
 import { critterTraining, exportSr6Runners } from '../../../src/sr6/foundry/domain/export'
-import { blankSr6Npc } from '../../../src/sr6/engine/npc'
+import { blankSr6Npc } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
-import { designCatalog } from '../design-fixture'
+import { designCatalog } from '../runner-builder/design-fixture'
 import { fixtureCreation } from '../catalog/fixture'
-import { mara, SAMPLE_OPTS, sampleWorld } from '../samples'
+import { mara, SAMPLE_OPTS, sampleWorld } from '../runner-builder/samples'
 
 const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
 const valid = (f: unknown) => expect(schema(f), JSON.stringify(schema.errors)).toBe(true)

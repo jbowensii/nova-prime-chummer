@@ -100,7 +100,7 @@ export default function App() {
     return () => removeEventListener('hashchange', on)
   }, [])
   const user = me?.user
-  // the game the page's look follows (sr6/ui/theme.css keys off it): the picker mixes both, #/sr6… is Shadowrun 6's
+  // the game the page's look follows (sr6/shell/ui/theme.css keys off it): the picker mixes both, #/sr6… is Shadowrun 6's
   const look = !route.length && !game ? 'pick' : gameOf(route)
   useLayoutEffect(() => {
     document.documentElement.dataset.game = look

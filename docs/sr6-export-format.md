@@ -230,7 +230,7 @@ updated with it.
 ## Example
 
 The module's samples (`samples/test-*.json` in `chummer-sr6-foundry`) are written by Chummer's own tests from made-up data:
-`WRITE_SR6_SAMPLES=<dir> npx vitest run tests/sr6/foundry/export.test.ts` (`tests/sr6/samples.ts`). A made-up purchase:
+`WRITE_SR6_SAMPLES=<dir> npx vitest run tests/sr6/foundry/export.test.ts` (`tests/sr6/runner-builder/samples.ts`). A made-up purchase:
 
 ```json
 {

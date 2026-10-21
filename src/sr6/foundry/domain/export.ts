@@ -18,22 +18,32 @@ import type {
 } from '../../formats/domain/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
 import type { Sr6Compendium } from '../../formats/domain/character'
-import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../engine/budgets'
+import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
 import { bonusValue, linkedViews, ownParts, type LinkLookup } from '../../catalog/domain/effects'
-import { currentBuild, ledgerLabel, balances, voidedIds } from '../../engine/career'
+import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
-import { deriveSr6, type Sr6Derived } from '../../engine/derive'
-import { withSampleFixes } from '../../engine/samplefix'
-import { withSr6House } from '../../engine/house'
-import { attackSkill, NPC_KINDS, npcCorrections, npcFromEntry, npcPools, npcThings, npcValues, type Sr6NpcMatch, type Sr6NpcThing } from '../../engine/npc'
+import { deriveSr6, type Sr6Derived } from '../../runner-builder/domain/creation/derive'
+import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
+import { withSr6House } from '../../runner-builder/domain/career/house'
+import {
+  attackSkill,
+  NPC_KINDS,
+  npcCorrections,
+  npcFromEntry,
+  npcPools,
+  npcThings,
+  npcValues,
+  type Sr6NpcMatch,
+  type Sr6NpcThing,
+} from '../../runner-builder/domain/creation/npc'
 import { catalogFind } from '../../catalog/domain/load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from '../../catalog/domain/values'
 import { entryLabel } from '../../catalog/domain/categories'
-import { prerequisites, type Prerequisite } from '../../engine/martial'
-import { critterClass, isTaught, trainedName, type CritterClass } from '../../engine/critters'
-import { builtinText, modsOf } from '../../engine/vehiclemods'
+import { prerequisites, type Prerequisite } from '../../runner-builder/domain/creation/martial'
+import { critterClass, isTaught, trainedName, type CritterClass } from '../../runner-builder/domain/assets/critters'
+import { builtinText, modsOf } from '../../runner-builder/domain/assets/vehiclemods'
 import { levelOf } from '../../catalog/domain/levels'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
@@ -657,7 +667,7 @@ export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportN
   })
 }
 
-/** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/engine/house.ts). */
+/** The runner's copies of compendium entries the catalog no longer has stand in for them (src/sr6/runner-builder/domain/career/house.ts). */
 export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationRules, printedCh: Sr6Character, o: Sr6ExportOpts): Sr6ExportRunner {
   const ch = withSampleFixes(all, printedCh).ch // (a book sample's lines as the owner's override file corrects them)
   const c = withSr6House(all, ch.house).c,

@@ -1,8 +1,8 @@
 // A line's per-rating effects (`R`) count at its rating: its own, else its entry's (one row of a book's per-rating split,
 // `Zap Wires 3`, carries rating 3), never a blanket 1. Invented entries, invented numbers.
 import { expect, test } from 'vitest'
-import { apply } from '../../../src/sr6/engine/actions'
-import { augmentBonus, bonusSources, hostBonus, priced } from '../../../src/sr6/engine/budgets'
+import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
+import { augmentBonus, bonusSources, hostBonus, priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { chosenRating } from '../../../src/sr6/catalog/domain/values'
 import { blankBuild } from '../../../src/sr6/formats/domain/character'

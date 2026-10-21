@@ -2,7 +2,7 @@
 // each its own tab, search and list grouped by kind and rating (npcGroups): NPCs (grunts and contacts, #/sr6/npcs) and
 // Critters (critters, spirits and sprites, #/sr6/npcs/critters); New NPC / New critter offer that section's kinds. An SR6 NPC
 // is an SR6 runner file with an <npc> block (server: /api/sr6/npcs, which refuses players and runner files). New NPC copies
-// a catalog grunt, contact, critter, spirit or sprite (src/sr6/engine/npc.ts) or starts blank; Load book NPCs copies the
+// a catalog grunt, contact, critter, spirit or sprite (src/sr6/runner-builder/domain/creation/npc.ts) or starts blank; Load book NPCs copies the
 // catalog's npcs, critters, spirits and sprites not loaded yet (one printed in several books: once if the stat blocks
 // match, else each version as "<Name> #1", "#2"… in publication order); Tidy book copies (R: a banner with a confirm, as
 // Anarchy's Tidy up) does the same to the copies already loaded; Import file takes SR6 NPC files only; a GM shares one with
@@ -31,14 +31,23 @@ import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { critterAsEntry } from '../../formats/domain/compendium'
 import { designCritter } from '../domain/critterdesign'
-import { blankSr6Npc, bookNpc, bookNpcKey, bookNpcVersions, NPC_KINDS, npcFromEntry, npcKindOf, type BookNpcVersion } from '../../engine/npc'
+import {
+  blankSr6Npc,
+  bookNpc,
+  bookNpcKey,
+  bookNpcVersions,
+  NPC_KINDS,
+  npcFromEntry,
+  npcKindOf,
+  type BookNpcVersion,
+} from '../../runner-builder/domain/creation/npc'
 import { SR6_NPC_KINDS, type Sr6Character, type Sr6NpcKind } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
 import type { Sr6Compendium } from '../../formats/domain/character'
 import { listSr6Compendiums, moveNpcsIn, parseSr6Rows, saveSr6Compendium } from '../../compendiums/ui/compendiumStore'
-import { npcChip, npcSection, sr6NpcHref } from '../../ui/editor'
+import { npcChip, npcSection, sr6NpcHref } from '../../runner-builder/ui/editor'
 import { downloadSr6Runners, SR6_FOUNDRY_ABOUT } from '../../foundry/ui/Foundry'
-import { exportSr6, readSr6NpcImport, sr6NpcRepo } from '../../ui/repo'
+import { exportSr6, readSr6NpcImport, sr6NpcRepo } from '../../runner-builder/ui/repo'
 
 const SORT_KEY = 'ca2.sr6.npcs.sort'
 type Section = ReturnType<typeof npcSection>

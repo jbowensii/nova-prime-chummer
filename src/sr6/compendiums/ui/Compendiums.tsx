@@ -31,8 +31,8 @@ import type { Sr6Compendium } from '../../formats/domain/character'
 import { listSr6Compendiums, moveNpcOut, parseSr6Rows, saveSr6Compendium } from './compendiumStore'
 import { Sr6EntryFields } from '../../game-data/ui/EditEntry'
 import { downloadSr6Compendium } from '../../foundry/ui/Foundry'
-import { npcChip } from '../../ui/editor'
-import { sr6NpcRepo } from '../../ui/repo'
+import { npcChip } from '../../runner-builder/ui/editor'
+import { sr6NpcRepo } from '../../runner-builder/ui/repo'
 
 /** One listed entry or NPC. */
 export interface Sr6Row extends ShellRow {

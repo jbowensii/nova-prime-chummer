@@ -163,7 +163,7 @@ export interface Sr6Entry {
   notes?: { field: string; text: string }[]
 }
 /** origin 'user': a GM's compendium (compendium: which one; publisher: its owner's name). published ("2019-08") and cat
- *  ("CAT28000"): the publication order (src/sr6/engine/npc.ts byPublication). */
+ *  ("CAT28000"): the publication order (src/sr6/runner-builder/domain/creation/npc.ts byPublication). */
 export interface Sr6Source {
   id: string
   name: string

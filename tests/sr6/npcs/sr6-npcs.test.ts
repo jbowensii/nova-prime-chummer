@@ -1,11 +1,11 @@
 // The SR6 NPC page's pure helpers (src/sr6/npcs/ui/Npcs.tsx): which book NPCs Load book NPCs adds (one already loaded, even
 // renamed, is skipped), the New NPC dialog's grunts grouped by Professional Rating, and the row chip. Made-up fixture.
 import { expect, test } from 'vitest'
-import { blankSr6Npc, npcFromEntry } from '../../../src/sr6/engine/npc'
-import { bookNpc, bookNpcVersions, byPublication } from '../../../src/sr6/engine/npc'
+import { blankSr6Npc, npcFromEntry } from '../../../src/sr6/runner-builder/domain/creation/npc'
+import { bookNpc, bookNpcVersions, byPublication } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import type { Sr6Catalog } from '../../../src/sr6/formats/domain/types'
 import { SR6_NPC_KINDS } from '../../../src/sr6/formats/domain/character'
-import { npcChip, npcSection, sr6NpcsHref } from '../../../src/sr6/ui/editor'
+import { npcChip, npcSection, sr6NpcsHref } from '../../../src/sr6/runner-builder/ui/editor'
 import { atRating, bookNpcsToLoad, byRating, gruntRatings, npcGroups, oldContact, tidyBookCopies } from '../../../src/sr6/npcs/ui/Npcs'
 import { fixtureCatalog } from '../catalog/fixture'
 

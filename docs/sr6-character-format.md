@@ -121,7 +121,7 @@ copy". Book entries are never copied here.
 - `<purchase kind>`: `weapons`, `armor`, `augmentations`, `electronics`, `programs` (programs and autosofts), `gear`, `vehicles`, `critters` (an owned critter, below) or `ammotypes` (an ammunition type, from a line bought as gear
   before the importer filed ammunition types apart); `rating` for rated
   items, `grade` for augmentations, `worn` for armor, `seatsRemoved` for a vehicle (cargo, Double Clutch p. 126). A
-  vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/engine/vehiclemods.ts): a weapon's
+  vehicle's or drone's accessories are its mods, weapons and autosofts (src/sr6/runner-builder/domain/assets/vehiclemods.ts): a weapon's
   `mount` is the uid of the weapon mount (an accessory of the same vehicle) it sits in, or `builtin:<n>` for a weapon
   mount built into the vehicle (its entry's or snapshot's n-th `<builtin>`, from 0: already paid for, never taken off;
   owner 2026-10-16) (one naming none of them reads as in no mount, noted); a vehicle's or drone's `slotShifts` lists the mod slots shifted between categories, in the order
@@ -131,7 +131,7 @@ copy". Book entries are never copied here.
   p. 120; never an accessory's). An ammunition line's (a gear line of an ammunition table, an ammunition type, also one
   fitted as an add-on) `material` is the catalog id of an ammunition material (an ammunition type priced `H*N`, Bestial
   Nature p. 36: copper, silver, gold): the line, its ammunition types with it, costs N times as much and its rounds are of
-  that material (src/sr6/engine/purchases.ts materialOf); an id that is no material counts as none. Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
+  that material (src/sr6/runner-builder/domain/creation/purchases.ts materialOf); an id that is no material counts as none. Drones are `vehicles` lines too (the Drones tab lists those whose entry is a drone), so
   older files read as they were. A vehicle or drone bought from a design (the Designer, below) has `design` (the
   design's id), `id="design.<that id>"` and a `<snapshot>` always: the vehicle as the design worked out when bought (its
   stats, `cost` the price, `avail`, `dp` its Design Point Value, `approved="true"` when a GM made or approved the
@@ -141,7 +141,7 @@ copy". Book entries are never copied here.
   `essence`. Nested `<purchase>`s are accessories fitted to it. `<snapshot>` holds the catalog entry in the SR6 data
   files' own format (docs/sr6-data-format.md), without its description; Export writes it so the line still reads when
   the entry is gone.
-- An owned critter (the Critters tab, src/sr6/engine/critters.ts) is `<purchase kind="critters" id>` naming a catalog
+- An owned critter (the Critters tab, src/sr6/runner-builder/domain/assets/critters.ts) is `<purchase kind="critters" id>` naming a catalog
   critter: `pet` the class the player chose, `mundane`, `exotic` or `wild` (absent: mundane; an unknown one is left out,
   noted; Awakened and Emerged come from the critter's Magic or Resonance, never stored), `tamed="true"` when tamed from
   the wild instead of bought (no price, Wild Life p. 184), a `<trained uid what id? name? taught?>` per named command
@@ -194,7 +194,7 @@ copy". Book entries are never copied here.
 
 A finalized runner's career spends are the `<ledger>` after `<build>` (left out while empty; a file without one reads
 as an empty ledger). The build stays as finalized: the runner as it stands is the build with every live advance since
-the last finalize entry replayed on it (`src/sr6/engine/career.ts`). The ledger is append-only; a `void` entry undoes
+the last finalize entry replayed on it (`src/sr6/runner-builder/domain/career/career.ts`). The ledger is append-only; a `void` entry undoes
 the entry its `event` names.
 
 ```xml
@@ -276,7 +276,7 @@ and a blank build. Its stat block is copied from the catalog entry it was made f
 
 ## Vehicle and drone designs
 
-A design (the Designer, `#/sr6/designs`; Double Clutch pp. 150-155; `src/sr6/engine/design.ts`) is the same file with
+A design (the Designer, `#/sr6/designs`; Double Clutch pp. 150-155; `src/sr6/runner-builder/domain/assets/design.ts`) is the same file with
 `<design>` as the root's **first child** (the server keeps designs in `characters/sr6/.designs/<username>/`, every
 account its own, at `/api/sr6/designs`, with a trash as runners have) and a blank build. The root's `streetName` is
 the design's name. Nothing derived is stored:
