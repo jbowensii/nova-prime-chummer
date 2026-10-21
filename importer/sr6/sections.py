@@ -241,6 +241,7 @@ class Reader:
         self.stack, self.chapter, self.path = [], None, None  # path: [level, Found, its steps' level, step prices,
         # the names its steps grant (step_qualities)]
         self.prefixed = set()  # the parent headings a `Kind: Name` child names its kind under (the others aren't)
+        self.mentor = (None, None)  # a mentor spirit read from its Advantages, the heading it is (_mentor_form)
         self.granted = {}  # a granted list's noun (`power`) -> (its category, the most of it one may have, or None)
 
     def feed(self, b, page):
@@ -400,6 +401,8 @@ class Reader:
             elif f and id(self.stack[-1][2]) in sib:
                 f.attrs["type"] = sib[id(self.stack[-1][2])]
             return [f] if f else []
+        if not kind and (f := self._mentor_form(b, chain)):
+            return [f] if f is not True else []
         if not kind and MATRIX_TEST.search(b.tags or ""):  # `(Illegal) Cracking + Logic vs. … (Major)`: a Matrix action
             kind = "actions"
         if (len(chain), parent) in self.prefixed:
@@ -461,6 +464,27 @@ class Reader:
                 )
             )
         return out
+
+    def _mentor_form(self, b, chain):
+        """A mentor spirit printed on its own (Adversary p. 5): `Advantages` right under a heading that is no entry and
+        no kind's section, its text the role lines (`**All:**`, `**Magician:**`, `**Adept:**`) -> that heading as a
+        mentor spirit, its text the heading's and the Advantages'; the `Disadvantages` after it joins its text (True:
+        read, no entry of its own). None: no such heading."""
+        name = b.name.strip().lower()
+        mentor, under = self.mentor
+        if name == "disadvantages" and mentor and chain and under == chain[-1]:
+            mentor.text += f"\n\n**Disadvantages:**\n{_body(b)}"
+            self.mentor = (None, None)
+            return True
+        roles = {r for r in ("All", "Magician", "Adept") if f"**{r}:**" in _body(b)}
+        if name != "advantages" or len(roles) < 2 or not self.stack or self.stack[-1][3]:
+            return None
+        _, pname, pb, _, ppage = self.stack[-1]
+        if _kind_of(pname, HEADING_KINDS) or len(chain) > 1 and _kind_of(chain[-2], HEADING_KINDS):
+            return None  # (under a kind's own section: that reading's)
+        f = Found("mentorspirits", pname.strip(), ppage, {}, [], f"{_body(pb)}\n\n**Advantages:**\n{_body(b)}", pb)
+        self.mentor = (f, pname)  # (its Disadvantages, next)
+        return f
 
     def _family_quality(self, b, page):
         """A heading right under one naming a family of qualities (`New Technomancer Qualities: Resonant Streams`)

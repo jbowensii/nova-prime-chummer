@@ -314,5 +314,112 @@ class GeneralRecipeTest(unittest.TestCase):
         self.assertLessEqual({b.ID for b in general.RECIPES}, ids)
 
 
+RULES_MD = """<!-- page 1 -->
+# CONTENTS
+Made-up contents ........ 2
+<!-- page 10 -->
+# Game Rules
+## New Toys
+### Zip Pouch
+A made-up armor modification that hides made-up things.
+[Capacity 1, Availability 2, Cost: 150¥]
+### Zap Popper “Ghost”
+(Hold-Out Pistol)
+A made-up hold-out pistol, printed in made-up plastic.
+##### zap popper
+[Hold-Out, DV 1P, SS, AR 10/5/—/—/—, 4(b), Avail:
+3, Cost: 200¥]
+### Paper Ward (Magical Gear)
+**Cost:** 300 x Rating, Availability 4, Rating 1-4 **Paper Wards** are made-up charms.
+More made-up words about the wards.
+### Bleep Pup
+##### bleep pup
+| HAND | ACC | BOD | ARM | PIL | SEN | SEATAVAIL | COST |
+|---|---|---|---|---|---|---|---|
+| 2/2 | 4 | 2 | 0 | 1 | 2 — | 3 | 1,000¥ |
+### Which charm works on a made-up spirit?
+Any of them, and because they have no price:
+Charm Availability Cost
+Charm of tin 3 100 ¥
+Charm of lead 4 150 ¥
+<!-- page 12 -->
+## Made-up Folk: Zorgs
+### Zorgs as Player Characters
+Made-up words about zorgs.
+##### Hide (Self):
+**Requirement:** Small Zorg **Major Action, Sustained.**
+A made-up power: the zorg hides.
+#### Zorg Character Development Table
+**Customization Karma Cost:** 10
+**Variant Bod Agi Rea Str**
+Small Zorg 1–5 1–7 1–5 1–4
+**Wil Log Int Cha Edg M**
+1–6 1–6 1–6 1–7 1–6 1–6
+**Racial Qualities:** Hide (Self), Low-Light Vision
+**Average Height:** 1 M
+<!-- page 14 -->
+# Grumble
+Grumble is a made-up mentor spirit who grumbles.
+### Advantages
+**All:** Gain a point of Edge when made-up things happen.
+**Magician:** Made-up spells cost less.
+**Adept:** Gain a made-up power.
+### Disadvantages
+Grumble followers grumble at made-up orders.
+"""
+
+
+class GeneralShapesTest(unittest.TestCase):
+    """The item shapes the four books registered in 0.18.0 print (Seoul Survivor, the Missions Guide, Adversary)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.res = run_recipe(RULES_MD)
+
+    def test_bracketed_stat_lines(self):
+        g = entries(self.res, "gear")["Zip Pouch"]
+        self.assertEqual((g["capacity"], g["avail"], g["cost"]), ("1", "2", "150"))
+        w = entries(self.res, "weapons")["Zap Popper “Ghost”"]  # the box title starts its heading's name
+        self.assertEqual(
+            (w["type"], w["dv"], w["ar"], w["ammo"], w["avail"], w["cost"]),
+            ("Hold-Out", "1P", "10/5/—/—/—", "4(b)", "3", "200"),
+        )
+
+    def test_cost_first_price_line(self):
+        g = entries(self.res, "gear")["Paper Ward"]
+        self.assertEqual(
+            (g["category"], g["avail"], g["cost"], g["rating"]), ("Magical Gear", "4", "300 x Rating", "1–4")
+        )
+
+    def test_glued_columns(self):
+        v = entries(self.res, "vehicles")["Bleep Pup"]
+        self.assertEqual((v["sensor"], v["seats"], v["avail"], v["cost"]), ("2", "—", "3", "1000"))
+
+    def test_text_price_list(self):
+        g = entries(self.res, "gear")
+        self.assertEqual(
+            (g["Charm of tin"]["category"], g["Charm of lead"]["avail"], g["Charm of lead"]["cost"]),
+            ("Charm", "4", "150"),
+        )
+
+    def test_development_table_and_racial_power(self):
+        m = ET.fromstring(self.res.files["metatypes.xml"])[0]
+        self.assertEqual(m.findtext("name"), "Small Zorg")
+        self.assertEqual({r.get("attr"): r.get("max") for r in m.iter("range")}["agi"], "7")
+        self.assertEqual(len(list(m.iter("range"))), 9)
+        self.assertEqual([t.text for t in m.iter("trait")], ["Hide (Self)", "Low-Light Vision"])
+        p = entries(self.res, "critterpowers")["Hide (Self)"]
+        self.assertEqual((p["action"], p["duration"]), ("Major", "Sustained"))
+
+    def test_mentor_spirit_on_its_own(self):
+        self.assertIn("Grumble", entries(self.res, "mentorspirits"))
+
+    def test_files_validate(self):
+        for name, xml in list(self.res.files.items()):
+            doc = etree.fromstring(xml.encode("utf8"))
+            schema = etree.XMLSchema(etree.parse(os.path.join(sr6.SCHEMA_DIR, doc.get("kind") + ".xsd")))
+            self.assertTrue(schema.validate(doc), f"{name}: {schema.error_log.last_error}")
+
+
 if __name__ == "__main__":
     unittest.main()

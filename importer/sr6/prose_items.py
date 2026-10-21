@@ -28,6 +28,18 @@ _CLASS_HEADING = re.compile(r"(?:(?:Unique|New)\s+)?((?:[A-Z][a-z]+\s+){0,2}Focu
 
 # an item a heading prices in one line of its text: `Availability 6, Cost 5,000¥`
 _PRICE_LINE = re.compile(r"^\s*Avail(?:ability)?:?\s*(\d+\s*(?:\([A-Z]\))?)\s*,\s*Cost:?\s*([\d,]+)\s*¥\s*$", re.M)
+# the same, its cost first and by rating, its rating range after, at the start of its text: `Cost: 500 x Rating,
+# Availability 5, Rating 1-6`
+_COST_FIRST = re.compile(
+    r"^\W*Cost:?\s*((?:Rating\s*[x×]\s*)?[\d,]+\s*¥?(?:\s*[x×]\s*Rating)?)\s*,\s*Avail(?:ability)?:?\s*"
+    r"(\d+\s*(?:\([A-Z]\))?)(?:\s*,\s*Rating\s*(\d+)\s*[-–]\s*(\d+))?\b"
+)
+# a price list set as text lines, no table (the Missions Guide p. 46): a header `Grenade Availability Cost`, then rows
+# `Grenade of gold 5 700 ¥`
+_TEXT_PRICE_HEAD = re.compile(r"^\s*([A-Z][A-Za-z ]{1,30}?)\s+Avail(?:ability)?\s+Cost\s*$")
+_TEXT_PRICE_ROW = re.compile(r"^\s*([A-Z][^\d¥|]*?)\s+(\d+\s*(?:\([A-Z]\))?)\s+([\d,]+)\s*¥\s*$")
+# a heading naming its item's class after it: `Bujeok (Magical Gear)`
+_CLASS_TAG = re.compile(r"(.+?)\s*\(([^()]*\bgear)\)\s*", re.I)
 
 
 # (owner, 2026-10-08) a replacement a section's prose prices, in figures or words: `a replacement instrument costs one
@@ -181,6 +193,11 @@ def run_in_items(bs, cat, _offset):
             cat.add(kind, name, e["page"], attrs, kids, "")
 
 
+def _labelled(b, label):
+    """The block's text with its leading labelled line `label` (regroup hands it over as a label) back at its start."""
+    return f"**{label}:** {b.labels[label]}\n{b.text}" if label in b.labels else b.text or ""
+
+
 def sentence_items(bs, offset):
     """[(kind, name, page, attrs, children, text)] of the items a book prices only in a sentence of another block's
     text (_AMMO_MULTIPLE, _PRICED_AS), each once (a description printed twice: its first)."""
@@ -223,6 +240,47 @@ def sentence_items(bs, offset):
                         b.text,
                     )
                 )
+        elif (
+            b.row is None
+            and not b.stats
+            and (m := _COST_FIRST.match(re.sub(r"\*\*", "", body := _labelled(b, "Cost"))))
+        ):
+            # `Cost: 500 x Rating, Availability 5, Rating 1-6` opening a heading's text: the heading's item, a class
+            # it names after it its category (`Bujeok (Magical Gear)`)
+            c = _CLASS_TAG.fullmatch(b.name)
+            name = c.group(1) if c else b.name
+            if norm(name) not in seen and norm(name) not in {norm(x.name) for x in bs if x.row is not None}:
+                seen.add(norm(name))
+                cost = " ".join(m.group(1).replace("¥", "").replace(",", "").split())
+                out.append(
+                    (
+                        "gear",
+                        name,
+                        page,
+                        {
+                            "category": c.group(2) if c else b.section or b.chapter or "Gear",
+                            "avail": " ".join(m.group(2).split()),
+                            "cost": cost,
+                            **({"rating": f"{m.group(3)}–{m.group(4)}"} if m.group(3) else {}),
+                        },
+                        (),
+                        body,
+                    )
+                )
+        lines = re.sub(r"\*\*", "", b.text or "").splitlines()
+        for k, ln in enumerate(lines):
+            if not (h := _TEXT_PRICE_HEAD.match(ln)):
+                continue
+            rows = []
+            for r in lines[k + 1 :]:
+                if not (rm := _TEXT_PRICE_ROW.match(r)):
+                    break
+                rows.append(rm)
+            for rm in rows if len(rows) >= 2 else ():  # (two rows or more: a list, not a sentence's price)
+                if norm(rm.group(1)) not in seen:
+                    seen.add(norm(rm.group(1)))
+                    attrs = {"category": h.group(1), "avail": " ".join(rm.group(2).split())}
+                    out.append(("gear", rm.group(1), page, {**attrs, "cost": rm.group(3).replace(",", "")}, (), ""))
         for m in _PURCHASED.finditer(re.sub(r"\*\*", "", text)):
             name = m.group(1)[:1].upper() + m.group(1)[1:]
             if norm(name) not in seen:

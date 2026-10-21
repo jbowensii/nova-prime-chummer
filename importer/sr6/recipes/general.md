@@ -7,8 +7,9 @@ adventures, the Beginner Box's Battle Royale adventure, the character conversion
 first: `THN` for 30 Nights), its name, the pattern its PDF title matches (0.9) and two or three phrases its first page
 prints (its contents or title lines: 0.8 + 0.05 a phrase, so the QSR edition of Echoes of a Lost Signal and the
 conversion guide, which names the core rulebook, win). Not read: the GM screen, card decks, errata, the fillable sheet,
-maps, the Beginner Box dossiers, instant guide and quick-start rules (no stat blocks in the book shape), Adversary
-(fiction) and Wild Pitch (a Shadowrun 5th Edition scenario).
+maps, the Beginner Box dossiers, instant guide and quick-start rules (no stat blocks in the book shape) and Wild
+Pitch (a Shadowrun 5th Edition scenario). Adversary is fiction but prints a mentor spirit and a car: read (owner,
+2026-10-21).
 
 Every page's text drawn twice in some (Final Bets, Scotophobia, …): the converter keeps the first layer. Printed page
 = PDF page − 1 (a cover first). Every chapter's sections are rules.
@@ -128,6 +129,30 @@ title first), the chapter giving the context. Read with the general reading, not
   characteristic` (a characteristic is a drawback: negative); a heading priced in Karma (`Returned Soldier (12
   Karma)`) is a quality whose text's `Select two powers … and one characteristic …` are its choices; the prose's
   effects and tests (`effects.py`). See docs/sr6-data-format/kinds.md, Qualities granted and chosen.
+
+## Shapes of the books registered in 0.18.0 (Seoul Survivor, the Missions Guide, Adversary)
+
+- **A stat line in square brackets** under an item's heading (`[Capacity 2, Availability 3, Cost: 250¥]`; a weapon's
+  `[Hold-Out, DV 2P, SS/BF, AR 12/7/—/—/—, 6(b), Avail: 2(F), Cost: 300¥]`, wrapped over two lines): prepare_md()
+  makes it the stat box table (labelled parts under their labels, the modes and ammunition by their shapes, an
+  unlabelled first part the type), read as an item's one stat line. A stat block's weapon (`Bite [Close Combat, DV
+  3P, …]`) has a name before it and no price: none. A lower-case box title that starts its heading's name (`type 81`
+  under `Type 81 “Gwisin”`) names the heading's item.
+- **A price line with the cost first, by rating** (`Cost: 500 x Rating, Availability 5, Rating 1-6` opening the text,
+  prose_items.py, every book): the heading's item, a class it names after it its category (`Bujeok (Magical Gear)`:
+  Bujeok, Magical Gear).
+- **A price list set as text lines** (`Grenade Availability Cost`, then `Grenade of gold 5 700 ¥`, two rows or more,
+  prose_items.py): gear, the header's first word its category, named as printed.
+- **A header gluing two columns** (`SEATAVAIL`, its values glued in the cell before: `3 —`): both split back.
+- **A development table set as text lines** (`**Variant Bod Agi Rea Str**`, `Major Dokkaebi 1–7 …`, the rest of the
+  attributes under `Wil Log Int Cha Edg M`, `Racial Qualities:`): metatypes, read with the Sixth World Companion's
+  reader (`catalog.metavariants`); a heading whose `Requirement:` names one of them is its racial ability, a critter
+  power (action and duration from the line).
+- **A mentor spirit printed on its own** (`Advantages` with the `All:`/`Magician:`/`Adept:` lines right under a
+  heading that is no entry, Adversary p. 5): that heading is a mentor spirit, its Disadvantages part of its text
+  (sections.py).
+- Seoul Survivor prints Samsung's drone as `Jind-0` (a zero for the letter O): renamed Samsung Jind-O by the owner's
+  ruling (overrides/ssv.json), the printed name an alias.
 
 ## Real-book check (local, nothing committed)
 
