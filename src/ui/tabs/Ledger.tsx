@@ -1,7 +1,8 @@
 // Ledger (Anarchy career): record earnings and notes; the history with its running balance. What a line names (an
 // attribute, a skill or specialization, an amp, an item) shows its card on hover, focus or tap (AnarchyRef.tsx).
 import { Fragment, useState, type ReactNode } from 'react'
-import { changeText, ledgerRunning, makeEarn, makeNote, OPTIONAL_RULES, optionOn, voidEvent } from '../../engine'
+import { changeText, ledgerRunning, makeEarn, makeNote, voidEvent } from '../../engine/career'
+import { OPTIONAL_RULES, optionOn } from '../../engine/derive'
 import type { AttrId, CareerEvent, Change } from '../../model/types'
 import { AnarchyAttrRef, AnarchyRef } from '../AnarchyRef'
 import { fmt } from '../bits'

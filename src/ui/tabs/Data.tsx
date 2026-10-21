@@ -9,7 +9,7 @@ import { browseKinds } from '../AnarchyRef'
 import { SourceLabel } from '../SourceLabel'
 import { ExportBooksPanel } from '../Foundry'
 import { OverrideFiles, type OverrideGame } from '../OverrideFiles'
-import { entryXml } from '../../engine'
+import { entryXml } from '../../engine/compendium'
 
 const KINDS: [EditKind, string][] = [
   ['amps', 'Amp'],

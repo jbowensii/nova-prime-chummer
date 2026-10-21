@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ampCtx, ampEssence, ampFromTemplate, ampRating, levelLabel, ruleText, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampFromTemplate, ampRating, ruleText } from '../../engine/amps'
+import { vehicleStats } from '../../engine/derive'
+import { levelLabel } from '../../engine/levels'
 import type { AmpEntry, ItemEntry } from '../../model/types'
 import { newId } from '../../model/types'
 import { fmt, Modal, Picker } from '../bits'

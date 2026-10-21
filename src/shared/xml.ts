@@ -26,6 +26,20 @@ export const text = (name: string, s: string | undefined) => (s ? `<${name}>${es
 export const kids = (e: Element, name: string) => [...e.children].filter(c => c.localName === name)
 export const kid = (e: Element, name: string) => kids(e, name)[0]
 
+const unesc = (s: string) =>
+  s
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&amp;/g, '&')
+/** An attribute of the file's root tag (<ca2:character>, or a codec's `tag`), read without parsing the file (it may not parse). */
+export const rootAttr = (xml: string, name: string, root = 'ca2:character') => {
+  const tag = xml.match(new RegExp(`<${root}\\b[^>]*>`))?.[0] ?? ''
+  const v = [...tag.matchAll(/\s([\w:.-]+)="([^"]*)"/g)].find(m => m[1] === name)?.[2]
+  return v === undefined ? undefined : unesc(v)
+}
+
 /** repair: read what can be read, noting here each thing dropped or fixed (the runner list's "Try to repair") */
 export interface ReadOpts {
   repair?: string[]

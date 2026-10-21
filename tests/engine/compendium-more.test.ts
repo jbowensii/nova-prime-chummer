@@ -1,9 +1,12 @@
 // Why a compendium file is refused (src/engine/compendium.ts readCompendium): each error names its cause; and what a
 // campaign sees of compendiums shared with another one.
 import { expect, test } from 'vitest'
-import { blankNpc, buildCatalog, characterToXml, readCompendium } from '../../src/engine'
+import { characterToXml } from '../../src/engine/charxml'
+import { readCompendium } from '../../src/engine/compendium'
+import { buildCatalog } from '../../src/engine/load'
+import { blankNpc } from '../../src/engine/npc'
 import { forCampaign } from '../../src/engine/compendium'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 import type { Compendium } from '../../src/model/types'
 import { catFiles } from '../helpers'
 

@@ -2,7 +2,11 @@
 // catalog: editing the catalog entry itself (EditEntry.tsx), not a runner's copy: no owned item, a Description box.
 // A string catalog is the save button's label (a compendium's).
 import { useState } from 'react'
-import { ampCtx, ampEssence, ampRating, applies, applyMod, effectRating, legalEffects, levelsOf, overCap, ruleHelp, vehicleStats } from '../../engine'
+import { ampCtx, ampEssence, ampRating, applyMod, effectRating, legalEffects, overCap } from '../../engine/amps'
+import { ruleHelp } from '../../engine/canon'
+import { vehicleStats } from '../../engine/derive'
+import { levelsOf } from '../../engine/levels'
+import { applies } from '../../shared/effects'
 import { EffectHow, TestSelect } from '../EffectHow'
 import type { AmpEntry, Build, EffectPick } from '../../model/types'
 import { ATTRS } from '../../model/types'

@@ -1,6 +1,9 @@
 // Printable character sheet modelled on the official Anarchy 2.0 fillable sheet (the two-column one, p.1 white/yellow,
 // p.2 cyberdeck/vehicles/amps/equipment). Same runner data as Sheet.tsx; only the layout and look differ (official-sheet.css).
-import { ampCtx, ampEssence, ampRating, bracketed, effectLines, poolMarks, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating } from '../engine/amps'
+import { ruleHelp } from '../engine/canon'
+import { effectLines, poolMarks } from '../engine/derive'
+import { bracketed } from '../shared/effects'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'

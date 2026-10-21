@@ -381,6 +381,8 @@ export interface Compendium {
   vehicles: VehicleBase[]
   npcs: Character[]
 }
+/** The table switch that makes SINners free (amps.ts sinnerFree). */
+export const FREE_SINNER = 'ca2.free-sinner'
 /** The GM's table-wide switches (Table setup page, TableRules.tsx); both on unless the GM switches them off. optional: the
  *  books' optional rules the GM switched on (their rules ids; derive.ts optionOn); locked: the ones whose table switch binds
  *  every runner. */

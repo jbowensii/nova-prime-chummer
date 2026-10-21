@@ -149,6 +149,7 @@ Every PR runs `npm run lint`, `npm run format:check`, `npm run check` and CI's b
    from an allowlist of today's offending imports that may only shrink. Plus the route-role test.
 2. **Refactors, no behaviour change (8 PRs):** the fixes in the table above, one concern per PR. Done when the boundary
    test's allowlist is empty.
+   _Status: refactor phase complete (PRs #99-#106 and the PR that dropped Anarchy's `src/engine/index.ts` barrel); the allowlist is `[]`._
 3. **Pure moves (about 6 PRs):** `git mv` into `src/core`, `src/features`, `src/ca2`, `src/sr6`, with a scripted rewrite of
    import paths and path mentions; tests move to the matching `tests/` folders. SR6 runner-builder moves last, when no
    SR6 branch is open.

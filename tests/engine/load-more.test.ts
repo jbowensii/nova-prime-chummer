@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, expect, test, vi } from 'vitest'
 import { buildCatalog, collectFiles, loadCatalog } from '../../src/engine/load'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 import type { Compendium } from '../../src/model/types'
 import { catFiles, MINI } from '../helpers'
 

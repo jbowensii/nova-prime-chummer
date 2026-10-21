@@ -1,5 +1,8 @@
 // Printable character sheet, laid out like the official Anarchy 2.0 sheet. Browser "Save as PDF" makes the PDF.
-import { ampCtx, ampEssence, ampRating, bracketed, effectLines, poolMarks, ruleHelp } from '../engine'
+import { ampCtx, ampEssence, ampRating } from '../engine/amps'
+import { ruleHelp } from '../engine/canon'
+import { effectLines, poolMarks } from '../engine/derive'
+import { bracketed } from '../shared/effects'
 import { SourceLabel } from '../ui/SourceLabel'
 import { ATTRS } from '../model/types'
 import { editHref, useEditor } from '../ui/editor'

@@ -2,9 +2,11 @@
 // this or Shadowrun 6's Sr6Main.
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from './nav'
-import { dupeGroups, loadCatalog } from '../engine'
+import { dupeGroups } from '../engine/dupes'
+import { loadCatalog } from '../engine/load'
 import { ca2Codec } from '../engine/charxml'
-import { migrateBrowserToServer, npcRepoFor, RepoContext, type Repo } from './repo'
+import { migrateBrowserToServer, npcRepoFor } from './repo'
+import { RepoContext, type Repo } from './repoContext'
 import type { Catalog } from '../model/types'
 import { EditorView } from './EditorView'
 import { AiSettings } from './AiSettings'

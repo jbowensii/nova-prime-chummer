@@ -494,7 +494,7 @@ server/resume.mjs	features/book-library	3547
 server/server.mjs	features/runner-store	11206
 server/users.mjs	features/accounts	253
 src/engine/amps.ts	ca2/runner-builder	2863
-src/engine/canon.ts	ca2/catalog	698
+src/engine/canon.ts	ca2/formats	698
 src/engine/career.ts	ca2/runner-builder	4181
 src/engine/charxml.ts	ca2/formats	4382
 src/engine/compendium.ts	ca2/formats	1850
@@ -520,7 +520,7 @@ src/print/OfficialSheet.tsx	ca2/print	4644
 src/print/Sheet.tsx	ca2/print	4229
 src/print/book-sheet.css	ca2/print	2543
 src/print/official-sheet.css	ca2/print	1952
-src/print/shared.tsx	features/appearance	2493
+src/print/shared.tsx	ca2/print	2493
 src/print/sheet.css	ca2/print	2580
 src/shared/effects.ts	core/shared	1166
 src/shared/formula.ts	core/shared	3371
@@ -670,12 +670,13 @@ src/ui/foundryKit.tsx	features/foundry-kit	1267
 src/ui/game.ts	core/ui-kit	241
 src/ui/icons.tsx	core/ui-kit	2284
 src/ui/nav.tsx	core/chrome	6406
-src/ui/repo.ts	features/runner-store	2178
+src/ui/repo.ts	features/runner-store	5774
+src/ui/repoContext.ts	core/ui-kit	2637
 src/ui/runnerList.ts	features/runner-store	800
 src/ui/samples.ts	ca2/runner-builder	2387
 src/ui/settings.tsx	core/ui-kit	1171
 src/ui/sheetArt.tsx	features/appearance	1647
-src/ui/storage.ts	features/runner-store	394
+src/ui/storage.ts	core/ui-kit	394
 src/ui/tabs/AmpBuilder.tsx	ca2/runner-builder	3308
 src/ui/tabs/Amps.tsx	ca2/runner-builder	2435
 src/ui/tabs/Attributes.tsx	ca2/runner-builder	674
@@ -703,8 +704,8 @@ tests/data/catalog.test.ts	ca2/catalog	234
 tests/engine/additions.test.ts	ca2/runner-builder	1168
 tests/engine/amps-price-more.test.ts	ca2/runner-builder	1253
 tests/engine/amps.test.ts	ca2/runner-builder	904
-tests/engine/canon-more.test.ts	ca2/catalog	986
-tests/engine/canon.test.ts	ca2/catalog	1541
+tests/engine/canon-more.test.ts	ca2/formats	986
+tests/engine/canon.test.ts	ca2/formats	1541
 tests/engine/career-more.test.ts	ca2/runner-builder	2924
 tests/engine/career.test.ts	ca2/runner-builder	4313
 tests/engine/charxml-more.test.ts	ca2/formats	2345

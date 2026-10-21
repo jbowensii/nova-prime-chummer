@@ -2,7 +2,9 @@
 // Edits mutate a draft (with undo); once finalized, each build change is also logged in the ledger (engine/career.ts logChange).
 import { createContext, useContext } from 'react'
 import type { CareerEvent, Catalog, Character, Override, Violation } from '../model/types'
-import type { Derived, PriceBreakdown, TableFlags } from '../engine'
+import type { Derived } from '../engine/derive'
+import type { PriceBreakdown } from '../engine/price'
+import type { TableFlags } from '../model/types'
 
 export interface ConfirmSpec {
   title: string

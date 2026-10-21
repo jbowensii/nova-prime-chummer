@@ -1,30 +1,12 @@
 // Where runners are saved: the Nova Prime Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
-import { createContext, useContext } from 'react'
 import type { Character } from '../model/types'
+import { rootAttr } from '../shared/xml'
 import type { Codec } from '../shared/types'
-import { deleteCharacter, getCharacter, listCharacters, NPC_KEY, saveCharacter } from './storage'
+import { deleteCharacter, listCharacters, NPC_KEY } from './storage'
 import { track, UNREACHABLE } from './auth'
+import { browserRepo, browserStore, type Repo, type SaveResult, type Stored, type Unreadable } from './repoContext'
 
-/** owner, ownerName: the account the runner belongs to (server only; the admin also lists everyone else's, an editor their campaigns') */
-export interface Stored<T = Character> {
-  ch: T
-  rev?: number
-  file?: string
-  owner?: string
-  ownerName?: string
-}
-/** A saved file the app can't read: listed (never hidden) with the reason, so it can be downloaded or repaired. */
-export interface Unreadable {
-  file: string
-  rev: number
-  xml: string
-  error: string
-  name: string
-  owner?: string
-  ownerName?: string
-}
-export type SaveResult = { ok: true; rev?: number; file?: string } | { ok: false; conflict?: { rev: number; file: string; updatedAt?: string }; error?: string }
 /** An imported file saved as new: when its id turns out taken after all (the list hadn't loaded yet, or another tab saved
  *  one), once more under a fresh id. Both games' runner and NPC lists. */
 export async function saveAsNew<T extends { id: string }>(
@@ -37,40 +19,6 @@ export async function saveAsNew<T extends { id: string }>(
   const again = { ...ch, id: freshId() }
   return { ch: again, r: await save(again) }
 }
-/** keepalive: the request may outlive the page (flush on leave); only honored for bodies under 60 KB */
-export interface SaveOpts {
-  force?: boolean
-  filename?: string
-  keepalive?: boolean
-}
-
-export interface Repo<T = Character> {
-  mode: 'server' | 'browser'
-  list(): Promise<Stored<T>[]>
-  /** every runner, and the files that couldn't be read */
-  listAll(): Promise<{ stored: Stored<T>[]; unreadable: Unreadable[] }>
-  /** undefined: no such runner; rejects with the reason when its file can't be read */
-  get(id: string): Promise<Stored<T> | undefined>
-  save(ch: T, rev?: number, opts?: SaveOpts): Promise<SaveResult>
-  remove(id: string): Promise<void>
-}
-
-/** A repo over one localStorage key: the runners', or (NPC_KEY) the NPCs'. */
-const browserStore = (key?: string, noun = 'runner'): Repo => ({
-  mode: 'browser',
-  list: async () => listCharacters(key).map(ch => ({ ch })),
-  listAll: async () => ({ stored: listCharacters(key).map(ch => ({ ch })), unreadable: [] }),
-  get: async id => {
-    const ch = getCharacter(id, key)
-    return ch && { ch }
-  },
-  save: async ch => (saveCharacter(ch, key).ok ? { ok: true } : { ok: false, error: `This browser refused to store the ${noun}. Export it so it isn’t lost.` }),
-  remove: async id => {
-    deleteCharacter(id, key)
-  },
-})
-export const browserRepo: Repo = browserStore()
-
 /** `api`: 'characters' (runners), 'npcs' (the GMs' NPC area, same shapes) or another game's ('sr6/characters', with its codec). */
 export function serverRepo<T>(codec: Codec<T>, base = './', api: string = 'characters'): Repo<T> {
   type Row = { file: string; rev: number; xml: string; owner?: string; ownerName?: string }
@@ -136,19 +84,6 @@ export function serverRepo<T>(codec: Codec<T>, base = './', api: string = 'chara
   }
 }
 
-const unesc = (s: string) =>
-  s
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/&amp;/g, '&')
-/** An attribute of the file's root tag (<ca2:character>, or a codec's `tag`), read without parsing the file (it may not parse). */
-export const rootAttr = (xml: string, name: string, root = 'ca2:character') => {
-  const tag = xml.match(new RegExp(`<${root}\\b[^>]*>`))?.[0] ?? ''
-  const v = [...tag.matchAll(/\s([\w:.-]+)="([^"]*)"/g)].find(m => m[1] === name)?.[2]
-  return v === undefined ? undefined : unesc(v)
-}
 const rootName = (xml: string, root?: string) => rootAttr(xml, 'streetName', root) || rootAttr(xml, 'name', root)
 
 /** The server repo if this page is served by the Nova Prime Chummer server, else the browser repo. */
@@ -184,6 +119,3 @@ export async function migrateBrowserToServer(server: Repo): Promise<number> {
 /** The NPC area next to a runner repo: the server's /api/npcs, or this browser's own NPC key. */
 export const npcRepoFor = (runners: Repo, codec: Codec<Character>): Repo =>
   runners.mode === 'server' ? serverRepo(codec, './', 'npcs') : browserStore(NPC_KEY, 'NPC')
-
-export const RepoContext = createContext<Repo>(browserRepo)
-export const useRepo = () => useContext(RepoContext)

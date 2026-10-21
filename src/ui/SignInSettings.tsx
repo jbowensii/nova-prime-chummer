@@ -2,7 +2,7 @@
 // never sends it back, and a new issuer address drops it (server/oidc.mjs).
 import { useEffect, useState } from 'react'
 import { send, sentence } from './auth'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 
 interface Saved {
   issuer: string

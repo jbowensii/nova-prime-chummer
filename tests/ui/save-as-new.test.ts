@@ -1,7 +1,8 @@
 // saveAsNew (src/ui/repo.ts): an import whose id turns out taken (a list not loaded yet) is saved once more under a
 // fresh id instead of being refused as "changed elsewhere".
 import { expect, test } from 'vitest'
-import { saveAsNew, type SaveResult } from '../../src/ui/repo'
+import { saveAsNew } from '../../src/ui/repo'
+import { type SaveResult } from '../../src/ui/repoContext'
 
 const store = (taken: string[]) => {
   const saved: string[] = []

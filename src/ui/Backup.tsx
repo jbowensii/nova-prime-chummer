@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, sendFile } from './api'
 import { because } from './auth'
-import { useRepo } from './repo'
+import { useRepo } from './repoContext'
 
 interface Manifest {
   app: string

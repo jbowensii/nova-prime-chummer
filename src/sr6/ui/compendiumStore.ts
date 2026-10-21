@@ -3,7 +3,7 @@
 // the SR6 NPC area with two calls (no server route of their own); a failed second call undoes the first.
 import { newId } from '../../shared/types'
 import { listCompendiums, parseRows, putCompendium, type CompendiumRow, type Stored } from '../../ui/compendiumStore'
-import type { SaveResult } from '../../ui/repo'
+import type { SaveResult } from '../../ui/repoContext'
 import { readSr6Compendium, sr6CompendiumXml } from '../engine/compendium'
 import type { Sr6Character } from '../model/character'
 import type { Sr6Compendium } from '../model/character'

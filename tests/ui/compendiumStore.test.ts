@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 import type { Compendium } from '../../src/model/types'
 import { deleteCompendium, listCompendiums, readable, saveCompendium } from '../../src/ui/compendiumStore'
 

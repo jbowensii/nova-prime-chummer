@@ -2,7 +2,7 @@
 // /api/compendiums, SR6's go to /api/sr6/compendiums with the SR6 file; each game's rows read only its own files.
 // Made-up compendiums; fetch is mocked.
 import { afterEach, expect, test, vi } from 'vitest'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 import { sr6CompendiumXml } from '../../src/sr6/engine/compendium'
 import type { Sr6Compendium } from '../../src/sr6/model/character'
 import { listSr6Compendiums, parseSr6Rows, saveSr6Compendium } from '../../src/sr6/ui/compendiumStore'

@@ -1,4 +1,5 @@
 // Shadow Amp rating, Essence and change cost (CRB p.58-63, 83).
+import { FREE_SINNER } from '../model/types'
 import type { AmpEffect, AmpEntry, AmpTemplate, AttrId, Build, Catalog, Character, EffectPick, ItemEntry, TableFlags } from '../model/types'
 import { RULE_EFFECTS } from './load'
 import { isSinner, realSinItem, sinnerTemplate } from './file'
@@ -37,7 +38,6 @@ export interface AmpCtx {
 
 /** The house rule (owner, 0.5.5) that a SINner is always free and never the first Quality, a Table setup switch since
  *  0.12, on by default: the runner's own switch unless the GM locked it, else the table's, else on. */
-export const FREE_SINNER = 'ca2.free-sinner'
 export const sinnerFree = (ch: Pick<Character, 'optionalRules'>, table?: Pick<TableFlags, 'freeSinner' | 'locked'>) =>
   (table?.locked?.includes(FREE_SINNER) ? undefined : ch.optionalRules?.[FREE_SINNER]) ?? table?.freeSinner ?? true
 

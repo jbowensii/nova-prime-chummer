@@ -1,7 +1,8 @@
 // Review of an AI import (library/<id>/review.xml): accept, edit or drop each proposed entry, then name the
 // book (source id, title, canon) and add the accepted ones. Every decision is saved back to review.xml at once.
 import { useEffect, useState } from 'react'
-import { blankCharacter, toPick } from '../engine'
+import { blankCharacter } from '../engine/file'
+import { toPick } from '../engine/parse'
 import { SOURCE_ID } from '../shared/source'
 import { ATTRS, type AmpEntry, type AttrId, type Catalog } from '../model/types'
 import { Modal } from './bits'

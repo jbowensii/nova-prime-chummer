@@ -12,7 +12,7 @@ import { createServer } from '../../server/server.mjs'
 import { usersFile } from '../../server/auth.mjs'
 // @ts-expect-error plain JS module
 import { findPython } from '../../tools/python.mjs'
-import { compendiumXml } from '../../src/engine'
+import { compendiumXml } from '../../src/engine/compendium'
 
 vi.setConfig({ testTimeout: 30000 })
 const PW: Record<string, string> = {

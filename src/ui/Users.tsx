@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './bits'
 import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
 import type { Game } from './game'
-import { rootAttr } from './repo'
+import { rootAttr } from '../shared/xml'
 
 type Account = User & { runners: number }
 type Dialog = { at: 'add' } | { at: 'edit' | 'reset' | 'delete' | 'move'; u: Account }

@@ -1,7 +1,7 @@
 // Export for the Foundry importer module (jbowensii/chummer-anarchy2-foundry): Anarchy 2.0 export v1 files
 // (docs/export-format.md). Runners from the editor and the runner list; book data on Game data (GMs).
 import { useState } from 'react'
-import { exportBooks, exportRunners, type ExportOpts } from '../engine'
+import { exportBooks, exportRunners, type ExportOpts } from '../engine/export'
 import type { Catalog, Character, Compendium } from '../model/types'
 import { NonCanon } from './bits'
 import { downloadJson, fileDate, runnersStem } from './foundryKit'
