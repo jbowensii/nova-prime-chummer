@@ -303,8 +303,9 @@ class CorpusTest(unittest.TestCase):
 
         from importer.sr6.recipes import crb
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            crb.PRINTINGS, {"f" * 64: ("2025-03", "Made-Up Fifth Printing")}
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(crb.PRINTINGS, {"f" * 64: ("2025-03", "Made-Up Fifth Printing")}),
         ):
             lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
             _book(
@@ -348,9 +349,11 @@ class CorpusTest(unittest.TestCase):
         from importer.sr6.recipes import crb
 
         sha = "e" * 64
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            crb.PRINTINGS, {sha: ("2019-08", "Made-Up Current Printing")}
-        ), mock.patch.object(crb, "CURRENT", (sha,)):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(crb.PRINTINGS, {sha: ("2019-08", "Made-Up Current Printing")}),
+            mock.patch.object(crb, "CURRENT", (sha,)),
+        ):
             lib, custom = os.path.join(tmp, "library"), os.path.join(tmp, "custom")
             _book(
                 lib,

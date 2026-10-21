@@ -203,24 +203,28 @@ class EditsTest(unittest.TestCase):
 
     def test_cli(self):
         d = custom()
-        with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))), mock.patch(
-            "sys.stdout", io.StringIO()
+        with (
+            mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))),
+            mock.patch("sys.stdout", io.StringIO()),
         ):
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--custom", d]), 0)
         # by: the server's username; one the client put on the entry is dropped
-        with mock.patch(
-            "sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.replace("<amp ", '<amp by="eve" ').encode()))
-        ), mock.patch("sys.stdout", io.StringIO()):
+        with (
+            mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.replace("<amp ", '<amp by="eve" ').encode()))),
+            mock.patch("sys.stdout", io.StringIO()),
+        ):
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--by", "kim", "--custom", d]), 0)
         self.assertEqual([e.get("by") for e in read(d, "edits.xml")], ["kim"])
-        with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))), mock.patch(
-            "sys.stderr", io.StringIO()
-        ) as err:
+        with (
+            mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(AMP.encode()))),
+            mock.patch("sys.stderr", io.StringIO()) as err,
+        ):
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--by", "Not A User", "--custom", d]), 3)
         self.assertIn("isn’t a username", err.getvalue())
-        with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(b"<amp"))), mock.patch(
-            "sys.stderr", io.StringIO()
-        ) as err:
+        with (
+            mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(b"<amp"))),
+            mock.patch("sys.stderr", io.StringIO()) as err,
+        ):
             self.assertEqual(main(["edit", "set", "amps", "test.keen-eye", "--custom", d]), 3)
         self.assertIn("well-formed", err.getvalue())
         with mock.patch("sys.stdout", io.StringIO()):

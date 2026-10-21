@@ -149,8 +149,10 @@ class Sr6EditsTest(unittest.TestCase):
 
         def cli(*args, stdin=b""):
             out, err = io.StringIO(), io.StringIO()
-            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), mock.patch(
-                "sys.stdin", io.TextIOWrapper(io.BytesIO(stdin))
+            with (
+                contextlib.redirect_stdout(out),
+                contextlib.redirect_stderr(err),
+                mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(stdin))),
             ):
                 return main(["sr6", "edit", *args]), out.getvalue(), err.getvalue()
 

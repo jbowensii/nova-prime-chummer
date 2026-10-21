@@ -18,8 +18,10 @@ class WriteFileRetry(unittest.TestCase):
                 raise PermissionError(5, "Access is denied")
             real(a, b)
 
-        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", True), mock.patch.object(
-            xmlio.os, "replace", flaky
+        with (
+            tempfile.TemporaryDirectory() as d,
+            mock.patch.object(xmlio, "WINDOWS", True),
+            mock.patch.object(xmlio.os, "replace", flaky),
         ):
             p = os.path.join(d, "status.xml")
             xmlio.write_file(p, "x")
@@ -27,8 +29,10 @@ class WriteFileRetry(unittest.TestCase):
         self.assertEqual(len(calls), 3)
 
     def test_other_systems_do_not_retry(self):
-        with tempfile.TemporaryDirectory() as d, mock.patch.object(xmlio, "WINDOWS", False), mock.patch.object(
-            xmlio.os, "replace", side_effect=PermissionError
+        with (
+            tempfile.TemporaryDirectory() as d,
+            mock.patch.object(xmlio, "WINDOWS", False),
+            mock.patch.object(xmlio.os, "replace", side_effect=PermissionError),
         ):
             with self.assertRaises(PermissionError):
                 xmlio.write_file(os.path.join(d, "a.xml"), "x")

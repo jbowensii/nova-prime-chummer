@@ -64,9 +64,11 @@ def custom(test):
 
 def run(argv, question):
     out, err = io.StringIO(), io.StringIO()
-    with unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(question.encode()))), contextlib.redirect_stdout(
-        out
-    ), contextlib.redirect_stderr(err):
+    with (
+        unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(question.encode()))),
+        contextlib.redirect_stdout(out),
+        contextlib.redirect_stderr(err),
+    ):
         code = main(argv)
     return code, out.getvalue(), err.getvalue()
 

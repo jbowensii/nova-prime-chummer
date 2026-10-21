@@ -114,8 +114,9 @@ def backup(dirs, out, keys=False, version=None):
                     n, size = n + 1, size + zf.getinfo(name).file_size
                     if name == USERS:
                         users = None
-                        with open(path, "rb") as f, contextlib.suppress(
-                            RestoreError
+                        with (
+                            open(path, "rb") as f,
+                            contextlib.suppress(RestoreError),
                         ):  # still backed up; check refuses it
                             users = _count_users(f)
                     secret = secret or name == AUTH_SECRET

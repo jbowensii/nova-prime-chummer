@@ -382,8 +382,9 @@ class ExtractTest(unittest.TestCase):
             for f in FIXTURE_CORE.iterdir():
                 if f.name != "ampeffects.xml":
                     shutil.copy(f, tmp)
-            with mock.patch.dict(os.environ, {"CA2_CORE_DIR": tmp, "CA2_CUSTOM_DIR": tmp}), mock.patch(
-                "importer.DATA_DIR", tmp
+            with (
+                mock.patch.dict(os.environ, {"CA2_CORE_DIR": tmp, "CA2_CUSTOM_DIR": tmp}),
+                mock.patch("importer.DATA_DIR", tmp),
             ):
                 res = crb.extract(MD)
         self.assertEqual(set(res.core), {f"{n}.xml" for n in CORE_FILES} - {"ampeffects.xml"})
@@ -972,9 +973,12 @@ class AiFallbackTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             book = self._book(tmp, [("vehicles.xml", 3), ("armor.xml", 4)])
             shapes = []
-            with mock.patch.object(
-                providers, "call", side_effect=lambda c, s, u, schema: shapes.append(schema) or '{"vehicles": []}'
-            ), contextlib.redirect_stdout(io.StringIO()):
+            with (
+                mock.patch.object(
+                    providers, "call", side_effect=lambda c, s, u, schema: shapes.append(schema) or '{"vehicles": []}'
+                ),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
                 self.assertEqual(main(["propose", book, "--library", os.path.join(tmp, "library"), "--core"]), 0)
             self.assertTrue(shapes)
             self.assertEqual(set(shapes[0]["properties"]), {"vehicles", "items"})

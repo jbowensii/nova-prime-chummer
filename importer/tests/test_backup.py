@@ -221,14 +221,16 @@ class BackupTest(unittest.TestCase):
                 self.assertTrue(err.getvalue().strip())
 
     def test_entry_limit(self):
-        with unittest.mock.patch("importer.backup.MAX_ENTRIES", 2), self.assertRaisesRegex(
-            backup.RestoreError, "more than"
+        with (
+            unittest.mock.patch("importer.backup.MAX_ENTRIES", 2),
+            self.assertRaisesRegex(backup.RestoreError, "more than"),
         ):
             backup.check(bad_zip({"characters/a": b"x", "characters/b": b"y"}))
 
     def test_total_size_limit(self):
-        with unittest.mock.patch("importer.backup.MAX_TOTAL", 1000), self.assertRaisesRegex(
-            backup.RestoreError, "20 GB"
+        with (
+            unittest.mock.patch("importer.backup.MAX_TOTAL", 1000),
+            self.assertRaisesRegex(backup.RestoreError, "20 GB"),
         ):
             backup.check(bad_zip({"characters/x.xml": b"x" * 2000}))
 

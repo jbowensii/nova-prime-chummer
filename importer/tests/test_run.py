@@ -271,9 +271,10 @@ class RereadTest(unittest.TestCase):
             res.files["skills.xml"] = '<ca2:data xmlns:ca2="urn:chummer-anarchy2:data:1" kind="skills" version="1"/>'
             return res
 
-        with mock.patch.object(qref, "extract", side_effect=adds_a_skill), mock.patch.object(
-            m, "run", wraps=m.run
-        ) as again:
+        with (
+            mock.patch.object(qref, "extract", side_effect=adds_a_skill),
+            mock.patch.object(m, "run", wraps=m.run) as again,
+        ):
             run(os.path.join(lib, "b2"), custom, convert_pdf=False)
         again.assert_called_once_with(os.path.join(lib, "b1"), custom, convert_pdf=False, reread=False)
         self.assertEqual([xmlio.read_state(os.path.join(lib, b)) for b in ("b1", "b2")], ["done", "done"])

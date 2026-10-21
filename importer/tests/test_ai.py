@@ -706,14 +706,18 @@ class SettingsTest(unittest.TestCase):
         lib = tempfile.mkdtemp()
         body = '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1"><provider id="gemini" enabled="true"{}/></ca2:aiproviders>'
         out = io.StringIO()
-        with unittest.mock.patch(
-            "sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))
-        ), contextlib.redirect_stdout(out):
+        with (
+            unittest.mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(body.format("").encode()))),
+            contextlib.redirect_stdout(out),
+        ):
             self.assertEqual(main(["set-settings", "--library", lib]), 0)
         AI.set_key(os.path.join(lib, ".config"), "gemini", KEY)
-        with unittest.mock.patch(
-            "sys.stdin", io.TextIOWrapper(io.BytesIO(body.format(' baseUrl="https://x"').encode()))
-        ), contextlib.redirect_stdout(out):
+        with (
+            unittest.mock.patch(
+                "sys.stdin", io.TextIOWrapper(io.BytesIO(body.format(' baseUrl="https://x"').encode()))
+            ),
+            contextlib.redirect_stdout(out),
+        ):
             self.assertEqual(main(["set-settings", "--library", lib]), 0)
         self.assertIn('<result cleared="gemini" />', out.getvalue())
         err = io.StringIO()

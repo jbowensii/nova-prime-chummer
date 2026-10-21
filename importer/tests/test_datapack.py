@@ -178,8 +178,10 @@ class DataPackTest(unittest.TestCase):
     def test_duplicates_sizes_and_bad_zips_are_refused(self):
         p = pack()
         dup = rezip(p)
-        with zipfile.ZipFile(dup, "a") as zf, contextlib.redirect_stderr(io.StringIO()), unittest.mock.patch(
-            "warnings.warn"
+        with (
+            zipfile.ZipFile(dup, "a") as zf,
+            contextlib.redirect_stderr(io.StringIO()),
+            unittest.mock.patch("warnings.warn"),
         ):
             zf.writestr("core/skills.xml", skills())
         self.assertRefused(dup, "the same name twice")
