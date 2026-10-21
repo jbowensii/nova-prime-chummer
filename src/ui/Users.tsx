@@ -4,7 +4,6 @@
 import { PageHeader } from './nav'
 import { IconButton } from './icons'
 import { useEffect, useState } from 'react'
-import { xmlToCharacter } from '../engine'
 import { Modal } from './bits'
 import { PasswordField, ROLE_NAMES, send, useMe, type Role, type User } from './auth'
 import type { Game } from './game'
@@ -154,23 +153,10 @@ export function UsersScreen({ game = 'ca2' }: { game?: Game }) {
           r => r.json(),
           () => [],
         )
-        setRunners([
-          ...rows.map(r => {
-            const p = xmlToCharacter(r.xml)
-            return {
-              file: r.file,
-              owner: r.owner,
-              game: 'ca2' as const,
-              name: p.ok ? p.character.identity.streetName || p.character.identity.name || r.file : r.file,
-            }
-          }),
-          ...six.map(r => ({
-            file: r.file,
-            owner: r.owner,
-            game: 'sr6' as const,
-            name: rootAttr(r.xml, 'streetName', 'sr6:character') || rootAttr(r.xml, 'name', 'sr6:character') || r.file,
-          })),
-        ])
+        // names from the root of each file (both games write streetName and name there), as a file may not parse
+        const named = (rs: { file: string; xml: string; owner: string }[], g: Game, root: string) =>
+          rs.map(r => ({ file: r.file, owner: r.owner, game: g, name: rootAttr(r.xml, 'streetName', root) || rootAttr(r.xml, 'name', root) || r.file }))
+        setRunners([...named(rows, 'ca2', 'ca2:character'), ...named(six, 'sr6', 'sr6:character')])
       })
       .catch((e: unknown) => {
         setMsg({ text: (e as Error).message, err: true })

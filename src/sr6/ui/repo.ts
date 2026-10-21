@@ -2,7 +2,8 @@
 // export (with a snapshot of every catalog line, so the file still reads where the entry is gone), import (an Anarchy
 // file is refused with where it belongs; a taken id gets a new one) and repair (the changes listed before saving).
 import { newId } from '../../shared/types'
-import { serverRepo, type Codec } from '../../ui/repo'
+import type { Codec } from '../../shared/types'
+import { serverRepo } from '../../ui/repo'
 import { keepSr6House } from '../engine/house'
 import { resolveEntry } from '../engine/load'
 import { entryKey } from '../engine/names'
@@ -12,11 +13,11 @@ import type { Sr6Catalog } from '../model/types'
 
 /** The repo codec (src/ui/repo.ts serverRepo). */
 export const sr6Codec: Codec<Sr6Character> = { tag: 'sr6:character', toXml: sr6ToXml, fromXml: xmlToSr6 }
-export const sr6Repo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/characters', sr6Codec)
+export const sr6Repo = (base = './') => serverRepo(sr6Codec, base, 'sr6/characters')
 /** SR6 NPCs (the server's /api/sr6/npcs, GMs only): SR6 runner files with an <npc> block. */
-export const sr6NpcRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/npcs', sr6Codec)
+export const sr6NpcRepo = (base = './') => serverRepo(sr6Codec, base, 'sr6/npcs')
 /** SR6 vehicle and drone designs (the server's /api/sr6/designs, every account its own): SR6 files with a <design> block. */
-export const sr6DesignRepo = (base = './') => serverRepo<Sr6Character>(base, 'sr6/designs', sr6Codec)
+export const sr6DesignRepo = (base = './') => serverRepo(sr6Codec, base, 'sr6/designs')
 
 /** A copy of the runner whose catalog lines (and their accessories, and the ledger's purchase lines) carry the entry as it
  *  is now (or the snapshot they had), with its compendium entries' copies up to date. */

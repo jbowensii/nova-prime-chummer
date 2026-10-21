@@ -5,6 +5,7 @@ import { createElement } from 'react'
 import { expect, test } from 'vitest'
 import type { Book } from '../../src/ui/Books'
 import { BooksScreen } from '../../src/ui/Books'
+import { ca2Codec } from '../../src/engine/charxml'
 import { RepoContext, serverRepo } from '../../src/ui/repo'
 import { cat } from '../helpers'
 import { button, change, click, mount, pageText, stubFetch } from './dom'
@@ -34,7 +35,7 @@ function server(books: Book[] = BOOKS, provider: string | null = null) {
     [/data\/(sr6\/)?sources\.xml$/, () => SOURCES],
   ])
 }
-const on = (node: ReturnType<typeof createElement>) => createElement(RepoContext.Provider, { value: serverRepo() }, node)
+const on = (node: ReturnType<typeof createElement>) => createElement(RepoContext.Provider, { value: serverRepo(ca2Codec) }, node)
 const row = (name: RegExp) => [...document.querySelectorAll('.book')].find(b => name.test(b.textContent ?? ''))!
 
 test('without the server the page says importing needs it', async () => {

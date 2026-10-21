@@ -1,8 +1,8 @@
 // Where runners are saved: the Nova Prime Chummer server when the app is served by it, else this
 // browser's localStorage (local dev, plain static hosting).
 import { createContext, useContext } from 'react'
-import { characterToXml, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
+import type { Codec } from '../shared/types'
 import { deleteCharacter, getCharacter, listCharacters, NPC_KEY, saveCharacter } from './storage'
 import { track, UNREACHABLE } from './auth'
 
@@ -71,16 +71,8 @@ const browserStore = (key?: string, noun = 'runner'): Repo => ({
 })
 export const browserRepo: Repo = browserStore()
 
-/** One game's file format: its root tag (`rootAttr`), writer and reader. */
-export interface Codec<T> {
-  tag: string
-  toXml(doc: T): string
-  fromXml(xml: string): { ok: true; character: T } | { ok: false; reason: string }
-}
-export const ca2Codec: Codec<Character> = { tag: 'ca2:character', toXml: ch => characterToXml(ch), fromXml: xml => xmlToCharacter(xml) }
-
 /** `api`: 'characters' (runners), 'npcs' (the GMs' NPC area, same shapes) or another game's ('sr6/characters', with its codec). */
-export function serverRepo<T = Character>(base = './', api: string = 'characters', codec: Codec<T> = ca2Codec as unknown as Codec<T>): Repo<T> {
+export function serverRepo<T>(codec: Codec<T>, base = './', api: string = 'characters'): Repo<T> {
   type Row = { file: string; rev: number; xml: string; owner?: string; ownerName?: string }
   const rows = async (): Promise<Row[]> => {
     const r = await fetch(`${base}api/${api}`, { cache: 'no-store' })
@@ -160,10 +152,10 @@ export const rootAttr = (xml: string, name: string, root = 'ca2:character') => {
 const rootName = (xml: string, root?: string) => rootAttr(xml, 'streetName', root) || rootAttr(xml, 'name', root)
 
 /** The server repo if this page is served by the Nova Prime Chummer server, else the browser repo. */
-export async function detectRepo(): Promise<Repo> {
+export async function detectRepo(codec: Codec<Character>): Promise<Repo> {
   try {
     const r = await fetch('./api/health', { cache: 'no-store', signal: AbortSignal.timeout(2500) })
-    if (r.ok && (await r.json()).storage === 'server') return serverRepo()
+    if (r.ok && (await r.json()).storage === 'server') return serverRepo(codec)
   } catch {
     /* no server: fall back */
   }
@@ -190,7 +182,8 @@ export async function migrateBrowserToServer(server: Repo): Promise<number> {
 }
 
 /** The NPC area next to a runner repo: the server's /api/npcs, or this browser's own NPC key. */
-export const npcRepoFor = (runners: Repo): Repo => (runners.mode === 'server' ? serverRepo('./', 'npcs') : browserStore(NPC_KEY, 'NPC'))
+export const npcRepoFor = (runners: Repo, codec: Codec<Character>): Repo =>
+  runners.mode === 'server' ? serverRepo(codec, './', 'npcs') : browserStore(NPC_KEY, 'NPC')
 
 export const RepoContext = createContext<Repo>(browserRepo)
 export const useRepo = () => useContext(RepoContext)

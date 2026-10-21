@@ -10,6 +10,7 @@ import { blankNpc } from '../../src/engine/npc'
 import type { User } from '../../src/ui/auth'
 import { Me } from '../../src/ui/auth'
 import { NpcsScreen } from '../../src/ui/Npcs'
+import { ca2Codec } from '../../src/engine/charxml'
 import { RepoContext, serverRepo } from '../../src/ui/repo'
 import { listCharacters, NPC_KEY, saveCharacter } from '../../src/ui/storage'
 import { cat } from '../helpers'
@@ -86,7 +87,9 @@ test('on the server a GM shares an NPC with a campaign they run', async () => {
     [/\/api\/compendiums/, () => []],
     store.route,
   ])
-  await mount(createElement(Me.Provider, { value: gm }, createElement(RepoContext.Provider, { value: serverRepo() }, createElement(NpcsScreen, { c: cat }))))
+  await mount(
+    createElement(Me.Provider, { value: gm }, createElement(RepoContext.Provider, { value: serverRepo(ca2Codec) }, createElement(NpcsScreen, { c: cat }))),
+  )
   expect(names()).toEqual(['Made-up Fixer'])
   await click(button('Share Made-up Fixer…'))
   await click(button(/^Share/, document.querySelector('dialog[open]')!))

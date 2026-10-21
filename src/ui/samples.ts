@@ -5,6 +5,7 @@
 // of the same character never adds a second one.
 import { characterToXml, parseCharacterFile, xmlToCharacter } from '../engine'
 import type { Character } from '../model/types'
+import { unedited } from './runnerList'
 
 /** What the library needs of a source: canon, and when its book was imported. Looked up case-insensitively. */
 export type SourceInfo = { canon: boolean; imported?: string }
@@ -96,13 +97,6 @@ export function chooseExamples(rows: Example[], sources: Sources): (Example & { 
   }
   return [...best.values()]
 }
-
-/** Loaded and never changed since. A load records the file's date as lastExportedAt (a copy from before that counts as
- *  loaded at the earliest date among copies of the same character from the same source: `loaded`). On the server: saved
- *  once (rev 1; any save after the load is an edit) and not dated after that load (a file changed outside the app). In
- *  browser storage (no rev): still dated exactly as loaded. */
-export const unedited = (ch: Pick<Character, 'updatedAt' | 'lastExportedAt'>, rev?: number, loaded = ch.updatedAt) =>
-  rev != null ? rev <= 1 && ch.updatedAt <= (ch.lastExportedAt ?? loaded) : ch.updatedAt === (ch.lastExportedAt ?? loaded)
 
 /** Where a copy came from: its book (origin, or a 0.4.1 sampleKey's source), else none (an example set). */
 const sourceOf = (ch: Character) => ch.origin ?? (ch.sampleKey && !ch.sampleKey.includes('|') ? ch.sampleKey.split('.')[0] : undefined)

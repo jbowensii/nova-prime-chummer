@@ -6,6 +6,7 @@ import { ATTRS } from '../model/types'
 import { effectStateAttrs, readEffectState } from './effects'
 import { toAmp, toItem, toVehicle } from './parse'
 import { FORMAT_VERSION, knowledgeEntry, migrate, normalizeNpc } from './file'
+import type { Codec } from '../shared/types'
 import { BAD_XML_CHAR, attrs, badCharAt, each, el, esc, escAttr, kid, kids, need, readDoc, text, type ReadOpts } from '../shared/xml'
 
 export const CHAR_NS = 'urn:chummer-anarchy2:character:1'
@@ -376,3 +377,6 @@ export function xmlToCharacter(xml: string, opts: ReadOpts = {}): Parsed {
     return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }
   }
 }
+
+/** Anarchy's file format for the runner repo (src/ui/repo.ts serverRepo takes a game's codec). */
+export const ca2Codec: Codec<Character> = { tag: 'ca2:character', toXml: ch => characterToXml(ch), fromXml: xml => xmlToCharacter(xml) }

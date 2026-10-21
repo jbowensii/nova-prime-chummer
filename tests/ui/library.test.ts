@@ -2,7 +2,9 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { characterToXml } from '../../src/engine/charxml'
 import { blankCharacter } from '../../src/engine/file'
 import type { Character } from '../../src/model/types'
-import { arrange, initial, ownerGroups, sortKey } from '../../src/ui/Library'
+import { initial } from '../../src/ui/Library'
+import { arrange, ownerGroups, sortKey } from '../../src/ui/runnerList'
+import { ca2Codec } from '../../src/engine/charxml'
 import { rootAttr, serverRepo, type Stored } from '../../src/ui/repo'
 
 const runner = (streetName: string, name = '', updatedAt = '2026-09-01T00:00:00Z'): Character => {
@@ -54,7 +56,7 @@ test('the server list keeps files it can’t read (with why); opening one runner
         ]),
       ),
   )
-  const repo = serverRepo('/')
+  const repo = serverRepo(ca2Codec, '/')
   const all = await repo.listAll()
   expect(all.stored.map(s => s.ch.identity.streetName)).toEqual(["Father O'Neil"])
   expect(all.unreadable).toMatchObject([{ file: 'broken.xml', rev: 3, name: 'Broken', owner: 'ada' }])
