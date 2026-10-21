@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, useMe } from '../../ui/auth'
 import { Brand, StateBadge } from '../../ui/bits'
-import { approveRunner } from '../../ui/Campaigns'
+import { approveRunner } from '../../ui/campaignsStore'
 import { IconButton } from '../../ui/icons'
 import { HeaderBars } from '../../ui/nav'
 import { Face } from '../../ui/Portrait'

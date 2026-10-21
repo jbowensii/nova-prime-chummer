@@ -4,7 +4,8 @@
 // Builder. Made-up catalog entries.
 import { createElement } from 'react'
 import { expect, test, vi } from 'vitest'
-import { CatalogEdits, EditButton, EntryForm } from '../../src/ui/EditEntry'
+import { CatalogEdits, EntryForm } from '../../src/ui/EditEntry'
+import { EditButton } from '../../src/ui/editTrigger'
 import { ca2Codec } from '../../src/engine/charxml'
 import { RepoContext, serverRepo } from '../../src/ui/repo'
 import { cat } from '../helpers'

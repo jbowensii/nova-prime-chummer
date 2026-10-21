@@ -9,16 +9,11 @@
   "engine/index.ts > engine/validate.ts",
   "print/shared.tsx > engine/derive.ts",
   "print/shared.tsx > engine/index.ts",
-  "sr6/ui/EntryRef.tsx > ui/EditEntry.tsx",
-  "ui/AnarchyRef.tsx > ui/tabs/Data.tsx",
   "ui/Backup.tsx > ui/repo.ts",
   "ui/Books.tsx > ui/repo.ts",
   "ui/CompendiumShell.tsx > engine/index.ts",
   "ui/SignInSettings.tsx > ui/repo.ts",
-  "ui/SourceLabel.tsx > ui/EditEntry.tsx",
   "ui/Users.tsx > ui/repo.ts",
   "ui/compendiumStore.ts > engine/index.ts",
-  "ui/storage.ts > engine/index.ts",
-  "ui/tabs/Amps.tsx > ui/EditEntry.tsx",
-  "ui/tabs/Gear.tsx > ui/EditEntry.tsx"
+  "ui/storage.ts > engine/index.ts"
 ]

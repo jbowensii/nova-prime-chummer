@@ -10,7 +10,7 @@ import type { Catalog } from '../model/types'
 import { Modal, NonCanon } from './bits'
 import { BookSelect } from './CatalogBrowser'
 import { Prose } from './Prose'
-import { EditButton, EditedMark, useOpenEdit } from './EditEntry'
+import { EditButton, EditedMark, useOpenEdit } from './editTrigger'
 import { isAdmin, useMe } from './auth'
 import { AskSearch } from './AskRules'
 

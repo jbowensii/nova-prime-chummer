@@ -1,7 +1,7 @@
 // What both games' Foundry exports share: file names, the .json download, and the runner-picking export dialog.
 import { useState } from 'react'
 import { Modal } from './bits'
-import type { Campaign } from './Campaigns'
+import type { Campaign } from './campaignsStore'
 import type { Character } from '../model/types'
 
 export const fileDate = (now: Date) => now.toLocaleDateString('en-CA') // local YYYY-MM-DD

@@ -1,13 +1,11 @@
 // Game data (everyone), in the layout both games share (src/ui/GameData.tsx): the catalog browser by kind with the book a
 // filter (CatalogBrowser), the sources, the Foundry export, the catalog edits, the files that didn't load and those that did.
-import type { Catalog, Item, ItemKind, Ref } from '../../model/types'
+import type { Catalog } from '../../model/types'
 import { canEdit, useMe } from '../auth'
-import { fmt, NonCanon } from '../bits'
-import { formulaText, itemPrice, levelLabel, type Formula } from '../../engine'
-import type { BrowseKind } from '../CatalogBrowser'
-import type { BrowseRow } from '../types'
+import { NonCanon } from '../bits'
 import { GameDataPage } from '../GameData'
-import { EditButton, EditedMark, editState, useOpenEdit, type EditKind } from '../EditEntry'
+import { EditButton, editState, useOpenEdit, type EditKind } from '../editTrigger'
+import { browseKinds } from '../AnarchyRef'
 import { SourceLabel } from '../SourceLabel'
 import { ExportBooksPanel } from '../Foundry'
 import { OverrideFiles, type OverrideGame } from '../OverrideFiles'
@@ -28,133 +26,6 @@ function counts(c: Catalog) {
   for (const m of [c.amps, c.items, c.skills, c.rules] as Map<string, { source: string }>[]) for (const e of m.values()) add(e.source)
   for (const sk of c.skills.values()) for (const sp of sk.specs) add(sp.source)
   return n
-}
-
-const ITEM_KINDS: [ItemKind, string][] = [
-  ['weapon', 'Weapons'],
-  ['armor', 'Armor'],
-  ['gear', 'Gear'],
-  ['spell', 'Spells'],
-  ['complex-form', 'Complex forms'],
-]
-const vals = (xs: [string, unknown][]) =>
-  xs
-    .filter(([, v]) => v != null && v !== '' && v !== false)
-    .map(([k, v]) => (v === true ? k : `${k} ${v}`))
-    .join(' · ')
-
-/** Every browsable kind of the catalog, each entry with its sub-category (amps by type, weapons by category…) and values. */
-export function browseKinds(c: Catalog): BrowseKind[] {
-  const row = (e: Ref & { name: string }, more: Partial<BrowseRow>): BrowseRow => ({ key: e.id, name: e.name, source: e.source, page: e.page, ...more })
-  const edited = (e: { edited?: boolean }) => (e.edited ? <EditedMark /> : undefined)
-  // a formula with its value (the standard price is B for an item's cost; Anarchy items have no ratings)
-  const formulas = (e: { formulas?: Formula[] }, i?: Item) =>
-    (e.formulas ?? [])
-      .map(f => {
-        const v =
-          f.field === 'cost' && i ? itemPrice(c.pricing, { uid: '', kind: i.kind, name: i.name, specialist: i.specialist, armor: i.armor }, i) : undefined
-        return `${f.field} = ${formulaText(f, v?.base.toLocaleString('en-US'))}${v ? ` (${v.error ? 'unpriced' : fmt(v.n)})` : ''}`
-      })
-      .join(' · ')
-  const item = (i: Item): BrowseRow =>
-    row(i, {
-      group: i.category,
-      text: i.text,
-      marks: edited(i),
-      action: <EditButton kind="items" id={i.id} name={i.name} />,
-      issues: i.issues,
-      details: [
-        vals([
-          ['specialist', i.specialist],
-          ['armor', i.armor],
-          ['dv', i.dv],
-          ['ranges', i.ranges],
-        ]),
-        formulas(i, i),
-      ]
-        .filter(Boolean)
-        .join(' · '),
-    })
-  const items = [...c.items.values()]
-  return [
-    {
-      id: 'amps',
-      label: 'Amps',
-      rows: [...c.amps.values()].map(a =>
-        row(a, {
-          group: c.ampTypes.get(a.type)?.name ?? a.type,
-          text: a.narrative,
-          marks: edited(a),
-          action: <EditButton kind="amps" id={a.id} name={a.name} />,
-          issues: a.issues,
-          details: [
-            levelLabel(c, a),
-            vals([
-              ['rating', a.printedRating],
-              ['effects', a.effects.map(x => c.ampEffects.get(x.ref)?.name ?? x.ref).join(', ')],
-            ]),
-            formulas(a),
-          ]
-            .filter(Boolean)
-            .join(' · '),
-        }),
-      ),
-    },
-    {
-      id: 'ampeffects',
-      label: 'Amp effects',
-      rows: [...c.ampEffects.values()].map(e =>
-        row(e, {
-          group: e.category,
-          details: vals([
-            ['rating', e.rating],
-            ['for', e.types.join(', ')],
-            ['max', e.max],
-          ]),
-        }),
-      ),
-    },
-    ...ITEM_KINDS.map(([k, label]) => ({ id: k, label, rows: items.filter(i => i.kind === k).map(item) })),
-    {
-      id: 'skills',
-      label: 'Skills',
-      rows: [...c.skills.values()].map(sk =>
-        row(sk, { group: c.attributes.get(sk.attr)?.name, details: vals([['specializations', sk.specs.map(x => x.name).join(', ')]]) }),
-      ),
-    },
-    { id: 'metatypes', label: 'Metatypes', rows: [...c.metatypes.values()].map(m => row(m, { details: vals([['edge', m.edge]]) })) },
-    {
-      id: 'vehicles',
-      label: 'Vehicles',
-      rows: [...c.vehicles.values()].map(v =>
-        row(v, {
-          details: vals([
-            ['handling', v.handling],
-            ['speed', v.speed],
-            ['body', v.body],
-            ['armor', v.armor],
-            ['pilot', v.pilot],
-          ]),
-        }),
-      ),
-    },
-    {
-      id: 'packages',
-      label: 'Packages',
-      rows: [...c.packages.values()].map(k => row(k, { group: c.levels.get(k.level)?.name ?? k.level, details: k.archetype })),
-    },
-    { id: 'lifestyles', label: 'Lifestyles', rows: [...c.lifestyles.values()].map(l => row(l, { text: l.text, details: vals([['per run', l.perRun]]) })) },
-    {
-      id: 'rules',
-      label: 'Rules',
-      rows: [...c.rules.values()].map(r =>
-        row(
-          { ...r, name: r.title },
-          { group: r.sheet, text: r.text, details: r.section, marks: edited(r), action: <EditButton kind="rules" id={r.id} name={r.title} /> },
-        ),
-      ),
-    },
-  ]
 }
 
 /** Anarchy's edits layer as an override file (OverrideFiles): amps, items and rules; formulas and issues stay the book's. */

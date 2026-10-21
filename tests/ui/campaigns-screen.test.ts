@@ -3,7 +3,7 @@
 // archive, edit and delete. Made-up campaigns and accounts.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
-import type { Campaign } from '../../src/ui/Campaigns'
+import type { Campaign } from '../../src/ui/campaignsStore'
 import { CampaignScreen, CampaignsScreen } from '../../src/ui/Campaigns'
 import { Me, type User } from '../../src/ui/auth'
 import { button, change, click, field, mount, pageText, stubFetch } from './dom'

@@ -2,7 +2,7 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import { askRules, AskRules, AskSearch, sourceLine } from '../../src/ui/AskRules'
-import { joined, type Campaign } from '../../src/ui/Campaigns'
+import { joined, type Campaign } from '../../src/ui/campaignsStore'
 import { Me, type User } from '../../src/ui/auth'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
