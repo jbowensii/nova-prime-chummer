@@ -174,7 +174,8 @@ def lists(g):
     entry = {(s, e["kind"], e["id"]): e for s, src in g["mine"].items() for e in src.entries}
     names = defaultdict(list)
     for (s, _, i), e in entry.items():
-        names[match.n1(e["name"])].append(f"{s}.{i}" if not i.startswith(f"{s}.") else i)
+        for n in dict.fromkeys(match.n1(x) for x in [e["name"], *e.get("aliases", ())]):  # (an alias: Commlink6's)
+            names[n].append(f"{s}.{i}" if not i.startswith(f"{s}.") else i)
     optional = {(o["src"], o["cl6_id"]): o for o in g["optional"]}
     added = {(s, r["kind"], r["cl6"]): r for s, r in g["overrides"] if r.get("gen") == "cl6only"}
     moved = {(x["src"], x["cl6_id"]): x["note"] for x in g["relocated"]}
@@ -185,7 +186,7 @@ def lists(g):
 
     by_name = (
         []
-    )  # (Misc. (US) records a book of ours prints under the same name: not list 1's, for the owner to confirm)
+    )  # (Misc. (US) records a book of ours prints under the same name or as an alias: not list 1's, for the owner to confirm)
     for x in g["side"]:  # (the German-only books and Misc. (US))
         if x["book"].startswith("de_"):
             row1(
