@@ -296,7 +296,10 @@ export async function collectSr6Files(
   const index = await fetchOnce(first[2])
   const listed = await module
   if (cl6only && listed == null) missing.push(`${CL6ONLY}index.xml`)
-  const books = [...(index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`), ...(listed ? hrefs(listed) : []).map(href => CL6ONLY + href)]
+  const books = [
+    ...(index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`),
+    ...(listed ? hrefs(listed) : []).filter(href => /^[\w.-]+\.xml$/.test(href) && !href.startsWith('.')).map(href => CL6ONLY + href),
+  ]
   const texts = [...new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => CUSTOM + m[1]))]
   ;[...books, ...texts].forEach(fetchOnce)
   for (const path of books) await add(path, true)

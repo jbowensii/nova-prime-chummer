@@ -12,6 +12,7 @@ exit 0. What it writes is the owner's CommLink6 data: never commit it (docs/sr6-
 
 import os
 import re
+import time
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -353,13 +354,24 @@ def write(out, jar):
     from importer import xmlio
     from importer.sr6.__main__ import validate
 
+    import shutil
+
     files, s = build(jar)
     folder = os.path.join(out, "custom", "sr6", "cl6only")
-    os.makedirs(folder, exist_ok=True)
+    # written and validated beside the live module, swapped in only when every file passes (a failed run leaves the
+    # previous module as it was); the replaced one goes to _to_delete, never deleted
+    fresh = folder + ".new"
+    shutil.rmtree(fresh, ignore_errors=True)
+    os.makedirs(fresh)
     for name, xml in files.items():
-        xmlio.write_file(os.path.join(folder, name), xml)
-    if bad := validate(folder):
+        xmlio.write_file(os.path.join(fresh, name), xml)
+    if bad := validate(fresh):
         raise ValueError("schema: " + "; ".join(f"{f}: {e}" for f, e in bad[:10]))
+    if os.path.isdir(folder):
+        old = os.path.join(out, "_to_delete", f"cl6only-{time.strftime('%Y%m%d-%H%M%S')}")
+        os.makedirs(os.path.dirname(old), exist_ok=True)
+        shutil.move(folder, old)
+    os.replace(fresh, folder)
     return folder, s
 
 
