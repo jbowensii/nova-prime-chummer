@@ -13,6 +13,8 @@ python -m tools.cl6check import --library <books file> <out dir> [--md-from <run
     steps only a library has: the cross-book fill, the printings of a book, the errata, the links across books.
     --md-from: a folder of earlier runs whose book.md the import reuses when it was made from the same PDF by this
     converter.
+python -m tools.cl6check module <data folder> [--jar <jar>]
+    the CommLink6-only data module (module.py): <data folder>/custom/sr6/cl6only, for a server's data folder.
 python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
     the corpus of every import run, ordered by the PDFs' dates; every Commlink6 value traced to where it sits
     (trace.py): <out>/cl6-trace.csv (owner only) and <out>/cl6-trace.md.
@@ -376,6 +378,10 @@ def main(argv=None):
             f"{os.path.join(a.out, 'cl6-trace.md')}"
         )
         return 0
+    if argv[:1] == ["module"]:
+        from tools.cl6check import module
+
+        return module.main(argv[1:])
     if argv[:1] == ["import"]:
         p = argparse.ArgumentParser(prog="cl6check import")
         p.add_argument("books")

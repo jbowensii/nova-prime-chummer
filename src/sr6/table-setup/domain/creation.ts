@@ -10,6 +10,10 @@ import { SOURCE_ID } from '../../../core/shared/source'
 import type { CreationCatalog } from '../../catalog/domain/types'
 
 export const CREATION_NS = 'urn:chummer-sr6:config:1'
+/** The server's switch for the optional data set (custom/sr6/cl6only/, docs/sr6-cl6-optional-package.md): off by default;
+ *  on, the catalog loads it (Sr6App, collectSr6Files). A campaign's or runner's value has no effect: the catalog is the
+ *  server's. */
+export const CL6_ONLY_KEY = 'cl6OnlyData'
 /** The most transhumanist grades the Sixth World Companion's Transhumanism allows (p. 146) */
 export const TRANSHUMAN_MAX = 20
 export type CreationValue = number | boolean | string
@@ -492,6 +496,13 @@ export const CREATION_KEYS: CreationKey[] = [
   {
     key: 'infectedPowersAtCreation',
     label: 'Infected optional powers at creation (GM override): bought at creation, not only after',
+    type: 'bool',
+    group: 'Optional rules',
+    methods: [],
+  },
+  {
+    key: CL6_ONLY_KEY,
+    label: 'Optional data set: records no book prints, from custom/sr6/cl6only/ (the server’s setting; off: none load)',
     type: 'bool',
     group: 'Optional rules',
     methods: [],
@@ -1158,6 +1169,10 @@ const ABOUT: Record<string, [string, string]> = {
   infectedPowersAtCreation: [
     'On: an Infected runner may buy its type’s optional powers at creation; off: only its one free pick at creation, the rest after (“in general”, p. 105)',
     SWC(105),
+  ],
+  [CL6_ONLY_KEY]: [
+    'On: the catalog also loads the optional data set the admin put in custom/sr6/cl6only/ (records no book prints, each under a source of its own marked Non-canon); off: nothing from it loads. Only the server’s setting counts',
+    OPTION,
   ],
   exoticFirstSpecFree: ['On: the first Exotic Weapons specialization costs no skill points or Karma', HOUSE],
   mentorBothAdvantages: [

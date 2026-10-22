@@ -50,7 +50,7 @@ L2_GROUPS = ("field values", "structure kept as ours", "effects", "classes", "re
 
 def side_records(jar):
     """Every record of the jar's German-only books (de_*) and of its Misc. (US) dataset (other_us), which the reader
-    skips: {book, file, tag, id, name, page, product, lang}. The English text wins, then the German."""
+    skips: {book, file, tag, id, name, page, product, lang, el}. The English text wins, then the German."""
     out = []
     with zipfile.ZipFile(jar) as z:
         names = z.namelist()
@@ -85,6 +85,7 @@ def side_records(jar):
                             "page": t.get("page", "").strip(),
                             "product": t.get("prodname", ""),
                             "lang": el.get("lang", ""),
+                            "el": el,
                         }
                     )
     return out
@@ -177,7 +178,7 @@ def lists(g):
         for n in dict.fromkeys(match.n1(x) for x in [e["name"], *e.get("aliases", ())]):  # (an alias: Commlink6's)
             names[n].append(f"{s}.{i}" if not i.startswith(f"{s}.") else i)
     optional = {(o["src"], o["cl6_id"]): o for o in g["optional"]}
-    added = {(s, r["kind"], r["cl6"]): r for s, r in g["overrides"] if r.get("gen") == "cl6only"}
+    added = {(r["src"], r["kind"], r["cl6"]): r for r in package.load_module() if "add" in r}  # (the module's own)
     moved = {(x["src"], x["cl6_id"]): x["note"] for x in g["relocated"]}
     l1 = []
 

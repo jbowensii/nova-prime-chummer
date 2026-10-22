@@ -1,0 +1,390 @@
+"""The CommLink6-only data module (owner ruling 2026-10-21): the Commlink6 records in none of our books (the final
+analysis's list 1, less the Misc. (US) products that are books we import: Seoul Survivor, the Missions Guide,
+Adversary, Age of Rust) and the entries only Commlink6 has that the book overrides used to add (cl6only_module.json),
+as catalog files the app loads from custom/sr6/cl6only/ while the table's `cl6OnlyData` setting is on. Never mixed into
+book data: each entry's source is a CommLink6-only one (CL6-<book>, canon="false"), its id `cl6.<book>.<id>`.
+
+  python -m tools.cl6check module <data folder> [--jar <jar>]
+
+writes <data folder>/custom/sr6/cl6only/: index.xml naming its files, sources.xml, one <kind>.xml per catalog kind,
+each in the importer's format (custom/sr6/imported/<book>/<kind>.xml) and valid against its schema. No jar: skipped,
+exit 0. What it writes is the owner's CommLink6 data: never commit it (docs/sr6-cl6-optional-package.md)."""
+
+import os
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+from tools.cl6check import canon, familymap, fields, reader, valuemap
+from tools.cl6check import optional as package
+from tools.cl6check.final_analysis import CELL, GERMAN_NAME, side_records
+
+REPO = Path(__file__).resolve().parents[2]
+SOURCES = REPO / "public" / "data" / "sr6" / "sources.xml"
+# Misc. (US) products that are books we import now (owner 2026-10-21); Age of Rust prints Buzzard Transit (p. 15)
+IMPORTED = {"Seoul Survivor", "SRM Guide", "Adversary", "Age of Rust"}
+GROUP = {  # (reader.read's reason a record is left out -> the final analysis's list-1 group)
+    "lang=de (German-rules duplicate)": "German-rules duplicates",
+    "no English name in the jar": "no English name",
+    "retired by Commlink6 (Depreciated)": "retired or legacy",
+}
+NOT_ENTRIES = {"ruleoptions": "a rule setting (the app's rule presets), not a catalog entry"}
+ITEMS = ("weapons", "armor", "augmentations", "electronics", "programs", "gear", "vehicles")
+VEHICLE = ("handling", "accel", "interval", "topSpeed", "body", "armor", "pilot", "sensor", "seats")
+PROGRAM = {"HACKING_PROGRAM": "hacking", "AUTOSOFT": "autosoft", "COMMLINK_APP": "app", "BASIC_PROGRAM": "basic"}
+PROGRAM |= {"ESOFT": "e-soft", "RIGGER_PROGRAM": "rigger program"}
+SOURCE_ID = re.compile(r"[A-Z][A-Z0-9\-]{0,19}")
+
+
+def _words(s):
+    return familymap.words((s or "").lower())
+
+
+def _texts(jar):
+    """{(prefix, id lower): {name, page}} from every language's text in the jar, English first: the name Commlink6
+    prints for a record that has no English one."""
+    import zipfile
+
+    out = {}
+    with zipfile.ZipFile(jar) as z:
+        props = sorted(
+            (n for n in z.namelist() if n.endswith(".properties") and "/i18n/" in n),
+            key=lambda n: (bool(reader.LANG_FILE.search(n.rsplit("/", 1)[1][:-11])), n),
+        )
+        for n in props:
+            for k, v in reader.properties(reader.decode(z.read(n))).items():
+                for kk, vv in v.items():
+                    out.setdefault(k, {}).setdefault(kk, vv)
+    return out
+
+
+def _rec(x, text):
+    """A reader-shaped record (canon.canonical's input) of a listing or side record, its name and page filled from any
+    language when it has no English one."""
+    el = reader.normalise(x["el"])
+    t = next(
+        (text[k] for k in [(p, x["id"].lower()) for p in reader.PREFIX.get(x["tag"], (x["tag"],))] if k in text), {}
+    )
+    return {
+        "book": x["book"],
+        "file": x["file"],
+        "tag": x["tag"],
+        "id": x["id"],
+        "name": x["name"] or t.get("name") or x["id"],
+        "page": x["page"] or t.get("page", "").strip(),
+        "wifi": False,
+        "variants": {},
+        "attrs": dict(el.attrib),
+        "el": el,
+    }
+
+
+def records(jar):
+    """(records, moved, text): every list-1 record of the jar the module carries, each a reader-shaped record with its
+    list-1 `group`, and the module definition's rows. The ones the definition writes (the former gen="cl6only" rows) are
+    not in `records`; text: _texts()."""
+    listing = []
+    recs, _ = reader.read(jar, listing)
+    text = _texts(jar)
+    moved = package.load_module()
+    defined = {(r["cl6_book"], r["cl6_id"]) for r in moved if "cl6_id" in r}
+    optional, _ = package.load(with_module=False)
+    note = {k: r.get("note", "") for k, r in package.load_have().items()}
+    out = []
+    for x in side_records(jar):  # (the German-only books and Misc. (US))
+        if (x["book"], x["id"]) in defined or x["book"] == "other_us" and x["product"] in IMPORTED:
+            continue
+        group = (
+            "German-only books"
+            if x["book"].startswith("de_")
+            else "German-rules duplicates" if x["lang"] == "de" else "other"
+        )
+        out.append(_rec(x, text) | {"group": group, "product": x["product"]})
+    out += [_rec(x, text) | {"group": GROUP.get(x["why"], "other")} for x in listing]
+    for r in recs:
+        c = canon.canonical(r)
+        key = (c["src"], c["id"])
+        if (r["book"], r["id"]) in defined:
+            continue
+        if c["kind"] == "ruleoptions":
+            group = "rule options"
+        elif (
+            key in optional or c["cl6only"] and (canon.PSEUDO.match(c["name"].strip()) or CELL in note.get(key, ""))
+        ):  # (the optional package's records; a table cell Commlink6 made a record of)
+            group = "Commlink6-invented or house content"
+        else:
+            continue
+        out.append(r | {"group": group})
+    return out, moved, text
+
+
+def _numeric(field, per):
+    """(value, formula or None) of a per-rating Commlink6 value, in our files' words (valuemap's)."""
+    per = {r: v for r, v in per.items() if v is not None}
+    return valuemap.numeric(field, fields.show(per), "") if per else (None, None)
+
+
+def _item(c, rec, a, forms):
+    """An item's printed values from Commlink6's: rating, cost, avail, essence and its kind's own."""
+    f, k = c["fields"], c["kind"]
+    if c["cl6_class"] and c["cl6_class"] not in ("item", "focus"):
+        a["class"] = c["cl6_class"]
+    # (the schema needs a category: Commlink6's subtype, else its type, in words)
+    a["category"] = _words(rec["attrs"].get("subtype") or rec["attrs"].get("type") or k)
+    if f.get("rating"):
+        lo, hi = f["rating"]
+        a["rating"] = f"{lo}–{hi}" if hi != lo else str(lo)
+    for field in ("cost", "essence") if k in ("augmentations", "packs") else ("cost",):
+        v, form = _numeric(field, f.get(field) or {})
+        if v is not None:
+            a[field] = v
+            if form:
+                forms[field] = form
+    if f.get("avail"):
+        v, form = _numeric("avail", {r: n for r, (n, _) in f["avail"].items()})
+        let = next((g for _, g in f["avail"].values() if g), "")
+        a["avail"] = f"{v}({let})" if let else v
+        if form:
+            forms["avail"] = form
+    if k == "weapons":
+        a |= {"dv": f.get("dv"), "modes": f.get("modes"), "ammo": f.get("ammo")}
+        a["ar"] = valuemap.ar_value(f["ar"]) if f.get("ar") else None
+        a |= familymap.values(rec["el"], "skill/spec")
+    elif k == "armor":
+        d = f.get("defense")
+        a["defense"] = d if not d or d.startswith(("+", "-")) else f"+{d}"
+        a |= familymap.values(rec["el"], "social")
+    elif k == "vehicles":
+        a |= {x: f.get(x) for x in VEHICLE}
+    elif k == "augmentations":
+        a["type"] = (rec["attrs"].get("type") or "cyberware").lower()
+    elif k == "programs":  # (as our books' types: basic, hacking, autosoft …)
+        a["type"] = PROGRAM.get(rec["attrs"].get("subtype"), _words(rec["attrs"].get("subtype")).lower() or "basic")
+
+
+def entry(rec, text=None):
+    """(kind, attrs, formulas {field: formula}, kids) of a record as a catalog entry of ours, or (None, why) when it
+    maps to no catalog kind of the app. text: _texts(), for a pack's contents' names."""
+    from importer.sr6 import KINDS
+    from importer.sr6.overrides import allowed
+
+    c = canon.canonical(rec)
+    k, a, forms, f = c["kind"], {}, {}, c["fields"]
+    if not c["modelled"] or k not in KINDS:
+        return None, f"Commlink6's {rec['tag']} records: no catalog kind of ours"
+    if k in NOT_ENTRIES:
+        return None, NOT_ENTRIES[k]
+    if k in ITEMS or k == "packs":
+        _item(c, rec, a, forms)
+    elif k == "qualities":
+        a |= {
+            "kind": "positive" if rec["attrs"].get("pos") == "true" else "negative",
+            "karma": rec["attrs"].get("karma"),
+        }
+    elif k == "adeptpowers":
+        a |= {"cost": f.get("pp cost"), "activation": valuemap.ENUM["activation"].get(f.get("activation"))}
+        a["perLevel"] = "true" if f.get("per level") == "true" else None
+    elif k == "lifemodules":
+        a["stage"] = "opening" if rec["attrs"].get("type") in ("NATIONALITY", "OPENING") else "adult"
+    elif k == "actions":
+        a |= {"type": (rec["attrs"].get("type") or "").lower(), "category": _words(rec["attrs"].get("cat"))}
+        a["edge"] = rec["attrs"].get("cost") if rec["attrs"].get("type") == "EDGE" else None
+    elif k == "trueelements":
+        a["category"] = _words(rec["attrs"].get("element"))
+    sets, kids = familymap.structure(rec) if k in ITEMS or k == "packs" else ({}, [])
+    if k == "packs":  # (its contents first, as the schema has them: the name of each item it holds)
+        kids = [
+            {"tag": "item", "text": (text or {}).get(("item", m.get("ref").lower()), {}).get("name") or m.get("ref")}
+            for m in canon._mods(rec["el"])  # pylint: disable=protected-access
+            if m.tag == "itemmod" and m.get("type") == "GEAR" and m.get("ref")
+        ] + kids
+    ok = allowed(k) or set()
+    a = {x: str(v) for x, v in (a | sets).items() if v not in (None, "") and x in ok}
+    return k, a, {x: v for x, v in forms.items() if x in a}, kids
+
+
+def source_id(book, file=""):
+    """The CommLink6-only source an entry of Commlink6's book (folder) cites: CL6-<our source id>, else CL6-<folder>."""
+    sid = "CL6-" + canon.source_of(book, file).upper().replace("_", "-")
+    if not SOURCE_ID.fullmatch(sid):
+        raise ValueError(f"{book}: {sid} is no source id (A-Z, 0-9, -, at most 20)")
+    return sid
+
+
+def _page(p):
+    """The first page number Commlink6 gives, else 1 (the schema needs a page; Commlink6 cites none)."""
+    m = re.search(r"\d+", p or "")
+    return str(int(m.group())) if m and int(m.group()) else "1"
+
+
+def _defined(moved, roots, ids):
+    """The module definition's entries (overrides.apply on its rows, per book table), re-cited and re-identified as
+    CommLink6-only, appended to roots(kind); [(kind, row)] of each."""
+    from lxml import etree
+
+    from importer.sr6 import overrides
+
+    out, by_src = [], defaultdict(list)
+    for r in moved:
+        by_src[r["src"]].append({k: v for k, v in r.items() if k not in ("src", "cl6_book", "cl6_id")})
+    adds = {(r["src"], r["kind"], r["add"].get("name", r["cl6"])): r for r in moved if "add" in r}
+    for src, rows in sorted(by_src.items()):
+        for name, xml in sorted(overrides.apply(src, {}, rows=rows).items()):
+            kind = name[:-4]
+            for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8")):
+                row = adds[src, kind, e.findtext("name")]
+                e.set("id", ids(f"cl6.{src}.{e.get('id')}"))
+                e.set("source", source_id(row["cl6_book"]))
+                roots(kind).append(e)
+                out.append((kind, row))
+    return out
+
+
+def build(jar):
+    """({file name: xml}, summary) of the module: index.xml, sources.xml and one file per catalog kind."""
+    from lxml import etree
+
+    from importer import xmlio
+    from importer.sr6 import KINDS, NS
+    from importer.sr6.ids import slug
+
+    recs, moved, text = records(jar)
+    roots, seen = {}, Counter()
+
+    def root(kind):
+        if kind not in roots:
+            roots[kind] = etree.fromstring(f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1"/>'.encode())
+        return roots[kind]
+
+    def uid(i):  # (two records of one book with one id: a German edition's copy beside a German-only one)
+        seen[i] += 1
+        return i if seen[i] == 1 else f"{i}-{seen[i]}"
+
+    s = {"kind": Counter(), "group": Counter(), "unmapped": defaultdict(list), "sources": {}}
+    for kind, row in _defined(moved, root, uid):
+        s["kind"][kind] += 1
+        s["group"][
+            (
+                "other"
+                if row["cl6_book"] == "other_us"
+                else (
+                    "German-rules duplicates"
+                    if GERMAN_NAME.search(row["cl6"])
+                    else "Commlink6-invented or house content"
+                )
+            )
+        ] += 1
+        s["sources"].setdefault(source_id(row["cl6_book"]), (row["cl6_book"], ""))
+    for r in sorted(recs, key=lambda r: (r["book"], r["tag"], r["id"])):
+        got = entry(r, text)
+        if got[0] is None:
+            s["unmapped"][got[1]].append(f"{r['book']}/{r['tag']}/{r['id']}")
+            continue
+        kind, a, forms, kids = got
+        sid = source_id(r["book"], r["file"])
+        e = etree.SubElement(
+            root(kind),
+            KINDS[kind],
+            {
+                "id": uid(f"cl6.{slug(canon.source_of(r['book'], r['file']))}.{slug(r['id'])}"),
+                "source": sid,
+                "page": _page(r["page"]),
+                **a,
+            },
+        )
+        etree.SubElement(e, "name").text = r["name"].strip()
+        for k in kids:
+            etree.SubElement(e, k["tag"], {x: str(v) for x, v in k.get("attrs", {}).items()}).text = k.get("text")
+        for field, form in forms.items():
+            etree.SubElement(e, "formula", {"field": field}).text = form
+        s["kind"][kind] += 1
+        s["group"][r["group"]] += 1
+        s["sources"].setdefault(sid, (r["book"], r.get("product", "")))
+    files = {"sources.xml": _sources(s["sources"])}
+    for kind in KINDS:
+        if kind in roots:
+            r = roots[kind]
+            r[:] = sorted(r, key=lambda e: e.get("id"))
+            files[f"{kind}.xml"] = _xml(r)
+    files["index.xml"] = (
+        xmlio.HEAD
+        + "<!-- The CommLink6-only module (python -m tools.cl6check module). Loaded while cl6OnlyData is on. -->\n"
+        + "<overlays>\n"
+        + "".join(f'  <file href="{n}"/>\n' for n in files)
+        + "</overlays>\n"
+    )
+    return files, s
+
+
+def _sources(sources):
+    """sources.xml: each CommLink6-only source, not canon, named for the book it claims."""
+    from lxml import etree
+
+    from importer.sr6 import NS
+
+    ours = {
+        e.get("id"): e.findtext("name")
+        for e in etree.parse(str(SOURCES)).getroot()
+        if isinstance(e.tag, str) and e.get("id")
+    }
+    root = etree.fromstring(f'<sr6:data xmlns:sr6="{NS}" kind="sources" version="1"/>'.encode())
+    for sid, (book, product) in sorted(sources.items()):
+        title = ours.get(sid[4:]) or {"other_us": "Misc. (US)"}.get(book) or f"{product or book} (German only)"
+        e = etree.SubElement(root, "source", {"id": sid, "publisher": "CommLink6", "canon": "false"})
+        etree.SubElement(e, "name").text = f"CommLink6 only: {title}"
+    return _xml(root)
+
+
+def _xml(root):
+    """A data file as the importer writes one: an entry a line."""
+    from lxml import etree
+
+    from importer import xmlio
+
+    root.text = "\n  " if len(root) else None
+    for i, e in enumerate(root):
+        e.tail = "\n" if i == len(root) - 1 else "\n  "
+    return xmlio.HEAD + etree.tostring(root, encoding="unicode") + "\n"
+
+
+def write(out, jar):
+    """Write the module under <out>/custom/sr6/cl6only; (folder, summary). Raises when a file fails its schema."""
+    from importer import xmlio
+    from importer.sr6.__main__ import validate
+
+    files, s = build(jar)
+    folder = os.path.join(out, "custom", "sr6", "cl6only")
+    os.makedirs(folder, exist_ok=True)
+    for name, xml in files.items():
+        xmlio.write_file(os.path.join(folder, name), xml)
+    if bad := validate(folder):
+        raise ValueError("schema: " + "; ".join(f"{f}: {e}" for f, e in bad[:10]))
+    return folder, s
+
+
+def main(argv):
+    """`module <out> [--jar <jar>]`: write the module, print what it holds and what it could not map."""
+    import argparse
+
+    p = argparse.ArgumentParser(prog="cl6check module")
+    p.add_argument("out")
+    p.add_argument("--jar")
+    a = p.parse_args(argv)
+    jar = reader.find_jar(a.jar)
+    if jar is None:
+        print("cl6check module: no Commlink6 jar (--jar or $CL6_JAR): nothing to write, skipped.")
+        return 0
+    folder, s = write(a.out, jar)
+    n = sum(len(v) for v in s["unmapped"].values())
+    print(f"not mapped ({n}):")
+    for why, ids in sorted(s["unmapped"].items()):
+        print(f"  {why} ({len(ids)}): {', '.join(ids)}")
+    print("by group: " + ", ".join(f"{g} {k}" for g, k in sorted(s["group"].items())))
+    print("by kind: " + ", ".join(f"{g} {k}" for g, k in sorted(s["kind"].items())))
+    print(f"module: {sum(s['kind'].values())} entries, {len(s['sources'])} sources -> {folder}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

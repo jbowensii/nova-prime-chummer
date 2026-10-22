@@ -10,13 +10,33 @@ ACCEPT = Path(__file__).with_name("class_accept.json")
 HAVE = Path(__file__).with_name("relocated.json")
 
 
-def load(path=FILE):
-    """The optional and relocated rows of the file at `path`, each keyed by (source, Commlink6 id)."""
+MODULE = Path(__file__).with_name("cl6only_module.json")
+
+
+def load_module(path=MODULE):
+    """The CommLink6-only module's own rows (cl6only_module.json): the gen="cl6only" adds that left the book overrides
+    (owner ruling 2026-10-21), each with its book table `src`, `cl6_book` and `cl6_id`, and the rows that give them
+    their structure (tools/cl6check/module.py writes them)."""
+    return json.loads(Path(path).read_text(encoding="utf8"))["rows"]
+
+
+def load(path=FILE, with_module=True):
+    """The optional and relocated rows of the file at `path`, each keyed by (source, Commlink6 id). with_module: the
+    CommLink6-only module's records are in the optional package too (counted matched, as no book's entry)."""
     d = json.loads(Path(path).read_text(encoding="utf8"))
-    return (
-        {(r["src"], r["cl6_id"]): r for r in d.get("optional", [])},
-        {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])},
-    )
+    optional = {(r["src"], r["cl6_id"]): r for r in d.get("optional", [])}
+    if with_module:
+        optional |= {
+            (r["src"], r["cl6_id"]): {
+                "src": r["src"],
+                "cl6_id": r["cl6_id"],
+                "name": r["cl6"],
+                "reason": "the CommLink6-only module",
+            }
+            for r in load_module()
+            if "cl6_id" in r
+        }
+    return optional, {(r.get("src"), r["cl6_id"]): r for r in d.get("relocated", [])}
 
 
 def load_accept(path=ACCEPT):
