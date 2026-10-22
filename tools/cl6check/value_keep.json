@@ -145,13 +145,10 @@
     ["da", "vehicles", "da.powered-heavy-tripod", "avail"],
     ["da", "vehicles", "da.sukhoi-evo-su-74-sokol", "seats"],
     ["da", "weapons", "da.al-assad", "ammo"],
-    ["da", "weapons", "da.al-assad", "cost"],
     ["da", "weapons", "da.ares-inferno", "ammo"],
     ["da", "weapons", "da.ares-victory", "ammo"],
     ["da", "weapons", "da.ares-vigilant", "ammo"],
-    ["da", "weapons", "da.ballista-ii", "cost"],
     ["da", "weapons", "da.carl-gustaf", "ammo"],
-    ["da", "weapons", "da.carl-gustaf", "cost"],
     ["da", "weapons", "da.chakram", "ar"],
     ["da", "weapons", "da.chakri", "ar"],
     ["da", "weapons", "da.fire-blossom-mb", "ammo"],
@@ -395,15 +392,7 @@
     ["fs", "weapons", "fs.machine-gun-blast-shields", "variants"],
     ["fs", "armor", "fs.concealable-ammo-pouch", "variants"]
   ],
-  "hold": [
-    ["crb", "weapons", "crb.arrow", "rating", "per-rating/variant by design? owner to decide"],
-    ["bs", "augmentations", "bs.transgenic-chameleon-skin", "avail", "two Commlink6 records match this entry and disagree"],
-    ["crb", "electronics", "crb.omnidirectional-microphone", "cost", "two Commlink6 records match this entry and disagree"],
-    ["da", "weapons", "da.al-assad", "cost", "two Commlink6 records match this entry and disagree"],
-    ["da", "weapons", "da.ballista-ii", "cost", "two Commlink6 records match this entry and disagree"],
-    ["da", "weapons", "da.carl-gustaf", "cost", "two Commlink6 records match this entry and disagree"],
-    ["swc", "qualities", "swc.momentous-misfortune", "karma", "two Commlink6 records match this entry and disagree"]
-  ],
+  "hold": [],
   "verdicts": [
     {
       "src": "cln",

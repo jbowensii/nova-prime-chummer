@@ -881,6 +881,12 @@
       "cl6_id": "houserules",
       "our_id": "creation.preset.houserules",
       "note": "Configurable: Rule preset Configurable (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
+    },
+    {
+      "src": "swc",
+      "cl6_id": "obsession_misfortune",
+      "our_id": "swc.obsession-momentous-misfortune",
+      "note": "Obsession: Momentous Misfortune (p140), the 0-Karma path step; the 5-Karma quality (p138) is swc.momentous-misfortune (owner ruling 2026-10-21)"
     }
   ]
 }

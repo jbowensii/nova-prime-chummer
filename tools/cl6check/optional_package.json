@@ -128,5 +128,30 @@
       "reason": "CommLink6 also files this variant under Double Clutch with no page; same record as the Core Rulebook p299 entry in this package."
     }
   ],
-  "relocated": []
+  "relocated": [
+    {
+      "src": "da",
+      "cl6_id": "al_assad_rocket",
+      "our_id": "da.al-assad-rocket",
+      "reason": "owner ruling 2026-10-21: the launcher and its rocket/shell are two items with two costs; the record is paired with the rocket/shell gear"
+    },
+    {
+      "src": "da",
+      "cl6_id": "ballista_ii_rocket",
+      "our_id": "da.ballista-ii-rocket",
+      "reason": "owner ruling 2026-10-21: the launcher and its rocket/shell are two items with two costs; the record is paired with the rocket/shell gear"
+    },
+    {
+      "src": "da",
+      "cl6_id": "carl_gustaf_shell",
+      "our_id": "da.carl-gustaf-shell",
+      "reason": "owner ruling 2026-10-21: the launcher and its rocket/shell are two items with two costs; the record is paired with the rocket/shell gear"
+    },
+    {
+      "src": "bs",
+      "cl6_id": "transgen_chamaeleon_skin",
+      "our_id": "bs.transgenic-chameleon-skin-dynamic",
+      "reason": "owner ruling 2026-10-21: the Commlink6 record is paired with the Dynamic entry"
+    }
+  ]
 }

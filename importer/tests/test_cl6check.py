@@ -651,6 +651,23 @@ class OptionalPackageTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "aaa"):
                 cli.compare([a, b, c], mine, pdf=False, package=both)
 
+    def test_a_rocket_pinned_by_the_relocated_list_leaves_its_launcher_to_its_own_record(self):
+        from types import SimpleNamespace
+
+        launcher = canon.canonical(rec('<item id="l_one" price="900"/>', name="Zed")) | {"src": "gz"}
+        rocket = canon.canonical(rec('<item id="l_one_rocket" price="50"/>', name="Zed")) | {"src": "gz"}
+        mine = {
+            "gz": SimpleNamespace(
+                entries=[entry("Zed", kind="weapons", cost="900"), entry("Zed Rocket", cost="50")], book_dir=None
+            )
+        }
+        pkg = ({}, {("gz", "l_one_rocket"): {"our_id": "gz.zed rocket"}})
+        results, extras, _ = cli.compare([launcher, rocket], mine, pdf=False, package=pkg)
+        by = {r["id"]: r for r in results}
+        self.assertEqual((by["l_one"]["our_id"], by["l_one"]["diffs"]), ("gz.zed", []))
+        self.assertEqual((by["l_one_rocket"]["our_id"], by["l_one_rocket"]["diffs"]), ("gz.zed rocket", []))
+        self.assertEqual(extras, [])
+
     def test_no_record_is_both_optional_and_relocated(self):
         optional, _ = optional_package.load()
         self.assertEqual(set(optional) & set(optional_package.load_have()), set())
@@ -668,8 +685,14 @@ class OptionalPackageTest(unittest.TestCase):
         ).read()
         self.assertEqual({i for _, i in optional}, set(re.findall(r"CL6 id `([a-z0-9_]+)`", doc)))
         self.assertEqual(
-            relocated, {}
-        )  # (nothing is relocated now; the mechanism stays for a record found in another book)
+            {k: r["our_id"] for k, r in relocated.items()},
+            {
+                ("bs", "transgen_chamaeleon_skin"): "bs.transgenic-chameleon-skin-dynamic",
+                ("da", "al_assad_rocket"): "da.al-assad-rocket",
+                ("da", "ballista_ii_rocket"): "da.ballista-ii-rocket",
+                ("da", "carl_gustaf_shell"): "da.carl-gustaf-shell",
+            },
+        )  # (the owner-ruled pairings, 2026-10-21; the mechanism stays for a record found in another book)
 
 
 class AlreadyHaveTest(unittest.TestCase):
