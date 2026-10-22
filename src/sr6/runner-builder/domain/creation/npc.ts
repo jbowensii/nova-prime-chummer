@@ -365,9 +365,9 @@ function readStats(stats: string[], rating: number | undefined) {
     const t = raw.replace(/^\(+(?=DV)/i, '').trim()
     let m: RegExpMatchArray | null
     // (`licenses: augmentations, RCC`: each word after the colon a licence, until something else)
-    if ((m = t.match(/^licen[sc]es?\s*:\s*(.+)$/i)) || (licences && /^[a-z][a-z ]*$/i.test(t) && !/^(?:rating|dr|w)\b/i.test(t) && (m = [t, t]))) {
+    if ((m = t.match(/^licen[sc]es?\s*:\s*(.+)$/i)) || (licences && /^[a-z][\w -]*$/i.test(t) && !/^(?:rating|dr|w)\b/i.test(t) && (m = [t, t]))) {
       licences = true
-      accessories.push(`${m[1].trim()} license`)
+      accessories.push(...m[1].split(/\s+(?:and|&)\s+/i).map(x => `${x.trim()} license`))
       return
     }
     licences = false
@@ -395,7 +395,7 @@ function readStats(stats: string[], rating: number | undefined) {
     else if ((m = t.match(GRADE))) grade = m[1].toLowerCase()
     else if ((m = t.match(/^x\s*(\d+)$/i))) count = Number(m[1])
     else if (i === 0 && /^[a-z][a-z -]{1,30}$/i.test(t)) category = t
-    else if (fitted && !/\d/.test(t)) accessories.push(t)
+    else if (fitted && (!/\d/.test(t) || /^[a-z-]+(?:\s[a-z-]+){0,2}\s\d{1,2}$/i.test(t))) accessories.push(t)
   })
   return { values: v, category, dvText, grade, count, accessories: accessories.map(a => a.trim()).filter(Boolean) }
 }
@@ -1133,8 +1133,8 @@ function licenceThing(c: Sr6Catalog, part: string, printed: string): { thing: Sr
   if (word !== undefined && ruled === '') {
     const entry = [...(c.entries.licencetypes?.values() ?? [])].find(e => /^augmentation licen/i.test(e.name))
     const thing: Sr6NpcThing = entry
-      ? { ...base, name: entry.name, kind: entry.kind, entry, match: { score: 1, how: 'fuzzy' } }
-      : { ...base, name: 'Augmentation license', kind: 'gear' }
+      ? { ...base, name: entry.name, kind: entry.kind, entry, match: { score: 1, how: 'fuzzy' }, ruled: true }
+      : { ...base, name: 'Augmentation license', kind: 'gear', ruled: true }
     return { thing, generic: said }
   }
   const f = licenceNamed(c, printed)
@@ -1378,20 +1378,24 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         const lifestyle = findEntry(c, name.replace(/\s+lifestyle$/i, '').replace(/^medium$/i, 'middle'), ['lifestyles'], src)
         // (`Medium` is the owner's ruling: a typo for Middle)
         const typo = /^medium\s+lifestyle$/i.test(name) && lifestyle
-        found ??= lifestyle && (typo ? { entry: lifestyle.entry, match: { score: 1, how: 'fuzzy' as const } } : lifestyle)
-        if (typo && found?.entry === lifestyle.entry) lifestyleRuled = true
+        const had = !!found
+        found ??= lifestyle && (typo ? { entry: lifestyle.entry, match: { score: 1, how: 'fuzzy' as const } } : guess(lifestyle, name))
+        if (typo && !had) lifestyleRuled = true
       }
       // (the CRB's certified credstick table lists the credsticks by colour: the one printed, else the standard one; `certified`
       // a detail of the certified ones; an owner ruling 2026-10-22)
-      const stick = stuff ? name.match(/^(certified\s+)?cred\w*sticks?$/i) : null
+      const stick = stuff ? name.match(/^(?:(certified)\s+)?(?:(standard|silver|gold|platinum|ebony)\s+)?(?:(certified)\s+)?cred\w*sticks?$/i) : null
+      let ruled = false
       if (stick) {
         const sticks = [...c.entries.gear.values()].filter(e => /^credstick$/i.test(e.attrs.category ?? ''))
-        const colour = head.match(/\b(standard|silver|gold|platinum|ebony)\b/i)?.[1].toLowerCase()
+        const colour = (stick[2] ?? head.match(/\b(standard|silver|gold|platinum|ebony)\b/i)?.[1])?.toLowerCase()
         const named = sticks.filter(e => e.name.toLowerCase() === colour)
-        if (sticks.length) found ??= { entry: standardOf(named.length ? named : sticks, prefer(c, src)), match: { score: 1, how: 'fuzzy' } }
+        if (sticks.length && !found) {
+          found = { entry: standardOf(named.length ? named : sticks, prefer(c, src)), match: { score: 1, how: 'fuzzy' } }
+          ruled = true
+        }
       }
-      const certified = !!stick?.[1]
-      const ruled = !!stick && !!found
+      const certified = !!(stick?.[1] ?? stick?.[3])
       if (stuff) found ??= viaForms(c, name, head, armored ? ['armor'] : kinds, src)
       if (stuff && !armored) found ??= viaMid(c, name, src)
       if (!natural && !power && !/cybercombat/i.test(s.category ?? ''))
@@ -1470,7 +1474,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
             if (generic) generics.push({ thing, word: generic })
             return thing
           }
-          const ruledAddOn = addOnInitialism(c, a, entry)
+          const ruledAddOn = addOnInitialism(c, unbracketed(a), entry)
           const f =
             ruledAddOn ??
             findEntry(c, a, ACCESSORY_KINDS, src) ??
@@ -1561,7 +1565,8 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
       num(a.entry) > 0 &&
       (a.ruled || /helmet|shield|hood|mask/i.test(`${a.entry.name} ${a.entry.attrs.category}`))
     const pieces = t.accessories.filter(addOn)
-    const total = /\b(?:w\/|with)\s[^()[\]]*[([][^)\]]*[)\]]\s*$/i.test(t.printed)
+    const last = groups(t.printed).at(-1)
+    const total = !!last && last[1] === t.printed.length - 1 && /\b(?:w\/|with)\s/i.test(t.printed.slice(0, last[0]))
     if (
       !total ||
       t.entry?.kind !== 'armor' ||

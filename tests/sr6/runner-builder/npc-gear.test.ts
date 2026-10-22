@@ -31,6 +31,7 @@ const c = buildSr6Catalog([
     ['standard-stick', 'Standard', { category: 'Credstick', cost: '5' }],
     ['gold-stick', 'Gold', { category: 'Credstick', cost: '100' }],
     ['silver-stick', 'Silver', { category: 'Credstick', cost: '20' }],
+    ['ebony-exact', 'Ebony credstick', { category: 'Credstick', cost: '1000' }],
     ['fire-stick', 'Firestick', { category: 'Gadget' }],
     ['cyanide', 'Cyanide', { category: 'Toxin' }],
     ['image-link', 'Image link', { category: 'Accessory' }],
@@ -418,4 +419,36 @@ test('R1 3: the armor total counts one body armor and its cumulative add-ons, an
   // a second body armor is not an add-on; AAS on a non-armor host is no armor piece
   expect(book('Armor vest with Armor jacket (+9)')).toBe(false)
   expect(thingsOf({ gear: 'Medkit w/ AAS' })[0].accessories[0].entry).toBeUndefined()
+})
+
+test('R1 follow-up: rulings in the notes, lifestyle guesses, credstick flags and colours, licence lists, armor totals, rated add-ons', () => {
+  const notes = (gear: string) => npcCorrections(thingsOf({ gear }))
+  // 1 the generic augmentation licence is a ruling too; a licence the catalog names is no correction
+  expect(notes('fake SIN [rating 4; w/ bioware license]')).toContain('bioware license → Augmentation license (owner ruling)')
+  expect(notes('fake SIN [rating 4; licenses: augmentations]')).toContain('augmentations license → Augmentation license (owner ruling)')
+  expect(notes('fake SIN [rating 4; w/ cyberware license]').join()).not.toMatch(/owner ruling/)
+  // 2 another lifestyle keeps its guess note; only Medium is the ruling
+  expect(notes('Low lifestyle').join()).toMatch(/Low lifestyle → Low \(fuzzy/)
+  expect(notes('Medium lifestyle')).toContain('Medium lifestyle → Middle (owner ruling)')
+  // 3 a credstick found by its own name is no ruling; one the rule found is
+  expect(thingsOf({ gear: 'ebony credstick' })[0]).toMatchObject({ entry: { name: 'Ebony credstick' } })
+  expect(thingsOf({ gear: 'ebony credstick' })[0].ruled).toBeUndefined()
+  expect(thingsOf({ gear: 'credstick' })[0].ruled).toBe(true)
+  // 4 the colour before the word, certified before or after it
+  expect(names('gear', 'gold credstick')).toEqual(['Gold'])
+  expect(thingsOf({ gear: 'silver certified credstick' })[0]).toMatchObject({ entry: { name: 'Silver' }, detail: 'certified' })
+  // 5 a licence list with hyphens, digits and `and`
+  const lic = (gear: string) => thingsOf({ gear })[0].accessories.map(a => a.name)
+  expect(lic('fake SIN [rating 4; licenses: augmentations and RCC]')).toEqual(['Augmentation license', 'Rigger remote console license'])
+  expect(lic('fake SIN [rating 4; licenses: pistols, e-1 tool 2]')).toEqual(['Firearm license', 'e-1 tool 2 license'])
+  // 6 the total ends the line, whatever brackets the add-ons have
+  const book = (gear: string) => notes(gear).some(x => /Book error/.test(x))
+  expect(book('Armor vest with AAS (Securetech) and helmet (+6)')).toBe(true)
+  expect(book('Armor vest with AAS (Securetech) and helmet (+5)')).toBe(false)
+  // 7 every rated add-on after w/
+  expect(thingsOf({ gear: 'Armor vest (w/ electricity resistance 2, fire resistance 2)' })[0].accessories.map(a => a.printed)).toEqual([
+    'electricity resistance 2',
+    'fire resistance 2',
+  ])
+  expect(thingsOf({ gear: 'Armor vest (+3, fire resistance 2)' })[0].accessories).toEqual([])
 })
