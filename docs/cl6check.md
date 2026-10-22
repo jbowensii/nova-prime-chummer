@@ -181,7 +181,7 @@ which the reader skips.
   two costs, so Commlink6's `al_assad_rocket`, `ballista_ii_rocket` and `carl_gustaf_shell` are paired with our gear entries
   (`da.al-assad-rocket` …) in optional_package.json `relocated` (a compared pairing: cost, avail and class stay checked),
   and the launcher's own cost now matches. Commlink6's `transgen_chamaeleon_skin` is paired with `bs.transgenic-chameleon-skin-dynamic`
-  (optional_package.json `relocated`, compared; the plain entry bs.json removes had held the old hold row); the plain entry bs.json removes had held the old hold row). `bs.transgenic-chameleon-skin-basic` is now an extra with no Commlink6 partner: one Commlink6 record, two book items (owner ruling).
+  (optional_package.json `relocated`, compared; the plain entry bs.json removes had held the old hold row). `bs.transgenic-chameleon-skin-basic` is now an extra with no Commlink6 partner: one Commlink6 record, two book items (owner ruling).
   Momentous Misfortune reads 5 Karma as printed (SWC p.138; an `owner` row in
   swc.json): Commlink6's `momentous_misfortune` (25) stays a class b difference (`keep`), and its 0-Karma
   `obsession_misfortune` (p.140) is paired with our `swc.obsession-momentous-misfortune`. The arrow and omnidirectional
