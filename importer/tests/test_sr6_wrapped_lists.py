@@ -63,3 +63,30 @@ class WrappedListTest(unittest.TestCase):
             self.assertTrue(regroup._goes_on(label, "Sense", labelled_next=True), key)
             self.assertFalse(regroup._goes_on(label, "Sense", labelled_next=False), key)
             self.assertFalse(regroup._goes_on(label, "Glow Priest hums", labelled_next=True), key)
+
+
+BACKGROUNDS = """<!-- page 20 -->
+# CAST
+## Backgrounds
+### The Glow Doctor
+The glow doctor heals with hums.
+#### Additional recommendations
+• **Skills:** Biotech 4
+• **Knowledge skills:** Dive Bars, Friends in Low
+Places, Poisons
+### The Hum Seller
+The hum seller sells hums and more hums.
+#### Additional recommendations
+• **Skills:** Con 6
+Any hum seller picks a favourite hum.
+"""
+
+
+class LabelledHeadingTest(unittest.TestCase):
+    def test_a_heading_over_labelled_lines_only_keeps_them(self):
+        """Read whole, one background's labelled recommendations are not the next background's (regroup._merge_boxes)."""
+        text, _ = regroup.regroup(BACKGROUNDS)
+        doctor, seller = text.split('<!-- section {"name": "The Hum Seller"')
+        self.assertIn("**Knowledge skills:** Dive Bars, Friends in Low Places, Poisons", doctor)
+        self.assertIn("**Skills:** Biotech 4", doctor)
+        self.assertNotIn("Biotech", seller)

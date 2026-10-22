@@ -1309,8 +1309,16 @@ def _merge_boxes(units, aliases, report):
     descs = [u for u in units if u.kind == "item" and not u.stats and u.has_text()]
     took = {}
     for u in units:
-        if u.kind == "section" or not u.has_box() or any(u is d for d in descs) or u.kind == "item" and u.has_text():
-            continue  # (an item with its band and its own text is whole: a spell named like an adept power)
+        if (
+            u.kind == "section"
+            or not u.has_box()
+            or any(u is d for d in descs)
+            or u.kind == "item"
+            and (u.has_text() or not u.stats)
+        ):
+            # (an item with its band and its own text is whole: a spell named like an adept power; so is a heading over
+            # labelled lines only: one background's `Additional recommendations` are not the next one's)
+            continue
         ks = keys(u.name, aliases)
         cands = [d for d in descs if any(k in ks for nm in alt_names(d.name) for k in keys(nm, aliases))]
         if cands:
