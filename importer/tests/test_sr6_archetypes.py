@@ -141,6 +141,37 @@ class SampleLines(unittest.TestCase):
         self.assertIn('<purchase uid="g5a1" kind="gear" id="nb.bunk" name="Bunk Space" rating="3" qty="1"/>', line)
         self.assertEqual(cost, 30000 + 3000)
 
+    def test_an_electronics_mod_printed_with_a_vehicle_is_fitted_to_it(self):
+        """`Bigvan (shiny paint)`: a vehicle takes a mod priced in mod slots, not only a cargo mod (made-up catalog)."""
+        idx = archetypes._Index(
+            {
+                "vehicles": [_e("bigvan", "Bigvan", category="Van", cost="30000")],
+                "gear": [_e("shiny", "Shiny Paint", category="Electronics mod", slots="1", cost="1500")],
+            },
+            "NB",
+        )
+        line, _, cost = archetypes._purchase(idx, ["vehicles"], "Bigvan (shiny paint)", 5, [], {})
+        self.assertIn('<purchase uid="g5a1" kind="gear" id="nb.shiny" name="Shiny Paint" qty="1"/>', line)
+        self.assertEqual(cost, 30000 + 1500)
+
+    def test_only_a_vehicle_takes_a_slotted_mod_and_only_a_slotted_one(self):
+        """A weapon is not fitted a mod priced in slots, nor a vehicle a plain gear row (made-up catalog)."""
+        idx = archetypes._Index(
+            {
+                "vehicles": [_e("bigvan", "Bigvan", category="Van", cost="30000")],
+                "weapons": [_e("zap", "Zap Gun", category="Pistol", cost="500")],
+                "gear": [
+                    _e("shiny", "Shiny Paint", category="Electronics mod", slots="1", cost="1500"),
+                    _e("plain", "Plain Thing", category="Widget", cost="10"),
+                ],
+            },
+            "NB",
+        )
+        line, _, _ = archetypes._purchase(idx, ["weapons"], "Zap Gun (shiny paint)", 6, [], {})
+        self.assertNotIn("nb.shiny", line)
+        line, _, _ = archetypes._purchase(idx, ["vehicles"], "Bigvan (plain thing)", 7, [], {})
+        self.assertNotIn("nb.plain", line)
+
 
 if __name__ == "__main__":
     unittest.main()
