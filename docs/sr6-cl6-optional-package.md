@@ -16,35 +16,45 @@ it comes from.
 
 **What is in it.** Every record of the final analysis's list 1 (docs/reviews/sr6-cl6-final-analysis-2026-10-21.md) that
 fits one of the app's catalog kinds, plus the 23 entries the book overrides used to add (`"gen": "cl6only"`, listed
-below). With CommLink6 1.14.0 that is 863 entries:
+below). With CommLink6 1.14.0 that is 860 entries in 24 sources:
 
 | list-1 group | entries |
 |---|---|
 | German-only books (`de_*`) | 300 |
 | German-rules duplicates (`lang="de"` copies, the three German-named ammunition rows among them) | 308 |
 | no English name (the Companion's life modules, Astral Ways' true elements, ...) | 176 |
-| CommLink6-invented or house content (the optional package below, the option rows, the table cells) | 70 |
+| CommLink6-invented or house content (the optional package below, the option rows, the table cells) | 67 |
 | retired or legacy (`Depreciated ...`) | 5 |
 | other: the four SR6 forum hitches (CommLink6's Misc. (US) dataset) | 4 |
 
 By kind: vehicles 212, gear 131, life modules 158, packs 112, weapons 103, mentor spirits 38, armor 34, electronics 16,
-true elements 15, metatypes 13, actions 10, qualities 10, programs 5, adept powers 2, augmentations 2, lifestyles 1,
+true elements 15, metatypes 10, actions 10, qualities 10, programs 5, adept powers 2, augmentations 2, lifestyles 1,
 vehicle design 1.
 
 **What is left out, and why.**
 - Seoul Survivor, the Sixth World Missions Guide, Adversary and Age of Rust: books we import now, so their records are
   book data. (Age of Rust prints Buzzard Transit's stat line on p. 15; it stays the book's `aor.buzzard-transit`.)
 - The 25 priority-table cells of the core rulebook (`priotableentry`): the priority table is no catalog kind.
+- Lofwyr's Legions' three drake types (Western, Feathered, Sea Drake): CommLink6 gives them no attribute maximums
+  (they are sets of choices), and a metatype without ranges is unusable, so they stay out.
+- Any metatype, mentor spirit or lifestyle CommLink6 gives no usable values for is left out the same way and listed
+  under "not mapped" (with jar 1.14.0 only the three drake types).
 - The 4 rule options and the German edition's rule interpretation (`interpretation`): rule settings, which the app has as
   its rule presets.
 
 **How each record becomes an entry.** The same XML as an imported book's (`custom/sr6/imported/<book>/<kind>.xml`), so
-the app reads it unchanged, and valid against the kind's schema (the generator checks). The id is `cl6.<book>.<id>`, so
-it never collides with a book's. The source is a CommLink6-only one named for the book CommLink6 claims: `CL6-DA` is
+the app reads it unchanged, and valid against the kind's schema (the generator checks). The id is `cl6.<book>.<id>` (the same book as its
+source), so it never collides with a book's. An entry that was a book's until 2026-10-21 (the 23 below) keeps its old
+id as `<alias id="dc.hitches-trailer-hitch"/>`, so a saved runner holding the old id finds the module's entry while
+the module is on. The source is a CommLink6-only one named for the book CommLink6 claims: `CL6-DA` is
 "CommLink6 only: Shadowrun: Deadly Arts", `CL6-DE-ALPEN` "CommLink6 only: de_alpen (German only)"; every one is
 `canon="false"`, so Game data and the pickers mark it Non-canon. The name is CommLink6's English one, else the one it
 prints (German). Values are CommLink6's, in our files' words (`Rating x 1000`, `4(L)`, a `tier()` formula for a
-per-rating table), and the item structure (slots, fits, flags) as `familymap` writes it. A record with no page in
+per-rating table), and the item structure (slots, fits, flags) as `familymap` writes it. A metatype gets its
+attribute ranges (1 to CommLink6's maximum, its base metatype's first, 6 where neither gives one) and its qualities and
+critter powers as traits. A mentor spirit gets its Edge boosts as `edge-cost` effects on the skill, attribute test or
+spell category (a magician's or an adept's only: `when`), and the adept powers and qualities it gives as `grants`
+links by name, as the books' mentor spirits have them. A lifestyle gets its cost. A record with no page in
 CommLink6 gets page 1 (the schema needs one).
 
 **Generate it** (on the PC with CommLink6; no jar: "skipped"):
@@ -53,7 +63,9 @@ CommLink6 gets page 1 (the schema needs one).
 python -m tools.cl6check module <data folder>
 ```
 
-It writes `<data folder>/custom/sr6/cl6only/`: `index.xml` naming the files, `sources.xml`, and one file per kind. It
+It writes `<data folder>/custom/sr6/cl6only/` (built beside it in `cl6only.new`, schema-checked, then
+renamed into place; the module it replaces goes to `<data folder>/_to_delete/`; if anything fails, the live module
+stays as it was): `index.xml` naming the files, `sources.xml`, and one file per kind. It
 prints what it could not map, the counts by group and by kind, then `module: <n> entries, <n> sources -> <folder>`.
 Never commit its output: it is CommLink6's data.
 

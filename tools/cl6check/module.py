@@ -20,6 +20,7 @@ from pathlib import Path
 from tools.cl6check import canon, familymap, fields, reader, valuemap
 from tools.cl6check import optional as package
 from tools.cl6check.final_analysis import CELL, GERMAN_NAME, side_records
+from tools.cl6effects.xlate import ABBR, ATTR_REF
 
 REPO = Path(__file__).resolve().parents[2]
 SOURCES = REPO / "public" / "data" / "sr6" / "sources.xml"
@@ -36,6 +37,7 @@ VEHICLE = ("handling", "accel", "interval", "topSpeed", "body", "armor", "pilot"
 PROGRAM = {"HACKING_PROGRAM": "hacking", "AUTOSOFT": "autosoft", "COMMLINK_APP": "app", "BASIC_PROGRAM": "basic"}
 PROGRAM |= {"ESOFT": "e-soft", "RIGGER_PROGRAM": "rigger program"}
 SOURCE_ID = re.compile(r"[A-Z][A-Z0-9\-]{0,19}")
+ATTRS = ("BODY", "AGILITY", "REACTION", "STRENGTH", "WILLPOWER", "LOGIC", "INTUITION", "CHARISMA", "EDGE")
 
 
 def _words(s):
@@ -88,7 +90,7 @@ def records(jar):
     listing = []
     recs, _ = reader.read(jar, listing)
     text = _texts(jar)
-    moved = package.load_module()
+    moved = check_rows(package.load_module())
     defined = {(r["cl6_book"], r["cl6_id"]) for r in moved if "cl6_id" in r}
     optional, _ = package.load(with_module=False)
     note = {k: r.get("note", "") for k, r in package.load_have().items()}
@@ -117,6 +119,10 @@ def records(jar):
         else:
             continue
         out.append(r | {"group": group})
+    bases = {r["id"]: r["el"] for r in recs if r["tag"] == "metatype"}  # (a variant's ranges start from its base's)
+    for r in out:
+        if r["tag"] == "metatype":
+            r["base"] = bases.get(r["attrs"].get("variantof"))
     return out, moved, text
 
 
@@ -193,6 +199,18 @@ def entry(rec, text=None):
         a["edge"] = rec["attrs"].get("cost") if rec["attrs"].get("type") == "EDGE" else None
     elif k == "trueelements":
         a["category"] = _words(rec["attrs"].get("element"))
+    elif k == "lifestyles":
+        a["cost"] = rec["attrs"].get("cost")
+        if not a["cost"]:
+            return None, "a lifestyle CommLink6 gives no cost"
+    elif k == "metatypes":
+        if not (got := _metatype(rec, text or {})):
+            return None, "a metatype CommLink6 gives no attribute maximums (its drake types are choices, not metatypes)"
+        return k, {}, {}, got
+    elif k == "mentorspirits":
+        if not (got := _mentor(rec, text or {})):
+            return None, "a mentor spirit with no advantage in a form the app reads"
+        return k, {}, {}, got
     sets, kids = familymap.structure(rec) if k in ITEMS or k == "packs" else ({}, [])
     if k == "packs":  # (its contents first, as the schema has them: the name of each item it holds)
         kids = [
@@ -203,6 +221,111 @@ def entry(rec, text=None):
     ok = allowed(k) or set()
     a = {x: str(v) for x, v in (a | sets).items() if v not in (None, "") and x in ok}
     return k, a, {x: v for x, v in forms.items() if x in a}, kids
+
+
+def _name(text, prefixes, ref):
+    """CommLink6's name of the record `ref` of one of the text prefixes (English first), or None."""
+    return next((text[p, ref.lower()]["name"] for p in prefixes if text.get((p, ref.lower()), {}).get("name")), None)
+
+
+def _metatype(rec, text):
+    """A metatype's kids: its attribute ranges (1 to its maximum: its base's then its own CommLink6 maximums, 6 where
+    neither gives one) and its traits (the qualities and critter powers it gives, by CommLink6's name); [] when neither
+    it nor its base gives a maximum."""
+    maxes = {}
+    for el in (rec.get("base"), rec["el"]):
+        for m in el.iter("valmod") if el is not None else ():
+            ref, v = (m.get("ref") or "").upper(), m.get("value") or ""
+            if m.get("type") == "ATTRIBUTE" and m.get("set") == "MAX" and ref in ATTRS and v.isdigit():
+                maxes[ref] = v
+    if not maxes:
+        return []
+    kids = [{"tag": "range", "attrs": {"attr": ABBR[x], "min": "1", "max": maxes.get(x, "6")}} for x in ATTRS]
+    for m in rec["el"].iter():
+        if m.tag in ("itemmod", "valmod") and m.get("type") in ("QUALITY", "CRITTER_POWER") and m.get("ref"):
+            pre = ("quality",) if m.get("type") == "QUALITY" else ("critterpower",)
+            if name := _name(text, pre, m.get("ref")):
+                kids.append({"tag": "trait", "text": name})
+    return kids
+
+
+def _target(m):
+    """Our effect target of a Commlink6 Edge boost (checkmod what=EDGE_BOOST), or None."""
+    ty, ref = m.get("type"), (m.get("ref") or "")
+    if ty == "SKILL":
+        return "skill:" + ("choice" if ref.upper() == "CHOICE" else re.sub(r"[^a-z0-9]+", "-", ref.lower()))
+    if ty == "ATTRIBUTE":
+        t = ATTR_REF.get(ref.upper(), "")
+        return f"test:attr-{ABBR[ref.upper()]}" if ref.upper() in ATTRS else t if t.startswith("test:") else None
+    if ty in ("SPELL", "SPELL_CATEGORY") and ref.upper() != "CHOICE":
+        return "test:spell-" + ref.lower()
+    return None
+
+
+def _mentor(rec, text):
+    """A mentor spirit's kids in our words, as the books' (crb mentor spirits): its Edge boosts as `edge-cost` effects
+    on the skill, attribute test or spell category (a magician's or an adept's only: `when`), the adept powers and
+    qualities it gives as `grants` links by CommLink6's name, its relevance and picks; [] when it has none of the first
+    two."""
+    kids = []
+    blocks = [("", b) for b in rec["el"].findall("modifications")]
+    blocks += [(role, b) for role in ("magician", "adept") for b in rec["el"].findall(role)]
+    for when, block in blocks:
+        cond = {"switch": "conditional", "when": when} if when else {}
+        for m in block.iter():
+            ty, ref, v = m.get("type"), m.get("ref") or "", m.get("value") or ""
+            target = _target(m) if m.tag == "checkmod" and m.get("what") == "EDGE_BOOST" and v else None
+            if target:
+                kids.append({"tag": "effect", "attrs": {"target": target, "op": "edge-cost", "value": v, **cond}})
+            elif m.tag in ("valmod", "itemmod") and ty in ("ADEPT_POWER", "QUALITY") and ref:
+                if ty == "ADEPT_POWER":
+                    kind, pre = "adeptpowers", ("adeptpower", "power")
+                else:
+                    kind, pre = "qualities", ("quality",)
+                if name := _name(text, pre, ref):
+                    level = {"level": v} if v.isdigit() and int(v) > 0 else {}
+                    attrs = {"rel": "grants", "name": name, "kind": kind, **level, **({"when": when} if when else {})}
+                    kids.append({"tag": "link", "attrs": attrs})
+            elif m.tag == "relevancemod" and (m.get("topic") or "").strip():
+                kids.append({"tag": "relevance", "attrs": {"topic": m.get("topic").strip().casefold()}})
+    if not any(k["tag"] in ("effect", "link") for k in kids):
+        return []
+    picks = [k for k in familymap.structure(rec)[1] if k["tag"] == "selection"]
+    return list({repr(k): k for k in kids + picks}.values())
+
+
+def prefix(book, file=""):
+    """The id prefix of the module's entries of Commlink6's book (folder): cl6.<our source id or the folder>, the same
+    book its source (source_id) names."""
+    from importer.sr6.ids import slug
+
+    return f"cl6.{slug(canon.source_of(book, file))}"
+
+
+def check_rows(rows):
+    """The module definition's rows, each checked (a ValueError naming the row otherwise): an add row has its book
+    table `src`, `kind`, `cl6`, `cl6_book`, `cl6_id` and a page; any other row names an add row of its table by id or
+    name."""
+    from importer.sr6 import KINDS
+    from importer.sr6.ids import slug
+
+    adds = defaultdict(set)
+    for i, r in enumerate(rows):
+        if not isinstance(r, dict) or not r.get("src") or r.get("kind") not in KINDS:
+            raise ValueError(f"cl6only_module.json row {i}: needs its book table `src` and a catalog `kind`")
+        if "add" in r:
+            if not all(r.get(k) for k in ("cl6", "cl6_book", "cl6_id")) or not isinstance(r["add"].get("page"), int):
+                raise ValueError(
+                    f"cl6only_module.json row {i} ({r.get('cl6')}): an add row needs cl6, cl6_book, cl6_id, page"
+                )
+            name = r["add"].get("name", r["cl6"])
+            adds[r["src"]] |= {r["add"].get("id") or slug(name), name}
+    for i, r in enumerate(rows):
+        if "add" not in r and not ({r.get("id"), *r.get("ours", ())} - {None}) <= adds[r["src"]]:
+            raise ValueError(
+                f"cl6only_module.json row {i} ({r.get('cl6')}): names no entry the module adds in {r['src']}"
+            )
+    return rows
 
 
 def source_id(book, file=""):
@@ -227,16 +350,18 @@ def _defined(moved, roots, ids):
     from importer.sr6 import overrides
 
     out, by_src = [], defaultdict(list)
-    for r in moved:
+    for r in sorted(moved, key=lambda r: "add" not in r):  # (the adds first: a name row needs its entry made)
         by_src[r["src"]].append({k: v for k, v in r.items() if k not in ("src", "cl6_book", "cl6_id")})
     adds = {(r["src"], r["kind"], r["add"].get("name", r["cl6"])): r for r in moved if "add" in r}
     for src, rows in sorted(by_src.items()):
         for name, xml in sorted(overrides.apply(src, {}, rows=rows).items()):
             kind = name[:-4]
             for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8")):
-                row = adds[src, kind, e.findtext("name")]
-                e.set("id", ids(f"cl6.{src}.{e.get('id')}"))
+                row, old = adds[src, kind, e.findtext("name")], e.get("id")
+                e.set("id", ids(kind, f"{prefix(row['cl6_book'])}.{old}"))
                 e.set("source", source_id(row["cl6_book"]))
+                # (its id as a book entry until 2026-10-21: a saved runner holding it finds this one, load.ts `moved`)
+                etree.SubElement(e, "alias", {"id": f"{src}.{old}"})
                 roots(kind).append(e)
                 out.append((kind, row))
     return out
@@ -258,9 +383,9 @@ def build(jar):
             roots[kind] = etree.fromstring(f'<sr6:data xmlns:sr6="{NS}" kind="{kind}" version="1"/>'.encode())
         return roots[kind]
 
-    def uid(i):  # (two records of one book with one id: a German edition's copy beside a German-only one)
-        seen[i] += 1
-        return i if seen[i] == 1 else f"{i}-{seen[i]}"
+    def uid(kind, i):  # (two records of one book with one id: a German edition's copy beside a German-only one)
+        seen[kind, i] += 1
+        return i if seen[kind, i] == 1 else f"{i}-{seen[kind, i]}"
 
     s = {"kind": Counter(), "group": Counter(), "unmapped": defaultdict(list), "sources": {}}
     for kind, row in _defined(moved, root, uid):
@@ -288,7 +413,7 @@ def build(jar):
             root(kind),
             KINDS[kind],
             {
-                "id": uid(f"cl6.{slug(canon.source_of(r['book'], r['file']))}.{slug(r['id'])}"),
+                "id": uid(kind, f"{prefix(r['book'], r['file'])}.{slug(r['id'])}"),
                 "source": sid,
                 "page": _page(r["page"]),
                 **a,
@@ -363,16 +488,42 @@ def write(out, jar):
     fresh = folder + ".new"
     shutil.rmtree(fresh, ignore_errors=True)
     os.makedirs(fresh)
-    for name, xml in files.items():
-        xmlio.write_file(os.path.join(fresh, name), xml)
-    if bad := validate(fresh):
-        raise ValueError("schema: " + "; ".join(f"{f}: {e}" for f, e in bad[:10]))
-    if os.path.isdir(folder):
-        old = os.path.join(out, "_to_delete", f"cl6only-{time.strftime('%Y%m%d-%H%M%S')}")
-        os.makedirs(os.path.dirname(old), exist_ok=True)
-        shutil.move(folder, old)
-    os.replace(fresh, folder)
+    # renames only (never shutil.move: on a locked file it falls back to copy-and-delete, which can half-empty the live
+    # folder); anything that fails leaves the live module as it was and drops the new one
+    old = (
+        os.path.join(out, "_to_delete", f"cl6only-{time.strftime('%Y%m%d-%H%M%S')}") if os.path.isdir(folder) else None
+    )
+    try:
+        for name, xml in files.items():
+            xmlio.write_file(os.path.join(fresh, name), xml)
+        if bad := validate(fresh):
+            raise ValueError("schema: " + "; ".join(f"{f}: {e}" for f, e in bad[:10]))
+        if old:
+            os.makedirs(os.path.dirname(old), exist_ok=True)
+            _rename(folder, old)
+        try:
+            _rename(fresh, folder)
+        except OSError:
+            if old:
+                _rename(old, folder)
+            raise
+    except Exception:
+        shutil.rmtree(fresh, ignore_errors=True)
+        raise
     return folder, s
+
+
+def _rename(src, dst):
+    """os.replace, waiting while a server holds a file in it open (Windows refuses the rename then), as
+    importer/xmlio.py write_file does; raises when it still fails."""
+    for i in range(20):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i == 19 or os.name != "nt":
+                raise
+            time.sleep(0.01 * (i + 1))
 
 
 def main(argv):

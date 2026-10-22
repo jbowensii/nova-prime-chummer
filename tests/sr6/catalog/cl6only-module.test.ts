@@ -3,7 +3,7 @@
 // marked not canon. Made-up files throughout.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
-import { buildSr6Catalog, collectSr6Files } from '../../../src/sr6/catalog/domain/load'
+import { buildSr6Catalog, collectSr6Files, resolveEntry } from '../../../src/sr6/catalog/domain/load'
 import { CL6_ONLY_KEY, CREATION_KEYS, flag, parseCreation } from '../../../src/sr6/table-setup/domain/creation'
 
 const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
@@ -13,7 +13,7 @@ const FILES: Record<string, string> = {
   'custom/sr6/imported/zz/gear.xml': `<sr6:data ${NS} kind="gear" version="1"><gear id="zz.lamp" source="ZZ" page="3" category="Tools"><name>Lamp</name></gear></sr6:data>`,
   'custom/sr6/cl6only/index.xml': '<overlays><file href="sources.xml"/><file href="gear.xml"/></overlays>',
   'custom/sr6/cl6only/sources.xml': `<sr6:data ${NS} kind="sources" version="1"><source id="CL6-ZZ" publisher="CommLink6" canon="false"><name>CommLink6 only: Zed Book</name></source></sr6:data>`,
-  'custom/sr6/cl6only/gear.xml': `<sr6:data ${NS} kind="gear" version="1"><gear id="cl6.zz.widget" source="CL6-ZZ" page="7" category="Tools" cost="40"><name>Widget</name></gear></sr6:data>`,
+  'custom/sr6/cl6only/gear.xml': `<sr6:data ${NS} kind="gear" version="1"><gear id="cl6.zz.widget" source="CL6-ZZ" page="7" category="Tools" cost="40"><name>Widget</name><alias id="zz.widget"/></gear></sr6:data>`,
 }
 
 async function load(on?: boolean, have = FILES) {
@@ -44,6 +44,13 @@ test('on: its files load after the books’, its entries under their own not-can
   expect(c.sources.get('CL6-ZZ')).toMatchObject({ name: 'CommLink6 only: Zed Book', canon: false })
   expect(c.sources.get('ZZ')?.canon).toBe(true)
   expect(c.entries.gear.get('zz.lamp')?.source).toBe('ZZ')
+})
+
+test('on: an entry that was a book’s keeps its old id as an alias, so a saved runner holding it finds the module’s', async () => {
+  const { c } = await load(true)
+  expect(c.moved.get('gear/zz.widget')).toEqual({ kind: 'gear', id: 'cl6.zz.widget' })
+  expect(resolveEntry(c, 'gear', 'zz.widget')?.id).toBe('cl6.zz.widget')
+  expect(resolveEntry((await load(false)).c, 'gear', 'zz.widget')).toBeUndefined()
 })
 
 test('on with no data set on the server: its index is reported missing, the books still load', async () => {
