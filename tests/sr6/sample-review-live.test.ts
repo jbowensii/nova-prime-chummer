@@ -3,8 +3,10 @@
 // owner-ruled annotation covers. No book data in the repo: SR6_CATALOG=<a data folder holding custom/sr6, e.g. an import
 // run's folder> npx vitest run tests/sr6/sample-review-live.test.ts; SR6_SAMPLES_OUT=<file> writes
 // [{name, source, errors, annotated, messages}] as JSON. Skipped without SR6_CATALOG.
-// Covered, strictly: the error's code is named by a sample.corrected warning (the override file's <samplefix>) or by the note
-// of a row of importer/sr6/overrides/samples/<book>.json for that sample which the import put in the runner's notes.
+// Covered, strictly and per instance: a `[review: <code> | <text>]` tag in a sample.corrected warning (the override file's
+// <samplefix>) or in the note of a book-error row of importer/sr6/overrides/samples/<book>.json for that sample which the
+// import put in the runner's notes (a row of kind "assumption" covers nothing), whose code is the error's and whose text
+// is in the error's message (`8 karma left`: the measured number too); each tag covers one error.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
@@ -43,22 +45,28 @@ test.skipIf(!DIR)(
       const ch = withSampleFixes(c, { ...r.character, sampleKey: key }).ch
       const v = validateSr6(data, runnerRules(shipped, ch.rules), ch)
       const ownFile = join('importer/sr6/overrides/samples', `${s.source.toLowerCase()}.json`)
-      const notes = (existsSync(ownFile) ? (JSON.parse(readFileSync(ownFile, 'utf8')) as { sample: string; note: string }[]) : [])
-        .filter(o => o.sample === s.name && ch.identity.notes.includes(o.note))
+      const notes = (existsSync(ownFile) ? (JSON.parse(readFileSync(ownFile, 'utf8')) as { sample: string; kind?: string; note: string }[]) : [])
+        .filter(o => o.sample === s.name && o.kind !== 'assumption' && ch.identity.notes.includes(o.note))
         .map(o => o.note)
       const said = [...notes, ...v.filter(x => x.code === 'sample.corrected').map(x => x.message)]
+      const tags = said.flatMap(t => [...t.matchAll(/\[review: ([\w.]+) \| ([^\]]+)\]/g)].map(m => ({ code: m[1], text: m[2], used: false })))
       const errs = v.filter(x => x.severity === 'error' && !x.approved)
-      const covered = (code: string) => said.some(t => t.includes(code))
+      const covered = errs.map(x => {
+        const t = tags.find(t => !t.used && t.code === x.code && x.message.includes(t.text))
+        if (t) t.used = true
+        return !!t
+      })
       return {
         name: s.name,
         source: s.source,
-        errors: [...new Set(errs.filter(x => !covered(x.code)).map(x => x.code))],
-        annotated: [...new Set(errs.filter(x => covered(x.code)).map(x => x.code))],
+        errors: errs.filter((_, i) => !covered[i]).map(x => x.code),
+        annotated: errs.filter((_, i) => covered[i]).map(x => x.code),
         messages: errs.map(x => `${x.code}: ${x.message}`),
       }
     })
     if (process.env.SR6_SAMPLES_OUT) writeFileSync(process.env.SR6_SAMPLES_OUT, JSON.stringify(out, null, 1))
     expect(out.length).toBeGreaterThan(0)
+    expect(out.flatMap(r => r.errors.map(e => `${r.name}: ${e}`))).toEqual([])
   },
   900_000,
 )

@@ -146,8 +146,9 @@ class _Index:
         """When nothing else finds `name`: the entry its last printed words name exactly (a maker or a kind of thing
         before the name, `Mortimer o.L. Get into the Rhythm`, `Aeronautical repair shop`; the last word alone only among
         `one`'s kinds, default all), else the one of `kinds` whose name is most like it (difflib's ratio of the
-        normalized names, at least `at`: the owner's 75% rule, 2026-10-20; `Beretta 201` the Beretta 201T, `Harden`
-        Hardening), the book's own first on a tie; `accept` (entry -> bool) as in find. None when none is."""
+        normalized names, or, for a name of two words or more, of the entry's name cut to as many words, at least
+        `at`: the owner's 75% rule, 2026-10-20; `Beretta 201` the Beretta 201T, `Harden` Hardening, `smarklink system`
+        the Smartgun system), the book's own first on a tie; `accept` (entry -> bool) as in find. None when none is."""
         words = norm(name).split()
         for i in range(1, len(words)):
             tail = " ".join(words[i:])
@@ -156,7 +157,11 @@ class _Index:
         best, top = None, at
         for kind in kinds:
             for e in self.entries(kind):
-                r = difflib.SequenceMatcher(None, norm(name), norm(e["name"])).ratio()
+                en = norm(e["name"]).split()
+                r = max(
+                    difflib.SequenceMatcher(None, norm(name), " ".join(x)).ratio()
+                    for x in (en, en[: len(words) if len(words) > 1 else None])
+                )
                 if r > top or (r == top and best is None):
                     if accept is None or accept(e):
                         best, top = (kind, e["id"], e["name"], e), r
@@ -312,8 +317,9 @@ def _overridden(src, name, labels, page):
     text>", "to": "<replacement>"} | {"field": "<label>", "add": "<text appended to the line>"}]}. Returns (labels,
     notes): a copy of the labels with the edits applied, and the notes of the rows that applied. An edit whose printed
     text isn't there is reported on stderr (a reprint can't skip it silently) and its row's note is left out. A row
-    with no edits is a note only: a stat block that breaks a creation rule as printed, kept as printed, its note naming
-    the Review code it explains (`review: leftover.karma`) with the measured numbers (owner, 2026-10-21)."""
+    with no edits is a note only: a stat block that breaks a creation rule as printed, kept as printed, its note
+    tagging each Review error it explains, `[review: leftover.karma | 8 karma left]`, with the measured numbers; one of
+    `"kind": "assumption"` says how an item the book leaves open was read (owner, 2026-10-21)."""
     labels, notes = dict(labels), []
     path = SAMPLES_DIR / f"{src.lower()}.json"
     for r in json.loads(path.read_text(encoding="utf8")) if path.is_file() else []:
@@ -834,7 +840,20 @@ MISPRINTS = {
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
 
 
-_STAT = r"\brating\b|^\s*(?:(?:agility|strength|programs)\s+)?\d+\s*$|\d+/\d+\s*$"
+# a stat printed in an item's brackets, not a thing fitted to it: a rating, a limb's `Agility 6`, a device's `Programs
+# 3`, `D/F 3/1`, `Data Processing 4`, a focus's `Force 3`, armor's `Armor 2` or `DR 4`, a bare number
+_STAT = (
+    r"\brating\b|^\s*(?:(?:agility|strength|programs|force|armor|attack|sleaze|data processing|firewall|dr)\s+)?"
+    r"\d+\s*$|\d+/\d+\s*$"
+)
+
+
+def _gun_class(name):
+    """A firearm class as one word, for a weapon's category and a cyber implant weapon's name alike: `Hold-out` and
+    `Hold-out pistol` -> holdout, `SMG` and `Submachine gun` -> submachinegun, `Light pistol` -> lightpistol."""
+    k = re.sub(r"[^a-z]", "", norm(name))
+    k = {"smg": "submachinegun"}.get(k, k)
+    return re.sub(r"pistol$", "", k) if k.startswith("holdout") else k
 
 
 def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_of=None, seen=None, nat=None):
@@ -968,6 +987,21 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
 
         searched = list(dict.fromkeys([hit[0], *kinds, "gear"]))
         got = idx.find(searched, an, accept=ok) or _worded(idx, searched, an)  # (a vehicle's spoof kit is gear)
+        # (`implanted Colt Secret Agent` in a cyberlimb: the cyber implant weapon of that firearm's class, CRB
+        # pp.290-291 "the implant only makes the space, and the firearm has to be purchased separately": the firearm is
+        # the one on the Weapons line)
+        if not got and (imp := re.fullmatch(r"implanted\s+(.+)", an, re.I)):
+            gun = idx.find(["weapons"], imp.group(1)) or idx.fuzzy(["weapons"], imp.group(1))
+            wk = gun and _gun_class(gun[3].get("attrs", {}).get("category") or "")
+            got = wk and next(
+                (
+                    (hit[0], e["id"], e["name"], e)
+                    for e in idx.entries(hit[0])
+                    if re.search(r"implant weapon", e.get("attrs", {}).get("category") or "", re.I)
+                    and _gun_class(e["name"]) == wk
+                ),
+                None,
+            )
         # (`Commlink (Hermes Ikon)`: an implant priced with the device it holds, "2,000¥ + Commlink" (CRB p.284),
         # printed with that device: an entry whose category is the host's name, bought with it)
         got = got or idx.find(
@@ -986,7 +1020,7 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         # a mod whose CF is `2 CF x rating x occupants` (Double Clutch p.129, Living Space) printed with its CF: the
         # rating that takes it for one occupant, the runner (the book prints no occupants)
         per_cf = re.search(r"(\d+)\s*CF\s*x\s*rating", got[3].get("attrs", {}).get("slots") or "", re.I)
-        if cf and per_cf and not ar:
+        if cf and per_cf and int(per_cf.group(1)) and not ar:
             ar = cf // int(per_cf.group(1)) or None
         took = re.fullmatch(r"\s*\[\s*(\d+|rating)\s*\]\s*", got[3].get("attrs", {}).get("capacity") or "", re.I)
         room += (ar or 1 if took.group(1).lower() == "rating" else int(took.group(1))) if took else 0
@@ -1162,6 +1196,7 @@ def _carried(idx, host, rest, bracket, qty, n):
             got = idx.find(["weapons"], name, accept=ok) or idx.find(["weapons"], _one(norm(name)), accept=ok)
             if not got and (p := idx.prefix(["weapons"], name, None)) and ok(p[3]):  # `smartgun system`: its first row
                 got = p
+            got = got or idx.fuzzy(["weapons"], name, accept=ok)  # (`smarklink system`: the Smartgun system)
             if not got or norm(name).replace(" ", "") in text:
                 continue
             low = re.match(r"\s*(\d*)", got[3].get("attrs", {}).get("rating") or "").group(1)

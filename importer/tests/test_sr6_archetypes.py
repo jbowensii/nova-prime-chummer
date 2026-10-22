@@ -1,5 +1,6 @@
 """SR6 sample runners (importer/sr6/archetypes.py): reading rules on made-up catalogs and lines."""
 
+import re
 import unittest
 
 from importer.sr6 import archetypes
@@ -73,6 +74,50 @@ class SampleLines(unittest.TestCase):
         )
         self.assertNotIn("nb.agent", line)
         self.assertEqual(cost, 15000)
+
+    def test_an_implanted_firearm_buys_its_class_implant_and_a_misprinted_add_on_is_read(self):
+        """`implanted Zapper 9` in a cyberlimb: the cyber implant weapon of the Zapper's class (its category `Hold-out`,
+        the implant `Hold-out pistol`), not the firearm (bought on its own line); a weapon's `smarklink system` is the
+        Smartgun system at 75% (made-up catalog)."""
+        idx = archetypes._Index(
+            {
+                "augmentations": [
+                    _e("arm-obvious", "Arm (obvious)", category="Cyberlimb", capacity="15", cost="15000"),
+                    _e(
+                        "hold-out-pistol",
+                        "Hold-out pistol",
+                        category="Cyber implant weapon",
+                        capacity="[2]",
+                        cost="2000",
+                    ),
+                    _e("light-pistol", "Light pistol", category="Cyber implant weapon", capacity="[4]", cost="3000"),
+                ],
+                "weapons": [
+                    _e("zapper-9", "Zapper 9", category="Hold-out", cost="550"),
+                    _e("smartgun", "Smartgun system, internal", category="Weapon accessory", cost="500"),
+                ],
+            },
+            "NB",
+        )
+        line, _, cost = archetypes._purchase(
+            idx, ["augmentations"], "cyberarm (obvious; implanted Zapper 9)", 1, [], {}
+        )
+        self.assertIn('id="nb.hold-out-pistol"', line)
+        self.assertNotIn("nb.zapper-9", line)
+        self.assertEqual(cost, 15000 + 2000)
+        line, _, cost = archetypes._purchase(
+            idx, ["weapons"], "Zapper 9", 2, [], {}, note="Zapper 9 [Hold-out, w/ smarklink system]"
+        )
+        self.assertIn('id="nb.smartgun"', line)
+        self.assertEqual(cost, 550 + 500)
+
+    def test_a_stat_in_brackets_is_no_fitted_thing(self):
+        """A rating, a limb's attribute, a device's or a focus's stat is skipped; a thing with a number is not."""
+        stats = ["Rating 3", "Agility 6", "Programs 3", "D/F 3/1", "Force 3", "Armor 2", "Attack 4", "Sleaze 4"]
+        stats += ["Data Processing 4", "Firewall 5", "Device Rating 6", "DR 4", "12"]
+        for x in stats:
+            self.assertRegex(x, re.compile(archetypes._STAT, re.I))
+        self.assertNotRegex("Harden 1", re.compile(archetypes._STAT, re.I))
 
     def test_a_cargo_mod_printed_with_its_cf_is_rated_for_one_occupant(self):
         """`Bigvan (Bunk Space 6 CF)`: a vehicle mod whose slots are `2 CF x rating x occupants` printed with its CF is
