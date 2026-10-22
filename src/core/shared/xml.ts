@@ -69,7 +69,7 @@ export function each<T>(els: Element[], read: (e: Element) => T, label: (e: Elem
       return [read(e)]
     } catch (err) {
       const what = `${label(e, i)}: ${(err as Error).message}`
-      if (!fix) throw new Error(what)
+      if (!fix) throw new Error(what, { cause: err })
       fix.push(`Dropped ${what}.`)
       return []
     }

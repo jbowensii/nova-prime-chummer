@@ -208,7 +208,9 @@ export async function issueReset(libraryDir, username) {
   try {
     users = parseUsers(await readFile(join(libraryDir, '.config', 'users.xml'), 'utf8'))
   } catch (e) {
-    throw new Error(e.code === 'ENOENT' ? 'there are no accounts yet: use the setup code in the server log' : `couldn’t read users.xml: ${e.message}`)
+    throw new Error(e.code === 'ENOENT' ? 'there are no accounts yet: use the setup code in the server log' : `couldn’t read users.xml: ${e.message}`, {
+      cause: e,
+    })
   }
   if (!users.some(u => u.username === name)) throw new Error(`there is no account "${name}"`)
   const c = code(),
@@ -376,7 +378,7 @@ export function authApi({
   }
   function loadSessions() {
     sessions.clear()
-    let xml = ''
+    let xml
     try {
       xml = readFileSync(sessionsPath, 'utf8')
     } catch {

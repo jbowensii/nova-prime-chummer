@@ -134,7 +134,7 @@ export function resumeApi(ctx) {
    *  can be (its PDF, not read by AI), else marked interrupted. A Re-import all left mid-way goes on (its batch kept).
    *  jobs: false after a restore (a backup's own jobs.json is not run). */
   async function resume({ jobs = true } = {}) {
-    let saved = null
+    let saved
     try {
       saved = jobs ? JSON.parse(await readOr(jobsFile, 'null')) : null
     } catch {
