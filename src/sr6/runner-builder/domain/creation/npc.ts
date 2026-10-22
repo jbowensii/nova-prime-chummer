@@ -229,6 +229,8 @@ export interface Sr6NpcThing {
   detail?: string
   /** its name as printed (`name` is its entry's when it has one) */
   printedName?: string
+  /** the link is an owner ruling (not a guess): the notes say so */
+  ruled?: true
   /** an augmentation's grade as printed (`betaware`, a line's `(all deltaware)`): alpha, beta, gamma or delta */
   grade?: string
   /** ammunition: the name of the weapon it is for */
@@ -358,9 +360,17 @@ function readStats(stats: string[], rating: number | undefined) {
     fitted = false
   // a category and DV printed without a comma (`Light Pistol DV 2S(e)`), accessories after a run without one (`8/8/6/—/— w/ …`)
   const all = stats.flatMap(p => p.split(/\s+(?=DV\b)|\s+(?=w\/)|\s*;\s*/i))
+  let licences = false
   all.forEach((raw, i) => {
     const t = raw.replace(/^\(+(?=DV)/i, '').trim()
     let m: RegExpMatchArray | null
+    // (`licenses: augmentations, RCC`: each word after the colon a licence, until something else)
+    if ((m = t.match(/^licen[sc]es?\s*:\s*(.+)$/i)) || (licences && /^[a-z][\w -]*$/i.test(t) && !/^(?:rating|dr|w)\b/i.test(t) && (m = [t, t]))) {
+      licences = true
+      accessories.push(...m[1].split(/\s+(?:and|&)\s+/i).map(x => `${x.trim()} license`))
+      return
+    }
+    licences = false
     if ((m = t.match(/^(?:w\/|with\s)\s*(.+)$/i))) {
       fitted = true
       accessories.push(...m[1].split(/\s+(?:and|&)\s+|\s+\+\s+/i))
@@ -385,7 +395,7 @@ function readStats(stats: string[], rating: number | undefined) {
     else if ((m = t.match(GRADE))) grade = m[1].toLowerCase()
     else if ((m = t.match(/^x\s*(\d+)$/i))) count = Number(m[1])
     else if (i === 0 && /^[a-z][a-z -]{1,30}$/i.test(t)) category = t
-    else if (fitted && !/\d/.test(t)) accessories.push(t)
+    else if (fitted && (!/\d/.test(t) || /^[a-z-]+(?:\s[a-z-]+){0,2}\s\d{1,2}$/i.test(t))) accessories.push(t)
   })
   return { values: v, category, dvText, grade, count, accessories: accessories.map(a => a.trim()).filter(Boolean) }
 }
@@ -1118,13 +1128,13 @@ function licenceThing(c: Sr6Catalog, part: string, printed: string): { thing: Sr
   const base = { part, printed, printedName: printed, values: {}, accessories: [] }
   if (ruled) {
     const f = licenceNamed(c, ruled)
-    if (f) return { thing: { ...base, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: { score: 1, how: 'fuzzy' }, detail: said } }
+    if (f) return { thing: { ...base, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: { score: 1, how: 'fuzzy' }, detail: said, ruled: true } }
   }
   if (word !== undefined && ruled === '') {
     const entry = [...(c.entries.licencetypes?.values() ?? [])].find(e => /^augmentation licen/i.test(e.name))
     const thing: Sr6NpcThing = entry
-      ? { ...base, name: entry.name, kind: entry.kind, entry, match: { score: 1, how: 'fuzzy' } }
-      : { ...base, name: 'Augmentation license', kind: 'gear' }
+      ? { ...base, name: entry.name, kind: entry.kind, entry, match: { score: 1, how: 'fuzzy' }, ruled: true }
+      : { ...base, name: 'Augmentation license', kind: 'gear', ruled: true }
     return { thing, generic: said }
   }
   const f = licenceNamed(c, printed)
@@ -1142,10 +1152,10 @@ const licenceNamed = (c: Sr6Catalog, a: string) => {
 }
 /** An initialism for an armor add-on (`AAS`: Securetech Armor Augmentation System, Defense +1): of the armors with those
  *  initials the one whose Defense is a plus (a bonus on the armor it is fitted to, cumulative), when only one is. */
-function addOnInitialism(c: Sr6Catalog, name: string) {
-  const initials = name.match(/^([A-Z]{3,6})$/)?.[1].toLowerCase()
+function addOnInitialism(c: Sr6Catalog, name: string, host: Sr6Entry | undefined) {
+  const initials = host?.kind === 'armor' ? name.match(/^([A-Z]{3,6})$/)?.[1].toLowerCase() : undefined
   const adds = (initials ? (indexOf(c).initials.get(initials) ?? []) : []).filter(e => e.kind === 'armor' && /^\+/.test(e.attrs.defense ?? ''))
-  return adds.length === 1 ? guess({ entry: adds[0], match: { score: 1, how: 'exact' } }, name) : undefined
+  return adds.length === 1 ? { entry: adds[0], match: { score: 1, how: 'fuzzy' as const }, ruled: true } : undefined
 }
 /** A gear or augmentation name in every kind a stat block can print (owner: search them all) when its own kinds have none. */
 function inAnyKind(c: Sr6Catalog, name: string, printed: string, source?: string, rating?: number) {
@@ -1240,7 +1250,13 @@ function sameWords(a: string, b: string): boolean {
 /** A power's catalog entry (the first kind with it; `Sapience digital assault`: the longest run of its first words that
  *  names one, the rest its parameters). A book's entry named with a bracket (`Heavy Scales (Western Drake)`, `Shift
  *  (Shifter add-on)`) is the bare name's when nothing else has it (the NPC's own book's first). */
-function findPower(c: Sr6Catalog, printed: string, name: string, kinds: Sr6Kind[], source?: string): { found?: ReturnType<typeof findEntry>; rest: string } {
+function findPower(
+  c: Sr6Catalog,
+  printed: string,
+  name: string,
+  kinds: Sr6Kind[],
+  source?: string,
+): { found?: ReturnType<typeof findEntry>; rest: string; ruled?: true } {
   const words = name.split(/\s+/).filter(Boolean),
     guessKinds = kinds.filter(k => !BY_NAME_ONLY.has(k)) // (a guess among the powers, never the qualities)
   for (const n of [printed, name]) {
@@ -1251,11 +1267,7 @@ function findPower(c: Sr6Catalog, printed: string, name: string, kinds: Sr6Kind[
   // 2026-10-22, never `Improved Ability (Skill)`)
   const physical = name.match(/^improved\s+(body|agility|reaction|strength)$/i)
   const power = physical && findEntry(c, 'Improved Physical Attribute', ['adeptpowers'], source)
-  if (power) return { found: { entry: power.entry, match: { score: 1, how: 'fuzzy' } }, rest: physical[1] }
-  // (`Weakness (Purple Blood)` is the quality `Critter Weakness: Purple Blood`, when the catalog has that exact name)
-  const weakness = printed.match(/^weakness\s*\(([^()]+)\)\s*$/i)?.[1].trim()
-  const quality = weakness && findEntry(c, `Critter Weakness: ${weakness}`, ['qualities'], source)
-  if (quality) return { found: { entry: quality.entry, match: { score: 1, how: 'fuzzy' } }, rest: '' }
+  if (power) return { found: { entry: power.entry, match: { score: 1, how: 'fuzzy' } }, rest: physical[1], ruled: true }
   const key = normName(name),
     set = contentWords(name).sort().join(' ')
   const among = (kind: Sr6Kind, test: (e: Sr6Entry) => boolean) => [...c.entries[kind].values()].filter(test)
@@ -1360,17 +1372,30 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const armored = !attack && !power && s.values.defense != null && !DEVICE_NAME.test(name)
       // (gear and augmentations: first the name in its other forms, then a leading word, then any kind)
       // (`Low lifestyle` is the lifestyle Low)
+      let lifestyleRuled = false
       // (`Medium` is a typo for `Middle`: owner 2026-10-22)
       if (stuff && /\blifestyle$/i.test(name)) {
         const lifestyle = findEntry(c, name.replace(/\s+lifestyle$/i, '').replace(/^medium$/i, 'middle'), ['lifestyles'], src)
-        found ??= lifestyle && guess(lifestyle, name)
+        // (`Medium` is the owner's ruling: a typo for Middle)
+        const typo = /^medium\s+lifestyle$/i.test(name) && lifestyle
+        const had = !!found
+        found ??= lifestyle && (typo ? { entry: lifestyle.entry, match: { score: 1, how: 'fuzzy' as const } } : guess(lifestyle, name))
+        if (typo && !had) lifestyleRuled = true
       }
-      // (the CRB's certified credstick table lists the credsticks by colour: the standard one, `certified` its detail)
-      const certified = stuff && /^certified\s+cred\w*sticks?$/i.test(name)
-      if (certified) {
+      // (the CRB's certified credstick table lists the credsticks by colour: the one printed, else the standard one; `certified`
+      // a detail of the certified ones; an owner ruling 2026-10-22)
+      const stick = stuff ? name.match(/^(?:(certified)\s+)?(?:(standard|silver|gold|platinum|ebony)\s+)?(?:(certified)\s+)?cred\w*sticks?$/i) : null
+      let ruled = false
+      if (stick) {
         const sticks = [...c.entries.gear.values()].filter(e => /^credstick$/i.test(e.attrs.category ?? ''))
-        if (sticks.length) found ??= { entry: standardOf(sticks, prefer(c, src)), match: { score: 1, how: 'standard' } }
+        const colour = (stick[2] ?? head.match(/\b(standard|silver|gold|platinum|ebony)\b/i)?.[1])?.toLowerCase()
+        const named = sticks.filter(e => e.name.toLowerCase() === colour)
+        if (sticks.length && !found) {
+          found = { entry: standardOf(named.length ? named : sticks, prefer(c, src)), match: { score: 1, how: 'fuzzy' } }
+          ruled = true
+        }
       }
+      const certified = !!(stick?.[1] ?? stick?.[3])
       if (stuff) found ??= viaForms(c, name, head, armored ? ['armor'] : kinds, src)
       if (stuff && !armored) found ??= viaMid(c, name, src)
       if (!natural && !power && !/cybercombat/i.test(s.category ?? ''))
@@ -1449,17 +1474,30 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
             if (generic) generics.push({ thing, word: generic })
             return thing
           }
+          const ruledAddOn = addOnInitialism(c, unbracketed(a), entry)
           const f =
-            addOnInitialism(c, a) ??
+            ruledAddOn ??
             findEntry(c, a, ACCESSORY_KINDS, src) ??
             abbreviated(c, a, ACCESSORY_KINDS, src) ??
             viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
             coveredBy(c, a, ACCESSORY_KINDS, src) ??
             viaMid(c, unbracketed(a), src) ??
             findEntry(c, a, ACCESSORY_KINDS, src, 'loose')
-          // (an add-on the catalog lacks stays, as plain gear with its printed name)
+          // (an add-on the catalog lacks stays, as plain gear with its printed name; a pill is its drug, an owner ruling)
+          const ruled = !!ruledAddOn || (!!f && /\b(?:pill|tablet|capsule)s?$/i.test(a))
           return f
-            ? { part: l.part, printed: a, name: f.entry.name, printedName: a, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }
+            ? {
+                part: l.part,
+                printed: a,
+                name: f.entry.name,
+                printedName: a,
+                kind: f.entry.kind,
+                entry: f.entry,
+                match: ruled ? { score: 1, how: 'fuzzy' as const } : f.match,
+                ...(ruled ? { ruled: true as const } : {}),
+                values: {},
+                accessories: [],
+              }
             : { part: l.part, printed: a, name: unbracketed(a), printedName: unbracketed(a), kind: 'gear' as Sr6Kind, values: {}, accessories: [] }
         })
       out.push({
@@ -1471,6 +1509,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         ...((s.grade ?? lineGrade) ? { grade: s.grade ?? lineGrade } : {}),
         ...(pw && [pw.detail, pf?.rest].filter(Boolean).length ? { detail: [pf?.rest, pw.detail].filter(Boolean).join(' ') } : {}),
         ...(certified && found ? { detail: 'certified' } : {}),
+        ...(ruled || lifestyleRuled || pf?.ruled ? { ruled: true as const } : {}),
         ...(found ? { entry: found.entry, match: found.match } : {}),
         ...(s.category ? { category: s.category } : {}),
         ...(s.dvText ? { dvText: s.dvText } : {}),
@@ -1509,6 +1548,7 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
           ? `Added: ${t.name} (spare) for ${t.ammoFor ?? 'its weapon'}`
           : `Added: ${t.name} (${t.accessories[0]?.name ?? 'regular'} ammo) ×${t.qty ?? 1}${t.load && t.qty !== t.load ? ` (${t.qty! / t.load} loads of ${t.load})` : ''} for ${t.ammoFor ?? 'its weapon'}`,
       )
+    else if (t.ruled && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (owner ruling)`)
     else if (m?.how === 'fuzzy' && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (fuzzy, ${m.score.toFixed(2)})`)
     else if (m?.how === 'standard') out.push(`${was} → ${t.name} (standard item)`)
     else if (!m) built.push(was)
@@ -1517,8 +1557,24 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
   // noted, the printed value kept
   const num = (e?: Sr6Entry) => Number((e?.attrs.defense ?? '').replace('+', ''))
   for (const t of things) {
-    const pieces = t.accessories.filter(a => a.entry?.kind === 'armor' && !/\d/.test(a.printed) && num(a.entry) > 0)
-    if (t.entry?.kind !== 'armor' || t.match?.how === 'standard' || t.values.defense == null || !pieces.length || t.accessories.some(a => /\d/.test(a.printed)))
+    // (one body armor, the host; add-ons count when they are a cumulative one (AAS, by the ruling) or a helmet or shield; and only
+    // when the printed (+N) ends the whole line, after the add-ons: not a number a piece prints itself)
+    const addOn = (a: Sr6NpcThing) =>
+      a.entry?.kind === 'armor' &&
+      !/\d/.test(a.printed) &&
+      num(a.entry) > 0 &&
+      (a.ruled || /helmet|shield|hood|mask/i.test(`${a.entry.name} ${a.entry.attrs.category}`))
+    const pieces = t.accessories.filter(addOn)
+    const last = groups(t.printed).at(-1)
+    const total = !!last && last[1] === t.printed.length - 1 && /\b(?:w\/|with)\s/i.test(t.printed.slice(0, last[0]))
+    if (
+      !total ||
+      t.entry?.kind !== 'armor' ||
+      t.match?.how === 'standard' ||
+      t.values.defense == null ||
+      !pieces.length ||
+      t.accessories.some(a => /\d/.test(a.printed))
+    )
       continue
     const sum = num(t.entry) + pieces.reduce((n, a) => n + num(a.entry), 0)
     if (sum === t.values.defense) continue
