@@ -656,7 +656,8 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, text
     qty: t.qty ?? 1,
     grade,
     worn: base.kind === 'armor',
-    bonuses: [],
+    // (a spell's are a runner pick's: its entry's effects)
+    bonuses: spell && e ? bonuses(data, lineBonuses(data, undefined, e), 1) : [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
     ...(spell ? { pick: t.kind as 'spells' | 'rituals', note: t.printed } : {}),
     line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match, unread: t.unread, detail: t.detail }),
@@ -669,7 +670,7 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, text
 export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog, text = false): Sr6ExportNpc {
   const seen = new Map<string, number>(),
     things = npcThings(npc, c),
-    magic = npcTradition(npc, c)
+    magic = npcTradition(npc, c, things)
   const items = things.map(t => {
     const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}${t.match?.how === 'ammo' ? ':ammo' : ''}`,
       n = (seen.get(id) ?? 0) + 1

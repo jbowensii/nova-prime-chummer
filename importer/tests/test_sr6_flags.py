@@ -219,3 +219,32 @@ class FlagsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+TRADITIONS_MD = """<!-- page 128 -->
+# MAGIC
+Magic intro.
+## Traditions
+How made-up traditions read.
+#### Made-up Lore
+**Tradition Attribute:** Logic
+A made-up way of knowing.
+#### Made-up Song
+**Tradition Attribute:** Charisma
+A made-up way of singing.
+#### Made-up Hum
+A made-up way that prints no attribute.
+"""
+
+
+class TraditionDrainTest(unittest.TestCase):
+    def test_drain_attribute_from_the_text(self):
+        self.assertEqual(flags.tradition("**Tradition Attribute:** Logic\nMade-up."), {"drain": "log"})
+        self.assertEqual(flags.tradition("• **Drain:** Willpower + Intuition Made-up."), {"drain": "int"})
+        self.assertEqual(flags.tradition("Tradition Attribute: Charisma"), {"drain": "cha"})
+        self.assertEqual(flags.tradition("A made-up way that drains the caster."), {})
+
+    def test_the_recipe_writes_it_on_the_entry(self):
+        text, _ = regroup.regroup(TRADITIONS_MD, crb.ALIASES, name_headers=crb.NAME_HEADERS)
+        got = {e.findtext("name"): e.get("drain") for e in ET.fromstring(crb.extract(text).files["traditions.xml"])}
+        self.assertEqual(got, {"Made-up Lore": "log", "Made-up Song": "cha", "Made-up Hum": None})

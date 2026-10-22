@@ -790,11 +790,25 @@ function spellLines(c: Sr6Catalog, text: string): { printed: string; name: strin
     }
   chunks.push(text.slice(at))
   const out: { printed: string; name: string }[] = []
-  for (const piece of chunks.flatMap(ch => ch.split(';').flatMap(top)).flatMap(p => p.split(/\s+\/\s+/))) {
-    const p = piece.replace(/^(?:spells?|rituals?)\s*:\s*/i, '').replace(/[\s.]+$/, '')
-    if (!p || GM_NOTE.test(p) || SPELL_GM.test(p) || (PROSE.test(p) && p.split(/\s+/).length >= 6)) continue
+  // (a semicolon or spaced slash outside brackets parts spells as a comma does; inside, it is the spell's own text)
+  const commas = (s: string) => {
+    let depth = 0,
+      o = ''
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i]
+      if ('([{'.includes(ch)) depth++
+      else if (')]}'.includes(ch)) depth = Math.max(0, depth - 1)
+      o += !depth && (ch === ';' || (ch === '/' && s[i - 1] === ' ' && s[i + 1] === ' ')) ? ',' : ch
+    }
+    return o
+  }
+  for (const piece of chunks.flatMap(ch => top(commas(ch)))) {
+    const p = piece.replace(/^(?:spells?|rituals?)\s*:\s*/i, '').replace(/[\s.]+$/, ''),
+      name = nameOf(p)
+    // (prose is read on the name, its bracket aside: `Increase Reflexes [Physical, Touch, …]` is a spell)
+    if (!p || GM_NOTE.test(p) || SPELL_GM.test(p) || (PROSE.test(name) && name.split(/\s+/).length >= 6)) continue
     if (out.length && (PAGE_REF.test(p) || books.has(normName(nameOf(p))))) out[out.length - 1].printed += `, ${p}`
-    else out.push({ printed: p, name: nameOf(p) })
+    else out.push({ printed: p, name })
   }
   return out
 }
@@ -1423,10 +1437,6 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
   return out
 }
 
-/** a tradition's drain attribute as its text prints it (CRB p. 128 `**Tradition Attribute:** Logic`, Street Wyrd's
- *  `**Drain:** Willpower + Intuition`) */
-const TRADITION_ATTR = /\*\*(?:Tradition Attribute|Drain):\*\*\s*(?:Willpower\s*\+\s*)?(Logic|Intuition|Charisma)\b/i
-const DRAIN_ATTRS: Record<string, 'log' | 'int' | 'cha'> = { logic: 'log', intuition: 'int', charisma: 'cha' }
 const DRAIN_LABELS = { log: 'Logic', int: 'Intuition', cha: 'Charisma' } as const
 export interface Sr6NpcTradition {
   tradition: string
@@ -1435,19 +1445,25 @@ export interface Sr6NpcTradition {
   /** every tradition with that drain pool, the first the one set (one unless they tie) */
   traditions: { id: string; name: string; drainAttr: 'log' | 'int' | 'cha' }[]
 }
-/** A caster's tradition (an NPC with a spells line; owner 2026-10-21 "NPC spells"): of every catalog tradition whose text
- *  names its drain attribute, the one whose drain pool (Willpower + that attribute, CRB p. 127, from the NPC's own stats)
- *  is largest; on a tie each that qualifies is listed, the first in catalog order set. None when the stats can't be read.
- *  ponytail: a tradition whose text names no attribute (most of Street Wyrd's, as imported) is not tried; fix the importer
- *  to read their drain lines when they matter. */
-export function npcTradition(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcTradition | undefined {
-  if (!npc.lines.some(l => l.part === 'spells' && l.text.trim())) return
-  const v = new Map(npcValues(npc).flatMap(x => (x.ok && /^\d+$/.test(x.value) ? [[x.key, Number(x.value)] as const] : [])))
+/** A caster's tradition (an NPC whose spells line prints a spell; owner 2026-10-21 "NPC spells"): of every catalog
+ *  tradition with a drain attribute (its `drain`, importer/sr6/flags.py tradition), the one whose drain pool (Willpower +
+ *  that attribute, CRB p. 127, from the NPC's own stats, augmented: `4(6)` is 6) is largest; on a tie each that qualifies
+ *  is listed, the first in catalog order set. None when the stats can't be read. */
+export function npcTradition(npc: Sr6Npc, c: Sr6Catalog, things: Sr6NpcThing[]): Sr6NpcTradition | undefined {
+  if (!things.some(t => t.part === 'spells')) return
+  const v = new Map(
+    npcValues(npc).flatMap(x => {
+      const m = x.ok ? x.value.match(/^(\d+)(?:\s*\((\d+)\))?$/) : null
+      return m ? [[x.key, Number(m[2] ?? m[1])] as const] : []
+    }),
+  )
   const wil = v.get('wil')
   if (wil == null) return
   const all = [...(c.entries.traditions?.values() ?? [])].flatMap(e => {
-    const a = DRAIN_ATTRS[e.text?.match(TRADITION_ATTR)?.[1].toLowerCase() ?? '']
-    return a && v.has(a) ? [{ id: e.id, name: e.name, drainAttr: a, drain: wil + v.get(a)! }] : []
+    const a = e.attrs.drain
+    return (a === 'log' || a === 'int' || a === 'cha') && v.has(a)
+      ? [{ id: e.id, name: e.name, drainAttr: a as Sr6NpcTradition['drainAttr'], drain: wil + v.get(a)! }]
+      : []
   })
   const drain = Math.max(...all.map(t => t.drain)),
     best = all.filter(t => t.drain === drain)

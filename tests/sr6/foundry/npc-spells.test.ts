@@ -1,5 +1,6 @@
 // npc-spells: an NPC's spells export as a runner's spell picks do, and a caster gets the tradition with the best drain pool
-// (owner 2026-10-21 "NPC spells"). Names and numbers are made up; the traditions' attribute lines copy the books' shape.
+// (owner 2026-10-21 "NPC spells"). Names and numbers are made up. A tradition's drain attribute is its catalog `drain`
+// (importer/sr6/flags.py tradition reads it from the book).
 import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
@@ -10,19 +11,17 @@ import { blankSr6Npc } from '../../../src/sr6/runner-builder/domain/creation/npc
 import { fixtureCatalog, fixtureCreation } from '../catalog/fixture'
 
 const TRADITIONS = `
-  <tradition id="crb.made-up-lore" source="CRB" page="199"><name>Made-up Lore</name></tradition>
-  <tradition id="crb.made-up-song" source="CRB" page="199"><name>Made-up Song</name></tradition>
-  <tradition id="crb.made-up-hive" source="CRB" page="199"><name>Made-up Hive</name></tradition>
+  <tradition id="crb.made-up-lore" source="CRB" page="199" drain="log"><name>Made-up Lore</name></tradition>
+  <tradition id="crb.made-up-song" source="CRB" page="199" drain="cha"><name>Made-up Song</name></tradition>
+  <tradition id="crb.made-up-hive" source="CRB" page="199" drain="int"><name>Made-up Hive</name></tradition>
 </sr6:data>`
-const TEXTS = `
-  <text of="traditions" id="crb.made-up-lore">**Tradition Attribute:** Logic
-Invented.</text>
-  <text of="traditions" id="crb.made-up-song">**Tradition Attribute:** Charisma
-Invented.</text>
-  <text of="traditions" id="crb.made-up-hive">• **Drain:** Willpower + Intuition Invented.</text>
-</sr6:data>`
+// (Glow Ward gets an always-on effect: a pick's bonuses come from it)
 const c = fixtureCatalog((file, xml) =>
-    file.endsWith('crb/traditions.xml') ? xml.replace('</sr6:data>', TRADITIONS) : file.endsWith('texts/crb.xml') ? xml.replace('</sr6:data>', TEXTS) : xml,
+    file.endsWith('crb/traditions.xml')
+      ? xml.replace('</sr6:data>', TRADITIONS)
+      : file.endsWith('crb/spells.xml')
+        ? xml.replace('<name>Glow Ward</name>', '<name>Glow Ward</name><effect target="derived:defense" op="add" value="1"/>')
+        : xml,
   ),
   data = sr6Data(c)
 const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
@@ -98,4 +97,29 @@ test('npc-spells: a non-caster, or one whose Willpower can’t be read, gets no 
   expect(none.magic).toBeUndefined()
   expect(none.corrections.some(l => l.startsWith('Tradition'))).toBe(false)
   expect(exportNpc(npc('Glow Ward', { log: '5' }), data, c).magic).toBeUndefined()
+})
+
+test('npc-spells: a spell item carries the bonuses a runner’s pick of it does', () => {
+  const pc = blankSr6('karma', 'pc-1', OPTS.now)
+  pc.build.picks.push({ uid: 'p1', kind: 'spells', id: 'crb.glow-ward' })
+  const pick = exportSr6Runners(c, data, fixtureCreation(), [pc], OPTS).runners![0].picks[0]
+  expect(pick.bonuses.length).toBeGreaterThan(0)
+  expect(exportNpc(npc('Glow Ward'), data, c).items[0].bonuses).toEqual(pick.bonuses)
+})
+
+test('npc-spells: a bracket’s words are no prose; a semicolon or slash inside a bracket is the spell’s; a trailing number stays printed', () => {
+  const x = exportNpc(npc('Glow Ward [Physical, Touch, Sustained, has a made-up bonus that increases DV 5]; Made-up Hex (LOS; M / I)'), data, c).items
+  expect(x.map(i => [i.name, i.note])).toEqual([
+    ['Glow Ward', 'Glow Ward [Physical, Touch, Sustained, has a made-up bonus that increases DV 5]'],
+    ['Made-up Hex', 'Made-up Hex (LOS; M / I)'],
+  ])
+  const six = exportNpc(npc('Glow Ward 6'), data, c).items[0]
+  expect(six).toMatchObject({ id: 'crb.glow-ward', note: 'Glow Ward 6' })
+  expect(six.line.values.rating).toBeUndefined()
+  expect(six.values.rating).toBe(exportNpc(npc('Glow Ward'), data, c).items[0].values.rating)
+})
+
+test('npc-spells: the drain pool counts an augmented attribute; a spells line of GM instructions only is no caster', () => {
+  expect(exportNpc(npc('Glow Ward', { wil: '3', log: '4', int: '4(7)', cha: '2' }), data, c).magic).toMatchObject({ tradition: 'Made-up Hive', drain: 10 })
+  expect(exportNpc(npc('Gamemaster discretion'), data, c).magic).toBeUndefined()
 })
