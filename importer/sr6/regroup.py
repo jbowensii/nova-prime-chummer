@@ -992,16 +992,19 @@ def _foreign(value, last, v, ahead):
 def _goes_on(label, v):
     """True when line v goes on the open labelled value (label: its (targets, key)) though it starts with a capital: the
     value has a bracket still open and v closes one (`Enhanced Senses (Low-Light` + `Vision, Smell), Hardened Armor
-    (4)`), or it is a powers line cut where a power's name wraps (`… Movement, Natural` + `Weapons (claws/bite),
-    Sapience`: its last power one bare word, v a list of powers)."""
+    (4)`), or it is a list cut where an entry's name wraps (`… Movement, Natural` + `Weapons (claws/bite), Sapience`;
+    `**Spells:** … Clout, Combat` + `Sense, Heal, Ice Storm`): its last entry one bare word, v a list of Title Case
+    names with no sentence end (a powers line: of powers, nothing run on after them)."""
     targets, key = label
     value = targets[0][key]
     if sum(value.count(c) for c in "[(") > sum(value.count(c) for c in "])"):
         return any(c in v for c in "])")
-    if key.lower() in ("powers", "optional powers") and re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value):
+    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value) or not is_titled(v) or not re.search(r"[,(\[]", v):
+        return False
+    if key.lower() in ("powers", "optional powers"):
         powers, rider = power_list(v)
-        return bool(powers) and not rider and is_titled(v) and bool(re.search(r"[,(\[]", v))
-    return False
+        return bool(powers) and not rider
+    return not _SENTENCE_END.search(v.strip())
 
 
 def _explains(value, v):
