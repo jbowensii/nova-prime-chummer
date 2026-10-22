@@ -1104,14 +1104,19 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       if (stuff && !armored && (!found || found.match.how === 'standard')) found = viaForms(c, name, head, kinds, src, true) ?? found
       if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src, false, { rating: s.values.rating })
       if (stuff && !armored) found ??= leadWord(c, name, kinds, src, s.values.rating) ?? inAnyKind(c, name, head, src, s.values.rating)
-      // (a cyberlimb word links only to entries of that limb, never to another body part by spelling: `cyberarm` is no `Cyberears`)
+      // (a cyberlimb word is that limb's base entry, `Arm (obvious)` or `(synthetic)` (synthetic when neither is printed, as for
+      // every limb); an additional or extra limb only when the print says so; never another body part by spelling: `cyberarm`
+      // is no `Cyberears`)
       const limb = stuff ? name.match(/\bcyber\s?(arm|leg|hand|foot|torso|skull)s?\b/i)?.[1] : undefined
-      if (limb && found && !new RegExp(limb, 'i').test(found.entry.name)) {
-        const quality = head.match(/\b(obvious|synthetic)\b/i)?.[1]
-        const limbs = [...c.entries.augmentations.values()].filter(
-          e => new RegExp(`${limb}`, 'i').test(e.name) && (!quality || new RegExp(quality, 'i').test(e.name)),
-        )
-        found = limbs.length ? { entry: prefer(c, src)(limbs), match: { score: 0.8, how: 'fuzzy' as const } } : undefined
+      if (limb) {
+        const quality = head.match(/\b(obvious|synthetic)\b/i)?.[1].toLowerCase() ?? 'synthetic'
+        const extra = /\b(additional|extra)\b/i.test(head)
+        const all = [...c.entries.augmentations.values()].filter(e => new RegExp(`\\b${limb}`, 'i').test(e.name))
+        const base = all.filter(e => new RegExp(`^${limb}\\s*\\(${quality}\\)$`, 'i').test(e.name))
+        const more = all.filter(e => /\b(additional|extra)\b/i.test(e.name) === extra && new RegExp(quality, 'i').test(e.name))
+        const pick = extra ? more : base.length ? base : more
+        if (pick.length) found = { entry: prefer(c, src)(pick), match: { score: 0.8, how: 'fuzzy' as const } }
+        else if (found && !new RegExp(limb, 'i').test(found.entry.name)) found = undefined
       }
       // (a bound spirit is a creature entry, looked for nowhere else)
       if (stuff && !found && /^spirits? of\b/i.test(name)) found = findEntry(c, name, ['critters', 'spirits'], src)

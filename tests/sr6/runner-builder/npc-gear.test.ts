@@ -91,6 +91,9 @@ const c = buildSr6Catalog([
     ['bl-t', 'Bone lacing (Titanium)', { type: 'cyberware', category: 'Bodyware' }],
     ['gm-p', 'GMT bone lacing (Plastic)', { type: 'cyberware', category: 'Bodyware' }],
     ['ears6', 'Cyberears (Rating 6)', { type: 'cyberware', category: 'Earware', rating: '6' }],
+    ['arm-o', 'Arm (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
+    ['arm-s', 'Arm (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
+    ['arm-x', 'Additional cyberarm (Obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['leg-o', 'Leg (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['leg-s', 'Leg (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['skilljack', 'Skilljack', { type: 'cyberware', category: 'Headware' }],
@@ -305,9 +308,14 @@ test('negative: head gear is head armor, never a jacket; a rating above the top 
 })
 
 test('negative: a cyberlimb is never another body part, a plus joins two things', () => {
-  // the catalog here has no arm entry: not Cyberears by spelling
-  expect(names('augmentations', 'cyberarm [right, obvious, w/ silencer]')).toEqual(['(built) cyberarm'])
+  // never Cyberears by spelling (the catalog has one)
+  expect(names('augmentations', 'cyberarm [right, obvious, w/ silencer]')).toEqual(['Arm (obvious)'])
   expect(names('augmentations', 'cyberleg (obvious)')).toEqual(['Leg (obvious)'])
+  // the base limb, synthetic by default, never Body Shop's extra limb unless the print says so; a count is kept
+  expect(names('augmentations', 'cyberarm')).toEqual(['Arm (synthetic)'])
+  expect(names('augmentations', 'cyberarm (obvious)')).toEqual(['Arm (obvious)'])
+  expect(names('augmentations', 'additional cyberarm (obvious)')).toEqual(['Additional cyberarm (Obvious)'])
+  expect(things('augmentations', 'Cyberarms x2 (strength 6)').map(x => [x.entry?.name, x.qty])).toEqual([['Arm (synthetic)', 2]])
   const t = things('gear', 'Armor jacket + helmet (DR+5)')
   expect(t.map(x => x.entry?.name)).toEqual(['Armor jacket', 'Helmet'])
   expect(t[0].values.defense).toBe(5)
