@@ -85,6 +85,7 @@ const c = buildSr6Catalog([
     ['iab', 'Improved Ability (Skill)', { perLevel: 'true' }],
     ['qab', 'Quick Ability'],
   ]),
+  file('qualities', [['cw', 'Critter Weakness: Purple Blood', { kind: 'negative' }]]),
   file('weapons', [
     ['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }],
     ['bolt', 'Bolt', { category: 'Projectile' }],
@@ -385,4 +386,13 @@ test('R1 3: AAS is the armor add-on; an armor total that disagrees with its piec
 test('R1 4: a cyanide pill is Cyanide; a pill the catalog lacks is plain gear', () => {
   expect(thingsOf({ gear: 'Armor vest w/ cyanide pill' })[0].accessories.map(a => a.entry?.name)).toEqual(['Cyanide'])
   expect(thingsOf({ gear: 'Armor vest w/ sleeping pill' })[0].accessories.map(a => [a.name, a.entry?.name])).toEqual([['sleeping pill', undefined]])
+})
+
+test('R1 7: Weakness (X) is the quality Critter Weakness: X when the catalog has it, else a generic power', () => {
+  const [w] = thingsOf({ powers: 'Weakness (Purple Blood)' })
+  expect(w.entry?.name).toBe('Critter Weakness: Purple Blood')
+  expect(w.detail).toBe('Purple Blood')
+  const [n] = thingsOf({ powers: 'Weakness (Glass Jaw)' })
+  expect(n.entry).toBeUndefined()
+  expect(n.kind).toBe('critterpowers')
 })

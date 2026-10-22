@@ -1252,6 +1252,10 @@ function findPower(c: Sr6Catalog, printed: string, name: string, kinds: Sr6Kind[
   const physical = name.match(/^improved\s+(body|agility|reaction|strength)$/i)
   const power = physical && findEntry(c, 'Improved Physical Attribute', ['adeptpowers'], source)
   if (power) return { found: { entry: power.entry, match: { score: 1, how: 'fuzzy' } }, rest: physical[1] }
+  // (`Weakness (Purple Blood)` is the quality `Critter Weakness: Purple Blood`, when the catalog has that exact name)
+  const weakness = printed.match(/^weakness\s*\(([^()]+)\)\s*$/i)?.[1].trim()
+  const quality = weakness && findEntry(c, `Critter Weakness: ${weakness}`, ['qualities'], source)
+  if (quality) return { found: { entry: quality.entry, match: { score: 1, how: 'fuzzy' } }, rest: '' }
   const key = normName(name),
     set = contentWords(name).sort().join(' ')
   const among = (kind: Sr6Kind, test: (e: Sr6Entry) => boolean) => [...c.entries[kind].values()].filter(test)
