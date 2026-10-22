@@ -1098,7 +1098,7 @@
           }
         },
         "magic": {
-          "description": "A caster's tradition (an NPC whose spells line prints a spell): of the catalog's traditions with a drain attribute (their drain), the one whose drain pool (Willpower + that attribute, from the NPC's stats, augmented) is largest; drainAttr is the one to set on the sheet; traditions lists each tradition with that pool (more than one on a tie), the first the one set. Absent for a non-caster, when its stats can't be read or no tradition has a drain attribute.",
+          "description": "A caster's tradition (an NPC whose spells line prints a spell): of Willpower + Logic, + Charisma and + Intuition from the NPC's stats (augmented), the largest, as the Logic-, Charisma- or Intuition-Based Tradition (ids logic-based, charisma-based, intuition-based); never a catalog tradition. drainAttr is the one to set on the sheet; traditions lists each with that pool (every tied one on a tie: two or all three), the first the one set; tradition is their names joined by ' or '. Absent for a non-caster, or when Willpower or all three drain attributes can't be read.",
           "type": "object",
           "additionalProperties": false,
           "required": [
@@ -1134,10 +1134,18 @@
                 ],
                 "properties": {
                   "id": {
-                    "type": "string"
+                    "enum": [
+                      "logic-based",
+                      "charisma-based",
+                      "intuition-based"
+                    ]
                   },
                   "name": {
-                    "type": "string"
+                    "enum": [
+                      "Logic-Based Tradition",
+                      "Charisma-Based Tradition",
+                      "Intuition-Based Tradition"
+                    ]
                   },
                   "drainAttr": {
                     "enum": [

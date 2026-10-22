@@ -1,6 +1,6 @@
 // npc-spells: an NPC's spells export as a runner's spell picks do, and a caster gets the tradition with the best drain pool
-// (owner 2026-10-21 "NPC spells"). Names and numbers are made up. A tradition's drain attribute is its catalog `drain`
-// (importer/sr6/flags.py tradition reads it from the book).
+// (owner 2026-10-21 "NPC spells"; 2026-10-22: Logic-, Charisma- or Intuition-Based, never a catalog tradition). Names and
+// numbers are made up. The fixture's catalog traditions (one with an Intuition drain) are there to show none is chosen.
 import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020'
 import { expect, test } from 'vitest'
@@ -69,27 +69,40 @@ test('npc-spells: a run-together line splits, GM instructions and a book referen
   ])
 })
 
-test('npc-spells: a caster’s tradition is the one with the largest drain pool, its drain attribute set; a tie lists each', () => {
-  const one = exportNpc(npc('Glow Ward'), data, c)
-  expect(one.magic).toEqual({
-    tradition: 'Made-up Lore',
-    drainAttr: 'log',
-    drain: 8,
-    traditions: [{ id: 'crb.made-up-lore', name: 'Made-up Lore', drainAttr: 'log' }],
+const LOGIC = { id: 'logic-based', name: 'Logic-Based Tradition', drainAttr: 'log' },
+  CHARISMA = { id: 'charisma-based', name: 'Charisma-Based Tradition', drainAttr: 'cha' },
+  INTUITION = { id: 'intuition-based', name: 'Intuition-Based Tradition', drainAttr: 'int' }
+
+test('npc-spells: a caster’s tradition is Willpower + its best of Logic, Charisma, Intuition (owner 2026-10-22)', () => {
+  const logic = exportNpc(npc('Glow Ward'), data, c)
+  expect(logic.magic).toEqual({ tradition: 'Logic-Based Tradition', drainAttr: 'log', drain: 8, traditions: [LOGIC] })
+  expect(logic.corrections.at(-1)).toBe('Tradition: Logic-Based Tradition (Willpower + Logic), drain pool 8')
+  expect(exportNpc(npc('Glow Ward', { wil: '4', log: '3', int: '2', cha: '6' }), data, c).magic).toEqual({
+    tradition: 'Charisma-Based Tradition',
+    drainAttr: 'cha',
+    drain: 10,
+    traditions: [CHARISMA],
   })
-  expect(one.corrections).toContain('Tradition: Made-up Lore (Willpower + Logic), drain pool 8')
-  expect(exportNpc(npc('Glow Ward', { wil: '2', log: '3', int: '6', cha: '1' }), data, c).magic).toMatchObject({
-    tradition: 'Made-up Hive',
+})
+
+test('npc-spells: Intuition best is the Intuition-Based Tradition, never a catalog tradition (the fixture’s Made-up Hive)', () => {
+  expect(exportNpc(npc('Glow Ward', { wil: '2', log: '3', int: '6', cha: '1' }), data, c).magic).toEqual({
+    tradition: 'Intuition-Based Tradition',
     drainAttr: 'int',
     drain: 8,
+    traditions: [INTUITION],
   })
+})
+
+test('npc-spells: a tie lists both traditions, the first one’s drain attribute set', () => {
   const tie = exportNpc(npc('Glow Ward', { wil: '4', log: '5', int: '2', cha: '5' }), data, c)
-  expect(tie.magic).toMatchObject({ tradition: 'Made-up Lore', drainAttr: 'log', drain: 9 })
-  expect(tie.magic!.traditions.map(t => [t.name, t.drainAttr])).toEqual([
-    ['Made-up Lore', 'log'],
-    ['Made-up Song', 'cha'],
-  ])
-  expect(tie.corrections.at(-1)).toBe('Tradition: Made-up Lore (Willpower + Logic) or Made-up Song (Willpower + Charisma), drain pool 9')
+  expect(tie.magic).toEqual({
+    tradition: 'Logic-Based Tradition or Charisma-Based Tradition',
+    drainAttr: 'log',
+    drain: 9,
+    traditions: [LOGIC, CHARISMA],
+  })
+  expect(tie.corrections.at(-1)).toBe('Tradition: Logic-Based Tradition (Willpower + Logic) or Charisma-Based Tradition (Willpower + Charisma), drain pool 9')
 })
 
 test('npc-spells: a non-caster, or one whose Willpower can’t be read, gets no tradition', () => {
@@ -119,7 +132,21 @@ test('npc-spells: a bracket’s words are no prose; a semicolon or slash inside 
   expect(six.values.rating).toBe(exportNpc(npc('Glow Ward'), data, c).items[0].values.rating)
 })
 
+test('npc-spells: a three-way tie lists all three in Logic, Charisma, Intuition order, Logic set', () => {
+  expect(exportNpc(npc('Glow Ward', { wil: '4', log: '5', cha: '5', int: '5' }), data, c).magic).toEqual({
+    tradition: 'Logic-Based Tradition or Charisma-Based Tradition or Intuition-Based Tradition',
+    drainAttr: 'log',
+    drain: 9,
+    traditions: [LOGIC, CHARISMA, INTUITION],
+  })
+  expect(exportNpc(npc('Glow Ward', { wil: '4' }), data, c).magic).toBeUndefined() // (no drain attribute to read)
+})
+
 test('npc-spells: the drain pool counts an augmented attribute; a spells line of GM instructions only is no caster', () => {
-  expect(exportNpc(npc('Glow Ward', { wil: '3', log: '4', int: '4(7)', cha: '2' }), data, c).magic).toMatchObject({ tradition: 'Made-up Hive', drain: 10 })
+  expect(exportNpc(npc('Glow Ward', { wil: '3', log: '4', int: '4(7)', cha: '2' }), data, c).magic).toMatchObject({
+    tradition: 'Intuition-Based Tradition',
+    drainAttr: 'int',
+    drain: 10,
+  })
   expect(exportNpc(npc('Gamemaster discretion'), data, c).magic).toBeUndefined()
 })
