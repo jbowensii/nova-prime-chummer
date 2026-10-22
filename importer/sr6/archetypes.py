@@ -15,6 +15,7 @@ else (the printed lines, starting nuyen, what the catalog doesn't have) goes in 
 isn't found, in the report (unmatched-item).
 No description text is copied."""
 
+import difflib
 import json
 import math
 import re
@@ -140,6 +141,25 @@ class _Index:
     def entries(self, kind):
         """Every entry of `kind`, once each."""
         return list({e["id"]: e for (k, _), es in self.exact.items() if k == kind for e in es}.values())
+
+    def fuzzy(self, kinds, name, accept=None, at=0.75):
+        """When nothing else finds `name`: the entry its last two or more printed words name exactly (a maker or brand
+        before the name, `Mortimer o.L. Get into the Rhythm`), else the one of `kinds` whose name is most like it
+        (difflib's ratio of the normalized names, at least `at`: the owner's 75% rule, 2026-10-20; `Beretta 201` the
+        Beretta 201T, `Harden` Hardening), the book's own first on a tie; `accept` (entry -> bool) as in find. None
+        when none is."""
+        words = norm(name).split()
+        for i in range(1, len(words) - 1):
+            if hit := self.find(kinds, " ".join(words[i:]), loose=False, accept=accept):
+                return hit
+        best, top = None, at
+        for kind in kinds:
+            for e in self.entries(kind):
+                r = difflib.SequenceMatcher(None, norm(name), norm(e["name"])).ratio()
+                if r > top or (r == top and best is None):
+                    if accept is None or accept(e):
+                        best, top = (kind, e["id"], e["name"], e), r
+        return best
 
     def prefix(self, kinds, name, rating):
         """The first entry whose name starts with `name` (`Cybereyes basic system (Rating 4)` for `cybereyes`), one
@@ -813,6 +833,9 @@ MISPRINTS = {
 _LIMB = re.compile(r"cyber\s?(\w+)\s*\(\s*(?:(obvious|synthetic)\b)?", re.I)
 
 
+_STAT = r"\brating\b|^\s*(?:(?:agility|strength|programs)\s+)?\d+\s*$|\d+/\d+\s*$"
+
+
 def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_of=None, seen=None, nat=None):
     """A gear line -> (purchase XML or None when the catalog lacks it, worn, its cost at its rating, grade and quantity
     (budgets.ts priced), 0 when it can't be read): `3 x …` the quantity, `(rating N …)` or a trailing number the rating;
@@ -867,6 +890,8 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         parts = re.split(r"\s*,\s*", m2.group(1)) if (m2 := re.search(r"\(([^()]*)\)", rest)) else []
         r, hit = printed, idx.near(kinds, base, parts)
     if not hit:
+        r, hit = printed, idx.fuzzy(kinds, base)
+    if not hit:
         return None, worn, 0
     if hit[0] == "armor":  # (the one worn: the highest Defense Rating, set in build)
         worn.append(
@@ -913,7 +938,9 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         w.group(1).split(",")
         if w
         else (
-            [x for x in re.split(r"[,;]", m2.group(1)) if not re.search(r"\brating\b|\d\s*$", x, re.I)]
+            # (not a stat printed with it: a rating, a limb's `Agility 6`, a commlink's `Programs 3` or `D/F 3/1`, a
+            # bare number; a fitted thing printed with a number, `Harden 1`, is read)
+            [x for x in re.split(r"[,;]", m2.group(1)) if not re.search(_STAT, x, re.I)]
             if hit[0] != "weapons" and (m2 := re.search(r"\(([^()]*)\)", rest))
             else []
         )
@@ -923,12 +950,19 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
             break  # (_carried reads a weapon's)
         c = re.fullmatch(r"(\d+)\s+(?:x\s+)?(.*)", a)  # (`10 sheets electronic paper`, `4 x supplies`: that many)
         count, a = (int(c.group(1)), c.group(2)) if c else (1, a)
+        cf = re.fullmatch(r"(.*?)\s+(\d+)\s*CF", a, re.I)  # (`Living Space 6 CF`: the cargo it takes)
+        a, cf = (cf.group(1), int(cf.group(2))) if cf else (a, None)
         t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
         an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
 
+        # (a vehicle takes a cargo mod, one whose slots are counted in CF: Double Clutch p.129's Living Space)
+        # ponytail: only CF mods; other vehicle mods (electrochromic paint) wait for their category's host to read as a
+        # vehicle (DC's "Electronics mod" category fits "Electronic" today, so the app would call it misplaced)
         def ok(e, ar=ar):
             return _rated(ar)(e) and (
-                holds or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I))
+                holds
+                or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I))
+                or (hit[0] == "vehicles" and bool(re.search(r"\bCF\b", e.get("attrs", {}).get("slots") or "")))
             )
 
         searched = list(dict.fromkeys([hit[0], *kinds, "gear"]))
@@ -943,9 +977,16 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         # never the host itself, `Bone lacing (titanium)`)
         kit = not got and c and idx.find(searched, f"{base} {an}", loose=False)
         kit = kit if kit and kit[1] != hit[1] else None
-        got = got or kit
+        got = (
+            got or kit or idx.fuzzy(searched, an, accept=lambda e, ok=ok: ok(e) and e["id"] != hit[1])
+        )  # (not its host)
         if not got or not kit and norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
             continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
+        # a mod whose CF is `2 CF x rating x occupants` (Double Clutch p.129, Living Space) printed with its CF: the
+        # rating that takes it for one occupant, the runner (the book prints no occupants)
+        per_cf = re.search(r"(\d+)\s*CF\s*x\s*rating", got[3].get("attrs", {}).get("slots") or "", re.I)
+        if cf and per_cf and not ar:
+            ar = cf // int(per_cf.group(1)) or None
         took = re.fullmatch(r"\s*\[\s*(\d+|rating)\s*\]\s*", got[3].get("attrs", {}).get("capacity") or "", re.I)
         room += (ar or 1 if took.group(1).lower() == "rating" else int(took.group(1))) if took else 0
         cost += _value(got[3], "cost", ar or 1, qty * count) * gf  # (budgets.ts fitted)

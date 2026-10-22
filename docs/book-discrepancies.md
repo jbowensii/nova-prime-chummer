@@ -78,7 +78,9 @@ past its Capacity), a row of that file with no edits is a note only: the runner 
 the Review code (`review: leftover.karma`), what the book prints and the measured numbers (owner, 2026-10-21;
 `tests/sr6/sample-review-live.test.ts` checks every sample of an import against them). An implant priced with the
 device it holds (`2,000¥ + Commlink`, CRB p. 284) printed with that device (`Commlink (Hermes Ikon)`) buys the device
-with it. It keeps the printed attributes, Essence,
+with it. A name nothing else finds is the entry its last words name (a maker or brand before it) or else the one most
+like it at 75% or more (`Beretta 201`: the Beretta 201T; `Harden 1` in a cyberlimb's brackets: Hardening); a vehicle's
+cargo mod printed with its CF (`Living Space 6 CF`, 2 CF x rating x occupants) is taken for one occupant. It keeps the printed attributes, Essence,
 initiative, condition monitors and Defense Rating in `<printed>`. Review
 compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
