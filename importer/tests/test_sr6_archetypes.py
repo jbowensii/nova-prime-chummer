@@ -42,7 +42,11 @@ class SampleLines(unittest.TestCase):
         implant, its number not read as a stat like `Agility 5`); below 75%, nothing (made-up catalog)."""
         idx = archetypes._Index(
             {
-                "gear": [_e("sunny-days", "Sunny Days", category="Preparation", cost="500")],
+                "gear": [
+                    _e("sunny-days", "Sunny Days", category="Preparation", cost="500"),
+                    _e("shed", "Shed", category="Tool", cost="5000"),
+                    _e("agent", "Agent", category="Software", rating="1-6", cost="Rating x 1000"),
+                ],
                 "weapons": [_e("zapper-301x", "Zapper 301X", category="Light pistol", cost="460")],
                 "augmentations": [
                     _e("arm-obvious", "Arm (obvious)", category="Cyberlimb", capacity="15", cost="15000"),
@@ -61,6 +65,14 @@ class SampleLines(unittest.TestCase):
         )
         self.assertIn('id="nb.toughening"', line)
         self.assertEqual(cost, 15000 + 2500)
+        # a last word alone: an item's (`Garden tool shed`), but never another kind's for a fitted thing (`implanted
+        # Zapper Agent` in a limb is no Agent program)
+        self.assertIn('id="nb.shed"', archetypes._purchase(idx, ["gear"], "Garden tool shed", 5, [], {})[0])
+        line, _, cost = archetypes._purchase(
+            idx, ["augmentations"], "cyberarm (obvious; implanted Zapper Agent)", 6, [], {}
+        )
+        self.assertNotIn("nb.agent", line)
+        self.assertEqual(cost, 15000)
 
     def test_a_cargo_mod_printed_with_its_cf_is_rated_for_one_occupant(self):
         """`Bigvan (Bunk Space 6 CF)`: a vehicle mod whose slots are `2 CF x rating x occupants` printed with its CF is

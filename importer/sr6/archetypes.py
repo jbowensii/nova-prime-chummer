@@ -142,15 +142,16 @@ class _Index:
         """Every entry of `kind`, once each."""
         return list({e["id"]: e for (k, _), es in self.exact.items() if k == kind for e in es}.values())
 
-    def fuzzy(self, kinds, name, accept=None, at=0.75):
-        """When nothing else finds `name`: the entry its last two or more printed words name exactly (a maker or brand
-        before the name, `Mortimer o.L. Get into the Rhythm`), else the one of `kinds` whose name is most like it
-        (difflib's ratio of the normalized names, at least `at`: the owner's 75% rule, 2026-10-20; `Beretta 201` the
-        Beretta 201T, `Harden` Hardening), the book's own first on a tie; `accept` (entry -> bool) as in find. None
-        when none is."""
+    def fuzzy(self, kinds, name, accept=None, at=0.75, one=None):
+        """When nothing else finds `name`: the entry its last printed words name exactly (a maker or a kind of thing
+        before the name, `Mortimer o.L. Get into the Rhythm`, `Aeronautical repair shop`; the last word alone only among
+        `one`'s kinds, default all), else the one of `kinds` whose name is most like it (difflib's ratio of the
+        normalized names, at least `at`: the owner's 75% rule, 2026-10-20; `Beretta 201` the Beretta 201T, `Harden`
+        Hardening), the book's own first on a tie; `accept` (entry -> bool) as in find. None when none is."""
         words = norm(name).split()
-        for i in range(1, len(words) - 1):
-            if hit := self.find(kinds, " ".join(words[i:]), loose=False, accept=accept):
+        for i in range(1, len(words)):
+            tail = " ".join(words[i:])
+            if hit := self.find(kinds if i < len(words) - 1 else one or kinds, tail, loose=False, accept=accept):
                 return hit
         best, top = None, at
         for kind in kinds:
@@ -978,8 +979,8 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         kit = not got and c and idx.find(searched, f"{base} {an}", loose=False)
         kit = kit if kit and kit[1] != hit[1] else None
         got = (
-            got or kit or idx.fuzzy(searched, an, accept=lambda e, ok=ok: ok(e) and e["id"] != hit[1])
-        )  # (not its host)
+            got or kit or idx.fuzzy(searched, an, accept=lambda e, ok=ok: ok(e) and e["id"] != hit[1], one=[hit[0]])
+        )  # (not its host; a last word alone only of the host's own kind: `cybergun SMG`)
         if not got or not kit and norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
             continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
         # a mod whose CF is `2 CF x rating x occupants` (Double Clutch p.129, Living Space) printed with its CF: the
