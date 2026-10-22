@@ -1297,6 +1297,11 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     cur.labels.setdefault(key, value)
                     listy = not value
                 if mode == "box":
+                    if cur.stats or re.search(r"[,(\[]", v):
+                        continue
+                    # (a lone line finishing an entry, `…, Ares Macrotechnology` + `Representative`, in a box with no
+                    # tables: the header's end, the labelled lines after it are the text's, as with any other line)
+                    mode = "text"
                     continue
             else:
                 label = None

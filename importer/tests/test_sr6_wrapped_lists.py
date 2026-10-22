@@ -100,3 +100,24 @@ class LabelledHeadingTest(unittest.TestCase):
         self.assertFalse(regroup._goes_on(label, "Design Fans Hum Loudly Now", labelled_next=True))  # (prose)
         self.assertFalse(regroup._goes_on(label, "Design.", labelled_next=True))  # (a sentence)
         self.assertFalse(regroup._goes_on(label, "Design, Fizz Bolt"))  # (a list line needs a one-word cut)
+
+    def test_a_message_header_keeps_its_subject_and_sent_lines_after_a_wrapped_from(self):
+        md = """<!-- page 1 -->
+# CONTENTS & CREDITS
+Made-up contents ........ 2
+<!-- page 20 -->
+# MADE-UP MESSAGES
+##### Access File Zorp
+**To:** Alex Fake, Chief Fizz, Zap Corp Delegate
+**From:** Mo Fake, Zap Macro
+Delegate
+**Subject:** Schedule Change
+**Sent:** 03-31-84/0631:42 **Greetings Alex,**
+
+I saw the made-up schedule and I do not like it at all, so please change it before the vote.
+"""
+        text, _ = regroup.regroup(BOOK.prepare_md(md), BOOK.ALIASES, name_headers=BOOK.NAME_HEADERS)
+        # (the header's labelled lines print again in the block's text, as they do when the From line is not wrapped)
+        self.assertEqual(text.count("**Subject:** Schedule Change"), 2)
+        self.assertEqual(text.count("**Sent:** 03-31-84/0631:42"), 2)
+        self.assertNotIn("\nDelegate\n", text)  # (the wrap joined the From line)
