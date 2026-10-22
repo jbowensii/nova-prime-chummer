@@ -1,5 +1,43 @@
 # Release notes
 
+## 0.20.0 — 2026-10-22
+
+Book NPCs and critters link far more of their gear, powers and spells, carry their ammunition and a magic tradition, and
+the CommLink6-only records move to an optional data set.
+
+**Admins, after updating:**
+- **Books → Re-import all**, then **Load book NPCs** and **Load example characters**.
+- Update the Foundry importer to **0.11.1**: it reads this version's NPC ammunition and spells. It treats an export from
+  any version below 0.20.0 as the older ammunition format.
+
+**Shadowrun 6 NPCs and critters**
+- **Gear:** unlinked gear falls from 72 names (86 lines) to 22 (27). Book misprints and short names resolve by general
+  rules (model named by its form, packages naming their parts, cyber-limb words, "+"-joined items).
+- **Powers:** unmatched powers fall from 63 names (105 lines) to 16 (28). A power links by its name, with brackets and
+  ratings kept as its detail; a power a book describes only in a rules section is read from that section.
+- **Spells:** NPC spells are the same items a runner picks; wrapped Spells lines (and every other wrapped list) read
+  whole. Linked spells rise from 961 to 1,017; 7 remain unlinked.
+- **Magic tradition:** a caster gets Logic-Based, Charisma-Based or Intuition-Based Tradition from the largest drain
+  pool (Willpower + Logic, Charisma or Intuition); a tie lists each.
+- **Ammunition:** each weapon carries two loads of its ammunition (of the printed type) and its spare clip, magazine or
+  speed loader; printed ammunition wins.
+- Owner rulings 2026-10-22: Improved Agility/Body/Reaction/Strength is Improved Physical Attribute; licences resolve to
+  the catalog's licences; AAS is the Securetech Armor Augmentation System, and a stat block whose armor pieces don't add
+  up to its printed total gets a book-error note; cyanide pill, credsticks by type, Medium lifestyle (Middle).
+  Licences printed inside a fake SIN's brackets are read; owner rulings show as rulings in the GM notes.
+
+**Shadowrun 6 data**
+- **CommLink6-only records** (863, no book prints them) move to an optional data set, off by default (Table setup →
+  Optional rules).
+- The last held CommLink6 rows are ruled (rockets, transgenic chameleon skin, Momentous Misfortune).
+- Example runners: Bodyguard and Fast-Talker now pass review; the other nine carry measured book-error notes. A
+  runner past its Karma limit turns Karma into nuyen up to the 5,000¥ limit (Combat Mage and Negotiator: 7 left).
+- **Vehicle and weapon mods:** Double Clutch's vehicle-mod groups (chassis, skin, powertrain, electronics, secondary
+  propulsion, drone storage) and Deadly Arts' new vehicle mods fit vehicles; Deadly Arts' and Firing Squad's new weapon
+  mods fit weapons. The Playboi's electrochromic paint is on his Spinrad.
+- **Wrapped lists** read whole after a multi-word entry (Shadow Cast, Power Plays, Slip Streams), and a message's
+  header lines stay in its text.
+
 ## 0.19.0 — 2026-10-21
 
 The four newest Shadowrun 6 books are read in full, and a book's re-import cleans up after itself.
