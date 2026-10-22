@@ -33,8 +33,8 @@ while working.
 **Skills:** Astral 4, Conjuring
 4, Sorcery 5
 **Spells:** Glow Ward, Hum Haze, Combat
-Sense, Fizz Bolt, Increase
-Reflexes, Mend Glow
+Sense, Fizz Bolt, Increase Reflexes, Mend
+Glow
 **Gear:** Made-up armor
 ##### Hum Seller
 Made-up elf
@@ -59,3 +59,7 @@ class WrappedListTest(unittest.TestCase):
             self.assertFalse(regroup._goes_on(label, "Zorp hums in packs, and glows"), key)  # (prose)
             self.assertFalse(regroup._goes_on(label, "Sense, Fizz Bolt, Mend Glow."), key)  # (a sentence)
             self.assertFalse(regroup._goes_on(([{key: "Zap, Hum (4)"}], key), "Sense, Fizz Bolt"), key)  # (whole)
+            # a lone name's end goes on only when a labelled line follows it
+            self.assertTrue(regroup._goes_on(label, "Sense", labelled_next=True), key)
+            self.assertFalse(regroup._goes_on(label, "Sense", labelled_next=False), key)
+            self.assertFalse(regroup._goes_on(label, "Glow Priest hums", labelled_next=True), key)

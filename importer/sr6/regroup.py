@@ -989,18 +989,21 @@ def _foreign(value, last, v, ahead):
     return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
 
 
-def _goes_on(label, v):
+def _goes_on(label, v, labelled_next=False):
     """True when line v goes on the open labelled value (label: its (targets, key)) though it starts with a capital: the
     value has a bracket still open and v closes one (`Enhanced Senses (Low-Light` + `Vision, Smell), Hardened Armor
     (4)`), or it is a list cut where an entry's name wraps (`… Movement, Natural` + `Weapons (claws/bite), Sapience`;
     `**Spells:** … Clout, Combat` + `Sense, Heal, Ice Storm`): its last entry one bare word, v a list of Title Case
-    names with no sentence end (a powers line: of powers, nothing run on after them)."""
+    names with no sentence end (a powers line: of powers, nothing run on after them); or v one to three Title Case
+    words alone with a labelled line next (`… Stunball, Trid` + `Phantasm` + `**Initiate level:** 6`)."""
     targets, key = label
     value = targets[0][key]
     if sum(value.count(c) for c in "[(") > sum(value.count(c) for c in "])"):
         return any(c in v for c in "])")
-    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value) or not is_titled(v) or not re.search(r"[,(\[]", v):
+    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value) or not is_titled(v):
         return False
+    if not re.search(r"[,(\[]", v):
+        return labelled_next and len(v.split()) <= 3 and not _SENTENCE_END.search(v.strip())
     if key.lower() in ("powers", "optional powers"):
         powers, rider = power_list(v)
         return bool(powers) and not rider
@@ -1236,7 +1239,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                         (mode == "box" and cur.stats)
                         or not v[:1].isupper()
                         or last.endswith((",", "-"))
-                        or _goes_on(label, v)
+                        or _goes_on(label, v, i < end and els[i][0] == "x" and bool(_LABEL.match(els[i][2])))
                         or (i >= end or els[i][0] != "x")
                         and not _SENTENCE_END.search(v)
                     )
