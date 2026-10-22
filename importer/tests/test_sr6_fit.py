@@ -186,16 +186,19 @@ class FitTest(unittest.TestCase):
 
     def test_karma_into_nuyen_past_what_the_gear_needs(self):
         """Karma left over turns into nuyen when that clears the Karma carry-over limit with the nuyen within its own;
-        otherwise the count that leaves the printed nuyen; never nuyen below 0 by choice."""
+        otherwise as much as the nuyen's limit allows (owner, 2026-10-22: Karma past its limit turned into nuyen as far
+        as the rules allow), the printed nuyen only between equals; never nuyen below 0 by choice."""
         rows = {c: {**ROWS[L], "letter": L} for c, L in zip(fit.COLUMNS, "BACDE")}  # resources E: 100
         n = need(nuyen=250, left=50)  # 2 karma cover it; 28 left
         cs = {**CS, "maxKarmaLeft": 5.0, "maxNuyenLeft": 3000.0}
         self.assertEqual(fit.spend(n, rows, CS)[1]["karmaToNuyen"], 2)  # no limits: the printed 50 left
         score, got = fit.spend(n, rows, cs)
         self.assertEqual((got["karmaToNuyen"], got["nuyenLeft"], got["karmaLeft"]), (25, 2350, 5))  # both within
-        self.assertEqual(score[2:], (0, 2300, 0))
+        self.assertEqual(score[2:], (0, 0, 2300))
         score, got = fit.spend(n, rows, {**cs, "maxNuyenLeft": 500.0})  # 25 would leave 2,350: can't clear the Karma's
-        self.assertEqual((got["karmaToNuyen"], score[2], score[4]), (2, 1, 23))  # so the printed 50; 23 past 5
+        self.assertEqual(
+            (got["karmaToNuyen"], got["nuyenLeft"], score[2], score[3]), (6, 450, 1, 19)
+        )  # 7 would pass 500
         broke = need(nuyen=100 + 40 * 100)  # needs 40 karma, has 30: all of it short, never nuyen below 0 by choice
         self.assertEqual(fit.spend(broke, rows, cs)[1]["karmaToNuyen"], 40)
 
