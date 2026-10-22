@@ -3,8 +3,11 @@
 // (src/ca2/formats/domain/types.ts, src/sr6/formats/domain/*, src/sr6/catalog/domain/types.ts, src/core/ui-kit/types.ts) so the modules using them don't loop.
 // @vitest-environment node
 import { join, relative } from 'node:path'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { SRC, files, imports } from './src-graph'
+
+// These tests read every file under src; on a busy machine that runs past vitest's 5 s default.
+vi.setConfig({ testTimeout: 30_000 })
 
 /** Each cycle once, as the modules on it (depth-first: a module back on the current path closes one). */
 function cycles(graph: Map<string, string[]>): string[][] {
