@@ -90,3 +90,13 @@ class LabelledHeadingTest(unittest.TestCase):
         self.assertIn("**Knowledge skills:** Dive Bars, Friends in Low Places, Poisons", doctor)
         self.assertIn("**Skills:** Biotech 4", doctor)
         self.assertNotIn("Biotech", seller)
+
+    def test_a_lone_line_after_a_two_word_entry_goes_on_only_when_a_label_follows(self):
+        value = "Drone Models, Matrix Hardware Protocols, Security Systems"
+        label = ([{"Knowledge skills": value}], "Knowledge skills")
+        self.assertTrue(regroup._goes_on(label, "Design", labelled_next=True))
+        self.assertFalse(regroup._goes_on(label, "Design", labelled_next=False))
+        self.assertFalse(regroup._goes_on(label, "Design Fans Hum", labelled_next=False))
+        self.assertFalse(regroup._goes_on(label, "Design Fans Hum Loudly Now", labelled_next=True))  # (prose)
+        self.assertFalse(regroup._goes_on(label, "Design.", labelled_next=True))  # (a sentence)
+        self.assertFalse(regroup._goes_on(label, "Design, Fizz Bolt"))  # (a list line needs a one-word cut)
