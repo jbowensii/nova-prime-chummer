@@ -132,6 +132,16 @@ test('npc-spells: a bracket’s words are no prose; a semicolon or slash inside 
   expect(six.values.rating).toBe(exportNpc(npc('Glow Ward'), data, c).items[0].values.rating)
 })
 
+test('npc-spells: a three-way tie lists all three in Logic, Charisma, Intuition order, Logic set', () => {
+  expect(exportNpc(npc('Glow Ward', { wil: '4', log: '5', cha: '5', int: '5' }), data, c).magic).toEqual({
+    tradition: 'Logic-Based Tradition or Charisma-Based Tradition or Intuition-Based Tradition',
+    drainAttr: 'log',
+    drain: 9,
+    traditions: [LOGIC, CHARISMA, INTUITION],
+  })
+  expect(exportNpc(npc('Glow Ward', { wil: '4' }), data, c).magic).toBeUndefined() // (no drain attribute to read)
+})
+
 test('npc-spells: the drain pool counts an augmented attribute; a spells line of GM instructions only is no caster', () => {
   expect(exportNpc(npc('Glow Ward', { wil: '3', log: '4', int: '4(7)', cha: '2' }), data, c).magic).toMatchObject({
     tradition: 'Intuition-Based Tradition',
