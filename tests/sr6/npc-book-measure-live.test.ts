@@ -265,6 +265,8 @@ test.skipIf(!DIR)(
     console.log(JSON.stringify(counts))
     if (process.env.SR6_MEASURE_OUT) writeFileSync(process.env.SR6_MEASURE_OUT, JSON.stringify({ counts, ammo, ...out }, null, 1))
     expect(n.npcs).toBeGreaterThan(0)
+    // (the ammo audit's violations: a wrong ammoFor fails the test itself)
+    expect(ammo).toEqual([])
   },
   900_000,
 )

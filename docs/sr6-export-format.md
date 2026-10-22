@@ -169,7 +169,7 @@ only. Ties: the NPC's own book, then the latest printing. A printed level picks 
 implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over
 the entry's `values`. A ranged weapon (firearms, bows, crossbows, tasers, dart guns, grenade and rocket launchers, by
 its class or category) is followed by its regular ammunition (`line.match.how` `ammo`, `kind` `gear`, uid `<weapon uid>:ammo`) and, by its ammo
-type, the spare's container (`line.match.how` `ammo`, `qty` 1, uid `<weapon uid>:ammo#2`). The ammo item's `qty` is the TOTAL
+type, the spare's container (`line.match.how` `ammo`, `qty` 1). Their uids are `line:<part>:<printed>:ammo`, a repeat getting `#2`… from the one counter shared with the weapon lines, so a printed weapon line that repeats gives `X`, `X:ammo`, `X:ammo#2`, `X#2`, `X:ammo#3`…: pair ammo and container with their weapon by order, never by uid: they are the items with `line.match.how` `ammo` right after it. The ammo item's `qty` is the TOTAL
 rounds the NPC owns, both loads: the printed or catalog ammo count (else 10) times two; a bow or crossbow 20; a flamethrower 2
 tanks. The Foundry module must load the weapon from it (one load into the weapon, the rest stays as the spare), not fill the
 weapon in addition to it. The container is exported as `gear`, never `weapons` (the module makes every weapons-kind item a
