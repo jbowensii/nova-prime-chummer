@@ -743,6 +743,27 @@ function splitWith(s: string): string[] {
   }
   return [s]
 }
+/** `a + b (DR+5)` as `a (DR+5)`, `b`: things joined by a spaced plus at no depth are a list; the bracket that ends it is the
+ *  first one's (the printed Defense of the set read as the first thing's). */
+function plusList(el: string): string[] {
+  const parts: string[] = ['']
+  let depth = 0
+  for (let i = 0; i < el.length; i++) {
+    const ch = el[i]
+    if ('([{'.includes(ch)) depth++
+    else if (')]}'.includes(ch)) depth = Math.max(0, depth - 1)
+    if (!depth && ch === '+' && /\s/.test(el[i - 1] ?? '') && /\s/.test(el[i + 1] ?? '')) parts.push('')
+    else parts[parts.length - 1] += ch
+  }
+  const things = parts.map(x => x.trim()).filter(Boolean)
+  if (things.length < 2) return [el]
+  const end = groups(things.at(-1)!).at(-1)
+  if (end && end[0] > 0 && end[1] === things.at(-1)!.length - 1 && !groups(things[0]).some(g => g[1] === things[0].length - 1)) {
+    things[0] += ` ${things.at(-1)!.slice(end[0])}`
+    things[things.length - 1] = things.at(-1)!.slice(0, end[0]).trim()
+  }
+  return things
+}
 /** A gear or augmentations line as the things it prints, each with the grade it sets: GM instructions and prose left out
  *  (they stay in the line's text, the notes), `(all deltaware):` or `the following deltaware items:` the grade of what
  *  follows, a lone `(delta)` the grade of the item before it, a lone `bioware` nothing. */
@@ -761,7 +782,9 @@ function stuffLines(text: string): { printed: string; grade?: string }[] {
     } else if (PROSE.test(s.replace(/\([^)]*\)|\[[^\]]*\]/g, '')) && s.split(/\s+/).length >= 6) continue
     const lead = s.match(/^\(\s*(?:all\s+)?(alpha|beta|gamma|delta)ware\s*\)\s*(.*)$/i)
     if (lead) [line, s] = [lead[1].toLowerCase(), lead[2]]
-    for (const el of top(s).flatMap(e => (/^\[[^\]]*\]$/.test(e) ? top(e.slice(1, -1)) : [e]))) {
+    for (const el of top(s)
+      .flatMap(e => (/^\[[^\]]*\]$/.test(e) ? top(e.slice(1, -1)) : [e]))
+      .flatMap(plusList)) {
       const printed = el.replace(/[\s.]+$/, '')
       const g = printed.match(GRADE)
       if (!printed || GM_NOTE.test(printed) || ATTRIBUTE_VALUE.test(printed) || /^(?:cyber|bio|gene|nano)ware$/i.test(printed)) continue
@@ -1081,6 +1104,15 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       if (stuff && !armored && (!found || found.match.how === 'standard')) found = viaForms(c, name, head, kinds, src, true) ?? found
       if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src, false, { rating: s.values.rating })
       if (stuff && !armored) found ??= leadWord(c, name, kinds, src, s.values.rating) ?? inAnyKind(c, name, head, src, s.values.rating)
+      // (a cyberlimb word links only to entries of that limb, never to another body part by spelling: `cyberarm` is no `Cyberears`)
+      const limb = stuff ? name.match(/\bcyber\s?(arm|leg|hand|foot|torso|skull)s?\b/i)?.[1] : undefined
+      if (limb && found && !new RegExp(limb, 'i').test(found.entry.name)) {
+        const quality = head.match(/\b(obvious|synthetic)\b/i)?.[1]
+        const limbs = [...c.entries.augmentations.values()].filter(
+          e => new RegExp(`${limb}`, 'i').test(e.name) && (!quality || new RegExp(quality, 'i').test(e.name)),
+        )
+        found = limbs.length ? { entry: prefer(c, src)(limbs), match: { score: 0.8, how: 'fuzzy' as const } } : undefined
+      }
       // (a bound spirit is a creature entry, looked for nowhere else)
       if (stuff && !found && /^spirits? of\b/i.test(name)) found = findEntry(c, name, ['critters', 'spirits'], src)
       // (a standard stand-in far from the name is no guess: `certified credsticks` are not `Standard`)

@@ -90,6 +90,9 @@ const c = buildSr6Catalog([
     ['bl-a', 'Bone lacing (Aluminum)', { type: 'cyberware', category: 'Bodyware' }],
     ['bl-t', 'Bone lacing (Titanium)', { type: 'cyberware', category: 'Bodyware' }],
     ['gm-p', 'GMT bone lacing (Plastic)', { type: 'cyberware', category: 'Bodyware' }],
+    ['ears6', 'Cyberears (Rating 6)', { type: 'cyberware', category: 'Earware', rating: '6' }],
+    ['leg-o', 'Leg (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
+    ['leg-s', 'Leg (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['skilljack', 'Skilljack', { type: 'cyberware', category: 'Headware' }],
     ['skillwires', 'Skillwires', { type: 'cyberware', category: 'Bodyware' }],
     ['wired', 'Wired reflexes', { type: 'cyberware', category: 'Bodyware' }],
@@ -299,4 +302,14 @@ test('negative: head gear is head armor, never a jacket; a rating above the top 
   expect(names('gear', 'visor (+1)')).not.toContain('Street clothes')
   expect(names('gear', 'smartglasses (device rating 7)')).toEqual(['Glasses 3'])
   expect(names('gear', 'smartglasses (device rating 2)')).toEqual(['Glasses 2'])
+})
+
+test('negative: a cyberlimb is never another body part, a plus joins two things', () => {
+  // the catalog here has no arm entry: not Cyberears by spelling
+  expect(names('augmentations', 'cyberarm [right, obvious, w/ silencer]')).toEqual(['(built) cyberarm'])
+  expect(names('augmentations', 'cyberleg (obvious)')).toEqual(['Leg (obvious)'])
+  const t = things('gear', 'Armor jacket + helmet (DR+5)')
+  expect(t.map(x => x.entry?.name)).toEqual(['Armor jacket', 'Helmet'])
+  expect(t[0].values.defense).toBe(5)
+  expect(t[1].values.defense).toBeUndefined()
 })
