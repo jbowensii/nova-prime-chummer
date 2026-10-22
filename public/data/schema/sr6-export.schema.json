@@ -1098,7 +1098,7 @@
           }
         },
         "magic": {
-          "description": "A caster's tradition (an NPC with a spells line): of the catalog's traditions whose text names a drain attribute, the one whose drain pool (Willpower + that attribute, from the NPC's stats) is largest; drainAttr is the one to set on the sheet; traditions lists each tradition with that pool (more than one on a tie), the first the one set. Absent for a non-caster, when its stats can't be read or no tradition names its attribute.",
+          "description": "A caster's tradition (an NPC whose spells line prints a spell): of the catalog's traditions with a drain attribute (their drain), the one whose drain pool (Willpower + that attribute, from the NPC's stats, augmented) is largest; drainAttr is the one to set on the sheet; traditions lists each tradition with that pool (more than one on a tie), the first the one set. Absent for a non-caster, when its stats can't be read or no tradition has a drain attribute.",
           "type": "object",
           "additionalProperties": false,
           "required": [
