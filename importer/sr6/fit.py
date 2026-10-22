@@ -7,11 +7,12 @@ metatype's raised attributes; the core attributes on attribute points; skill ran
 on skill points, a specialization on the points still left. Whatever a pool can't hold is bought with karma, the
 cheapest ranks first, and nuyen past the resources with karma turned into nuyen. Assignments are compared on, in
 order: power points past the Magic rating (an adept's), Karma past the starting Karma, the count of leftovers past the
-carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), the nuyen left's distance from the printed starting
-nuyen (karma turned into nuyen past what the gear needs, while karma is left), then the least past the limits; a
-full tie keeps the first in letter order. The numbers are the creation settings the app ships
-(public/data/sr6/creation-defaults.xml), resolved as the app applies them (resolve: nested rules, levels of play), and
-the catalog's priority rows; nothing is read from the book's text."""
+carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), the least past the limits (Karma past its limit
+turned into nuyen as far as the nuyen limit allows: owner, 2026-10-22), then the nuyen left's distance from the printed
+starting nuyen (karma turned into nuyen past what the gear needs, while karma is left); a full tie keeps the first in
+letter order. The numbers are the creation settings the app ships (public/data/sr6/creation-defaults.xml), resolved
+as the app applies them (resolve: nested rules, levels of play), and the catalog's priority rows; nothing is read from
+the book's text."""
 
 import itertools
 import math
@@ -316,9 +317,9 @@ def spend(need, rows, cs):
         karma += max(0, need["spells"] - free) * n("karmaSpell") + need["forms"] * n("karmaForm")
     # karma into nuyen: at least what the gear needs past the resources (never nuyen left below 0 while karma could
     # cover it), more while karma is left and the nuyen stays within its carry-over limit: the count that leaves fewest
-    # leftovers past the carry-over limits (maxKarmaLeft, maxNuyenLeft, CRB Hong Kong pp. 66, 68), then the nuyen left
-    # nearest the printed starting nuyen (the book's own number: no Karma moved that can't clear a limit), then the
-    # least past them (nuyen counted in the karma it was, rounded up), then the fewest
+    # leftovers past the carry-over limits (maxKarmaLeft, maxNuyenLeft, CRB Hong Kong pp. 66, 68), then the least past
+    # them (nuyen counted in the karma it was, rounded up: Karma past its limit turned into nuyen as far as the nuyen
+    # limit allows, owner 2026-10-22), then the nuyen left nearest the printed starting nuyen, then the fewest
     rate = n("karmaToNuyenRateInDebt" if need["debt"] else "karmaToNuyenRate")
     short = need["nuyen"] - res.get("nuyen", 0)
     # the house rule's limit on the karma turned (karmaToNuyenCap on: karmaToNuyenMax; budgets.ts toNuyen counts no
@@ -341,8 +342,8 @@ def spend(need, rows, cs):
         excess = max(0.0, room - k - top("maxKarmaLeft")) + (math.ceil(over_n / rate) if over_n > 0 and rate else 0)
         return (
             (room - k > top("maxKarmaLeft")) + (over_n > 0),
-            abs(nuyen - need["left"]) if need["left"] is not None else 0,
             excess,
+            abs(nuyen - need["left"]) if need["left"] is not None else 0,
             k,
         )
 
@@ -355,14 +356,14 @@ def spend(need, rows, cs):
     to_nuyen = min(ks, key=leftover) if rate else 0
     if need.get("toNuyen") is not None:  # printed (In Debt's debt): that many, or what the gear needs when more
         to_nuyen = max(low, need["toNuyen"]) if cap is None else min(max(low, need["toNuyen"]), cap)
-    errors, gap, excess, _ = leftover(to_nuyen)
+    errors, excess, gap, _ = leftover(to_nuyen)
     karma += to_nuyen
     over = max(0.0, karma - start - need["neg"])
     pp_over = (
         max(0.0, need["pp"] - a.get("mag", rating)) if kind == "adept" else 0.0
     )  # one per point of Magic (CRB p.157)
     left = res.get("nuyen", 0) + to_nuyen * rate - need["nuyen"]
-    return (pp_over, over, errors, gap, excess), {
+    return (pp_over, over, errors, excess, gap), {
         "letters": {c: rows[c]["letter"] for c in COLUMNS},
         "attrs": build,
         "skills": skills,
