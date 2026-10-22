@@ -290,7 +290,9 @@ def _overridden(src, name, labels, page):
     {"sample": "<name>", "note": "<why, shown in the runner's notes>", "edits": [{"field": "<label>", "from": "<printed
     text>", "to": "<replacement>"} | {"field": "<label>", "add": "<text appended to the line>"}]}. Returns (labels,
     notes): a copy of the labels with the edits applied, and the notes of the rows that applied. An edit whose printed
-    text isn't there is reported on stderr (a reprint can't skip it silently) and its row's note is left out."""
+    text isn't there is reported on stderr (a reprint can't skip it silently) and its row's note is left out. A row
+    with no edits is a note only: a stat block that breaks a creation rule as printed, kept as printed, its note naming
+    the Review code it explains (`review: leftover.karma`) with the measured numbers (owner, 2026-10-21)."""
     labels, notes = dict(labels), []
     path = SAMPLES_DIR / f"{src.lower()}.json"
     for r in json.loads(path.read_text(encoding="utf8")) if path.is_file() else []:
@@ -931,6 +933,11 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
 
         searched = list(dict.fromkeys([hit[0], *kinds, "gear"]))
         got = idx.find(searched, an, accept=ok) or _worded(idx, searched, an)  # (a vehicle's spoof kit is gear)
+        # (`Commlink (Hermes Ikon)`: an implant priced with the device it holds, "2,000¥ + Commlink" (CRB p.284),
+        # printed with that device: an entry whose category is the host's name, bought with it)
+        got = got or idx.find(
+            PURCHASES["gear"], an, accept=lambda e: norm(e.get("attrs", {}).get("category") or "") == norm(hit[2])
+        )
         # (a medkit's `4 x supplies`: a count of the host's own Medkit supplies, bought apart however its text names
         # them;
         # never the host itself, `Bone lacing (titanium)`)

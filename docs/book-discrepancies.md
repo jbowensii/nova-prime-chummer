@@ -71,7 +71,14 @@ doesn't say): the prime runner's 100 Karma (CRB p. 64), the first printing's
 cap on illegal gear only (CRB p. 66). A value the book misprints is corrected by
 the owner's override file (`<samplefix>`: a rating, quantity or grade) or, for a misprinted name or a
 line the book priced from another table, by the importer's sample overrides
-(`importer/sr6/overrides/samples/<book>.json`, owner rulings only), which put the reason in the runner's notes. It keeps the printed attributes, Essence,
+(`importer/sr6/overrides/samples/<book>.json`, owner rulings only), which put the reason in the runner's notes. Where
+the stat block breaks a creation rule as printed (Karma left past the carry-over that neither the priorities nor
+Sum-to-Ten absorb with the purchases priced as printed, a skill above the cap, a seventh quality, a limb's accessories
+past its Capacity), a row of that file with no edits is a note only: the runner stays as printed and its notes name
+the Review code (`review: leftover.karma`), what the book prints and the measured numbers (owner, 2026-10-21;
+`tests/sr6/sample-review-live.test.ts` checks every sample of an import against them). An implant priced with the
+device it holds (`2,000¥ + Commlink`, CRB p. 284) printed with that device (`Commlink (Hermes Ikon)`) buys the device
+with it. It keeps the printed attributes, Essence,
 initiative, condition monitors and Defense Rating in `<printed>`. Review
 compares them with the rules' numbers and warns where they differ ("the book
 prints N; the rules give M", with the page). Over budget, a skill above the
