@@ -152,7 +152,7 @@ rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `v
 `[{ name, rating, attr?, pool?, printed }]`: the skills line resolved against the catalog's skills, pool = rating + the
 attribute's value; a skill the catalog doesn't have keeps its printed text only. `items` (npc.ts `npcThings`): each
 weapon, attack, piece of gear, augmentation and power the weapons, attacks, gear, augmentations and powers lines print, as
-a purchase (`uid`, `qty` (1, or a printed count: `2 x smoke grenades`), `worn`, `bonuses` [], `accessories`) plus
+a purchase (`uid`, `qty` (1, or a printed count: `2 x smoke grenades`), `grade?` (an augmentation's printed grade, `betaware` or a line's `(all deltaware)`: alpha, beta, gamma or delta; its `values.cost`, `avail` and `essence` are priced with the catalog grade's factors, and its add-ons take it), `worn`, `bonuses` [], `accessories`) plus
 `line { part, printed, values, dv?, match? }`, the thing as printed, the numbers it prints, its DV as printed and how it
 found its entry. An adept power has its `level`. It is its catalog entry (owner 2026-10-20: "75% guesses are fine for
 matching please. when in doubt use standard ammo, grenades, etc."): by name (`match.how` `exact`; the kinds its part

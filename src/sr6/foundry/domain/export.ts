@@ -624,23 +624,32 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
 
 /** A stat block's thing as an export item (Sr6ExportNpcItem): a built weapon's category and DV as printed, its skill the
  *  printed one or attackSkill's. */
-function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6ExportNpcItem {
+function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, hostGrade?: string): Sr6ExportNpcItem {
   const e = leveled(data, t.entry, t.values.rating)
   const skill = t.kind === 'weapons' && !e ? attackSkill(t) : undefined
   const base = e
     ? item(c, data, e, false, t.values.rating)
     : { ...bare(t.kind, t.name), attrs: defined({ category: t.category ?? skill, skill, dv: t.dvText }) as Record<string, string> }
   const values = { ...base.values, ...t.values }
+  // an augmentation of a grade costs, weighs on Essence and is available as that grade says (CRB p. 282); its add-ons take its grade
+  const grade = base.kind === 'augmentations' ? (t.grade ?? hostGrade) : t.grade
+  const g = grade && base.kind === 'augmentations' ? data.grades[grade] : undefined
+  if (g) {
+    if (values.cost !== undefined) values.cost *= g.cost ?? 1
+    if (values.essence !== undefined) values.essence *= g.essence ?? 1
+    if (values.avail !== undefined) values.avail += g.avail ?? 0
+  }
   return defined({
     ...base,
     uid,
     values,
     qty: t.qty ?? 1,
+    grade,
     worn: base.kind === 'armor',
     bonuses: [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
     line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match, unread: t.unread }),
-    accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`)),
+    accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`, base.kind === 'augmentations' ? grade : undefined)),
   })
 }
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills and its lines' things as items.
