@@ -1091,10 +1091,64 @@
           }
         },
         "corrections": {
-          "description": "What its items correct in the stat block, one line each, for its notes: a guessed (fuzzy) link with its score, a standard item standing in, ammunition added, an attack kept that can't be rolled, what has no catalog entry (absent in files written before it was added).",
+          "description": "What its items correct in the stat block, one line each, for its notes: a guessed (fuzzy) link with its score, a standard item standing in, ammunition added, an attack kept that can't be rolled, what has no catalog entry, then a caster's tradition (absent in files written before it was added).",
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "magic": {
+          "description": "A caster's tradition (an NPC whose spells line prints a spell): of the catalog's traditions with a drain attribute (their drain), the one whose drain pool (Willpower + that attribute, from the NPC's stats, augmented) is largest; drainAttr is the one to set on the sheet; traditions lists each tradition with that pool (more than one on a tie), the first the one set. Absent for a non-caster, when its stats can't be read or no tradition has a drain attribute.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tradition",
+            "drainAttr",
+            "drain",
+            "traditions"
+          ],
+          "properties": {
+            "tradition": {
+              "type": "string"
+            },
+            "drainAttr": {
+              "enum": [
+                "log",
+                "int",
+                "cha"
+              ]
+            },
+            "drain": {
+              "type": "number"
+            },
+            "traditions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "name",
+                  "drainAttr"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "drainAttr": {
+                    "enum": [
+                      "log",
+                      "int",
+                      "cha"
+                    ]
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1134,6 +1188,17 @@
         "level": {
           "description": "An adept power's level.",
           "type": "number"
+        },
+        "pick": {
+          "description": "A spell or ritual on the spells line: the pick it would be on a runner (its item as a runner's spell pick has it: catalog name, values, description when sent).",
+          "enum": [
+            "spells",
+            "rituals"
+          ]
+        },
+        "note": {
+          "description": "A spell's printed text (its parameters and Force as the stat block prints them, `Fireball (F6)`).",
+          "type": "string"
         },
         "line": {
           "description": "The thing as printed, its line's part, the numbers it prints (at the NPC's rating where they use its Force) and its DV as printed.",

@@ -34,9 +34,12 @@ import {
   npcFromEntry,
   npcPools,
   npcThings,
+  npcTradition,
   npcValues,
+  traditionNote,
   type Sr6NpcMatch,
   type Sr6NpcThing,
+  type Sr6NpcTradition,
 } from '../../runner-builder/domain/creation/npc'
 import { catalogFind } from '../../catalog/domain/load'
 import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, type Find } from '../../catalog/domain/values'
@@ -219,8 +222,10 @@ export interface Sr6ExportNpc {
   pools: ReturnType<typeof npcPools>
   /** the weapons, attacks, armor, gear, augmentations and powers its lines print, as items (npcItem) */
   items: Sr6ExportNpcItem[]
-  /** what those items correct in the stat block, one line each, for its notes (npc.ts npcCorrections) */
+  /** what those items correct in the stat block, one line each, for its notes (npc.ts npcCorrections), then the tradition chosen */
   corrections: string[]
+  /** a caster's tradition (one with a spells line): the one whose drain pool is largest, its drain attribute set (npc.ts npcTradition) */
+  magic?: Sr6NpcTradition
 }
 /** A thing an NPC's stat block prints (npc.ts npcThings) as a purchase: its catalog entry's, the stat block's numbers over
  *  the entry's, else built from the printed line (no id); armor worn. uid `line:<part>:<printed>` (a power's
@@ -229,6 +234,8 @@ export interface Sr6ExportNpc {
  *  standard item, or a weapon's regular ammunition, `<weapon uid>:ammo`, qty one full load). */
 export interface Sr6ExportNpcItem extends Omit<Sr6ExportPurchase, 'accessories'> {
   level?: number
+  /** a spell or ritual on the spells line: the pick it is on a runner (`spells`, `rituals`), its note the printed text */
+  pick?: 'spells' | 'rituals'
   line: { part: string; printed: string; values: Sr6NpcThing['values']; dv?: string; match?: Sr6NpcMatch; unread?: true; detail?: string }
   accessories: Sr6ExportNpcItem[]
 }
@@ -606,7 +613,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),
     ...(x.kind === 'critters'
       ? {
-          ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data, c) } : {}),
+          ...(e ? { npc: exportNpc(npcFromEntry(e).npc!, data, c, true) } : {}),
           critter: {
             class: critterClass(x, e),
             tamed: !!x.tamed,
@@ -624,11 +631,14 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
 
 /** A stat block's thing as an export item (Sr6ExportNpcItem): a built weapon's category and DV as printed, its skill the
  *  printed one or attackSkill's. */
-function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, hostGrade?: string): Sr6ExportNpcItem {
+function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, text: boolean, hostGrade?: string): Sr6ExportNpcItem {
   const e = leveled(data, t.entry, t.values.rating)
   const skill = t.kind === 'weapons' && !e ? attackSkill(t) : undefined
+  // a spell is a runner's spell pick (owner 2026-10-21 "NPC spells"): its catalog name, the printed text (its Force) in its
+  // note, its description sent; one the catalog lacks a plain spell by its printed name
+  const spell = t.part === 'spells' && (t.kind === 'spells' || t.kind === 'rituals')
   const base = e
-    ? item(c, data, e, false, t.values.rating)
+    ? item(c, data, e, spell && text, t.values.rating)
     : { ...bare(t.kind, t.name), attrs: defined({ category: t.category ?? skill, skill, dv: t.dvText }) as Record<string, string> }
   const values = { ...base.values, ...t.values }
   // an augmentation of a grade costs, weighs on Essence and is available as that grade says (CRB p. 282); its add-ons take its grade
@@ -646,22 +656,26 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, host
     qty: t.qty ?? 1,
     grade,
     worn: base.kind === 'armor',
-    bonuses: [],
+    // (a spell's are a runner pick's: its entry's effects)
+    bonuses: spell && e ? bonuses(data, lineBonuses(data, undefined, e), 1) : [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
+    ...(spell ? { pick: t.kind as 'spells' | 'rituals', note: t.printed } : {}),
     line: defined({ part: t.part, printed: t.printed, values: t.values, dv: t.dvText, match: t.match, unread: t.unread, detail: t.detail }),
-    accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`, base.kind === 'augmentations' ? grade : undefined)),
+    accessories: t.accessories.map(a => npcItem(c, data, a, `${uid}:w/${a.printed}`, text, base.kind === 'augmentations' ? grade : undefined)),
   })
 }
 /** An NPC's stat block, read at its rating, with dice pools against the catalog's skills and its lines' things as items.
- *  A contact goes out as a grunt of group Contact (v1's kinds: the module makes it an NPC actor). */
-export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportNpc {
+ *  A contact goes out as a grunt of group Contact (v1's kinds: the module makes it an NPC actor). `text`: its spells carry
+ *  their descriptions (a runners file always, a books file when it has descriptions). */
+export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog, text = false): Sr6ExportNpc {
   const seen = new Map<string, number>(),
-    things = npcThings(npc, c)
+    things = npcThings(npc, c),
+    magic = npcTradition(npc, c, things)
   const items = things.map(t => {
     const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}${t.match?.how === 'ammo' ? ':ammo' : ''}`,
       n = (seen.get(id) ?? 0) + 1
     seen.set(id, n)
-    return npcItem(c, data, t, n > 1 ? `${id}#${n}` : id)
+    return npcItem(c, data, t, n > 1 ? `${id}#${n}` : id, text)
   })
   return defined({
     kind: npc.kind === 'contact' ? 'grunt' : npc.kind,
@@ -672,7 +686,8 @@ export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog): Sr6ExportN
     lines: npc.lines.map(l => ({ ...l })),
     pools: npcPools(npc, data),
     items,
-    corrections: npcCorrections(things),
+    corrections: [...npcCorrections(things), ...(magic ? [traditionNote(magic)] : [])],
+    magic,
   })
 }
 
@@ -803,7 +818,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     ledger: ch.ledger
       .filter(e => e.type !== 'void' && !voided.has(e.id))
       .map(e => ({ at: e.at, type: e.type, summary: ledgerLabel(e), karma: 'karma' in e ? e.karma : 0, nuyen: 'nuyen' in e ? e.nuyen : 0 })),
-    ...(ch.npc ? { npc: exportNpc(ch.npc, data, c) } : {}),
+    ...(ch.npc ? { npc: exportNpc(ch.npc, data, c, true) } : {}),
     ...(exportRules(cr, ch).length ? { rules: exportRules(cr, ch) } : {}),
   }
 }
@@ -836,7 +851,7 @@ function bookEntry(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean): Sr
     id: e.id,
     source: e.source,
     page: e.page,
-    ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data, c) } : {}),
+    ...(BEINGS.has(e.kind) ? { npc: exportNpc(npcFromEntry(e).npc!, data, c, text) } : {}),
   }
 }
 const bookSource = (s: Sr6Source, compendium = false): Sr6ExportBook['source'] => ({

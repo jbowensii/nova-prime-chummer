@@ -829,6 +829,14 @@
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
+  <xs:complexType name="Tradition">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <!-- the attribute it resists Drain with besides Willpower, as its text prints it (importer/sr6/flags.py tradition) -->
+      <xs:attribute name="drain"><xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="log"/><xs:enumeration value="int"/><xs:enumeration value="cha"/></xs:restriction></xs:simpleType></xs:attribute>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
   <xs:complexType name="CritterPower">
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="type" type="xs:string"/>

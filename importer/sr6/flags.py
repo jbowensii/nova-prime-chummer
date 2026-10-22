@@ -107,6 +107,20 @@ def spell(category, text=""):
     return out
 
 
+_TRADITION = re.compile(
+    r"\b(?:Tradition\s+Attribute|Drain)\s*:\s*(?:Willpower\s*\+\s*)?(Logic|Intuition|Charisma)\b", re.I
+)
+_DRAIN = {"logic": "log", "intuition": "int", "charisma": "cha"}
+
+
+def tradition(text=""):
+    """{"drain": "log" | "int" | "cha"}: the attribute a tradition resists Drain with besides Willpower, as its text
+    prints it (CRB p. 128 `**Tradition Attribute:** Logic`, Street Wyrd's `**Drain:** Willpower + Intuition`), else
+    {}."""
+    m = _TRADITION.search((text or "").replace("**", ""))
+    return {"drain": _DRAIN[m.group(1).lower()]} if m else {}
+
+
 def _kind(word):
     return _KINDS[" ".join(word.lower().split())]
 
