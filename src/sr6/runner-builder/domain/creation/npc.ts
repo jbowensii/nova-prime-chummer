@@ -249,7 +249,7 @@ const DEVICES = new Set<Sr6Kind>(['electronics', 'augmentations', 'programs'])
 const NATURAL = /close combat|unarmed|natural|exotic weapons/i
 /** an attack's printed stats: a bracket, a DV, an attack rating, a damage (`4P`) or range bands (`9/—`) */
 const STAT_SIGN = /\[|\bDV\b|\bAR\b|attack ratings?|\d\s*[PS]\b|\d\s*\/\s*(?:\d|[—–-])/i
-const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack/i
+const DEVICE_NAME = /commlink|deck|console|\brcc\b|cyberjack|motorcycle|\bbike\b|trike/i
 const SPELL_KINDS: Sr6Kind[] = ['spells', 'rituals']
 const ACCESSORY_KINDS: Sr6Kind[] = ['weapons', 'armor', 'electronics', 'gear', 'augmentations', 'programs', 'licencetypes']
 const ATTACK_SKILLS = new Set(['close combat', 'exotic weapons', 'firearms', 'athletics'])
@@ -374,7 +374,7 @@ function readStats(stats: string[], rating: number | undefined) {
       if (bands.some(b => b != null)) v.ar = bands
     } else if (/^(SS|SA|BF|FA)(\s*\/\s*(SS|SA|BF|FA))*$/i.test(t)) v.modes = t.toUpperCase().split(/\s*\/\s*/)
     else if ((m = t.match(/^(\d+)\s*\(?[a-z]{1,2}\)?$/i))) v.ammo = Number(m[1])
-    else if ((m = t.match(/^(?:R|Rating)\s*:?\s*(\d+)$/i))) v.rating = Number(m[1])
+    else if ((m = t.match(/^(?:R|(?:Device\s+)?Rating)\s*:?\s*(\d+)$/i))) v.rating = Number(m[1])
     else if ((m = t.match(/^(?:(?:DR|Defense(?:\s+Rating)?)\s*\+?\s*(\d+)|\+\s*(\d+)\s*(?:DR|Defense(?:\s+Rating)?)?)$/i))) v.defense = Number(m[1] ?? m[2])
     else if ((m = t.match(GRADE))) grade = m[1].toLowerCase()
     else if ((m = t.match(/^x\s*(\d+)$/i))) count = Number(m[1])
@@ -402,6 +402,10 @@ interface Index {
   initials: Map<string, Sr6Entry[]>
   /** gear and augmentations named by the variant inside their name (`savior system`), nanites first */
   mids: Map<string, Sr6Entry[]>
+  /** per kind: each entry with the words of its name, category and type (coveredBy) */
+  words?: Map<Sr6Kind, { e: Sr6Entry; have: Set<string> }[]>
+  /** the gear kinds' entries by normalised name (expandStuff) */
+  norms?: { e: Sr6Entry; n: string }[]
 }
 const indexes = new WeakMap<Sr6Catalog['entries'], Index>()
 function indexOf(c: Sr6Catalog): Index {
@@ -410,7 +414,6 @@ function indexOf(c: Sr6Catalog): Index {
   x = { exact: new Map(), loose: new Map(), categories: new Map(), classes: new Map(), initials: new Map(), mids: new Map() }
   const add = <K>(m: Map<K, Sr6Entry[]>, k: K, e: Sr6Entry) => m.set(k, [...(m.get(k) ?? []), e])
   const loose = new Map<Sr6Kind, Map<string, Sr6Entry[]>>()
-  const mids: [string, Sr6Entry][] = []
   const each = (k: Sr6Kind, name: string, e: Sr6Entry) => {
     add(x!.exact, `${k}/${normName(name)}`, e)
     add(loose.get(k) ?? loose.set(k, new Map()).get(k)!, matchKey(name), e)
@@ -434,22 +437,35 @@ function indexOf(c: Sr6Catalog): Index {
             .join(''),
           e,
         )
-      // a variant named in the middle (`Therapeutic Nanites (Savior System) Nanites`) is also known by it alone; the nanites, not the colony
-      const mid = e.name.match(/^.*?\(([^()]+)\)\s+\S+$/)
-      if ((k === 'gear' || k === 'augmentations') && mid) {
-        mids.push([mid[1], e])
-      }
     }
-  // an augmentation family's variant alone (`Reakt`: Genotype Enhancement (Reakt)), where the family has three or more
-  const family = new Map<string, [string, Sr6Entry][]>()
+  // a variant named alone is the entry's (`Reakt`: Genotype Enhancement (Reakt); `Savior System`: Therapeutic Nanites (Savior
+  // System) Nanites, the nanites before the colony): inside an entry's name, or of an augmentation family of three or more;
+  // none when two families have it (`Plastic`, `Large`)
+  const family = new Map<string, number>()
+  const fam = (e: Sr6Entry) => e.name.match(/^(.*?)\s*\(([^()]+)\)$/)
   for (const e of c.entries.augmentations?.values() ?? []) {
-    const m = e.name.match(/^(.*?)\s*\(([^()]+)\)$/)
-    if (!m || !/[a-z]{4}/i.test(m[2]) || /^(?:rating|level)/i.test(m[2])) continue
-    const key = matchKey(m[1])
-    family.set(key, [...(family.get(key) ?? []), [m[2], e]])
+    const m = fam(e)
+    if (m) family.set(matchKey(m[1]), (family.get(matchKey(m[1])) ?? 0) + 1)
   }
-  for (const vs of family.values()) if (vs.length >= 3) for (const [v, e] of vs) add(x.exact, `augmentations/${normName(v)}`, e)
-  for (const [v, e] of mids.sort((a, b) => Number(/nanites$/i.test(b[1].name)) - Number(/nanites$/i.test(a[1].name)))) add(x.mids, matchKey(v), e)
+  const raw: [string, string, Sr6Entry][] = []
+  for (const k of ['gear', 'augmentations'] as const)
+    for (const e of c.entries[k]?.values() ?? []) {
+      const mid = e.name.match(/^(.*?)\s*\(([^()]+)\)\s+\S+$/),
+        end = k === 'augmentations' ? fam(e) : null
+      if (mid) raw.push([mid[2], matchKey(mid[1]), e])
+      else if (end && (family.get(matchKey(end[1])) ?? 0) >= 3 && /[a-z]{4}/i.test(end[2]) && !/^(?:rating|level)/i.test(end[2]))
+        raw.push([end[2], matchKey(end[1]), e])
+    }
+  // (every family that has the variant counts, small or large)
+  const stems = new Map<string, Set<string>>()
+  const seen = (v: string, stem: string) => stems.set(matchKey(v), (stems.get(matchKey(v)) ?? new Set()).add(stem))
+  for (const [v, stem] of raw) seen(v, stem)
+  for (const e of c.entries.augmentations?.values() ?? []) {
+    const m = fam(e)
+    if (m) seen(m[2], matchKey(m[1]))
+  }
+  for (const [v, , e] of raw.sort((a, b) => Number(/nanites$/i.test(b[2].name)) - Number(/nanites$/i.test(a[2].name))))
+    if (stems.get(matchKey(v))!.size === 1) add(x.mids, matchKey(v), e)
   // a rated family's name (`Glow Eyes`, its levels `Glow Eyes 1`…): its lowest level
   for (const f of c.levels?.values() ?? []) {
     const e = f.parent && c.entries[f.kind].get(f.levels.get(Math.min(...f.levels.keys()))!)
@@ -491,6 +507,11 @@ function findEntry(
     }
   const key = matchKey(name)
   if (how === 'exact' || key.length < 3) return undefined
+  // the same name but for its plural, its rating or its note (`data taps`: Data tap) is that entry, before any guess at a type
+  for (const k of kinds) {
+    const same = x.loose.get(k)?.find(l => l.key === key)
+    if (same) return { entry: pick(same.entries), match: { score: 1, how: 'fuzzy' } }
+  }
   const words = key.split(' '),
     head = words[words.length - 1],
     rest = words.slice(0, -1)
@@ -577,24 +598,32 @@ function findEntry(
 const KIND_WORDS = /^(?:augmentation|cyberware|bioware|gear|equipment|weapon|electronic|armor|power|item|thing)$/
 /** The standard armor for a printed Defense the catalog has no armor of that name for: an armor at that Defense, else the
  *  nearest below, else the least; its standard one (standardOf). */
-function standardArmor(c: Sr6Catalog, defense: number, source: string | undefined): Sr6Entry | undefined {
+function standardArmor(c: Sr6Catalog, defense: number): Sr6Entry | undefined {
   const d = (e: Sr6Entry) => Number((e.attrs.defense ?? '').replace('+', ''))
-  const all = [...(c.entries.armor?.values() ?? [])].filter(e => /^\+?\d+$/.test(e.attrs.defense ?? '') && !/accessor|mod/i.test(e.attrs.category ?? ''))
+  // (body armor: no helmet, mask, hood, cloak, shield or glove; and the same for every NPC, whichever book it is in)
+  const all = [...(c.entries.armor?.values() ?? [])].filter(
+    e =>
+      /^\+?\d+$/.test(e.attrs.defense ?? '') &&
+      !/accessor|mod/i.test(e.attrs.category ?? '') &&
+      !/\b(?:helmet|hood|cloak|shield|gloves?|boots?|mask|saddle|barding|cyclewear|goggles)\b/i.test(e.name),
+  )
   if (!all.length) return undefined
   const at = all.filter(e => d(e) === defense),
     below = all.filter(e => d(e) < defense)
   const list = at.length ? at : below.length ? below.filter(e => d(e) === Math.max(...below.map(d))) : all.filter(e => d(e) === Math.min(...all.map(d)))
-  return standardOf(list, prefer(c, source))
+  return standardOf(list, prefer(c, undefined))
 }
 /** lengths that can still reach NPC_MATCH (nameRatio is at most 2 × the shorter / both) */
 const within = (a: string, b: string) => (2 * Math.min(a.length, b.length)) / (a.length + b.length) >= NPC_MATCH
 const round = (n: number) => Math.round(n * 1000) / 1000
-/** A category's standard item: at the printed rating when one has it, else its lowest rating or level; then its lowest
+/** A category's standard item: at the printed rating when one has it, else the nearest level below it, else its lowest; then its lowest
  *  price (a price it can't read last). */
 function standardOf(list: Sr6Entry[], pick: (l: Sr6Entry[]) => Sr6Entry, rating?: number): Sr6Entry {
   const level = (e: Sr6Entry) => Number(e.attrs.level ?? e.attrs.rating) || 0,
     cost = (e: Sr6Entry) => rated(e.attrs.cost, level(e) || 1).n ?? Infinity
-  const low = list.some(e => level(e) === rating) ? rating! : Math.min(...list.map(level)),
+  // (the printed rating's, else the nearest below it, else the lowest)
+  const below = rating == null ? [] : list.map(level).filter(l => l > 0 && l <= rating)
+  const low = list.some(e => level(e) === rating) ? rating! : below.length ? Math.max(...below) : Math.min(...list.map(level)),
     l1 = list.filter(e => level(e) === low)
   const cheap = Math.min(...l1.map(cost))
   return pick(l1.filter(e => cost(e) === cheap))
@@ -650,24 +679,10 @@ const GM_NOTE =
 /** prose where a line prints items: a sentence that says what the NPC has or gains */
 const PROSE = /\b(?:has|have|gains?|increases?|bonus|noted)\b/i
 /** the head of an introduction to a list (`he has the following deltaware items`, `Augmentations (all gammaware)`) */
-const INTRO = /\bfollowing\b|\ball\s+\w+ware\b|^augmentations\b/i
+const INTRO = /\bfollowing\b|\ball\s+\w+ware\b|^augmentations\b|^\W*\w+ware\W*$/i
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }
 const PACKS = String.raw`(?:packs?|packets?|boxes|bottles?|vials?|doses?)\s+of\s`
-/** an older or other edition's name for a catalog word */
-const SYNONYMS: Record<string, string> = { medium: 'middle' } // ponytail: one lifestyle name; add a word when a book prints another
-const GEAR_KINDS: Sr6Kind[] = [
-  'gear',
-  'electronics',
-  'armor',
-  'programs',
-  'vehicles',
-  'weapons',
-  'augmentations',
-  'lifestyles',
-  'datastructures',
-  'critters',
-  'spirits',
-]
+const GEAR_KINDS: Sr6Kind[] = ['gear', 'electronics', 'armor', 'programs', 'vehicles', 'weapons', 'augmentations', 'lifestyles', 'datastructures']
 
 /** `s` with its brackets paired: a closer of the wrong kind closes the opener (`[+1) w/ …` is `[+1]`), a stray closer and
  *  the opener left open at the end are fixed (the reader ran lines on and cut them). */
@@ -701,9 +716,15 @@ function splitWith(s: string): string[] {
     else if (!depth && i > 0 && /\s/.test(s[i - 1]) && /^(?:w\/|with\s)/i.test(s.slice(i))) {
       let head = s.slice(0, i).trim(),
         tail = s.slice(i).replace(/^(?:w\/|with)\s*/i, '')
-      // (the bracket that ends the whole line is the thing's: `Armored kimono with ballistic hood (DR +5)`)
+      // (a bracket of numbers that ends the whole line is the thing's: `Armored kimono with ballistic hood (DR +5)`, not a list: `w/ licenses (a, b)`)
       const end = groups(tail).at(-1)
-      if (end && end[0] > 0 && end[1] === tail.length - 1 && !groups(head).some(g => g[1] === head.length - 1)) {
+      if (
+        end &&
+        end[0] > 0 &&
+        end[1] === tail.length - 1 &&
+        /^[([]\s*(?:\+|DR\b|Defense|device|rating|R\s*\d|\d)/i.test(tail.slice(end[0])) &&
+        !groups(head).some(g => g[1] === head.length - 1)
+      ) {
         head += ` ${tail.slice(end[0])}`
         tail = tail.slice(0, end[0])
       }
@@ -724,6 +745,9 @@ function stuffLines(text: string): { printed: string; grade?: string }[] {
     if (intro && INTRO.test(intro[1])) {
       line = intro[1].match(/\b(alpha|beta|gamma|delta)ware\b/i)?.[1].toLowerCase()
       s = intro[2]
+    } else if (intro && /^[\w\s]{1,30}$/.test(intro[1])) {
+      // (a new label ends the grade of the one before: `Gear: …`)
+      line = undefined
     } else if (PROSE.test(s.replace(/\([^)]*\)|\[[^\]]*\]/g, '')) && s.split(/\s+/).length >= 6) continue
     const lead = s.match(/^\(\s*(?:all\s+)?(alpha|beta|gamma|delta)ware\s*\)\s*(.*)$/i)
     if (lead) [line, s] = [lead[1].toLowerCase(), lead[2]]
@@ -778,10 +802,13 @@ function formsOf(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[])
     if (t && t !== name && !to.includes(t)) to.push(t)
   }
   const colon = name.split(/:\s*/)
-  if (colon.length === 2) colon.reverse().forEach(t => add(forms, t))
+  // (`cyberdeck: Fairlight Excalibur` is the model; `jammer: directional 6`, either)
+  if (colon.length === 2) (colon[1].trim().split(/\s+/).length >= 2 && !/\d/.test(colon[1]) ? [colon[1]] : colon.reverse()).forEach(t => add(forms, t))
   add(forms, name.replace(/\s+(?:inhalers?|syringes?|injectors?)$/i, ''))
   add(forms, name.replace(new RegExp(`^(?:\\d+\\s+)?${PACKS}`, 'i'), ''))
   add(forms, name.replace(/(?:\s+[A-Z]{3,})+$/, ''))
+  add(forms, name.replace(/^(?:standard|regular|normal)\s+/i, ''))
+  add(forms, name.replace(/\s+lifestyle$/i, ''))
   const initials = name.match(/^([A-Z]{3,6})s?$/)?.[1].toLowerCase()
   // (an initialism two names share is none: `AAS`)
   const named = (initials ? (indexOf(c).initials.get(initials) ?? []) : []).filter(e => kinds.includes(e.kind))
@@ -811,22 +838,34 @@ function formsOf(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[])
  *  names in its brackets, by name only. */
 function viaForms(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[], source?: string, inner = false, standard?: { rating?: number }) {
   const f = formsOf(c, name, printed, kinds)
-  if (inner) return f.inner.map(n => findEntry(c, n, kinds, source)).find(Boolean)
   const by = (how: 'exact' | 'loose' | 'standard') => f.forms.map(n => findEntry(c, n, kinds, source, how, standard?.rating)).find(Boolean)
-  return by('exact') ?? by('loose') ?? (standard ? by('standard') : undefined)
+  const found = inner
+    ? f.inner.map(n => findEntry(c, n, kinds, source)).find(Boolean)
+    : (by('exact') ?? close(by('loose')) ?? (standard ? close(by('standard'), true) : undefined))
+  return found && guess(found, name)
 }
-/** The entry whose name starts with the printed name's first word (`linguasoft subscription`: `Linguasofts`, `synaptic
- *  accelerator`: `Synaptic booster`, `Medium lifestyle`: `Middle`): the one the word names alone, else the only name that
- *  starts with it; a word of 5 letters at least. Its standard level. */
+/** A link found through another form of the printed name: shown to the GM as the guess it is (an exact hit on a form of the
+ *  name is no exact hit on the name). */
+const close = <T extends { match: Sr6NpcMatch } | undefined>(f: T, standard = false) =>
+  f && (f.match.score >= 0.9 || (standard && f.match.how === 'standard')) ? f : undefined
+const guess = (f: { entry: Sr6Entry; match: Sr6NpcMatch }, printed: string) =>
+  f.match.how === 'exact' ? { entry: f.entry, match: { score: round(nameRatio(matchKey(printed), matchKey(f.entry.name))), how: 'fuzzy' as const } } : f
+/** The entry whose name starts with the printed name's first word, when the other words only qualify it: a count, a rating,
+ *  a side or quality, or a word of its category or type (`cybereyes obvious`); or when the printed rating is a level of that
+ *  family (`linguasoft subscription (rating 4)`: Linguasofts 4; `synaptic accelerator 3`: Synaptic booster 3). `datajack
+ *  adapter` is no Datajack. A word of 5 letters at least; the family's standard level. */
 function leadWord(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: string, rating?: number) {
   const words = matchKey(name).split(' ')
   if (words.length < 2 || words[0].length < 5) return undefined
-  const first = SYNONYMS[words[0]] ?? words[0],
+  const first = words[0],
     x = indexOf(c)
   const same = kinds.flatMap(k => (x.loose.get(k) ?? []).filter(l => l.key.split(' ')[0] === first))
   const one = same.find(l => l.key === first) ?? (same.length === 1 ? same[0] : undefined)
-  // (a name that is not the word alone is a level of a family: `synaptic accelerator 3` is a rating 3 of `Synaptic booster`)
-  if (!one || (one.key !== first && !(rating != null && one.entries.some(e => Number(e.attrs.level ?? e.attrs.rating) === rating)))) return undefined
+  if (!one) return undefined
+  const known = new Set(matchKey(one.entries.map(e => [e.attrs.category, e.attrs.type].filter(Boolean).join(' ')).join(' ')).split(' '))
+  const qualifier = (w: string) => /^\d+$/.test(w) || ['left', 'right', 'obvious', 'synthetic', 'rating', 'level'].includes(w) || known.has(w)
+  const level = rating != null && one.entries.some(e => Number(e.attrs.level ?? e.attrs.rating) === rating)
+  if (!level && !words.slice(1).every(qualifier)) return undefined
   const entry = standardOf(one.entries, prefer(c, source), rating)
   return { entry, match: { score: round(nameRatio(matchKey(name), one.key)), how: 'standard' as const } }
 }
@@ -857,43 +896,45 @@ function abbreviated(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: str
 /** The gear or augmentation a printed name is the variant of (`Therapeutic Nanites (Savior System) Nanites`). */
 function viaMid(c: Sr6Catalog, name: string, source?: string) {
   const list = indexOf(c).mids.get(matchKey(name))
-  return (
-    list && {
-      entry: prefer(c, source)(list.slice(0, list.filter(e => /nanites$/i.test(e.name)).length || list.length)),
-      match: { score: 1, how: 'exact' as const },
-    }
-  )
+  const entry = list && prefer(c, source)(list.slice(0, list.filter(e => /nanites$/i.test(e.name)).length || list.length))
+  return entry && guess({ entry, match: { score: 1, how: 'exact' } }, name)
 }
 /** The entry whose name, category and type together hold all of a printed name's words, in any order (`increased hearing
  *  spectrum`: Increased spectrum hearing; `regulator gauntlets`: the Regulator of type gun gauntlet; `hardened armor module`:
  *  Armor Plating, Hardened, a critter exoframe module): two words at least, and only one entry holds them. */
+const wordKey = (t: string) => matchKey(t.replace(/[()[\]]/g, ' '))
 function coveredBy(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: string) {
-  const key = (t: string) => matchKey(t.replace(/[()[\]]/g, ' '))
-  const words = key(name).split(' ')
+  const words = wordKey(name).split(' ')
   if (words.length < 2 || words.some(w => w.length < 3)) return undefined
-  const hits = kinds.flatMap(k =>
-    [...(c.entries[k]?.values() ?? [])].filter(e => {
-      const have = new Set(key([e.name, e.attrs.category, e.attrs.type].filter(Boolean).join(' ')).split(' '))
-      return words.every(w => have.has(w))
-    }),
-  )
+  const x = indexOf(c)
+  x.words ??= new Map()
+  const hits = kinds.flatMap(k => {
+    let list = x.words!.get(k)
+    if (!list) {
+      list = [...(c.entries[k]?.values() ?? [])].map(e => ({
+        e,
+        have: new Set(wordKey([e.name, e.attrs.category, e.attrs.type].filter(Boolean).join(' ')).split(' ')),
+      }))
+      x.words!.set(k, list)
+    }
+    return list.filter(t => words.every(w => t.have.has(w))).map(t => t.e)
+  })
   // (a rated family is one: its levels share a name)
   if (new Set(hits.map(e => matchKey(e.name))).size !== 1) return undefined
-  return { entry: standardOf(hits, prefer(c, source)), match: { score: 0.8, how: 'fuzzy' as const } }
+  const entry = standardOf(hits, prefer(c, source))
+  return { entry, match: { score: round(nameRatio(words.join(' '), matchKey(entry.name))), how: 'fuzzy' as const } }
 }
-/** A licence a stat block prints by what it covers (`augmentation license`, `pistols license`) as the catalog names it. */
-const LICENCE_WORDS: Record<string, string> = {
-  augmentation: 'cyberware',
-  augmentations: 'cyberware',
-  magic: 'spellcasting',
-  pistols: 'firearm',
-  rcc: 'rigger remote console',
-} // ponytail: the words the books use; add when another is printed
-/** An add-on printing a list of licences, `licenses (augmentation, pistols, RCC)`, as one licence each. */
+/** An add-on printing a list of licences, `licenses (augmentation, pistols, RCC)` or `fake licenses 3 (firearms, magic)`, as
+ *  one licence each. */
 const licences = (a: string): string[] => {
-  const list = a.match(/^licen[sc]es?\s*[([]([^)\]]*)[)\]]$|^licen[sc]es?:\s*(.+)$/i)
-  const named = (w: string) => (/licen[sc]e$/i.test(w) ? w : `${w.trim()} license`).replace(/^(\w+)(?= licen[sc]e$)/i, m => LICENCE_WORDS[m.toLowerCase()] ?? m)
-  return list ? (list[1] ?? list[2]).split(/\s*,\s*/).map(named) : [/^\w+ licen[sc]e$/i.test(a) ? named(a) : a]
+  const list = a.match(/^(?:fake\s+)?licen[sc]es?(?:\s+\d+)?\s*[([]([^)\]]*)[)\]]$|^licen[sc]es?:\s*(.+)$/i)
+  return list ? (list[1] ?? list[2]).split(/\s*,\s*/).map(w => (/licen[sc]e$/i.test(w) ? w : `${w.trim()} license`)) : [a]
+}
+/** A licence by its name only (`Cyberware license`); a guess at one would be another licence (`bioware license`). */
+const licenceNamed = (c: Sr6Catalog, a: string) => {
+  const key = matchKey(a)
+  const entry = [...(c.entries.licencetypes?.values() ?? [])].find(e => matchKey(e.name) === key)
+  return entry && { entry, match: { score: 1, how: 'exact' as const } }
 }
 /** A gear or augmentation name in every kind a stat block can print (owner: search them all) when its own kinds have none. */
 function inAnyKind(c: Sr6Catalog, name: string, printed: string, source?: string, rating?: number) {
@@ -906,14 +947,15 @@ function inAnyKind(c: Sr6Catalog, name: string, printed: string, source?: string
     leadWord(c, name, GEAR_KINDS, source, rating)
   )
 }
+const normsOf = (c: Sr6Catalog) => (indexOf(c).norms ??= GEAR_KINDS.flatMap(k => [...(c.entries[k]?.values() ?? [])].map(e => ({ e, n: normName(e.name) }))))
 /** A gear or augmentation printed as several things, when it is none: a list in a bracket of what a family prints
  *  (`genotype enhancements (Alpha Factor, Qualia)`: each its entry's name), `personal inhaler (jazz, novacoke, 1 dose each)`,
  *  `commlink and smartglasses (device rating 7)` and `biomonitor/killswitch` when each part is an entry. */
 function expandStuff(c: Sr6Catalog, printed: string, source?: string): string[] {
   // (a part is only taken as a thing by name or a close guess: a split into wrong links is worse than one unlinked)
   const part = (n: string) => {
-    const f = findEntry(c, n, GEAR_KINDS, source) ?? findEntry(c, n, GEAR_KINDS, source, 'loose') ?? viaForms(c, n, n, GEAR_KINDS, source)
-    return !!f && f.match.score >= 0.9
+    const f = findEntry(c, n, GEAR_KINDS, source) ?? findEntry(c, n, GEAR_KINDS, source, 'loose')
+    return (!!f && f.match.score >= 0.9) || !!viaForms(c, n, n, GEAR_KINDS, source)
   }
   const last = groups(printed).at(-1),
     tail = last && last[0] > 0 && last[1] === printed.length - 1 ? last : undefined,
@@ -929,12 +971,10 @@ function expandStuff(c: Sr6Catalog, printed: string, source?: string): string[] 
     const names = list.map(p => {
       const key = normName(`${stem} ${p}`)
       let best: { e: Sr6Entry; score: number } | undefined
-      for (const k of GEAR_KINDS)
-        for (const e of c.entries[k]?.values() ?? []) {
-          const en = normName(e.name)
-          const score = en.startsWith(`${stem} `) ? nameRatio(key, en) : 0
-          if (score >= 0.85 && score > (best?.score ?? 0)) best = { e, score }
-        }
+      for (const { e, n } of normsOf(c)) {
+        const score = n.startsWith(`${stem} `) ? nameRatio(key, n) : 0
+        if (score >= 0.85 && score > (best?.score ?? 0)) best = { e, score }
+      }
       return best?.e.name
     })
     if (names.every(Boolean)) return names as string[]
@@ -976,7 +1016,10 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const bare = stuff ? printed.replace(/^data structures?\s*\((.*)\)(?:\s+\S.*)?$/i, '$1') : printed
       const kinds = bare === printed ? lineKinds : (['datastructures'] as Sr6Kind[])
       // (a name that is an entry's own keeps its `w/`: `Full body armor w/ helmet`)
-      const [head, ...withs] = stuff && !findEntry(c, pieces(bare).name, kinds, src) ? splitWith(bare) : [bare]
+      const whole = stuff && /\b(?:w\/|with)\s/i.test(bare) ? pieces(bare).name : undefined
+      const spelt = whole?.replace(/\bwith\s/i, 'w/ ')
+      const own = whole && (findEntry(c, whole, kinds, src) ?? findEntry(c, spelt!, kinds, src) ?? findEntry(c, spelt!, kinds, src, 'loose'))
+      const [head, ...withs] = stuff && !(own && own.match.score >= 0.9) ? splitWith(bare) : [bare]
       const p = power ? { name: printed, stats: [] } : pieces(head)
       const s = readStats(p.stats, npc.rating)
       // (`with a rating 4` is the thing's rating; a GM's choice is no add-on)
@@ -1009,6 +1052,8 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       // (a Cybercombat attack is a Matrix action: no catalog thing; gear printing a Defense, not a device's, is armor)
       const armored = !attack && !power && s.values.defense != null && !DEVICE_NAME.test(name)
       // (gear and augmentations: first the name in its other forms, then a leading word, then any kind)
+      // (`Low lifestyle` is the lifestyle Low)
+      if (stuff && /\blifestyle$/i.test(name)) found ??= findEntry(c, name.replace(/\s+lifestyle$/i, ''), ['lifestyles'], src)
       if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src) ?? viaMid(c, name, src)
       if (!natural && !/cybercombat/i.test(s.category ?? ''))
         found ??= findEntry(c, name, armored ? ['armor'] : kinds, src, power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
@@ -1016,16 +1061,30 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       if (stuff && !armored && (!found || found.match.how === 'standard')) found = viaForms(c, name, head, kinds, src, true) ?? found
       if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src, false, { rating: s.values.rating })
       if (stuff && !armored) found ??= leadWord(c, name, kinds, src, s.values.rating) ?? inAnyKind(c, name, head, src, s.values.rating)
+      // (a bound spirit is a creature entry, looked for nowhere else)
+      if (stuff && !found && /^spirits? of\b/i.test(name)) found = findEntry(c, name, ['critters', 'spirits'], src)
+      // (a standard stand-in far from the name is no guess: `certified credsticks` are not `Standard`)
+      if (stuff && found?.match.how === 'standard' && found.match.score < (armored ? 0.5 : 0.3)) found = undefined
       // a device's or implant's `DR 6` is its Device Rating, not a Defense
       if (s.values.defense != null && (found ? DEVICES.has(found.entry.kind) : DEVICE_NAME.test(name))) {
         s.values.rating ??= s.values.defense
         delete s.values.defense
       }
       // armor printing a Defense and nothing like its name: the standard armor at that Defense
-      const armor = !found && !attack && !power && s.values.defense != null ? standardArmor(c, s.values.defense, src) : undefined
+      const armor = !found && !attack && !power && s.values.defense != null ? standardArmor(c, s.values.defense) : undefined
       if (armor) found = { entry: armor, match: { score: round(nameRatio(matchKey(name), matchKey(armor.name))), how: 'standard' } }
       // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2
-      if (found && s.values.rating != null) found.entry = atLevel(c, found.entry.kind, found.entry.id, s.values.rating) ?? found.entry
+      if (found && s.values.rating != null) {
+        // (`Cybereyes` of one book has levels 6 and 7: rating 3 is another entry named so, `Cybereyes basic system (Rating 3)`)
+        const at = atLevel(c, found.entry.kind, found.entry.id, s.values.rating)
+        const family = matchKey(found.entry.name)
+        const other = at
+          ? undefined
+          : [...c.entries[found.entry.kind].values()].filter(
+              e => Number(e.attrs.level ?? e.attrs.rating) === s.values.rating && matchKey(e.name).startsWith(`${family} `),
+            )
+        found.entry = at ?? (other?.length ? prefer(c, src)(other) : found.entry)
+      }
       const entry = found?.entry
       // An attack it can't roll (a Cybercombat one is a Matrix action; another prints no DV or attack ratings it reads): an
       // item that is no weapon, its printed line kept (unread), when it prints stats at all; a bare name or book text the
@@ -1052,12 +1111,14 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         .flatMap(licences)
         .filter(a => !GM_NOTE.test(a) && !/\bchoice\b/i.test(a))
         .map(a => {
-          const f =
-            findEntry(c, a, ACCESSORY_KINDS, src, 'loose') ??
-            abbreviated(c, a, ACCESSORY_KINDS, src) ??
-            coveredBy(c, a, ACCESSORY_KINDS, src) ??
-            viaMid(c, unbracketed(a), src) ??
-            viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src)
+          const f = /licen[sc]e$/i.test(a)
+            ? licenceNamed(c, a)
+            : (findEntry(c, a, ACCESSORY_KINDS, src) ??
+              abbreviated(c, a, ACCESSORY_KINDS, src) ??
+              coveredBy(c, a, ACCESSORY_KINDS, src) ??
+              viaMid(c, unbracketed(a), src) ??
+              viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
+              findEntry(c, a, ACCESSORY_KINDS, src, 'loose'))
           // (an add-on the catalog lacks stays, as plain gear with its printed name)
           return f
             ? { part: l.part, printed: a, name: f.entry.name, printedName: a, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }

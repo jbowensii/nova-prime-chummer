@@ -3,6 +3,8 @@
 // normalised to the catalog's, D what no book prints stays plain gear. A small invented catalog; no book text.
 import { expect, test } from 'vitest'
 import { buildSr6Catalog } from '../../../src/sr6/catalog/domain/load'
+import { sr6Data } from '../../../src/sr6/catalog/domain/data'
+import { exportNpc } from '../../../src/sr6/foundry/domain/export'
 import { blankSr6Npc, npcCorrections, npcThings } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import { SR6_KINDS, type Sr6Kind } from '../../../src/sr6/formats/domain/types'
 
@@ -29,27 +31,57 @@ const c = buildSr6Catalog([
     ['standard-stick', 'Standard', { category: 'Credstick', cost: '5' }],
     ['gold-stick', 'Gold', { category: 'Credstick', cost: '100' }],
     ['image-link', 'Image link', { category: 'Accessory' }],
+    ['std-tags', 'Standard tags', { category: 'Tags' }],
+    ['mob-light', 'Mob Light', { category: 'Lights' }],
+    ['low-light', 'Low-light vision', { category: 'Accessory' }],
     ['sav-c', 'Therapeutic Nanites (Savior System) Colony', { category: 'Colony and nanite' }],
     ['sav-n', 'Therapeutic Nanites (Savior System) Nanites', { category: 'Colony and nanite' }],
   ]),
   file('electronics', [
     ['goggles', 'Goggles', { category: 'Optical device' }],
     ['test-deck', 'Test Deck', { category: 'Cyberdeck' }],
+    ['link1', 'Meta Link', { category: 'Commlink', rating: '1', cost: '100' }],
+    ['link5', 'Hermes Test', { category: 'Commlink', rating: '5', cost: '900' }],
+    ['link6', 'Avalon Test', { category: 'Commlink', rating: '6', cost: '3000' }],
   ]),
   file('armor', [
     ['bdu', 'Basic Duty Utilities', { category: 'Armor', defense: '+2' }],
     ['jacket', 'Armor jacket', { category: 'Armor', defense: '+4' }],
+    ['vest', 'Armor vest', { category: 'Armor', defense: '+3' }],
+    ['helmet', 'Helmet', { category: 'Armor', defense: '+1' }],
+    ['cloak', 'Test cloak', { category: 'Armor', defense: '+1' }],
+    ['clothes', 'Street clothes', { category: 'Armor', defense: '+1' }],
+    ['fba', 'Full body armor w/ helmet', { category: 'Armor', defense: '+7' }],
   ]),
   file('vehicles', [['bulldog', 'GMC Bulldog', { category: 'Trucks and van' }]]),
-  file('lifestyles', [['middle', 'Middle', { cost: '5000' }]]),
+  file('lifestyles', [
+    ['middle', 'Middle', { cost: '5000' }],
+    ['low', 'Low', { cost: '2000' }],
+  ]),
+  file('critters', [
+    ['horse', 'Horse'],
+    ['kin', 'Spirit Of Kin'],
+  ]),
+  file('grades', [['delta', 'Deltaware', { essence: '0.5', cost: '2.5', avail: '3' }]]),
   file('datastructures', [['oracle', 'Oracle']]),
   file('licencetypes', [
     ['lic-c', 'Cyberware license'],
     ['lic-s', 'Spellcasting license'],
   ]),
-  file('weapons', [['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }]]),
+  file('weapons', [
+    ['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }],
+    ['bolt', 'Bolt', { category: 'Projectile' }],
+  ]),
   file('augmentations', [
-    ['datajack', 'Datajack', { type: 'cyberware', category: 'Headware' }],
+    ['datajack', 'Datajack', { type: 'cyberware', category: 'Headware', cost: '1000', essence: '0.1', avail: '2' }],
+    ['eyes6', 'Cybereyes (Rating 6)', { type: 'cyberware', category: 'Cybereyes', rating: '6' }],
+    ['eyes7', 'Cybereyes (Rating 7)', { type: 'cyberware', category: 'Cybereyes', rating: '7' }],
+    ['eyes3', 'Cybereyes basic system (Rating 3)', { type: 'cyberware', category: 'Eyeware', rating: '3' }],
+    ['eyes4', 'Cybereyes basic system (Rating 4)', { type: 'cyberware', category: 'Eyeware', rating: '4' }],
+    ['bl-p', 'Bone lacing (Plastic)', { type: 'cyberware', category: 'Bodyware' }],
+    ['bl-a', 'Bone lacing (Aluminum)', { type: 'cyberware', category: 'Bodyware' }],
+    ['bl-t', 'Bone lacing (Titanium)', { type: 'cyberware', category: 'Bodyware' }],
+    ['gm-p', 'GMT bone lacing (Plastic)', { type: 'cyberware', category: 'Bodyware' }],
     ['hear', 'Increased spectrum hearing', { type: 'bioware', category: 'Earware' }],
     ['hand-o', 'Hand (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['hand-s', 'Hand (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
@@ -100,10 +132,12 @@ test('C: names are normalised to the catalog’s, in any kind', () => {
   expect(names('gear', 'smartgoggles')).toEqual(['Goggles']) // a glued word split
   expect(names('gear', 'Bulldog stepvan')).toEqual(['GMC Bulldog'])
   expect(names('gear', 'BDUs')).toEqual(['Basic Duty Utilities']) // an initialism
-  expect(names('gear', 'Medium lifestyle (current month only)')).toEqual(['Middle'])
+  expect(names('gear', 'low lifestyle (current month only)')).toEqual(['Low'])
+  // a word the catalog does not have stays plain gear
+  expect(names('gear', 'Medium lifestyle (current month only)')).toEqual(['(built) Medium lifestyle'])
   expect(names('gear', 'data structure (Oracle 4)')).toEqual(['Oracle'])
   expect(things('gear', 'data structure (Oracle 4)')[0].values.rating).toBe(4)
-  expect(names('gear', 'certified credisticks (for payments)')).toEqual(['Standard']) // a plural, a typo: the standard credstick
+  expect(names('gear', 'standard credstick')).toEqual(['Standard']) // a type name alone is its standard item
   expect(names('gear', 'datajack')).toEqual(['Datajack']) // an augmentation on a gear line
   expect(names('gear', 'commlink and trodes (device rating 4)')).toContain('Trodes')
 })
@@ -157,6 +191,69 @@ test('C: a variant named inside an entry, the same words in another order, a typ
   expect(names('augmentations', '[savior system, datajack]')).toEqual(['Therapeutic Nanites (Savior System) Nanites', 'Datajack'])
   expect(names('augmentations', 'increased hearing spectrum')).toEqual(['Increased spectrum hearing'])
   expect(names('gear', 'regulator gauntlets (Foo Roomsweepers attached)')).toEqual(['Crackshot Regulator'])
-  const [f] = things('gear', 'fake SIN [rating 4; w/ licenses (augmentation, magic)]')
-  expect(f.accessories.map(a => a.entry?.name)).toEqual(['Cyberware license', 'Spellcasting license'])
+  const [f] = things('gear', 'fake SIN [rating 4; w/ licenses (cyberware, bioware, spellcasting)]')
+  // a licence by its name only: another's name is not a guess at it
+  expect(f.accessories.map(a => [a.name, a.entry?.name])).toEqual([
+    ['Cyberware license', 'Cyberware license'],
+    ['bioware license', undefined],
+    ['Spellcasting license', 'Spellcasting license'],
+  ])
+})
+
+test('negative: a stand-in that is nothing like the name, or a wrong kind of armor, is no link', () => {
+  // no "Certified credstick" in the catalog: plain gear, not the Standard credstick
+  expect(names('gear', 'certified credisticks (for payments)')).toEqual(['(built) certified credisticks'])
+  // standard bolts are the Bolt, not the Standard tags
+  expect(names('gear', 'standard bolts')).toEqual(['Bolt'])
+  // armor of a printed Defense with no name: body armor, never a helmet, the same for every NPC
+  for (const text of ['Gang leather (+1 Defense Rating)', 'gang leathers (Defense Rating+1)']) {
+    const [a] = things('gear', text)
+    expect(a.entry?.kind).toBe('armor')
+    expect(a.entry?.name).not.toMatch(/helmet|cloak/i)
+  }
+  const [suit] = things('gear', 'Aubert bodyguard suit (+3) with electric insulation 1')
+  expect(suit.entry?.name).toBe('Armor vest')
+  expect(suit.accessories.map(a => a.name)).toEqual(['electric insulation 1'])
+})
+
+test('negative: the printed rating picks its level, a commlink its device rating or the nearest below', () => {
+  expect(things('augmentations', 'Cybereyes 3 w/ camera')[0].entry?.name).toBe('Cybereyes basic system (Rating 3)')
+  expect(things('augmentations', 'cybereyes [rating 3, w/ image link]')[0].entry?.name).toBe('Cybereyes basic system (Rating 3)')
+  expect(names('gear', 'commlink (device rating 6, armorlink upgrade 6)')).toEqual(['Avalon Test'])
+  expect(names('gear', 'commlink (device rating 5)')).toEqual(['Hermes Test'])
+  expect(names('gear', 'commlink (device rating 7)')).toEqual(['Avalon Test']) // the nearest below
+})
+
+test('negative: a first word alone is not the item, a creature is not gear, a variant two families share is nobody’s', () => {
+  expect(names('gear', 'medkit pouch')).toEqual(['(built) medkit pouch'])
+  expect(names('augmentations', 'datajack adapter')).toEqual(['(built) datajack adapter'])
+  expect(names('gear', 'horse saddle')).toEqual(['(built) horse saddle'])
+  expect(names('gear', 'spirit of kin (Force 4, 2 services)')).toEqual(['Spirit Of Kin'])
+  // `plastic` is a bone lacing and a GMT bone lacing
+  expect(names('augmentations', 'plastic')).toEqual(['(built) plastic'])
+  // goggles with a low-light add-on: the add-on is no `Mob Light`
+  expect(things('gear', 'goggles w/ low-light').flatMap(t => t.accessories.map(a => a.entry?.name))).toEqual(['Low-light vision'])
+})
+
+test('a link through another form of the name is shown as the guess it is', () => {
+  const [t] = things('gear', '2 x jazz inhalers')
+  expect(t.match?.how).toBe('fuzzy')
+  expect(npcCorrections([t]).join()).toContain('Jazz')
+  // the full name with its w/ keeps the entry that has it
+  expect(names('gear', 'Full body armor with helmet (+7)')).toEqual(['Full body armor w/ helmet'])
+})
+
+test('a list of licences after w/ keeps its list; a line label ends the grade before it', () => {
+  const [h] = things('gear', 'Commlink w/ licenses (augmentation, pistols, RCC)')
+  expect(h.accessories.map(a => a.name)).toEqual(['augmentation license', 'pistols license', 'RCC license'])
+  const [k] = things('gear', 'Commlink w/ fake licenses 3 (firearms, magic)')
+  expect(k.accessories.map(a => a.name)).toEqual(['firearms license', 'magic license'])
+  expect(things('augmentations', '(all deltaware): datajack. Gear: datajack').map(x => x.grade)).toEqual(['delta', undefined])
+})
+
+test('a graded augmentation is priced with its grade', () => {
+  const ch = blankSr6Npc('grunt', 3)
+  ch.npc!.lines = [{ part: 'augmentations', text: 'datajack (deltaware)' }]
+  const x = exportNpc(ch.npc!, sr6Data(c), c)
+  expect(x.items[0]).toMatchObject({ grade: 'delta', values: { cost: 2500, essence: 0.05, avail: 5 } })
 })

@@ -146,12 +146,15 @@ test('npc-combat-items: a spirit’s attacks are worked out at its Force', () =>
 test('npc-combat-items: an NPC’s runner export carries them and is valid; two of the same printed thing get their own uids', () => {
   const schema = new Ajv2020({ strict: false, validateFormats: false }).compile(JSON.parse(readFileSync('public/data/schema/sr6-export.schema.json', 'utf8')))
   const ch = blankSr6Npc('critter')
-  ch.npc = npc('critter', { weapons: 'Bite [Close Combat, DV 4P, 9/—/—/—/—] Bite [Close Combat, DV 4P, 9/—/—/—/—]' })
+  // (a graded augmentation: the grade is in the published schema)
+  ch.npc = npc('critter', { weapons: 'Bite [Close Combat, DV 4P, 9/—/—/—/—] Bite [Close Combat, DV 4P, 9/—/—/—/—]', augmentations: 'Glow Eyes 1 (deltaware)' })
   const f = exportSr6Runners(c, data, fixtureCreation(), [ch], SAMPLE_OPTS)
   expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  expect(f.runners![0].npc!.items.find(i => i.grade)).toMatchObject({ id: 'crb.glow-eyes.1', grade: 'delta' })
   expect(f.runners![0].npc!.items.map(i => i.uid)).toEqual([
     'line:weapons:Bite [Close Combat, DV 4P, 9/—/—/—/—]',
     'line:weapons:Bite [Close Combat, DV 4P, 9/—/—/—/—]#2',
+    'line:augmentations:Glow Eyes 1 (deltaware)',
   ])
 })
 

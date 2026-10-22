@@ -1112,6 +1112,10 @@
         "line"
       ],
       "properties": {
+        "grade": {
+          "description": "An augmentation's grade as the stat block prints it (alpha, beta, gamma, delta); its cost, availability and Essence are priced with it.",
+          "type": "string"
+        },
         "uid": {
           "type": "string"
         },
