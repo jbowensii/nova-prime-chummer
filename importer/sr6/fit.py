@@ -10,8 +10,9 @@ order: power points past the Magic rating (an adept's), Karma past the starting 
 carry-over limits (5 Karma, 5,000¥: CRB Hong Kong pp. 66, 68), the least past the limits (Karma past its limit
 turned into nuyen as far as the nuyen limit allows: owner, 2026-10-22), then the nuyen left's distance from the printed
 starting nuyen (karma turned into nuyen past what the gear needs, while karma is left); a full tie keeps the first in
-letter order. The numbers are the creation settings the app ships (public/data/sr6/creation-defaults.xml), resolved as the app applies them (resolve: nested rules, levels of play), and
-the catalog's priority rows; nothing is read from the book's text."""
+letter order. The numbers are the creation settings the app ships (public/data/sr6/creation-defaults.xml), resolved
+as the app applies them (resolve: nested rules, levels of play), and the catalog's priority rows; nothing is read from
+the book's text."""
 
 import itertools
 import math
