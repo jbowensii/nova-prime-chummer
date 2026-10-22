@@ -327,11 +327,21 @@ def build(cat, texts, row_kinds):
     groups, acc_of = [], collections.defaultdict(list)  # host category key -> its accessory categories' names
     for (kind, ckey), c in cats.items():
         hs = hosts(c["name"])
+        # a host phrase ending on a kind's word names that kind (`new weapon mod` fits Weapon)
+        fit = [
+            h if h in names or h in KIND_WORDS or h.split()[-1] not in KIND_WORDS else h.split()[-1] for h in hs or ()
+        ]
         # a mod category priced in mod slots (a MOD SLOTS column) is a vehicle's: its name's word (`Electronics mod`,
-        # `Chassis mod`) is the part of the vehicle it modifies, not a host
-        if hs is not None and sum(1 for e in c["entries"] if "slots" in e["attrs"]) * 2 > len(c["entries"]):
-            hs = ["vehicle"]
-        c["fits"] = hs
+        # `Chassis mod`) is the part of the vehicle it modifies, not a host, and a name with no host (`Secondary
+        # propulsion system`) names none; a vehicle or drone host the name gives stays
+        slotted = sum(1 for e in c["entries"] if e["attrs"].get("slots")) * 2 > len(c["entries"])
+        if slotted and not (fit and all(KIND_WORDS.get(h) == "vehicles" for h in fit)):
+            fit = ["vehicle"]
+        c["fits"] = fit if fit or hs is not None else None
+        if fit != hs and hs is not None and all(h in names or h in KIND_WORDS for h in fit):
+            for i, v in enumerate(verdicts):  # (the host is found now: no stale verdict)
+                if v[1] and key(v[1]) == ckey and v[3] == WHY[6]:
+                    verdicts[i] = (*v[:3], None, v[4])
         for h in hs or ():
             acc_of[h].append(c["name"])
         es = c["entries"]

@@ -93,22 +93,56 @@ class BuildTest(unittest.TestCase):
         self.assertNotIn("group", cat.entries["gear"][0]["attrs"])
 
     def test_a_mod_category_priced_in_mod_slots_fits_vehicles(self):
+        def slotted(name, tab, category, slots="1"):
+            r = row(name, tab, category)
+            r["attrs"]["slots"] = slots
+            return r
+
+        def table(section):
+            return {"title": section.lower(), "section": section, "header": ["GEAR", "MOD SLOTS"], "page": 1}
+
+        cat = _Cat(
+            {
+                i: table(sec)
+                for i, sec in enumerate(["Zorp Mods", "Glow Mods", "Half Mods", "Blank Mods", "Quux Systems"])
+            },
+            {
+                "gear": [
+                    slotted("Zorp", 0, "zorp-mods"),
+                    slotted("Blip", 0, "zorp-mods"),
+                    row("Glim", 1, "glow-mods"),
+                    slotted("Hi", 2, "half-mods"),
+                    row("Ho", 2, "half-mods"),  # (exactly half: not a vehicle's)
+                    slotted("Bl", 3, "blank-mods", ""),
+                    slotted("Qu", 4, "quux-systems"),
+                ]
+            },
+        )
+        verdicts, _ = C.build(cat, [], ["gear"])
+        fits = {n: (a["fits"], [k[2] for k in kids]) for _, n, a, kids, _ in cat.added}
+        self.assertEqual(fits["Zorp mods"], ("Vehicle", []))  # (no host word, no missing-host issue)
+        self.assertEqual(fits["Quux systems"], ("Vehicle", []))  # (a name that gives no host)
+        self.assertEqual(fits["Glow mods"], (None, ["no glow category in the book"]))  # (unslotted: the name's word)
+        self.assertEqual(fits["Half mods"], (None, ["no half category in the book"]))
+        self.assertEqual(fits["Blank mods"], (None, ["no blank category in the book"]))  # (a blank slots is no slot)
+        self.assertEqual({v[1]: v[3] for v in verdicts}["Zorp mods"], None)  # (no stale "no matching host")
+        self.assertEqual({v[1]: v[3] for v in verdicts}["Glow mods"], "accessory table with no matching host")
+
+    def test_a_host_the_name_gives_as_a_vehicle_or_drone_stays_and_a_kind_word_ends_a_host(self):
         def slotted(name, tab, category):
             r = row(name, tab, category)
             r["attrs"]["slots"] = "1"
             return r
 
-        cat = _Cat(
-            {
-                0: {"title": "", "section": "Zorp Mods", "header": ["GEAR", "MOD SLOTS"], "page": 1},
-                1: {"title": "", "section": "Glow Mods", "header": ["GEAR", "AVAIL"], "page": 1},
-            },
-            {"gear": [slotted("Zorp", 0, "zorp-mods"), slotted("Blip", 0, "zorp-mods"), row("Glim", 1, "glow-mods")]},
-        )
+        tabs = {
+            i: {"title": "", "section": sec, "header": ["GEAR"], "page": 1}
+            for i, sec in enumerate(["Drone Mods", "New Weapon Mods"])
+        }
+        cat = _Cat(tabs, {"gear": [slotted("Zip", 0, "drone-mods"), row("Zap", 1, "new-weapon-mods")]})
         C.build(cat, [], ["gear"])
-        fits = {n: (a["fits"], [k[2] for k in kids]) for _, n, a, kids, _ in cat.added}
-        self.assertEqual(fits["Zorp mods"], ("Vehicle", []))  # (no host word, no missing-host issue)
-        self.assertEqual(fits["Glow mods"], (None, ["no glow category in the book"]))  # (unslotted: the name's word)
+        self.assertEqual(
+            {n: a["fits"] for _, n, a, _, _ in cat.added}, {"Drone mods": "Drone", "New weapon mods": "Weapon"}
+        )
 
 
 if __name__ == "__main__":
