@@ -989,19 +989,25 @@ def _foreign(value, last, v, ahead):
     return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
 
 
-def _goes_on(label, v):
+def _goes_on(label, v, labelled_next=False):
     """True when line v goes on the open labelled value (label: its (targets, key)) though it starts with a capital: the
     value has a bracket still open and v closes one (`Enhanced Senses (Low-Light` + `Vision, Smell), Hardened Armor
-    (4)`), or it is a powers line cut where a power's name wraps (`… Movement, Natural` + `Weapons (claws/bite),
-    Sapience`: its last power one bare word, v a list of powers)."""
+    (4)`), or it is a list cut where an entry's name wraps (`… Movement, Natural` + `Weapons (claws/bite), Sapience`;
+    `**Spells:** … Clout, Combat` + `Sense, Heal, Ice Storm`): its last entry one bare word, v a list of Title Case
+    names with no sentence end (a powers line: of powers, nothing run on after them); or v one to three Title Case
+    words alone with a labelled line next (`… Stunball, Trid` + `Phantasm` + `**Initiate level:** 6`)."""
     targets, key = label
     value = targets[0][key]
     if sum(value.count(c) for c in "[(") > sum(value.count(c) for c in "])"):
         return any(c in v for c in "])")
-    if key.lower() in ("powers", "optional powers") and re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value):
+    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value) or not is_titled(v):
+        return False
+    if not re.search(r"[,(\[]", v):
+        return labelled_next and len(v.split()) <= 3 and not _SENTENCE_END.search(v.strip())
+    if key.lower() in ("powers", "optional powers"):
         powers, rider = power_list(v)
-        return bool(powers) and not rider and is_titled(v) and bool(re.search(r"[,(\[]", v))
-    return False
+        return bool(powers) and not rider
+    return not _SENTENCE_END.search(v.strip())
 
 
 def _explains(value, v):
@@ -1233,7 +1239,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                         (mode == "box" and cur.stats)
                         or not v[:1].isupper()
                         or last.endswith((",", "-"))
-                        or _goes_on(label, v)
+                        or _goes_on(label, v, i < end and els[i][0] == "x" and bool(_LABEL.match(els[i][2])))
                         or (i >= end or els[i][0] != "x")
                         and not _SENTENCE_END.search(v)
                     )
@@ -1303,8 +1309,16 @@ def _merge_boxes(units, aliases, report):
     descs = [u for u in units if u.kind == "item" and not u.stats and u.has_text()]
     took = {}
     for u in units:
-        if u.kind == "section" or not u.has_box() or any(u is d for d in descs) or u.kind == "item" and u.has_text():
-            continue  # (an item with its band and its own text is whole: a spell named like an adept power)
+        if (
+            u.kind == "section"
+            or not u.has_box()
+            or any(u is d for d in descs)
+            or u.kind == "item"
+            and (u.has_text() or not u.stats)
+        ):
+            # (an item with its band and its own text is whole: a spell named like an adept power; so is a heading over
+            # labelled lines only: one background's `Additional recommendations` are not the next one's)
+            continue
         ks = keys(u.name, aliases)
         cands = [d for d in descs if any(k in ks for nm in alt_names(d.name) for k in keys(nm, aliases))]
         if cands:

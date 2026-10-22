@@ -114,7 +114,8 @@ class WrappedLabelTest(unittest.TestCase):
         self.assertTrue(regroup._goes_on(label, "Weapons (claws/bite), Sapience"))
         self.assertFalse(regroup._goes_on(label, "Zorp hunts in packs, and glows"))  # (prose)
         self.assertFalse(regroup._goes_on(([{"Powers": "Zap, Hum (4)"}], "Powers"), "Weapons (claws/bite), Sapience"))
-        self.assertFalse(regroup._goes_on(([{"Gear": "Zap, Natural"}], "Gear"), "Weapons (claws/bite), Sapience"))
+        # (any list label wraps so: test_sr6_wrapped_lists.py; prose never goes on)
+        self.assertFalse(regroup._goes_on(([{"Gear": "Zap, Natural"}], "Gear"), "Zorp hunts in packs, and glows"))
 
 
 class CutPowersLineTest(unittest.TestCase):
