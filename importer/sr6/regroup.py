@@ -995,15 +995,20 @@ def _goes_on(label, v, labelled_next=False):
     (4)`), or it is a list cut where an entry's name wraps (`… Movement, Natural` + `Weapons (claws/bite), Sapience`;
     `**Spells:** … Clout, Combat` + `Sense, Heal, Ice Storm`): its last entry one bare word, v a list of Title Case
     names with no sentence end (a powers line: of powers, nothing run on after them); or v one to three Title Case
-    words alone with a labelled line next (`… Stunball, Trid` + `Phantasm` + `**Initiate level:** 6`)."""
+    words alone with a labelled line next, after an entry of up to three words (`… Stunball, Trid` + `Phantasm` +
+    `**Initiate level:** 6`)."""
     targets, key = label
     value = targets[0][key]
     if sum(value.count(c) for c in "[(") > sum(value.count(c) for c in "])"):
         return any(c in v for c in "])")
-    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value) or not is_titled(v):
+    if not is_titled(v):
         return False
     if not re.search(r"[,(\[]", v):
-        return labelled_next and len(v.split()) <= 3 and not _SENTENCE_END.search(v.strip())
+        # (a lone line may finish an entry of up to three words: `Hardware Protocols, Security Systems` + `Design`)
+        entry = re.search(r"(?:^|,)\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}$", value)
+        return bool(entry) and labelled_next and len(v.split()) <= 3 and not _SENTENCE_END.search(v.strip())
+    if not re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value):
+        return False  # (a list line goes on only an entry cut at one word)
     if key.lower() in ("powers", "optional powers"):
         powers, rider = power_list(v)
         return bool(powers) and not rider

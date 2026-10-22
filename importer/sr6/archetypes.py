@@ -975,14 +975,13 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         t = re.fullmatch(r"(.*?)\s+(\d{1,2})", a)
         an, ar = (t.group(1), int(t.group(2))) if t else (a, None)
 
-        # (a vehicle takes a cargo mod, one whose slots are counted in CF: Double Clutch p.129's Living Space)
-        # ponytail: only CF mods; other vehicle mods (electrochromic paint) wait for their category's host to read as a
-        # vehicle (DC's "Electronics mod" category fits "Electronic" today, so the app would call it misplaced)
+        # (a vehicle takes a mod priced in mod slots: a cargo mod counted in CF, Double Clutch p.129's Living Space; an
+        # electronics mod, Electrochromic Paint)
         def ok(e, ar=ar):
             return _rated(ar)(e) and (
                 holds
                 or bool(re.search(r"accessor", e.get("attrs", {}).get("category") or "", re.I))
-                or (hit[0] == "vehicles" and bool(re.search(r"\bCF\b", e.get("attrs", {}).get("slots") or "")))
+                or (hit[0] == "vehicles" and bool(e.get("attrs", {}).get("slots")))
             )
 
         searched = list(dict.fromkeys([hit[0], *kinds, "gear"]))
@@ -1018,7 +1017,7 @@ def _purchase(idx, kinds, item, n, worn, cs, note=None, legal_over=None, skill_o
         if not got or not kit and norm(an).replace(" ", "") in norm(hit[3].get("text") or "").replace(" ", ""):
             continue  # (included in the host, its text naming it, or not in the catalog: the note keeps it as printed)
         # a mod whose CF is `2 CF x rating x occupants` (Double Clutch p.129, Living Space) printed with its CF: the
-        # rating that takes it for one occupant, the runner (the book prints no occupants)
+        # rating that takes it for one occupant, the runner (the book prints none: owner, 2026-10-22)
         per_cf = re.search(r"(\d+)\s*CF\s*x\s*rating", got[3].get("attrs", {}).get("slots") or "", re.I)
         if cf and per_cf and int(per_cf.group(1)) and not ar:
             ar = cf // int(per_cf.group(1)) or None

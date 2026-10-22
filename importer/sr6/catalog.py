@@ -1837,7 +1837,13 @@ def being_lists(b, keys=None):
 
 def block_text(b, skip=()):
     """The block's prose: its box labels (those not already in its text, nor taken as lists), then its text."""
-    lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and f"**{k}:**" not in b.text]
+    body = " ".join(b.text.split())
+
+    def printed(k, v):  # (the text prints the label too, its value begun the same; a reply's `**To:**` is another's)
+        start = " ".join(v.split())[:20]
+        return any(body[m.end() :].startswith(start) for m in re.finditer(rf"\*\*{re.escape(k)}:\*\*\s*", body))
+
+    lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and not printed(k, v)]
     return "\n".join(lines + ([b.text] if b.text else []))
 
 
