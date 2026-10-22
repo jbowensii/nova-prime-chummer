@@ -15,6 +15,8 @@ import sys
 import unicodedata
 from dataclasses import dataclass, field, replace
 
+from importer.sr6.powerlist import is_titled, power_list
+
 VERSION = "1"
 HEAD = f"<!-- regrouped v{VERSION} -->"
 
@@ -987,6 +989,21 @@ def _foreign(value, last, v, ahead):
     return bool(closed) and "[" not in v and not _PROSE.search(value) and bool(_PROSE.search(" ".join([v, *ahead])))
 
 
+def _goes_on(label, v):
+    """True when line v goes on the open labelled value (label: its (targets, key)) though it starts with a capital: the
+    value has a bracket still open and v closes one (`Enhanced Senses (Low-Light` + `Vision, Smell), Hardened Armor
+    (4)`), or it is a powers line cut where a power's name wraps (`… Movement, Natural` + `Weapons (claws/bite),
+    Sapience`: its last power one bare word, v a list of powers)."""
+    targets, key = label
+    value = targets[0][key]
+    if sum(value.count(c) for c in "[(") > sum(value.count(c) for c in "])"):
+        return any(c in v for c in "])")
+    if key.lower() in ("powers", "optional powers") and re.search(r"(?:^|,)\s*[A-Z][a-z]+$", value):
+        powers, rider = power_list(v)
+        return bool(powers) and not rider and is_titled(v) and bool(re.search(r"[,(\[]", v))
+    return False
+
+
 def _explains(value, v):
     """True when line v starts a sentence on the value's last entry, by its name (`Fichetti Pain Inducer [Fichetti …,
     20 charges]` + `The Fichetti Pain Inducer utilizes pulse microwave technology …`, The Needle's Eye p. 125): the
@@ -1216,6 +1233,7 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                         (mode == "box" and cur.stats)
                         or not v[:1].isupper()
                         or last.endswith((",", "-"))
+                        or _goes_on(label, v)
                         or (i >= end or els[i][0] != "x")
                         and not _SENTENCE_END.search(v)
                     )

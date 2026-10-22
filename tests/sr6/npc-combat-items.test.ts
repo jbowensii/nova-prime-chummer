@@ -122,8 +122,9 @@ test('npc-combat-items: a critter’s natural attacks are weapons it rolls (clos
   ])
   expect(by(x.items, 'Bite').uid).toBe('line:weapons:Bite [Close Combat, DV 4P, 9/—/—/—/—]')
   expect(by(x.items, 'Glimmer')).toMatchObject({ uid: 'power:Glimmer', id: 'crb.glimmer', kind: 'critterpowers' })
-  expect(by(x.items, 'Made-up Hide (2)')).toMatchObject({ kind: 'critterpowers', values: { rating: 2 } })
-  expect(by(x.items, 'Made-up Senses (smell, hearing)')).toMatchObject({ kind: 'critterpowers' })
+  // (a power built from the line is named without its brackets; the rating and the parameters come along)
+  expect(by(x.items, 'Made-up Hide')).toMatchObject({ kind: 'critterpowers', values: { rating: 2 } })
+  expect(by(x.items, 'Made-up Senses')).toMatchObject({ kind: 'critterpowers', line: { detail: 'smell, hearing' } })
   // the trailing words are no attack: no item
   expect(x.items.some(i => /gamemaster/.test(i.name))).toBe(false)
 })

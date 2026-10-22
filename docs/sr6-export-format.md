@@ -153,8 +153,9 @@ rating (`"F+1"` at Force 4 → `"5"`); `ok` false when it can't be read (then `v
 attribute's value; a skill the catalog doesn't have keeps its printed text only. `items` (npc.ts `npcThings`): each
 weapon, attack, piece of gear, augmentation and power the weapons, attacks, gear, augmentations and powers lines print, as
 a purchase (`uid`, `qty` (1, or a printed count: `2 x smoke grenades`), `grade?` (an augmentation's printed grade, `betaware` or a line's `(all deltaware)`: alpha, beta, gamma or delta; its `values.cost`, `avail` and `essence` are priced with the catalog grade's factors, and its add-ons take it), `worn`, `bonuses` [], `accessories`) plus
-`line { part, printed, values, dv?, match? }`, the thing as printed, the numbers it prints, its DV as printed and how it
-found its entry. An adept power has its `level`. It is its catalog entry (owner 2026-10-20: "75% guesses are fine for
+`line { part, printed, values, dv?, match?, detail? }`, the thing as printed, the numbers it prints, its DV as printed, how it
+found its entry and, for a power, its parameters as printed apart from its name and rating (`Cold, Fire, Toxins` of
+`Immunity (Cold, Fire, Toxins)`). An adept power has its `level`. It is its catalog entry (owner 2026-10-20: "75% guesses are fine for
 matching please. when in doubt use standard ammo, grenades, etc."): by name (`match.how` `exact`; the kinds its part
 names). Else, its type first: when its last word is a category's last word (`smoke grenade`, `Yamaha Rapier
 motorcycle`, `commlink`), the entry of that type with all its other words (`Smoke/thermal smoke`). Else the entry
@@ -163,7 +164,7 @@ whose name is most alike, at least 0.75, within its type's kinds when it has a t
 `commlink` tried too). Else, on a weapons, gear or augmentations line, a standard item (`standard`): of its type the
 one with most of its other words, else the type's standard entry (at the printed rating, else lowest rated, then
 cheapest); else the standard item of the category a generic name is; else of the entries its last word names; armor
-printing a Defense is looked for among armor only, and is the standard armor at that Defense when nothing is alike. A power, or a spell on the spells line (the catalog's spells and rituals), is linked by name or by a 75% guess only (one the catalog lacks stays a printed power or spell). A natural attack (its
+printing a Defense is looked for among armor only, and is the standard armor at that Defense when nothing is alike. A power, or a spell on the spells line (the catalog's spells and rituals), is linked by name or by a 75% guess only (one the catalog lacks stays a printed power or spell). A power is looked for by its name alone, without its brackets and rating (`Venom [Vector: Injection; …]` is Venom), then by the first words of it that name an entry (`Sapience digital assault`: Sapience, the rest its `detail`), in the critter powers, adept powers, spells, complex forms, then the qualities and augmentations (`Built Tough`, `Manasense`); a book's entry named with a bracket (`Heavy Scales (Western Drake)`) is the bare name's when nothing else has it. A guess never drops or swaps a word of the name (`Improved Close Combat` is not `Improved Sense`). A power no entry has stays a generic critter power with the printed name and its `detail`. A natural attack (its
 skill as category, or on a critter, spirit or sprite one with no category) and a Cybercombat one are linked by name
 only. Ties: the NPC's own book, then the latest printing. A printed level picks that level's entry; a device's or
 implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over

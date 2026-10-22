@@ -809,6 +809,12 @@ def _mentions(text, target):
     return bool(re.search(r"\b" + re.escape(tail.replace("-", " ")) + r"\b", text, re.I))
 
 
+def _file_kind(fname, xml):
+    """The kind of a catalog file: its root's `kind` (section-powers.xml holds critter powers), else its name's."""
+    m = re.search(r'<[\w:]*data\s[^>]*?kind="([^"]+)"', (xml or "")[:400])
+    return m.group(1) if m else fname[:-4]
+
+
 def copy_links(sources, texts=None):
     """The entries whose effects change when each link (`grants`, `as`) copies the linked entry's effects into the entry
     (owner direction 2026-10-17): {(source, file name): xml} of the changed files from `sources`, {source: {file name:
@@ -830,7 +836,7 @@ def copy_links(sources, texts=None):
                 e = {
                     "src": src,
                     "file": fname,
-                    "kind": fname[:-4],
+                    "kind": _file_kind(fname, xml),
                     "id": eid,
                     "key": _key(name),
                     "name": _unesc(name),

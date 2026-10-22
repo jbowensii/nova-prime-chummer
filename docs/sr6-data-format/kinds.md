@@ -44,6 +44,13 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | mentorspirits, datastructures, spellfeatures, contacttypes, licencetypes, magictypes, ruleoptions, senses, trueelements | mentorspirit, datastructure, spellfeature, contacttype, licencetype, magictype, ruleoption, sense, trueelement | category | — |
 | categories | category | of* (the kind its rows are), table, section, confidence (`low`), why, fits, accessories (see Categories) | — |
 
+**Critter powers a stat block names.** A being's `Powers` line is read by `powerlist.power_list`: the commas a book ran
+together (`Armor 2. Astral Form`, `Hardened Armor 2; Immunity (Cold)`) are put back, and a sentence the line runs on with
+(`Sapience damage increases to 9P, a glitch raises it 10P …`, text after a power's brackets) goes to the entry's text as a
+`**Power notes:**` line, not to the list. The critter powers a book prints are its headings under `New Critter Power(s)`
+(a creature's stat block under one is a creature), its bold run-ins, and a plain name line over `**Type:** M **Action:**
+Auto` / `**Range:** Self **Duration:** Special` (30 Nights p. 139). A power a stat block names that no kind defines (not as a critter power, adept power, quality, bioware, spell, ritual, complex form, echo or metamagic, by name or a 75% likeness, or by its first words) but a rules section of a book describes under its own heading (`Tech Infestation`, `Mental Attribute Boost` in the monad chapters; `Wild Spirit` for the `Wild Spirits` section) gets `statpowers.py`'s critter power: that section's name, page and text, in the file `section-powers.xml` of the section's source (ids `<source>.section-<name>`, never a real entry's) and its texts file; only a section of a critter, monad or power chapter, or of the book whose stat block names it, counts (one per book that describes it; the app takes the NPC's own book's, then the latest printing's). The pass runs over every source after any book is imported or removed and makes the files afresh. A power no book describes stays as the stat block prints it (the app builds a generic critter power from it).
+
 **Kinds read from the books' own sections** (actions, packs, vehicle design, ammunition types, mentor spirits, data
 structures, quality paths, spell features, contact types, quality sets, licence types, magic types, rule options,
 senses, true elements): Game data lists them as printed, with their description; the app has no rules for them yet (an

@@ -14,7 +14,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import ROOT, classes, effects, moved, overrides, regroup, resolve
+from importer.sr6 import ROOT, classes, effects, moved, overrides, regroup, resolve, statpowers
 from importer.sr6.recipes import RECIPES, identify, printing, skipped
 
 
@@ -171,6 +171,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         for d in _cited(book_dir, custom_dir, res) if refresh and not newer else ():
             run(d, custom_dir, convert_pdf=False, refresh=False)  # (once: no book read again reads others again)
         if refresh:  # (once, at the top: the books read again for their cited entries are in the pass too)
+            _stubs(custom_dir)
             _links(custom_dir)
         return res
     except Exception as e:
@@ -496,6 +497,15 @@ def _corpus(book_dir, custom_dir):
         print(f"corpus pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
+def _stubs(custom_dir):
+    """The pass over every source (statpowers.py): the powers a stat block names that a book describes under a heading
+    of its own. A failure leaves the files as they are."""
+    try:
+        statpowers.section_powers(custom_dir)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"stat block powers pass: {type(e).__name__}: {e}", file=sys.stderr)
+
+
 def _links(custom_dir):
     """The last pass (effects.copy_links): every entry holding a link takes the linked entry's effects, whichever book
     the linked entry is in, so it runs over all the sources on disk after any book is imported or removed. A failure
@@ -665,4 +675,5 @@ def remove(book_dir, custom_dir, forget=False):
             run(nxt[1], custom_dir, convert_pdf=False)
         except Exception:  # pylint: disable=broad-exception-caught  # (its own status says why; this book is removed)
             pass
+    _stubs(custom_dir)
     _links(custom_dir)  # (the entries that took the removed book's effects, and the books that cite it)
