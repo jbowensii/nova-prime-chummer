@@ -84,7 +84,7 @@ Any hum seller picks a favourite hum.
 
 class LabelledHeadingTest(unittest.TestCase):
     def test_a_heading_over_labelled_lines_only_keeps_them(self):
-        """Read whole, one background's labelled recommendations are not the next background's (regroup._merge_boxes)."""
+        """Read whole, one background's labelled recommendations are not the next one's (regroup._merge_boxes)."""
         text, _ = regroup.regroup(BACKGROUNDS)
         doctor, seller = text.split('<!-- section {"name": "The Hum Seller"')
         self.assertIn("**Knowledge skills:** Dive Bars, Friends in Low Places, Poisons", doctor)
