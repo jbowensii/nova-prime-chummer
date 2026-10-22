@@ -636,6 +636,7 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string): Sr6
     uid,
     values,
     qty: t.qty ?? 1,
+    grade: t.grade,
     worn: base.kind === 'armor',
     bonuses: [],
     level: base.kind === 'adeptpowers' ? (levelOf(e) ?? values.rating) : undefined,
