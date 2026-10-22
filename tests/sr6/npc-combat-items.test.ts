@@ -246,7 +246,7 @@ test('npc-combat-items: the corrections, one line each, for the notes (worked ou
   }
   const corrections = [
     'Made-up Thunderbuss Pistol → Made-up Thunderbus Pistol (fuzzy, 0.96)',
-    'Added: Heavy Pistol/SMG (regular ammo) ×12 for Made-up Thunderbus Pistol',
+    'Added: Heavy Pistol/SMG (regular ammo) ×24 (2 loads of 12) for Made-up Thunderbus Pistol',
     'Kept, not rollable: Made-up Zap [Cybercombat, DV 2, AR 8]',
     'smoke grenade → Smoke/thermal smoke (standard item)',
     'commlink → Made-up Basic Link (standard item)',
@@ -259,15 +259,15 @@ test('npc-combat-items: the corrections, one line each, for the notes (worked ou
   expect(ch.identity.notes).toBe('')
 })
 
-test('npc-combat-items: a pistol gets one full load of its regular ammo; a blade and a natural attack get none', () => {
+test('npc-combat-items: a pistol gets two loads of its regular ammo; a blade and a natural attack get none', () => {
   const x = zzItems('grunt', {
     weapons:
       'Made-up Thunderbus Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 12(c)] Made-up Thunderbus Pistol, Made-up Carver [Blade, DV 3P, 8/—/—/—/—], Bite [Close Combat, DV 2P, 6/—/—/—/—]',
   })
-  // the printed clip, else the catalog's
+  // two loads of the printed clip, else the catalog's (this catalog has no spare clip)
   expect(x.filter(i => i.line.match?.how === 'ammo').map(i => [i.uid, i.id, i.qty])).toEqual([
-    ['line:weapons:Made-up Thunderbus Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 12(c)]:ammo', 'zz.ammo-heavy', 12],
-    ['line:weapons:Made-up Thunderbus Pistol:ammo', 'zz.ammo-heavy', 15],
+    ['line:weapons:Made-up Thunderbus Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 12(c)]:ammo', 'zz.ammo-heavy', 24],
+    ['line:weapons:Made-up Thunderbus Pistol:ammo', 'zz.ammo-heavy', 30],
   ])
   expect(x.filter(i => i.kind === 'weapons').map(i => i.name)).toEqual(['Made-up Thunderbus Pistol', 'Made-up Thunderbus Pistol', 'Made-up Carver', 'Bite'])
 })

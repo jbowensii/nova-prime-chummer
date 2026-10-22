@@ -168,8 +168,12 @@ skill as category, or on a critter, spirit or sprite one with no category) and a
 only. Ties: the NPC's own book, then the latest printing. A printed level picks that level's entry; a device's or
 implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over
 the entry's `values`. A ranged weapon (firearms, bows, crossbows, tasers, dart guns, grenade and rocket launchers, by
-its class or category) is followed by its regular ammunition (`ammo`, uid `<weapon uid>:ammo`, `qty` one full load: the
-printed or catalog ammo, else 10); melee and natural attacks get none. Else a thing is built from the line (no `id`):
+its class or category) is followed by its regular ammunition (`line.match.how` `ammo`, uid `<weapon uid>:ammo`, `qty` two loads in
+rounds: the printed or catalog ammo count, else 10; a bow or crossbow 20; a flamethrower 2 tanks) and, by its ammo type, the
+spare's container (`line.match.how` `ammo`, `qty` 1, uid `<weapon uid>:ammo#2`: a spare clip for `(c)`, the weapon's own spare
+magazine or else a spare clip for `(m)`, a speed loader for `(cy)`; none for a belt, drum or tank). A stat block that prints its
+own ammunition (`w/ 30 rounds regular ammo`, `2 spare clips`) gets none added; grenades and rockets keep their printed `qty`;
+melee, natural and energy attacks get none. Else a thing is built from the line (no `id`):
 an attack printing a DV (a number or a Force formula, `F/2P`) or attack ratings as a weapon (`attrs` `category` and
 `dv` as printed; `skill` the printed one, else Close Combat with only a close band, Exotic Weapons past it), gear as
 gear, a power as a critter power. Formulas of Force are worked out at the rating; a band at 0 or less is none. Armor is
