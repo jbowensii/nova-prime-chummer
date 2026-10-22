@@ -765,6 +765,39 @@ const GRADE = /^\(?(alpha|beta|gamma|delta)(?:ware)?\)?$/i
  *  `Whatever she needs`, `Fit to situation`, `6 Copies`, `See text`): a note, never an item. */
 const GM_NOTE =
   /^\W*(?:as\s+(?:needed|applicable|selected|noted|appropriate|required)\b|(?:any\s+)?other\s+(?:appropriate\s+)?(?:gear|equipment)\b|whatever\b|fit\s+to\b|\d+\s+copies\b|[^,]*\bneeded\s+for\b|(?:see\s+)?text\W*$)/i
+/** A GM's instruction where a spells line would print a spell (`Gamemaster discretion`, `Any desired`, `others at
+ *  gamemaster discretion`, `if needed (up to 10)`): a note, as GM_NOTE's are */
+const SPELL_GM = /\bgamemaster|^\W*(?:any|others)\b|\bif\s+needed\b/i
+/** a book reference printed after a spell (`Rot, p. 32, Street Wyrd (Range: T, …)`): its page */
+const PAGE_REF = /^p(?:age|g)?\.?\s*\d+$/i
+/** A spells line as the spells it prints, each with its name (its printed parameters, `Powerbolt [direct combat, …]`, left
+ *  off): split after each `[…]` (a run-together `Powerbolt […] Fireball […]`), at commas, semicolons and a spaced slash
+ *  (`Silence / Ward`); a `Rituals:` label dropped; GM instructions and prose left out (they stay in the line's text, the notes); a page
+ *  or a book's name after a spell (`Rot, p. 32, Street Wyrd (…)`) kept in that spell's printed text. */
+function spellLines(c: Sr6Catalog, text: string): { printed: string; name: string }[] {
+  // (a book by its name, `Shadowrun: Street Wyrd`, or without the game's: `Street Wyrd`)
+  const books = new Set([...c.sources.values()].flatMap(s => [normName(s.name), normName(s.name.replace(/^shadowrun\b[^:]*:\s*/i, ''))]))
+  const nameOf = (p: string) => {
+    const g = groups(p).at(-1)
+    return g && g[0] > 0 && g[1] === p.length - 1 ? p.slice(0, g[0]).trim() : p
+  }
+  const chunks: string[] = []
+  let at = 0
+  for (const [open, close] of groups(text))
+    if (text[open] === '[') {
+      chunks.push(text.slice(at, close + 1))
+      at = close + 1
+    }
+  chunks.push(text.slice(at))
+  const out: { printed: string; name: string }[] = []
+  for (const piece of chunks.flatMap(ch => ch.split(';').flatMap(top)).flatMap(p => p.split(/\s+\/\s+/))) {
+    const p = piece.replace(/^(?:spells?|rituals?)\s*:\s*/i, '').replace(/[\s.]+$/, '')
+    if (!p || GM_NOTE.test(p) || SPELL_GM.test(p) || (PROSE.test(p) && p.split(/\s+/).length >= 6)) continue
+    if (out.length && (PAGE_REF.test(p) || books.has(normName(nameOf(p))))) out[out.length - 1].printed += `, ${p}`
+    else out.push({ printed: p, name: nameOf(p) })
+  }
+  return out
+}
 /** prose where a line prints items: a sentence that says what the NPC has or gains */
 const PROSE = /\b(?:has|have|gains?|increases?|bonus|noted)\b/i
 /** the head of an introduction to a list (`he has the following deltaware items`, `Augmentations (all gammaware)`) */
@@ -1203,12 +1236,14 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
     if (!lineKinds) continue
     // (gear and augmentations: GM instructions and prose are notes, grades set, a line printing several things split)
     const stuff = l.part === 'gear' || l.part === 'augmentations'
-    const printeds: { printed: string; grade?: string }[] = attack
+    const printeds: { printed: string; grade?: string; name?: string }[] = attack
       ? splitThings(l.text).map(printed => ({ printed }))
       : stuff
         ? stuffLines(l.text).flatMap(t => expandStuff(c, t.printed, src).map(printed => ({ ...t, printed })))
-        : top(l.text).map(printed => ({ printed }))
-    for (const { printed, grade: lineGrade } of printeds) {
+        : spell
+          ? spellLines(c, l.text)
+          : top(l.text).map(printed => ({ printed }))
+    for (const { printed, grade: lineGrade, name: spellName } of printeds) {
       // a data structure's own name: `data structure (Oracle 4)` is Oracle 4
       const bare = stuff ? printed.replace(/^data structures?\s*\((.*)\)(?:\s+\S.*)?$/i, '$1') : printed
       const kinds = bare === printed ? lineKinds : (['datastructures'] as Sr6Kind[])
@@ -1217,7 +1252,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const spelt = whole?.replace(/\bwith\s/i, 'w/ ')
       const own = whole && (findEntry(c, whole, kinds, src) ?? findEntry(c, spelt!, kinds, src) ?? findEntry(c, spelt!, kinds, src, 'loose'))
       const [head, ...withs] = stuff && !(own && own.match.score >= 0.9) ? splitWith(bare) : [bare]
-      const p = power ? { name: printed, stats: [] } : pieces(head)
+      const p = power ? { name: spellName ?? printed, stats: [] } : pieces(head)
       const s = readStats(p.stats, npc.rating)
       // (`with a rating 4` is the thing's rating; a GM's choice is no add-on)
       for (const w of withs) {
@@ -1241,7 +1276,8 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         found ??= findEntry(c, lv[1], kinds, src)
         s.values.rating ??= Number(lv[2] ?? lv[3])
       }
-      if (pw?.rating != null) s.values.rating ??= pw.rating
+      // (not a spell's: `Fireball 6` is its Force, kept in its printed text)
+      if (!spell && pw?.rating != null) s.values.rating ??= pw.rating
       if (!found && !power && s.values.rating != null) found = findEntry(c, `${name} ${s.values.rating}`, kinds, src)
       // no name: the most alike one (at least NPC_MATCH), else a standard item; a power only the most alike (a power the
       // catalog lacks stays as printed); a natural attack (a bite: its skill as category, or a close band only) by name
@@ -1386,6 +1422,41 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
   if (built.length) out.push(`Not in the catalog, built from the stat block: ${[...new Set(built)].join(', ')}`)
   return out
 }
+
+/** a tradition's drain attribute as its text prints it (CRB p. 128 `**Tradition Attribute:** Logic`, Street Wyrd's
+ *  `**Drain:** Willpower + Intuition`) */
+const TRADITION_ATTR = /\*\*(?:Tradition Attribute|Drain):\*\*\s*(?:Willpower\s*\+\s*)?(Logic|Intuition|Charisma)\b/i
+const DRAIN_ATTRS: Record<string, 'log' | 'int' | 'cha'> = { logic: 'log', intuition: 'int', charisma: 'cha' }
+const DRAIN_LABELS = { log: 'Logic', int: 'Intuition', cha: 'Charisma' } as const
+export interface Sr6NpcTradition {
+  tradition: string
+  drainAttr: 'log' | 'int' | 'cha'
+  drain: number
+  /** every tradition with that drain pool, the first the one set (one unless they tie) */
+  traditions: { id: string; name: string; drainAttr: 'log' | 'int' | 'cha' }[]
+}
+/** A caster's tradition (an NPC with a spells line; owner 2026-10-21 "NPC spells"): of every catalog tradition whose text
+ *  names its drain attribute, the one whose drain pool (Willpower + that attribute, CRB p. 127, from the NPC's own stats)
+ *  is largest; on a tie each that qualifies is listed, the first in catalog order set. None when the stats can't be read.
+ *  ponytail: a tradition whose text names no attribute (most of Street Wyrd's, as imported) is not tried; fix the importer
+ *  to read their drain lines when they matter. */
+export function npcTradition(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcTradition | undefined {
+  if (!npc.lines.some(l => l.part === 'spells' && l.text.trim())) return
+  const v = new Map(npcValues(npc).flatMap(x => (x.ok && /^\d+$/.test(x.value) ? [[x.key, Number(x.value)] as const] : [])))
+  const wil = v.get('wil')
+  if (wil == null) return
+  const all = [...(c.entries.traditions?.values() ?? [])].flatMap(e => {
+    const a = DRAIN_ATTRS[e.text?.match(TRADITION_ATTR)?.[1].toLowerCase() ?? '']
+    return a && v.has(a) ? [{ id: e.id, name: e.name, drainAttr: a, drain: wil + v.get(a)! }] : []
+  })
+  const drain = Math.max(...all.map(t => t.drain)),
+    best = all.filter(t => t.drain === drain)
+  if (!best.length) return
+  return { tradition: best[0].name, drainAttr: best[0].drainAttr, drain, traditions: best.map(({ drain: _, ...t }) => t) }
+}
+/** The tradition's line for the NPC's notes: `Tradition: Hermeticism (Willpower + Logic), drain pool 9`, a tie's `… or …`. */
+export const traditionNote = (t: Sr6NpcTradition) =>
+  `Tradition: ${t.traditions.map(x => `${x.name} (Willpower + ${DRAIN_LABELS[x.drainAttr]})`).join(' or ')}, drain pool ${t.drain}`
 
 /** A built attack's skill: the one it prints as its category; none when its category is a weapon class (`Heavy Pistol`:
  *  the class says); with no category, Exotic Weapons when it reaches past close range (an elemental attack), else Close
