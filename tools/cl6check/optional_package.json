@@ -128,5 +128,12 @@
       "reason": "CommLink6 also files this variant under Double Clutch with no page; same record as the Core Rulebook p299 entry in this package."
     }
   ],
-  "relocated": []
+  "relocated": [
+    {
+      "src": "bs",
+      "cl6_id": "transgen_chamaeleon_skin",
+      "our_id": "bs.transgenic-chameleon-skin-dynamic",
+      "reason": "owner ruling 2026-10-21: the Commlink6 record is paired with the Dynamic entry"
+    }
+  ]
 }

@@ -668,8 +668,9 @@ class OptionalPackageTest(unittest.TestCase):
         ).read()
         self.assertEqual({i for _, i in optional}, set(re.findall(r"CL6 id `([a-z0-9_]+)`", doc)))
         self.assertEqual(
-            relocated, {}
-        )  # (nothing is relocated now; the mechanism stays for a record found in another book)
+            {k: r["our_id"] for k, r in relocated.items()},
+            {("bs", "transgen_chamaeleon_skin"): "bs.transgenic-chameleon-skin-dynamic"},
+        )  # (the one owner-ruled pairing, 2026-10-21; the mechanism stays for a record found in another book)
 
 
 class AlreadyHaveTest(unittest.TestCase):
