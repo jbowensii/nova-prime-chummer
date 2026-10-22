@@ -1,6 +1,7 @@
 // Build the Shadowrun 6 catalog from its XML files (docs/sr6-data-format/kinds.md), apart from Anarchy's: every file must be an
 // <sr6:data kind="…"> in SR6's namespace, so an Anarchy file is refused. Load order (collectSr6Files): the shipped
-// sources, the imported sources, the imported books' files (custom/sr6/imported/index.xml), the private texts each source
+// sources, the imported sources, the imported books' files (custom/sr6/imported/index.xml), the optional data set's while
+// the table's cl6OnlyData is on (custom/sr6/cl6only/index.xml: entries under sources of their own), the private texts each source
 // names, the edits layer (custom/sr6/edits/edits.xml, texts.xml), then the GMs' compendiums this account can read (`extra`,
 // kind="compendium"). Same id replaces, <remove id> deletes; sources merge by id; an edit replaces the entry (the book's
 // version kept in `original`), and an empty description keeps the book's text. A compendium never replaces anything: one
@@ -22,6 +23,7 @@ const KIND_OF_TAG = new Map(Object.entries(SR6_KINDS).map(([k, v]) => [v.tag, k 
 const KINDS = new Set(Object.keys(SR6_KINDS))
 const SHIPPED = 'data/sr6/'
 const CUSTOM = 'custom/sr6/'
+const CL6ONLY = `${CUSTOM}cl6only/`
 
 function toSource(el: Element, origin: Sr6Source['origin']): Sr6Source {
   const a = (n: string) => el.getAttribute(n) ?? undefined
@@ -263,10 +265,12 @@ export const catalogFind =
 const hrefs = (index: string) => [...index.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<file\s+href="([^"]+)"/g)].map(m => m[1])
 
 /** Every SR6 file, in load order (see the top of this file). `get` returns a file's text, or null when it isn't there;
- * `missing` lists the files an index or source names that weren't. */
+ * `missing` lists the files an index or source names that weren't. cl6only: the optional data set too
+ * (custom/sr6/cl6only/index.xml and its files, after the books': the table's cl6OnlyData setting); off, none of it. */
 export async function collectSr6Files(
   get: (path: string) => Promise<string | null>,
   extra: SourceFile[] = [],
+  cl6only = false,
 ): Promise<{ files: SourceFile[]; missing: string[] }> {
   const files: SourceFile[] = [],
     missing: string[] = []
@@ -287,9 +291,15 @@ export async function collectSr6Files(
     ...['edits', 'texts'].map(e => `${CUSTOM}edits/${e}.xml`),
   ]
   first.forEach(fetchOnce)
+  const module = cl6only ? fetchOnce(`${CL6ONLY}index.xml`) : null
   const sources = [await add(first[0], true), await add(first[1])]
   const index = await fetchOnce(first[2])
-  const books = (index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`)
+  const listed = await module
+  if (cl6only && listed == null) missing.push(`${CL6ONLY}index.xml`)
+  const books = [
+    ...(index ? hrefs(index) : []).map(href => `${CUSTOM}imported/${href}`),
+    ...(listed ? hrefs(listed) : []).filter(href => /^[\w.-]+\.xml$/.test(href) && !href.startsWith('.')).map(href => CL6ONLY + href),
+  ]
   const texts = [...new Set([...sources.join('').matchAll(/\btexts="([^"]+)"/g)].map(m => CUSTOM + m[1]))]
   ;[...books, ...texts].forEach(fetchOnce)
   for (const path of books) await add(path, true)
@@ -299,9 +309,9 @@ export async function collectSr6Files(
   return { files, missing }
 }
 
-/** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/compendiums/ui/compendiumStore.ts). An
- * unreachable server fails the load; missing custom files are listed as errors. */
-export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Promise<Sr6Catalog> {
+/** Fetch and build the SR6 catalog, plus `extra` overlay files (the readable compendiums, src/sr6/compendiums/ui/compendiumStore.ts)
+ * and, with cl6only, the optional data set. An unreachable server fails the load; missing custom files are listed as errors. */
+export async function loadSr6Catalog(base = './', extra: SourceFile[] = [], cl6only = false): Promise<Sr6Catalog> {
   const get = (path: string) =>
     fetch(base + path, { cache: 'no-cache' }).then(
       r => (r.ok ? r.text() : null),
@@ -310,7 +320,7 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = []): Pro
         return null
       },
     )
-  const { files, missing } = await collectSr6Files(get, extra)
+  const { files, missing } = await collectSr6Files(get, extra, cl6only)
   const c = buildSr6Catalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
   return c

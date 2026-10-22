@@ -1,0 +1,388 @@
+{
+  "about": "The CommLink6-only module's own entries (owner ruling 2026-10-21): the rows that used to add them to the book data (gen=cl6only) and the rows that gave them their structure, moved here unchanged; src is the book table they came from, cl6_book and cl6_id the CommLink6 record. tools/cl6check/module.py writes them; see docs/sr6-cl6-optional-package.md.",
+  "rows": [
+    {
+      "src": "crb",
+      "cl6_book": "core",
+      "cl6_id": "smart_firing_platform_adapter",
+      "cl6": "Adapter (see drones for Smart firing platform)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 260, "attrs": { "category": "Weapon accessory", "avail": "5", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "crb",
+      "cl6": "Adapter (see drones for Smart firing platform)",
+      "kind": "gear",
+      "id": "adapter-see-drones-for-smart-firing-platform",
+      "kids": [{ "tag": "fits", "attrs": { "slot": "under" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "tripod_powered_adapter",
+      "cl6": "Adapter (see drones for Powered Heavy Tripod)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 64, "attrs": { "category": "Weapon accessory", "avail": "3(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "smart_firing_reinforced_adapter",
+      "cl6": "Adapter (see drones for Reinforced Smart Firing Platform)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 64, "attrs": { "category": "Weapon accessory", "avail": "6(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "tripod_wheeled_adapter",
+      "cl6": "Adapter (see drones for Wheeled Heavy Tripod)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 64, "attrs": { "category": "Weapon accessory", "avail": "5(L)", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "mtoc_fob",
+      "cl6": "M-TOC Fob",
+      "kind": "electronics",
+      "gen": "cl6only",
+      "add": { "page": 68, "attrs": { "category": "Tactical network", "avail": "99(I)", "cost": "0", "class": "ELECTRONICS/TAC_NET" }, "id": "m-toc-fob-item" }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "ar_interface",
+      "cl6": "AR Interface",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 58, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "weapon_mount_military",
+      "cl6": "Mil-Spec Weapon Mount",
+      "kind": "vehicledesign",
+      "gen": "cl6only",
+      "add": { "page": 151, "attrs": { "category": "Mil-spec Design Options", "avail": "99(I)", "cost": "0" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "crew_served_2",
+      "cl6": "Crew Served (2)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 153, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "crew_served_3",
+      "cl6": "Crew Served (3)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 153, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "crew_served_4",
+      "cl6": "Crew Served (4)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 153, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_0_5",
+      "cl6": "Uses 0.5 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_1",
+      "cl6": "Uses 1 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_2",
+      "cl6": "Uses 2 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_4",
+      "cl6": "Uses 4 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_5",
+      "cl6": "Uses 5 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    {
+      "src": "da",
+      "cl6_book": "deadly_arts",
+      "cl6_id": "energy_10",
+      "cl6": "Uses 10 Energy per shot",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 65, "attrs": { "category": "Weapon accessory", "avail": "99", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY" } }
+    },
+    { "src": "da", "cl6": "M-TOC Fob", "kind": "electronics", "id": "m-toc-fob-item", "set": { "modonly": "true" }, "gen": "family" },
+    {
+      "src": "da",
+      "cl6": "Adapter (see drones for Powered Heavy Tripod)",
+      "kind": "gear",
+      "id": "adapter-see-drones-for-powered-heavy-tripod",
+      "kids": [{ "tag": "fits", "attrs": { "slot": "under" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Adapter (see drones for Reinforced Smart Firing Platform)",
+      "kind": "gear",
+      "id": "adapter-see-drones-for-reinforced-smart-firing-platform",
+      "kids": [{ "tag": "fits", "attrs": { "slot": "under" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Adapter (see drones for Wheeled Heavy Tripod)",
+      "kind": "gear",
+      "id": "adapter-see-drones-for-wheeled-heavy-tripod",
+      "kids": [{ "tag": "fits", "attrs": { "slot": "under" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "AR Interface",
+      "kind": "gear",
+      "id": "ar-interface",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Crew Served (2)",
+      "kind": "gear",
+      "id": "crew-served-2",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Crew Served (3)",
+      "kind": "gear",
+      "id": "crew-served-3",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Crew Served (4)",
+      "kind": "gear",
+      "id": "crew-served-4",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 0.5 Energy per shot",
+      "kind": "gear",
+      "id": "uses-0-5-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 1 Energy per shot",
+      "kind": "gear",
+      "id": "uses-1-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 10 Energy per shot",
+      "kind": "gear",
+      "id": "uses-10-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 2 Energy per shot",
+      "kind": "gear",
+      "id": "uses-2-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 4 Energy per shot",
+      "kind": "gear",
+      "id": "uses-4-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Uses 5 Energy per shot",
+      "kind": "gear",
+      "id": "uses-5-energy-per-shot",
+      "set": { "modonly": "true" },
+      "kids": [{ "tag": "fits", "attrs": { "slot": "internal" } }],
+      "gen": "family"
+    },
+    {
+      "src": "da",
+      "cl6": "Mil-Spec Weapon Mount",
+      "kind": "vehicledesign",
+      "id": "mil-spec-weapon-mount",
+      "kids": [
+        { "tag": "slot", "attrs": { "id": "vehicle-weapon-military", "value": "1" } },
+        { "tag": "fits", "attrs": { "slot": "vehicle-hardpoint" } },
+        { "tag": "prerequisite", "attrs": { "kind": "datareq", "type": "GEAR", "ref": "milspec_hardpoint", "apply": "PARENT" } }
+      ],
+      "gen": "family"
+    },
+    {
+      "src": "dc",
+      "cl6_book": "other_us",
+      "cl6_id": "hitch_trailer",
+      "cl6": "Hitches: Trailer Hitch",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": {
+        "page": 1,
+        "name": "Hitches: Trailer Hitch",
+        "attrs": { "category": "Chassis mod", "slots": "1", "avail": "2", "cost": "400", "class": "MOD_HARD/MOD_OTHERS" }
+      }
+    },
+    {
+      "src": "dc",
+      "cl6_book": "other_us",
+      "cl6_id": "hitch_connector",
+      "cl6": "Hitches: Universal Connector",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": {
+        "page": 1,
+        "name": "Hitches: Universal Connector",
+        "attrs": { "category": "Chassis mod", "slots": "1", "avail": "2", "cost": "600", "class": "MOD_HARD/MOD_OTHERS" }
+      }
+    },
+    {
+      "src": "dc",
+      "cl6_book": "other_us",
+      "cl6_id": "hitch_fith_wheel",
+      "cl6": "Hitches: Fith Wheel",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": {
+        "page": 1,
+        "name": "Hitches: Fifth Wheel",
+        "attrs": { "category": "Chassis mod", "slots": "2", "avail": "3", "cost": "900", "class": "MOD_HARD/MOD_OTHERS" }
+      }
+    },
+    {
+      "src": "dc",
+      "cl6_book": "other_us",
+      "cl6_id": "hitch_construction",
+      "cl6": "Hitches: Construction Equipment",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": {
+        "page": 1,
+        "name": "Hitches: Construction Equipment",
+        "attrs": { "category": "Chassis mod", "slots": "3", "avail": "5", "cost": "2000", "class": "MOD_HARD/MOD_OTHERS" }
+      }
+    },
+    { "src": "dc", "cl6": "Hitches: Fith Wheel", "kind": "gear", "ours": ["Hitches: Fifth Wheel"] },
+    {
+      "src": "dod",
+      "cl6_book": "dealers_of_death",
+      "cl6_id": "hk_urban_stinger_bolts",
+      "cl6": "H&K Urban Stinger Pfeile (10x)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 1, "attrs": { "category": "Ammunition", "avail": "6(I)", "cost": "10", "class": "AMMUNITION/AMMUNITION_SPECIAL" } }
+    },
+    {
+      "src": "dod",
+      "cl6_book": "dealers_of_death",
+      "cl6_id": "hk_urban_stinger_air",
+      "cl6": "H&K Urban Stinger Druckluftkartusche (50x)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 1, "attrs": { "category": "Ammunition", "avail": "4", "cost": "5", "class": "AMMUNITION/AMMUNITION_SPECIAL" } }
+    },
+    {
+      "src": "dod",
+      "cl6_book": "dealers_of_death",
+      "cl6_id": "makarov22_ammo",
+      "cl6": "Makarov V22.2 Kalte Munition (10x)",
+      "kind": "gear",
+      "gen": "cl6only",
+      "add": { "page": 1, "attrs": { "category": "Ammunition", "avail": "6(I)", "cost": "150", "class": "AMMUNITION/AMMUNITION_SPECIAL" } }
+    },
+    {
+      "src": "dod",
+      "cl6": "H&K Urban Stinger Druckluftkartusche (50x)",
+      "kind": "gear",
+      "id": "h-k-urban-stinger-druckluftkartusche-50x",
+      "kids": [{ "tag": "prerequisite", "attrs": { "kind": "datareq", "type": "GEAR", "ref": "hk_urban_stinger", "apply": "CHARACTER" } }],
+      "gen": "family"
+    },
+    {
+      "src": "dod",
+      "cl6": "H&K Urban Stinger Pfeile (10x)",
+      "kind": "gear",
+      "id": "h-k-urban-stinger-pfeile-10x",
+      "kids": [{ "tag": "prerequisite", "attrs": { "kind": "datareq", "type": "GEAR", "ref": "hk_urban_stinger", "apply": "CHARACTER" } }],
+      "gen": "family"
+    },
+    {
+      "src": "dod",
+      "cl6": "Makarov V22.2 Kalte Munition (10x)",
+      "kind": "gear",
+      "id": "makarov-v22-2-kalte-munition-10x",
+      "kids": [{ "tag": "prerequisite", "attrs": { "kind": "datareq", "type": "GEAR", "ref": "makarov22", "apply": "CHARACTER" } }],
+      "gen": "family"
+    }
+  ]
+}

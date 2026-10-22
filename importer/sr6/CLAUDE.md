@@ -22,7 +22,7 @@ xml, `dump`) loads and applies them. `effects/` is a package the same way (its m
      must read `parity: 1079/1079` on both, 0 differing rows, 0 unmatched drops.
   2. Fresh production import: `python -m tools.cl6check import --library <books file> .extract/cl6check-runsNN`, then
      `python -m tools.cl6effects --fresh <runs>` (1,079/1,079) and `python -m tools.cl6check --ours <runs> --out <report>`
-     (completeness 4,474/4,474, accuracy 4,307/4,307).
+     (completeness 4,474/4,474, accuracy 4,288/4,288).
   Both need the owner's PDFs and the Commlink6 jar; with no jar they print "skipped" and exit 0.
 - **Do not touch:** `importer/*.py` Anarchy files; the Commlink6 jar's data (never committed); `overrides/*.json` by hand
   without a reason in the row (an owner ruling decides it, see `docs/cl6check.md`); `public/data/**`.

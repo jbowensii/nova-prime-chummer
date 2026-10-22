@@ -17,7 +17,7 @@ import { PageHeader } from '../../../core/chrome/nav'
 import { RepoContext, type Repo } from '../../../core/ui-kit/repoContext'
 import { TrashScreen } from '../../../features/runner-store/Trash'
 import { UsersScreen } from '../../../features/accounts/Users'
-import { loadCreation } from '../../table-setup/domain/creation'
+import { CL6_ONLY_KEY, flag, loadCreation } from '../../table-setup/domain/creation'
 import { sr6Data } from '../../catalog/domain/data'
 import { loadSr6Catalog } from '../../catalog/domain/load'
 import type { Sr6Catalog } from '../../formats/domain/types'
@@ -59,22 +59,31 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const [c, setC] = useState<Sr6Catalog | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [cr, setCr] = useState<Loaded>({ rules: new Map(), errors: [] })
+  // the server's cl6OnlyData setting (null until the creation rules are read): the catalog waits for it
+  const [cl6only, setCl6only] = useState<boolean | null>(null)
   // on the server the SR6 compendiums join the catalog (a failed list loads it without them): staff get those they can
   // read, players the ones shared with the table and their SR6 campaigns (no NPCs; a runner sees its own campaign's)
   const staff = repo.mode === 'server' && canEdit(me),
     player = repo.mode === 'server' && !!me && !staff
   const refresh = async () =>
-    loadSr6Catalog('./', staff || player ? readable(await (staff ? listSr6Compendiums() : listShared('./', 'sr6')).catch(() => [])) : []).then(
+    loadSr6Catalog('./', staff || player ? readable(await (staff ? listSr6Compendiums() : listShared('./', 'sr6')).catch(() => [])) : [], !!cl6only).then(
       x => {
         setC(x)
         setFailed(null)
       },
       e => setFailed(String(e)),
     )
-  const refreshCreation = () => loadCreation().then(setCr)
+  const refreshCreation = () =>
+    loadCreation().then(
+      x => {
+        setCr(x)
+        setCl6only(flag(x.rules, CL6_ONLY_KEY) === true)
+      },
+      () => setCl6only(on => on ?? false), // (unreadable rules: the catalog still loads, without the data set)
+    )
   useEffect(() => {
-    void refresh()
-  }, [staff, player]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (cl6only !== null) void refresh()
+  }, [staff, player, cl6only]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     void refreshCreation()
   }, [])

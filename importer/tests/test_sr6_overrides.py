@@ -969,17 +969,6 @@ class ValueMapTest(unittest.TestCase):
             self.assertEqual([r["kind"] for r in json.loads(p.read_text(encoding="utf8"))], ["weapons", "gear", "gear"])
 
 
-class Cl6OnlyRowsTest(unittest.TestCase):
-    def test_the_option_rows_commlink6_keeps_are_entries_of_ours_with_its_values(self):
-        out = overrides.apply("da", {})
-        gear = {e.findtext("name"): e for e in ET.fromstring(out["gear.xml"].encode())}
-        e = gear["Crew Served (3)"]
-        self.assertEqual((e.get("source"), e.get("page"), e.get("avail"), e.get("cost")), ("DA", "153", "99", "0"))
-        self.assertIn("Uses 0.5 Energy per shot", gear)
-        self.assertEqual(ET.fromstring(out["electronics.xml"].encode())[0].get("avail"), "99(I)")
-        self.assertEqual(ET.fromstring(out["vehicledesign.xml"].encode())[0].findtext("name"), "Mil-Spec Weapon Mount")
-
-
 class StructureKidsTest(unittest.TestCase):
     GEAR = (
         '<?xml version="1.0"?>\n<d kind="gear"><gear id="zz.lamp" source="ZZ" page="5" category="Zed"><name>Lamp</name>'

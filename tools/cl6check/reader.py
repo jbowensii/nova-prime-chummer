@@ -130,7 +130,7 @@ def books(z):
 def read(jar, listing=None):
     """(records, excluded): every English record as {book, file, tag, id, name, page, wifi, variants, attrs, el} in jar
     order, and Counter((book, tag, why)) of the records left out. listing: a list that gets each left-out record as
-    {book, file, tag, id, name, page, why} (name: its English name, '' when it has none)."""
+    {book, file, tag, id, name, page, why, el} (name: its English name, '' when it has none)."""
     recs, excluded = [], Counter()
     with zipfile.ZipFile(jar) as z:
         names = z.namelist()
@@ -192,6 +192,7 @@ def read(jar, listing=None):
                                     "name": name,
                                     "page": t.get("page", "").strip(),
                                     "why": why,
+                                    "el": el,
                                 }
                             )
                         continue

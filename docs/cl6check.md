@@ -45,6 +45,24 @@ Options:
 Errata (decision D1): measure an import made without the errata overlay and one made with it. Class b shows what
 the overlay changes.
 
+## The CommLink6-only module (2026-10-21)
+
+```
+python -m tools.cl6check module <data folder> [--jar <jar>]
+```
+
+writes the optional CommLink6-only data set to `<data folder>/custom/sr6/cl6only/` (`tools/cl6check/module.py`): every
+record of the final analysis's list 1 that fits a catalog kind of the app, less the Misc. (US) books we import (Seoul
+Survivor, the Missions Guide, Adversary, Age of Rust), plus the module's own entries (`cl6only_module.json`, the former
+`"gen": "cl6only"` override rows and the rows that gave them their structure). Each entry has a `cl6.<book>.<id>` id and
+a `CL6-<book>` source marked `canon="false"`; the files are the importer's format and pass their schemas. The app loads
+them only while the table's `cl6OnlyData` setting is on. No jar: "skipped", exit 0. How the owner generates it and puts
+it on a server: [docs/sr6-cl6-optional-package.md](sr6-cl6-optional-package.md).
+
+cl6check counts the module's own records as matched "via optional package" (`optional.load()` adds them): completeness
+keeps them, and accuracy, which compares only records matched to a book's entry, no longer compares them. The test is
+`importer/tests/test_cl6check_module.py` (an invented jar).
+
 ## Effects parity replay
 
 `python -m tools.cl6effects` counts how many of Commlink6's modifications (1,079 "variables": a value or a kind a
@@ -108,7 +126,8 @@ python -m tools.cl6check --ours .extract/cl6check-runsNN --out .extract/cl6check
 - cl6check reads the library's single `custom/sr6`. The PDF check uses each book's own `original.pdf`.
 
 Expected on main: effects `parity: 1079/1079`, completeness 4,474/4,474, class a 0, accuracy with class b as printed
-4,307/4,307.
+4,288/4,288 (4,307 until 2026-10-21: the 19 CommLink6-only records that moved to the CommLink6-only module are matched
+via the optional package now, so accuracy no longer compares them).
 
 **Rule:** a change to the reader, the overrides, `run.py` or `resolve.py` runs both gates: the replay (main and the
 branch, 0 differing rows) and a fresh `import --library` with the branch, which must read the numbers above.
@@ -139,8 +158,9 @@ which the reader skips.
   structure (slots, variants, relevance, flags, `modonly`, size) and Commlink6's own modifications, prerequisites and picks
   (docs/sr6-data-format/item-structure.md, Item structure). Nothing reads the last three: the per-effect metric counts only our own
   `<effect>`s (`effects_own`).
-- A Commlink6-only record is an entry of ours (importer/sr6/overrides `"gen": "cl6only"` adds), is "already in our data"
-  (`relocated.json`) or is in the optional package; only the rule options are not entries, as the app's rule presets.
+- A Commlink6-only record is in the CommLink6-only module (below; its own entries, `tools/cl6check/cl6only_module.json`,
+  were the book overrides' `"gen": "cl6only"` adds until 2026-10-21), is "already in our data" (`relocated.json`) or is in
+  the optional package; only the rule options are not entries, as the app's rule presets. No book override adds one.
 - `RETIRED` ("Depreciated …") records are out of every count, except `wss_explosive` (the latest Firing Squad prints it).
 - Infected (2026-10-16): Commlink6 has the Companion's Infected qualities as `quality type="INFECTED"` (one record per base
   metatype: `ghoul_human` … `ghoul_troll`, `mutaqua_mundane`/`mutaqua_awakened`) and no record for the Infected Optional
