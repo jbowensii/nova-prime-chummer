@@ -41,6 +41,10 @@ const c = buildSr6Catalog([
     ['goggles', 'Goggles', { category: 'Optical device' }],
     ['test-deck', 'Test Deck', { category: 'Cyberdeck' }],
     ['emperor', 'Sony Emperor Test', { category: 'Commlink', rating: '2', cost: '700' }],
+    ['contacts', 'Contacts 1', { category: 'Optical device', rating: '1' }],
+    ['glasses1', 'Glasses 1', { category: 'Optical device', rating: '1' }],
+    ['glasses2', 'Glasses 2', { category: 'Optical device', rating: '2' }],
+    ['glasses3', 'Glasses 3', { category: 'Optical device', rating: '3' }],
     ['link1', 'Meta Link', { category: 'Commlink', rating: '1', cost: '100' }],
     ['link5', 'Hermes Test', { category: 'Commlink', rating: '5', cost: '900' }],
     ['link6', 'Avalon Test', { category: 'Commlink', rating: '6', cost: '3000' }],
@@ -49,6 +53,8 @@ const c = buildSr6Catalog([
     ['bdu', 'Basic Duty Utilities', { category: 'Armor', defense: '+2' }],
     ['jacket', 'Armor jacket', { category: 'Armor', defense: '+4' }],
     ['vest', 'Armor vest', { category: 'Armor', defense: '+3' }],
+    ['lined', 'Lined coat', { category: 'Armor', defense: '+3' }],
+    ['hood', 'Ballistic hood', { category: 'Armor', defense: '+1' }],
     ['helmet', 'Helmet', { category: 'Armor', defense: '+1' }],
     ['cloak', 'Test cloak', { category: 'Armor', defense: '+1' }],
     ['clothes', 'Street clothes', { category: 'Armor', defense: '+1' }],
@@ -72,6 +78,7 @@ const c = buildSr6Catalog([
   file('weapons', [
     ['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }],
     ['bolt', 'Bolt', { category: 'Projectile' }],
+    ['ballista', 'Ballista Bolt, Standard', { category: 'Airship weapon' }],
   ]),
   file('augmentations', [
     ['datajack', 'Datajack', { type: 'cyberware', category: 'Headware', cost: '1000', essence: '0.1', avail: '2' }],
@@ -276,4 +283,20 @@ test('C: a model named by its form, a package naming its parts, a form word, and
   expect(names('gear', 'trode net')).toEqual(['Trodes'])
   expect(names('gear', 'trode pouch')).toEqual(['(built) trode pouch'])
   expect(names('gear', 'medkit, all skillsofts needed for a specific job (rating 6)')).toEqual(['Medkit'])
+})
+
+test('negative: an attribute value is no item, contact lenses are Contacts, bolts are the crossbow’s, a long coat is the Lined coat', () => {
+  expect(names('augmentations', 'Agility 9, datajack, Armor 3')).toEqual(['Datajack'])
+  expect(things('augmentations', 'datajack (w/ Agility 9, Strength 4)')[0].accessories).toEqual([])
+  expect(names('gear', 'contact lenses (image link)')).toEqual(['Contacts 1'])
+  const [x] = things('gear', 'crossbow w/ standard bolts')
+  expect(x.accessories.map(a => a.entry?.name)).toEqual(['Bolt'])
+  expect(names('gear', 'longcoat (+3)')).toEqual(['Lined coat'])
+})
+
+test('negative: head gear is head armor, never a jacket; a rating above the top level takes the top level', () => {
+  expect(names('gear', 'hood (+1)')).toEqual(['Ballistic hood'])
+  expect(names('gear', 'visor (+1)')).not.toContain('Street clothes')
+  expect(names('gear', 'smartglasses (device rating 7)')).toEqual(['Glasses 3'])
+  expect(names('gear', 'smartglasses (device rating 2)')).toEqual(['Glasses 2'])
 })

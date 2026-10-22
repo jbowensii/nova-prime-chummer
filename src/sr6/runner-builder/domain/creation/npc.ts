@@ -596,17 +596,24 @@ function findEntry(
 }
 /** a generic name that is only a kind of thing (`augmentations`, `bioware`): no standard item */
 const KIND_WORDS = /^(?:augmentation|cyberware|bioware|gear|equipment|weapon|electronic|armor|power|item|thing)$/
+/** head gear: a helmet, hood, mask, visor, hat or cap */
+const HEAD = /\b(?:helmet|hood|mask|visor|hat|cap)\b/i
 /** The standard armor for a printed Defense the catalog has no armor of that name for: an armor at that Defense, else the
  *  nearest below, else the least; its standard one (standardOf). */
-function standardArmor(c: Sr6Catalog, defense: number): Sr6Entry | undefined {
+function standardArmor(c: Sr6Catalog, defense: number, name = ''): Sr6Entry | undefined {
   const d = (e: Sr6Entry) => Number((e.attrs.defense ?? '').replace('+', ''))
-  // (body armor: no helmet, mask, hood, cloak, shield or glove; and the same for every NPC, whichever book it is in)
+  // (body armor for body gear, head armor for a helmet, hood or mask: no cloak, shield or glove; and the same for every NPC, whichever book it is in)
   const all = [...(c.entries.armor?.values() ?? [])].filter(
     e =>
       /^\+?\d+$/.test(e.attrs.defense ?? '') &&
       !/accessor|mod/i.test(e.attrs.category ?? '') &&
-      !/\b(?:helmet|hood|cloak|shield|gloves?|boots?|mask|saddle|barding|cyclewear|goggles)\b/i.test(e.name),
+      HEAD.test(e.name) === HEAD.test(name) &&
+      !/\b(?:cloak|shield|gloves?|boots?|saddle|barding|cyclewear|goggles)\b/i.test(e.name),
   )
+  // (a hood is head armor of the same kind when the catalog has it)
+  const word = HEAD.exec(name)?.[0].toLowerCase()
+  const same = word ? all.filter(e => e.name.toLowerCase().includes(word)) : []
+  if (same.length) all.splice(0, all.length, ...same)
   if (!all.length) return undefined
   const at = all.filter(e => d(e) === defense),
     below = all.filter(e => d(e) < defense)
@@ -680,6 +687,9 @@ const GM_NOTE =
 const PROSE = /\b(?:has|have|gains?|increases?|bonus|noted)\b/i
 /** the head of an introduction to a list (`he has the following deltaware items`, `Augmentations (all gammaware)`) */
 const INTRO = /\bfollowing\b|\ball\s+\w+ware\b|^augmentations\b|^\W*\w+ware\W*$/i
+const BOOK_WORDING = new Map([['longcoat', 'Lined coat']]) // ponytail: the one ruled wording (importer/sr6/archetypes.py); add a pair when the owner rules another
+/** an attribute and its augmented value (`Agility 9`): a value in the stat block, not a thing */
+const ATTRIBUTE_VALUE = /^(?:body|agility|reaction|strength|willpower|logic|intuition|charisma|edge|magic|resonance|essence|armor)\s+\d+(?:\.\d+)?$/i
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }
 const PACKS = String.raw`(?:packs?|packets?|boxes|bottles?|vials?|doses?)\s+of\s`
 const GEAR_KINDS: Sr6Kind[] = ['gear', 'electronics', 'armor', 'programs', 'vehicles', 'weapons', 'augmentations', 'lifestyles', 'datastructures']
@@ -754,7 +764,7 @@ function stuffLines(text: string): { printed: string; grade?: string }[] {
     for (const el of top(s).flatMap(e => (/^\[[^\]]*\]$/.test(e) ? top(e.slice(1, -1)) : [e]))) {
       const printed = el.replace(/[\s.]+$/, '')
       const g = printed.match(GRADE)
-      if (!printed || GM_NOTE.test(printed) || /^(?:cyber|bio|gene|nano)ware$/i.test(printed)) continue
+      if (!printed || GM_NOTE.test(printed) || ATTRIBUTE_VALUE.test(printed) || /^(?:cyber|bio|gene|nano)ware$/i.test(printed)) continue
       if (!g) out.push({ printed, ...(line ? { grade: line } : {}) })
       else if (out.length) out[out.length - 1].grade = g[1].toLowerCase()
       else line = g[1].toLowerCase()
@@ -809,6 +819,10 @@ function formsOf(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[])
   add(forms, name.replace(/(?:\s+[A-Z]{3,})+$/, ''))
   add(forms, name.replace(/^(?:standard|regular|normal)\s+/i, ''))
   add(forms, name.replace(/\s+lifestyle$/i, ''))
+  add(forms, name.replace(/\s+lenses$/i, ''))
+  // (the owner's rulings on book wording, 2026-10-19: `long coat` is the Lined coat; joined or split)
+  const joined = name.toLowerCase().replace(/\s+/g, '')
+  add(forms, BOOK_WORDING.get(joined))
   const initials = name.match(/^([A-Z]{3,6})s?$/)?.[1].toLowerCase()
   // (an initialism two names share is none: `AAS`)
   const named = (initials ? (indexOf(c).initials.get(initials) ?? []) : []).filter(e => kinds.includes(e.kind))
@@ -1059,7 +1073,8 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       // (gear and augmentations: first the name in its other forms, then a leading word, then any kind)
       // (`Low lifestyle` is the lifestyle Low)
       if (stuff && /\blifestyle$/i.test(name)) found ??= findEntry(c, name.replace(/\s+lifestyle$/i, ''), ['lifestyles'], src)
-      if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src) ?? viaMid(c, name, src)
+      if (stuff) found ??= viaForms(c, name, head, armored ? ['armor'] : kinds, src)
+      if (stuff && !armored) found ??= viaMid(c, name, src)
       if (!natural && !/cybercombat/i.test(s.category ?? ''))
         found ??= findEntry(c, name, armored ? ['armor'] : kinds, src, power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
       // (a standard stand-in gives way to the name in its brackets: `rigger command console (Vulcan Liegelord)`)
@@ -1076,19 +1091,20 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         delete s.values.defense
       }
       // armor printing a Defense and nothing like its name: the standard armor at that Defense
-      const armor = !found && !attack && !power && s.values.defense != null ? standardArmor(c, s.values.defense) : undefined
+      const armor = !found && !attack && !power && s.values.defense != null ? standardArmor(c, s.values.defense, name) : undefined
       if (armor) found = { entry: armor, match: { score: round(nameRatio(matchKey(name), matchKey(armor.name))), how: 'standard' } }
       // the printed level's own entry: `Glow Eyes [rating 2]` is Glow Eyes 2
       if (found && s.values.rating != null) {
         // (`Cybereyes` of one book has levels 6 and 7: rating 3 is another entry named so, `Cybereyes basic system (Rating 3)`)
         const at = atLevel(c, found.entry.kind, found.entry.id, s.values.rating)
         const family = matchKey(found.entry.name)
-        const other = at
-          ? undefined
-          : [...c.entries[found.entry.kind].values()].filter(
-              e => Number(e.attrs.level ?? e.attrs.rating) === s.values.rating && matchKey(e.name).startsWith(`${family} `),
-            )
-        found.entry = at ?? (other?.length ? prefer(c, src)(other) : found.entry)
+        const level = (e: Sr6Entry) => Number(e.attrs.level ?? e.attrs.rating)
+        const kin = at ? [] : [...c.entries[found.entry.kind].values()].filter(e => matchKey(e.name) === family || matchKey(e.name).startsWith(`${family} `))
+        const other = kin.filter(e => level(e) === s.values.rating)
+        // (a rating above the family's top level is its top level: `smartglasses (device rating 7)` is Glasses 4)
+        const below = stuff ? kin.filter(e => matchKey(e.name) === family && level(e) < s.values.rating!) : []
+        const top = Math.max(...below.map(level))
+        found.entry = at ?? (other.length ? prefer(c, src)(other) : below.length ? prefer(c, src)(below.filter(e => level(e) === top)) : found.entry)
       }
       const entry = found?.entry
       // An attack it can't roll (a Cybercombat one is a Matrix action; another prints no DV or attack ratings it reads): an
@@ -1114,15 +1130,15 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const unbracketed = (a: string) => a.replace(/\s*[([][^)\]]*[)\]]\s*$/, '')
       const accessories = s.accessories
         .flatMap(licences)
-        .filter(a => !GM_NOTE.test(a) && !/\bchoice\b/i.test(a))
+        .filter(a => !GM_NOTE.test(a) && !ATTRIBUTE_VALUE.test(a) && !/\bchoice\b/i.test(a))
         .map(a => {
           const f = /licen[sc]e$/i.test(a)
             ? licenceNamed(c, a)
             : (findEntry(c, a, ACCESSORY_KINDS, src) ??
               abbreviated(c, a, ACCESSORY_KINDS, src) ??
+              viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
               coveredBy(c, a, ACCESSORY_KINDS, src) ??
               viaMid(c, unbracketed(a), src) ??
-              viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
               findEntry(c, a, ACCESSORY_KINDS, src, 'loose'))
           // (an add-on the catalog lacks stays, as plain gear with its printed name)
           return f
