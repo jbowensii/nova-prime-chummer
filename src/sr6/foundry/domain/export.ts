@@ -670,7 +670,7 @@ function npcItem(c: Sr6Catalog, data: Sr6Data, t: Sr6NpcThing, uid: string, text
 export function exportNpc(npc: Sr6Npc, data: Sr6Data, c: Sr6Catalog, text = false): Sr6ExportNpc {
   const seen = new Map<string, number>(),
     things = npcThings(npc, c),
-    magic = npcTradition(npc, c, things)
+    magic = npcTradition(npc, things)
   const items = things.map(t => {
     const id = `${t.part === 'powers' || t.part === 'optionalPowers' ? 'power' : `line:${t.part}`}:${t.printed}${t.match?.how === 'ammo' ? ':ammo' : ''}`,
       n = (seen.get(id) ?? 0) + 1
