@@ -966,7 +966,7 @@ function formsOf(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[])
   const colon = name.split(/:\s*/)
   // (`cyberdeck: Fairlight Excalibur` is the model; `jammer: directional 6`, either)
   if (colon.length === 2) (colon[1].trim().split(/\s+/).length >= 2 && !/\d/.test(colon[1]) ? [colon[1]] : colon.reverse()).forEach(t => add(forms, t))
-  add(forms, name.replace(/\s+(?:inhalers?|syringes?|injectors?)$/i, ''))
+  add(forms, name.replace(/\s+(?:inhalers?|syringes?|injectors?|pills?|tablets?|capsules?)$/i, ''))
   add(forms, name.replace(new RegExp(`^(?:\\d+\\s+)?${PACKS}`, 'i'), ''))
   add(forms, name.replace(/(?:\s+[A-Z]{3,})+$/, ''))
   add(forms, name.replace(/^(?:standard|regular|normal)\s+/i, ''))
@@ -1098,11 +1098,54 @@ const licences = (a: string): string[] => {
   const list = a.match(/^(?:fake\s+)?licen[sc]es?(?:\s+\d+)?\s*[([]([^)\]]*)[)\]]$|^licen[sc]es?:\s*(.+)$/i)
   return list ? (list[1] ?? list[2]).split(/\s*,\s*/).map(w => (/licen[sc]e$/i.test(w) ? w : `${w.trim()} license`)) : [a]
 }
+/** A licence a stat block prints by what it covers, as the owner ruled (2026-10-22): `augmentation` and `bioware` the generic
+ *  augmentation licence (the catalog's if it has one, else plain gear), its detail what the NPC has; `pistols` the Firearm
+ *  license, `magic` the Spellcasting license, `RCC` the Rigger remote console license, the printed word kept as detail. */
+const LICENCE_RULINGS = new Map<string, string>([
+  ['augmentation', ''],
+  ['augmentations', ''],
+  ['bioware', ''],
+  ['pistols', 'Firearm license'],
+  ['magic', 'Spellcasting license'],
+  ['rcc', 'Rigger remote console license'],
+])
+/** A licence add-on as a thing: by the rulings, else by its catalog name, else plain gear. `generic` is set for an augmentation
+ *  licence, whose detail npcThings fills in from what the NPC has. */
+function licenceThing(c: Sr6Catalog, part: string, printed: string): { thing: Sr6NpcThing; generic?: string } {
+  const said = printed.match(/^([\w'’]+)\s+licen[sc]e$/i)?.[1],
+    word = said?.toLowerCase()
+  const ruled = word === undefined ? undefined : LICENCE_RULINGS.get(word)
+  const base = { part, printed, printedName: printed, values: {}, accessories: [] }
+  if (ruled) {
+    const f = licenceNamed(c, ruled)
+    if (f) return { thing: { ...base, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: { score: 1, how: 'fuzzy' }, detail: said } }
+  }
+  if (word !== undefined && ruled === '') {
+    const entry = [...(c.entries.licencetypes?.values() ?? [])].find(e => /^augmentation licen/i.test(e.name))
+    const thing: Sr6NpcThing = entry
+      ? { ...base, name: entry.name, kind: entry.kind, entry, match: { score: 1, how: 'fuzzy' } }
+      : { ...base, name: 'Augmentation license', kind: 'gear' }
+    return { thing, generic: said }
+  }
+  const f = licenceNamed(c, printed)
+  return {
+    thing: f
+      ? { ...base, name: f.entry.name, kind: f.entry.kind, entry: f.entry, match: f.match }
+      : { ...base, name: printed.replace(/\s*[([].*$/, ''), kind: 'gear' },
+  }
+}
 /** A licence by its name only (`Cyberware license`); a guess at one would be another licence (`bioware license`). */
 const licenceNamed = (c: Sr6Catalog, a: string) => {
   const key = matchKey(a)
   const entry = [...(c.entries.licencetypes?.values() ?? [])].find(e => matchKey(e.name) === key)
   return entry && { entry, match: { score: 1, how: 'exact' as const } }
+}
+/** An initialism for an armor add-on (`AAS`: Securetech Armor Augmentation System, Defense +1): of the armors with those
+ *  initials the one whose Defense is a plus (a bonus on the armor it is fitted to, cumulative), when only one is. */
+function addOnInitialism(c: Sr6Catalog, name: string) {
+  const initials = name.match(/^([A-Z]{3,6})$/)?.[1].toLowerCase()
+  const adds = (initials ? (indexOf(c).initials.get(initials) ?? []) : []).filter(e => e.kind === 'armor' && /^\+/.test(e.attrs.defense ?? ''))
+  return adds.length === 1 ? guess({ entry: adds[0], match: { score: 1, how: 'exact' } }, name) : undefined
 }
 /** A gear or augmentation name in every kind a stat block can print (owner: search them all) when its own kinds have none. */
 function inAnyKind(c: Sr6Catalog, name: string, printed: string, source?: string, rating?: number) {
@@ -1187,9 +1230,12 @@ const contentWords = (n: string) =>
 function sameWords(a: string, b: string): boolean {
   const wa = contentWords(a),
     wb = contentWords(b)
-  const alike = (x: string, y: string) => nameRatio(x, y) >= NPC_MATCH || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)))
+  // (a word that differs from the other in letters alone is another word: `Agility` and `Ability`)
+  const alike = (x: string, y: string) =>
+    x === y || (nameRatio(x, y) >= NPC_MATCH && x.length !== y.length) || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)))
   const has = (w: string, list: string[]) => list.some(x => alike(w, x))
-  return (wa.every(w => has(w, wb)) && wb.every(w => has(w, wa))) || nameRatio(wa.join(''), wb.join('')) >= 0.9
+  const [ja, jb] = [wa.join(''), wb.join('')]
+  return (wa.every(w => has(w, wb)) && wb.every(w => has(w, wa))) || ja === jb || (nameRatio(ja, jb) >= 0.9 && ja.length !== jb.length)
 }
 /** A power's catalog entry (the first kind with it; `Sapience digital assault`: the longest run of its first words that
  *  names one, the rest its parameters). A book's entry named with a bracket (`Heavy Scales (Western Drake)`, `Shift
@@ -1201,6 +1247,11 @@ function findPower(c: Sr6Catalog, printed: string, name: string, kinds: Sr6Kind[
     const found = findEntry(c, n, kinds, source, 'exact')
     if (found) return { found, rest: '' }
   }
+  // (the books' shorthand `Improved Agility 2` is the CRB adept power Improved Physical Attribute, the attribute its detail; owner
+  // 2026-10-22, never `Improved Ability (Skill)`)
+  const physical = name.match(/^improved\s+(body|agility|reaction|strength)$/i)
+  const power = physical && findEntry(c, 'Improved Physical Attribute', ['adeptpowers'], source)
+  if (power) return { found: { entry: power.entry, match: { score: 1, how: 'fuzzy' } }, rest: physical[1] }
   const key = normName(name),
     set = contentWords(name).sort().join(' ')
   const among = (kind: Sr6Kind, test: (e: Sr6Entry) => boolean) => [...c.entries[kind].values()].filter(test)
@@ -1241,6 +1292,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
     being = npc.kind !== 'grunt' && npc.kind !== 'contact',
     powers = POWER_KINDS[being ? 'being' : 'person']
   const out: Sr6NpcThing[] = []
+  const generics: { thing: Sr6NpcThing; word: string }[] = []
   for (const l of npc.lines) {
     // (a spells line reads as a powers line does: names, linked by name or a 75% guess, else kept as printed)
     const spell = l.part === 'spells',
@@ -1304,7 +1356,17 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const armored = !attack && !power && s.values.defense != null && !DEVICE_NAME.test(name)
       // (gear and augmentations: first the name in its other forms, then a leading word, then any kind)
       // (`Low lifestyle` is the lifestyle Low)
-      if (stuff && /\blifestyle$/i.test(name)) found ??= findEntry(c, name.replace(/\s+lifestyle$/i, ''), ['lifestyles'], src)
+      // (`Medium` is a typo for `Middle`: owner 2026-10-22)
+      if (stuff && /\blifestyle$/i.test(name)) {
+        const lifestyle = findEntry(c, name.replace(/\s+lifestyle$/i, '').replace(/^medium$/i, 'middle'), ['lifestyles'], src)
+        found ??= lifestyle && guess(lifestyle, name)
+      }
+      // (the CRB's certified credstick table lists the credsticks by colour: the standard one, `certified` its detail)
+      const certified = stuff && /^certified\s+cred\w*sticks?$/i.test(name)
+      if (certified) {
+        const sticks = [...c.entries.gear.values()].filter(e => /^credstick$/i.test(e.attrs.category ?? ''))
+        if (sticks.length) found ??= { entry: standardOf(sticks, prefer(c, src)), match: { score: 1, how: 'standard' } }
+      }
       if (stuff) found ??= viaForms(c, name, head, armored ? ['armor'] : kinds, src)
       if (stuff && !armored) found ??= viaMid(c, name, src)
       if (!natural && !power && !/cybercombat/i.test(s.category ?? ''))
@@ -1378,14 +1440,19 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         .flatMap(licences)
         .filter(a => !GM_NOTE.test(a) && !ATTRIBUTE_VALUE.test(a) && !/\bchoice\b/i.test(a))
         .map(a => {
-          const f = /licen[sc]e$/i.test(a)
-            ? licenceNamed(c, a)
-            : (findEntry(c, a, ACCESSORY_KINDS, src) ??
-              abbreviated(c, a, ACCESSORY_KINDS, src) ??
-              viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
-              coveredBy(c, a, ACCESSORY_KINDS, src) ??
-              viaMid(c, unbracketed(a), src) ??
-              findEntry(c, a, ACCESSORY_KINDS, src, 'loose'))
+          if (/licen[sc]e$/i.test(a)) {
+            const { thing, generic } = licenceThing(c, l.part, a)
+            if (generic) generics.push({ thing, word: generic })
+            return thing
+          }
+          const f =
+            addOnInitialism(c, a) ??
+            findEntry(c, a, ACCESSORY_KINDS, src) ??
+            abbreviated(c, a, ACCESSORY_KINDS, src) ??
+            viaForms(c, unbracketed(a), a, ACCESSORY_KINDS, src) ??
+            coveredBy(c, a, ACCESSORY_KINDS, src) ??
+            viaMid(c, unbracketed(a), src) ??
+            findEntry(c, a, ACCESSORY_KINDS, src, 'loose')
           // (an add-on the catalog lacks stays, as plain gear with its printed name)
           return f
             ? { part: l.part, printed: a, name: f.entry.name, printedName: a, kind: f.entry.kind, entry: f.entry, match: f.match, values: {}, accessories: [] }
@@ -1399,6 +1466,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         kind,
         ...((s.grade ?? lineGrade) ? { grade: s.grade ?? lineGrade } : {}),
         ...(pw && [pw.detail, pf?.rest].filter(Boolean).length ? { detail: [pf?.rest, pw.detail].filter(Boolean).join(' ') } : {}),
+        ...(certified && found ? { detail: 'certified' } : {}),
         ...(found ? { entry: found.entry, match: found.match } : {}),
         ...(s.category ? { category: s.category } : {}),
         ...(s.dvText ? { dvText: s.dvText } : {}),
@@ -1409,6 +1477,14 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       if (attack && kind === 'weapons') out.push(...ammoFor(c, out[out.length - 1], src))
     }
   }
+  // an augmentation licence's detail is what the NPC has: cyberware, bioware, adept powers (`bioware` as printed)
+  const type = (t: Sr6NpcThing) => t.entry?.attrs.type
+  const has = [
+    out.some(t => t.part === 'augmentations' && type(t) === 'cyberware') && 'cyberware',
+    out.some(t => t.part === 'augmentations' && type(t) === 'bioware') && 'bioware',
+    out.some(t => t.entry?.kind === 'adeptpowers') && 'physical adept',
+  ].filter(Boolean)
+  for (const { thing, word } of generics) thing.detail = word === 'bioware' ? 'bioware' : has.length ? has.join(', ') : word
   return out
 }
 /** The corrections npcThings made to a stat block, one line each, for the NPC's notes (owner 2026-10-20: "note the
@@ -1432,6 +1508,18 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
     else if (m?.how === 'fuzzy' && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (fuzzy, ${m.score.toFixed(2)})`)
     else if (m?.how === 'standard') out.push(`${was} → ${t.name} (standard item)`)
     else if (!m) built.push(was)
+  }
+  // an armor total the stat block prints over several linked pieces that add up to another (owner 2026-10-22): the error is
+  // noted, the printed value kept
+  const num = (e?: Sr6Entry) => Number((e?.attrs.defense ?? '').replace('+', ''))
+  for (const t of things) {
+    const pieces = t.accessories.filter(a => a.entry?.kind === 'armor' && !/\d/.test(a.printed) && num(a.entry) > 0)
+    if (t.entry?.kind !== 'armor' || t.match?.how === 'standard' || t.values.defense == null || !pieces.length || t.accessories.some(a => /\d/.test(a.printed)))
+      continue
+    const sum = num(t.entry) + pieces.reduce((n, a) => n + num(a.entry), 0)
+    if (sum === t.values.defense) continue
+    const parts = [t.entry, ...pieces.map(a => a.entry)].map(e => `${e!.name} +${num(e)}`).join(', ')
+    out.push(`Book error: ${parts} = +${sum}; the book prints +${t.values.defense}. Printed value kept.`)
   }
   if (built.length) out.push(`Not in the catalog, built from the stat block: ${[...new Set(built)].join(', ')}`)
   return out

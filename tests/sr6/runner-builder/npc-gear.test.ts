@@ -30,6 +30,7 @@ const c = buildSr6Catalog([
     ['trodes', 'Trodes', { category: 'Accessory' }],
     ['standard-stick', 'Standard', { category: 'Credstick', cost: '5' }],
     ['gold-stick', 'Gold', { category: 'Credstick', cost: '100' }],
+    ['cyanide', 'Cyanide', { category: 'Toxin' }],
     ['image-link', 'Image link', { category: 'Accessory' }],
     ['std-tags', 'Standard tags', { category: 'Tags' }],
     ['mob-light', 'Mob Light', { category: 'Lights' }],
@@ -55,6 +56,8 @@ const c = buildSr6Catalog([
     ['vest', 'Armor vest', { category: 'Armor', defense: '+3' }],
     ['lined', 'Lined coat', { category: 'Armor', defense: '+3' }],
     ['hood', 'Ballistic hood', { category: 'Armor', defense: '+1' }],
+    ['aas', 'Securetech Armor Augmentation System', { category: 'Armor', defense: '+1' }],
+    ['aas2', 'Ares Armored Survivalist', { category: 'Armor', defense: '3' }],
     ['helmet', 'Helmet', { category: 'Armor', defense: '+1' }],
     ['cloak', 'Test cloak', { category: 'Armor', defense: '+1' }],
     ['clothes', 'Street clothes', { category: 'Armor', defense: '+1' }],
@@ -74,6 +77,13 @@ const c = buildSr6Catalog([
   file('licencetypes', [
     ['lic-c', 'Cyberware license'],
     ['lic-s', 'Spellcasting license'],
+    ['lic-f', 'Firearm license'],
+    ['lic-r', 'Rigger remote console license'],
+  ]),
+  file('adeptpowers', [
+    ['ipa', 'Improved Physical Attribute', { perLevel: 'true' }],
+    ['iab', 'Improved Ability (Skill)', { perLevel: 'true' }],
+    ['qab', 'Quick Ability'],
   ]),
   file('weapons', [
     ['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }],
@@ -150,8 +160,9 @@ test('C: names are normalised to the catalog’s, in any kind', () => {
   expect(names('gear', 'Bulldog stepvan')).toEqual(['GMC Bulldog'])
   expect(names('gear', 'BDUs')).toEqual(['Basic Duty Utilities']) // an initialism
   expect(names('gear', 'low lifestyle (current month only)')).toEqual(['Low'])
-  // a word the catalog does not have stays plain gear
-  expect(names('gear', 'Medium lifestyle (current month only)')).toEqual(['(built) Medium lifestyle'])
+  // owner 2026-10-22: Medium is a typo for Middle; another word the catalog lacks stays plain gear
+  expect(names('gear', 'Medium lifestyle (current month only)')).toEqual(['Middle'])
+  expect(names('gear', 'Mediocre lifestyle')).toEqual(['(built) Mediocre lifestyle'])
   expect(names('gear', 'data structure (Oracle 4)')).toEqual(['Oracle'])
   expect(things('gear', 'data structure (Oracle 4)')[0].values.rating).toBe(4)
   expect(names('gear', 'standard credstick')).toEqual(['Standard']) // a type name alone is its standard item
@@ -212,14 +223,17 @@ test('C: a variant named inside an entry, the same words in another order, a typ
   // a licence by its name only: another's name is not a guess at it
   expect(f.accessories.map(a => [a.name, a.entry?.name])).toEqual([
     ['Cyberware license', 'Cyberware license'],
-    ['bioware license', undefined],
+    ['Augmentation license', undefined],
     ['Spellcasting license', 'Spellcasting license'],
   ])
 })
 
 test('negative: a stand-in that is nothing like the name, or a wrong kind of armor, is no link', () => {
   // no "Certified credstick" in the catalog: plain gear, not the Standard credstick
-  expect(names('gear', 'certified credisticks (for payments)')).toEqual(['(built) certified credisticks'])
+  // owner 2026-10-22: the Standard credstick, `certified` its detail (the CRB's certified credstick table)
+  expect(names('gear', 'certified credisticks (for payments)')).toEqual(['Standard'])
+  expect(things('gear', 'certified credsticks')[0].detail).toBe('certified')
+  expect(names('gear', 'certified frobnicator')).toEqual(['(built) certified frobnicator'])
   // standard bolts are the Bolt, not the Standard tags
   expect(names('gear', 'standard bolts')).toEqual(['Bolt'])
   // armor of a printed Defense with no name: body armor, never a helmet, the same for every NPC
@@ -262,9 +276,9 @@ test('a link through another form of the name is shown as the guess it is', () =
 
 test('a list of licences after w/ keeps its list; a line label ends the grade before it', () => {
   const [h] = things('gear', 'Commlink w/ licenses (augmentation, pistols, RCC)')
-  expect(h.accessories.map(a => a.name)).toEqual(['augmentation license', 'pistols license', 'RCC license'])
+  expect(h.accessories.map(a => a.name)).toEqual(['Augmentation license', 'Firearm license', 'Rigger remote console license'])
   const [k] = things('gear', 'Commlink w/ fake licenses 3 (firearms, magic)')
-  expect(k.accessories.map(a => a.name)).toEqual(['firearms license', 'magic license'])
+  expect(k.accessories.map(a => a.name)).toEqual(['Firearm license', 'Spellcasting license'])
   expect(things('augmentations', '(all deltaware): datajack. Gear: datajack').map(x => x.grade)).toEqual(['delta', undefined])
 })
 
@@ -320,4 +334,55 @@ test('negative: a cyberlimb is never another body part, a plus joins two things'
   expect(t.map(x => x.entry?.name)).toEqual(['Armor jacket', 'Helmet'])
   expect(t[0].values.defense).toBe(5)
   expect(t[1].values.defense).toBeUndefined()
+})
+
+/** the things of an NPC with several lines */
+const thingsOf = (lines: Record<string, string>) => {
+  const ch = blankSr6Npc('grunt', 3)
+  ch.npc!.lines = Object.entries(lines).map(([part, text]) => ({ part, text }))
+  return npcThings(ch.npc!, c)
+}
+
+test('R1 1: Improved Agility is Improved Physical Attribute at that level; a letter-swapped word is no match', () => {
+  const [t] = thingsOf({ powers: 'Improved Agility 2' })
+  expect(t).toMatchObject({ detail: 'Agility', values: { rating: 2 } })
+  expect(t.entry?.name).toBe('Improved Physical Attribute')
+  // the skill power keeps its own bracket
+  expect(thingsOf({ powers: 'Improved Ability (Firearms) 1' })[0].entry?.name).toBe('Improved Ability (Skill)')
+  // `Agility` is not `Ability`
+  expect(thingsOf({ powers: 'Quick Agility' })[0].entry).toBeUndefined()
+  expect(thingsOf({ powers: 'Improved Flexibility 1' })[0].entry?.name).not.toBe('Improved Ability (Skill)')
+})
+
+test('R1 2: licences by the rulings, the augmentation licence’s detail from what the NPC has', () => {
+  const lic = (lines: Record<string, string>) => thingsOf(lines).find(t => t.part === 'gear')!.accessories[0]
+  const gear = 'fake SIN [rating 4; w/ augmentation license]'
+  expect(lic({ augmentations: 'datajack', gear })).toMatchObject({ name: 'Augmentation license', detail: 'cyberware' })
+  expect(lic({ powers: 'Improved Agility 1', gear })).toMatchObject({ detail: 'physical adept' })
+  expect(lic({ gear })).toMatchObject({ name: 'Augmentation license', detail: 'augmentation' })
+  expect(lic({ gear: 'fake SIN [rating 4; w/ bioware license]' })).toMatchObject({ name: 'Augmentation license', detail: 'bioware' })
+  expect(lic({ gear: 'fake SIN [rating 4; w/ pistols license]' })).toMatchObject({ name: 'Firearm license', detail: 'pistols' })
+  expect(lic({ gear: 'fake SIN [rating 4; w/ magic license]' })).toMatchObject({ name: 'Spellcasting license', detail: 'magic' })
+  expect(lic({ gear: 'fake SIN [rating 4; w/ RCC license]' })).toMatchObject({ name: 'Rigger remote console license', detail: 'RCC' })
+  // a licence the catalog names keeps its name and takes no detail; another word is plain gear
+  expect(lic({ gear: 'fake SIN [rating 4; w/ cyberware license]' }).detail).toBeUndefined()
+  expect(lic({ gear: 'fake SIN [rating 4; w/ frobnicator license]' })).toMatchObject({ name: 'frobnicator license', kind: 'gear' })
+})
+
+test('R1 3: AAS is the armor add-on; an armor total that disagrees with its pieces is noted, the printed value kept', () => {
+  const [vest] = thingsOf({ gear: 'Armor vest with AAS and helmet (+6)' })
+  expect(vest.accessories.map(a => a.entry?.name)).toEqual(['Securetech Armor Augmentation System', 'Helmet'])
+  expect(vest.values.defense).toBe(6)
+  expect(npcCorrections([vest])).toContain(
+    'Book error: Armor vest +3, Securetech Armor Augmentation System +1, Helmet +1 = +5; the book prints +6. Printed value kept.',
+  )
+  // the sum agrees: no note; a piece that prints its own number: not a total
+  expect(npcCorrections(thingsOf({ gear: 'Armor vest with AAS and helmet (+5)' })).some(x => /Book error/.test(x))).toBe(false)
+  expect(npcCorrections(thingsOf({ gear: 'Armor vest (+3) w/ helmet (+2)' })).some(x => /Book error/.test(x))).toBe(false)
+  expect(npcCorrections(thingsOf({ gear: 'Armor vest (+3)' })).some(x => /Book error/.test(x))).toBe(false)
+})
+
+test('R1 4: a cyanide pill is Cyanide; a pill the catalog lacks is plain gear', () => {
+  expect(thingsOf({ gear: 'Armor vest w/ cyanide pill' })[0].accessories.map(a => a.entry?.name)).toEqual(['Cyanide'])
+  expect(thingsOf({ gear: 'Armor vest w/ sleeping pill' })[0].accessories.map(a => [a.name, a.entry?.name])).toEqual([['sleeping pill', undefined]])
 })
