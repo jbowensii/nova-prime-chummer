@@ -26,8 +26,13 @@ from importer.sr6.regroup import md_tables, norm, text_page
 
 # kind -> the words of a parent heading whose child headings are its entries
 HEADING_KINDS = [
-    ("critterpowers", re.compile(r"\b(?:sprite|critter)\s+powers\b|^inherent\b.*\bqualities$", re.I)),  # (a being's
-    # inherent qualities are its powers: `Inherent Virtual Life Form Qualities`)
+    (
+        "critterpowers",
+        re.compile(
+            r"\b(?:sprite|critter)\s+powers\b|^new\s+(?:sprite|critter)\s+power$|^inherent\b.*\bqualities$", re.I
+        ),
+    ),  # (a being's inherent qualities are its powers: `Inherent Virtual Life Form Qualities`; `New Critter Power`,
+    # one: Cutting Black p. 176)
     ("metamagics", re.compile(r"^(?:new\s+|adept\s+)?metamagics?(?:\s+techniques)?$", re.I)),
     ("sprites", re.compile(r"^(?:new\s+)?sprite\s+types$", re.I)),
     ("traditions", re.compile(r"^traditions$", re.I)),
@@ -55,6 +60,9 @@ HEADING_KINDS = [
     ("critterpowers", re.compile(r"^(?:critter\s+)?weaknesses$", re.I)),
 ]
 WEAKNESSES = HEADING_KINDS[-1][1]
+_CREATURE_BAND = re.compile(
+    r"^\|\s*B(?:OD)?\s*\|\s*A(?:GI)?\s*\|\s*R(?:EA)?\s*\|", re.M
+)  # (a creature's attribute band)
 # the labels an entry of a kind read under its own heading prints (an adept power's Cost in PP, its Activation)
 FIELDED = {"adeptpowers": {"cost", "activation"}}
 TOXIN_LABELS = {"vector", "speed", "power"}  # a toxin's stat lines (the core rulebook's toxin form)
@@ -102,7 +110,7 @@ FIELD_LABELS = re.compile(
     r"^(?:cost|note|notes|game\s+effects?|game\s+rules?|effects?|advantages?|disadvantages?|"
     r"requirements?|prerequisites?|example|bonus|duration|rules|test|limit|threshold|range|choose\s+one|"
     r"resources|contact\s+points|contact\s+types|all|magician|adept|similar\s+archetypes|"
-    r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?)$",
+    r"use\s+an\s+edge\s+action|wireless\s+bonus|skills?|type|action)$",
     re.I,
 )
 # a Matrix action's test line, set under its heading: `(Illegal) Cracking + Logic vs. Willpower + Firewall (Major)`
@@ -112,6 +120,9 @@ EXAMPLE = re.compile(
     r"|\((?:positive|negative)\s+quality\)",
     re.I,
 )
+_POWER_NAME = re.compile(r"[A-Z][\w’'-]*(?: [\w’'-]+){0,4}(?: \([^()]+\))?")  # (a critter power's plain name line)
+_POWER_LABEL = re.compile(r"\*\*(?:Type|Action|Range|Duration):\*\*")
+_POWER_FIELD = re.compile(r"\*\*(Type|Action|Range|Duration):\*\*\s*(.+?)(?=\s*\*\*|$)")
 _COST_LINE = re.compile(r"\bCost:\s*\d+\s*(Edge|Karma)\b", re.I)  # an entry's price line (`Cost: 2 Edge`)
 _TIMING = re.compile(r"\s*\((I|A)\)\s*$")
 _EDGE = re.compile(r"\s*\((\d+)\s*Edge\)\s*$", re.I)
@@ -416,7 +427,10 @@ class Reader:
             or name.startswith("(")
             or name.isupper()
             and len(name.split()) > 1
-        ):  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`)
+            or kind == "critterpowers"
+            and (_CREATURE_BAND.search(b.text or "") or b.stats and {"A", "AGI"} & {h.upper() for h in b.stats[0]})
+        ):  # (a box's title in capitals: `ZAPWARE OVERDRIVE BONUSES`; a creature's stat block under the heading of
+            # a new power, Cutting Black p. 176, is a creature)
             return []
         if kind in FIELDED and not FIELDED[kind] & {k.lower() for k in b.labels}:
             return []  # (a heading under the kind's heading that prints none of its labels: a rule section)
@@ -735,6 +749,28 @@ class Reader:
             # (its own page: a run-in printed on a later page than its block's heading)
             at = max(1, text_page(b, ln.strip()[:40]) - (b.page - page))
             out.append(Found(kind, name, at, {k: v for k, v in attrs.items() if v}, [], para, cites=cites))
+        if kind == "critterpowers":
+            out += self._labelled_powers(b, page, lines, {f.name for f in out})
+        return out
+
+    @staticmethod
+    def _labelled_powers(b, page, lines, seen):
+        """A critter power set as a plain name line over its `**Type:** M **Action:** Auto` / `**Range:** Self
+        **Duration:** Special` lines and its text (30 Nights p. 139): an entry with those four fields, until the next
+        such name line."""
+        starts = [
+            i
+            for i, ln in enumerate(lines[:-1])
+            if _POWER_NAME.fullmatch(ln.strip()) and _POWER_LABEL.match(lines[i + 1].strip())
+        ]
+        out = []
+        for i, end in zip(starts, starts[1:] + [len(lines)]):
+            name = lines[i].strip()
+            body = [ln for ln in lines[i + 1 : end] if not ln.startswith(("#", "|", "<!--"))]
+            attrs = {k.lower(): v.strip() for ln in body for k, v in _POWER_FIELD.findall(ln)}
+            text = "\n".join(ln for ln in body if not _POWER_LABEL.match(ln.strip()))
+            if name not in seen:
+                out.append(Found("critterpowers", name, max(1, text_page(b, name) - (b.page - page)), attrs, [], text))
         return out
 
 

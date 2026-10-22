@@ -29,7 +29,15 @@ from importer.sr6 import (
     tables,
 )
 from importer.sr6.regroup import alt_names, blocks, md_tables, norm
-from importer.sr6.prose_items import add_ons, dv_settings, run_in_items, sentence_items, stated_items, variants
+from importer.sr6.powerlist import power_list
+from importer.sr6.prose_items import (
+    add_ons,
+    dv_settings,
+    run_in_items,
+    sentence_items,
+    stated_items,
+    variants,
+)
 from importer.xmlio import HEAD, ILLEGAL
 
 CORE = "CRB"  # the core rulebook's source (recipes/crb.py): its catalog comes first, its sample runners cite their own
@@ -1284,10 +1292,12 @@ class Catalog:
                     return False
             else:
                 attrs = {"category": cat}
-            lists = {LISTS[k.lower()]: v for k, v in b.labels.items() if k.lower() in LISTS and v}
+            lists, riders = being_lists(b)
+            prose += riders
             children = [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists]
         elif kind == "sprites":
-            lists = {k.lower(): v for k, v in b.labels.items() if k.lower() in ("skills", "powers") and v}
+            lists, riders = being_lists(b, ("skills", "powers"))
+            prose += riders
             children = [(t, {}, lists[t]) for t in ("skills", "powers") if t in lists]
         elif kind == "rituals" and "keywords" not in f and b.tags:
             f["keywords"] = b.tags
@@ -1333,7 +1343,7 @@ class Catalog:
         notes = [("note", {"field": a}, t) for a, t in f.pop("_notes", [])]  # its cells' footnotes
         if len(f) < 3:
             return False
-        lists = {LISTS[k.lower()]: v for k, v in b.labels.items() if k.lower() in LISTS and v}
+        lists, riders = being_lists(b)
         listed = {k for k in b.labels if k.lower() in LISTS or k == "Archetype"}
         self.add("contacts", b.name, page, {"archetype": b.labels.get("Archetype", b.name)}, (), block_text(b, listed))
         self.add(
@@ -1342,7 +1352,7 @@ class Catalog:
             page,
             {"group": "Contact", **f},
             [(t, {}, lists[t]) for t in dict.fromkeys(LISTS.values()) if t in lists] + notes,
-            block_text(b, listed),
+            "\n".join([*riders, block_text(b, listed)]),
         )
         return True
 
@@ -1792,6 +1802,35 @@ def footnote(text, mark):
 
 # a close-combat weapon's TYPE (`Blade`): the Close Combat specialization it is used with (the game's vocabulary)
 CLOSE_COMBAT = {"blade": "Blades", "club": "Clubs", "unarmed": "Unarmed"}
+
+
+def _whole_list(text, label, value):
+    """A powers line cut where the block's columns broke (`… Hardened Armor 2, Natural`, the description, then the stat
+    block again in the text): the line the text prints whole, when it goes on from this one."""
+    if label.lower() not in ("powers", "optional powers"):
+        return value
+    whole = _label_text(text, label, value)
+    return whole if " ".join(whole.split()).startswith(" ".join(value.split())) else value
+
+
+def being_lists(b, keys=None):
+    """A being's labelled lists as (lists, riders): its LISTS child elements (only `keys` of them, when given), the
+    powers lines read by powerlist.power_list (a sentence the line runs on with goes to riders, one `**Power notes:**`
+    line each, for the entry's text)."""
+    lists = {
+        LISTS[k.lower()]: _whole_list(b.text, k, v)
+        for k, v in b.labels.items()
+        if k.lower() in LISTS and v and (keys is None or k.lower() in keys)
+    }
+    riders = []
+    for t in ("powers", "optionalPowers"):
+        if t in lists:
+            lists[t], rider = power_list(lists[t])
+            if rider:
+                riders.append(f"**Power notes:** {rider}")
+            if not lists[t]:
+                del lists[t]
+    return lists, riders
 
 
 def block_text(b, skip=()):

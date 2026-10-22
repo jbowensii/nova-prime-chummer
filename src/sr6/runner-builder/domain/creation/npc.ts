@@ -225,6 +225,8 @@ export interface Sr6NpcThing {
   qty?: number
   /** an attack printed with stats the app can't roll (Cybercombat, a DV it can't read): kept as a note item */
   unread?: true
+  /** a power's parameters as printed, apart from its name and rating: `Cold, Fire, Toxins` of `Immunity (Cold, Fire, Toxins)` */
+  detail?: string
   /** its name as printed (`name` is its entry's when it has one) */
   printedName?: string
   /** an augmentation's grade as printed (`betaware`, a line's `(all deltaware)`): alpha, beta, gamma or delta */
@@ -240,9 +242,10 @@ const THING_KINDS: Record<string, Sr6Kind[]> = {
   gear: ['gear', 'electronics', 'armor', 'programs', 'vehicles', 'weapons'],
   augmentations: ['augmentations'],
 }
+// (a stat block's power the books define as a quality or a bioware, `Built Tough`, `Manasense`: after the powers)
 const POWER_KINDS: Record<'being' | 'person', Sr6Kind[]> = {
-  being: ['critterpowers', 'adeptpowers', 'spells', 'complexforms'],
-  person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms'],
+  being: ['critterpowers', 'adeptpowers', 'spells', 'complexforms', 'qualities', 'augmentations'],
+  person: ['adeptpowers', 'critterpowers', 'spells', 'complexforms', 'qualities', 'augmentations'],
 }
 const DEVICES = new Set<Sr6Kind>(['electronics', 'augmentations', 'programs'])
 /** an attack's printed category that makes it a natural one */
@@ -1028,6 +1031,79 @@ function expandStuff(c: Sr6Catalog, printed: string, source?: string): string[] 
   return [printed]
 }
 
+// (the kinds a power is linked in by its name only, never by a guess)
+const BY_NAME_ONLY = new Set<Sr6Kind>(['qualities', 'augmentations'])
+/** A stat block power read as its name, its rating and its parameters: `Venom [Vector: Injection; Speed: 1 round]` is
+ *  `Venom`, those words; `Hardened Armor (4)` and `Hardened Armor 4` are `Hardened Armor`, rating 4. */
+function powerParts(printed: string): { name: string; rating?: number; detail: string } {
+  const s = printed.replace(/\*+$/, '').trim(),
+    g = groups(s)[0],
+    head = (g ? s.slice(0, g[0]) : s).trim(),
+    inside = g ? s.slice(g[0] + 1, g[1]).trim() : '',
+    after = g ? s.slice(g[1] + 1).trim() : ''
+  // (a bracket holding only a number is the rating: `Hardened Armor (4)`)
+  const r = /^\d{1,2}$/.test(inside) ? inside : (head.match(/\s(\d{1,2})$/)?.[1] ?? after.match(/^\d{1,2}$/)?.[0])
+  return {
+    name: head.replace(/\s+\d{1,2}$/, ''),
+    ...(r ? { rating: Number(r) } : {}),
+    detail: [/^\d{1,2}$/.test(inside) ? '' : inside, /^\d{1,2}$/.test(after) ? '' : after].filter(Boolean).join(' '),
+  }
+}
+/** Whether a guess drops or swaps no word: each word of one is a word of the other, at least NPC_MATCH alike or one the
+ *  start of the other (`Wall Walk`, `Wall Walking`), or the names differ only in their spacing (`Mana Bolt`, `Manabolt`);
+ *  not `Improved Close Combat` and `Improved Sense`. */
+const CONNECTORS = new Set(['to', 'of', 'the', 'and', 'in', 'on', 'for', 'with', 'a', 'an'])
+/** A name's content words, singular, without its bracket and the connectors a name has. */
+const contentWords = (n: string) =>
+  matchKey(n.replace(/\s*\([^()]*\)$/, ''))
+    .split(' ')
+    .filter(w => !CONNECTORS.has(w))
+function sameWords(a: string, b: string): boolean {
+  const wa = contentWords(a),
+    wb = contentWords(b)
+  const alike = (x: string, y: string) => nameRatio(x, y) >= NPC_MATCH || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)))
+  const has = (w: string, list: string[]) => list.some(x => alike(w, x))
+  return (wa.every(w => has(w, wb)) && wb.every(w => has(w, wa))) || nameRatio(wa.join(''), wb.join('')) >= 0.9
+}
+/** A power's catalog entry (the first kind with it; `Sapience digital assault`: the longest run of its first words that
+ *  names one, the rest its parameters). A book's entry named with a bracket (`Heavy Scales (Western Drake)`, `Shift
+ *  (Shifter add-on)`) is the bare name's when nothing else has it (the NPC's own book's first). */
+function findPower(c: Sr6Catalog, printed: string, name: string, kinds: Sr6Kind[], source?: string): { found?: ReturnType<typeof findEntry>; rest: string } {
+  const words = name.split(/\s+/).filter(Boolean),
+    guessKinds = kinds.filter(k => !BY_NAME_ONLY.has(k)) // (a guess among the powers, never the qualities)
+  for (const n of [printed, name]) {
+    const found = findEntry(c, n, kinds, source, 'exact')
+    if (found) return { found, rest: '' }
+  }
+  const key = normName(name),
+    set = contentWords(name).sort().join(' ')
+  const among = (kind: Sr6Kind, test: (e: Sr6Entry) => boolean) => [...c.entries[kind].values()].filter(test)
+  const best = (list: Sr6Entry[], how: 'exact' | 'fuzzy') => ({ found: { entry: prefer(c, source)(list), match: { score: 1, how } }, rest: '' })
+  // (the whole name, then its first words, by name)
+  for (let k = words.length; k >= 1; k--) {
+    const found = findEntry(c, words.slice(0, k).join(' '), kinds, source, 'exact')
+    if (found) return { found, rest: words.slice(k).join(' ') }
+  }
+  // (an entry named with a bracket, `Heavy Scales (Western Drake)`, is the bare name's; each kind in its turn)
+  for (const kind of kinds) {
+    const named = among(kind, e => e.name !== name && normName(e.name.replace(/\s*\([^()]*\)$/, '')) === key)
+    if (named.length) return best(named, 'exact')
+  }
+  // (then the same by a 75% guess, but not on one word of several)
+  for (let k = words.length; k >= 1; k--) {
+    if (k === 1 && words.length > 1) continue
+    const part = words.slice(0, k).join(' '),
+      found = findEntry(c, part, guessKinds, source, 'loose')
+    if (found && sameWords(part, found.entry.name)) return { found, rest: words.slice(k).join(' ') }
+  }
+  // (the same words in another order, `Mystic Hardened Armor`, `Hardened Mystic Armor`: a guess, so never among the qualities)
+  for (const kind of guessKinds) {
+    const same = among(kind, e => contentWords(e.name).sort().join(' ') === set)
+    if (same.length) return best(same, 'fuzzy')
+  }
+  return { rest: '' }
+}
+
 /** The things an NPC's weapons, attacks, gear, augmentations and powers lines print, each its catalog entry where the
  *  catalog has one (a level by its printed number: `Improved Reflexes 2` is that level's entry), else built from what is
  *  printed: an attack printing a DV (read or not) or attack ratings as a weapon, gear with a printed Defense as armor,
@@ -1076,14 +1152,18 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       const name = n ? (n[2] ?? n[3]).trim() : w ? w[2] : p.name,
         qty = n ? Number(n[1] ?? n[4] ?? n[5]) : w ? NUMBER_WORDS[w[1].toLowerCase()] : s.count
       // (a name with its bracket may be an entry's own: `Hand (obvious)`)
-      let found = (stuff && p.name !== head ? findEntry(c, head.replace(/^\d+\s*x\s+/i, ''), kinds, src) : undefined) ?? findEntry(c, name, kinds, src)
+      const pw = power ? powerParts(name) : undefined
+      const pf = pw ? findPower(c, name, pw.name, kinds, src) : undefined
+      let found =
+        pf?.found ?? (stuff && p.name !== head ? findEntry(c, head.replace(/^\d+\s*x\s+/i, ''), kinds, src) : undefined) ?? findEntry(c, name, kinds, src)
       // a trailing number is its rating or level: `white noise generator 3`, `Hardened Armor (4)`
-      const lv = name.match(/^(.*?)\s*(?:\((\d{1,2})\)|\s(\d{1,2}))$/)
+      const lv = pw ? undefined : name.match(/^(.*?)\s*(?:\((\d{1,2})\)|\s(\d{1,2}))$/)
       if (lv && (!found || normName(found.entry.name) === normName(lv[1]))) {
         found ??= findEntry(c, lv[1], kinds, src)
         s.values.rating ??= Number(lv[2] ?? lv[3])
       }
-      if (!found && s.values.rating != null) found = findEntry(c, `${name} ${s.values.rating}`, kinds, src)
+      if (pw?.rating != null) s.values.rating ??= pw.rating
+      if (!found && !power && s.values.rating != null) found = findEntry(c, `${name} ${s.values.rating}`, kinds, src)
       // no name: the most alike one (at least NPC_MATCH), else a standard item; a power only the most alike (a power the
       // catalog lacks stays as printed); a natural attack (a bite: its skill as category, or a close band only) by name
       // only, no catalog weapon being one
@@ -1098,8 +1178,8 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       if (stuff && /\blifestyle$/i.test(name)) found ??= findEntry(c, name.replace(/\s+lifestyle$/i, ''), ['lifestyles'], src)
       if (stuff) found ??= viaForms(c, name, head, armored ? ['armor'] : kinds, src)
       if (stuff && !armored) found ??= viaMid(c, name, src)
-      if (!natural && !/cybercombat/i.test(s.category ?? ''))
-        found ??= findEntry(c, name, armored ? ['armor'] : kinds, src, power ? 'loose' : 'standard', s.values.rating ?? s.values.defense)
+      if (!natural && !power && !/cybercombat/i.test(s.category ?? ''))
+        found ??= findEntry(c, name, armored ? ['armor'] : kinds, src, 'standard', s.values.rating ?? s.values.defense)
       // (a standard stand-in gives way to the name in its brackets: `rigger command console (Vulcan Liegelord)`)
       if (stuff && !armored && (!found || found.match.how === 'standard')) found = viaForms(c, name, head, kinds, src, true) ?? found
       if (stuff && !armored) found ??= viaForms(c, name, head, kinds, src, false, { rating: s.values.rating })
@@ -1185,10 +1265,11 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
       out.push({
         part: l.part,
         printed,
-        name: entry?.name ?? name.replace(/\*+$/, ''),
-        printedName: name.replace(/\*+$/, ''),
+        name: entry?.name ?? (pw ? pw.name : name.replace(/\*+$/, '')),
+        printedName: pw ? pw.name : name.replace(/\*+$/, ''),
         kind,
         ...((s.grade ?? lineGrade) ? { grade: s.grade ?? lineGrade } : {}),
+        ...(pw && [pw.detail, pf?.rest].filter(Boolean).length ? { detail: [pf?.rest, pw.detail].filter(Boolean).join(' ') } : {}),
         ...(found ? { entry: found.entry, match: found.match } : {}),
         ...(s.category ? { category: s.category } : {}),
         ...(s.dvText ? { dvText: s.dvText } : {}),

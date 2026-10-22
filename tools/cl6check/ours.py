@@ -205,7 +205,9 @@ def _entries(src_dir, src):
         kind = n[:-4]
         if not n.endswith(".xml") or kind in SKIP:
             continue
-        for e in ET.parse(os.path.join(src_dir, n)).getroot():
+        root = ET.parse(os.path.join(src_dir, n)).getroot()
+        kind = root.get("kind") or kind  # (the file's kind: section-powers.xml holds critter powers)
+        for e in root:
             name = (e.findtext("name") or "").strip()
             if not name:
                 continue
