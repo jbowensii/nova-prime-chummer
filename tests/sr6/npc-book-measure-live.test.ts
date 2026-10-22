@@ -1,7 +1,10 @@
-// Every book NPC, critter, spirit and sprite of an import, read as Load book NPCs copies it (bookNpc) and exported as the
-// Foundry module gets it (exportNpc), measured: what the stat blocks print that links to no catalog entry. No book data in
-// the repo: SR6_CATALOG=<a data folder holding custom/sr6, e.g. an import run's folder> npx vitest run -t npc-book-measure.
-// SR6_MEASURE_OUT=<file> writes the counts and lists as JSON. Skipped without SR6_CATALOG.
+// Every catalog npcs, critters, spirits and sprites entry of an import (reprints counted each time; Load book NPCs loads one
+// per version), built as Load book NPCs builds a copy (bookNpc) and exported as the Foundry module gets it (exportNpc),
+// measured: the gear, augmentations, powers and spells its stat block prints that link to no catalog entry, keyed by the
+// printed line. Not measured: weapons and attacks (npc-combat-items-live), and `w/` accessories npcThings could not link (it
+// drops them before export). No book data in the repo: SR6_CATALOG=<a data folder holding custom/sr6, e.g. an import run's
+// folder> npx vitest run -t npc-book-measure. SR6_MEASURE_OUT=<file> writes the counts and lists as JSON. Skipped without
+// SR6_CATALOG.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
@@ -24,7 +27,10 @@ test.skipIf(!DIR)(
         return null
       }
     }
-    const c = buildSr6Catalog((await collectSr6Files(get)).files),
+    const { files, missing } = await collectSr6Files(get)
+    // a file an index lists but the folder lacks: a partial catalog would give wrong numbers that look right
+    expect(missing).toEqual([])
+    const c = buildSr6Catalog(files),
       data = sr6Data(c)
     const bucket = () => new Map<string, { n: number; npcs: Set<string> }>()
     const lists = { gear: bucket(), powers: bucket(), spells: bucket() }
