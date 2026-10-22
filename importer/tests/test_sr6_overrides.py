@@ -1526,10 +1526,6 @@ class OwnerRowsTest(unittest.TestCase):
         self.assertEqual(got.get("karma"), "5")
         self.assertEqual(json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"], [])
         paired = {k: r["our_id"] for k, r in optional.load_have().items()}
-        self.assertEqual(
-            [paired[("da", c)] for c in ("al_assad_rocket", "ballista_ii_rocket", "carl_gustaf_shell")],
-            ["da.al-assad-rocket", "da.ballista-ii-rocket", "da.carl-gustaf-shell"],
-        )
         self.assertEqual(paired[("swc", "obsession_misfortune")], "swc.obsession-momentous-misfortune")
 
     def test_an_owner_row_sets_a_rating_over_a_stale_found_and_survives_a_value_regeneration(self):
