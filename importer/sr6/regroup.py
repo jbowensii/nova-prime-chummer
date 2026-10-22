@@ -1298,10 +1298,12 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     cur.labels.setdefault(key, value)
                     listy = not value
                 if mode == "box":
-                    if cur.stats or not two_words or re.search(r"[,(\[]", v):
+                    labelled_next = i < end and els[i][0] == "x" and bool(_LABEL.match(els[i][2]))
+                    if cur.stats or not two_words or not labelled_next or re.search(r"[,(\[]", v):
                         continue
-                    # (a lone line finishing a two-word entry, `…, Ares Macrotechnology` + `Representative`, in a box
-                    # with no tables: the header's end, the labelled lines after it are the text's, as with any other)
+                    # (a lone line finishing a two-word entry, `…, Ares Macrotechnology` + `Representative`, with a
+                    # label next, in a box with no tables: the header's end, the labelled lines after it are the
+                    # text's, as with any other line)
                     mode = "text"
                     continue
             else:
