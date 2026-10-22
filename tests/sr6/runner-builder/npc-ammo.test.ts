@@ -46,6 +46,11 @@ const c = buildSr6Catalog([
     ['bolt-1', 'Bolt 1', { ...ammo('CROSSBOWS'), level: '1' }],
     ['bolt-2', 'Bolt 2', { ...ammo('CROSSBOWS'), level: '2' }],
   ]),
+  file('ammotypes', [
+    ['gel', 'Gel', { category: 'Ammo type', class: 'ammotype' }],
+    ['apds', 'APDS', { category: 'Ammo type', class: 'ammotype' }],
+    ['caseless', 'Caseless', { category: 'Ammo type', class: 'ammotype' }],
+  ]),
   file('gear', [
     ['a-light', 'Holdout/Light Pistol/Machine Pistol', ammo('AMMUNITION')],
     ['a-heavy', 'Heavy Pistol/SMG', ammo('AMMUNITION')],
@@ -91,6 +96,33 @@ test('the spare container is gear, not a weapon (the Foundry module rolls every 
   const box = run('Test Pistol').things.find(t => t.spare)!
   expect([box.kind, box.entry?.kind, box.entry?.id, box.name]).toEqual(['gear', 'gear', 'tst.spare-clip', 'Spare clip'])
   expect(run('Test Pistol').things.find(t => t.name === 'Heavy Pistol/SMG')?.kind).toBe('gear')
+})
+
+test('a printed ammunition type with no count wins on type: the two loads are of it, plus the spare container', () => {
+  const typed = (text: string) => {
+    const t = run(text).things
+    return [t.map(x => x.name), t.find(x => x.match?.how === 'ammo' && !x.spare)?.accessories.map(x => [x.name, x.kind])]
+  }
+  expect(typed('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ gel ammo]')).toEqual([
+    ['Test Pistol', 'Heavy Pistol/SMG', 'Spare clip'],
+    [['Gel', 'ammotypes']],
+  ])
+  expect(run('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ gel ammo]').all).toEqual([
+    ['Test Pistol', 1],
+    ['Heavy Pistol/SMG', 30],
+    ['Spare clip', 1],
+  ])
+  // (a bare `gel rounds` the reader left in the line, a type other than the first)
+  expect(typed('Test Rifle [Rifle, DV 5S, SA/BF/FA, 4/11/9/7/1, 38(c), APDS rounds]')[1]).toEqual([['APDS', 'ammotypes']])
+  expect(typed('Test Rifle [Rifle, DV 5S, SA, 4/11/9/7/1, 38(c) w/ caseless rounds]')[1]).toEqual([['Caseless', 'ammotypes']])
+  expect(run('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ gel ammo]').corrections[0]).toBe(
+    'Added: Heavy Pistol/SMG (Gel ammo) ×30 (2 loads of 15) for Test Pistol',
+  )
+  // regular, or a type the catalog lacks: the regular ammunition alone
+  expect(typed('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ regular ammo]')[1]).toEqual([])
+  expect(typed('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ handload ammo]')[1]).toEqual([])
+  // a printed count wins entirely, type or not
+  expect(run('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ 40 rounds gel ammo]').all.map(a => a[0])).toEqual(['Test Pistol'])
 })
 
 test('a part named clip, magazine or belt, or a duration in rounds, is not a printed ammo line', () => {

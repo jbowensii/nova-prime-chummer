@@ -132,8 +132,16 @@ function fixedAudit(who: string, items: Item[]): string[] {
     return same ? [] : [`${name} — hand-checked: got [${got.map(g => `${g.name} ×${g.qty}`)}], expected [${want.map(([re, q]) => `${re} ×${q}`)}]`]
   })
 }
+/** the ammunition type a stat block names without a count: `gel ammo`, `w/ APDS ammo`, `caseless rounds` (not `regular`) */
+const typeWord = (printed: string) =>
+  printed
+    .slice(printed.lastIndexOf('[') + 1)
+    .split(/[,;]|\bw\//i)
+    .map(p => /^\s*([a-z][a-z'’ -]*?)\s+(?:ammo|ammunition|rounds)\s*\]?\s*$/i.exec(p)?.[1])
+    .find(w => w && !/^(regular|standard|normal)$/i.test(w.trim()))
+const flat = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 /** The violations of the ruling among one NPC's weapons, with how many weapons were audited. */
-function ammoAudit(items: Item[]): { audited: number; why: string[] } {
+function ammoAudit(items: Item[], types: string[][]): { audited: number; why: string[] } {
   const why: string[] = []
   let audited = 0
   items.forEach((w, i) => {
@@ -153,6 +161,12 @@ function ammoAudit(items: Item[]): { audited: number; why: string[] } {
     const ammo = group.filter(g => g.attrs.class?.startsWith('AMMUNITION/')),
       boxes = group.filter(g => !g.attrs.class?.startsWith('AMMUNITION/'))
     const rounds = ammo.reduce((n, g) => n + g.qty, 0)
+    // a named type with no count: the loads are of it, when the catalog has that type (a name or alias)
+    const word = typeWord(w.line.printed),
+      hit = word && types.find(names => names.some(n => flat(n) === flat(word) || flat(n) === flat(word + 'ammo')))
+    const linked = ammo.flatMap(g => g.accessories.map(a => a.name))
+    if (hit ? linked.length !== 1 || flat(linked[0]) !== flat(hit[0]) : linked.length)
+      why.push(`${w.name} — ammo type [${linked}], ruling says ${hit ? hit[0] : 'none'}`)
     if (rounds !== r.rounds) why.push(`${w.name} — ${rounds} rounds, ruling says ${r.rounds}`)
     if (r.spare ? boxes.length !== 1 || !r.spare.test(boxes[0].name) || boxes[0].qty !== 1 : boxes.length)
       why.push(`${w.name} — containers [${boxes.map(b => `${b.name} ×${b.qty}`)}], ruling says ${r.spare ?? 'none'}`)
@@ -176,6 +190,7 @@ test.skipIf(!DIR)(
     expect(missing).toEqual([])
     const c = buildSr6Catalog(files),
       data = sr6Data(c)
+    const types = [...(c.entries.ammotypes?.values() ?? [])].map(e => [e.name, ...(e.aliases ?? [])])
     const bucket = () => new Map<string, { n: number; npcs: Set<string> }>()
     const lists = { gear: bucket(), powers: bucket(), spells: bucket() }
     const n = {
@@ -204,7 +219,7 @@ test.skipIf(!DIR)(
         n.npcs++
         const who = `${e.name} (${e.source} p.${e.page})`
         const x = exportNpc(npc, data, c)
-        const audit = ammoAudit(x.items)
+        const audit = ammoAudit(x.items, types)
         audit.why.push(...fixedAudit(who, x.items))
         n.ammoAudited += audit.audited
         n.ammoViolations += audit.why.length

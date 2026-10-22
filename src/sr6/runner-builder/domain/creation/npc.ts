@@ -668,6 +668,18 @@ function accessoryNamed(c: Sr6Catalog, name: RegExp, source: string | undefined)
   const list = [...(c.entries.weapons?.values() ?? [])].filter(e => name.test(e.name))
   return list.length ? prefer(c, source)(list) : undefined
 }
+/** The catalog's ammunition type a stat block names for a weapon without a count (`gel ammo`, `APDS ammo`, `caseless rounds`),
+ *  looked up by its name or alias; none for `regular ammo` or a type the catalog lacks. */
+function ammoTypeOf(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): { printed: string; entry: Sr6Entry } | undefined {
+  // (the stat block's parts, `w/ gel ammo` or a bare `gel rounds` the reader left in the line)
+  for (const part of t.printed.slice(t.printed.lastIndexOf('[') + 1).split(/[,;]|\bw\//i)) {
+    const m = /^(.+?)\s+(?:ammo|ammunition|rounds)]?$/i.exec(part.trim())
+    if (!m) continue
+    const words = [normName(m[1]), normName(part)]
+    const hits = [...(c.entries.ammotypes?.values() ?? [])].filter(e => [e.name, ...(e.aliases ?? [])].some(n => words.includes(normName(n))))
+    if (hits.length) return { printed: part.trim(), entry: prefer(c, source)(hits) }
+  }
+}
 /** A firearm's ammunition (owner 2026-10-21, "NPC ammo"): two loads of its regular ammunition (one loaded, one spare) and the
  *  spare's container by its ammo type (clip: a spare clip; magazine: the weapon's own spare magazine, else a spare clip;
  *  cylinder: a speed loader; belt, drum and the rest: none, the two loads are two belts or drums); a bow or crossbow 20
@@ -712,8 +724,24 @@ function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6
     qty,
     ...(spare ? { spare } : { load }),
     values: {},
-    accessories: [],
+    // (a printed ammunition type, no count: the two loads are of it)
+    accessories:
+      !spare && kind
+        ? [
+            {
+              part: t.part,
+              printed: kind.printed,
+              name: kind.entry.name,
+              kind: 'ammotypes',
+              entry: kind.entry,
+              match: { score: 1, how: 'exact' },
+              values: {},
+              accessories: [],
+            },
+          ]
+        : [],
   })
+  const kind = ammoTypeOf(c, t, source)
   const own = e && [...(c.entries.gear?.values() ?? [])].find(g => g.attrs.supplyOf === e.id && /magazine/i.test(g.name))
   const box = bow
     ? undefined
@@ -1268,7 +1296,7 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
       out.push(
         t.spare
           ? `Added: ${t.name} (spare) for ${t.ammoFor ?? 'its weapon'}`
-          : `Added: ${t.name} (regular ammo) ×${t.qty ?? 1}${t.load && t.qty !== t.load ? ` (${t.qty! / t.load} loads of ${t.load})` : ''} for ${t.ammoFor ?? 'its weapon'}`,
+          : `Added: ${t.name} (${t.accessories[0]?.name ?? 'regular'} ammo) ×${t.qty ?? 1}${t.load && t.qty !== t.load ? ` (${t.qty! / t.load} loads of ${t.load})` : ''} for ${t.ammoFor ?? 'its weapon'}`,
       )
     else if (m?.how === 'fuzzy' && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (fuzzy, ${m.score.toFixed(2)})`)
     else if (m?.how === 'standard') out.push(`${was} → ${t.name} (standard item)`)
