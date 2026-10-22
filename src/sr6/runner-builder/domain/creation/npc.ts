@@ -221,7 +221,7 @@ export interface Sr6NpcThing {
   values: { rating?: number; dv?: number; stun?: boolean; ar?: (number | null)[]; modes?: string[]; ammo?: number; defense?: number }
   /** how it found its entry (none: built) */
   match?: Sr6NpcMatch
-  /** how many (a weapon's ammunition: one full load) */
+  /** how many (a weapon's ammunition: its two loads in rounds) */
   qty?: number
   /** an attack printed with stats the app can't roll (Cybercombat, a DV it can't read): kept as a note item */
   unread?: true
@@ -231,6 +231,9 @@ export interface Sr6NpcThing {
   grade?: string
   /** ammunition: the name of the weapon it is for */
   ammoFor?: string
+  /** ammunition: the rounds in one load (it is `qty` of them: two loads, or a bow's 20), or a spare clip, speed loader or magazine */
+  load?: number
+  spare?: true
   accessories: Sr6NpcThing[]
 }
 /** The line parts that hold things, and the catalog kinds a thing on one is looked for in, the first kind first. */
@@ -639,41 +642,117 @@ function standardOf(list: Sr6Entry[], pick: (l: Sr6Entry[]) => Sr6Entry, rating?
 /** A ranged weapon's regular ammunition (owner 2026-10-20: "add regular ammo for weapons"): its class or printed category
  *  -> the catalog's ammunition class and the name of its regular kind there. Melee and natural attacks match none. */
 const AMMO: [RegExp, string, RegExp][] = [
-  [/holdout|pistols? light|light pistol|machine pistol/, 'AMMUNITION/AMMUNITION', /light pistol/i],
+  [/\bdart\b/, 'AMMUNITION/AMMUNITION_SPECIAL', /dart/i],
+  [/holdout|pistols? light|light pistol|machine pistol|\bmp\b/, 'AMMUNITION/AMMUNITION', /light pistol/i],
   [/pistols? heavy|heavy pistol|submachine|\bsmg\b/, 'AMMUNITION/AMMUNITION', /heavy pistol/i],
   [/shotgun/, 'AMMUNITION/AMMUNITION', /^shotgun/i],
   [/rifle|sniper/, 'AMMUNITION/AMMUNITION', /^rifles?$/i],
   [/\b[lmh]mg\b|machine gun/, 'AMMUNITION/AMMUNITION', /^machine gun/i],
   [/assault cannon/, 'AMMUNITION/AMMUNITION', /^assault cannon/i],
   [/taser/, 'AMMUNITION/AMMUNITION_SPECIAL', /^taser/i],
-  [/\bdart\b/, 'AMMUNITION/AMMUNITION_SPECIAL', /dart/i],
-  [/crossbow/, 'AMMUNITION/CROSSBOWS', /^bolts?$/i],
-  [/\bbows?\b/, 'AMMUNITION/BOWS', /^arrows?$/i],
+  [/crossbow/, 'AMMUNITION/CROSSBOWS', /^bolts?(?: \d+)?$/i],
+  [/\bbows?\b/, 'AMMUNITION/BOWS', /^arrows?(?: \d+)?$/i],
   [/grenade launcher/, 'AMMUNITION/GRENADES', /fragmentation/i],
-  [/rocket|missile/, 'AMMUNITION/ROCKETS', /high explosive|^standard/i],
+  [/^(?=.*launcher).*(?:rocket|missile)/, 'AMMUNITION/ROCKETS', /high explosive|^standard/i],
+  [/launcher/, 'AMMUNITION/GRENADES', /fragmentation/i],
+  [/flamethrower/, 'AMMUNITION/AMMUNITION_SPECIAL', /^fuel tank \(small\)/i],
 ]
-/** A weapon thing's regular ammunition: one full load (its printed or catalog ammo count), else 10. */
-function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6NpcThing | undefined {
+/** a weapon's ammo as printed or catalogued: `15(c)`, `6(cy)`, `100(belt)`, `1(br-3)`; the letters are its type (not the `(e)` of a DV) */
+const LOAD = /(\d+)\s*\(\s*(c|m|cy|b|br|d|ml|belt|drum|tanks?)(?:-\d+)?\s*\)/i
+/** a stat block that prints its own ammunition or spare clips for a weapon: a count and an ammunition noun (`30 rounds regular ammo`,
+ *  `2 spare clips`, `6 frag grenades`); a part's name alone (`extended clip`, `drum magazine`) is no ammunition */
+const OWN_AMMO =
+  /(?<!\bfor\s+)\b\d+\s+(?:[a-z'’-]+\s+){0,3}?(?:ammo|ammunition|rounds?|clips?|magazines?|belts?|speed ?loaders?|grenades|rockets|missiles|arrows|bolts|tanks?)\b/i
+/** the catalog's named weapon accessory, preferring the NPC's book's */
+function accessoryNamed(c: Sr6Catalog, name: RegExp, source: string | undefined): Sr6Entry | undefined {
+  const list = [...(c.entries.weapons?.values() ?? [])].filter(e => name.test(e.name))
+  return list.length ? prefer(c, source)(list) : undefined
+}
+/** The catalog's ammunition type a stat block names for a weapon without a count (`gel ammo`, `APDS ammo`, `caseless rounds`),
+ *  looked up by its name or alias; none for `regular ammo` or a type the catalog lacks. */
+function ammoTypeOf(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): { printed: string; entry: Sr6Entry } | undefined {
+  // (the stat block's parts, `w/ gel ammo` or a bare `gel rounds` the reader left in the line)
+  for (const part of t.printed.slice(t.printed.lastIndexOf('[') + 1).split(/[,;]|\bw\//i)) {
+    const m = /^(.+?)\s+(?:ammo|ammunition|rounds)]?$/i.exec(part.trim())
+    if (!m) continue
+    const words = [normName(m[1]), normName(part)]
+    const hits = [...(c.entries.ammotypes?.values() ?? [])].filter(e => [e.name, ...(e.aliases ?? [])].some(n => words.includes(normName(n))))
+    if (hits.length) return { printed: part.trim(), entry: prefer(c, source)(hits) }
+  }
+}
+/** A firearm's ammunition (owner 2026-10-21, "NPC ammo"): two loads of its regular ammunition (one loaded, one spare) and the
+ *  spare's container by its ammo type (clip: a spare clip; magazine: the weapon's own spare magazine, else a spare clip;
+ *  cylinder: a speed loader; belt, drum and the rest: none, the two loads are two belts or drums); a bow or crossbow 20
+ *  arrows or bolts; a printed ammo line (`w/ 30 rounds regular ammo`, `2 spare clips`) wins and adds none. A load is the
+ *  printed ammo count, else the catalog weapon's, else 10. A grenade, rocket or other thrown thing is its printed quantity. */
+function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6NpcThing[] {
   const e = t.entry,
-    what = [e?.attrs.class, e?.attrs.category, t.category, t.name].filter(Boolean).join(' ').toLowerCase().replace(/_/g, ' ')
-  if (/close combat|melee|blade|club|unarmed|natural|throwing/.test(what)) return undefined
-  const row = AMMO.find(([re]) => re.test(what))
+    what = [e?.attrs.class, e?.attrs.category, t.category, /\[\s*([^,\]]*)/.exec(t.printed)?.[1], t.name]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .replace(/_/g, ' ')
+  // (a bow's category is "Throwing weapon/projectile"; an energy weapon takes power, a weapon accessory is no weapon)
+  if (
+    /close combat|melee|blade|club|unarmed|natural|laser|energy|accessory\//.test(what) ||
+    (/throwing/.test(what) && !/bow/.test(what)) ||
+    /energy/i.test(e?.attrs.ammo ?? '') ||
+    e?.attrs.class?.startsWith('AMMUNITION/') ||
+    OWN_AMMO.test(t.printed)
+  )
+    return []
+  // (a weapon printed only as "Firearms": a rifle's ammunition when it reaches Far, else a pistol's; ponytail: the stat block's range bands are all it says)
+  const generic = /firearm/.test(what) && !AMMO.some(([re]) => re.test(what)) ? (t.values.ar?.[3] != null ? ' rifle' : ' heavy pistol') : '',
+    row = AMMO.find(([re]) => re.test(what + generic))
   const list = row && (indexOf(c).classes.get(row[1]) ?? []).filter(a => row[2].test(a.name))
-  if (!list?.length) return undefined
-  const ammo = prefer(c, source)(list)
-  const load = t.values.ammo ?? (Number(e?.attrs.ammo?.match(/^\s*(\d+)/)?.[1]) || 10)
-  return {
+  if (!list?.length) return []
+  // (a rated ammunition, `Arrow 1` to `Arrow 14`, is one entry per level: its lowest)
+  const lv = (a: Sr6Entry) => Number(a.attrs.level ?? a.attrs.rating) || 0,
+    low = Math.min(...list.map(lv)),
+    ammo = prefer(c, source)(list.filter(a => lv(a) === low)),
+    bow = /BOWS$|CROSSBOWS$/.test(row![1]),
+    type = (LOAD.exec(t.printed.slice(t.printed.lastIndexOf('[') + 1)) ?? LOAD.exec(e?.attrs.ammo ?? ''))?.[2].toLowerCase(),
+    load = bow ? 20 : /^tanks?$/.test(type ?? '') ? 1 : (t.values.ammo ?? (Number(e?.attrs.ammo?.match(/^\s*(\d+)/)?.[1]) || 10))
+  const made = (x: Sr6Entry, qty: number, spare?: true): Sr6NpcThing => ({
     part: t.part,
     printed: t.printed,
-    name: ammo.name,
-    kind: ammo.kind,
-    entry: ammo,
+    name: x.name,
+    kind: spare ? 'gear' : x.kind,
+    entry: spare ? { ...x, kind: 'gear' } : x,
     match: { score: 1, how: 'ammo' },
     ammoFor: t.name,
-    qty: load,
+    qty,
+    ...(spare ? { spare } : { load }),
     values: {},
-    accessories: [],
-  }
+    // (a printed ammunition type, no count: the two loads are of it)
+    accessories:
+      !spare && kind
+        ? [
+            {
+              part: t.part,
+              printed: kind.printed,
+              name: kind.entry.name,
+              kind: 'ammotypes',
+              entry: kind.entry,
+              match: { score: 1, how: 'exact' },
+              values: {},
+              accessories: [],
+            },
+          ]
+        : [],
+  })
+  const kind = ammoTypeOf(c, t, source)
+  const own = e && [...(c.entries.gear?.values() ?? [])].find(g => g.attrs.supplyOf === e.id && /magazine/i.test(g.name))
+  const box = bow
+    ? undefined
+    : type === 'cy'
+      ? accessoryNamed(c, /^speed loader$/i, source)
+      : type === 'm'
+        ? (own ?? accessoryNamed(c, /^spare clip$/i, source))
+        : type === 'c'
+          ? accessoryNamed(c, /^spare clip$/i, source)
+          : undefined
+  return [made(ammo, bow ? load : 2 * load), ...(box ? [made(box, 1, true)] : [])]
 }
 
 /** A gear or augmentation line's helpers (owner 2026-10-21, "NPC unlinked gear"). */
@@ -1196,8 +1275,7 @@ export function npcThings(npc: Sr6Npc, c: Sr6Catalog): Sr6NpcThing[] {
         ...(qty && qty > 1 ? { qty } : {}),
         accessories,
       })
-      const ammo = attack && kind === 'weapons' ? ammoFor(c, out[out.length - 1], src) : undefined
-      if (ammo) out.push(ammo)
+      if (attack && kind === 'weapons') out.push(...ammoFor(c, out[out.length - 1], src))
     }
   }
   return out
@@ -1214,7 +1292,12 @@ export function npcCorrections(things: Sr6NpcThing[]): string[] {
     const was = t.printedName ?? t.name,
       m = t.match
     if (t.unread) out.push(`Kept, not rollable: ${t.printed}`)
-    else if (m?.how === 'ammo') out.push(`Added: ${t.name} (regular ammo) ×${t.qty ?? 1} for ${t.ammoFor ?? 'its weapon'}`)
+    else if (m?.how === 'ammo')
+      out.push(
+        t.spare
+          ? `Added: ${t.name} (spare) for ${t.ammoFor ?? 'its weapon'}`
+          : `Added: ${t.name} (${t.accessories[0]?.name ?? 'regular'} ammo) ×${t.qty ?? 1}${t.load && t.qty !== t.load ? ` (${t.qty! / t.load} loads of ${t.load})` : ''} for ${t.ammoFor ?? 'its weapon'}`,
+      )
     else if (m?.how === 'fuzzy' && normName(was) !== normName(t.name)) out.push(`${was} → ${t.name} (fuzzy, ${m.score.toFixed(2)})`)
     else if (m?.how === 'standard') out.push(`${was} → ${t.name} (standard item)`)
     else if (!m) built.push(was)
