@@ -1255,7 +1255,6 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                 # last unbroken line before a heading or table is the value's end: `**Powers:** Fizz` + `Storm`);
                 # a stat box has no text after its labels.  # pylint: disable=unpacking-non-sequence  # label is a (targets, key) pair whenever it is set, and is tested first
                 targets, key = label
-                two_words = re.search(r"[A-Z][a-z]+\s+[A-Z][a-z]+$", targets[0][key]) is not None
                 ahead = [
                     e[2]
                     for e in itertools.takewhile(
@@ -1298,13 +1297,6 @@ def _units(els, start, end, chapter, item_keys, aliases, templates=frozenset()):
                     cur.labels.setdefault(key, value)
                     listy = not value
                 if mode == "box":
-                    labelled_next = i < end and els[i][0] == "x" and bool(_LABEL.match(els[i][2]))
-                    if cur.stats or not two_words or not labelled_next or re.search(r"[,(\[]", v):
-                        continue
-                    # (a lone line finishing a two-word entry, `…, Ares Macrotechnology` + `Representative`, with a
-                    # label next, in a box with no tables: the header's end, the labelled lines after it are the
-                    # text's, as with any other line)
-                    mode = "text"
                     continue
             else:
                 label = None

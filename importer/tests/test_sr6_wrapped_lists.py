@@ -4,7 +4,7 @@ whatever the label (Spells, Qualities, Complex Forms as Powers already did). Inv
 import unittest
 import xml.etree.ElementTree as ET
 
-from importer.sr6 import regroup
+from importer.sr6 import catalog, regroup
 from importer.sr6.recipes import general
 
 # pylint: disable=protected-access  # tests reach into the module internals they cover
@@ -101,23 +101,47 @@ class LabelledHeadingTest(unittest.TestCase):
         self.assertFalse(regroup._goes_on(label, "Design.", labelled_next=True))  # (a sentence)
         self.assertFalse(regroup._goes_on(label, "Design, Fizz Bolt"))  # (a list line needs a one-word cut)
 
-    def test_a_message_header_keeps_its_subject_and_sent_lines_after_a_wrapped_from(self):
+    def test_a_message_header_keeps_every_word_in_the_saved_text(self):
         md = """<!-- page 1 -->
 # CONTENTS & CREDITS
 Made-up contents ........ 2
 <!-- page 20 -->
 # MADE-UP MESSAGES
 ##### Access File Zorp
-**To:** Alex Fake, Chief Fizz, Zap Corp Delegate
+**To:** Alex Fake, Chief Fizz, Zap Corp
+Delegate
 **From:** Mo Fake, Zap Macro
 Delegate
 **Subject:** Schedule Change
 **Sent:** 03-31-84/0631:42 **Greetings Alex,**
 
 I saw the made-up schedule and I do not like it at all, so please change it before the vote.
+
+**To:** Mo Fake, Zap Macro Delegate
+**From:** Alex Fake, Chief Fizz, Zap Corp Delegate
+**Subject:** re: Schedule Change
 """
         text, _ = regroup.regroup(BOOK.prepare_md(md), BOOK.ALIASES, name_headers=BOOK.NAME_HEADERS)
-        # (the header's labelled lines print again in the block's text, as they do when the From line is not wrapped)
-        self.assertEqual(text.count("**Subject:** Schedule Change"), 2)
-        self.assertEqual(text.count("**Sent:** 03-31-84/0631:42"), 2)
-        self.assertNotIn("\nDelegate\n", text)  # (the wrap joined the From line)
+        block = next(b for b in regroup.blocks(text) if b.name == "Access File Zorp")
+        saved = " ".join(catalog.block_text(block).replace("**", "").split())
+        for words in (
+            "To: Alex Fake, Chief Fizz, Zap Corp Delegate",
+            "From: Mo Fake, Zap Macro Delegate",
+            "Subject: Schedule Change",
+            "Sent: 03-31-84/0631:42 Greetings Alex,",
+            "I saw the made-up schedule",
+        ):
+            self.assertIn(words, saved)
+
+    def test_a_lone_line_goes_on_after_a_one_or_three_word_entry_when_a_label_follows(self):
+        for last in ("Fizz", "Fizz Bolt Mend"):
+            label = ([{"Spells": f"Zap, {last}"}], "Spells")
+            self.assertTrue(regroup._goes_on(label, "Glow", labelled_next=True), last)
+            self.assertFalse(regroup._goes_on(label, "Glow", labelled_next=False), last)
+        label = ([{"Spells": "Zap, Fizz Bolt Mend Glow"}], "Spells")  # (four words: a sentence, not an entry)
+        self.assertFalse(regroup._goes_on(label, "Hum", labelled_next=True))
+
+    def test_a_wrap_line_goes_on_inside_an_open_bracket_only_when_it_closes_it(self):
+        label = ([{"Powers": "Zap [Fizz, Drop Object Minor"}], "Powers")
+        self.assertTrue(regroup._goes_on(label, "Action on next turn]"))
+        self.assertFalse(regroup._goes_on(label, "Action on next turn"))

@@ -1837,7 +1837,10 @@ def being_lists(b, keys=None):
 
 def block_text(b, skip=()):
     """The block's prose: its box labels (those not already in its text, nor taken as lists), then its text."""
-    lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and f"**{k}:**" not in b.text]
+    body = " ".join(b.text.split())  # (a label the text prints too, wrapped or not; one printed with other words stays)
+    lines = [
+        f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and f"**{k}:** {' '.join(v.split())}" not in body
+    ]
     return "\n".join(lines + ([b.text] if b.text else []))
 
 
