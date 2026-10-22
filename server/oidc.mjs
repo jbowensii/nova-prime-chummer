@@ -76,8 +76,7 @@ export function checkUrl(u, what = 'the address', insecure = false) {
 /** JSON from `url`: `timeout` ms for the whole answer, `max` bytes at most, redirects not followed. -> { status, type, body } */
 export async function fetchJson(url, { method = 'GET', headers = {}, body, timeout = 5000, max = 64 * 1024, what = 'the issuer', insecure = false } = {}) {
   checkUrl(url, `${what}’s address`, insecure)
-  let r,
-    text = ''
+  let r, text
   try {
     r = await fetch(url, { method, headers: { Accept: 'application/json', ...headers }, body, redirect: 'error', signal: AbortSignal.timeout(timeout) })
     if (Number(r.headers.get('content-length')) > max) throw refuse('failed', `${what}’s answer is too large`)

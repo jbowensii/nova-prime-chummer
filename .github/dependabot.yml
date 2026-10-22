@@ -7,6 +7,13 @@ updates:
     open-pull-requests-limit: 5
     groups:
       dev-tools: { dependency-type: development }
+    ignore:
+      # typescript-eslint 8.72 accepts typescript < 6.1; drop this once it supports 6.1+
+      - dependency-name: typescript
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      # types follow the Node 22 runtime (CI, Dockerfile), not the newest Node
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
   - package-ecosystem: pip
     directory: /importer
     schedule: { interval: weekly }
