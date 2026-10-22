@@ -29,6 +29,8 @@ const c = buildSr6Catalog([
     ['standard-stick', 'Standard', { category: 'Credstick', cost: '5' }],
     ['gold-stick', 'Gold', { category: 'Credstick', cost: '100' }],
     ['image-link', 'Image link', { category: 'Accessory' }],
+    ['sav-c', 'Therapeutic Nanites (Savior System) Colony', { category: 'Colony and nanite' }],
+    ['sav-n', 'Therapeutic Nanites (Savior System) Nanites', { category: 'Colony and nanite' }],
   ]),
   file('electronics', [
     ['goggles', 'Goggles', { category: 'Optical device' }],
@@ -41,8 +43,14 @@ const c = buildSr6Catalog([
   file('vehicles', [['bulldog', 'GMC Bulldog', { category: 'Trucks and van' }]]),
   file('lifestyles', [['middle', 'Middle', { cost: '5000' }]]),
   file('datastructures', [['oracle', 'Oracle']]),
+  file('licencetypes', [
+    ['lic-c', 'Cyberware license'],
+    ['lic-s', 'Spellcasting license'],
+  ]),
+  file('weapons', [['reg', 'Crackshot Regulator', { category: 'Exotic weapon', type: 'Gun gauntlet' }]]),
   file('augmentations', [
     ['datajack', 'Datajack', { type: 'cyberware', category: 'Headware' }],
+    ['hear', 'Increased spectrum hearing', { type: 'bioware', category: 'Earware' }],
     ['hand-o', 'Hand (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['hand-s', 'Hand (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['geno-a', 'Genotype Enhancement (Alpha Factor)', { type: 'geneware', category: 'Augmentic geneware' }],
@@ -141,4 +149,14 @@ test('D: what no book prints becomes plain gear with the printed name', () => {
   expect(f).toMatchObject({ kind: 'gear', name: 'Faustian crystal 6' })
   expect(f.entry).toBeUndefined()
   expect(f.values.rating).toBe(6)
+})
+
+test('C: a variant named inside an entry, the same words in another order, a type word and a licence list link', () => {
+  // the variant alone (the nanites, not the colony); on an augmentation line too
+  expect(names('augmentations', 'savior system')).toEqual(['Therapeutic Nanites (Savior System) Nanites'])
+  expect(names('augmentations', '[savior system, datajack]')).toEqual(['Therapeutic Nanites (Savior System) Nanites', 'Datajack'])
+  expect(names('augmentations', 'increased hearing spectrum')).toEqual(['Increased spectrum hearing'])
+  expect(names('gear', 'regulator gauntlets (Foo Roomsweepers attached)')).toEqual(['Crackshot Regulator'])
+  const [f] = things('gear', 'fake SIN [rating 4; w/ licenses (augmentation, magic)]')
+  expect(f.accessories.map(a => a.entry?.name)).toEqual(['Cyberware license', 'Spellcasting license'])
 })
