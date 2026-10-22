@@ -675,7 +675,7 @@ const GRADE = /^\(?(alpha|beta|gamma|delta)(?:ware)?\)?$/i
 /** A GM's instruction where a line would print gear (`As needed`, `As selected by the gamemaster`, `Other gear as needed`,
  *  `Whatever she needs`, `Fit to situation`, `6 Copies`, `See text`): a note, never an item. */
 const GM_NOTE =
-  /^\W*(?:as\s+(?:needed|applicable|selected|noted|appropriate|required)\b|(?:any\s+)?other\s+(?:appropriate\s+)?(?:gear|equipment)\b|whatever\b|fit\s+to\b|\d+\s+copies\b|(?:see\s+)?text\W*$)/i
+  /^\W*(?:as\s+(?:needed|applicable|selected|noted|appropriate|required)\b|(?:any\s+)?other\s+(?:appropriate\s+)?(?:gear|equipment)\b|whatever\b|fit\s+to\b|\d+\s+copies\b|[^,]*\bneeded\s+for\b|(?:see\s+)?text\W*$)/i
 /** prose where a line prints items: a sentence that says what the NPC has or gains */
 const PROSE = /\b(?:has|have|gains?|increases?|bonus|noted)\b/i
 /** the head of an introduction to a list (`he has the following deltaware items`, `Augmentations (all gammaware)`) */
@@ -831,6 +831,8 @@ function formsOf(c: Sr6Catalog, name: string, printed: string, kinds: Sr6Kind[])
   for (const [open, close] of groups(printed)) {
     const t = printed.slice(open + 1, close)
     if (!/[,\d/]/.test(t) && t.includes(' ')) add(inner, t)
+    // (`<model> form`: the model)
+    for (const part of top(t)) add(inner, part.match(/^(.+?)\s+form$/i)?.[1])
   }
   return { forms, inner }
 }
@@ -863,7 +865,7 @@ function leadWord(c: Sr6Catalog, name: string, kinds: Sr6Kind[], source?: string
   const one = same.find(l => l.key === first) ?? (same.length === 1 ? same[0] : undefined)
   if (!one) return undefined
   const known = new Set(matchKey(one.entries.map(e => [e.attrs.category, e.attrs.type].filter(Boolean).join(' ')).join(' ')).split(' '))
-  const qualifier = (w: string) => /^\d+$/.test(w) || ['left', 'right', 'obvious', 'synthetic', 'rating', 'level'].includes(w) || known.has(w)
+  const qualifier = (w: string) => /^\d+$/.test(w) || ['left', 'right', 'obvious', 'synthetic', 'rating', 'level', 'net', 'set'].includes(w) || known.has(w)
   const level = rating != null && one.entries.some(e => Number(e.attrs.level ?? e.attrs.rating) === rating)
   if (!level && !words.slice(1).every(qualifier)) return undefined
   const entry = standardOf(one.entries, prefer(c, source), rating)
@@ -979,6 +981,9 @@ function expandStuff(c: Sr6Catalog, printed: string, source?: string): string[] 
     })
     if (names.every(Boolean)) return names as string[]
   }
+  // a package that is none and lists parts that all are (`metahuman control package (skilljack 6, skillwires 6)`): itself, then its parts
+  if (list.length > 1 && !findEntry(c, name, GEAR_KINDS, source, 'loose') && !viaForms(c, name, name, GEAR_KINDS, source) && list.every(p => part(p)))
+    return [name, ...list]
   const parts = name.split(/\s+and\s+|(?<=[a-z]{2})\/(?=[a-z])/i)
   // (the bracket after them is theirs both, unless it is an armor value of the two together: `armor vest and lined coat (+3)`)
   const shared = tail && !/^\(\s*\+/.test(printed.slice(tail[0])) ? ` ${printed.slice(tail[0])}` : ''

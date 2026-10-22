@@ -40,6 +40,7 @@ const c = buildSr6Catalog([
   file('electronics', [
     ['goggles', 'Goggles', { category: 'Optical device' }],
     ['test-deck', 'Test Deck', { category: 'Cyberdeck' }],
+    ['emperor', 'Sony Emperor Test', { category: 'Commlink', rating: '2', cost: '700' }],
     ['link1', 'Meta Link', { category: 'Commlink', rating: '1', cost: '100' }],
     ['link5', 'Hermes Test', { category: 'Commlink', rating: '5', cost: '900' }],
     ['link6', 'Avalon Test', { category: 'Commlink', rating: '6', cost: '3000' }],
@@ -82,6 +83,9 @@ const c = buildSr6Catalog([
     ['bl-a', 'Bone lacing (Aluminum)', { type: 'cyberware', category: 'Bodyware' }],
     ['bl-t', 'Bone lacing (Titanium)', { type: 'cyberware', category: 'Bodyware' }],
     ['gm-p', 'GMT bone lacing (Plastic)', { type: 'cyberware', category: 'Bodyware' }],
+    ['skilljack', 'Skilljack', { type: 'cyberware', category: 'Headware' }],
+    ['skillwires', 'Skillwires', { type: 'cyberware', category: 'Bodyware' }],
+    ['wired', 'Wired reflexes', { type: 'cyberware', category: 'Bodyware' }],
     ['hear', 'Increased spectrum hearing', { type: 'bioware', category: 'Earware' }],
     ['hand-o', 'Hand (obvious)', { type: 'cyberware', category: 'Cyberlimb' }],
     ['hand-s', 'Hand (synthetic)', { type: 'cyberware', category: 'Cyberlimb' }],
@@ -256,4 +260,20 @@ test('a graded augmentation is priced with its grade', () => {
   ch.npc!.lines = [{ part: 'augmentations', text: 'datajack (deltaware)' }]
   const x = exportNpc(ch.npc!, sr6Data(c), c)
   expect(x.items[0]).toMatchObject({ grade: 'delta', values: { cost: 2500, essence: 0.05, avail: 5 } })
+})
+
+test('C: a model named by its form, a package naming its parts, a form word, and a placeholder for a job', () => {
+  expect(names('gear', 'custom commlink (Sony Emperor Test form, DR 3, 3/1)')).toEqual(['Sony Emperor Test'])
+  // the package stays plain gear, its parts link
+  expect(names('augmentations', 'metahuman control package (skilljack 6, skillwires 6, wired reflexes 2)')).toEqual([
+    '(built) metahuman control package',
+    'Skilljack',
+    'Skillwires',
+    'Wired reflexes',
+  ])
+  // a name that links is not split into its bracket's parts
+  expect(names('augmentations', 'Skilljack (rating 6, w/ image link)')).toEqual(['Skilljack'])
+  expect(names('gear', 'trode net')).toEqual(['Trodes'])
+  expect(names('gear', 'trode pouch')).toEqual(['(built) trode pouch'])
+  expect(names('gear', 'medkit, all skillsofts needed for a specific job (rating 6)')).toEqual(['Medkit'])
 })
