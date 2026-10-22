@@ -141,6 +141,19 @@ class SampleLines(unittest.TestCase):
         self.assertIn('<purchase uid="g5a1" kind="gear" id="nb.bunk" name="Bunk Space" rating="3" qty="1"/>', line)
         self.assertEqual(cost, 30000 + 3000)
 
+    def test_an_electronics_mod_printed_with_a_vehicle_is_fitted_to_it(self):
+        """`Bigvan (shiny paint)`: a vehicle takes a mod priced in mod slots, not only a cargo mod (made-up catalog)."""
+        idx = archetypes._Index(
+            {
+                "vehicles": [_e("bigvan", "Bigvan", category="Van", cost="30000")],
+                "gear": [_e("shiny", "Shiny Paint", category="Electronics mod", slots="1", cost="1500")],
+            },
+            "NB",
+        )
+        line, _, cost = archetypes._purchase(idx, ["vehicles"], "Bigvan (shiny paint)", 5, [], {})
+        self.assertIn('<purchase uid="g5a1" kind="gear" id="nb.shiny" name="Shiny Paint" qty="1"/>', line)
+        self.assertEqual(cost, 30000 + 1500)
+
 
 if __name__ == "__main__":
     unittest.main()

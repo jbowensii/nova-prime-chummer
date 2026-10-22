@@ -92,6 +92,24 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(cat.added, [])
         self.assertNotIn("group", cat.entries["gear"][0]["attrs"])
 
+    def test_a_mod_category_priced_in_mod_slots_fits_vehicles(self):
+        def slotted(name, tab, category):
+            r = row(name, tab, category)
+            r["attrs"]["slots"] = "1"
+            return r
+
+        cat = _Cat(
+            {
+                0: {"title": "", "section": "Zorp Mods", "header": ["GEAR", "MOD SLOTS"], "page": 1},
+                1: {"title": "", "section": "Glow Mods", "header": ["GEAR", "AVAIL"], "page": 1},
+            },
+            {"gear": [slotted("Zorp", 0, "zorp-mods"), slotted("Blip", 0, "zorp-mods"), row("Glim", 1, "glow-mods")]},
+        )
+        C.build(cat, [], ["gear"])
+        fits = {n: (a["fits"], [k[2] for k in kids]) for _, n, a, kids, _ in cat.added}
+        self.assertEqual(fits["Zorp mods"], ("Vehicle", []))  # (no host word, no missing-host issue)
+        self.assertEqual(fits["Glow mods"], (None, ["no glow category in the book"]))  # (unslotted: the name's word)
+
 
 if __name__ == "__main__":
     unittest.main()

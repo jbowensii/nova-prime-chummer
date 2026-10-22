@@ -327,6 +327,10 @@ def build(cat, texts, row_kinds):
     groups, acc_of = [], collections.defaultdict(list)  # host category key -> its accessory categories' names
     for (kind, ckey), c in cats.items():
         hs = hosts(c["name"])
+        # a mod category priced in mod slots (a MOD SLOTS column) is a vehicle's: its name's word (`Electronics mod`,
+        # `Chassis mod`) is the part of the vehicle it modifies, not a host
+        if hs is not None and sum(1 for e in c["entries"] if "slots" in e["attrs"]) * 2 > len(c["entries"]):
+            hs = ["vehicle"]
         c["fits"] = hs
         for h in hs or ():
             acc_of[h].append(c["name"])
