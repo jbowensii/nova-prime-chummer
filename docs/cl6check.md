@@ -180,8 +180,10 @@ which the reader skips.
 - Hold rows ruled 2026-10-21: the al-Assad, Ballista II and Carl Gustaf launchers and their rocket/shell are two items with
   two costs, so Commlink6's `al_assad_rocket`, `ballista_ii_rocket` and `carl_gustaf_shell` are paired with our gear entries
   (`da.al-assad-rocket` …) in `relocated.json` (a relocated pairing is not field-compared; their cost and avail equal ours),
-  and the launcher's own cost now matches. `transgen_chamaeleon_skin` is paired with `bs.transgenic-chameleon-skin-dynamic`
-  (the plain entry is removed by bs.json). Momentous Misfortune reads 5 Karma as printed (SWC p.138; an `owner` row in
+  and the launcher's own cost now matches. The transgenic chameleon skin hold row pointed at the plain entry bs.json removes, so
+  it is gone; Commlink6's `transgen_chamaeleon_skin` stays paired by the matcher (with the Basic entry, which agrees on
+  avail and carries the two effects the replay counts: a `relocated.json` pairing is not replayed, 1,079 would read 1,077).
+  Momentous Misfortune reads 5 Karma as printed (SWC p.138; an `owner` row in
   swc.json): Commlink6's `momentous_misfortune` (25) stays a class b difference (`keep`), and its 0-Karma
   `obsession_misfortune` (p.140) is paired with our `swc.obsession-momentous-misfortune`. The arrow and omnidirectional
   microphone rows left the list without a rule.

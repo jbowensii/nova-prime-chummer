@@ -901,12 +901,6 @@
       "note": "Carl Gustaf shell: its own gear entry, not the launcher (owner ruling 2026-10-21; same cost 1800, avail 5(I))"
     },
     {
-      "src": "bs",
-      "cl6_id": "transgen_chamaeleon_skin",
-      "our_id": "bs.transgenic-chameleon-skin-dynamic",
-      "note": "Transgenic chameleon skin: paired with the Dynamic version (owner ruling 2026-10-21); the plain entry is removed by overrides bs.json"
-    },
-    {
       "src": "swc",
       "cl6_id": "obsession_misfortune",
       "our_id": "swc.obsession-momentous-misfortune",
