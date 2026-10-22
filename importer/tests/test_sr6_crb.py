@@ -719,7 +719,8 @@ class CrbRecipeTest(unittest.TestCase):  # pylint: disable=too-many-public-metho
             [(x.get("id"), x.get("points"), x.get("karma"), x.get("spec")) for x in b.iter("skill")],
             [("crb.tinkering", "0", "3", "Gizmos")],
         )
-        self.assertEqual(b.get("karmaToNuyen"), "19")  # (the prime Karma left can't come within 5 by more: as printed)
+        # (the prime Karma left can't come within 5: turned into nuyen as far as the nuyen limit allows, owner 2026-10-22)
+        self.assertEqual(b.get("karmaToNuyen"), "20")
         self.assertIn("Priorities fitted to the printed stat block", g.findtext("notes"))
         self.assertIn("built with Sum-to-Ten", g.findtext("notes"))
         self.assertEqual(
