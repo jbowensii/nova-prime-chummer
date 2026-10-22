@@ -1497,7 +1497,7 @@ class OwnerRowsTest(unittest.TestCase):
         self.assertEqual([x.get("name") for x in e.findall("power")], ["Glow", "Dusk"])
 
     def test_nibiinaabe_s_darkness_is_the_critter_power_innate_spell(self):
-        rows = [r for r in overrides.table("swc") if r.get("gen") == "owner"]
+        rows = [r for r in overrides.table("swc") if r.get("gen") == "owner" and r["id"] == "nibiinaabe"]
         self.assertEqual(
             rows,
             [
@@ -1512,6 +1512,25 @@ class OwnerRowsTest(unittest.TestCase):
                 }
             ],
         )
+
+    def test_momentous_misfortune_reads_the_5_karma_the_book_prints_and_no_hold_row_is_left(self):
+        from tools.cl6check import optional
+
+        row = [r for r in overrides.table("swc") if r.get("gen") == "owner" and r["id"] == "momentous-misfortune"]
+        self.assertEqual([r["set"] for r in row], [{"karma": "5"}])
+        xml = (
+            '<?xml version="1.0"?>\n<d kind="qualities"><quality id="momentous-misfortune" source="SWC" page="138" '
+            'karma="25"><name>Momentous Misfortune</name></quality></d>\n'
+        )
+        got = ET.fromstring(overrides.apply("swc", {"qualities.xml": xml})["qualities.xml"].encode())[0]
+        self.assertEqual(got.get("karma"), "5")
+        self.assertEqual(json.loads(Path(optional.KEEP).read_text(encoding="utf8"))["hold"], [])
+        paired = {k: r["our_id"] for k, r in optional.load_have().items()}
+        self.assertEqual(
+            [paired[("da", c)] for c in ("al_assad_rocket", "ballista_ii_rocket", "carl_gustaf_shell")],
+            ["da.al-assad-rocket", "da.ballista-ii-rocket", "da.carl-gustaf-shell"],
+        )
+        self.assertEqual(paired[("swc", "obsession_misfortune")], "swc.obsession-momentous-misfortune")
 
     def test_an_owner_row_sets_a_rating_over_a_stale_found_and_survives_a_value_regeneration(self):
         from tools.cl6check import valuemap

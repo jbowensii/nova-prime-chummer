@@ -881,6 +881,36 @@
       "cl6_id": "houserules",
       "our_id": "creation.preset.houserules",
       "note": "Configurable: Rule preset Configurable (RULE_PRESETS in src/sr6/table-setup/domain/creation.ts, Table setup)"
+    },
+    {
+      "src": "da",
+      "cl6_id": "al_assad_rocket",
+      "our_id": "da.al-assad-rocket",
+      "note": "al-Assad rocket: its own gear entry, not the launcher (owner ruling 2026-10-21; same cost 2000, avail 5(I))"
+    },
+    {
+      "src": "da",
+      "cl6_id": "ballista_ii_rocket",
+      "our_id": "da.ballista-ii-rocket",
+      "note": "Ballista II rocket: its own gear entry, not the launcher (owner ruling 2026-10-21; same cost 2000, avail 5(I))"
+    },
+    {
+      "src": "da",
+      "cl6_id": "carl_gustaf_shell",
+      "our_id": "da.carl-gustaf-shell",
+      "note": "Carl Gustaf shell: its own gear entry, not the launcher (owner ruling 2026-10-21; same cost 1800, avail 5(I))"
+    },
+    {
+      "src": "bs",
+      "cl6_id": "transgen_chamaeleon_skin",
+      "our_id": "bs.transgenic-chameleon-skin-dynamic",
+      "note": "Transgenic chameleon skin: paired with the Dynamic version (owner ruling 2026-10-21); the plain entry is removed by overrides bs.json"
+    },
+    {
+      "src": "swc",
+      "cl6_id": "obsession_misfortune",
+      "our_id": "swc.obsession-momentous-misfortune",
+      "note": "Obsession: Momentous Misfortune (p140), the 0-Karma path step; the 5-Karma quality (p138) is swc.momentous-misfortune (owner ruling 2026-10-21)"
     }
   ]
 }

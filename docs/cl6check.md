@@ -150,7 +150,7 @@ which the reader skips.
   (`importer/sr6/overrides/<src>.json`, `"gen": "value"`) for each counted field difference that `value_keep.json` does not
   keep. `keep` lists the values the PDF's text layer prints (the owner's check of the 361 reviewed rows, native agents reading
   the page text, 2026-10-14); the checker settles a difference there as class b, whatever class it had (a, or c after the trace). A `variants` entry there (field `variants`) accepts an item that Commlink6 gives variant tags (an install option, a Guided/Rocket Assist warhead option) as one item. `hold` is what the owner decides (two
-  Commlink6 records disagree about one entry; a per-rating item). `verdicts` are the owner's rulings that ours is right
+  Commlink6 records disagree about one entry; a per-rating item); it is empty since the owner's rulings of 2026-10-21. `verdicts` are the owner's rulings that ours is right
   (docs/reviews/cl6-class-a-decisions-2026-10-17.md: 37 rows, each with its book page and reason): keyed by source, kind,
   Commlink6's id and name, our id, field, and both values, so a row is class b only while Commlink6's value and ours are
   the ones ruled on; a change to either makes it a new difference, settled again. valuemap writes no override for them.
@@ -177,6 +177,14 @@ which the reader skips.
   (each record its own magic kinds, ours their union) and the Silencer/suppressor's (Commlink6's list of the weapon subtypes
   it fits; ours the book's exclusion, revolvers and shotguns, a `negate="true"` prerequisite) are kept as ours in
   value_keep.json: accepted structural differences.
+- Hold rows ruled 2026-10-21: the al-Assad, Ballista II and Carl Gustaf launchers and their rocket/shell are two items with
+  two costs, so Commlink6's `al_assad_rocket`, `ballista_ii_rocket` and `carl_gustaf_shell` are paired with our gear entries
+  (`da.al-assad-rocket` …) in `relocated.json` (a relocated pairing is not field-compared; their cost and avail equal ours),
+  and the launcher's own cost now matches. `transgen_chamaeleon_skin` is paired with `bs.transgenic-chameleon-skin-dynamic`
+  (the plain entry is removed by bs.json). Momentous Misfortune reads 5 Karma as printed (SWC p.138; an `owner` row in
+  swc.json): Commlink6's `momentous_misfortune` (25) stays a class b difference (`keep`), and its 0-Karma
+  `obsession_misfortune` (p.140) is paired with our `swc.obsession-momentous-misfortune`. The arrow and omnidirectional
+  microphone rows left the list without a rule.
 
 ## What it does
 
