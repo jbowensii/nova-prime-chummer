@@ -168,12 +168,16 @@ skill as category, or on a critter, spirit or sprite one with no category) and a
 only. Ties: the NPC's own book, then the latest printing. A printed level picks that level's entry; a device's or
 implant's `DR N` is its Device Rating. The printed DV, attack ratings, firing modes, ammo, rating and Defense win over
 the entry's `values`. A ranged weapon (firearms, bows, crossbows, tasers, dart guns, grenade and rocket launchers, by
-its class or category) is followed by its regular ammunition (`line.match.how` `ammo`, uid `<weapon uid>:ammo`, `qty` two loads in
-rounds: the printed or catalog ammo count, else 10; a bow or crossbow 20; a flamethrower 2 tanks) and, by its ammo type, the
-spare's container (`line.match.how` `ammo`, `qty` 1, uid `<weapon uid>:ammo#2`: a spare clip for `(c)`, the weapon's own spare
-magazine or else a spare clip for `(m)`, a speed loader for `(cy)`; none for a belt, drum or tank). A stat block that prints its
-own ammunition (`w/ 30 rounds regular ammo`, `2 spare clips`) gets none added; grenades and rockets keep their printed `qty`;
-melee, natural and energy attacks get none. Else a thing is built from the line (no `id`):
+its class or category) is followed by its regular ammunition (`line.match.how` `ammo`, `kind` `gear`, uid `<weapon uid>:ammo`) and, by its ammo
+type, the spare's container (`line.match.how` `ammo`, `qty` 1, uid `<weapon uid>:ammo#2`). The ammo item's `qty` is the TOTAL
+rounds the NPC owns, both loads: the printed or catalog ammo count (else 10) times two; a bow or crossbow 20; a flamethrower 2
+tanks. The Foundry module must load the weapon from it (one load into the weapon, the rest stays as the spare), not fill the
+weapon in addition to it. The container is exported as `gear`, never `weapons` (the module makes every weapons-kind item a
+rollable weapon), keeping its catalog `id`, name and cost: a spare clip for `(c)`, the weapon's own spare magazine or else a spare
+clip for `(m)`, a speed loader for `(cy)`. A belt `(belt)`, `(br)`, a drum `(d)`, a break action `(b)`, a muzzle loader `(ml)` or a
+tank gets two loads and no container. A stat block that prints its own ammunition (a count and an ammunition noun: `w/ 30 rounds
+regular ammo`, `2 spare clips`, `6 frag grenades`; a part's name such as `extended clip`, or a type alone such as `gel ammo`, is
+not one) gets none added; grenades and rockets keep their printed `qty`; melee, natural and energy attacks get none. Else a thing is built from the line (no `id`):
 an attack printing a DV (a number or a Force formula, `F/2P`) or attack ratings as a weapon (`attrs` `category` and
 `dv` as printed; `skill` the printed one, else Close Combat with only a close band, Exotic Weapons past it), gear as
 gear, a power as a critter power. Formulas of Force are worked out at the rating; a band at 0 or less is none. Armor is

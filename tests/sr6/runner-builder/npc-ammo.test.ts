@@ -87,6 +87,31 @@ test('a clip-fed pistol, SMG and rifle: two loads and a spare clip, the printed 
   ])
 })
 
+test('the spare container is gear, not a weapon (the Foundry module rolls every weapons-kind item), with its catalog id', () => {
+  const box = run('Test Pistol').things.find(t => t.spare)!
+  expect([box.kind, box.entry?.kind, box.entry?.id, box.name]).toEqual(['gear', 'gear', 'tst.spare-clip', 'Spare clip'])
+  expect(run('Test Pistol').things.find(t => t.name === 'Heavy Pistol/SMG')?.kind).toBe('gear')
+})
+
+test('a part named clip, magazine or belt, or a duration in rounds, is not a printed ammo line', () => {
+  expect(run('Test Pistol [Heavy Pistol, DV 3P, SA, 9/9/7/—/—, 15(c), w/ extended clip, drum magazine, ammo belt, gel ammo]').all.map(a => a[0])).toEqual([
+    'Test Pistol',
+    'Heavy Pistol/SMG',
+    'Spare clip',
+  ])
+  expect(run('Test Rifle [Rifle, DV 3P, SA, 9/9/7/—/—, 38(c), Dazed for 2 rounds if any damage taken]').all.map(a => a[0])).toEqual([
+    'Test Rifle',
+    'Rifles',
+    'Spare clip',
+  ])
+  // a DV's `(e)` is no ammo type: the taser's `4(m)` is
+  expect(run('Test Taser [Taser, DV 4(e), SS, 9/9/—/—/—, 4(m)]').all).toEqual([
+    ['Test Taser', 1],
+    ['Taser', 8],
+    ['Spare clip', 1],
+  ])
+})
+
 test('a magazine weapon: the weapon’s own spare magazine when the catalog has one, else a spare clip', () => {
   expect(run('Test Shotgun').all).toEqual([
     ['Test Shotgun', 1],

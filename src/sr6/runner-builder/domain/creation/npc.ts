@@ -657,10 +657,12 @@ const AMMO: [RegExp, string, RegExp][] = [
   [/launcher/, 'AMMUNITION/GRENADES', /fragmentation/i],
   [/flamethrower/, 'AMMUNITION/AMMUNITION_SPECIAL', /^fuel tank \(small\)/i],
 ]
-/** a weapon's ammo as printed or catalogued: `15(c)`, `6(cy)`, `100(belt)`, `1(br-3)`; the letters are its type */
-const LOAD = /(\d+)\s*\(\s*([a-z]+)(?:-\d+)?\s*\)/i
-/** a stat block that prints its own ammunition or spare clips for a weapon */
-const OWN_AMMO = /\bammo\b|\bammunition\b|\brounds?\b|\bclips?\b|\bmagazines?\b|\bspeed ?loaders?\b|\bbelts?\b|\b(?:grenades|rockets|missiles|arrows|bolts)\b/i
+/** a weapon's ammo as printed or catalogued: `15(c)`, `6(cy)`, `100(belt)`, `1(br-3)`; the letters are its type (not the `(e)` of a DV) */
+const LOAD = /(\d+)\s*\(\s*(c|m|cy|b|br|d|ml|belt|drum|tanks?)(?:-\d+)?\s*\)/i
+/** a stat block that prints its own ammunition or spare clips for a weapon: a count and an ammunition noun (`30 rounds regular ammo`,
+ *  `2 spare clips`, `6 frag grenades`); a part's name alone (`extended clip`, `drum magazine`) is no ammunition */
+const OWN_AMMO =
+  /(?<!\bfor\s+)\b\d+\s+(?:[a-z'’-]+\s+){0,3}?(?:ammo|ammunition|rounds?|clips?|magazines?|belts?|speed ?loaders?|grenades|rockets|missiles|arrows|bolts|tanks?)\b/i
 /** the catalog's named weapon accessory, preferring the NPC's book's */
 function accessoryNamed(c: Sr6Catalog, name: RegExp, source: string | undefined): Sr6Entry | undefined {
   const list = [...(c.entries.weapons?.values() ?? [])].filter(e => name.test(e.name))
@@ -697,14 +699,14 @@ function ammoFor(c: Sr6Catalog, t: Sr6NpcThing, source: string | undefined): Sr6
     low = Math.min(...list.map(lv)),
     ammo = prefer(c, source)(list.filter(a => lv(a) === low)),
     bow = /BOWS$|CROSSBOWS$/.test(row![1]),
-    type = (LOAD.exec(t.printed) ?? LOAD.exec(e?.attrs.ammo ?? ''))?.[2].toLowerCase(),
+    type = (LOAD.exec(t.printed.slice(t.printed.lastIndexOf('[') + 1)) ?? LOAD.exec(e?.attrs.ammo ?? ''))?.[2].toLowerCase(),
     load = bow ? 20 : /^tanks?$/.test(type ?? '') ? 1 : (t.values.ammo ?? (Number(e?.attrs.ammo?.match(/^\s*(\d+)/)?.[1]) || 10))
   const made = (x: Sr6Entry, qty: number, spare?: true): Sr6NpcThing => ({
     part: t.part,
     printed: t.printed,
     name: x.name,
-    kind: x.kind,
-    entry: x,
+    kind: spare ? 'gear' : x.kind,
+    entry: spare ? { ...x, kind: 'gear' } : x,
     match: { score: 1, how: 'ammo' },
     ammoFor: t.name,
     qty,

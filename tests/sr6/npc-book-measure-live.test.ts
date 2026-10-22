@@ -19,8 +19,31 @@ import { normName } from '../../src/sr6/catalog/domain/names'
 const DIR = process.env.SR6_CATALOG
 
 type Item = ReturnType<typeof exportNpc>['items'][number]
-const LOAD = /(\d+)\s*\(\s*([a-z]+)(?:-\d+)?\s*\)/i
-const OWN = /\bammo\b|\bammunition\b|\brounds?\b|\bclips?\b|\bmagazines?\b|\bspeed ?loaders?\b|\bbelts?\b|\b(?:grenades|rockets|missiles|arrows|bolts)\b/i
+// The ruling is worked out here its own way, not by npc.ts's patterns: the ammo a weapon holds is read by splitting its string
+// (`15(c)`, `2(b)`, `100(belt)`, `30(c) or 100(belt)`), the stat block's own ammo line is a comma part that is a count and an ammo
+// noun, and a handful of book weapons are checked by name (FIXED) against what their printed lines say.
+const TYPES = ['c', 'm', 'cy', 'b', 'br', 'd', 'ml', 'belt', 'drum', 'tank', 'tanks']
+/** `15(c)`, `15c`, `2(b)`, `100(belt)`, `30(c) or 100(belt)` (the first): the count and the type, none for `Energy` or `—` */
+function holds(s: string): { n: number; type: string } | undefined {
+  const m = /^\s*(\d+)\s*(?:x\d+)?\s*\(?\s*([a-z]+)/i.exec(s.split(/\s+or\s+|\//i)[0])
+  return m && TYPES.includes(m[2].toLowerCase()) ? { n: Number(m[1]), type: m[2].toLowerCase() } : undefined
+}
+/** the ammo a stat block prints for the weapon itself: the comma part that is only a count and a type */
+const printedHolds = (printed: string) =>
+  printed
+    .slice(printed.lastIndexOf('[') + 1)
+    .split(/[,;]|\bw\//i)
+    .map(p => p.replace(/\]$/, ''))
+    .filter(p => /^\s*\d+\s*(?:x\d+)?\s*\(?\s*[a-z]+\)?\s*$/i.test(p))
+    .map(holds)
+    .find(Boolean)
+const NOUN = 'ammo|ammunition|rounds?|clips?|magazines?|belts?|loaders?|grenades|rockets|missiles|arrows|bolts|tanks?'
+/** a stat block's own ammo line: a count, up to three words and an ammo noun (a part's name alone is none) */
+const printsAmmo = (printed: string) =>
+  printed
+    .replace(/\bfor \d+ rounds/gi, '')
+    .split(/[,;[]|\bw\//i)
+    .some(p => new RegExp(String.raw`\b\d+\s+(?:\S+\s+){0,3}?(?:${NOUN})\b`, 'i').test(p))
 const MELEE = /close combat|melee|blade|club|unarmed|natural|laser|energy|throwing/i
 const FIREARM = /pistol|submachine|\bsmg\b|\bmp\b|rifle|shotgun|machine gun|sniper|assault cannon|firearm/i
 /** What the ruling gives a weapon item: undefined when it is none of the ranged weapons it covers, else its own ammo printed, or the rounds and the spare's name. */
@@ -28,21 +51,86 @@ function ruling(w: Item): { own: true } | { rounds: number; spare?: RegExp } | u
   const a = w.attrs,
     printedCategory = /\[\s*([^,\]]*)/.exec(w.line.printed)?.[1] ?? '',
     text = `${a.category ?? ''} ${a.class ?? ''} ${w.name}`,
-    spec = LOAD.exec(w.line.printed) ?? LOAD.exec(a.ammo ?? ''),
-    type = spec?.[2].toLowerCase()
-  const bow = /crossbow|\bbow\b/i.test(text),
+    load = printedHolds(w.line.printed) ?? holds(a.ammo ?? '')
+  const bow = /bows?\b/i.test(text),
     special = /launcher|flamethrower|taser/i.test(text),
     firearm = a.class?.startsWith('WEAPON_FIREARMS/') || FIREARM.test(printedCategory) || (!a.class && FIREARM.test(text))
   if (w.line.unread || /^(AMMUNITION|ACCESSORY)\//.test(a.class ?? '') || MELEE.test(printedCategory) || (MELEE.test(text) && !bow && !special))
     return undefined
   if (!bow && !special && !firearm) return undefined
-  if (OWN.test(w.line.printed)) return { own: true }
+  if (printsAmmo(w.line.printed)) return { own: true }
   if (bow) return { rounds: 20 }
-  const n = /^tanks?$/.test(type ?? '') ? 1 : (w.line.values.ammo ?? (Number(/^\s*(\d+)/.exec(a.ammo ?? '')?.[1]) || 10))
+  // (two loads: a tank is one; a count the book does not give is 10)
+  const one = load?.type.startsWith('tank') ? 1 : (load?.n ?? 10)
   return {
-    rounds: 2 * n,
-    spare: type === 'c' ? /^spare clip$/i : type === 'cy' ? /^speed loader$/i : type === 'm' ? /^(spare clip|.* spare magazine)$/i : undefined,
+    rounds: one + one,
+    spare:
+      load?.type === 'c' ? /^spare clip$/i : load?.type === 'cy' ? /^speed loader$/i : load?.type === 'm' ? /^(spare clip|.* spare magazine)$/i : undefined,
   }
+}
+/** Book weapons checked by hand against their printed lines: [NPC, weapon, what it gets (name, qty), or none]. */
+const FIXED: [string, string, [RegExp, number][]][] = [
+  // `15(c)`
+  [
+    'Detective Mikulás Jezek (TNE p.116)',
+    'Ares Predator VI',
+    [
+      [/^Heavy Pistol/, 30],
+      [/^Spare clip$/, 1],
+    ],
+  ],
+  // `12(c)`
+  [
+    'Dag Rage (ED p.171)',
+    'Nemesis Arms Praetorian II',
+    [
+      [/^Heavy Pistol/, 24],
+      [/^Spare clip$/, 1],
+    ],
+  ],
+  // a revolver (6 cy in the catalog), a shotgun (10 c / 24 d), a launcher with its grenades printed
+  [
+    'Transport Crew (ML2083-04 p.25)',
+    'Ruger Super Warhawk',
+    [
+      [/^Heavy Pistol/, 12],
+      [/^Speed loader$/, 1],
+    ],
+  ],
+  [
+    'Transport Crew (ML2083-04 p.25)',
+    'Mossberg CMDT',
+    [
+      [/^Shotgun/, 20],
+      [/^Spare clip$/, 1],
+    ],
+  ],
+  ['Transport Crew (ML2083-04 p.25)', 'ArmTech MGL-6', []],
+  // the book prints `50 rounds ammo`; `APDS ammo` has no count, so it is not an ammo line
+  ['Detective (TS p.160)', 'Ares Predator VI', []],
+  [
+    'Renraku Red Samurai (CRB p.208)',
+    'Ares Predator VI',
+    [
+      [/^Heavy Pistol/, 30],
+      [/^Spare clip$/, 1],
+    ],
+  ],
+  // `w/ 100 rounds (belt)`
+  ['Professional Mercenary, heavy weapons expert (SLS p.135)', 'Ingram Grey Knight', []],
+  // a bow
+  ['Silver golem (AW p.114)', 'Bow 1', [[/^Arrow/, 20]]],
+]
+/** The FIXED weapons of one NPC that do not get what they should. */
+function fixedAudit(who: string, items: Item[]): string[] {
+  return FIXED.filter(f => f[0] === who).flatMap(([, name, want]) => {
+    const i = items.findIndex(w => w.name === name && w.line.match?.how !== 'ammo')
+    if (i < 0) return [`${name} — not found for the hand-checked assertion`]
+    const got: Item[] = []
+    for (let j = i + 1; items[j]?.line.match?.how === 'ammo'; j++) got.push(items[j])
+    const same = got.length === want.length && want.every(([re, q], k) => re.test(got[k].name) && got[k].qty === q)
+    return same ? [] : [`${name} — hand-checked: got [${got.map(g => `${g.name} ×${g.qty}`)}], expected [${want.map(([re, q]) => `${re} ×${q}`)}]`]
+  })
 }
 /** The violations of the ruling among one NPC's weapons, with how many weapons were audited. */
 function ammoAudit(items: Item[]): { audited: number; why: string[] } {
@@ -117,6 +205,7 @@ test.skipIf(!DIR)(
         const who = `${e.name} (${e.source} p.${e.page})`
         const x = exportNpc(npc, data, c)
         const audit = ammoAudit(x.items)
+        audit.why.push(...fixedAudit(who, x.items))
         n.ammoAudited += audit.audited
         n.ammoViolations += audit.why.length
         for (const w of audit.why) ammo.push({ name: `${who}: ${w}` })
