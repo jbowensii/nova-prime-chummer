@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.21.0 — 2026-10-23
+
+Free Knowledge points follow the book's baseline with the optional rule corrected, a creation method's rules can be set
+from the Method tab, and Polyglot discounts languages.
+
+No re-import needed.
+
+**Shadowrun 6 — creation**
+- **Free Knowledge + Language points.** Baseline is **Logic × 1** (CRB p. 97). The **optional rule** (CRB p. 98), a
+  Table-setup toggle, gives **(Logic + Intuition) × 2** — it now applies the × 2 (previously it added Intuition without
+  doubling, so it read 6 where the book gives 12). The per-Logic multiplier and the optional rule both stay adjustable.
+- **Set a method's rules from the Method tab.** When the table hasn't set the numbers a creation method needs (point
+  buy, karma, lifepath, sum-to-ten), a **Set this up here** button fills them with the standard values for that runner,
+  behind a confirmation and on the undo stack. "Use the table's" resets them, and a GM can still lock them at the table.
+- **Polyglot** (SWC p. 135): language skills cost 1 Karma less per rank and may be raised to rank 4 (native). Languages
+  only; knowledge skills are unchanged.
+
 ## 0.20.0 — 2026-10-22
 
 Book NPCs and critters link far more of their gear, powers and spells, carry their ammunition and a magic tradition, and

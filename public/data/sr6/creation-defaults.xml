@@ -45,7 +45,7 @@
   <setting key="contactKarma" value="1" source="SWC" page="161"/>
   <setting key="contactPairPerCha" value="2" source="SWC" page="161"/>
   <setting key="contactRatingMax" value="8" source="SWC" page="161"/>
-  <setting key="knowledgePerLog" value="1" source="CRB-HK" page="67"/>
+  <setting key="knowledgePerLog" value="1" source="CRB" page="97"/>
   <setting key="maxAvailability" value="6" source="CRB-HK" page="66"/>
   <!-- off: the first printing's (2019) readings; the Hong Kong printing (2025) caps every item's Availability (p. 66)
        and footnotes that spells, rituals and complex forms can't be bought during character generation (p. 68) -->
@@ -178,7 +178,7 @@
   <setting key="restrictMethods" value="false"/>
   <setting key="adjustOnLoweredMax" value="false"/>
   <setting key="pointBuyErrataNuyen" value="false"/>
-  <setting key="knowledgeLogicIntuition" value="false"/>
+  <setting key="knowledgeLogicIntuition" value="false" source="CRB" page="98"/>
   <setting key="magicAboveSixByGrade" value="false" source="CRB-HK" page="167"/>
   <setting key="eliteSumToThirteen" value="false"/>
   <setting key="availabilitySeven" value="false"/>

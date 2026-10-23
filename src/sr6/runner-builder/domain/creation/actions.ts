@@ -4,6 +4,7 @@
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest). A prerequisite
 // the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
+import { languageCap } from './skills'
 import { newId } from '../../../../core/shared/types'
 import {
   CONTACT_TYPES,
@@ -809,7 +810,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!k) return no('unknown-line')
       if (k.native) return no('native')
       // (owner 2026-10-11: no language above languageMax; the Native one counts as that level)
-      const most = num(cr, 'languageMax')
+      const most = languageCap(b, num(cr, 'languageMax'))
       if (k.kind === 'language' && most !== undefined && op.delta > 0 && k.points + k.karma + op.delta > most) return no('language-max')
       return step(
         () => k[op.pool],

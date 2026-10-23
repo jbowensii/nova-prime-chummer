@@ -7,6 +7,14 @@ import { knowledgeSpend, pool, type Budget, type Provider } from './providers'
 import { noteSkill } from './choices'
 import { augmentedRating } from './attributes'
 
+/** Polyglot (SWC p. 135): a language costs 1 Karma less a rank (never below 1) and goes to rank 4. Languages only.
+ *  ponytail: keyed on the quality id; the data's `<modifier kind="itemmod" type="RULE" ref="POLYGLOT"/>` marker is not read
+ *  by any code (no itemmod reader exists), so reading it would mean building one; do that if a second RULE marker needs it. */
+export const POLYGLOT = 'swc.polyglot'
+export const hasPolyglot = (b: Sr6Build) => b.qualities.some(q => q.id === POLYGLOT)
+export const languageKarma = (b: Sr6Build, perRank: number) => (hasPolyglot(b) ? Math.max(1, perRank - 1) : perRank)
+export const languageCap = (b: Sr6Build, most: number | undefined) => (most !== undefined && hasPolyglot(b) ? Math.max(most, 4) : most)
+
 /** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
  *  whose note names no skill adds none (Review's quality.choice asks for it). */
 export function aptitudeSkills(data: Sr6Data, cr: CreationRules, b: Sr6Build): string[] | null {
@@ -50,9 +58,9 @@ export function skillSpend(b: Sr6Build, cr: CreationRules, pool: number, data?: 
 export const manySpecs = (data: Sr6Data, cr: CreationRules, skill: string) =>
   !!flag(cr, 'expandedSpecializations') || normName(data.skills[skill]?.name ?? '') === 'exotic weapons'
 
-/** Free knowledge points: Logic times knowledgePerLog (CRB Hong Kong p. 67); Logic + Intuition with the house rule
- *  knowledgeLogicIntuition (owner, 2026-10-11). */
+/** Free knowledge points: baseline (CRB p. 97) Logic x knowledgePerLog (default 1); optional rule knowledgeLogicIntuition (p. 98) (Logic + Intuition) x 2. */
 export function knowledgePoints(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Budget {
-  const from = augmentedRating(b, data, 'log', p) + (flag(cr, 'knowledgeLogicIntuition') ? augmentedRating(b, data, 'int', p) : 0)
-  return p.knowledgePoints?.(b) ?? pool(from * n0(cr, 'knowledgePerLog'), knowledgeSpend(b))
+  const log = augmentedRating(b, data, 'log', p)
+  const free = flag(cr, 'knowledgeLogicIntuition') ? (log + augmentedRating(b, data, 'int', p)) * 2 : log * n0(cr, 'knowledgePerLog')
+  return p.knowledgePoints?.(b) ?? pool(free, knowledgeSpend(b))
 }

@@ -1,11 +1,12 @@
 // The owner's decisions on SR6 rules with no book behind them (2026-10-11), on the made-up fixture with invented entries
 // and invented numbers: what Review notes or flags, what the editor refuses or doesn't offer, and the house rules and
 // options (each off by default) that change a number.
+import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { apply, type Op } from '../../../src/sr6/runner-builder/domain/creation/actions'
 import { allBudgets, augmentationRoom, cargoFactor, magicCap, metatypeSize } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { exportSr6Runner } from '../../../src/sr6/foundry/domain/export'
-import { aboutOf, runnerRules, type CreationRules, type CreationValue } from '../../../src/sr6/table-setup/domain/creation'
+import { aboutOf, parseCreation, runnerRules, type CreationRules, type CreationValue } from '../../../src/sr6/table-setup/domain/creation'
 import { qualityFitsMetatype, qualityMetatypes, sr6Data, type Sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { gradesFor } from '../../../src/sr6/runner-builder/domain/creation/grades'
 import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
@@ -291,13 +292,19 @@ test('17, 21 (house rules): numbers that are the rule itself, while on', () => {
   expect(on({}).get('maxAvailability')?.value).toBe(5)
 })
 
-test('18 (house rule): knowledge points from Logic + Intuition', () => {
-  const k = (on: boolean) => {
-    const s = setup({ knowledgeLogicIntuition: on })
+test('18/A3 (CRB p. 97 baseline, p. 98 optional): Logic x 1 by default; optional rule gives (Logic + Intuition) x 2', () => {
+  const shipped = parseCreation(readFileSync('public/data/sr6/creation-defaults.xml', 'utf8')).rules
+  const max = (over: Record<string, CreationValue> = {}) => {
+    const s = setup({ knowledgePerLog: shipped.get('knowledgePerLog')!.value, knowledgeLogicIntuition: shipped.get('knowledgeLogicIntuition')!.value, ...over })
+    s.b.attributes.log.points = 2
     s.b.attributes.int.points = 2
     return s.budgets().knowledgePoints.max
   }
-  expect(k(true) - k(false)).toBe(2 * 3) // INT 3 × the fixture's 2 a point
+  expect(shipped.get('knowledgePerLog')).toMatchObject({ value: 1, page: 97 })
+  expect(shipped.get('knowledgeLogicIntuition')).toMatchObject({ value: false, page: 98 })
+  expect(max()).toBe(3) // Logic 3 x 1
+  expect(max({ knowledgeLogicIntuition: true })).toBe(12) // (Logic 3 + Intuition 3) x 2
+  expect(max({ knowledgePerLog: 2 })).toBe(6) // the baseline multiplier stays adjustable
 })
 
 test('19: negative Karma or nuyen blocks Finalize, whatever a GM approves', () => {

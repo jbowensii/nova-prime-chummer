@@ -17,7 +17,7 @@ import {
   type Sr6Method,
 } from '../../../formats/domain/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../domain/creation/actions'
-import { flag, num, str } from '../../../table-setup/domain/creation'
+import { flag, loadCreation, methodFill, num, str } from '../../../table-setup/domain/creation'
 import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../../catalog/domain/data'
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
@@ -55,8 +55,24 @@ const GRANT_WORDS: Record<Grant, string> = {
 }
 
 export function MethodTab() {
-  const { ch, data, cr, p, budgets, update, act } = useSr6Editor()
+  const { ch, data, cr, p, budgets, update, act, ro, career } = useSr6Editor()
   const b = ch.build
+  // the settings the table hasn't set, filled with the shipped standard values for this runner only (undo, or "Use the table's", reverses it)
+  const setUpHere = async () => {
+    const std = (await loadCreation().catch(() => null))?.std
+    const fill = std ? [...new Map(SR6_METHODS.flatMap(m => methodFill(m, cr, data, std)).map(r => [r.key, r])).values()] : []
+    if (!fill.length) return void window.alert('There are no standard values to set here; the table has to set these (Table setup → Creation rules).')
+    if (
+      !window.confirm(
+        `The table hasn't set ${fill.length} of the creation settings these methods need. They will be set to the standard values for this runner only (you can undo this, or go back to the table's later). Set them?`,
+      )
+    )
+      return
+    update(d => {
+      const keys = new Set(fill.map(r => r.key))
+      d.rules = [...(d.rules ?? []).filter(r => !keys.has(r.key)), ...fill]
+    })
+  }
   const missing = Object.fromEntries(SR6_METHODS.map(m => [m, m === b.method ? [] : missingLabels(m, cr, data)])) as Record<Sr6Method, string[]>
   const letters = b.method === 'priority' || b.method === 'sumtoten'
   const metatypes = p.legalMetatypes(b),
@@ -79,6 +95,11 @@ export function MethodTab() {
         </select>
       </label>
       <MissingList missing={missing} />
+      {!ro && !career && SR6_METHODS.some(m => missing[m].length) && (
+        <button type="button" className="btn small" onClick={setUpHere}>
+          Set this up here
+        </button>
+      )}
 
       {letters && <Letters />}
       {b.method === 'pointbuy' && (

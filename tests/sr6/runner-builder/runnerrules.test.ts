@@ -2,7 +2,7 @@
 // them, the export's list, the file; a book sample's printed line corrected by the override file (samplefix.ts); a level
 // printed on a quality without levels. Made-up fixture, invented values.
 import { expect, test } from 'vitest'
-import { runnerRules, type CreationRules } from '../../../src/sr6/table-setup/domain/creation'
+import { isRunnerRuleKey, methodFill, missingFor, runnerRules, type CreationRules } from '../../../src/sr6/table-setup/domain/creation'
 import { allBudgets } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { exportRules } from '../../../src/sr6/foundry/domain/export'
@@ -175,4 +175,21 @@ test('an always-on bonus folded into a printed number is noted, and the printed 
   expect(v.some(m => /^(AGI|REA): the book prints/.test(m))).toBe(false) // AGI 5 with the toner in; REA's switch in brackets
   const back = xmlToSr6(sr6ToXml(ch))
   expect(back.ok && back.character.build.purchases[0].bonuses?.[1].switch).toBe('activated')
+})
+
+test('A1: a runner may carry a method’s own numbers; "Set this up here" fills the missing ones from the standard, assumed', () => {
+  const { data, cr } = made()
+  const std: CreationRules = new Map(cr)
+  const base: CreationRules = new Map(cr)
+  base.delete('pointBuy.total')
+  base.delete('lifepath.moduleCount')
+  const fill = methodFill('pointbuy', base, data, std)
+  expect(fill).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'pointBuy.total', assumed: true })]))
+  expect(fill.every(r => isRunnerRuleKey(r.key))).toBe(true)
+  const eff = runnerRules(base, fill)
+  expect(eff.get('pointBuy.total')).toMatchObject({ value: std.get('pointBuy.total')!.value, from: 'runner', assumed: true })
+  expect(missingFor('pointbuy', eff, data)).not.toContain('pointBuy.total')
+  // a table-only key is still refused
+  expect(runnerRules(base, [{ key: 'skillCap', value: '99' }]).get('skillCap')?.value).toBe(base.get('skillCap')?.value)
+  expect(isRunnerRuleKey('karmaBuildMethod')).toBe(true)
 })

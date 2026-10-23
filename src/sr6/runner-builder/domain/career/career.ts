@@ -41,6 +41,7 @@ import {
 } from '../creation/budgets'
 import { cite, flag, num, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from '../../../catalog/domain/data'
+import { languageKarma } from '../creation/skills'
 import { gradeProblem } from '../creation/grades'
 import { makeProvider, type Provider } from '../creation/providers'
 import { CAREER_KEEP, validateSr6 } from '../review/rules'
@@ -399,7 +400,10 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'knowledge':
       if (!a.line.name.trim()) no('needs-name')
-      return { label: `${a.line.kind === 'language' ? 'Language' : 'Knowledge'}: ${a.line.name}`, karma: need('karmaKnowledge') }
+      return {
+        label: `${a.line.kind === 'language' ? 'Language' : 'Knowledge'}: ${a.line.name}`,
+        karma: a.line.kind === 'language' ? languageKarma(b, need('karmaKnowledge')) : need('karmaKnowledge'),
+      }
     case 'quality': {
       // an Infected quality or optional power only while the table allows Infected characters, at its own Karma: Infected
       // qualities "do not have their cost doubled when purchased during gameplay" (SWC p. 106; the optional powers, bought

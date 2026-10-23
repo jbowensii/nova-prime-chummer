@@ -50,6 +50,7 @@ import {
 import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
+import { languageCap } from '../creation/skills'
 import { adeptBars, opposite } from '../creation/actions'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { deriveSr6 } from '../creation/derive'
@@ -369,7 +370,7 @@ const RULES: Rule[] = [
     tab: 'skills',
     check: c => {
       const langs = c.b.knowledge.filter(k => k.kind === 'language'),
-        most = num(c.cr, 'languageMax'),
+        most = languageCap(c.b, num(c.cr, 'languageMax')),
         hits: Hit[] = []
       if (langs.filter(k => k.native).length > 1) hits.push({ message: `${langs.filter(k => k.native).length} native languages: only one.`, ...CRB(67) })
       if (most !== undefined)

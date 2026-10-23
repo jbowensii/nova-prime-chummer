@@ -7,7 +7,7 @@ import { rated } from '../../../catalog/domain/values'
 import { martialKarma } from './martial'
 import { entryOf, isFocus, ratingOf } from './purchases'
 import { attrRating } from './attributes'
-import { skillRank, skillSpend } from './skills'
+import { languageKarma, skillRank, skillSpend } from './skills'
 import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
@@ -115,7 +115,12 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
         .reduce((t, x) => t + (rated(entryOf(x, data)?.attrs.karma, ratingOf(x, entryOf(x, data))).n ?? 0) * x.qty, 0),
       'gear',
     )
-  add('knowledge', 'Knowledge and language ranks bought with karma', b.knowledge.reduce((t, k) => t + k.karma, 0) * n0(cr, 'karmaKnowledge'), 'skills')
+  add(
+    'knowledge',
+    'Knowledge and language ranks bought with karma',
+    b.knowledge.reduce((t, k) => t + k.karma * (k.kind === 'language' ? languageKarma(b, n0(cr, 'karmaKnowledge')) : n0(cr, 'karmaKnowledge')), 0),
+    'skills',
+  )
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
   // the Critter Bond path's Permanent Improvement (SWC p. 139): a critter's qualities bought with the runner's Karma

@@ -172,7 +172,7 @@ export const CREATION_KEYS: CreationKey[] = [
     ['magicMax', 'Highest Magic or Resonance'],
     ['essence', 'Starting Essence'],
     ['contactPointsPerCha', 'Contact points per Charisma'],
-    ['knowledgePerLog', 'Free knowledge skills per Logic'],
+    ['knowledgePerLog', 'Free knowledge points per point of Logic'],
     ['maxAvailability', 'Highest Availability'],
     ['maxNuyenLeft', 'Most nuyen kept after creation'],
     ['freeSpellsPerMagic', 'Free spells per Magic'],
@@ -551,7 +551,7 @@ export const CREATION_KEYS: CreationKey[] = [
     [
       ['adjustOnLoweredMax', 'Adjustment points also on an attribute whose metatype maximum is lowered (house rule)'],
       ['pointBuyErrataNuyen', 'Point buy: up to 450,000 nuyen bought with character points, the errata version (house rule)'],
-      ['knowledgeLogicIntuition', 'Free knowledge points from Logic + Intuition (house rule)'],
+      ['knowledgeLogicIntuition', 'Optional: (Logic + Intuition) × 2 Knowledge points'],
       ['magicAboveSixByGrade', 'Magic or Resonance at creation up to the highest plus the initiation or submersion grade (option)'],
       ['eliteSumToThirteen', 'Elite: sum-to-thirteen instead of sum-to-twelve (house rule)'],
       ['availabilitySeven', 'Gear of Availability 7 at creation (house rule)'],
@@ -902,6 +902,17 @@ export function missingFor(method: Sr6Method, cr: CreationRules, data: CreationC
   return out
 }
 
+/** The runner rules that set `method` up with the shipped standard values (std): one per missing setting the std has and a
+ *  runner may carry (isRunnerRuleKey), each assumed, so Review notes it. */
+export function methodFill(method: Sr6Method, cr: CreationRules, data: CreationCatalog, std: CreationRules): RunnerRule[] {
+  return missingFor(method, cr, data).flatMap(k => {
+    const s = std.get(k)
+    return s && isRunnerRuleKey(k)
+      ? [{ key: k, value: String(s.value), assumed: true as const, ...(s.source ? { source: s.source } : {}), ...(s.page ? { page: s.page } : {}) }]
+      : []
+  })
+}
+
 /** A settings file someone picked to load into the creation rules form (the creation.xml format): every row the server
  *  would take, typed as rulesFrom does. fatal: it isn't a creation rules file at all (nothing loads); errors: the rows (or
  *  a row's source or page) left out, each said in words. Nothing is saved: the form shows it for review. */
@@ -1025,7 +1036,7 @@ const ABOUT: Record<string, [string, string]> = {
   magicMax: ['The highest Magic or Resonance at creation', HK(65)],
   essence: ['The Essence every runner starts with', HK(38)],
   contactPointsPerCha: ['Contact points per point of Charisma', HK(67)],
-  knowledgePerLog: ['Free knowledge points per point of Logic', HK(67)],
+  knowledgePerLog: ['Free Knowledge points per point of Logic', 'CRB p. 97'],
   maxAvailability: ['The highest Availability of gear bought at creation', HK(66)],
   maxNuyenLeft: ['The most nuyen kept after creation; more is a problem a GM can approve', HK(68)],
   freeSpellsPerMagic: ['Free spells and rituals per point of Magic', HK(65)],
@@ -1204,7 +1215,7 @@ const ABOUT: Record<string, [string, string]> = {
     'On: point buy’s nuyen bought with character points goes up to 450,000, the errata version; off: up to 440,000 as printed (Sixth World Companion p. 29)',
     HOUSE,
   ],
-  knowledgeLogicIntuition: ['On: free knowledge points from Logic + Intuition; off: from Logic only (CRB Hong Kong p. 67)', HOUSE],
+  knowledgeLogicIntuition: ['Optional rule (CRB p. 98): free Knowledge points = (Logic + Intuition) × 2; off (default): Logic only (p. 97)', 'CRB p. 98'],
   metatypeSizePricing: [
     'On: a troll-sized runner (troll, cyclops, fomori, giant, minotaur) pays 10% more for everything bought and a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor and clothing, added as one line of the nuyen budget; the books price a few metahuman-sized items on their own but print no general rule',
     HOUSE,
@@ -1343,7 +1354,10 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'metatypeSizePricing',
 ].map(key => ({ key, about: aboutOf(key) }))
 /** A runner file may set only these (mergeRules): a hand-edited one naming any other setting keeps the table's. */
-export const isRunnerRuleKey = (key: string) => RUNNER_KEYS.has(key)
+export const isRunnerRuleKey = (key: string) => RUNNER_KEYS.has(key) || METHOD_KEY.test(key)
+/** The creation methods' own numbers (point buy, karma build, lifepath, sum to ten): a runner may carry them only through
+ *  the Method tab's "Set this up here" (methodFill), standard values, undoable. The one seam: mergeRules. */
+const METHOD_KEY = /^(pointBuy\.|karmaBuild\.|lifepath\.|sumToTen|letterValue:|metatypeKarma:|karmaBuildMethod$)/
 const RUNNER_KEYS = new Set(RUNNER_RULE_KEYS.map(k => k.key))
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with
@@ -1359,7 +1373,7 @@ export function mergeRules(base: CreationRules, own: RunnerRule[] = [], locks: R
   const lockedBy = new Map(locks.map(l => [l.key, l.by]))
   const out: CreationRules = new Map([...base].map(([k, s]) => [k, { ...s, from: s.from ?? layer, ...(lockedBy.has(k) ? { lockedBy: lockedBy.get(k) } : {}) }]))
   for (const r of own) {
-    if (lockedBy.has(r.key) || !RUNNER_KEYS.has(r.key) || !keyType(r.key)) continue
+    if (lockedBy.has(r.key) || !isRunnerRuleKey(r.key) || !keyType(r.key)) continue
     if (r.value.trim() === '') {
       out.delete(r.key)
       continue
