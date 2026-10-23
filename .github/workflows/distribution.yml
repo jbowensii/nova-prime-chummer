@@ -1,0 +1,15 @@
+# Cheap syntax checks for the distribution scripts. ponytail: no clean-Ubuntu end-to-end install here; add a container-based install test when the script settles.
+name: Distribution
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+permissions:
+  contents: read
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: sh -n docker-entrypoint.sh
+      - run: bash -n distribution/ubuntu/install.sh
+      - run: shellcheck docker-entrypoint.sh distribution/ubuntu/install.sh

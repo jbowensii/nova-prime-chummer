@@ -1,6 +1,7 @@
 # Build the app, then serve it with the small Node server that also stores runners as XML and runs the
-# PDF importer (Python). Volumes: /data/characters (saved runners), /data/custom (house-rule overlays and
-# imported books' data), /data/library (uploaded PDFs, their Markdown, reports and AI settings; never served).
+# PDF importer (Python). One volume, /data (DATA_PATH): Config, Data/systems (runners, house rules, imported books),
+# Library (uploaded PDFs, their Markdown, reports and AI settings; never served), Logs, Backups. An old three-folder
+# data dir (characters/, custom/, library/) is moved into that layout by the entrypoint on first start.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -30,9 +31,9 @@ RUN rm -rf ./importer/tests && find ./importer -name __pycache__ -prune -exec rm
 # the importer reads sources.xml from the built app's data, and the core files (skills, amp effects …) from
 # CUSTOM_DIR/imported/core, which the core rulebook's import builds: the image ships no core data
 # UV_THREADPOOL_SIZE: password hashing (scrypt) shares the threadpool with file reads; more threads keep the app responsive
-ENV UV_THREADPOOL_SIZE=16 PORT=80 STATIC_DIR=/app/dist CHAR_DIR=/data/characters CUSTOM_DIR=/data/custom LIBRARY_DIR=/data/library \
+ENV UV_THREADPOOL_SIZE=16 PORT=80 STATIC_DIR=/app/dist DATA_PATH=/data \
     PYTHON=python3 CA2_DATA_DIR=/app/dist/data PYTHONDONTWRITEBYTECODE=1
-VOLUME ["/data/characters", "/data/custom", "/data/library"]
+VOLUME ["/data"]
 EXPOSE 80
 HEALTHCHECK CMD wget -qO- http://127.0.0.1/api/health > /dev/null || exit 1
 # starts as root only to match the data mounts to PUID/PGID (default 99:100), then runs the server as that user
