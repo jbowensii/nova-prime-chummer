@@ -1,5 +1,5 @@
 // The Setup screen's API (Phase 2; docs/plans/desktop-app-foundry-model-2026-10-22.md). Admin only (server/auth.mjs need()).
-//   GET /api/setup-config   -> { file, version, desktop, settings: [{ key, type, value, source, later }], systems, backups }
+//   GET /api/setup-config   -> { file, version, desktop, settings: [{ key, type, value, source, later }], systems, backups, cloud: { configured, error? } }
 //   PUT /api/setup-config/systems/<disk>/enabled { enabled } and POST .../systems/<disk>/install (zip body, or JSON { url }) -> systems (server/systems.mjs)
 //   PUT /api/setup-config   { set: { key: value|null }, reset: [key] } -> the same. Writes <Config>/options.json only: the path is
 //                           fixed, the keys are a whitelist, each value is checked by type. null turns a setting off (Foundry's rule).
@@ -8,6 +8,7 @@ import { mkdir, readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { configSources, resolveOpts } from './config.mjs'
 import { fail, writeAtomic } from './common.mjs'
+import { loadS3Config } from './s3.mjs'
 import { systemsApi } from './systems.mjs'
 
 const str = v => typeof v === 'string' && v.length <= 500 && ![...v].some(c => c < ' ')
@@ -22,7 +23,7 @@ const SPEC = {
   proxyPort: { type: 'number', ok: v => Number.isInteger(v) && v >= 1 && v <= 65535, later: true },
   upnp: { type: 'bool', ok: flagOf, later: true },
   dataPath: { type: 'text', readonly: true }, // set by the installer/launcher; shown, never written here
-  awsConfig: { type: 'text', ok: str, later: true },
+  awsConfig: { type: 'text', ok: str }, // the S3 settings file (server/s3.mjs); its secret never comes through here
   language: { type: 'text', ok: v => typeof v === 'string' && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(v), later: true },
   updateChannel: { type: 'choice', ok: v => v === 'stable' || v === 'testing', options: ['stable', 'testing'] },
   compressStatic: { type: 'bool', ok: flagOf, later: true },
@@ -64,6 +65,18 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
     return out.sort((a, b) => b.name.localeCompare(a.name))
   }
 
+  /** The S3 settings file's path (awsConfig, any layer), null when none. */
+  const awsConfigPath = async () => resolveOpts(cliArgs, env, await readOpts()).awsConfig ?? null
+  /** Only whether it loads: never the file's contents. */
+  async function cloud() {
+    try {
+      await loadS3Config(await awsConfigPath())
+      return { configured: true }
+    } catch (e) {
+      return { configured: false, error: e.message }
+    }
+  }
+
   async function view() {
     const opts = await readOpts()
     const eff = resolveOpts(cliArgs, env, opts)
@@ -83,6 +96,7 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
       })),
       systems: await sys.list(),
       backups: await backups(),
+      cloud: await cloud(),
     }
   }
 
@@ -126,5 +140,5 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
     if (req.method === 'PUT') return send(res, 200, await save(req))
     return send(res, 405, { error: 'method not allowed' })
   }
-  return { handle }
+  return { handle, awsConfigPath }
 }

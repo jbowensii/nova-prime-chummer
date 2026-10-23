@@ -60,6 +60,9 @@ PROFILES = {
         "never": DATA_NEVER,
     },
 }
+# the cloud backup (server/cloud.mjs): Config and Data only. Library holds the uploaded books (PDFs, extracted text) and
+# never leaves the machine; a restore of such a zip swaps only the folders its manifest lists, so Library stays.
+PROFILES["cloud"] = {**PROFILES["data"], "folders": ("Config", "Data")}
 MAX_CONFIG = 16 * 1024**2
 # the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
 AUTH_SECRET = "library/.config/auth-secret.xml"
@@ -123,9 +126,10 @@ def _files(folder, root, keys, prof):
             yield path, name
 
 
-def backup(dirs, out, keys=False, version=None):
+def backup(dirs, out, keys=False, version=None, cloud=False):
     """Write the zip of `dirs` ({folder: path}) to `out` (atomically, mode 600). Returns the manifest text."""
-    counts, prof = {}, PROFILES[_mode(dirs)]
+    mode = _mode(dirs)
+    counts, prof = {}, PROFILES["cloud" if cloud and mode == "data" else mode]
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(out)), prefix=".backup.", suffix=".tmp")  # mode 600
     os.close(fd)
     try:
@@ -268,6 +272,8 @@ def check(path):
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
             raise RestoreError(f"backup.xml can’t be read ({e})") from e
+        listed = {f.get("name") for f in root.findall("folder")}  # a cloud zip lists no Library
+        counts = {k: v for k, v in counts.items() if k in listed or v != [0, 0]}
         _check_manifest(root, counts, any(k.casefold() in files for k in prof["keys"]))
         # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
         byname = {i.filename.casefold(): i for i in infos}
@@ -319,7 +325,7 @@ def _check_manifest(root, counts, has_keys):
         int(root.get("bytes"))
     except (TypeError, ValueError) as exc:
         raise bad from exc
-    if len(root) != 3 or got != counts:
+    if len(root) != len(counts) or got != counts:
         raise RestoreError("backup.xml doesn’t match the files in the zip")
     if has_keys and root.get("keys") != "yes":
         raise RestoreError("the zip has API keys its backup.xml doesn’t list")
@@ -357,17 +363,20 @@ def swap(target, new, keep=()):
 def apply(path, dirs, version=None):
     """Restore `path` over `dirs` ({folder: path}); returns the safety backup's path."""
     mode = _mode(dirs)
-    if check(path).get("layout") != mode:
+    manifest = check(path)
+    if manifest.get("layout") != mode:
         raise RestoreError(
             "this backup is from the old three-folder layout; migrate the data (node server/migrate.mjs --apply) first"
             if mode == "data"
             else "this backup was made on the new Config/Data/Library layout and can’t be restored onto the old one"
         )
     prof = PROFILES[mode]
+    if mode == "data":  # only the folders the zip brings (a cloud zip has no Library: it stays as it is)
+        prof = {**prof, "folders": tuple(f.get("name") for f in manifest.findall("folder"))}
     backups = dirs["backups"] if mode == "data" else os.path.join(dirs["library"], ".backups")
     os.makedirs(backups, exist_ok=True)
     safety = os.path.join(backups, datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ") + ".zip")
-    backup(dirs, safety, keys=True, version=version)  # never leaves the server, so keys included
+    backup(dirs, safety, keys=True, version=version)  # full state, never leaves the server, so keys included
     news = {}
     try:
         try:

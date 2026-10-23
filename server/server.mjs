@@ -220,6 +220,7 @@ export function createServer({
     restoreTtl,
     downloadTtl,
     askTimeout,
+    awsConfigPath: () => setup.awsConfigPath(),
     onRestore: () => auth.reload(oidc.issuer()), // the restored auth.xml's issuer
     compendiumSources: () => compendiums.ca2.sources(),
   }) // a house source never takes an Anarchy compendium's id (SR6 has none)

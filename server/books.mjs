@@ -87,6 +87,7 @@ import { readdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { aiApi } from './ai.mjs'
 import { backupApi } from './backup.mjs'
+import { body } from './common.mjs'
 import { editsApi } from './edits.mjs'
 import { SR6_KINDS } from './games.mjs'
 import { jobsApi } from './jobs.mjs'
@@ -106,6 +107,7 @@ export function booksApi({
   downloadTtl = 10 * 60 * 1000,
   askTimeout = 60000,
   onRestore = async () => {},
+  awsConfigPath = async () => null, // the S3 settings file's path (the awsConfig setting, read when used)
   compendiumSources = async () => new Set(),
 }) {
   const backups = layout.backups
@@ -130,6 +132,7 @@ export function booksApi({
     downloadTtl,
     askTimeout,
     onRestore,
+    awsConfigPath,
     compendiumSources,
     AREAS,
     config: layout.config, // account-global files: jobs.json, ask-counts.xml
@@ -197,6 +200,12 @@ export function booksApi({
     const rt = p.match(/^\/api\/restore\/([^/]+)$/)
     if (rt && method === 'POST') return backup.restore(rt[1], send, res, who)
     if (p === '/api/restore' || rt) return send(res, 405, { error: 'method not allowed' })
+    if (p === '/api/cloud-backup') {
+      if (method === 'GET') return send(res, 200, { backups: await backup.cloudList() })
+      if (method === 'POST') return send(res, 200, await backup.cloudBackup())
+      return send(res, 405, { error: 'method not allowed' })
+    }
+    if (p === '/api/cloud-backup/restore' && method === 'POST') return backup.cloudRestore(JSON.parse((await body(req, 4096)) || '{}').key ?? null, send, res)
     if (p === '/api/datapack' && method === 'POST') return backup.makePack(res, send, who)
     if (p === '/api/datapack/import' && method === 'POST') return backup.previewPack(req, res, send, who)
     const lt = p.match(/^\/api\/datapack\/import\/([^/]+)$/)

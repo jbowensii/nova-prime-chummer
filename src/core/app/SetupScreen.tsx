@@ -34,6 +34,12 @@ interface View {
   settings: Setting[]
   systems: SystemInfo[]
   backups: { name: string; bytes: number; created: string }[]
+  cloud: { configured: boolean; error?: string }
+}
+interface CloudBackup {
+  key: string
+  bytes: number
+  lastModified: string
 }
 const TABS: [string, string][] = [
   ['configuration', 'Configuration'],
@@ -144,6 +150,81 @@ function Configuration({ view, reload }: { view: View; reload: (v: View) => void
   )
 }
 
+/** Cloud backup (S3): Config and Data only, never the Library (the uploaded books). Settings file: awsConfig. */
+function CloudBackups({ cloud }: { cloud: View['cloud'] }) {
+  const [list, setList] = useState<CloudBackup[] | null>(null)
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const run = async (what: () => Promise<string | void>) => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      const text = await what()
+      if (text) setMsg({ text })
+    } catch (e) {
+      setMsg({ text: (e as Error).message, err: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const refresh = () => run(async () => void setList((await api<{ backups: CloudBackup[] }>('cloud-backup')).backups))
+  const backUp = () =>
+    run(async () => {
+      const r = await api<{ key: string }>('cloud-backup', { method: 'POST' })
+      setList((await api<{ backups: CloudBackup[] }>('cloud-backup')).backups)
+      return `Backed up to ${r.key}.`
+    })
+  const restore = (key: string) => {
+    if (!window.confirm(`Replace your runners, campaigns and settings with ${key}? The current data is saved in Backups/ first. Books are not touched.`)) return
+    void run(async () => {
+      await api('cloud-backup/restore', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ key }) })
+      return `Restored ${key}. Reload the page.`
+    })
+  }
+  return (
+    <>
+      <h2>Cloud backup (S3)</h2>
+      <p className="muted">
+        Sends your runners, campaigns, settings and imported catalog data (Config and Data) to an S3 bucket. Your books are never uploaded. Set{' '}
+        <code>awsConfig</code> on the Configuration tab to the S3 settings file.
+      </p>
+      {!cloud.configured ? (
+        <p>Not configured{cloud.error ? `: ${cloud.error}` : ''}.</p>
+      ) : (
+        <>
+          <div className="row">
+            <button type="button" className="btn" disabled={busy} onClick={() => void backUp()}>
+              Back up to cloud
+            </button>
+            <button type="button" className="btn quiet" disabled={busy} onClick={() => void refresh()}>
+              Refresh list
+            </button>
+          </div>
+          {list &&
+            (list.length ? (
+              <ul>
+                {list.map(b => (
+                  <li key={b.key}>
+                    {b.key} — {new Date(b.lastModified).toLocaleString()}, {mb(b.bytes)}{' '}
+                    <button type="button" className="btn quiet" disabled={busy} onClick={() => restore(b.key)}>
+                      Restore
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No cloud backups yet.</p>
+            ))}
+        </>
+      )}
+      <div role="status" aria-live="polite">
+        {msg && !msg.err && <p className="banner">{msg.text}</p>}
+      </div>
+      <div role="alert">{msg?.err && <p className="banner err">{msg.text}</p>}</div>
+    </>
+  )
+}
+
 function Backups({ view, repo }: { view: View; repo: Repo }) {
   return (
     <>
@@ -160,6 +241,7 @@ function Backups({ view, repo }: { view: View; repo: Repo }) {
       ) : (
         <p>No safety backups yet.</p>
       )}
+      <CloudBackups cloud={view.cloud} />
       <RepoContext.Provider value={repo}>
         <BackupSettings />
       </RepoContext.Provider>

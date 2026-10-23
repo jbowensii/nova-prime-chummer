@@ -15,7 +15,7 @@ python -m importer ask --custom D --library D [--scope rules]   (the question on
 python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
 python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
 python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
-python -m importer backup (--data-path D | --characters D --custom D --library D) --out F [--keys] [--version V]
+python -m importer backup (--data-path D [--cloud] | --characters D --custom D --library D) --out F [--keys] [--version V]
 python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
 python -m importer restore --apply F (--data-path D | --characters D --custom D --library D) [--version V]  (exit 3: refused)
 python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
@@ -562,7 +562,7 @@ def _cmd_backup(argv):
     if not dirs or not out:
         print(USAGE, file=sys.stderr)
         return 2
-    backup.backup(dirs, out, keys="--keys" in argv, version=flag(argv, "--version"))
+    backup.backup(dirs, out, keys="--keys" in argv, version=flag(argv, "--version"), cloud="--cloud" in argv)
     return 0
 
 

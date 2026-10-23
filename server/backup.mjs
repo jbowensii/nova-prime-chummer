@@ -8,6 +8,7 @@ import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { attr, esc, fail, head, rootTag, writeAtomic } from './common.mjs'
+import { loadS3Config, s3Client } from './s3.mjs'
 
 const MAX_PACK = 50 * 1024 * 1024
 const MAX_ZIP = 20 * 1024 ** 3 // restore --check's limit on what a zip unpacks to: any backup the app makes fits
@@ -259,6 +260,11 @@ export function backupApi(ctx) {
     if (lock.zipping) throw fail(409, 'a backup is being made; try again when it’s done')
     const file = take(uploads, token, who.id)
     if (!file) throw fail(404, 'this restore has expired; choose the file again')
+    return applyZip(file, send, res)
+  }
+
+  /** Restore from `file` (deleted after): the importer's safety backup, then the swap. Callers have checked the locks. */
+  async function applyZip(file, send, res) {
     lock.restoring = true
     let r
     try {
@@ -280,10 +286,62 @@ export function backupApi(ctx) {
     return send(res, 200, { ok: true })
   }
 
+  // Cloud backup (S3, server/s3.mjs): the importer's --cloud zip, Config/ and Data/ only. Library (the uploaded books) is never
+  // sent, and a restore of such a zip leaves it as it is (importer/backup.py). The S3 settings file is the awsConfig setting.
+  const CLOUD_KEY = /^backups\/[\w.-]+\.zip$/
+  const s3 = async () => s3Client(await loadS3Config(await ctx.awsConfigPath()))
+  const cloudList = async () => (await (await s3()).list('backups/')).filter(o => CLOUD_KEY.test(o.key)).sort((a, b) => b.key.localeCompare(a.key))
+
+  async function cloudBackup() {
+    if (layout.kind !== 'data') throw fail(400, 'cloud backup needs the Config/Data/Library layout')
+    const c = await s3()
+    noRestore()
+    if (lock.zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
+    if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    lock.zipping++
+    const tmp = tempZip('upload') // (swept like an upload if the server dies meanwhile)
+    try {
+      await mkdir(backups, { recursive: true })
+      const r = await importer(['backup', ...dirArgs(), '--cloud', '--out', tmp], { timeout: RESTORE_TIMEOUT, tag: tmp })
+      if (r.code !== 0) throw fail(500, 'couldn’t make the backup: ' + (await redact(r.err)).trim().split('\n').pop())
+      const key = `backups/${new Date().toISOString().replace(/[:.]/g, '-')}.zip`,
+        bytes = (await stat(tmp)).size
+      await c.put(key, tmp, bytes)
+      return { key, bytes }
+    } finally {
+      lock.zipping--
+      await rm(tmp, { force: true })
+    }
+  }
+
+  /** `key` (or the newest) -> the same restore as a file restore. */
+  async function cloudRestore(key, send, res) {
+    if (layout.kind !== 'data') throw fail(400, 'cloud restore needs the Config/Data/Library layout')
+    const c = await s3()
+    if (key == null) key = (await cloudList())[0]?.key
+    if (typeof key !== 'string' || !CLOUD_KEY.test(key)) throw fail(400, key == null ? 'there are no cloud backups' : 'not a cloud backup name')
+    noRestore()
+    if (ctx.running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
+    if (lock.writes) throw fail(409, 'a save or an upload is running; try again when it’s done')
+    if (lock.zipping || lock.restoring) throw fail(409, 'a backup is being made; try again when it’s done')
+    lock.zipping++ // the download below may be long; it holds off a restore or a backup
+    const file = tempZip('upload')
+    try {
+      await mkdir(backups, { recursive: true })
+      await c.get(key, file)
+    } catch (e) {
+      await rm(file, { force: true })
+      throw e
+    } finally {
+      lock.zipping--
+    }
+    return applyZip(file, send, res)
+  }
+
   /** Shutdown: pending restore uploads and unfetched backups and packs are deleted. */
   const stop = () => {
     for (const map of [uploads, downloads, packs, packUploads]) for (const t of [...map.keys()]) rmSync(take(map, t), { recursive: true, force: true })
   }
 
-  return { makeBackup, sendZip, preview, restore, makePack, previewPack, loadPack, stop }
+  return { makeBackup, sendZip, preview, restore, makePack, previewPack, loadPack, stop, cloudList, cloudBackup, cloudRestore }
 }

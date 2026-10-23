@@ -607,6 +607,21 @@ def data_state(root, extra=""):
 
 
 class DataLayoutTests(unittest.TestCase):
+    def test_cloud_zip_has_no_library_and_a_restore_keeps_it(self):
+        a, b = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = data_state(a), data_state(b, "-other")
+        out = os.path.join(a, "Backups", "cloud.zip")
+        backup.backup(src, out, cloud=True)
+        with zipfile.ZipFile(out) as zf:
+            names = zf.namelist()
+        self.assertFalse([n for n in names if n.startswith(("Library/", "Backups/", "Logs/"))])
+        self.assertIn("Data/systems/anarchy2/characters/ada/r1.xml", names)
+        self.assertEqual(backup.check(out).get("layout"), "data")
+        backup.apply(out, dst)
+        self.assertEqual(Path(dst["Data"], "systems/sr6/campaigns.xml").read_text(encoding="utf8"), "<campaigns></campaigns>")
+        self.assertEqual(Path(dst["Library"], "sr6/book-2/book.md").read_text(encoding="utf8"), "# Made-up-other")
+        self.assertTrue(os.path.exists(os.path.join(dst["Library"], "anarchy2/book-1/original.pdf")))
+
     def test_backup_and_restore_on_the_new_layout(self):
         a, b = tempfile.mkdtemp(), tempfile.mkdtemp()
         src, dst = data_state(a), data_state(b, "-other")
