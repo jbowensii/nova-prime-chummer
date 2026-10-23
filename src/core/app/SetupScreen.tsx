@@ -1,5 +1,5 @@
 // Setup (#/setup/<tab>): the screen before a game, admin only (the server refuses everyone else: /api/setup-config).
-// Tabs: Configuration (Config/options.json), Backups, Updates (shell: electron-updater is Phase 6), Game Systems (version, status,
+// Tabs: Configuration (Config/options.json), Backups, Updates (desktop: electron/updater.mjs via window.updater), Game Systems (version, status,
 // on/off, install/update from a file or URL). Server: server/setupcfg.mjs, server/systems.mjs.
 import { useEffect, useState } from 'react'
 import { api } from '../ui-kit/api'
@@ -249,19 +249,107 @@ function Backups({ view, repo }: { view: View; repo: Repo }) {
   )
 }
 
+/** The desktop shell's preload bridge (electron/preload.cjs); absent in a plain browser. */
+interface UpdaterBridge {
+  check(channel: 'latest' | 'beta'): Promise<{ state: 'available' | 'current'; version: string }>
+  download(): Promise<unknown>
+  install(): Promise<unknown>
+  onState(cb: (s: { state: string; message?: string }) => void): () => void
+  onProgress(cb: (pct: number) => void): () => void
+}
+const bridge = () => (window as unknown as { updater?: UpdaterBridge }).updater
+
 function Updates({ view }: { view: View }) {
   const channel = view.settings.find(s => s.key === 'updateChannel')?.value
+  const up = bridge()
+  const [step, setStep] = useState<'idle' | 'available' | 'downloading' | 'downloaded'>('idle')
+  const [pct, setPct] = useState(0)
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!up) return
+    const off = [up.onProgress(setPct), up.onState(s => s.state === 'error' && setMsg({ text: s.message ?? 'The update failed.', err: true }))]
+    return () => off.forEach(f => f())
+  }, [up])
+  const run = async (f: () => Promise<void>) => {
+    setMsg(null)
+    setBusy(true)
+    try {
+      await f()
+    } catch (e) {
+      setMsg({ text: (e as Error).message, err: true })
+    }
+    setBusy(false)
+  }
+  const check = () =>
+    run(async () => {
+      const r = await up!.check(channel === 'testing' ? 'beta' : 'latest')
+      setStep(r.state === 'available' ? 'available' : 'idle')
+      setMsg({ text: r.state === 'available' ? `Version ${r.version} is available.` : 'You have the latest version.' })
+    })
+  const download = () =>
+    run(async () => {
+      setStep('downloading')
+      setPct(0)
+      try {
+        await up!.download()
+        setStep('downloaded')
+        setMsg({ text: 'Downloaded. Back up and install when you are ready.' })
+      } catch (e) {
+        setStep('available')
+        throw e
+      }
+    })
+  // The backup is the existing /api/backup (features/backup): the zip is made first and the browser saves it; if that fails, nothing is installed.
+  const backUpAndInstall = () =>
+    run(async () => {
+      const { token } = await api<{ token: string }>('backup', { method: 'POST' })
+      const a = document.createElement('a')
+      a.href = `./api/backup/${token}`
+      a.download = ''
+      a.click()
+      // ponytail: the save runs in the browser, so we can't see it finish; the user confirms. Add a completion signal if that proves too easy to misclick.
+      if (window.confirm('Your backup is being saved. Install the update when it has finished? The app will restart.')) await up!.install()
+    })
   return (
     <>
       <p>
         Version <b>{view.version}</b>, update channel <b>{String(channel)}</b> (change it on the Configuration tab).
       </p>
-      <button className="btn" disabled aria-describedby="upd-later">
-        Check for updates
-      </button>
-      <p id="upd-later" className="muted">
-        Coming in a later phase.
-      </p>
+      {up ? (
+        <>
+          <p className="row">
+            <button type="button" className="btn" disabled={busy} onClick={() => void check()}>
+              Check for updates
+            </button>
+            {step === 'available' && (
+              <button type="button" className="btn" disabled={busy} onClick={() => void download()}>
+                Download
+              </button>
+            )}
+            {step === 'downloaded' && (
+              <button type="button" className="btn" disabled={busy} onClick={() => void backUpAndInstall()}>
+                Back up &amp; install
+              </button>
+            )}
+          </p>
+          {step === 'downloading' && <progress max={100} value={pct} aria-label="Download progress" />}
+          {msg && (
+            <p role={msg.err ? 'alert' : 'status'} className={msg.err ? 'error' : 'muted'}>
+              {msg.text}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <button className="btn" disabled aria-describedby="upd-later">
+            Check for updates
+          </button>
+          <p id="upd-later" className="muted">
+            Updates are in the desktop app. A server install updates the way it was installed (pull the image, or the install script&apos;s update command).
+          </p>
+        </>
+      )}
     </>
   )
 }

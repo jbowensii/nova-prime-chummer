@@ -34,7 +34,8 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-# electron-updater: configured, not enabled (the app doesn't call autoUpdater yet)
+# electron-updater feed (electron/updater.mjs). Stable = a normal release (latest.yml); Testing = a GitHub prerelease (its tag
+# carries -beta, so the build writes beta.yml). Set the release to prerelease when publishing a Testing build.
 publish:
   provider: github
   owner: jbowensii

@@ -5,6 +5,7 @@ import { createWriteStream, mkdirSync } from 'node:fs'
 import { createServer as netServer } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { initUpdater } from './updater.mjs'
 
 const DEFAULT_PORT = 47480 // ponytail: fixed default; Phase 2's options.json makes it configurable
 const here = dirname(fileURLToPath(import.meta.url))
@@ -111,6 +112,7 @@ async function start() {
     if (i.key === 'F5') win.webContents.reload()
     else win.webContents.toggleDevTools()
   })
+  initUpdater(() => win, origin)
   await win.loadURL(origin)
 }
 

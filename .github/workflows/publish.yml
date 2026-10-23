@@ -84,3 +84,44 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # Signed Windows desktop build, attached to the GitHub Release the updater reads. Release tags only.
+  # UNVERIFIED: never run on a real runner. Secrets (set by the owner in the repo settings, referenced only): CSC_LINK (the .pfx,
+  # base64 or URL), CSC_KEY_PASSWORD. Nothing here prints them. A tag containing "-" (e.g. v0.21.0-beta.1) must be marked a prerelease.
+  desktop:
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write # electron-builder uploads the assets to the release
+    steps:
+      - name: The release tag's commit is on main and passed ci there
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$SHA" --jq .status)
+          case "$status" in identical | behind) ;; *) echo "::error::$GITHUB_REF_NAME ($SHA) isn't on main ($status)"; exit 1 ;; esac
+          runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push"
+          for _ in $(seq 80); do
+            [ "$(gh api "$runs&status=success" --jq .total_count)" -gt 0 ] && exit 0
+            [ "$(gh api "$runs" --jq '.total_count > 0 and ([.workflow_runs[] | select(.status != "completed")] | length) == 0')" = true ] && break
+            sleep 30
+          done
+          echo "::error::$GITHUB_REF_NAME ($SHA) has no ci run on main that passed"
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # unverified in CI: the same script desktop-python.yml runs
+      - run: powershell -File tools\desktop-python\build-python.ps1
+      - run: npm run build
+      - run: npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
