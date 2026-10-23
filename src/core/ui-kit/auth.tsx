@@ -67,7 +67,7 @@ export async function send(path: string, body?: unknown, method = 'POST'): Promi
 
 /** Sign in with Authelia is on (the last /api/auth/me said so): the account menu offers linking a password account. */
 let oidcOn = false
-export async function fetchMe(): Promise<{ user: User | null; setup: boolean; oidc?: boolean }> {
+export async function fetchMe(): Promise<{ user: User | null; setup: boolean; oidc?: boolean; codeless?: boolean }> {
   const r = await fetch('./api/auth/me', { cache: 'no-store' }).catch(() => null)
   const me = r?.ok ? await r.json() : { user: null, setup: false }
   oidcOn = !!me.oidc

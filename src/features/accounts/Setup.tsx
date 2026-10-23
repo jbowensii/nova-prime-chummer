@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { PasswordField, send, type User } from '../../core/ui-kit/auth'
 import { GatePage } from './SignIn'
 
-export function Setup({ onDone }: { onDone: (u: User) => void }) {
+/** codeless: the desktop app (server openSetup): no setup code, the admin is made right here. */
+export function Setup({ onDone, codeless = false }: { onDone: (u: User) => void; codeless?: boolean }) {
   const [code, setCode] = useState(''),
     [name, setName] = useState(''),
     [username, setUsername] = useState('')
@@ -31,25 +32,31 @@ export function Setup({ onDone }: { onDone: (u: User) => void }) {
       onSubmit={() => void submit()}
       action="Create admin account"
       intro={
-        <p>
-          This server has no accounts yet. The setup code is in the container’s log (on Unraid: the Docker tab, the app’s icon, Logs). It changes every time the
-          server starts.
-        </p>
+        codeless ? (
+          <p>No accounts exist yet. Create the admin account that guards Setup and manages this app.</p>
+        ) : (
+          <p>
+            This server has no accounts yet. The setup code is in the container’s log (on Unraid: the Docker tab, the app’s icon, Logs). It changes every time
+            the server starts.
+          </p>
+        )
       }
     >
-      <label>
-        Setup code
-        <input
-          value={code}
-          onChange={e => setCode(e.target.value)}
-          autoComplete="off"
-          autoCapitalize="characters"
-          spellCheck={false}
-          required
-          autoFocus
-          placeholder="XXXX-XXXX-XXXX"
-        />
-      </label>
+      {!codeless && (
+        <label>
+          Setup code
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            required
+            autoFocus
+            placeholder="XXXX-XXXX-XXXX"
+          />
+        </label>
+      )}
       <label>
         Your name
         <input value={name} onChange={e => setName(e.target.value)} autoComplete="name" required maxLength={80} />

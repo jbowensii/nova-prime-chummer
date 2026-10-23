@@ -36,6 +36,9 @@ export function GamePicker({ onPick }: { onPick: (g: Game) => void }) {
           </button>
         ))}
       </div>
+      <p>
+        <a href="#/setup">Setup</a>
+      </p>
     </main>
   )
 }

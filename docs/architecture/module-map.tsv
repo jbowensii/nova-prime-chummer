@@ -1111,3 +1111,4 @@ importer/CLAUDE.md	features/book-library	514
 importer/sr6/CLAUDE.md	sr6/book-import	627
 tools/cl6check/CLAUDE.md	sr6/cl6-verification	470
 tests/core/shared/context-files.test.ts	core/shared	485
+src/core/app/SetupScreen.tsx	core/app	2300

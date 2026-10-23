@@ -53,6 +53,11 @@ export function resolveConfig(argv = [], env = {}) {
     // a missing default file is fine; a config the user named that is missing or broken is not
     if (file !== 'options.json' || e.code !== 'ENOENT') throw new Error(`cannot read config ${file}: ${e.message}`, { cause: e })
   }
+  return resolveOpts(argv, env, opts)
+}
+
+/** The same resolution over an already-read options object (Setup shows the effective values without touching cwd's file). */
+export function resolveOpts(argv, env, opts) {
   const get = k => flag(argv, KEYS[k][0]) ?? env[KEYS[k][1]] ?? opts[k]
   // Foundry's semantics for the Phase 2 settings: null (JSON null, or the text "null" from a flag or env var) turns the
   // setting off, and stays off instead of falling through to the default. A key that is absent takes the default.
@@ -90,4 +95,11 @@ export function resolveConfig(argv = [], env = {}) {
     compressStatic: setting('compressStatic', true, bool),
     telemetry: setting('telemetry', false, bool), // off; nothing in the server sends anything
   }
+}
+
+/** Where each Phase 2 setting's effective value comes from: flag, env, file (a key present in options.json, null included) or default. */
+export function configSources(argv, env, opts) {
+  const src = {}
+  for (const [k, [f, e]] of Object.entries(KEYS)) src[k] = flag(argv, f) !== undefined ? 'flag' : (env[e] ?? '') !== '' ? 'env' : k in opts ? 'file' : 'default'
+  return src
 }

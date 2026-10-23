@@ -60,6 +60,7 @@ import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
 import { authApi } from './auth.mjs'
 import { resolveConfig } from './config.mjs'
+import { setupApi } from './setupcfg.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
@@ -202,6 +203,8 @@ export function createServer({
   accountKeys,
   failKeys,
   oidc: oidcOpts = {},
+  openSetup = false, // desktop: the first admin is made on screen, no setup code (the lockdown's secret already keeps other programs out)
+  cliArgs = [], // the flags the server was started with (the Setup screen shows which setting each one sets)
 }) {
   staticDir = resolve(staticDir)
   const layout = layoutOf({ dataPath, charDir, customDir, libraryDir })
@@ -632,7 +635,18 @@ export function createServer({
   }
 
   let oidc = null
-  auth = authApi({ configDir: layout.config, trustProxy, lock, track: books.track, runners, accountKeys, failKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys, failKeys: tests
+  auth = authApi({
+    configDir: layout.config,
+    trustProxy,
+    lock,
+    track: books.track,
+    runners,
+    accountKeys,
+    failKeys,
+    publicUrl,
+    openSetup,
+    oidcOn: () => oidc.enabled(),
+  }) // accountKeys, failKeys: tests
   const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
   // each game's book source lists: the shipped one, the imported books', house sources, the catalog edits'
   const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
@@ -671,6 +685,8 @@ export function createServer({
     }),
   }
   oidc = oidcApi({ configDir: layout.config, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap, exchanges a minute)
+
+  const setup = setupApi({ layout, version: versionOf(importerRoot), cliArgs, readJson: auth.json, desktop: openSetup })
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
@@ -770,6 +786,7 @@ export function createServer({
     }
     if ((await oidc.handle(req, res, url, send, who)) !== false) return
     if ((await auth.handle(req, res, url, send, who)) !== false) return
+    if ((await setup.handle(req, res, url, send)) !== false) return
     if ((await books.handle(req, res, url, send, who)) !== false) return
     if ((await games.ca2.campaigns.handle(req, res, url, send, who)) !== false) return
     if ((await compendiums.ca2.handle(req, res, url, send, who)) !== false) return
@@ -879,7 +896,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     console.error(stale)
     process.exit(1)
   }
-  const server = createServer({ ...cfg, host })
+  const server = createServer({ ...cfg, host, cliArgs: process.argv.slice(2) })
   server.listen(port, () => console.log(`nova-prime-chummer on ${host ?? ''}:${port}`))
   // docker stop: end the importer job too (the next start runs it again from jobs.json: resume.mjs); sessions.xml is saved
   const quit = () => {
