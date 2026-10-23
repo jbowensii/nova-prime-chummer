@@ -7,11 +7,13 @@ Data lives under `%APPDATA%\Nova Prime Chummer\` (`Config`, `Data`, `Library`, `
 
 ```powershell
 npm install                       # adds electron + electron-builder
-# Chunk 3 must have produced build\python (embeddable Python + importer wheels); until then the app runs but imports fail
+powershell -File tools\desktop-python\build-python.ps1   # once, and after importer deps change: build\python = Python 3.13.9 embeddable + importer libs
 $env:CSC_LINK = 'C:\path\to\your-cert.pfx'   # optional: signing (omit for an unsigned build)
 $env:CSC_KEY_PASSWORD = '...'                # type it yourself; never commit it
 npm run desktop:build             # tsc + vite build, then electron-builder (nsis installer + portable)
 ```
+
+Python bundle notes: needs `importer\requirements.desktop.lock` (made with `tools\desktop-python\compile-lock.ps1`, requires uv; separate from `requirements.lock`). Set the python.org SHA256 in `build-python.ps1` (`$PySha256`) before the first real build. The PowerShell scripts are not linted.
 
 Output is in `release\`. Quick dev run without packaging: `npm run desktop` (uses `python` on PATH).
 
