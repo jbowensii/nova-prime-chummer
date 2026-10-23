@@ -1,5 +1,6 @@
 // The Setup screen's API (Phase 2; docs/plans/desktop-app-foundry-model-2026-10-22.md). Admin only (server/auth.mjs need()).
 //   GET /api/setup-config   -> { file, version, desktop, settings: [{ key, type, value, source, later }], systems, backups }
+//   PUT /api/setup-config/systems/<disk>/enabled { enabled } and POST .../systems/<disk>/install (zip body, or JSON { url }) -> systems (server/systems.mjs)
 //   PUT /api/setup-config   { set: { key: value|null }, reset: [key] } -> the same. Writes <Config>/options.json only: the path is
 //                           fixed, the keys are a whitelist, each value is checked by type. null turns a setting off (Foundry's rule).
 // Backups, restore and download are the existing /api/backup and /api/restore (server/backup.mjs).
@@ -7,7 +8,7 @@ import { mkdir, readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { configSources, resolveOpts } from './config.mjs'
 import { fail, writeAtomic } from './common.mjs'
-import { DISK } from './layout.mjs'
+import { systemsApi } from './systems.mjs'
 
 const str = v => typeof v === 'string' && v.length <= 500 && ![...v].some(c => c < ' ')
 const flagOf = v => typeof v === 'boolean'
@@ -32,6 +33,7 @@ const STAMP = /^\d{8}T\d{6}_\d{6}Z\.zip$/ // importer/backup.py's safety backups
 /** layout, version (app), cliArgs/env (the flag and env layers), readJson(req) (server.mjs), desktop (first-run admin on screen). */
 export function setupApi({ layout, version, cliArgs = [], env = process.env, readJson, desktop = false }) {
   const file = join(layout.config, 'options.json')
+  const sys = systemsApi({ layout, version })
 
   async function readOpts() {
     let text
@@ -50,24 +52,6 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
     // never overwrite a file we can't read: the owner's hand edit would be lost
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw fail(409, 'Config/options.json isn’t a JSON object; fix or remove it first')
     return v
-  }
-
-  async function systems() {
-    if (layout.kind !== 'data') return []
-    const out = []
-    for (const [game, disk] of Object.entries(DISK)) {
-      const dir = join(layout.root, 'Data', 'systems', disk)
-      let installed = !!(await stat(dir).catch(() => null)),
-        v = version
-      try {
-        const m = JSON.parse(await readFile(join(dir, 'system.json'), 'utf8')) // Phase 3's manifest, when one exists
-        if (typeof m?.version === 'string') v = m.version
-      } catch {
-        /* no manifest yet: the app's version */
-      }
-      out.push({ id: disk, game, version: v, status: installed ? 'installed' : 'not created yet' })
-    }
-    return out
   }
 
   async function backups() {
@@ -97,7 +81,7 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
         later: !!s.later,
         readonly: !!s.readonly,
       })),
-      systems: await systems(),
+      systems: await sys.list(),
       backups: await backups(),
     }
   }
@@ -120,6 +104,23 @@ export function setupApi({ layout, version, cliArgs = [], env = process.env, rea
 
   /** The Setup routes; false for any other path. */
   async function handle(req, res, url, send) {
+    const m = /^\/api\/setup-config\/systems\/([a-z0-9]+)\/(enabled|install)$/.exec(url.pathname)
+    if (m) {
+      if (m[2] === 'enabled' && req.method === 'PUT') return send(res, 200, await sys.setEnabled(m[1], (await readJson(req)).enabled))
+      if (m[2] === 'install' && req.method === 'POST') {
+        if (/^application\/json/.test(req.headers['content-type'] ?? '')) return send(res, 200, await sys.installUrl(m[1], (await readJson(req)).url))
+        if (Number(req.headers['content-length']) > sys.MAX_ZIP) {
+          res.setHeader('Connection', 'close')
+          return send(res, 413, { error: 'the package is larger than 200 MB' })
+        }
+        const chunks = []
+        let size = 0
+        for await (const c of req) if ((size += c.length) <= sys.MAX_ZIP) chunks.push(c)
+        if (size > sys.MAX_ZIP) return send(res, 413, { error: 'the package is larger than 200 MB' })
+        return send(res, 200, await sys.install(m[1], Buffer.concat(chunks)))
+      }
+      return send(res, 405, { error: 'method not allowed' })
+    }
     if (url.pathname !== '/api/setup-config') return false
     if (req.method === 'GET') return send(res, 200, await view())
     if (req.method === 'PUT') return send(res, 200, await save(req))

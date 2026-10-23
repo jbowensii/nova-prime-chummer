@@ -1,6 +1,6 @@
 // Setup (#/setup/<tab>): the screen before a game, admin only (the server refuses everyone else: /api/setup-config).
-// Tabs: Configuration (Config/options.json), Backups, Updates (shell: electron-updater is Phase 6), Game Systems (read only:
-// install/enable/disable is Phase 3). Server: server/setupcfg.mjs.
+// Tabs: Configuration (Config/options.json), Backups, Updates (shell: electron-updater is Phase 6), Game Systems (version, status,
+// on/off, install/update from a file or URL). Server: server/setupcfg.mjs, server/systems.mjs.
 import { useEffect, useState } from 'react'
 import { api } from '../ui-kit/api'
 import { RepoContext, type Repo } from '../ui-kit/repoContext'
@@ -16,12 +16,23 @@ interface Setting {
   later: boolean
   readonly?: boolean
 }
+interface SystemInfo {
+  id: string
+  title: string
+  game: string
+  version: string
+  status: string
+  enabled: boolean
+  coreImported: boolean
+  books: number
+  catalog: number
+}
 interface View {
   file: string
   version: string
   desktop: boolean
   settings: Setting[]
-  systems: { id: string; game: string; version: string; status: string }[]
+  systems: SystemInfo[]
   backups: { name: string; bytes: number; created: string }[]
 }
 const TABS: [string, string][] = [
@@ -173,29 +184,85 @@ function Updates({ view }: { view: View }) {
   )
 }
 
-function Systems({ view }: { view: View }) {
+function Systems({ view, reload }: { view: View; reload: (v: View) => void }) {
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null)
+  const [url, setUrl] = useState<Record<string, string>>({})
   if (!view.systems.length) return <p className="muted">The installed systems are listed here once the server runs on the Data folder layout.</p>
+  const run = async (path: string, init: RequestInit, done: string) => {
+    setMsg(null)
+    try {
+      const systems = await api<SystemInfo[]>(`setup-config/systems/${path}`, init)
+      reload({ ...view, systems })
+      setMsg({ text: done })
+    } catch (e) {
+      setMsg({ text: (e as Error).message, err: true })
+    }
+  }
   return (
     <>
-      <table>
-        <thead>
-          <tr>
-            <th>System</th>
-            <th>Version</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {view.systems.map(s => (
-            <tr key={s.id}>
-              <td>{s.id}</td>
-              <td>{s.version}</td>
-              <td>{s.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="muted">Installing, enabling and disabling systems comes in a later phase.</p>
+      {view.systems.map(s => (
+        <section key={s.id}>
+          <h2>
+            {s.title} <small className="muted">({s.id})</small>
+          </h2>
+          <p>
+            Version <b>{s.version}</b> — {s.status}. Core data: {s.coreImported ? 'imported' : 'not imported'}; {s.books} book{s.books === 1 ? '' : 's'};
+            catalog: {s.catalog} file{s.catalog === 1 ? '' : 's'}.
+          </p>
+          <label className="check inline">
+            <input
+              type="checkbox"
+              checked={s.enabled}
+              onChange={e =>
+                void run(
+                  `${s.id}/enabled`,
+                  { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ enabled: e.target.checked }) },
+                  `${s.title} is ${e.target.checked ? 'on' : 'off'}.`,
+                )
+              }
+            />
+            On
+          </label>
+          <div className="field">
+            <label htmlFor={`pkg-${s.id}`}>Install or update from a file</label>
+            <input
+              id={`pkg-${s.id}`}
+              type="file"
+              accept=".zip,application/zip"
+              onChange={e => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (f) void run(`${s.id}/install`, { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: f }, `${s.title} package installed.`)
+              }}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={`url-${s.id}`}>Install or update from a web address</label>
+            <span className="row">
+              <input id={`url-${s.id}`} type="url" value={url[s.id] ?? ''} onChange={e => setUrl({ ...url, [s.id]: e.target.value })} />
+              <button
+                type="button"
+                className="btn"
+                disabled={!url[s.id]}
+                onClick={() =>
+                  void run(
+                    `${s.id}/install`,
+                    { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ url: url[s.id] }) },
+                    `${s.title} package installed.`,
+                  )
+                }
+              >
+                Install
+              </button>
+            </span>
+          </div>
+        </section>
+      ))}
+      <p className="muted">An install keeps your characters, NPCs, designs and compendiums; the old system files are moved to _to_delete in the data folder.</p>
+      <div role="status" aria-live="polite">
+        {msg && !msg.err && <p className="banner">{msg.text}</p>}
+      </div>
+      <div role="alert">{msg?.err && <p className="banner err">{msg.text}</p>}</div>
     </>
   )
 }
@@ -233,7 +300,7 @@ export function SetupScreen({ tab, admin, repo }: { tab?: string; admin: boolean
               {on === 'configuration' && <Configuration view={view} reload={setView} />}
               {on === 'backups' && <Backups view={view} repo={repo} />}
               {on === 'updates' && <Updates view={view} />}
-              {on === 'systems' && <Systems view={view} />}
+              {on === 'systems' && <Systems view={view} reload={setView} />}
             </section>
           )}
         </>

@@ -22,7 +22,7 @@ const TABLE: [Role, string][] = [
   ...R('admin', 'POST /api/backup', 'POST /api/restore', 'POST /api/datapack', 'POST /api/datapack/import'),
   ...R('admin', 'GET /api/users', 'POST /api/users', 'PUT /api/users/abc', 'DELETE /api/users/abc'),
   ...R('admin', 'GET /api/auth-settings', 'PUT /api/auth-settings', 'POST /api/auth-settings/test'),
-  ...R('admin', 'GET /api/setup-config', 'PUT /api/setup-config'),
+  ...R('admin', 'GET /api/setup-config', 'PUT /api/setup-config', 'PUT /api/setup-config/systems/sr6/enabled', 'POST /api/setup-config/systems/sr6/install'),
   ...R('admin', 'PUT /api/creation', 'POST /api/creation', 'POST /api/backgrounds', 'PUT /api/backgrounds/abc', 'DELETE /api/backgrounds/abc'),
   // editor (admin or editor)
   ...R('editor', 'PUT /api/edits', 'POST /api/edits/abc', 'DELETE /api/edits/abc', 'PUT /api/table-rules', 'POST /api/table-rules'),
