@@ -20,6 +20,7 @@ const TABLE: [Role, string][] = [
   ...R('admin', 'GET /api/books', 'POST /api/books', 'POST /api/books/reimport-all', 'DELETE /api/books/abc', 'GET /api/review'),
   ...R('admin', 'GET /api/ai-settings', 'PUT /api/ai-settings', 'PUT /api/ai-keys', 'GET /api/ai-models', 'POST /api/ai-test'),
   ...R('admin', 'POST /api/backup', 'POST /api/restore', 'POST /api/datapack', 'POST /api/datapack/import'),
+  ...R('admin', 'GET /api/cloud-backup', 'POST /api/cloud-backup', 'POST /api/cloud-backup/restore'),
   ...R('admin', 'GET /api/users', 'POST /api/users', 'PUT /api/users/abc', 'DELETE /api/users/abc'),
   ...R('admin', 'GET /api/auth-settings', 'PUT /api/auth-settings', 'POST /api/auth-settings/test'),
   ...R('admin', 'GET /api/setup-config', 'PUT /api/setup-config', 'PUT /api/setup-config/systems/sr6/enabled', 'POST /api/setup-config/systems/sr6/install'),
