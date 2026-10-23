@@ -1,4 +1,7 @@
-"""Backup and restore of the three data folders (characters, custom, library) as one zip.
+"""Backup and restore of the data folders as one zip: the old three (characters, custom, library) or, on the Phase 2
+layout (server/layout.mjs), Config, Data and Library under the data path (Backups and Logs are not part of it; the
+safety backup goes to Backups). Which one is told by the `dirs` given (a "Config" key: new layout) and, for a zip, by
+its top-level folders; a zip of the other shape is refused. The new layout's key/secret/session files live in Config/.
 
   backup   characters/…, custom/…, library/… plus a backup.xml manifest (backup.xsd). library/.backups and
            temp files are skipped; each game's ai-keys.xml (library/.config/, library/sr6/.config/) and auth-secret.xml
@@ -35,6 +38,28 @@ ALL_KEYS = (KEYS, SR6_KEYS)
 USERS = "library/.config/users.xml"  # the accounts (server/auth.mjs); counted in the manifest
 AUTH = "library/.config/auth.xml"  # the sign-in settings (server/oidc.mjs)
 CONFIG_NS = "urn:chummer-anarchy2:config:1"
+# the Phase 2 layout: the same files at their new places
+DATA_FOLDERS = ("Config", "Data", "Library")
+DATA_KEYS = ("Config/ai/anarchy2/.config/ai-keys.xml", "Config/ai/sr6/.config/ai-keys.xml")
+DATA_NEVER = {f"Config/{n}.xml" for n in ("sessions", "reset", "device-key", "oidc-key")}
+PROFILES = {
+    "legacy": {
+        "folders": FOLDERS,
+        "keys": ALL_KEYS,
+        "secret": "library/.config/auth-secret.xml",
+        "users": USERS,
+        "auth": AUTH,
+        "never": None,
+    },
+    "data": {
+        "folders": DATA_FOLDERS,
+        "keys": DATA_KEYS,
+        "secret": "Config/auth-secret.xml",
+        "users": "Config/users.xml",
+        "auth": "Config/auth.xml",
+        "never": DATA_NEVER,
+    },
+}
 MAX_CONFIG = 16 * 1024**2
 # the Authelia client secret (server/oidc.mjs): like the API keys, only in a backup made with keys
 AUTH_SECRET = "library/.config/auth-secret.xml"
@@ -76,7 +101,7 @@ def app_version(version=None):
         return "unknown"
 
 
-def _files(folder, root, keys):
+def _files(folder, root, keys, prof):
     """(path, archive name) of every regular file to back up under `root`, sorted."""
     for dirpath, dirs, files in os.walk(root):
         rel = os.path.relpath(dirpath, root).replace(os.sep, "/")
@@ -91,8 +116,8 @@ def _files(folder, root, keys):
             if (
                 f.endswith(".tmp")
                 or not stat.S_ISREG(os.lstat(path).st_mode)
-                or (name in (*ALL_KEYS, AUTH_SECRET) and not keys)
-                or name in NEVER
+                or (name in (*prof["keys"], prof["secret"]) and not keys)
+                or name in (prof["never"] or NEVER)
             ):
                 continue  # links, FIFOs and devices are never backed up
             yield path, name
@@ -100,27 +125,27 @@ def _files(folder, root, keys):
 
 def backup(dirs, out, keys=False, version=None):
     """Write the zip of `dirs` ({folder: path}) to `out` (atomically, mode 600). Returns the manifest text."""
-    counts = {}
+    counts, prof = {}, PROFILES[_mode(dirs)]
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(out)), prefix=".backup.", suffix=".tmp")  # mode 600
     os.close(fd)
     try:
         with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, allowZip64=True, strict_timestamps=False) as zf:
             users, secret = 0, False  # users: None when users.xml can't be read
-            for folder in FOLDERS:
+            for folder in prof["folders"]:
                 n = size = 0
-                for path, name in _files(folder, dirs[folder], keys):
+                for path, name in _files(folder, dirs[folder], keys, prof):
                     zf.write(
                         path, name, zipfile.ZIP_STORED if name.lower().endswith(".pdf") else None
                     )  # streamed in chunks
                     n, size = n + 1, size + zf.getinfo(name).file_size
-                    if name == USERS:
+                    if name == prof["users"]:
                         users = None
                         with (
                             open(path, "rb") as f,
                             contextlib.suppress(RestoreError),
                         ):  # still backed up; check refuses it
                             users = _count_users(f)
-                    secret = secret or name == AUTH_SECRET
+                    secret = secret or name == prof["secret"]
                 counts[folder] = (n, size)
             rows = "".join(f'  <folder name="{f}" files="{n}" bytes="{b}"/>\n' for f, (n, b) in counts.items())
             manifest = (
@@ -140,12 +165,17 @@ def backup(dirs, out, keys=False, version=None):
         raise
 
 
+def _mode(dirs):
+    """ "data" for the Phase 2 layout's dirs ({Config, Data, Library, backups}), else "legacy"."""
+    return "data" if "Config" in dirs else "legacy"
+
+
 def _count_users(f):
     """The accounts in a users.xml (a file object); RestoreError when it can't be read."""
     try:
         return sum(1 for _, el in ET.iterparse(f) if el.tag == "user")
     except (ET.ParseError, zipfile.BadZipFile, zlib.error, EOFError) as e:
-        raise RestoreError(f"the backup’s accounts file ({USERS}) can’t be read ({e})") from e
+        raise RestoreError(f"the backup’s accounts file (users.xml) can’t be read ({e})") from e
 
 
 def unsafe_entry(info):
@@ -163,7 +193,7 @@ def unsafe_entry(info):
     return None
 
 
-def _entry_problem(info):
+def _entry_problem(info, folders):
     name = info.filename
     problem = unsafe_entry(info)
     if problem:
@@ -175,8 +205,8 @@ def _entry_problem(info):
         return "has a path with .. or an empty part"
     if any(p[-1] in ". " or p.split(".")[0].upper() in RESERVED for p in parts):
         return "has a name Windows can’t hold (ending in a dot or space, or a reserved name like CON)"
-    if name != "backup.xml" and (parts[0] not in FOLDERS or (len(parts) == 1 and not name.endswith("/"))):
-        return "has files outside characters/, custom/ and library/"
+    if name != "backup.xml" and (parts[0] not in folders or (len(parts) == 1 and not name.endswith("/"))):
+        return "has files outside characters/, custom/ and library/ (or Config/, Data/ and Library/)"
     if parts[:2] == ["library", ".backups"]:
         return "has library/.backups"
     if any(
@@ -194,14 +224,17 @@ def check(path):
         raise RestoreError(f"this isn’t a readable zip file ({e})") from e
     with zf:
         infos, names, total = zf.infolist(), set(), 0
+        tops = {i.filename.split("/")[0] for i in infos if i.filename != "backup.xml"}
+        mode = "data" if tops and tops <= set(DATA_FOLDERS) else "legacy"
+        prof = PROFILES[mode]
         if len(infos) > MAX_ENTRIES:
             raise RestoreError(f"the zip has more than {MAX_ENTRIES:,} files")
-        counts = {f: [0, 0] for f in FOLDERS}
+        counts = {f: [0, 0] for f in prof["folders"]}
         files, folders = set(), {
-            k.rsplit("/", 1)[0].casefold() for k in ALL_KEYS
+            k.rsplit("/", 1)[0].casefold() for k in prof["keys"]
         }  # the keys' folders must stay folders
         for info in infos:
-            problem = _entry_problem(info)
+            problem = _entry_problem(info, (*FOLDERS, *DATA_FOLDERS))
             if problem:
                 raise RestoreError(f"the zip {problem}: {info.filename}")
             key = info.filename.rstrip("/").casefold()
@@ -214,12 +247,14 @@ def check(path):
             if not info.is_dir():
                 files.add(key)
                 if key != "backup.xml":
-                    c = counts[parts[0]]
+                    c = counts.get(info.filename.split("/")[0])
+                    if c is None:
+                        raise RestoreError(f"the zip mixes the old and the new folder layouts: {info.filename}")
                     c[0], c[1] = c[0] + 1, c[1] + info.file_size
         clash = files & folders
         if clash:
             raise RestoreError(f"the zip has a name that is both a file and a folder: {min(clash)}")
-        for k in ALL_KEYS:
+        for k in prof["keys"]:
             if k.casefold() in folders:
                 raise RestoreError(f"the zip has a folder where {k} should be a file")
         if total > MAX_TOTAL:
@@ -233,14 +268,15 @@ def check(path):
             root = ET.fromstring(zf.read(info))
         except (ET.ParseError, zipfile.BadZipFile, ValueError) as e:
             raise RestoreError(f"backup.xml can’t be read ({e})") from e
-        _check_manifest(root, counts, any(k.casefold() in files for k in ALL_KEYS))
+        _check_manifest(root, counts, any(k.casefold() in files for k in prof["keys"]))
         # the accounts and sign-in settings as the server will read them: one it can't would lock everyone out
         byname = {i.filename.casefold(): i for i in infos}
-        users = _config(zf, byname.get(USERS.casefold()), "users", "accounts file")
-        _config(zf, byname.get(AUTH.casefold()), "auth", "sign-in settings")
+        users = _config(zf, byname.get(prof["users"].casefold()), "users", "accounts file")
+        _config(zf, byname.get(prof["auth"].casefold()), "auth", "sign-in settings")
         # what the zip holds, whatever the manifest says (older backups don't say); no accounts means setup mode
         root.set("users", str(0 if users is None else len(users.findall("user"))))
-        root.set("authSecret", "yes" if AUTH_SECRET.casefold() in files else "no")
+        root.set("authSecret", "yes" if prof["secret"].casefold() in files else "no")
+        root.set("layout", mode)
     return root
 
 
@@ -320,21 +356,28 @@ def swap(target, new, keep=()):
 
 def apply(path, dirs, version=None):
     """Restore `path` over `dirs` ({folder: path}); returns the safety backup's path."""
-    check(path)
-    backups = os.path.join(dirs["library"], ".backups")
+    mode = _mode(dirs)
+    if check(path).get("layout") != mode:
+        raise RestoreError(
+            "this backup is from the old three-folder layout; migrate the data (node server/migrate.mjs --apply) first"
+            if mode == "data"
+            else "this backup was made on the new Config/Data/Library layout and can’t be restored onto the old one"
+        )
+    prof = PROFILES[mode]
+    backups = dirs["backups"] if mode == "data" else os.path.join(dirs["library"], ".backups")
     os.makedirs(backups, exist_ok=True)
     safety = os.path.join(backups, datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ") + ".zip")
     backup(dirs, safety, keys=True, version=version)  # never leaves the server, so keys included
     news = {}
     try:
         try:
-            _extract(path, dirs, news)
+            _extract(path, dirs, news, prof)
         except (OSError, zipfile.BadZipFile, zlib.error, EOFError) as e:
             raise RestoreError(f"the zip couldn’t be unpacked, so nothing was changed ({type(e).__name__}: {e})") from e
         # ponytail: the zip is closed before the swap (Windows can't move a folder holding an open file, and the
         # applied zip may itself sit in library/.backups); a killed process can leave a folder half swapped
         # (its old files in .restore-old-*); the safety backup covers that.
-        for folder in FOLDERS:
+        for folder in prof["folders"]:
             swap(dirs[folder], news.pop(folder), (".backups",) if folder == "library" else ())
     finally:
         for new in news.values():
@@ -344,14 +387,14 @@ def apply(path, dirs, version=None):
     return safety
 
 
-def _extract(path, dirs, news):
+def _extract(path, dirs, news, prof):
     """Unpack each folder of the zip into a temp folder inside its target, recorded in `news` ({folder: temp})."""
     with zipfile.ZipFile(path) as zf:
-        for folder in FOLDERS:
+        for folder in prof["folders"]:
             os.makedirs(dirs[folder], exist_ok=True)
             news[folder] = new = tempfile.mkdtemp(dir=dirs[folder], prefix=TEMP + "new-")
             for info in zf.infolist():
-                if not info.filename.startswith(folder + "/") or info.filename in NEVER:
+                if not info.filename.startswith(folder + "/") or info.filename in (prof["never"] or NEVER):
                     continue  # a zip's session or recovery-code file never lands on the server
                 dst = os.path.join(new, *info.filename[len(folder) + 1 :].split("/"))
                 if info.is_dir():
@@ -360,6 +403,14 @@ def _extract(path, dirs, news):
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with zf.open(info) as src, open(dst, "wb") as out:
                     shutil.copyfileobj(src, out, 1024 * 1024)
+    if prof[
+        "never"
+    ]:  # Config/ holds the cookie keys and the Authelia secret; a game's AI keys are in Config/ai/<disk>/.config
+        _keep_config(news["Config"], dirs["Config"], game=True)
+        for disk in ("anarchy2", "sr6"):
+            sub = ("ai", disk, ".config")
+            _keep_config(os.path.join(news["Config"], *sub), os.path.join(dirs["Config"], *sub), game=False)
+        return
     for sub in ("", "sr6"):  # each game's .config: Anarchy's, then SR6's AI settings and keys (library/sr6/.config)
         _keep_config(
             os.path.join(news["library"], sub, ".config"), os.path.join(dirs["library"], sub, ".config"), game=not sub

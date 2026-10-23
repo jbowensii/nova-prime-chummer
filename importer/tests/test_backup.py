@@ -583,5 +583,73 @@ class BackupTest(unittest.TestCase):  # pylint: disable=too-many-public-methods 
         self.assertEqual({k: v for k, v in tree(dst).items() if backup.TEMP not in k}, before)
 
 
+def data_state(root, extra=""):
+    """A made-up Phase 2 data path (Config, Data, Library, Backups); returns the dirs backup/apply take."""
+    files = {
+        "Config/ai/sr6/.config/ai-keys.xml": f"<aikeys>sr6 secret{extra}</aikeys>",
+        "Config/ai/anarchy2/.config/ai-providers.xml": "<aiproviders/>",
+        "Config/sessions.xml": "<sessions/>",
+        "Config/device-key.xml": f"<devicekey>mine{extra}</devicekey>",
+        "Data/systems/anarchy2/characters/ada/r1.xml": f"<runner>Ghost{extra}</runner>",
+        "Data/systems/sr6/campaigns.xml": f"<campaigns>{extra}</campaigns>",
+        "Data/assets/sr6/backgrounds/b.png": "image",
+        "Library/anarchy2/book-1/original.pdf": "%PDF-1.4 made up " * 100,
+        "Library/sr6/book-2/book.md": f"# Made-up{extra}",
+        "Backups/old.zip": "not part of a backup",
+    }
+    for name, text in files.items():
+        q = os.path.join(root, *name.split("/"))
+        os.makedirs(os.path.dirname(q), exist_ok=True)
+        Path(q).write_text(text, encoding="utf8")
+    return {n: os.path.join(root, n) for n in ("Config", "Data", "Library")} | {
+        "backups": os.path.join(root, "Backups")
+    }
+
+
+class DataLayoutTests(unittest.TestCase):
+    def test_backup_and_restore_on_the_new_layout(self):
+        a, b = tempfile.mkdtemp(), tempfile.mkdtemp()
+        src, dst = data_state(a), data_state(b, "-other")
+        out = os.path.join(a, "Backups", "b.zip")
+        backup.backup(src, out)
+        with zipfile.ZipFile(out) as zf:
+            names = set(zf.namelist())
+        self.assertIn("Data/systems/anarchy2/characters/ada/r1.xml", names)
+        self.assertIn("Library/sr6/book-2/book.md", names)
+        self.assertIn("Library/anarchy2/book-1/original.pdf", names)
+        for gone in (
+            "Config/ai/sr6/.config/ai-keys.xml",
+            "Config/sessions.xml",
+            "Config/device-key.xml",
+            "Backups/old.zip",
+        ):
+            self.assertNotIn(gone, names)
+        self.assertEqual(backup.check(out).get("layout"), "data")
+        safety = backup.apply(out, dst)
+        self.assertEqual(
+            Path(dst["Data"], "systems/anarchy2/characters/ada/r1.xml").read_text(encoding="utf8"),
+            "<runner>Ghost</runner>",
+        )
+        self.assertEqual(
+            Path(dst["Config"], "device-key.xml").read_text(encoding="utf8"), "<devicekey>mine-other</devicekey>"
+        )  # kept
+        self.assertEqual(  # the zip had no keys: the server's own stay
+            Path(dst["Config"], "ai/sr6/.config/ai-keys.xml").read_text(encoding="utf8"),
+            "<aikeys>sr6 secret-other</aikeys>",
+        )
+        self.assertFalse(os.path.exists(os.path.join(dst["Config"], "sessions.xml")))
+        self.assertTrue(os.path.isfile(os.path.join(dst["backups"], safety)) or os.path.isfile(safety))
+
+    def test_a_zip_of_the_other_layout_is_refused(self):
+        a, b = tempfile.mkdtemp(), tempfile.mkdtemp()
+        old, new = state(a), data_state(b)
+        out = os.path.join(a, "old.zip")
+        backup.backup(old, out)
+        before = tree(new)
+        with self.assertRaises(backup.RestoreError):
+            backup.apply(out, new)
+        self.assertEqual(tree(new), before)
+
+
 if __name__ == "__main__":
     unittest.main()

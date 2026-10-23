@@ -98,9 +98,7 @@ const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.
 const EDIT_KINDS = { amps: 'amp', items: 'item', rules: 'rule' }
 
 export function booksApi({
-  charDir,
-  customDir,
-  libraryDir,
+  layout, // server/layout.mjs
   python = 'python3',
   importerRoot,
   version = 'unknown',
@@ -110,22 +108,21 @@ export function booksApi({
   onRestore = async () => {},
   compendiumSources = async () => new Set(),
 }) {
-  const backups = join(libraryDir, '.backups')
-  // each game's books and catalog (server/games.mjs): Anarchy's at the top of library/ and custom/, SR6's in their sr6/
-  // folders, run as `python -m importer sr6 …`. One job queue for both.
+  const backups = layout.backups
+  const { ca2: A, sr6: S } = layout.games
+  // each game's books and catalog (server/games.mjs), run as `python -m importer [sr6] …`: library, custom (the importer's
+  // --custom: imported/, edits/, …) and ai (the importer's --library for AI settings: .config/ in it). One job queue for both.
   const AREAS = {
-    ca2: { library: libraryDir, custom: customDir, pre: [], kinds: EDIT_KINDS },
+    ca2: { library: A.library, custom: A.custom, ai: A.ai, pre: [], kinds: EDIT_KINDS },
     // (samplefixes: a book sample runner's printed line corrected, importer/sr6/edits.py)
-    sr6: { library: join(libraryDir, 'sr6'), custom: join(customDir, 'sr6'), pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } },
+    sr6: { library: S.library, custom: S.custom, ai: S.ai, pre: ['sr6'], kinds: { ...SR6_KINDS, samplefixes: 'samplefix' } },
   }
   // the modules' shared state; each adds its functions for the others (jobs first: the rest take theirs when made). They
   // depend on each other both ways (library calls resume's ctx.queueReimport, resume library's ctx.entries): a module
   // destructures from ctx only what the ones wired before it added, and reads a later one's as ctx.<name> when called,
   // so the wiring order below matters
   const ctx = {
-    charDir,
-    customDir,
-    libraryDir,
+    layout,
     python,
     importerRoot,
     version,
@@ -135,7 +132,7 @@ export function booksApi({
     onRestore,
     compendiumSources,
     AREAS,
-    config: join(libraryDir, '.config'),
+    config: layout.config, // account-global files: jobs.json, ask-counts.xml
     backups,
     queue: [],
     running: null, // the job queue (the running job not in it)
@@ -179,7 +176,7 @@ export function booksApi({
   }
   // a killed restore's unpack and swap folders, at the top of each data folder (importer/backup.py; the safety backup
   // in library/.backups holds everything the old ones did)
-  for (const d of [charDir, customDir, libraryDir]) {
+  for (const d of layout.kind === 'data' ? [layout.root] : [layout.charDir, layout.customDir, layout.libraryDir]) {
     try {
       for (const f of readdirSync(d)) if (/^\.restore-(old|new|done)-/.test(f)) rmSync(join(d, f), { recursive: true, force: true })
     } catch {
@@ -238,5 +235,5 @@ export function booksApi({
     jobs.stop()
     backup.stop()
   }
-  return { handle, stop, track, started, libraryDir: resolve(libraryDir) }
+  return { handle, stop, track, started, libraryDir: resolve(A.library) }
 }

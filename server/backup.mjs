@@ -16,10 +16,17 @@ const RESTORE_TIMEOUT = 4 * 3600 * 1000 // the safety backup and the unpack each
 /** ctx (books.mjs): the folders, backups, version, restoreTtl, downloadTtl, onRestore, queue, spawned, lock, the job queue
  *  (jobs.mjs) and resume, rebuildCore, coreBooks, dropCoreAi (resume.mjs). */
 export function backupApi(ctx) {
-  const { charDir, customDir, libraryDir, backups, version, restoreTtl, downloadTtl, onRestore, queue, spawned, lock } = ctx
+  const { AREAS, layout, backups, version, restoreTtl, downloadTtl, onRestore, queue, spawned, lock } = ctx
   const { importer, redact, noRestore, pump } = ctx
 
-  const dirArgs = () => ['--characters', charDir, '--custom', customDir, '--library', libraryDir, '--version', version]
+  const customDir = AREAS.ca2.custom,
+    libraryDir = AREAS.ca2.library // (the data pack and the core rebuild are Anarchy's)
+  // the live layout's zip holds Config/, Data/ and Library/ under the data path (importer/backup.py); the old one's the three folders
+  const { charDir } = layout
+  const dirArgs = () =>
+    layout.kind === 'data'
+      ? ['--data-path', layout.root, '--version', version]
+      : ['--characters', charDir, '--custom', customDir, '--library', libraryDir, '--version', version]
   const tempZip = kind => join(backups, `${kind}-${randomBytes(12).toString('hex')}.zip`)
 
   /** Tokens for a made backup or data pack (downloads, packs) and an uploaded one (uploads, packUploads): random, single

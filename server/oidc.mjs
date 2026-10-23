@@ -113,6 +113,7 @@ const binding = sessionHash => sha256(`link\n${sessionHash}`).toString('base64ur
 
 export function oidcApi({
   libraryDir,
+  configDir = join(libraryDir, '.config'), // the live layout's Config/ (server/layout.mjs)
   auth,
   track = fn => fn(),
   log = console,
@@ -123,7 +124,7 @@ export function oidcApi({
   insecure = insecureAllowed(),
   exchangesPerMinute = EXCHANGES,
 }) {
-  const config = join(libraryDir, '.config')
+  const config = configDir
   const settingsPath = join(config, 'auth.xml'),
     secretPath = join(config, 'auth-secret.xml'),
     keyPath = join(config, 'oidc-key.xml')

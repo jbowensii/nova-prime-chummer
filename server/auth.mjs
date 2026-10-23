@@ -202,11 +202,11 @@ const pub = u => ({
 
 /** The recovery code for `username` (server/users.mjs reset): only its hash goes to library/.config/reset.xml (mode 600),
  *  which the running server reads at /api/setup/reset and deletes when used. A new code replaces the old one. */
-export async function issueReset(libraryDir, username) {
+export async function issueReset(libraryDir, username, configDir = join(libraryDir, '.config')) {
   const name = oneLine(username).toLowerCase()
   let users
   try {
-    users = parseUsers(await readFile(join(libraryDir, '.config', 'users.xml'), 'utf8'))
+    users = parseUsers(await readFile(join(configDir, 'users.xml'), 'utf8'))
   } catch (e) {
     throw new Error(e.code === 'ENOENT' ? 'there are no accounts yet: use the setup code in the server log' : `couldn’t read users.xml: ${e.message}`, {
       cause: e,
@@ -214,7 +214,7 @@ export async function issueReset(libraryDir, username) {
   }
   if (!users.some(u => u.username === name)) throw new Error(`there is no account "${name}"`)
   const c = code(),
-    path = join(libraryDir, '.config', 'reset.xml')
+    path = join(configDir, 'reset.xml')
   await writeAtomic(
     path,
     `${HEAD}<ca2:reset xmlns:ca2="${NS}" version="1" user="${name}" hash="${sha256(c).toString('hex')}" expires="${iso(Date.now() + RESET_TTL)}"/>\n`,
@@ -309,6 +309,7 @@ export function need(path, method) {
  *  books.track, so file writes are counted (a restore waits for them, and they are refused while it runs). */
 export function authApi({
   libraryDir,
+  configDir = join(libraryDir, '.config'), // the live layout's Config/ (server/layout.mjs)
   trustProxy = '',
   lock,
   track,
@@ -319,7 +320,7 @@ export function authApi({
   oidcOn = () => false,
   publicUrl = '',
 }) {
-  const config = join(libraryDir, '.config')
+  const config = configDir
   const pinned = publicOrigin(publicUrl)
   const usersPath = join(config, 'users.xml'),
     sessionsPath = join(config, 'sessions.xml'),

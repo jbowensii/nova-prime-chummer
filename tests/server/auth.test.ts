@@ -456,14 +456,20 @@ test('recovery: users.mjs reset prints a one-time code (15 min) that /api/setup/
   const dir = mkdtempSync(join(tmpdir(), 'ca2-auth-'))
   const s = await start(dir, { admin: PW.admin, player: PW.player })
   const old = (await login(s.base, 'player', PW.player)).cookie
-  const cli = spawnSync(process.execPath, ['server/users.mjs', 'reset', 'Player'], { env: { ...process.env, LIBRARY_DIR: s.lib }, encoding: 'utf8' })
+  const cli = spawnSync(process.execPath, ['server/users.mjs', 'reset', 'Player'], {
+    env: { ...process.env, CONFIG_DIR: join(s.lib, '.config') },
+    encoding: 'utf8',
+  })
   expect(cli.status, cli.stderr).toBe(0)
   const code = cli.stdout.match(/[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}/)![0]
   secrets.add(code)
   const file = readFileSync(join(s.lib, '.config', 'reset.xml'), 'utf8')
   expect(file).not.toContain(code)
   await valid(join(s.lib, '.config', 'reset.xml'))
-  expect(spawnSync(process.execPath, ['server/users.mjs', 'reset', 'nobody'], { env: { ...process.env, LIBRARY_DIR: s.lib }, encoding: 'utf8' }).status).toBe(1)
+  expect(
+    spawnSync(process.execPath, ['server/users.mjs', 'reset', 'nobody'], { env: { ...process.env, CONFIG_DIR: join(s.lib, '.config') }, encoding: 'utf8' })
+      .status,
+  ).toBe(1)
   const reset = (b: Record<string, string>) => call(s.base, 'POST', '/api/setup/reset', json({ username: 'player', code, password: 'player-password-9', ...b }))
   expect((await reset({ code: 'AAAA-BBBB-CCCC' })).status).toBe(403)
   expect((await reset({ username: 'admin' })).status).toBe(403)

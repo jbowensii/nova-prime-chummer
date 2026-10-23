@@ -67,9 +67,7 @@ async function start() {
       importerRoot,
       python,
       staticDir: join(importerRoot, 'dist'), // served from the unpacked copy (importerRoot = app.asar.unpacked when packaged), never from inside app.asar
-      charDir: join(dirs.Data, 'characters'),
-      customDir: join(dirs.Data, 'custom'),
-      libraryDir: dirs.Library,
+      dataPath: root, // Config, Data, Library, Logs, Backups under it (server/layout.mjs)
     },
   })
   await ready

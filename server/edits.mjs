@@ -42,9 +42,10 @@ export const readSettings = xml =>
     return { key: attr(t, 'key'), value: attr(t, 'value'), ...(source ? { source } : {}), ...(page ? { page: Number(page) } : {}) }
   })
 
-/** ctx (books.mjs): AREAS, customDir, compendiumSources and the importer (jobs.mjs). */
+/** ctx (books.mjs): AREAS, compendiumSources and the importer (jobs.mjs). */
 export function editsApi(ctx) {
-  const { AREAS, customDir, compendiumSources, importer, redact } = ctx
+  const { AREAS, compendiumSources, importer, redact } = ctx
+  const customDir = AREAS.ca2.custom // (the example sets and the table rules are Anarchy's)
   // edits (one fixed .tmp name), the table rules and the creation rules: each one at a time
   const serial = serializer()
 
