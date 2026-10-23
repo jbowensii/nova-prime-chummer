@@ -35,7 +35,7 @@ export function resolveConfig(argv = [], env = {}) {
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) opts = parsed // a null/array/scalar config is ignored, not crashed on
   } catch (e) {
     // a missing default file is fine; a config the user named that is missing or broken is not
-    if (file !== 'options.json' || e.code !== 'ENOENT') throw new Error(`cannot read config ${file}: ${e.message}`)
+    if (file !== 'options.json' || e.code !== 'ENOENT') throw new Error(`cannot read config ${file}: ${e.message}`, { cause: e })
   }
   const get = k => flag(argv, KEYS[k][0]) ?? env[KEYS[k][1]] ?? opts[k]
   const dataPath = get('dataPath')
