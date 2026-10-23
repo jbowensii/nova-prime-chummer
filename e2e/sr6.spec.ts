@@ -322,7 +322,8 @@ test('player: Table setup (read only), Rules and Game data, no Books and no Edit
   await page.locator('.sr6-creation').screenshot({ path: `${SHOTS}/table-setup-player.png` })
   await page.getByRole('link', { name: 'Rules', exact: true }).click()
   await page.getByRole('link', { name: 'Making Trouble' }).click()
-  await expect(page.locator('dialog.drawer')).toContainText('Invented rule text about trouble.')
+  // the Rules page now mounts two drawer dialogs (rules + traditions); target the open one
+  await expect(page.locator('dialog.drawer[open]')).toContainText('Invented rule text about trouble.')
   await page.goto('/#/sr6/books')
   await expect(page.getByText('No runners yet.')).toBeVisible()
   await expect(page.getByLabel('Choose PDF files')).toHaveCount(0)
