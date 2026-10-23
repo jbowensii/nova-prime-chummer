@@ -168,18 +168,18 @@ export function lru(max, size = () => 1) {
   }
 }
 // the app version for backups: VERSION (written by the Dockerfile, which ships no package.json), else package.json
-const VERSION = (() => {
+const versionOf = root => {
   try {
-    return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim()
+    return readFileSync(join(root, 'VERSION'), 'utf8').trim()
   } catch {
     /* not in the image */
   }
   try {
-    return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
+    return JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
   } catch {
     return 'unknown'
   }
-})()
+}
 
 export function createServer({
   staticDir,
@@ -192,6 +192,7 @@ export function createServer({
   askTimeout,
   trustProxy = '',
   publicUrl = '',
+  importerRoot = ROOT, // where `python -m importer` runs and VERSION / server/defaults live; the desktop app's unpacked copy (Python can't read app.asar)
   host, // the address listen(port, cb) binds; unset: all interfaces, as the Docker image does
   allowedHosts, // local lockdown, off unless given: the Host values served (DNS-rebinding guard)
   localSecret, // local lockdown: the per-launch secret /api/* requires
@@ -209,8 +210,8 @@ export function createServer({
     customDir,
     libraryDir,
     python,
-    importerRoot: ROOT,
-    version: VERSION,
+    importerRoot,
+    version: versionOf(importerRoot),
     restoreTtl,
     downloadTtl,
     askTimeout,
@@ -654,7 +655,7 @@ export function createServer({
     sr6: backgroundsApi({
       libraryDir: join(libraryDir, GAMES.sr6.sub),
       auth,
-      seed: { file: join(ROOT, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
+      seed: { file: join(importerRoot, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
       track: books.track,
     }),
   }

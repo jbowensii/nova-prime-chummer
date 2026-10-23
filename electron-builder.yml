@@ -1,0 +1,41 @@
+# Windows desktop build. Run on Windows: see electron/README.md.
+appId: com.novaprime.chummer
+productName: Nova Prime Chummer
+directories:
+  output: release
+files:
+  - dist/**
+  - server/*.mjs
+  - server/defaults/**
+  - importer/**
+  - '!importer/tests/**'
+  - '!**/__pycache__/**'
+  - electron/**
+  - VERSION
+  - package.json
+  - '!electron/README.md'
+# Unpacked to resources/app.asar.unpacked/ (main.mjs's importerRoot): Python (the importer) can't read app.asar, and the
+# server serves the frontend (dist) from disk via fs, so dist is unpacked too rather than read from inside the archive.
+asarUnpack:
+  - importer/**
+  - server/defaults/**
+  - VERSION
+  - dist/**
+extraResources:
+  # the embeddable Python + wheels, produced by Chunk 3 (tools/desktop-python); lands at resources/python/python.exe
+  - from: build/python
+    to: python
+win:
+  target:
+    - nsis
+    - portable
+  # signing: set CSC_LINK (path to your .pfx) and CSC_KEY_PASSWORD in the environment; never put them in this file
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+# electron-updater: configured, not enabled (the app doesn't call autoUpdater yet)
+publish:
+  provider: github
+  owner: jbowensii
+  repo: nova-prime-chummer
