@@ -22,9 +22,11 @@ const CORE_FILES = [
   'weapons',
 ]
 
-/** ctx (books.mjs): AREAS, customDir, libraryDir, version, queue, batches, the job queue (jobs.mjs), entries (library.mjs). */
+/** ctx (books.mjs): AREAS, version, queue, batches, the job queue (jobs.mjs), entries (library.mjs). */
 export function resumeApi(ctx) {
-  const { AREAS, customDir, libraryDir, version, queue } = ctx
+  const { AREAS, version, queue } = ctx
+  const customDir = AREAS.ca2.custom,
+    libraryDir = AREAS.ca2.library // (the core data is Anarchy's)
   const { busy, bookDir, setStatus, enqueue, saveJobs, importer, redact, jobsFile } = ctx
 
   /** Clear a book's outputs and import it again from its original.pdf (the converted book.md reused when the importer

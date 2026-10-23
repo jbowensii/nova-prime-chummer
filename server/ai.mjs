@@ -47,8 +47,8 @@ export function aiApi(ctx) {
 
   function setKey(provider, value, game) {
     return serial('key', async () => {
-      await mkdir(AREAS[game].library, { recursive: true })
-      const r = await importer(['set-key', AREAS[game].library, provider], { input: value, timeout: 30000 })
+      await mkdir(AREAS[game].ai, { recursive: true })
+      const r = await importer(['set-key', AREAS[game].ai, provider], { input: value, timeout: 30000 })
       if (r.code !== 0) throw fail(500, 'couldn’t store the key: ' + (await redact(r.err)).trim().split('\n').pop())
     })
   }
@@ -58,8 +58,8 @@ export function aiApi(ctx) {
    *  sent to the address it was entered for). Queued with the key writes, which it may make. */
   function putSettings(xml, game = 'ca2') {
     return serial('key', async () => {
-      await mkdir(AREAS[game].library, { recursive: true })
-      const r = await importer(['set-settings', '--library', AREAS[game].library], { input: xml, timeout: 30000 })
+      await mkdir(AREAS[game].ai, { recursive: true })
+      const r = await importer(['set-settings', '--library', AREAS[game].ai], { input: xml, timeout: 30000 })
       const why = (await redact(r.err)).trim().split('\n').pop()
       if (r.code === 3) throw fail(400, why || 'these aren’t provider settings')
       const out = rootTag(r.out, 'result')
@@ -72,7 +72,7 @@ export function aiApi(ctx) {
    *  reads the saved address before the key, and only the provider id comes from the request. */
   async function listModels(provider, game = 'ca2') {
     if (!PROVIDERS.includes(provider)) throw fail(400, 'unknown provider')
-    const run = listChain.then(() => importer(['list-models', provider, '--library', AREAS[game].library], { timeout: 60000 }))
+    const run = listChain.then(() => importer(['list-models', provider, '--library', AREAS[game].ai], { timeout: 60000 }))
     listChain = run
     const r = await run
     if (r.code === 0)
@@ -93,7 +93,7 @@ export function aiApi(ctx) {
     if (tests.length >= 10)
       throw Object.assign(fail(429, 'that’s 10 tests in a minute; wait a moment'), { retryAfter: Math.ceil((tests[0] + 60000 - now) / 1000) })
     tests.push(now)
-    testing = importer(['test-ai', provider, '--library', AREAS[game].library], { timeout: 30000 })
+    testing = importer(['test-ai', provider, '--library', AREAS[game].ai], { timeout: 30000 })
     const r = await testing.finally(() => {
       testing = null
     })
@@ -173,7 +173,7 @@ export function aiApi(ctx) {
     let r
     try {
       const area = AREAS[game]
-      r = await importer([...area.pre, 'ask', '--custom', area.custom, '--library', area.library, ...(scope === 'rules' ? ['--scope', 'rules'] : [])], {
+      r = await importer([...area.pre, 'ask', '--custom', area.custom, '--library', area.ai, ...(scope === 'rules' ? ['--scope', 'rules'] : [])], {
         input: question,
         timeout: askTimeout,
       })

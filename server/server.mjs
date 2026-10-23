@@ -53,19 +53,22 @@
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
 import { randomUUID, timingSafeEqual } from 'node:crypto'
-import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readdir, readFile, realpath, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
 import { authApi } from './auth.mjs'
 import { resolveConfig } from './config.mjs'
+import { setupApi } from './setupcfg.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
 import { rootTag, unesc, writeAtomic } from './common.mjs'
 import { compendiumsApi } from './compendiums.mjs'
 import { GAMES, scoped } from './games.mjs'
+import { layoutOf } from './layout.mjs'
+import { startGuard } from './migrate.mjs'
 import { oidcApi } from './oidc.mjs'
 
 const TYPES = {
@@ -183,6 +186,7 @@ const versionOf = root => {
 
 export function createServer({
   staticDir,
+  dataPath, // the live layout's one root (server/layout.mjs); charDir, customDir, libraryDir: the old layout's three folders, for tests of that shape
   charDir,
   customDir,
   libraryDir,
@@ -199,22 +203,24 @@ export function createServer({
   accountKeys,
   failKeys,
   oidc: oidcOpts = {},
+  openSetup = false, // desktop: the first admin is made on screen, no setup code (the lockdown's secret already keeps other programs out)
+  cliArgs = [], // the flags the server was started with (the Setup screen shows which setting each one sets)
 }) {
   staticDir = resolve(staticDir)
-  charDir = resolve(charDir)
-  customDir = resolve(customDir)
-  libraryDir = resolve(libraryDir ?? join(charDir, '..', 'library'))
+  const layout = layoutOf({ dataPath, charDir, customDir, libraryDir })
+  const G = layout.games
+  // a folder as an error message names it: its place under the data path (live layout), else the old layout's wording
+  const where = (dir, old) => (layout.kind === 'data' ? relative(layout.root, dir).split(sep).join('/') + '/' : old)
   let auth = null
   const books = booksApi({
-    charDir,
-    customDir,
-    libraryDir,
+    layout,
     python,
     importerRoot,
     version: versionOf(importerRoot),
     restoreTtl,
     downloadTtl,
     askTimeout,
+    awsConfigPath: () => setup.awsConfigPath(),
     onRestore: () => auth.reload(oidc.issuer()), // the restored auth.xml's issuer
     compendiumSources: () => compendiums.ca2.sources(),
   }) // a house source never takes an Anarchy compendium's id (SR6 has none)
@@ -291,11 +297,11 @@ export function createServer({
     /** The upgrade: runners at the top of characters/ (and its .trash/) from before accounts go to the first admin. */
     async adopt(u) {
       const folder = games.ca2.folder
-      const top = (await readdir(charDir, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && d.name.endsWith('.xml'))
+      const top = (await readdir(G.ca2.chars, { withFileTypes: true }).catch(() => [])).filter(d => d.isFile() && d.name.endsWith('.xml'))
       if (top.length) await mkdir(folder(u), { recursive: true })
-      for (const f of top) await rename(join(charDir, f.name), join(folder(u), await freeName(folder(u), base(f.name))))
-      await moveAll(join(charDir, '.trash'), join(folder(u), '.trash'))
-      await rmdir(join(charDir, '.trash')).catch(() => {})
+      for (const f of top) await rename(join(G.ca2.chars, f.name), join(folder(u), await freeName(folder(u), base(f.name))))
+      await moveAll(join(G.ca2.chars, '.trash'), join(folder(u), '.trash'))
+      await rmdir(join(G.ca2.chars, '.trash')).catch(() => {})
     },
     /** game: 'ca2' or 'sr6' (auth.mjs checks it); SR6's is refused while an account called sr6 holds its folder. */
     async move(from, file, to, game = 'ca2') {
@@ -331,8 +337,9 @@ export function createServer({
    *  in its namespace. Its routes are the unprefixed ones (api() strips /api/sr6). */
   function gameStore(g) {
     const tag = g.tag,
-      home = g.sub ? join(charDir, g.sub) : charDir,
-      label = g.sub ? `characters/${g.sub}/` : 'characters/'
+      area = G[g.id],
+      home = area.chars,
+      label = where(area.chars, g.sub ? `characters/${g.sub}/` : 'characters/')
     // a comment never runs past its own -->: with a lazy [\s\S]*? one comment could swallow the next ones, and a body of
     // ~40 empty comments then took the whole server minutes to refuse (exponential backtracking)
     const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--(?:(?!-->)[\\s\\S])*-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
@@ -361,10 +368,10 @@ export function createServer({
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
     // NPCs: <home>/.npcs/<username>/; a dot folder, so never an account's (a username never starts with a dot)
-    const npcRoot = join(home, '.npcs'),
+    const npcRoot = area.npcs,
       npcFolder = username => join(npcRoot, username)
     // SR6's vehicle and drone designs (the Designer): <home>/.designs/<username>/, each account its own, players too
-    const designRoot = join(home, '.designs'),
+    const designRoot = area.designs,
       designFolder = username => join(designRoot, username)
 
     /** The folder's character files as { file, id, rev, xml }, from `indexed` while unchanged. */
@@ -395,7 +402,7 @@ export function createServer({
     }
 
     const campaigns = campaignsApi({
-      customDir: g.sub ? join(customDir, g.sub) : customDir,
+      customDir: area.custom,
       tag,
       lock,
       auth,
@@ -624,21 +631,40 @@ export function createServer({
       campaigns,
       retire,
       folder,
-      stores: [[folder, label], [npcFolder, `${label}.npcs/`], ...(DESIGNS ? [[designFolder, `${label}.designs/`]] : [])],
+      stores: [[folder, label], [npcFolder, where(npcRoot, `${label}.npcs/`)], ...(DESIGNS ? [[designFolder, where(designRoot, `${label}.designs/`)]] : [])],
     }
   }
 
   let oidc = null
-  auth = authApi({ libraryDir, trustProxy, lock, track: books.track, runners, accountKeys, failKeys, publicUrl, oidcOn: () => oidc.enabled() }) // accountKeys, failKeys: tests
+  auth = authApi({
+    configDir: layout.config,
+    trustProxy,
+    lock,
+    track: books.track,
+    runners,
+    accountKeys,
+    failKeys,
+    publicUrl,
+    openSetup,
+    oidcOn: () => oidc.enabled(),
+  }) // accountKeys, failKeys: tests
   const games = { ca2: gameStore(GAMES.ca2), sr6: gameStore(GAMES.sr6) }
   // each game's book source lists: the shipped one, the imported books', house sources, the catalog edits'
   const sourceFiles = (data, custom) => [join(data, 'sources.xml'), ...['imported/sources.xml', 'sources.xml', 'edits/sources.xml'].map(f => join(custom, f))]
   const compendiums = {
-    ca2: compendiumsApi({ home: charDir, sourceFiles: sourceFiles(join(staticDir, 'data'), customDir), lock, auth, campaigns: games.ca2.campaigns }),
+    ca2: compendiumsApi({
+      home: G.ca2.chars,
+      root: G.ca2.compendiums,
+      sourceFiles: sourceFiles(join(staticDir, 'data'), G.ca2.custom),
+      lock,
+      auth,
+      campaigns: games.ca2.campaigns,
+    }),
     sr6: compendiumsApi({
       game: GAMES.sr6,
-      home: join(charDir, GAMES.sr6.sub),
-      sourceFiles: sourceFiles(join(staticDir, 'data', 'sr6'), join(customDir, 'sr6')),
+      home: G.sr6.chars,
+      root: G.sr6.compendiums,
+      sourceFiles: sourceFiles(join(staticDir, 'data', 'sr6'), G.sr6.custom),
       lock,
       auth,
       campaigns: games.sr6.campaigns,
@@ -646,20 +672,22 @@ export function createServer({
   }
   const stores = () => [
     ...games.ca2.stores,
-    [compendiums.ca2.folder, 'characters/.compendiums/'],
-    ...(legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, 'characters/sr6/.compendiums/']]),
+    [compendiums.ca2.folder, where(G.ca2.compendiums, 'characters/.compendiums/')],
+    ...(legacy() ? [] : [...games.sr6.stores, [compendiums.sr6.folder, where(G.sr6.compendiums, 'characters/sr6/.compendiums/')]]),
   ]
   // each game's own art set: Anarchy's in library/backgrounds/, SR6's in library/sr6/backgrounds/ (SR6's starts with our circuit board)
   const backgrounds = {
-    ca2: backgroundsApi({ libraryDir, auth }),
+    ca2: backgroundsApi({ libraryDir: G.ca2.assets, auth }), // (libraryDir: the folder that holds backgrounds/)
     sr6: backgroundsApi({
-      libraryDir: join(libraryDir, GAMES.sr6.sub),
+      libraryDir: G.sr6.assets,
       auth,
       seed: { file: join(importerRoot, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
       track: books.track,
     }),
   }
-  oidc = oidcApi({ libraryDir, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap, exchanges a minute)
+  oidc = oidcApi({ configDir: layout.config, auth, track: books.track, ...oidcOpts }) // oidcOpts: tests (timeouts, size cap, key-set refetch gap, exchanges a minute)
+
+  const setup = setupApi({ layout, version: versionOf(importerRoot), cliArgs, readJson: auth.json, desktop: openSetup })
 
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-cache' })
@@ -684,10 +712,16 @@ export function createServer({
   /** A file under `base`: a validator (ETag), so the browser's copy is reused while the file is unchanged (304), and
    *  gzip for text the browser takes it for. */
   async function serveFile(res, base, rel, req) {
-    const path = resolve(base, '.' + rel)
+    let path = resolve(base, '.' + rel)
     if (!inside(path, base)) return send(res, 403, { error: 'forbidden' })
-    if (inside(path, libraryDir)) return null // even when the Library is mounted inside a served folder
+    if (layout.never.some(d => inside(path, d))) return null // even when the Library or Config is mounted inside a served folder
     try {
+      // a link under a served folder must not reach what the lexical check keeps out (Config, Library, Backups, or off base)
+      const real = await realpath(path),
+        realBase = await realpath(base)
+      if (!inside(real, realBase)) return null
+      for (const d of layout.never) if (inside(real, await realpath(d).catch(() => d))) return null
+      path = real // the gzip cache is keyed by the file itself
       const s = await stat(path)
       if (s.isDirectory()) return serveFile(res, base, rel.replace(/\/?$/, '/index.html'), req)
       const type = TYPES[extname(path)] ?? 'application/octet-stream',
@@ -728,7 +762,7 @@ export function createServer({
   async function customGuard(dir, asked, path) {
     const secret = join(dir, 'campaigns.xml')
     if (/[:~]/.test(path) || asked.replace(/[. ]+$/, '').toLowerCase() === secret.toLowerCase()) return true
-    const [a, ...b] = await Promise.all([asked, join(customDir, 'campaigns.xml'), join(customDir, 'sr6', 'campaigns.xml')].map(p => stat(p).catch(() => null)))
+    const [a, ...b] = await Promise.all([asked, join(G.ca2.custom, 'campaigns.xml'), join(G.sr6.custom, 'campaigns.xml')].map(p => stat(p).catch(() => null)))
     return b.some(f => a && f && a.dev === f.dev && a.ino === f.ino)
   }
 
@@ -753,6 +787,7 @@ export function createServer({
     }
     if ((await oidc.handle(req, res, url, send, who)) !== false) return
     if ((await auth.handle(req, res, url, send, who)) !== false) return
+    if ((await setup.handle(req, res, url, send)) !== false) return
     if ((await books.handle(req, res, url, send, who)) !== false) return
     if ((await games.ca2.campaigns.handle(req, res, url, send, who)) !== false) return
     if ((await compendiums.ca2.handle(req, res, url, send, who)) !== false) return
@@ -807,15 +842,22 @@ export function createServer({
         // the Shadowrun 6 area's catalog: only at this exact lowercase prefix, only from custom/sr6/
         const sr6 = url.pathname.startsWith('/custom/sr6/')
         if (sr6 && legacy()) return send(res, 404, 'not found', 'text/plain') // an account called sr6 from before: no SR6 area
-        const dir = sr6 ? join(customDir, 'sr6') : customDir,
+        const dir = sr6 ? G.sr6.custom : G.ca2.custom,
           rel = url.pathname.slice(sr6 ? '/custom/sr6'.length : '/custom'.length)
         const asked = resolve(dir, '.' + rel)
         // Anarchy's /custom/: custom/sr6/ never, in any case or spelling (SR6's is the branch above)
-        const top = relative(customDir, asked)
+        const top = relative(G.ca2.custom, asked)
           .split(sep)[0]
           .replace(/[. ]+$/, '')
           .toLowerCase()
-        if ((!sr6 && top === 'sr6') || (await customGuard(dir, asked, url.pathname))) return send(res, 404, 'not found', 'text/plain')
+        // (the live layout: a game's folder also holds its runners, NPCs and compendiums, which are never served)
+        const rootTop = relative(dir, asked)
+          .split(sep)[0]
+          .replace(/[. ]+$/, '')
+          .toLowerCase()
+        if (layout.hidden?.has(rootTop)) return send(res, 404, 'not found', 'text/plain')
+        if ((!sr6 && layout.kind === 'legacy' && top === 'sr6') || (await customGuard(dir, asked, url.pathname)))
+          return send(res, 404, 'not found', 'text/plain')
         if (await serveFile(res, dir, rel, req)) return
         return send(res, 404, 'not found', 'text/plain')
       }
@@ -848,8 +890,14 @@ export function createServer({
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const { port, host, ...cfg } = resolveConfig(process.argv.slice(2), process.env)
-  const server = createServer({ ...cfg, host })
+  const { port, host, charDir, customDir, libraryDir, ...cfg } = resolveConfig(process.argv.slice(2), process.env)
+  // the old three folders are only looked for here, to stop a server that would start on an empty new layout beside them
+  const stale = await startGuard({ dataPath: cfg.dataPath, charDir, customDir, libraryDir })
+  if (stale) {
+    console.error(stale)
+    process.exit(1)
+  }
+  const server = createServer({ ...cfg, host, cliArgs: process.argv.slice(2) })
   server.listen(port, () => console.log(`nova-prime-chummer on ${host ?? ''}:${port}`))
   // docker stop: end the importer job too (the next start runs it again from jobs.json: resume.mjs); sessions.xml is saved
   const quit = () => {

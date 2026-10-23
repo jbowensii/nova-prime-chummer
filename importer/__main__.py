@@ -15,9 +15,9 @@ python -m importer ask --custom D --library D [--scope rules]   (the question on
 python -m importer edit set <amps|items|rules> <id> [--by <username>] --custom <custom dir>  (the entry on stdin; exit 3: refused)
 python -m importer edit remove <amps|items|rules> <id> --custom <custom dir>
 python -m importer edit add-source <ID> --custom <custom dir> --name NAME [--publisher P]  (exit 3: refused)
-python -m importer backup --characters D --custom D --library D --out F [--keys] [--version V]
+python -m importer backup (--data-path D [--cloud] | --characters D --custom D --library D) --out F [--keys] [--version V]
 python -m importer restore --check F                     (the manifest on stdout; exit 3: refused, the reason on stderr)
-python -m importer restore --apply F --characters D --custom D --library D [--version V]  (exit 3: refused)
+python -m importer restore --apply F (--data-path D | --characters D --custom D --library D) [--version V]  (exit 3: refused)
 python -m importer datapack export --custom D --out F [--version V]  (exit 3: no core data)
 python -m importer datapack check F                    (the manifest on stdout; exit 3: refused, the reason on stderr)
 python -m importer datapack import F --custom D        (exit 3: refused, nothing changed)
@@ -546,6 +546,11 @@ def _cmd_edit(argv):
 
 
 def _dirs(argv):
+    root = flag(argv, "--data-path")  # the Phase 2 layout: Config, Data, Library (zipped), Backups (safety backups)
+    if root:
+        return {n: os.path.join(root, n) for n in ("Config", "Data", "Library")} | {
+            "backups": os.path.join(root, "Backups")
+        }
     dirs = {f: flag(argv, "--" + f) for f in ("characters", "custom", "library")}
     return dirs if all(dirs.values()) else None
 
@@ -557,7 +562,7 @@ def _cmd_backup(argv):
     if not dirs or not out:
         print(USAGE, file=sys.stderr)
         return 2
-    backup.backup(dirs, out, keys="--keys" in argv, version=flag(argv, "--version"))
+    backup.backup(dirs, out, keys="--keys" in argv, version=flag(argv, "--version"), cloud="--cloud" in argv)
     return 0
 
 

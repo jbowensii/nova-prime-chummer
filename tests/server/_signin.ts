@@ -42,13 +42,14 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
   return r.status === 401 && !url.pathname.startsWith('/api/auth/') && (await signIn(url.origin)) ? go() : r
 }) as typeof fetch
 
-type Opts = { charDir: string; libraryDir?: string; [k: string]: unknown }
+type Opts = { charDir?: string; dataPath?: string; libraryDir?: string; [k: string]: unknown }
 /** server.mjs's createServer, with the test admin in users.xml. */
 export function createServer(opts: Opts) {
-  const lib = resolve(opts.libraryDir ?? join(opts.charDir, '..', 'library'))
-  if (!existsSync(join(lib, '.config', 'users.xml'))) {
-    mkdirSync(join(lib, '.config'), { recursive: true })
-    writeFileSync(join(lib, '.config', 'users.xml'), USERS)
+  // (dataPath: the live layout keeps the accounts in Config/; else the old Library's .config/)
+  const cfg = opts.dataPath ? join(resolve(opts.dataPath), 'Config') : join(resolve(opts.libraryDir ?? join(opts.charDir!, '..', 'library')), '.config')
+  if (!existsSync(join(cfg, 'users.xml'))) {
+    mkdirSync(cfg, { recursive: true })
+    writeFileSync(join(cfg, 'users.xml'), USERS)
   }
   return create(opts)
 }

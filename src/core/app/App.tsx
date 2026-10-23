@@ -14,6 +14,7 @@ import '../ui-kit/app.css'
 import '../../sr6/shell/ui/theme.css'
 import { BackgroundArt } from '../../features/appearance/Background'
 import { GamePicker } from './GamePicker'
+import { SetupScreen } from './SetupScreen'
 import { Sr6Main } from '../../sr6/shell/ui/Sr6App'
 import { gameOf, homeOf, storedGame } from '../ui-kit/game'
 
@@ -77,7 +78,7 @@ export default function App() {
   const [game, setGame] = useState(() => storedGame() ?? (route.length ? gameOf(route) : null))
   const [repo, setRepo] = useState<Repo | null>(null)
   // server: the signed-in account (null: sign in) and whether no account exists yet; browser storage: no accounts at all
-  const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean } | null>(null)
+  const [me, setMe] = useState<{ user: User | null; setup: boolean; oidc?: boolean; codeless?: boolean } | null>(null)
   const [ended, setEnded] = useState(false)
   // the reload after a restore (Backup.tsx): the sign-in page says why everyone was signed out, once
   const [restored] = useState(() => {
@@ -124,6 +125,7 @@ export default function App() {
   if (repo.mode === 'server' && me.setup)
     return (
       <Setup
+        codeless={me.codeless}
         onDone={u => {
           location.hash = homeOf(storedGame() ?? 'ca2')
           setMe({ user: u, setup: false })
@@ -139,6 +141,9 @@ export default function App() {
         note={restored ? 'The server was restored from a backup. Sign in with the accounts in that backup.' : undefined}
       />
     )
+
+  // Setup, before a game: the admin's own sign-in (above) is the password that guards it; the server checks the role again
+  if (route[0] === 'setup') return <SetupScreen tab={route[1]} admin={user?.role === 'admin'} repo={repo} />
 
   const back = (u: User) => {
     if (u.id !== user?.id) {

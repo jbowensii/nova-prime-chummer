@@ -5,6 +5,7 @@ import { createWriteStream, mkdirSync } from 'node:fs'
 import { createServer as netServer } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { initUpdater } from './updater.mjs'
 
 const DEFAULT_PORT = 47480 // ponytail: fixed default; Phase 2's options.json makes it configurable
 const here = dirname(fileURLToPath(import.meta.url))
@@ -64,12 +65,11 @@ async function start() {
       host: '127.0.0.1',
       allowedHosts: [`127.0.0.1:${port}`, `localhost:${port}`],
       localSecret: secret,
+      openSetup: true, // the first admin is made on screen, not with a code from a log
       importerRoot,
       python,
       staticDir: join(importerRoot, 'dist'), // served from the unpacked copy (importerRoot = app.asar.unpacked when packaged), never from inside app.asar
-      charDir: join(dirs.Data, 'characters'),
-      customDir: join(dirs.Data, 'custom'),
-      libraryDir: dirs.Library,
+      dataPath: root, // Config, Data, Library, Logs, Backups under it (server/layout.mjs)
     },
   })
   await ready
@@ -112,22 +112,41 @@ async function start() {
     if (i.key === 'F5') win.webContents.reload()
     else win.webContents.toggleDevTools()
   })
+  initUpdater(() => win, origin)
   await win.loadURL(origin)
 }
 
+const BROWSE = '--browse-user-data'
+/** The taskbar right-click menu's "Browse User Data": opens the data folder (dataPath is the userData root, as Foundry's Data folder). */
+const browseUserData = () => void shell.openPath(app.getPath('userData'))
+
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, argv) => {
+    if (argv.includes(BROWSE)) return browseUserData() // the jump-list task launched a second copy; it just asks this one
     if (!win) return
     if (win.isMinimized()) win.restore()
     win.focus()
   })
-  app.whenReady().then(() =>
-    start().catch(e => {
+  app.whenReady().then(() => {
+    if (process.platform === 'win32' && packaged)
+      // (unpackaged, execPath is electron.exe itself)
+      app.setUserTasks([
+        {
+          program: process.execPath,
+          arguments: BROWSE,
+          iconPath: process.execPath,
+          iconIndex: 0,
+          title: 'Browse User Data',
+          description: 'Open the folder holding your data',
+        },
+      ])
+    if (process.argv.includes(BROWSE)) browseUserData()
+    return start().catch(e => {
       console.error(e)
       app.quit()
-    }),
-  )
+    })
+  })
   app.on('window-all-closed', () => app.quit())
   // stop the importer job and the server first (the next launch resumes the job), then exit
   app.on('before-quit', e => {

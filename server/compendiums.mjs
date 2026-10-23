@@ -59,10 +59,10 @@ export function withoutNpcs(xml) {
 }
 
 /** game: GAMES.ca2 or GAMES.sr6 (its data root and the other game's namespace); home: that game's characters folder;
+ *  root: where the compendiums are (default <home>/.compendiums; server/layout.mjs gives the live one);
  *  sourceFiles: its books' source lists (missing ones are skipped); campaigns: that game's. */
-export function compendiumsApi({ game = GAMES.ca2, home, sourceFiles, lock, auth, campaigns }) {
-  const root = join(home, '.compendiums'),
-    folder = u => join(root, u) // a username never starts with a dot
+export function compendiumsApi({ game = GAMES.ca2, home, root = join(home, '.compendiums'), sourceFiles, lock, auth, campaigns }) {
+  const folder = u => join(root, u) // a username never starts with a dot
   // the root first (after the XML declaration), in the game's data namespace, its attributes as the app writes them
   // (double-quoted, < and > escaped): the server edits that tag (rev, updatedAt). Linear: each attribute ends at its quote.
   const ROOT = new RegExp(`^\\s*(?:<\\?xml[^?]*\\?>\\s*)?(<${game.data.tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>)`)

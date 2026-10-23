@@ -69,7 +69,7 @@ test('CLI passes host to listen', async () => {
     String(port),
     '--static-dir',
     'public',
-    '--char-dir',
+    '--data-path',
     join(dir, 'c'),
     '--custom-dir',
     join(dir, 'u'),

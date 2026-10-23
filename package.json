@@ -12,6 +12,7 @@
     "coverage": "vitest run --coverage",
     "perf": "vitest run --config vitest.perf.config.ts",
     "test:py": "node tools/python.mjs",
+    "migrate": "node server/migrate.mjs",
     "cl6check": "python -m tools.cl6check",
     "validate:data": "node tools/validate-data.mjs tests/fixtures/mini/custom --sr6=tests/fixtures/sr6/custom",
     "e2e": "playwright test",
@@ -31,6 +32,7 @@
     "@fontsource/montserrat": "^5.3.0",
     "@fontsource/permanent-marker": "^5.3.0",
     "@fontsource/rethink-sans": "^5.3.0",
+    "electron-updater": "^6.8.9",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

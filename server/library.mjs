@@ -16,9 +16,10 @@ const SHA256 = /^[0-9a-f]{64}$/
 const coreRows = (imp, kind) => [...(imp ?? '').matchAll(/<row\b[^>]*>/g)].filter(m => attr(m[0], 'kind') === kind).map(m => attr(m[0], 'file'))
 const coreUnread = imp => coreRows(imp, 'core-unread')
 
-/** ctx (books.mjs): AREAS, customDir, libraryDir, the job queue (jobs.mjs) and dropPackMarks, queueReimport (resume.mjs). */
+/** ctx (books.mjs): AREAS, the job queue (jobs.mjs) and dropPackMarks, queueReimport (resume.mjs). */
 export function libraryApi(ctx) {
-  const { AREAS, customDir, libraryDir } = ctx
+  const { AREAS } = ctx
+  const customDir = AREAS.ca2.custom // (core data and AI book import are Anarchy's only)
   const { busy, bookDir, setStatus, enqueue, importer, redact } = ctx
 
   async function book(id, game = 'ca2') {
@@ -236,7 +237,7 @@ export function libraryApi(ctx) {
       const core = !!attr(imp, 'source') && coreUnread(await readOr(join(dir, 'import.xml'))).length > 0
       if (core ? !['done', 'failed', 'review'].includes(state) : attr(imp, 'source') || !['needs-ai', 'failed', 'review'].includes(state))
         throw fail(409, 'AI proposals are for books no recipe knows, or core tables a recipe couldn’t read')
-      const args = ['propose', dir, '--library', libraryDir, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : []), ...(core ? ['--core'] : [])]
+      const args = ['propose', dir, '--library', AREAS.ca2.ai, ...(url.searchParams.get('fresh') === '1' ? ['--fresh'] : []), ...(core ? ['--core'] : [])]
       if (url.searchParams.get('dryRun') === '1') {
         const r = await importer([...args, '--dry-run'], { timeout: 120000 })
         const res0 = rootTag(r.out, 'result')

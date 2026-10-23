@@ -1,5 +1,5 @@
 // The Books API's importer processes (`python -m importer …`, argument arrays, no shell), the one job queue for both games
-// (library/.config/jobs.json, so a restart picks it up: resume.mjs) and the server-wide write lock (track) that a backup,
+// (Config/jobs.json, so a restart picks it up: resume.mjs) and the server-wide write lock (track) that a backup,
 // a restore and a data pack share with every write. The lock's state is ctx.lock, read and set by backup.mjs too.
 import { spawn } from 'node:child_process'
 import { mkdir, rm } from 'node:fs/promises'
@@ -8,9 +8,9 @@ import { BOOK_ID, attr, clean, esc, fail, readOr, rootTag, unesc, writeAtomic } 
 
 const JOB_TIMEOUT = 6 * 3600 * 1000 // ponytail: one cap for all jobs; an AI run over a big book takes hours (it resumes if cut)
 
-/** ctx (books.mjs): AREAS, customDir, config, python, importerRoot, queue, spawned, lock, batches; sets ctx.running. */
+/** ctx (books.mjs): AREAS, config (Config/: the job queue), python, importerRoot, queue, spawned, lock, batches; sets ctx.running. */
 export function jobsApi(ctx) {
-  const { AREAS, customDir, config, queue, spawned, lock } = ctx
+  const { AREAS, config, queue, spawned, lock } = ctx
   const [cmd, ...pre] = [].concat(ctx.python)
   let child = null,
     listChild = null,
@@ -23,8 +23,8 @@ export function jobsApi(ctx) {
   }
   const busy = (id, game = 'ca2') => (ctx.running?.game === game && ctx.running.id === id) || queue.some(j => j.game === game && j.id === id)
 
-  /** A game's AI settings and keys: Anarchy's in library/.config, SR6's in library/sr6/.config (backup.py ALL_KEYS). */
-  const aiConfig = game => join(AREAS[game].library, '.config')
+  /** A game's AI settings and keys: .config/ in its `ai` folder (the importer's --library), server/layout.mjs. */
+  const aiConfig = game => join(AREAS[game].ai, '.config')
   /** Keys (both games'), bearer tokens and key-looking strings out of worker output before it reaches status.xml. */
   async function redact(text) {
     const keys = (await Promise.all(Object.keys(AREAS).map(g => readOr(join(aiConfig(g), 'ai-keys.xml'), ''))))
@@ -43,7 +43,7 @@ export function jobsApi(ctx) {
         timeout,
         windowsHide: true,
         // PYTHONIOENCODING: else Windows' code page mangles the ’ in messages; CA2_CUSTOM_DIR: where the core files are
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: customDir },
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8', CA2_CUSTOM_DIR: AREAS.ca2.custom },
         stdio: ['pipe', 'pipe', 'pipe'],
       })
       const cmd0 = args[0] === 'sr6' ? args[1] : args[0] // `sr6 edit` is an edit, never the job
@@ -104,7 +104,7 @@ export function jobsApi(ctx) {
     pump()
   }
 
-  /** The job queue (the running job first) and each game's last Re-import all, in library/.config/jobs.json, so a
+  /** The job queue (the running job first) and each game's last Re-import all, in Config/jobs.json, so a
    *  restart (an update recreating the container mid-queue) picks them up where they were (resume). A stop leaves the
    *  file as it was: the job it kills is still in it. */
   const JOBS = join(config, 'jobs.json')
