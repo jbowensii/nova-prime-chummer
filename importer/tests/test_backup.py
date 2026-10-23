@@ -618,7 +618,9 @@ class DataLayoutTests(unittest.TestCase):
         self.assertIn("Data/systems/anarchy2/characters/ada/r1.xml", names)
         self.assertEqual(backup.check(out).get("layout"), "data")
         backup.apply(out, dst)
-        self.assertEqual(Path(dst["Data"], "systems/sr6/campaigns.xml").read_text(encoding="utf8"), "<campaigns></campaigns>")
+        self.assertEqual(
+            Path(dst["Data"], "systems/sr6/campaigns.xml").read_text(encoding="utf8"), "<campaigns></campaigns>"
+        )
         self.assertEqual(Path(dst["Library"], "sr6/book-2/book.md").read_text(encoding="utf8"), "# Made-up-other")
         self.assertTrue(os.path.exists(os.path.join(dst["Library"], "anarchy2/book-1/original.pdf")))
 

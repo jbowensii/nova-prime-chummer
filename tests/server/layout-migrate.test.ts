@@ -1,11 +1,21 @@
 // @vitest-environment node
 // Phase 2 core: the new settings' precedence, the Data/systems layout (paths and a live server on it), and the migrator
 // (dry-run plan, refuse-on-busy, the "sr6" account rename, apply with checksums, resume, idempotency). Temp folders only.
+// a switch that makes every non-scratch rename() fail like two volumes do (the migrator's own temp-file renames still work)
+const xdev = vi.hoisted(() => ({ on: false }))
+vi.mock('node:fs/promises', async orig => {
+  const fs = await orig<typeof import('node:fs/promises')>()
+  return {
+    ...fs,
+    rename: (a: string, b: string) =>
+      xdev.on && !String(a).endsWith('.tmp') ? Promise.reject(Object.assign(new Error('EXDEV'), { code: 'EXDEV' })) : fs.rename(a, b),
+  }
+})
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { afterAll, expect, test } from 'vitest'
+import { afterAll, expect, test, vi } from 'vitest'
 // @ts-expect-error plain JS module
 import { resolveConfig } from '../../server/config.mjs'
 // @ts-expect-error plain JS module
@@ -291,6 +301,23 @@ test('migrator renames an account called sr6 (users, campaigns, its folders) and
   expect(camp).toContain('by="sr6-1"')
   expect(camp).toContain('<member user="ada"/>')
   expect(readFileSync(join(r.toDelete, 'pre-rename', 'Config-users.xml'), 'utf8')).toBe(users) // the original, kept
+})
+
+test('migrator across two volumes (EXDEV): copies and verifies, leaves the originals, and a second run is a no-op', async () => {
+  const { cfg } = oldTree('exdev')
+  xdev.on = true
+  try {
+    const r = await migrate(cfg, { ...quiet, apply: true })
+    expect(r.status).toBe('applied') // the old roots staying put is a notice, not a failure
+    expect(r.problems).toEqual([])
+    const to = join(cfg.dataPath, 'Data', 'systems', 'anarchy2', 'characters', 'ada', 'r1.xml')
+    expect(readFileSync(to, 'utf8')).toBe('ca2 runner')
+    expect(readFileSync(join(cfg.charDir, 'ada', 'r1.xml'), 'utf8')).toBe('ca2 runner') // never deleted
+    expect(await startGuard(cfg)).toBeNull() // copied and checked: no longer old data
+    expect((await migrate(cfg, { ...quiet, apply: true })).status).toBe('noop')
+  } finally {
+    xdev.on = false
+  }
 })
 
 test('migrator resumes from its manifest after a move fails', async () => {

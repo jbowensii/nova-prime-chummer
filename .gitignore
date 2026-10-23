@@ -35,3 +35,6 @@ coverage/
 .coverage
 .cov_py
 htmlcov/
+
+# move-aside holding area (never committed)
+_to_delete/

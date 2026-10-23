@@ -13,12 +13,15 @@
 // An account literally named "sr6" would share characters/sr6/ with the SR6 game's folder; it is renamed sr6-1 (sr6-2, …).
 // Env: the old roots come from CHAR_DIR / CUSTOM_DIR / LIBRARY_DIR (or DATA_PATH/{characters,custom,library}), server/config.mjs.
 //
-// ponytail: both layouts must sit on ONE volume so rename() is atomic. A cross-device move (EXDEV) stops the run with the
-// manifest saved; add copy -> verify -> move-source-aside when a deployment needs two volumes (docs note §6 condition 2).
+// Two volumes (Docker: old per-folder mounts, new layout on the data mount): rename() throws EXDEV, so the file is copied to a temp
+// in the target folder, published by rename, and checked by sha256 like any move. The ORIGINAL STAYS where it is (never deleted); the
+// old root then can't move aside either, which is a notice, not a failure. A copied-and-verified original no longer counts as old data
+// (oldTreeFiles), so a second run, and the server's start-up guard, see nothing to do.
+// ponytail: a rewritten file (sr6-account users.xml) copied across devices differs from its original, so that original keeps counting.
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { mkdir, open, readFile, readdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, open, readFile, readdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
 import { connect } from 'node:net'
 import { basename, dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -82,6 +85,7 @@ export async function oldTreeFiles(cfg) {
   ])
     for (const f of await walk(root)) {
       const to = f.odd ? null : fn(f.segs)
+      if (to && to !== 'skip' && !f.unreadable && (await exists(to)) && (await sha256(to)) === (await sha256(f.path))) continue // copied across devices already
       if ((to && to !== 'skip') || f.unreadable) files.push(f) // an unreadable folder counts: the guard must not say "no old data\"
     }
   return files
@@ -338,11 +342,20 @@ async function move(e, m, rewrites, copyDir) {
   if (e.state === 'pending') {
     const src = await exists(e.src),
       dst = await exists(e.dst)
-    if (src && dst) throw new Error(`both ${e.src} and ${e.dst} exist`)
+    // both there: a cross-device copy that finished before a crash or an earlier run (the source stays); fine if the target is right
+    if (src && dst && (await sha256(e.dst)) !== e.sha256 && !(await rewrittenFrom(e, rewrites, copyDir)))
+      throw new Error(`both ${e.src} and ${e.dst} exist and differ`)
     if (!src && !dst) throw new Error(`${e.src} is gone and ${e.dst} was never made`)
-    if (src) {
+    if (src && !dst) {
       await mkdir(dirname(e.dst), { recursive: true })
-      await rename(e.src, e.dst) // EXDEV: see the ponytail note at the top; the run stops, the manifest says where
+      try {
+        await rename(e.src, e.dst)
+      } catch (err) {
+        if (err.code !== 'EXDEV') throw err
+        const tmp = `${e.dst}.${randomBytes(4).toString('hex')}.tmp`
+        await copyFile(e.src, tmp)
+        await rename(tmp, e.dst) // same device: whole or not at all; the source stays
+      }
     }
     if ((await sha256(e.dst)) !== e.sha256 && !(await rewrittenFrom(e, rewrites, copyDir)))
       throw new Error(`${e.dst} doesn’t match its checksum after the move`)
@@ -379,6 +392,8 @@ async function aside(root, to) {
       for (const d of await readdir(root)) await rename(join(root, d), join(to, d))
       return null
     } catch (e2) {
+      if (e2.code === 'EXDEV' || e.code === 'EXDEV')
+        return { notice: `NOTICE: the old folder ${root} was left in place because it is on a separate volume; its data was copied and checked, not moved.` }
       return `${root} couldn’t be moved to ${to}: ${e2.message} (${e.code})`
     }
   }
@@ -495,7 +510,8 @@ export async function migrate(cfg, { apply = false, isServing, backup = pythonBa
     for (const [name, root] of Object.entries(m.roots)) {
       if (!(await exists(root))) continue
       const bad = await aside(root, join(toDelete, name))
-      if (bad) problems.push(bad)
+      if (bad?.notice) log(bad.notice)
+      else if (bad) problems.push(bad)
     }
     if (!problems.length) m.complete = true
   }
