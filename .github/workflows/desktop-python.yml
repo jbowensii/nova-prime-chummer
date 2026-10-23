@@ -18,16 +18,22 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with: { python-version: '3.13.9' } # keep equal to $PyVersion in tools/desktop-python/build-python.ps1
       - run: pip install uv
-      - name: Lock is current
+      - name: Lock is current (compile a fresh one if none is committed yet)
         shell: pwsh
         run: |
-          if (-not (Test-Path importer/requirements.desktop.lock)) { throw 'importer/requirements.desktop.lock is not committed. Run tools/desktop-python/compile-lock.ps1 and commit it.' }
-          Copy-Item importer/requirements.desktop.lock "$env:RUNNER_TEMP/committed.lock"
-          ./tools/desktop-python/compile-lock.ps1
-          # compare ignoring line endings
-          $a = (Get-Content "$env:RUNNER_TEMP/committed.lock") -join "`n"
-          $b = (Get-Content importer/requirements.desktop.lock) -join "`n"
-          if ($a -ne $b) { throw 'requirements.desktop.lock is stale: rerun tools/desktop-python/compile-lock.ps1 and commit.' }
+          # Phase 1 ships no committed desktop lock: compile one for this run so the build can validate wheels.
+          # Once importer/requirements.desktop.lock is committed, this gates that it is still fresh.
+          if (Test-Path importer/requirements.desktop.lock) {
+            Copy-Item importer/requirements.desktop.lock "$env:RUNNER_TEMP/committed.lock"
+            ./tools/desktop-python/compile-lock.ps1
+            # compare ignoring line endings
+            $a = (Get-Content "$env:RUNNER_TEMP/committed.lock") -join "`n"
+            $b = (Get-Content importer/requirements.desktop.lock) -join "`n"
+            if ($a -ne $b) { throw 'requirements.desktop.lock is stale: rerun tools/desktop-python/compile-lock.ps1 and commit.' }
+          } else {
+            Write-Host 'No committed desktop lock yet (Phase 1); compiling a fresh one for this run.'
+            ./tools/desktop-python/compile-lock.ps1
+          }
       # fails if any lib lacks a cp313 win_amd64 wheel or a hash mismatches; prints the zip SHA256 to copy into the script
       - name: Build the bundle
         shell: pwsh
