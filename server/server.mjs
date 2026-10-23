@@ -52,13 +52,14 @@
 //   everything else                      the built app (STATIC_DIR)
 import { createServer as httpServer } from 'node:http'
 import { readFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { lstat, mkdir, readdir, readFile, rename, rmdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
 import { authApi } from './auth.mjs'
+import { resolveConfig } from './config.mjs'
 import { backgroundsApi } from './backgrounds.mjs'
 import { booksApi } from './books.mjs'
 import { campaignOf, campaignsApi, setCampaign } from './campaigns.mjs'
@@ -167,18 +168,18 @@ export function lru(max, size = () => 1) {
   }
 }
 // the app version for backups: VERSION (written by the Dockerfile, which ships no package.json), else package.json
-const VERSION = (() => {
+const versionOf = root => {
   try {
-    return readFileSync(join(ROOT, 'VERSION'), 'utf8').trim()
+    return readFileSync(join(root, 'VERSION'), 'utf8').trim()
   } catch {
     /* not in the image */
   }
   try {
-    return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
+    return JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
   } catch {
     return 'unknown'
   }
-})()
+}
 
 export function createServer({
   staticDir,
@@ -191,6 +192,10 @@ export function createServer({
   askTimeout,
   trustProxy = '',
   publicUrl = '',
+  importerRoot = ROOT, // where `python -m importer` runs and VERSION / server/defaults live; the desktop app's unpacked copy (Python can't read app.asar)
+  host, // the address listen(port, cb) binds; unset: all interfaces, as the Docker image does
+  allowedHosts, // local lockdown, off unless given: the Host values served (DNS-rebinding guard)
+  localSecret, // local lockdown: the per-launch secret /api/* requires
   accountKeys,
   failKeys,
   oidc: oidcOpts = {},
@@ -205,8 +210,8 @@ export function createServer({
     customDir,
     libraryDir,
     python,
-    importerRoot: ROOT,
-    version: VERSION,
+    importerRoot,
+    version: versionOf(importerRoot),
     restoreTtl,
     downloadTtl,
     askTimeout,
@@ -650,7 +655,7 @@ export function createServer({
     sr6: backgroundsApi({
       libraryDir: join(libraryDir, GAMES.sr6.sub),
       auth,
-      seed: { file: join(ROOT, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
+      seed: { file: join(importerRoot, 'server', 'defaults', 'sr6-circuit.webp'), name: 'Circuit board (default)' },
       track: books.track,
     }),
   }
@@ -755,7 +760,35 @@ export function createServer({
     return games.ca2.handle(req, res, url, who)
   }
 
+  // Local lockdown for the desktop app: a no-op unless allowedHosts or localSecret is given (Docker/server mode sets neither).
+  // Runs on EVERY request, GET included: a Host not in allowedHosts is refused (a rebound DNS name reaches 127.0.0.1 with
+  // its own Host), and /api/* needs the secret in X-Local-Secret or the local_secret cookie. The Electron window's
+  // same-origin fetches carry it because its main process adds the header to every request to this origin (session
+  // webRequest.onBeforeSendHeaders or the preload), chunk 2; the secret never reaches page script.
+  const hosts = allowedHosts?.length ? new Set(allowedHosts.map(h => h.toLowerCase())) : null
+  const lockdown =
+    hosts || localSecret
+      ? (req, res) => {
+          if (hosts && !hosts.has(String(req.headers.host ?? '').toLowerCase())) return void send(res, 403, { error: 'forbidden host' })
+          // gate on the parsed pathname, the same way the handler routes (new URL below): an absolute-form
+          // request target (GET http://host/api/...) has req.url not starting with '/api/' yet still routes there
+          let path = req.url ?? ''
+          try {
+            path = new URL(req.url ?? '', 'http://x').pathname
+          } catch {
+            /* malformed target: fall back to the raw value, which the handler will also reject */
+          }
+          if (localSecret && path.startsWith('/api/')) {
+            const given = req.headers['x-local-secret'] ?? /(?:^|;\s*)local_secret=([^;]*)/.exec(req.headers.cookie ?? '')?.[1] ?? ''
+            const a = Buffer.from(String(given))
+            const b = Buffer.from(localSecret)
+            if (a.length !== b.length || !timingSafeEqual(a, b)) return void send(res, 403, { error: 'forbidden' })
+          }
+          return true
+        }
+      : null
   const server = httpServer(async (req, res) => {
+    if (lockdown && !lockdown(req, res)) return
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v)
     try {
       const url = new URL(req.url, 'http://x')
@@ -801,6 +834,10 @@ export function createServer({
     }
   })
   server.requestTimeout = 3600 * 1000 // a 20 GB backup upload over a slow network (Node's default is 5 min)
+  if (host) {
+    const listen = server.listen.bind(server)
+    server.listen = (port, ...rest) => (typeof rest[0] === 'string' ? listen(port, ...rest) : listen(port, host, ...rest))
+  }
   server.stopJobs = () => {
     books.stop()
     auth.stop()
@@ -811,17 +848,9 @@ export function createServer({
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const port = Number(process.env.PORT ?? 80)
-  const server = createServer({
-    staticDir: process.env.STATIC_DIR ?? new URL('../dist', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'),
-    charDir: process.env.CHAR_DIR ?? '/data/characters',
-    customDir: process.env.CUSTOM_DIR ?? '/data/custom',
-    libraryDir: process.env.LIBRARY_DIR ?? '/data/library',
-    python: process.env.PYTHON ?? 'python3',
-    trustProxy: process.env.TRUST_PROXY ?? '', // comma-separated IPs or CIDRs of the reverse proxy
-    publicUrl: process.env.PUBLIC_URL ?? '', // the app's one public address (Origin check, Authelia redirect URI)
-  })
-  server.listen(port, () => console.log(`nova-prime-chummer on :${port}`))
+  const { port, host, ...cfg } = resolveConfig(process.argv.slice(2), process.env)
+  const server = createServer({ ...cfg, host })
+  server.listen(port, () => console.log(`nova-prime-chummer on ${host ?? ''}:${port}`))
   // docker stop: end the importer job too (the next start runs it again from jobs.json: resume.mjs); sessions.xml is saved
   const quit = () => {
     server.stopJobs()

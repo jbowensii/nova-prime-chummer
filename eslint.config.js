@@ -18,8 +18,11 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
     },
   },
-  { files: ['server/**/*.mjs', 'tools/**/*.{js,mjs}', 'tests/**/*.mjs', 'e2e/**/*.mjs', '*.config.{js,ts,mjs}'], languageOptions: { globals: globals.node } },
-  // Playwright fixtures are `async ({}, use) => …`: an empty first argument by design, and `use` isn't a React hook.
+  {
+    files: ['server/**/*.mjs', 'electron/**/*.{mjs,cjs}', 'tools/**/*.{js,mjs}', 'tests/**/*.mjs', 'e2e/**/*.mjs', '*.config.{js,ts,mjs}'],
+    languageOptions: { globals: globals.node },
+  },
+  // Playwright fixtures are `async ({}, use) => ï¿½`: an empty first argument by design, and `use` isn't a React hook.
   { files: ['e2e/**/*.ts'], rules: { 'no-empty-pattern': 'off', 'react-hooks/rules-of-hooks': 'off' } },
   {
     rules: {
