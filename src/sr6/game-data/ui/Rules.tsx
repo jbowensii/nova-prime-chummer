@@ -10,6 +10,7 @@ import { BookSelect } from '../../../features/catalog-browser/CatalogBrowser'
 import { PageHeader } from '../../../core/chrome/nav'
 import { Prose } from '../../../core/ui-kit/Prose'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
+import { traditionGroups } from '../../catalog/domain/traditions'
 
 /** The rules in reading order: chapters as the book has them, each section followed by its subsections. */
 function ordered(rules: Sr6Entry[]) {
@@ -36,7 +37,12 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
   const inBook = book ? rules.filter(r => r.source === book) : rules
   const chapters = [...new Set(inBook.map(r => r.attrs.chapter ?? ''))]
   const t = q.trim().toLowerCase()
-  const rule = open ? c.entries.rules.get(open) : undefined
+  const tradId = open?.startsWith('traditions/') ? open.slice(11) : undefined,
+    tradition = tradId ? c.entries.traditions.get(tradId) : undefined
+  const rule = open && !tradId ? c.entries.rules.get(open) : undefined
+  const groups = useMemo(() => traditionGroups(c).filter(g => g.traditions.length), [c])
+  // the rules section about traditions, if the book has one (matched by name, the first in book order)
+  const tradRule = rules.find(r => /\btraditions?\b/i.test(r.name))
   const link = (r: Sr6Entry) => <a href={`#/sr6/rules/${encodeURIComponent(r.id)}`}>{r.name}</a>
   // (each rule's search text lower-cased once, not on every keystroke: the texts are megabytes)
   const searching = t !== ''
@@ -52,6 +58,27 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
   return (
     <main className="lib rules sr6-rules">
       <PageHeader title="Rules" />
+      {groups.length > 0 && (
+        <section className="traditions-index">
+          <h2>Traditions</h2>
+          {groups.map(g => (
+            <div key={g.drain}>
+              <h3>{g.label}</h3>
+              <ul className="rule-toc">
+                {g.traditions.map(trd => (
+                  <li key={trd.id}>
+                    <strong className="drain">Drain: {g.attr}</strong> <a href={`#/sr6/rules/${encodeURIComponent(`traditions/${trd.id}`)}`}>{trd.name}</a>
+                    {tradRule && <> · {link(tradRule)}</>}{' '}
+                    <span className="muted">
+                      {trd.source} p.{trd.page}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
       {rules.length === 0 ? (
         <p className="banner">
           No SR6 rules yet.{' '}
@@ -123,6 +150,23 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
             ))}
         </>
       )}
+      <Modal
+        open={!!tradition}
+        onClose={() => {
+          location.hash = '#/sr6/rules'
+        }}
+        title={tradition?.name ?? ''}
+        className="drawer rule-drawer"
+      >
+        {tradition && (
+          <>
+            <p className="muted">
+              Drain: {groups.find(g => g.drain === tradition.attrs.drain?.trim().toLowerCase())?.attr ?? 'not stated'} · {tradition.source} p.{tradition.page}
+            </p>
+            {tradition.text ? <Prose text={tradition.text} /> : <p className="muted">The tradition text isn’t installed.</p>}
+          </>
+        )}
+      </Modal>
       <Modal
         open={!!rule}
         onClose={() => {
