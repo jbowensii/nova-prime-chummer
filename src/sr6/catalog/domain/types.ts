@@ -50,7 +50,8 @@ export interface Sr6QualityView {
   karmaMax: number | null
   karmaSteps?: number[]
   perLevel: boolean
-  maxLevel: number
+  /** none printed: no limit */
+  maxLevel: number | null
   page: number
   category?: string
   /** never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */
@@ -73,7 +74,8 @@ export interface Sr6PowerView {
   cost: number | null
   costCombat?: number | null
   perLevel: boolean
-  maxLevel: number
+  /** none printed: no limit */
+  maxLevel: number | null
   page: number
   parent?: true
 }

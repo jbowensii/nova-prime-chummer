@@ -77,16 +77,16 @@ test('skills, qualities, powers and life modules', () => {
     karma: 8,
     karmaMax: null,
     perLevel: false,
-    maxLevel: 1,
+    maxLevel: null,
     page: 70,
   })
-  expect(d.qualities['crb.butterfingers']).toMatchObject({ positive: false, karma: 8, perLevel: false, maxLevel: 1 })
+  expect(d.qualities['crb.butterfingers']).toMatchObject({ positive: false, karma: 8, perLevel: false, maxLevel: null })
   expect(d.qualities['crb.made-up-gift']).toMatchObject({ karma: 0, granted: true, category: 'Wanderer gift' })
   expect(d.qualities['crb.wanderer']).toMatchObject({ karma: 9, choices: [{ category: 'Wanderer gift', count: 1, max: 2 }] })
   expect(d.qualities['crb.knack'].granted).toBeUndefined()
   expect(d.qualities['crb.wander-path-step-1']).toMatchObject({ name: 'Wander Path: Step 1', karma: 10 })
   expect(d.powers['crb.quick-step']).toEqual({ id: 'crb.quick-step', name: 'Quick Step', cost: 0.25, perLevel: true, maxLevel: 4, page: 157, parent: true })
-  expect(d.powers['crb.quick-step.3']).toEqual({ id: 'crb.quick-step.3', name: 'Quick Step 3', cost: 0.75, perLevel: false, maxLevel: 1, page: 157 })
+  expect(d.powers['crb.quick-step.3']).toEqual({ id: 'crb.quick-step.3', name: 'Quick Step 3', cost: 0.75, perLevel: false, maxLevel: null, page: 157 })
   expect(d.lifemodules['crb.hatchling-days']).toEqual({
     id: 'crb.hatchling-days',
     name: 'Hatchling Days',
@@ -103,6 +103,21 @@ test('skills, qualities, powers and life modules', () => {
   })
   expect(d.entry('weapons', 'crb.zap-gun')?.name).toBe('Zap Gun')
   expect(d.entry('weapons', 'nope')).toBeUndefined()
+})
+
+test('a perLevel entry with no printed maxLevel is uncapped (null), not locked at 1', () => {
+  // strip the printed caps: both stay open-ended (perLevel, no family expansion), their view maxLevel is null
+  const d = sr6Data(
+    fixtureCatalog((file, xml) =>
+      file.endsWith('crb/adeptpowers.xml')
+        ? xml.replace('perLevel="true" maxLevel="4"', 'perLevel="true"')
+        : file.endsWith('crb/qualities.xml')
+          ? xml.replace('perLevel="true" maxLevel="3"', 'perLevel="true"')
+          : xml,
+    ),
+  )
+  expect(d.powers['crb.quick-step']).toMatchObject({ perLevel: true, maxLevel: null })
+  expect(d.qualities['crb.lucky-streak']).toMatchObject({ perLevel: true, maxLevel: null })
 })
 
 test('an unreadable book number is a data.bookValue warning with the entry and page; the value is null, never NaN', () => {

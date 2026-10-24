@@ -281,7 +281,7 @@ export function MagicTab() {
                   meta: [
                     e.attrs.category,
                     power &&
-                      `${power.costCombat != null ? `${power.costCombat} PP (combat skill), ` : ''}${power.cost ?? '?'} PP${power.perLevel ? ` a level, up to ${power.maxLevel}` : ''}`,
+                      `${power.costCombat != null ? `${power.costCombat} PP (combat skill), ` : ''}${power.cost ?? '?'} PP${power.perLevel ? (Number.isFinite(power.maxLevel) ? ` a level, up to ${power.maxLevel}` : ' a level') : ''}`,
                     ...pickFlags(e),
                     unfit(e) && `not for ${article(MAGIC_KIND_LABELS[b.magic]).toLowerCase()} ${MAGIC_KIND_LABELS[b.magic].toLowerCase()}`,
                   ]

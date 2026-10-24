@@ -633,7 +633,7 @@ const RULES: Rule[] = [
     check: c =>
       c.b.qualities.flatMap(q => {
         const v = c.data.qualities[q.id],
-          max = v?.perLevel ? v.maxLevel : 1
+          max = v?.perLevel ? (v.maxLevel ?? Infinity) : 1
         return v && q.level > max
           ? [
               {
