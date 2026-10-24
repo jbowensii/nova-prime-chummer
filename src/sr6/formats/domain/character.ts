@@ -146,6 +146,8 @@ export interface SlotShift {
 }
 export interface Sr6Purchase {
   uid: string
+  /** Assigned identity: Sr6Sin.uid; absent means unassigned, independent of licences. */
+  sin?: string
   kind: PurchaseKind
   id?: string
   name?: string

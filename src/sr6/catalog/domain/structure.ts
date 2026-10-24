@@ -1,24 +1,16 @@
-// An item's structure as Commlink6 gives it (docs/sr6-data-format/item-structure.md, Item structure): the slots it offers and fits, its
-// variants, the topics it is relevant to, kind flags, and the add-on and size attributes. Read from the entry's parts and
-// attributes; no rule reads them yet (the pickers and the Foundry export may).
+// Catalog structure: slots offered and occupied, variants, flags and source rule data.
 import type { Sr6Entry } from '../../formats/domain/types'
+import { rated } from './values'
 
 export interface ItemStructure {
-  /** slots the item offers (id; value: how many, a formula like the cost) */
   slots: { id: string; value?: string }[]
-  /** slots it fits */
   fits: string[]
-  /** the variants it comes in, by name */
   variants: string[]
-  /** the topics it is relevant to */
   relevance: string[]
   flags: string[]
-  /** bought only as an add-on to another item */
   modOnly: boolean
   size?: string
   ammoClass?: string
-  /** Commlink6's own rule data for the item, kept as it gives it and never applied: <modifier> (a modification), <prerequisite>
-   *  (datareq or valuereq) and <selection> (a pick it offers); each part's attributes as written */
   modifiers: Record<string, string>[]
   prerequisites: Record<string, string>[]
   selections: Record<string, string>[]
@@ -27,8 +19,8 @@ export interface ItemStructure {
 export function structureOf(e: Sr6Entry): ItemStructure {
   const of = (tag: string) => e.parts.filter(p => p.tag === tag)
   return {
-    slots: of('slot').map(p => ({ id: p.attrs.id ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) })),
-    fits: of('fits').map(p => p.attrs.slot ?? ''),
+    slots: of('slot').map(p => ({ id: p.attrs.id ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) })).filter(s => s.id),
+    fits: of('fits').map(p => p.attrs.slot ?? '').filter(Boolean),
     variants: of('variant').map(p => p.attrs.name ?? ''),
     relevance: of('relevance').map(p => p.attrs.topic ?? ''),
     flags: of('flag').map(p => p.text),
@@ -40,3 +32,52 @@ export function structureOf(e: Sr6Entry): ItemStructure {
     ...(e.attrs.ammoClass ? { ammoClass: e.attrs.ammoClass } : {}),
   }
 }
+
+export interface SlotItem {
+  uid: string
+  entry?: Sr6Entry
+  qty?: number
+}
+
+/** Fits lists alternatives: each unit occupies one slot, with reassignment when another fitting needs it. */
+export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], rating = 1) {
+  const remaining = new Map<string, number>()
+  for (const slot of host ? structureOf(host).slots : []) {
+    const value = rated(slot.value ?? '1', rating)
+    if (value.ok && value.n !== null && Number.isFinite(value.n))
+      remaining.set(slot.id, (remaining.get(slot.id) ?? 0) + Math.max(0, Math.floor(value.n)))
+  }
+  const units = accessories.flatMap(a => {
+    const fits = a.entry ? structureOf(a.entry).fits : []
+    return fits.length ? Array.from({ length: a.qty ?? 1 }, () => ({ uid: a.uid, fits })) : []
+  })
+  const owners = new Map<string, number[]>()
+  const place = (unit: number, seen: Set<string>): boolean => {
+    for (const slot of units[unit].fits) {
+      if (seen.has(slot) || !remaining.has(slot)) continue
+      seen.add(slot)
+      const fitted = owners.get(slot) ?? []
+      if (fitted.length < remaining.get(slot)!) {
+        fitted.push(unit)
+        owners.set(slot, fitted)
+        return true
+      }
+      for (let i = 0; i < fitted.length; i++) {
+        if (place(fitted[i], seen)) {
+          fitted[i] = unit
+          return true
+        }
+      }
+    }
+    return false
+  }
+  const unplaced = units.flatMap((unit, i) => place(i, new Set()) ? [] : [unit.uid])
+  const occupied = new Map<string, string>()
+  for (const [slot, fitted] of owners) {
+    remaining.set(slot, remaining.get(slot)! - fitted.length)
+    for (const unit of fitted) occupied.set(units[unit].uid, slot)
+  }
+  return { remaining, occupied, unplaced }
+}
+
+export const slotLabel = (id: string) => id.replace(/^FIREARMS_/, '').replaceAll('_', ' ').toLowerCase()

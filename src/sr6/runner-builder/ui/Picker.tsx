@@ -1,3 +1,5 @@
+import { mountSlots, slotLabel } from '../../catalog/domain/structure'
+import { ratingOf } from '../domain/creation/purchases'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
@@ -13,7 +15,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { categoryOf, entryLabel, entrySearch, fitsHost, hostsOf, isAmmoType } from '../../catalog/domain/categories'
+import { capacityRemaining, entryLabel, entrySearch, fitsHost, hostsOf, isAmmoType } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -414,15 +416,25 @@ export function Accessories({
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
   const he = entryOf(host, data)
+  const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
+  const remaining = capacityRemaining(he, items, ratingOf(host, he))
+  const slots = mountSlots(he, items, ratingOf(host, he))
+  const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
   // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
   // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
   const fits = (e: Sr6Entry) =>
     critter || ammo
       ? !filter || filter(e)
-      : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
+      : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : filter(e))
   const wrong = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) === false ? `for ${hostsOf(data.categories, e).join(' or ')}, not this` : undefined)
   return (
     <span className="row">
+      {remaining !== null && <span className="muted">Capacity remaining: {n(remaining)}</span>}
+      {[...slots.remaining].map(([id, left]) => (
+        <span key={id} className="muted">
+          {slotLabel(id)} slots remaining: {n(left)}
+        </span>
+      ))}
       {host.accessories.map(a => {
         const e = entryOf(a, data),
           own = e ? entryLabel(e) : (a.name ?? 'Accessory'),
@@ -474,6 +486,7 @@ export function Accessories({
                 ))}
               </select>
             )}
+            {slots.occupied.has(a.uid) && <span className="muted"> · {slotLabel(slots.occupied.get(a.uid)!)}</span>}
             {implant && host.grade && (
               <span className="muted" title="An add-on has its implant’s grade (core rulebook p. 282)">
                 {' '}
@@ -489,7 +502,7 @@ export function Accessories({
           </span>
         )
       })}
-      <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} onClick={() => setOpen(true)}>
+      <button className="btn small quiet" aria-label={`Add an accessory to ${name}`} disabled={full} onClick={() => setOpen(true)}>
         {critter ? 'Critterware or gear…' : ammo ? 'Ammunition type…' : 'Accessory…'}
       </button>
       <CatalogPicker

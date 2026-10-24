@@ -23,7 +23,8 @@ export function extraMagic(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pro
 
 /** Free spells and rituals (complex forms for a technomancer): the method's Magic or Resonance rating (not as adjusted,
  *  but less what Essence took: CRB Hong Kong p. 66) times the setting; a mystic adept first takes off the power points it
- *  bought (CRB pp. 65–66). Point buy buys them with character points instead (R: the Sixth World Companion's method). */
+ *  bought (CRB pp. 65–66), from its actual Magic (as raised), not the table's base, since that is what it buys them against.
+ *  Point buy buys them with character points instead (R: the Sixth World Companion's method). */
 export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): number {
   const k = MAGIC_KINDS[b.magic]
   if (b.method === 'pointbuy') return k.resonance ? b.cp.complexForms : k.spells ? b.cp.spells : 0
@@ -31,7 +32,9 @@ export function freeSpellSlots(b: Sr6Build, data: Sr6Data, cr: CreationRules, p:
     karma = b.method === 'karma' // (the Karma build has its own)
   if (k.resonance) return rating * n0(cr, karma ? 'karmaBuild.freeFormsPerResonance' : 'freeFormsPerResonance')
   if (!k.spells) return 0
-  return Math.max(0, rating - (k.paysPowers ? b.powerPointsBought : 0)) * n0(cr, karma ? 'karmaBuild.freeSpellsPerMagic' : 'freeSpellsPerMagic')
+  // (a mystic adept buys its power points against its actual Magic, as powerPoints() does, so what's left casts)
+  const casting = k.paysPowers ? Math.max(0, attrRating(b, 'mag', p) - magicLoss(b, data, cr) - b.powerPointsBought) : rating
+  return casting * n0(cr, karma ? 'karmaBuild.freeSpellsPerMagic' : 'freeSpellsPerMagic')
 }
 
 /** An adept's power points are its Magic: one per point, the priority's and any raised with adjustment points or karma

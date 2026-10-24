@@ -501,6 +501,7 @@
   overflow: hidden;
 }
 .n-keys div {
+  min-width: 0;
   padding: 0.15rem 0.3rem 0.2rem;
   border-left: 1px solid var(--k-line);
   text-align: center;
@@ -513,13 +514,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--k-cyan);
-  white-space: nowrap;
+  overflow-wrap: anywhere; /* a long label ("Adept drain (BODY)") wraps inside its cell, not into the next one */
 }
 .n-keys dd {
   margin: 0;
   font: 700 12pt/1.15 var(--sr6-display);
   color: var(--k-ink);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .n-body {
   display: grid;

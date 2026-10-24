@@ -30,7 +30,7 @@ const PICKS: [PickKind, string, string][] = [
 ]
 
 export function MagicTab() {
-  const { ch, c, data, cr, budgets, act, edit } = useSr6Editor()
+  const { ch, c, data, cr, budgets, act, edit, update, ro, career } = useSr6Editor()
   const b = ch.build,
     k = MAGIC_KINDS[b.magic],
     allowed = picksFor(b.magic)
@@ -159,8 +159,25 @@ export function MagicTab() {
       <h2>{k.resonance ? 'Resonance' : 'Magic'}</h2>
       {(k.spells || k.resonance) && (
         <p className="muted">
-          Free {word}: <Left x={slots} fine={b.method === 'karma'} />.{karma !== undefined && ` Past the free ones, each costs ${karma} karma.`}
+          Free {word}: <Left x={slots} fine={b.method === 'karma' || flag(cr, 'karmaSpellsAtCreation')} />.
+          {karma !== undefined && ` Past the free ones, each costs ${karma} karma.`}
         </p>
+      )}
+      {k.spells && b.method !== 'karma' && !career && (
+        <label className="inline">
+          <input
+            type="checkbox"
+            checked={flag(cr, 'karmaSpellsAtCreation')}
+            disabled={ro}
+            onChange={e =>
+              update(d => {
+                const rest = (d.rules ?? []).filter(r => r.key !== 'karmaSpellsAtCreation')
+                d.rules = [...rest, { key: 'karmaSpellsAtCreation', value: e.target.checked ? 'true' : 'false' }]
+              })
+            }
+          />{' '}
+          Buy extra spells at creation (GM permission){num(cr, 'karmaSpell') !== undefined && ` — ${num(cr, 'karmaSpell')} karma each`}
+        </label>
       )}
       {k.spells && (
         <div className="row">

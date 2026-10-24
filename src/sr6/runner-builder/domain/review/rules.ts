@@ -47,7 +47,19 @@ import {
   skillRank,
   type Sr6Budgets,
 } from '../creation/budgets'
-import { blockedBy, cite, conflictsOf, expandKeys, flag, isOn, isRunnerRuleKey, num, str, type CreationRules } from '../../../table-setup/domain/creation'
+import {
+  CREATION_KEYS,
+  blockedBy,
+  cite,
+  conflictsOf,
+  expandKeys,
+  flag,
+  isOn,
+  isRunnerRuleKey,
+  num,
+  str,
+  type CreationRules,
+} from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
@@ -1901,7 +1913,8 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
   const c: Ctx = { data, cr, ch, b, p, budgets: allBudgets(b, data, cr, p) }
   const labels = new Map(expandKeys(data).map(k => [k.key, k.label]))
   const out: Violation[] = [],
-    unset = new Set<string>()
+    unset = new Set<string>(),
+    seen = new Set<string>()
   // a setting the runner turned off itself (Creation method tab) is no table setting left unset
   const off = new Set((ch.rules ?? []).filter(r => !r.value.trim()).map(r => r.key))
   for (const r of RULES) {
@@ -1918,6 +1931,13 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
     }
     const hits = r.check(c)
     for (const h of hits === null ? [] : Array.isArray(hits) ? hits : [hits]) {
+      // Different purchase paths can emit the same note; keep the first. Errors are never collapsed: each line with its
+      // own path is a separate thing to fix (two Aptitude lines each naming no skill).
+      if (r.severity !== 'error') {
+        const key = JSON.stringify([r.code, h.message])
+        if (seen.has(key)) continue
+        seen.add(key)
+      }
       const at = h.page ? { source: h.source, page: h.page } : keys[0] ? cite(cr, keys[0]) : {}
       out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at, ...(r.hard ? { hard: true as const } : {}) })
     }
@@ -2007,7 +2027,7 @@ function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string
         path: 'method',
         message: `${name(r.key)}: your choice is set aside; the campaign’s GM ${s.lockedBy} locked it.`,
       })
-    else if (b)
+    else if (b && !CREATION_KEYS.some(k => k.key === r.key && k.methods !== 'all' && k.methods.length > 0 && !k.methods.includes(ch.build.method)))
       out.push({
         code: 'rules.setAside',
         severity: 'warning',

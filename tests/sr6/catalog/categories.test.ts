@@ -3,7 +3,7 @@
 // host's accessory; Review flags an accessory on the wrong host and accessories over the host's capacity.
 import { expect, test } from 'vitest'
 import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { capacityOf, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../../src/sr6/catalog/domain/categories'
+import { capacityOf, capacityRemaining, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../../src/sr6/catalog/domain/categories'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
@@ -52,7 +52,14 @@ test('another host’s accessory is fitted, an error a GM may approve; Review fl
   const codes = () => validateSr6(data, cr, ch).filter(v => v.code.startsWith('catalog.') && v.code !== 'catalog.formula')
   expect(codes()).toEqual([]) // 3 + 3 of 6
   // the eyeware's glare filter on the limb: fitted (it takes 2 more capacity)
-  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: true })
+  // add-time: 6 of 6 used, so the filter is refused and capacity is not exceeded
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({
+    ok: false,
+    reason: 'Not enough remaining capacity.',
+  })
+  expect(limb.accessories).toHaveLength(2)
+  // an over-full file (imported, or a rule changed) is still flagged: force the line in
+  limb.accessories.push({ ...limb.accessories[0], uid: 'forced', id: 'crb.glare-filter', name: 'Glare filter', rating: undefined })
   const v = codes()
   expect(v.map(x => x.code).sort()).toEqual(['catalog.accessoryHost', 'catalog.capacity'])
   expect(v.find(x => x.code === 'catalog.accessoryHost')).toMatchObject({
@@ -106,8 +113,33 @@ test('an accessory’s bonuses are its host’s: the limb’s own STR and armor 
   // over its capacity: a Review error
   act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
   act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
+  limb.accessories.push({ ...limb.accessories[0], uid: 'forced' }) // add-time refuses it; Review still flags an over-full file
   expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.capacity')).toMatchObject({
     severity: 'error',
-    message: 'Torqlimb: Limb (synthetic): its accessories take 8 capacity; it has 6.',
+    message: 'Torqlimb: Limb (synthetic): its accessories take 7 capacity; it has 6.',
   })
+})
+
+test('remaining capacity is the host’s capacity minus what its accessories take; a refused over-fill leaves it unchanged', () => {
+  const { b, data, act } = setup()
+  const limb = data.entry('augmentations', 'crb.limb-synthetic')!,
+    plating = data.entry('augmentations', 'crb.plating')!
+  expect(capacityRemaining(limb, [])).toBe(capacityOf(limb))
+  expect(capacityRemaining(limb, [{ entry: plating, rating: 3 }])).toBe(capacityOf(limb)! - capacityUsed(plating, 3))
+  expect(capacityRemaining(undefined, [{ entry: plating, rating: 3 }])).toBeNull() // no capacity printed: unbounded
+  act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })
+  const host = b.purchases[0]
+  expect(act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
+  expect(act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
+  expect(act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({
+    ok: false,
+    reason: 'Not enough remaining capacity.',
+  })
+  expect(host.accessories).toHaveLength(2)
+  expect(
+    capacityRemaining(
+      limb,
+      host.accessories.map(a => ({ entry: data.entry('augmentations', a.id!), rating: 3 })),
+    ),
+  ).toBe(capacityOf(limb)! - 2 * capacityUsed(plating, 3))
 })

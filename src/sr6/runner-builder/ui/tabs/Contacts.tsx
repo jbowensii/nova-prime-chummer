@@ -11,7 +11,7 @@ import { NameField } from '../../../../core/shared/ui'
 import { licenceFee, nuyenPerKarma, purchaseName, settingQuality, toNuyenMax } from '../../domain/creation/budgets'
 import { licenceItem, licenceRatingText } from '../view'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
-import { CONTACT_TYPES, sinName, type ContactType, type Sr6Sin } from '../../../formats/domain/character'
+import { CONTACT_TYPES, sinName, type ContactType, type Sr6Purchase, type Sr6Sin } from '../../../formats/domain/character'
 import { n, sr6EditHref, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { Sr6Ref } from '../EntryRef'
@@ -177,11 +177,28 @@ export function ContactsTab() {
   )
 }
 
+const ownedPurchases = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...ownedPurchases(x.accessories)])
+
 function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: ReactNode[] }) {
-  const { act, data, ch } = useSr6Editor()
+  const { act, edit, data, ch } = useSr6Editor()
   const [name, setName] = useState('')
   const add = () => {
     if (name.trim() && !act({ op: 'licence', sin: s.uid, name: name.trim() })) setName('')
+  }
+  const owned = ownedPurchases(ch.build.purchases)
+  const assign = (uid: string, sin?: string) => {
+    edit(b => {
+      const x = ownedPurchases(b.purchases).find(x => x.uid === uid)
+      if (!x) return
+      if (sin) x.sin = sin
+      else delete x.sin
+    })
+  }
+  const remove = () => {
+    edit(b => {
+      b.sins = b.sins.filter(x => x.uid !== s.uid)
+      for (const x of ownedPurchases(b.purchases)) if (x.sin === s.uid) delete x.sin
+    })
   }
   // the owned items (accessories too) whose Availability prints a licence fee, not yet licensed on this SIN
   const items = ch.build.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined && !s.licences.some(l => l.item === x.uid))
@@ -222,9 +239,32 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
           />
         </label>
         <span className="spacer" />
-        <button className="btn small quiet" aria-label={`Remove ${sinName(s, who)}`} onClick={() => act({ op: 'sin', remove: s.uid })}>
+        <button className="btn small quiet" aria-label={`Remove ${sinName(s, who)}`} onClick={remove}>
           Remove
         </button>
+      </div>
+      <div className="stack">
+        <h3>Assigned gear</h3>
+        {owned.filter(x => x.sin === s.uid).map(x => (
+          <div key={x.uid} className="row">
+            <span>{purchaseName(x, data)}</span>
+            <button className="btn small quiet" aria-label={'Unassign ' + purchaseName(x, data) + ' from ' + who} onClick={() => assign(x.uid)}>
+              Unassign
+            </button>
+          </div>
+        ))}
+        <select aria-label={'Assign owned gear to ' + who} value="" onChange={e => e.target.value && assign(e.target.value, s.uid)}>
+          <option value="">Assign owned gear…</option>
+          {owned.filter(x => x.sin !== s.uid).map(x => {
+            const from = ch.build.sins.find(s => s.uid === x.sin)
+            return (
+              <option key={x.uid} value={x.uid}>
+                {purchaseName(x, data)}
+                {x.sin && ' (move from ' + (from ? sinName(from) : 'another SIN') + ')'}
+              </option>
+            )
+          })}
+        </select>
       </div>
       <div className="row">
         {s.licences.map((l, i) => (

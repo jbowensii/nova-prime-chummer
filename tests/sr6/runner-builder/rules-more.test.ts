@@ -299,3 +299,12 @@ test('Improved Ability needs a rank in its skill and may raise it only so far', 
   ch.build.picks[0].level = 1
   expect(messages(ch, 'adept.improvedAbility', { rules })).toEqual([])
 })
+
+test('Review keeps identical notes from two lines once (errors on separate lines stay separate: see the quality choice test)', () => {
+  const ch = runner()
+  ch.build.purchases.push(
+    { uid: 'w1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [] },
+    { uid: 'w2', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [] },
+  )
+  expect(messages(ch, 'gear.ammo')).toEqual(['Zap Gun has no ammunition bought for it.']) // same code and words: one
+})

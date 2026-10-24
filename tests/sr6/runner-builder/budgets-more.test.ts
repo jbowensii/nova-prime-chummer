@@ -45,6 +45,16 @@ test('free spell slots: point buy gives the character points bought; others the 
   expect(freeSpellSlots(plain, wp.data, wp.cr, wp.p)).toBe(0)
 })
 
+test('free spell slots: a mystic adept casts with its actual Magic less the power points bought', () => {
+  const ma = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'mystic-adept' })
+  ma.powerPointsBought = 4
+  const w = world(ma, { rules: { freeSpellsPerMagic: 2 } })
+  ma.attributes.mag.adjust = 6 - w.p.magicRating(ma) // raised to Magic 6
+  expect(freeSpellSlots(ma, w.data, w.cr, w.p)).toBe(4)
+  const mundane = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  expect(freeSpellSlots(mundane, w.data, w.cr, w.p)).toBe(0)
+})
+
 test('power points: point buy takes the character points, a mystic adept the ones bought (half a point under the alternate rule), a non-adept none', () => {
   const pb = buildOf('pointbuy', { metatype: GLIM, magic: 'adept' })
   pb.cp.powerPoints = 5

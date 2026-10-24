@@ -6,6 +6,7 @@
 import type { Sr6Entry, Sr6Kind } from '../../formats/domain/types'
 import { normName } from './names'
 import { rated } from './values'
+import { structureOf } from './structure'
 
 /** How a catalog entry is named in lists, pickers, Review, the ledger, sheets and exports: its category first when its
  *  own name needs it. */
@@ -83,6 +84,8 @@ export const hostsOf = (index: Map<string, Sr6Entry[]>, acc: Sr6Entry): string[]
 /** Whether an accessory fits a host item: its category's `fits` names the host's exact category, or the host's kind or
  *  augmentation type by its own word. null when the accessory's category names no host (nothing to check). */
 export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr6Entry): boolean | null {
+  const slots = structureOf(acc).fits
+  if (slots.length) return slots.some(id => structureOf(host).slots.some(s => s.id === id))
   const hosts = hostsOf(index, acc)
   if (!hosts.length) return null
   return hosts.some(h => {
@@ -114,3 +117,9 @@ export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMateri
  *  semi-precious materials, x10 for gold or other precious materials`): the importer's material add-on, an ammunition
  *  type priced as a multiple of the ammunition it is loaded in (catalog.py variants: its cost formula is `H*N`). */
 export const isMaterial = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !!e.formulas?.some(f => f.field === 'cost' && /\bH\b/.test(f.expr))
+
+/** Shared remaining-capacity calculation; unknown capacity stays unbounded. */
+export function capacityRemaining(host: Sr6Entry | undefined, accessories: { entry?: Sr6Entry; rating?: number; qty?: number }[], rating = 1): number | null {
+  const max = capacityOf(host, rating)
+  return max === null ? null : max - accessories.reduce((sum, a) => sum + capacityUsed(a.entry, a.rating) * (a.qty ?? 1), 0)
+}

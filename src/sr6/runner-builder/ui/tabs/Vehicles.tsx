@@ -1,7 +1,7 @@
 // Vehicles and Drones (owner 2026-10-16: two tabs, a drone by its class or category): each owned one with its stats as
 // the catalog prints them, what's fitted to it, and its Modify panel (src/sr6/runner-builder/domain/assets/vehiclemods.ts): with Double
 // Clutch among the table's books its mod slots and hardpoints, else the core rulebook's weapon mounts; mods, weapons in
-// mounts, a drone's autosofts; the mods built in; a do-it-yourself box on each mod. Listed and warned, never refused.
+// mounts, a drone's autosofts; the mods built in; a do-it-yourself box on each mod. Capacity is enforced when fitting.
 // After finalising the tabs are read only: mods are fitted and taken off on the Ledger. Your designs (the Designer) are
 // bought here too (after finalising: on the Ledger).
 import { useState } from 'react'
@@ -134,6 +134,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
     why = shiftProblem(x, shift.from, shift.to, data)
   const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
   const mounts = mountsOf(x, data) // (fitted, then built in)
+  const freeMounts = mounts.filter(mt => !x.accessories.some(a => a.mount === mt.uid))
   const rows = x.accessories.filter(a => a.kind === 'weapons' || diyAllowed(entryOf(a, data)))
   const add = (k: keyof typeof ADD) => (p: { e: Sr6Entry; rating?: number }) => {
     // a weapon goes into the first mount with none in it (changed below)
@@ -143,6 +144,19 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   return (
     <div className="stack" aria-label={`Modify ${name}`} style={{ gap: '0.25rem' }}>
       <b>Modify</b>
+      <span>Weapon mounts remaining: {freeMounts.length}</span>
+      <span className="muted">
+        Remaining:{' '}
+        {[
+          ...(m.slots ? SLOT_KINDS.map(k => [k, m.slots![k]] as const) : []),
+          ['hardpoints', m.hardpoints] as const,
+          ['mounts', m.mounts] as const,
+          ['autosofts', m.autosofts] as const,
+        ]
+          .filter(([, v]) => v)
+          .map(([label, v]) => label + ': ' + n(v!.max - v!.used))
+          .join('; ')}
+      </span>
       <span>
         {m.dc
           ? 'Double Clutch: mod slots per category, its Body each (p. 120); hardpoints, one standard per 3 Body (p. 124).'
@@ -213,7 +227,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
               >
                 <option value="">In no mount</option>
                 {mounts.map(mt => (
-                  <option key={mt.uid} value={mt.uid}>
+                  <option key={mt.uid} value={mt.uid} disabled={x.accessories.some(other => other.uid !== a.uid && other.mount === mt.uid)}>
                     In {mt.name}
                     {mt.builtin ? ' (built in)' : ''}
                   </option>
@@ -242,11 +256,16 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
         <button className="btn small quiet" aria-label={`Add a mod to ${name}`} onClick={() => setAdding('mod')}>
           Mod…
         </button>
-        <button className="btn small quiet" aria-label={`Add a weapon to ${name}`} onClick={() => setAdding('weapon')}>
+        <button className="btn small quiet" aria-label={`Add a weapon to ${name}`} disabled={!freeMounts.length} onClick={() => setAdding('weapon')}>
           Weapon…
         </button>
         {m.drone && (
-          <button className="btn small quiet" aria-label={`Add an autosoft to ${name}`} onClick={() => setAdding('autosoft')}>
+          <button
+            className="btn small quiet"
+            aria-label={`Add an autosoft to ${name}`}
+            disabled={!!m.autosofts && m.autosofts.used >= m.autosofts.max}
+            onClick={() => setAdding('autosoft')}
+          >
             Autosoft…
           </button>
         )}

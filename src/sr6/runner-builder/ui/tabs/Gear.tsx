@@ -18,7 +18,7 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
 export function GearTab() {
-  const { ch, d, data, cr, act } = useSr6Editor()
+  const { d, data, cr, act } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
@@ -88,17 +88,22 @@ export function GearTab() {
         kind="armor"
         title="Armor"
         one="armor"
+        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
         detail={x => social(entryOf(x, data)?.attrs.social)}
         hint={`Defense Rating ${d.defenseRating} and Social Rating ${d.socialRating} with the armor worn.`}
       />
-      <PurchaseSection kind="electronics" title="Electronics" one="electronics" bonuses />
+      <PurchaseSection kind="electronics" title="Electronics" one="electronics" accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }} bonuses />
       <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
-      <PurchaseSection kind="gear" title="Other gear" one="other gear" bonuses detail={material} />
-      {/* an ammunition type a runner bought as gear before the importer filed it apart (src/sr6/runner-builder/domain/career/migrate.ts) */}
-      {ch.build.purchases.some(x => x.kind === 'ammotypes') && (
-        <PurchaseSection kind="ammotypes" title="Ammunition types" one="an ammunition type" detail={material} />
-      )}
+      <PurchaseSection
+        kind="gear"
+        title="Other gear"
+        one="other gear"
+        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
+        bonuses
+        detail={material}
+      />
+      <PurchaseSection kind="ammotypes" title="Ammunition" one="ammunition type" offer={isAmmoType} detail={material} />
       <Modal
         open={custom}
         onClose={close}

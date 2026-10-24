@@ -52,14 +52,29 @@ const world = (dc: boolean) => {
   )
   return { data: sr6Data(fixtureCatalog(undefined, files)), cr: fixtureCreation() }
 }
+/** Fit an accessory the way the editor does. Add-time refuses one past the host's slots, mounts or capacity; these tests
+ *  need an over-full host (an imported file, a rule changed since), so a refused one is put on directly, as such a file has it. */
+function fit(b: ReturnType<typeof blankBuild>, host: Sr6Purchase, kind: string, id: string, w: ReturnType<typeof world>, rating?: number) {
+  const r = apply(b, { op: 'accessory', host: host.uid, kind: kind as Sr6Purchase['kind'], id, rating }, w.data, w.cr)
+  if (!r.ok && /s/.test(r.reason))
+    host.accessories.push({
+      uid: `forced:${host.accessories.length}`,
+      kind: kind as Sr6Purchase['kind'],
+      id,
+      name: w.data.entry(kind as Sr6Purchase['kind'], id)!.name,
+      qty: 1,
+      accessories: [],
+      ...(rating !== undefined ? { rating } : {}),
+    })
+  else expect(r).toEqual({ ok: true })
+}
 /** A build owning `vehicle`, the accessories fitted in order (id, rating), and the world it was built in. */
 function owning(dc: boolean, vehicle: string, fits: [string, string, number?][] = []) {
   const w = world(dc),
     b = blankBuild('priority')
   expect(apply(b, { op: 'purchase', kind: 'vehicles', id: vehicle }, w.data, w.cr)).toEqual({ ok: true })
   const host = b.purchases[0]
-  for (const [kind, id, rating] of fits)
-    expect(apply(b, { op: 'accessory', host: host.uid, kind: kind as Sr6Purchase['kind'], id, rating }, w.data, w.cr)).toEqual({ ok: true })
+  for (const [kind, id, rating] of fits) fit(b, host, kind, id, w, rating)
   return { ...w, b, host, uid: (id: string) => host.accessories.find(a => a.id === id || a.id?.startsWith(`${id}.`))!.uid }
 }
 const messages = (x: Sr6Purchase, data: ReturnType<typeof world>['data']) => modsOf(x, data).warnings.map(w => `${w.source} ${w.page}: ${w.message}`)
@@ -104,7 +119,7 @@ test('DC: free hardpoints are Body / 3 standard ones (a small drone of Body 3 or
   ])
   expect(modsOf(van.host, van.data).hardpoints).toEqual({ used: 3, max: 2 })
   expect(messages(van.host, van.data)).toEqual(['DC 124: Zap Van: what is on its hardpoints takes 3 standard hardpoints; it has 2.'])
-  apply(van.b, { op: 'accessory', host: van.host.uid, kind: 'gear', id: 'zz.large-hardpoint' }, van.data, van.cr)
+  fit(van.b, van.host, 'gear', 'zz.large-hardpoint', van)
   expect(modsOf(van.host, van.data).hardpoints).toEqual({ used: 3, max: 4 })
   expect(modsOf(van.host, van.data).slots!.chassis.used).toBe(2) // (the hardpoint mod's chassis slots)
   expect(modsOf(van.host, van.data).warnings).toEqual([])
@@ -163,7 +178,9 @@ test('weapons sit in one mount each, no bigger than it holds; a mount taken off 
     std = o.uid('zz.zap-mount')
   expect(weaponSize(o.data.entry('weapons', 'zz.zap-smg'))).toBe(0)
   expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-smg'), mount: small }, o.data, o.cr)).toEqual({ ok: true })
-  expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-rifle'), mount: small }, o.data, o.cr)).toEqual({ ok: true })
+  // a second weapon into a full mount is refused; an over-full file (imported) still has it, and Review warns
+  expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-rifle'), mount: small }, o.data, o.cr)).toEqual({ ok: false, reason: 'This weapon mount is full.' })
+  o.host.accessories.find(a => a.uid === o.uid('zz.zap-rifle'))!.mount = small
   expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-cannon'), mount: o.uid('zz.zap-smg') }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-a-mount' })
   expect(apply(o.b, { op: 'mount', uid: small, mount: std }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-a-weapon' })
   expect(messages(o.host, o.data)).toEqual([
@@ -178,8 +195,11 @@ test('weapons sit in one mount each, no bigger than it holds; a mount taken off 
   expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-rifle'), mount: std }, o.data, o.cr)).toEqual({ ok: true })
   expect(apply(o.b, { op: 'accessory', host: o.host.uid, remove: std }, o.data, o.cr)).toEqual({ ok: true })
   expect(o.host.accessories.find(a => a.id === 'zz.zap-rifle')!.mount).toBeUndefined()
-  // (a new weapon straight into a mount)
-  expect(apply(o.b, { op: 'accessory', host: o.host.uid, kind: 'weapons', id: 'zz.zap-smg', mount: small }, o.data, o.cr)).toEqual({ ok: true })
+  // (a new weapon straight into a mount: refused while the small one still holds the SMG, taken once it is free)
+  const add = () => apply(o.b, { op: 'accessory', host: o.host.uid, kind: 'weapons', id: 'zz.zap-smg', mount: small }, o.data, o.cr)
+  expect(add()).toEqual({ ok: false, reason: 'This weapon mount is full.' })
+  o.host.accessories.find(a => a.id === 'zz.zap-smg')!.mount = undefined
+  expect(add()).toEqual({ ok: true })
   expect(o.host.accessories.at(-1)!.mount).toBe(small)
 })
 
@@ -189,7 +209,7 @@ test('a drone runs half its Pilot in autosofts and programs, rounded up; more is
     ['programs', 'zz.zap-pilot'],
   ])
   expect(modsOf(o.host, o.data).autosofts).toEqual({ used: 2, max: 2 })
-  apply(o.b, { op: 'accessory', host: o.host.uid, kind: 'programs', id: 'zz.zap-pilot' }, o.data, o.cr)
+  fit(o.b, o.host, 'programs', 'zz.zap-pilot', o)
   expect(messages(o.host, o.data)).toEqual(['CRB 201: Zap Drone: 3 autosofts and programs; its Pilot runs 2 (more when slaved to a rigger command console).'])
   expect(modsOf(owning(false, 'zz.zap-van').host, o.data).autosofts).toBeUndefined() // (a vehicle: none counted)
 })
@@ -402,7 +422,8 @@ test('built-in mods are fittings already paid for (DESIGNER Q3): a built-in moun
   // Body 9: 3 free standard hardpoints, + 2 the built-in large one; the built-in mount takes 1
   expect(modsOf(o.host, o.data).hardpoints).toEqual({ used: 1, max: 5 })
   expect(messages(o.host, o.data)).toEqual(['DC 142: Zap Tank: Zap Cannon isn’t in a weapon mount.'])
-  expect(apply(o.b, { op: 'mount', uid: cannon, mount: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(apply(o.b, { op: 'mount', uid: cannon, mount: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: false, reason: 'This weapon mount is full.' })
+  o.host.accessories.find(a => a.uid === cannon)!.mount = 'builtin:0' // (an over-full file)
   expect(messages(o.host, o.data)).toEqual([
     'DC 142: Zap Tank: Zap Cannon is too big for its Zap Standard Weapon Mount (it holds an assault rifle or smaller).',
     'DC 142: Zap Tank: 2 weapons in one Zap Standard Weapon Mount.',

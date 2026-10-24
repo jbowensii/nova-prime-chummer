@@ -73,6 +73,7 @@ function purchaseXml(p: Sr6Purchase): string {
     'purchase',
     {
       uid: p.uid,
+      sin: p.sin,
       kind: p.kind,
       id: p.id,
       name: p.name,
@@ -404,6 +405,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
   const x: Sr6Purchase = def({
     uid: e.getAttribute('uid') ?? '',
     kind,
+    sin: str(e, 'sin'),
     id: str(e, 'id'),
     name: str(e, 'name'),
     cost: num(e, 'cost'),

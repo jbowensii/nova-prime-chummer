@@ -1,3 +1,6 @@
+import { capacityRemaining, capacityUsed } from '../../../catalog/domain/categories'
+import { mountSlots } from '../../../catalog/domain/structure'
+import { ratingOf } from './purchases'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
 // build (or the runner) in place: the editor works on a copy. The character-level setters (method, letters, metatype,
 // magic kind) take the runner so identity.metatype stays build.metatype; apply() takes the build and answers
@@ -49,7 +52,7 @@ import {
   takesMaterial,
   toNuyenMax,
 } from './budgets'
-import { mountsOf, shiftProblem } from '../assets/vehiclemods'
+import { modsOf, mountsOf, shiftProblem } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -593,6 +596,10 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!diyAllowed(entryOf(line, data))) return no('no-diy')
         line.diy = true
       }
+      if (host.kind === 'vehicles' && line.kind === 'weapons' && !line.mount)
+        line.mount = mountsOf(host, data).find(m => !host.accessories.some(a => a.mount === m.uid))?.uid
+      const problem = accessoryProblem(host, line, data)
+      if (problem) return no(problem)
       host.accessories.push(line) // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
       return OK
     }
@@ -623,6 +630,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       }
       // (a fitted mount or a built-in one, vehiclemods.ts mountsOf)
       if (!mountsOf(host, data).some(m => m.uid === op.mount)) return no('not-a-mount')
+      if (host.accessories.some(a => a.uid !== x.uid && a.mount === op.mount)) return no('This weapon mount is full.')
       x.mount = op.mount
       return OK
     }
@@ -1078,4 +1086,29 @@ function newLine(
   if (gp) return { ok: false, reason: gp }
   if (level) return { ...base, id: level.id, name: level.name }
   return { ...base, id: op.id, name: e.name, ...(op.rating !== undefined ? { rating: op.rating } : {}) }
+}
+
+/** Shared add-time guard for all accessory pickers. */
+function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): string | undefined {
+  const he = entryOf(host, data),
+    e = entryOf(line, data)
+  const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
+  const remaining = capacityRemaining(he, items, ratingOf(host, he))
+  if (remaining !== null && capacityUsed(e, ratingOf(line, e)) * line.qty > Math.max(0, remaining)) return 'Not enough remaining capacity.'
+  const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he))
+  if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he)).unplaced.length) return 'No compatible mount slot remaining.'
+  if (host.kind !== 'vehicles') return
+  if (line.kind === 'weapons') {
+    if (!line.mount || !mountsOf(host, data).some(m => m.uid === line.mount)) return 'A free weapon mount is required.'
+    if (host.accessories.some(a => a.mount === line.mount)) return 'This weapon mount is full.'
+  }
+  const before = modsOf(host, data),
+    after = modsOf({ ...host, accessories: [...host.accessories, line] }, data)
+  const universal = after.builtin.reduce((n, b) => n + (b.category === 'universal' ? (b.slots ?? 0) : 0), 0)
+  const slotOver = (m: typeof after) => Object.values(m.slots ?? {}).reduce((n, s) => n + Math.max(0, s.used - s.max), 0)
+  if (slotOver(after) > Math.max(universal, slotOver(before))) return 'Not enough remaining mod slots.'
+  for (const key of ['hardpoints', 'mounts', 'autosofts'] as const) {
+    const m = after[key]
+    if (m && m.used > Math.max(m.max, before[key]?.used ?? 0)) return 'Not enough remaining vehicle slots or mounts.'
+  }
 }

@@ -200,6 +200,7 @@
   {"cl6": "Fake SIN", "kind": "gear", "id": "fake-sin", "set": {"class": "ELECTRONICS/ID_CREDIT"}},
   {"cl6": "Fake license", "kind": "gear", "id": "fake-license", "set": {"class": "ELECTRONICS/ID_CREDIT"}},
   {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
+  {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "set": {"avail": "2"}, "gen": "value"},
   {"cl6": "Grenade Launcher", "kind": "weapons", "id": "grenade-launcher", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Full body armor helmet", "kind": "armor", "id": "full-body-armor-w-helmet", "set": {"avail": "4(L)"}, "gen": "value"},
   {"cl6": "Commlink", "kind": "augmentations", "id": "commlink", "set": {"cost": "2000"}, "gen": "value"},

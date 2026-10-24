@@ -290,23 +290,15 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+/* no veil: the picture is the bottom layer and --art is its opacity, 0 = hidden, 100% = the picture only (BookSheet's own tint is hidden with it) */
 .sheet-art::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-  background: radial-gradient(
-    ellipse at 50% 50%,
-    rgb(255 255 255 / calc((0.93 - 0.58 * var(--art)) * 0.5)) 40%,
-    rgb(255 255 255 / calc((0.82 - 0.57 * var(--art)) * 0.5)) 100%
-  );
+  display: none;
 }
 .sheet .s-top,
 .sheet .npc-block,
 .sheet .s-cols > section,
 .sheet > section {
-  --wash: rgb(255 255 255 / calc(0.6 * var(--art)));
+  --wash: transparent;
   background-color: var(--wash);
   box-shadow: 0 0 0.8rem 0.3rem var(--wash);
   -webkit-print-color-adjust: exact;
