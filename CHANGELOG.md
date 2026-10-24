@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.23.0 — 2026-10-24
+
+Gear gains a real accessory and capacity system, the mystic adept free-spell count is corrected, commlinks can be
+assigned to identities, and a batch of review and character-sheet issues are resolved.
+
+- Mystic adepts count free spells from their actual Magic less the power points bought; a GM-permission option allows
+  buying extra spells at creation for Karma each.
+- Every item with slots or capacity — weapons, armor, electronics, commlinks, cyberware, vehicles and drones — shows
+  remaining capacity, offers add and remove, and refuses an add or a rating change that would overfill it. Weapon mount
+  slots (suppressors, barrel, top and under accessories) work.
+- Ammunition can be bought directly from the Gear tab again.
+- A commlink or any gear can be assigned to an identity, and an identity can hold any number of them.
+- Review no longer repeats a note or shows creation-method settings that do not apply; the Neon sheet labels and the
+  sheet background-art slider are fixed.
+
+Re-import needed only for the Ares Predator VI spare-magazine availability; every other change is code and applies at
+once.
+
 ## 0.22.0 — 2026-10-24
 
 Leveled adept powers and qualities are no longer stuck at level 1 when the book prints no cap, the special creation-cost
