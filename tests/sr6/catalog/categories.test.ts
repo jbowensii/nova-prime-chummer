@@ -143,3 +143,17 @@ test('remaining capacity is the host’s capacity minus what its accessories tak
     ),
   ).toBe(capacityOf(limb)! - 2 * capacityUsed(plating, 3))
 })
+
+test('raising a fitted accessory’s rating may not overfill its host (the add-time guard, on rate)', () => {
+  const { b, act } = setup()
+  act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })
+  const host = b.purchases[0]
+  act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })
+  act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 1 })
+  act({ op: 'accessory', host: host.uid, kind: 'augmentations', id: 'crb.plating', rating: 1 })
+  const low = host.accessories[1],
+    was = structuredClone(low)
+  expect(act({ op: 'rate', uid: low.uid, rating: 3 })).toEqual({ ok: false, reason: 'Not enough remaining capacity.' })
+  expect(low).toEqual(was)
+  expect(act({ op: 'rate', uid: low.uid, rating: 2 })).toEqual({ ok: true })
+})

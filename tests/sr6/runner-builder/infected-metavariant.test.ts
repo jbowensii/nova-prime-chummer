@@ -67,3 +67,13 @@ test('Review’s infected.metatype uses the parent', () => {
   }
   expect([has('crb.ork'), has('crb.hobgoblin'), has('crb.nartaki')]).toEqual([false, false, true])
 })
+
+test('infected.off keeps one warning per Infected quality (separate paths are not collapsed)', () => {
+  const off = fixtureCreation()
+  off.set('infectedAllowed', { key: 'infectedAllowed', value: false })
+  const b = as('crb.ork', 'crb.zap-ghoul-ork')
+  b.qualities.push({ ...b.qualities[0], uid: 'q2', id: 'crb.zap-vampire' })
+  const hits = validateSr6(data, off, { ...blankSr6('karma', 'r1', '2026-10-16T00:00:00Z'), build: b }).filter(v => v.code === 'infected.off')
+  expect(new Set(hits.map(h => h.path)).size).toBe(hits.length)
+  expect(hits.length).toBe(2)
+})

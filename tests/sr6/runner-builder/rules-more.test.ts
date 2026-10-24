@@ -306,5 +306,6 @@ test('Review keeps identical notes from two lines once (errors on separate lines
     { uid: 'w1', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [] },
     { uid: 'w2', kind: 'weapons', id: 'crb.zap-gun', qty: 1, accessories: [] },
   )
-  expect(messages(ch, 'gear.ammo')).toEqual(['Zap Gun has no ammunition bought for it.']) // same code and words: one
+  // two separate weapon lines (two paths) each keep their note
+  expect(messages(ch, 'gear.ammo')).toEqual(['Zap Gun has no ammunition bought for it.', 'Zap Gun has no ammunition bought for it.'])
 })

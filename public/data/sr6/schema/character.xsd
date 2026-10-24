@@ -632,6 +632,8 @@
          snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
          when a GM made or approved the design) -->
     <xs:attribute name="design" type="xs:string"/>
+    <!-- the identity (SIN) the line is assigned to: its uid -->
+    <xs:attribute name="sin" type="xs:string"/>
     <!-- a vehicle's or drone's mod slots shifted between categories (Double Clutch p. 120), in the order made: `from>to`
          each, two slots of the first category given for one of the second (`chassis>powertrain`) -->
     <xs:attribute name="slotShifts">

@@ -740,12 +740,39 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // an implant's add-on has its grade (CRB p. 282): never one of its own
       const host = allLines(b).find(h => h.kind === 'augmentations' && h.accessories.includes(x))
       if (host && op.grade !== undefined) return no('grade-follows-host')
+      const prev = { id: x.id, name: x.name, rating: x.rating }
+      const owner0 = allLines(b).find(h => h.accessories.includes(x)),
+        he0 = owner0 && entryOf(owner0, data)
+      const before = owner0
+        ? capacityRemaining(
+            he0,
+            owner0.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) })),
+            ratingOf(owner0, he0),
+          )
+        : null
       // (a level of a family: the level's own entry takes the line, which then needs no rating of its own)
       if (level) {
         x.id = level.id
         x.name = level.name
         delete x.rating
       } else if (op.rating !== undefined) x.rating = op.rating
+      // a fitted accessory's new rating may not overfill its host (the add path's guard, accessoryProblem)
+      const owner = allLines(b).find(h => h.accessories.includes(x))
+      if (owner && op.rating !== undefined) {
+        const he = entryOf(owner, data),
+          left = (as: Sr6Purchase[]) =>
+            capacityRemaining(
+              he,
+              as.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) })),
+              ratingOf(owner, he),
+            )
+        const after = left(owner.accessories)
+        if (after !== null && after < 0 && !(before !== null && before < 0)) {
+          Object.assign(x, prev)
+          if (prev.rating === undefined) delete x.rating
+          return no('Not enough remaining capacity.')
+        }
+      }
       if (op.grade) x.grade = op.grade
       else if (op.grade === null) delete x.grade
       // its add-ons follow it (a grade a file gave one is dropped: they have the implant's)

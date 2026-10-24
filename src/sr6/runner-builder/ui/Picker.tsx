@@ -15,7 +15,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { capacityRemaining, entryLabel, entrySearch, fitsHost, hostsOf, isAmmoType } from '../../catalog/domain/categories'
+import { capacityRemaining, categoryOf, entryLabel, entrySearch, fitsHost, hostsOf, isAmmoType } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -419,13 +419,13 @@ export function Accessories({
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   const slots = mountSlots(he, items, ratingOf(host, he))
-  const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
+  const full = (remaining !== null && remaining <= 0) || (slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0))
   // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
   // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
   const fits = (e: Sr6Entry) =>
     critter || ammo
       ? !filter || filter(e)
-      : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : filter(e))
+      : (he && fitsHost(data.categories, e, he) !== null) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
   const wrong = (e: Sr6Entry) => (he && fitsHost(data.categories, e, he) === false ? `for ${hostsOf(data.categories, e).join(' or ')}, not this` : undefined)
   return (
     <span className="row">

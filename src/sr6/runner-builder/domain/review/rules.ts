@@ -1931,10 +1931,10 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
     }
     const hits = r.check(c)
     for (const h of hits === null ? [] : Array.isArray(hits) ? hits : [hits]) {
-      // Different purchase paths can emit the same note; keep the first. Errors are never collapsed: each line with its
+      // An exact repeat (same code, path and message) is kept once. Errors are never collapsed: each line with its
       // own path is a separate thing to fix (two Aptitude lines each naming no skill).
       if (r.severity !== 'error') {
-        const key = JSON.stringify([r.code, h.message])
+        const key = JSON.stringify([r.code, h.path, h.message])
         if (seen.has(key)) continue
         seen.add(key)
       }
