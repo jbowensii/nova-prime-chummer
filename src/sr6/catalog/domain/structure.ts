@@ -19,8 +19,12 @@ export interface ItemStructure {
 export function structureOf(e: Sr6Entry): ItemStructure {
   const of = (tag: string) => e.parts.filter(p => p.tag === tag)
   return {
-    slots: of('slot').map(p => ({ id: p.attrs.id ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) })).filter(s => s.id),
-    fits: of('fits').map(p => p.attrs.slot ?? '').filter(Boolean),
+    slots: of('slot')
+      .map(p => ({ id: p.attrs.id ?? '', ...(p.attrs.value ? { value: p.attrs.value } : {}) }))
+      .filter(s => s.id),
+    fits: of('fits')
+      .map(p => p.attrs.slot ?? '')
+      .filter(Boolean),
     variants: of('variant').map(p => p.attrs.name ?? ''),
     relevance: of('relevance').map(p => p.attrs.topic ?? ''),
     flags: of('flag').map(p => p.text),
@@ -44,8 +48,7 @@ export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], 
   const remaining = new Map<string, number>()
   for (const slot of host ? structureOf(host).slots : []) {
     const value = rated(slot.value ?? '1', rating)
-    if (value.ok && value.n !== null && Number.isFinite(value.n))
-      remaining.set(slot.id, (remaining.get(slot.id) ?? 0) + Math.max(0, Math.floor(value.n)))
+    if (value.ok && value.n !== null && Number.isFinite(value.n)) remaining.set(slot.id, (remaining.get(slot.id) ?? 0) + Math.max(0, Math.floor(value.n)))
   }
   const units = accessories.flatMap(a => {
     const fits = a.entry ? structureOf(a.entry).fits : []
@@ -71,7 +74,7 @@ export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], 
     }
     return false
   }
-  const unplaced = units.flatMap((unit, i) => place(i, new Set()) ? [] : [unit.uid])
+  const unplaced = units.flatMap((unit, i) => (place(i, new Set()) ? [] : [unit.uid]))
   const occupied = new Map<string, string>()
   for (const [slot, fitted] of owners) {
     remaining.set(slot, remaining.get(slot)! - fitted.length)
@@ -80,4 +83,8 @@ export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], 
   return { remaining, occupied, unplaced }
 }
 
-export const slotLabel = (id: string) => id.replace(/^FIREARMS_/, '').replaceAll('_', ' ').toLowerCase()
+export const slotLabel = (id: string) =>
+  id
+    .replace(/^FIREARMS_/, '')
+    .replaceAll('_', ' ')
+    .toLowerCase()

@@ -15,11 +15,15 @@ function runner() {
     { uid: 's2', name: 'Second identity', kind: 'real', licences: [] },
   ]
   ch.build.purchases = [
-    { uid: 'g1', kind: 'gear', name: 'Commlink A', qty: 1, accessories: [
-      { uid: 'a1', kind: 'gear', name: 'Accessory', qty: 1, accessories: [
-        { uid: 'a2', kind: 'gear', name: 'Nested accessory', qty: 1, accessories: [] },
-      ] },
-    ] },
+    {
+      uid: 'g1',
+      kind: 'gear',
+      name: 'Commlink A',
+      qty: 1,
+      accessories: [
+        { uid: 'a1', kind: 'gear', name: 'Accessory', qty: 1, accessories: [{ uid: 'a2', kind: 'gear', name: 'Nested accessory', qty: 1, accessories: [] }] },
+      ],
+    },
     { uid: 'g2', kind: 'gear', name: 'Commlink B', qty: 1, accessories: [] },
   ]
   return ch
