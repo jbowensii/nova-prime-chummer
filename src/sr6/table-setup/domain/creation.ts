@@ -704,6 +704,23 @@ export const LEVELS: [string, [string, string][]][] = [
     ],
   ],
 ]
+/** The three power levels the Method tab offers, as the Sixth World Companion's levels of play (pp. 14–15): Standard is
+ *  neither the Street nor the Elite level on; each of the other two is its own level on (the two can't both be on: a
+ *  RULE_DEPS conflict). */
+export type PowerLevel = 'standard' | 'street' | 'elite'
+/** The level-of-play toggle each non-standard power level maps to. */
+export const POWER_LEVEL_KEYS: Record<Exclude<PowerLevel, 'standard'>, string> = { street: 'levelSwcStreet', elite: 'levelSwcElite' }
+/** The power level these rules are at: Elite or Street when its level is on, else Standard. */
+export const powerLevelOf = (cr: CreationRules): PowerLevel => (flag(cr, 'levelSwcElite') ? 'elite' : flag(cr, 'levelSwcStreet') ? 'street' : 'standard')
+/** The runner-rule overrides that pin a runner to `level`: both level toggles set (one on, both others off) so they
+ *  override whatever the table has; assumed, so Review notes them. Removing them lets the runner track the table again. */
+export const powerLevelRules = (level: PowerLevel): RunnerRule[] =>
+  (Object.entries(POWER_LEVEL_KEYS) as [Exclude<PowerLevel, 'standard'>, string][]).map(([l, key]) => ({
+    key,
+    value: String(l === level),
+    assumed: true as const,
+  }))
+
 /** House rules whose number is the rule itself: while the toggle is on, the setting takes that number (owner's decisions
  *  21 and 17, 2026-10-11: no book prints them). [toggle, setting, value] */
 export const SETS: [string, string, number][] = [
@@ -911,6 +928,17 @@ export function methodFill(method: Sr6Method, cr: CreationRules, data: CreationC
       ? [{ key: k, value: String(s.value), assumed: true as const, ...(s.source ? { source: s.source } : {}), ...(s.page ? { page: s.page } : {}) }]
       : []
   })
+}
+
+/** A method's own settings a runner may carry for itself (point buy's points, the karma build's pool and its toggle,
+ *  lifepath's modules): the keys unique to this method, for the Method tab's per-method "set up" checkboxes to fill
+ *  (methodFill) and clear. A setting shared with another method (a metatype's karma) is left out, so clearing one
+ *  method's checkbox never disturbs another's. */
+export function methodOwnKeys(method: Sr6Method, data: Pick<CreationCatalog, 'metatypes'>): string[] {
+  const mine = expandKeys(data)
+    .filter(k => Array.isArray(k.methods) && k.methods.length === 1 && k.methods[0] === method)
+    .map(k => k.key)
+  return method === 'karma' ? ['karmaBuildMethod', ...mine] : mine
 }
 
 /** A settings file someone picked to load into the creation rules form (the creation.xml format): every row the server
