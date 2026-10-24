@@ -810,7 +810,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (!k) return no('unknown-line')
       if (k.native) return no('native')
       // (owner 2026-10-11: no language above languageMax; the Native one counts as that level)
-      const most = languageCap(b, num(cr, 'languageMax'))
+      const most = languageCap(b, data, num(cr, 'languageMax'))
       if (k.kind === 'language' && most !== undefined && op.delta > 0 && k.points + k.karma + op.delta > most) return no('language-max')
       return step(
         () => k[op.pool],
