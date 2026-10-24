@@ -17,7 +17,20 @@ import {
   type Sr6Method,
 } from '../../../formats/domain/character'
 import { setMagic, setMetatype, setMethod, setPriority } from '../../domain/creation/actions'
-import { flag, loadCreation, methodFill, num, str } from '../../../table-setup/domain/creation'
+import {
+  flag,
+  keyType,
+  loadCreation,
+  methodFill,
+  methodOwnKeys,
+  missingFor,
+  num,
+  POWER_LEVEL_KEYS,
+  powerLevelOf,
+  powerLevelRules,
+  str,
+  type PowerLevel,
+} from '../../../table-setup/domain/creation'
 import { gainedEntry, type Gained, type Grant, type Sr6LifeModuleView, type Sr6PriorityRow } from '../../../catalog/domain/data'
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
@@ -27,7 +40,7 @@ import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { RunnerRules } from '../RunnerRules'
 import { Sr6Ref } from '../EntryRef'
-import type { Sr6Attr } from '../../../formats/domain/character'
+import type { Sr6Attr, Sr6Character } from '../../../formats/domain/character'
 
 const COLUMN_LABELS: Record<PriorityColumn, string> = {
   metatype: 'Metatype',
@@ -100,6 +113,8 @@ export function MethodTab() {
           Set this up here
         </button>
       )}
+      <MethodSetup />
+      <PowerLevelControl />
 
       {letters && <Letters />}
       {b.method === 'pointbuy' && (
@@ -188,6 +203,107 @@ export function MethodTab() {
       <InfectedSection />
       <RunnerRules />
     </div>
+  )
+}
+
+const LEVEL_LABEL: Record<PowerLevel, string> = { standard: 'Standard', street: 'Street', elite: 'Elite' }
+const POWER_KEYS = Object.values(POWER_LEVEL_KEYS)
+
+/** The runner's power level (Standard / Street / Elite), the Sixth World Companion's levels of play. It tracks the table's
+ *  unless the runner overrides it; overriding warns first (the 'Set this up here' pattern: a confirm is the gate), and is
+ *  stored as an assumed, undoable override (powerLevelRules). */
+export function PowerLevelControl() {
+  const { ch, cr, table, update, ro, career } = useSr6Editor()
+  const campaign = powerLevelOf(table),
+    current = powerLevelOf(cr)
+  const overridden = (ch.rules ?? []).some(r => POWER_KEYS.includes(r.key))
+  const clear = (d: Sr6Character) => (d.rules ?? []).filter(r => !POWER_KEYS.includes(r.key))
+  const pick = (to: PowerLevel) => {
+    if (to === current) return
+    if (to === campaign)
+      // back to the table's level: drop the override
+      return void update(d => {
+        const rest = clear(d)
+        d.rules = rest.length ? rest : undefined
+      })
+    if (
+      !window.confirm(
+        `The table’s power level is ${LEVEL_LABEL[campaign]}. Setting this runner to ${LEVEL_LABEL[to]} overrides the table — only with your GM’s permission. You can undo it. Set it?`,
+      )
+    )
+      return
+    update(d => {
+      d.rules = [...clear(d), ...powerLevelRules(to)]
+    })
+  }
+  return (
+    <>
+      <label>
+        Power level
+        <select aria-label="Power level" value={current} disabled={ro || career} onChange={e => pick(e.target.value as PowerLevel)}>
+          {(['standard', 'street', 'elite'] as PowerLevel[]).map(l => (
+            <option key={l} value={l}>
+              {LEVEL_LABEL[l]}
+              {l === campaign ? ' (the table’s)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      {overridden && (
+        <p className="warn">
+          Overriding the table’s power level ({LEVEL_LABEL[campaign]}) with {LEVEL_LABEL[current]} — with your GM’s permission.
+        </p>
+      )}
+    </>
+  )
+}
+
+const SETUP_METHODS: Sr6Method[] = ['pointbuy', 'karma', 'lifepath']
+
+/** A checkbox per build method (point buy, karma build, lifepath): checking one sets that method's creation settings up
+ *  for this runner from the standard values (methodFill, the per-method form of 'Set this up here'), so the method can be
+ *  picked; unchecking clears the runner's own ones (methodOwnKeys). Undoable, like the bulk button. */
+function MethodSetup() {
+  const { ch, data, cr, update, ro, career } = useSr6Editor()
+  if (ro || career) return null
+  const own = new Set((ch.rules ?? []).map(r => r.key))
+  // set up when none of the settings the method needs is still missing (its data gates — life modules, priorities — aren't settings)
+  const usable = (m: Sr6Method) => !missingFor(m, cr, data).some(k => keyType(k) !== undefined)
+  const mine = (m: Sr6Method) => methodOwnKeys(m, data).some(k => own.has(k))
+  const toggle = (m: Sr6Method, on: boolean) => {
+    if (!on)
+      return void update(d => {
+        const keys = methodOwnKeys(m, data)
+        const rest = (d.rules ?? []).filter(r => !keys.includes(r.key))
+        d.rules = rest.length ? rest : undefined
+      })
+    void (async () => {
+      const std = (await loadCreation().catch(() => null))?.std
+      const fill = std ? methodFill(m, cr, data, std) : []
+      if (!fill.length)
+        return void window.alert(`There are no standard values to set here; the table has to set ${SR6_METHOD_LABELS[m]} up (Table setup → Creation rules).`)
+      update(d => {
+        const keys = new Set(fill.map(r => r.key))
+        d.rules = [...(d.rules ?? []).filter(r => !keys.has(r.key)), ...fill]
+      })
+    })()
+  }
+  return (
+    <section className="stack">
+      <h3>Set a method up for this runner</h3>
+      <p className="muted">Turn a build method on with the standard values for this runner only (undoable; a method the table set up is already on).</p>
+      {SETUP_METHODS.map(m => {
+        const on = usable(m),
+          fromTable = on && !mine(m)
+        return (
+          <label key={m}>
+            <input type="checkbox" aria-label={SR6_METHOD_LABELS[m]} checked={on} disabled={fromTable} onChange={e => toggle(m, e.target.checked)} />{' '}
+            {SR6_METHOD_LABELS[m]}
+            {fromTable && <span className="muted"> (the table’s)</span>}
+          </label>
+        )
+      })}
+    </section>
   )
 }
 
