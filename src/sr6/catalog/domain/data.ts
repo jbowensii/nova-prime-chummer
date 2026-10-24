@@ -232,7 +232,8 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     }),
   )
 
-  const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: count(e, e.attrs.maxLevel, 'highest level', 1) })
+  // (none printed: no limit — null, like metamagics; a perLevel pick with null maxLevel is unlimited, PP/karma the only cap)
+  const levels = (e: Sr6Entry) => ({ perLevel: e.attrs.perLevel === 'true', maxLevel: e.attrs.maxLevel ? count(e, e.attrs.maxLevel, 'highest level') : null })
   // (Knowledge and Language are free-text entry points, a skill carrying a `knowledgeskill` choice: the creator types the
   // name on the Skills tab's Knowledge and languages line, so they are not skills to spend skill points on)
   const skills = Object.fromEntries(

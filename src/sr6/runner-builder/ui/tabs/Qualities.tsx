@@ -96,7 +96,7 @@ export function QualitiesTab() {
                         label={`${v.name} level`}
                         value={q.level}
                         min={1}
-                        max={v.maxLevel}
+                        max={Number.isFinite(v.maxLevel) ? v.maxLevel! : 99}
                         onChange={level => act({ op: 'quality', id: q.id, uid: q.uid, level })}
                       />
                     ) : levels(q.id).length > 1 ? (
@@ -212,7 +212,7 @@ export function QualitiesTab() {
                   data.levelOf(data.entry('qualities', q.id)) !== undefined
                     ? `level ${data.levelOf(data.entry('qualities', q.id))} of ${data.siblings('qualities', q.id).length}`
                     : undefined,
-                meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''}${awakenedPrice(q)} karma${q.perLevel ? ` a level, up to ${q.maxLevel}` : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
+                meta: `${q.karma == null ? '?' : q.karmaSteps?.length ? q.karmaSteps.join(' or ') : q.karma}${q.karmaMax != null && !q.karmaSteps?.length ? `–${q.karmaMax}` : ''}${awakenedPrice(q)} karma${q.perLevel ? (Number.isFinite(q.maxLevel) ? ` a level, up to ${q.maxLevel}` : ' a level') : ''}${q.granted ? ` · granted only${q.category ? ` (${q.category})` : ''}` : ''}${q.uncounted ? ' · not one of the six' : ''}`,
                 price: `${data.entry('qualities', q.id)?.source ?? ''} p.${q.page}`.trim(),
                 label: <House c={c} source={data.entry('qualities', q.id)?.source ?? ''} />,
               }))}

@@ -137,6 +137,45 @@ test('a single quality: unknown, a line that is not there, levels it does not ha
   expect(plain.act({ op: 'quality', id: 'crb.knack', level: 2 })).toEqual(no('no-levels'))
 })
 
+test('no printed cap means unlimited, not level 1: a leveled quality with no maxLevel is not stopped at 1, but a capped one still is', () => {
+  // the quality path (improved reflexes / knife fighter had their caps dropped on import): perLevel, maxLevel null
+  const uncapped = made({ data: d => (d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], perLevel: true, maxLevel: null }) })
+  const b1 = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  expect(apply(b1, { op: 'quality', id: 'crb.knack', level: 1 }, uncapped.data, uncapped.cr)).toEqual(ok)
+  const uid = b1.qualities[0].uid
+  expect(apply(b1, { op: 'quality', id: 'crb.knack', uid, level: 7 }, uncapped.data, uncapped.cr)).toEqual(ok) // past 1, no max-level refusal
+  expect(b1.qualities[0].level).toBe(7)
+  // a quality that still prints a cap stops at it
+  const capped = made({ data: d => (d.qualities['crb.knack'] = { ...d.qualities['crb.knack'], perLevel: true, maxLevel: 3 }) })
+  const b2 = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  expect(apply(b2, { op: 'quality', id: 'crb.knack', level: 1 }, capped.data, capped.cr)).toEqual(ok)
+  expect(apply(b2, { op: 'quality', id: 'crb.knack', uid: b2.qualities[0].uid, level: 4 }, capped.data, capped.cr)).toEqual(no('max-level'))
+})
+
+test('an uncapped leveled adept power (maxLevel null) is PP-limited only, not locked at 1; a metamagic is still taken once', () => {
+  // Improved Reflexes case: perLevel power with no printed cap. pickMaxLevel → Infinity, so it rises past 1 (PP permitting)
+  const m = made({
+    data: d => {
+      d.powers['crb.open'] = { ...d.powers['crb.quick-step'], id: 'crb.open', name: 'Open Reflexes', perLevel: true, maxLevel: null, cost: 0.25 }
+      const old = d.entry
+      d.entry = (k, id) => (id === 'crb.open' && k === 'adeptpowers' ? { ...old('adeptpowers', 'crb.quick-step')!, id, name: 'Open Reflexes' } : old(k, id))
+      const fam = d.family
+      d.family = (k, id) => (id === 'crb.open' ? undefined : fam(k, id))
+    },
+  })
+  const b = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'adept' })
+  expect(apply(b, { op: 'pick', kind: 'adeptpowers', id: 'crb.open' }, m.data, m.cr)).toEqual(ok)
+  expect(b.picks[0]).toMatchObject({ id: 'crb.open', level: 1 })
+  expect(apply(b, { op: 'pick', kind: 'adeptpowers', id: 'crb.open' }, m.data, m.cr)).toEqual(ok) // level 2 — not capped at 1
+  expect(b.picks[0].level).toBe(2)
+  expect(apply(b, { op: 'powerLevel', uid: b.picks[0].uid, level: 6 }, m.data, m.cr)).toEqual(ok)
+  expect(b.picks[0].level).toBe(6)
+  // a take-once metamagic (perLevel false) is unchanged: taking it again is a duplicate
+  const mm = runner({ magic: 'full' })
+  expect(mm.act({ op: 'pick', kind: 'metamagics', id: 'crb.soft-echo' })).toEqual(ok)
+  expect(mm.act({ op: 'pick', kind: 'metamagics', id: 'crb.soft-echo' })).toEqual(no('duplicate'))
+})
+
 test('Aptitude and Incompetent are exact opposites: neither goes on the skill the other names', () => {
   const r = runner({ over: { rules: { incompetentQuality: 'crb.butterfingers' } } })
   expect(r.act({ op: 'quality', id: 'crb.knack' })).toEqual(ok)

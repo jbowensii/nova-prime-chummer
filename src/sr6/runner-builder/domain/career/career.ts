@@ -438,7 +438,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const had = b.qualities.find(q => q.id === a.line.id && !q.free)
       if (had && !v.perLevel) no('already-known')
       if (!(a.line.level >= 1)) no('below-one')
-      if ((had?.level ?? 0) + a.line.level > (v.perLevel ? v.maxLevel : 1)) no('at-maximum')
+      if ((had?.level ?? 0) + a.line.level > (v.perLevel ? (v.maxLevel ?? Infinity) : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
       // (its Awakened price, <karmaif>; the Infected free pick, p. 105, when the runner has not used it: one level free)
       const free = !freePick(b, data) && freeEligible(b, data, a.line.id) ? qualityCost({ ...a.line, level: 1 }, v) : 0
@@ -491,7 +491,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       }
       const v = data.powers[id]
       if (had && !v?.perLevel) no('already-known')
-      if (had && (had.level ?? 1) >= (v?.maxLevel ?? 1)) no('at-maximum')
+      if (had && (had.level ?? 1) >= (v?.maxLevel ?? Infinity)) no('at-maximum')
       if (v?.cost == null) no('book-value')
       if (careerPowerPoints(b, data, cr, p).left < powerCost(data, { id, note: had?.note ?? a.line.note })) no('no-power-points') // (one level)
       return { label: `Adept power: ${e.name}${v!.perLevel ? ` ${had ? (had.level ?? 1) + 1 : 1}` : ''}`, karma: 0 }

@@ -421,7 +421,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
       if (level < 1) return no('below-one')
-      if (level > v.maxLevel && v.perLevel) return no('max-level')
+      if (v.perLevel && level > (v.maxLevel ?? Infinity)) return no('max-level')
       if (
         op.karma !== undefined &&
         (v.karmaMax == null ||

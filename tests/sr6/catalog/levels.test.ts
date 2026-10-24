@@ -65,7 +65,7 @@ test('a leveled quality or power is one entry per level with its Karma or power 
     { target: 'bod', value: 4, switch: 'activated' },
   ])
   expect(c.entries.adeptpowers.get('crb.quick-step.4')!.attrs).toMatchObject({ cost: '1', level: '4' })
-  expect(data.qualities['crb.lucky-streak.2']).toMatchObject({ karma: 8, perLevel: false, maxLevel: 1 })
+  expect(data.qualities['crb.lucky-streak.2']).toMatchObject({ karma: 8, perLevel: false, maxLevel: null })
   expect(data.qualities['crb.lucky-streak']).toMatchObject({ karma: 4, perLevel: true, maxLevel: 3, parent: true })
 })
 
