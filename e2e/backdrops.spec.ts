@@ -201,14 +201,14 @@ test('character sheet: weapons and spells apart, knowledge under the skills, por
     expect(await shown()).toBe(true)
     await page.emulateMedia({ media: 'screen' })
     const slider = bgDlg.getByRole('slider', { name: 'Art strength' })
-    await expect(slider).toHaveValue('60') // the sheet's own default until set
+    await expect(slider).toHaveValue('25') // the sheet's own default until set
     await slider.focus()
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
     const strength = () => sheet.evaluate(e => getComputedStyle(e).getPropertyValue('--art').trim())
-    expect(await strength()).toBe('0.7')
+    expect(await strength()).toBe('0.35')
     await page.reload()
-    expect(await strength()).toBe('0.7')
+    expect(await strength()).toBe('0.35')
     await shots(page, 'sheet')
     await page.emulateMedia({ media: 'print' })
     await page.screenshot({ path: `${SHOTS}/sheet-print-preview.png`, fullPage: true })

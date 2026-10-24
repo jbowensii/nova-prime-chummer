@@ -45,7 +45,7 @@ test('a runner saved with old ids loads them under the new ones, saved once with
   await page.getByLabel('Username').fill('pat')
   await page.getByLabel('Password', { exact: true }).fill(PW)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  const ammo = page.locator('section', { has: page.getByRole('heading', { name: 'Ammunition types' }) })
+  const ammo = page.locator('section', { has: page.getByRole('heading', { name: 'Ammunition', exact: true }) })
   await expect(ammo.getByRole('row', { name: /Fizz Rounds/ })).toBeVisible()
   await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Other gear' }) })).toContainText('None yet.')
   await page.goto('/#/sr6/c/old-ids-1/augmentations')
