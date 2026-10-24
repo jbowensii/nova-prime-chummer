@@ -1,7 +1,7 @@
 // Per-browser display settings store: theme, texture level, print style, background art (docs/design-system.md). The dialog
 // that edits them is SettingsDialog.tsx.
 
-/** artStrength: the background art's strength in %, 0–100 (100: app.css's own strengths, which keep text readable) */
+/** artStrength: the background picture's opacity in %, 0–100 (0 = no picture, 100 = the picture alone); the viewer's gauge, default 40 */
 /** sheetArt / sheetArtPrint: the background art on the character sheet on screen / when printed; sheetArtStrength: its own
  *  strength (ui/sheetArt.tsx SHEET_ART_DEFAULT until set; 100 shows the image nearly whole) */
 /** sr6SheetArt / sr6SheetArtPrint / sr6SheetArtStrength: the same three for Shadowrun 6's sheets, kept apart from Anarchy's
@@ -21,7 +21,7 @@ export interface Settings {
   sr6SheetArtStrength?: number
 }
 const KEY = 'ca2.settings.v1'
-export const DEFAULTS: Settings = { theme: 'system', texture: 'accents', print: 'plain', art: 'on', artStrength: 100, sheetArt: 'on', sheetArtPrint: 'off' }
+export const DEFAULTS: Settings = { theme: 'system', texture: 'accents', print: 'plain', art: 'on', artStrength: 40, sheetArt: 'on', sheetArtPrint: 'off' }
 
 /** A whole percentage in 0–100; anything else is the default. Never above 100: that would pass the readability clamp. */
 export const strength = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : 100)

@@ -18,6 +18,7 @@ import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints }
 import { skillSpend, knowledgePoints } from './skills'
 import { contactPoints } from './contacts'
 import { karmaBudget, nuyenPerKarma, toNuyen } from './karma'
+import { knowledgeUsesNuyen } from './rule-markers'
 import { runnerInfected } from './infected'
 
 export type { Budget, BudgetLine } from './providers'
@@ -102,6 +103,8 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       'contacts',
     )
   }
+  for (const k of b.knowledge)
+    if (knowledgeUsesNuyen(b, data, k)) add(`knowledge:${k.uid}`, `${k.name} (Knowledge × ${k.karma})`, k.karma * 1000, 'skills')
   // the owner's house rule (metatypeSizePricing, 2026-10-11): a troll-sized runner pays 10% more for everything bought, a
   // dwarf-sized one 10% more for armor; one line, so each item still shows its printed price
   const size = flag(cr, 'metatypeSizePricing') ? metatypeSize(data, b.metatype) : undefined

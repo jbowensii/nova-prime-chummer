@@ -76,6 +76,8 @@ import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRe
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
 
+import { activeRules, contactLoyalty, effectiveAvailability } from '../creation/rule-markers'
+
 interface Ctx {
   data: Sr6Data
   cr: CreationRules
@@ -896,7 +898,7 @@ const RULES: Rule[] = [
         hits: Hit[] = [],
         illegalOnly = flag(c.cr, 'availabilityCapIllegalOnly')
       for (const { x, path } of lines(c.b)) {
-        const { avail } = priced({ ...x, accessories: [] }, c.data, c.cr)
+        const avail = effectiveAvailability(c.b, c.data, priced({ ...x, accessories: [] }, c.data, c.cr).avail)
         if (illegalOnly && !/\(?\s*I\s*\)?\s*$/.test(entryOf(x, c.data)?.attrs.avail ?? '')) continue
         if (avail > cap) hits.push({ path, message: `${nameOf(c, x)}’s Availability ${avail} is above ${cap}.` })
       }
@@ -1289,6 +1291,15 @@ const RULES: Rule[] = [
     },
   },
 
+  {
+    code: 'contact.fastFriendCharisma',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      activeRules(c.b, c.data).has('CONTACTS_START_LOYAL2') && augmentedRating(c.b, c.data, 'cha', c.p) < 2
+        ? { message: 'Fast Friend requires Charisma 2 or higher.' }
+        : null,
+  },
   // (CRB Hong Kong p. 67: Charisma × 6 points; with the expanded contacts, karma buys the rest)
   {
     code: 'contact.budget',
@@ -1304,7 +1315,7 @@ const RULES: Rule[] = [
     check: c => {
       const cap = c.budgets.contactPoints.ratingCap
       return c.b.contacts
-        .filter(x => x.connection > cap || x.loyalty > cap)
+        .filter(x => x.connection > cap || contactLoyalty(c.b, c.data, x.loyalty, augmentedRating(c.b, c.data, 'cha', c.p)) > cap)
         .map(x => ({ path: `contacts.${x.uid}`, message: `${x.name || 'A contact'}’s connection or loyalty is above ${cap}.` }))
     },
   },

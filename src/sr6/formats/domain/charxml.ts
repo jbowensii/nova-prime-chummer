@@ -106,7 +106,7 @@ const trainedXml = (t: Sr6CritterTrained) => el('trained', { uid: t.uid, what: t
 
 // one writer per line kind: the build's lines and a ledger entry's line are the same element
 const knowledgeXml = (k: Sr6Knowledge) =>
-  `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma })}>${esc(k.name)}</knowledge>`
+  `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma, payment: k.payment })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) =>
   el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name, boughtOff: q.boughtOff })
 const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note }, bonusesXml(p.bonuses))
@@ -502,6 +502,7 @@ const readKnowledge = (e: Element): Sr6Knowledge =>
     name: e.textContent ?? '',
     kind: oneOf(e.getAttribute('kind'), ['knowledge', 'language'] as const, 'knowledge kind')!,
     native: yes(e, 'native'),
+    payment: e.hasAttribute('payment') ? oneOf(e.getAttribute('payment'), ['nuyen'] as const, 'knowledge payment') : undefined,
     points: num(e, 'points', 0),
     karma: num(e, 'karma', 0),
   })

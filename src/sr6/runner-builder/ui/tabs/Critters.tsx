@@ -1,3 +1,4 @@
+import { effectiveAvailability } from '../../domain/creation/rule-markers'
 // Critters (owner 2026-10-16, BUILDER Q9-Q10: its own tab beside Vehicles and Drones): each owned critter with its stat
 // block, its powers (innate, 0 Karma), the pet class the player picks (Awakened or Emerged from its own Magic or
 // Resonance), tamed or bought, how its Wild Life p. 180 price works out, its named commands and special training (the
@@ -61,7 +62,7 @@ export function CrittersTab() {
 
 /** One owned critter's panel under its line. */
 function Critter({ x }: { x: Sr6Purchase }) {
-  const { data, cr, act } = useSr6Editor()
+  const { data, cr, act, ch } = useSr6Editor()
   const [adding, setAdding] = useState<Adding>('')
   const [teaching, setTeaching] = useState<'' | Sr6CritterTrained['what']>('')
   const v = critterView(x, data, priced(x, data, cr).essence),
@@ -113,7 +114,7 @@ function Critter({ x }: { x: Sr6Purchase }) {
         </label>
       </span>
       <span className={v.price.ok ? 'muted' : 'warn'} aria-label={`${name} price`}>
-        {[...v.price.parts, ...v.price.notes].join(' · ')} · Availability {n(v.price.avail)}
+        {[...v.price.parts, ...v.price.notes].join(' · ')} · Availability {n(effectiveAvailability(ch.build, data, v.price.avail))}
         {v.price.legal ? `(${v.price.legal})` : ''}
       </span>
       {(['command', 'training'] as const).map(w => {

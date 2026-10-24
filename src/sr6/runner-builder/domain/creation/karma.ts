@@ -8,7 +8,7 @@ import { martialKarma } from './martial'
 import { entryOf, isFocus, ratingOf } from './purchases'
 import { attrRating } from './attributes'
 import { languageKarma, skillRank, skillSpend } from './skills'
-import { knowledgeKarma } from './rule-markers'
+import { knowledgeKarma, knowledgeUsesNuyen } from './rule-markers'
 import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
@@ -120,7 +120,10 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     'knowledge',
     'Knowledge and language ranks bought with karma',
     b.knowledge.reduce(
-      (t, k) => t + k.karma * (k.kind === 'language' ? languageKarma(b, data, n0(cr, 'karmaKnowledge')) : knowledgeKarma(b, data, n0(cr, 'karmaKnowledge'))),
+      (t, k) =>
+        t +
+        (knowledgeUsesNuyen(b, data, k) ? 0 : k.karma) *
+          (k.kind === 'language' ? languageKarma(b, data, n0(cr, 'karmaKnowledge')) : knowledgeKarma(b, data, n0(cr, 'karmaKnowledge'))),
       0,
     ),
     'skills',

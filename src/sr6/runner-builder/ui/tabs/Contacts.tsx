@@ -1,3 +1,6 @@
+import { contactLoyalty } from '../../domain/creation/rule-markers'
+import { augmentedRating } from '../../domain/creation/attributes'
+import { makeProvider } from '../../domain/creation/providers'
 // Contacts & lifestyle: contacts (name, archetype, connection, loyalty) against the contact points; SINs, real or fake
 // with a rating and an optional gender, each with its licences and its lifestyles (and their months); karma turned into nuyen.
 // Every licence is one of a SIN's and is managed only here (owner 2026-10-16): a fake licence typed in, or an owned item's
@@ -20,7 +23,8 @@ import { Suggest } from './Skills'
 export function ContactsTab() {
   const { ch, c, data, cr, budgets, act, career } = useSr6Editor()
   const b = ch.build,
-    cp = budgets.contactPoints
+    cp = budgets.contactPoints,
+    cha = augmentedRating(b, data, 'cha', makeProvider(b.method, data, cr))
   const archetypes = [...c.entries.contacts.values()].map(e => e.name).sort()
   const lifestyles = [...c.entries.lifestyles.values()]
     .sort((a, z) => a.name.localeCompare(z.name))
@@ -64,7 +68,7 @@ export function ContactsTab() {
                 <th>Archetype</th>
                 {typed && <th>Types</th>}
                 <th>Connection</th>
-                <th>Loyalty</th>
+                <th>Loyalty (paid / effective)</th>
                 <th />
               </tr>
             </thead>
@@ -111,6 +115,7 @@ export function ContactsTab() {
                     {(['connection', 'loyalty'] as const).map(k => (
                       <td key={k} data-label={k[0].toUpperCase() + k.slice(1)}>
                         <Stepper label={`${who} ${k}`} value={x[k]} min={1} max={99} onChange={v => act({ op: 'contact', uid: x.uid, [k]: v })} />
+                        {k === 'loyalty' && <span> / {contactLoyalty(b, data, x.loyalty, cha)}</span>}
                       </td>
                     ))}
                     <td className="end">

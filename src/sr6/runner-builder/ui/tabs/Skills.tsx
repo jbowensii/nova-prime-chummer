@@ -11,6 +11,7 @@ import { Left } from '../Budgets'
 import { Sr6Ref } from '../EntryRef'
 import { br, poolOn } from '../view'
 import { manySpecs, notesText } from '../../domain/creation/budgets'
+import { knowledgeNuyenAvailable, knowledgeUsesNuyen } from '../../domain/creation/rule-markers'
 import { adeptBars } from '../../domain/creation/actions'
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
@@ -48,6 +49,7 @@ export function SkillsTab() {
     .filter(s => !adeptBars(b, data, s.id) || b.skills.some(x => x.id === s.id))
     .sort((a, z) => a.name.localeCompare(z.name))
   const native = b.knowledge.find(k => k.native)
+  const nuyenAvailable = !ch.finalizedAt && knowledgeNuyenAvailable(b, data)
   const groups = SR6_ATTRS.map(a => [a, skills.filter(s => s.attr === a)] as const).filter(([, l]) => l.length)
   const cap = num(cr, 'skillCap'),
     spec = num(cr, 'skillPointsSpec'),
@@ -179,7 +181,7 @@ export function SkillsTab() {
                 <th>Kind</th>
                 <th>Native</th>
                 <th>Points</th>
-                <th>Karma</th>
+                <th>{nuyenAvailable ? 'Purchased (karma or nuyen)' : 'Karma'}</th>
                 <th />
               </tr>
             </thead>
@@ -220,12 +222,22 @@ export function SkillsTab() {
                         ) : null
                       ) : (
                         <Stepper
-                          label={`${k.name} ${p}`}
+                          label={`${k.name} ${p === 'karma' && knowledgeUsesNuyen(b, data, k) ? 'nuyen ranks' : p}`}
                           value={k[p]}
                           min={0}
                           max={99}
                           onChange={to => act({ op: 'knowledgeRank', uid: k.uid, pool: p, delta: to - k[p] })}
                         />
+                      )}
+                      {p === 'karma' && nuyenAvailable && k.kind === 'knowledge' && !k.native && (
+                        <select
+                          aria-label={`${k.name} payment`}
+                          value={knowledgeUsesNuyen(b, data, k) ? 'nuyen' : 'karma'}
+                          onChange={e => act({ op: 'knowledgePayment', uid: k.uid, payment: e.target.value as 'karma' | 'nuyen' })}
+                        >
+                          <option value="karma">Karma</option>
+                          <option value="nuyen">Starting nuyen (¥1,000 each)</option>
+                        </select>
                       )}
                     </td>
                   ))}

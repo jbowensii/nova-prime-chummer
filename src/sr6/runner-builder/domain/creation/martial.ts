@@ -7,6 +7,8 @@ import { entryLabel } from '../../../catalog/domain/categories'
 import { num, type CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 
+import { martialCreationKarma } from './rule-markers'
+
 /** Where the rules are printed: Review's martial-arts checks cite it. */
 export const MARTIAL_CITE = { source: 'FS', page: 97 }
 const norm = (s: string | undefined) => (s ?? '').trim().toLowerCase()
@@ -41,11 +43,17 @@ export function signatureOf(b: Sr6Build, techniques: Iterable<Sr6Entry>, style: 
 }
 
 /** A technique's karma: free for its style's signature, else karmaTechnique (0 unset). */
-export const techniqueKarma = (data: Sr6Data, cr: CreationRules, m: Sr6MartialArt, t: Sr6Technique) =>
-  isSignature(data.entry('martialarts', m.id), techniqueName(data, t)) ? 0 : (num(cr, 'karmaTechnique') ?? 0)
+export const techniqueKarma = (data: Sr6Data, cr: CreationRules, m: Sr6MartialArt, t: Sr6Technique, b?: Sr6Build) =>
+  isSignature(data.entry('martialarts', m.id), techniqueName(data, t))
+    ? 0
+    : b
+      ? martialCreationKarma(b, data, num(cr, 'karmaTechnique') ?? 0)
+      : (num(cr, 'karmaTechnique') ?? 0)
+export const styleKarma = (b: Sr6Build, data: Sr6Data, cr: CreationRules) => martialCreationKarma(b, data, num(cr, 'karmaMartialArt') ?? 0)
+
 /** The karma the runner's styles and techniques cost (an unset price counts 0). */
 export const martialKarma = (b: Sr6Build, data: Sr6Data, cr: CreationRules) =>
-  b.martialArts.reduce((sum, m) => sum + (num(cr, 'karmaMartialArt') ?? 0) + m.techniques.reduce((s, t) => s + techniqueKarma(data, cr, m, t), 0), 0)
+  b.martialArts.reduce((sum, m) => sum + styleKarma(b, data, cr) + m.techniques.reduce((s, t) => s + techniqueKarma(data, cr, m, t, b), 0), 0)
 
 /** A technique's printed prerequisite (the catalog's <requires kind> child, importer/sr6/flags.py) and whether the
  *  runner has it: an adept power among its picks, a technique among those it learned, a quality among its qualities, an

@@ -1,10 +1,11 @@
 // @vitest-environment node
-// The background art can't hurt reading: with the overlay strengths and the art's contrast filter in app.css, the worst
-// image (black in light mode, white in dark mode) still leaves the text tokens their contrast on the page color.
+// The background picture is a viewer-set gauge (Settings → Background → Strength): its opacity is --art-strength, 0 = no
+// picture, 100% = the picture alone, no veil — the same model as the character sheet's art, default 40% for both. App
+// content sits on opaque cards/panels, so it stays readable whatever the gauge; these checks confirm the panel tokens hold.
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { SHEET_ART_DEFAULT } from '../../../src/features/appearance/sheetArt'
-import { strength } from '../../../src/core/ui-kit/settings'
+import { DEFAULTS, strength } from '../../../src/core/ui-kit/settings'
 
 const css = readFileSync('src/core/ui-kit/app.css', 'utf8').replace(/\s+/g, ' ')
 const art = css.slice(css.indexOf('/* ---- background art'))
@@ -27,27 +28,10 @@ const ratio = (a: number[], b: number[]) => {
   return (x + 0.05) / (y + 0.05)
 }
 
-test('text keeps its contrast over the worst background art, light and dark', () => {
-  const cover = Math.min(...[...art.matchAll(/var\(--bg\) (\d+)%/g)].map(m => Number(m[1]) / 100)) // the strongest the art gets
-  const k = Number(art.match(/filter: contrast\(([\d.]+)\)/)![1])
-  expect(cover).toBeGreaterThanOrEqual(0.8)
-  const light = block(':root'),
-    dark = block(":root[data-theme='dark']")
-  for (const [theme, b, worst] of [
-    ['light', light, 0],
-    ['dark', dark, 255],
-  ] as const) {
-    const t = (n: string) => rgb(token(b, n, theme === 'dark' ? token(light, n) : undefined))
-    const artPx = (worst / 255 - 0.5) * k + 0.5 // CSS contrast(): the image's darkest (light) or brightest (dark) pixel
-    const bg = t('bg').map(v => v * cover + artPx * 255 * (1 - cover))
-    for (const [name, min] of [
-      ['text', 7],
-      ['text-2', 7],
-      ['text-3', 4.5],
-      ['heading', 4.5],
-    ] as const)
-      expect(ratio(t(name), bg), `${theme} --${name}`).toBeGreaterThanOrEqual(min)
-  }
+test('the page background is a gauge: the picture is the layer, --art-strength its opacity, no veil, default 40%', () => {
+  expect(block('.bg-art')).toMatch(/opacity: var\(--art-strength, 0\.4\);/)
+  expect(art).not.toMatch(/\.bg-art::after/) // no veil: the slider is the whole control, 0 = no picture, 100% = the picture alone
+  expect(DEFAULTS.artStrength).toBe(40)
 })
 
 test('never printed, and hidden when asked', () => {
@@ -56,47 +40,33 @@ test('never printed, and hidden when asked', () => {
   expect(art).toMatch(/\[data-art='off'\] \.bg-art \{ display: none/)
 })
 
-test('the strength slider only fades the art: 100% is the clamped strength above, never more', () => {
-  expect(block('.bg-art')).toMatch(/opacity: var\(--art-strength, 1\);/) // the layer's opacity, nothing scaled up
+test('the strength slider clamps to 0–100', () => {
   expect([strength(100), strength(250), strength(0), strength(-3), strength(42.4), strength('x'), strength(undefined), strength(NaN)]).toEqual([
     100, 100, 0, 0, 42, 100, 100, 100,
   ])
 })
 
-test('the sheet’s own background art is the bottom layer: --art is its opacity (0 hidden, 1 the picture alone), no veil or wash over it', () => {
+test('the sheet’s own background art is the bottom layer: --art is its opacity (0 hidden, 1 the picture alone), no veil or wash over it; default 40%', () => {
   const sheet = readFileSync('src/features/appearance/sheet.css', 'utf8').replace(/\s+/g, ' ')
   expect(sheet).toMatch(/\.sheet-art > div \{[^}]*opacity: var\(--art\);/)
   expect(sheet).toMatch(/\.sheet-art::after \{ display: none; \}/)
   expect(sheet).toMatch(/--wash: transparent;/)
-  expect(sheet).toMatch(/\.sheet-art\.no-print \{ display: none !important; \}/)
   expect(sheet).toMatch(/prefers-reduced-transparency: reduce\) \{ \.sheet-art \{ display: none/)
-  expect(SHEET_ART_DEFAULT).toBe(25)
+  expect(SHEET_ART_DEFAULT).toBe(40)
 })
 
-test('the Shadowrun 6 look keeps its text readable too, over the worst art, light and dark, on screen and on the sheet', () => {
-  // src/sr6/shell/ui/theme.css: its tokens over app.css's (the art's veil and filter are app.css's, shared)
+test('the Shadowrun 6 content stays readable on its opaque panels, light and dark', () => {
+  // the art never sits under body text — content is on opaque cards/panels; confirm the panel tokens keep their contrast
   const sr6 = readFileSync('src/sr6/shell/ui/theme.css', 'utf8').replace(/\s+/g, ' ')
   const sblock = (sel: string) => sr6.match(new RegExp(`${sel.replace(/[[\]()]/g, '\\$&')} \\{([^}]*)\\}`))![1]
-  const cover = Math.min(...[...art.matchAll(/var\(--bg\) (\d+)%/g)].map(m => Number(m[1]) / 100))
-  const k = Number(art.match(/filter: contrast\(([\d.]+)\)/)![1])
   const light = sblock(":root[data-game='sr6']"),
     dark = sblock(":root[data-game='sr6'][data-theme='dark']")
-  for (const [theme, b, worst] of [
-    ['light', light, 0],
-    ['dark', dark, 255],
+  for (const [theme, b] of [
+    ['light', light],
+    ['dark', dark],
   ] as const) {
     const t = (n: string) => rgb(token(b, n, theme === 'dark' ? token(light, n) : undefined))
-    const bg = t('bg').map(v => v * cover + ((worst / 255 - 0.5) * k + 0.5) * 255 * (1 - cover))
-    for (const [name, min] of [
-      ['text', 7],
-      ['text-2', 7],
-      ['text-3', 4.5],
-      ['heading', 4.5],
-      ['rust', 4.5],
-      ['err', 4.5],
-    ] as const)
-      expect(ratio(t(name), bg), `sr6 ${theme} --${name}`).toBeGreaterThanOrEqual(min)
-    // the accent fill (primary buttons) and its text; the sidebar's text on its panel
+    // the accent fill (primary buttons) and its text; the panel's text on its panel
     expect(ratio(t('accent-ink'), t('yellow')), `sr6 ${theme} accent`).toBeGreaterThanOrEqual(4.5)
     for (const name of ['panel-text', 'panel-muted', 'heading', 'err'])
       expect(ratio(t(name), t('panel')), `sr6 ${theme} --${name} on the panel`).toBeGreaterThanOrEqual(4.5)

@@ -216,7 +216,9 @@ export interface Sr6Knowledge {
   kind: 'knowledge' | 'language'
   native?: true
   points: number
+  /** Purchased ranks; payment defaults to karma. Nuyen is creation-only, with Scholastic Mage. */
   karma: number
+  payment?: 'nuyen'
 }
 /** free: a metatype trait (costs nothing, can't be removed). name: the catalog name when it was added (shown if the entry goes).
  *  karma: for a quality priced in a range (karma–karmaMax, as Allergy's severity sets it), the karma it was taken for. */

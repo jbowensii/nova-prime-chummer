@@ -7,6 +7,7 @@ import { ratingOf } from './purchases'
 // { ok: false, reason } without changing anything when the step isn't allowed. Rule numbers come from the catalog and
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest). A prerequisite
 // the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
+import { knowledgeNuyenAvailable } from './rule-markers'
 import { languageCap } from './skills'
 import { newId } from '../../../../core/shared/types'
 import {
@@ -121,6 +122,7 @@ export type Op =
   | { op: 'contact'; remove: string }
   | { op: 'knowledge'; uid?: string; name?: string; kind?: Sr6Knowledge['kind']; native?: boolean }
   | { op: 'knowledge'; remove: string }
+  | { op: 'knowledgePayment'; uid: string; payment: 'karma' | 'nuyen' }
   | { op: 'knowledgeRank'; uid: string; pool: 'points' | 'karma'; delta: number }
   | { op: 'cp'; pool: CpPool; delta: number }
   /** take an adult module (a second time when the provider says again), drop one (at: its place in b.lifepath; default the
@@ -838,6 +840,15 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         k.native = true
         k.points = 0
       } else if (op.native === false) delete k.native
+      return OK
+    }
+    case 'knowledgePayment': {
+      const k = b.knowledge.find(x => x.uid === op.uid)
+      if (!k) return no('unknown-line')
+      if (op.payment === 'nuyen') {
+        if (k.native || k.kind !== 'knowledge' || !knowledgeNuyenAvailable(b, data)) return no('knowledge-nuyen-unavailable')
+        k.payment = 'nuyen'
+      } else delete k.payment
       return OK
     }
     case 'knowledgeRank': {

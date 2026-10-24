@@ -2061,34 +2061,22 @@ dialog.drawer h2 {
 }
 
 /* ---- background art (src/features/appearance/Background.tsx) ----
-   The admin's image behind every page, under the page color: the ::after layer is --bg at ART_CENTER (93%: the art shows at
-   7%) across the middle, where the content is, easing to ART_EDGE (82%: 18%) at the corners; phones 95% and 88%. The art
-   itself is flattened (contrast .6) so neither a black nor a white image can pull text below its contrast: tests/features/appearance/background.test.ts
-   checks the worst case against the tokens. Dark mode: the overlay is the indigo page, so the art takes its tint.
-   Settings → Background → Strength (--art-strength, 0–1, per browser) fades the whole layer: at 1 it's the strengths above. */
+   The admin's image behind every page, below the content. No veil: the picture IS the layer and --art-strength is its
+   opacity — the gauge the viewer sets in Settings → Background → Strength, 0 = no picture, 1 = the picture alone (default
+   40%), the same model as the character sheet's art. The art is lightly flattened (contrast .7) to match the sheet; dark
+   mode tints it via the page behind. Never printed; off under reduced-transparency or when Background = off. */
 .bg-art {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: var(--art-strength, 1);
+  opacity: var(--art-strength, 0.4);
 }
 .bg-art > div {
   position: absolute;
   inset: 0;
   background: center / cover no-repeat;
-  filter: contrast(0.6) saturate(0.8);
-}
-.bg-art::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--bg) 93%, transparent) 40%, color-mix(in srgb, var(--bg) 82%, transparent) 100%);
-}
-@media (max-width: 600px) {
-  .bg-art::after {
-    background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--bg) 95%, transparent) 40%, color-mix(in srgb, var(--bg) 88%, transparent) 100%);
-  }
+  filter: contrast(0.7) saturate(0.9);
 }
 :root[data-art='off'] .bg-art {
   display: none;

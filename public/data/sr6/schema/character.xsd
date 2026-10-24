@@ -250,6 +250,8 @@
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="native" type="xs:boolean"/>
+    <!-- payment: a Knowledge rank bought with starting nuyen (Scholastic Mage) instead of karma -->
+    <xs:attribute name="payment"><xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="nuyen"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="points" type="c:Count" use="required"/>
     <xs:attribute name="karma" type="c:Count" use="required"/>
   </xs:extension></xs:simpleContent></xs:complexType>

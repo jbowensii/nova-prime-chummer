@@ -1,3 +1,5 @@
+import { effectiveAvailability } from '../domain/creation/rule-markers'
+import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, slotLabel } from '../../catalog/domain/structure'
 import { ratingOf } from '../domain/creation/purchases'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
@@ -21,7 +23,14 @@ import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
 /** An entry's cost, Availability and Essence at `rating` (and grade, when its factors are set) as shown: '' when none is
  *  printed, '?' when the app can't read it. */
-export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?: string, data?: Sr6Data): { cost: string; avail: string; essence: string } {
+export function priceAt(
+  e: Sr6Entry,
+  rating: number,
+  cr?: CreationRules,
+  grade?: string,
+  data?: Sr6Data,
+  b?: Sr6Build,
+): { cost: string; avail: string; essence: string } {
   const g = (k: GradeFactor) => (cr && grade ? (data ? gradeFactor(cr, data, grade, k) : num(cr, `grade:${grade}:${k}`)) : undefined)
   const show = (attr: string, f: (v: number) => string) => {
     const v = bookValue(e, attr, rating, data && dataFind(data))
@@ -29,9 +38,11 @@ export function priceAt(e: Sr6Entry, rating: number, cr?: CreationRules, grade?:
   }
   const legal = legality(e.attrs.avail)
   const licence = availNote(e.attrs.avail, rating).text // (listed, never enforced: licences are for the GM)
+  const effective = (v: number) => (b && data ? effectiveAvailability(b, data, v) : v)
+  const shownAvail = show('avail', v => `${effective(v + (g('avail') ?? 0))}${legal ? `(${legal})` : ''}`)
   return {
     cost: show('cost', v => `${n(v * (g('cost') ?? 1))}¥`),
-    avail: licence ?? show('avail', v => `${v + (g('avail') ?? 0)}${legal ? `(${legal})` : ''}`),
+    avail: b && data ? (licence ? `${shownAvail}, ${licence.replace(/^.*?licence/, 'licence')}` : shownAvail) : (licence ?? shownAvail),
     essence: show('essence', v => n(Math.round(v * (g('essence') ?? 1) * 100) / 100)),
   }
 }
@@ -148,7 +159,7 @@ export function CatalogPicker({
   }
   const range = chosen ? ratingRange(chosen.e.attrs.rating) : [],
     free = chosen && chosenRating(chosen.e)
-  const price = chosen && priceAt(chosen.e, chosen.rating ?? range[0] ?? 1, cr, chosen.grade, data)
+  const price = chosen && priceAt(chosen.e, chosen.rating ?? range[0] ?? 1, cr, chosen.grade, data, from ? undefined : ctx?.ch.build)
   const availWarn = chosen && availNote(chosen.e.attrs.avail, chosen.rating ?? range[0] ?? 1).warn // (a heads-up, never a refusal)
   return (
     <Modal
@@ -235,7 +246,7 @@ export function CatalogPicker({
           groups={[...new Set(entries.map(e => groupOf(e) ?? ''))].filter(Boolean).sort()}
           items={entries.map(e => {
             const r = ratingRange(e.attrs.rating),
-              p = priceAt(e, r[0] ?? 1, undefined, undefined, data),
+              p = priceAt(e, r[0] ?? 1, cr, undefined, data, from ? undefined : ctx?.ch.build),
               formula = formulaShown(e, 'cost', dataFind(data))
             return {
               id: `${e.kind}:${e.id}`,
@@ -737,14 +748,9 @@ export function PurchaseSection({
                     )}
                     {ware && <td className="num">{n(p.essence)}</td>}
                     <td className="num">
-                      {licence ? (
-                        licence
-                      ) : (
-                        <>
-                          {p.avail}
-                          {legality(e?.attrs.avail) ? `(${legality(e?.attrs.avail)})` : ''}
-                        </>
-                      )}
+                      {effectiveAvailability(ch.build, data, p.avail)}
+                      {legality(e?.attrs.avail) ? `(${legality(e?.attrs.avail)})` : ''}
+                      {licence && `, ${licence.replace(/^\d+(?:\([LIF]\))?, /, '')}`}
                       {note.warn && (
                         <span className="warn" title={note.warn} aria-label={note.warn}>
                           {' '}

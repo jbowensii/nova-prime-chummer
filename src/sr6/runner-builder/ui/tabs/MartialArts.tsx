@@ -1,3 +1,4 @@
+import { martialCreationKarma } from '../../domain/creation/rule-markers'
 // Martial arts (bought with karma as qualities are, Firing Squad p. 97): the styles taken, each with the techniques learned
 // under it, a picker for a style (its signature technique comes with it) and one per style for a technique (its signature
 // first, then the ones of its categories and General, then the rest, marked: the style doesn't teach them, Review's
@@ -9,6 +10,7 @@ import { Modal, Picker } from '../../../../core/ui-kit/bits'
 import { num } from '../../../table-setup/domain/creation'
 import {
   isSignature,
+  styleKarma,
   learned,
   prerequisites,
   prerequisiteText,
@@ -27,8 +29,8 @@ export function MartialArtsTab() {
   const { ch, c, data, cr, act } = useSr6Editor()
   const b = ch.build
   const [picking, setPicking] = useState<string | null>(null) // 'style', or the uid of the style a technique goes under
-  const style = num(cr, 'karmaMartialArt'),
-    technique = num(cr, 'karmaTechnique')
+  const style = num(cr, 'karmaMartialArt') === undefined ? undefined : styleKarma(b, data, cr),
+    technique = num(cr, 'karmaTechnique') === undefined ? undefined : martialCreationKarma(b, data, num(cr, 'karmaTechnique')!)
   const styles = [...c.entries.martialarts.values()].sort((a, z) => a.name.localeCompare(z.name))
   const techniques = [...c.entries.martialtechniques.values()].sort((a, z) => a.name.localeCompare(z.name))
   const under = b.martialArts.find(m => m.uid === picking),
@@ -79,7 +81,7 @@ export function MartialArtsTab() {
                     <tbody>
                       {m.techniques.map(t => {
                         const te = data.entry('martialtechniques', t.id),
-                          karma = techniqueKarma(data, cr, m, t),
+                          karma = techniqueKarma(data, cr, m, t, b),
                           pre = prerequisites(data, b, te)
                         return (
                           <tr key={t.uid}>

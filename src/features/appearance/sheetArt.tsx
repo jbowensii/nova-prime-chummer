@@ -8,7 +8,7 @@ import type { Game } from '../../core/ui-kit/game'
 import { IconButton } from '../../core/ui-kit/icons'
 
 /** The sheet's strength until the player sets one: a quiet image (100% shows the picture alone, 0% hides it). */
-export const SHEET_ART_DEFAULT = 25
+export const SHEET_ART_DEFAULT = 40
 
 /** The sheet's background art: this browser's own switches (screen on, print off by default), its strength, and which image
  *  (this runner's pick in this browser, ignored once that image is off, else the app's), from `game`'s own set. tools: the toolbar's Background
