@@ -402,7 +402,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!a.line.name.trim()) no('needs-name')
       return {
         label: `${a.line.kind === 'language' ? 'Language' : 'Knowledge'}: ${a.line.name}`,
-        karma: a.line.kind === 'language' ? languageKarma(b, need('karmaKnowledge')) : need('karmaKnowledge'),
+        karma: a.line.kind === 'language' ? languageKarma(b, data, need('karmaKnowledge')) : need('karmaKnowledge'),
       }
     case 'quality': {
       // an Infected quality or optional power only while the table allows Infected characters, at its own Karma: Infected

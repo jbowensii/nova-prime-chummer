@@ -4,16 +4,17 @@ import { flag, n0, num, str, type CreationRules } from '../../../table-setup/dom
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { knowledgeSpend, pool, type Budget, type Provider } from './providers'
+import { activeRules } from './rule-markers'
 import { noteSkill } from './choices'
 import { augmentedRating } from './attributes'
 
 /** Polyglot (SWC p. 135): a language costs 1 Karma less a rank (never below 1) and goes to rank 4. Languages only.
- *  ponytail: keyed on the quality id; the data's `<modifier kind="itemmod" type="RULE" ref="POLYGLOT"/>` marker is not read
- *  by any code (no itemmod reader exists), so reading it would mean building one; do that if a second RULE marker needs it. */
+ *  Driven by the RULE-marker engine (rule-markers.ts): the quality's `<modifier type="RULE" ref="POLYGLOT">` marker is
+ *  active, or (back-compat) it is the known quality id — the catalog carries both. */
 export const POLYGLOT = 'swc.polyglot'
-export const hasPolyglot = (b: Sr6Build) => b.qualities.some(q => q.id === POLYGLOT)
-export const languageKarma = (b: Sr6Build, perRank: number) => (hasPolyglot(b) ? Math.max(1, perRank - 1) : perRank)
-export const languageCap = (b: Sr6Build, most: number | undefined) => (most !== undefined && hasPolyglot(b) ? Math.max(most, 4) : most)
+export const hasPolyglot = (b: Sr6Build, data: Sr6Data) => activeRules(b, data).has('POLYGLOT') || b.qualities.some(q => q.id === POLYGLOT)
+export const languageKarma = (b: Sr6Build, data: Sr6Data, perRank: number) => (hasPolyglot(b, data) ? Math.max(1, perRank - 1) : perRank)
+export const languageCap = (b: Sr6Build, data: Sr6Data, most: number | undefined) => (most !== undefined && hasPolyglot(b, data) ? Math.max(most, 4) : most)
 
 /** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
  *  whose note names no skill adds none (Review's quality.choice asks for it). */

@@ -370,7 +370,7 @@ const RULES: Rule[] = [
     tab: 'skills',
     check: c => {
       const langs = c.b.knowledge.filter(k => k.kind === 'language'),
-        most = languageCap(c.b, num(c.cr, 'languageMax')),
+        most = languageCap(c.b, c.data, num(c.cr, 'languageMax')),
         hits: Hit[] = []
       if (langs.filter(k => k.native).length > 1) hits.push({ message: `${langs.filter(k => k.native).length} native languages: only one.`, ...CRB(67) })
       if (most !== undefined)
