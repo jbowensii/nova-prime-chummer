@@ -4,7 +4,7 @@ A self-hosted character generator and career tracker for two games: **Shadowrun:
 
 You run it on your own network (a home server, a NAS, a PC). Everyone at the table uses it in a browser. It ships the rules engine only. You bring your own books. See [How data comes in](#how-data-comes-in).
 
-- Version 0.21.0. Release history: [CHANGELOG.md](CHANGELOG.md)
+- Version 0.22.0. Release history: [CHANGELOG.md](CHANGELOG.md)
 - Example sheets: [Example character sheets](#example-character-sheets)
 
 ## What it is

@@ -1,5 +1,25 @@
 # Release notes
 
+## 0.22.0 — 2026-10-24
+
+Leveled adept powers and qualities are no longer stuck at level 1 when the book prints no cap, the special creation-cost
+quality rules Commlink6 tracks are now applied, and the Method tab gains a power-level control and one-click method setup.
+
+No re-import needed.
+
+**Shadowrun 6 — creation**
+- **Leveled powers and qualities are no longer locked at level 1.** A leveled adept power or quality with no printed
+  maximum (Improved Reflexes, Improved Ability, Combat Sense, Pain Resistance, Mystic Armor, and many more) is now
+  unlimited, bounded by Power Points / Karma — previously it was wrongly capped at 1. Powers and qualities with a printed
+  cap still stop at it. (Exact per-book caps sourced from Commlink6 are a follow-up.)
+- **Creation-cost quality rules.** Qualities that change creation costs are now applied, read from the rule marker
+  Commlink6 carries rather than a hardcoded id: **Scholastic Mage** (Knowledge skills cost 2 Karma each at creation),
+  **Invalid Inferences** (+1 Karma a Knowledge rank), and **Polyglot** (−1 Karma a language, cap 4) on the new engine.
+- **Method tab — power level.** A **Street / Standard / Elite** selector (Sixth World Companion Alternate Power Levels).
+  It follows the campaign's level; a character may override it with your GM's permission (a warning).
+- **Method tab — one-click method setup.** Checkboxes next to **Point Buy**, **Karma Build**, and **Lifepath** turn that
+  method's creation settings on for the character (undoable), so a method the table didn't enable is set up in one click.
+
 ## 0.21.0 — 2026-10-23
 
 Free Knowledge points follow the book's baseline with the optional rule corrected, a creation method's rules can be set
