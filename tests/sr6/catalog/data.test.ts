@@ -120,6 +120,12 @@ test('a perLevel entry with no printed maxLevel is uncapped (null), not locked a
   expect(d.qualities['crb.lucky-streak']).toMatchObject({ perLevel: true, maxLevel: null })
 })
 
+test('a present-but-malformed maxLevel resolves to 1 (takeable), not 0 (untakeable)', () => {
+  // an unreadable cap must stay takeable (1), like the metamagics path — never 0, which would refuse every level
+  const d = sr6Data(fixtureCatalog((file, xml) => (file.endsWith('crb/adeptpowers.xml') ? xml.replace('maxLevel="4"', 'maxLevel="varies"') : xml)))
+  expect(d.powers['crb.quick-step']).toMatchObject({ perLevel: true, maxLevel: 1 })
+})
+
 test('an unreadable book number is a data.bookValue warning with the entry and page; the value is null, never NaN', () => {
   const d = sr6Data(
     fixtureCatalog((file, xml) =>
