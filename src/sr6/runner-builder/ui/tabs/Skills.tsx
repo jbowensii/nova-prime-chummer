@@ -154,17 +154,24 @@ export function SkillsTab() {
                             onCommit={v => act({ op: 'spec', target: sk.id, spec: v })}
                           />
                         </Sr6Ref>
-                        {/* (Exotic Weapons, CRB Hong Kong p. 95, or any skill with Expanded Specializations, SWC p. 153: more, `; `-separated) */}
-                        {(s?.specs?.length || (s?.spec && manySpecs(data, cr, sk.id))) && (
-                          <div>
-                            <Suggest
-                              label={`${sk.name} more specializations`}
-                              value={(s?.specs ?? []).join('; ')}
-                              options={[]}
-                              onCommit={v => act({ op: 'specs', target: sk.id, specs: (v ?? '').split(/;\s*/) })}
-                            />
-                          </div>
-                        )}
+                        {/* (Exotic Weapons, CRB Hong Kong p. 95, or any skill with Expanded Specializations, SWC p. 153: one
+                            dropdown box per extra specialization, with a fresh empty one trailing to add the next) */}
+                        {(s?.specs?.length || (s?.spec && manySpecs(data, cr, sk.id))) &&
+                          [...(s?.specs ?? []), ''].map((sp, i) => (
+                            <div key={i}>
+                              <Suggest
+                                label={`${sk.name} specialization ${i + 2}`}
+                                value={sp}
+                                options={sk.specs}
+                                onCommit={v => {
+                                  const next = [...(s?.specs ?? [])]
+                                  if (v) next[i] = v
+                                  else next.splice(i, 1)
+                                  act({ op: 'specs', target: sk.id, specs: next })
+                                }}
+                              />
+                            </div>
+                          ))}
                       </td>
                       <td>
                         <Sr6Ref kind="skills" id={sk.id} tabbable={false}>
