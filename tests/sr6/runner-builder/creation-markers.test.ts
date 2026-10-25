@@ -106,9 +106,12 @@ test('Fashion Influencer halves only fashion-slot armor, as its own gain line', 
     { uid: 'a', kind: 'armor', id: 't.suit', qty: 1, accessories: [] } as never,
     { uid: 'c', kind: 'armor', id: 't.rags', qty: 1, accessories: [] } as never,
   )
-  const line = () => nuyenBudget(b, data, cr, makeProvider(b.method, data, cr)).breakdown.find(l => l.key === 'fashionInfluencer')
+  const budget = () => nuyenBudget(b, data, cr, makeProvider(b.method, data, cr))
+  const line = () => budget().breakdown.find(l => l.key === 'fashionInfluencer')
+  const leftBefore = budget().left
   expect(line()).toBeUndefined()
   activate()
-  expect(line()).toMatchObject({ amount: priced(b.purchases[0], data, cr).cost * 0.5, sign: 'gain' })
-  expect(line()?.amount).toBeGreaterThan(0)
+  expect(line()).toMatchObject({ amount: 500, sign: 'gain' }) // half the 1000¥ suit; the 1000¥ rags (no fashion slot) aren't discounted
+  // the discount is real nuyen back in the pool, not just a display line: available nuyen rises by exactly the discount
+  expect(budget().left - leftBefore).toBe(500)
 })

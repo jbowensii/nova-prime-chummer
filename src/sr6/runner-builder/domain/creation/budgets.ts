@@ -114,9 +114,10 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
       'gear',
     )
+  let fashion = 0
   if (fashionDiscount(b, data)) {
-    const half = b.purchases.filter(x => isDesignerFashion(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.5
-    if (half) breakdown.push({ key: 'fashionInfluencer', label: 'Fashion Influencer: 50% off designer fashion', amount: half, sign: 'gain', tab: 'gear' })
+    fashion = Math.round(b.purchases.filter(x => isDesignerFashion(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.5)
+    if (fashion) breakdown.push({ key: 'fashionInfluencer', label: 'Fashion Influencer: 50% off designer fashion', amount: fashion, sign: 'gain', tab: 'gear' })
   }
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
   add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
@@ -124,7 +125,8 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
-  return { ...pool(p.nuyen(b) + converted, spent), breakdown }
+  // the Fashion Influencer discount is real nuyen back in the pocket, like karma turned into nuyen: add it to what's available
+  return { ...pool(p.nuyen(b) + converted + fashion, spent), breakdown }
 }
 
 /** Whether the runner's metatype is troll- or dwarf-sized, by its name's words (metatypeSizePricing). ponytail: the core
