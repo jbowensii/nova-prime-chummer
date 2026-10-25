@@ -8,7 +8,7 @@ import { entryOf, statusesOf, takesMaterial } from '../../domain/creation/budget
 import { ratingEdge } from '../../domain/creation/derive'
 import { useSr6Editor } from '../editor'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
-import { entryLabel, isAmmoType } from '../../../catalog/domain/categories'
+import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],
@@ -19,7 +19,7 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
 export function GearTab() {
-  const { d, ch, data, cr, act, edit } = useSr6Editor()
+  const { c, d, ch, data, cr, act, edit } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
@@ -47,6 +47,33 @@ export function GearTab() {
         <MaterialPick x={x} name={name} />
         {x.kind === 'gear' && takesMaterial(x, data) && <Accessories host={x} name={name} kinds={['ammotypes']} filter={isAmmoType} ammo />}
       </>
+    )
+  }
+  // an ammunition line's type: exactly one ammunition type fitted to it (none: Regular, x1), priced against the line (purchases.ts)
+  const ammoTypes = [...c.entries.ammotypes.values()]
+    .filter(e => isAmmoType(e) && e.id !== 'crb.ammo-regular')
+    .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+  const ammoType = (x: Sr6Purchase) => {
+    const name = (e => (e ? entryLabel(e) : (x.name ?? 'Ammunition')))(entryOf(x, data))
+    const cur = x.accessories.find(a => isAmmoType(entryOf(a, data)))
+    return (
+      <label className="inline">
+        Type{' '}
+        <select
+          aria-label={`${name} ammo type`}
+          value={cur?.id ?? ''}
+          // one atomic step: the engine replaces whatever type is on the line, so switching types can't stack multipliers
+          onChange={e => act({ op: 'ammoType', host: x.uid, id: e.target.value || undefined })}
+        >
+          <option value="">Regular</option>
+          {ammoTypes.map(t => (
+            <option key={t.id} value={t.id}>
+              {entryLabel(t)}
+            </option>
+          ))}
+        </select>
+        <MaterialPick x={x} name={name} />
+      </label>
     )
   }
   // gear registered under one of the runner's identities: a commlink runs its persona (CRB p. 174), and licensed gear is
@@ -148,11 +175,39 @@ export function GearTab() {
         kind="gear"
         title="Other gear"
         one="other gear"
+        offer={e => !isAmmoGear(e)}
+        show={x => !isAmmoGear(entryOf(x, data))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
         detail={withIdentity(material)}
       />
-      <PurchaseSection kind="ammotypes" title="Ammunition" one="ammunition type" offer={isAmmoType} detail={material} />
+      <PurchaseSection kind="gear" title="Ammunition" one="ammunition" offer={isAmmoGear} show={x => isAmmoGear(entryOf(x, data))} detail={ammoType} />
+      {/* legacy data: a standalone ammunition type bought on its own (an older save, before types were fitted to an ammo
+          line). It has no base to price against, so it can only be removed here — new ammo is bought above. */}
+      {(() => {
+        const orphans = ch.build.purchases.filter(x => x.kind === 'ammotypes')
+        return orphans.length === 0 ? null : (
+          <section className="stack">
+            <h3 style={{ margin: 0 }}>Loose ammunition types (from an older save)</h3>
+            <p className="muted" style={{ margin: 0 }}>
+              Buy ammo above instead; these aren’t priced. Remove any you don’t want.
+            </p>
+            {orphans.map(x => {
+              const e = entryOf(x, data)
+              const name = e ? entryLabel(e) : (x.name ?? 'Ammunition type')
+              return (
+                <div key={x.uid} className="row">
+                  <span>{name}</span>
+                  <span className="spacer" />
+                  <button className="btn small quiet" aria-label={`Remove ${name}`} onClick={() => act({ op: 'purchase', remove: x.uid })}>
+                    Remove
+                  </button>
+                </div>
+              )
+            })}
+          </section>
+        )
+      })()}
       <Modal
         open={custom}
         onClose={close}

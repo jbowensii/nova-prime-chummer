@@ -1,4 +1,4 @@
-import { capacityRemaining, capacityUsed } from '../../../catalog/domain/categories'
+import { capacityRemaining, capacityUsed, isAmmoType } from '../../../catalog/domain/categories'
 import { mountSlots } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
@@ -101,6 +101,9 @@ export type Op =
   /** mount: a weapon's mount (the host's accessory it sits in); diy: a vehicle mod installed by the player (half price) */
   | { op: 'accessory'; host: string; kind: PurchaseKind; id: string; rating?: number; mount?: string; diy?: boolean }
   | { op: 'accessory'; host: string; remove: string }
+  /** set an ammunition line's single type in one step (id undefined/empty = Regular, no type fitted): replaces any type
+   *  already on it, so switching between types can't leave two fitted (which would stack their price multipliers) */
+  | { op: 'ammoType'; host: string; id?: string }
   /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
   | { op: 'diy'; uid: string; diy: boolean }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
@@ -603,6 +606,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       const problem = accessoryProblem(host, line, data)
       if (problem) return no(problem)
       host.accessories.push(line) // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
+      return OK
+    }
+    case 'ammoType': {
+      const host = b.purchases.find(x => x.uid === op.host)
+      if (!host) return no('unknown-host')
+      // one type at a time: drop whatever type is on the line before fitting the new one (atomic, so no stacked multipliers)
+      host.accessories = host.accessories.filter(a => !isAmmoType(entryOf(a, data)))
+      if (op.id) {
+        const line = newLine({ kind: 'ammotypes', id: op.id }, data, cr)
+        if ('reason' in line) return line
+        host.accessories.push(line)
+      }
       return OK
     }
     case 'diy': {

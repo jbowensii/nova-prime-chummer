@@ -59,3 +59,43 @@ test('ammo-material: an ammunition line takes an ammunition type on the Gear tab
   expect(pageText()).toContain('147¥')
   expect(pageText()).not.toContain('may not be combined')
 })
+
+// the Ammunition section: per-class ammo (CRB p. 261, priced per 10 rounds) with one type from a dropdown, the type's xN on the line
+const CLASSES = [
+  {
+    file: 'custom/sr6/imported/zz/gear.xml',
+    xml:
+      '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="gear" version="1">' +
+      '<gear id="zz.heavy-pistol-smg" source="ZZ" page="1" category="Ammo by weapon type" avail="2" cost="10"><name>Heavy Pistol/SMG</name></gear>' +
+      '</sr6:data>',
+  },
+  {
+    file: 'custom/sr6/imported/zz/ammotypes.xml',
+    xml:
+      '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="ammotypes" version="1">' +
+      '<ammotype id="zz.apds" source="ZZ" page="1" category="Ammo type" cost="x3"><name>APDS</name></ammotype>' +
+      '<ammotype id="zz.gel" source="ZZ" page="1" category="Ammo type" cost="x1.5"><name>Gel</name></ammotype>' +
+      '</sr6:data>',
+  },
+]
+test('ammunition section: lists the per-class ammo, a type from the dropdown prices base × N and Regular puts it back', async () => {
+  const c = fixtureCatalog(undefined, CLASSES),
+    ch = blankSr6('karma', 'made-up-ac', '2026-10-24T00:00:00.000Z')
+  ch.build.metatype = GLIM
+  ch.build.purchases = [{ uid: 'p1', kind: 'gear', id: 'zz.heavy-pistol-smg', qty: 1, accessories: [] }]
+  const store = fakeStore('sr6/characters', { [ch.id]: sr6ToXml(ch) })
+  stubFetch([store.route])
+  await mount(createElement(Sr6EditorView, { c, data: sr6Data(c), cr: fixtureCreation(), id: ch.id, tab: 'gear' }))
+  expect(pageText()).toContain('10¥')
+  await change(field('Heavy Pistol/SMG ammo type'), 'zz.apds')
+  expect(pageText()).toContain('30¥')
+  await change(field('Heavy Pistol/SMG ammo type'), '')
+  expect(pageText()).toContain('10¥')
+  expect(pageText()).not.toContain('30¥')
+  // switching straight from one type to another replaces it (not stacks): APDS → Gel is 10 × 1.5 = 15, never 35
+  await change(field('Heavy Pistol/SMG ammo type'), 'zz.apds')
+  await change(field('Heavy Pistol/SMG ammo type'), 'zz.gel')
+  expect(pageText()).toContain('15¥')
+  expect(pageText()).not.toContain('30¥')
+  expect(pageText()).not.toContain('35¥')
+})

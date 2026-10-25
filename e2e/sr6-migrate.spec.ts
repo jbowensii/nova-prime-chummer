@@ -45,8 +45,10 @@ test('a runner saved with old ids loads them under the new ones, saved once with
   await page.getByLabel('Username').fill('pat')
   await page.getByLabel('Password', { exact: true }).fill(PW)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  const ammo = page.locator('section', { has: page.getByRole('heading', { name: 'Ammunition', exact: true }) })
-  await expect(ammo.getByRole('row', { name: /Fizz Rounds/ })).toBeVisible()
+  // a bare ammunition type from an old save has no host line; it stays visible and removable in the legacy section
+  await expect(page.getByRole('heading', { name: 'Ammunition', exact: true })).toBeVisible()
+  const loose = page.locator('section', { has: page.getByRole('heading', { name: /Loose ammunition types/ }) })
+  await expect(loose.getByRole('button', { name: /Remove Fizz Rounds/ })).toBeVisible()
   await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Other gear' }) })).toContainText('None yet.')
   await page.goto('/#/sr6/c/old-ids-1/augmentations')
   await expect(page.getByRole('row', { name: /Spring Tendons/ })).toBeVisible()
