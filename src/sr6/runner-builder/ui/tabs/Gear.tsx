@@ -4,9 +4,10 @@ import { useState, type ReactNode } from 'react'
 import { Modal } from '../../../../core/ui-kit/bits'
 import type { PurchaseKind, Sr6Purchase } from '../../../formats/domain/character'
 import { sinName } from '../../../formats/domain/character'
-import { entryOf, statusesOf, takesMaterial } from '../../domain/creation/budgets'
+import { entryOf, priced, statusesOf, takesMaterial } from '../../domain/creation/budgets'
+import { activeRules, deckKarma, DECK_NUYEN_PER_KARMA, isDeckPart } from '../../domain/creation/rule-markers'
 import { ratingEdge } from '../../domain/creation/derive'
-import { useSr6Editor } from '../editor'
+import { n, useSr6Editor } from '../editor'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
 import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
 
@@ -170,6 +171,27 @@ export function GearTab() {
         bonuses
         detail={withIdentity()}
       />
+      {/* Deck Builder: put Karma toward a cyberdeck/cyberhack here, by the deck, at 5,000¥ each (owner, 2026-10-25: on Gear,
+          not Contacts). The gain is capped at what those cost, so "+1" is disabled once the deck is fully covered. */}
+      {activeRules(ch.build, data).has('DECK_5000_PER_KARMA') &&
+        (() => {
+          const deckSpend = ch.build.purchases.filter(x => isDeckPart(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0)
+          const covered = deckKarma(ch.build, data) * DECK_NUYEN_PER_KARMA >= deckSpend
+          return (
+            <p className="row">
+              <button type="button" className="btn" disabled={covered} onClick={() => act({ op: 'karmaToDeck', delta: 1 })}>
+                1 Karma → {n(DECK_NUYEN_PER_KARMA)}¥ for a cyberdeck
+              </button>
+              <button type="button" className="btn" disabled={ch.build.karmaToDeck <= 0} onClick={() => act({ op: 'karmaToDeck', delta: -1 })}>
+                Take 1 back
+              </button>
+              <span aria-live="polite">{ch.build.karmaToDeck} karma put into a cyberdeck or cyberhack (Deck Builder)</span>
+              <span className="muted">
+                {n(DECK_NUYEN_PER_KARMA)}¥ a karma, toward cyberdecks and cyberhacks only{covered ? ' — the deck is covered' : ''}.
+              </span>
+            </p>
+          )
+        })()}
       <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
       <PurchaseSection
         kind="gear"

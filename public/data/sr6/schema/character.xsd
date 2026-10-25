@@ -236,6 +236,7 @@
     <xs:attribute name="submersion" type="c:Count"/>
     <xs:attribute name="transhuman" type="c:Count"/>
     <xs:attribute name="karmaToNuyen" type="c:Count"/>
+    <xs:attribute name="karmaToDeck" type="c:Count"/>
     <!-- lifepath: the best attribute, and the one that takes what its maximum leaves over -->
     <xs:attribute name="bestAttr" type="c:CoreAttr"/>
     <xs:attribute name="bestExtra" type="c:CoreAttr"/>

@@ -109,9 +109,26 @@ test('Deck Builder: N Karma are N×5000¥ toward a cyberdeck only, and nothing w
     return {
       gain: nuyenBudget(b, data, cr, p).breakdown?.find(l => l.key === 'fromDeckKarma')?.amount ?? 0,
       spent: karmaBudget(b, data, cr, p).breakdown?.find(l => l.key === 'toDeck')?.amount ?? 0,
+      left: nuyenBudget(b, data, cr, p).left,
     }
   }
-  expect(run(true, 1)).toEqual({ gain: 5000, spent: 1 })
-  expect(run(true, 5)).toEqual({ gain: 8000, spent: 5 }) // capped at the deck's own price: the 3000 gizmo gets nothing
-  expect(run(false, 5)).toEqual({ gain: 0, spent: 0 })
+  expect(run(true, 1)).toMatchObject({ gain: 5000, spent: 1 })
+  expect(run(true, 5)).toMatchObject({ gain: 8000, spent: 5 }) // capped at the deck's own price: the 3000 gizmo gets nothing
+  expect(run(false, 5)).toMatchObject({ gain: 0, spent: 0 })
+  // the gain is real nuyen back in the pool, not just a display line: available nuyen rises by exactly the gain
+  expect(run(true, 1).left - run(true, 0).left).toBe(5000)
+})
+
+test('Deck Builder also covers a cyberhack identified by category, not just the cyberdeck class', () => {
+  const hack: Sr6Entry = { id: 'x.hack', kind: 'electronics', name: 'x.hack', source: 'CRB', page: 1, attrs: { category: 'Cyberhack', cost: '2000' }, text: '' }
+  const c = fixtureCatalog()
+  c.entries.electronics.set(hack.id, hack)
+  c.entries.qualities.set('hs.deck-builder', marked('hs.deck-builder', 'DECK_5000_PER_KARMA'))
+  const data = sr6Data(c),
+    cr = fixtureCreation()
+  const b = build('hs.deck-builder')
+  b.karmaToDeck = 1
+  b.purchases.push({ uid: 'h', kind: 'electronics', id: 'x.hack', qty: 1, accessories: [] })
+  const gain = nuyenBudget(b, data, cr, makeProvider(b.method, data, cr)).breakdown?.find(l => l.key === 'fromDeckKarma')?.amount ?? 0
+  expect(gain).toBe(2000) // min(1×5000, the 2000¥ cyberhack)
 })
