@@ -50,6 +50,17 @@ test('the runner’s Karma comes from its own starting Karma; Review notes an as
   expect(validateSr6(data, runnerRules(cr, ch.rules), ch).map(v => v.code)).not.toContain('setting.unset')
 })
 
+test('an assumed Karma-build rule is noted for a karma-build runner, but not for a point-buy one (its method never uses it)', () => {
+  const { data, cr } = made()
+  const notesFor = (method: 'pointbuy' | 'karma') => {
+    const ch: Sr6Character = { ...blankSr6(method, 'r1'), build: buildOf(method, { letters: 'CABDA', metatype: GLIM }) }
+    ch.rules = [{ key: 'karmaBuild.freeSpellsPerMagic', value: '0', assumed: true, source: 'CRB', page: 64 }]
+    return validateSr6(data, runnerRules(cr, ch.rules), ch).filter(v => v.code === 'rules.assumed')
+  }
+  expect(notesFor('karma')).toHaveLength(1) // positive control: a karma build does surface it
+  expect(notesFor('pointbuy')).toHaveLength(0) // point buy never uses the Karma build numbers, so no note
+})
+
 test('a hand-edited runner file can’t set a table-only setting: the table’s stays, and Review says so', () => {
   const { data, cr } = made(),
     ch = runner()

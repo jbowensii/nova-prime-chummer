@@ -40,9 +40,9 @@ test('never printed, and hidden when asked', () => {
   expect(art).toMatch(/\[data-art='off'\] \.bg-art \{ display: none/)
 })
 
-test('the strength slider clamps to 0–100', () => {
+test('the strength slider clamps to 0–100; an invalid value falls back to the 40% default (never 100, which the removed veil no longer tempers)', () => {
   expect([strength(100), strength(250), strength(0), strength(-3), strength(42.4), strength('x'), strength(undefined), strength(NaN)]).toEqual([
-    100, 100, 0, 0, 42, 100, 100, 100,
+    100, 100, 0, 0, 42, 40, 40, 40,
   ])
 })
 

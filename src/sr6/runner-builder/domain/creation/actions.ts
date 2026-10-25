@@ -840,6 +840,9 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         k.native = true
         k.points = 0
       } else if (op.native === false) delete k.native
+      // a nuyen-paid flag only lives on a non-native Knowledge line; drop it when the row stops being one, so it can't
+      // silently reactivate (and cost 0 karma again) if the line is later changed back to a Knowledge skill
+      if (k.kind !== 'knowledge' || k.native) delete k.payment
       return OK
     }
     case 'knowledgePayment': {

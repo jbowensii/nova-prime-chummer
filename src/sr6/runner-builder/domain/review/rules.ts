@@ -2045,7 +2045,13 @@ function runnerRuleNotes(cr: CreationRules, ch: Sr6Character, labels: Map<string
         path: 'method',
         message: `${name(r.key)}: your choice is set aside; ${'needs' in b ? `it needs ${name(b.needs)}, which is off` : `it can’t be on with ${name(b.conflicts)}`}.`,
       })
-    else if (r.assumed)
+    // an assumed value is only worth noting when the rule bears on how THIS runner is built: a rule scoped to other
+    // creation methods (a point-buy runner shown the Karma build's assumed numbers) is noise, so suppress it
+    else if (
+      r.assumed &&
+      !CREATION_KEYS.some(k => k.key === r.key && k.methods !== 'all' && k.methods.length > 0 && !k.methods.includes(ch.build.method)) &&
+      !(/^karmaBuild/.test(r.key) && ch.build.method !== 'karma')
+    )
       out.push({
         code: 'rules.assumed',
         severity: 'warning',

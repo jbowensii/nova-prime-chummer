@@ -24,7 +24,7 @@ const KEY = 'ca2.settings.v1'
 export const DEFAULTS: Settings = { theme: 'system', texture: 'accents', print: 'plain', art: 'on', artStrength: 40, sheetArt: 'on', sheetArtPrint: 'off' }
 
 /** A whole percentage in 0–100; anything else is the default. Never above 100: that would pass the readability clamp. */
-export const strength = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : 100)
+export const strength = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : DEFAULTS.artStrength)
 
 export function loadSettings(): Settings {
   try {

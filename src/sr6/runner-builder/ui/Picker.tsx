@@ -633,7 +633,7 @@ function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades
   )
 }
 
-const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear'])
+const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear', 'ammotypes'])
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
