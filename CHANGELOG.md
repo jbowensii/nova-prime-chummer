@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.26.0 — 2026-10-25
+
+A few interface and rules fixes from live testing.
+
+**Shadowrun 6**
+- A checkbox in a compact label — the Magic tab's "Buy extra spells at creation", and the like — now sits
+  beside its text instead of floating off on its own line.
+- **Specialization karma is shown on its own line** in the karma breakdown, "N specializations bought with
+  karma", the way the expertise line already was, so the spend is visible rather than folded into skill ranks.
+- **Matrix Attribute Advancement is a leveled quality** (Hack & Slash p. 82): 15 Karma per level, up to level 3
+  per Matrix attribute, and the chosen attribute (Attack, Sleaze, Data Processing or Firewall) rises by the
+  level. It was modelled as a flat +1 before. **Needs a re-import** to take effect.
+
 ## 0.25.0 — 2026-10-25
 
 Choosing a creation method is simpler, the places you spend points now show how many are left, and a few gear and
