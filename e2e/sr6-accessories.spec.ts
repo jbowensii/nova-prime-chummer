@@ -1,6 +1,6 @@
 // Accessories on their host (src/sr6/catalog/domain/categories.ts, budgets.ts hostBonus), on the made-up SR6 fixture: a
-// Torqlimb accessory goes on the Torqlimb arm (the picker marks another host's), its bonus lands on the arm only (the
-// line, the sheet's line and Review's derived values show the arm's own Strength; the runner's stays).
+// Torqlimb accessory goes on the Torqlimb arm (the picker offers only accessories that fit this host), its bonus lands
+// on the arm only (the line, the sheet's line and Review's derived values show the arm's own Strength; the runner's stays).
 import { test, expect, type Page } from '@playwright/test'
 import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -62,10 +62,10 @@ test('a cyberlimb accessory goes on the arm, and its bonus is the arm’s only',
   await expect(dlg).toHaveCount(0)
   await expect(work.getByText('Torqlimb: Limb (synthetic)').first()).toBeVisible()
 
-  // its accessories: the Torqlimb's, and the eyeware's marked (it may still be fitted: a Review error)
+  // its accessories: only ones that fit this host are offered — the Torqlimb's is, the eyeware's (Glare filter) is not
   await work.getByRole('button', { name: 'Add an accessory to Torqlimb: Limb (synthetic)' }).click()
   await expect(dlg).toContainText('Torqlimb accessory: Plating 1')
-  await expect(dlg.locator('li', { hasText: 'Glare filter' })).toContainText('for Eyeware, not this')
+  await expect(dlg.locator('li', { hasText: 'Glare filter' })).toHaveCount(0)
   // (a rated accessory is one entry per rating: the level is picked outright)
   await dlg.getByText('Torqlimb accessory: Plating 2', { exact: true }).click()
   await expect(dlg).toHaveCount(0)
