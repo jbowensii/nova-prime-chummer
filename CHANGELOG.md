@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.26.1 — 2026-10-25
+
+A quick fix from live testing.
+
+**Shadowrun 6**
+- With **Expanded Specializations** on, each extra specialization now gets its own dropdown box (the skill's
+  book specializations), with a fresh empty box appearing to add the next. Before, everything past the first
+  specialization was crammed into one free-text box with no dropdown.
+
 ## 0.26.0 — 2026-10-25
 
 A few interface and rules fixes from live testing.
