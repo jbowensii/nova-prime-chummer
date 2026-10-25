@@ -11,3 +11,10 @@ package-lock.json
 *.xml
 *.xsd
 *.md
+build
+.gossip
+characters
+docs/plans/Old Versions
+docs/reviews/_work-corrections
+routing-log.md
+GATES.md

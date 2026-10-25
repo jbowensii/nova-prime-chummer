@@ -11,11 +11,17 @@ import { knowledgeNuyenAvailable } from '../../../src/sr6/runner-builder/domain/
 function setup(active = true) {
   const catalog = fixtureCatalog()
   catalog.entries.qualities.set('scholastic', {
-    id: 'scholastic', kind: 'qualities', name: 'Scholastic Mage', source: 'CRB', page: 1,
-    attrs: { kind: 'positive', karma: '5' }, text: '',
+    id: 'scholastic',
+    kind: 'qualities',
+    name: 'Scholastic Mage',
+    source: 'CRB',
+    page: 1,
+    attrs: { kind: 'positive', karma: '5' },
+    text: '',
     parts: [{ tag: 'modifier', attrs: { kind: 'itemmod', type: 'RULE', ref: 'KNOWLEDGE_COST2_AT_GEN' }, text: '' }],
   })
-  const data = sr6Data(catalog), cr = fixtureCreation()
+  const data = sr6Data(catalog),
+    cr = fixtureCreation()
   cr.set('karmaKnowledge', { key: 'karmaKnowledge', value: 1 })
   const b = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'full' })
   if (active) b.qualities.push({ uid: 'q', id: 'scholastic', level: 1 })
