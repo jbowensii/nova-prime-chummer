@@ -5,6 +5,7 @@ import { contactLoyalty, effectiveAvailability, martialCreationKarma } from '../
 import { contactPoints } from '../../../src/sr6/runner-builder/domain/creation/contacts'
 import { contactSpend, makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import { martialKarma, techniqueKarma } from '../../../src/sr6/runner-builder/domain/creation/martial'
+import { nuyenBudget } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/purchases'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { priceAt } from '../../../src/sr6/runner-builder/ui/Picker'
@@ -29,7 +30,7 @@ function world(ref: string) {
   ch.build = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'mundane' })
   const b = ch.build
   const activate = () => b.qualities.push({ uid: 'q', id: 'test.marker', level: 1 })
-  return { data, cr, ch, b, activate }
+  return { c, data, cr, ch, b, activate }
 }
 
 test('Fast Friend derives capped effective Loyalty without charging the free point or applying it twice', () => {
@@ -93,4 +94,21 @@ test('Martial Arts Prodigy discounts each paid style and technique, floors at ze
   cr.set('karmaMartialArt', { key: 'karmaMartialArt', value: 1 })
   cr.set('karmaTechnique', { key: 'karmaTechnique', value: 1 })
   expect(martialKarma(b, data, cr)).toBe(0)
+})
+
+test('Fashion Influencer halves only fashion-slot armor, as its own gain line', () => {
+  const { c, b, data, cr, activate } = world('FASHION_50_PERCENT')
+  const armor = (id: string, slots: object[]) =>
+    c.entries.armor.set(id, { id, kind: 'armor', name: id, source: 'CRB', page: 1, attrs: { cost: '1000' }, text: '', parts: slots as never })
+  armor('t.suit', [{ tag: 'slot', attrs: { id: 'fashion' }, text: '' }])
+  armor('t.rags', [])
+  b.purchases.push(
+    { uid: 'a', kind: 'armor', id: 't.suit', qty: 1, accessories: [] } as never,
+    { uid: 'c', kind: 'armor', id: 't.rags', qty: 1, accessories: [] } as never,
+  )
+  const line = () => nuyenBudget(b, data, cr, makeProvider(b.method, data, cr)).breakdown.find(l => l.key === 'fashionInfluencer')
+  expect(line()).toBeUndefined()
+  activate()
+  expect(line()).toMatchObject({ amount: priced(b.purchases[0], data, cr).cost * 0.5, sign: 'gain' })
+  expect(line()?.amount).toBeGreaterThan(0)
 })

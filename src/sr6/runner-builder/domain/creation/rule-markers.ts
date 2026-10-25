@@ -8,7 +8,14 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { structureOf } from '../../../catalog/domain/structure'
 
 /** The creation-cost RULE refs the builder implements today. */
-export type RuleRef = 'POLYGLOT' | 'KNOWLEDGE_COST2_AT_GEN' | 'KARMA_COST_PLUS_1' | 'CONTACTS_START_LOYAL2' | 'DECREASE_AVAILABILITY_2' | 'MARTIAL_ARTS_PRODIGY'
+export type RuleRef =
+  | 'POLYGLOT'
+  | 'KNOWLEDGE_COST2_AT_GEN'
+  | 'KARMA_COST_PLUS_1'
+  | 'CONTACTS_START_LOYAL2'
+  | 'DECREASE_AVAILABILITY_2'
+  | 'MARTIAL_ARTS_PRODIGY'
+  | 'FASHION_50_PERCENT'
 
 /** The set of active RULE refs, read from each chosen quality's `<modifier type="RULE" ref>` marker. */
 export function activeRules(b: Sr6Build, data: Sr6Data): Set<string> {
@@ -53,6 +60,9 @@ export function effectiveAvailability(b: Sr6Build, data: Sr6Data, base: number):
   // floor at 0 (owner ruling 2026-10-24): the quality never makes a freely available (avail-0) item harder to get
   return activeRules(b, data).has('DECREASE_AVAILABILITY_2') ? Math.max(0, base - 2) : base
 }
+
+/** Fashion Influencer: designer-fashion clothing (armor with a fashion slot) costs half. */
+export const fashionDiscount = (b: Sr6Build, data: Sr6Data): boolean => activeRules(b, data).has('FASHION_50_PERCENT')
 
 /** Discount each paid style and technique separately at creation. */
 export function martialCreationKarma(b: Sr6Build, data: Sr6Data, base: number): number {

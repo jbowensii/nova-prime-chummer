@@ -11,14 +11,14 @@ import { MAGIC_KINDS, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
-import { entryLabel } from '../../../catalog/domain/categories'
+import { entryLabel, isDesignerFashion } from '../../../catalog/domain/categories'
 import { entryOf, licenceFee, priced, purchaseTab } from './purchases'
 import { essenceBudget } from './essence'
 import { countPicks as count, dataStructureLevels, freeSpellSlots, powerPoints } from './magic'
 import { skillSpend, knowledgePoints } from './skills'
 import { contactPoints } from './contacts'
 import { karmaBudget, nuyenPerKarma, toNuyen } from './karma'
-import { knowledgeUsesNuyen } from './rule-markers'
+import { fashionDiscount, knowledgeUsesNuyen } from './rule-markers'
 import { runnerInfected } from './infected'
 
 export type { Budget, BudgetLine } from './providers'
@@ -103,8 +103,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       'contacts',
     )
   }
-  for (const k of b.knowledge)
-    if (knowledgeUsesNuyen(b, data, k)) add(`knowledge:${k.uid}`, `${k.name} (Knowledge × ${k.karma})`, k.karma * 1000, 'skills')
+  for (const k of b.knowledge) if (knowledgeUsesNuyen(b, data, k)) add(`knowledge:${k.uid}`, `${k.name} (Knowledge × ${k.karma})`, k.karma * 1000, 'skills')
   // the owner's house rule (metatypeSizePricing, 2026-10-11): a troll-sized runner pays 10% more for everything bought, a
   // dwarf-sized one 10% more for armor; one line, so each item still shows its printed price
   const size = flag(cr, 'metatypeSizePricing') ? metatypeSize(data, b.metatype) : undefined
@@ -115,6 +114,10 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
       'gear',
     )
+  if (fashionDiscount(b, data)) {
+    const half = b.purchases.filter(x => isDesignerFashion(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.5
+    if (half) breakdown.push({ key: 'fashionInfluencer', label: 'Fashion Influencer: 50% off designer fashion', amount: half, sign: 'gain', tab: 'gear' })
+  }
   // Hack & Slash p. 72: a data structure is bought for its level times dataStructureNuyen
   add('dataStructures', 'Data structures bought', dataStructureLevels(b) * n0(cr, 'dataStructureNuyen'), 'magic')
   const karma = toNuyen(b, cr, data),

@@ -118,6 +118,8 @@ export function capacityUsed(e: Sr6Entry | undefined, rating = 1): number {
 export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMaterial(e) && !/^AMMUNITION\//i.test(e.attrs.class ?? '')
 
 /** A base ammunition line (CRB p. 261: `Ammo by weapon type`, priced per 10 rounds): a gear entry an ammunition type is fitted to. */
+/** Designer fashion (owner ruling 2026-10-25): any armor entry with a `fashion` slot. */
+export const isDesignerFashion = (e?: Sr6Entry) => e?.kind === 'armor' && structureOf(e).slots.some(s => s.id === 'fashion')
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other
