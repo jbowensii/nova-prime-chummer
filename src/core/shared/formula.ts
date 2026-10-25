@@ -349,6 +349,9 @@ export function readFormulasAndIssues(el: Element): { formulas: Formula[]; issue
     } else if (k.localName === 'issue') {
       const code = k.getAttribute('code') ?? '',
         page = Number(k.getAttribute('page')) || undefined
+      // a "missing" issue for a field the entry has a value for is stale — an override or default supplied it (the importer
+      // drops it on reimport; this covers data that still carries both). Skip it so it never reaches Review or Game data.
+      if (code === 'missing' && (el.getAttribute(field) ?? '').trim()) continue
       issues.push({ field, code: CODES.has(code) ? (code as IssueCode) : 'unreadable', ...(page ? { page } : {}), note: (k.textContent ?? '').trim() })
     }
   }

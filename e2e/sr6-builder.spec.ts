@@ -416,7 +416,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
   await tabs.filter({ hasText: 'Magic' }).click()
   await expect(work.locator('tr', { hasText: 'Quick Step' })).toBeVisible()
   await work.getByRole('button', { name: 'Raise Power points bought' }).click()
-  await expect(work.getByRole('group', { name: 'Power points bought' })).toContainText('1')
+  await expect(work.getByRole('group', { name: 'Power points bought' }).locator('input')).toHaveValue('1')
   await expect(work.getByText('Power points:')).toContainText('0.5 left of 1')
 
   // back to a full magician: the powers go; tradition (cleared and set again), drain, spells, a ritual, initiation, a metamagic
@@ -509,7 +509,7 @@ test('the editor: Magic or Resonance, Augmentations, Gear, Vehicles, Contacts & 
     await work.getByRole('button', { name: 'Add other gear…' }).click()
     await dlg.getByText('Zap Pellets').click()
   }
-  await expect(work.getByRole('group', { name: 'Zap Pellets quantity' })).toContainText('2')
+  await expect(work.getByRole('group', { name: 'Zap Pellets quantity' }).locator('input')).toHaveValue('2')
   await work.getByRole('button', { name: 'Add other gear…' }).click()
   await expect(dlg.locator('li', { hasText: 'Tangle Rope 3' })).toContainText('150')
   await dlg.getByText('Tangle Rope 3', { exact: true }).click()

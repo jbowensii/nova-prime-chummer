@@ -155,7 +155,7 @@ test('an edit keeps the book’s formulas and issues except for a field it sets 
   const book =
     `<sr6:data ${NS} kind="gear" version="1"><gear id="crb.g" source="CRB" page="1" category="c" cost="40" avail="2"><name>G</name>` +
     `<formula field="cost">R * 100</formula><formula field="avail">R + 1</formula>` +
-    `<issue field="cost" code="missing" page="1">no cost printed</issue><issue field="avail" code="ambiguous" page="1">two avails</issue></gear></sr6:data>`
+    `<issue field="cost" code="ambiguous" page="1">two costs</issue><issue field="avail" code="ambiguous" page="1">two avails</issue></gear></sr6:data>`
   const edit = (attrs: string, extra = '') =>
     `<sr6:data ${NS} kind="edits" version="1"><gear id="crb.g" source="CRB" page="1" category="c" ${attrs} by="eve"><name>G</name>${extra}</gear></sr6:data>`
   const run = (xml: string) => buildSr6Catalog([F('crb/gear.xml', book), F('edits.xml', xml)]).entries.gear.get('crb.g')!

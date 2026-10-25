@@ -830,7 +830,10 @@ table.data.fixed {
   cursor: not-allowed;
 }
 .stepper input {
-  width: 3.2rem;
+  width: 1.8rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0;
   text-align: center;
   font-weight: 700;
   -moz-appearance: textfield;
@@ -2827,7 +2830,7 @@ table.data tr.group td {
 .contacts-wrap {
   container-type: inline-size;
 }
-table.contacts input {
+table.contacts input:not([type='number']) {
   width: 100%;
   min-width: 6rem;
 }
