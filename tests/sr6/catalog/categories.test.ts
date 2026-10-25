@@ -144,6 +144,17 @@ test('remaining capacity is the host’s capacity minus what its accessories tak
   ).toBe(capacityOf(limb)! - 2 * capacityUsed(plating, 3))
 })
 
+test('a ranged capacity (glasses 1–4) is the chosen rating, so it is filled by CL6 capacity points, not left unbounded', () => {
+  const glasses = (r: string) => ({ attrs: { capacity: r } }) as Sr6Entry
+  const low = { attrs: { capacity: '[1]' } } as Sr6Entry // Low-light vision
+  const smart = { attrs: { capacity: '[2]' } } as Sr6Entry // Smartlink
+  expect(capacityOf(glasses('1–4'), 3)).toBe(3) // Capacity equals the rating, not null/unbounded
+  expect(capacityOf(glasses('1–4'), 5)).toBe(4) // clamped to the printed range
+  // a Capacity-3 pair holds Low-light [1] + Smartlink [2] exactly; nothing more fits
+  expect(capacityRemaining(glasses('1–4'), [{ entry: low }, { entry: smart }], 3)).toBe(0)
+  expect(capacityRemaining(glasses('1–4'), [{ entry: low }, { entry: smart }, { entry: low }], 3)).toBe(-1)
+})
+
 test('raising a fitted accessory’s rating may not overfill its host (the add-time guard, on rate)', () => {
   const { b, act } = setup()
   act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })

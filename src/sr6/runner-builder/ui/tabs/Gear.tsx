@@ -1,8 +1,9 @@
 // Gear: weapons (attack ratings, accessories from the accessory categories), armor (worn, the Defense and Social Ratings it gives),
 // electronics, programs and autosofts (at a rating, priced by the book's formula) and other gear (a quantity where lines stack), and a custom item at the player's own price.
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Modal } from '../../../../core/ui-kit/bits'
 import type { PurchaseKind, Sr6Purchase } from '../../../formats/domain/character'
+import { sinName } from '../../../formats/domain/character'
 import { entryOf, statusesOf, takesMaterial } from '../../domain/creation/budgets'
 import { ratingEdge } from '../../domain/creation/derive'
 import { useSr6Editor } from '../editor'
@@ -18,7 +19,7 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
 export function GearTab() {
-  const { d, data, cr, act } = useSr6Editor()
+  const { d, ch, data, cr, act, edit } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
@@ -48,6 +49,47 @@ export function GearTab() {
       </>
     )
   }
+  // gear registered under one of the runner's identities: a commlink runs its persona (CRB p. 174), and licensed gear is
+  // carried under the SIN that holds its licence. The picker lives on the gear line here, not on every SIN over on
+  // Contacts; it only appears once the runner has an identity to assign to.
+  const identity = (x: Sr6Purchase) => {
+    const sins = ch.build.sins
+    if (sins.length === 0) return null
+    const name = (e => (e ? entryLabel(e) : (x.name ?? 'Item')))(entryOf(x, data))
+    return (
+      <label className="inline">
+        Identity{' '}
+        <select
+          aria-label={`${name} identity`}
+          value={x.sin ?? ''}
+          onChange={e =>
+            edit(b => {
+              const p = b.purchases.find(p => p.uid === x.uid)
+              if (!p) return
+              if (e.target.value) p.sin = e.target.value
+              else delete p.sin
+            })
+          }
+        >
+          <option value="">Unassigned</option>
+          {sins.map(s => (
+            <option key={s.uid} value={s.uid}>
+              {sinName(s)}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+  // an identity picker after a section's own per-line detail (weapons' AR, armor's Social, gear's material)
+  const withIdentity =
+    (base?: (x: Sr6Purchase) => ReactNode) =>
+    (x: Sr6Purchase): ReactNode => (
+      <>
+        {base?.(x)}
+        {identity(x)}
+      </>
+    )
   const close = () => {
     setCustom(false)
     setName('')
@@ -73,7 +115,7 @@ export function GearTab() {
         kind="weapons"
         title="Weapons"
         one="a weapon"
-        detail={x => [ar(x.uid), ...statusesOf(entryOf(x, data)).map(s => `applies ${s}`)].filter(Boolean).join(' · ')}
+        detail={withIdentity(x => [ar(x.uid), ...statusesOf(entryOf(x, data)).map(s => `applies ${s}`)].filter(Boolean).join(' · '))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`}
       />
@@ -90,10 +132,17 @@ export function GearTab() {
         one="armor"
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
-        detail={x => social(entryOf(x, data)?.attrs.social)}
+        detail={withIdentity(x => social(entryOf(x, data)?.attrs.social))}
         hint={`Defense Rating ${d.defenseRating} and Social Rating ${d.socialRating} with the armor worn.`}
       />
-      <PurchaseSection kind="electronics" title="Electronics" one="electronics" accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }} bonuses />
+      <PurchaseSection
+        kind="electronics"
+        title="Electronics"
+        one="electronics"
+        accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
+        bonuses
+        detail={withIdentity()}
+      />
       <PurchaseSection kind="programs" title="Programs and autosofts" one="a program" />
       <PurchaseSection
         kind="gear"
@@ -101,7 +150,7 @@ export function GearTab() {
         one="other gear"
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
-        detail={material}
+        detail={withIdentity(material)}
       />
       <PurchaseSection kind="ammotypes" title="Ammunition" one="ammunition type" offer={isAmmoType} detail={material} />
       <Modal

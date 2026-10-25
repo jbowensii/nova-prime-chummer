@@ -190,15 +190,6 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
   const add = () => {
     if (name.trim() && !act({ op: 'licence', sin: s.uid, name: name.trim() })) setName('')
   }
-  const owned = ownedPurchases(ch.build.purchases)
-  const assign = (uid: string, sin?: string) => {
-    edit(b => {
-      const x = ownedPurchases(b.purchases).find(x => x.uid === uid)
-      if (!x) return
-      if (sin) x.sin = sin
-      else delete x.sin
-    })
-  }
   const remove = () => {
     edit(b => {
       b.sins = b.sins.filter(x => x.uid !== s.uid)
@@ -248,33 +239,7 @@ function Sin({ s, who, lifestyles }: { s: Sr6Sin; who: string; lifestyles: React
           Remove
         </button>
       </div>
-      <div className="stack">
-        <h3>Assigned gear</h3>
-        {owned
-          .filter(x => x.sin === s.uid)
-          .map(x => (
-            <div key={x.uid} className="row">
-              <span>{purchaseName(x, data)}</span>
-              <button className="btn small quiet" aria-label={'Unassign ' + purchaseName(x, data) + ' from ' + who} onClick={() => assign(x.uid)}>
-                Unassign
-              </button>
-            </div>
-          ))}
-        <select aria-label={'Assign owned gear to ' + who} value="" onChange={e => e.target.value && assign(e.target.value, s.uid)}>
-          <option value="">Assign owned gear…</option>
-          {owned
-            .filter(x => x.sin !== s.uid)
-            .map(x => {
-              const from = ch.build.sins.find(s => s.uid === x.sin)
-              return (
-                <option key={x.uid} value={x.uid}>
-                  {purchaseName(x, data)}
-                  {x.sin && ' (move from ' + (from ? sinName(from) : 'another SIN') + ')'}
-                </option>
-              )
-            })}
-        </select>
-      </div>
+      {/* a commlink is tied to an identity on its own line in Gear's Electronics section (only commlinks are assigned) */}
       <div className="row">
         {s.licences.map((l, i) => (
           <span key={i} className="chip">

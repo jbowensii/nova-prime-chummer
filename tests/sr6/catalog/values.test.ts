@@ -24,6 +24,9 @@ test('rated reads plain numbers, Rating formulas and add-ons; avail suffixes are
 test('rated: Capacity, Force and Level are the rating, any case; / rounds up; ^ is a power', () => {
   expect(rated('Capacity x 70', 3)).toEqual({ n: 210, ok: true })
   expect(rated('Force x 1500', 2)).toEqual({ n: 3000, ok: true })
+  // a `$RATING`/`$FORCE` variable sigil (importer slot values like glasses' `<slot optical=$RATING>`): the `$` is dropped
+  expect(rated('$RATING', 3)).toEqual({ n: 3, ok: true })
+  expect(rated('$FORCE', 5)).toEqual({ n: 5, ok: true })
   expect(rated('(Force +2) L', 4)).toEqual({ n: 6, ok: true })
   expect(rated('20 + (rating x 5)', 3)).toEqual({ n: 35, ok: true })
   expect(rated('(Rating/3)(L)', 7)).toEqual({ n: 3, ok: true })

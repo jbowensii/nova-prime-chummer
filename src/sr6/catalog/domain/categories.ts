@@ -98,6 +98,10 @@ export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr
 export function capacityOf(e: Sr6Entry | undefined, rating = 1): number | null {
   const c = e?.attrs.capacity
   if (!c || /^\s*\[/.test(c)) return null
+  // a ranged capacity (glasses `1–4`, rating 1–4) means the capacity equals the chosen rating: CL6 fills it by capacity
+  // points, so a Capacity-3 pair of glasses holds enhancements whose [cost]s sum to 3. Clamp the rating into the range.
+  const range = /^\s*(\d+)\s*[–-]\s*(\d+)\s*$/.exec(c)
+  if (range) return Math.min(Math.max(rating, +range[1]), +range[2])
   const v = rated(c, rating)
   return v.ok ? v.n : null
 }

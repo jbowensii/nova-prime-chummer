@@ -35,18 +35,19 @@ function read(xml: string): Sr6Character {
   return r.character
 }
 
-async function open(ch: Sr6Character) {
+async function open(ch: Sr6Character, tab: 'contacts' | 'gear' = 'contacts') {
   const c = fixtureCatalog()
   const store = fakeStore('sr6/characters', { [ch.id]: sr6ToXml(ch) })
   stubFetch([store.route])
-  await mount(createElement(Sr6EditorView, { c, data: sr6Data(c), cr: fixtureCreation(), id: ch.id, tab: 'contacts' }))
+  await mount(createElement(Sr6EditorView, { c, data: sr6Data(c), cr: fixtureCreation(), id: ch.id, tab }))
   return async () => {
     await click(button('Save'))
     return read(store.rows.get(ch.id)!.xml)
   }
 }
 
-const assign = (sin: number, uid: string) => change(field(`Assign owned gear to SIN ${sin}`), uid)
+// gear is assigned to an identity on its own line in the Gear tab now; '' unassigns it
+const assign = (item: string, sinUid: string) => change(field(`${item} identity`), sinUid)
 
 test('XML preserves SIN assignments on multiple purchases and nested accessories', () => {
   const ch = runner()
@@ -66,21 +67,19 @@ test('legacy XML without purchase sin attributes loads without adding assignment
   expect(p[0].accessories[0]).not.toHaveProperty('sin')
 })
 
-test('Contacts assigns many purchases, moves an assignment, and unassigns without changing licences or prices', async () => {
+test('Gear assigns gear lines to identities, moves an assignment, and unassigns without changing licences or prices', async () => {
   const ch = runner()
   ch.build.sins[0].licences = [{ name: 'Existing permit', rating: 1, item: 'g1' }]
   ch.build.purchases[0].cost = 123
-  const save = await open(ch)
-  await assign(1, 'g1')
-  await assign(1, 'g2')
-  await assign(1, 'a2')
+  const save = await open(ch, 'gear')
+  await assign('Commlink A', 's1')
+  await assign('Commlink B', 's1')
   let back = await save()
   expect(back.build.purchases.map(x => x.sin)).toEqual(['s1', 's1'])
-  expect(back.build.purchases[0].accessories[0].accessories[0].sin).toBe('s1')
-  await assign(2, 'g1')
+  await assign('Commlink A', 's2')
   back = await save()
   expect(back.build.purchases.map(x => x.sin)).toEqual(['s2', 's1'])
-  await click(button('Unassign Commlink A from SIN 2'))
+  await assign('Commlink A', '')
   back = await save()
   expect(back.build.purchases[0]).not.toHaveProperty('sin')
   expect(back.build.purchases[0].cost).toBe(123)

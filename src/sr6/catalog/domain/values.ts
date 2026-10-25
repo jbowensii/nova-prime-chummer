@@ -30,6 +30,7 @@ export function rated(s: string | undefined, rating = 1): { n: number | null; ok
     .replace(LEGAL, '')
     .replace(/^\s*\+/, '')
     .replace(/[×x*]/g, ' * ')
+    .replace(/\$(?=[a-z])/gi, '') // a `$RATING`/`$FORCE` variable sigil (slot values like `$RATING`): drop the `$` so the word below becomes R
     .replace(/\b(?:rating|capacity|force|level)\b/gi, ' R ')
     .trim()
   const tokens = src.split(/\s*([*/^+()])\s*|\s+/).filter(Boolean)
