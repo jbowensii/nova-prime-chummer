@@ -39,6 +39,13 @@ test('a negative quantity that cancels an overspend reads, is flagged hard, and 
   expect(canFinalizeSr6(v)).toBe(false)
 })
 
+test('a negative karmaToDeck is flagged hard, like its sibling creation-spend counters', () => {
+  const ch = runner()
+  ch.build.karmaToDeck = -1
+  const v = check(ch).filter(x => x.code === 'value.negative')
+  expect(v.map(x => [x.path, x.message, !!x.hard])).toContainEqual(['method', 'karmaToDeck is -1; it can’t be below 0.', true])
+})
+
 test('a legal runner has no negative-number errors; a negative bonus value is fine', () => {
   const ch = runner()
   ch.build.purchases.push({ uid: 'p1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [], bonuses: [{ target: 'initiative', value: -1 }] })

@@ -348,5 +348,5 @@
   {"cl6": "Language", "kind": "programs", "id": "language", "gen": "cl6", "why": "the book prints no rule for the autosoft's rating; Commlink6 scales the language skill by the rating over three", "effects": [{"target": "skill:language", "op": "set", "value": "R/3"}]},
   {"cl6": "Distinctive Features", "kind": "gear", "id": "distinctive-features", "gen": "cl6", "why": "the book gives Edge and a wild die on Social tests; Commlink6 also gives one Con die", "effects": [{"target": "skill:con", "op": "add", "value": "1"}]},
   {"cl6": "Improved Seating", "kind": "vehicledesign", "id": "improved-seating", "gen": "cl6", "why": "the book adds seats without a number; Commlink6 adds one seat per level", "effects": [{"target": "item:seats", "op": "add", "value": "R"}]},
-  {"cl6": "RCC Headware", "kind": "augmentations", "id": "rcc-headware", "set": {"capacity": "3"}, "gen": "owner", "note": "capacity not printed; Commlink6's Capacity 3, owner-accepted 2026-10-25 (DC p.145)"}
+  {"cl6": "RCC Headware", "kind": "augmentations", "id": "rcc-headware", "set": {"capacity": "[3]"}, "gen": "owner", "note": "headware-implant capacity cost not printed; Commlink6's Capacity 3 (consumed in its host, it fits headware-implant), owner-accepted 2026-10-25 (DC p.145)"}
 ]

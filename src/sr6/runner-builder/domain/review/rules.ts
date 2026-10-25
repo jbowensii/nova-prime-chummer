@@ -1868,7 +1868,7 @@ function negatives(b: Sr6Build): Hit[] {
       if (typeof v === 'number' && v < 0) hits.push({ path, message: `${k} is ${v}; it can’t be below 0.` })
     }
   }
-  at('method', b, ['powerPointsBought', 'initiation', 'submersion', 'karmaToNuyen'])
+  at('method', b, ['powerPointsBought', 'initiation', 'submersion', 'karmaToNuyen', 'karmaToDeck'])
   at('method', b.cp, CP_POOLS)
   for (const k of SR6_ATTRS) at(`attributes.${k}`, b.attributes[k], ['points', 'adjust', 'karma'])
   for (const s of b.skills) at(`skills.${s.id}`, s, ['points', 'karma'])
