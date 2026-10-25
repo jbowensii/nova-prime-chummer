@@ -67,6 +67,9 @@ Invented luck, a little at a time.
 #### Steady Hands
 Hands that never shake. Cost: 5 Karma
 • **Game Effect:** Made-up steadiness.
+#### Flux Advancement
+• **Cost:** 15 Karma/level (max level 3 per flux)
+A made-up leveled quality: slash-level pricing and a "max level N" cap.
 ### Negative Qualities
 #### Butterfingers
 **Bonus:** 6 Karma
@@ -485,6 +488,9 @@ class CrbRecipeTest(unittest.TestCase):  # pylint: disable=too-many-public-metho
         self.assertEqual(entries(self.res, "contacts")["Fixer Fred"].get("archetype"), "Fixer Fred")
         self.assertEqual(entries(self.res, "critterpowers")["Glimmer"].get("duration"), "Always")
         self.assertEqual(entries(self.res, "qualities")["Butterfingers"].attrib["kind"], "negative")
+        # "15 Karma/level (max level 3 …)" parses as a leveled quality (catalog.py qualities branch: /level and max level N)
+        fa = entries(self.res, "qualities")["Flux Advancement"].attrib
+        self.assertEqual((fa["karma"], fa["perLevel"], fa["maxLevel"]), ("15", "true", "3"))
 
     def test_beings(self):
         f = entries(self.res, "critters")["Fuzzbeast"]

@@ -1258,11 +1258,13 @@ class Catalog:
                 "karma": min(ks) if ks else None,
                 "karmaMax": max(ks) if len(set(ks)) > 1 else None,
                 "karmaSteps": sections.karma_steps(karma) if len(set(ks)) > 1 else None,
-                "perLevel": "true" if re.search(r"per\s+level", karma, re.I) else None,
+                "perLevel": "true" if re.search(r"(?:per\s+|/\s*)level", karma, re.I) else None,
             }
             name, attrs["maxLevel"] = self._levels(name)
             if not attrs["maxLevel"] and (m := re.search(r"\(\s*1\s+to\s+(\d+)\s*\)", karma)):
                 attrs["maxLevel"] = int(m.group(1))  # `5 Karma per level (1 to 4)`: the levels in the price
+            if not attrs["maxLevel"] and (m := re.search(r"max(?:imum)?\.?\s+level\s+(\d+)", karma, re.I)):
+                attrs["maxLevel"] = int(m.group(1))  # `15 Karma/level (max level 3 per Matrix attribute)`
             if not attrs["maxLevel"] and (m := re.search(r",\s*1\s+to\s+(\d+)\s*\)\s*$", name)):
                 attrs["maxLevel"] = int(
                     m.group(1)
