@@ -171,6 +171,9 @@ describe('Review', () => {
       },
     ])
   })
+  it('stays silent on a missing-issue for a field the entry has a value for', () => {
+    expect(setup('crb.stale-clip').filter(v => v.code === 'catalog.issue')).toEqual([])
+  })
   it('only for the entries the runner uses', () => {
     expect(setup('crb.flare-kit').filter(v => v.code === 'catalog.issue')).toEqual([])
   })

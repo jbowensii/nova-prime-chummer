@@ -46,7 +46,7 @@ async function open(ch: Sr6Character, tab: string) {
   return { ...m, store, saved, tab: (t: string) => m.rerender(view(t)) }
 }
 const dialog = () => document.querySelector('dialog[open]')!
-const output = (label: string) => document.querySelector(`output[aria-label^="${label}:"]`)?.textContent
+const output = (label: string) => (document.querySelector(`input[aria-label="${label}"]`) as HTMLInputElement | null)?.value
 
 test('a runner the server doesn’t have says so', async () => {
   stubFetch([fakeStore('sr6/characters').route])

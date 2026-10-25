@@ -356,7 +356,8 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
   // an entry the book leaves a value out of (or the importer couldn't read): Review notes it on the runners that use it
   for (const k of Object.keys(c.entries) as Sr6Kind[])
     for (const e of withParents(k))
-      for (const x of derived(e) ? [] : (e.issues ?? []))
+      // (a "missing" issue for a field the entry has a value for is stale: an override or default supplied it)
+      for (const x of derived(e) ? [] : (e.issues ?? []).filter(i => !(i.code === 'missing' && (e.attrs[i.field] ?? '').trim())))
         problems.push({
           code: 'catalog.issue',
           severity: 'warning',

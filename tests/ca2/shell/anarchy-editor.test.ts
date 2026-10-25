@@ -51,20 +51,20 @@ test('Attributes: a raise is priced on the receipt, and Undo takes it back', asy
   const before = left()
   expect(button('Lower Brawn').disabled).toBe(true) // at the metatype's minimum
   await click(button('Raise Brawn'))
-  expect(document.querySelector('output[aria-label^="Brawn"]')?.textContent).toBe('2')
+  expect((document.querySelector('input[aria-label^="Brawn"]') as HTMLInputElement).value).toBe('2')
   expect(left()).not.toBe(before)
   await click(button('Undo'))
-  expect(document.querySelector('output[aria-label^="Brawn"]')?.textContent).toBe('1')
+  expect((document.querySelector('input[aria-label^="Brawn"]') as HTMLInputElement).value).toBe('1')
   expect(left()).toBe(before)
   await click(button('Redo'))
-  expect(document.querySelector('output[aria-label^="Brawn"]')?.textContent).toBe('2')
+  expect((document.querySelector('input[aria-label^="Brawn"]') as HTMLInputElement).value).toBe('2')
 })
 
 test('Skills: a rating, a specialization and a knowledge skill', async () => {
   const ch = runner()
   await open(ch, 'skills')
   await click(button('Raise Athletics'))
-  expect(document.querySelector('output[aria-label="Athletics: 1"]')).not.toBeNull()
+  expect((document.querySelector('input[aria-label="Athletics"]') as HTMLInputElement).value).toBe('1')
   const spec = field<HTMLSelectElement>('Add a Athletics specialization')
   const first = [...spec.options].find(o => o.value && o.value !== 'custom')!.value
   await change(spec, first)

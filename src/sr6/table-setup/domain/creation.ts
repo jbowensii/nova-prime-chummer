@@ -930,6 +930,17 @@ export function methodFill(method: Sr6Method, cr: CreationRules, data: CreationC
   })
 }
 
+/** The runner rules that activate `method` for this runner only (the Method tab's pick-then-activate): its missing settings
+ *  from the standard values (methodFill), plus — when the table restricts methods and this one isn't allowed — an assumed
+ *  `methodAllowed.<method>` so the runner may use it while the GM's approval is awaited (Review flags the assumed rule). All
+ *  assumed and undoable; nothing here overrides a setting the campaign locked (mergeRules drops a locked key). */
+export function methodActivation(method: Sr6Method, cr: CreationRules, data: CreationCatalog, std: CreationRules): RunnerRule[] {
+  const fill = methodFill(method, cr, data, std)
+  if (flag(cr, 'restrictMethods') && flag(cr, `methodAllowed.${method}`) !== true)
+    fill.push({ key: `methodAllowed.${method}`, value: 'true', assumed: true as const })
+  return fill
+}
+
 /** A method's own settings a runner may carry for itself (point buy's points, the karma build's pool and its toggle,
  *  lifepath's modules): the keys unique to this method, for the Method tab's per-method "set up" checkboxes to fill
  *  (methodFill) and clear. A setting shared with another method (a metatype's karma) is left out, so clearing one
@@ -1383,9 +1394,10 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
 ].map(key => ({ key, about: aboutOf(key) }))
 /** A runner file may set only these (mergeRules): a hand-edited one naming any other setting keeps the table's. */
 export const isRunnerRuleKey = (key: string) => RUNNER_KEYS.has(key) || METHOD_KEY.test(key)
-/** The creation methods' own numbers (point buy, karma build, lifepath, sum to ten): a runner may carry them only through
- *  the Method tab's "Set this up here" (methodFill), standard values, undoable. The one seam: mergeRules. */
-const METHOD_KEY = /^(pointBuy\.|karmaBuild\.|lifepath\.|sumToTen|letterValue:|metatypeKarma:|karmaBuildMethod$)/
+/** The creation methods' own numbers (point buy, karma build, lifepath, sum to ten), and a per-method allow flag: a runner
+ *  may carry these only through the Method tab (methodFill's standard values, or activating a method the table restricts —
+ *  `methodAllowed.<method>`, assumed so Review flags it for the GM), undoable. The one seam: mergeRules. */
+const METHOD_KEY = /^(pointBuy\.|karmaBuild\.|lifepath\.|sumToTen|letterValue:|metatypeKarma:|karmaBuildMethod$|methodAllowed\.)/
 const RUNNER_KEYS = new Set(RUNNER_RULE_KEYS.map(k => k.key))
 
 /** The rules a runner is built and checked with: the table's (`base`: the server's, or its campaign's own: `layer`) with

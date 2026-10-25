@@ -829,10 +829,15 @@ table.data.fixed {
   opacity: 0.3;
   cursor: not-allowed;
 }
-.stepper output {
-  min-width: 1.8rem;
+.stepper input {
+  width: 3.2rem;
   text-align: center;
   font-weight: 700;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper input::-webkit-inner-spin-button {
+  appearance: none;
 }
 
 /* ---- chips ---- */

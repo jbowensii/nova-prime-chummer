@@ -8,14 +8,26 @@ export const fmt = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(n).toLocaleSt
 export const signed = (n: number) => (n > 0 ? `+${fmt(n)}` : fmt(n))
 
 export function Stepper({ value, min, max, onChange, label }: { value: number; min: number; max: number; onChange: (v: number) => void; label: string }) {
+  const [draft, setDraft] = useState<string | null>(null)
   return (
     <span className="stepper" role="group" aria-label={label}>
       <button type="button" aria-label={`Lower ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)}>
         −
       </button>
-      <output aria-live="polite" aria-label={`${label}: ${value}`}>
-        {value}
-      </output>
+      <input
+        type="number"
+        inputMode="numeric"
+        aria-label={label}
+        min={min}
+        max={max}
+        value={draft ?? value}
+        onChange={ev => {
+          setDraft(ev.target.value) // a cleared box stays empty while typing; blur puts the value back
+          const v = Math.round(Number(ev.target.value))
+          if (ev.target.value.trim() !== '' && Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)))
+        }}
+        onBlur={() => setDraft(null)}
+      />
       <button type="button" aria-label={`Raise ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)}>
         +
       </button>

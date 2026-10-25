@@ -1,7 +1,7 @@
 // Skills: the catalog's active skills grouped by attribute, each with points and karma steppers, its dice pool, a
 // specialization and an expertise (the catalog's or the player's own words; on a skill without a rank too, Review's
 // skill.specUntrained); then knowledge skills and languages.
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
 import { NameField } from '../../../../core/shared/ui'
 import { num } from '../../../table-setup/domain/creation'
@@ -13,6 +13,33 @@ import { br, poolOn } from '../view'
 import { manySpecs, notesText } from '../../domain/creation/budgets'
 import { knowledgeNuyenAvailable, knowledgeUsesNuyen } from '../../domain/creation/rule-markers'
 import { adeptBars } from '../../domain/creation/actions'
+import type { Sr6Pool } from '../../domain/creation/derive'
+
+/** Separate, indented lines under a skill for each specialization and the expertise, each with its own boosted pool. The
+ *  skill's own line above stays the pool for everything they don't cover (CRB p. 66: a specialization is +2 on its tests,
+ *  an expertise +3; neither replaces the base skill). */
+export function SpecLines({ pool, on }: { pool?: Sr6Pool; on?: Sr6Pool }) {
+  if (!pool) return null
+  const lines: { kind: string; name: string; dp: number; dpOn?: number }[] = []
+  if (pool.spec && pool.specDp !== undefined) lines.push({ kind: 'Specialization', name: pool.spec, dp: pool.specDp, dpOn: on?.specDp })
+  for (const m of pool.more ?? []) lines.push({ kind: 'Specialization', name: m.spec, dp: m.dp })
+  if (pool.expertise && pool.expertiseDp !== undefined) lines.push({ kind: 'Expertise', name: pool.expertise, dp: pool.expertiseDp, dpOn: on?.expertiseDp })
+  return (
+    <>
+      {lines.map(l => (
+        <tr key={`${l.kind}-${l.name}`} className="sr6-spec-line muted">
+          <td colSpan={4} style={{ paddingLeft: '1.5em' }}>
+            ↳ {l.kind}: {l.name}
+          </td>
+          <td className="num">{br(l.dp, l.dpOn)}</td>
+          <td colSpan={2} className="small">
+            only for this; the {pool.dp} above applies to everything else
+          </td>
+        </tr>
+      ))}
+    </>
+  )
+}
 
 /** A text box with suggestions that commits on Enter or leaving it ('' clears). */
 export function Suggest({ value, label, options, onCommit }: { value: string; label: string; options: string[]; onCommit: (v: string | null) => void }) {
@@ -95,70 +122,63 @@ export function SkillsTab() {
                   rank = (s?.points ?? 0) + (s?.karma ?? 0)
                 const pool = d.pools.find(x => x.skill === sk.id)
                 return (
-                  <tr key={sk.id}>
-                    <td>
-                      <Sr6Ref kind="skills" id={sk.id}>
-                        <b>{sk.name}</b>
-                      </Sr6Ref>
-                    </td>
-                    {(['points', 'karma'] as const).map(k => (
-                      <td key={k}>
-                        <Stepper
-                          label={`${sk.name} ${k}`}
-                          value={s?.[k] ?? 0}
-                          min={0}
-                          max={99}
-                          onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })}
-                        />
+                  <Fragment key={sk.id}>
+                    <tr>
+                      <td>
+                        <Sr6Ref kind="skills" id={sk.id}>
+                          <b>{sk.name}</b>
+                        </Sr6Ref>
                       </td>
-                    ))}
-                    <td className="num">{rank || ''}</td>
-                    <td className="num" title={notesText(pool?.conditional ?? []) || undefined}>
-                      {pool ? br(pool.dp, poolOn(d, sk.id)?.dp) : ''}
-                      {pool?.specDp !== undefined && (
-                        <div className="muted small">
-                          {pool.spec} {br(pool.specDp, poolOn(d, sk.id)?.specDp)}
-                        </div>
-                      )}
-                    </td>
-                    {/* (a specialization's card: its skill's, with the specializations the book lists; the box's focus opens it) */}
-                    <td>
-                      <Sr6Ref kind="skills" id={sk.id} tabbable={false}>
-                        <Suggest
-                          label={`${sk.name} specialization`}
-                          value={s?.spec ?? ''}
-                          options={sk.specs}
-                          onCommit={v => act({ op: 'spec', target: sk.id, spec: v })}
-                        />
-                      </Sr6Ref>
-                      {/* (Exotic Weapons, CRB Hong Kong p. 95, or any skill with Expanded Specializations, SWC p. 153: more, `; `-separated) */}
-                      {(s?.specs?.length || (s?.spec && manySpecs(data, cr, sk.id))) && (
-                        <div>
-                          <Suggest
-                            label={`${sk.name} more specializations`}
-                            value={(s?.specs ?? []).join('; ')}
-                            options={[]}
-                            onCommit={v => act({ op: 'specs', target: sk.id, specs: (v ?? '').split(/;\s*/) })}
+                      {(['points', 'karma'] as const).map(k => (
+                        <td key={k}>
+                          <Stepper
+                            label={`${sk.name} ${k}`}
+                            value={s?.[k] ?? 0}
+                            min={0}
+                            max={99}
+                            onChange={to => act({ op: 'skill', target: sk.id, pool: k, delta: to - (s?.[k] ?? 0) })}
                           />
-                          {pool?.more?.map(m => (
-                            <div key={m.spec} className="muted small">
-                              {m.spec} {m.dp}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <Sr6Ref kind="skills" id={sk.id} tabbable={false}>
-                        <Suggest
-                          label={`${sk.name} expertise`}
-                          value={s?.expertise ?? ''}
-                          options={sk.specs}
-                          onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })}
-                        />
-                      </Sr6Ref>
-                    </td>
-                  </tr>
+                        </td>
+                      ))}
+                      <td className="num">{rank || ''}</td>
+                      <td className="num" title={notesText(pool?.conditional ?? []) || undefined}>
+                        {pool ? br(pool.dp, poolOn(d, sk.id)?.dp) : ''}
+                      </td>
+                      {/* (a specialization's card: its skill's, with the specializations the book lists; the box's focus opens it) */}
+                      <td>
+                        <Sr6Ref kind="skills" id={sk.id} tabbable={false}>
+                          <Suggest
+                            label={`${sk.name} specialization`}
+                            value={s?.spec ?? ''}
+                            options={sk.specs}
+                            onCommit={v => act({ op: 'spec', target: sk.id, spec: v })}
+                          />
+                        </Sr6Ref>
+                        {/* (Exotic Weapons, CRB Hong Kong p. 95, or any skill with Expanded Specializations, SWC p. 153: more, `; `-separated) */}
+                        {(s?.specs?.length || (s?.spec && manySpecs(data, cr, sk.id))) && (
+                          <div>
+                            <Suggest
+                              label={`${sk.name} more specializations`}
+                              value={(s?.specs ?? []).join('; ')}
+                              options={[]}
+                              onCommit={v => act({ op: 'specs', target: sk.id, specs: (v ?? '').split(/;\s*/) })}
+                            />
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <Sr6Ref kind="skills" id={sk.id} tabbable={false}>
+                          <Suggest
+                            label={`${sk.name} expertise`}
+                            value={s?.expertise ?? ''}
+                            options={sk.specs}
+                            onCommit={v => act({ op: 'expertise', target: sk.id, expertise: v })}
+                          />
+                        </Sr6Ref>
+                      </td>
+                    </tr>
+                    <SpecLines pool={pool} on={poolOn(d, sk.id)} />
+                  </Fragment>
                 )
               })}
             </tbody>

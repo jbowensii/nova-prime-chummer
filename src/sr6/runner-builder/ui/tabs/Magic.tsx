@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import { flag, num, str } from '../../../table-setup/domain/creation'
 import { noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
+import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { pickFlags } from '../view'
@@ -55,6 +56,22 @@ export function MagicTab() {
           {!allowed[kind] && (
             <span className="muted">
               {article(MAGIC_KIND_LABELS[b.magic])} {MAGIC_KIND_LABELS[b.magic].toLowerCase()} can’t learn these (CRB p. 67)
+            </span>
+          )}
+          {/* the free slots left for this section (spells and rituals share the pool), or the adept's power points */}
+          {(kind === 'spells' || kind === 'rituals') && k.spells && (
+            <span className="muted">
+              <Left x={slots} /> free
+            </span>
+          )}
+          {kind === 'complexforms' && k.resonance && (
+            <span className="muted">
+              <Left x={slots} /> free
+            </span>
+          )}
+          {kind === 'adeptpowers' && k.powers && (
+            <span className="muted">
+              <Left x={pp} /> power points
             </span>
           )}
           <span className="spacer" />
@@ -274,6 +291,15 @@ export function MagicTab() {
         </div>
       )}
       {(k.spells || k.powers) && grade('initiation', 'Initiation grade')}
+      {/* where the grade goes: it raises the Magic maximum (magicCap); the runner spends it by raising Magic on Attributes,
+          and an adept turns each point of Magic into a power point. Surfaced so the grade's effect isn't invisible. */}
+      {(k.spells || k.powers) && b.initiation > 0 && (
+        <p className="muted">
+          {flag(cr, 'magicAboveSixByGrade')
+            ? `Each grade raises the Magic maximum by one${magicCap(b, cr, 'mag', data) !== undefined ? ` (now ${magicCap(b, cr, 'mag', data)})` : ''}. Raise Magic on the Attributes tab to use it${k.powers ? '; an adept gains a power point for each point of Magic' : ''}.`
+            : 'This table doesn’t raise the Magic maximum by initiation grade.'}
+        </p>
+      )}
       {k.resonance && grade('submersion', 'Submersion grade')}
       {/* (the Sixth World Companion's optional Transhumanism, p. 146: a mundane's grades, an Essence hole of 1.0 each) */}
       {!k.spells && !k.powers && !k.resonance && (flag(cr, 'transhumanism') || b.transhuman > 0) && grade('transhuman', 'Transhumanist grade')}

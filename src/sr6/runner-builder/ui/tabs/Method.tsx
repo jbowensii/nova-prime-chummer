@@ -19,11 +19,8 @@ import {
 import { setMagic, setMetatype, setMethod, setPriority } from '../../domain/creation/actions'
 import {
   flag,
-  keyType,
   loadCreation,
-  methodFill,
-  methodOwnKeys,
-  missingFor,
+  methodActivation,
   num,
   POWER_LEVEL_KEYS,
   powerLevelOf,
@@ -70,20 +67,24 @@ const GRANT_WORDS: Record<Grant, string> = {
 export function MethodTab() {
   const { ch, data, cr, p, budgets, update, act, ro, career } = useSr6Editor()
   const b = ch.build
-  // the settings the table hasn't set, filled with the shipped standard values for this runner only (undo, or "Use the table's", reverses it)
-  const setUpHere = async () => {
+  // Pick a method. One whose settings the table hasn't set up (or that the table restricts) is still pickable: picking it
+  // sets it up for this runner only from the standard values (methodActivation), after a confirm — the GM's approval is
+  // awaited for a method the table restricts (the allow flag is assumed, so Review flags it). Undoable.
+  const pickMethod = async (m: Sr6Method) => {
+    if (m === b.method) return
+    if (!missing[m].length) return void update(d => setMethod(d, m, data, cr))
     const std = (await loadCreation().catch(() => null))?.std
-    const fill = std ? [...new Map(SR6_METHODS.flatMap(m => methodFill(m, cr, data, std)).map(r => [r.key, r])).values()] : []
-    if (!fill.length) return void window.alert('There are no standard values to set here; the table has to set these (Table setup → Creation rules).')
-    if (
-      !window.confirm(
-        `The table hasn't set ${fill.length} of the creation settings these methods need. They will be set to the standard values for this runner only (you can undo this, or go back to the table's later). Set them?`,
-      )
-    )
-      return
+    const acts = std ? methodActivation(m, cr, data, std) : []
+    const restricted = flag(cr, 'restrictMethods') && flag(cr, `methodAllowed.${m}`) !== true
+    const gmNote = restricted ? ' The table limits methods, so your GM will need to approve it.' : ''
+    const setup = acts.length ? 'It will be set up with the standard values for this runner only.' : 'Finish setting it up on this tab and the others.'
+    if (!window.confirm(`${SR6_METHOD_LABELS[m]} isn’t set up for this runner. ${setup}${gmNote} You can undo this. Switch to it?`)) return
     update(d => {
-      const keys = new Set(fill.map(r => r.key))
-      d.rules = [...(d.rules ?? []).filter(r => !keys.has(r.key)), ...fill]
+      if (acts.length) {
+        const keys = new Set(acts.map(r => r.key))
+        d.rules = [...(d.rules ?? []).filter(r => !keys.has(r.key)), ...acts]
+      }
+      setMethod(d, m, data, cr)
     })
   }
   const missing = Object.fromEntries(SR6_METHODS.map(m => [m, m === b.method ? [] : missingLabels(m, cr, data)])) as Record<Sr6Method, string[]>
@@ -96,25 +97,19 @@ export function MethodTab() {
     <div className="stack">
       <h2>Creation method</h2>
       <p className="muted">How the runner is built. Switching keeps the spends that still mean something.</p>
+      <PowerLevelControl />
       <label>
         Method
-        <select value={b.method} onChange={e => update(d => setMethod(d, e.target.value as Sr6Method, data, cr))}>
+        <select aria-label="Method" value={b.method} disabled={ro || career} onChange={e => void pickMethod(e.target.value as Sr6Method)}>
           {SR6_METHODS.map(m => (
-            <option key={m} value={m} disabled={missing[m].length > 0}>
+            <option key={m} value={m}>
               {SR6_METHOD_LABELS[m]}
-              {missing[m].length ? ` (needs ${missing[m].length} ${missing[m].length === 1 ? 'setting' : 'settings'})` : ''}
+              {m !== b.method && missing[m].length ? ' — set up on pick' : ''}
             </option>
           ))}
         </select>
       </label>
       <MissingList missing={missing} />
-      {!ro && !career && SR6_METHODS.some(m => missing[m].length) && (
-        <button type="button" className="btn small" onClick={setUpHere}>
-          Set this up here
-        </button>
-      )}
-      <MethodSetup />
-      <PowerLevelControl />
 
       {letters && <Letters />}
       {b.method === 'pointbuy' && (
@@ -255,55 +250,6 @@ export function PowerLevelControl() {
         </p>
       )}
     </>
-  )
-}
-
-const SETUP_METHODS: Sr6Method[] = ['pointbuy', 'karma', 'lifepath']
-
-/** A checkbox per build method (point buy, karma build, lifepath): checking one sets that method's creation settings up
- *  for this runner from the standard values (methodFill, the per-method form of 'Set this up here'), so the method can be
- *  picked; unchecking clears the runner's own ones (methodOwnKeys). Undoable, like the bulk button. */
-function MethodSetup() {
-  const { ch, data, cr, update, ro, career } = useSr6Editor()
-  if (ro || career) return null
-  const own = new Set((ch.rules ?? []).map(r => r.key))
-  // set up when none of the settings the method needs is still missing (its data gates — life modules, priorities — aren't settings)
-  const usable = (m: Sr6Method) => !missingFor(m, cr, data).some(k => keyType(k) !== undefined)
-  const mine = (m: Sr6Method) => methodOwnKeys(m, data).some(k => own.has(k))
-  const toggle = (m: Sr6Method, on: boolean) => {
-    if (!on)
-      return void update(d => {
-        const keys = methodOwnKeys(m, data)
-        const rest = (d.rules ?? []).filter(r => !keys.includes(r.key))
-        d.rules = rest.length ? rest : undefined
-      })
-    void (async () => {
-      const std = (await loadCreation().catch(() => null))?.std
-      const fill = std ? methodFill(m, cr, data, std) : []
-      if (!fill.length)
-        return void window.alert(`There are no standard values to set here; the table has to set ${SR6_METHOD_LABELS[m]} up (Table setup → Creation rules).`)
-      update(d => {
-        const keys = new Set(fill.map(r => r.key))
-        d.rules = [...(d.rules ?? []).filter(r => !keys.has(r.key)), ...fill]
-      })
-    })()
-  }
-  return (
-    <section className="stack">
-      <h3>Set a method up for this runner</h3>
-      <p className="muted">Turn a build method on with the standard values for this runner only (undoable; a method the table set up is already on).</p>
-      {SETUP_METHODS.map(m => {
-        const on = usable(m),
-          fromTable = on && !mine(m)
-        return (
-          <label key={m}>
-            <input type="checkbox" aria-label={SR6_METHOD_LABELS[m]} checked={on} disabled={fromTable} onChange={e => toggle(m, e.target.checked)} />{' '}
-            {SR6_METHOD_LABELS[m]}
-            {fromTable && <span className="muted"> (the table’s)</span>}
-          </label>
-        )
-      })}
-    </section>
   )
 }
 

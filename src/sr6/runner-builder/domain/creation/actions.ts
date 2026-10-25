@@ -1,4 +1,4 @@
-import { capacityRemaining, capacityUsed, isAmmoType } from '../../../catalog/domain/categories'
+import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
 import { mountSlots } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 import { activeRules } from './rule-markers'
@@ -561,6 +561,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
       const same =
         !OWN_LINE.has(op.kind) &&
+        !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
         b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
       if (same) same.qty += line.qty
