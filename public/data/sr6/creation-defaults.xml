@@ -67,7 +67,7 @@
   <setting key="karmaSpell" value="5" source="CRB-HK" page="68"/>
   <setting key="karmaForm" value="5" source="CRB-HK" page="68"/>
   <setting key="karmaInitiationBase" value="10" source="CRB-HK" page="68"/>
-  <setting key="karmaInitiationPerGrade" value="1" source="CRB-HK" page="68"/>
+  <setting key="karmaInitiationPerGrade" value="0" source="CRB-HK" page="68"/>
   <!-- options (no book prints them; owner, 2026-10-11): off, the value the table starts from when it turns one on -->
   <setting key="positiveQualityMultiplier" value="false"/>
   <setting key="positiveQualityFactor" value="1"/>
@@ -179,7 +179,7 @@
   <setting key="adjustOnLoweredMax" value="false"/>
   <setting key="pointBuyErrataNuyen" value="false"/>
   <setting key="knowledgeLogicIntuition" value="false" source="CRB" page="98"/>
-  <setting key="magicAboveSixByGrade" value="false" source="CRB-HK" page="167"/>
+  <setting key="magicAboveSixByGrade" value="true" source="CRB-HK" page="167"/>
   <setting key="eliteSumToThirteen" value="false"/>
   <setting key="availabilitySeven" value="false"/>
   <setting key="cargoWithoutSeats" value="false" source="DC" page="126"/>

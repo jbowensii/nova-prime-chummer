@@ -323,6 +323,20 @@ test('20 (option): Magic at creation up to the highest plus the initiation grade
   expect(magicCap(b, setup({ magicAboveSixByGrade: true }).cr, 'mag')).toBe(9)
 })
 
+// owner ruling 2026-10-24: an initiation grade costs a flat 10 Karma (not 11), and a grade raises the Magic max at
+// creation by default so an adept can raise Magic and gain its power points from initiating
+test('owner ruling: the shipped defaults make initiation a flat 10 per grade and raise Magic by grade', () => {
+  const shipped = parseCreation(readFileSync('public/data/sr6/creation-defaults.xml', 'utf8')).rules
+  expect(shipped.get('karmaInitiationBase')).toMatchObject({ value: 10 })
+  expect(shipped.get('karmaInitiationPerGrade')).toMatchObject({ value: 0 }) // flat 10, not base + new-grade
+  expect(shipped.get('magicAboveSixByGrade')).toMatchObject({ value: true })
+  const { b, cr, budgets } = setup({ karmaInitiationBase: 10, karmaInitiationPerGrade: 0, magicAboveSixByGrade: true }, { magic: 'adept' })
+  const capAt0 = magicCap(b, cr, 'mag') ?? 0
+  b.initiation = 3
+  expect(budgets().karma.breakdown.find(l => l.key === 'initiation')?.amount).toBe(30) // flat 10 × 3 grades, not 11+12+13
+  expect(magicCap(b, cr, 'mag')).toBe(capAt0 + 3) // each grade adds one to the Magic max
+})
+
 test('22 (option): a vehicle’s Cargo Factor, and seats removed add to it', () => {
   const car = { attrs: { category: 'Car', seats: '2/4' } } as unknown as Sr6Entry,
     bike = { attrs: { category: 'Bike', seats: '2' } } as unknown as Sr6Entry
