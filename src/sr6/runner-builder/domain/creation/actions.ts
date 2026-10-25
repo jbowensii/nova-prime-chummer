@@ -1159,8 +1159,13 @@ function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): 
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   if (remaining !== null && capacityUsed(e, ratingOf(line, e)) * line.qty > Math.max(0, remaining)) return 'Not enough remaining capacity.'
-  const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he))
-  if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he)).unplaced.length) return 'No compatible mount slot remaining.'
+  // a host that prints a Capacity (cyberlimb, cybereyes, glasses, armor) governs by that Capacity — the book value we
+  // import — so an accessory installs when its [capacity] fits, even if it declares a `fits` slot the host doesn't carry.
+  // Only a slot-only host (no Capacity: weapon mounts, vehicle hardpoints) is limited by its mount slots themselves.
+  if (remaining === null) {
+    const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he))
+    if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he)).unplaced.length) return 'No compatible mount slot remaining.'
+  }
   if (host.kind !== 'vehicles') return
   if (line.kind === 'weapons') {
     if (!line.mount || !mountsOf(host, data).some(m => m.uid === line.mount)) return 'A free weapon mount is required.'

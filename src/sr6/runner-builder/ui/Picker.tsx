@@ -430,7 +430,8 @@ export function Accessories({
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   const slots = mountSlots(he, items, ratingOf(host, he))
-  const full = (remaining !== null && remaining <= 0) || (slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0))
+  // a host with a Capacity is full by its Capacity (the add-time guard governs it that way); only a slot-only host is full by its mount slots
+  const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
   // an accessory category naming its hosts is offered (marked unless it fits); a line taking any gear (a vehicle's)
   // takes no other host's accessory; else an entry with no category record (an import before categories) by `filter`
   const fits = (e: Sr6Entry) =>

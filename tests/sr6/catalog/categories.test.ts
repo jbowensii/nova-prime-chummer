@@ -8,7 +8,9 @@ import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
-import { buildOf, made, STONE } from './fixture'
+import { buildOf, fixtureCatalog, made, STONE } from './fixture'
+import { sr6Data } from '../../../src/sr6/catalog/domain/data'
+import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 
 function setup() {
   const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
@@ -17,6 +19,36 @@ function setup() {
   const { data, cr } = made()
   return { ch, b: ch.build, data, cr, act: (op: Parameters<typeof apply>[1]) => apply(ch.build, op, data, cr) }
 }
+
+test('a Capacity host installs an accessory that fits a slot it does not carry (the Capacity governs); a slot-only host still needs the slot', () => {
+  const c = fixtureCatalog()
+  const e = (kind: Sr6Entry['kind'], id: string, attrs: Record<string, string>, parts: object[] = []): Sr6Entry =>
+    ({ id, kind, name: id, source: 'CRB', page: 1, attrs, text: '', parts }) as never
+  // a cyberlimb-style Capacity host with NO cyberlimb-implant slot, plus accessories that FIT that (undeclared) slot
+  c.entries.augmentations.set('t.limb', e('augmentations', 't.limb', { capacity: '8', type: 'cyberware', category: 'Cyberlimb' }))
+  c.entries.augmentations.set(
+    't.fit2',
+    e('augmentations', 't.fit2', { capacity: '[2]', type: 'cyberware' }, [{ tag: 'fits', attrs: { slot: 'cyberlimb-implant' } }]),
+  )
+  c.entries.augmentations.set(
+    't.fit9',
+    e('augmentations', 't.fit9', { capacity: '[9]', type: 'cyberware' }, [{ tag: 'fits', attrs: { slot: 'cyberlimb-implant' } }]),
+  )
+  // a slot-only host (no Capacity) and an accessory that fits a slot it does not declare
+  c.entries.weapons.set('t.gun', e('weapons', 't.gun', { category: 'Weapon' }))
+  c.entries.gear.set('t.scope', e('gear', 't.scope', {}, [{ tag: 'fits', attrs: { slot: 'top' } }]))
+  const data = sr6Data(c)
+  const { cr } = made()
+  const b = buildOf('priority', { letters: 'ACDBE', metatype: STONE })
+  const act = (op: Parameters<typeof apply>[1]) => apply(b, op, data, cr)
+  act({ op: 'purchase', kind: 'augmentations', id: 't.limb' })
+  const limb = b.purchases[0]
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 't.fit2' })).toEqual({ ok: true }) // Capacity 8 governs; the missing slot no longer refuses
+  expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 't.fit9' })).toEqual({ ok: false, reason: 'Not enough remaining capacity.' }) // over Capacity still refused
+  act({ op: 'purchase', kind: 'weapons', id: 't.gun' })
+  const gun = b.purchases[1]
+  expect(act({ op: 'accessory', host: gun.uid, kind: 'gear', id: 't.scope' })).toEqual({ ok: false, reason: 'No compatible mount slot remaining.' }) // slot-only host still enforces
+})
 
 test('a bare part shows its category; the printed name stays the name; search finds the composed names', () => {
   const { data } = setup()
