@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.26.2 — 2026-10-25
+
+A quick fix from live testing.
+
+**Both games**
+- The item **hover card** now scrolls with the mouse wheel. A long description can be read in full — the card
+  stays open while the cursor is over it and the wheel scrolls it, instead of the wheel scrolling the page
+  behind a card that closed the moment you reached for it.
+
 ## 0.26.1 — 2026-10-25
 
 A quick fix from live testing.
