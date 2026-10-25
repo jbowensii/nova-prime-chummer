@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.26.3 — 2026-10-25
+
+A quick fix from live testing.
+
+**Shadowrun 6**
+- When adding an accessory to a device, the picker now lists **only accessories that fit that device** — a
+  cyberlimb's on a cyberlimb, a firearm's on that firearm, and so on. Before, accessories for other hosts were
+  shown marked "for X, not this"; they're now hidden. (An accessory that should fit but is missing is a category
+  data gap — the add-time guard and the Review error for a mis-fitted accessory are unchanged.)
+
 ## 0.26.2 — 2026-10-25
 
 A quick fix from live testing.
