@@ -51,7 +51,7 @@ const leave = (t: HTMLElement) =>
     t.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }))
   })
 
-test('hover shows the card (values, effects with their state, source, description) and leaving hides it', () => {
+test('hover shows the card (values, effects with their state, source, description) and leaving hides it', async () => {
   const { ref, card } = mount()
   expect(card()).toBeNull()
   enter(ref)
@@ -64,6 +64,8 @@ test('hover shows the card (values, effects with their state, source, descriptio
   expect(c.textContent).toContain('Made-up gloves that zap.')
   expect(ref.getAttribute('aria-describedby')).toBe(c.id)
   leave(ref)
+  expect(card()).not.toBeNull() // (stays briefly so the mouse can cross onto it to scroll)
+  await act(() => new Promise(r => setTimeout(r, 200)))
   expect(card()).toBeNull()
 })
 

@@ -78,8 +78,19 @@ export function EntryHover({
   const id = useId(),
     ref = useRef<HTMLSpanElement>(null),
     pop = useRef<HTMLSpanElement>(null),
-    touch = useRef(false)
+    touch = useRef(false),
+    shut = useRef<number | undefined>(undefined)
   const shown = !!row && (open || !!forced)
+  // close after a short beat so the mouse can cross the gap onto the card to scroll it; cancelled on re-enter
+  const cancelShut = () => {
+    if (shut.current) clearTimeout(shut.current)
+    shut.current = undefined
+  }
+  const scheduleShut = () => {
+    cancelShut()
+    shut.current = window.setTimeout(() => setOpen(false), 150)
+  }
+  useEffect(() => () => cancelShut(), [])
   // placed by the viewport (fixed), so a table's scroll box never clips it: below the name, or above it near the bottom
   const [at, setAt] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
   useLayoutEffect(() => {
@@ -134,10 +145,13 @@ export function EntryHover({
         if (touch.current) setOpen(o => !o)
       }}
       onMouseEnter={() => {
-        if (!touch.current) setOpen(true)
+        if (!touch.current) {
+          cancelShut()
+          setOpen(true)
+        }
       }}
       onMouseLeave={() => {
-        if (!touch.current) setOpen(false)
+        if (!touch.current) scheduleShut()
       }}
       onFocus={() => {
         if (!touch.current) setOpen(true)
@@ -151,7 +165,19 @@ export function EntryHover({
           unless a tap opened it, to scroll a long one) */}
       {shown &&
         createPortal(
-          <span ref={pop} role="tooltip" id={id} className={`entry-pop${tapped ? ' touch' : ''}`} style={at ?? { visibility: 'hidden' }}>
+          <span
+            ref={pop}
+            role="tooltip"
+            id={id}
+            className={`entry-pop${tapped ? ' touch' : ''}`}
+            style={at ?? { visibility: 'hidden' }}
+            onMouseEnter={() => {
+              if (!touch.current) cancelShut()
+            }}
+            onMouseLeave={() => {
+              if (!touch.current) scheduleShut()
+            }}
+          >
             <EntryCard row={typeof row === 'function' ? row() : row} kind={kind} />
           </span>,
           document.querySelector('dialog[open]') ?? document.body,
