@@ -171,6 +171,7 @@ function buildXml(b: Sr6Build): string {
       submersion: b.submersion,
       ...(b.transhuman ? { transhuman: b.transhuman } : {}),
       karmaToNuyen: b.karmaToNuyen,
+      ...(b.karmaToDeck ? { karmaToDeck: b.karmaToDeck } : {}),
       bestAttr: b.bestAttr,
       bestExtra: b.bestExtra,
     },
@@ -574,7 +575,7 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
       ),
     }),
   )
-  for (const k of ['powerPointsBought', 'initiation', 'submersion', 'transhuman', 'karmaToNuyen'] as const) out[k] = num(b, k, 0)
+  for (const k of ['powerPointsBought', 'initiation', 'submersion', 'transhuman', 'karmaToNuyen', 'karmaToDeck'] as const) out[k] = num(b, k, 0)
   each(
     kids(b, 'priority'),
     e => {

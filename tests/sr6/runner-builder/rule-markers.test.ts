@@ -6,6 +6,7 @@ import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import { activeRules, knowledgeKarma } from '../../../src/sr6/runner-builder/domain/creation/rule-markers'
 import { languageKarma, languageCap } from '../../../src/sr6/runner-builder/domain/creation/skills'
+import { nuyenBudget } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { karmaBudget } from '../../../src/sr6/runner-builder/domain/creation/karma'
 import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from '../catalog/fixture'
@@ -81,3 +82,36 @@ test('Polyglot driven by the marker alone (no quality id): cheaper language rank
   expect(languageCap(build(), data, num(cr))).toBe(3) // without the marker, unchanged
 })
 const num = (cr: ReturnType<typeof world>['cr']) => cr.get('languageMax')?.value as number
+
+test('Deck Builder: N Karma are N×5000¥ toward a cyberdeck only, and nothing without the quality', () => {
+  const part = (id: string, cls: string, cost: string): Sr6Entry => ({
+    id,
+    kind: 'electronics',
+    name: id,
+    source: 'CRB',
+    page: 1,
+    attrs: { class: cls, cost },
+    text: '',
+  })
+  const c = fixtureCatalog()
+  for (const e of [part('x.deck', 'ELECTRONICS/CYBERDECK', '8000'), part('x.gizmo', 'ELECTRONICS/OTHER', '3000')]) c.entries.electronics.set(e.id, e)
+  c.entries.qualities.set('hs.deck-builder', marked('hs.deck-builder', 'DECK_5000_PER_KARMA'))
+  const data = sr6Data(c),
+    cr = fixtureCreation()
+  const run = (quality: boolean, karma: number) => {
+    const b = build(...(quality ? ['hs.deck-builder'] : []))
+    b.karmaToDeck = karma
+    b.purchases.push(
+      { uid: 'p1', kind: 'electronics', id: 'x.deck', qty: 1, accessories: [] },
+      { uid: 'p2', kind: 'electronics', id: 'x.gizmo', qty: 1, accessories: [] },
+    )
+    const p = makeProvider(b.method, data, cr)
+    return {
+      gain: nuyenBudget(b, data, cr, p).breakdown?.find(l => l.key === 'fromDeckKarma')?.amount ?? 0,
+      spent: karmaBudget(b, data, cr, p).breakdown?.find(l => l.key === 'toDeck')?.amount ?? 0,
+    }
+  }
+  expect(run(true, 1)).toEqual({ gain: 5000, spent: 1 })
+  expect(run(true, 5)).toEqual({ gain: 8000, spent: 5 }) // capped at the deck's own price: the 3000 gizmo gets nothing
+  expect(run(false, 5)).toEqual({ gain: 0, spent: 0 })
+})

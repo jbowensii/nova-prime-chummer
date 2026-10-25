@@ -16,6 +16,7 @@ export type RuleRef =
   | 'DECREASE_AVAILABILITY_2'
   | 'MARTIAL_ARTS_PRODIGY'
   | 'FASHION_50_PERCENT'
+  | 'DECK_5000_PER_KARMA'
 
 /** The set of active RULE refs, read from each chosen quality's `<modifier type="RULE" ref>` marker. */
 export function activeRules(b: Sr6Build, data: Sr6Data): Set<string> {
@@ -68,3 +69,13 @@ export const fashionDiscount = (b: Sr6Build, data: Sr6Data): boolean => activeRu
 export function martialCreationKarma(b: Sr6Build, data: Sr6Data, base: number): number {
   return activeRules(b, data).has('MARTIAL_ARTS_PRODIGY') ? Math.max(0, base - 2) : base
 }
+
+/** Nuyen a Karma is worth toward a cyberdeck or cyberhack with Deck Builder (Hack & Slash p. 81: 5,000¥ instead of 4,000¥). */
+export const DECK_NUYEN_PER_KARMA = 5000
+
+/** A cyberdeck or cyberhack, or a part of one: its class names a CYBERDECK table, or its category is Cyberhack. */
+export const isDeckPart = (e?: { attrs: { class?: string; category?: string } }) =>
+  /CYBERDECK/i.test(e?.attrs.class ?? '') || /^cyberhacks?$/i.test(e?.attrs.category ?? '')
+
+/** Karma the runner has put into deck-building: karmaToDeck, but only with Deck Builder (else 0). */
+export const deckKarma = (b: Sr6Build, data: Sr6Data) => (activeRules(b, data).has('DECK_5000_PER_KARMA') ? Math.max(0, b.karmaToDeck) : 0)

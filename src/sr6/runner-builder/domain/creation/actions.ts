@@ -1,6 +1,7 @@
 import { capacityRemaining, capacityUsed, isAmmoType } from '../../../catalog/domain/categories'
 import { mountSlots } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
+import { activeRules } from './rule-markers'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
 // build (or the runner) in place: the editor works on a copy. The character-level setters (method, letters, metatype,
 // magic kind) take the runner so identity.metatype stays build.metatype; apply() takes the build and answers
@@ -146,6 +147,7 @@ export type Op =
   | { op: 'licence'; sin: string; name: string; at?: number }
   | { op: 'licence'; sin: string; remove: number }
   | { op: 'karmaToNuyen'; delta: number }
+  | { op: 'karmaToDeck'; delta: number }
   | { op: 'initiation'; delta: number }
   | { op: 'submersion'; delta: number }
   | { op: 'transhuman'; delta: number }
@@ -1015,6 +1017,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (v < 0) return no('below-zero')
       if (max !== undefined && v > max) return no('conversion-cap')
       b.karmaToNuyen = v
+      return OK
+    }
+    case 'karmaToDeck': {
+      if (!activeRules(b, data).has('DECK_5000_PER_KARMA')) return no('rule-inactive')
+      if (b.karmaToDeck + op.delta < 0) return no('below-zero')
+      b.karmaToDeck += op.delta
       return OK
     }
     case 'mentor': {

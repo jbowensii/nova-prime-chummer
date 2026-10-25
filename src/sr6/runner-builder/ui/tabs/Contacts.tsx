@@ -11,6 +11,7 @@ import { makeProvider } from '../../domain/creation/providers'
 import { useState, type ReactNode } from 'react'
 import { GENDER_LIST, GenderList, Stepper } from '../../../../core/ui-kit/bits'
 import { NameField } from '../../../../core/shared/ui'
+import { activeRules, DECK_NUYEN_PER_KARMA } from '../../domain/creation/rule-markers'
 import { licenceFee, nuyenPerKarma, purchaseName, settingQuality, toNuyenMax } from '../../domain/creation/budgets'
 import { licenceItem, licenceRatingText } from '../view'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
@@ -178,6 +179,18 @@ export function ContactsTab() {
           {stolen && ' (Stolen Gear, No Future errata: its own rate and limit)'}
         </span>
       </p>
+      {activeRules(b, data).has('DECK_5000_PER_KARMA') && (
+        <p className="row">
+          <button type="button" className="btn" onClick={() => act({ op: 'karmaToDeck', delta: 1 })}>
+            1 Karma → {n(DECK_NUYEN_PER_KARMA)}¥ for a cyberdeck
+          </button>
+          <button type="button" className="btn" disabled={b.karmaToDeck <= 0} onClick={() => act({ op: 'karmaToDeck', delta: -1 })}>
+            Take 1 back
+          </button>
+          <span aria-live="polite">{b.karmaToDeck} karma put into a cyberdeck or cyberhack (Deck Builder)</span>
+          <span className="muted">{n(DECK_NUYEN_PER_KARMA)}¥ a karma, toward cyberdecks and cyberhacks only.</span>
+        </p>
+      )}
     </div>
   )
 }

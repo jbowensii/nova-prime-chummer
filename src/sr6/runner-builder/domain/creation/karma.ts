@@ -8,7 +8,7 @@ import { martialKarma } from './martial'
 import { entryOf, isFocus, ratingOf } from './purchases'
 import { attrRating } from './attributes'
 import { languageKarma, skillRank, skillSpend } from './skills'
-import { knowledgeKarma, knowledgeUsesNuyen } from './rule-markers'
+import { deckKarma, knowledgeKarma, knowledgeUsesNuyen } from './rule-markers'
 import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
@@ -155,6 +155,7 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   add('metatype', data.metatypes[b.metatype]?.name ?? b.metatype, p.metatypeKarma?.(b) ?? 0, 'method')
   add('magic', MAGIC_KIND_LABELS[boughtKind(b)], p.magicKarma?.(b) ?? 0, 'method')
   add('toNuyen', 'Turned into nuyen', toNuyen(b, cr, data), 'contacts')
+  add('toDeck', 'Put into a cyberdeck or cyberhack (Deck Builder)', deckKarma(b, data), 'gear')
   add('contacts', 'Contact ratings past the contact points', contactPoints(b, data, cr, p).karma ?? 0, 'contacts')
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   return { ...pool(p.startingKarma() + q.neg, spent), breakdown }

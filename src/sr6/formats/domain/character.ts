@@ -363,6 +363,8 @@ export interface Sr6Build {
   /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
   sins: Sr6Sin[]
   karmaToNuyen: number
+  /** Karma put into building/upgrading a cyberdeck or cyberhack at Deck Builder's 5,000¥ each (rule-markers.ts) */
+  karmaToDeck: number
 }
 
 /** A career spend (S3), replayed on the finalized build (src/sr6/runner-builder/domain/career/career.ts). target: an attribute, a skill id or
@@ -556,6 +558,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   contacts: [],
   sins: [],
   karmaToNuyen: 0,
+  karmaToDeck: 0,
 })
 
 /** A new runner: no metatype, mundane, nothing spent. */

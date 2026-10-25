@@ -20,6 +20,7 @@ import { contactPoints } from './contacts'
 import { karmaBudget, nuyenPerKarma, toNuyen } from './karma'
 import { fashionDiscount, knowledgeUsesNuyen } from './rule-markers'
 import { runnerInfected } from './infected'
+import { DECK_NUYEN_PER_KARMA, deckKarma, isDeckPart } from './rule-markers'
 
 export type { Budget, BudgetLine } from './providers'
 export * from './choices'
@@ -124,9 +125,16 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   const karma = toNuyen(b, cr, data),
     converted = karma * (nuyenPerKarma(b, cr, data) ?? 0)
   if (converted) breakdown.push({ key: 'fromKarma', label: `${karma} karma turned into nuyen`, amount: converted, sign: 'gain', tab: 'contacts' })
+  // Deck Builder: its Karma are worth 5,000¥ each toward cyberdeck and cyberhack purchases only, so the gain stops at what
+  // those cost and never pays for other gear (the Karma is spent either way)
+  const deckSpend = b.purchases.filter(x => isDeckPart(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0),
+    deck = Math.min(deckKarma(b, data) * DECK_NUYEN_PER_KARMA, deckSpend)
+  if (deck)
+    breakdown.push({ key: 'fromDeckKarma', label: `${deckKarma(b, data)} karma put into a cyberdeck (Deck Builder)`, amount: deck, sign: 'gain', tab: 'gear' })
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
-  // the Fashion Influencer discount is real nuyen back in the pocket, like karma turned into nuyen: add it to what's available
-  return { ...pool(p.nuyen(b) + converted + fashion, spent), breakdown }
+  // the Fashion Influencer discount and the Deck Builder karma are real nuyen back in the pocket, like karma turned into
+  // nuyen: add them to what's available
+  return { ...pool(p.nuyen(b) + converted + fashion + deck, spent), breakdown }
 }
 
 /** Whether the runner's metatype is troll- or dwarf-sized, by its name's words (metatypeSizePricing). ponytail: the core
