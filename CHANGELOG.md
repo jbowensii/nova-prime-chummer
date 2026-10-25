@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.24.0 — 2026-10-25
+
+Accessories on capacity items install correctly, initiation and two more Commlink6 quality rules are applied, ammunition
+and clothing are priced the way the book and Commlink6 have them, and a batch of live-QA issues are fixed. Capacities
+were verified field-by-field against Commlink6 (all of the core rulebook matches).
+
+**Shadowrun 6 — creation**
+- **Capacity items take their accessories again.** A host that has a Capacity — cyberlimbs, cybereyes and cyberears,
+  armor, glasses — is governed by that Capacity, so cyberlimb weapons and compartments, eyeware and worn vision/audio
+  enhancements install up to the item's rating. Cybereyes now hold their full tier Capacity rather than being wrongly
+  limited. Weapon-mount and vehicle-hardpoint slots still enforce their own limits.
+- **Initiation** costs a flat 10 Karma per grade and raises the Magic maximum by one per grade, so an adept can raise
+  Magic (and gain a power point) after initiating.
+- **Event Horizon** lowers an item's Availability to a floor of 0, not 1.
+- **Deck Builder** converts Karma to 5,000 nuyen each, spent only toward a cyberdeck or cyberhack; the control sits on
+  the Gear tab by the deck and stops once the deck's cost is covered.
+- **Fashion Influencer** takes 50% off designer-fashion clothing (anything with a fashion slot).
+- **Ammunition** is bought as priced per-weapon-class ammo with a type dropdown that multiplies the cost, matching the
+  book's base-cost-times-type-multiplier.
+- A commlink or other gear is assigned to an identity from the Gear tab, by the item.
+- Review fixes: a negative Karma-to-deck is now flagged; point-buy runners no longer see Karma-build notes.
+- Scholastic Mage knowledge is paid in nuyen; the background-art gauge shows more of the picture by default.
+
+Re-import needed only for three Commlink6 capacity values the book doesn't print (binoculars' optical slot, Modular
+Mount, RCC Headware); every other change is code and applies at once.
+
 ## 0.23.0 — 2026-10-24
 
 Gear gains a real accessory and capacity system, the mystic adept free-spell count is corrected, commlinks can be
