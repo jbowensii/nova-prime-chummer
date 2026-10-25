@@ -40,3 +40,8 @@ htmlcov/
 _to_delete/
 release/
 build/
+.gossip/
+characters/
+docs/plans/Old Versions/
+docs/reviews/_work-corrections/
+routing-log.md
