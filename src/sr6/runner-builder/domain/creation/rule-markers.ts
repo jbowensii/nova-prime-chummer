@@ -50,7 +50,8 @@ export function contactLoyalty(b: Sr6Build, data: Sr6Data, paid: number, charism
 
 /** Apply after rating and grade, leaving legality and licence metadata intact. */
 export function effectiveAvailability(b: Sr6Build, data: Sr6Data, base: number): number {
-  return activeRules(b, data).has('DECREASE_AVAILABILITY_2') ? Math.max(1, base - 2) : base
+  // floor at 0 (owner ruling 2026-10-24): the quality never makes a freely available (avail-0) item harder to get
+  return activeRules(b, data).has('DECREASE_AVAILABILITY_2') ? Math.max(0, base - 2) : base
 }
 
 /** Discount each paid style and technique separately at creation. */

@@ -64,8 +64,8 @@ test('Event Horizon uses effective Availability in review and UI, preserving cat
   expect(validateSr6(data, cr, ch).some(v => v.code === 'gear.availCap')).toBe(true)
   activate()
   expect(effectiveAvailability(b, data, 7)).toBe(5)
-  expect(effectiveAvailability(b, data, 0)).toBe(1)
-  expect(effectiveAvailability(b, data, 2)).toBe(1)
+  expect(effectiveAvailability(b, data, 0)).toBe(0) // floor at 0: a freely available item is never made harder to get
+  expect(effectiveAvailability(b, data, 2)).toBe(0)
   expect(validateSr6(data, cr, ch).some(v => v.code === 'gear.availCap')).toBe(false)
   expect(priced(b.purchases[0], data, cr).avail).toBe(7)
   const e = { id: 'test.item', kind: 'gear' as const, name: 'Item', source: 'CRB', page: 1, attrs: { avail: '7(I)', cost: '0' }, text: '', parts: [] }

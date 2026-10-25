@@ -9,8 +9,8 @@ import { mount } from '../../ui/dom'
 
 test.each([
   ['7(L), 500¥', '7(L), licence fee 500¥', '5(L), licence fee 500¥'],
-  ['2(I), 15,000¥', '2(I), licence fee 15,000¥', '1(I), licence fee 15,000¥'],
-  ['500¥', '0, available with licence (fee 500¥)', '1, available with licence (fee 500¥)'],
+  ['2(I), 15,000¥', '2(I), licence fee 15,000¥', '0(I), licence fee 15,000¥'],
+  ['500¥', '0, available with licence (fee 500¥)', '0, available with licence (fee 500¥)'],
 ])('owned licence availability uses Event Horizon without losing licence details: %s', async (avail, before, after) => {
   const c = fixtureCatalog()
   const e = {
