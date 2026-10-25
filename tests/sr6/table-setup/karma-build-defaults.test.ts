@@ -80,13 +80,15 @@ test('a mundane Karma-build runner: every Karma cost at the printed prices, noth
   expect(p.karma.max).toBe(1000)
   // Body 1 to 3: 2 × 5 + 3 × 5; Edge 1 to 2: 2 × 5
   expect([line(p, 'attr:bod'), line(p, 'attr:edg')]).toEqual([25, 10])
-  // 3 ranks: 3 × 5 + 2 × 5 + 1 × 5, and a specialization 5
-  expect(line(p, 'skills')).toBe(35)
+  // 3 ranks: 3 × 5 + 2 × 5 + 1 × 5
+  expect(line(p, 'skills')).toBe(30)
+  // a specialization is its own breakdown line now (5 karma), not folded into the ranks line
+  expect(line(p, 'spec')).toBe(5)
   expect(line(p, 'knowledge')).toBe(6)
   expect(line(p, 'metatype')).toBe(5)
   expect(line(p, 'magic')).toBeUndefined()
   expect(line(p, 'toNuyen')).toBe(3)
-  expect(p.karma.spent).toBe(25 + 10 + 35 + 6 + 5 + 3)
+  expect(p.karma.spent).toBe(25 + 10 + 30 + 5 + 6 + 5 + 3)
   expect(p.karma.left).toBe(1000 - 84)
   // everything else comes from Karma: no point pools, nuyen only from the Karma turned into it
   expect([p.attributePoints.max, p.skillPoints.max, p.adjustmentPoints.max]).toEqual([0, 0, 0])
