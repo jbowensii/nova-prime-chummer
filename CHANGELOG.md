@@ -1,5 +1,28 @@
 # Release notes
 
+## 0.25.0 — 2026-10-25
+
+Choosing a creation method is simpler, the places you spend points now show how many are left, and a few gear and
+skill displays were fixed. No re-import is needed.
+
+**Shadowrun 6 — creation**
+- **Power level sits at the top of the Method tab**, above the method itself.
+- **Picking a method is one step.** The separate "Set this up here" controls are gone: pick any method and, if the
+  table hasn’t set it up (or limits which methods are allowed), you’re asked once whether to set it up for this runner
+  with the standard values. A method the table restricts can still be chosen, with a note that your GM needs to approve
+  it — and if the GM locked the method rules, it stays unavailable. It’s undoable either way.
+- **Point counters.** The spell, ritual, complex-form and adept-power sections show how many free picks or power points
+  are left, matching the counters already on points, nuyen and skills.
+- **Initiation is clearer.** A note by the initiation grade explains that each grade raises the Magic maximum, that you
+  raise Magic on the Attributes tab to use it, and that an adept gains a power point for each point of Magic.
+- **Type a quantity.** The −/+ quantity boxes (ammunition and the like) now also take a number typed straight in.
+- **Ammunition stacks per type.** Buying the same ammunition again adds a new line, so each line can carry its own
+  ammunition type, instead of raising one line’s quantity.
+- **Skills show specializations and expertises on their own lines**, under the base skill, each with its boosted dice
+  pool — the base skill still applies to everything the specialization doesn’t cover.
+- A gear note that only said the book printed no availability no longer shows once Commlink6 or an override has supplied
+  the value (e.g. the Ares Predator VI spare magazine’s Availability 2).
+
 ## 0.24.0 — 2026-10-25
 
 Accessories on capacity items install correctly, initiation and two more Commlink6 quality rules are applied, ammunition

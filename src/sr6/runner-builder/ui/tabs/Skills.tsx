@@ -26,8 +26,8 @@ export function SpecLines({ pool, on }: { pool?: Sr6Pool; on?: Sr6Pool }) {
   if (pool.expertise && pool.expertiseDp !== undefined) lines.push({ kind: 'Expertise', name: pool.expertise, dp: pool.expertiseDp, dpOn: on?.expertiseDp })
   return (
     <>
-      {lines.map(l => (
-        <tr key={`${l.kind}-${l.name}`} className="sr6-spec-line muted">
+      {lines.map((l, i) => (
+        <tr key={i} className="sr6-spec-line muted">
           <td colSpan={4} style={{ paddingLeft: '1.5em' }}>
             ↳ {l.kind}: {l.name}
           </td>
