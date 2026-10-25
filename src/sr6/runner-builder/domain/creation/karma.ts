@@ -97,13 +97,15 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     add(`attr:${k}`, `${k.toUpperCase()} ${to - ranks} → ${to} (${s(ranks, 'rank')} by karma)`, cost, 'attributes')
   }
   const spend = skillSpend(b, cr, p.skillPoints(b), data)
-  let skills = spend.karma * n0(cr, 'karmaSpec')
+  let skills = 0
   for (const sk of b.skills) {
     const top = skillRank(sk)
     for (let i = 0; i < sk.karma; i++) skills += (top - i) * n0(cr, 'karmaSkillPerRank')
   }
   add('skills', 'Skill ranks bought with karma', skills, 'skills')
-  // (owner, 2026-10-09) CRB p. 66, step four: the customization karma buys advancement at p. 68's prices, an expertise too
+  // (owner, 2026-10-09) CRB p. 66, step four: the customization karma buys advancement at p. 68's prices — a
+  // specialization or expertise a skill's points didn't pay for, each itemized so it's visible, not folded into the ranks
+  add('spec', `${s(spend.karma, 'specialization')} bought with karma`, spend.karma * n0(cr, 'karmaSpec'), 'skills')
   add('expertise', `${s(spend.expertise, 'expertise')} bought with karma`, spend.expertise * n0(cr, 'advance.expertise'), 'skills')
   // CRB Hong Kong p. 154: a focus is used only once bonded, for the Karma the Magical Goods table gives (p. 168; its
   // catalog `karma`, by Force: the line's rating), when fociBondKarma is on
