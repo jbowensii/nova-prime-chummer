@@ -42,7 +42,7 @@ import {
 import { cite, flag, num, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from '../../../catalog/domain/data'
 import { languageKarma } from '../creation/skills'
-import { gradeProblem } from '../creation/grades'
+import { gradeName, gradeProblem } from '../creation/grades'
 import { makeProvider, type Provider } from '../creation/providers'
 import { CAREER_KEEP, validateSr6 } from '../review/rules'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
@@ -589,19 +589,29 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return a.refund ? { label: `Sold: ${name} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund } : { label: `Dropped: ${name}` }
     }
     case 'upgrade': {
-      // a higher level of the item's family replaces it (levels.ts), at the new level's full price: the core rulebook
-      // prints no trade-in rule, so none is applied (an earning records a sale)
+      // upgrade a line in place to a higher level in its family (levels.ts) and/or a different grade, paying the DIFFERENCE
+      // in cost (SR Missions FAQ v2.4 p.21: same-type upgrade credits the old piece at full value). The line keeps its
+      // accessories (applyAdvance), which is why cyberware/bioware is upgraded here rather than sold and re-bought.
       const old = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
-      const fam = old.id && data.family(old.kind, old.id)
+      const oldE = old.id ? (data.entry(old.kind, old.id) ?? no('unknown-entry')) : no('unknown-entry')
       const x = a.line,
         e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : no('unknown-entry')
-      if (!fam || data.family(x.kind, x.id) !== fam) no('not-a-level')
-      if ((data.levelOf(e) ?? 0) <= (data.levelOf(data.entry(old.kind, old.id!)) ?? 0)) no('already-known')
+      const sameItem = x.kind === old.kind && x.id === old.id
+      const fam = old.id && data.family(old.kind, old.id)
+      const higherLevel = !!fam && data.family(x.kind, x.id) === fam && (data.levelOf(e) ?? 0) > (data.levelOf(oldE) ?? 0)
+      const gradeChange = sameItem && (x.grade ?? '') !== (old.grade ?? '')
+      // same family but not a higher level (and no grade change) reads as already-known; an unrelated target is not-a-level
+      if (!higherLevel && !gradeChange) no(!!fam && data.family(x.kind, x.id) === fam ? 'already-known' : 'not-a-level')
       const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
       if (gp) no(gp)
-      const pr = priced({ ...x, accessories: [] }, data, cr)
-      if (!pr.ok) no('book-value')
-      return { label: `Upgrade: ${entryLabel(data.entry(old.kind, old.id!)!)} → ${entryLabel(e)}`, nuyen: pr.cost }
+      const pr = priced({ ...x, accessories: [] }, data, cr),
+        oldPr = priced({ ...old, accessories: [] }, data, cr)
+      if (!pr.ok || !oldPr.ok) no('book-value')
+      const label =
+        gradeChange && !higherLevel
+          ? `Upgrade: ${entryLabel(e)} to ${gradeName(data, x.grade!)}`
+          : `Upgrade: ${entryLabel(oldE)} → ${entryLabel(e)}${x.grade && x.grade !== old.grade ? `, ${gradeName(data, x.grade)}` : ''}`
+      return { label, nuyen: pr.cost - oldPr.cost }
     }
     case 'fit': {
       // an accessory (a vehicle mod, a weapon in one of its mounts, an autosoft) on an owned line, at its price (do it
