@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.27.3 — 2026-10-26
+
+Career ledger: upgrade owned cyberware/bioware in place — grade and/or rating — paying the difference. No re-import needed.
+
+**Shadowrun 6**
+- **Upgrade an item you own (grade or level).** The Upgrade action now lists **every augmentation you own** (not just
+  ones with a higher rating in their family), and gives a **Grade** dropdown with all grades. Bump the grade
+  (standard→alpha→beta→delta), the rating, or **both at once** (e.g. Cyberjack R2 alphaware → R3 betaware) in one step.
+- **Pay only the difference.** An upgrade is priced as new cost − old cost (SR Missions FAQ v2.4 p.21: the old piece is
+  credited at full value), instead of the full price of the new piece.
+- **Accessories carry over.** Upgrading a host (e.g. cybereyes) keeps its fitted accessories — they aren't re-charged —
+  and the new rating/grade recomputes capacity, so you can fit more if there's now room. Swapping to a *different* model
+  is still Sell + Buy.
+
 ## 0.27.2 — 2026-10-26
 
 Career ledger: sell gear, and fix mistakes anywhere. No re-import needed.

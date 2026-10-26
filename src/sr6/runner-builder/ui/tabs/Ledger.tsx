@@ -48,6 +48,7 @@ import { entryLabel } from '../../../catalog/domain/categories'
 import { signatureOf, styleName, techniqueFits } from '../../domain/creation/martial'
 import { awakenedFlag } from '../../domain/creation/infected'
 import { boughtDesign } from '../../domain/assets/design'
+import { gradeName, gradeOptions } from '../../domain/creation/grades'
 import { useSr6Designs } from '../repo'
 import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../domain/assets/critters'
 import { critterWearable } from './Critters'
@@ -69,7 +70,7 @@ const OPS = [
   ['purchase', 'Buy gear'],
   ['design', 'Buy a vehicle or drone of your design'],
   ['critter', 'Buy a critter'],
-  ['upgrade', 'Upgrade gear to a higher level'],
+  ['upgrade', 'Upgrade an item I own (grade or level)'],
   ['drop', 'Sell or drop gear'],
   ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone, or critterware or gear to a critter'],
   ['unfit', 'Take a mod off a vehicle or drone, or critterware or gear off a critter'],
@@ -128,6 +129,7 @@ export function LedgerTab() {
     pet: 'mundane',
     neg: '',
     refund: '',
+    grade: '',
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
   const [trainedIds, setTrainedIds] = useState<string[]>([])
@@ -159,7 +161,7 @@ export function LedgerTab() {
     setPicked(null)
     setLicences([])
     setTrainedIds([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '', grade: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -176,9 +178,11 @@ export function LedgerTab() {
     stolen = settingQuality(b, cr, 'stolenGearQuality', data)
   const typedAmounts: Typed = { karma: whole(f.karma || '0'), nuyen: whole(f.nuyen || '0'), label: f.label }
 
-  // a bought item with a higher level in its family (levels.ts) can be upgraded to one
+  // what the runner owns that is upgraded in place (keeping its accessories): every augmentation (cyberware/bioware —
+  // you can't just sell and re-buy it without losing its mods), plus any item with a higher level in its family (levels.ts).
+  // Gear with no accessories is better sold and re-bought, so it isn't forced onto this list.
   const upgradable = b.purchases.filter(
-    x => x.id && data.siblings(x.kind, x.id).some(s => (data.levelOf(s) ?? 0) > (data.levelOf(data.entry(x.kind, x.id!)) ?? 0)),
+    x => x.id && (x.kind === 'augmentations' || data.siblings(x.kind, x.id).some(s => (data.levelOf(s) ?? 0) > (data.levelOf(data.entry(x.kind, x.id!)) ?? 0))),
   )
   const above = (x: Sr6Purchase | undefined) => (e: Sr6Entry) =>
     !!x?.id && data.family(e.kind, e.id) === data.family(x.kind, x.id) && (data.levelOf(e) ?? 0) > (data.levelOf(data.entry(x.kind, x.id)) ?? 0)
@@ -306,22 +310,18 @@ export function LedgerTab() {
               },
             }
           : null
-      // the line's higher level (the old line's grade kept; its accessories follow in applyAdvance)
-      case 'upgrade':
-        return f.target && e
-          ? {
-              op,
-              target: f.target,
-              line: {
-                uid: '',
-                kind: e.kind as PurchaseKind,
-                id: e.id,
-                qty: 1,
-                accessories: [],
-                ...(upgradable.find(x => x.uid === f.target)?.grade ? { grade: upgradable.find(x => x.uid === f.target)!.grade } : {}),
-              },
-            }
-          : null
+      // upgrade in place: a higher level picked from the catalog (e), a new grade (f.grade), or both; the old line's
+      // accessories follow in applyAdvance, and the preview charges the difference in cost
+      case 'upgrade': {
+        const cur = upgradable.find(x => x.uid === f.target)
+        if (!cur) return null
+        const grade = f.grade || cur.grade
+        return {
+          op,
+          target: f.target,
+          line: { uid: '', kind: (e?.kind ?? cur.kind) as PurchaseKind, id: e?.id ?? cur.id!, qty: 1, accessories: [], ...(grade ? { grade } : {}) },
+        }
+      }
       // a new SIN, or (target) the placeholder one named
       case 'sin':
         return f.name.trim()
@@ -610,7 +610,7 @@ export function LedgerTab() {
             <select
               value={f.target}
               onChange={e => {
-                set({ target: e.target.value })
+                set({ target: e.target.value, grade: '' })
                 setPicked(null)
               }}
             >
@@ -618,11 +618,30 @@ export function LedgerTab() {
               {upgradable.map(x => (
                 <option key={x.uid} value={x.uid}>
                   {entryLabel(data.entry(x.kind, x.id!)!)}
+                  {x.grade ? `, ${gradeName(data, x.grade)}` : ''}
                 </option>
               ))}
             </select>
           </label>
         )}
+        {op === 'upgrade' &&
+          f.target &&
+          (() => {
+            const cur = upgradable.find(x => x.uid === f.target)
+            const opts = cur?.kind === 'augmentations' ? gradeOptions(cr, data, cur.id ? data.entry(cur.kind, cur.id) : undefined) : []
+            return opts.length > 1 ? (
+              <label>
+                Grade
+                <select value={f.grade || cur?.grade || opts[0]} onChange={e => set({ grade: e.target.value })}>
+                  {opts.map(g => (
+                    <option key={g} value={g}>
+                      {gradeName(data, g)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null
+          })()}
         {(op === 'quality' ||
           op === 'pick' ||
           op === 'purchase' ||
