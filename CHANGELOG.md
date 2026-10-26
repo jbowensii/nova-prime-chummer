@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.27.6 — 2026-10-26
+
+Career ledger: add, remove and sell accessories on cyberware and gear (not just vehicles and critters). No re-import.
+
+**Shadowrun 6**
+- **Fit an accessory onto cyberware/gear.** The Ledger's **Fit** action now lists cyberware, bioware and gear that hold
+  accessories (an implant, a cyberdeck shell) as hosts, and offers only the enhancements that actually fit — so you can
+  buy a cyberdeck (e.g. Shiawase Cyber-6) and fit it into your Cyberdeck implant in career.
+- **Remove or sell an accessory.** The **Remove/sell** action lists accessories on any host (cyberware too), with a
+  **sale price** field (pre-fills to 30% of value, the SR Missions sellback; blank just removes it). Swapping a deck is
+  now: sell the old one off the implant, fit the new one.
+
 ## 0.27.5 — 2026-10-26
 
 **Shadowrun 6**

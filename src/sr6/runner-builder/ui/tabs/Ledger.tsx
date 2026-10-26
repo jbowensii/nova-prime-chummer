@@ -45,7 +45,9 @@ import {
 } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
-import { CatalogPicker, isAccessory, type PickedItem } from '../Picker'
+import { ACCESSORY_KINDS, CatalogPicker, isAccessory, type PickedItem } from '../Picker'
+import { capacityOf, offeredOn } from '../../../catalog/domain/categories'
+import { structureOf } from '../../../catalog/domain/structure'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { signatureOf, styleName, techniqueFits } from '../../domain/creation/martial'
@@ -75,8 +77,8 @@ const OPS = [
   ['critter', 'Buy a critter'],
   ['upgrade', 'Upgrade an item I own (grade or level)'],
   ['drop', 'Sell or drop gear'],
-  ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone, or critterware or gear to a critter'],
-  ['unfit', 'Take a mod off a vehicle or drone, or critterware or gear off a critter'],
+  ['fit', 'Fit an accessory, mod, weapon or autosoft (cyberware, gear, vehicle, drone or critter)'],
+  ['unfit', 'Remove or sell an accessory (cyberware, gear, vehicle, drone or critter)'],
   ['shift', 'Shift mod slots on a vehicle or drone'],
   ['move', 'Move a weapon to another mount'],
   ['bond', 'Bond: a quality for your critter (Critter Bond)'],
@@ -152,8 +154,14 @@ export function LedgerTab() {
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
   // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them), and critters (critterware, gear)
   const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
-    critters = ch.build.purchases.filter(x => x.kind === 'critters'),
-    hosts = [...vehicles, ...critters],
+    critters = ch.build.purchases.filter(x => x.kind === 'critters')
+  // anything that can carry an accessory in career: vehicles and critters (mods, autosofts, critterware) plus cyberware,
+  // bioware and gear that prints slots or a Capacity (an implant's enhancements, a cyberdeck inside a cyberdeck shell)
+  const canHost = (x: Sr6Purchase) => {
+    const e = entryOf(x, data)
+    return !!e && (structureOf(e).slots.length > 0 || capacityOf(e, x.rating ?? 1) !== null)
+  }
+  const hosts = ch.build.purchases.filter(x => x.kind === 'vehicles' || x.kind === 'critters' || canHost(x)),
     host = hosts.find(x => x.uid === f.target)
   // (bond: the critter companion qualities in the catalog)
   const companion = [...c.entries.qualities.values()].filter(isCritterQuality).sort((x, y) => x.name.localeCompare(y.name))
@@ -288,8 +296,13 @@ export function LedgerTab() {
         const refund = f.refund.trim() && Number.isFinite(r) ? Math.max(0, r) : sellDefault
         return { op, target: f.target, ...(refund > 0 ? { refund } : {}) }
       }
-      case 'unfit':
-        return f.target ? { op, target: f.target } : null
+      case 'unfit': {
+        // blank sale price just removes the accessory; a number sells it back for that nuyen
+        if (!f.target) return null
+        const r = whole(f.refund)
+        const refund = f.refund.trim() && Number.isFinite(r) && r > 0 ? r : undefined
+        return { op, target: f.target, ...(refund ? { refund } : {}) }
+      }
       // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
       case 'shift':
         return f.target ? { op, target: f.target, from: f.from as SlotKind, to: f.to as SlotKind } : null
@@ -849,7 +862,7 @@ export function LedgerTab() {
         )}
         {op === 'fit' && (
           <label>
-            Vehicle, drone or critter
+            Item to fit onto
             <select
               aria-label="Fit to"
               value={f.target}
@@ -967,6 +980,27 @@ export function LedgerTab() {
             </select>
           </label>
         )}
+        {op === 'unfit' &&
+          f.target &&
+          (() => {
+            const acc = hosts.flatMap(x => x.accessories).find(a => a.uid === f.target)
+            const pr = acc ? priced({ ...acc, accessories: [] }, data, cr) : undefined
+            const def = pr?.ok ? Math.round(pr.cost * SELLBACK) : 0
+            return (
+              <label>
+                Sell for (¥)
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={f.refund}
+                  placeholder={`${n(def)} (30%) — blank to just remove`}
+                  onChange={e => set({ refund: e.target.value })}
+                  aria-label="Sale price in nuyen"
+                />
+              </label>
+            )
+          })()}
         {op === 'drop' && (
           <>
             <label>
@@ -1336,7 +1370,9 @@ export function LedgerTab() {
                     : op === 'fit'
                       ? host?.kind === 'critters'
                         ? ['augmentations', 'gear', 'electronics']
-                        : ['gear', 'weapons', 'electronics', 'programs']
+                        : host?.kind === 'vehicles'
+                          ? ['gear', 'weapons', 'electronics', 'programs']
+                          : ACCESSORY_KINDS // cyberware/bioware/gear host: the accessory kinds, filtered to what fits it
                       : op === 'critter'
                         ? ['critters']
                         : (PURCHASE_KINDS.filter(k => k !== 'critters') as Sr6Kind[])
@@ -1349,7 +1385,9 @@ export function LedgerTab() {
               : op === 'fit'
                 ? host?.kind === 'critters'
                   ? critterWearable
-                  : e => e.kind !== 'weapons' || !isAccessory(e)
+                  : host?.kind === 'vehicles'
+                    ? e => e.kind !== 'weapons' || !isAccessory(e)
+                    : e => offeredOn(data.categories, e, entryOf(host!, data), undefined, isAccessory) // only accessories that fit the implant/host
                 : undefined
         }
         note={

@@ -395,10 +395,11 @@ export type Sr6Advance =
   /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
    *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
   | { op: 'upgrade'; target: string; line: Sr6Purchase }
-  /** an accessory (a vehicle mod, a weapon in a mount, an autosoft) fitted to the owned line whose uid is target, at its
-   *  price (do it yourself: half); unfit: the accessory whose uid is target taken off (no refund), kept for the history */
+  /** an accessory (a vehicle mod, a weapon in a mount, an autosoft, or an enhancement on cyberware) fitted to the owned
+   *  line whose uid is target, at its price (do it yourself: half); unfit: the accessory whose uid is target taken off,
+   *  kept for the history, with an optional nuyen refund when it is sold back (SR Missions sellback) */
   | { op: 'fit'; target: string; line: Sr6Purchase }
-  | { op: 'unfit'; target: string; line?: Sr6Purchase }
+  | { op: 'unfit'; target: string; line?: Sr6Purchase; refund?: number }
   /** two mod slots of `from` shifted to one of `to` on the owned vehicle or drone whose uid is target (Double Clutch p. 120;
    *  free); voiding it shifts them back */
   | ({ op: 'shift'; target: string } & SlotShift)
