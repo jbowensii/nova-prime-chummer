@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.27.5 — 2026-10-26
+
+**Shadowrun 6**
+- **Upgrading an implant's grade now charges for its accessories too.** An add-on takes its implant's grade (CRB p. 282),
+  so raising a cyberear/cybereye from alpha to beta raises every fitted enhancement to beta as well — the Upgrade now
+  prices the whole implant (host + accessories) old-grade vs new-grade, so the difference includes the add-ons instead of
+  only the host.
+
 ## 0.27.4 — 2026-10-26
 
 Career ledger: delete lines outright (not just void), and clear the whole history to start over.
