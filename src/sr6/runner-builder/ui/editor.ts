@@ -153,6 +153,7 @@ export const REASONS: Record<string, string> = {
   'book-value': 'Its price isn’t a number the app can read: buy it as a custom item.',
   'not-latest': 'Only the newest spend can be voided: void the later ones first.',
   'not-voidable': 'That entry can’t be voided.',
+  'not-deletable': 'That entry can’t be deleted.',
   'already-voided': 'That entry is already voided.',
   'not-signature': 'Only the style’s signature technique comes with it: learn the others one by one.',
   // the owner's decisions (2026-10-11)

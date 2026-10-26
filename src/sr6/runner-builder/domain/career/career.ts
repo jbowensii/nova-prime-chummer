@@ -635,9 +635,13 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return { label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`, nuyen: pr.cost }
     }
     case 'unfit': {
-      // R: no refund, as a drop; an earning records a sale
+      // take an accessory off; selling it back credits an adjustable nuyen sellback (SR Missions: 30% of value by
+      // default, the owner sets it), else it is just removed with no refund
       const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
-      return { label: `Removed: ${lineLabel(host.accessories.find(z => z.uid === a.target)!)} from ${lineLabel(host)}` }
+      const acc = host.accessories.find(z => z.uid === a.target)!
+      return a.refund
+        ? { label: `Sold: ${lineLabel(acc)} off ${lineLabel(host)} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund }
+        : { label: `Removed: ${lineLabel(acc)} from ${lineLabel(host)}` }
     }
     case 'shift': {
       // free: the book prints no cost (Double Clutch p. 120); a void shifts the slots back

@@ -210,7 +210,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'fit':
       return [{ target: a.target }, purchaseXml(a.line)]
     case 'unfit':
-      return [{ target: a.target }, a.line ? purchaseXml(a.line) : '']
+      return [{ target: a.target, refund: a.refund }, a.line ? purchaseXml(a.line) : '']
     case 'shift':
       return [{ target: a.target, from: a.from, to: a.to }, '']
     case 'move':
@@ -754,7 +754,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'fit':
       return { op, target: req(e, 'target'), line: line(e, 'purchase', purchase, true) }
     case 'unfit':
-      return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase) })
+      return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase), refund: num(e, 'refund') })
     case 'shift':
       return {
         op,
