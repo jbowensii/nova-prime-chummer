@@ -297,8 +297,18 @@ export const ledgerLabel = (e: Sr6LedgerEntry) =>
           : `Voided: ${e.reason}`
 export function balances(ch: Sr6Character): { karma: number; nuyen: number } {
   const last = ledgerRows(ch).at(-1)
-  return last ? { karma: last.karma, nuyen: last.nuyen } : (ch.final ?? { karma: 0, nuyen: 0 })
+  const base = last ? { karma: last.karma, nuyen: last.nuyen } : (ch.final ?? { karma: 0, nuyen: 0 })
+  // In Debt: the debt comes off the nuyen total (debtAmount; the per-row "nuyen left" stays the raw running total)
+  return { karma: base.karma, nuyen: base.nuyen - debtAmount(ch, base.nuyen) }
 }
+/** The In Debt debt on a nuyen total: `debtPercent`% of it, rounded (0/unset: none). */
+export const debtAmount = (ch: Sr6Character, nuyen: number) => Math.round((nuyen * Math.max(0, Math.min(100, ch.debtPercent ?? 0))) / 100)
+/** Set the In Debt debt percentage (0 clears it). */
+export const setDebtPercent = (ch: Sr6Character, pct: number): Sr6Character => ({
+  ...ch,
+  debtPercent: pct > 0 ? Math.min(100, pct) : undefined,
+  updatedAt: new Date().toISOString(),
+})
 
 /** Stolen Gear's converted karma not yet bought off (No Future errata, NF p. 162): the karma turned into nuyen at
  *  creation (karma.ts toNuyen) less what was bought off since (Sr6Quality.boughtOff). */
@@ -888,6 +898,30 @@ export const earn = (ch: Sr6Character, karma: number, nuyen: number, run: string
 export const note = (ch: Sr6Character, text: string, now = new Date().toISOString()): Sr6Character => ({
   ...ch,
   ledger: [...ch.ledger, { id: newId(), at: now, type: 'note', text }],
+})
+
+/** What an editEntry call may change on a ledger line (by its kind); leaving one out keeps the line's value. */
+export type LedgerEdit = { karma?: number; nuyen?: number; label?: string; run?: string; date?: string; text?: string; reason?: string }
+const editLine = (e: Sr6LedgerEntry, p: LedgerEdit): Sr6LedgerEntry => {
+  switch (e.type) {
+    case 'finalize':
+      return { ...e, karma: p.karma ?? e.karma, nuyen: p.nuyen ?? e.nuyen }
+    case 'earn':
+      return { ...e, karma: p.karma ?? e.karma, nuyen: p.nuyen ?? e.nuyen, run: p.run ?? e.run, date: p.date ?? e.date }
+    case 'advance':
+      return { ...e, karma: p.karma ?? e.karma, nuyen: p.nuyen ?? e.nuyen, label: p.label ?? e.label }
+    case 'note':
+      return { ...e, text: p.text ?? e.text }
+    case 'void':
+      return { ...e, reason: p.reason ?? e.reason }
+  }
+}
+/** Edit a single ledger line by hand (its amounts and its text/label). The running balances follow from the amounts, so a
+ *  correction here re-totals the history. Deliberately breaks append-only: the GM owns the ledger. */
+export const editEntry = (ch: Sr6Character, id: string, patch: LedgerEdit): Sr6Character => ({
+  ...ch,
+  ledger: ch.ledger.map(e => (e.id === id ? editLine(e, patch) : e)),
+  updatedAt: new Date().toISOString(),
 })
 
 /** Void an entry since the last Finalize: an earning or note any time, an advance only when it's the newest live one. */

@@ -4,10 +4,25 @@
 // creation settings (src/sr6/runner-builder/domain/career/career.ts); a refusal reads as a sentence. What the runner lacks a prerequisite for
 // is offered too, marked: recorded, Review flags it. What a spend or a history line names (an attribute, a skill, the
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
 import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../domain/creation/budgets'
-import { balances, earn, ledgerLabel, ledgerRows, note, stolenLeft, voidableIds, voidEntry, type Typed } from '../../domain/career/career'
+import {
+  balances,
+  debtAmount,
+  earn,
+  editEntry,
+  ledgerLabel,
+  ledgerRows,
+  note,
+  setDebtPercent,
+  stolenLeft,
+  voidableIds,
+  voidEntry,
+  type LedgerEdit,
+  type Typed,
+} from '../../domain/career/career'
+import { exportSr6Ledger, readSr6LedgerImport } from '../repo'
 import { MAGIC_KINDS, metamagicFits, picksFor } from '../../../catalog/domain/data'
 import {
   CORE_ATTRS,
@@ -81,6 +96,10 @@ export function LedgerTab() {
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
+  // In Debt (CRB-HK): a % of the nuyen total taken off the balance; rawNuyen is the total before that
+  const inDebtQ = settingQuality(b, cr, 'inDebtQuality', data)
+  const rawNuyen = ledgerRows(ch).at(-1)?.nuyen ?? ch.final?.nuyen ?? 0
+  const debt = debtAmount(ch, rawNuyen)
   const today = new Date().toISOString().slice(0, 10)
   const [gain, setGain] = useState({ karma: '', nuyen: '', run: '', date: today })
   const [op, setOp] = useState<OpKey>('attribute')
@@ -117,6 +136,9 @@ export function LedgerTab() {
   const [text, setText] = useState('')
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
   const [why, setWhy] = useState('')
+  const [editing, setEditing] = useState<Sr6LedgerEntry | null>(null)
+  const [ef, setEf] = useState<LedgerEdit>({})
+  const importRef = useRef<HTMLInputElement>(null)
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
   const designs = useSr6Designs()
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
@@ -352,6 +374,35 @@ export function LedgerTab() {
       setWhy('')
     }
   }
+  // edit any line: amounts and its text, keyed by the entry's kind
+  const openEdit = (e: Sr6LedgerEntry) => {
+    setEditing(e)
+    setEf(
+      e.type === 'earn'
+        ? { karma: e.karma, nuyen: e.nuyen, run: e.run, date: e.date }
+        : e.type === 'finalize' || e.type === 'advance'
+          ? { karma: e.karma, nuyen: e.nuyen, ...(e.type === 'advance' ? { label: e.label } : {}) }
+          : e.type === 'note'
+            ? { text: e.text }
+            : { reason: e.reason },
+    )
+  }
+  const saveEdit = () => {
+    if (editing && !ledger(x => ({ ok: true, ch: editEntry(x, editing.id, ef) }))) {
+      setEditing(null)
+      setEf({})
+    }
+  }
+  const importLedger = async (file: File) => {
+    const r = readSr6LedgerImport(await file.text())
+    if (!r.ok) {
+      window.alert(r.reason)
+      return
+    }
+    if (window.confirm(`Replace this runner’s ${ch.ledger.length} ledger line(s) with the ${r.ledger.length} from the file?`))
+      ledger(x => ({ ok: true, ch: { ...x, ledger: r.ledger } }))
+  }
+  const setDebt = (pct: number) => ledger(x => ({ ok: true, ch: setDebtPercent(x, pct) }))
 
   const amount = (e: Sr6LedgerEntry, k: 'karma' | 'nuyen', unit = '') =>
     e.type === 'earn' ? (e[k] ? `+${n(e[k])}${unit}` : '') : e.type === 'advance' && e[k] ? (e[k] > 0 ? `−${n(e[k])}${unit}` : `+${n(-e[k])}${unit}`) : ''
@@ -372,7 +423,55 @@ export function LedgerTab() {
         <span>
           Nuyen <b className={bal.nuyen < 0 ? 'err' : ''}>{n(bal.nuyen)}¥</b>
         </span>
+        {debt > 0 && (
+          <span className="muted">
+            after debt −{n(debt)}¥ ({ch.debtPercent}%)
+          </span>
+        )}
       </p>
+
+      <div className="row">
+        <button className="btn small" onClick={() => exportSr6Ledger(c, ch)}>
+          Export ledger
+        </button>
+        <button className="btn small" onClick={() => importRef.current?.click()}>
+          Import ledger
+        </button>
+        <input
+          ref={importRef}
+          type="file"
+          accept=".xml,application/xml,text/xml"
+          hidden
+          onChange={e => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) void importLedger(file)
+          }}
+        />
+      </div>
+
+      {inDebtQ && (
+        <div className="row">
+          <label>
+            In Debt (CRB-HK): debt as a % of the nuyen total
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={ch.debtPercent ?? 0}
+              onChange={e => setDebt(Math.max(0, Math.min(100, whole(e.target.value) || 0)))}
+              aria-label="Debt percent"
+              style={{ width: '6rem' }}
+            />
+          </label>
+          {debt > 0 && (
+            <span className="muted" style={{ alignSelf: 'end' }}>
+              −{n(debt)}¥ of {n(rawNuyen)}¥ comes off the total.
+            </span>
+          )}
+        </div>
+      )}
 
       <h3>Record earnings</h3>
       <div className="row">
@@ -1089,6 +1188,11 @@ export function LedgerTab() {
                 <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : n(karma)}</td>
                 <td className="num">{voided || e.type === 'note' || e.type === 'void' ? '' : `${n(nuyen)}¥`}</td>
                 <td className="num">
+                  {!voided && e.type !== 'void' && (
+                    <button className="btn small quiet" aria-label={`Edit ${ledgerLabel(e)}`} onClick={() => openEdit(e)}>
+                      Edit
+                    </button>
+                  )}
                   {voidable.has(e.id) && (
                     <button className="btn small quiet" aria-label={`Void ${ledgerLabel(e)}`} onClick={() => setVoiding(e)}>
                       Void
@@ -1099,6 +1203,17 @@ export function LedgerTab() {
             ))}
           </tbody>
           <tfoot>
+            {debt > 0 && (
+              <tr>
+                <td />
+                <td className="muted">In Debt ({ch.debtPercent}%)</td>
+                <td />
+                <td className="num muted">−{n(debt)}¥</td>
+                <td />
+                <td className="num muted">{n(rawNuyen)}¥</td>
+                <td />
+              </tr>
+            )}
             <tr>
               <td />
               <td>
@@ -1216,6 +1331,75 @@ export function LedgerTab() {
           Why
           <input autoFocus value={why} onChange={e => setWhy(e.target.value)} placeholder="e.g. Picked the wrong one" />
         </label>
+      </Modal>
+      <Modal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title="Edit this line"
+        actions={
+          <>
+            <button className="btn" onClick={() => setEditing(null)}>
+              Cancel
+            </button>
+            <button className="btn primary" onClick={saveEdit}>
+              Save
+            </button>
+          </>
+        }
+      >
+        {editing && (
+          <div className="stack">
+            {(editing.type === 'finalize' || editing.type === 'earn' || editing.type === 'advance') && (
+              <div className="row">
+                <label>
+                  Karma
+                  <input
+                    type="number"
+                    step={1}
+                    value={ef.karma ?? 0}
+                    onChange={e => setEf({ ...ef, karma: whole(e.target.value) || 0 })}
+                    style={{ width: '7rem' }}
+                  />
+                </label>
+                <label>
+                  Nuyen
+                  <input
+                    type="number"
+                    step={100}
+                    value={ef.nuyen ?? 0}
+                    onChange={e => setEf({ ...ef, nuyen: whole(e.target.value) || 0 })}
+                    style={{ width: '9rem' }}
+                  />
+                </label>
+              </div>
+            )}
+            {editing.type === 'earn' && (
+              <div className="row">
+                <label style={{ flex: 1 }}>
+                  Run
+                  <input value={ef.run ?? ''} onChange={e => setEf({ ...ef, run: e.target.value })} />
+                </label>
+                <label>
+                  Date
+                  <input type="date" value={ef.date ?? ''} onChange={e => setEf({ ...ef, date: e.target.value })} />
+                </label>
+              </div>
+            )}
+            {editing.type === 'advance' && (
+              <label>
+                What it was
+                <input value={ef.label ?? ''} onChange={e => setEf({ ...ef, label: e.target.value })} />
+              </label>
+            )}
+            {editing.type === 'note' && (
+              <label>
+                Note
+                <input autoFocus value={ef.text ?? ''} onChange={e => setEf({ ...ef, text: e.target.value })} />
+              </label>
+            )}
+            <p className="muted">A spend’s amounts are a plus taken off; a plus here spends more, a minus gives back. The balances re-total from the line.</p>
+          </div>
+        )}
       </Modal>
     </div>
   )

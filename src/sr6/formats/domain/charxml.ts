@@ -253,6 +253,23 @@ function entryXml(e: Sr6LedgerEntry): string {
   }
 }
 const ledgerXml = (l: Sr6LedgerEntry[]) => (l.length ? `<ledger>\n    ${l.map(entryXml).join('\n    ')}\n  </ledger>` : '')
+
+/** The career ledger alone, as its own file (import/export of the history without the runner). */
+export const sr6LedgerToXml = (ledger: Sr6LedgerEntry[]) =>
+  `<?xml version="1.0" encoding="UTF-8"?>\n<sr6:ledger xmlns:sr6="${SR6_CHAR_NS}" formatVersion="${FORMAT_VERSION}">\n    ${ledger.map(entryXml).join('\n    ')}\n  </sr6:ledger>\n`
+
+/** Read a ledger-only file (sr6LedgerToXml): the entries, or why it can't be read. */
+export function xmlToSr6Ledger(xml: string): { ok: true; ledger: Sr6LedgerEntry[] } | { ok: false; reason: string } {
+  const parsed = readDoc(xml)
+  if (!parsed.ok) return parsed
+  const r = parsed.root
+  if (r.localName !== 'ledger' || r.namespaceURI !== SR6_CHAR_NS) return { ok: false, reason: 'Not a Shadowrun 6 ledger file.' }
+  try {
+    return { ok: true, ledger: kids(r, 'entry').map(e => readEntry(e)) }
+  } catch (e) {
+    return { ok: false, reason: `Couldn’t read ${(e as Error).message}.` }
+  }
+}
 // the compendium entries the runner uses, with their text (src/sr6/runner-builder/domain/career/house.ts)
 const houseXml = (h?: Sr6Entry[]) => (h?.length ? `<house>${h.map(e => sr6EntryXml(e, true)).join('')}</house>` : '')
 
@@ -344,6 +361,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
     lastExportedAt: ch.lastExportedAt,
     finalKarma: ch.final?.karma,
     finalNuyen: ch.final?.nuyen,
+    debtPercent: ch.debtPercent,
     sampleKey: ch.sampleKey,
   })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sr6:character xmlns:sr6="${SR6_CHAR_NS}"${root}>\n  ${body}\n</sr6:character>\n`
@@ -926,6 +944,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       finalizedAt: str(r, 'finalizedAt'),
       campaign: str(r, 'campaign'),
       final: fk === undefined && fn === undefined ? undefined : { karma: fk ?? 0, nuyen: fn ?? 0 },
+      debtPercent: num(r, 'debtPercent'),
       ledger: ledger
         ? each(
             kids(ledger, 'entry'),
