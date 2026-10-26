@@ -45,6 +45,9 @@ export function AttributesTab() {
             <tr>
               <th>Attribute</th>
               <th>Range</th>
+              <th className="num" title="The metatype's starting rating: Natural = Metatype + Points + Adjustment + Karma">
+                Metatype
+              </th>
               {POOLS.map(([, l]) => (
                 <th key={l}>{l}</th>
               ))}
@@ -64,6 +67,7 @@ export function AttributesTab() {
                     <Sr6AttrRef attr={a}>{ATTR_NAMES[a]}</Sr6AttrRef>
                   </td>
                   <td className="muted">{r ? `${r[0]}–${r[1]}` : '—'}</td>
+                  <td className="num muted">{r ? r[0] : '—'}</td>
                   {POOLS.map(([k, l]) => (
                     <td key={k}>
                       <Stepper

@@ -1,5 +1,11 @@
 # Release notes
 
+## 0.27.7 — 2026-10-26
+
+**Shadowrun 6**
+- **Attributes: Metatype column.** The attribute table now shows each attribute’s metatype starting rating, so the natural
+  rating reads clearly as Metatype + Points + Adjustment + Karma (e.g. Willpower 1 + 4 + 1 = 6).
+
 ## 0.27.6 — 2026-10-26
 
 Career ledger: add, remove and sell accessories on cyberware and gear (not just vehicles and critters). No re-import.
