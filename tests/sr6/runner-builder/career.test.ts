@@ -8,7 +8,9 @@ import { expect, test } from 'vitest'
 import {
   balances,
   canDraft,
+  clearHistory,
   currentBuild,
+  deleteEntry,
   earn,
   ledgerRows,
   note,
@@ -242,6 +244,27 @@ test('record then void: the attribute and the karma come back; the entry and its
   expect(balances(v.ch).karma).toBe(50)
   expect(v.ch.ledger.map(e => e.type)).toEqual(['finalize', 'advance', 'void'])
   expect(ledgerRows(v.ch)[1]).toMatchObject({ voided: true, reason: 'Misclick' })
+})
+
+test('delete removes a line outright (no record); the baseline is protected; clear history wipes back to it', () => {
+  const { data, cr } = made(),
+    ch0 = runner({ karma: 50 })
+  at(ch0, 'agi', 3)
+  const r = ok(record(ch0, raise('agi'), data, cr))
+  const id = r.ledger.at(-1)!.id
+  const d = deleteEntry(r, id)
+  if (!d.ok) throw new Error(d.reason)
+  expect(currentBuild(d.ch).attributes.agi.karma).toBe(0) // effect reversed
+  expect(balances(d.ch).karma).toBe(50)
+  expect(d.ch.ledger.map(e => e.type)).toEqual(['finalize']) // no void record left behind
+  expect(deleteEntry(r, r.ledger[0].id)).toEqual({ ok: false, reason: 'not-deletable' }) // can't delete the baseline
+  // a void that pointed at the deleted line goes with it
+  const v = voidEntry(r, id, 'oops')
+  if (!v.ok) throw new Error(v.reason)
+  const d2 = deleteEntry(v.ch, id)
+  if (!d2.ok) throw new Error(d2.reason)
+  expect(d2.ch.ledger.map(e => e.type)).toEqual(['finalize'])
+  expect(clearHistory(r).ledger.map(e => e.type)).toEqual(['finalize'])
 })
 
 test('nuyen to karma is off while advance.nuyenToKarmaRate is unset', () => {

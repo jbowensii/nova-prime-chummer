@@ -9,7 +9,10 @@ import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
 import { attrRating, diyAllowed, entryOf, licenceFee, priced, settingQuality } from '../../domain/creation/budgets'
 import {
   balances,
+  clearHistory,
   debtAmount,
+  deletableIds,
+  deleteEntry,
   earn,
   editEntry,
   ledgerLabel,
@@ -415,11 +418,21 @@ export function LedgerTab() {
       ledger(x => ({ ok: true, ch: { ...x, ledger: r.ledger } }))
   }
   const setDebt = (pct: number) => ledger(x => ({ ok: true, ch: setDebtPercent(x, pct) }))
+  // delete (not void): removes a line outright, for clearing out mistakes while building
+  const doDelete = (e: Sr6LedgerEntry) => {
+    if (window.confirm(`Delete “${ledgerLabel(e)}” from the ledger? This removes it with no record (use Void to keep an audit trail).`))
+      ledger(x => deleteEntry(x, e.id))
+  }
+  const clearAll = () => {
+    if (window.confirm('Clear the whole career history and start over? The finalized character is kept; every earning, spend and note after it is removed.'))
+      ledger(x => ({ ok: true, ch: clearHistory(x) }))
+  }
 
   const amount = (e: Sr6LedgerEntry, k: 'karma' | 'nuyen', unit = '') =>
     e.type === 'earn' ? (e[k] ? `+${n(e[k])}${unit}` : '') : e.type === 'advance' && e[k] ? (e[k] > 0 ? `−${n(e[k])}${unit}` : `+${n(-e[k])}${unit}`) : ''
   const rows = ledgerRows(ch),
-    voidable = voidableIds(ch)
+    voidable = voidableIds(ch),
+    deletable = deletableIds(ch)
 
   return (
     <div className="stack sr6-ledger">
@@ -449,6 +462,11 @@ export function LedgerTab() {
         <button className="btn small" onClick={() => importRef.current?.click()}>
           Import ledger
         </button>
+        {deletable.size > 0 && (
+          <button className="btn small quiet" onClick={clearAll}>
+            Clear history
+          </button>
+        )}
         <input
           ref={importRef}
           type="file"
@@ -1244,6 +1262,11 @@ export function LedgerTab() {
                   {voidable.has(e.id) && (
                     <button className="btn small quiet" aria-label={`Void ${ledgerLabel(e)}`} onClick={() => setVoiding(e)}>
                       Void
+                    </button>
+                  )}
+                  {deletable.has(e.id) && (
+                    <button className="btn small quiet" aria-label={`Delete ${ledgerLabel(e)}`} onClick={() => doDelete(e)}>
+                      Delete
                     </button>
                   )}
                 </td>
