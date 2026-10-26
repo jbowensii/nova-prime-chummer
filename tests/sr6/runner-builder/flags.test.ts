@@ -94,6 +94,18 @@ test('Review: an adept’s metamagic on a magician, and more metamagics than ini
   expect(validateSr6(data, cr, ch).map(x => x.code)).not.toContain('magic.metamagicCount')
 })
 
+test('Review: initiated with too few metamagics is an error that blocks finalize', () => {
+  const { data, cr } = made(),
+    ch = runner('full')
+  ch.build.initiation = 1
+  ch.build.picks = [] // initiated, but no metamagic chosen
+  const v = validateSr6(data, cr, ch)
+  const count = v.find(x => x.code === 'magic.metamagicCount')!
+  expect(count.severity).toBe('error')
+  expect(count.message).toBe('0 metamagics at initiation grade 1: each grade brings one, pick 1 more.')
+  expect(canFinalizeSr6(v)).toBe(false)
+})
+
 test('career: a metamagic the runner may not take is recorded, an error a GM may approve; one taken again is a level', () => {
   const { data, cr } = made(),
     line = (id: string) => ({ op: 'initiate' as const, line: { uid: '', kind: 'metamagics' as const, id } })
