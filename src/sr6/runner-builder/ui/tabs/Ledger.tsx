@@ -6,7 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import { attrRating, diyAllowed, entryOf, licenceFee, settingQuality } from '../../domain/creation/budgets'
+import { attrRating, diyAllowed, entryOf, licenceFee, priced, settingQuality } from '../../domain/creation/budgets'
 import {
   balances,
   debtAmount,
@@ -70,7 +70,7 @@ const OPS = [
   ['design', 'Buy a vehicle or drone of your design'],
   ['critter', 'Buy a critter'],
   ['upgrade', 'Upgrade gear to a higher level'],
-  ['drop', 'Drop gear'],
+  ['drop', 'Sell or drop gear'],
   ['fit', 'Fit a mod, weapon or autosoft to a vehicle or drone, or critterware or gear to a critter'],
   ['unfit', 'Take a mod off a vehicle or drone, or critterware or gear off a critter'],
   ['shift', 'Shift mod slots on a vehicle or drone'],
@@ -89,6 +89,8 @@ const OPS = [
 type OpKey = (typeof OPS)[number][0]
 const LEARN: PickKind[] = ['spells', 'rituals', 'complexforms', 'adeptpowers']
 const whole = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN)
+// a sale credits back a share of the item's value (SR Missions: 30% by default; the owner edits the figure per sale)
+const SELLBACK = 0.3
 const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x)}${unit}`)
 
 export function LedgerTab() {
@@ -125,6 +127,7 @@ export function LedgerTab() {
     diy: false,
     pet: 'mundane',
     neg: '',
+    refund: '',
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
   const [trainedIds, setTrainedIds] = useState<string[]>([])
@@ -156,7 +159,7 @@ export function LedgerTab() {
     setPicked(null)
     setLicences([])
     setTrainedIds([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -183,6 +186,10 @@ export function LedgerTab() {
   const licensable = b.purchases.flatMap(x => [x, ...x.accessories]).filter(x => licenceFee(x, data) !== undefined)
   // a lifestyle is paid under a SIN: the first unless another is picked
   const sin = b.sins.some(s => s.uid === f.sin) ? f.sin : (b.sins[0]?.uid ?? '')
+  // selling gear: the item picked and the default sellback (30% of its book value), which the owner may edit per sale
+  const dropItem = op === 'drop' && f.target ? b.purchases.find(x => x.uid === f.target) : undefined
+  const dropPriced = dropItem ? priced({ ...dropItem, accessories: [] }, data, cr) : undefined
+  const sellDefault = dropPriced?.ok ? Math.round(dropPriced.cost * SELLBACK) : 0
   /** what the form says to buy, or null while it's incomplete */
   const advance = (): Sr6Advance | null => {
     const e = picked?.e
@@ -268,7 +275,12 @@ export function LedgerTab() {
         const doc = designs.find(d => d.id === f.target)
         return doc ? { op: 'purchase', line: boughtDesign(doc, data, cr, '') } : null
       }
-      case 'drop':
+      case 'drop': {
+        if (!f.target) return null
+        const r = whole(f.refund)
+        const refund = f.refund.trim() && Number.isFinite(r) ? Math.max(0, r) : sellDefault
+        return { op, target: f.target, ...(refund > 0 ? { refund } : {}) }
+      }
       case 'unfit':
         return f.target ? { op, target: f.target } : null
       // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
@@ -919,17 +931,34 @@ export function LedgerTab() {
           </label>
         )}
         {op === 'drop' && (
-          <label>
-            Item
-            <select value={f.target} onChange={e => set({ target: e.target.value })}>
-              <option value="">Pick one</option>
-              {b.purchases.map(x => (
-                <option key={x.uid} value={x.uid}>
-                  {(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}
-                </option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label>
+              Item
+              <select value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {b.purchases.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {f.target && (
+              <label>
+                Sell for (¥)
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={f.refund}
+                  placeholder={`${sellDefault} (30%)`}
+                  onChange={e => set({ refund: e.target.value })}
+                  aria-label="Sale price in nuyen credited back"
+                  style={{ width: '9rem' }}
+                />
+              </label>
+            )}
+          </>
         )}
         {op === 'sin' && (
           <>

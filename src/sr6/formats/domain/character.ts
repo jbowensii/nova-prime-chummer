@@ -389,7 +389,9 @@ export type Sr6Advance =
   | { op: 'powerpoint' }
   | { op: 'initiate'; line?: Sr6Pick; target?: string }
   | { op: 'purchase'; line: Sr6Purchase }
-  | { op: 'drop'; target: string; line?: Sr6Purchase }
+  /** refund: nuyen credited back for selling the item (an adjustable sellback; the UI defaults it to 30% of value, SR
+   *  Missions). Absent or 0 is a plain drop with no credit. */
+  | { op: 'drop'; target: string; line?: Sr6Purchase; refund?: number }
   /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
    *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
   | { op: 'upgrade'; target: string; line: Sr6Purchase }
