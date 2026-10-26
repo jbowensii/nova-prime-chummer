@@ -126,8 +126,8 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   await expect(price).toHaveText('That optional rule is off: Table setup → Creation rules.')
   await expect(work.getByRole('button', { name: 'Record', exact: true })).toBeDisabled()
 
-  // only the newest spend can be voided
-  await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toHaveCount(0)
+  // any live spend can be voided, not just the newest (owner 2026-10-26)
+  await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toBeVisible()
   await expect(work.getByRole('button', { name: 'Void Earned: Made-up run (' + new Date().toISOString().slice(0, 10) + ')' })).toBeVisible()
   await shoot(page, 'ledger')
   await work.getByRole('button', { name: 'Void Spell: Glow Ward' }).click()
@@ -217,11 +217,11 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await work.getByRole('combobox', { name: /^Attribute/ }).selectOption({ label: 'Agility (4)' })
   await expect(price).toHaveText('Not enough karma.')
 
-  // void the initiation: karma back; then the spell is the newest, the older raise still not
+  // void the initiation: karma back; the spell and the older raise are both still voidable (void any line, owner 2026-10-26)
   await voidIt('Initiation grade 1 (Soft Echo)')
   await expect(balances).toHaveText(/Karma 14\s*Nuyen 7,160¥/)
   await expect(work.getByRole('button', { name: 'Void Spell: Glow Ward' })).toBeVisible()
-  await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toHaveCount(0)
+  await expect(work.getByRole('button', { name: 'Void AGI 3 → 4' })).toBeVisible()
   await savedOnServer(page, 'Made-up undo')
 
   // print: the runner as it stands, and the ledger's balances
