@@ -309,9 +309,10 @@ test('career: a quality’s or power’s higher level replaces the lower at the 
   })
   const p = up({ op: 'pick', line: { uid: '', kind: 'adeptpowers', id: 'crb.quick-step.4' } })
   expect(currentBuild(p).picks).toEqual([{ uid: 'p1', kind: 'adeptpowers', id: 'crb.quick-step.4', name: 'Quick Step 4' }])
-  // gear: the new level's full price, the line's uid and accessories kept
+  // gear: the difference between the new level and the old (SR Missions FAQ v2.4 p.21: the old is credited at full
+  // value), the line's uid and accessories kept
   const upgrade: Sr6Advance = { op: 'upgrade', target: 'g1', line: { uid: '', kind: 'gear', id: 'crb.tangle-rope.3', qty: 1, accessories: [] } }
-  expect(preview(ch, upgrade, data, cr)).toEqual({ ok: true, label: 'Upgrade: Tangle Rope 1 → Tangle Rope 3', karma: 0, nuyen: 150 })
+  expect(preview(ch, upgrade, data, cr)).toEqual({ ok: true, label: 'Upgrade: Tangle Rope 1 → Tangle Rope 3', karma: 0, nuyen: 100 })
   expect(preview(ch, { ...upgrade, line: { ...upgrade.line, id: 'crb.zap-pellets' } }, data, cr)).toEqual({ ok: false, reason: 'not-a-level' })
   expect(preview(ch, { ...upgrade, line: { ...upgrade.line, id: 'crb.tangle-rope.1' } }, data, cr)).toEqual({ ok: false, reason: 'already-known' })
   const g = up(upgrade)
@@ -321,7 +322,7 @@ test('career: a quality’s or power’s higher level replaces the lower at the 
     name: 'Tangle Rope 3',
     accessories: [{ uid: 'a1', id: 'crb.zap-scope' }],
   })
-  expect(g.ledger.at(-1)).toMatchObject({ label: 'Upgrade: Tangle Rope 1 → Tangle Rope 3', nuyen: 150 })
+  expect(g.ledger.at(-1)).toMatchObject({ label: 'Upgrade: Tangle Rope 1 → Tangle Rope 3', nuyen: 100 })
 })
 
 test('a sample correction naming the printed id fixes a line holding one of its levels; the export writes the level’s entry', () => {
