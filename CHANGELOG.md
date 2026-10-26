@@ -1,5 +1,18 @@
 # Release notes
 
+## 0.27.1 — 2026-10-26
+
+Career ledger: hand it around and correct it. No re-import needed.
+
+**Shadowrun 6**
+- **Export and import the ledger on its own.** The Ledger tab has Export ledger / Import ledger — the career history
+  as its own file (with its purchase snapshots), separate from the runner. Importing replaces this runner's ledger
+  with the file's.
+- **Edit any ledger line.** Each line has Edit: change its karma, nuyen, run/date, label or note by hand. The running
+  balances re-total from the amounts (a GM correction, outside the usual void-only flow).
+- **In Debt debt comes off the total.** With the In Debt quality, the Ledger shows a debt percentage; that % of the
+  nuyen total is taken off the balance (shown as a line in the totals).
+
 ## 0.27.0 — 2026-10-26
 
 Accessory pickers now show the right items for every device — a CommLink6-driven fix. **Needs a re-import.**

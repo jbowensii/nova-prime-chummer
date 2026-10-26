@@ -10,7 +10,7 @@ import { serverRepo } from '../../../features/runner-store/repo'
 import { keepSr6House } from '../domain/career/house'
 import { resolveEntry } from '../../catalog/domain/load'
 import { entryKey } from '../../catalog/domain/names'
-import { sr6ToXml, xmlToSr6 } from '../../formats/domain/charxml'
+import { sr6LedgerToXml, sr6ToXml, xmlToSr6, xmlToSr6Ledger } from '../../formats/domain/charxml'
 import type { Sr6Character, Sr6LedgerEntry, Sr6Purchase } from '../../formats/domain/character'
 import type { Sr6Catalog } from '../../formats/domain/types'
 
@@ -47,6 +47,17 @@ export function exportSr6(c: Sr6Catalog, ch: Sr6Character): Sr6Character {
   const out = { ...snapshotSr6(c, ch), lastExportedAt: new Date().toISOString() }
   downloadFile(`${(ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')}.xml`, sr6ToXml(out), 'application/xml')
   return out
+}
+
+/** Download just the career ledger (with its purchase snapshots) as its own file. */
+export function exportSr6Ledger(c: Sr6Catalog, ch: Sr6Character): void {
+  const name = (ch.identity.streetName || ch.identity.name || 'runner').replace(/[^\w\- ]+/g, '')
+  downloadFile(`${name}-ledger.xml`, sr6LedgerToXml(snapshotSr6(c, ch).ledger), 'application/xml')
+}
+
+/** Read a ledger-only file (exportSr6Ledger): its entries, or why it can't be read. */
+export function readSr6LedgerImport(xml: string): { ok: true; ledger: Sr6LedgerEntry[] } | { ok: false; reason: string } {
+  return xmlToSr6Ledger(xml)
 }
 
 /** A file to import: the runner (a new id when `taken` has its id), or why it can't be (an Anarchy runner: where it belongs). */

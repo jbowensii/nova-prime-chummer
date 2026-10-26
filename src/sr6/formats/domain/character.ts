@@ -520,6 +520,8 @@ export interface Sr6Character {
   final?: { karma: number; nuyen: number }
   campaign?: string
   ledger: Sr6LedgerEntry[]
+  /** with the In Debt quality: the debt as a percentage of the nuyen total, taken off the balance (0/unset: none) */
+  debtPercent?: number
   npc?: Sr6Npc
   /** set on a vehicle or drone design (the Designer's store; its build stays blank) */
   design?: Sr6Design
